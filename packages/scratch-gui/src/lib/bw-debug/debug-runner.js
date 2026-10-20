@@ -600,6 +600,8 @@ export function toggleTargetCodeBreakpoint ({target, addrBps, addr}) {
  */
 export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, labwiredChip = null, labwiredBoardVariant = null, onChange = () => {} }) {
     let session = null;
+    // Invalidate stop/start even when target and session references are reused.
+    let hddSnapshotOwner = {};
     let target = null;
     let i8086ExecutionResult = null;
     const i8086ExecutionLifetime = new AbortController();
@@ -1540,6 +1542,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // ─── attach ──────────────────────────────────────────────────────────
 
     async function attach(built) {
+        hddSnapshotOwner = {};
         // Per-engine, so it cannot outlive the engine that produced it: a
         // labwired refusal still shown after the user switched back to the
         // light tier would be a warning about a limit that no longer applies.
@@ -3963,6 +3966,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
 
         stop() {
+            hddSnapshotOwner = {};
             unschedule();
             if (activeRunTo) {
                 runToController.cancel();
@@ -4176,6 +4180,34 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          *  @param {string} name a DebugTarget method.
          *  @returns {boolean} true when it can be called. */
         supports(name) { return !!(target && typeof target[name] === 'function'); },
+
+        /** Detached copy at the supplier's settled boundary, not a paused lease. */
+        async snapshotAtaMaster() {
+            const refused = (code, reason) => ({refused: {code, reason}});
+            if (destroyed || i8086ExecutionLifetime.signal.aborted || !target || !session) {
+                return refused('snapshot-no-session', 'No active machine session');
+            }
+            if (session.state().intent !== 'paused' || target.state() !== 'halted') {
+                return refused('snapshot-not-paused', 'Pause the current machine before copying its disk');
+            }
+            const capture = target.snapshotAtaMaster;
+            if (typeof capture !== 'function') {
+                return refused('snapshot-unsupported', 'This target has no master-disk snapshot API');
+            }
+            const owner = hddSnapshotOwner;
+            const originalTarget = target;
+            const originalSession = session;
+            const current = () => !destroyed && !i8086ExecutionLifetime.signal.aborted && owner === hddSnapshotOwner &&
+                originalTarget === target && originalSession === session;
+            try {
+                const result = await capture.call(originalTarget);
+                if (!current()) return refused('snapshot-stale-session', 'The machine session changed during the copy');
+                return result;
+            } catch (error) {
+                if (!current()) return refused('snapshot-stale-session', 'The machine session changed during the copy');
+                throw error;
+            }
+        },
 
         /** Move the PC. The TUI's `g`. */
         setPc(addr) {
@@ -5121,6 +5153,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         destroy() {
             i8086ExecutionLifetime.abort();
             i8086Execution.release(i8086ExecutionResult);
+            // The aborted lifetime fences reentry even if release throws.
+            hddSnapshotOwner = {};
             i8086ExecutionResult = null;
             destroyed = true;
             setValueResolver(null);

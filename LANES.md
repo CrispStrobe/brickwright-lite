@@ -4519,6 +4519,27 @@ executed in 20 green main runs, five files recorded nowhere.
 
 ## Steps that run elsewhere
 
+- i80386-hdd-gui-actual.yml :: inventory :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed inventory before setup or input retrieval :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium without frontend build :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable template and record observations :: Owned metadata-only `x86-hdd-gui-inventory` label path, absent from the current 19-run window. Historical failed runs 39106669518 and 39111308927 are consumed and their originals already audited; never replay them to populate this census. A new request/source/workflow/event requires separate admission; no successful runtime inventory or actual is inferred. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: font-bridge :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed bridge before setup or input retrieval :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium for bridge observation :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable bridge request :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: Record bounded read-only font bridge without credentials :: Owned `x86-hdd-gui-font-bridge` label condition: source/job guards are enabled in this proposal, while exact source/prior/request/workflow/resource/event admission and explicit consumer selection remain required. No bridge observation or official delivery is qualified; never dispatch it to populate the census. 2026-10-19 Codex x86.
+- i80386-hdd-gui-actual.yml :: actual :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install empty Python cache prefix and refuse unreviewed actual source :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Repeat inventory installation exactly, without frontend build :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally admitted request and refuse runtime/source drift :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Prepare unchanged authenticated free media once :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: One official frontend acquisition and two serial genuine UI scenarios :: Intentionally disabled source-only actual path: the current job condition is literal false and ACTUAL_ENABLED remains false. No genuine hosted actual is qualified. Exact source/runtime/resource/request/event admission and separate activation plus one clean affected browser/guest qualification remain required; do not enable or dispatch it to populate the census. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: font-discovery :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Refuse unreviewed discovery before setup or input retrieval :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install unchanged selected packages and Chromium for font observation :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Install externally selected immutable discovery request :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+- i80386-hdd-gui-actual.yml :: Record bounded read-only font discovery without credentials :: Owned metadata-only `x86-hdd-gui-font-discovery` label condition: source/job guards are enabled but the exact request, current executing workflow, all-enabled source CI and one distinct event still require independent admission. No font-discovery event is inferred from source controls; preserve consumed inventory events and actual false. 2026-10-18 Codex x86.
+
 Every workflow step and job must run somewhere the readings can see (plan T14, T13's rule one
 level up). `scripts/gen-ci-steps.mjs --fetch` reads the jobs API for the last runs of every
 workflow into docs/generated/ci-step-census.json; test/ci-step-census.test.mjs reddens on a
@@ -6276,9 +6297,38 @@ A separately guarded font-discovery source continuation now collects bounded
 read-only package, configuration, alias and font-file observations. Its own
 request/original/independent-reader formats remain observation-only. A distinct
 conditional hosted job now enables that collector in the source candidate.
-Its final-head request/event admission and original observations remain pending;
-the request is unpublished, no discovery event was sent, and actual stays disabled. The original required roster and missing
+The separately admitted source79af font event failed during collection; its sole
+retained original passed independent delivery validation as failed and incomplete.
+That event is consumed and cannot be replayed. Actual stays disabled. The original required roster and missing
 paths remain held. See the matching guide for selection and qualification gates.
+A separate disabled exact-entry font-chain source slice now adds closed request,
+original and inner-reader formats, typed parent/link/file witnesses and bounded
+alternatives traversal. Existing discovery/delivery v1 code and its baseline
+remain held. The new guard is false; there is no hosted chain job, official
+outer-delivery path, new input or event. Its strict parent policy refuses the
+retained mode040777 parent; manufactured positives do not qualify that layout.
+Raw source-command sidecars remain separate from inner descriptor validation.
+See the guide for source controls and the remaining trust/delivery gates.
+A separately disabled bridge-only continuation observes an explicitly selected
+alternatives child referenced by a stable incomplete historical alias. Its
+separate versioned request retains and pins prior discovery bytes; the reader
+regrades them independently. It cannot establish the old font entry's current
+association or reobserve its writable parent. Existing chain starting roots,
+strict parent/terminal policy, caps and actual guards remain held. That inner-only
+checkpoint includes no activation, input, event or consumer adoption.
+A separate bridge delivery source slice adds independently selected official
+metadata and ZIP/raw-source joins, with metadata-only grading before archive
+access and separate mode/version policy. The bridge source proposal now enables
+only its source guard and exact owned-label job predicate. Actual and chain stay
+disabled. No official observation or acquisition is approved.
+Its scoped census and dated conditional pointers preserve every other workflow's
+readings and all consumed failures. Original discovery/delivery consumers remain held.
+A scoped old-chain reader repair now requires successful link witnesses before
+deriving another hop and successful parents before accepting child observations.
+The old partial-prefix counterexamples remain retained; valid failed final
+witnesses stay supported. Only `verify_font_chain`, new focused controls and
+this lane's documentation change. Controller, bridge reader, formats, caps,
+baseline, workflows and all guards remain held; source qualification is pending.
 A separate delivery reader now joins externally selected official metadata,
 workflow proof and the bounded original ZIP before grading a retained discovery
 observation. Missing request/observation or raw evidence refuses. This is
@@ -6293,8 +6343,10 @@ names, special file types and ignored directory payloads before any inflation.
 The complete header census preserves existing limits, required files, TAR and
 actual v3/v4 semantics. This is a source repair; clean affected GUI/guest
 qualification remains pending.
-The explicit consumer CUI expectation now follows main
-PR1066 at `fe89e3425bf323b1acd9e3f98df6a7383e9b836b`; no dependency writer changed.
+The explicit consumer CUI expectation now follows the composed main selection
+`bda0157410a6704ae859a19398a8a742cdfae50b`; root and GUI package/lock and
+vendor declarations remain unchanged. Historical requests require fresh source
+selection; all guards and actual qualification remain held.
 
 
 
@@ -6315,11 +6367,12 @@ build/browser pipeline; do not introduce another provisioning framework or
 change unrelated workflows.
 
 
-PROPOSED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
+CLAIMED SCOPED CENSUS EXTENSION — Codex x86, 2026-10-18. Extend this
 merged claim only to `docs/generated/ci-step-census.json`, refreshed with the
 existing `scripts/gen-ci-steps.mjs --fetch --workflow i80386-hdd-gui-actual.yml`
-scoped generator, plus this lane's exact conditional-step pointers. Merge this
-claim before writing the generated census. Retain every unrelated workflow's
+scoped generator, plus this lane's exact conditional-step pointers. Claim
+[PR1079](https://github.com/CrispStrobe/brickwright-lite/pull/1079) merged before
+the scoped refresh. Retain every unrelated workflow's
 dated readings and main provenance. No generator, census test, gate baseline,
 workflow condition, supplier pin or other owner's section changes are included.
 The current failed unit originals establish a missing workflow census entry;
@@ -6860,6 +6913,15 @@ Previous artifacts and receipts are retained privately. Native readiness,
 physical UI/connection/LED acceptance and clone buzzer tasks retain their bounds
 in the handoff; no additional native or firmware work is implicitly claimed.
 
+Implementation candidate on `lane/ios-workflow-resource-preparation-20261017`:
+the three mobile iOS build blocks invoke the existing preparation immediately
+after CLI initialization. Focused controls execute each actual block with
+authored build/signing command shims, require per-job ordering, stop on helper
+failure, and detect removed, commented or moved calls. All 19 focused workflow
+and existing preparation controls pass. The preparation implementation and
+all other workflow bytes are preserved. This is source wiring evidence only;
+final combined unsigned app and signed IPA qualification remains pending.
+
 ## Arcade foundation CI: isolated mutant import closure — 2026-10-18
 
 IMPLEMENTED CANDIDATE — integration owner, branch
@@ -6930,6 +6992,319 @@ controls, every enabled exact-head source check, and fresh admitted actual
 candidate qualification before integrating source. Never repeat a successful
 original acquisition, reader or run merely to inspect it. See
 [the integration handoff](docs/INTEGRATION-NEXT-STEPS.md) for the remaining join.
+
+Source candidate on `lane/ios-active-asset-source-20261018`, after claim PR1070
+merged. The release-simulator-only Ready hook observes the actual installed
+resolver only when explicitly requested through its process environment. It
+retains sorted embedded storage identities and served identities separately,
+including current CSP-header hashes, finite structural/byte/output/time caps and
+partial refusals. Device-profile diagnostics retain their actual assertions
+while printing counts instead of device identifiers. The resource-preparation
+parent and all three helper call paths are preserved.
+
+This candidate does not wire a workflow observation or qualify the Apple adapter,
+installed map, resource/lifetime envelope or signed target. Next: freeze the
+independent expected-map and source/configuration/executable/artifact joins;
+prepare an opt-in unsigned simulator controller that admits an already available
+runtime and finite process/resource/output boundaries without implicit downloads;
+then qualify the exact candidate once. Preserve separate signed-map admission
+and release/TestFlight guards. Do not merge this source on pure collector tests.
+
+Optional unsigned input retention now uses the claimed mobile workflow and focused
+control file, without adding public script paths. `retain_ios_audit_inputs` defaults
+off and excludes tag, signing and device-IPA requests; only main and the owned
+source branch are admitted. Capture preserves the real build and app upload,
+retains exact selected tracked sources, downloaded web bytes and toolchain version
+observations, then checks source/web stability and retains all observed codegen
+candidates and one simulator executable/plist. It never launches an app. Partial
+retention fails; retained candidates are not proof of active codegen references,
+compiler input use, expanded configuration, complete input graph or process bounds.
+Independent joins, existing-runtime/resource admission, actual affected observation
+and all final-head checks remain prerequisites. Signed map and release holds remain.
+
+The normally composed candidate also retains separate before/after installed
+compiler/tool/SDK-settings identity observations. Only role, byte length and hash
+are exported; binaries and host paths are excluded. Changed observations refuse.
+The separate artifact preserves the existing retained-input manifest format and
+all original jobs/build/upload ordering. Toolchain use, complete SDK/toolchain
+closure and expanded effective configuration remain unproved; no app is launched.
+
+Runtime asset receipts now use an explicit v2 envelope. A pure helper projects
+only the reviewed asset-related settings from the actual typed configuration,
+with a hash of its full serialization; unsupported settings preserve a partial
+refusal. Frontend paths, plugin values and raw configuration are not emitted.
+Independent readers require a separately admitted exact typed projection. This
+is a limited configuration observation, not a full-configuration/compiler-input,
+installed-map, resource, signed-target or release qualification. The original
+collector production bytes and context/Ready/provider boundaries remain intact.
+
+Oversized serialized envelopes now emit an explicit bounded refusal with the
+candidate length/hash and no map body, instead of leaving an empty receipt. The
+8 MiB output cap is unchanged; allocation and process lifetime remain unqualified.
+
+The optional unsigned controller now has a preparation-only runtime admission
+phase in the already claimed workflow and focused control file. Explicit runtime
+identifier/build inputs default empty. After retained products, a bounded installed
+runtime inventory request joins exact source/job/manifest/producer/executable/plist
+identities and checks the thin ARM64 simulator build header and minimum OS version.
+Only reviewed runtime fields and inventory length/hash are exported. No simulator
+lifecycle operation or app launch occurs; device/runtime-architecture/loadability/
+process-resource/cleanup qualification remain open. This phase never authorizes a
+launch. Original jobs, build/upload ordering, delivery and signing guards remain.
+
+The claimed workflow now also contains an unwired owned-simulator transaction
+core, with focused authored adapter controls. No entry-point phase invokes it.
+It snapshots the plan, refuses pre-existing created UUIDs, verifies owned identity
+before targeted operations, and preserves primary failures plus independent cleanup
+failures. A late bounded observation stays partial; cleanup has a separate budget
+and continues after an earlier command failure. Bounds at callback returns are
+cooperative, not process containment. Supplied plan flags do not authenticate an
+admission. Real adapters, runtime/device/resource admission and installed-code/
+receipt joins remain required before wiring an actual launch. Existing workflow
+steps, default inputs, delivery/signing guards and native hook remain unchanged.
+
+The optional controller's unwired command adapter now runs only a closed simctl
+argument grammar against an explicit named device set. It bounds combined streamed
+output, checks absolute deadline/stop, filters environment and closes inherited
+FDs/stdin. Non-reaping exit observation retains the direct-child identity until
+owned group signaling; leader reap and pipe/selector/directory cleanup follow.
+It preserves primary and cleanup failures separately. Feature admission requires
+waitid/WNOWAIT and exception notes before spawn; no workflow Python setup changes.
+Real Linux subprocess controls use authored command shims and detect removed byte
+and descriptor guards. No workflow caller, Apple qualification, app launch, device
+set ownership lease, delegated-service containment or app-resource claim is added.
+
+The existing optional runtime-inventory helper now also uses non-reaping exit
+observation before group signaling, fixing its prior reap-before-signal ordering.
+It checks API/default-SIGCHLD availability before spawning. Its 15 s/1 MiB caps
+remain unchanged; unsupported interpreters refuse optional inventory. No Python
+provisioning/pin, ordinary build or retained-input phase is changed. A real owned
+process control checks signal-before-reap ordering in both helpers.
+
+The optional controller now also has an unwired, single-use installed receipt
+receiver. Before launch it checks executable/plist pins and output absence, holds
+an output-directory FD, and later pins the first original receipt FD. It rejects
+replacement paths/inodes and nonregular or linked files, preserves bounded partial
+bytes, and checks source/configuration/profile headers plus supplied PID/identity/
+RSS samples. A final file fingerprint and installed-code readback prevent accepting
+late changes. Results remain header-only: no sampler authentication, running-code,
+asset-content, hard-memory or app qualification. Pre-launch integration, actual
+Darwin process sampling, container/environment/code joins and runtime-image/device
+admission remain open. No workflow caller or launch trigger is added. Focused
+Python controls now run from owned files to avoid command-line size limits.
+
+A source-only reproduction found Stop during the final sample could still accept
+a header. The receiver now rechecks Stop after callbacks and final readback; bounded
+original bytes remain partial. A runtime cut removing these boundary checks
+reproduces the stale acceptance. No actual app or G02 lifecycle claim follows.
+
+The unwired transaction core now requires preparation after installation and
+before launch. A returned opaque context is passed unchanged to observation and
+released once, including late or null returns, primary failures and interrupts.
+The preparation callback owns any resources it acquires before raising; the core
+cannot release an object it never received. Preparation has a 15 s cooperative
+return fence; release is attempted even with a broken clock and checked against
+a separate 5 s return fence when possible. Release errors stay separate from the
+primary failure, and bounded observation bytes remain retained. These checks do
+not interrupt blocked callbacks or authenticate supplied contexts.
+
+The release runs in a nested finally after device cleanup, so an interrupt from
+device cleanup still closes the returned context. An interrupt can still leave
+device cleanup incomplete; it is propagated, not reported as successful cleanup.
+Focused controls join this hook to the actual file-descriptor receiver on owned
+files with an authored launch and process samples. They detect omitted preparation,
+late-return fencing and release. There is still no workflow caller, real container
+resolver, admitted launch environment or Darwin sampler. Actual platform/runtime/
+namespace/resource admission and candidate-bound observation remain prerequisites.
+
+The unwired preparation adapter now uses only explicit-device, explicit-bundle
+`get_app_container` queries for `app` and `data`. It copies a closed typed plan,
+holds device-set/device/data-root and returned-container descriptors during
+preparation, rejects noncanonical or outside-device paths, overlapping containers,
+changed identities and changed query readbacks, then prepares the pinned installed
+receiver at an absent fixed filename in the existing Documents directory. No
+folder creation, output overwrite, launch or environment forwarding is added.
+The two paths are queried again after preparation under one 15 s cooperative
+budget; command output is capped at 4097 bytes. Invocation owns private originals.
+
+A release adapter translates receiver close uncertainty into explicit refusal.
+Directory and receiver close interrupts attempt the other owned closes before
+propagating; uncertain descriptor numbers are never retried. Focused controls use
+real owned files/FDs and authored container commands, including the real bounded
+subprocess adapter and five runtime mutations. Directory identity snapshots and
+path containment are not an authenticated namespace lease or bundle-data binding.
+No workflow phase invokes preparation, release or the transaction core. Actual
+Xcode/container semantics, launch-path/environment binding, Darwin sampling,
+runtime-image/model/namespace/resource admission and affected qualification remain
+open. Stronger installed-code/content/whole-event/release claims stay false.
+
+The container adapter also rechecks Stop and deadline after its temporary directory
+FDs close, before returning the receiver. A source-only reproduction accepted a
+receiver when either boundary changed during close; the final check now refuses
+and closes the receiver. The original reproduction and pre-fix test pass remain
+separate from final-source evidence. A runtime mutation removes this final check.
+
+## iOS audit controls: explicit Cargo selection — 2026-10-19
+
+The active-asset candidate's hosted unit shard found two new ambient-binding
+sites in `test/tauri-embedded-asset-audit.test.mjs`: both compiler calls selected
+Cargo by bare PATH lookup. The controls now require the Cargo installation's
+absolute executable path, from absolute `CARGO_HOME` or the standard home Cargo
+installation, preserving the proxy basename and toolchain selection. Missing or
+relative installations refuse; there is no PATH fallback. This binds tool selection
+without pinning its version or proving which compiler built an installed app.
+
+The gate-shape baseline and detector are unchanged. Its 11 controls pass, with
+ambient findings restored from 11 to the existing allowance of 9. All three Rust
+control tests pass, including the 12 collector methods and three semantic mutations,
+with a decoy Cargo first on PATH that is never invoked. Explicit missing-tool and
+relative-root negative runs fail as required. Original hosted failure metadata and
+log are retained privately. No workflow, native code, dependency pin, compiler
+threshold, mutation assertion or actual-app qualification changes in this repair.
+Launch-environment binding and Darwin monitoring remain the next implementation
+work; the active-asset source candidate stays draft pending its actual qualification.
+
+## iOS audit: one prepared launch environment — 2026-10-19
+
+The unwired command adapter accepts an optional prepared receiver only for an
+explicit launch. Preparation records the device-set, device, bundle and directory
+identity snapshots. Launch admission checks that binding, the installed file pins,
+output-parent identity and receipt absence, and consumes the attempt before clock
+or filesystem callbacks. Closed, already captured, unbound or previously attempted
+receivers refuse. A failed spawn also consumes the attempt; there is no implicit
+retry. This is an internal consistency binding, not an authenticated capability.
+
+The adapter adds only `SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH`, derived from
+that receiver's fixed output. Inherited audit and arbitrary child variables remain
+filtered, including on ordinary launches. The binding, file pins and namespace
+snapshots are rechecked after the client cleanup, with a final Stop/deadline fence
+before returning its reply. This does not contain delegated services or prove
+which executable ran. The transaction owner must still clean up a possibly started
+app after a refused reply. No arbitrary environment dictionary, workflow caller,
+launch input, signing/delivery change or actual observation is added.
+
+Ten new controls run actual owned command processes and file descriptors with
+authored responses, including a receipt capture that retains false app claims.
+Five runtime mutations detect removed target binding, attempt fencing, old-output
+refusal, environment assignment and final cancellation checking. Actual Xcode
+prefix/path semantics, namespace ownership, Darwin monitoring, complete joins and
+fresh affected candidate qualification remain open. Existing build/helper/input
+ordering and the native Ready hook are preserved.
+
+## iOS audit: unwired Darwin kernel sampler — 2026-10-19
+
+The existing owned workflow producer now defines a single-PID Darwin arm64
+sampler using absolute system libraries and explicit ctypes signatures. Each
+sample brackets the executable-path query with rusage-v0 observations. Nonzero
+birth time and executable UUID must remain stable, exit must remain absent,
+and user/system counters cannot regress. The returned identity digest is derived
+from those kernel observations and the expected path; callers cannot supply it.
+A matching path and UUID do not prove mapped code bytes or continuous identity.
+
+Mach CPU counters are converted with the actual timebase ratio using integer
+arithmetic. The sampled limits are 1 GiB RSS and five cumulative CPU seconds
+since process birth, including time before the first sample. Observation is
+cooperative, capped at 30 seconds and 100 samples; raw syscall records have a
+1 MiB total budget and a 2048-record ceiling. Capacity is reserved before each
+process syscall. Failed buffers and statuses remain available privately; records
+are returned as copies. Stop, deadline, rollback and reentry refuse and seal the
+sampler. It neither signals a process nor spawns a sampling command.
+
+Thirteen authored kernel controls and five runtime mutations cover these source
+contracts. Linux controls mock the Darwin API; they establish no actual Darwin
+ABI, resource enforcement, process ownership, family census, exec-generation or
+running-image join. SDK layout verification and actual kernel controls must
+precede wiring. The workflow entry point remains unchanged and has no sampler
+caller. Existing receipt qualification flags stay false and PR1078 stays draft.
+
+The first broader source run retained 56 passes and one timeout-fixture error:
+the child could be killed before writing its PID marker. That control now records
+the real parent-owned Popen handle and still requires deadline refusal, terminal
+status, kill and reap under the unchanged deadline. No process behavior is mocked
+or timeout enlarged by this fixture correction.
+
+## iOS audit: isolated Darwin SDK preflight — 2026-10-19
+
+The existing optional unsigned audit scope now includes a default-off
+`ios_audit_preflight_only` dispatch mode in the same workflow. It requires input
+retention, the owned source branch and both signing/device flags off. Its separate
+read-only-permission Mac job uses an explicitly pinned setup-python action for
+Python 3.13 and compiles one tiny SDK probe. Preflight mode skips the web build;
+all existing app jobs depend on that build, so no app, signing or delivery runs.
+Ordinary dispatches and tags retain their existing behavior.
+
+The probe checks actual SDK structure offsets, library calls, timebase ratio and
+one parent-owned process against the workflow sampler. It verifies non-reaping
+wait, group cleanup before reaping, and refusal after exit. The bounded structured
+report binds workflow, producer, probe source/executable, SDK settings and compiler
+version identities. The executable and runner path are not uploaded; pidpath keeps
+only its buffer hash/size. This is platform admission, not an installed-app map,
+process-family census, exec-generation, simulator or physical-device result.
+No simulator runtime is downloaded or started by this mode. Actual platform
+results must be reviewed before any observation-controller wiring or admission.
+
+## iOS audit: audit-token identity and diagnostic retention — 2026-10-19
+
+The first isolated SDK preflight failed with no report artifact and only a generic
+refusal. Its original event/job log is retained; the failing boundary is unknown.
+The revised preflight records the admission and cleanup stages, host capabilities
+and sanitized compiler diagnostics, and prints a bounded summary if artifact
+upload is unavailable. Cleanup errors cannot skip writing the partial report.
+The original failure remains a failure; no deadline, resource limit, assertion or
+permission requirement is relaxed.
+
+Unwired identity preparation now obtains a task-name right, reads the kernel's
+audit token and compares read-only code-status/code-directory results through
+`csops_audittoken`. It rejects changed tokens, UID/PID mismatch, invalid code status,
+hash drift, short/error replies, cancellation and reentry. Port release is once
+only; an undefined output after failed acquisition is never treated as an owned
+right. Constructor failure retains its primary error and available originals.
+There is no debugger/task-for-pid privilege fallback or target mutation.
+
+The matching thin-arm64 reader verifies a supported primary SHA-256 ad-hoc
+CodeDirectory against every covered executable page and derives its standard
+truncated code hash. Unsupported versions, alternate directories, scatter tables,
+truncated/overlapping ranges and changed pages refuse. This checks file consistency,
+not signature trust. Its file digest still needs the independent source/build and
+installed-file join. The SDK probe now checks these kernel APIs and the reader
+against its one owned program; it still has no simulator or app launch.
+
+Twelve authored identity/page controls and five runtime mutations cover the source
+contracts. Original failed output-port cleanup and a fixture that changed the wrong
+byte are preserved with their corrected controls. Actual SDK exports, task-name
+permissions and installed-app behavior remain unqualified until their exact report
+passes. Platform helper success cannot substitute for the actual target's permission,
+resource, ownership, map and cleanup evidence.
+
+
+## iOS audit: explicit observer-tool ABI after missing SDK header — 2026-10-19
+
+The second retained preflight stopped at compilation because the installed SDK
+lacks `sys/codesign.h`. Python wait prerequisites were present; no helper or
+kernel identity call ran. Keep this failure and the first unknown-boundary failure.
+The same claimed workflow now declares only the two read-only code-sign operations
+and `csops_audittoken` ABI using SDK types, with pinned XNU provenance in its v3
+report. It checks the required real library exports before compilation, with no
+privilege fallback. SDK Mach layouts and all kernel, identity, CPU/RSS and cleanup
+assertions remain mandatory. No Apple implementation is vendored. This is observer
+tool interop, not a shipped-app API or SDK-header availability claim. One corrected
+source-bound preflight is needed before platform admission; actual app/family
+qualification remains false.
+
+
+## iOS audit: fixed helper exit and reap controls — 2026-10-19
+
+The third isolated platform preflight passed compilation, SDK layouts, executable
+page checks, kernel identity and resource sampling, then failed with PermissionError
+when signaling its exited unreaped group. Original failure/report remain retained.
+The same claimed workflow now checks bounded before/after singleton group originals
+and the same owned UID/PID/zero-exit WNOWAIT record before distinguishing this
+fixed nonforking helper's zombie-only EPERM. Other or uncertain group results
+refuse. A signaling failure cannot skip the owned reap; primary failures survive
+reap errors. This is a tool-specific platform control, not an EPERM-success rule
+for the general simulator command adapter. Process-group, process-family and app
+qualification flags remain false, with separate actual cleanup admission required.
+The runner kernel is not source-joined to the cited XNU signal implementation.
 
 
 ## Arcade foundation reconciliation and composed analysis — 2026-10-19
@@ -7002,3 +7377,250 @@ exact-head hosted checks remain mandatory before merge. No new iPad build or
 physical connection acceptance is implied. A rejected native close reports an
 error and blocks reuse of uncertain state; a native call which never settles
 still requires the separately scoped native cancellation/readiness work.
+
+## iOS audit: unwired transaction Stop and publication fences — 2026-10-19
+
+The same claimed workflow core now accepts a typed optional Stop callback, keeps
+cancellation sticky, fences active effects after readback/preparation/observation,
+and refuses successful publication if Stop occurs during cleanup/release. A valid
+returned create identity is resolved before cancellation cleanup; other devices
+remain untouched. Returned observation bytes remain retained with partial status.
+Cleanup/release continue on cancellation. Six new authored lifecycle controls and
+a publication-fence mutant complement normal and existing failure controls.
+This is cooperative source behavior only: callback interruption, shared Stop
+intent in the full wrapper, target/service/process-group authority and actual app
+qualification remain open. No workflow phase invokes the transaction core.
+
+
+## iOS audit: authenticated exit ownership instead of wait UID — 2026-10-19
+
+The fourth actual preflight refused the wait-UID comparison: Darwin returned zero,
+while the authenticated pre-exit token had the helper's actual UID. The child was
+reaped with zero exit and no cleanup errors; group census was never reached.
+Retain this failed original. The probe now ties exit ownership to the already
+verified live kernel audit token's PID/UID, retains wait UID as information and
+refuses changed ownership tokens. Reviewed XNU wait code zeros but does not fill
+that exit UID; runner kernel source identity is still unjoined. This changes no
+permission requirement and gives supplied UID fields no authority. A separately
+source-bound corrected platform event and independent original joins are still
+required. General simulator group/family/app qualification remains false.
+
+
+## iOS audit: bounded fixed-helper platform result — 2026-10-19
+
+Corrected event39216035612 on ecc8d063 passed its one owned C-helper profile with
+SDK26.5/Darwinarm64; five app/web/signing/delivery jobs skipped. Exact originals were
+acquired once. Layout, kernel audit-token/code hash, page consistency, resource,
+nonreaping zero exit, both singleton groups, exit refusal and owned port/reap checks
+passed. The zombie-only EPERM remains an explicit bounded negative; cleanup had
+no errors. The independent source-bound packet reader passed limited joins, with
+independent executable bytes and path-original claims false. Earlier four failures
+are retained. This admits no simulator/group/family/app, full compiler/SDK closure,
+physical or release result. Continue ownership/resource/wrapper/actual-map work;
+keep draft and all final-head/affected-actual merge gates. Never repeat this
+successful event, acquisition or reader merely to inspect it.
+
+## iOS audit: command cleanup candidate — 2026-10-19
+
+The unwired command adapter now has a Darwin-specific cleanup candidate. It holds
+its unreaped direct child through group signaling and retains bounded wait/group
+originals. An exited singleton permits only the observed EPERM classification,
+with two exact singleton censuses and an unchanged terminal wait record. Unknown,
+foreign, multi-member or truncated observations refuse. Live groups require a
+successful signal; ESRCH and other permission errors are not accepted. Linux
+signaling behavior is preserved. Cleanup interruptions still attempt remaining
+owned waits and descriptor releases, retaining the earlier failure.
+
+Controls cover the actual adapter using authored subprocesses and mock Darwin
+kernel edges, including four detected mutations. The optional fixed-helper
+preflight v6 exercises this primitive before independent helper teardown and
+retains its originals even on failure. It remains default-off, unsigned and
+app-free. A new frozen platform event is required; the earlier successful v5
+original is never replayed or relabeled. No general process-family, delegated
+service, simulator, installed-app or resource containment qualification follows.
+Bounded command stream/wait journals retain observed prefixes privately; journal
+limits and cleanup uncertainty refuse. Authoritative device/boot/app/service joins
+and the guarded installed wrapper remain open. Keep the draft and actual-qualification
+merge holds.
+
+## iOS audit: installed tool interface inventory — 2026-10-19
+
+The command cleanup primitive passed one newly source-bound v6 fixed-helper event;
+its independent original reader passed, with general simulator/app/family claims
+still false. Continue the existing optional simulator-audit workflow claim with a
+separate default-off interface-only job. It runs fixed installed-tool help/version
+commands, with bounded output, time, originals and owned command cleanup. Mixed
+helper/interface modes and nonempty runtime selectors refuse. All app/web/signing/
+delivery jobs are excluded; the fixed-helper job keeps its own no-simctl boundary.
+No boot, create, install, launch, spawn, service mutation or runtime download is
+executed by this inventory. Help arguments naming launch/spawn are documentation
+queries only. Source-bound actual interface originals are required before using
+them to choose an ownership API. Help observation does not admit a device, boot,
+app process, delegated service, resource envelope or installed-asset result.
+
+## iOS audit: retained interface failure and owned-child diagnostic — 2026-10-19
+
+The first interface-only event failed on its initial `simctl help`: no stream bytes
+were observed before command refusal, its direct child was still pending at cleanup,
+and the owned group was signaled and the leader reaped with signal exit. Earlier
+Xcode/tool-location/launchctl-help queries completed; the selected Xcode was 26.6.
+Original log/artifact/report and the independent partial-reader refusal are retained.
+The cause is unknown. No simulator ownership or complete interface result passed.
+
+Prepare an explicitly opt-in diagnostic within the same audit workflow envelope:
+retain command phase, PID and monotonic boundaries; after two seconds sample only
+that still-unreaped owned help child. The sample requests one second at ten-ms
+intervals, has its own bounded output and a deadline inside the original ten-second
+help deadline. It targets no shared service and adds no warm-up, retry, download,
+simulator operation, or timeout expansion. Sampling can perturb the target; it is
+not a performance measurement or resource/ownership admission. Diagnostic-only
+requests exclude app builds even when the interface flag is missing, and then
+refuse admission. A separately frozen source-bound event is required; keep the
+first event failed and all app/main/release holds.
+
+## iOS audit: auxiliary failure isolation — 2026-10-19
+
+The owned-child diagnostic event also failed. The sampler announced that sampling
+began, but supplied no stack report before its three-second deadline. Both owned
+children were reaped. The bounded standalone reader joined the actual command and
+nested diagnostic packets with interfaceComplete false; it did not prove a cause.
+
+Those timing originals exposed a controller issue: the auxiliary failure shortened
+the primary help observation to about five seconds. The v3 candidate preserves an
+auxiliary failure while letting the primary command retain its original deadline.
+It still refuses final success if any requested diagnostic failed. Controls prove
+that all primary help queries finish when possible, while the failed auxiliary
+keeps the overall result partial. No time/output limit is increased, no original
+failure is relabeled and no new actual event is admitted by this source correction.
+
+## iOS audit: installed manuals without simulator startup — 2026-10-19
+
+The same optional-audit workflow now has a separate default-off manual-only
+selection: Xcode version, launchctl help for print/procinfo/managerpid, and the
+installed sample manual through a fixed noninteractive pager. It executes no
+simctl command and no sampler. Interface selection is still required; mixing
+manual and sampler modes refuses before commands. Any audit-only selection
+excludes normal app builds, including malformed mixed requests. Existing command,
+output, time and cleanup bounds remain unchanged. Authored controls verify the
+exact five-command graph and negative selection cases. A new source-bound actual
+manual observation and independent packet joins are required before relying on
+the installed text; manuals alone admit no app, service, runtime or resource scope.
+
+## iOS audit: installed manual result and default sampling order — 2026-10-19
+
+The manual-only event39229551289 passed on Xcode26.6/17F113. Exact original metadata,
+log and report were retained once; independent packet joins passed with manualComplete
+true and simulator-interface/app/root-cause claims false. The installed sample manual
+confirms that mayDie requests symbol information immediately, before sampling.
+The next diagnostic candidate omits that optional prefetch and uses documented
+default ordering. It preserves one-second/ten-ms sampling, the nested three-second
+budget and original ten-second help deadline. This is a different diagnostic
+configuration, not proof of the earlier cause or a waiver of either failed event.
+The auxiliary-isolation fix and final requested-diagnostic failure gate remain.
+
+## iOS audit: cleanup callback and interrupt custody — 2026-10-19
+
+The unwired transaction core now accepts a separately admitted cleanup callback,
+so an active adapter's sticky Stop refusal cannot also block cleanup catalogs,
+terminate, shutdown or delete. Default callback behavior remains available for
+existing source controls. Identity readback, command counts and cleanup deadlines
+still apply to the cleanup route; this callback grants no ownership authority.
+
+Interrupts during an owned cleanup command are deferred until later cleanup and
+receiver release have been attempted. The first interrupt survives subsequent
+cleanup interrupts; private immutable result/retained-observation snapshots remain
+attached to it. Broken cleanup-clock admission refuses further command dispatch.
+Thirty-three authored lifecycle cases and routing/continuation mutations pass;
+normal behavior and prior failures remain covered. No workflow entry invokes the
+core, no simulator/app event ran and callback/resource admission remains false.
+
+## iOS audit: installed runtime inventory — 2026-10-19
+
+The default-order diagnostic39230490047 retained a complete nine-command help graph
+within the original bounds, independently joined. Its sampler completed sampling
+but timed out during reported symbol processing. The event remains failed; the
+reader distinguishes interfaceComplete true from diagnosticComplete false. No
+cause for the older cold-start refusal is established and no sampler retry is needed
+merely to use the retained CLI interfaces.
+
+A separate default-off inventory-only selection now collects Xcode version,
+the iOS-26.2-filtered runtime catalog, the iPhone-16-filtered device-type catalog
+and installed runtime-image metadata. The search filter is supported by the retained
+list help and keeps the original output cap. No device is created, booted, installed,
+launched or spawned; no image acquisition or service control is requested. Mixing
+inventory with manual/sampler modes refuses, and any audit-only flag excludes normal
+app builds. Existing time, output and cleanup limits remain. Independent JSON and
+packet checks establish collection only; selected target, ownership and app admission
+remain false until the actual image/architecture/model joins are reviewed.
+
+The first unfiltered catalog event39234080601 exceeded the unchanged64KiB command
+output cap and was refused; its owned child was reaped and original failure retained.
+A complete object in the failed capture is used only to scope a new supported search
+for iOS26.2. It admits no target or catalog. The new four-command query omits runtime
+help already retained, keeps all bounds and requires fresh bounded collection and
+independent joins. The search is diagnostic selection, not a production target pin.
+
+## iOS audit: bounded catalog compatibility and receiver interrupt custody — 2026-10-19
+
+Scoped metadata event39236224347 at5865830b completed all four commands within
+existing limits; original metadata/log/artifact were retained once. Independent
+packet joins passed, followed by a distinct semantic join: installed iOS26.2/23C54
+runtime and ready/verified image both advertise arm64; the exact iPhone16 model
+is supported and its runtime range includes26.2. This describes that job's catalog;
+it does not authenticate a future runner, installed executable, namespace, service
+or resource lifetime. Rejoin these facts in the eventual admitted app job. No
+simulator device, app or release event was requested.
+
+The unwired receipt receiver now preserves the first cancellation when descriptor
+cleanup is also interrupted. It still attempts later owned closes; private immutable
+capture metadata and partial bytes survive on the original interrupt, with secondary
+interrupts retained separately. Cleanup uncertainty forces partial status. Two new
+actual-method controls fail on the previous source and pass on the fix; existing
+normal/header/refusal/file/FD controls remain. The controls target held receiver descriptors and check exact interrupt identity,
+partial-byte custody and later close attempts. This is source control only, not
+simulator/app qualification. Wrapper entry remains disabled.
+
+## iOS audit: exclusive device-set directory custody — 2026-10-19
+
+The optional controller now has an unwired directory factory. It creates a fresh
+private directory exclusively and holds both its parent and directory descriptors
+across commands. Identity includes device, inode, owner and permissions. Detected
+replacement, parent drift or clock failure refuses subsequent use. Close releases
+only held descriptors, continues through interruption and never removes directory
+contents or a replacement at the original path.
+
+The bounded command adapter accepts this context separately from the path and
+checks it before spawn, after the command and after command cleanup. Real authored
+subprocess controls show path-only admission accepting a between-command replacement
+while held-context admission refuses it before spawn. Existing path-only controls
+remain separate; the eventual wrapper must require the held context. These finite
+filesystem readbacks are not an atomic namespace lease or boot/app/service authority.
+
+Twelve filesystem controls and an identity mutation, sixteen command controls and
+four platform-profile controls pass. The new default-off directory-only job selects
+only these filesystem cases on macOS, starts no simulator or child command, compiles
+nothing and excludes normal builds/delivery even when its selector is set alone.
+It retains bounded source/job/stat/FD observations for an independent reader.
+Namespace, process family, resources and app qualification remain false. Actual
+platform originals are required before relying on its Darwin filesystem boundary.
+
+## iOS audit: observed directory identity and absolute launcher — 2026-10-19
+
+Directory-only event39239129340 completed successfully atb880ca774, with seven other
+jobs skipped. Official originals were acquired once. The original full-stat reader
+refused its invalid link-count stability assumption after adding a state file; that
+refusal remains retained. A distinct independent reader passed only the directory
+identity/refusal/cancellation joins, explicitly recording changed link counts and
+refusing any full-stat immutability, link-semantics, namespace or app claim. Five
+reader controls include changed link count and changed inode as separate cases.
+The directory class bytes remain unchanged in this candidate.
+
+The unwired bounded command adapter now uses the absolute system xcrun launcher.
+A new regression fails on the old PATH-resolved launcher and detects its restoration
+through a source mutation. Authored subprocess controls redirect only the explicit
+unit execution boundary, preserving production argv assertions and real owned
+process/stream/cleanup behavior. Container and launch fixtures use the same explicit
+boundary. The directory profile control compares stable identity fields rather
+than promoting mutable link count to identity. No production directory guard or
+threshold changed. Actual SDK/environment binding, service/family ownership,
+resources, guarded wrapper and affected installed qualification remain open.
