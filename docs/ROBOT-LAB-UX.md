@@ -164,7 +164,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - The pivot is the 3D point under the pointer. Without one, it is the selection centre; without a selection, the model centre.
   - The camera and its target turn together about the pivot, so nothing jumps. A dot marks the pivot during the drag.
 - **Mouse:** left-drag on empty space or middle-drag orbits, right-drag pans, the wheel zooms to the cursor. These are kept as they are.
-  - P3: an "LDD/Studio" preset where right-drag orbits.
+  - P3, built (§14): an "LDD/Studio" preset where right-drag orbits and middle-drag pans.
 - **Trackpad:**
   - A pinch (`ctrlKey` wheel) zooms to the cursor.
   - A two-finger scroll orbits; Shift+scroll pans.
@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ✅ flexible parts (chains and treads: §11; rubber bands: §12; cables: §13).
+- **P3:** ✅ the mouse preset (§14), ✅ coach marks (§14), ✅ Ctrl-glide for pins and axles in holes (§14), ✅ a Studio-style hinge tool (§10), ✅ flexible parts (chains and treads: §11; rubber bands: §12; cables: §13).
 
 ## 5. Browser-gate acceptance tests
 
@@ -420,3 +420,23 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Gate: the insight gate (`--part=ui`) checks a cable per motor of the driving base, none while
   "Show ports" is off, and the same two in Build; `test/bw-sim-model-insight.test.mjs` the hub
   each port item names.
+
+## 14. Studio mouse, coach marks, Ctrl-glide (2026-10-20)
+
+- **Mouse buttons** (the shortcut sheet, kept on this device): *Brickwright* (left or middle drag turns
+  the view, right drag slides it) or *like Studio and LDD* (right drag turns it about the point under
+  the pointer, middle drag slides it), in Build and Simulate (`view/camera-nav.js` `MOUSE_PRESETS`).
+  In both, a right click without a drag puts down the part in hand (it was described here before
+  but not built).
+- **Coach marks**: the first time Build opens on a device, a small card in the corner of the view
+  shows three tips one after the other (the parts list, holes first, turning and `?`). It is not a
+  dialog; Got it puts it away for good (`localStorage` `bw-sim-lab-coach-done`, read in try/catch),
+  the shortcut sheet's *Show the tips again* brings it back. An automated browser
+  (`navigator.webdriver`) gets it only on `?bwCoach=1`, so it never covers what a gate clicks.
+- **Ctrl-glide**: Ctrl+drag on a pin or an axle in its holes slides it along them, following the
+  pointer (0.1 LDU), one undo step; it stops where it would come out of its last hole, and a pose
+  into another part is refused when let go. Ctrl+click still selects what is connected; neither
+  moves the camera any more (OrbitControls pans on Ctrl+drag).
+- Gates (`--part=editor`): the connect gate's T11b (right drag orbits about the point, middle drag
+  slides, a right click puts the part down), `scripts/lib/sim-lab-coach-gate.mjs`, the hinge gate's
+  step 6 (an axle glides up its hole); `test/bw-sim-camera-nav.test.mjs` the presets.

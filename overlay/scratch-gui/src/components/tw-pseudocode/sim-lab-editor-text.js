@@ -21,6 +21,12 @@ export const EDITOR_TEXT = {
         port: 'Port', none: 'none',
         position: 'Position (LDU, 20 = one hole)', positionMany: 'Move all by (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Rotation (°)', turnAbout: 'Turn about {axis}', minus90: '−90°', plus90: '+90°',
+        coachTitle: 'Tips', coachNext: 'Next', coachDone: 'Got it', coachAgain: 'Show the tips again',
+        coach: [
+            {title: 'Build from the parts list', body: 'Drag a part from the list on the left into the view. Near another part it snaps to a hole, a pin or a stud: green means it fits.'},
+            {title: 'Holes first', body: 'Click a part, then one of its lit holes: now pick a part in the list and it goes right into that hole.'},
+            {title: 'Turn and look', body: 'R turns the part in hand, [ and ] turn a part 15° on its pin. Drag empty space to turn the view. Press ? for every control.'}
+        ],
         hinge: 'On its hinge', minus15: '−15°', plus15: '+15°', nextHinge: 'Next hinge (N)',
         bandRound: 'Rubber band round', bandRoundHelp: 'Put a rubber band round the selected parts: round turning pulleys it drives, between an arm and the frame it pulls',
         bandOff: 'Take off rubber band',
@@ -41,7 +47,7 @@ export const EDITOR_TEXT = {
                 ['Drag a part', 'move it (it rests on what is under it; magnets snap)'],
                 ['Double click', 'centre the view there (on a grouped part: edit inside the group)'],
                 ['Drag empty space / middle drag', 'turn the view about the point under the pointer'],
-                ['Right drag', 'slide the view'], ['Wheel', 'zoom toward the pointer'],
+                ['Right drag', 'slide the view (Studio mouse: turn it)'], ['Ctrl+drag a pin or axle', 'slide it along its hole'], ['Wheel', 'zoom toward the pointer'],
                 ['Trackpad: two fingers / Shift / pinch', 'turn the view / slide it / zoom'],
                 ['Click a selected part\'s lit hole, then a palette part', 'the part goes into that hole'], ['Ctrl+click', 'select everything connected'],
                 ['View cube', 'click a face, edge or corner to look from there']
@@ -88,6 +94,8 @@ export const EDITOR_TEXT = {
             cube: {top: 'Top', bottom: 'Bottom', front: 'Front', back: 'Back', left: 'Left', right: 'Right'},
             wheel: 'Scrolling in the 3D view', wheelAuto: 'Guess: a mouse wheel zooms, a trackpad turns the view',
             wheelMouse: 'Always zoom (mouse wheel)', wheelTrackpad: 'Trackpad: scrolling turns the view, pinch zooms',
+            mouse: 'Mouse buttons', mouseBrickwright: 'Right drag moves the view, middle drag turns it',
+            mouseStudio: 'Like Studio and LDD: right drag turns the view, middle drag moves it',
             selectConnected: 'Select connected (Ctrl+click)',
             st: {
                 released: 'Released from {target}', targetPinned: 'Target: {target} {connector} {hole}. Now pick a part in the palette (Esc clears).',
@@ -127,6 +135,9 @@ export const EDITOR_TEXT = {
             chain_gearInside: 'One gear lies inside the chain round the others: select only the outer ones.',
             chain_tooShort: 'These gears are too close together for a chain of whole links.',
             banded: 'A {mm} mm rubber band round them, stretched {stretch} times',
+            gliding: 'Sliding along its hole: {ldu} LDU (let go to keep it there)',
+            glideOut: 'It would come out of its hole: it stops at the end.',
+            glideNeedsHole: 'Ctrl+drag slides a pin or an axle along the hole it is in.',
             unbanded: 'Took off {n} rubber band(s)',
             band_needTwo: 'Select two or more parts to put a rubber band round them.',
             band_notRound: 'A rubber band needs something round: a bush, a pulley, a wheel, a gear, a pin or an axle.',
@@ -152,6 +163,12 @@ export const EDITOR_TEXT = {
         port: 'Port', none: 'keiner',
         position: 'Position (LDU, 20 = ein Loch)', positionMany: 'Alle verschieben um (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Drehung (°)', turnAbout: 'Um {axis} drehen', minus90: '−90°', plus90: '+90°',
+        coachTitle: 'Tipps', coachNext: 'Weiter', coachDone: 'Verstanden', coachAgain: 'Tipps noch einmal zeigen',
+        coach: [
+            {title: 'Aus der Teileliste bauen', body: 'Zieh ein Teil aus der Liste links in die Ansicht. Nahe an einem anderen Teil rastet es an einem Loch, Pin oder Noppen ein: Grün heißt, es passt.'},
+            {title: 'Erst das Loch', body: 'Klick ein Teil an, dann eines seiner leuchtenden Löcher: Wähl jetzt ein Teil in der Liste, und es kommt genau in dieses Loch.'},
+            {title: 'Drehen und schauen', body: 'R dreht das Teil in der Hand, [ und ] drehen ein Teil um 15° auf seinem Pin. Zieh auf freier Fläche, um die Ansicht zu drehen. ? zeigt alle Tasten.'}
+        ],
         hinge: 'Im Gelenk', minus15: '−15°', plus15: '+15°', nextHinge: 'Nächstes Gelenk (N)',
         bandRound: 'Gummiband herum', bandRoundHelp: 'Ein Gummiband um die gewählten Teile legen: Um drehende Riemenscheiben treibt es an, zwischen einem Arm und dem Rahmen zieht es',
         bandOff: 'Gummiband abnehmen',
@@ -172,7 +189,7 @@ export const EDITOR_TEXT = {
                 ['Teil ziehen', 'verschieben (es liegt auf dem, was darunter ist; Magnete rasten ein)'],
                 ['Doppelklick', 'Ansicht dorthin zentrieren (auf einem Gruppenteil: in der Gruppe bearbeiten)'],
                 ['Leere Fläche ziehen / mittlere Taste ziehen', 'Ansicht um den Punkt unter dem Mauszeiger drehen'],
-                ['Rechts ziehen', 'Ansicht schieben'], ['Mausrad', 'zum Mauszeiger hin zoomen'],
+                ['Rechts ziehen', 'Ansicht schieben (Studio-Maus: drehen)'], ['Strg+Ziehen an Pin oder Achse', 'im Loch entlang schieben'], ['Mausrad', 'zum Mauszeiger hin zoomen'],
                 ['Trackpad: zwei Finger / Umschalt / Zusammenziehen', 'Ansicht drehen / schieben / zoomen'],
                 ['Leuchtendes Loch eines ausgewählten Teils anklicken, dann ein Teil', 'das Teil kommt in dieses Loch'], ['Strg+Klick', 'alles Verbundene auswählen'],
                 ['Ansichtswürfel', 'Fläche, Kante oder Ecke anklicken: von dort aus ansehen']
@@ -218,6 +235,8 @@ export const EDITOR_TEXT = {
             cube: {top: 'Oben', bottom: 'Unten', front: 'Vorne', back: 'Hinten', left: 'Links', right: 'Rechts'},
             wheel: 'Scrollen in der 3D-Ansicht', wheelAuto: 'Raten: Mausrad zoomt, Trackpad dreht die Ansicht',
             wheelMouse: 'Immer zoomen (Mausrad)', wheelTrackpad: 'Trackpad: Scrollen dreht die Ansicht, Zusammenziehen zoomt',
+            mouse: 'Maustasten', mouseBrickwright: 'Rechts ziehen verschiebt die Ansicht, Mitte ziehen dreht sie',
+            mouseStudio: 'Wie Studio und LDD: Rechts ziehen dreht die Ansicht, Mitte ziehen verschiebt sie',
             selectConnected: 'Verbundene wählen (Strg+Klick)',
             st: {
                 released: 'Von {target} gelöst', targetPinned: 'Ziel: {target} {connector} {hole}. Jetzt ein Teil in der Teileliste wählen (Esc löscht).',
@@ -257,6 +276,9 @@ export const EDITOR_TEXT = {
             chain_gearInside: 'Ein Zahnrad liegt innerhalb der Kette um die anderen: Wähle nur die äußeren.',
             chain_tooShort: 'Diese Zahnräder stehen zu nah für eine Kette aus ganzen Gliedern.',
             banded: 'Ein {mm}-mm-Gummiband um sie, {stretch}-fach gedehnt',
+            gliding: 'Gleitet in seinem Loch: {ldu} LDU (loslassen, um es dort zu lassen)',
+            glideOut: 'Es käme aus seinem Loch heraus: Es bleibt am Ende stehen.',
+            glideNeedsHole: 'Strg+Ziehen schiebt einen Pin oder eine Achse in dem Loch entlang, in dem er steckt.',
             unbanded: '{n} Gummiband/-bänder abgenommen',
             band_needTwo: 'Wähle zwei oder mehr Teile, um ein Gummiband um sie zu legen.',
             band_notRound: 'Ein Gummiband braucht etwas Rundes: eine Buchse, eine Riemenscheibe, ein Rad, ein Zahnrad, einen Pin oder eine Achse.',

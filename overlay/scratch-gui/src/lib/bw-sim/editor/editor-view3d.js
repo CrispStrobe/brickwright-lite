@@ -84,7 +84,7 @@ import {
 } from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {
-    BUILD_POLAR, CAMERA_ANIMATION_MS, VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, easeOut, orbitAboutPivot,
+    BUILD_POLAR, CAMERA_ANIMATION_MS, VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, easeOut, orbitAboutPivot, orbitButtonOf, MOUSE_PRESETS,
     viewCubeDirection, wheelIntent, wheelZoomFactor, zoomAbout
 } from '../view/camera-nav.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
@@ -98,6 +98,7 @@ import {
 } from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
 import {chainRound} from './chain-path.js';
+import {mat3MulVec3, vecDot, vecNormalize, vecSub} from '../mech/vec.js';
 import {beltRound, beltPoints, BANDS} from './belt-path.js';
 import {createBeltLayer} from '../view/belt-layer.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
@@ -235,6 +236,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     let litList = []; // what is lit now: [{partId, connectorId, active, tone}]
     let ghostTone = null; // 'free' | 'snap' | 'blocked' | null
     let wheelMode = 'auto'; // 'auto' | 'mouse' | 'trackpad' (camera-nav.js wheelIntent)
+    let mousePreset = 'brickwright'; // camera-nav.js MOUSE_PRESETS
     let lastAnnounced = null;
     // Studio's view state (not the model): hidden parts, the group being edited, the picking tool.
     const hidden = new Set();
@@ -2204,12 +2206,14 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             gesture = null;
             return;
         }
-        if (event.button === 1) {
-            // Middle drag: orbit about the point under the pointer.
-            gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'orbit', orbit: orbitStart(event)};
+        if (event.button === orbitButtonOf(mousePreset)) {
+            // Middle drag (right drag in the Studio preset): orbit about the point under the pointer.
+            gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'orbit', orbit: orbitStart(event), button: event.button};
             canvas.setPointerCapture(event.pointerId);
             return;
         }
+        // The right button pans (OrbitControls) or orbits (above); a right click without a drag puts down what is in hand.
+        if (event.button === 2) { gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'right'}; return; }
         if (event.button !== 0) { gesture = null; return; }
         if (pickMode) { gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'pick'}; return; }
         // The gizmo gets the press when the pointer is on one of its handles (on a
@@ -2219,7 +2223,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (tool) { gesture = {...base, kind: 'tool', orbit: orbitStart(event)}; return; }
         const hit = partUnder(event);
         if (hit && (event.ctrlKey || event.metaKey)) {
-            // Ctrl+click: the part and everything joined to it (Studio's "By Connected").
+            // Ctrl+click: the part and everything joined to it (Studio's "By Connected"); Ctrl+drag glides a
+            // pin or an axle along its hole. Not the camera: OrbitControls pans on Ctrl+drag.
+            controls.enabled = false;
             gesture = {...base, kind: 'connected', id: hit.object.name};
             return;
         }
@@ -2251,10 +2257,56 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         gesture = {...base, kind: 'empty', orbit: orbitStart(event)};
     }
 
+    // Ctrl+drag on a pin or an axle in its holes glides it along them, a little at a time (Studio's Ctrl
+    // on an axle). It stays in at least one hole; a pose into another part is refused when let go.
+    const GLIDE_SHAFTS = ['pin', 'axle'];
+    /** Where along line (point + axis·t) a ray passes closest: t (LDU), or null when the ray runs along it. */
+    const alongLine = (ray, point, axis) => {
+        const b = vecDot(axis, ray.direction);
+        const den = 1 - b * b;
+        if (den < 1e-4) return null;
+        const w = vecSub(point, ray.origin);
+        return (b * vecDot(ray.direction, w) - vecDot(axis, w)) / den;
+    };
+    const glideStart = (id, event) => {
+        const pl = partsById().get(id);
+        const meta = pl && catalogMap.get(pl.part);
+        const line = pl ? connectionLine(editor.model, catalogMap, id) : null;
+        if (!line || line.many) return null;
+        const shaft = (meta.connectors || []).some(c => GLIDE_SHAFTS.includes(c.type) &&
+            Math.abs(Math.abs(vecDot(vecNormalize(mat3MulVec3(pl.rotation, c.axis)), line.axis)) - 1) < 1e-3);
+        const t0 = shaft ? alongLine(rayLdu(event), line.point, line.axis) : null;
+        return t0 === null ? null : {id, start: pl, axis: line.axis, point: line.point, t0, delta: 0};
+    };
+    let lastGlide = null; // for the browser gate: the last glide step {t0, t, delta, out}
+    const glideMove = (g, event) => {
+        const t = alongLine(rayLdu(event), g.point, g.axis);
+        lastGlide = {t0: g.t0, t, delta: g.delta, out: false};
+        if (t === null) return;
+        const delta = tidy(Math.round((t - g.t0) * 10) / 10);
+        const move = {id: g.id, position: g.start.position.map((v, i) => tidy(v + g.axis[i] * delta)), rotation: g.start.rotation};
+        // Still in a hole? The model with the part moved there must pair it with something.
+        const parts = editor.model.parts.map(p => (p.id === g.id ? {...p, position: move.position} : p));
+        if (!pairedParts({...editor.model, parts}, catalogMap, g.id).length) { lastGlide.out = true; status({kind: 'refused', reason: 'glideOut'}); return; }
+        g.delta = delta;
+        preview = {moves: [move], candidate: null, blocked: blockedBy([move], pairedParts(editor.model, catalogMap, g.id))};
+        placeMeshes();
+        status(preview.blocked ? {kind: 'blocked', target: preview.blocked.target} : {kind: 'gliding', ldu: delta});
+        setCursor(preview.blocked ? 'not-allowed' : 'grabbing');
+    };
+
     const onMove = event => {
         if (event.pointerType === 'mouse') lastTouch = false;
         readModifiers(event);
         if (paletteDrag && paletteDrag.dragging) return; // onPaletteMove follows it
+        if (gesture && gesture.kind === 'connected' && (gesture.glide || travelled(event, gesture) > CLICK_PX)) {
+            if (gesture.glide === undefined) {
+                gesture.glide = glideStart(gesture.id, event);
+                if (!gesture.glide) status({kind: 'refused', reason: 'glideNeedsHole'});
+                else canvas.setPointerCapture(gesture.pointerId);
+            }
+            if (gesture.glide) { glideMove(gesture.glide, event); return; }
+        }
         if (gesture && gesture.orbit && (gesture.kind === 'orbit' || travelled(event, gesture) > CLICK_PX) &&
             (gesture.kind === 'orbit' || gesture.kind === 'empty' || gesture.kind === 'tool')) {
             orbitDrag(event, gesture.orbit);
@@ -2442,11 +2494,16 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         try { canvas.releasePointerCapture(event.pointerId); } catch { /* not captured */ }
         if (g.orbit) endOrbit();
         const click = travelled(event, g) <= CLICK_PX;
+        if ((g.kind === 'right' || (g.kind === 'orbit' && g.button === 2)) && click) {
+            if (tool) { setTool(null); status({kind: 'idle'}); }
+            return;
+        }
         if (g.kind === 'tool') {
             if (!click) return; // a drag orbited the camera
             updateGhost(event);
             place({keepTool: event.shiftKey});
         } else if (g.kind === 'connected') {
+            if (g.glide) { commitPreview(); setCursor(''); return; }
             if (!click) return;
             const ids = connectedComponent(editor.model, catalogMap, [g.id]);
             setSelection(ids);
@@ -2985,6 +3042,13 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         nextHinge, turnOnHinge,
         /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
         setWheelMode (next) { if (['auto', 'mouse', 'trackpad'].includes(next)) wheelMode = next; },
+        /** The mouse preset (camera-nav.js MOUSE_PRESETS): 'brickwright' (right drag pans) or 'studio' (right drag orbits). */
+        setMousePreset (next) {
+            if (!MOUSE_PRESETS[next]) return;
+            mousePreset = next;
+            configureOrbitControls(controls, MOUSE, next);
+        },
+        get mousePreset () { return mousePreset; },
         get wheelMode () { return wheelMode; },
         /** For the browser gate (docs/ROBOT-LAB-UX.md §5): what is lit, the candidate pose, the ghost's tone, the view cube. */
         debug: {
@@ -3003,6 +3067,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
                 return {left: rect.left + r.left, top: rect.top + r.top, size: r.size};
             },
             animating: () => Boolean(camAnim),
+            /** The last Ctrl-glide step: where along the line it started and is, the delta kept, whether it was out. */
+            glide: () => lastGlide,
             /** How many rubber bands are drawn. */
             bands: () => beltLayer.count,
             /** The hinge [ ] would turn on now (null: none, or not asked for yet): its line, what moves, what stays. */

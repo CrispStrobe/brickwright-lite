@@ -396,7 +396,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         dirty = true;
         resetCamera();
     };
-    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight,
+    /** The mouse preset (camera-nav.js MOUSE_PRESETS): which button orbits, which pans. */
+    const setMousePreset = preset => { configureOrbitControls(controls, MOUSE, preset); };
+    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight, setMousePreset,
         /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
         sensorRays: () => (rays.visible ? lastRays.filter(Boolean).map(r => ({...r})) : []),
         /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
