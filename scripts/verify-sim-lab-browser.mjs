@@ -767,7 +767,8 @@ try {
         if (runExample('pneumatic-press.ldr')) {
         // 8d. The Pneumatic cylinder (docs/ROBOT-LAB-UX.md §16): choose it, load its example and Run.
         // Motor A turns the valve's lever one way (the rod comes out its 48 mm stroke), the other way
-        // (back in) and to the middle (shut); the two hoses are drawn and follow the cylinder.
+        // (back in), twice; the three hoses are drawn and follow the cylinder; the tank's air falls
+        // in the readout (physics/air.js, through the worker).
         const pn = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
         pn.on('pageerror', error => errors.push(error.message));
         pn.on('dialog', dialog => dialog.accept());
@@ -793,15 +794,18 @@ try {
         await pn.getByTestId('bw-sim-lab-run').click();
         await pn.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwPneu.start > 2500, null, {timeout: wallBudget(2500)});
         await pn.screenshot({path: resolve(artifacts, 'sim-lab-pneumatic.png'), fullPage: true});
-        await pn.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwPneu.start > 8000, null, {timeout: wallBudget(8000)});
-        const air = await pn.evaluate(() => ({...window.__bwPneu, hoses: window.__bwSimLab._pane.view.hoseCount()}));
+        await pn.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwPneu.start > 12500, null, {timeout: wallBudget(12500)});
+        const air = await pn.evaluate(() => ({...window.__bwPneu, hoses: window.__bwSimLab._pane.view.hoseCount(),
+            readout: document.querySelector('[data-testid="bw-sim-lab-readout"]').textContent}));
+        const kpa = Number((/Air (\d+) kPa/.exec(air.readout) || [])[1]);
         assert.equal(air.worker, true, 'the cylinder ran its physics in the worker');
         assert.equal(air.couplings, 1, `the valve feeds the cylinder: ${JSON.stringify(air)}`);
-        assert.equal(air.hoses, 2, `both hoses are drawn: ${JSON.stringify(air)}`);
+        assert.equal(air.hoses, 3, `the three hoses are drawn: ${JSON.stringify(air)}`);
+        assert.ok(kpa > 50 && kpa < 80, `the readout shows the tank half empty after four strokes: ${air.readout}`);
         assert.ok(Math.abs(air.max - 0.048) <= 0.002, `the rod rose ${air.max} m, not 48 mm: ${JSON.stringify(air)}`);
         assert.ok(Math.abs(air.last) <= 0.002, `the rod ended ${air.last} m out: ${JSON.stringify(air)}`);
         console.log(`PASS the Pneumatic cylinder's example program turns the valve's lever: the rod comes out ${(air.max * 1000).toFixed(1)} mm ` +
-            `and goes back in (${(air.last * 1000).toFixed(1)} mm), ${air.hoses} hoses drawn`);
+            `and goes back in (${(air.last * 1000).toFixed(1)} mm), twice; ${air.hoses} hoses drawn; the readout says "Air ${kpa} kPa" (from 150)`);
         await pn.close();
         }
 

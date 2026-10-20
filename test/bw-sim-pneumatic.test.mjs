@@ -117,3 +117,95 @@ test('the hose tool picks a valve outlet and a cylinder port, the nearest free o
     assert.equal(pts.length, 5);
     assert.ok(pts[2][1] > Math.min(pts[1][1], pts[3][1]), 'it sags (+y is down)');
 });
+
+// v2: the valve's supply hosed to an air tank (through a T-piece), and a pump.
+const P_ATM = 101.325;
+const tankRig = () => {
+    const m = rig();
+    m.parts.push({id: 'tank', part: '75974.dat', position: [0, 200, -150], rotation: I},
+        {id: 'tee', part: '4697b.dat', position: [0, 100, -60], rotation: I});
+    m.hoses.push({id: 'h3', a: {part: 'valve', port: 'p'}, b: {part: 'tee', port: 'a'}},
+        {id: 'h4', a: {part: 'tee', port: 'b'}, b: {part: 'tank', port: 'l'}});
+    return m;
+};
+
+test('air networks: the valve\'s supply, a T-piece and a tank are one network, pumped up; a T-piece rides on its hose', () => {
+    const mech = compile(tankRig(), CATALOG, {version: 2});
+    const c = mech.couplings.find(k => k.kind === 'pneumatic');
+    assert.ok(c.network, 'the supply is a network, not ideal');
+    assert.ok(Math.abs(c.network.volumeM3 - 38e-6) < 1e-12, `the tank's 37 cm³ and 1 cm³ of hose: ${c.network.volumeM3}`);
+    assert.equal(c.network.startKpa, 150);
+    const bodyOf = id => mech.bodies.find(b => b.parts.includes(id)).id;
+    assert.equal(bodyOf('tee'), bodyOf('valve'), 'the T-piece is welded to the valve its first hose goes to');
+    assert.notEqual(bodyOf('tank'), bodyOf('valve'), 'and nothing else');
+    assert.equal(compile(rig(), CATALOG, {version: 2}).couplings.find(k => k.kind === 'pneumatic').network, null, 'no supply hose: ideal');
+});
+
+/** A core on the tank rig: the valve, the cylinder's body and the tank held still, no gravity, motor on the valve's axle. */
+const tankCore = async (model = tankRig()) => {
+    const J = await loadJolt();
+    const mech = compile(model, CATALOG, {version: 2});
+    const c = mech.couplings.find(k => k.kind === 'pneumatic');
+    for (const id of ['valve', 'body', 'tank']) mech.bodies.find(b => b.parts.includes(id)).motion = 'static';
+    mech.gravity = [0, 0, 0];
+    const bench = compile(json('test/fixtures/bw-sim/gears/8-24.json'), CATALOG, {version: 2});
+    const hinge = mech.joints.find(j => j.id === c.valveJoint);
+    hinge.motor = {...bench.joints.find(j => j.motor).motor};
+    mech.actuators = [{...bench.actuators[0], joint: hinge.id}];
+    const core = createPhysicsCore(J, mech, {stepHz: HZ});
+    const rod = mech.bodies.find(b => b.parts.includes('rod')).id;
+    const run = s => { for (let i = 0; i < s * HZ; i++) core.step(1 / HZ); };
+    const turn = rad => { core.setMotor(hinge.id, {mode: 'velocity', radPerSec: Math.sign(rad) * 2}); run(Math.abs(rad) / 2); core.setMotor(hinge.id, {mode: 'velocity', radPerSec: 0}); };
+    return {core, c, run, turn, y: () => core.bodyPose(rod).position[1]};
+};
+
+test('a tank empties stroke by stroke: each stroke takes (p + p_atm)·A·L of air, until the rod stops', async t => {
+    const {core, c, run, turn, y} = await tankCore();
+    const kpa = () => core.airState()[0].kPa;
+    const strokes = [];
+    // The lever towards 'out' (-0.6 rad from neutral, as the v1 test found), then towards 'in', six times.
+    for (let i = 0; i < 6; i++) {
+        for (const way of ['out', 'in']) {
+            const [p0, y0] = [kpa(), y()];
+            turn(way === 'in' ? 1.2 : i === 0 ? -0.6 : -1.2);
+            run(2);
+            strokes.push({way, p0, p1: kpa(), mm: Math.abs(y() - y0) * 1000});
+        }
+    }
+    core.destroy();
+    t.diagnostic(strokes.map(s => `${s.way} ${s.mm.toFixed(1)} mm ${s.p0.toFixed(1)}→${s.p1.toFixed(1)} kPa`).join('; '));
+    // A full stroke takes the chamber's volume at the network's pressure: n·exp(−A·L/V).
+    const want = (P_ATM + strokes[0].p0) * Math.exp(-c.areaM2 * 0.048 / c.network.volumeM3) - P_ATM;
+    assert.ok(Math.abs(strokes[0].mm - 48) < 1, `the first stroke is full: ${strokes[0].mm}`);
+    assert.ok(Math.abs(strokes[0].p1 - want) < 2, `after it ${strokes[0].p1.toFixed(1)} kPa, want ${want.toFixed(1)}`);
+    for (let i = 1; i < strokes.length; i++) assert.ok(strokes[i].p1 <= strokes[i - 1].p1 + 1e-6, 'the pressure only falls');
+    assert.ok(strokes.at(-1).p1 < 1, `the tank ends empty: ${strokes.at(-1).p1}`);
+    assert.ok(strokes.at(-1).mm < 1 && strokes.at(-2).mm < 1, 'and the rod stops moving');
+});
+
+test('a pump pushed in puts the air it sweeps into its tank (p_atm·A·stroke)', async t => {
+    const J = await loadJolt();
+    const model = {version: 1, parts: [
+        {id: 'pump', part: '2943bc01.dat', position: [0, 0, 0], rotation: I},
+        {id: 'piston', part: '2944c02.dat', position: [0, -140, 0], rotation: I},
+        {id: 'tank', part: '75974.dat', position: [0, 200, -150], rotation: I}],
+    hoses: [{id: 'h1', a: {part: 'pump', port: 'o'}, b: {part: 'tank', port: 'l'}}]};
+    const mech = compile(model, CATALOG, {version: 2});
+    const pc = mech.couplings.find(k => k.kind === 'pump');
+    assert.ok(pc, JSON.stringify(mech.couplings));
+    for (const id of ['pump', 'tank']) mech.bodies.find(b => b.parts.includes(id)).motion = 'static';
+    // A heavy hand on the piston: gravity pushes it in (LDraw −y, the piston above its body, is up).
+    mech.bodies.find(b => b.parts.includes('piston')).massKg = 2;
+    const core = createPhysicsCore(J, mech, {stepHz: HZ});
+    const piston = mech.bodies.find(b => b.parts.includes('piston')).id;
+    const p0 = core.airState()[0].kPa;
+    const y0 = core.bodyPose(piston).position[1];
+    for (let i = 0; i < 1.5 * HZ; i++) core.step(1 / HZ);
+    const p1 = core.airState()[0].kPa;
+    const dy = (core.bodyPose(piston).position[1] - y0) * 1000;
+    core.destroy();
+    const want = P_ATM * pc.areaM2 * 0.016 / pc.network.volumeM3;
+    t.diagnostic(`the piston went in ${(-dy).toFixed(1)} mm; the tank ${p0.toFixed(1)} → ${p1.toFixed(1)} kPa (+${(p1 - p0).toFixed(2)}, want +${want.toFixed(2)})`);
+    assert.ok(Math.abs(-dy - 16) < 0.5, `the piston goes all the way in: ${-dy} mm`);
+    assert.ok(Math.abs(p1 - p0 - want) < 0.2, `the tank gains a stroke of air: +${p1 - p0}`);
+});

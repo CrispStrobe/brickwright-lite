@@ -14,11 +14,16 @@ export const placedPorts = (pl, meta) => ((meta && meta.connectors) || []).filte
     id: c.id, role: c.data.role, at: add(mulVec(pl.rotation, c.position), pl.position), out: mulVec(pl.rotation, c.axis)
 }));
 
-/** The pairs of roles a hose is for: a valve's outlet to a cylinder's port (v1's supply is ideal: nothing feeds it). */
+/**
+ * The pairs of roles a hose is for: a valve's outlet to a cylinder's port, and on the supply side a
+ * pump, a tank or a T-piece to a valve's supply or to each other (kinds/pneumatic.js air networks).
+ */
 const goodPair = (r1, r2) => {
-    const valve = ['outA', 'outB'];
+    const outlet = ['outA', 'outB'];
     const cyl = ['extend', 'retract'];
-    return (valve.includes(r1) && cyl.includes(r2)) || (cyl.includes(r1) && valve.includes(r2));
+    const supply = ['supply', 'pump', 'tank', 'tee'];
+    return (outlet.includes(r1) && cyl.includes(r2)) || (cyl.includes(r1) && outlet.includes(r2)) ||
+        (supply.includes(r1) && supply.includes(r2) && !(r1 === 'supply' && r2 === 'supply'));
 };
 
 /**

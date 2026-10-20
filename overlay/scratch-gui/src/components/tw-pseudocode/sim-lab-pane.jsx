@@ -81,7 +81,7 @@ const TEXT = {
         noProgramHub: 'No program for this hub is loaded yet. Add its blocks ({extensions}) or write pup, boost or wedo words in the Code tab, press ⇦ To blocks, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
-        driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
+        driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub', air: 'Air',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         parts: 'Parts', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
@@ -194,7 +194,7 @@ const TEXT = {
         noProgramHub: 'Für diesen Hub ist noch kein Programm geladen. Füge seine Blöcke hinzu ({extensions}) oder schreibe pup-, boost- oder wedo-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
-        driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
+        driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub', air: 'Luft',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         parts: 'Teile', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
@@ -1789,6 +1789,8 @@ class SimLabPane extends React.Component {
         const hub = this.hub.data;
         const ports = [...new Set(this.session.mechanism.joints.filter(j => j.motor).map(j => j.motor.port))].sort();
         const sensorPorts = (this.session.mechanism.sensors || []).map(s => s.port).sort();
+        // Each air network's pressure (physics/air.js): a tank that empties as its cylinders move.
+        const air = this.session.core && this.session.core.airState ? this.session.core.airState() : [];
         const fmt = (port, s) => {
             if (!s) return '–';
             if (s.kind === 'distance') return s.distance < 0 ? '–' : `${s.distance} mm`;
@@ -1816,6 +1818,7 @@ class SimLabPane extends React.Component {
                     {this.text.readout}: {ports.map(p => `${p} ${Math.round(hub.motors['ABCDEF'.indexOf(p)].position)}°`).join(' · ')}
                     {sensorPorts.length ? ' · ' + sensorPorts.map(p => `${p} ${fmt(p, hub.sensors['ABCDEF'.indexOf(p)])}`).join(' · ') : ''}
                     {hub.imu ? ` · yaw ${Math.round(hub.imu.yaw)}°` : ''}
+                    {air.length ? ` · ${this.text.air} ${air.map(n => `${Math.round(n.kPa)} kPa`).join(' / ')}` : ''}
                 </span>
             </div>
         );

@@ -6905,6 +6905,499 @@
    }
   },
   {
+   "part": "2943bc01.dat",
+   "name": "Technic pneumatic pump 1 x 1 x 6 (body)",
+   "category": "other",
+   "massGrams": 1.02,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s",
+     "type": "pump-bore",
+     "position": [
+      0,
+      -50,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 80,
+     "data": {
+      "strokeLdu": 40,
+      "boreMm": 8,
+      "springNPerM": 120,
+      "dampingNsPerM": 1
+     }
+    },
+    {
+     "id": "o",
+     "type": "air-port",
+     "position": [
+      0,
+      -10,
+      -26
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "data": {
+      "role": "pump"
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      50,
+      18
+     ],
+     "position": [
+      0,
+      -40,
+      -8
+     ]
+    }
+   ],
+   "nameDe": "Technic-Pneumatikpumpe 1 x 1 x 6 (Körper)",
+   "mirrorOf": {
+    "part": "2943bc01.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "2944c02.dat",
+   "name": "Technic pneumatic pump piston rod",
+   "category": "other",
+   "massGrams": 0.51,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "r",
+     "type": "pump-rod",
+     "position": [
+      0,
+      33,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 66
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      8,
+      5,
+      8
+     ],
+     "position": [
+      0,
+      61,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      10
+     ]
+    }
+   ],
+   "nameDe": "Technic-Pneumatikpumpe Kolbenstange",
+   "mirrorOf": {
+    "part": "2944c02.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "75974.dat",
+   "name": "Technic pneumatic air tank",
+   "category": "other",
+   "massGrams": 46.480000000000004,
+   "connectors": [
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      -20,
+      25,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      0,
+      25,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x2",
+     "type": "axlehole",
+     "position": [
+      20,
+      25,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x3",
+     "type": "axlehole",
+     "position": [
+      -68,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "x4",
+     "type": "axlehole",
+     "position": [
+      68,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 16
+    },
+    {
+     "id": "l",
+     "type": "air-port",
+     "position": [
+      -73.3,
+      31.3,
+      0
+     ],
+     "axis": [
+      -0.7071067811865476,
+      0.7071067811865476,
+      0
+     ],
+     "data": {
+      "role": "tank",
+      "volumeCm3": 37
+     }
+    },
+    {
+     "id": "r",
+     "type": "air-port",
+     "position": [
+      73.3,
+      31.3,
+      0
+     ],
+     "axis": [
+      0.7071067811865476,
+      0.7071067811865476,
+      0
+     ],
+     "data": {
+      "role": "tank",
+      "volumeCm3": 37
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      80,
+      39.36,
+      40
+     ],
+     "position": [
+      0,
+      -0.64,
+      0
+     ]
+    }
+   ],
+   "nameDe": "Technic-Pneumatik-Lufttank",
+   "mirrorOf": null
+  },
+  {
+   "part": "4697b.dat",
+   "name": "Technic pneumatic T-piece",
+   "category": "other",
+   "massGrams": 0.15,
+   "drawnOnly": true,
+   "connectors": [
+    {
+     "id": "a",
+     "type": "air-port",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      0,
+      -1
+     ],
+     "data": {
+      "role": "tee"
+     }
+    },
+    {
+     "id": "b",
+     "type": "air-port",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "data": {
+      "role": "tee"
+     }
+    },
+    {
+     "id": "c",
+     "type": "air-port",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "data": {
+      "role": "tee"
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      5.51,
+      3.95,
+      20
+     ],
+     "position": [
+      0,
+      0.26,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5.51,
+      12.83,
+      4
+     ],
+     "position": [
+      0,
+      7.17,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5.51,
+      4.93,
+      12
+     ],
+     "position": [
+      0,
+      -0.72,
+      -8
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      3.96,
+      4.93,
+      8
+     ],
+     "position": [
+      0,
+      -0.72,
+      12
+     ]
+    }
+   ],
+   "nameDe": "Technic-Pneumatik-T-Stück",
+   "mirrorOf": {
+    "part": "4697b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
    "part": "6589.dat",
    "name": "Technic gear 12 tooth bevel",
    "category": "gear",

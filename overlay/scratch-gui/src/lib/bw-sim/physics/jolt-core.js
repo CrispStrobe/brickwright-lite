@@ -37,7 +37,7 @@ import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
 import { createRopes } from './rope.js';
-import { VALVE_DEG as PNEU_VALVE_DEG } from '../kinds/pneumatic.js';
+import { createAir } from './air.js';
 
 let joltPromise = null;
 
@@ -121,8 +121,6 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
-/** A shut valve holds its cylinder's rod with up to this (N): the air in it does not give (v1). */
-const PNEU_HOLD_FORCE_N = 40;
 
 /** A slider spring (kinds/shock.js) pushes with at most this (N): far beyond a LEGO spring, never the limit. */
 const SPRING_MAX_FORCE_N = 50;
@@ -928,8 +926,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
     const ropeCouplings = [];
-    /** Pneumatic cylinders and their valves (kinds/pneumatic.js): driven before each step (pneumaticDrives). */
+    /** Pneumatic cylinders and their valves (kinds/pneumatic.js): driven before each step (physics/air.js). */
     const pneumaticCouplings = [];
+    /** Pumps (kinds/pneumatic.js PUMP): their sliders put air into their networks (physics/air.js). */
+    const pumpCouplings = [];
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
@@ -952,6 +952,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         } else if (g.kind === 'pneumatic') {
             pneumaticCouplings.push(g);
             gearInfos.push({ type: 'pneumatic', id: g.id, sliderJoint: g.sliderJoint, valveJoint: g.valveJoint });
+        } else if (g.kind === 'pump') {
+            pumpCouplings.push(g);
+            gearInfos.push({ type: 'pump', id: g.id, sliderJoint: g.sliderJoint });
         } else if (g.kind === 'rope') {
             ropeCouplings.push(g);
             gearInfos.push({ type: 'rope', id: g.id, drumJoint: g.drumJoint });
@@ -1310,34 +1313,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem, allConstraints, dt: dtFixed })
         : null;
     if (ropes) stateRegistry.register('ropes', ropes.registrant);
-    // Pneumatics (kinds/pneumatic.js): the valve's lever angle from where the model had it opens the air to
-    // the cylinder's extend or retract port, and the rod moves at the flow's speed with at most p·A; a shut
-    // valve holds it (v1: an ideal supply, air that does not compress).
-    const pneumatics = pneumaticCouplings.map(c => {
-        const valve = hingeMap.get(c.valveJoint);
-        const slider = sliderMap.get(c.sliderJoint);
-        if (!valve || !slider) throw new Error(`pneumatic ${c.id}: its valve hinge and cylinder slider must exist`);
-        slider.mode = 'pneumatic';
-        return { c, valve, slider, theta0: valve.unwrapped, state: null };
-    });
-    const pneumaticDrives = () => {
-        for (const d of pneumatics) {
-            const deg = d.c.valveSign * (d.valve.unwrapped - d.theta0) * 180 / Math.PI;
-            const open = deg > PNEU_VALVE_DEG ? 'outA' : deg < -PNEU_VALVE_DEG ? 'outB' : null;
-            // Which way the rod goes: out when the open outlet feeds the extend port, in when the retract one.
-            const way = open && open === d.c.extendFrom ? 1 : open && open === d.c.retractFrom ? -1 : 0;
-            const state = way > 0 ? 'out' : way < 0 ? 'in' : 'held';
-            if (state === d.state) continue;
-            d.state = state;
-            applySliderForce(d.slider, way ? d.c.forceN : PNEU_HOLD_FORCE_N);
-            d.slider.slider.SetMotorState(J.EMotorState_Velocity);
-            d.slider.slider.SetTargetVelocity(way * d.c.outSign * d.c.speedMPerS);
-        }
-    };
-    if (pneumatics.length) stateRegistry.register('pneumatics', {
-        save: () => pneumatics.map(d => [d.theta0, d.state]),
-        restore: saved => pneumatics.forEach((d, i) => { [d.theta0] = saved[i]; d.state = null; })
-    });
+    // Pneumatics (kinds/pneumatic.js, physics/air.js): the air networks, valves, cylinders and pumps.
+    const air = pneumaticCouplings.length || pumpCouplings.length
+        ? createAir({ J, cylinders: pneumaticCouplings, pumps: pumpCouplings, hingeMap, sliderMap, bodyInterface, applySliderForce })
+        : null;
+    if (air) stateRegistry.register('air', air.registrant);
     if (dogClutches.length) {
         stateRegistry.register('dogClutches', {
             save: () => dogClutches.map(c => c.engaged),
@@ -1417,7 +1397,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (worms.length) applyWormHolds();
                 if (screws) screws.beforeStep();
                 if (ropes) ropes.beforeStep();
-                if (pneumatics.length) pneumaticDrives();
+                if (air) air.beforeStep();
                 if (dogClutches.length) applyDogClutches();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
@@ -1541,7 +1521,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         /** Each rope's free length (m) and tension (N) now (physics/rope.js); [] without a rope. */
         ropeState() { ensureAlive(); return ropes ? ropes.state() : []; },
         /** Each pneumatic cylinder's state now: 'out', 'in' or 'held' (kinds/pneumatic.js). */
-        pneumaticState() { ensureAlive(); return pneumatics.map(d => ({ slider: d.c.sliderJoint, state: d.state || 'held' })); },
+        pneumaticState() { ensureAlive(); return air ? air.cylinders() : []; },
+        /** Each air network's pressure now (kPa above the air's; physics/air.js). */
+        airState() { ensureAlive(); return air ? air.networks() : []; },
         contactPairs() {
             ensureAlive();
             if (!contactLog) throw new Error('contacts are recorded only with createPhysicsCore(…, {recordContacts: true})');
@@ -1626,7 +1608,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 else if (sl) { joints[jiIdx++] = sl.position; joints[jiIdx++] = sl.velocity; }
                 else { joints[jiIdx++] = 0; joints[jiIdx++] = 0; }
             }
-            return { t, bodyIds: [...bodyOrder], jointIds: [...jointOrder], bodies, joints };
+            return { t, bodyIds: [...bodyOrder], jointIds: [...jointOrder], bodies, joints, ...(air ? { air: air.networks() } : {}) };
         },
         castRay(origin, direction, maxDistance, { ignoreBodies = [] } = {}) {
             ensureAlive();

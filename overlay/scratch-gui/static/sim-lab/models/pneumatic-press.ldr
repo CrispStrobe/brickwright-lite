@@ -4,6 +4,7 @@
 0 !LDRAW_ORG Unofficial_Model
 0 !BW HOSE h1 valve a cylinder a
 0 !BW HOSE h2 valve b cylinder b
+0 !BW HOSE h3 tank r valve p
 0 !BW ID motor
 0 !BW PORT A
 1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
@@ -43,3 +44,9 @@
 1 72 -40 -20 140 1 0 0 0 1 0 0 0 1 u9145c01.dat
 0 !BW ID rod
 1 15 -40 -220 140 1 0 0 0 1 0 0 0 1 21828c01.dat
+0 !BW ID tankPin1
+1 1 -140 30 0 0 1 0 -1 0 0 0 0 1 43093.dat
+0 !BW ID tankPin2
+1 1 -100 30 0 0 1 0 -1 0 0 0 0 1 43093.dat
+0 !BW ID tank
+1 15 -120 -9 0 1 0 0 0 1 0 0 0 1 75974.dat
