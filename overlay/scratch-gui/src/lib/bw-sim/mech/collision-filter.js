@@ -7,6 +7,7 @@
 // GroupFilterTable (body pairs) and, for the pairs filtered part by part, a SimShapeFilter.
 
 import {lduToWorld, dirToWorld} from '../contracts.js';
+import {vecCross} from './vec.js';
 
 /**
  * The connector axes of the graph: every connector endpoint joined to another by an edge (a pin in
@@ -344,4 +345,80 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
         if (!all) out.push([A, B, excluded]);
     }
     return out;
+};
+
+// ---- as built (models from elsewhere) ----------------------------------------------------------------------------
+
+/** How deep two colliders of a real model may overlap as built (m) before they count as nested: Jolt's slop scale. */
+export const AS_BUILT_DEPTH_M = 0.0005;
+
+const quatRotate = ([x, y, z, w], v) => {
+    const ix = w * v[0] + y * v[2] - z * v[1];
+    const iy = w * v[1] + z * v[0] - x * v[2];
+    const iz = w * v[2] + x * v[1] - y * v[0];
+    const iw = -x * v[0] - y * v[1] - z * v[2];
+    return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
+};
+/** A collider as a world oriented box: centre, three unit axes, half extents (a cylinder or sphere by its bounding box). */
+const worldBox = (body, c) => {
+    const he = c.shape === 'box' ? c.halfExtents : c.shape === 'cylinder' ? [c.radius, c.halfHeight, c.radius] : [c.radius, c.radius, c.radius];
+    const q = c.rotation || [0, 0, 0, 1];
+    const centre = quatRotate(body.rotation, c.position || [0, 0, 0]).map((v, i) => v + body.position[i]);
+    const axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(a => quatRotate(body.rotation, quatRotate(q, a)));
+    const reach = [0, 1, 2].map(i => axes.reduce((s, a, k) => s + Math.abs(a[i]) * he[k], 0));
+    return {centre, axes, he, lo: centre.map((v, i) => v - reach[i]), hi: centre.map((v, i) => v + reach[i])};
+};
+/** Penetration of two oriented boxes (m, the separating-axis minimum), or 0 when they are apart. */
+const boxDepth = (A, B) => {
+    const t = B.centre.map((v, i) => v - A.centre[i]);
+    const tests = [...A.axes, ...B.axes];
+    for (const a of A.axes) for (const b of B.axes) {
+        const c = vecCross(a, b);
+        const l = Math.hypot(...c);
+        if (l > 1e-6) tests.push(c.map(v => v / l));
+    }
+    let depth = Infinity;
+    for (const L of tests) {
+        const rA = A.axes.reduce((s, a, k) => s + Math.abs(dot(a, L)) * A.he[k], 0);
+        const rB = B.axes.reduce((s, b, k) => s + Math.abs(dot(b, L)) * B.he[k], 0);
+        const d = rA + rB - Math.abs(dot(t, L));
+        if (d <= 0) return 0;
+        depth = Math.min(depth, d);
+    }
+    return depth;
+};
+
+/**
+ * Part pairs of different bodies whose colliders overlap as built by more than AS_BUILT_DEPTH_M and that nothing
+ * keeps from colliding yet. In a model from elsewhere the file is right and the overlap is our coarse collider (a
+ * CV joint's ball in its solid-filled cup, a hub in a wheel's centre: 8–16 mm on the 4x4 Off-Roader, enough to fling
+ * them at 7 m/s on the first step). Those pairs never collide; everything else between the two bodies still does.
+ * @returns {Array<[string, string, Array<[string, string]>]>} [bodyA, bodyA < bodyB, part pairs]
+ */
+export const asBuiltOverlaps = (bodies, noCollide, noCollideParts = []) => {
+    const whole = new Set(noCollide.map(([a, b]) => `${a}|${b}`));
+    const local = new Map(noCollideParts.map(([a, b, parts]) => [`${a}|${b}`, new Set(parts.map(([x, y]) => `${x}\n${y}`))]));
+    const boxes = [];
+    for (const b of bodies) {
+        if (b.motion === 'static') continue;
+        for (const c of b.colliders) if (typeof c.part === 'string') boxes.push({body: b.id, part: c.part, ...worldBox(b, c)});
+    }
+    boxes.sort((x, y) => x.lo[0] - y.lo[0]);
+    const found = new Map();
+    for (let i = 0; i < boxes.length; i++) {
+        const A = boxes[i];
+        for (let j = i + 1; j < boxes.length && boxes[j].lo[0] <= A.hi[0]; j++) {
+            const B = boxes[j];
+            if (A.body === B.body) continue;
+            if (A.lo[1] > B.hi[1] || B.lo[1] > A.hi[1] || A.lo[2] > B.hi[2] || B.lo[2] > A.hi[2]) continue;
+            const [x, y] = A.body < B.body ? [A, B] : [B, A];
+            const k = `${x.body}|${y.body}`;
+            if (whole.has(k) && !local.has(k)) continue;
+            if (local.get(k)?.has(`${x.part}\n${y.part}`)) continue;
+            if (boxDepth(A, B) <= AS_BUILT_DEPTH_M) continue;
+            if (!found.has(k)) found.set(k, new Set());
+            found.get(k).add(`${x.part}\n${y.part}`);
+        }
+    }
+    return [...found].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([k, set]) => [...k.split('|'), [...set].sort().map(s => s.split('\n'))]);
 };

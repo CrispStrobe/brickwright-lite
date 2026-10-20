@@ -156,7 +156,7 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
-    const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
+    const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
     issues.push(...mechanismIssues(mechanism));
     return {model, runModel, mechanism, issues};

@@ -85,11 +85,32 @@ const repair = (meta, why, minEngage) => {
         ((c.type === 'pinhole' || c.type === 'axlehole') && c.length < minEngage ? {...c, length: minEngage} : c))};
 };
 
-export const catalogPartMeta = (part, read, check) => {
+/**
+ * The part an alias file stands for: a '~Moved to …' or '=…' file whose whole body is one part placed at the
+ * origin unturned (3023.dat is 3023b.dat; 74695.dat is a 2-hole liftarm). Null when it is anything else.
+ */
+const aliasTarget = text => {
+    const refs = text.split(/\r?\n/).filter(l => /^\s*1\s/.test(l));
+    if (refs.length !== 1) return null;
+    const t = refs[0].trim().split(/\s+/);
+    if (t.length < 15) return null;
+    const n = t.slice(2, 14).map(Number);
+    const identity = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1];
+    if (!n.every((v, i) => Math.abs(v - identity[i]) < 1e-6)) return null;
+    const file = t.slice(14).join(' ').replace(/\\/g, '/');
+    return /\.dat$/i.test(file) && !file.includes('/') ? file.toLowerCase() : null;
+};
+
+export const catalogPartMeta = (part, read, check, depth = 0) => {
     const text = read(`parts/${part.toLowerCase()}`);
     if (text === undefined) return {meta: null, decoration: false, why: [`${part}: not in the library`], desc: ''};
     const desc = (text.split(/\r?\n/, 1)[0] || '').replace(/^0\s*/, '').replace(/\s+/g, ' ').trim();
-    if (/^~|^=|^_/.test(desc)) return {meta: null, decoration: false, why: [`${part}: '${desc}' is an alias or obsolete file`], desc};
+    if (/^~|^=|^_/.test(desc)) {
+        const target = depth < 3 && /^~Moved to |^=/.test(desc) ? aliasTarget(text) : null;
+        if (!target) return {meta: null, decoration: false, why: [`${part}: '${desc}' is an alias or obsolete file`], desc};
+        const r = catalogPartMeta(target, read, check, depth + 1);
+        return {...r, meta: r.meta ? {...r.meta, part} : null, desc};
+    }
     let why;
     let meta = null;
     try {

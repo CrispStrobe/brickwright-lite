@@ -197,7 +197,10 @@ export const removeCatalogPart = part => {
 export const catalogFor = async text => {
     const catalog = await parts.catalogFor(text);
     if (!CATALOGUE_PARTS) return catalog;
-    const unknown = [...referencedFiles(text)].filter(name => !catalog.has(name) && /\.dat$/i.test(name));
+    // A part an MPD embeds under its own name ('42099 - 52731.dat', an unofficial copy) is derived as the library
+    // part it names (model/ldraw-model.js knownAs then maps the embedded name to it).
+    const named = name => /^.+? - (.+\.dat)$/i.exec(name)?.[1].toLowerCase() || name;
+    const unknown = [...new Set([...referencedFiles(text)].map(named))].filter(name => !catalog.has(name) && /\.dat$/i.test(name));
     if (!unknown.length) return catalog;
     let lib;
     try {

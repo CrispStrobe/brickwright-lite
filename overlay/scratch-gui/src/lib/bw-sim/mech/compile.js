@@ -24,8 +24,9 @@ import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
-import {sharedAxisBodyPairs, localNoCollide} from './collision-filter.js';
+import {sharedAxisBodyPairs, localNoCollide, asBuiltOverlaps} from './collision-filter.js';
 import {freePinWelds} from './free-pins.js';
+import {rescueLoose} from './loose-rescue.js';
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -195,7 +196,17 @@ export const compile = (model, catalog, opts = {}) => {
 
     // If filtered model has no valid parts, we still need to produce a mechanism with maybe ground only plus diagnostics
     // Build graph (even if empty)
-    const {nodes, edges: graphEdges} = buildGraph(filteredModel, catalogMap, diagnostics, kinds);
+    const {nodes, edges: builtEdges} = buildGraph(filteredModel, catalogMap, diagnostics, kinds);
+    // A model from elsewhere: groups that connect to nothing are joined by their nearest near-miss (mech/loose-rescue.js).
+    let graphEdges = builtEdges;
+    if (opts.rescueLoose) {
+        const rescued = rescueLoose(nodes, builtEdges);
+        if (rescued.edges.length) {
+            graphEdges = [...builtEdges, ...rescued.edges];
+            diagnostics.push({severity: 'warning', code: 'seated-loosely', parts: rescued.groups.flat(),
+                message: `Joined where their pins or axles almost fit: ${rescued.groups.map(g => g.length).join(', ')} parts`});
+        }
+    }
 
     // Topology fixpoint. Islands come from rigid edges; two things can then
     // weld islands together and force a rebuild: hinges between one island pair
@@ -458,6 +469,24 @@ export const compile = (model, catalog, opts = {}) => {
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
     const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
     if (local.length) mechanismV2.noCollideParts = local;
+    // A model from elsewhere: parts that overlap as built never collide (mech/collision-filter.js asBuiltOverlaps).
+    if (opts.rescueLoose) {
+        const nested = asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, mechanismV2.noCollideParts);
+        if (nested.length) {
+            const pairs = new Set(mechanismV2.noCollide.map(([a, b]) => `${a}|${b}`));
+            const byKey = new Map((mechanismV2.noCollideParts || []).map(e => [`${e[0]}|${e[1]}`, e]));
+            for (const [a, b, parts] of nested) {
+                const k = `${a}|${b}`;
+                if (byKey.has(k)) byKey.get(k)[2].push(...parts);
+                else {
+                    if (!pairs.has(k)) { mechanismV2.noCollide.push([a, b]); pairs.add(k); }
+                    byKey.set(k, [a, b, parts]);
+                }
+            }
+            mechanismV2.noCollide.sort((x, y) => (x[0] + '|' + x[1] < y[0] + '|' + y[1] ? -1 : 1));
+            mechanismV2.noCollideParts = [...byKey.values()];
+        }
+    }
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);

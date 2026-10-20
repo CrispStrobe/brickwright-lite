@@ -99,3 +99,24 @@ damaged heap. Both are fixed, and `test/bw-sim-jolt-debug-build.test.mjs` runs b
 
 Not shipped yet: merging a big body's boxes into fewer (a voxel merge, 676 → 567 boxes on the 4x4, 786 → 251 on
 42052). It flings bodies on two of three models, so it needs more work.
+
+## Holding together: aliases, embedded copies, near-misses, nesting (2026-10-20)
+
+On the 4x4 Off-Roader (42099), 56 unknown parts and 51 loose groups were down to four causes, none of them the model:
+
+1. **Alias files.** 3023, 32556 and 2654 are `~Moved to 3023b`-style redirects in today's library; 74695 is a `=` alias.
+   They derive as their target now: a `~Moved to` or `=` file whose body is one part placed unturned at the origin
+   (`part-meta/catalog-parts.js` aliasTarget).
+2. **Embedded copies.** An MPD may carry an (unofficial) copy of a part under its own name: `42099 - 52731.dat`.
+   `catalogFor` derives the library part it names, and `knownAs` maps the copy to it.
+3. **Near-misses** (`mech/loose-rescue.js`, models from elsewhere only). A group connected inside but to nothing
+   else is joined by its nearest pin- or axle-in-hole near-miss: about 2°, 4 LDU across, 1 LDU engaged, blind
+   bottoms ignored. The turntable 18938/18939's holes derive as blind, and 268 parts hung on one 3L axle-pin
+   through it. Warning `seated-loosely`.
+4. **Nesting** (`mech/collision-filter.js` asBuiltOverlaps, models from elsewhere only). Two parts of different
+   bodies whose colliders overlap by more than 0.5 mm as built never collide with each other. A CV joint's ball
+   sits in its solid-filled cup 8–16 mm deep, and Jolt pushed it out at 7 m/s on the first step.
+
+42099 after these fixes: 0 unknown and 18 small loose groups (from 51). Over 1 s with every motor at 60 %, nothing is
+flung, all three motors turn, and it runs at 13 ms per 5 ms step (headless, CPU). Our own files
+(`0 Author: Brickwright`) get neither 3 nor 4: there a loose or overlapping part is the builder's to fix.
