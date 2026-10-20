@@ -530,3 +530,17 @@ modules contain 41 tests, including both bundle modes; their existing original
 PXT simulator, compilation and webpack paths still require qualification. The
 repair is unqualified until those affected modules run on the admitted current
 installation. This is fixture maintenance, not new Sprite or game support.
+
+### Callable codec source admission maintenance
+
+Callable qualification uses the current registered Arrays carrier and exact
+supplier source hash. The complete host and supplier codec factories are pinned
+independently: the host additionally records native reference allocation origin
+and exposes closed existing-heap lookup and origin-membership checks. Those
+private facts do not themselves grant callable invocation or Array primitive
+authority. Do not strip arbitrary source differences to assert factory equality.
+
+The two complete codec qualification modules retain six tests and the actual
+host/supplier transport matrix. Wrong pin, changed source, executable carrier,
+legacy carrier and unqualified explicit-source refusals remain covered. This
+is a test-source repair pending qualification, not new callable support.
