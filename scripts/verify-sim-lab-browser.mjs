@@ -110,6 +110,10 @@
 //  23. the mats' challenges (scripts/lib/sim-lab-challenges-gate.mjs, --part=ui): the Wall stopper's
 //      own program wins "Stop at the wall" (stars, the gap, kept as the best); "Stay in the ring" moves
 //      the robot to the sumo mat, where driving straight on leaves the ring and loses.
+//  24. the hinge tool (scripts/lib/sim-lab-hinge-gate.mjs, --part=editor): an arm pinned to a beam,
+//      N shows its hinge and ] turns it 15° with the arm hanging off it (one undo step); N steps to
+//      the other hinge and back; the properties panel's +15°; a turn into a part is refused; a loose
+//      part has no hinge.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -136,6 +140,7 @@ import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
 import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
 import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
+import {hingeInteractions} from './lib/sim-lab-hinge-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
@@ -983,6 +988,15 @@ try {
             `${c.pinchDriftPx.toFixed(2)} px; Build looks from ${c.buildPolar.toFixed(0)}°, Simulate stops at ${c.simulatePolar.toFixed(0)}°; a double click centres on its point ` +
             `(eased ${c.focusOff.toFixed(2)} LDU off, reduced motion at once ${c.focusReducedOff.toFixed(2)} LDU; tolerance ${c.focusTol.toFixed(2)} = one pixel there); a trackpad scroll orbits; the view cube's top looks down`);
         await connect.close();
+        // 24. The hinge tool (scripts/lib/sim-lab-hinge-gate.mjs).
+        const hingePage = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        hingePage.on('pageerror', error => errors.push(error.message));
+        hingePage.on('dialog', dialog => dialog.accept());
+        await openSimLab(hingePage, {program: null});
+        const hg = await hingeInteractions(hingePage, {shotsDir: artifacts});
+        console.log(`PASS hinge: N shows an arm's hinge (1 of ${hg.hinges}: its pin's line), ] turns the arm and what hangs off it 15° in one undo step, ` +
+            'N steps to the other hinge and back, the panel\'s +15°, a turn into a beam refused, a loose beam has none');
+        await hingePage.close();
         // 21. Parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1).
         const cat = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
         cat.on('pageerror', error => errors.push(error.message));
