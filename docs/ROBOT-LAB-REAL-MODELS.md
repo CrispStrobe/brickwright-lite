@@ -1,7 +1,7 @@
 # Real motorised LEGO models in the Robot Lab (2026-10-20)
 
 51 motorised sets from the LDraw Official Model Repository (an annotated mirror, anteloc/ldraw-lib; every assembly
-, CC BY 2.0; 55 LDCad-generated sub-files in some of them say
+says `0 !LICENSE Redistributable under CCAL version 2.0`, CC BY 2.0; 55 LDCad-generated sub-files in some of them say
 "Free for non-commercial use", so none of those is shipped), each opened in the built app (its unknown parts fetched
 from the LDraw mirror and derived), every motor run at 60 % for 2 s of simulated time. Not committed: the files
 (only the NXT Tri-bot is a fixture, test/fixtures/model-files). The catalog of sources the owner supplied lists them.
