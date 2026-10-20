@@ -243,7 +243,10 @@ export const readLxf = async (bytes, {ldconfig, catalog, prepareCatalog, name = 
         if (error instanceof LxfError) throw new ModelFileError(error.code, error.message);
         throw error;
     }
-    return {text: serializeModel(parsed.model, {name: renameTo(name, 'ldr'), title}), refusals: parsed.refusals};
+    // A model from elsewhere, not ours: its motors and sensors are plugged in for it (sim-session.js prepareModel).
+    const text = serializeModel(parsed.model, {name: renameTo(name, 'ldr'), title})
+        .replace(/^0 Author: Brickwright(\r?)$/m, '0 Author: LEGO Digital Designer model (imported)$1');
+    return {text, refusals: parsed.refusals};
 };
 
 /**

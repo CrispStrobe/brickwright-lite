@@ -106,3 +106,12 @@ test('the candidates: 24 turns, origins where LDD puts them; EV3 motor bodies ar
     assert.deepEqual(refusals.map(r => [r.code, r.severity]), [['lxf-absorbed', 'warning']]);
     assert.ok(LDD_ABSORBED['59158'] && LDD_ABSORBED['99386']);
 });
+
+test('an imported LDD model is a model from elsewhere: not written as ours, so its motors are plugged in', async () => {
+    const {openModelFile} = await import('../overlay/scratch-gui/src/lib/bw-sim/model/model-file.js');
+    const xml = lxfml([['32524', boneFor(BEAM, I, [0, 0, 0])]]);
+    const ldconfig = readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/ldraw/LDConfig.ldr'), 'utf8');
+    const {text} = await openModelFile('robot.lxf', new TextEncoder().encode(xml), {ldconfig, catalog: CATALOG});
+    assert.doesNotMatch(text, /^0 Author: Brickwright\s*$/m);
+    assert.match(text, /^0 Author: LEGO Digital Designer model \(imported\)\r?$/m);
+});
