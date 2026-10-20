@@ -48,13 +48,31 @@ coordinator are composed with that repair. All40 supplier protocol tests pass.
 The proposed supplier, carrier, receipt and notice agree, and the fresh normal
 installation passes its independent saved-output audit. The shipped admission
 CLI and all64 existing native tests now pass, with no skips, within the unchanged
-execution bounds. The complete new14 then reported13 passes and one failure:
-the new replacement guard rejects a changed `JSON.parse` before the existing
-custom-parser path can call it. Preserve its one-call expectation. Separate
-replacement currentness from native allocation eligibility, keeping all other
-intrinsic checks and the stricter birth checks. Rerun the complete affected
-modules and genuine public Code/export/reimport journeys before claiming this
-family complete. Hosted checks and Lite main adoption remain pending.
+execution bounds. The complete new14 originally reported13 passes and one
+failure: the replacement guard rejected a changed `JSON.parse` before the
+existing custom-parser path could call it. The narrow host repair separates
+replacement currentness from native allocation eligibility. Only replacement
+checks tolerate changes to that one parser property; all other intrinsic checks
+and strict native allocation/publication checks remain in force.
+
+A fresh normal installation of the repaired runtime passes all64 existing native
+controls. The complete additional17 controls now also pass, with zero skips:
+named JSON/2D allocation, replacement after reload, custom parser receivers and
+one-call behavior, constructor fallbacks, unrelated-intrinsic refusal, and fresh
+native positive controls. The initial new-test failures are retained: first an
+invalid empty costume list prevented project loading, then incomplete fixture
+cleanup reordered native JSON properties. The corrected fixtures use a valid
+backdrop and restore every original key and descriptor, including symbols.
+All original behavior assertions remain unchanged.
+
+Both genuine public roundtrip tests now pass as well: empty named Array aliases
+and both text operand orders survive actual authored Code execution, MakeCode
+export and exact-file reimport; the named item getter retains its separate
+coercion route. Saved-data review checks all44 captures, the six observed
+execution stages, expected values, empty diagnostic channels, shared backing
+references and Stop/quit completion. No extra VM-constructor count is inferred.
+Hosted checks, visible GUI/SDK qualification and Lite main adoption remain
+pending. These finite component journeys do not establish full-game parity.
 
 Hosted delivery checks also exposed a stale fetch-policy census and missing
 owned temporary-directory setup for six catalogue fixture tests. The census
@@ -132,16 +150,15 @@ census.
 
 ### Ordered next work
 
-1. Complete the fresh named-empty Array candidate qualification described in
-   [the allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md). The original
-   connected createEmpty -> namedReference -> text program fails. The candidate
-   adds host-created allocation identity and eight real-VM regression groups.
-   Supplier [PR #56](https://github.com/CrispStrobe/extensions/pull/56) is merged
-   after all seven checks passed. Its atomic Lite pin proposal remains separate
-   from Lite main adoption. The fresh
-   normal installation and all57 native controls now pass independent saved-data
-   checks, with zero skips. Genuine named-factory Code/export journeys remain
-   required; component execution alone is insufficient.
+1. Finish final CI and visible authoring qualification for the repaired Array
+   candidate, then integrate it through normal reviewed merges. Supplier
+   [PR #56](https://github.com/CrispStrobe/extensions/pull/56) is merged;
+   [PR #57](https://github.com/CrispStrobe/extensions/pull/57) carries the newer
+   named JSON and replacement protocol. The consumer has a fresh audited
+   normal installation, passes all64 existing plus17 additional native controls
+   without skips, and passes both genuine public Code/export/reimport tests.
+   Retain the older failures and keep supplier final checks, atomic Lite adoption,
+   visible authoring and MakeCode SDK compilation as separate gates.
 2. Complete lossless corpus reporting within existing resource bounds. The
    latest full attempt remains incomplete despite a qualified empty ordinary
    procedure optimization. Importer and Creator inclusive phases dominate the
@@ -150,6 +167,11 @@ census.
    optimizations were reverted because measured balanced costs did not justify
    adoption. The query-only inference proposal is unselected: actual costly
    builtin image decoding requires eager observation.
+   A concrete next candidate is Creator's repeated negative statement-rule
+   matching. Preserve rule order and logging, mutable public dialect regex
+   behavior, argument spans and fallback/refusal diagnostics. A private rule
+   prefilter needs complete grammar controls and balanced authentic-input
+   measurements before adoption; the profile alone proves no speed improvement.
 3. Use each complete report to group genuine source failures by producer and
    semantics. Fix one family with real original-project and public pipeline
    controls, then remeasure. Next Array families include named JSON/2D/zeros/

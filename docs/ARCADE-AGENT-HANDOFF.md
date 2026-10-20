@@ -7,6 +7,16 @@ For the latest functional repair and ordered acceptance work, read
 The named-empty Array candidate is additional to the qualified earlier49, and
 must not inherit their runtime or roundtrip acceptance.
 
+The current repaired Array runtime now passes all64 existing native controls
+and the complete17 additional JSON/replacement/custom-parser controls, with
+zero skips. The fresh normal installation and saved originals are audited.
+Original failures and the two subsequent test-fixture defects are retained;
+assertions were preserved. Both genuine public Code/export/reimport tests now
+pass too, with independent saved-data checks of expected values, aliases,
+diagnostics and Stop/quit completion. Final hosted checks, SDK compilation and
+visible authoring remain pending. This does not change the historical36-partial
+count or establish complete-game parity.
+
 Main has been normally merged into the current integration successor, including
 [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and the latest
 Robot Lab and NXT changes. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52)

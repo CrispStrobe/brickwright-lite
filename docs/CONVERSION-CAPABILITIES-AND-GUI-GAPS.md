@@ -1,5 +1,16 @@
 # Conversion capabilities and GUI closure ledger
 
+## Array runtime and public pipeline checkpoint — 2026-10-20
+
+The repaired runtime passes64 existing and17 additional native controls, plus
+two actual public authored Code/export/reimport tests for named empty Array
+aliases, text coercion and the separate item-getter route. The native tests
+also cover named JSON/2D factories, reload replacement, custom parsers and
+strict native allocation eligibility. These are component execution results;
+visible Blocks editing, Code regeneration in the editor, save/reopen and
+exported MakeCode SDK compilation still require their own journeys. Keep those
+GUI tasks open. See [the ordered queue](ARCADE-COMPATIBILITY-NEXT-STEPS.md#ordered-next-work).
+
 ## Latest bounded qualification checkpoint — 2026-10-19
 
 Three complete 225-subject CLI attempts ended without reports; **all 225 current
