@@ -28,6 +28,7 @@ import {readFileSync, readdirSync, existsSync, statSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
+import {registeredArraysSource, renderRegisteredArraysCarrier} from '../scripts/lib/arrays-carrier.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const read = file => readFileSync(path.join(root, file), 'utf8');
@@ -833,6 +834,8 @@ const dependencyFiles = () => dependencyPackages().flatMap(name => walk(`${GUI_M
     file => !NOT_SHIPPED_DIR.test(file.slice(`${GUI_MODULES}/${name}`.length))));
 const QUICK_PROMPT = /\bprompt\s*\(/;
 const extensionSource = source => {
+    const registered = registeredArraysSource(source);
+    if (registered !== null) return registered;
     const match = source.match(/^const makeExt = require\('\.\.\/adapter'\);\nmodule\.exports = makeExt\(("(?:[^"\\]|\\.)*")\);\s*$/s);
     return match ? JSON.parse(match[1]) : null;
 };
@@ -1001,6 +1004,20 @@ test('census: no shipped source uses the value of prompt() except the reviewed l
     assert.ok(bundles.length >= 10, `only ${bundles.length} decoded extension bundles`);
     assert.ok(bundles.some(file => /\bprompt\b/.test(extensionSource(read(file)))), 'no bundle mentions prompt at all');
     assert.deepEqual(censusVerdict(census()), []);
+});
+
+test('the prompt census reports calls inside the registered Arrays carrier', () => {
+    const file = 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js';
+    const code = 'const answer = prompt("Unreviewed dialog?"); use(answer);';
+    const carrier = renderRegisteredArraysCarrier(code);
+    assert.equal(extensionSource(carrier), code);
+    assert.equal(extensionSource(renderRegisteredArraysCarrier('')), '', 'empty registered source is not absence');
+    const calls = promptCalls(file, carrier);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].where, 'bundled extension source');
+    assert.equal(calls[0].callee, 'prompt');
+    assert.match(censusVerdict(calls).join('\n'),
+        /arrays\/index\.js:1 \(bundled extension source\) uses the value of prompt/);
 });
 
 test('census turns red on a new direct prompt() use, a stale count and a dead entry', () => {

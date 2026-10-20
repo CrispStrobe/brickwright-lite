@@ -560,3 +560,14 @@ carrier syntax through the shared source parser. All four test bodies remain
 unchanged, including the original PXT comparisons, Code/export/reimport and
 fresh SB3 reload, special numbers and the named Sprite conversion gap. These
 comparisons remain pending qualification; source decoding alone is not parity.
+
+### Registered Arrays dialog census coverage
+
+Prompt and confirm census decoders previously recognized only legacy extension
+carriers. They now also decode the exact registered Arrays carrier, retaining
+legacy decoding and all existing lexical/member, ledger and scan thresholds.
+Each census has a control requiring a wrapped unreviewed dialog call to be
+reported as bundled extension source. Empty registered source is distinct from
+an unrecognized carrier. These are source-only scanner repairs; complete hosted
+modules retain their existing DOM and dependency prerequisites. Extracted pure
+scanner controls, if run separately, do not qualify the complete modules.

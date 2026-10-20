@@ -8036,3 +8036,11 @@ Test-only maintenance in the existing Arcade lane: decode the current Arrays
 carrier with the strict registered-source parser. All exponentiation behavior,
 original PXT comparisons and conversion-gap assertions remain unchanged. No
 product or pin changes; complete module qualification remains required.
+
+## Registered Arrays dialog census coverage — 2026-10-20
+
+Test-only security census maintenance in the existing Arcade lane. Prompt and
+confirm scans decode the strict registered Arrays carrier as well as existing
+legacy carriers. Added controls require bundled calls to be reported; prior
+scanner scope, reviewed ledgers and thresholds remain unchanged. Product and
+dependency pins are untouched. Complete hosted module qualification is pending.
