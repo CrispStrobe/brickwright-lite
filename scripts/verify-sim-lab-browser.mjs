@@ -163,7 +163,7 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
-import {tidalInteractions} from './lib/sim-lab-tidal-gate.mjs';
+import {tidalInteractions, tidalInstructionsInteractions} from './lib/sim-lab-tidal-gate.mjs';
 import {loomInteractions} from './lib/sim-lab-loom-gate.mjs';
 import {judgeExpandedRun} from './lib/sim-lab-expanded-judge.mjs';
 import {mechanicsInteractions, manualMechanicsInteractions} from './lib/sim-lab-mechanics-gate.mjs';
@@ -731,6 +731,18 @@ try {
             assert.ok(rec.restMm < 2, `the ${example.name} is not at rest: ${JSON.stringify(rec)}`);
             console.log(`PASS the ${example.name}'s example program, loaded from the pane, ${example.judge(rec)}`);
             await ex.close();
+        }
+
+        if (ONLY_EXAMPLES.length && runExample('tidal-instructions.ldr')) {
+            const tidal = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            tidal.on('pageerror', error => errors.push(error.message));
+            tidal.on('dialog', dialog => dialog.accept());
+            await openSimLab(tidal, {program: null});
+            await tidal.getByTestId('bw-sim-lab-model').selectOption('tidal-trio.ldr');
+            await tidal.waitForFunction(() => window.__bwSimLab.status === 'ready' &&
+                window.__bwSimLab._pane.state.modelFile === 'tidal-trio.ldr');
+            await tidalInstructionsInteractions(tidal, {shotsDir: resolve(artifacts, 'tidal-trio')});
+            await tidal.close();
         }
 
         if (runExample('tidal-trio.ldr')) {

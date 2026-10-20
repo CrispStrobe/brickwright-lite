@@ -35,8 +35,7 @@
       "test/spike-arena-3d.test.mjs",
       "test/bw-sim-pen.test.mjs",
       "test/bw-sim-surface-drawing.test.mjs",
-      "test/bw-sim-orbital-loom.test.mjs",
-      "test/bw-sim-tidal-trio.test.mjs"
+      "test/bw-sim-orbital-loom.test.mjs"
     ],
     "why": "the SPIKE arena's 3D scene builder (lib/spike-arena/arena-scene3d.js) and view import three, a GUI-package dependency lazy-loaded with the 3D view; the tests build the scene headless"
   },

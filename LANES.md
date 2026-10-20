@@ -1,6 +1,6 @@
 ## Tidal Trio phase-machine adaptation — 2026-10-20
 
-IMPLEMENTED / browser qualification pending — Codex, existing model-design lane / draft PR #1138. Review the owner's
+IMPLEMENTED / locally qualified — Codex, existing model-design lane / draft PR #1138. Review the owner's
 supplied BSD-3-Clause three-motor crank-rocker sculpture. Preserve its source notice;
 qualify all three physical linkages, four phase presets, manual controls and
 building instructions, then register the working adaptation in the offline
@@ -9,7 +9,11 @@ adapter, catalogue/registry entries, focused geometry/program/browser checks and
 notices. Preserve peer-owned Jolt/compiler/collider files and other worktrees.
 226 pieces / 3 motors / four phase presets. Add an eight-piece floor-level pinned hub mount;
 retain the source linkage and repair coarse 9L/11L beam ends against official geometry.
-All four actual VM programs, 63.07-degree rocker sweeps and 60% motor stress pass.
+All four actual VM/worker programs, 63.07-degree rocker sweeps, 60% motor stress,
+three manual controls, initial framing and 111 instruction pages / 226-piece bill pass.
+Six detailed existing geometry checks and the production build pass. Corrected
+instruction browser readiness checking is also available separately. English/German
+example selection, the >50-piece filter and remaining page-error checks pass.
 The owner confirmed both supplied machines are original CrispStrobe work and chose
 BSD-3-Clause, superseding generated OpenAI/CC BY wording. Referenced LDraw parts
 retain their own credits. CrispStrobe author headers keep own-file strict port handling.

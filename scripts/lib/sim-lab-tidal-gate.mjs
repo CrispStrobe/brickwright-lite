@@ -10,10 +10,16 @@ export const tidalInteractions = async (page, opts) => {
         keyFor: id => TIDAL_PRESETS.find(p => p.id === id).key,
         programMarker: id => `# Example: ${id}`, judge: judgeTidalRun, simulatedMs: 36000});
     await manualMechanicsInteractions(page, {...opts, models: ['tidal-trio']});
+    await tidalInstructionsInteractions(page, opts);
+    return results;
+};
+
+export const tidalInstructionsInteractions = async (page, opts) => {
     await page.getByTestId('bw-sim-lab-instructions').click();
-    const dialog = page.getByRole('dialog', {name: 'Building instructions', exact: true});
+    const dialog = page.getByTestId('bw-sim-instructions');
     await dialog.waitFor();
-    await page.waitForFunction(() => window.__bwSimLabInstructions?.ready);
+    await page.waitForFunction(() => window.__bwSimLabInstructions?.status === 'ready' &&
+        window.__bwSimLabInstructions.stats?.step === 0, null, {timeout: 30000});
     const steps = await page.evaluate(() => window.__bwSimLabInstructions.steps);
     assert.ok(steps > 30 && steps < 226);
     await dialog.screenshot({path: resolve(opts.shotsDir, 'tidal-instructions-first.png')});
@@ -30,5 +36,4 @@ export const tidalInteractions = async (page, opts) => {
     await dialog.screenshot({path:resolve(opts.shotsDir,'tidal-instructions-bom.png')});
     await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
     console.log(`PASS tidal trio instructions: ${steps} connected pages and ${pieces}-piece bill of materials`);
-    return results;
 };

@@ -44,7 +44,7 @@ unsupported physical connections are hidden, and peer-owned Jolt/compiler source
 
 Three intentional `locked-hinges` diagnostics rigidly attach the coloured flag assemblies with
 their two separated smooth pins. Tests assert the three named rocker mounts and reject other
-diagnostics. Connected instructions replace the source's five coarse subassemblies.
+diagnostics. A 111-page connected manual replaces the source's five coarse subassemblies.
 
 ## Ownership and reproduction
 
@@ -71,3 +71,15 @@ at 60%, and verify connected instructions, hub mounts, licence and source hash. 
 operate the actual selector and worker, all three sliders and stops, camera framing and instruction
 pages. The mechanism remains a digital design: physical stiffness, friction, leads and tolerances
 have not been tested with real LEGO hardware.
+
+Local qualification: all six Tidal Trio cases and seven lazy-catalog cases pass (13/13).
+The broader regression run passed 183 cases; its one missing lazy-catalog inventory declaration
+was repaired and covered by those seven passing cases. Six existing detailed geometry checks
+restricted to this assembly pass. Production build, pinned geometry and dependency checks pass;
+both source adapters reproduce their bundled models byte for byte. All four browser programs,
+three manual controls, initial framing and all 111 instruction pages/226-piece bill pass.
+The first browser invocation stopped at a mistaken readiness property in the instruction test;
+its four program/manual results were retained, and the corrected instruction gate was run
+separately. English/German example selection, the >50-piece filter and remaining browser page-error checks pass.
+The library now has 39 selectable entries over 31 distinct physical assemblies.
+This is local app qualification; source integration and hosted CI remain merge gates.
