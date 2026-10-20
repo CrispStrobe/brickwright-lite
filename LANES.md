@@ -7188,3 +7188,18 @@ grants no value type, source trust, conversion success or runtime authority.
 Retain all earlier incomplete complete-census attempts. New full-graph controls,
 actual representative cost evidence and complete unchanged-budget qualification
 are required before selection; no speed or fit is established by SOURCE review.
+
+
+## Build install lock mutation controls — 2026-10-20
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — within the Arcade integration CI
+contract repair. The merged workflow intentionally shares preparation steps
+between jobs. Scope the existing lock-policy mutations to the selected build
+job by offsets; a global first-string replacement could mutate an earlier
+identical sibling step and leave the inspected build unchanged. Require each
+edit to change the actual selected step and preserve every byte outside its
+build job. Retain all five control titles and every lock, fail-fast, ordering
+and bypass refusal assertion. Production workflow and install policy remain
+unchanged. The four original failing mutation controls remain recorded; fresh
+whole affected-module qualification is pending. No runtime, browser or full CI
+qualification follows from this test-only repair.
