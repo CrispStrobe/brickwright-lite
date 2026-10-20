@@ -47,6 +47,48 @@ profile attribution must distinguish those costs from capture/serialization.
 This single input supplies neither a whole-corpus bottleneck nor a changed
 classification. Do not implement the deferred regex shortcut on this evidence.
 
+## Next complete-input checks and source bitwise scope — 2026-10-20
+
+After the current vendor and hosted repairs, inspect these actual complete
+projects in order. Historical diagnostics alone do not establish a current bug.
+
+1. **Freethrow tutorial callbacks.** Include the authentic tutorial library and
+   project configuration. Use the public dependency importer and actual returned
+   identity. Diagnose its namespace, callback argument and registration order
+   before adding an opcode. Acceptance includes real input/overlap delivery,
+   Stop/restart, Blocks/Code editing, save/reopen and exported-file reimport.
+2. **Named song assets.** Carry the actual JRES, generated namespace alias and
+   package configuration through selection, music execution and export. Same-name
+   root/package assets must remain unambiguous. Preserve literal-song behavior,
+   encoded bytes, cancellation and errors; qualify editable Blocks/Code and
+   file roundtrips. A piano-roll editor is a separately scoped expansion.
+3. **Modern exported-project reimport.** Resolve the actual newly exported file
+   map using the existing resolver and retained provider. Never reuse or rebind
+   the original dependency certificate. Retain animation frame identities and
+   test changed configuration, missing packages and async supersession.
+
+Some retained examples call instance `Sprite.onOverlap`; their original SDK
+rejects that member. Do not add a compatibility mapping merely to silence those
+invalid inputs. Likewise, existing projectile, follow, tile and handle routes
+need complete-input checks before being treated as missing implementations.
+
+A separate original-PXT bitwise probe now records 370 scalar results, including
+both operand orders, six binary operators, unary complement, actual aliases,
+empty/nested/cyclic collections and primitive inputs. The tested opaque
+collections contribute numeric zero; no backing Array traversal supplies this
+meaning. This is an original-runtime observation, not implemented support.
+Before implementing source bitwise/unary support, claim its importer, canonical
+Code dialect, fixed Blocks selectors, runtime ownership and export scope. Keep
+native authored Array arithmetic unchanged. Unary complement requires its own
+single-operand source operation. Preserve heap/intern/generation/current-call
+checks and unknown-object refusals; add actual original/native/export comparisons
+and visible authoring acceptance. Extending an operator allow-list alone is
+insufficient. New runtime bytes require fresh normal-installation qualification.
+
+These scopes do not promote historical partials or replace the still-missing
+complete current corpus report. Retained third-party source and raw diagnostic
+records remain private unless redistribution rights are established.
+
 ## Current original-PXT Array coercion work package
 
 The current original-compiler check in
