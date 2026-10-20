@@ -205,3 +205,21 @@ never certifies a new allocation or primitive eligibility. Registered alternate
 sources cannot turn read, write or alias calls into binding discard. The focused
 negative control uses real registered source variants and the actual adapter/VM;
 those fault variants are admission tests, not candidate feature executions.
+
+### Live JSON parser during replacement
+
+A replacement notice may ignore only the original JSON object's own `parse`
+property when checking the intrinsic surface. The JSON global identity, object
+prototype, every other JSON property and all other intrinsic descriptors remain
+checked. Captured reflection does not invoke a parser getter. This permits the
+existing custom parser, accessor, missing parser and original catch/fallback
+semantics to run at their original position. It is an acknowledgement of
+discarding a prior binding, not permission to read it or certify a new body.
+
+Native JSON allocation and primitive publication retain the complete strict
+intrinsic check. A custom parser result or fallback remains unqualified after
+the parser is restored. Original factory and publication controls remain
+unchanged; separate complete native controls cover parser receiver/read counts,
+getter and throw fallbacks, restoration without birth authority and unrelated
+JSON/global/prototype changes. This is a source candidate pending affected
+normal-installation and actual execution qualification.

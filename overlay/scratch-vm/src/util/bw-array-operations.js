@@ -84,6 +84,32 @@ const primitiveIntrinsicsCurrent=()=>{
     }
     return true;
 };
+// A replacement notice discards an old binding; it cannot certify an Array
+// birth. Preserve the original live JSON.parse lane without ignoring changes
+// to the JSON object/global identity, its prototype, or any other intrinsic.
+// Captured descriptor inspection never invokes a live parse getter.
+const priorBindingIntrinsicsCurrent=()=>{
+    for(let i=0;i<primitiveGlobals.length;i++){
+        const row=primitiveGlobals[i];
+        if(!samePrimitiveDescriptor(primitiveDescriptor(primitiveRealm,row.key),row.descriptor))return false;
+    }
+    for(let i=0;i<primitiveIntrinsics.length;i++){
+        const row=primitiveIntrinsics[i],keys=primitiveKeys(row.object);
+        if(primitivePrototype(row.object)!==row.prototype)return false;
+        const liveParser=row.object===primitiveJSON;
+        let actualIndex=0;
+        for(let j=0;j<row.keys.length;j++){
+            const key=row.keys[j];
+            if(liveParser&&key==='parse')continue;
+            while(liveParser&&actualIndex<keys.length&&keys[actualIndex]==='parse')actualIndex++;
+            if(actualIndex>=keys.length||keys[actualIndex]!==key||!samePrimitiveDescriptor(primitiveDescriptor(row.object,key),row.descriptors[j]))return false;
+            actualIndex++;
+        }
+        while(liveParser&&actualIndex<keys.length&&keys[actualIndex]==='parse')actualIndex++;
+        if(actualIndex!==keys.length)return false;
+    }
+    return true;
+};
 const ownData = (object,key) => object && primitiveDescriptor(object,key);
 // Read raw objects only through captured reflection. A primitive identity copy
 // is consumed by the closed existing-heap service; raw Proxy gets never cross
@@ -477,7 +503,7 @@ function bind(runtime,registration,source,instance) {
                 if(!primitiveFrozen(bindingMetadata)||primitiveKeys(bindingMetadata).length!==2||
                     !role||!lookup||!primitiveOwn(role,'value')||!primitiveOwn(lookup,'value')||
                     role.value!=='bind'||!primitiveApply(primitiveSetHas,namedReplacementMethods,[method])||
-                    typeof lookup.value!=='function'||!graphValid(record)||!primitiveIntrinsicsCurrent())
+                    typeof lookup.value!=='function'||!graphValid(record)||!priorBindingIntrinsicsCurrent())
                     reject(record,'Named replacement declaration differs');
                 record.priorRole='bind';record.priorLookup=lookup.value;record.priorName=name.value;
               }
@@ -529,7 +555,7 @@ function bind(runtime,registration,source,instance) {
                 if(!name||!primitiveOwn(name,'value')||name.value!==record.priorName||
                     facts.slot!=='NAME'||facts.raw!==record.priorName||facts.name!==record.priorName||
                     facts.body!==undefined||facts.parent!==undefined||facts.key!==undefined||
-                    primitiveKeys(facts).length!==9||!primitiveIntrinsicsCurrent())
+                    primitiveKeys(facts).length!==9||!priorBindingIntrinsicsCurrent())
                     reject(record,'Named replacement destination differs');
             }
             if(empty){
@@ -601,7 +627,7 @@ function bind(runtime,registration,source,instance) {
                 record.priorPhase=1;
             }
             if(prior){
-                if(record.priorExpired||!graphValid(record)||!primitiveIntrinsicsCurrent())reject(record,'Named replacement proof expired');
+                if(record.priorExpired||!graphValid(record)||!priorBindingIntrinsicsCurrent())reject(record,'Named replacement proof expired');
                 return true; // Acknowledgement only, never prior-body authority.
             }
             if(literalBody&&(!record.literalCurrent()||!primitiveIntrinsicsCurrent()))reject(record,'Array literal allocation changed during observation');

@@ -7985,3 +7985,13 @@ no-ticket calls and older pure-host fallback. Generic/custom publication keeps
 its old unqualified semantics; this is not a transactional factory guarantee.
 Supplier publication/pin adoption, fresh normal installation and complete
 affected native controls are mandatory before a qualified runtime claim.
+
+## Arcade named replacement live-parser compatibility — 2026-10-20
+
+SOURCE candidate within the owned Array runtime lane. Preserve original custom
+JSON parser/catch behavior at named replacement by limiting the notice-only
+intrinsic exception to the existing JSON object's own parse property. All
+allocation, current call, destination and publication proofs remain independent
+and strict. Existing native modules remain unchanged; new complete controls
+cover actual parser effects and unrelated surface refusal. Affected actual
+execution and a fresh normal installation are required before qualification.
