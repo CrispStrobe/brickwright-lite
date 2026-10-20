@@ -73,7 +73,7 @@ async function fixture(mode,factory='create1D'){
   forever:b('control_forever','independent',null,{SUBSTACK:[2,'tick']}),
   tick:b('data_changevariableby','forever',null,{VALUE:[1,[4,'1']]},{VARIABLE:['ticks','ticks']})
  };
- const project={targets:[{isStage:true,name:'Stage',variables:{alias:['alias',0],result:['result','UNASSIGNED'],after:['after',0],ticks:['ticks',0]},lists:{},broadcasts:{},blocks,comments:{},costumes:[],sounds:[],currentCostume:0,volume:100,layerOrder:0}],monitors:[],extensions:['arrays','parserprobe'],meta:{semver:'3.0.0',vm:'0.2.0',agent:''}};
+ const project={targets:[{isStage:true,name:'Stage',variables:{alias:['alias',0],result:['result','UNASSIGNED'],after:['after',0],ticks:['ticks',0]},lists:{},broadcasts:{},blocks,comments:{},costumes:[{assetId:'cd21514d0531fdffb22204e0ec5ed84a',name:'backdrop',dataFormat:'svg',md5ext:'cd21514d0531fdffb22204e0ec5ed84a.svg',rotationCenterX:240,rotationCenterY:180}],sounds:[],currentCostume:0,volume:100,layerOrder:0}],monitors:[],extensions:['arrays','parserprobe'],meta:{semver:'3.0.0',vm:'0.2.0',agent:''}};
  try{
   await vm.loadProject(JSON.stringify(project));exceptions.create(runtime,args=>args.VALUE);runtime.currentStepTime=1000/30;vm.greenFlag();
   for(let i=0;i<4;i++){await runtime._step();await new Promise(resolve=>setImmediate(resolve));}
