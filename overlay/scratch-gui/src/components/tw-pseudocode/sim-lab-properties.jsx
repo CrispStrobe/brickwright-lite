@@ -168,6 +168,13 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                                 onClick={run(() => view?.turnSelectionBy(a, 90))}>{T.plus90}</button>
                         </div>
                     ))}
+                    <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                        <span style={{flex: '1 1 auto', color: '#475569'}}>{T.hinge}</span>
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hinge-minus" onClick={run(() => view?.fineTurn(-1))}>{T.minus15}</button>
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hinge-plus" onClick={run(() => view?.fineTurn(1))}>{T.plus15}</button>
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hinge-next" title={T.nextHinge} aria-label={T.nextHinge}
+                            onClick={run(() => view?.nextHinge())}>N</button>
+                    </div>
                 </Section>
             )}
 
