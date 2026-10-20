@@ -1,5 +1,8 @@
 # Motorised mechanics machines
 
+See also the [expanded catalogue batch](ROBOT-LAB-EXPANDED-MECHANICS.md) and the
+[Orbital Loom with live drawing](ROBOT-LAB-ORBITAL-LOOM.md).
+
 Four original builds turn concepts from the supplied `lego_technic_mechanics_ideas` catalogue
 into controllable Robot Lab examples. Open **Robots → Examples**, search their names, and choose
 **Open model + program**. Press **Run** for the experiment; **Motors** exposes a separate control

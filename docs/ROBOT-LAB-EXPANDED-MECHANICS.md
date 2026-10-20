@@ -63,3 +63,7 @@ The browser gate opens models and programs through visible Examples controls, ru
 actual physics worker, checks the same equations, and separately operates every manual motor
 slider. It checks initial framing, individual Stop and Stop all. Simulator qualification does
 not establish physical LEGO construction or hardware accuracy.
+
+Local qualification: all three programs passed in the real physics worker, all six manual motor
+controls passed with Stop checks, and each complete model fitted the initial camera view. The
+shared focused regression set (including the later loom support) passed 231 tests.

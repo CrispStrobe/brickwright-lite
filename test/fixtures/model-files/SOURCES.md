@@ -50,6 +50,7 @@ above, the LDraw.org OMR. Nothing in the files is changed.
 - File: `overlay/scratch-gui/static/sim-lab/models/orbital-loom.ldr` (202 LEGO pieces).
 - Author/credit: **ORBITAL LOOM, OpenAI, 2026**; adaptation by Brickwright contributors.
 - Source: owner-supplied `orbital_loom_bricks_only.mpd`, version 1.0, 2026-10-20, 210 pieces.
+- Exact source and README retained under `orbital-loom-source/` for reproducible adaptation.
 - Source SHA256: `d2e22ef40af389d6e1580b3ace65968e390fd6eadac0488aee318adddbb0f539`.
 - Licence: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); supplied README and changes
   retained at `static/sim-lab/licenses/orbital-loom.txt`. No NC terms.

@@ -1,6 +1,6 @@
 ## Orbital loom import and live drawing — 2026-10-20
 
-IMPLEMENTED / browser qualification in progress — Codex, existing model-design lane / comprehensive draft PR #1138.
+IMPLEMENTED / locally qualified — Codex, existing model-design lane / comprehensive draft PR #1138.
 Owner supplied a 210-piece CC BY 4.0 epicycle drawing-machine prototype. Preserve
 source attribution and changes; qualify actual platter gearing and both motors,
 replace the static predicted preview with pose-driven drawing on rotating paper,
@@ -13,8 +13,10 @@ Do not independently edit peer-owned compile/Jolt/collider implementation files.
 retained. Paired pins and over-inserted axle corrected; 11x5 frame collision
 widths, double-bevel spur contact and moving-paper ink supported. 231 focused
 tests and six detailed mesh/fastener assertions pass. Ink now samples physics
-updates independently of rendering (11 focused sampling tests pass); final
-production-browser replay remains in progress. The instruction planner handles
+updates independently of rendering (11 focused sampling tests pass). All four
+production-browser presets draw closed ink, with 901–975 observed points each;
+both manual controls, all 99 instruction pages and the 202-piece bill pass. The
+English/German examples browser also passes without page errors. The instruction planner handles
 chained pin/half-pin mounts and bounded callouts; the loom manual has 99 steps.
 
 ## Expanded mechanics catalogue machines — 2026-10-20

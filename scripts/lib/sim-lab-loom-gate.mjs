@@ -27,9 +27,13 @@ export const loomInteractions = async (page, {
     await gallery.waitFor({
       state: 'hidden'
     });
-    await page.waitForFunction(key => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === key && window.__bwSimLab._pane.session?.worker, preset.key, {
+    await page.waitForFunction(key => window.__bwSimLab.status === 'ready' &&
+        window.__bwSimLab._pane.state.modelFile === 'orbital-loom.ldr' &&
+        window.__bwSimLab._pane.state.shipped === key && window.__bwSimLab._pane.session?.worker, preset.key, {
       timeout: 60000
     });
+    await page.waitForFunction(({p, q}) => [...document.querySelectorAll('.cm-content')].some(el =>
+        el.textContent.includes(String(1080 * q)) && el.textContent.includes(String(360 * p))), preset, {timeout: 30000});
     await page.evaluate(() => {
       const pane = window.__bwSimLab._pane,
         s = pane.session,

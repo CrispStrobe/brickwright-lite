@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { catalogFrom, prepareModel } from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import { buildSteps } from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
@@ -29,6 +30,8 @@ test('loom: 202 connected LEGO pieces, supported 20:60 drive, complete instructi
     mechanism,
     issues
   } = prepared();
+  const original = readFileSync(new URL('./fixtures/model-files/orbital-loom-source/orbital_loom_bricks_only.mpd', import.meta.url));
+  assert.equal(createHash('sha256').update(original).digest('hex'), 'd2e22ef40af389d6e1580b3ace65968e390fd6eadac0488aee318adddbb0f539');
   assert.equal(model.parts.length, 202);
   assert.equal(model.decor?.length || 0, 0);
   assert.deepEqual(issues.map(i => i.code), ['locked-hinges', 'locked-hinges']);
