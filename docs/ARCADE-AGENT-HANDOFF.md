@@ -1,7 +1,18 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-16. The current-state refresh below supersedes the older
-2026-10-10 checkpoints retained later in this guide. This is the public
+## Current continuation checkpoint — 2026-10-19
+
+Read [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) and [the GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) before the dated historical results below. Local component work has been normally composed with a pinned recent main; it is not a merged, fully qualified public release. Refresh main, foundation [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888), and supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52) before acting. Preserve their owners' work and exact dependency pins.
+
+The recorded historical census remains **147 translated / 36 partial / one malformed** out of 184. All 184 raw sources and 41 complete dependency-bearing inputs now have an independent input-lineage audit; their 29 original compiler successes and 12 failures are retained. The current 225-input conversion census remains unmeasured. Original compiler validity, conversion, runtime and visible authoring are separate results.
+
+Recent component results: Camera/parser 42 controls pass; lossless report codec/CLI 29 controls pass; an actual two-input compressed CLI report has a complete independent payload/descriptor audit. The normal Array installation reproduces all 363 outputs, but the following 45-test native episode fails during circular-module startup before any tests run. An immutable null-prototype export repair and three real loader entry-order controls are pending qualification. Do not substitute the preceding 33-pass/seven-fail result or the installation audit for runtime success.
+
+Continue in order: finish current Array boot and value semantics; run the same public CLI/core over all 225 inputs once with complete reports; group actual unsupported constructs by cause and source location; close each family with negative controls and complete affected modules; qualify real Blocks/Code/graphics/controller/save-reopen/export journeys. The public failure table scopes those gates. The ignored local handoff holds exact source heads, commands, original evidence and recovery information.
+
+
+Updated 2026-10-19. The checkpoint above supersedes the historical
+2026-10-16 and 2026-10-10 notes retained below. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
 operator's actual checkouts, tools, private corpus and original receipts.

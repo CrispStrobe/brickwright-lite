@@ -98,3 +98,40 @@ the observed source shape, with the diagnostic
 `game.splash() requires proven primitive text; opaque or unknown inspection is not implemented`.
 Dedicated authoring controls for this conversion in Blocks and the GUI remain
 unverified. Full compatibility remains an open goal.
+
+## Straight-line occurrence candidate
+
+A separate current export candidate handles an observed uninitialized value
+followed by a mandatory ordinary Array assignment in one direct source-start
+entry. It retains every physical writer and every earlier scalar read. It
+transfers the actual allocation through an alias only after evaluating the
+assignment's RHS in the preceding environment. It does not turn an eventual
+writer union or declared Array annotation into a type for an earlier read.
+
+The initial subset requires the complete current project to contain one
+connected straight-line source entry. All physical blocks, visible variable
+IDs, local names, writers and aliases must belong to that entry. Supported
+Array bodies contain primitive JSON elements and actual primitive pushes;
+receiver facts cover their current length/item reads. Primitive coercion and
+comparison operands are checked independently and their actual operations,
+errors and evaluation order remain in the project. Nested reference bodies,
+expression-list factories, branches, loops, calls, registered/event entries,
+unknown effects, orphan/foreign blocks and unresolved bindings retain the
+existing conservative refusal. Hidden default scalar-variable monitors may be
+retained only with exact current Stage variable IDs/names and canonical metadata;
+visible, slider, list and unknown monitor roles remain unsupported. These hidden
+monitors do not add writer or script authority. A later incompatible writer is
+not discounted.
+Existing independently proved cases retain their original authority.
+
+The additional fact is private to its exact receiver occurrence. Complete
+physical/descriptor/metadata and intrinsic currentness is observed before
+consumer early returns; a false or thrown observation permanently expires the
+old fact. A fresh policy can independently prove a restored graph. This does
+not grant a new general Array, element, SDK or artwork resource domain.
+
+The focused source controls exercise the original undefined/coercion source,
+current Code reconstruction, aliases, mandatory assignment and the negative
+entry/writer/currentness families. Source and pure export controls are not
+native VM, saved-archive, browser authoring or complete Arcade corpus
+qualification. Those affected boundaries remain separate acceptance work.

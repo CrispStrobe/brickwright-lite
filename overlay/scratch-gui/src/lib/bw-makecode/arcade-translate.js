@@ -2,13 +2,14 @@ import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSh
 import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
 import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
 import {selectClassCallableSourceProofForTranslation} from './class-callable-source-gate.js';
-import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
+import {withCompilerOwnedClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerMathIdivValues} from './math-idiv-source.js';
 import {lowerConsoleInspectValues} from './lower-console-inspect-values.js';
@@ -19,7 +20,7 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
-import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,normalizeCompilerOwnedLegacyArrayHelpers,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -114,7 +115,6 @@ const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, 
 import {parseTileAssets} from './tile-assets.js';
 import {createAssetKindLookup, lookupAssetTemplate} from './asset-kind-lookup.js';
 import {decodeTilemap, createNativeTilemapRegistry, resolveNativeTilemap} from './tilemap-values.js';
-import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerSourceLoopControl} from './lower-source-loop-control.js';
@@ -185,7 +185,7 @@ const HALF_HEIGHT = 60;
 const COLLISION_DIRECTIONS = Object.freeze({Left:0, Top:1, Right:2, Bottom:3});
 // Retained Arcade game/sprite.ts TileDirection; Center also covers default.
 const TILE_DIRECTIONS = Object.freeze({...COLLISION_DIRECTIONS, Center:4});
-const CAMERA_PROPERTIES = Object.freeze({X:0, Y:1, Left:2, Right:3, Top:4, Bottom:5});
+
 
 
 /**
@@ -1085,6 +1085,8 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        // Deletion is an unsupported mutation, never a numeric operand/fold.
+        if(node?.type==='Unary'&&node.op==='delete')return super.expr(node);
         if(node?.type==='Unary'&&containsNonFiniteNumberLiteral(node.argument)){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
         if(node?.type==='Number'){
             if(!Number.isFinite(Number(node.value))){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
@@ -3230,29 +3232,7 @@ const liftExporterStops = (program,profile) => {
 // tree: rewriting calls changed caller order and raw numeric selection.
 const lowerLibraryCalls = program => program;
 
-const inlineLegacyArrayHelpers = (program,profile) => {
-    const proof=inspectGeneratedHelperBindings(program,profile);
-    if(!proof.isCurrent())return program;
-    const recipes=[['__bwNamedParseValue',LEGACY_PARSE_SOURCE,'LegacyParsedValue'],
-        ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
-        ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
-    const candidates=new Map();
-    for(const fn of program.body)if(proof.root(fn))for(const [base,source,type]of recipes)
-        if(proof.matches(fn,source,new Map([[fn.name,base]])))candidates.set(fn,{type});
-    // A retained helper body becomes an external consumer of its dependencies.
-    // Recompute until removing one declaration cannot strand a retained caller.
-    const selected=new Set(candidates.keys());let changed;
-    do {changed=false;for(const fn of selected)if(!proof.closed(fn,selected)||proof.calls(fn,[1],selected)===null){selected.delete(fn);changed=true;}}while(changed);
-    const calls=new Map();for(const fn of selected)for(const call of proof.calls(fn,[1],selected))calls.set(call,candidates.get(fn));
-    if(!selected.size||!proof.isCurrent())return program;
-    const rewrite=node=>{
-        if(!node||typeof node!=='object')return node;
-        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
-        if(calls.has(node))return {type:calls.get(node).type,value:rewrite(node.args[0])};
-        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
-    };
-    return rewrite({...program,body:program.body.filter(fn=>!selected.has(fn))});
-};
+
 
 const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     const helpers=new Map();
@@ -5058,7 +5038,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     if(opts.sdkImagePrototype===true&&!classEligibility.eligible)projectInputDiagnostics.push(...classEligibility.unsupported,'SDK Image prototype requires its completed actual source producer proof');
     // Ordinary programs retain their ordinary parse. Only the proved numeric
     // surface uses lexical metadata and the existing callable lowering path.
-    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withCompilerOwnedClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
     if(!namedEnabled&&!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
         projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported,...namedEligibility.unsupported);
     }
@@ -5068,7 +5048,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true),{profile:generatedProfile});
     // Recognition consumes the selected parse context before clone-heavy
     // lowerings erase its parameter descriptors or alter canonical bodies.
-    const generatedSource=inlineLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const generatedSource=normalizeCompilerOwnedLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
     const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
         lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {

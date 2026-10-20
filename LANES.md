@@ -6962,3 +6962,163 @@ exact-head hosted checks remain mandatory before merge. No new iPad build or
 physical connection acceptance is implied. A rejected native close reports an
 error and blocks reuse of uncertain state; a native call which never settles
 still requires the separately scoped native cancellation/readiness work.
+## Arcade tile painter project-palette projection — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex, within the merged broad Arcade
+compatibility and GUI-gap lane. Narrow scope: the existing tile painter and
+legacy-definition preview, a projection/observation helper reusing the current
+project-palette inspector, focused pure and separate VM/artwork controls, this
+record and the compatibility next-steps note. Preserve tile indices, identities,
+walls, existing saves and placement rules; no runtime/prototype/type/supplier or
+budget change. Dynamic/conflicting startup palettes are explicitly unresolved;
+no mutable runtime color becomes authoring authority. Coordinate future source
+changes with tile/Pixel owners. Actual current GUI and affected guest acceptance
+remain required; authored controls alone do not report a pass or corpus change.
+## Arcade import gateway source controls — 2026-10-19
+
+Owner: root, `lane/arcade-ui-import-contracts-20261019`. Scope: repair stale
+source-driven tests for the existing MakeCode lazy gateway and request fencing.
+No product behavior, dependency, timeout, workflow or compatibility count changes.
+The prompt driver must execute the actual current-request predicate and retain
+modal answer/cancel and revert-to-native-prompt controls. The chunk control must
+prove both import entry methods use the shared gateway and each exporter/subject
+keeps its lazy chunk. Whole affected modules and existing request-fence controls
+remain pending qualification; no browser claim.
+
+### Current Array occurrence initialization — isolated source candidate
+
+Coordinated under the merged ordinary Array/source-owner export envelope above.
+A private direct-source-start occurrence profile retains observed undefined
+reads and every physical writer while proving a later mandatory Array/alias
+assignment. Own the occurrence helper, its existing authority consumer,
+focused controls and the narrow Array initialization contract. Existing callee,
+callback, resource and element authorities remain independent. No new value
+kind, runtime, pin, workflow, budget or GUI qualification is claimed. Calls,
+control paths, other entries and unknown effects do not acquire new credit;
+affected actual qualification is required before adoption.
+
+## Arrays explicit native-test supplier input — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex within the existing Arcade
+compatibility and coordinated physical Number-input lane. Own only the unit
+job admission/env/evidence wiring, a bounded offline source-data admission
+script and its source-policy controls. Decode the exact canonical JSON carrier
+at the existing Arrays pin; require the per-file provenance, original MPL-2.0
+notice and actual installed VM mirror before emitting a fresh explicit test
+input. No supplier evaluation, downloads, pin/gate/threshold changes or test
+fallback. Preserve other build jobs and strict lockfile/source-manifest checks.
+Both unchanged native Arrays modules still require genuine affected execution;
+source-data admission alone is not runtime or compatibility qualification.
+
+## Arrays merged host-operation and Number supplier adoption — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex Arcade integration within
+the existing reconciliation claim. Advance only arrays-values to merged own
+supplier PR48 revision022ab168, with its exact canonical body, per-file hash,
+MPL source notice and explicit admission checks. Other supplier pins and bundled
+payloads are preserved. This adopts existing host-operation and Number hooks;
+it does not implement new coercion authority or change the standalone adapter
+contract. The original native modules execute 32 tests, including fourteen
+generated mutation controls; their earlier 5-pass/27-fail baseline is retained.
+Fresh complete native qualification and normal installed mirror validation are
+required. GUI/runtime coercion, trusted registration and broader qualification
+remain separate work; no public result or scope is promoted from a source edit.
+
+## CameraProperty constants for ordinary typed procedures — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex Arcade integration within the
+existing foundation reconciliation and compatibility claim. Derive the six
+canonical camera enum constants as actual numeric producers only inside complete
+compiler-owned ordinary-procedure validation. Preserve the public eager analyser
+and validator, all default/Throw/diagnostic passes, and all existing test modules.
+No caller trust flag, annotation, namespace object or generic enum grant. Full
+physical SDK binding, source effects, currentness and intrinsic checks are
+required; unknown and changed inputs retain the original conservative path.
+Actual camera/public/native/compiler and hosted qualification remain separate.
+See [producer scope](docs/ARCADE-CAMERA-PROPERTY-PRODUCERS.md).
+
+## Owned Array addition and trusted construction candidate — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex Arcade integration, within
+the merged compatibility lane. Own the operation-scoped Array primitive loan,
+exact supplier protocol, Arrays-only module-held registration carrier and
+matching offline provenance readers/controls. Preserve other supplier wrappers,
+default adapters, generic values/Cast and all observed original failures.
+Current physical input, allocation/body/generation and complete publication
+fences remain mandatory; opaque or unsupported Arrays refuse explicitly.
+Supplier revision adoption must be explicit with exact source, notice, receipt
+and installed mirror. Fresh affected native controls and original/current-Code/
+exported semantics are required; source or policy tests do not qualify them.
+See docs/ARCADE-ARRAY-PRIMITIVE-OPERATIONS.md for the bounded initial profile.
+
+### Owned Array current-call rejection follow-up — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING within the existing owned Array and
+Arcade exception ownership lane. Preserve every original native control and
+strict value proof. Add a separate rejection-only exact current engine witness
+for valueBinary/createReference, route actual proof errors through private
+lineage cleanup, and recognize malformed tracked identities only to reject.
+No generic value/Number/Cast grant, no supplier pin change, and no change to
+legacy caught-copy probes. Original failed controls remain mandatory regressions.
+
+## Arcade retained-context conversion CLI — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex Arcade integration within the
+merged foundation reconciliation and compatibility scope. Add an explicit local
+context catalogue reader and shared actual public conversion/Creator operation
+to the compatibility audit CLI. Preserve raw classification, all complete inputs
+and original compiler failures, full provided diagnostics and current dependency
+validation. No SDK-return trust flag, case-specific source repair, supplier pin
+change, fetching, runtime or corpus qualification is included. The roundtrip
+script's common-reader integration and affected archive/export controls remain
+follow-up work. See the retained-context section of
+[the compatibility audit](docs/COMPATIBILITY-AUDIT.md).
+
+### Lossless conversion report representation — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING — Codex within the retained-context
+conversion CLI scope above. Add explicitly versioned lossless byte payload and
+own-descriptor packing, a bounded data decoder and opt-in full-report gzip.
+Preserve the existing v1 observer API, actual conversion operation, full provided
+diagnostics and legacy classification. No input trust, supplier pin, compiler,
+SDK, runtime, corpus coverage or performance grant is included. Existing controls
+and new encoding controls require actual qualification before selection.
+
+
+### Compact native octet observation — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING within the retained-context conversion
+CLI and lossless report scope above. Use actual native Uint8Array slots and
+fixed ordinary backing to encode the spec-defined dense index prefix directly.
+Preserve one own-key observation, every custom tail descriptor, payload snapshot,
+logical bounds, v1 behavior and the complete changed-realm fallback. No source
+conversion, diagnostic, supplier, runtime, input or execution-budget change.
+New full-graph controls and the existing complete controls require qualification;
+the timed-out complete census is preserved without a fit or hotspot claim.
+
+### Optional compatibility CLI phase observation — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing retained-context audit
+and lossless-report lane. Add an opt-in, bounded fresh progress journal using
+only the existing conversion observer seam and fixed CLI phase boundaries.
+Preserve default direct conversion/gate calls, all original controls, complete
+reports, input selection, product errors and execution limits. Journal failures
+remain sticky observer failures outside product classification. Earlier complete
+census attempts produced no report; all their current input outcomes remain
+unobserved. Progress prefixes confer no feature, runtime or corpus count credit.
+
+## Arcade current-main reconciliation — 2026-10-20
+
+ACTIVE / QUALIFICATION PENDING — Codex within the merged Arcade compatibility
+lane. Normally compose current main (including PR888 and PR1085) with the
+qualified local Camera/parser, lossless CLI and Array runtime candidates.
+Preserve incoming reset/directed-writer/ordinary-Number proofs and unrelated
+supplier pins. Reuse earlier results only at their exact source boundaries;
+the composed head needs affected full modules and fresh actual runtime checks.
+
+Priorities: a complete 225-subject conversion assessment, the genuine Array
+loader/value journey, then remaining valid Array producers and visible authoring
+plus SDK export/import. The historical 36 partials are not reduced by component
+tests or incomplete reports. Avoid `ci:full` unless the proposed change needs
+browser gates; retain every check enabled for the selected scope. No thresholds,
+resource caps, expected values or diagnostic channels are weakened.

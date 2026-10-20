@@ -43,11 +43,21 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     const unit=jobs.get('unit'),build=jobs.get('build'),deploy=jobs.get('deploy');
     assert.match(unit,/timeout-minutes: 30/);
     assert.match(unit,/fail-fast: false/);assert.match(unit,/shard: \[1, 2, 3, 4\]/);
-    const unitPrep=unit.slice(unit.indexOf('    runs-on:'),unit.indexOf('      - name: Run unit tests\n')).trimEnd();
+    const arraysAdmission='      - name: Admit the pinned Arrays source for native unit inputs\n'+
+        '        id: arrays_number_value_source\n'+
+        "        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}\n"+
+        '        run: node scripts/admit-arrays-number-value-test-source.mjs';
+    const fullUnitPrep=unit.slice(unit.indexOf('    runs-on:'),unit.indexOf('      - name: Run unit tests\n')).trimEnd();
+    assert.equal(fullUnitPrep.split(arraysAdmission).length,2,'exactly one complete unit-only Arrays admission follows production preparation');
+    assert.ok(fullUnitPrep.endsWith(arraysAdmission),'no unreviewed step may follow the unit-only source admission');
+    assert.doesNotMatch(build,/Admit the pinned Arrays source for native unit inputs/);
+    const unitPrep=fullUnitPrep.slice(0,-arraysAdmission.length).trimEnd();
     const buildPrep=build.slice(build.indexOf('    runs-on:'),build.indexOf('      # A green suite says')).trimEnd();
     assert.equal(unitPrep,buildPrep,'unit preparation must not omit or drift from the integrated build prerequisites');
     assert.ok(unitPrep.includes('steps.stc_flasher_pin.outputs.sha'));
     assert.match(unit,/BW_TEST_SHARD: \$\{\{ matrix.shard \}\}\/4/);
+    assert.match(unit,/steps\.arrays_number_value_source\.outcome == 'success'/);
+    assert.match(unit,/BW_ARRAY_NUMBER_VALUE_SOURCE: \$\{\{ github\.workspace \}\}\/test-results\/arrays-number-value-input\/arrays\.js/);
     assert.match(unit,/npm run test:fast:shard 2>&1 \| tee \/tmp\/unit.tap/);
     assert.match(unit,/check-test-run.mjs --set fast --shard "\$BW_TEST_SHARD" --tap/);
     assert.match(unit,/check-gui-scope.mjs --log test-results\/fast.gui-scope.tsv/);
@@ -65,7 +75,7 @@ test('live shard census audit rejects missing, misplaced, uncounted-failure and 
     const dir=mkdtempSync(path.join(os.tmpdir(),'bw-unit-shard-control-'));
     try {
         const selected=listTests('fast','1/4'),other=listTests('fast','2/4')[0];
-        const files=Object.fromEntries(selected.map(file=>[file,{tests:1,passed:1,failed:0,stdoutBytes:0,skipped:[]}]));
+        const files=Object.fromEntries(selected.map(file=>[file,{tests:1,passed:1,failed:0,stdoutBytes:0,skipped:[],todo:[]}]));
         const summary=`# tests ${selected.length}\n# pass ${selected.length}\n# fail 0\n# cancelled 0\n# skipped 0\n`;
         const audit=(entries,tap)=>{
             writeFileSync(path.join(dir,'census.json'),JSON.stringify({files:entries,events:selected.length}));writeFileSync(path.join(dir,'run.tap'),tap);
@@ -77,11 +87,19 @@ test('live shard census audit rejects missing, misplaced, uncounted-failure and 
         assert.notEqual(audit(files,'not ok 1 - deliberately uncounted failure\n'+summary).status,0);
         // Known-open tests: a TODO naming an existing docs/….md passes; without one, or naming a doc
         // that does not exist, the step is red (owner decision 2026-10-19).
-        const todoSummary=summary.replace('# skipped 0','# skipped 0\n# todo 1');
-        const todoOk=audit(files,'not ok 1 - known open # TODO tracked; see docs/ROBOT-LAB-VALIDATION.md\n'+todoSummary);
+        const todoSummary=summary.replace(`# pass ${selected.length}`,`# pass ${selected.length-1}`).replace('# skipped 0','# skipped 0\n# todo 1');
+        const todoFiles={...files,[selected[0]]:{...files[selected[0]],passed:0,
+            todo:[{name:'known open',reason:'tracked; see docs/ROBOT-LAB-VALIDATION.md',passed:false,type:'test'}]}};
+        const todoOk=audit(todoFiles,'not ok 1 - known open # TODO tracked; see docs/ROBOT-LAB-VALIDATION.md\n'+todoSummary);
         assert.equal(todoOk.status,0,todoOk.stdout+todoOk.stderr);
-        assert.notEqual(audit(files,'not ok 1 - known open # TODO no pointer\n'+todoSummary).status,0);
-        assert.notEqual(audit(files,'not ok 1 - known open # TODO see docs/NO-SUCH-DOC.md\n'+todoSummary).status,0);
+        assert.notEqual(audit(todoFiles,'not ok 1 - known open # TODO no pointer\n'+todoSummary).status,0);
+        assert.notEqual(audit(todoFiles,'not ok 1 - known open # TODO see docs/NO-SUCH-DOC.md\n'+todoSummary).status,0);
+        assert.notEqual(audit(files,'not ok 1 - known open # TODO tracked; see docs/ROBOT-LAB-VALIDATION.md\n'+todoSummary).status,0,
+            'a doc pointer cannot replace a missing detailed pending record');
+        const ordinaryLegacy=Object.fromEntries(Object.entries(files).map(([file,bucket])=>{
+            const copy={...bucket};delete copy.todo;return [file,copy];
+        }));
+        assert.equal(audit(ordinaryLegacy,summary).status,0,'ordinary buckets may retain the old absent-todo representation');
         const skipped={...files,[selected[0]]:{...files[selected[0]],skipped:[{name:'synthetic guard control',reason:'not an approved execution pointer'}]}};
         assert.notEqual(audit(skipped,summary.replace('# skipped 0','# skipped 1')).status,0);
     }finally{rmSync(dir,{recursive:true,force:true});}

@@ -35,6 +35,7 @@
  * is seen only if it is a ROM; fonts ship through an upstream package and are
  * the owner's open question, not this gate's.
  */
+import {registeredArraysSource} from './arrays-carrier.mjs';
 import {readFileSync, readdirSync, existsSync, statSync} from 'node:fs';
 import path from 'node:path';
 
@@ -124,8 +125,9 @@ export const vendoredTrees = (root, owner) => {
             const file = path.join(root, evidence);
             if (!existsSync(file)) throw new Error(`Scoped pin ${name} has no shipped bundle: ${evidence}`);
             const encoded = readFileSync(file, 'utf8').match(/module\.exports\s*=\s*makeExt\(("(?:\\.|[^"\\])*")\);?/);
-            if (!encoded) throw new Error(`Scoped pin ${name} has an unreadable bundle: ${evidence}`);
-            const header = JSON.parse(encoded[1]).split('\n').slice(0, 8).join('\n');
+            if (!encoded && name !== 'arrays-values') throw new Error(`Scoped pin ${name} has an unreadable bundle: ${evidence}`);
+            const header = (name === 'arrays-values' ? registeredArraysSource(readFileSync(file, 'utf8')) : JSON.parse(encoded[1]))?.split('\n').slice(0, 8).join('\n');
+            if (typeof header !== 'string') throw new Error(`Scoped pin ${name} has an unreadable registered bundle: ${evidence}`);
             const licence = licenceId(header);
             if (!licence) throw new Error(`Scoped pin ${name} has no readable source licence: ${evidence}`);
             // This source declares its author in a By header, not a copyright

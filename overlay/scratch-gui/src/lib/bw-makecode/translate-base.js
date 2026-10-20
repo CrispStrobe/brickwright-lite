@@ -248,6 +248,8 @@ const isTruthValue = node => !!node && (
     (node.type === 'Binary' && ['==', '===', '!=', '!==', '<', '>', '<=', '>=', '&&', '||'].includes(node.op)) ||
     (node.type === 'Unary' && node.op === '!'));
 
+const DELETE_MUTATION_UNSUPPORTED = 'Source delete mutation is not supported; property deletion semantics are not implemented';
+
 export class BaseTranslator {
     constructor () {
         this.enums = new Map();          // user `enum X {}` → {member: value}
@@ -384,6 +386,12 @@ export class BaseTranslator {
             if (this.aliases && this.aliases.has(node.name)) return this.aliases.get(node.name);
             return this.varName(node.name);
         case 'Unary':
+            if (node.op === 'delete') {
+                // Keep the missing mutation explicit. Reading/emitting its
+                // operand instead would silently erase the source operation.
+                this.unsupported.push(DELETE_MUTATION_UNSUPPORTED + callList(this.callsIn(node.argument)));
+                return '0';
+            }
             if (node.op === '!') return `not (${this.condition(node.argument)})`;
             // Parenthesised, and not optionally: `maxSpeed * -cos(a)` written
             // as `maxSpeed * 0 - cos(a)` is `(maxSpeed*0) - cos(a)`, which
@@ -1139,6 +1147,10 @@ export class BaseTranslator {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
 
+        if (expr.type === 'Unary' && expr.op === 'delete') {
+            push(this.note(DELETE_MUTATION_UNSUPPORTED + callList(this.callsIn(expr.argument))));
+            return;
+        }
         if (expr.type === 'Assignment' && this.recordField(expr.left)) {
             const f = this.recordField(expr.left);
             const handle = this.single(f.handle, out, pad);

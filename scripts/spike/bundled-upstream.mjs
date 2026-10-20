@@ -32,6 +32,7 @@
 // (`legospike_turbowarp_transpile.js`). Deriving one from the other would mean
 // guessing, and a gate that guesses its own subject is worse than no gate. The
 // claim "this bundle is that file" is exactly what should be reviewable.
+import {registeredArraysSource} from '../lib/arrays-carrier.mjs';
 import {createHash} from 'node:crypto';
 import {readFileSync, existsSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
@@ -180,6 +181,7 @@ export const bundleSource = function (id) {
     const p = bundlePath(id);
     if (!existsSync(p)) return null;
     const text = readFileSync(p, 'utf8');
+    if (id === 'arrays') return registeredArraysSource(text);
     if (!text.includes('makeExt(')) return null;
 
     let captured = null;

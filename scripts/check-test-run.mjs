@@ -70,22 +70,21 @@ check('the runner printed a summary', 'tests' in summary && 'fail' in summary,
     'tests' in summary ? `tests ${summary.tests}, pass ${summary.pass}, fail ${summary.fail}, cancelled ${summary.cancelled ?? 0}`
         : 'no `# tests` / `# fail` lines — the runner died before summarising, and a partial TAP reads as green to a grep');
 const outcomes = tapOutcomes(tap);
-const notOk = outcomes.filter(row => !row.ok && !row.directive).map(row => row.line);
 const tapTodos = outcomes.filter(row => row.directive === 'TODO');
-// A known-open test (`{todo: …}`) prints `not ok N - name # TODO reason` and is counted under
-// `# todo`, not `# fail`. It is accepted only when its reason points at the doc entry that tracks
-// it (an existing `docs/….md`), the way a skip must point at where it executes; a TODO without
-// one still fails here (owner decision 2026-10-19).
-const TODO_DOC = /# TODO\b.*?\b(docs\/[A-Za-z0-9._/-]+\.md)/;
+// Pending is distinct from success/failure, but every pending outcome must name
+// the existing docs entry that tracks it. Parse the directive first: a name
+// containing an escaped hash or a docs path cannot hide an ordinary failure.
+const TODO_DOC = /\b(docs\/[A-Za-z0-9._/-]+\.md)\b/;
 const repoRoot = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
-const todoWithDoc = l => {
-    const m = l.match(TODO_DOC);
-    return Boolean(m) && existsSync(path.join(repoRoot, m[1]));
+const todoWithDoc = row => {
+    const match = row.reason.match(TODO_DOC);
+    return Boolean(match) && existsSync(path.join(repoRoot, match[1]));
 };
-const strayTodos = tapTodos.filter(row => !todoWithDoc(row.line));
+const strayTodos = tapTodos.filter(row => !todoWithDoc(row));
 check('every known-open (TODO) test points at the doc entry that tracks it', strayTodos.length === 0,
     strayTodos.length ? `${strayTodos.length} TODO(s) without an existing docs/….md in the reason: ${strayTodos[0].line.trim().slice(0, 120)}`
         : `${tapTodos.length} TODO(s), each with its doc`);
+const notOk = outcomes.filter(row => !row.ok && !row.directive).map(row => row.line);
 const counted = (summary.fail ?? 0) + (summary.cancelled ?? 0);
 check('every `not ok` is counted by the summary', notOk.length === 0 || counted > 0,
     notOk.length === 0 ? 'no failures' : counted > 0 ? `${notOk.length} not-ok line(s), summary counts ${counted}`
@@ -142,17 +141,24 @@ if (!args.census) {
         const problems = [...verdict.unpointed, ...verdict.moved, ...verdict.undated, ...verdict.deadWorkflow];
         check(`every skipped test (${skips.length}) points at the place it executes ("${HEADING}", ${pointers.length} pointer(s))`, problems.length === 0,
             problems.length ? '\n      ' + problems.join('\n      ') : (skips.length ? skips.map(s => `${path.basename(s.file)}: ${s.name.slice(0, 50)}`).join('; ') : 'nothing skipped'));
-        // test-census-reporter.mjs records pending outcomes per file. A census
-        // without that record (an older or hand-written census) is held to the
-        // TAP doc-pointer rule above only.
-        if (Object.values(census.files).some(c => Array.isArray(c.todo))) {
-            const todos = Object.values(census.files).flatMap(c => Array.isArray(c.todo) ? c.todo : []);
-            check('the census records every TODO the TAP printed', todos.length === tapTodos.length,
-                `TAP # TODO lines ${tapTodos.length}, census TODOs ${todos.length}`);
-            const todoTests = todos.filter(row => row.type !== 'suite');
-            check('pending leaf tests agree with the runner summary', todoTests.length === (summary.todo ?? 0),
-                `census pending tests ${todoTests.length}, summary TODO ${summary.todo ?? 0}; pending suites are separate outcomes`);
-        }
+        const todoRecords = Object.values(census.files).every(c => {
+            // Older ordinary buckets omitted todo entirely. Accept that absence
+            // only when all their outcomes are already ordinary; the full TAP
+            // and pending-leaf checks below must still account for every TODO.
+            if (c.todo === undefined) return Number.isSafeInteger(c.tests) && Number.isSafeInteger(c.passed) &&
+                Number.isSafeInteger(c.failed) && c.tests === c.passed + c.failed;
+            return Array.isArray(c.todo) && c.todo.every(row => row && typeof row === 'object' &&
+                typeof row.name === 'string' && typeof row.reason === 'string' &&
+                typeof row.passed === 'boolean' && typeof row.type === 'string');
+        });
+        check('the census retains detailed TODO records, not numeric totals', todoRecords,
+            todoRecords ? 'name, reason, passed and type retained' : 'a pending outcome lost its detailed record');
+        const todos = todoRecords ? Object.values(census.files).flatMap(c => c.todo || []) : [];
+        check('the census records every TODO the TAP printed', todos.length === tapTodos.length,
+            `TAP # TODO lines ${tapTodos.length}, census TODOs ${todos.length}`);
+        const todoTests = todos.filter(row => row.type !== 'suite');
+        check('pending leaf tests agree with the runner summary', todoTests.length === (summary.todo ?? 0),
+            `census pending tests ${todoTests.length}, summary TODO ${summary.todo ?? 0}; pending suites are separate outcomes`);
         const censusFailed = Object.values(census.files).reduce((a, c) => a + c.failed, 0);
         check('the census and the summary agree on whether anything failed',
             (censusFailed > 0) === (counted > 0),

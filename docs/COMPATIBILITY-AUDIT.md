@@ -288,3 +288,173 @@ HEX, original Arcade on-screen A press/release, actual PyBadge UF2 download and
 family validation, imported costume Pixel editor, live Scratch→Arcade
 compilation/drawing, EV3 simulator and invalid-file diagnostics. These are
 browser/compiler checks, not physical hardware qualification.
+
+## Explicit retained contexts and shared conversion operation
+
+The proposed `compat-audit.mjs --context-catalogue catalogue.json` input keeps
+raw source snippets and retained complete projects separate. Positional inputs
+retain their original target, generated configuration, public import and
+Creator classification. A retained context supplies its own target, exact root
+files, original resolved package graph, source order, resources and original
+compiler outcome. Failed original compilations remain in the input denominator.
+No compiler runs unless its existing explicit option is selected.
+
+The CLI and bounded conversion consumers use
+`scripts/lib/conversion-audit-core.mjs`. It calls the actual public importer and
+Creator; the legacy translated/partial/parse-failed label remains separate from
+all provided errors, warnings, unsupported and unparsed channels. Full actual
+returns, dependency callback data, Creator project/assets and own error data
+remain in the JSON observation graph. Absent channels and unobserved private or
+callable implementations are labelled explicitly. Data capture invokes no input-defined accessors or `toJSON` methods.
+Native collection iteration and byte views use held internal-slot operations;
+custom iterators and view-property accessors are recorded without invocation. This is conversion evidence, not semantic,
+archive, runtime, GUI or hardware equivalence.
+
+The shared reader is `scripts/lib/conversion-context-inputs.mjs`. A catalogue
+uses schema `brickwright/conversion-context-catalogue/v1`, an ordered `subjects`
+array and a `blobs` map. A blob records a physical root ID, relative path,
+length, SHA-256 and encoding (`utf8`, `json` or `gzip-json`). Gzip references also
+record decoded length and SHA-256. References select a blob and an exact JSON
+pointer. `--context-root ID=directory` explicitly binds additional local data
+roots; it does not fetch data or execute modules. Physical paths are bounded
+and reject symlink traversal. Logical MakeCode filenames, package IDs, Unicode,
+percent characters and prototype-spelled keys remain exact data in own maps.
+
+Each subject preserves its original opaque ID and has kind `RAW_BASELINE` or `RETAINED_CONTEXT`, target,
+name and complete root-file length/hash rows. Identity is the compound pair
+(kind, ID): raw and retained contexts can share an original ID, while duplicates
+within one kind refuse. A root must already be a record containing only string
+values; arrays and malformed values are rejected before any map copy. Retained contexts additionally
+provide original root/graph/compiler references, each selected package's full
+source/config/resource rows and complete JRES/source-order manifests. Available
+notice bytes can be referenced and checked; missing retained notices stay
+explicitly unavailable. Licence and historical producer claims are recorded
+separately from verified byte relations; the reader does not authenticate an
+SDK execution or issue a legal clearance.
+
+Legacy graph metadata is explicitly derived from current root and retained
+config data, with original fields preserved. Dependency identities use the
+current canonical identity helper. Conflicting declarations remain recorded;
+the unchanged public dependency validator makes the actual acceptance or
+rejection. No catalogue label bypasses it or repairs conflicting refs. A
+bounded full-input census additionally needs independent admission of its
+originals and historical source-contract evidence before execution.
+
+Input limits are distinct from output limits: at most 16 MiB per packed or
+decoded blob, 96 MiB aggregate catalogue/input reads, and an 8 MiB shared
+metadata-string cache. Decoded shared values are fresh per subject. The reader
+checks the declared whole-input budget before loading subjects. A particular
+corpus must have its exact budget checked; these limits do not promise it fits.
+Duplicate JSON keys, malformed UTF-8, corrupt or concatenated gzip members,
+wrong hashes, extra files and missing resource roles refuse rather than being
+silently dropped. Optional compiler/runtime work and normal CLI Git provenance
+remain outside the pure conversion core; default conversion no longer eagerly
+loads the SDK helper.
+
+SOURCE qualification and actual CLI/component results are still pending. The
+first integration covers the reader, shared core and compatibility CLI.
+`conversion-roundtrips.mjs` remains unchanged; sharing this reader and initial
+conversion operation there is an explicit follow-up, followed by its affected
+archive/export controls. Current raw partial counts and complete-context results
+must be observed afresh before a new corpus claim.
+
+Reached Creator module acquisition is setup outside the shared core's product
+catch. A missing or refused module propagates as an observation/setup failure,
+not a product parse failure. This deliberately tightens the former CLI routing,
+which included its lazy module import inside the parse catch. Actual constructor
+and parse exceptions still retain the legacy parse-failed label; valid-input
+classification is unchanged.
+
+### Lossless report encoding
+
+The CLI's conversion records use the explicitly versioned
+`brickwright/conversion-observation-graph/v2` encoding. Native byte payloads
+are base64. Consecutive own numeric-index descriptors may be stored as runs
+containing their exact index range and enumerable, configurable and writable
+attributes. Values are derived from the stored payload only when they were
+actually equal to those octets. Named properties, accessors, differing signed,
+wide or floating values, graph references and special primitives remain explicit.
+A run does not grant a type, dependency identity or compiler result.
+
+`expandConversionObservationGraph` in `scripts/lib/conversion-audit-core.mjs`
+expands parsed v1 or v2 JSON into the original v1 data representation. It checks
+versions, references, descriptors, payload sizes and the original logical graph
+limits, including every expanded run entry. It rejects getters in supplied JSON
+metadata. Its payload budget defaults to 16 MiB and can be explicitly selected
+up to 64 MiB within the consumer's resource envelope; this is a decoder memory
+bound, not a compatibility or source-trust option. Decoder inputs are parsed
+own-data JSON, not proof of arbitrary proxy or hostile-realm provenance.
+
+The existing `conversionObservationGraph` API still returns v1. The CLI selects
+`compactConversionObservationGraph`, which observes the same full values and
+uses v2 byte packing. Conversion, Creator calls, provided diagnostic channels,
+legacy classifications and original compiler outcomes are unchanged.
+
+An output name ending in `.json.gz` explicitly selects gzip of the **complete**
+JSON report. Other names keep plain UTF-8 JSON. `outputEncoding` records that
+choice; Markdown and console summaries remain separate. Node's gzip module is
+acquired only on the compressed output path. For example:
+
+```sh
+node scripts/compat-audit.mjs --target arcade \
+  --context-catalogue contexts.json --out report.json.gz --markdown report.md
+```
+
+Packing and compression do not guarantee that a particular corpus fits an
+execution budget. Report-write, decode or resource failures remain observation
+failures. Rows, diagnostics, assets and original failures must not be omitted to
+fit a limit. Static translation still does not establish runtime behavior or
+behavioral equivalence. The current Markdown gap tables use historical legacy
+labels; presenting modern Creator errors and unparsed channels alongside those
+labels remains separate reporting work.
+
+
+### Native octet descriptor observation
+
+The compact report observer can encode native Uint8Array integer-index
+properties directly from the existing byte snapshot. Native slots establish the
+brand, including Buffer and subclasses; fixed ordinary ArrayBuffer backing is
+required. This preserves the existing v2 format and all logical entry limits.
+Own keys are still enumerated once, and every named or symbol property retains
+its actual descriptor and value observation. Shared, resizable, unrecognized or
+changed-intrinsic cases retain the original descriptor loop. The v1 observer and
+conversion/classification remain unchanged.
+
+This is an observer-cost candidate, not a measured conversion speedup. The
+complete 225-input episode timed out before its full report; all current subject
+outcomes remain unobserved. Component controls, actual measurement and a freshly
+bound complete run remain separate requirements. No cap increase, filtering or
+partial-prefix result is implied.
+
+### Optional phase progress journal
+
+`--progress-jsonl FILE` requests a separate, fresh JSONL observation journal.
+It is off by default and does not replace the complete JSON/gzip report,
+Markdown, provided diagnostics, source inputs or qualification gates. The file
+must not exist, alias an input/report, or lie inside a positional input directory,
+the catalogue directory or an explicitly supplied context root. This prevents
+journal creation from changing input collection or supplying a missing input.
+The CLI opens the leaf exclusively without following a leaf symlink. It does
+not claim continuous protection against concurrent ancestor-directory changes.
+
+Each complete line records its sequence, fixed phase, exact input identity when
+applicable, process CPU microseconds and monotonic nanoseconds. Core markers
+observe only existing dependency-callback, import and Creator phase/status
+scalars. They never read conversion values or error getters. A dependency
+callback marker precedes validation; import/Creator markers follow the actual
+return or throw. Row-in-memory markers do not establish a persisted full report,
+clean conversion, compiler result, runtime behavior or completed census.
+
+Intervals include all intervening process work, including collection, GC and
+observation. Cumulative observer write cost is measured before each event; the
+last event's write and close residual remain unmeasured. Missing markers or a
+partial last line remain unobserved. There are no timers or profiler hooks.
+
+The journal is bounded to 8 MiB, 65,536 events and 16 KiB per line. Partial
+writes are completed with explicit progress checks. Its first write, bound or
+close failure stays sticky, attempts a fixed stderr marker, and escapes the
+per-input error classifiers. It cannot become a product diagnostic or a new
+parse failure. Complete lines and any failed partial write remain available;
+normal completion closes the journal once. A killed process has no invented
+success footer. Full reports remain mandatory before census claims. This
+option neither raises execution limits nor makes an incomplete run successful.

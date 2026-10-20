@@ -337,12 +337,18 @@ jobs:
       - name: Fetch the heavy simulation engine (labwired-wasm)
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
       - name: Install
-        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       # The deployable build below is flag-ON, and flag-on webpack aliases
       # @yowasp/yosys to the REAL package (an off build gets the yosys-absent stub),
       # so the local FPGA tier's worker resolves. ~75 MB, in the deploy build only.
       - name: Install the local FPGA toolchain (the deployable build is flag-on)
-        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
       # The FPGA surface ships in the DEPLOYABLE build (BW_ENABLE_FPGA=1 above),
@@ -777,24 +783,21 @@ jobs:
         # Bound one installation step; do not start nested retries that may
         # contend with APT children left behind by a timed-out attempt.
         run: npx playwright install --with-deps chromium
+      - name: Admit the pinned Arrays source for native unit inputs
+        id: arrays_number_value_source
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: node scripts/admit-arrays-number-value-test-source.mjs
       - name: Run unit tests
-        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' && steps.arrays_number_value_source.outcome == 'success' }}
         env:
           BW_TEST_SHARD: ${{ matrix.shard }}/4
+          BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
-          # The two *-native Array tests refuse the vendored copy and require an
-          # explicit frozen supplier file: one exact upstream commit, bytes bound.
-          ARRAY_SUPPLIER_SHA: 4dde49c46123ddf355c53192ce382dab77746799
-          ARRAY_SUPPLIER_SHA256: 47f50e20773c417fb0a7d164b70a354f66cd5c1daa871608e0af9eb0cfdd3db5
         run: |
           if ! grep -q '"test"' package.json; then
             echo "::error::package.json has no test script — tests exist but nothing runs them"
             exit 1
           fi
-          supplier="$RUNNER_TEMP/arrays-number-value-supplier.js"
-          curl -fsSL --retry 3 -o "$supplier" "https://raw.githubusercontent.com/CrispStrobe/extensions/${ARRAY_SUPPLIER_SHA}/extensions/CrispStrobe/arrays.js"
-          echo "${ARRAY_SUPPLIER_SHA256}  $supplier" | sha256sum -c -
-          export BW_ARRAY_NUMBER_VALUE_SOURCE="$supplier"
           set -o pipefail
           # This shard partitions the complete non-corpus suite; the two corpus
           # walks remain in their existing required job. They run in the `corpus` job below, in parallel with this
@@ -840,8 +843,8 @@ jobs:
           # A construction failure is the WORST kind to lose: the gate did not
           # run at all, so it cannot have found anything, and a green line says
           # it did. This repo has found five gates that could not fail; this one
-          # could not even be built. Classify the stream; a TODO is pending, and check-test-run.mjs above
-          # requires its reason to name an existing docs/….md entry.
+          # could not even be built. Classify every depth of the stream; TODO
+          # stays pending only with its existing docs pointer checked above.
           node scripts/check-tap-failures.mjs /tmp/unit.tap
           exit "$rc"
 
@@ -854,6 +857,7 @@ jobs:
             /tmp/unit.tap
             test-results/fast.census.json
             test-results/fast.gui-scope.tsv
+            test-results/arrays-number-value-input/
           if-no-files-found: error
 
   build:
@@ -891,12 +895,18 @@ jobs:
       - name: Fetch the heavy simulation engine (labwired-wasm)
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
       - name: Install
-        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       # The deployable build below is flag-ON, and flag-on webpack aliases
       # @yowasp/yosys to the REAL package (an off build gets the yosys-absent stub),
       # so the local FPGA tier's worker resolves. ~75 MB, in the deploy build only.
       - name: Install the local FPGA toolchain (the deployable build is flag-on)
-        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+        run: |
+          set -euo pipefail
+          (cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys)
+          git diff --exit-code -- packages/scratch-gui/package.json packages/scratch-gui/package-lock.json
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
       # The FPGA surface ships in the DEPLOYABLE build (BW_ENABLE_FPGA=1 above),

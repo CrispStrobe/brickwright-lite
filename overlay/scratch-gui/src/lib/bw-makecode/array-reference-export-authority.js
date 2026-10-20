@@ -1,3 +1,4 @@
+import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
 
@@ -1116,8 +1117,19 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
     };
+    // The old all-writer authority remains the first proof. A separate current
+    // occurrence profile is prepared only for a mixed producer cell; its private
+    // candidates are exact inputs which the conservative proof actually refused.
+    const mixedArrayCell=[...cells.values()].some(c=>c.types.has(bad)&&[...c.types].some(t=>t&&typeof t==='object'&&t.array));
+    const occurrence=mixedArrayCell?createArrayOccurrenceExportAuthority(project,(target,node,name)=>{
+        const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
+    }):null;
     const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     return Object.freeze({validateInput(target,node,name='ARRAY'){
+        // Observe retained occurrence facts before *any* diagnostic early exit.
+        // A false/throw observation cannot revive after physical restoration.
+        const occurrenceCurrent=occurrence?occurrence.observe():false;
+        if(occurrence?.candidate(target,node,name)&&!occurrenceCurrent)return {ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'};
         let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects)summaryExpired=true;}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;throw error;}
         if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;}
         // Only a successfully discounted reset may retain this dependency.
@@ -1127,6 +1139,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
         if(deadOccurrence(target,node))return {ok:true};
+        if(occurrence?.candidate(target,node,name))return occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'};
         const value=input(node,name,target),types=readInput(value);return singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'};
     }});
 }

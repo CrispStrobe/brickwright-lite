@@ -1,3 +1,5 @@
+import {constraints} from './ordinary-procedure-constraint-metadata.js';
+import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {declarationIdentityInput} from './declaration-identity-input.js';
 import {consumeSharedImageEntryEffects,sharedImageEntryArrayDomain} from './shared-image-array-source-effects.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
@@ -38,10 +40,10 @@ export function analyseSourceValueProducers(program,options={}) {
     return analyseSourceValues(program,options,null);
 }
 
-function analyseSourceValues(program,options,identityInput) {
+function analyseSourceValues(program,options,identityInput,cameraNumberInput=null) {
     if(options.normalCompletion&&!sourceNormalCompletionFor(program,options.normalCompletion))throw new Error('Source completion proof must belong to the actual Program');
     const containsThrow=node=>node&&typeof node==='object'&&(node.type==='ThrowStatement'||Object.values(node).some(value=>Array.isArray(value)?value.some(containsThrow):containsThrow(value)));
-    if(!containsThrow(program))return analyseGraph(program,options,null,identityInput);
+    if(!containsThrow(program))return analyseGraph(program,options,null,identityInput,cameraNumberInput);
     // Bootstrap is private. No public option can bypass exceptional reachability
     // or supply a caller-made callee table after a consumer clones the AST.
     const initial=analyseGraph(program,{...options,normalCompletion:null});
@@ -95,7 +97,7 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -219,7 +221,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
-        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||cameraPropertyNumbers?.has(node)||mathNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node)||spriteAyNumbers?.has(node)||cameraNumberInput?.has(node))add(current,'Number');
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
@@ -326,7 +328,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let invalidated;do{invalidated=false;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())?types.get(value)||[]:[]);
+    const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
@@ -1094,4 +1096,303 @@ function proveImageArrayCloneEffectEntries(program,createGraph,sourceContext) {
         return Number.isFinite(expected)&&expected>0&&votes.get(call)===true&&visits.get(call)===expected||invariantVotes.has(call);
     }});
     });
+}
+
+
+// Shared complete validator: public entry retains its original eager graph and
+// option observations. No caller can supply a graph/factory to this engine.
+function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers) {
+ // A comparison, `!` or typeof of proved primitive operands is a primitive
+ // producer for this consumer (exported Code booleans are `0 < 1` helpers).
+ // A callback closure is allocated after the bindings already initialized
+ // at that point; they stay initialized inside its body.
+ // Structural binary helpers (`function h(a,b){return a OP b}` at the top
+ // level, declared once and never written) are specialized per call site, as
+ // the callable source gate does: each call is Number only from Number operands.
+ const helperNames=new Map();
+ for(const fn of program.body||[]){
+  const value=fn?.type==='FunctionDeclaration'&&fn.params?.length===2&&new Set(fn.params).size===2&&fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
+  if(value?.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(value.op)&&value.left?.type==='Identifier'&&value.right?.type==='Identifier'&&value.left.name===fn.params[0]&&value.right.name===fn.params[1])
+   helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
+ }
+ const written=new Set();const scanWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanWrites);return;}
+  if(node.type==='Assignment'||node.type==='Update'){let target=node.type==='Assignment'?node.left:node.argument;while(['Member','Index'].includes(target?.type))target=target.object;if(target?.type==='Identifier')written.add(target.name);}
+  if(node.type==='Declaration')for(const decl of node.decls||[])written.add(decl.name);
+  if(Array.isArray(node.params))for(const name of node.params)written.add(name);
+  for(const child of Object.values(node))if(child&&typeof child==='object')scanWrites(child);};
+ scanWrites(program);
+ const numericHelpers=new Set([...helperNames].filter(([name,fn])=>fn&&!written.has(name)).map(([,fn])=>fn));
+ return {unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,primitiveComparisons:true,closureEntries:true,numericHelpers};
+}
+export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false}={}) {
+ const graph=analyseSourceValueProducers(program,primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers));
+ return validatePrimitiveConstraintGraph(program,graph,onlyFunctions);
+}
+function validatePrimitiveConstraintGraph(program,graph,onlyFunctions) {
+ const constraintTypes=graph.constraintTypesAt||graph.typesAt;
+ const functions=new Map(),uses=[],calls=[],writes=[];
+ const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
+ const walk=(node,parent=null,key=null)=>{
+  if(!node||typeof node!=='object')return;
+  if(Array.isArray(node)){node.forEach(child=>walk(child,parent,key));return;}
+  if(ordinary.has(node)) {const selected=constraints(node);if(selected.length)functions.set(node,{selected,escaped:false});}
+  if(node.type==='Identifier')uses.push({node,parent,key});
+  if(node.type==='Call')calls.push(node);
+  if(node.type==='Assignment'||node.type==='Update')writes.push(node);
+  for(const [name,value] of Object.entries(node))if(value&&typeof value==='object')walk(value,node,name);
+ };
+ walk(program);
+ // The callable/named/registered-callback lanes retain escaped function values.
+ // This ordinary declaration protocol only handles truly unescaped declarations.
+ for(const {node,parent,key} of uses) {
+  const declaration=graph.unchangedFunctionAt(node),entry=functions.get(declaration);
+  if(entry&&!(parent?.type==='Call'&&key==='callee'))entry.escaped=true;
+ }
+ const diagnostics=[];
+ for(const [fn,entry] of functions) {
+  if(entry.escaped)continue;
+  const requireTypes=(types,type,label)=>{if(type==='Any')return;if(!types.size||[...types].some(actual=>actual!==type))diagnostics.push(`Procedure parameter constraint: ${label} requires ${type} from actual producers`);};
+  // Default metadata is not a producer. Check the actual conditional RHS on
+  // the same source AST; only this bounded primitive default slice is selected.
+  for(let index=0;index<(fn.parameterDefaults||[]).length;index++){
+   const value=fn.body[index].consequent[0].expr.right,types=constraintTypes(value),parameterIndex=fn.params.indexOf(fn.parameterDefaults[index].name);
+   const formalBindings=new Map(fn.params.map((name,index)=>[graph.bindingOf(fn.body[0],name),index]).filter(([binding])=>binding));
+   const inspect=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(inspect);return;}if(node.type==='Identifier'&&formalBindings.has(graph.bindingOf(node))&&formalBindings.get(graph.bindingOf(node))>=parameterIndex)diagnostics.push(`Procedure parameter constraint: ${fn.name} default cannot reference its own or a later formal`);for(const child of Object.values(node))if(child&&typeof child==='object')inspect(child);};inspect(value);
+   if(!types.size||[...types].some(type=>!['Number','String','Boolean','Null','Undefined'].includes(type)))diagnostics.push(`Procedure parameter constraint: ${fn.name} default requires actual primitive producers`);
+  }
+  const incoming=calls.filter(call=>graph.unchangedFunctionAt(call)===fn);
+  for(const call of incoming) {
+   if(call.isNew||call.typeArguments?.length||call.args.length>fn.params.length||fn.params.slice(call.args.length).some(name=>!fn.optionalParams?.includes(name)||fn.paramTypes?.[name]?.text!=='any')){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
+   for(const constraint of entry.selected)requireTypes(constraintTypes(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
+  }
+  // All assignments into an actual formal must discharge its contract. Its
+  // declared type is deliberately absent from the actual RHS producer proof.
+  const formalBindings=new Map(),anchor=fn.body?.[0];
+  for(const name of fn.params)if(anchor&&graph.bindingKindsAt(anchor,name).has('parameter'))formalBindings.set(graph.bindingOf(anchor,name),name);
+  for(const writer of writes) {
+   const lhs=writer.type==='Update'?writer.argument:writer.left;
+   if(lhs?.type!=='Identifier')continue;const name=formalBindings.get(graph.bindingOf(lhs)),constraint=entry.selected.find(c=>c.name===name);if(!constraint)continue;
+   if(writer.type==='Update'||writer.op!=='='){
+    if(constraint.type==='Any')continue;
+    const numeric=constraint.type==='Number'&&(writer.type==='Update'?['++','--'].includes(writer.op):['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(writer.op));
+    if(!numeric)diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);
+    else if(writer.type!=='Update')requireTypes(constraintTypes(writer.right),'Number',`${fn.name}.${name} compound writer`);
+   }else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
+  }
+ }
+ return Object.freeze([...new Set(diagnostics)]);
+}
+
+// Compiler-only CameraProperty derivation. These records and graphs never leave
+// this module. The complete entry below is called only by the synchronous owned
+// parser/normalizer preparation path; own-data rows are not a Proxy-origin token.
+const cameraRealm=globalThis,cameraKeys=Reflect.ownKeys,cameraDescriptor=Object.getOwnPropertyDescriptor;
+const cameraPrototype=Object.getPrototypeOf,cameraOwn=Object.hasOwn,cameraSame=Object.is,cameraApply=Reflect.apply;
+const CameraSet=Set,CameraWeakSet=WeakSet,cameraFreeze=Object.freeze,cameraDefine=Object.defineProperty;
+const cameraWeakHas=WeakSet.prototype.has,cameraWeakAdd=WeakSet.prototype.add;
+const cameraSetHas=Set.prototype.has,cameraSetAdd=Set.prototype.add,cameraSetDelete=Set.prototype.delete;
+const cameraSetValues=Set.prototype.values,cameraSetNext=cameraPrototype(new Set().values()).next;
+const cameraObjectPrototype=Object.prototype,cameraArrayPrototype=Array.prototype;
+const cameraRow=object=>{
+    const names=cameraKeys(object),fields=[];
+    for(let i=0;i<names.length;i++)fields[i]=cameraDescriptor(object,names[i]);
+    return {object,parent:cameraPrototype(object),names,fields};
+};
+const cameraRowCurrent=row=>{
+    const names=cameraKeys(row.object);
+    if(cameraPrototype(row.object)!==row.parent||names.length!==row.names.length)return false;
+    for(let i=0;i<names.length;i++){
+        if(names[i]!==row.names[i])return false;
+        const before=row.fields[i],now=cameraDescriptor(row.object,names[i]);
+        if(!now||now.enumerable!==before.enumerable||now.configurable!==before.configurable||
+            cameraOwn(now,'value')!==cameraOwn(before,'value'))return false;
+        if(cameraOwn(before,'value')){
+            if(now.writable!==before.writable||!cameraSame(now.value,before.value))return false;
+        }else if(now.get!==before.get||now.set!==before.set)return false;
+    }
+    return true;
+};
+const cameraIntrinsicObjects=[Object,Array,Map,Set,WeakMap,WeakSet,Reflect,Function,String,Number,RegExp,JSON,
+    Object.prototype,Array.prototype,Map.prototype,Set.prototype,WeakMap.prototype,WeakSet.prototype,
+    Function.prototype,String.prototype,Number.prototype,RegExp.prototype];
+// Include actual native iterator prototypes and every shared ancestor.
+for(const iterator of [[][Symbol.iterator](),new Map().entries(),new Set().values()]){
+    let proto=cameraPrototype(iterator);
+    while(proto){if(!cameraIntrinsicObjects.includes(proto))cameraIntrinsicObjects.push(proto);proto=cameraPrototype(proto);}
+}
+const cameraIntrinsicRows=[];
+for(let i=0;i<cameraIntrinsicObjects.length;i++)cameraIntrinsicRows[i]=cameraRow(cameraIntrinsicObjects[i]);
+const cameraGlobalNames=['globalThis','Object','Array','Map','Set','WeakMap','WeakSet','Reflect','Function','String','Number','RegExp','JSON'];
+const cameraGlobalFields=[];
+for(let i=0;i<cameraGlobalNames.length;i++)cameraGlobalFields[i]=cameraDescriptor(cameraRealm,cameraGlobalNames[i]);
+const cameraIntrinsicsCurrent=()=>{
+    for(let i=0;i<cameraIntrinsicRows.length;i++)if(!cameraRowCurrent(cameraIntrinsicRows[i]))return false;
+    for(let i=0;i<cameraGlobalNames.length;i++){
+        const before=cameraGlobalFields[i],now=cameraDescriptor(cameraRealm,cameraGlobalNames[i]);
+        if(!now||!cameraOwn(now,'value')||!cameraOwn(before,'value')||now.value!==before.value||
+            now.enumerable!==before.enumerable||now.configurable!==before.configurable||now.writable!==before.writable)return false;
+    }
+    return true;
+};
+// Necessary-candidate filter only, at the same private owned-data boundary.
+// Absence selects the complete original validator; presence proves nothing.
+// Captured operations avoid mutable iteration helpers and inherited index setters.
+function compilerMayHaveCameraMember(program){
+    try{
+        const pending=[program],seen=new CameraWeakSet();
+        while(pending.length){
+            const value=pending[pending.length-1];pending.length--;
+            if(!value||typeof value!=='object')continue;
+            if(cameraApply(cameraWeakHas,seen,[value]))continue;
+            cameraApply(cameraWeakAdd,seen,[value]);
+            const proto=cameraPrototype(value);
+            if(proto!==cameraObjectPrototype&&proto!==cameraArrayPrototype&&proto!==null)return true;
+            const type=cameraDescriptor(value,'type'),object=cameraDescriptor(value,'object');
+            if(type&&cameraOwn(type,'value')&&type.value==='Member'&&object&&cameraOwn(object,'value')&&object.value&&typeof object.value==='object'){
+                const kind=cameraDescriptor(object.value,'type'),name=cameraDescriptor(object.value,'name');
+                if(kind&&cameraOwn(kind,'value')&&kind.value==='Identifier'&&name&&cameraOwn(name,'value')&&name.value==='CameraProperty')return true;
+            }
+            const keys=cameraKeys(value);
+            for(let i=0;i<keys.length;i++){
+                const field=cameraDescriptor(value,keys[i]);
+                if(typeof keys[i]!=='string'||!field||!cameraOwn(field,'value'))return true;
+                if(field.value&&typeof field.value==='object')cameraDefine(pending,pending.length+'',{value:field.value,writable:true,enumerable:true,configurable:true});
+            }
+        }
+        return false;
+    }catch{return true;}
+}
+function compilerCameraNumberInput(program){
+    let expired=false;const rows=[];
+    const current=()=>{
+        if(expired)return false;
+        try{
+            if(!cameraIntrinsicsCurrent()){expired=true;return false;}
+            for(let i=0;i<rows.length;i++)if(!cameraRowCurrent(rows[i])){expired=true;return false;}
+            if(!cameraIntrinsicsCurrent()){expired=true;return false;}
+            return true;
+        }catch{expired=true;return false;}
+    };
+    try{
+        if(!cameraIntrinsicsCurrent())return null;
+        const seen=new CameraSet(),active=new CameraSet(),pending=[{value:program,depth:0,leave:false}];let slots=0;
+        while(pending.length){
+            const item=pending[pending.length-1];pending.length--;const value=item.value;
+            if(value===null||typeof value!=='object'){
+                if(['function','symbol','bigint'].includes(typeof value))return null;
+                continue;
+            }
+            if(item.leave){cameraApply(cameraSetDelete,active,[value]);continue;}
+            if(cameraApply(cameraSetHas,active,[value]))return null;
+            if(cameraApply(cameraSetHas,seen,[value]))continue;
+            if(item.depth>128||rows.length>=50000)return null;
+            const parent=cameraPrototype(value);
+            if(parent!==cameraObjectPrototype&&parent!==cameraArrayPrototype&&parent!==null)return null;
+            const row=cameraRow(value);if((slots+=row.names.length)>500000)return null;
+            cameraApply(cameraSetAdd,seen,[value]);cameraApply(cameraSetAdd,active,[value]);rows[rows.length]=row;
+            pending[pending.length]={value,depth:item.depth,leave:true};
+            for(let i=row.names.length-1;i>=0;i--){
+                const key=row.names[i],field=row.fields[i];
+                if(typeof key!=='string'||!field||!cameraOwn(field,'value'))return null;
+                pending[pending.length]={value:field.value,depth:item.depth+1,leave:false};
+            }
+        }
+        if(!current()||program?.type!=='Program'||!Array.isArray(program.body))return null;
+        const metadata=new CameraSet(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType',
+            'bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
+        const nodes=[],parents=new WeakMap(),executables=new CameraWeakSet();let unsafe=false;
+        const collect=(node,parent=null)=>{
+            if(!node||typeof node!=='object')return;
+            if(executables.has(node)){unsafe=true;return;}executables.add(node);
+            if(Array.isArray(node)){for(const child of node)collect(child,parent);return;}
+            nodes.push(node);parents.set(node,parent);
+            for(const[key,value]of Object.entries(node))if(!metadata.has(key))collect(value,node);
+        };
+        collect(program);if(unsafe)return null;
+        // Reuse the existing lexical SDK resolver, after proving that every
+        // binding-bearing executable form is covered at this owned normalizer
+        // seam. Residual destructuring/namespace/enum/ForOf and unknown forms
+        // decline this optional derivation rather than inventing a binding.
+        const knownForms=new CameraSet(['Program','Block','Declaration','FunctionDeclaration','FunctionExpression',
+            'Class','For','While','If','Switch','ExpressionStatement','Return','Break','Continue',
+            'Identifier','Member','Index','Call','Assignment','Update','Binary','Unary','Conditional',
+            'Array','Object','Number','String','Boolean','Null','Undefined','Template','Interface']);
+        for(const node of nodes){
+            if(node.type!==undefined&&!knownForms.has(node.type))unsafe=true;
+            if(node.type==='Declaration'&&(!['let','const','var'].includes(node.kind)||!Array.isArray(node.decls)||
+                node.decls.some(decl=>typeof decl.name!=='string')))unsafe=true;
+            if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){
+                if(!Array.isArray(node.params)||node.params.some(name=>typeof name!=='string')||!Array.isArray(node.body)||
+                    node.type==='FunctionDeclaration'&&typeof node.name!=='string')unsafe=true;
+            }
+            if(node.type==='Object'&&!Array.isArray(node.props))unsafe=true;
+            if(node.type==='Template'&&typeof node.tag==='string'&&
+                (node.tag==='CameraProperty'||node.tag.startsWith('CameraProperty.')))unsafe=true;
+            if(node.type==='Class'){
+                if(node.unsupported?.length)unsafe=true;
+                if(typeof node.name!=='string'||!Array.isArray(node.fields)||!Array.isArray(node.methods))unsafe=true;
+                for(const method of [...(node.methods||[]),...(node.ctor?[node.ctor]:[])]){
+                    if(!Array.isArray(method.params)||method.params.some(name=>typeof name!=='string')||!Array.isArray(method.body))unsafe=true;
+                }
+            }
+        }
+        if(unsafe||!current())return null;
+        const sdk=staticSdkNamespaceReceivers(program);
+        const candidates=new CameraWeakSet();let candidateCount=0;
+        for(const node of nodes){
+            const parent=parents.get(node);
+            // These dynamic lexical/reflective constructs remain uncertain.
+            // Unrelated ordinary calls, callbacks, arrays, classes and local
+            // writes do not execute during compilation and cannot alter the
+            // canonical EnumMember's compile-time constant value.
+            if(node.type==='Identifier'&&['eval','Function'].includes(node.name))unsafe=true;
+            if(node.type!=='Identifier'||node.name!=='CameraProperty'||!sdk.has(node))continue;
+            const member=parent;
+            if(member?.type!=='Member'||member.object!==node||!sdk.has(member)||
+                !cameraOwn(CAMERA_PROPERTIES,member.name)||member.optional||member.computed||node.assertedType||member.assertedType){unsafe=true;continue;}
+            const owner=parents.get(member);
+            if(owner?.type==='Assignment'&&owner.left===member||owner?.type==='Update'&&owner.argument===member||
+                owner?.type==='Unary'&&owner.op==='delete'||owner?.type==='Call'&&owner.callee===member){unsafe=true;continue;}
+            let ancestor=owner;
+            while(ancestor){
+                if(ancestor.assertedType||ancestor.type==='As'||ancestor.type==='TypeAssertion'){unsafe=true;break;}
+                ancestor=parents.get(ancestor);
+            }
+            candidates.add(member);candidateCount++;
+        }
+        if(unsafe||!candidateCount||!current())return null;
+        return cameraFreeze({current,has:node=>cameraApply(cameraWeakHas,candidates,[node])&&current()});
+    }catch{return null;}
+}
+
+/** Internal COMPLETE compiler-owned derivation, not a public AST proof API.
+ * The only production client is prepareConstraints' existing compiler-owned
+ * branch after actual parsing/owned normalizers. No graph or cheap getter escapes.
+ * External low-level analysis and public validation keep the original path.
+ */
+export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false}={}){
+    const original=()=>validateProcedureConstraintSource(program,{onlyFunctions,ordinaryPrimitiveSdkNumbers,sceneClockNumbers});
+    if(!ordinaryPrimitiveSdkNumbers||!compilerMayHaveCameraMember(program))return original();
+    let selected=onlyFunctions,eligible=true;
+    try{
+        if(!cameraIntrinsicsCurrent())eligible=false;
+        // No foreign caller Set method runs on the internal path. The actual
+        // prepare client makes this native Set locally; uncertain inputs fallback.
+        if(eligible&&selected!==null){
+            if(cameraPrototype(selected)!==CameraSet.prototype||cameraKeys(selected).length)eligible=false;
+            else{
+                const copied=new CameraSet(),iterator=cameraApply(cameraSetValues,selected,[]);
+                for(;;){const item=cameraApply(cameraSetNext,iterator,[]);if(item.done)break;cameraApply(cameraSetAdd,copied,[item.value]);}
+                if(!cameraIntrinsicsCurrent())eligible=false;selected=copied;
+            }
+        }
+    }catch{eligible=false;}
+    // Invoke fallback outside the observer catch. Original semantic errors and
+    // getter/callback side effects are observed exactly once, never retried.
+    if(!eligible)return original();
+    const proof=compilerCameraNumberInput(program);if(!proof)return original();
+    const options=primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers);
+    const graph=analyseSourceValues(program,options,null,proof);
+    const diagnostics=validatePrimitiveConstraintGraph(program,graph,selected);
+    return proof.current()?diagnostics:original();
 }
