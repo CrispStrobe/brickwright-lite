@@ -154,6 +154,7 @@ const boxesTouch = (a, b, margin) => {
  * @param {(view: string|{follow: string|null}) => void} [host.camera]
  * @param {() => void} [host.ensureRunning] a motor was told to turn: run the world if it is paused
  * @param {() => string} [host.locale] 'en' | 'de'
+ * @param {() => number[][][]} [host.drawing] what the pens have drawn (view/pen-layer.js)
  */
 export const createRobotLabApi = (host) => {
     const lang = () => ((host.locale && host.locale()) === 'de' ? 'de' : 'en');
@@ -407,6 +408,14 @@ export const createRobotLabApi = (host) => {
          * Where a part is on the floor: the corners of its colliders as [x, z] world metres (the
          * challenges' judge measures from these, not from the part's origin inside it). [] when unknown.
          */
+        /**
+         * What the pens (parts marked to draw on the floor) have drawn since Run or Reset: strokes, each a
+         * list of [x, z] floor points in centimetres (the frame partPosition uses). [] without a pen.
+         */
+        drawing () {
+            const strokes = host.drawing ? host.drawing() : [];
+            return strokes.map(s => s.map(([x, z]) => [Math.round(x * 1e4) / 100, Math.round(z * 1e4) / 100]));
+        },
         partOutline (part) {
             const s = session();
             if (!s) return [];

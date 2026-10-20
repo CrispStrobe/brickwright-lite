@@ -7,7 +7,7 @@
 
 import React from 'react';
 
-const SimLabShortcuts = ({T, onClose, wheelMode = 'auto', onWheelMode = null}) => {
+const SimLabShortcuts = ({T, onClose, wheelMode = 'auto', onWheelMode = null, mousePreset = 'brickwright', onMousePreset = null, onCoach = null}) => {
     const closeRef = React.useRef(null);
     React.useEffect(() => { closeRef.current?.focus(); }, []);
     return (
@@ -20,6 +20,10 @@ const SimLabShortcuts = ({T, onClose, wheelMode = 'auto', onWheelMode = null}) =
                 boxShadow: '0 10px 30px rgba(15, 23, 42, 0.35)'}}>
                 <div style={{display: 'flex', alignItems: 'center', marginBottom: 8}}>
                     <strong style={{flex: '1 1 auto', fontSize: 14}}>{T.sheetTitle}</strong>
+                    {onCoach && T.coachAgain && (
+                        <button type="button" data-testid="bw-sim-lab-coach-again" onClick={onCoach}
+                            style={{padding: '4px 10px', marginRight: 6, borderRadius: 6, border: '1px solid #f59e0b', background: '#fffbeb', cursor: 'pointer'}}>{T.coachAgain}</button>
+                    )}
                     <button ref={closeRef} type="button" data-testid="bw-sim-lab-shortcuts-close" onClick={onClose}
                         style={{padding: '4px 10px', borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer'}}>{T.close}</button>
                 </div>
@@ -31,6 +35,16 @@ const SimLabShortcuts = ({T, onClose, wheelMode = 'auto', onWheelMode = null}) =
                             <option value="auto">{T.connect.wheelAuto}</option>
                             <option value="mouse">{T.connect.wheelMouse}</option>
                             <option value="trackpad">{T.connect.wheelTrackpad}</option>
+                        </select>
+                    </label>
+                )}
+                {onMousePreset && T.connect && (
+                    <label style={{display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8}}>
+                        <strong>{T.connect.mouse}</strong>
+                        <select data-testid="bw-sim-lab-mouse-preset" value={mousePreset} onChange={e => onMousePreset(e.target.value)}
+                            style={{font: 'inherit', fontSize: 12, padding: '2px 4px'}}>
+                            <option value="brickwright">{T.connect.mouseBrickwright}</option>
+                            <option value="studio">{T.connect.mouseStudio}</option>
                         </select>
                     </label>
                 )}
