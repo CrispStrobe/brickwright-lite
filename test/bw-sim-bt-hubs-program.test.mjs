@@ -157,8 +157,10 @@ if (!existsSync(missing)) {
         const sprite = vm.runtime.targets.find(target => !target.isStage);
         const read = Object.fromEntries(Object.keys(READS).map(name => [name, Number(sprite.variables[`var-${name}`].value)]));
         t.diagnostic(`reporters ${JSON.stringify(read)}; brick ${JSON.stringify(state)}`);
-        // The brick's own counters first: what the moves made them.
-        assert.ok(Math.abs(state.tachoCount - 90) <= 3, `TachoCount ${state.tachoCount}`);
+        // The brick's own counters first: what the moves made them. No direct command restarts TachoCount
+        // (docs/NXT-PROTOCOL-FACTS.md "Outputs"), so it counts all three moves like BlockTachoCount does;
+        // RotationCount alone was reset after the first move, and TachoLimit is the last move's.
+        assert.ok(Math.abs(state.tachoCount - 630) <= 9, `TachoCount ${state.tachoCount}`);
         assert.ok(Math.abs(state.rotationCount - 270) <= 6, `RotationCount ${state.rotationCount}`);
         assert.ok(Math.abs(state.blockTachoCount - 630) <= 9, `BlockTachoCount ${state.blockTachoCount}`);
         // Then each reporter against the field it names (the motor stands still once the moves end).
