@@ -68,7 +68,12 @@ export const INSIGHT_TEXT = {
             'lxf-unknown-design': 'The LEGO Digital Designer part {design} is not one the Robot Lab knows yet, so it is left out.',
             'lxf-bad-transform': 'The LEGO Digital Designer part {design} is mirrored or stretched, so it is left out.',
             'lxf-unknown-material': 'The LEGO Digital Designer part {design} has a colour LDraw does not know, so it is shown light grey.',
-            'lxf-derived-frame': 'The LEGO Digital Designer part {design} was placed by measuring its studs, so check that it sits where you built it.'
+            'lxf-derived-frame': 'The LEGO Digital Designer part {design} was placed by measuring its studs, so check that it sits where you built it.',
+            'lxf-snapped-frame': 'The LEGO Digital Designer part {design} was placed where its pins, holes and studs meet the parts around it, so check that it sits where you built it.',
+            'lxf-unplaced-design': 'The LEGO Digital Designer part {design} connects to nothing the Robot Lab could find, so it is left out.',
+            'lxf-absorbed': 'The LEGO Digital Designer piece {design} is part of another part (a motor\'s hub, a cable plug), so it is left out.',
+            'lcd-hidden-piece': 'The LeoCAD part {design} is hidden in the project, so it is left out.',
+            'lcd-unknown-colour': 'The LeoCAD part {design} has a colour LDraw does not know, so it is shown light grey.'
         },
         fallbackIssue: 'Something about this model needs a look.',
         and: 'and', part: 'the part {id}',
@@ -134,7 +139,12 @@ export const INSIGHT_TEXT = {
             'lxf-unknown-design': 'Das LEGO-Digital-Designer-Teil {design} kennt das Roboter-Labor noch nicht, darum wird es weggelassen.',
             'lxf-bad-transform': 'Das LEGO-Digital-Designer-Teil {design} ist gespiegelt oder gestreckt, darum wird es weggelassen.',
             'lxf-unknown-material': 'Das LEGO-Digital-Designer-Teil {design} hat eine Farbe, die LDraw nicht kennt, darum ist es hellgrau.',
-            'lxf-derived-frame': 'Das LEGO-Digital-Designer-Teil {design} wurde anhand seiner Noppen eingesetzt. Prüfe, ob es dort sitzt, wo du es gebaut hast.'
+            'lxf-derived-frame': 'Das LEGO-Digital-Designer-Teil {design} wurde anhand seiner Noppen eingesetzt. Prüfe, ob es dort sitzt, wo du es gebaut hast.',
+            'lxf-snapped-frame': 'Das LEGO-Digital-Designer-Teil {design} wurde dort eingesetzt, wo seine Pins, Löcher und Noppen die Teile ringsum treffen. Prüfe, ob es so sitzt, wie du es gebaut hast.',
+            'lxf-unplaced-design': 'Das LEGO-Digital-Designer-Teil {design} ist mit nichts verbunden, was das Roboter-Labor finden konnte, darum fehlt es.',
+            'lxf-absorbed': 'Das LEGO-Digital-Designer-Stück {design} gehört zu einem anderen Teil (die Nabe eines Motors, ein Kabelstecker), darum fehlt es.',
+            'lcd-hidden-piece': 'Das LeoCAD-Teil {design} ist im Projekt ausgeblendet, darum fehlt es.',
+            'lcd-unknown-colour': 'Das LeoCAD-Teil {design} hat eine Farbe, die LDraw nicht kennt, darum ist es hellgrau.'
         },
         fallbackIssue: 'Etwas an diesem Modell solltest du dir ansehen.',
         and: 'und', part: 'das Teil {id}',
