@@ -77,21 +77,34 @@ telegram, at most 64 bytes; GET FIRMWARE VERSION 0x88, GET DEVICE INFO 0x9B) and
 commands* (v1.00: each command's bytes, the reply layout `0x02, command, status, data`, the status codes);
 the *LEGO MINDSTORMS NXT Hardware Developer Kit*, **Appendix 7** *Ultrasonic sensor I2C communication
 protocol* (address 0x02; version at 0x00, product id at 0x08, sensor type at 0x10, measurement byte 0 at
-0x42, in cm, 255 = nothing). **Verification status:** the EV3 kits were read in full while writing this
-(local copies of LEGO's PDFs); the NXT kits were NOT at hand — LEGO's `bdk_download1.zip` no longer
-downloads and no archive copy was found that day — so the NXT layouts are written from the appendices'
-published command tables as recalled, cross-checked field by field against the Haskell `NXT` library's
-documentation (hackage.haskell.org/package/NXT, built on the same appendices) and against what legonxt
-itself sends and parses. Re-verify against the PDFs when a copy is found (the reply sizes and the
-RESETMOTORPOSITION / I2C register details first).
+0x42, in cm). **Verification status (2026-10-20):** the layouts were re-verified against LEGO's own PDFs of
+Appendices 1 and 2 and HDK Appendix 7 (v1.00, © 2006 LEGO, as hosted in `corywalker/nxt-plus-plus`), and the
+behaviour the appendices leave open against LEGO's open-source firmware (the remote-command handler `c_cmd.c`,
+the system commands in `c_comm.c`, the output driver `d_output.c`; `schodet/nxt-firmware` `f309220`,
+`dlech/nxt-firmware` `99b10c1`), cross-checked with nxt-python and John Hansen's NBC headers. Every fact, its
+citation and each source's licence: [NXT-PROTOCOL-FACTS.md](NXT-PROTOCOL-FACTS.md). Where the BDK and the firmware
+disagree (the bad-port and missing-file statuses, the calibrated value), the brick follows the firmware. The
+check corrected: bad-port status 0xF0 → 0xC0; no power range check; STARTPROGRAM's missing file 0xBD → 0xC0;
+MESSAGEREAD reads the *remote* inbox and echoes the local one, and the mailboxes answer 0xEC without a running
+program; MESSAGEWRITE refuses unterminated/empty/oversize messages with 0xC0; the I²C channel's statuses (0xE0 for
+a port not set to low-speed, a NACK as a later 0xDD, an empty LSREAD a success); the calibrated field; the
+64-byte telegram limit (the length bytes not counted); TachoCount no longer restarts at each command; firmware
+1.31 → 1.29 in GET FIRMWARE VERSION. Still unverified (no source settles them): the ultrasonic sensor's
+"nothing" value (255), its echoes 1–7 and interval default, off-mode behaviour; the firmware's asynchronous
+timing (completed at once here); its regulation/ramp/sync loops (our model below).
 
-Implemented (`nxt-direct-commands.js`): STARTPROGRAM (status 0xBD: no `.rxe` here yet), STOPPROGRAM (0xEC),
+Implemented (`nxt-direct-commands.js`): STARTPROGRAM (status 0xC0, the firmware's answer to a missing file: no `.rxe` here yet), STOPPROGRAM (0xEC),
 PLAYSOUNDFILE, PLAYTONE, SETOUTPUTSTATE (port 0–2 or 0xFF), SETINPUTMODE, GETOUTPUTSTATE (25 bytes),
 GETINPUTVALUES (16 bytes), RESETINPUTSCALEDVALUE, MESSAGEWRITE, RESETMOTORPOSITION (relative TRUE: the block
 tacho count; FALSE: the rotation count), GETBATTERYLEVEL, STOPSOUNDPLAYBACK, KEEPALIVE (the sleep limit),
 LSGETSTATUS, LSWRITE, LSREAD (20 bytes), GETCURRENTPROGRAMNAME, MESSAGEREAD; system commands GET FIRMWARE
-VERSION and GET DEVICE INFO. Errors keep their reply's full size: unknown opcode 0xBE, illegal size 0xED, bad
-port 0xF0, out-of-range power 0xC0, a switch port asked for I2C 0xDD (bus error).
+VERSION and GET DEVICE INFO. Errors keep their reply's full size,
+zero-filled, as the firmware's do (LSGETSTATUS/LSWRITE/LSREAD with a port above 3: the status alone): unknown
+opcode 0xBE (status alone), bad port 0xC0, no program 0xEC, mailbox empty 0x40, illegal mailbox queue 0xEE, a
+port not set to low-speed asked for I²C 0xE0, an I²C address nobody answers 0xDD (from LSGETSTATUS/LSREAD), a
+telegram shorter than its command (our check: the firmware does not look) 0xED. The ultrasonic sensor answers
+its whole register file (strings at 0x00/0x08/0x10/0x14, calibration 0x11–0x13 and 0x50–0x52, interval 0x40,
+command 0x41 with off/single-shot/continuous/event-capture/warm-reset, measurements 0x42–0x49).
 
 **The brick** (`nxt-virtual-hub.js`): outputs A–C take the NXT motor (53787), inputs 1–4 the NXT touch
 (53793), light (55969) and ultrasonic (53792) sensors; the program says what is plugged (SETINPUTMODE), as
@@ -115,8 +128,10 @@ low (estimated raw 183: legonxt's *touch pressed?* compares the normalized value
   time has passed), then brakes or floats. Busy until then.
 - **NXT tacho limit**: a regulated move decelerates onto the limit (1500 °/s²) and ends on the encoder within
   1° (4° once the reference is on the limit), then — with BRAKE — **holds** the count until the next
-  command; an unregulated one stops at the count. TachoCount restarts at each command with a limit. The 360°
-  acceptance is measured as that TachoCount.
+  command; an unregulated one stops at the count. As in LEGO's firmware, the limit is added to the previous
+  move's target (a run without a limit moves the target along with the count), and TachoCount counts from
+  power-on — no direct command resets it (docs/NXT-PROTOCOL-FACTS.md §Outputs). The 360° acceptance is a
+  port's first move, so its TachoCount.
 
 ## Sensors in the scene
 
