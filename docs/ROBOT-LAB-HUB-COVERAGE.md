@@ -126,7 +126,7 @@ Virtual hub: `G/bw-sim/hubs/nxt/` (direct + system commands, files); VM `G/bw-si
 | legonxt | SL-BT | blocks | GREEN | `bw-sim-bt-hubs-program` "NXT bumper bot: legonxt turns B and C 360 ± 2° ...", "NXT motor reporters ..." |
 | legonxt | SL-BT upload | `.rxe` on-brick | GREEN | `bw-sim-nxt-rxe-legonxt` "legonxt uploads touch-bumper.rxe ... stops at the wall" (#1115 merged); `bw-sim-nxt-rxe-brick` |
 | legonxt | SL-BT | `nxt` DEVICE words | PENDING #1129 | |
-| legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PENDING #1130 | |
+| legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PARTIAL (#1130 merged) | `bw-sim-mindstorms-model-limits` drives the virtual NXT's sync controller, buttons and ultrasonic event capture directly (and the .rxe VM's ReadButton); no test yet sends them from the legonxt extension |
 | legonxt | hosted NXC -> `.rxe` | NXC source | PARTIAL | fixtures are precompiled (`test/fixtures/nxt-rxe/`); no NXC-compile-then-run test |
 | legonxt | Web Serial, bridge | blocks | GAP | |
 
@@ -151,9 +151,9 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 | Powered Up City / Technic | 3 | 0 | 1 | 2 |
 | WeDo 2.0 | 3 | 1 | 0 | 1 |
 | SPIKE Essential | 0 | 0 | 0 | 2 |
-| NXT | 2 | 1 | 2 | 1 |
+| NXT | 2 | 2 | 1 | 1 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **17** | **6** | **5** | **15** |
+| **Total** | **17** | **7** | **4** | **15** |
 
 ## Gaps, by user impact
 
@@ -179,7 +179,8 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
     but part 67351.dat has no `part-meta/parts.json` entry, so no model can place the hub (a `bw-sim/` change;
     waits for the open Robot Lab PRs).
 17. NXT, NXC compile-then-run: needs the hosted compiler; Web Serial / bridge: virtual support missing.
-    #1129 / #1130 cover words, sync, buttons, ultrasonic.
+    #1129 (open) covers the words; #1130 (merged) added sync, buttons and ultrasonic listening to the
+    virtual NXT, proven at the model level only.
 18. ~~RCX, legorcx blocks into the Lab RCX~~: closed by `bw-sim-rcx-legorcx`.
 
 None of the test-only gaps need changes under `G/bw-sim/`; #1127 touches `X/legopoweredup/index.js` and
