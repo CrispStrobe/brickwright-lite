@@ -1,10 +1,13 @@
-import test from 'node:test';
+import test,{afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {VM,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade=loadExtensionClass('arcade');
-function game(){return new Arcade(new EventEmitter());}
+const ownedVMs=[];
+afterEach(()=>{try{for(const vm of ownedVMs.splice(0)){try{vm.stopAll();}finally{vm.quit();}}}finally{clearStrayTimers();}});
+function runtimeFixture(){const vm=new VM();ownedVMs.push(vm);assert.ok(Array.isArray(vm.runtime.targets));return vm.runtime;}
+function game(){return new Arcade(runtimeFixture());}
 function actor(a){const image=a.createImage({WIDTH:1,HEIGHT:1});a.drawImage({IMAGE:image,OP:'fillRect',X:0,Y:0,W:1,H:1,COLOR:2});const id=a.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});a.setSpritePosition({ID:id,X:80,Y:60});return id;}
 const get=(a,id,p)=>a.spriteProperty({ID:id,PROPERTY:p});
 const set=(a,id,p,v)=>a.setSpriteProperty({ID:id,PROPERTY:p,VALUE:v});
