@@ -2,6 +2,10 @@
 
 ## Current integration checkpoint — 2026-10-20
 
+The bounded nested-slice candidate passes its complete 50-test pure authority
+module. Read [its proof and pending acceptance](ARCADE-SLICE-PRESENCE.md);
+native, original-PXT, fresh-SB3 and browser checks remain separate.
+
 Start with [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md#current-batch-and-acceptance-boundary--2026-10-20)
 for the exact red-check causes, local complete-module passes and pending hosted
 acceptance. Supplier [#57](https://github.com/CrispStrobe/extensions/pull/57) is
