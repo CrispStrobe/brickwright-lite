@@ -71,6 +71,13 @@ two (i) buttons (sim-lab-info.jsx); part-geometry.js and part-thumbnails.js no l
 cache an empty result for a part whose files arrive late. Stacked on
 lane/simlab-next7-20261019 (merge order: #1097, next7, this).
 
+## bw-circuit-ui pin bump for B27 part faces — 2026-10-20
+
+CLAIMED and done in one PR — Claude (circuit-editor lane). bw-circuit-ui
+a7621be -> 989f9541de610d2a742b36867c12df61d36b0c24 (#99: faces for piezo, rgb_led, nmos,
+tip120, battery_aa, optocoupler, ds18b20 and a DS1302 chip face). CUI
+dependencies unchanged: exact SHA swap across the same 16 pin surfaces.
+
 ## bw-circuit-ui + bw-board pin bump for light_sensor (B25/B26) — 2026-10-19
 
 CLAIMED and done in one PR — Claude (circuit-editor lane). bw-circuit-ui
