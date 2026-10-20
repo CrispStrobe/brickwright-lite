@@ -1,5 +1,52 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Current integration checkpoint — 2026-10-20
+
+Main has been normally merged into the current integration successor, including
+[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and the latest
+Robot Lab changes. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52)
+merged after all seven enabled checks passed. Its explicit Array dependency
+identity is preserved in the integration candidate. These local candidate
+changes have not yet landed as a qualified Lite release.
+
+At the preceding reconciled candidate, all 53 conversion component tests passed.
+A fresh normal VM installation reproduced all 364 expected outputs, including
+180 current VM source files. The shipped Array source admission and all 49
+native Array tests passed; independent saved-data checks accepted both the
+installation and the complete test result. Three actual original-Code,
+captured-Code and fresh exported-TypeScript reimport executions also passed the
+unchanged scalar/Array expectations and completed Stop/quit cleanup. Their
+independent saved-data review is pending. These finite runtime results do not
+qualify graphics, audio, browser authoring or complete games.
+
+The fourth complete 225-input CLI attempt ended with SIGKILL after 25.08 CPU
+seconds and did not produce a complete report. **The historical result remains
+147 translated / 36 partial / one malformed; current full-corpus outcomes are
+still unmeasured.** Do not subtract component passes or completed progress rows
+from that count. Saved phase timings identify conversion work as the principal
+cost: approximately 13.04 CPU seconds in import and 8.12 in Creator, compared
+with 2.23 in report capture. These timings cover the observed prefix, not all
+225 inputs or an isolated algorithm benchmark.
+
+The original 42 Camera controls on the reconciled candidate exposed nine
+failures. Main intentionally added public enum Number producers, so older
+public-Opaque expectations need explicit migration. Computed/cast members and
+uncertain source also need real producer checks. Preserve shadowing, mutation,
+indexing and alias rejection; compare a declined private proof with the actual
+public fallback instead of assuming that fallback must reject a numeric enum.
+
+Next, qualify the narrow procedure-preparation optimization and Camera
+reconciliation, then obtain the complete unchanged 225-input report. Group its
+actual diagnostics by construct and source location, implement each family,
+and qualify Code, Blocks, graphics, controller, save/reopen and export/reimport
+journeys. Keep browser gates for candidates that need them; do not repeatedly
+request `ci:full` while working through component failures. All enabled final
+checks and affected guest qualification remain required before merging.
+
+The ignored local handoff holds source identities, original evidence, commands
+and active ownership. The dated notes below are historical and retain their
+original result boundaries.
+
 ## Latest bounded qualification checkpoint — 2026-10-19
 
 Three complete 225-subject CLI attempts ended without reports; **all 225 current
