@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {runProgram,clearStrayTimers,quitStrandedVMs} from './helpers/bw-vm.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
-import {runPxtCore} from './helpers/pxt-core-runtime.mjs';
+import {runPxtScheduled} from './helpers/pxt-scheduled-runtime.mjs';
 
 // Native authored value addition is intentionally distinct from PXT source
 // RefCollection addition. Execute the actual emitted typed-join bridge in the
@@ -61,10 +61,15 @@ test('native named Array text and primitive alias writers execute identically in
     const built=await compile('arcade',exported.files);
     t.diagnostic(JSON.stringify({stage:'compile-full-files',success:built.success,diagnostics:built.diagnostics}));
     assert.equal(built.success,true,JSON.stringify(built.diagnostics));
-    // One finite authored startup stack is emitted synchronously. The existing
-    // core oracle rejects asynchronous shims rather than replacing a scheduler.
-    const original=await runPxtCore(exported.ts);
-    const originalRows=Object.entries(original);
+    // Execute the exact emitted TS with the original Runtime, actions and
+    // scheduler. The existing synchronous runPxtCore remains unchanged.
+    const original=await runPxtScheduled(exported.ts);
+    t.diagnostic(JSON.stringify({stage:'original-PXT-scheduler',scheduler:original.scheduler}));
+    assert.equal(original.scheduler.mainCompleted,true);
+    assert.equal(original.scheduler.childFibersStarted,original.scheduler.childFibersCompleted);
+    assert.equal(original.scheduler.pendingChildFibers,0);assert.equal(original.scheduler.suspendedFrames,0);
+    assert.equal(original.scheduler.observedErrors,0);assert.equal(original.scheduler.cleanup.cleanupErrorCount,0);
+    const originalRows=Object.entries(original.globals);
     const pxt=name=>{const found=originalRows.filter(([key])=>normalized(key)===name);assert.equal(found.length,1,'PXT '+name);return found[0][1];};
     const pxtResults=Object.fromEntries(Object.keys(expected).map(name=>[name,pxt(name)]));
     t.diagnostic(JSON.stringify({stage:'original-PXT',values:pxtResults}));
