@@ -69,9 +69,10 @@ and trace geometry, not physical drawing quality or a hardware build.
 
 ## Provenance and verification
 
-Credit **ORBITAL LOOM, OpenAI, 2026**, supplied under **CC BY 4.0**. The adapted assembly remains
-CC BY 4.0 and identifies the changes above. The original README and licence statement ship in
-`static/sim-lab/licenses/orbital-loom.txt`. The source bricks-only MPD SHA256 is
+Credit **ORBITAL LOOM, CrispStrobe, 2026**, **BSD-3-Clause**. The owner confirmed that
+this is their original work and specified this author/licence, superseding the generated source
+README's OpenAI/CC BY wording. The bundled notice is `static/sim-lab/licenses/orbital-loom.txt`.
+The source bricks-only MPD SHA256 is
 `d2e22ef40af389d6e1580b3ace65968e390fd6eadac0488aee318adddbb0f539`.
 The exact bricks-only source and original README are retained under
 `test/fixtures/model-files/orbital-loom-source/` for reproducible adaptation. The Python controller,

@@ -48,12 +48,25 @@ above, the LDraw.org OMR. Nothing in the files is changed.
 ## ORBITAL LOOM (bundled adapted Robot Lab example)
 
 - File: `overlay/scratch-gui/static/sim-lab/models/orbital-loom.ldr` (202 LEGO pieces).
-- Author/credit: **ORBITAL LOOM, OpenAI, 2026**; adaptation by Brickwright contributors.
+- Author/credit: **ORBITAL LOOM, CrispStrobe, 2026**; owner-confirmed original work.
 - Source: owner-supplied `orbital_loom_bricks_only.mpd`, version 1.0, 2026-10-20, 210 pieces.
 - Exact source and README retained under `orbital-loom-source/` for reproducible adaptation.
 - Source SHA256: `d2e22ef40af389d6e1580b3ace65968e390fd6eadac0488aee318adddbb0f539`.
-- Licence: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); supplied README and changes
-  retained at `static/sim-lab/licenses/orbital-loom.txt`. No NC terms.
+- Licence: BSD-3-Clause, explicitly specified by the owner, superseding the original generated
+  README/header wording. Unmodified source fixtures retain their original bytes for hash verification;
+  the distributed adaptation and notice use the corrected author/licence. No NC terms.
 - Changes: shared 3L mounting pins, bearing clearance pins, shorter drive axle, canonical hub,
   explicit ports/IDs and pose-driven virtual paper/marker attachments. Source geometry proportions
   and gearing retained. Controller/preview/PDF remain unbundled references.
+
+## TIDAL TRIO (original bundled Robot Lab example)
+
+- Credit: **TIDAL TRIO, CrispStrobe, 2026**, BSD-3-Clause as explicitly confirmed by the owner.
+- Source: owner-supplied `tidal_trio_complete.zip`, version 1.0, 218 LEGO pieces.
+- Retain the exact `tidal_trio_home.mpd`, initial README and preset data in `tidal-trio-source/`.
+  Source SHA256: `2d22875000cdedb24e5135eea5c1282b1e0ddfa4ca6a7a56ee7f3d07c69233c5`.
+- The owner's credit/licence supersedes the generated source's OpenAI/CC BY wording; raw fixtures
+  retain their initial bytes for reproducibility. Bundled adaptation: 226 pieces, three motors,
+  eight-piece pinned hub mount, explicit ports, connected instructions and four native programs.
+- App notice: `static/sim-lab/licenses/tidal-trio.txt`. LDraw part authors/licences are unchanged.
+  Source Python, PDF, predicted GIF and preview are not newly bundled as app behaviour.

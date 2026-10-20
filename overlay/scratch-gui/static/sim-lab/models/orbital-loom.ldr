@@ -1,10 +1,10 @@
 0 ORBITAL LOOM — two-motor epicycle drawing machine
 0 Name: orbital-loom.ldr
-0 Author: OpenAI; adapted by Brickwright contributors
-0 !LICENSE Licensed under CC BY 4.0 : see ../licenses/orbital-loom.txt
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/orbital-loom.txt
 0 !BW DRAW paperPlate penRail 0 -20 233.5 -10 -8.5 -10 150
 0 !LDRAW_ORG Unofficial_Model
-0 // Credit: ORBITAL LOOM, OpenAI, 2026.
+0 // Credit: ORBITAL LOOM, CrispStrobe, 2026.
 0 // Changes: canonical hub, explicit ports/IDs, shared mounting pins, clearance pins, shorter drive axle, live virtual paper/marker attachments.
 0 // No supplied preview ink is included; the simulator traces actual body motion.
 0 !BW ID 01_base.ldr#13_7

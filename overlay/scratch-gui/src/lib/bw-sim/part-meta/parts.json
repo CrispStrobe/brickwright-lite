@@ -3371,7 +3371,27 @@
      "halfExtents": [
       9,
       10,
-      89
+      80
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      -80
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      80
      ]
     }
    ],
@@ -3632,7 +3652,27 @@
      "halfExtents": [
       9,
       10,
-      109
+      100
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      -100
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      100
      ]
     }
    ],

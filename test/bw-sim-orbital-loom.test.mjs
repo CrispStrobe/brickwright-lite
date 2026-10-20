@@ -24,7 +24,7 @@ const read = p => {
   const path = new URL('static/ldraw/' + p.toLowerCase(), GUI);
   return existsSync(path) ? readFileSync(path, 'latin1') : undefined;
 };
-test('loom: 202 connected LEGO pieces, supported 20:60 drive, complete instructions and CC BY attribution', () => {
+test('loom: 202 connected LEGO pieces, supported 20:60 drive, complete instructions and owner attribution', () => {
   const {
     model,
     mechanism,
@@ -49,9 +49,9 @@ test('loom: 202 connected LEGO pieces, supported 20:60 drive, complete instructi
   }
 
   assert.deepEqual(plan.steps.flatMap(s => s.parts).sort(), model.parts.map(p => p.id).sort());
-  assert.match(text, /Author: OpenAI; adapted by Brickwright/);
-  assert.match(text, /Licensed under CC BY 4.0/);
-  assert.match(readFileSync(new URL('static/sim-lab/licenses/orbital-loom.txt', GUI), 'utf8'), /ORBITAL LOOM, OpenAI, 2026/);
+  assert.match(text, /Author: CrispStrobe/);
+  assert.match(text, /BSD-3-Clause/);
+  assert.match(readFileSync(new URL('static/sim-lab/licenses/orbital-loom.txt', GUI), 'utf8'), /ORBITAL LOOM, CrispStrobe, 2026/);
   assert.equal(model.parts.find(p => p.id === '02_table_drive.ldr#16_26').part, '4519.dat', 'blind bore takes the shorter 3L axle');
 });
 test('loom: every motor at 60% for two seconds remains finite and upright', async () => {

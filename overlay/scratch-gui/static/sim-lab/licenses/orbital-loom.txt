@@ -1,166 +1,42 @@
-ORBITAL LOOM -- TWO-MOTOR TECHNIC DRAWING MACHINE
-Version 1.0 | 20 October 2026
-===============================================
+ORBITAL LOOM, CrispStrobe, 2026
+SPDX-License-Identifier: BSD-3-Clause
 
-WHAT IT DOES
+Original owner-supplied design. Author and licence confirmed by the owner.
+Simulator adaptations: shared mounting pins, bearing-clearance pins, shorter drive axle,
+canonical hub, explicit motor ports and live virtual paper/marker attachment.
+Referenced LDraw parts retain their separately recorded authors and licences.
 
-A geared turntable rotates the paper while an overhead motor swings a pen
-around a second, offset axis. Their coordinated motion draws closed geometric
-rosettes. Changing the rotation ratio produces five-, seven-, eleven-, or
-eightfold patterns without rebuilding the mechanism.
+Copyright (c) 2026 CrispStrobe
+All rights reserved.
 
-This is an original digital prototype, not a physically built or tested model.
-The rendered ink is a mathematical prediction, not a photographed drawing.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
 
-HARDWARE AND SUPPLIES
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
 
-The supplied parts_list.csv is authoritative: 210 LEGO elements/assemblies,
-21 distinct part shapes, including one SPIKE Prime hub 45601 with battery and
-two medium angular motors 45603. No sensors or third motor are required.
-LDraw identifies these electronics as 45601c01.dat and 54696p01.dat.
-This is a parts-based design, not an alternate build from one particular set.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
 
-Most structure is Technic. The writing surface uses a 16 x 16 System plate
-and two 8 x 16 tiles. Approximate assembled CAD envelope: 247 x 208 x 232 mm
-(width x depth x height), excluding cable slack. The tiled platter is 128 mm
-square. Part availability in every pictured color has not been verified;
-substitute available colors while keeping the same part geometry.
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
 
-Also provide a 120 mm paper disk, a light marker no longer than 120 mm and
-about 8 mm in diameter, two elastic bands, and small pieces of masking tape.
-Paper, marker, bands, and tape are not included in the LEGO inventory.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
 
-FILES AND OPENING THE MODEL
+---
 
-orbital_loom.mpd               Complete scene, including non-LEGO references.
-orbital_loom_bricks_only.mpd   LEGO assembly only, for CAD import and inventory.
-parts_list.csv                Quantities, part identifiers, and modeled colors.
-orbital_loom_preview.png       Render of the actual CAD assembly.
-orbital_loom_build_guide.pdf   Illustrated assembly, setup, and pattern guide.
-orbit_plotter_pybricks.py      Optional coordinated motor controller.
-orbit_pattern_settings.json   Presets, geometry, and ideal curve equations.
-orbit_controller_notes.txt    Detailed controls and direction-check procedure.
-validation_summary.txt        Scope and limits of the digital checks.
-
-Both MPDs use standard LDraw part references. Install/update the official
-LDraw parts library if a part is missing; the official part geometry is not
-embedded in these files. The seven named LEGO submodels have assembly steps.
-The main model has eight stages, the last adding non-LEGO reference objects.
-Use the illustrated assembly guide for orientation and the MPD for individual
-pin positions; these are not a complete brick-by-brick instruction book.
-
-ASSEMBLY ORDER AND DETAILS THAT MATTER
-
-1. Bearing base: build 01_base.ldr with the two vertical 5 x 11 frames,
-   lower cross rails, central splices, and turntable bottom. The turntable
-   attaches through four horizontal pins at z = +/-20, not its center holes.
-
-2. Table drive: fit motor A and its mounting rails. The pinion is a 20-tooth
-   double-bevel gear driving the 60-tooth turntable. In LDraw coordinates,
-   the turntable origin is y=-70; the pinion center is (-100,-60,0).
-   That half-stud vertical offset is intentional. Use the 4L axle centered
-   at y=-50 and both half bushes, centered at y=-45 and y=-75. Do not raise
-   the pinion to the ring origin or omit an axle retainer.
-
-3. Gantry: build the four overlapping columns, upper rails, feet, and eight
-   diagonal braces. The diagonals use exact 6-8-10-stud triangles. Fit the
-   overlap pins and splice pieces before closing access with later modules.
-
-4. Pen motor: mount B with its output facing down and its body/cable extending
-   toward +X. Motor A faces up. Keep the overhead assembly rigid.
-
-5. Hub: the hub center is at z=220. Its four mount positions include two
-   shared 3L pins through the lower rail/splice and two upper pins. Follow
-   the model's long-pin placement instead of adding duplicate short pins.
-
-6. Platter: four perpendicular pin-hole connectors 15100 support the plate
-   through four stud half-pins 4274. Point the integral connector pins inward
-   into the turntable, with the half-pin studs upward. These mounts clear the
-   turntable rim and spindle. The plate and tiles are intentionally shifted
-   +10 LDU in both local X and Z -- half a stud -- to align their stud grid.
-   Keep the modeled gear phase; center the paper on the turntable axis,
-   not the shifted plate.
-
-7. Pen holder: assemble the red crank, perpendicular-hole biscuit, and 9L
-   marker rail. The assembly's 90-degree orientation matches B's rotor holes.
-   Secure the marker against the rail with two bands and adjust its height
-   for light contact. The modeled parked crank phase is -45 degrees.
-
-8. Paper and leads: tape the centered paper down outside the drawing area.
-   Connect A to hub port A and B to port B. Cables are omitted from the CAD.
-   B's standard lead is 250 mm: lead it outside the motor's outer end, then
-   along a loose diagonal back to port B. Do not consume its reach by routing
-   tightly down a pillar. Keep both leads clear of the crank and platter.
-
-FIRST RUN
-
-With power off or motors coasting, lift the pen and turn both axes through
-complete revolutions by hand. Confirm free rotation, sound gear engagement,
-and cable clearance throughout. Adjust the marker before applying power;
-the machine has no automatic pen lift or pressure control.
-
-The optional Python program requires Pybricks firmware. It does not run in
-the stock LEGO SPIKE app, and nothing in this package installs firmware.
-Follow orbit_controller_notes.txt for the small pen-up direction checks.
-
-In drawing mode, LEFT selects a preset; RIGHT records the current manually
-positioned pose as zero and starts after one second. CENTER remains the
-normal stop button. Both axes hold at completion; lift the pen before
-releasing them for the next setup. There is no hard-stop homing.
-
-Preset       Crank/table ratio    Table turns    Drawing motion
-Fivefold           5/1                 1            22 seconds
-Sevenfold          7/2                 2            42 seconds
-Elevenfold        11/4                 4            82 seconds
-Eightfold          8/3                 3            62 seconds
-
-The program uses a 3 rpm table cruise and shared two-second speed ramps.
-For fivefold motion, motor references reach A=-54 and B=+90 degrees/second,
-after accounting for their opposite-facing output shafts.
-
-Without Pybricks, the control concept can be reproduced in your preferred
-LEGO app: run the paper clockwise at 3 rpm and the crank clockwise at 15 rpm
-for the fivefold pattern. The motor shaft speed magnitudes have ratio 3:5.
-Use encoder-based speed control if available; equal power percentages are
-not a reliable ratio. Independently timed motor runs can demonstrate the
-pattern, but do not provide the supplied controller's coordinated closure.
-
-GEOMETRY, VALIDATION, AND LICENSE
-
-The crank axis is 32 mm from the paper axis. The pen radius is 22.627 mm,
-giving a maximum ideal trace radius of 54.627 mm on the 60 mm-radius paper.
-The JSON gives the equations, including the -45-degree parked phase.
-
-Digital checks cover file syntax, part references, rigid transforms, reviewed
-mounting geometry, and selected motion clearances. The controller was parsed
-and its reference trajectories checked numerically. Physical stiffness,
-friction, cable routing, paper slip, and drawing quality remain untested.
-
-The original design, assembly arrangement, controller, and notes are offered
-under CC BY 4.0; credit "ORBITAL LOOM, OpenAI, 2026" and identify changes:
-https://creativecommons.org/licenses/by/4.0/
-Referenced LDraw parts retain their respective authors' attributions and
-licenses. This is an independent design, not an official LEGO product.
-
-PRIMARY REFERENCES
-
-LDraw format and MPD:
-https://www.ldraw.org/article/218.html
-https://www.ldraw.org/article/47.html
-Official parts library:
-https://library.ldraw.org/
-Medium motor specifications, including 250 mm lead:
-https://assets.education.lego.com/v3/assets/blt293eea581807678a/blt692436dd1e8fa71c/5f8801d5c8a27c1d9614c27e/techspecs_technicmediumangularmotor.pdf?locale=en-us
-Hub and medium motor:
-https://education.lego.com/en-us/products/lego-technic-large-hub-for-spike-prime-/45601/
-https://education.lego.com/en-us/products/lego-technic-medium-angular-motor/45603/
-Pybricks APIs:
-https://docs.pybricks.com/en/latest/pupdevices/motor.html
-https://docs.pybricks.com/en/latest/parameters/direction.html
-https://docs.pybricks.com/en/latest/hubs/primehub.html
-https://docs.pybricks.com/en/latest/tools/index.html
-
-BRICKWRIGHT ADAPTATION
-Original source: orbital_loom_bricks_only.mpd supplied by the owner, SHA256 d2e22ef40af389d6e1580b3ace65968e390fd6eadac0488aee318adddbb0f539.
-Changes: canonical device-aware hub reference, explicit ports and IDs, eight shared 3L mounting pins replacing pairs of short pins, four clearance pins, a 3L drive axle, and live virtual paper/marker attachments. Supplied predicted ink is omitted. New simulator programs and integration are by Brickwright contributors. Adapted assembly remains CC BY 4.0; credit ORBITAL LOOM, OpenAI, 2026.
-The app represents ordinary paper and a marker visually; paper/marker friction, bending and elastic bands are not simulated.
+This license covers Brickwright's own code (this repository). Bundled
+third-party dependencies retain their own licenses -- see
+THIRD-PARTY-NOTICES.md.

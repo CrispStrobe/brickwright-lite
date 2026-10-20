@@ -85,6 +85,14 @@ export const MODELS = Object.freeze([
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
+    {file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Wave', de: 'Gezeiten-Trio: Welle'},
+        example: 'tidal-trio.bw', mat: 'plain'},
+    {id: 'tidal-trio-together', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Together', de: 'Gezeiten-Trio: Gleichlauf'},
+        example: 'tidal-trio-together.bw', mat: 'plain'},
+    {id: 'tidal-trio-alternating', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Alternating', de: 'Gezeiten-Trio: Abwechselnd'},
+        example: 'tidal-trio-alternating.bw', mat: 'plain'},
+    {id: 'tidal-trio-reverse', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Reverse wave', de: 'Gezeiten-Trio: Gegenwelle'},
+        example: 'tidal-trio-reverse.bw', mat: 'plain'},
     {file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Fivefold', de: 'Orbit-Zeichner: Fünffach'},
         example: 'orbital-loom.bw', mat: 'plain'},
     {id: 'orbital-loom-sevenfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Sevenfold', de: 'Orbit-Zeichner: Siebenfach'},
@@ -163,7 +171,7 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
  *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
  */
 /** A file we wrote ourselves (serializeModel's header): its ports are as the builder left them, unplugged ones too. */
-const OWN_FILE = /^0 Author: Brickwright\s*$/m;
+const OWN_FILE = /^0 Author: (?:Brickwright|CrispStrobe)\s*$/m;
 
 export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text)} = {}) => {
     const {model: parsedModel, refusals} = parseModel(text, {catalog});

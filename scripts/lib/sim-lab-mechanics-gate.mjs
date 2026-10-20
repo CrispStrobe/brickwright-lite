@@ -7,7 +7,8 @@ import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
-    models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000}) => {
+    models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
+    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -15,12 +16,15 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         await page.getByTestId('bw-sim-lab-examples').click();
         const gallery = page.getByTestId('bw-sim-examples');
         await gallery.getByRole('searchbox').fill(id);
-        assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 1);
-        await gallery.getByRole('button', {name: /^Open model \+ program:/}).click();
+        const card = gallery.locator(`[data-model="${keyFor(id)}"]`);
+        assert.equal(await card.count(), 1);
+        await card.getByRole('button', {name: /^Open model \+ program:/}).click();
         await gallery.waitFor({state: 'hidden'});
-        await page.waitForFunction(file => window.__bwSimLab.status === 'ready' &&
-            window.__bwSimLab._pane.state.modelFile === file && window.__bwSimLab._pane.session?.worker,
-        `${id}.ldr`, {timeout: 60000});
+        await page.waitForFunction(({file, key}) => window.__bwSimLab.status === 'ready' &&
+            window.__bwSimLab._pane.state.modelFile === file && window.__bwSimLab._pane.state.shipped === key &&
+            window.__bwSimLab._pane.session?.worker, {file: fileFor(id), key: keyFor(id)}, {timeout: 60000});
+        if (programMarker) await page.waitForFunction(marker => [...document.querySelectorAll('.cm-content')].some(el =>
+            el.textContent.includes(marker)), programMarker(id), {timeout: 30000});
         await page.getByTestId('bw-sim-lab-3d-canvas').waitFor();
         await page.screenshot({path: resolve(shotsDir, `${id}.png`)});
         await page.evaluate(() => {

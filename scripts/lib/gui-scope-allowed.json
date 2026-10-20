@@ -35,7 +35,8 @@
       "test/spike-arena-3d.test.mjs",
       "test/bw-sim-pen.test.mjs",
       "test/bw-sim-surface-drawing.test.mjs",
-      "test/bw-sim-orbital-loom.test.mjs"
+      "test/bw-sim-orbital-loom.test.mjs",
+      "test/bw-sim-tidal-trio.test.mjs"
     ],
     "why": "the SPIKE arena's 3D scene builder (lib/spike-arena/arena-scene3d.js) and view import three, a GUI-package dependency lazy-loaded with the 3D view; the tests build the scene headless"
   },
@@ -108,7 +109,8 @@
       "test/bw-sim-jolt-debug-build.test.mjs",
       "test/bw-sim-model-real-robot.test.mjs",
       "test/bw-sim-rope.test.mjs",
-      "test/bw-sim-orbital-loom.test.mjs"
+      "test/bw-sim-orbital-loom.test.mjs",
+      "test/bw-sim-tidal-trio.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },

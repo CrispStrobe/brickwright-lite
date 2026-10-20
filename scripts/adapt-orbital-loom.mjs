@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
-// Adapt the owner's supplied CC BY 4.0 prototype; never execute its accompanying controller.
+// Adapt the owner's supplied original BSD-3-Clause prototype; never execute its accompanying controller.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { parseModel, serializeModel } from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
@@ -12,7 +12,7 @@ const output = process.argv[3];
 if (!source || !output) throw Error('Usage: adapt-orbital-loom.mjs supplied-bricks-only.mpd output.ldr');
 const bytes = readFileSync(source);
 if (createHash('sha256').update(bytes).digest('hex') !== 'd2e22ef40af389d6e1580b3ace65968e390fd6eadac0488aee318adddbb0f539') {
-  throw Error('Source differs from the reviewed CC BY 4.0 prototype');
+  throw Error('Source differs from the reviewed owner-supplied prototype');
 }
 const catalog = catalogFrom(JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url))));
 // The c01 LDraw assembly denotes the same SPIKE hub; use the app's existing device-aware catalogue entry.
@@ -82,14 +82,14 @@ model.drawings = [{
 // Replace the source's coarse subassembly stages with the app's connected pins-first manual.
 delete model.steps;
 model.attribution = {
-  author: 'OpenAI; adapted by Brickwright contributors',
-  license: 'Licensed under CC BY 4.0 : see ../licenses/orbital-loom.txt'
+  author: 'CrispStrobe',
+  license: 'BSD-3-Clause : see ../licenses/orbital-loom.txt'
 };
 let text = serializeModel(model, {
   name: 'orbital-loom.ldr',
   title: 'ORBITAL LOOM — two-motor epicycle drawing machine'
 });
-text = text.replace('0 !LDRAW_ORG Unofficial_Model', '0 !LDRAW_ORG Unofficial_Model\r\n0 // Credit: ORBITAL LOOM, OpenAI, 2026.\r\n0 // Changes: canonical hub, explicit ports/IDs, shared mounting pins, clearance pins, shorter drive axle, live virtual paper/marker attachments.\r\n0 // No supplied preview ink is included; the simulator traces actual body motion.');
+text = text.replace('0 !LDRAW_ORG Unofficial_Model', '0 !LDRAW_ORG Unofficial_Model\r\n0 // Credit: ORBITAL LOOM, CrispStrobe, 2026.\r\n0 // Changes: canonical hub, explicit ports/IDs, shared mounting pins, clearance pins, shorter drive axle, live virtual paper/marker attachments.\r\n0 // No supplied preview ink is included; the simulator traces actual body motion.');
 const p = prepareModel(text, catalog, {
   mat: 'plain'
 });

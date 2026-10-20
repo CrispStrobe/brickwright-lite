@@ -157,11 +157,33 @@ const cylinderAsBox = cyl => {
 };
 
 const cylinderBoxOverlap = (cyl, box, tolerance) => {
+    // A beam end is a disk extruded through its thickness. When its axis is a
+    // box face normal, closest-point distance in that face is exact. Bounding
+    // its disk by a square falsely rejects adjacent angled Technic beams.
+    const normal = box.axes.findIndex(ax => Math.abs(vecDot(ax, cyl.axis)) > 1 - 1e-9);
+    if (normal >= 0) {
+        const delta = vecSub(cyl.centre, box.centre);
+        if (Math.abs(vecDot(delta, cyl.axis)) >= cyl.halfHeight + box.halfExtents[normal] - tolerance - 1e-9) return false;
+        let distance2 = 0;
+        for (let i = 0; i < 3; i++) {
+            if (i === normal) continue;
+            const outside = Math.max(0, Math.abs(vecDot(delta, box.axes[i])) - box.halfExtents[i]);
+            distance2 += outside * outside;
+        }
+        return distance2 < Math.max(0, cyl.radius - tolerance) ** 2 - 1e-9;
+    }
     const cylBox = cylinderAsBox(cyl);
     return boxBoxOverlap(cylBox, box, tolerance);
 };
 
 const cylinderCylinderOverlap = (a, b, tolerance) => {
+    if (Math.abs(vecDot(a.axis, b.axis)) > 1 - 1e-9) {
+        const delta = vecSub(b.centre, a.centre);
+        const axial = vecDot(delta, a.axis);
+        if (Math.abs(axial) >= a.halfHeight + b.halfHeight - tolerance - 1e-9) return false;
+        const radial2 = Math.max(0, vecDot(delta, delta) - axial * axial);
+        return radial2 < Math.max(0, a.radius + b.radius - tolerance) ** 2 - 1e-9;
+    }
     const aBox = cylinderAsBox(a);
     const bBox = cylinderAsBox(b);
     return boxBoxOverlap(aBox, bBox, tolerance);

@@ -1,18 +1,24 @@
 ## Tidal Trio phase-machine adaptation — 2026-10-20
 
-CLAIMED — Codex, existing model-design lane / draft PR #1138. Review the owner's
-supplied CC BY 4.0 three-motor crank-rocker sculpture. Preserve its source notice;
+IMPLEMENTED / browser qualification pending — Codex, existing model-design lane / draft PR #1138. Review the owner's
+supplied BSD-3-Clause three-motor crank-rocker sculpture. Preserve its source notice;
 qualify all three physical linkages, four phase presets, manual controls and
 building instructions, then register the working adaptation in the offline
 English/German examples library. Envelope: adapted assets and reproducible
 adapter, catalogue/registry entries, focused geometry/program/browser checks and
 notices. Preserve peer-owned Jolt/compiler/collider files and other worktrees.
+226 pieces / 3 motors / four phase presets. Add an eight-piece floor-level pinned hub mount;
+retain the source linkage and repair coarse 9L/11L beam ends against official geometry.
+All four actual VM programs, 63.07-degree rocker sweeps and 60% motor stress pass.
+The owner confirmed both supplied machines are original CrispStrobe work and chose
+BSD-3-Clause, superseding generated OpenAI/CC BY wording. Referenced LDraw parts
+retain their own credits. CrispStrobe author headers keep own-file strict port handling.
 Published models in this branch are not yet merged-main/released app claims.
 
 ## Orbital loom import and live drawing — 2026-10-20
 
 IMPLEMENTED / locally qualified — Codex, existing model-design lane / comprehensive draft PR #1138.
-Owner supplied a 210-piece CC BY 4.0 epicycle drawing-machine prototype. Preserve
+Owner supplied a 210-piece BSD-3-Clause epicycle drawing-machine prototype. Preserve
 source attribution and changes; qualify actual platter gearing and both motors,
 replace the static predicted preview with pose-driven drawing on rotating paper,
 and register only after structural/program/browser tests. Envelope: original or
@@ -20,7 +26,7 @@ adapted model/program assets, focused double-bevel parallel mesh support in gear
 inference/metadata, generic moving-surface drawing metadata/view, tests and notices.
 Do not independently edit peer-owned compile/Jolt/collider implementation files.
 
-202-piece adaptation / 2 motors; four ratio presets; original CC BY 4.0 credit
+202-piece adaptation / 2 motors; four ratio presets; original BSD-3-Clause credit
 retained. Paired pins and over-inserted axle corrected; 11x5 frame collision
 widths, double-bevel spur contact and moving-paper ink supported. 231 focused
 tests and six detailed mesh/fastener assertions pass. Ink now samples physics
