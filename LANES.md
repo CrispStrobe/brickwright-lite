@@ -13,6 +13,8 @@ Original 59-piece chain transmission and 56-piece flywheel differential added;
 107 focused tests pass on the peer's df2b9947b core. Production build and English/German
 gallery/worker browser gate pass. The toolbar browser filters physics and >50 pieces,
 opens models/programs in Simulate or Build, and restores keyboard focus on close.
+All 16 responsive Simulate/Build layout cases pass, including a 461 px pane; six
+focused real-mesh, fastener and shared-hole checks pass for the two larger models.
 Notebook: 26 native MPDs acquired, 23 HTTP 403 failures, 19 duplicates of the peer's
 corpus, 7 additional checks recorded; zero external models newly vendored/qualified.
 An NC embedded section overrides the Rodent page's otherwise compatible notice.

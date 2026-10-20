@@ -49,6 +49,13 @@ checks its measured ratio and return, opens the differential from Build with its
 search, size/topic filters, empty results, Escape and focus restoration, and checks the German
 browser on a touch tablet viewport.
 
+Delivery checks on the corrected physics core: production GUI build, 107 focused unit tests,
+the English/German examples browser gate, and all 16 responsive Simulate/Build layout cases
+passed (including a 461 px pane beside the stage). Six additional checks using the existing
+geometry suite's assertions, restricted to these two workshop models, passed: negative controls,
+collider and real-mesh separation, fasteners in bores, and no two fasteners occupying one hole.
+This is not a claim that the complete all-model geometry suite has passed.
+
 ## External model intake
 
 The supplied Philo/BrickHub notebook was inspected before running its extracted downloader. Its
