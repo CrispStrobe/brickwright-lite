@@ -35,6 +35,7 @@ import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 import {EDITOR_TEXT} from './sim-lab-editor-text.js';
 import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
+import SimLabCoach from './sim-lab-coach.jsx';
 import PaneDivider from '../gui/pane-divider.jsx';
 import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
@@ -105,7 +106,7 @@ const TEXT = {
         challengesTitle: 'Challenges', challengeStart: 'Start', challengeRestart: 'Start again', challengeAgain: 'Try again',
         challengeOthers: 'All challenges', challengeReady: 'Press Run to begin.', challengeTime: '{s} s',
         challengeStars: '{n} of 3 stars', challengeBest: 'Best: {n} of 3 stars, {text}',
-        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge'},
+        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge', shape: '{v} % off a square'},
         challengeWhy: {offTrack: 'The robot left the line.', touched: 'The robot touched the wall.',
             leftRing: 'The robot left the ring.', timeUp: 'Time is up.'},
         challenges: {
@@ -113,7 +114,8 @@ const TEXT = {
             'wall-stop': {title: 'Stop at the wall', goal: 'Drive at the wall and stop close to it without touching it.'},
             'sumo-stay': {title: 'Stay in the ring', goal: 'Keep the robot inside the ring for 30 seconds.'},
             'maze-goal': {title: 'Through the maze', goal: 'Find the way to the green square.'},
-            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'}
+            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'},
+            'draw-square': {title: 'Draw a square', goal: 'Mark a part "Draws on the floor" and drive a square: the squarer, the more stars.'}
         },
         kinds: {distance: 'Distance', color: 'Colour', force: 'Force', touch: 'Touch', light: 'Light', rotation: 'Rotation', tilt: 'Tilt', motion: 'Motion'},
         replay: 'Replay', replayHelp: 'Look back at the last seconds. Run goes on from now.', replayNow: 'now', speedValue: '{n}×',
@@ -217,7 +219,7 @@ const TEXT = {
         challengesTitle: 'Aufgaben', challengeStart: 'Starten', challengeRestart: 'Neu starten', challengeAgain: 'Nochmal',
         challengeOthers: 'Alle Aufgaben', challengeReady: 'Drücke Start, um zu beginnen.', challengeTime: '{s} s',
         challengeStars: '{n} von 3 Sternen', challengeBest: 'Bestes: {n} von 3 Sternen, {text}',
-        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand'},
+        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand', shape: '{v} % neben einem Quadrat'},
         challengeWhy: {offTrack: 'Der Roboter hat die Linie verlassen.', touched: 'Der Roboter hat die Wand berührt.',
             leftRing: 'Der Roboter hat den Ring verlassen.', timeUp: 'Die Zeit ist um.'},
         challenges: {
@@ -225,7 +227,8 @@ const TEXT = {
             'wall-stop': {title: 'Halt an der Wand', goal: 'Fahre auf die Wand zu und halte dicht davor, ohne sie zu berühren.'},
             'sumo-stay': {title: 'Im Ring bleiben', goal: 'Halte den Roboter 30 Sekunden lang im Ring.'},
             'maze-goal': {title: 'Durchs Labyrinth', goal: 'Finde den Weg zum grünen Feld.'},
-            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'}
+            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'},
+            'draw-square': {title: 'Zeichne ein Quadrat', goal: 'Markiere ein Teil „Malt auf den Boden“ und fahre ein Quadrat: Je quadratischer, desto mehr Sterne.'}
         },
         kinds: {distance: 'Abstand', color: 'Farbe', force: 'Kraft', touch: 'Berührung', light: 'Licht', rotation: 'Drehung', tilt: 'Neigung', motion: 'Bewegung'},
         replay: 'Wiederholung', replayHelp: 'Auf die letzten Sekunden zurückschauen. Start geht ab jetzt weiter.', replayNow: 'jetzt', speedValue: '{n}×',
@@ -324,6 +327,9 @@ const DOCK_PROPERTIES_PX = 1280;
 const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
 /** How Build's 3D view reads a scroll (camera-nav.js wheelIntent), kept in this browser. */
 const WHEEL_STORAGE_KEY = 'bw-sim-lab-wheel-mode';
+const MOUSE_PRESET_KEY = 'bw-sim-lab-mouse-preset';
+/** Set once the coach marks were put away on this device (sim-lab-coach.jsx). */
+const COACH_KEY = 'bw-sim-lab-coach-done';
 
 /**
  * From this pane width the toolbar may take a second row and shows every action; narrower, it
@@ -363,7 +369,7 @@ class SimLabPane extends React.Component {
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
-            hold: null, announce: '', wheelMode: this.storedWheelMode()};
+            hold: null, announce: '', wheelMode: this.storedWheelMode(), mousePreset: this.storedMousePreset(), coach: null};
         this.root = React.createRef();
         this.viewWrap = React.createRef();
         this.box = React.createRef();
@@ -510,6 +516,7 @@ class SimLabPane extends React.Component {
             ensureRunning: () => this.apiEnsureRunning(),
             setTimeScale: scale => this.setSpeed(scale),
             camera: view => this.apiCamera(view),
+            drawing: () => (this.view && this.view.penStrokes ? this.view.penStrokes() : []),
             locale: () => this.locale
         });
         const runtime = this.props.vm && this.props.vm.runtime;
@@ -741,6 +748,7 @@ class SimLabPane extends React.Component {
                 viewCubeLabels: this.etext.connect.cube});
             this.editView.setGrid(this.state.grid);
             this.editView.setWheelMode(this.state.wheelMode);
+            this.editView.setMousePreset(this.state.mousePreset);
             this.colors = colors;
             const palette = this.lib.colorPalette(colors);
             this.palette = {...palette, byCode: new Map([...palette.common, ...palette.more].map(c => [c.code, c]))};
@@ -756,6 +764,29 @@ class SimLabPane extends React.Component {
             return;
         }
         this.setState({status: 'ready'});
+        if (this.coachDue()) this.setState({coach: 0});
+    }
+
+    /**
+     * Whether the coach marks show now: the first time Build opens on this device. An automated browser
+     * (navigator.webdriver: the browser gates) gets them only when its URL asks (?bwCoach=1), so the
+     * card never covers what another gate clicks.
+     */
+    coachDue () {
+        try {
+            const automated = typeof navigator !== 'undefined' && navigator.webdriver;
+            if (automated && !/[?&]bwCoach=1\b/.test(window.location.search)) return false;
+            return localStorage.getItem(COACH_KEY) !== '1';
+        } catch {
+            return true; // no storage (a private window): show them, they cannot be remembered
+        }
+    }
+
+    /** The coach marks are put away for good on this device. */
+    coachDone () {
+        this.setState({coach: null});
+        try { localStorage.setItem(COACH_KEY, '1'); } catch { /* private window: this session only */ }
+        this.editView?.canvas.focus();
     }
 
     /** Hidden parts (ids) kept for this browser session. */
@@ -1111,6 +1142,7 @@ class SimLabPane extends React.Component {
             const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
             this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
+            this.view.setMousePreset(this.state.mousePreset);
             this.view.canvas.setAttribute('aria-label', this.t('canvasLabel'));
             this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));
             this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
@@ -1624,7 +1656,9 @@ class SimLabPane extends React.Component {
         for (const o of this.lib.createMat(this.state.mat || 'plain').obstacles) {
             touching[o.id] = parts.some(p => api.touching(p.id, o.id));
         }
-        return {tS, points, touching};
+        // What the pens have drawn (view/pen-layer.js), for "Draw a square".
+        const drawing = this.view && this.view.penStrokes ? this.view.penStrokes() : [];
+        return {tS, points, touching, drawing};
     }
 
     judgeChallenge () {
@@ -1931,6 +1965,22 @@ class SimLabPane extends React.Component {
         }
     }
 
+    storedMousePreset () {
+        try {
+            return localStorage.getItem(MOUSE_PRESET_KEY) === 'studio' ? 'studio' : 'brickwright';
+        } catch {
+            return 'brickwright';
+        }
+    }
+
+    /** The mouse preset for both views (camera-nav.js MOUSE_PRESETS), kept on this device. */
+    setMousePreset (mousePreset) {
+        this.setState({mousePreset});
+        this.editView?.setMousePreset(mousePreset);
+        this.view?.setMousePreset(mousePreset);
+        try { localStorage.setItem(MOUSE_PRESET_KEY, mousePreset); } catch { /* private window: this session only */ }
+    }
+
     setWheelMode (wheelMode) {
         this.setState({wheelMode});
         this.editView?.setWheelMode(wheelMode);
@@ -2042,6 +2092,8 @@ class SimLabPane extends React.Component {
         case 'hinged': case 'hingeShown': return fill(E[st.kind], {n: st.count, deg: st.degrees, i: st.index + 1, of: st.of});
         case 'chained': return fill(st.tread ? E.treaded : E.chained, {n: st.count, g: st.gears});
         case 'banded': return fill(E.banded, {mm: st.mm, stretch: this.decimal(st.stretch)});
+        case 'gliding': return fill(E.gliding, {ldu: this.decimal(st.ldu)});
+        case 'roped': return fill(E.roped, {cm: this.decimal(st.cm)});
         case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});
@@ -2674,6 +2726,10 @@ class SimLabPane extends React.Component {
                         {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
                         {simulate && this.renderReplay()}
                         {this.renderPortPicker(button)}
+                        {build && this.state.coach !== null && this.state.status === 'ready' && (
+                            <SimLabCoach T={this.etext} step={this.state.coach} onNext={() => this.setState(s => ({coach: s.coach + 1}))}
+                                onDone={() => this.coachDone()} />
+                        )}
                         {build && !this.dockProperties() && this.state.propsOpen && (
                             <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',
                                 display: 'flex', boxShadow: '-4px 0 14px rgba(15, 23, 42, 0.25)', borderRadius: '8px 0 0 8px'}}>
@@ -2685,7 +2741,9 @@ class SimLabPane extends React.Component {
                 </div>
                 {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
                 {build && this.state.shortcuts && (
-                    <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)} onClose={() => {
+                    <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
+                        mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}
+                        onCoach={() => this.setState({shortcuts: false, coach: 0})} onClose={() => {
                         this.setState({shortcuts: false});
                         this.editView?.canvas.focus();
                     }} />

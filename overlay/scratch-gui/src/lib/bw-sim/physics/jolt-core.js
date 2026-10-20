@@ -36,6 +36,7 @@ import { validateCompiledMechanism, upgradeMechanismV1, colliderVolume } from '.
 import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
+import { createRopes } from './rope.js';
 import { buildUniversalJoint } from './universal-joint.js';
 import { createRollingResistance } from './rolling.js';
 
@@ -129,6 +130,10 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
+/** A slider spring (kinds/shock.js) pushes with at most this (N): far beyond a LEGO spring, never the limit. */
+const SPRING_MAX_FORCE_N = 50;
+/** A chain whose sprockets' ratio is this close to 1 is driven 1:1 by the GearConstraint (kinds/chain.js). */
+const CHAIN_EQUAL = 1e-3;
 /** A rubber band's drive: few velocity steps, so it slips under a load a chain would carry. */
 const BELT_VELOCITY_STEPS = 4;
 
@@ -658,14 +663,23 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             ss.mLimitsMin = j.limits ? j.limits[0] : -1e6;
             ss.mLimitsMax = j.limits ? j.limits[1] : 1e6;
             if (typeof j.frictionN === 'number') ss.mMaxFrictionForce = j.frictionN;
-            const maxForce = typeof j.maxForceN === 'number' ? j.maxForceN : 0;
+            // A spring (kinds/shock.js): a position motor whose spring is the spring's stiffness and damping.
+            const spring = j.spring && j.spring.stiffness > 0 ? j.spring : null;
+            const maxForce = spring ? SPRING_MAX_FORCE_N : typeof j.maxForceN === 'number' ? j.maxForceN : 0;
             ss.mMotorSettings.mMinForceLimit = -maxForce;
             ss.mMotorSettings.mMaxForceLimit = maxForce;
+            if (spring) {
+                const sp = ss.mMotorSettings.mSpringSettings;
+                sp.mMode = J.ESpringMode_StiffnessAndDamping;
+                sp.mStiffness = spring.stiffness;
+                sp.mDamping = spring.damping;
+            }
             const constraint = ss.Create(bodyA, bodyB);
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
             const slider = J.castObject(constraint, J.SliderConstraint);
-            slider.SetMotorState(J.EMotorState_Off);
+            slider.SetMotorState(spring ? J.EMotorState_Position : J.EMotorState_Off);
+            if (spring) slider.SetTargetPosition(spring.restM);
             sliderMap.set(j.id, {
                 slider, constraint, bodyA, bodyB,
                 bodyAID: getBodyIDForId(j.body1),
@@ -674,7 +688,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 localAxis1: toLocal(j.body1, j.axis), localAxis2: toLocal(j.body2, j.axis),
                 position: 0, velocity: 0,
                 maxForce, maxSpeed: typeof j.maxSpeedMPerSec === 'number' ? j.maxSpeedMPerSec : Infinity,
-                mode: 'coast', target: 0, targetSpeed: null, kp: 10,
+                mode: spring ? 'spring' : 'coast', target: 0, targetSpeed: null, kp: 10,
             });
             J.destroy(ss);
         } else if (j.type === 'ball') {
@@ -922,6 +936,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const worms = [];
     /** Linear actuators' screw couplings (physics/screw.js drives them). */
     const screwCouplings = [];
+    /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
+    const ropeCouplings = [];
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
@@ -930,14 +946,20 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'chain') {
             // kinds/chain.js: a chain round two gears in one frame turns them the same way at the teeth's
-            // ratio. The fork's GearConstraint on the two hinges' relative rates (torque × ratio), not a tooth
-            // contact: for two equal sprockets that contact would sit at infinity on the line of centres.
-            chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
+            // ratio: the tooth contact a gear mesh has (GearMeshConstraint), its point outside the two on the
+            // line of centres (as an internal gear's). Two equal sprockets would put it at infinity: those get
+            // the fork's GearConstraint on the two hinges (exact at 1:1, but measured 27 % off at 16:24).
+            if (Math.abs(Math.abs(g.ratio) - 1) < CHAIN_EQUAL) chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
+            else hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'chain', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'band') {
             // kinds/belt.js: a rubber band round pulleys, the chain's coupling with few velocity steps, so it gives under load.
-            chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
+            if (Math.abs(Math.abs(g.ratio) - 1) < CHAIN_EQUAL) chainDrive(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
+            else hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio, { velocitySteps: BELT_VELOCITY_STEPS });
             gearInfos.push({ type: 'band', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+        } else if (g.kind === 'rope') {
+            ropeCouplings.push(g);
+            gearInfos.push({ type: 'rope', id: g.id, drumJoint: g.drumJoint });
         } else if (g.kind === 'spring') {
             // kinds/belt.js: a rubber band pulling two bodies together beyond its rest length.
             bandSpring(g);
@@ -1299,6 +1321,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     }
     // A linear actuator's pairing of spindle angle and piston position (physics/screw.js).
     if (screws) stateRegistry.register('screws', screws.registrant);
+    const ropes = ropeCouplings.length
+        ? createRopes({ J, couplings: ropeCouplings, hingeMap, jointMap, bodyInterface, bodyIdOf: getBodyIDForId, bodyOf: getBodyForId,
+            physicsSystem, allConstraints, dt: dtFixed })
+        : null;
+    if (ropes) stateRegistry.register('ropes', ropes.registrant);
     if (rolling) stateRegistry.register('rolling', rolling.registrant);
     if (dogClutches.length) {
         stateRegistry.register('dogClutches', {
@@ -1323,6 +1350,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
      */
     const setSliderMotor = (jointId, entry, cmd) => {
         if (!cmd || typeof cmd.mode !== 'string') throw new Error(`invalid motor command for ${jointId}`);
+        if (entry.mode === 'spring') throw new Error(`slider ${jointId} is a spring (a shock absorber), not a motor`);
         if (cmd.maxForceN !== undefined) {
             if (typeof cmd.maxForceN !== 'number' || !Number.isFinite(cmd.maxForceN) || cmd.maxForceN < 0) throw new Error(`maxForceN must be a non-negative number`);
             applySliderForce(entry, cmd.maxForceN);
@@ -1376,6 +1404,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 }
                 if (worms.length) applyWormHolds();
                 if (screws) screws.beforeStep();
+                if (ropes) ropes.beforeStep();
                 if (dogClutches.length) applyDogClutches();
                 if (rolling) rolling.apply();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
@@ -1506,6 +1535,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
          * Contacts per body pair since the start (only with {recordContacts: true}):
          * {pairs: {'a|b': manifold-steps}, manifolds}. Rolled back with the checkpoint.
          */
+        /** Each rope's free length (m) and tension (N) now (physics/rope.js); [] without a rope. */
+        ropeState() { ensureAlive(); return ropes ? ropes.state() : []; },
         contactPairs() {
             ensureAlive();
             if (!contactLog) throw new Error('contacts are recorded only with createPhysicsCore(…, {recordContacts: true})');
@@ -1740,6 +1771,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (contactListener) { J.destroy(contactListener); contactListener = null; }
             if (simShapeFilter) { J.destroy(simShapeFilter); simShapeFilter = null; }
             if (screws) screws.destroy();
+            if (ropes) ropes.destroy();
             if (rolling) rolling.destroy();
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },

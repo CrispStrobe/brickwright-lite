@@ -6184,6 +6184,196 @@
    }
   },
   {
+   "part": "2909.dat",
+   "name": "Technic shock absorber 9L cylinder",
+   "category": "other",
+   "massGrams": 1.09,
+   "connectors": [
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      0,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      -20,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "s",
+     "type": "shock-bore",
+     "position": [
+      0,
+      6.5,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 67,
+     "data": {
+      "strokeLdu": 40,
+      "springNPerM": 150,
+      "dampingNsPerM": 1
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      21.25,
+      45,
+      12.1
+     ],
+     "position": [
+      -8.75,
+      -5,
+      0
+     ]
+    }
+   ],
+   "nameDe": "Technic-Stoßdämpfer 9L Zylinder",
+   "mirrorOf": {
+    "part": "2909.dat",
+    "transform": {
+     "m": [
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      -1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
+   "part": "2910.dat",
+   "name": "Technic shock absorber 9L piston rod",
+   "category": "other",
+   "massGrams": 1.19,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 16
+    },
+    {
+     "id": "r",
+     "type": "shock-rod",
+     "position": [
+      0,
+      -73.5,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 67
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      12.5,
+      58.5,
+      12.5
+     ],
+     "position": [
+      0,
+      -48.5,
+      0
+     ]
+    }
+   ],
+   "nameDe": "Technic-Stoßdämpfer 9L Kolbenstange",
+   "mirrorOf": {
+    "part": "2910.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
    "part": "6589.dat",
    "name": "Technic gear 12 tooth bevel",
    "category": "gear",

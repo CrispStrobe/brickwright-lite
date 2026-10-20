@@ -14,6 +14,8 @@ import {LDU_M, dirToWorld, lduToWorld} from '../contracts.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
 import {createChainMotion} from './chain-motion.js';
 import {createSimBelts} from './belt-layer.js';
+import {createPenLayer} from './pen-layer.js';
+import {createSimRopes} from './rope-layer.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
@@ -85,11 +87,16 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none'});
     container.appendChild(canvas);
 
-    const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config), catalog});
+    const ldColors = parseLDConfig(config);
+    const built = buildSimScene({model, mechanism, read, colors: ldColors, catalog});
     // Chain links run round with their sprocket (drawing only: the core welds them to the frame).
     const chainMotion = createChainMotion({model, mechanism, catalog, built});
     // Rubber bands laid round their parts where the bodies are (drawing; kinds/belt.js simulates them).
     const simBelts = createSimBelts({model, mechanism, catalog, built});
+    // Pens draw on the floor (model parts marked `pen`; view/pen-layer.js).
+    const pens = createPenLayer({model, mechanism, built, colors: ldColors});
+    // Ropes from their bodies' points (view/rope-layer.js).
+    const simRopes = createSimRopes({mechanism, built});
     // The scene builder owns the model; the view adds light only when the builder brought none.
     if (!built.scene.children.some(c => c.isLight)) addPartLights(built.scene);
     // A light sky and a 1 cm grid on the floor (10 cm major lines): without them a
@@ -275,7 +282,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
 
     /** Port badges: items {id, port, label} (motors and sensors). */
     const setPorts = items => {
-        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id), hubAnchor: item.hub ? partCentre(item.hub) : null})));
         dirty = true;
     };
     /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */
@@ -348,6 +355,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (snapshot) applySnapshot(built, snapshot);
         if (snapshot && chainMotion) chainMotion.update();
         if (snapshot && simBelts) simBelts.update();
+        if (snapshot && pens) pens.update();
+        if (snapshot && simRopes) simRopes.update();
         const centre = (followPartId && partCentre(followPartId)()) || modelBox().getCenter(new Vector3());
         if (followed) {
             const delta = centre.clone().sub(followed);
@@ -369,6 +378,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const dispose = () => {
         insight.dispose();
         if (simBelts) simBelts.dispose();
+        if (pens) pens.dispose();
+        if (simRopes) simRopes.dispose();
         rays.geometry.dispose();
         rayMaterial.dispose();
         tipGeometry.dispose();
@@ -396,7 +407,13 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         dirty = true;
         resetCamera();
     };
-    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight,
+    /** The mouse preset (camera-nav.js MOUSE_PRESETS): which button orbits, which pans. */
+    const setMousePreset = preset => { configureOrbitControls(controls, MOUSE, preset); };
+    /** What the pens have drawn: strokes of [x, z] floor points (world metres). */
+    const penStrokes = () => (pens ? pens.strokes() : []);
+    /** The pens' tips' heights above the floor (m), [] without a pen. */
+    const penHeights = () => (pens ? pens.heights() : []);
+    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight, setMousePreset, penStrokes, penHeights,
         /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
         sensorRays: () => (rays.visible ? lastRays.filter(Boolean).map(r => ({...r})) : []),
         /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
