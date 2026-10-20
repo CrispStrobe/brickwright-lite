@@ -1,6 +1,7 @@
 # Named Array allocation and text conversion
 
-Implementation in progress. The first connected VM regression reproduces a
+Locally implemented; hosted adoption and public roundtrip qualification remain
+pending. The first connected VM regression reproduced a
 real gap: `createEmpty` creates the named Array, but using its reference in
 text addition is rejected because that allocation has no primitive backing
 proof. Literal Array allocations already have a separate qualified path.
@@ -61,3 +62,21 @@ draft and its hosted checks and Lite native qualification are pending. The
 local pin, carrier, receipt, source admission, exact admission controls and MPL
 notice are prepared together to make that qualification reproducible. This is
 not adoption on main or acceptance of the shipped feature.
+
+## Local execution checkpoint — 2026-10-20
+
+The exact proposed supplier and host install through the normal producer; all
+364 installed outputs and180 current runtime files pass independent readback.
+The shipped source-admission CLI and all57 real VM controls pass, with no skips:
+49 previous controls remain unchanged and eight new groups cover empty and
+pushed named arrays, both operand orders, foreign ownership, legacy creation,
+actual heap/late completion substitutions, original Error identity and inherited
+private-field access. The combined episode used21.37 CPU seconds and23.84 wall
+seconds within its existing limits. Independent saved-result checks pass.
+
+These are local component/runtime results. Supplier PR56 and the Lite adoption
+remain pending; browser authoring, named-factory Code/export/reimport and
+MakeCode SDK acceptance have not passed from these tests. Source review predicts
+that a named getter can make export/reimport reconstruct through create1D.
+Capture that actual route and support its distinct JSON allocation semantics;
+do not change the emitted factory or omit the getter to conceal a refusal.

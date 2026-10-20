@@ -11,12 +11,28 @@ successful applications or infer a reduced partial count from component tests.
 
 The unused Console/Font analysis experiments passed output-parity controls but
 were reverted after balanced real-input timings showed Font overhead and mixed
-Console results. Keep those rejected selections and their evidence. The next
-measured candidate is the query-only image-reference analysis: determine whether
-it can be omitted when no actual `indexOf`/`removeElement` demand exists, while
-preserving positive-query inference, resource decoding and changed-input
-fallback. Later full image-reference inference must remain intact. This is a
-scoped investigation, not an accepted speedup or a completed corpus gate.
+Console results. Keep those rejected selections and their evidence. The query-only image-reference proposal is now unselected and unexecuted:
+the actual costly input contains builtin images whose decoding requires eager
+observation even without a query. Do not select that path by method-name absence
+or hide decoder effects. The next measured cost change still needs evidence
+from the actual importer or Creator workload.
+
+A connected native VM test also reproduces a real functional failure:
+`createEmpty` -> `namedReference` -> text addition has no primitive backing
+proof. The candidate creates the empty body in the current host operation,
+retains its identity through named-reference publication, and adds eight actual
+VM groups. Supplier protocol26 and Lite source17 pass; a fresh normal installer
+reproduces all364 outputs. Independent saved-data checks accept the installation and all57 native
+controls (49 unchanged plus eight new groups), with zero skips. Named-factory
+Code/export/reimport acceptance remains pending. See [the exact allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md).
+
+After that narrow allocation, qualify the named JSON constructor used by some
+export/reimport paths. Source review shows a named item getter can cause export
+to reconstruct an empty registry through `create1D`; its backing currently has
+no primitive proof. Capture actual emitted files and selected opcodes before
+claiming a failure or fixing it. Preserve legacy malformed/nonarray JSON and
+coercion behavior. Zeros, range, derived arrays and serialized aliases remain
+separate acceptance families.
 
 | Priority | Current evidence | Concrete next task and acceptance |
 | --- | --- | --- |

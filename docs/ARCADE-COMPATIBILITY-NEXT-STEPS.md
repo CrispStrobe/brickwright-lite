@@ -1,5 +1,65 @@
 # Arcade compatibility: integration and next steps
 
+## Current integration and repair queue — 2026-10-20
+
+This section supersedes the dated integration status below. The previous
+foundation and follow-up stack have been reconciled with main. The remaining
+combined delivery is [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128);
+its exact head still needs every enabled hosted check. One existing full-CI
+request is justified by the tile editor changes. Do not repeat that request or
+add full CI to runtime-only follow-ups without a browser qualification need.
+
+The Arrays supplier [PR #52](https://github.com/CrispStrobe/extensions/pull/52)
+is merged. The earlier combined installation has 364 complete output files;
+all 49 native tests and three genuine original/current-Code/export-reimport
+execution cases pass independently reviewed saved-result checks. Those results
+apply to the tested source and supplier; they do not automatically qualify
+newer heads, browser editing or complete games.
+
+Five current 225-input attempts ended without complete reports. **All 225
+current outcomes remain unobserved.** The historical raw184 result remains
+147 translated / 36 partial / one malformed; the original41-context result
+remains 29 original-compiler passes / 12 failures. Never subtract a component
+test or an unfinished prefix from these counts.
+
+### Ordered next work
+
+1. Complete the fresh named-empty Array candidate qualification described in
+   [the allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md). The original
+   connected createEmpty -> namedReference -> text program fails. The candidate
+   adds host-created allocation identity and eight real-VM regression groups.
+   Supplier [PR #56](https://github.com/CrispStrobe/extensions/pull/56) and its
+   atomic local pin proposal remain separate from main adoption. The fresh
+   normal installation and all57 native controls now pass independent saved-data
+   checks, with zero skips. Genuine named-factory Code/export journeys remain
+   required; component execution alone is insufficient.
+2. Complete lossless corpus reporting within existing resource bounds. The
+   latest full attempt remains incomplete despite a qualified empty ordinary
+   procedure optimization. Importer and Creator inclusive phases dominate the
+   observed cost. Preserve complete diagnostics/graphs; do not truncate
+   unsupported features or call a filtered run a census. Console/Font trial
+   optimizations were reverted because measured balanced costs did not justify
+   adoption. The query-only inference proposal is unselected: actual costly
+   builtin image decoding requires eager observation.
+3. Use each complete report to group genuine source failures by producer and
+   semantics. Fix one family with real original-project and public pipeline
+   controls, then remeasure. Next Array families include named JSON/2D/zeros/
+   range creation, derived slice/concat and fresh serialized aliases. The
+   FreeThrow overlap-callback Sprite destruction receiver proof also remains
+   an explicit conversion boundary. A method list or annotation cannot replace
+   actual ownership and value semantics.
+4. For every family, qualify Blocks authoring/editing, Code regeneration,
+   runtime controls, save/reopen and exported MakeCode SDK compilation. Track
+   visible work in [the capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
+   Browser gates belong to changes that affect these visible journeys.
+
+Do not promise a number of iterations or a zero-partial date before a complete
+current report identifies the remaining families.
+
+## Historical dated checkpoints
+
+The following entries retain earlier observations; use the current queue above.
+
 ## Latest bounded qualification checkpoint — 2026-10-19
 
 Three complete 225-subject CLI attempts ended without reports; **all 225 current

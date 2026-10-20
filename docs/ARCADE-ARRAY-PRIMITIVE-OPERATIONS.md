@@ -122,9 +122,11 @@ complete native execution and the unchanged original/Code/exported semantic
 journey remain required; no full-game or GUI acceptance follows from source.
 
 
-## Named empty allocation source candidate
+## Named empty allocation candidate
 
-SOURCE CANDIDATE — not installed or qualified. A current registered
+Locally installed and qualified by the complete57 native controls, with
+independent saved-result readback; supplier/main adoption and public roundtrip
+acceptance remain pending. A current registered
 `createEmpty` call with its original primitive String name may request one
 actual empty Array from the host. The host creates the body itself after the
 current-call, raw-input, graph and intrinsic checks; it records identity and
@@ -146,4 +148,5 @@ allocation without this new provenance. A qualified allocation request with a
 missing host result fails explicitly. Older supplier sources that never request
 this birth keep their previous unqualified behavior. Other factories, range
 coercion/loop semantics, derived slice/concat, opaque elements and fresh decoder
-normalization remain separate work. No runtime or whole-game result is claimed.
+normalization remain separate work. The named-empty component result does not
+qualify these families, public roundtrips or whole games.

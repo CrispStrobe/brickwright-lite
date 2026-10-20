@@ -2,6 +2,11 @@
 
 ## Current integration checkpoint — 2026-10-20
 
+For the latest functional repair and ordered acceptance work, read
+[the current queue](ARCADE-COMPATIBILITY-NEXT-STEPS.md#current-integration-and-repair-queue--2026-10-20).
+The named-empty Array candidate is additional to the qualified earlier49, and
+must not inherit their runtime or roundtrip acceptance.
+
 Main has been normally merged into the current integration successor, including
 [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and the latest
 Robot Lab and NXT changes. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52)
