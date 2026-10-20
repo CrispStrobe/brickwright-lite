@@ -129,6 +129,7 @@ lane/robot-lab-flex3-20261020 — Claude (Robot Lab lane). Cables from each plug
 hub (insight layer); the Studio/LDD mouse preset and right click puts down; first-time coach marks;
 Ctrl+drag glides a pin or axle along its hole. docs/ROBOT-LAB-UX.md §13, §14.
 
+
 ## Robot Lab rubber bands — 2026-10-20
 
 CLAIMED and folded into the flexible-parts PR #1116
@@ -150,6 +151,16 @@ lays a closed chain round the selected gears (or a 57518 tread round 57519 sproc
 drawnOnly, each sprocket a wheel of the tread's outer radius); view/chain-motion.js runs the links
 round; properties panel "Chain or tread round". Tests:
 test/bw-sim-chain.test.mjs; gate scripts/lib/sim-lab-chain-gate.mjs (--part=editor).
+
+## Robot Lab hub coverage matrix and test-only gaps — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (hub coverage lane). New
+`docs/ROBOT-LAB-HUB-COVERAGE.md` (hub x extension x route x code-flavour matrix from code and tests, gaps
+ordered by user impact) and two new test files that drive the REAL bundled extensions against the
+existing virtual hubs: `test/lab-hubs-coverage.test.mjs` (legoboostunified over Scratch Link BLE,
+legopoweredup on the Move Hub and the City Hub) and `test/bw-sim-rcx-legorcx.test.mjs` (legorcx blocks
+sent with its own block into the Lab RCX). No `overlay/scratch-gui/src/lib/bw-sim/**` change: the open
+Robot Lab PRs #1123/#1127/#1129/#1130 own that tree; gaps that need it wait for them to merge.
 
 ## Arcade stale PR integration — 2026-10-19
 
