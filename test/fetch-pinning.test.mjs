@@ -365,17 +365,6 @@ const CENSUS = [
     },
     {
         file: '.github/workflows/build.yml',
-        kind: 'raw',
-        text: 'raw.githubusercontent.com/CrispStrobe/extensions/${ARRAY_SUPPLIER_SHA}/extensions/CrispStrobe/arrays.js',
-        class: 'sha-const',
-        why: 'CONTENT, sha-addressed and byte-bound. ARRAY_SUPPLIER_SHA is a 40-hex constant '
-           + 'in the same step env (SHA_CONSTANTS below asserts it) and the step also checks the '
-           + 'downloaded bytes against ARRAY_SUPPLIER_SHA256 before exporting the path. The file '
-           + 'is the explicit frozen Array supplier the two *-native unit tests require; it is '
-           + 'read by those tests only and never written into the tree.'
-    },
-    {
-        file: '.github/workflows/build.yml',
         kind: 'git',
         text: 'git clone --bare --filter=blob:none https://github.com/CrispStrobe/emu8051-stc.git /tmp/emu8051-stc.git 2>/dev/null',
         class: 'waived',
@@ -658,7 +647,9 @@ const SHA_CONSTANTS = [
     ['scripts/sync-emu8051-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m],
-    ['.github/workflows/build.yml', /^\s*ARRAY_SUPPLIER_SHA: (\S+)/m],
+    // The unit job now decodes the registered local carrier instead of fetching
+    // the supplier. Its admission constant must still name a complete commit.
+    ['scripts/admit-arrays-number-value-test-source.mjs', /commit: '([^']+)'/],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const ELKS_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
     ['scripts/verify-native-downloads-e2e.mjs', /'([0-9a-zA-Z]+)\/riscv32-linux\/Image'/],
@@ -853,6 +844,18 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
         assert.ok(names.length >= 3,
             `vendor-pins.json names only ${names.length} upstreams; expected at least 3 `
             + '(bw-circuit-ui, bw-board, sb3-creator).');
+        // The offline unit input is still tied to the canonical vendor pin and
+        // receipt. Removing its old network fetch must not leave a second,
+        // independently drifting supplier identity in the shipped admission CLI.
+        const admission = readFileSync(path.join(ROOT, 'scripts/admit-arrays-number-value-test-source.mjs'), 'utf8');
+        const supplier = admission.match(/commit: '([^']+)'/);
+        assert.ok(supplier, 'the local Arrays admission supplier commit is missing');
+        assert.equal(supplier[1], pins['arrays-values'],
+            'the local Arrays admission supplier differs from vendor-pins.json');
+        const receipt = JSON.parse(readFileSync(path.join(ROOT,
+            'overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json'), 'utf8'));
+        assert.equal(receipt.files?.arrays?.commit, pins['arrays-values'],
+            'the bundled Arrays receipt differs from vendor-pins.json');
         const bad = names.filter((n) => !FULL_SHA.test(String(pins[n])));
         assert.deepEqual(bad, [],
             'these pins are not 40-hex shas: ' + bad.map((n) => `${n}=${pins[n]}`).join(', '));

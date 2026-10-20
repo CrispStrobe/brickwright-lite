@@ -1,10 +1,13 @@
-import test from 'node:test';
+import test,{afterEach} from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {VM,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 const Arcade=loadExtensionClass('arcade');
+const ownedVMs=[];
+afterEach(()=>{const failures=[];for(const vm of ownedVMs.splice(0)){for(const action of ['stopAll','quit']){try{vm[action]();}catch(error){failures.push(error);}}}clearStrayTimers();assert.deepEqual(failures,[],'all owned VM cleanup completes');});
+function runtimeFixture(){const vm=new VM();ownedVMs.push(vm);assert.ok(Array.isArray(vm.runtime.targets));return vm.runtime;}
 function setup(){
- const runtime=new EventEmitter(),skins=new Map(),updates=[];let next=0;
+ const runtime=runtimeFixture(),skins=new Map(),updates=[];let next=0;
  const target={drawableID:1,currentCostume:0,size:100,setSize(n){this.size=n;},setVisible(v){this.visible=v;},setXY(x,y){this.x=x;this.y=y;},getCostumes(){return[];}};
  runtime.getSpriteTargetByName=()=>({makeClone:()=>target});runtime.addTarget=()=>{};
  runtime.renderer={createSVGSkin(svg,center){const id=++next;skins.set(id,{svg,center});updates.push(id);return id;},updateSVGSkin(id,svg,center){skins.set(id,{svg,center});updates.push(id);},updateDrawableSkinId(){},updateDrawableProperties(){},destroySkin(id){skins.delete(id);}};
