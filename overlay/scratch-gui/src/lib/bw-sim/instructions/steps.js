@@ -43,7 +43,10 @@
 //
 // Each step also says which way its new parts slide in (`moves`: part id → unit direction in
 // the model's LDU frame, pointing AWAY from where the part goes, along the connection that seats
-// it in a part already built): the view draws them flying in, or exploded with an arrow.
+// it in a part already built): the view draws them flying in, or exploded with an arrow. And from
+// which corner the page looks (`view`: [sx, sz], LDU frame, always from above): the one facing the
+// side the new parts come from, keeping the last page's when it does as well (a manual turns the
+// model only when it must; the pane then says so).
 
 import {buildGraph} from '../mech/graph.js';
 import {partHubProfile} from '../contracts.js';
@@ -126,8 +129,11 @@ const vUnit = a => { const n = Math.hypot(...a) || 1; return a.map(v => v / n); 
 /**
  * Which way new parts slide onto the parts on the page: for each connection between a new part
  * and a part already built (mech/graph.js edges: a shaft in a hole), along the connection's axis,
- * from the built part's connector toward the new part's; a connection centred on its partner (a
- * wheel on the middle of its axle) says the side of the page's centre the part is on (outboard).
+ * from the built part's connector toward the new part's; a stud in its socket (where the two
+ * connectors meet at one point) says it by the stud, which points out of its own part: a part set
+ * onto a built stud comes from the stud's side, a part whose stud goes into a built one from the
+ * other; any other connection centred on its partner (a wheel on the middle of its axle) says the
+ * side of the page's centre the part is on (outboard).
  * A part whose connections disagree (it goes on in two directions at once) has none.
  * @returns {(fresh: string[], onPage: Set<string>) => Map<string, number[]>} unit directions (LDU frame), away from home
  */
@@ -140,7 +146,7 @@ export const insertDirections = (model, catalog) => {
         if (!na || !nb || na.partId === nb.partId) continue;
         const ca = na.connectors.find(c => c.id === e.a.connector);
         const cb = nb.connectors.find(c => c.id === e.b.connector);
-        if (ca && cb) joints.push({a: na.partId, b: nb.partId, axis: vUnit(e.axis), pa: ca.position, pb: cb.position});
+        if (ca && cb) joints.push({a: na.partId, b: nb.partId, axis: vUnit(e.axis), pa: ca.position, pb: cb.position, ta: ca, tb: cb});
     }
     const at = new Map(model.parts.map(p => [p.id, p.position]));
     return (fresh, onPage) => {
@@ -151,9 +157,14 @@ export const insertDirections = (model, catalog) => {
             let dir = null;
             let clash = false;
             for (const j of joints) {
-                const mine = j.a === id ? [j.pa, j.pb, j.b] : j.b === id ? [j.pb, j.pa, j.a] : null;
+                const mine = j.a === id ? [j.pa, j.pb, j.b, j.ta, j.tb] : j.b === id ? [j.pb, j.pa, j.a, j.tb, j.ta] : null;
                 if (!mine || !onPage.has(mine[2])) continue;
                 let s = vDot(vSub(mine[0], mine[1]), j.axis);
+                // A stud in its socket: the stud's own axis points out of its part.
+                if (Math.abs(s) < 1e-6 && (mine[3].type === 'stud' || mine[4].type === 'stud')) {
+                    const stud = mine[3].type === 'stud' ? mine[3] : mine[4];
+                    s = vDot(stud.axis, j.axis) * (stud === mine[3] ? -1 : 1);
+                }
                 // Centred on its partner: the side of the page's centre it is on.
                 if (Math.abs(s) < 1e-6 && centre) s = vDot(vSub(at.get(id), centre), j.axis);
                 if (Math.abs(s) < 1e-6) continue;
@@ -169,7 +180,8 @@ export const insertDirections = (model, catalog) => {
 
 /**
  * Pins first: splits a step whose pins and axles go into parts on the page (or into its own first
- * part) so they go in on their own step, before the parts that cover them. Steps stay buildable.
+ * part) so they go in on their own step, before the parts that cover them; the first step of the
+ * model (or of a sub-assembly) puts its first part on alone. Steps stay buildable.
  */
 const pinsFirst = (steps, adjacency, meta, groups) => {
     const out = [];
@@ -186,18 +198,19 @@ const pinsFirst = (steps, adjacency, meta, groups) => {
         for (;;) {
             const fasteners = rest.filter(id => isFastener(meta(id)));
             const covers = new Set([...rest.filter(id => !isFastener(meta(id))), ...attached]);
-            if (!fasteners.length || !covers.size) break;
             // Pins in the model so far that a part of this step goes onto.
-            const first = fasteners.filter(f => touches(f, built) && touches(f, covers));
+            const first = covers.size ? fasteners.filter(f => touches(f, built) && touches(f, covers)) : [];
             if (first.length) {
                 pieces.push({parts: first, pins: true});
                 for (const id of first) built.add(id);
                 rest = rest.filter(id => !first.includes(id));
                 continue;
             }
-            // Nothing built holds them: the step's first part goes on alone when its pins join it to another new part.
+            // The step's first part goes on alone when it starts the model (or its sub-assembly) with others
+            // (the RCX, then the motors and the plate under it), or when its pins join it to another new part.
             const lead = rest.find(id => !isFastener(meta(id)));
-            if (!lead || !fasteners.some(f => adjacency.get(f)?.has(lead) && [...covers].some(c => c !== lead && adjacency.get(f)?.has(c)))) break;
+            const joined = lead && fasteners.some(f => adjacency.get(f)?.has(lead) && [...covers].some(c => c !== lead && adjacency.get(f)?.has(c)));
+            if (!lead || covers.size < 2 || (built.size > 0 && !joined)) break;
             pieces.push({parts: [lead], pins: false});
             built.add(lead);
             rest = rest.filter(id => id !== lead);
@@ -213,8 +226,27 @@ const pinsFirst = (steps, adjacency, meta, groups) => {
     return out;
 };
 
-/** Each step's `moves` (insertDirections against what is on its page); an attaching sub-assembly moves as one. */
+/** The four corners a page looks from (LDU frame: x right, z toward the back; the camera is above). */
+export const VIEWS = Object.freeze([[1, -1], [-1, -1], [1, 1], [-1, 1]]);
+/**
+ * The corner that shows where a step's parts come from best: each corner scores how much the parts'
+ * ways in face it; the front-right corner (a manual's usual view) and the page before's are preferred.
+ */
+export const stepCorner = (moves, before = VIEWS[0]) => {
+    const score = ([sx, sz]) => {
+        const d = vUnit([sx, 0, sz]); // the camera is always above: the side it faces
+        let s = 0;
+        for (const m of moves) s += Math.max(0, vDot(m, d));
+        if (sx === VIEWS[0][0] && sz === VIEWS[0][1]) s += 0.2;
+        if (sx === before[0] && sz === before[1]) s += 0.9;
+        return s;
+    };
+    return VIEWS.reduce((best, v) => (score(v) > score(best) + 1e-9 ? v : best), before);
+};
+
+/** Each step's `moves` (insertDirections against what is on its page) and `view`; an attaching sub-assembly moves as one. */
 const withMoves = (plan, directions) => {
+    let corner = VIEWS[0];
     plan.steps.forEach((step, n) => {
         const {built, fresh} = stepView(plan, n);
         const dirs = directions(fresh, new Set(built));
@@ -226,6 +258,8 @@ const withMoves = (plan, directions) => {
         }
         for (const id of step.parts) if (dirs.has(id)) moves[id] = dirs.get(id);
         step.moves = moves;
+        corner = stepCorner(Object.values(moves), corner);
+        step.view = corner;
     });
     return plan;
 };
@@ -552,10 +586,11 @@ const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
  * @param {object} model PlacedModel (model.steps: part ids per `0 STEP`, when the file had them)
  * @param {Map|object} catalog part catalog
  * @returns {{source: 'meta'|'auto', steps: Array<{parts: string[], attach: string[], subassembly: string|null, loose: boolean,
- *            pins: boolean, moves: object}>, groups: Array<{id: string, name: string, parts: string[]}>}}
+ *            pins: boolean, moves: object, view: number[]}>, groups: Array<{id: string, name: string, parts: string[]}>}}
  *          `parts` are the parts new in a step; `attach` names sub-assemblies (groups) joined to the
  *          model in it; a step with `subassembly` builds that group on its own; `pins`: a step that
- *          only puts pins and axles in (pinsFirst); `moves`: which way each new part slides in
+ *          only puts pins and axles in (pinsFirst); `moves`: which way each new part slides in;
+ *          `view`: the corner the page looks from (stepCorner)
  */
 export const buildSteps = (model, catalog) => {
     const adjacency = partAdjacency(model, catalog);

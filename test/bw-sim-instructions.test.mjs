@@ -27,7 +27,7 @@ import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
 import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/chain.js';
 import {placedSpur, placedTooth} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/tooth-parts.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
-import {buildSteps, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {buildSteps, stepCorner, VIEWS, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(ROOT, 'overlay/scratch-gui');
@@ -375,4 +375,30 @@ test('pins first, and which way each new part slides in: the driving base step b
     assert.deepEqual(move(6, 'wheelL'), [-1, 0, 0]);
     assert.deepEqual(move(6, 'ball'), [0, 1, 0]);
     assert.deepEqual(plan.steps[0].moves, {}, 'the first part goes on nothing');
+});
+
+test('studded bricks: the first part alone, then a brick set onto studs comes from above (the RCX bumper car)', () => {
+    const model = load(read('overlay/scratch-gui/static/sim-lab/models/rcx-bumper-car.ldr'));
+    const plan = buildSteps(model, CATALOG);
+    assert.deepEqual(plan.steps[0].parts, ['hub'], 'the RCX alone on page 1');
+    const at = stepIndex(plan);
+    // The bumper brick sits on the RCX's studs: it comes down onto them (LDraw −y is up).
+    assert.deepEqual(plan.steps[at.get('bumper')].moves.bumper, [0, -1, 0]);
+    // The motors and the plate under the RCX slide on from below.
+    for (const id of ['motorA', 'motorC', 'frontPlate']) assert.deepEqual(plan.steps[at.get(id)].moves[id], [0, 1, 0], id);
+});
+
+test('a page turns the model only when the new parts come from another side, and stays turned', () => {
+    const [frontRight, frontLeft, backRight] = VIEWS;
+    assert.deepEqual(stepCorner([]), frontRight, 'nothing to show: the usual corner');
+    assert.deepEqual(stepCorner([[1, 0, 0], [-1, 0, 0]]), frontRight, 'a mirrored pair: the usual corner');
+    assert.deepEqual(stepCorner([[-1, 0, 0], [-1, 0, 0]]), frontLeft, 'two parts from the left: look from the left');
+    assert.deepEqual(stepCorner([[0, 0, 1], [0, 0, 1]]), backRight, 'two from the back: look from behind');
+    assert.deepEqual(stepCorner([[0, 0, -1]], frontLeft), frontLeft, 'a part from the front, which the corner before shows as well: stay');
+    assert.deepEqual(stepCorner([[1, 0, 0]], frontLeft), frontRight, 'one from the right, which it does not: turn back');
+    // The colour explorer's pins at the back of the hub: the page turns there, once, and the steps after stay.
+    const plan = buildSteps(load(read('overlay/scratch-gui/static/sim-lab/models/colour-explorer.ldr')), CATALOG);
+    const turns = plan.steps.filter((st, i) => i > 0 && st.view.join() !== plan.steps[i - 1].view.join());
+    assert.equal(turns.length, 1);
+    assert.ok(turns[0].pins && turns[0].view.join() === backRight.join(), JSON.stringify(turns[0]));
 });

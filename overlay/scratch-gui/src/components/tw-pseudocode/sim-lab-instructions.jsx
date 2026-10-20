@@ -14,6 +14,10 @@
 import React from 'react';
 import {INSTRUCTIONS_TEXT} from './sim-lab-instructions-text.js';
 
+/** A page that looks from another corner than the page before (instructions/steps.js stepCorner), in the same assembly. */
+const turnedFrom = (step, before) => Boolean(before && step.view && before.view && step.subassembly === before.subassembly &&
+    (step.view[0] !== before.view[0] || step.view[1] !== before.view[1]));
+
 const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
 /** Size of a printed step picture (px). */
 const PRINT_W = 1200;
@@ -139,11 +143,13 @@ class SimLabInstructions extends React.Component {
             parts: this.rows(step.parts).map(cell),
             attach: step.attach.map(id => this.groupName(id)),
             subassembly: step.subassembly ? this.groupName(step.subassembly) : null,
-            pins: Boolean(step.pins)
+            pins: Boolean(step.pins),
+            turned: turnedFrom(step, this.plan.steps[i - 1])
         }));
         const html = lib.instructionsPrintHtml({lang: locale === 'de' ? 'de' : 'en',
             title: fill(T.documentTitle, {name: this.props.title || T.title}),
-            text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly, pins: T.pins},
+            text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly, pins: T.pins,
+                turned: T.turned},
             steps, bom: this.rows(this.props.model.parts.map(p => p.id)).map(cell)});
         win.document.open();
         win.document.write(html);
@@ -178,9 +184,10 @@ class SimLabInstructions extends React.Component {
         );
     }
 
-    renderStepAside (step) {
+    renderStepAside (step, before) {
         const T = this.text;
         const notes = [
+            ...(turnedFrom(step, before) ? [T.turned] : []),
             ...(step.subassembly ? [fill(T.subassembly, {name: this.groupName(step.subassembly)})] : []),
             ...step.attach.map(id => fill(T.attach, {name: this.groupName(id)})),
             ...(step.loose ? [T.loose] : []),
@@ -240,7 +247,7 @@ class SimLabInstructions extends React.Component {
                     {status === 'loading' && <div role="status" style={{fontSize: 13}}>{T.loading}</div>}
                     {status === 'empty' && <div role="status" style={{fontSize: 13}}>{T.empty}</div>}
                     <div style={{display: 'flex', gap: 12, flex: '1 1 auto', minHeight: 0}}>
-                        {onStep && this.renderStepAside(steps[page])}
+                        {onStep && this.renderStepAside(steps[page], steps[page - 1])}
                         <div ref={this.box} data-testid="bw-sim-instructions-view"
                             style={{flex: '1 1 auto', minHeight: 0, minWidth: 0, display: onList || status === 'empty' ? 'none' : 'block'}} />
                         {onList && this.renderPartsList()}

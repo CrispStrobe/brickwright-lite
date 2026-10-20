@@ -259,8 +259,11 @@ export const createInstructionsView = ({container, model, plan, read, colors, re
         if (!freshBox.isEmpty()) {
             const size = renderer.getSize(new Vector2());
             const aspect = size.x / Math.max(1, size.y);
+            // The step's corner (instructions/steps.js stepCorner, LDU frame [sx, sz]) as a world direction: x, up, −z.
+            const corner = (plan.steps[n] && plan.steps[n].view) || [1, -1];
+            const direction = [VIEW_DIRECTION[0] * corner[0], VIEW_DIRECTION[1], -VIEW_DIRECTION[2] * corner[1]];
             const view = thumbnailCamera(stepBounds({min: freshBox.min.toArray(), max: freshBox.max.toArray()},
-                {min: allBox.min.toArray(), max: allBox.max.toArray()}), {fov: camera.fov, aspect, direction: VIEW_DIRECTION, margin: 1.15});
+                {min: allBox.min.toArray(), max: allBox.max.toArray()}), {fov: camera.fov, aspect, direction, margin: 1.15});
             camera.position.fromArray(view.position);
             camera.up.fromArray(view.up);
             camera.lookAt(...view.target);
