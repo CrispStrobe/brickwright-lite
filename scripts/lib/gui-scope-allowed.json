@@ -31,7 +31,8 @@
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-world.test.mjs",
       "test/spike-arena-3d-pane.test.mjs",
-      "test/spike-arena-3d.test.mjs"
+      "test/spike-arena-3d.test.mjs",
+      "test/bw-sim-pen.test.mjs"
     ],
     "why": "the SPIKE arena's 3D scene builder (lib/spike-arena/arena-scene3d.js) and view import three, a GUI-package dependency lazy-loaded with the 3D view; the tests build the scene headless"
   },

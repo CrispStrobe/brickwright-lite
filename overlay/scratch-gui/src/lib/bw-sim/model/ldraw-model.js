@@ -252,6 +252,7 @@ export const parseModel = (text, {catalog} = {}) => {
 
     // State for main model
     let pendingPort = null; // string or null
+    let pendingPen = false; // a `0 !BW PEN` line: the next part draws on the floor
     let pendingId = null;
     let pendingGroup = null; // groupId or null
     const seenIds = new Set();
@@ -408,6 +409,7 @@ export const parseModel = (text, {catalog} = {}) => {
     /** A main-model line was not placed: what was pending for it does not pass to the next part. */
     const dropPending = () => {
         pendingPort = null;
+        pendingPen = false;
         pendingId = null;
         pendingGroup = null;
     };
@@ -421,6 +423,10 @@ export const parseModel = (text, {catalog} = {}) => {
             if (stepParts.length) steps.push(stepParts);
             stepParts = [];
             sawStep = true;
+            continue;
+        }
+        if (/^0\s+!BW\s+PEN\s*$/i.test(trimmed)) {
+            pendingPen = true;
             continue;
         }
         // Check for !BW PORT
@@ -536,6 +542,7 @@ export const parseModel = (text, {catalog} = {}) => {
             seenIds.add(id);
             const part = {id, part: parsed.file, color: parsed.color, position: parsed.position, rotation: parsed.rotation};
             if (pendingPort) part.port = pendingPort;
+            if (pendingPen) part.pen = true;
             if (pendingGroup) {
                 const g = groupsById.get(pendingGroup);
                 if (partToGroup.has(id)) {
@@ -546,6 +553,7 @@ export const parseModel = (text, {catalog} = {}) => {
                 }
             }
             pendingPort = null;
+            pendingPen = false;
             pendingId = null;
             pendingGroup = null;
             parts.push(part);
@@ -643,6 +651,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
         const gid = partGroupMap.get(p.id);
         if (gid) lines.push(`0 !BW IN ${gid}`);
         if (p.port) lines.push(`0 !BW PORT ${p.port}`);
+        if (p.pen) lines.push('0 !BW PEN');
         const x = formatNumber(p.position[0]);
         const y = formatNumber(p.position[1]);
         const z = formatNumber(p.position[2]);

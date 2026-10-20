@@ -28,6 +28,7 @@ export const EDITOR_TEXT = {
             {title: 'Turn and look', body: 'R turns the part in hand, [ and ] turn a part 15° on its pin. Drag empty space to turn the view. Press ? for every control.'}
         ],
         hinge: 'On its hinge', minus15: '−15°', plus15: '+15°', nextHinge: 'Next hinge (N)',
+        pen: 'Draws on the floor (a pen)', penHelp: 'In Simulate this part draws a line wherever it touches the floor: build a plotter or a drawing robot',
         bandRound: 'Rubber band round', bandRoundHelp: 'Put a rubber band round the selected parts: round turning pulleys it drives, between an arm and the frame it pulls',
         bandOff: 'Take off rubber band',
         chainRound: 'Chain or tread round', chainRoundHelp: 'Lay a closed chain round the selected gears, or a tread round the selected sprocket wheels: they then turn together',
@@ -170,6 +171,7 @@ export const EDITOR_TEXT = {
             {title: 'Drehen und schauen', body: 'R dreht das Teil in der Hand, [ und ] drehen ein Teil um 15° auf seinem Pin. Zieh auf freier Fläche, um die Ansicht zu drehen. ? zeigt alle Tasten.'}
         ],
         hinge: 'Im Gelenk', minus15: '−15°', plus15: '+15°', nextHinge: 'Nächstes Gelenk (N)',
+        pen: 'Malt auf den Boden (ein Stift)', penHelp: 'In der Simulation zieht dieses Teil eine Linie, wo es den Boden berührt: Bau einen Plotter oder einen Malroboter',
         bandRound: 'Gummiband herum', bandRoundHelp: 'Ein Gummiband um die gewählten Teile legen: Um drehende Riemenscheiben treibt es an, zwischen einem Arm und dem Rahmen zieht es',
         bandOff: 'Gummiband abnehmen',
         chainRound: 'Kette oder Raupe herum', chainRoundHelp: 'Eine geschlossene Kette um die gewählten Zahnräder legen oder eine Raupenkette um die gewählten Kettenräder: Sie drehen sich dann zusammen',

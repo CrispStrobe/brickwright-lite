@@ -625,6 +625,7 @@ export const validatePlacedModel = (model, catalog) => {
         else if (catalog && !has(pl.part)) out.push(`${w}.part: '${pl.part}' is not in the part catalog`);
         if (!isVec(pl?.position)) out.push(`${w}.position: not a Vec3`);
         if (!isVec(pl?.rotation, 9)) out.push(`${w}.rotation: need 9 numbers (row-major 3×3)`);
+        if (pl?.pen !== undefined && pl.pen !== true) out.push(`${w}.pen: true (the part draws on the floor) or absent`);
         // Parts are rigid: the editor only ever produces rotations (no mirror, no scale).
         else if (Math.abs(det3(pl.rotation) - 1) > 1e-3) out.push(`${w}.rotation: not a proper rotation (det = ${det3(pl.rotation).toFixed(4)})`);
         if (model.version !== 2) {

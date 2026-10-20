@@ -514,6 +514,7 @@ class SimLabPane extends React.Component {
             ensureRunning: () => this.apiEnsureRunning(),
             setTimeScale: scale => this.setSpeed(scale),
             camera: view => this.apiCamera(view),
+            drawing: () => (this.view && this.view.penStrokes ? this.view.penStrokes() : []),
             locale: () => this.locale
         });
         const runtime = this.props.vm && this.props.vm.runtime;

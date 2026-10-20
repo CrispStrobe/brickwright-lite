@@ -319,6 +319,12 @@ export const createEditor = ({model, catalog}) => {
                 const gid = nextGroupId({groups});
                 groups.push({id: gid, name: name || `Group ${gid}`, parts: [...toMerge]});
                 next = derive(current.parts, groups);
+            } else if (cmd.type === 'setPen') {
+                // A part that draws on the floor in Simulate (view/pen-layer.js): `pen: true`, or gone.
+                const {id, pen} = cmd;
+                const idx = indexOf(id);
+                if (idx === -1) throw new Error(`unknown id '${id}'`);
+                next = derive(withPart(current.parts, idx, {pen: pen ? true : undefined}));
             } else if (cmd.type === 'addBelt') {
                 // A rubber band round two or more parts (editor/belt-path.js lays it, kinds/belt.js simulates it).
                 const {around, band} = cmd;

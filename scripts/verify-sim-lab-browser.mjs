@@ -114,6 +114,8 @@
 //      N shows its hinge and ] turns it 15° with the arm hanging off it (one undo step); N steps to
 //      the other hinge and back; the properties panel's +15°; a turn into a part is refused; a loose
 //      part has no hinge.
+//  27. pen and paper (scripts/lib/sim-lab-pen-gate.mjs, --part=ui): the driving base's castor ball marked as a
+//      pen draws its track on the floor as the robot drives; Reset cleans the floor.
 //  26. the coach marks (scripts/lib/sim-lab-coach-gate.mjs, --part=editor): the first Build shows the tips card,
 //      Next steps through, the last puts it away for good; "Show the tips again" in the shortcut sheet.
 //  25. chains and treads (scripts/lib/sim-lab-chain-gate.mjs, --part=editor): an 8T and a 24T selected,
@@ -149,6 +151,7 @@ import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
 import {hingeInteractions} from './lib/sim-lab-hinge-gate.mjs';
 import {chainInteractions} from './lib/sim-lab-chain-gate.mjs';
 import {coachInteractions} from './lib/sim-lab-coach-gate.mjs';
+import {penInteractions} from './lib/sim-lab-pen-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
@@ -941,6 +944,14 @@ try {
         console.log(`PASS challenges: "Stop at the wall" won by the Wall stopper's program (${c.wallStars} stars, ${c.wallGapCm} cm left) and kept as ` +
             `the best; "Stay in the ring" moves the robot to the sumo mat, where driving straight on leaves the ring after ${c.sumoLostAtS.toFixed(1)} s`);
         await ch.close();
+        // 27. Pen and paper (scripts/lib/sim-lab-pen-gate.mjs): the castor ball draws the driving base's track.
+        const penPage = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        penPage.on('pageerror', error => errors.push(error.message));
+        penPage.on('dialog', dialog => dialog.accept());
+        await openSimLab(penPage, {program: null});
+        const pn = await penInteractions(penPage, {shotsDir: artifacts});
+        console.log(`PASS pen: the castor ball marked "Draws on the floor" draws the driving base's track (${pn.cm} cm, ending at the ball); Reset cleans the floor`);
+        await penPage.close();
     }
 
     if (want('tablet')) { // a 1024×768 touch page, real fingers only
