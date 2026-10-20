@@ -7273,3 +7273,16 @@ leaves, envelope aliases and malformed metadata keep the eager route. Captured
 iteration and primitive-conversion surfaces are checked before omission; the
 original public lowering entry remains eager. Focused controls include actual
 procedure metadata and Throw preparation, and changed iterator/Symbol fallback.
+
+
+## Arcade compiler Font demand absence — 2026-10-20
+
+The compiler may avoid building its Font value graph only after a complete
+private own-data/current-realm observation and a conservative absence census.
+Actual Font fields, factories, printing, Number text conversion, reserved names,
+repeated function spellings and uncertain syntax keep the original analysis.
+The public eager API and the complete rewrite clone remain shared and unchanged
+in meaning. The lowering observer accepts only the actual root procedure-prefix
+envelope as opaque function metadata; no source/type fact or caller trust flag
+is introduced. Component controls and a changed complete corpus run are pending.
+No speed improvement, complete corpus fit, runtime or editor claim is made.
