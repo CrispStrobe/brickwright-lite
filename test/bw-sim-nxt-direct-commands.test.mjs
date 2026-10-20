@@ -4,7 +4,8 @@
  * NXT direct commands, byte for byte (hubs/nxt/nxt-direct-commands.js, nxt-virtual-hub.js,
  * nxt-peripheral.js; docs/ROBOT-LAB-EV3-NXT.md).
  *
- * Every telegram below is written out HERE from LEGO's "MINDSTORMS NXT Bluetooth Developer Kit":
+ * Every telegram below is written out HERE from LEGO's "MINDSTORMS NXT Bluetooth Developer Kit"
+ * (read 2026-10-20; the facts with their citations: docs/NXT-PROTOCOL-FACTS.md, cited below as [F §…]):
  * Appendix 1 (byte 0 the command type: 0x00 direct + reply, 0x80 direct no reply, 0x01 system +
  * reply, 0x02 a reply; over Bluetooth two length bytes, LSB first, precede every telegram) and
  * Appendix 2 (each command's bytes; replies 0x02, command, status, data). Field layouts of the
@@ -15,6 +16,8 @@
  *   GETINPUTVALUES  3 port, 4 valid, 5 calibrated, 6 type, 7 mode, 8–9 raw, 10–11 normalized (UWORD),
  *                   12–13 scaled, 14–15 calibrated value (SWORD)                          (16 bytes)
  *   LSREAD          3 bytes read, 4–19 data (padded)                                       (20 bytes)
+ *   MESSAGEREAD     3 local inbox, 4 size, 5–63 data (padded)                              (64 bytes)
+ * Statuses and behaviour the Appendix leaves open follow LEGO's open-source firmware [F §Statuses].
  * The motors turn on a first-order bench (speed → duty × no-load speed, 40 ms time constant); the physics runs in
  * test/bw-sim-nxt-hub.test.mjs.
  */
@@ -168,8 +171,8 @@ test('the ultrasonic sensor over I2C: LSWRITE [0x02, 0x42] for one byte, LSGETST
     bench(hub, 5, {4: {kind: 'distance', distance: -1}});
     exec(hub, [0x80, 0x0f, 0x03, 0x02, 0x01, 0x02, 0x42]);
     assert.equal(exec(hub, [0x00, 0x10, 0x03])[4], 255);
-    // A switch port is no I2C bus.
-    assert.equal(exec(hub, [0x00, 0x0e, 0x00])[2], 0xdd, 'communication bus error');
+    // A switch port is no I2C channel: "not configured or busy", the bytes-ready byte still there [F §LS].
+    assert.deepEqual(exec(hub, [0x00, 0x0e, 0x00]), [0x02, 0x0e, 0xe0, 0]);
 });
 
 test('PLAYTONE, KEEPALIVE, GETBATTERYLEVEL, GET FIRMWARE VERSION; errors by status code', () => {
@@ -181,13 +184,130 @@ test('PLAYTONE, KEEPALIVE, GETBATTERYLEVEL, GET FIRMWARE VERSION; errors by stat
     assert.equal(s32(keep, 3), 600000, 'sleep limit, ms');
     assert.deepEqual(exec(hub, [0x00, 0x0b]), [0x02, 0x0b, 0x00, ...[9000 & 0xff, 9000 >> 8]]);
     // System command 0x88: protocol minor, major, firmware minor, major.
-    assert.deepEqual(exec(hub, [0x01, 0x88]), [0x02, 0x88, 0x00, 124, 1, 31, 1]);
-    assert.equal(exec(hub, [0x00, 0x42])[2], 0xbe, 'unknown command opcode');
-    assert.equal(exec(hub, [0x00, 0x06, 0x05]).length, 25, 'an error reply keeps its size');
-    assert.equal(exec(hub, [0x00, 0x06, 0x05])[2], 0xf0, 'bad output port');
-    assert.equal(exec(hub, [0x00, 0x04, 0x00, 101, 0, 0, 0, 0, 0, 0, 0, 0])[2], 0xc0, 'power out of range');
-    assert.equal(exec(hub, [0x00, 0x00, ...Array(20).fill(0)])[2], 0xbd, 'STARTPROGRAM: no file (no .rxe VM yet)');
-    assert.equal(exec(hub, [0x00, 0x13, 0x0a, 0x00, 0x01])[2], 0x40, 'mailbox empty');
+    // Protocol 1.124, firmware 1.29: the open-source firmware release's numbers [F §System].
+    assert.deepEqual(exec(hub, [0x01, 0x88]), [0x02, 0x88, 0x00, 124, 1, 29, 1]);
+    assert.deepEqual(exec(hub, [0x00, 0x42]), [0x02, 0x42, 0xbe], 'unknown command opcode: the status alone');
+    // A bad port is "data contains out-of-range values" (0xC0) in the firmware, not 0xF0; GETOUTPUTSTATE
+    // and GETINPUTVALUES still reply in full, zero-filled [F §Statuses].
+    assert.deepEqual(exec(hub, [0x00, 0x06, 0x05]), [0x02, 0x06, 0xc0, ...Array(22).fill(0)]);
+    assert.deepEqual(exec(hub, [0x00, 0x07, 0x04]), [0x02, 0x07, 0xc0, ...Array(13).fill(0)]);
+    assert.equal(exec(hub, [0x00, 0x05, 0x04, 0x01, 0x20])[2], 0xc0, 'SETINPUTMODE port 4');
+    assert.equal(exec(hub, [0x00, 0x0a, 0x03, 0x00])[2], 0xc0, 'RESETMOTORPOSITION port 3');
+    // The power is not range-checked: stored and echoed as sent, the drive limited to ±100 [F §Outputs].
+    assert.deepEqual(exec(hub, [0x00, 0x04, 0x00, 120, 0x01, 0, 0, 0x20, ...le32(0)]), [0x02, 0x04, 0x00]);
+    assert.equal(exec(hub, [0x00, 0x06, 0x00])[4], 120);
+    // A missing program file: 0xC0 in the firmware (the BDK's list would suggest 0xBD) — and no .rxe runs here.
+    assert.equal(exec(hub, [0x00, 0x00, ...Array(20).fill(0)])[2], 0xc0, 'STARTPROGRAM: no such file');
+    assert.deepEqual(exec(hub, [0x00, 0x01]), [0x02, 0x01, 0xec], 'STOPPROGRAM: no active program');
+    const name = exec(hub, [0x00, 0x11]);
+    assert.deepEqual(name, [0x02, 0x11, 0xec, ...Array(20).fill(0)], 'GETCURRENTPROGRAMNAME: 0xEC, a zeroed name');
+    // No program: the mailboxes do not exist — 0xEC; MESSAGEREAD still replies in full (64 bytes),
+    // echoing the LOCAL inbox (byte 3) [F §Messages].
+    const m = exec(hub, [0x00, 0x13, 0x0a, 0x03, 0x01]);
+    assert.equal(m.length, 64);
+    assert.deepEqual(m.slice(0, 5), [0x02, 0x13, 0xec, 0x03, 0]);
+    assert.equal(exec(hub, [0x00, 0x09, 0x00, 0x03, 0x68, 0x69, 0x00])[2], 0xec, 'MESSAGEWRITE without a program');
+});
+
+test('the mailboxes while a program runs: remote inbox read, local inbox echoed; terminated strings only', () => {
+    const hub = brick();
+    hub.currentProgramName = () => 'prog.rxe'; // stands in for the .rxe VM that does not exist yet
+    // MESSAGEWRITE inbox 0, size 3, "hi" + terminator.
+    assert.deepEqual(exec(hub, [0x00, 0x09, 0x00, 0x03, 0x68, 0x69, 0x00]), [0x02, 0x09, 0x00]);
+    assert.equal(exec(hub, [0x00, 0x09, 0x00, 0x02, 0x68, 0x69])[2], 0xc0, 'unterminated: out of range');
+    assert.equal(exec(hub, [0x00, 0x09, 0x00, 0x00])[2], 0xc0, 'empty: out of range');
+    assert.equal(exec(hub, [0x00, 0x09, 0x00, 60, ...Array(60).fill(0)])[2], 0xc0, '60 bytes: more than 59');
+    assert.equal(exec(hub, [0x00, 0x09, 25, 0x01, 0x00])[2], 0xee, 'queue 25: illegal mailbox queue');
+    // MESSAGEREAD reads the queue byte 2 names (0–19) and echoes byte 3: remote 0, local 7, keep it.
+    let r = exec(hub, [0x00, 0x13, 0x00, 0x07, 0x00]);
+    assert.deepEqual(r.slice(0, 8), [0x02, 0x13, 0x00, 0x07, 3, 0x68, 0x69, 0x00]);
+    assert.equal(r.length, 64);
+    r = exec(hub, [0x00, 0x13, 0x00, 0x07, 0x01]); // again, and remove it
+    assert.equal(r[4], 3);
+    assert.deepEqual(exec(hub, [0x00, 0x13, 0x00, 0x07, 0x01]).slice(2, 5), [0x40, 0x07, 0], 'now empty');
+    // Queues 10–19 hold what a program sends its master: the remote inbox 10.
+    hub.s.queues[10].push([0x6f, 0x6b, 0x00]);
+    assert.deepEqual(exec(hub, [0x00, 0x13, 0x0a, 0x00, 0x01]).slice(2, 8), [0x00, 0x00, 3, 0x6f, 0x6b, 0x00]);
+    // Five messages a queue: a sixth drops the oldest.
+    for (let k = 1; k <= 6; k++) exec(hub, [0x80, 0x09, 0x02, 0x02, 0x30 + k, 0x00]);
+    assert.deepEqual(hub.s.queues[2].map(q => q[0] - 0x30), [2, 3, 4, 5, 6]);
+});
+
+test('TachoCount counts from power-on; each tacho limit adds to the previous move\'s target', () => {
+    const hub = brick();
+    // Two regulated 360° moves on A, power 75, MOTORON|BRAKE|REGULATED, MOTOR_SPEED, RUNNING [F §Outputs].
+    const move = [0x80, 0x04, 0x00, 75, 0x07, 0x01, 0x00, 0x20, ...le32(360)];
+    exec(hub, move);
+    bench(hub, 3000);
+    exec(hub, move);
+    bench(hub, 3000);
+    const r = exec(hub, [0x00, 0x06, 0x00]);
+    const tacho = s32(r, 13);
+    assert.ok(Math.abs(tacho - 720) <= 2, `TachoCount ${tacho}: not restarted by the second command`);
+    assert.equal(s32(r, 9), 360, 'the tacho limit echoes the last command');
+    assert.equal(s32(r, 17), tacho, 'BlockTachoCount: only RESETMOTORPOSITION TRUE resets it');
+    // Backwards: power -75 for 360 → the target is 720 − 360.
+    exec(hub, [0x80, 0x04, 0x00, 0xb5, 0x07, 0x01, 0x00, 0x20, ...le32(360)]);
+    bench(hub, 3000);
+    assert.ok(Math.abs(s32(exec(hub, [0x00, 0x06, 0x00]), 13) - 360) <= 2);
+    // Running without a limit, the target follows the count: a limited move then starts where the shaft is.
+    exec(hub, [0x80, 0x04, 0x00, 50, 0x01, 0x00, 0x00, 0x20, ...le32(0)]);
+    bench(hub, 300);
+    exec(hub, [0x80, 0x04, 0x00, 0, 0x02, 0x00, 0x00, 0x00, ...le32(0)]); // brake
+    bench(hub, 500);
+    const before = hub.s.outputs[0].targetDeg;
+    exec(hub, [0x80, 0x04, 0x00, 75, 0x07, 0x01, 0x00, 0x20, ...le32(90)]);
+    assert.equal(hub.s.outputs[0].moveStartDeg, before);
+    assert.ok(Math.abs(before - hub.s.outputs[0].angleDeg) < 30, 'the target followed the free run');
+});
+
+test('GETINPUTVALUES: "calibrated?" FALSE, and the calibrated field carries the normalized value', () => {
+    const hub = brick();
+    exec(hub, [0x80, 0x05, 0x02, 0x05, 0x80]); // port 2: LIGHT_ACTIVE, PCTFULLSCALEMODE
+    bench(hub, 5, {3: {kind: 'color', color: 10, reflection: 100}});
+    const r = exec(hub, [0x00, 0x07, 0x02]);
+    assert.equal(r[5], 0, 'calibrated? FALSE');
+    assert.equal(u16(r, 14), u16(r, 10), 'calibrated value = normalized value [F §Inputs]');
+});
+
+test('the ultrasonic sensor\'s registers and commands (HDK Appendix 7); the I2C channel\'s statuses', () => {
+    const hub = brick();
+    exec(hub, [0x80, 0x05, 0x03, 0x0b, 0x00]); // port 3: LOWSPEED_9V
+    bench(hub, 5, {4: {kind: 'distance', distance: 500}});
+    const read = (register, n) => {
+        assert.deepEqual(exec(hub, [0x00, 0x0f, 0x03, 0x02, n, 0x02, register]), [0x02, 0x0f, 0x00]);
+        return exec(hub, [0x00, 0x10, 0x03]).slice(4, 4 + n);
+    };
+    const str = bytes => String.fromCharCode(...bytes.slice(0, bytes.indexOf(0)));
+    assert.equal(str(read(0x00, 8)), 'V1.0');
+    assert.equal(str(read(0x10, 8)), 'Sonar');
+    assert.equal(str(read(0x14, 7)), '10E-2m', 'centimetres');
+    assert.deepEqual(read(0x11, 3), [0x00, 0x01, 0x0e], 'factory zero, scale factor, scale divisor');
+    assert.deepEqual(read(0x50, 3), [0x00, 0x01, 0x0e], 'actual zero, scale factor, scale divisor');
+    assert.deepEqual(read(0x41, 1), [0x02], 'command state: continuous, the default');
+    assert.deepEqual(read(0x42, 1), [50]);
+    // Single shot (0x41 ← 0x01): one measurement when the command is written, then held.
+    assert.deepEqual(exec(hub, [0x00, 0x0f, 0x03, 0x03, 0x00, 0x02, 0x41, 0x01]), [0x02, 0x0f, 0x00]);
+    bench(hub, 5, {4: {kind: 'distance', distance: 1000}});
+    assert.deepEqual(read(0x42, 1), [50], 'held from the shot');
+    exec(hub, [0x80, 0x0f, 0x03, 0x03, 0x00, 0x02, 0x41, 0x01]);
+    assert.deepEqual(read(0x42, 1), [100], 'a new shot');
+    // Warm reset (0x04): continuous again, live.
+    exec(hub, [0x80, 0x0f, 0x03, 0x03, 0x00, 0x02, 0x41, 0x04]);
+    assert.deepEqual(read(0x41, 1), [0x02]);
+    // A port above 3: out of range, the status alone; more than 16 bytes: illegal size [F §LS].
+    assert.deepEqual(exec(hub, [0x00, 0x0e, 0x04]), [0x02, 0x0e, 0xc0]);
+    assert.deepEqual(exec(hub, [0x00, 0x10, 0x04]), [0x02, 0x10, 0xc0]);
+    assert.deepEqual(exec(hub, [0x00, 0x0f, 0x04, 0x02, 0x01, 0x02, 0x42]), [0x02, 0x0f, 0xc0]);
+    assert.equal(exec(hub, [0x00, 0x0f, 0x03, 0x02, 17, 0x02, 0x42])[2], 0xed);
+    // Nothing waiting: LSREAD succeeds with 0 bytes, 16 zeros.
+    assert.deepEqual(exec(hub, [0x00, 0x10, 0x03]), [0x02, 0x10, 0x00, 0, ...Array(16).fill(0)]);
+    // An address nobody answers: LSWRITE starts the transaction; the bus error shows in LSGETSTATUS / LSREAD.
+    assert.deepEqual(exec(hub, [0x00, 0x0f, 0x03, 0x02, 0x01, 0x04, 0x42]), [0x02, 0x0f, 0x00]);
+    assert.deepEqual(exec(hub, [0x00, 0x0e, 0x03]), [0x02, 0x0e, 0xdd, 0]);
+    assert.deepEqual(exec(hub, [0x00, 0x10, 0x03]), [0x02, 0x10, 0xdd, 0, ...Array(16).fill(0)]);
+    // A port not set to LOWSPEED: not configured (0xE0).
+    assert.equal(exec(hub, [0x00, 0x0f, 0x00, 0x02, 0x01, 0x02, 0x42])[2], 0xe0);
 });
 
 test('the session: two length bytes before every telegram, both ways; split and joined sends', () => {
@@ -201,7 +321,8 @@ test('the session: two length bytes before every telegram, both ways; split and 
     assert.equal(sent.length, 2);
     assert.deepEqual(sent[0].slice(0, 2), [16, 0], 'GETINPUTVALUES reply: 16 bytes');
     assert.deepEqual(sent[1].slice(0, 5), [7, 0, 0x02, 0x0d, 0x00]);
-    assert.throws(() => session.receive(Uint8Array.from([0xff, 0x00])), /more than 64/);
+    // At most 64 bytes, the two length bytes not counted (Appendix 2 "Maximum command length").
+    assert.throws(() => session.receive(Uint8Array.from([65, 0x00])), /more than 64/);
 });
 
 test('the hub\'s state round-trips through the worker mirror', () => {

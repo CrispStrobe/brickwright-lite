@@ -78,8 +78,9 @@ if (!existsSync(missing)) {
             modelText: text(nxt.file), mat: nxt.mat, profile: 'nxt', extensionId: 'legonxt', timeLimitMs: 12000,
             stopWhen: (point, all, hub) => {
                 // The 360° moves are the commands with a tacho limit; their result is the TachoCount the
-                // brick reports (counted from the command, NXT BDK Appendix 2 GETOUTPUTSTATE) once the
-                // moves are over and before the next command (power 60, no limit) arrives.
+                // brick reports (counted from power-on — the firmware never restarts it for a move,
+                // docs/NXT-PROTOCOL-FACTS.md "Outputs" — and each port's first move starts at 0) once
+                // the moves are over and before the next command (power 60, no limit) arrives.
                 for (const port of ['B', 'C']) {
                     const o = hub.s.outputs['ABC'.indexOf(port)];
                     if (o.tachoLimit === 360 && o.runState === 0) {
