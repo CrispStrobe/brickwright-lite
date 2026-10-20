@@ -1,3 +1,13 @@
+## NXT words (`nxt …`) — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (owner request: close the Known-open gaps of
+docs/ROBOT-LAB-EV3-NXT.md). lib/legoHubsDialect.js gains legonxt's words with the `nxt` prefix
+(motors, sensor setup and readings, the touch sensor as a condition, tone/note, screen text,
+start/stop program); every other legonxt opcode is in an exclusion class. lib/robot-lab-pseudocode.js
+reads a hub Boolean word as a condition. Tests: test/lego-hubs-dialect.test.mjs (counted slice,
+round trip, the bumper bot in words equals its blocks example). Not touched: bw-sim, the
+CrispStrobe adapter (Scratch.fetch is PR #1127), extension sources.
+
 ## Robot Lab rubber bands — 2026-10-20
 
 CLAIMED and folded into the flexible-parts PR #1116
