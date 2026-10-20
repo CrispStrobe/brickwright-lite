@@ -87,9 +87,6 @@ fromDifferential('driveMotor', 'driveMotor', 'A');
 for (const id of ['pinionAxle', 'pinion', 'casing', 'cover', 'sideR', 'sideL', 'planet1', 'planet2', 'planet3']) fromDifferential(id);
 // Motor A at (0, -100, ZR): its sides' holes at x = ±20, y = -80 and -120, z = ZR ± 20; its top face at y = -130.
 
-// Half axles: the left one (6L) from the left side gear's bore out to its wheel, the right one (6L) likewise.
-place('axleRearL', '3706.dat', 4, [-75, 0, ZR], ALONG_X);
-place('axleRearR', '3706.dat', 4, [69, 0, ZR], ALONG_X);
 for (const s of [1, -1]) {
     const k = s > 0 ? 'R' : 'L';
     // A 7L post on each side of motor A, 10 LDU out from it (clear of the differential's casing), pinned
@@ -102,12 +99,14 @@ for (const s of [1, -1]) {
         for (const y of [-80, -120]) place(`postPin${k}${zk}${-y}`, '6558.dat', 0, [40 * s, y, ZR + dz], s > 0 ? ALONG_X : [-1, 0, 0, 0, -1, 0, 0, 0, 1]);
         place(`railPin${k}${zk}`, '2780.dat', 0, [60 * s, 0, ZR + dz], ALONG_X);
     }
-    // The rail: a 3L beam across the two posts' lowest holes; the half axle turns in its middle hole.
-    place(`rail${k}`, '32523.dat', 71, [70 * s, 0, ZR], RAIL);
+    // The half axle (6L) from its side gear's bore out through the rail, a bush, and the wheel on its end;
+    // the rail: a 3L beam across the two posts' lowest holes, the half axle turning in its middle hole.
+    // (In this order the derived building steps put each wheel on with its axle.)
+    place(`wheelRear${k}`, '39367p01.dat', 15, [s > 0 ? 120 : -126, 0, ZR], Z_ALONG_X);
+    place(`axleRear${k}`, '3706.dat', 4, [s > 0 ? 69 : -75, 0, ZR], ALONG_X);
     place(`bushRear${k}`, '3713.dat', 71, [90 * s, 0, ZR], Z_ALONG_X);
+    place(`rail${k}`, '32523.dat', 71, [70 * s, 0, ZR], RAIL);
 }
-place('wheelRearL', '39367p01.dat', 15, [-126, 0, ZR], Z_ALONG_X);
-place('wheelRearR', '39367p01.dat', 15, [120, 0, ZR], Z_ALONG_X);
 
 // ---- the hub, raised on two spacer beams over motor A, and the two front beams ---------------------------
 // The hub stands 30 LDU above motor A's top face (y -130) so that motor B, under the front beams, clears
