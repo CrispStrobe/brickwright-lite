@@ -1,3 +1,6 @@
+import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
+import {inspectNativeArrayBinaryDomains} from './native-array-binary-domain.js';
+import {GENERATED_HELPER_PROFILES} from './generated-helper-recognition.js';
 import {createOrdinaryExportSymbols} from './ordinary-export-symbols.js';
 import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
 import {throwExportOwners} from './throw-export-owners.js';
@@ -1374,17 +1377,19 @@ class ArcadeEmitter {
         }
         case 'arcade_getscore':return 'info.score()';
         case 'arrays_specialValue':return (this.field(b,'KIND') || this.literalInput(b,'KIND'))==='null'?'null':'undefined';
+        case 'arcade_sourceValueBinary':
         case 'arrays_valueCompare':
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
-            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
+            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare',source=b.opcode==='arcade_sourceValueBinary';
             const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','&':'BitAnd','|':'BitOr','^':'BitXor','<<':'ShiftLeft','>>':'ShiftRight','>>>':'UnsignedShiftRight','~':'BitNot','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
+            if(source&&!['+','-','*','/','%','**'].includes(op)){this.note(`unsupported Arcade source value operation ${op}`);return this.na();}
             if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             // A qualified class-callable graph can retain primitive Number
             // addition directly. Generic Any helpers lose the Arrow's actual
             // result signature on source reparse; declarations alone cannot
             // select this path, and unproved operands keep the old helper.
-            if(!unary&&!compare&&op==='+'&&this.callableExports?.get(this.target)?.graph.plan.version===2){
+            if(!source&&!unary&&!compare&&op==='+'&&this.callableExports?.get(this.target)?.graph.plan.version===2){
                 try {
                     const provider=this.objectClassExport.classCallableProvider(this.target),
                         left=provider.currentInputType(b,'LEFT'),right=provider.currentInputType(b,'RIGHT');
@@ -1392,7 +1397,7 @@ class ArcadeEmitter {
                         return `(${this.arrayValue(b,'LEFT')} + ${this.arrayValue(b,'RIGHT')})`;
                 }catch(error){this.note(error.message);}
             }
-            const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
+            const key=(unary?'Unary':compare?'Compare':source?'SourceBinary':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;
                 const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
@@ -3211,12 +3216,13 @@ class ArcadeEmitter {
                 if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
-                if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
+                if(['arrays_valueBinary','arrays_valueUnary','arcade_sourceValueBinary'].includes(value.opcode)) {
                     const id=`${key}:value-operation:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
                     const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
-                    if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
+                    if(value.opcode==='arcade_sourceValueBinary'&&literal(blocks,value,'OP')==='+')anys.add(id);
+                    else if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
                     else numbers.add(id);
-                    inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&value.opcode==='arrays_valueBinary'?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
+                    inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&['arrays_valueBinary','arcade_sourceValueBinary'].includes(value.opcode)?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
                     return id;
                 }
                 if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);inspectionLeaves.set(id,literal(blocks,value,'KIND'));return id;}
@@ -4187,8 +4193,24 @@ class ArcadeEmitter {
             startup = flagScripts.map(({script, clonable, sv}) =>
                 `control.runInParallel(function () {\n${clonable ? `    const self = ${sv}\n` : ''}${script.join('\n')}\n})`);
         }
-        return [...helperSource(this.helpers), ...[...this.valueOperationHelpers.values()].map(helper => helper.source),
-            ...pre, ...generated, ...this.generated, ...functions, ...out, ...handlers, ...startup].join('\n') + '\n';
+        const assemble=definitions=>[...helperSource(this.helpers),...definitions,
+            ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup].join('\n')+'\n';
+        const definitions=[...this.valueOperationHelpers.values()];
+        const addition=this.valueOperationHelpers.get('BinaryAdd');
+        if(addition){
+            // Analyse the complete emitted Program with the genuine native join
+            // body, not declaration annotations or an Array input connection.
+            // No user string or call is rewritten: final assembly selects the
+            // definition owned by this emitter after complete source proof.
+            const candidate=nativeArrayAddHelperSource(addition.name,true,true);
+            const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
+            const proof=inspectNativeArrayBinaryDomains(parseMakeCodeTs(draft,GENERATED_HELPER_PROFILES.ordinary));
+            if(proof.reason)this.note(proof.reason);
+            else if(!proof.helpers.has(addition.name))this.note('native addition requires its complete current helper body and actual caller proof');
+            else if(proof.current()&&proof.arrayHelpers?.has(addition.name))
+                return assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
+        }
+        return assemble(definitions.map(helper=>helper.source));
     }
 }
 
