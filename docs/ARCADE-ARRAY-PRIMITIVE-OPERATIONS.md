@@ -47,3 +47,76 @@ initialization, so later loader/prototype edits cannot intercept engine context.
 The cyclic helpers publish stable frozen function exports before loading their
 dependencies; no runtime dispatcher registration or caller trust flag is used.
 These additional controls remain pending fresh native qualification.
+
+
+## CommonJS initialization follow-up
+
+Operation, exception and primitive-owner exports use immutable records with a
+null prototype. Node's circular-require warning logic decorates ordinary-object
+exports; freezing such an ordinary object before the cycle closes prevents
+that decoration and can stop initialization. A null prototype keeps the exact
+frozen own function exports and eager closed dispatch identities without
+opening a mutable export or delaying dependency capture. Three native loader
+controls exercise each coordinator module as the first entry using an isolated
+cache, restoring the original cache in `finally`. The existing 45 native
+controls remain unchanged. Fresh installation and complete affected execution
+are required; this source correction alone does not qualify runtime semantics.
+
+The primitive-owner record must also have a null prototype: publishing its
+exports near the end of the module does not mark the module loaded while its
+final eager exception dependency is still initializing. The three entry-order
+controls require null prototypes for all three records. No module is allowed
+to defer dispatch capture, expose mutable exports or bypass the native loader.
+
+
+## Explicit supplier operation-map revision
+
+The source candidate selects supplier commit
+`1c7eb396173673c858e6c80a66529cb9dce87553`: 108862 source bytes, SHA-256
+`28e88ecfbb26feedea25baaaffc9c9bc552c3d9c621c7c38eec71e334e71cca3`.
+Its MPL-2.0 source and author header remain in the canonical carrier. Pin,
+receipt, notice and explicit admission agree on that exact body. Canonical
+producer scripts and registration remain unchanged; a fresh installation must
+reproduce the installed mirror before native qualification.
+
+The supplier captures native WeakMap get/set/delete methods for every private
+operation-record lookup, publication and retirement, through its already-held
+Reflect.apply. It also retains the compatible captured own-property check for
+hosts without Object.hasOwn. Later WeakMap prototype hooks cannot substitute
+that private record or intercept its retirement. The complete supplier protocol
+controls pass for this revision; that does not transfer to Lite native results.
+
+The existing C6 installation and its completed 45-pass/three-fail native episode
+apply to the earlier `d4015c4ac7653f50f1bfa28fbb43a284a55337ca` body. Preserve
+those failures. This adoption changes supplier identity without changing the
+48 native semantic assertions. Fresh normal installation, all affected native
+controls and genuine original, Code and exported expected values are still
+required. Active Throw completion is a separate host-runtime repair; this pin
+does not establish its correctness or general Array coercion support.
+
+
+## Current computation Error disposition candidate
+
+The complete native run exposed a remaining error path: an actual operand
+conversion can throw before an Array operation returns. The candidate handles
+that completion only for the active `valueBinary` or `createReference` ticket
+and an Error accepted by the existing own-data string-message policy.
+Its private single-use failure lease authorizes retirement of that call's
+lineage. A coordinator-private identity distinguishes this disposition from
+ordinary guard rejection; public Error fields or completion flags cannot grant
+it. The actual Error object, subtype, frozen own descriptors and existing cause
+are preserved. Already adopted signals remain unchanged. Ordinary guard errors
+keep their existing Error-with-cause route, and other legacy operations retain
+their throw policy. This does not add support for arbitrary non-Error thrown
+JavaScript values or grant any value, Number or Cast authority.
+
+A failed managed cleanup is retained in the private computation signal record,
+with a read-only diagnostic count; it does not replace the original Error's
+cause or modify a frozen Error. The new focused native group uses the actual
+registered Arrays implementation and real linked VM threads for Error,
+TypeError and RangeError identities, including an actual registered cleanup
+failure and an unrelated continuing script. All previous 48 native assertions
+remain unchanged. Supplier private-operation tracking corrections and explicit
+supplier adoption are separate changes. A fresh combined normal installation,
+complete native execution and the unchanged original/Code/exported semantic
+journey remain required; no full-game or GUI acceptance follows from source.

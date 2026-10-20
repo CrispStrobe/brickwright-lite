@@ -1,7 +1,7 @@
 // Stable entry exports close the owner -> exceptions -> operations CJS cycle.
 // All values are hoisted function declarations, invoked only after boot completes.
 const primitiveFreeze=Object.freeze;
-module.exports=primitiveFreeze({registerSource,bind,consumeFailureLease});
+module.exports=primitiveFreeze({__proto__:null,registerSource,bind,consumeFailureLease});
 // Opt-in native Array operation ownership, NOT an element/type certificate.
 // Only trusted builtin construction receives a module-held registration token.
 const primitiveOwner = require('./bw-primitive-owner');
@@ -20,7 +20,7 @@ const allocationMethods = new Set(['createReference','create1D','create2D','crea
 const methods = new Set(["valueBinary", "create1D", "create2D", "createEmpty", "createZeros", "createRange", "delete", "get", "get2D", "getMulti", "set", "set2D", "setMulti", "push", "pop", "insert", "remove", "length", "shape", "contains", "indexOf", "slice", "getRow", "getColumn", "map", "filter", "reduce", "sort", "reverse", "sum", "mean", "min", "max", "transpose", "flatten", "reshape", "toJSON", "toString", "listAll", "namedReference", "referenceValues", "createReference", "parseLegacyValue", "jsonValue", "referenceTruthy", "referenceItem", "referenceRemove", "referenceRandom", "referenceLength", "referenceSlice", "referenceConcat", "referenceIndexOf", "referenceTake", "mutateReference", "showTable", "hideTable", "setTableTitle", "setTableStyle", "markCell", "unmarkCell", "clearMarks", "isMarked", "markedCount"]);
 // The primitive loan performs no user coercion. Capture its inspection ingress
 // before extension code runs, and refuse changed intrinsic descriptor surfaces.
-const primitiveKeys=Reflect.ownKeys, primitiveDescriptor=Object.getOwnPropertyDescriptor,primitiveOwn=Object.hasOwn;
+const primitiveKeys=Reflect.ownKeys, primitiveDescriptor=Object.getOwnPropertyDescriptor,primitiveOwn=Object.hasOwn, primitiveFrozen=Object.isFrozen;
 const primitivePrototype=Object.getPrototypeOf, primitiveSame=Object.is;
 const primitiveExtensible=Object.isExtensible;
 const primitiveWeakRefConstructor=typeof WeakRef==='function'?WeakRef:null;
@@ -42,6 +42,7 @@ const primitiveSetSize=Object.getOwnPropertyDescriptor(Set.prototype,'size').get
 const primitiveMapGet=Map.prototype.get,primitiveMapSet=Map.prototype.set;
 const primitiveMapConstructor=Map,primitiveWeakMapConstructor=WeakMap;
 const primitiveError=Error, primitiveRealm=globalThis;
+const primitiveErrorInstance=Function.prototype[Symbol.hasInstance];
 const primitiveGlobals=['globalThis','Array','Object','Reflect','WeakMap','Map','Set','Number','String','JSON','WeakRef']
     .map(key=>({key,descriptor:primitiveDescriptor(primitiveRealm,key)}));
 const primitiveRoots=[values,JSON,Number,String,Array,Array.prototype,Object,Object.prototype,Reflect,Function,Function.prototype,
@@ -226,7 +227,7 @@ function graphValid(record) {
         cachedOwner(record.runtime,record.util,record.args,record.opcode,[])===record.block;}
     catch {return false;}
 }
-function consumeFailureLease(runtime,args,util,error,lease,failureBlock) {
+function consumeFailureLease(runtime,args,util,error,lease,failureBlock,computationMarker) {
     const saved=leaseGet(failures,lease),record=saved?.record;
     if(!saved||saved.error!==error||record.runtime!==runtime||!ownsActualCall(record))return false;
     if(record.failureOnly){
@@ -239,7 +240,10 @@ function consumeFailureLease(runtime,args,util,error,lease,failureBlock) {
         leaseDelete(failures,lease);return primitiveFreeze({block:failureBlock});
     }
     if(record.args!==args||record.util!==util)return false;
-    leaseDelete(failures,lease);return primitiveFreeze({block:record.blockId});
+    leaseDelete(failures,lease);
+    const witness={__proto__:null,block:record.blockId};
+    if(saved.kind==='computation-throw')witness.computationMarker=computationMarker;
+    return primitiveFreeze(witness);
 }
 function bind(runtime,registration,source,instance) {
     if(!registrations.has(registration)||registrations.get(registration)!==source)throw Error('Array operation registration/source binding differs');
@@ -272,14 +276,14 @@ function bind(runtime,registration,source,instance) {
         if(state.disposed&&fresh&&instance()&&registrations.get(registration)===source)state={active:false,disposed:false,generation:state.generation+1,lastTargets:new Set(runtime.targets)};
         else invalidate();
     });
-    const rejectError=(record,error)=>{
+    const rejectError=(record,error,kind='constraint')=>{
         if(record?.method==='valueBinary')record.primitiveExpired=true;
         if(record?.method==='createReference')record.literalExpired=true;
         if(record?.method==='createReference'&&!record.literalFailure)record.literalFailure=error;
         // Only this bound service can issue a lease. Already adopted signals
         // cannot pass ownsActualCall after retirement and are rethrown unchanged.
         if(record&&record.runtime===runtime&&record.binding===binding&&ownsActualCall(record)&&exceptions.arrayCoordinatorReady(runtime)){
-            const lease=primitiveFreeze({});leaseSet(failures,lease,{record,error});
+            const lease=primitiveFreeze({});leaseSet(failures,lease,{record,error,kind});
             try {return record.failureOnly?primitiveOwner.dispatchArrayFailure(record.failureCall,error,lease):
                 exceptions.rejectArrayOperation(runtime,record.args,record.util,error,lease);}
             finally {leaseDelete(failures,lease);}
@@ -529,7 +533,28 @@ function bind(runtime,registration,source,instance) {
                     if(record.previous&&!record.previous.closed)primitiveApply(primitiveWeakSet,inflight,[runtime,record.previous]);
                     else primitiveApply(primitiveWeakDelete,inflight,[runtime]);
                 }};
-            // The original private failure must survive supplier finally cleanup.
+            // The supplier reports its actual computation error in a frozen own-data
+            // completion. Retire only this still-active ticket's lineage, preserving
+            // native Error identity/subtype. A prior private signal is rethrown by
+            // rejectError unchanged; the ticket is closed exactly once in either case.
+            const completionStatus=facts&&typeof facts==='object'&&primitiveDescriptor(facts,'status');
+            if((record.method==='valueBinary'||record.method==='createReference')&&
+                completionStatus&&primitiveOwn(completionStatus,'value')&&completionStatus.value==='throw'){
+                try {
+                    const runtimeField=primitiveDescriptor(facts,'runtime'),opcodeField=primitiveDescriptor(facts,'opcode'),errorField=primitiveDescriptor(facts,'error');
+                    if(!primitiveFrozen(facts)||!runtimeField||!opcodeField||!errorField||
+                        !primitiveOwn(runtimeField,'value')||!primitiveOwn(opcodeField,'value')||!primitiveOwn(errorField,'value')||
+                        runtimeField.value!==runtime||opcodeField.value!==record.method)
+                        reject(record,'throw completion ticket differs');
+                    // Preserve the pre-existing unsupported non-Error throw path;
+                    // this profile adopts only the coordinator's own-data Error policy.
+                    const thrown=errorField.value,message=thrown&&typeof thrown==='object'&&primitiveDescriptor(thrown,'message');
+                    if(!primitiveApply(primitiveErrorInstance,primitiveError,[thrown])||!message||
+                        !primitiveOwn(message,'value')||typeof message.value!=='string')return;
+                    return rejectError(record,thrown,'computation-throw');
+                } finally {close();}
+            }
+            // Other legacy operations keep their original throw cleanup policy.
             if(facts?.status==='throw'){close();return;}
             try {
                 if(record.method==='createReference'&&record.literalExpired)throw record.literalFailure||new primitiveError('Array literal allocation proof expired');

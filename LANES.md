@@ -7122,3 +7122,47 @@ plus SDK export/import. The historical 36 partials are not reduced by component
 tests or incomplete reports. Avoid `ci:full` unless the proposed change needs
 browser gates; retain every check enabled for the selected scope. No thresholds,
 resource caps, expected values or diagnostic channels are weakened.
+
+### Owned Array closed CommonJS exports — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing Array/current-call
+rejection lane. Keep early stable frozen function exports and eager private
+dispatch, using null-prototype export records for all three cyclic modules.
+Add three actual native-loader entry-order controls with isolated cache and
+unconditional restoration; preserve the original 45 controls unchanged. No
+supplier pin, value proof, runtime budget or generic exception behavior changes.
+Fresh normal installation and complete native qualification remain mandatory.
+
+The primitive-owner record is included even though it is published near the
+module tail: the final eager dependency still closes a loading cycle. Require
+all three null prototypes in each existing entry-order control. The earlier
+two-record source packet is held; installation acceptance alone is not boot or
+native feature qualification.
+
+
+### Explicit Arrays supplier operation-map adoption — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing owned Arrays lane.
+Advance only the Arrays source to supplier commit
+`1c7eb396173673c858e6c80a66529cb9dce87553`, retaining MPL-2.0 and its complete
+source. Update pin, canonical carrier, per-file receipt, scoped notice and
+explicit test-input admission identities together. The supplier holds private
+operation-map get/set/delete methods and legacy own-property checks; no host
+value/type/ownership rule is changed by this adoption. Preserve all 48 native
+semantic controls and the earlier original failures. Existing installation and
+native results for the earlier pin remain attached to that earlier source;
+fresh installation, complete affected native controls and genuine original/
+Code/exported behavior remain mandatory. No installed mirror is rewritten here.
+
+
+### Owned Array computation Error disposition — 2026-10-19
+
+SOURCE CANDIDATE / QUALIFICATION PENDING in the existing Array/exception lane.
+Own the two host callsites for active-ticket throw completion and private
+coordinator adoption, preserving actual Error identity/subtype/cause/frozen
+fields and existing guard behavior. Retain computation cleanup errors privately.
+Add one genuine native linked-thread group; preserve all original 48 assertions
+and supplier pin bytes. Public flags confer no authority. Non-Error thrown
+values remain under existing unsupported policy. Supplier tracking/adoption is
+owned separately; fresh combined normal installation and affected native plus
+original/Code/exported semantics qualification remain mandatory.
