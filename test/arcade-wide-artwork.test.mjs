@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
-import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
 import JSZip from 'jszip';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
@@ -17,7 +16,7 @@ import {editablePixelLayerBudget, MAX_PIXEL_DIMENSION, pixelsToSvg, svgToPixels,
     from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import * as reader7 from './fixtures/artwork-reader-v7.mjs';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
-import {VM, ownerOf, projectOpcodes, stepFrames, runProgram} from './helpers/bw-vm.mjs';
+import {VM, clearStrayTimers, ownerOf, projectOpcodes, stepFrames, runProgram} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
@@ -153,8 +152,17 @@ test('actual Pixel editor loads full wide frames, resizes with Undo and refuses 
     assert.equal(editor.undoStack.length, undoCount); assert.equal(editor.state.status, 'px.pixelBudget');
 });
 
-test('wide native animation keeps source geometry, clips the viewport and advances offscreen edge pixels', () => {
-    const Arcade = loadExtensionClass('arcade'), runtime = new EventEmitter(), arcade = new Arcade(runtime);
+test('wide native animation keeps source geometry, clips the viewport and advances offscreen edge pixels', t => {
+    const vm = new VM();
+    t.after(() => {
+        const failures = [];
+        for (const action of ['stopAll', 'quit']) {
+            try { vm[action](); } catch (error) { failures.push(error); }
+        }
+        clearStrayTimers();
+        assert.deepEqual(failures, [], 'all owned VM cleanup completes');
+    });
+    const Arcade = loadExtensionClass('arcade'), runtime = vm.runtime, arcade = new Arcade(runtime);
     const BWValues = createRequire(import.meta.url)(VM_SRC + '/util/bw-values');
     const id = 'art:wide', resource = {id, name: 'Wide', width, height, palette: ARCADE_PALETTE,
         revision: 1, frames: frames.map((frame, i) => ({id: `frame-${i}`, durationMs: 75, pixels: Uint8Array.from(frame.pixels)}))};
