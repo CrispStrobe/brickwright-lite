@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import {MOUSE, PerspectiveCamera, Vector3} from 'three';
 import {
     BUILD_POLAR, ORBIT_STEP, PAN_STEP_SHARE, VIEW_DIRECTIONS, ZOOM_STEP, applyCameraAction, cameraKeyAction, configureOrbitControls, easeOut, framePosition,
-    orbitAboutPivot, viewCubeDirection, wheelIntent, wheelZoomFactor, zoomAbout
+    orbitAboutPivot, orbitButtonOf, viewCubeDirection, wheelIntent, wheelZoomFactor, zoomAbout
 } from '../overlay/scratch-gui/src/lib/bw-sim/view/camera-nav.js';
 
 /** A stand-in for OrbitControls: the fields the module reads, and update() counted. */
@@ -76,6 +76,10 @@ test('OrbitControls: left and middle orbit, right pans, the wheel zooms toward t
     const controls = configureOrbitControls({}, MOUSE);
     assert.deepEqual(controls.mouseButtons, {LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.ROTATE, RIGHT: MOUSE.PAN});
     assert.equal(controls.zoomToCursor, true);
+    // The Studio / LDD mouse: right drag orbits, middle drag pans; Build's own orbit gesture moves to the right button.
+    assert.deepEqual(configureOrbitControls({}, MOUSE, 'studio').mouseButtons, {LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.PAN, RIGHT: MOUSE.ROTATE});
+    assert.deepEqual([orbitButtonOf('brickwright'), orbitButtonOf('studio')], [1, 2]);
+    assert.deepEqual(configureOrbitControls({}, MOUSE, 'nonsense').mouseButtons, controls.mouseButtons, 'an unknown preset is the Brickwright one');
 });
 
 test('a named view frames a sphere whole from its side', () => {

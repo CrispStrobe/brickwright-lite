@@ -125,10 +125,19 @@ export const gearOverlay = (mechanism, model, catalog) => {
  * Every motor and sensor with its hub port (null: not plugged in).
  * @returns {{id: string, part: string, kind: 'motor'|'sensor', port: string|null}[]}
  */
-export const portItems = (model, catalog) => model.parts
-    .map(p => ({p, meta: catalogGet(catalog, p.part)}))
-    .filter(({meta}) => meta && isPortPart(meta))
-    .map(({p, meta}) => ({id: p.id, part: p.part, kind: partMotorJoint(meta) ? 'motor' : 'sensor', port: portRefOf(p)?.port || null}));
+export const portItems = (model, catalog) => {
+    // The hub a port means: the one it names, else the model's first hub part (compile's first hub body).
+    const isHub = meta => Boolean(meta && (meta.hubProfile || meta.hub));
+    const firstHub = model.parts.find(p => isHub(catalogGet(catalog, p.part)));
+    return model.parts
+        .map(p => ({p, meta: catalogGet(catalog, p.part)}))
+        .filter(({meta}) => meta && isPortPart(meta))
+        .map(({p, meta}) => {
+            const ref = portRefOf(p);
+            const hub = ref ? (ref.hub || (firstHub && firstHub.id !== p.id ? firstHub.id : null)) : null;
+            return {id: p.id, part: p.part, kind: partMotorJoint(meta) ? 'motor' : 'sensor', port: ref?.port || null, hub};
+        });
+};
 
 /**
  * The issues a compiled mechanism adds to the model's own refusals: its

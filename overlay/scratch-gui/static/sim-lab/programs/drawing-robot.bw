@@ -1,0 +1,18 @@
+DEVICE SPIKE
+
+# Robot Lab: a drawing robot.
+# Model: Drawing robot (the SPIKE driving base, wheels on A and B; its castor ball is
+# marked "Draws on the floor", so it draws a line wherever it rolls).
+# Four times: drive 20 cm, then turn a quarter on the spot. That is a square.
+# The ball sits behind the wheels, so at each corner its line swings round in a loop.
+# Try a triangle: 3 times, a third of a turn (120°) each.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  REPEAT 4:
+    move forward 20 cm
+    reset yaw
+    start tank 20 -20
+    wait until (spike angle yaw) > 88
+    stop movement
+    wait 0.3 seconds

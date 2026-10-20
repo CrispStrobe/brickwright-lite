@@ -18,6 +18,42 @@ on:
           so `xcrun devicectl device install app` accepts it.
         type: boolean
         default: false
+      retain_ios_audit_inputs:
+        description: Retain bounded unsigned iOS build inputs for independent audit; does not launch the app.
+        type: boolean
+        default: false
+      ios_audit_preflight_only:
+        description: Verify Darwin SDK and one owned test process only; skips all app builds and delivery.
+        type: boolean
+        default: false
+      ios_audit_directory_only:
+        description: Check exclusive filesystem directory custody only; no simulator commands, app builds or delivery.
+        type: boolean
+        default: false
+      ios_audit_interface_only:
+        description: Retain bounded installed simulator tool help only; no app builds, launches or downloads.
+        type: boolean
+        default: false
+      ios_audit_interface_diagnostic:
+        description: Sample only the owned slow simctl help child during interface inventory; keeps the original deadline.
+        type: boolean
+        default: false
+      ios_audit_interface_manual_only:
+        description: Read installed sample and launchctl manuals only; never starts simctl or a sampler.
+        type: boolean
+        default: false
+      ios_audit_interface_inventory_only:
+        description: Collect installed runtime, image and selected device-type metadata only; never starts devices or downloads runtimes.
+        type: boolean
+        default: false
+      ios_audit_runtime:
+        description: Optional exact installed iOS runtime identifier for admission only; never launches an app.
+        type: string
+        default: ''
+      ios_audit_runtime_build:
+        description: Exact installed runtime build required when ios_audit_runtime is set.
+        type: string
+        default: ''
   push:
     tags: ['v*']
 
@@ -25,7 +61,725 @@ permissions:
   contents: write
 
 jobs:
+  ios-audit-preflight:
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_preflight_only && !inputs.ios_audit_directory_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    runs-on: macos-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6; explicit preflight interpreter only
+        id: python
+        with:
+          python-version: '3.13'
+      - name: Verify Darwin SDK and owned process without an app launch
+        timeout-minutes: 4
+        env:
+          BW_PREFLIGHT_PYTHON: ${{ steps.python.outputs.python-path }}
+        run: |
+          set -euo pipefail
+          # BEGIN IOS DARWIN PREFLIGHT
+          "$BW_PREFLIGHT_PYTHON" - <<'PY'
+          import ctypes
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import platform
+          import re
+          import selectors
+          import signal
+          import subprocess
+          import sys
+          import time
+
+          C_SOURCE = r"""
+          #include <stddef.h>
+          #include <stdint.h>
+          #include <stdio.h>
+          #include <string.h>
+          #include <unistd.h>
+          #include <libproc.h>
+          #include <sys/resource.h>
+          #include <mach/mach_time.h>
+          #include <mach/mach.h>
+          /* Observer-tool interop only: the SDK does not ship sys/codesign.h.
+           * Read-only ABI reference: apple-oss-distributions/xnu,
+           * f6217f891ac0bb64f3d375211650a4c1ff8ca1ea, bsd/sys/codesign.h.
+           * SDK types remain authoritative; no Apple implementation is included. */
+          extern int csops_audittoken(pid_t, unsigned int, void *, size_t, audit_token_t *);
+          #define BW_CS_STATUS 0U
+          #define BW_CS_CDHASH 5U
+          int main(int argc, char **argv) {
+              struct rusage_info_v0 r = {0};
+              mach_timebase_info_data_t t = {0};
+              char path[4096] = {0};
+              if (argc != 1 || proc_pid_rusage(getpid(), RUSAGE_INFO_V0, (rusage_info_t *)&r) ||
+                  mach_timebase_info(&t) || proc_pidpath(getpid(), path, sizeof(path)) <= 0) return 2;
+              printf("{\"usageSize\":%zu,\"userOffset\":%zu,\"systemOffset\":%zu,"
+                     "\"residentOffset\":%zu,\"birthOffset\":%zu,\"exitOffset\":%zu,"
+                     "\"timebaseSize\":%zu,\"numer\":%u,\"denom\":%u,\"pid\":%d,\"uuid\":\"",
+                     sizeof(r), offsetof(struct rusage_info_v0, ri_user_time),
+                     offsetof(struct rusage_info_v0, ri_system_time), offsetof(struct rusage_info_v0, ri_resident_size),
+                     offsetof(struct rusage_info_v0, ri_proc_start_abstime), offsetof(struct rusage_info_v0, ri_proc_exit_abstime),
+                     sizeof(t), t.numer, t.denom, getpid());
+              for (int i=0; i<16; ++i) printf("%02x", r.ri_uuid[i]);
+              printf("\",\"birth\":%llu,\"userTicks\":%llu,\"systemTicks\":%llu,\"rssBytes\":%llu,\"pathMatches\":%s,",
+                     (unsigned long long)r.ri_proc_start_abstime, (unsigned long long)r.ri_user_time,
+                     (unsigned long long)r.ri_system_time, (unsigned long long)r.ri_resident_size,
+                     strcmp(path,argv[0]) == 0 ? "true" : "false");
+              audit_token_t token = {{0}};
+              mach_msg_type_number_t count = TASK_AUDIT_TOKEN_COUNT;
+              uint32_t code_status = 0;
+              unsigned char cdhash[20] = {0};
+              if (task_info(mach_task_self(),TASK_AUDIT_TOKEN,(task_info_t)&token,&count) != KERN_SUCCESS ||
+                  count != TASK_AUDIT_TOKEN_COUNT ||
+                  csops_audittoken(getpid(),BW_CS_STATUS,&code_status,sizeof(code_status),&token) ||
+                  csops_audittoken(getpid(),BW_CS_CDHASH,cdhash,sizeof(cdhash),&token)) return 4;
+              printf("\"auditTokenSize\":%zu,\"auditTokenCount\":%u,\"auditTokenFlavor\":%u,"
+                     "\"csStatusOperation\":%u,\"csCDHashOperation\":%u,\"cdhashBytes\":%zu,"
+                     "\"codeStatus\":%u,\"auditTokenHex\":\"",sizeof(token),count,TASK_AUDIT_TOKEN,
+                     BW_CS_STATUS,BW_CS_CDHASH,sizeof(cdhash),code_status);
+              for (size_t i=0; i<sizeof(token); ++i) printf("%02x",((unsigned char *)&token)[i]);
+              printf("\",\"cdhash\":\"");
+              for (size_t i=0; i<sizeof(cdhash); ++i) printf("%02x",cdhash[i]);
+              printf("\"}\n");
+              fflush(stdout);
+              char quit_token;
+              return read(STDIN_FILENO,&quit_token,1)==1 && quit_token=='X' ? 0 : 3;
+          }
+          """
+
+
+          def require(value):
+              if not value:
+                  raise ValueError('Darwin preflight refused')
+
+
+          def validate_sdk_report(value, pid):
+              layout = {'usageSize':96, 'userOffset':16, 'systemOffset':24, 'residentOffset':64,
+                        'birthOffset':80, 'exitOffset':88, 'timebaseSize':8,
+                        'auditTokenSize':32,'auditTokenCount':8,'auditTokenFlavor':15,
+                        'csStatusOperation':0,'csCDHashOperation':5,'cdhashBytes':20}
+              fields = set(layout) | {'numer','denom','pid','uuid','birth','userTicks','systemTicks','rssBytes','pathMatches','codeStatus','auditTokenHex','cdhash'}
+              require(type(value) is dict and value.keys() == fields)
+              require(all(type(value[k]) is int and value[k] == v for k,v in layout.items()))
+              require(type(value['pid']) is int and value['pid'] == pid and 0 < pid <= 2147483647)
+              require(type(value['uuid']) is str and re.fullmatch('[a-f0-9]{32}',value['uuid']) is not None and
+                      value['uuid'] != '0'*32 and value['pathMatches'] is True)
+              require(type(value['codeStatus']) is int and 0<=value['codeStatus']<=2**32-1 and value['codeStatus']&1 and
+                      type(value['auditTokenHex']) is str and re.fullmatch('[a-f0-9]{64}',value['auditTokenHex']) is not None and
+                      type(value['cdhash']) is str and re.fullmatch('[a-f0-9]{40}',value['cdhash']) is not None and value['cdhash']!='0'*40)
+              require(all(type(value[k]) is int and 0 <= value[k] <= 2**64-1
+                          for k in ('birth','userTicks','systemTicks','rssBytes')) and value['birth'] > 0)
+              require(all(type(value[k]) is int and 0 < value[k] <= 2**32-1 for k in ('numer','denom')))
+              require(value['rssBytes'] <= 1024**3 and
+                      (value['userTicks']+value['systemTicks'])*value['numer']//value['denom'] <= 5_000_000_000)
+
+
+          def validate_api_exports():
+              library = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True)
+              names = ('task_name_for_pid','task_info','mach_port_deallocate','csops_audittoken')
+              exports = {name:hasattr(library,name) for name in names}
+              require(all(exports.values()))
+              return exports
+
+
+          def preflight_group_original(pid, report):
+              """Fixed nonforking probe only; not a simulator or general child census."""
+              library=ctypes.CDLL('/usr/lib/libproc.dylib',use_errno=True)
+              query=library.proc_listpgrppids
+              query.argtypes=[ctypes.c_int,ctypes.c_void_p,ctypes.c_int]
+              query.restype=ctypes.c_int
+              buffer=(ctypes.c_int32*2)()
+              ctypes.set_errno(0)
+              count=query(pid,ctypes.byref(buffer),ctypes.sizeof(buffer))
+              row={'kind':'fixed-probe-group','count':count,'errno':ctypes.get_errno(),
+                   'rawHex':bytes(buffer).hex()}
+              report.setdefault('probeGroupOriginals',[]).append(row)
+              require(type(count) is int and count==1 and row['errno']==0 and buffer[0]==pid)
+              return row
+
+
+          def finish_preflight_helper(process, exit_info, report, *, ownership_token):
+              """Reap the observed owned exit even when group signalling refuses.
+
+              Darwin's zombie-only negative is classified only for the exact fixed probe,
+              with two singleton kernel group originals and stable WNOWAIT/UID/zero exit.
+              It supplies no general process-group or simulator cleanup qualification.
+              """
+              primary=None
+              try:
+                  require(process.returncode is None)
+                  fields=('si_pid','si_uid','si_signo','si_status','si_code')
+                  original={key:getattr(exit_info,key) for key in fields}
+                  report['probeExitOriginal']=original
+                  require(type(ownership_token) is bytes and len(ownership_token)==32)
+                  import struct
+                  token=struct.unpack('<8I',ownership_token)
+                  report['probeExitOwnershipTokenHex']=ownership_token.hex()
+                  report['waitUIDUsedForOwnership']=False
+                  require(token[5]==process.pid and token[1]==os.geteuid())
+                  # Darwin waitid leaves si_uid zero in the observed exit record.
+                  # Ownership is from the authenticated pre-exit kernel token.
+                  require(all(type(v) is int for v in original.values()) and
+                      0<=original['si_uid']<=2**32-1 and
+                      {key:value for key,value in original.items() if key!='si_uid'}=={
+                          'si_pid':process.pid,'si_signo':signal.SIGCHLD,
+                          'si_status':0,'si_code':os.CLD_EXITED})
+                  preflight_group_original(process.pid,report)
+                  signal_error=None
+                  try:
+                      os.killpg(process.pid,signal.SIGKILL)
+                      report['probeGroupSignal']={'status':0,'errno':0}
+                  except OSError as error:
+                      report['probeGroupSignal']={'status':-1,'errno':error.errno}
+                      signal_error=error
+                  preflight_group_original(process.pid,report)
+                  again=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+                  require(again is not None and {key:getattr(again,key) for key in fields}==original)
+                  if signal_error is not None:
+                      import errno
+                      require(isinstance(signal_error,PermissionError) and signal_error.errno==errno.EPERM)
+                      report['zombieOnlyGroupNegativeObserved']=True
+                  report['fixedProbeGroupChecked']=True
+              except BaseException as error:
+                  primary=error
+                  raise
+              finally:
+                  # A signalling exception must never skip reaping our exact exited child.
+                  report['helperReapAttempted']=True
+                  try:
+                      code=process.wait(timeout=2)
+                      report['helperReturnCode']=code
+                      require(code==0)
+                      try:os.waitpid(process.pid,os.WNOHANG)
+                      except ChildProcessError:report['leaderReaped']=True
+                      else:raise ValueError('owned leader was not reaped')
+                  except BaseException as error:
+                      report['helperReapFailure']=type(error).__name__
+                      if primary is None:raise
+
+
+          def check_command_cleanup(namespace, process, exit_info, report, *, ownership_token):
+              """Exercise the candidate primitive only on this fixed nonforking helper."""
+              primary=None
+              try:
+                  report['commandCleanupOriginals']=[]
+                  rows=namespace['darwin_owned_command_cleanup'](process,deadline=time.monotonic()+2)
+                  report['commandCleanupOriginals']=[json.loads(row) for row in rows]
+                  report['commandCleanupProbeChecked']=True
+              except BaseException as error:
+                  primary=error
+                  report['commandCleanupOriginals']=[json.loads(row) for row in
+                      getattr(error,'originals',getattr(error,'command_cleanup_originals',()))]
+                  raise
+              finally:
+                  # The primitive never reaps. Preserve the primary failure while the
+                  # independent fixed-probe teardown always attempts the owned wait.
+                  try:
+                      finish_preflight_helper(process,exit_info,report,ownership_token=ownership_token)
+                  except BaseException as error:
+                      report['commandCleanupTeardownFailure']=type(error).__name__
+                      if primary is None:raise
+
+
+          def producer_namespace(workflow):
+              match = re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
+              require(match is not None)
+              source = re.sub('^          ','',match[1],flags=re.M)
+              prefix = source[:source.rindex('\ntry:\n')]
+              namespace = {}
+              exec(compile(prefix,'reviewed-workflow-producer','exec'),namespace)
+              return namespace,hashlib.sha256(prefix.encode()).hexdigest()
+
+
+          def main():
+              root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-darwin-preflight'
+              root.mkdir(exist_ok=False)
+              report={'schema':'brickwright.darwin-sdk-preflight.v6','status':'partial',
+                      'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
+                      'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
+                      'actualAppQualified':False,'processFamilyQualified':False,'processGroupQualified':False,'cleanupSucceeded':False}
+              process=None
+              identity=None
+              report['stage']='platform-admission'
+              report['host']={'platform':sys.platform,'architecture':platform.machine(),
+                  'pythonVersion':list(sys.version_info[:3]),
+                  'waitAPIs':{key:hasattr(os,key) for key in ('waitid','P_PID','WEXITED','WNOHANG','WNOWAIT')},
+                  'sigchldDefault':signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL}
+              try:
+                  require(sys.platform == 'darwin' and platform.machine() == 'arm64' and sys.version_info >= (3,13))
+                  require(all(hasattr(os,key) for key in ('waitid','P_PID','WEXITED','WNOHANG','WNOWAIT')) and
+                          signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
+                  require(os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch' and
+                          os.environ['GITHUB_REPOSITORY'] == 'CrispStrobe/brickwright-lite' and
+                          os.environ['GITHUB_REF'] == 'refs/heads/lane/ios-active-asset-source-20261018')
+                  report['stage']='producer-loading'
+                  workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
+                  namespace,prefix_hash=producer_namespace(workflow)
+                  report['producerPrefixSHA256']=prefix_hash
+                  report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest()
+                  def command(args):
+                      result=subprocess.run(args,stdin=subprocess.DEVNULL,capture_output=True,timeout=30,check=True)
+                      require(len(result.stdout)+len(result.stderr)<=65536)
+                      return result.stdout
+                  report['stage']='api-exports'
+                  report['apiExports']=validate_api_exports()
+                  report['codeSignDeclaration']={'kind':'observer-tool-interop',
+                      'source':'apple-oss-distributions/xnu',
+                      'revision':'f6217f891ac0bb64f3d375211650a4c1ff8ca1ea',
+                      'path':'bsd/sys/codesign.h','sdkHeaderProvided':False,
+                      'operations':{'status':0,'cdhash':5}}
+                  report['stage']='compiler-discovery'
+                  compiler=command(['/usr/bin/xcrun','--sdk','macosx','--find','clang']).decode().strip()
+                  sdk=command(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-path']).decode().strip()
+                  require(Path(compiler).is_absolute() and Path(sdk).is_absolute())
+                  report['sdkVersion']=command(['/usr/bin/xcrun','--sdk','macosx','--show-sdk-version']).decode().strip()
+                  report['compilerVersionSHA256']=hashlib.sha256(command([compiler,'--version'])).hexdigest()
+                  settings=Path(sdk)/'SDKSettings.json'
+                  require(settings.is_file() and settings.stat().st_size<=1024*1024)
+                  report['sdkSettingsSHA256']=hashlib.sha256(settings.read_bytes()).hexdigest()
+                  source=root/'probe.c';source.write_text(C_SOURCE)
+                  executable=root/'probe'
+                  report['probeSourceSHA256']=hashlib.sha256(source.read_bytes()).hexdigest()
+                  report['stage']='probe-compile'
+                  command([compiler,'-std=c11','-Wall','-Wextra','-Werror','-isysroot',sdk,str(source),'-o',str(executable)])
+                  report['probeExecutableSHA256']=hashlib.sha256(executable.read_bytes()).hexdigest()
+                  environment={key:os.environ[key] for key in ('HOME','PATH','TMPDIR') if key in os.environ}
+                  report['stage']='probe-start'
+                  process=subprocess.Popen([str(executable)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,start_new_session=True,close_fds=True,env=environment)
+                  report['stage']='probe-read'
+                  with selectors.DefaultSelector() as selector:
+                      selector.register(process.stdout,selectors.EVENT_READ)
+                      require(bool(selector.select(5)))
+                      raw=os.read(process.stdout.fileno(),4097)
+                  require(0<len(raw)<=4096 and raw.endswith(b'\n') and raw.count(b'\n')==1)
+                  report['probeOutputHex']=raw.hex()
+                  report['stage']='sdk-layout'
+                  observed=json.loads(raw);report['sdkOriginal']=observed
+                  validate_sdk_report(observed,process.pid)
+                  report['stage']='code-directory-pages'
+                  directory=namespace['simulator_code_directory'](executable.read_bytes(),deadline=time.monotonic()+5)
+                  require(directory['cdhash']==observed['cdhash'])
+                  report['codeDirectory']=directory
+                  report['stage']='kernel-identity-create'
+                  identity=namespace['DarwinAuditIdentity'](process.pid,directory['cdhash'],deadline=time.monotonic()+15)
+                  report['stage']='kernel-identity-read'
+                  token_identity=identity.sample()
+                  require(identity._token.hex()==observed['auditTokenHex'])
+                  report['stage']='sampler-create'
+                  sampler=namespace['DarwinProcessSampler'](process.pid,str(executable),deadline=time.monotonic()+10)
+                  report['stage']='sampler-read'
+                  snapshot=sampler(process.pid)
+                  require((sampler._numer,sampler._denom)==(observed['numer'],observed['denom']))
+                  birth,uuid=sampler._previous[0]
+                  require(birth==observed['birth'] and uuid.hex()==observed['uuid'])
+                  counters=sampler._previous[1]
+                  require(counters[0]>=observed['userTicks'] and counters[1]>=observed['systemTicks'])
+                  require(snapshot['pid']==process.pid and snapshot['rssBytes']>0)
+                  require(identity.sample()==token_identity)
+                  report['kernelIdentitySHA256']=token_identity
+                  report['sdkOriginal']=observed
+                  report['sampledRSSBytes']=snapshot['rssBytes']
+                  report['sampleIdentitySHA256']=snapshot['identitySHA256']
+                  # Preserve resource originals. The full pidpath buffer contains a runner
+                  # directory; publish only its hash/size, never the path or executable.
+                  report['kernelOriginals']=[dict(row) if row['kind']!='pidpath' else
+                      {'kind':'pidpath','status':row['status'],'errno':row['errno'],
+                       'rawBytes':len(bytes.fromhex(row['rawHex'])),
+                       'rawSHA256':hashlib.sha256(bytes.fromhex(row['rawHex'])).hexdigest()}
+                      for row in sampler.originals()]
+                  report['stage']='probe-graceful-exit'
+                  process.stdin.write(b'X');process.stdin.flush();process.stdin.close()
+                  deadline=time.monotonic()+5
+                  while os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT) is None:
+                      require(time.monotonic()<deadline)
+                      time.sleep(0.01)
+                  exit_info=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+                  report['nonReapingWaitObserved']=True
+                  report['stage']='command-cleanup-probe'
+                  check_command_cleanup(namespace,process,exit_info,report,ownership_token=identity._token)
+                  report['cleanupSucceeded']=True
+                  report['stage']='exit-refusal'
+                  try:sampler(process.pid)
+                  except ValueError:report['exitedPIDRefused']=True
+                  else:raise ValueError('exited PID accepted')
+                  report['kernelExitOriginals']=sampler.originals()[len(report['kernelOriginals']):]
+                  report['stage']='kernel-identity-exit-refusal'
+                  try:identity.sample()
+                  except ValueError:report['kernelIdentityExitRefused']=True
+                  else:raise ValueError('exited kernel identity accepted')
+                  identity.close()
+                  report['identityOriginals']=identity.originals()
+                  report['identityPortReleased']=True
+                  report['stage']='complete'
+                  report['status']='sdk-and-kernel-identity-controls-pass'
+              except Exception as failure:
+                  report['failure']={'type':type(failure).__name__,'stage':report['stage']}
+                  if isinstance(failure,subprocess.CalledProcessError):
+                      diagnostic=failure.stderr or b''
+                      report['compilerErrorSHA256']=hashlib.sha256(diagnostic).hexdigest()
+                      text=diagnostic[:8192].decode('utf-8','replace')
+                      for private in (str(root),locals().get('sdk',''),locals().get('compiler','')):
+                          if private:text=text.replace(private,'<preflight-input>')
+                      report['compilerDiagnostics']=text
+                  raise
+              finally:
+                  errors=[]
+                  try:
+                      if identity is not None:
+                          try:identity.close()
+                          except Exception as error:errors.append('identity-'+type(error).__name__)
+                          report['identityOriginals']=identity.originals()
+                      if process is not None:
+                          if process.returncode is None:
+                              try:os.killpg(process.pid,signal.SIGKILL)
+                              except ProcessLookupError:pass
+                              except Exception as error:errors.append('group-'+type(error).__name__)
+                              # Never skip the owned wait because signalling failed.
+                              process.wait(timeout=2)
+                  except Exception as error:errors.append(type(error).__name__)
+                  finally:
+                      if process is not None:
+                          for stream in (process.stdin,process.stdout,process.stderr):
+                              try:
+                                  if stream is not None and not stream.closed:stream.close()
+                              except Exception as error:errors.append(type(error).__name__)
+                      report['cleanupErrors']=errors
+                      if errors:report['cleanupSucceeded']=False
+                      summary={key:report[key] for key in ('status','stage','host','failure','sdkOriginal',
+                          'cleanupSucceeded','cleanupErrors') if key in report}
+                      print('Darwin preflight summary '+json.dumps(summary,sort_keys=True))
+                      (root/'report.json').write_text(json.dumps(report,sort_keys=True,indent=2)+'\n')
+                  require(not errors)
+              print('Darwin SDK and owned-process preflight passed; app observation remains disabled')
+
+          if __name__=='__main__':
+              try:main()
+              except Exception:
+                  print('Darwin preflight refused; inspect the bounded structured report',file=sys.stderr)
+                  raise SystemExit(1)
+          PY
+          # END IOS DARWIN PREFLIGHT
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: brickwright-ios-darwin-preflight
+          path: ${{ runner.temp }}/bw-ios-darwin-preflight/report.json
+          if-no-files-found: error
+          retention-days: 7
+
+  ios-audit-interface:
+    if: github.event_name == 'workflow_dispatch' && (inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only) && !inputs.ios_audit_directory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    runs-on: macos-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Retain installed tool interface facts without an app operation
+        timeout-minutes: 2
+        env:
+          BW_INTERFACE_INVENTORY_ONLY: ${{ inputs.ios_audit_interface_inventory_only }}
+          BW_INTERFACE_MANUAL_ONLY: ${{ inputs.ios_audit_interface_manual_only }}
+          BW_INTERFACE_MODE: ${{ inputs.ios_audit_interface_only }}
+          BW_INTERFACE_DIAGNOSTIC: ${{ inputs.ios_audit_interface_diagnostic }}
+          BW_INTERFACE_OTHER_MODE: ${{ inputs.ios_audit_preflight_only }}
+          BW_INTERFACE_RUNTIME: ${{ inputs.ios_audit_runtime }}
+          BW_INTERFACE_BUILD: ${{ inputs.ios_audit_runtime_build }}
+        run: |
+          set -euo pipefail
+          # BEGIN IOS INTERFACE INVENTORY
+          python - <<'PY'
+          import hashlib,json,os,platform,re,selectors,signal,struct,subprocess,sys,time
+          from pathlib import Path
+
+          def require(ok):
+              if not ok:raise ValueError('installed interface inventory refused')
+
+          def retained_command(argv, cleanup, *, deadline, observe=None, facts=None):
+              """Fixed help/version commands only; retained prefixes are not ownership proof."""
+              child=None;selector=None;rows=[];output=bytearray();failure=None;used=0
+              stage='admission';started=time.monotonic();observed=False
+              if facts is not None:
+                  require(type(facts) is dict and not facts)
+                  facts['startedMonotonic']=started
+                  facts['deadlineMonotonic']=deadline
+              try:
+                  require(observe is None or callable(observe))
+                  require(time.monotonic()<deadline)
+                  stage='spawn'
+                  selector=selectors.DefaultSelector()
+                  environment={key:value for key,value in os.environ.items() if key in
+                      ('PATH','HOME','TMPDIR','DEVELOPER_DIR','LANG','LC_ALL','__CF_USER_TEXT_ENCODING')}
+                  child=subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                      start_new_session=True,close_fds=True,env=environment)
+                  for pipe in (child.stdout,child.stderr):
+                      os.set_blocking(pipe.fileno(),False);selector.register(pipe,selectors.EVENT_READ)
+                  if facts is not None:
+                      facts['spawnedMonotonic']=time.monotonic();facts['pid']=child.pid
+                  while True:
+                      stage='deadline'
+                      require(time.monotonic()<deadline and len(rows)<256)
+                      stage='read'
+                      for key,_ in selector.select(min(.05,max(0,deadline-time.monotonic()))):
+                          raw=os.read(key.fileobj.fileno(),65536)
+                          rows.append({'kind':'stdout' if key.fileobj is child.stdout else 'stderr','rawHex':raw.hex()})
+                          stage='output';used+=len(raw);require(used<=65536)
+                          if not raw:selector.unregister(key.fileobj)
+                          elif key.fileobj is child.stdout:output.extend(raw)
+                      stage='wait'
+                      info=os.waitid(os.P_PID,child.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+                      if info is not None:
+                          values=tuple(getattr(info,key) for key in ('si_pid','si_uid','si_signo','si_status','si_code'))
+                          rows.append({'kind':'wait','rawHex':struct.pack('<5q',*values).hex()})
+                          stage='exit'
+                          require(info.si_pid==child.pid and info.si_code==os.CLD_EXITED and info.si_status==0)
+                          if not selector.get_map():break
+                      elif observe is not None and not observed and time.monotonic()-started>=2:
+                          stage='diagnostic';observed=True
+                          if facts is not None:facts['diagnosticStartedMonotonic']=time.monotonic()
+                          require(child.returncode is None)
+                          observe(child,deadline)
+                          if facts is not None:facts['diagnosticFinishedMonotonic']=time.monotonic()
+              except BaseException as error:
+                  failure=error
+                  if facts is not None:facts['failurePhase']=stage
+              finally:
+                  if child is not None:
+                      try:rows.extend(json.loads(row) for row in cleanup(child,deadline=time.monotonic()+2))
+                      except BaseException as error:
+                          rows.extend(json.loads(row) for row in getattr(error,'originals',getattr(error,'command_cleanup_originals',())))
+                          if failure is None:failure=error
+                      try:
+                          code=child.wait(timeout=2);rows.append({'kind':'reap','code':code})
+                          require(code==0)
+                      except BaseException as error:
+                          if failure is None:failure=error
+                      for pipe in (child.stdout,child.stderr):
+                          try:pipe.close()
+                          except BaseException as error:
+                              if failure is None:failure=error
+                  if selector is not None:
+                      try:selector.close()
+                      except BaseException as error:
+                          if failure is None:failure=error
+              if facts is not None:
+                  facts['finishedMonotonic']=time.monotonic()
+                  facts['diagnosticInvoked']=observed
+              return bytes(output),rows,None if failure is None else type(failure).__name__
+
+          def main():
+              root=Path(os.environ['RUNNER_TEMP'])/'bw-ios-interface-inventory';root.mkdir(exist_ok=False)
+              report={'schema':'brickwright.ios-tool-interface.v7','sourceCommit':os.environ['GITHUB_SHA'],
+                  'runID':os.environ['GITHUB_RUN_ID'],'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
+                  'profile':'unadmitted','status':'partial','commands':[],'diagnostics':[],'commandGraphComplete':False,'actualAppQualified':False,'namespaceOwnershipQualified':False}
+              try:
+                  require(sys.platform=='darwin' and platform.machine()=='arm64' and sys.version_info>=(3,13) and signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL)
+                  require(os.environ['BW_INTERFACE_MODE']=='true' and os.environ['BW_INTERFACE_OTHER_MODE']=='false' and os.environ['BW_INTERFACE_RUNTIME']=='' and os.environ['BW_INTERFACE_BUILD']=='')
+                  require(os.environ['BW_INTERFACE_DIAGNOSTIC'] in ('true','false'))
+                  require(os.environ['BW_INTERFACE_MANUAL_ONLY'] in ('true','false'))
+                  manual_only=os.environ['BW_INTERFACE_MANUAL_ONLY']=='true'
+                  require(os.environ['BW_INTERFACE_INVENTORY_ONLY'] in ('true','false'))
+                  inventory_only=os.environ['BW_INTERFACE_INVENTORY_ONLY']=='true'
+                  require(not inventory_only or (not manual_only and os.environ['BW_INTERFACE_DIAGNOSTIC']=='false'))
+                  require(not manual_only or os.environ['BW_INTERFACE_DIAGNOSTIC']=='false')
+                  report['profile']='inventory-only' if inventory_only else 'manual-only' if manual_only else 'simctl-help'
+                  workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
+                  report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest()
+                  block=re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
+                  require(block is not None);body=re.sub('^          ','',block[1],flags=re.M)
+                  prefix=body[:body.rindex('\ntry:\n')];namespace={};exec(compile(prefix,'reviewed-interface-cleanup','exec'),namespace)
+                  cleanup=namespace['darwin_owned_command_cleanup'];total_deadline=time.monotonic()+60
+                  commands=[('/usr/bin/xcrun','--find','simctl'),('/usr/bin/xcodebuild','-version'),
+                      ('/bin/launchctl','help')]
+                  for subcommand in ('','spawn','launch','get_app_container','appinfo','list'):
+                      commands.append(('/usr/bin/xcrun','simctl','help',*(() if not subcommand else (subcommand,))))
+                  if manual_only:
+                      commands=[('/usr/bin/xcodebuild','-version'),('/bin/launchctl','help','print'),
+                          ('/bin/launchctl','help','procinfo'),('/bin/launchctl','help','managerpid'),
+                          ('/usr/bin/man','-P','/bin/cat','sample')]
+                  if inventory_only:
+                      commands=[('/usr/bin/xcodebuild','-version'),
+                          ('/usr/bin/xcrun','simctl','list','--json','runtimes','iOS 26.2'),
+                          ('/usr/bin/xcrun','simctl','list','--json','devicetypes','iPhone-16'),
+                          ('/usr/bin/xcrun','simctl','runtime','list','--json')]
+                  def observe_owned_help(child,deadline):
+                      # This unreaped Popen PID cannot be recycled. No name lookup or
+                      # shared service PID is admitted. Sampling is diagnostic only.
+                      require(child.returncode is None)
+                      facts={}
+                      # Default symbol lookup follows sampling; no speculative -mayDie prefetch.
+                      sample_argv=('/usr/bin/sample',str(child.pid),'1','10','-file','/dev/stdout')
+                      output,originals,failure=retained_command(sample_argv,cleanup,
+                          deadline=min(deadline-1,time.monotonic()+3),facts=facts)
+                      report['diagnostics'].append({'targetPID':child.pid,'argv':list(sample_argv),
+                          'originals':originals,'failure':failure,'facts':facts})
+                      # Preserve auxiliary failure without shortening the primary command.
+                  for argv in commands:
+                      require(time.monotonic()<total_deadline)
+                      facts={}
+                      observer=observe_owned_help if os.environ['BW_INTERFACE_DIAGNOSTIC']=='true' and argv==('/usr/bin/xcrun','simctl','help') else None
+                      stdout,rows,failure=retained_command(argv,cleanup,deadline=min(total_deadline,time.monotonic()+10),observe=observer,facts=facts)
+                      report['commands'].append({'argv':list(argv),'originals':rows,'failure':failure,'facts':facts})
+                      require(failure is None)
+                  report['commandGraphComplete']=True
+                  require(all(record['failure'] is None for record in report['diagnostics']))
+                  report['status']='installed-help-observed-only'
+              except Exception as error:report['failure']=type(error).__name__;raise
+              finally:
+                  raw=json.dumps(report,sort_keys=True,indent=2).encode();require(len(raw)<=2*1024*1024)
+                  (root/'report.json').write_bytes(raw)
+                  print('Installed tool interface status: '+report['status'])
+
+          if __name__=='__main__':main()
+          PY
+          # END IOS INTERFACE INVENTORY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: brickwright-ios-tool-interface
+          path: ${{ runner.temp }}/bw-ios-interface-inventory/report.json
+          if-no-files-found: error
+          retention-days: 7
+
+  ios-audit-directory:
+    if: github.event_name == 'workflow_dispatch' && inputs.ios_audit_directory_only && !inputs.ios_audit_preflight_only && !inputs.ios_audit_interface_only && !inputs.ios_audit_interface_diagnostic && !inputs.ios_audit_interface_manual_only && !inputs.ios_audit_interface_inventory_only && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'
+    runs-on: macos-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Check owned filesystem directory custody without simulator commands
+        timeout-minutes: 1
+        env:
+          BW_DIRECTORY_MODE: ${{ inputs.ios_audit_directory_only }}
+          BW_DIRECTORY_OTHER_MODE: ${{ inputs.ios_audit_preflight_only || inputs.ios_audit_interface_only || inputs.ios_audit_interface_diagnostic || inputs.ios_audit_interface_manual_only || inputs.ios_audit_interface_inventory_only }}
+          BW_DIRECTORY_RETAIN: ${{ inputs.retain_ios_audit_inputs }}
+          BW_DIRECTORY_SIGN: ${{ inputs.sign_ios }}
+          BW_DIRECTORY_DEVICE: ${{ inputs.device_ipa }}
+          BW_DIRECTORY_RUNTIME: ${{ inputs.ios_audit_runtime }}
+          BW_DIRECTORY_BUILD: ${{ inputs.ios_audit_runtime_build }}
+        run: |
+          set -euo pipefail
+          # BEGIN IOS DIRECTORY CUSTODY
+          python - <<'PY'
+          import ast
+          import hashlib
+          import json
+          import math
+          import os
+          from pathlib import Path
+          import platform
+          import re
+          import stat
+          import sys
+          import time
+
+          def need(value):
+              if not value:raise ValueError('device-set filesystem probe refused')
+          def classes(workflow):
+              match=re.search(r'# BEGIN IOS INPUT RETENTION\n          cat > "\$RUNNER_TEMP/bw-ios-audit-capture.py" <<\'PY\'\n([\s\S]*?)          PY\n          # END IOS INPUT RETENTION',workflow)
+              need(match is not None)
+              source=re.sub('^          ','',match[1],flags=re.M);tree=ast.parse(source)
+              names=('SimulatorDeviceSetRefused','SimulatorDeviceSetDirectory')
+              nodes=[node for node in tree.body if isinstance(node,ast.ClassDef) and node.name in names]
+              need(tuple(node.name for node in nodes)==names)
+              selected='\n\n'.join(ast.get_source_segment(source,node) for node in nodes)+'\n'
+              namespace=dict(os=os,Path=Path,stat=stat,time=time,math=math,need=need)
+              exec(compile(selected,'reviewed-directory-classes','exec'),namespace)
+              return namespace,hashlib.sha256(selected.encode()).hexdigest()
+          def record(path):
+              value=path.stat(follow_symlinks=False)
+              return {'device':value.st_dev,'inode':value.st_ino,'uid':value.st_uid,'gid':value.st_gid,'mode':value.st_mode,'links':value.st_nlink}
+          def main():
+              root=Path(os.environ['RUNNER_TEMP']).resolve()/'bw-ios-device-set-directory';root.mkdir(mode=0o700,exist_ok=False)
+              report={'schema':'brickwright.ios-directory-custody.v1','status':'partial','stage':'admission',
+                  'sourceCommit':os.environ['GITHUB_SHA'],'runID':os.environ['GITHUB_RUN_ID'],
+                  'attempt':os.environ['GITHUB_RUN_ATTEMPT'],'job':os.environ['GITHUB_JOB'],
+                  'host':{'platform':sys.platform,'architecture':platform.machine(),'python':platform.python_version()},
+                  'actualAppQualified':False,'namespaceOwnershipQualified':False,'processFamilyQualified':False,
+                  'resourceLifetimeQualified':False,'simulatorCommandsInvoked':False,'failure':None,'cleanupFailures':[]}
+              owners=[];started=time.monotonic();deadline=started+15
+              try:
+                  need(sys.platform=='darwin' and platform.machine()=='arm64' and sys.version_info[:2]==(3,13))
+                  need(os.environ['GITHUB_EVENT_NAME']=='workflow_dispatch' and os.environ['GITHUB_REPOSITORY']=='CrispStrobe/brickwright-lite' and
+                      os.environ['GITHUB_REF']=='refs/heads/lane/ios-active-asset-source-20261018' and os.environ['GITHUB_JOB']=='ios-audit-directory')
+                  need(os.environ['BW_DIRECTORY_MODE']=='true' and os.environ['BW_DIRECTORY_OTHER_MODE']=='false' and
+                      os.environ['BW_DIRECTORY_RETAIN']=='true' and os.environ['BW_DIRECTORY_SIGN']=='false' and os.environ['BW_DIRECTORY_DEVICE']=='false' and
+                      os.environ['BW_DIRECTORY_RUNTIME']==os.environ['BW_DIRECTORY_BUILD']=='')
+                  workflow=(Path(os.environ['GITHUB_WORKSPACE'])/'.github/workflows/mobile.yml').read_text()
+                  namespace,source_hash=classes(workflow);report['workflowSHA256']=hashlib.sha256(workflow.encode()).hexdigest();report['classesSHA256']=source_hash
+                  owner_type=namespace['SimulatorDeviceSetDirectory'];refused=namespace['SimulatorDeviceSetRefused']
+                  report['uid']=os.geteuid();report['fdBefore']=len(os.listdir('/dev/fd'))
+                  def parent(name):
+                      path=root/name;path.mkdir(mode=0o700);return path
+                  report['stage']='normal-custody';normal_parent=parent('normal')
+                  owner=owner_type(normal_parent,deadline=deadline);owners.append(owner)
+                  report['normal']={'parent':record(normal_parent),'created':record(owner.path)}
+                  need(owner.verify(deadline=deadline)==owner.path)
+                  (owner.path/'retained-state').write_bytes(b'owned-filesystem-probe\n')
+                  need(owner.close()==());report['normal']['afterClose']=record(owner.path)
+                  report['normal']['statePreserved']=(owner.path/'retained-state').read_bytes()==b'owned-filesystem-probe\n'
+                  need(report['normal']['statePreserved'])
+                  report['stage']='replacement-refusal';replacement_parent=parent('replacement')
+                  owner=owner_type(replacement_parent,deadline=deadline);owners.append(owner);before=record(owner.path)
+                  saved=replacement_parent/'retained-original';owner.path.rename(saved);owner.path.mkdir(mode=0o700)
+                  row={'original':before,'retained':record(saved),'replacement':record(owner.path),'refused':False}
+                  try:owner.verify(deadline=deadline)
+                  except ValueError:row['refused']=True
+                  need(row['refused'] and owner.close()==())
+                  row['bothPreserved']=saved.is_dir() and owner.path.is_dir();need(row['bothPreserved']);report['replacement']=row
+                  report['stage']='parent-change-refusal';changed_parent=parent('parent-change')
+                  owner=owner_type(changed_parent,deadline=deadline);owners.append(owner);before=record(changed_parent);changed_parent.chmod(0o750)
+                  row={'before':before,'changed':record(changed_parent),'refused':False}
+                  try:owner.verify(deadline=deadline)
+                  except ValueError:row['refused']=True
+                  need(row['refused'] and owner.close()==());changed_parent.chmod(0o700);report['parentChange']=row
+                  report['stage']='cancelled-creation';stop_parent=parent('stop');before=len(os.listdir('/dev/fd'))
+                  row={'refused':False}
+                  try:owner_type(stop_parent,deadline=deadline,stopped=lambda:bool(list(stop_parent.iterdir())))
+                  except refused as error:
+                      row.update(refused=True,creationAttempted=error.creation_attempted,cleanupFailures=list(error.cleanup_failures))
+                  entries=list(stop_parent.iterdir());need(row['refused'] and row['creationAttempted'] and not row['cleanupFailures'] and len(entries)==1)
+                  row['created']=record(entries[0]);row['fdBefore']=before;row['fdAfter']=len(os.listdir('/dev/fd'));need(row['fdBefore']==row['fdAfter']);report['cancelledCreation']=row
+                  need(time.monotonic()<deadline)
+                  report['stage']='complete';report['status']='filesystem-custody-controls-pass'
+              except BaseException as error:
+                  report['failure']={'type':type(error).__name__,'stage':report['stage']}
+              finally:
+                  for owner in reversed(owners):
+                      try:report['cleanupFailures'].extend(owner.close())
+                      except BaseException as error:report['cleanupFailures'].append(type(error).__name__)
+                  report['fdAfter']=len(os.listdir('/dev/fd'));report['elapsedSeconds']=time.monotonic()-started
+                  if report['cleanupFailures'] or report.get('fdBefore')!=report['fdAfter'] or report['elapsedSeconds']>=15:report['status']='partial'
+                  raw=(json.dumps(report,sort_keys=True)+'\n').encode();need(len(raw)<=65536)
+                  with (root/'report.json').open('xb') as output:output.write(raw)
+              print('Filesystem custody probe '+report['status']+'; app and service ownership remain unqualified')
+              return 0 if report['status']=='filesystem-custody-controls-pass' else 1
+          if __name__=='__main__':raise SystemExit(main())
+          PY
+          # END IOS DIRECTORY CUSTODY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: brickwright-ios-directory-custody
+          path: ${{ runner.temp }}/bw-ios-device-set-directory/report.json
+          if-no-files-found: error
+          retention-days: 7
+
   build-web:
+    if: github.event_name != 'workflow_dispatch' || (inputs.ios_audit_preflight_only != true && inputs.ios_audit_interface_only != true && inputs.ios_audit_interface_diagnostic != true && inputs.ios_audit_interface_manual_only != true && inputs.ios_audit_interface_inventory_only != true && inputs.ios_audit_directory_only != true)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -167,10 +921,2037 @@ jobs:
       # survive project regeneration, so there is nothing to patch here. Anything
       # this step would have to fix up belongs in one of those two files instead,
       # or local builds silently differ from CI.
+      - name: Retain unsigned iOS inputs before build
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018')
+        timeout-minutes: 3
+        env:
+          BW_RETAIN_IOS_INPUTS: ${{ inputs.retain_ios_audit_inputs }}
+          BW_SIGN_IOS: ${{ inputs.sign_ios }}
+          BW_DEVICE_IPA: ${{ inputs.device_ipa }}
+        run: |
+          set -euo pipefail
+          set -o noclobber
+          # BEGIN IOS INPUT RETENTION
+          cat > "$RUNNER_TEMP/bw-ios-audit-capture.py" <<'PY'
+          """Retain bounded unsigned build inputs; never start an app or claim active use."""
+          import hashlib
+          import math
+          import json
+          import os
+          from pathlib import Path
+          import plistlib
+          import stat
+          import subprocess
+          import sys
+          import time
+
+          FILE = 64 * 1024 * 1024
+          TOTAL = 512 * 1024 * 1024
+          COUNT = 8192
+          START = time.monotonic()
+          LAST = START
+          ROOT = Path(os.environ['GITHUB_WORKSPACE'])
+          OUT = Path(os.environ['RUNNER_TEMP']) / 'bw-ios-audit-inputs'
+          ROWS = []
+          USED = 0
+
+
+          def need(ok):
+              if not ok:
+                  raise ValueError('input retention refused')
+
+
+          def clock():
+              global LAST
+              tick = time.monotonic()
+              need(tick >= LAST and tick-START <= 120)
+              LAST = tick
+
+
+          def command(args, cwd=ROOT):
+              clock()
+              result = subprocess.run(args, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                      timeout=15, check=True)
+              need(len(result.stdout) <= 4*1024*1024)
+              clock()
+              return result.stdout
+
+
+          def canonical(name):
+              need(type(name) is str and 0 < len(name.encode()) <= 512 and
+                   all(p not in ('', '.', '..') for p in name.split('/')) and
+                   not any(ord(c) < 32 or ord(c) == 127 or c in '\\:' for c in name) and
+                   all(part not in ('CLAUDE.md', 'AGENTS.md', '.env') and not part.startswith('.env.')
+                       for part in name.split('/')))
+
+
+          def read_file(file, cap=FILE):
+              clock()
+              # Refuse links in every component, not only the final name.
+              for part in [file, *file.parents]:
+                  need(not part.is_symlink())
+              before = file.stat()
+              need(stat.S_ISREG(before.st_mode) and before.st_size <= cap)
+              fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW)
+              with os.fdopen(fd, 'rb') as stream:
+                  opened = os.fstat(stream.fileno())
+                  need((opened.st_dev, opened.st_ino) == (before.st_dev, before.st_ino))
+                  raw = stream.read(cap+1)
+                  after = os.fstat(stream.fileno())
+              need(len(raw) == before.st_size and len(raw) <= cap and
+                   (before.st_size, before.st_mtime_ns, before.st_ctime_ns) ==
+                   (after.st_size, after.st_mtime_ns, after.st_ctime_ns))
+              clock()
+              return raw
+
+
+          def retain(name, raw):
+              global USED
+              canonical(name)
+              cap = 256*1024*1024 if name == 'native/executable' else FILE
+              need(len(ROWS) < COUNT and len(raw) <= cap and USED+len(raw) <= TOTAL and
+                   name.casefold() not in {r['path'].casefold() for r in ROWS})
+              file = OUT / name
+              file.parent.mkdir(parents=True, exist_ok=True)
+              with file.open('xb') as stream:
+                  stream.write(raw)
+              ROWS.append({'path': name, 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()})
+              USED += len(raw)
+
+
+          def sources():
+              raw = command(['git', 'ls-files', '-z', '--', 'apps/tauri/src-tauri',
+                             'apps/tauri/scripts', 'apps/tauri/package.json', 'apps/tauri/package-lock.json',
+                             '.github/workflows/mobile.yml', 'vendor-pins.json'])
+              names = sorted(raw.decode().rstrip('\0').split('\0'))
+              need(0 < len(names) <= COUNT)
+              return names
+
+
+          def web_files():
+              web = ROOT/'packages/scratch-gui/build'
+              names = []
+              for base, dirs, files in os.walk(web, followlinks=False):
+                  clock()
+                  for name in dirs:
+                      need(not (Path(base)/name).is_symlink())
+                  for name in files:
+                      file = Path(base)/name
+                      relative = file.relative_to(web).as_posix()
+                      canonical(relative)
+                      names.append(relative)
+                      need(len(names) <= COUNT)
+              need(names)
+              return sorted(names)
+
+
+          def record_sources():
+              for name in sources():
+                  canonical(name)
+                  raw = read_file(ROOT/name)
+                  # Capture only exact tracked source bytes, not an uncommitted mutation.
+                  need(raw == command(['git', 'show', 'HEAD:'+name]))
+                  retain('source/'+name, raw)
+              for name in web_files():
+                  retain('web/'+name, read_file(ROOT/'packages/scratch-gui/build'/name))
+
+
+          def toolchain_observation(phase, manifest):
+              # Observe installed candidates only. No binaries or host paths are published.
+              directory = Path(os.environ['RUNNER_TEMP']) / 'bw-ios-toolchain-inputs'
+              if phase == 'before':
+                  directory.mkdir(exist_ok=False)
+              else:
+                  need(directory.is_dir() and not directory.is_symlink())
+              def installed(args):
+                  value = command(args).decode().strip()
+                  need(value and '\n' not in value)
+                  return Path(value).resolve(strict=True)
+              paths = {
+                  'rustc': installed(['rustup', 'which', 'rustc']),
+                  'cargo': installed(['rustup', 'which', 'cargo']),
+                  'appleClang': installed(['xcrun', '--sdk', 'iphonesimulator', '--find', 'clang']),
+                  'xcodeBuild': installed(['xcrun', '--find', 'xcodebuild']),
+                  'simulatorSDKSettings': installed(['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path']) / 'SDKSettings.json'
+              }
+              identities = {}
+              for role, file in paths.items():
+                  raw = read_file(file, 256*1024*1024 if role != 'simulatorSDKSettings' else 1024*1024)
+                  need(raw)
+                  identities[role] = {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+              value = {
+                  'schema': 'brickwright.ios-toolchain-observations.v1', 'phase': phase,
+                  'commit': manifest['commit'], 'tree': manifest['tree'],
+                  'runID': manifest['runID'], 'attempt': manifest['attempt'],
+                  'job': manifest['job'], 'ref': manifest['ref'],
+                  'producerSHA256': hashlib.sha256(read_file(Path(__file__))).hexdigest(),
+                  'tools': identities, 'compilerUsedInputsProved': False,
+                  'completeToolchainClosureQualified': False, 'sdkContentsQualified': False,
+                  'effectiveConfigurationJoined': False, 'actualAppObserved': False,
+                  'resourceLifetimeQualified': False
+              }
+              if phase == 'after':
+                  original = read_file(directory / 'before.json', 1024*1024)
+                  before = json.loads(original)
+                  expected = dict(value, phase='before')
+                  need(before == expected)
+                  value['beforeSHA256'] = hashlib.sha256(original).hexdigest()
+              with (directory / (phase+'.json')).open('x') as stream:
+                  json.dump(value, stream, sort_keys=True)
+
+
+          def bounded_inventory():
+              # Only an inventory request; never boot, create, install or launch a device.
+              import selectors
+              import signal
+              need(callable(getattr(os, 'waitid', None)) and
+                   all(hasattr(os, name) for name in ('P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT', 'CLD_EXITED')) and
+                   signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
+              process = subprocess.Popen(['xcrun', 'simctl', 'list', 'runtimes', '--json'],
+                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+              output = bytearray()
+              used = 0
+              selector = selectors.DefaultSelector()
+              deadline = time.monotonic() + 15
+              try:
+                  for pipe in (process.stdout, process.stderr):
+                      os.set_blocking(pipe.fileno(), False)
+                      selector.register(pipe, selectors.EVENT_READ)
+                  while selector.get_map():
+                      clock()
+                      need(time.monotonic() < deadline)
+                      for key, _ in selector.select(min(0.1, max(0, deadline-time.monotonic()))):
+                          raw = os.read(key.fileobj.fileno(), 65536)
+                          if not raw:
+                              selector.unregister(key.fileobj)
+                              continue
+                          used += len(raw)
+                          need(used <= 1024*1024)
+                          if key.fileobj is process.stdout:
+                              output.extend(raw)
+                  while True:
+                      clock()
+                      need(time.monotonic() < deadline)
+                      info = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                      if info is not None:
+                          need(info.si_pid == process.pid and info.si_code == os.CLD_EXITED and info.si_status == 0)
+                          break
+                      time.sleep(min(0.01, max(0, deadline-time.monotonic())))
+                  clock()
+                  return bytes(output)
+              finally:
+                  # Only this newly owned command group; never a simulator service or device.
+                  try:
+                      os.killpg(process.pid, signal.SIGKILL)
+                  except ProcessLookupError:
+                      pass
+                  process.wait(timeout=2)
+                  selector.close()
+                  process.stdout.close()
+                  process.stderr.close()
+
+
+          def version(text):
+              import re
+              need(type(text) is str and re.fullmatch(r'[0-9]{1,3}(\.[0-9]{1,3}){0,2}', text) is not None)
+              parts = tuple(int(n) for n in text.split('.'))
+              need(parts[0] > 0 and all(n <= 255 for n in parts[1:]))
+              return parts + (0,)*(3-len(parts))
+
+
+          def simulator_header(raw):
+              import struct
+              # Independently read only the thin ARM64 header/build metadata. This is not
+              # a loader or a dependency-graph/signature/authenticity validator. Format:
+              # https://github.com/apple-oss-distributions/cctools/blob/7a5450708479bbff61527d5e0c32a3f7b7e4c1d0/include/mach-o/loader.h
+              need(len(raw) >= 32)
+              magic, cpu, subtype, kind, count, size, flags, reserved = struct.unpack_from('<8I', raw)
+              need(magic == 0xfeedfacf and cpu == 0x0100000c and subtype == 0 and kind == 2 and reserved == 0)
+              need(0 < count <= 4096 and 8*count <= size <= 1024*1024 and 32+size <= len(raw))
+              offset = 32
+              builds = []
+              for _ in range(count):
+                  need(offset+8 <= 32+size)
+                  command_id, length = struct.unpack_from('<2I', raw, offset)
+                  need(length >= 8 and length % 8 == 0 and offset+length <= 32+size)
+                  # Legacy minimum-version commands do not establish the simulator platform.
+                  need(command_id not in (0x24, 0x25, 0x2f, 0x30))
+                  if command_id == 0x32:
+                      need(length >= 24)
+                      platform_id, minimum, sdk, tools = struct.unpack_from('<4I', raw, offset+8)
+                      need(platform_id == 7 and length == 24+8*tools and tools <= 64)
+                      unpack = lambda v: (v >> 16, (v >> 8) & 255, v & 255)
+                      need(0 < unpack(minimum)[0] <= unpack(sdk)[0] and unpack(minimum) <= unpack(sdk))
+                      builds.append(unpack(minimum))
+                  offset += length
+              need(offset == 32+size and len(builds) == 1)
+              return builds[0]
+
+
+          class DarwinCommandCleanupRefused(RuntimeError):
+              def __init__(self, originals):
+                  super().__init__('Darwin command group cleanup refused')
+                  self.originals = tuple(originals)
+
+
+          def darwin_owned_command_cleanup(process, *, deadline, now=time.monotonic):
+              """Unwired same-group signal check, never a simulator/service ownership lease.
+
+              Caller owns this fresh Popen session and must always reap it afterward. No
+              concurrent reaper may steal the leader. EPERM is admitted only for two exact
+              singleton group observations around a stable nonreaping terminal child.
+              """
+              import ctypes
+              import errno
+              import platform
+              import signal
+              import struct
+              records=[]
+              last=None
+              def record(kind,status,error,raw):
+                  need(type(raw) is bytes and len(raw)<=128)
+                  value=json.dumps({'kind':kind,'status':status,'errno':error,'rawHex':raw.hex()},
+                                   sort_keys=True,separators=(',',':')).encode()
+                  need(len(records)<16 and sum(map(len,records))+len(value)<=4096)
+                  records.append(value)
+              def check():
+                  nonlocal last
+                  tick=now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and
+                       (last is None or last<=tick) and tick<=deadline)
+                  last=tick
+              def wait_original():
+                  check()
+                  info=os.waitid(os.P_PID,process.pid,os.WEXITED|os.WNOHANG|os.WNOWAIT)
+                  if info is None:
+                      record('wait-pending',0,0,b'');check();return None
+                  fields=tuple(getattr(info,key) for key in ('si_pid','si_uid','si_signo','si_status','si_code'))
+                  need(all(type(v) is int and -(2**63)<=v<2**63 for v in fields))
+                  record('wait-terminal',0,0,struct.pack('<5q',*fields));check()
+                  need(fields[0]==process.pid and 0<=fields[1]<=2**32-1 and fields[2]==signal.SIGCHLD and
+                       fields[4] in (os.CLD_EXITED,os.CLD_KILLED,os.CLD_DUMPED))
+                  # si_uid is retained information, never child ownership authority.
+                  return fields
+              def singleton():
+                  check();buffer=(ctypes.c_int32*2)();ctypes.set_errno(0)
+                  count=query(process.pid,ctypes.byref(buffer),ctypes.sizeof(buffer))
+                  record('group',count,ctypes.get_errno(),bytes(buffer));check()
+                  need(type(count) is int and count==1 and ctypes.get_errno()==0 and buffer[0]==process.pid)
+              try:
+                  need(sys.platform=='darwin' and platform.machine()=='arm64' and
+                       ctypes.sizeof(ctypes.c_void_p)==8 and sys.byteorder=='little')
+                  need(type(process.pid) is int and 1<process.pid<=2147483647 and process.returncode is None)
+                  need(callable(now) and type(deadline) in (int,float) and math.isfinite(deadline))
+                  check();need(deadline-last<=2)
+                  need(signal.getsignal(signal.SIGCHLD)==signal.SIG_DFL)
+                  before=wait_original()
+                  if before is not None:
+                      library=ctypes.CDLL('/usr/lib/libproc.dylib',use_errno=True)
+                      query=library.proc_listpgrppids
+                      query.argtypes=[ctypes.c_int,ctypes.c_void_p,ctypes.c_int];query.restype=ctypes.c_int
+                      singleton()
+                  check()
+                  signal_error=None
+                  try:
+                      os.killpg(process.pid,signal.SIGKILL)
+                      record('group-signal',0,0,b'')
+                  except OSError as error:
+                      record('group-signal',-1,error.errno,b'');signal_error=error
+                  check()
+                  if signal_error is not None:
+                      need(isinstance(signal_error,PermissionError) and signal_error.errno==errno.EPERM and before is not None)
+                      singleton();need(wait_original()==before)
+                  check()
+                  return tuple(records)
+              except BaseException as error:
+                  if not isinstance(error,Exception):
+                      error.command_cleanup_originals=tuple(records)
+                      raise
+                  raise DarwinCommandCleanupRefused(records) from None
+
+
+          class SimulatorCommandRefused(RuntimeError):
+              def __init__(self, reason, cleanup_failures=()):
+                  super().__init__('simulator command refused')
+                  self.reason = reason
+                  self.cleanup_failures = tuple(cleanup_failures)
+
+
+          class SimulatorDeviceSetRefused(RuntimeError):
+              def __init__(self, reason, cleanup_failures=(), *, creation_attempted=False):
+                  super().__init__('simulator device-set directory refused')
+                  self.reason = reason
+                  self.cleanup_failures = tuple(cleanup_failures)
+                  self.creation_attempted = creation_attempted
+
+
+          class SimulatorDeviceSetDirectory:
+              """Unwired filesystem custody only; no boot/app/service ownership capability.
+
+              Retain the exclusive directory and its parent across command boundaries.
+              Close releases descriptors only: never recursively remove simulator state or
+              delete a path whose current occupant may belong to somebody else.
+              """
+              def __init__(self, parent, *, deadline, now=time.monotonic, stopped=None):
+                  import re
+                  import uuid
+                  self._directory_fd = self._parent_fd = None
+                  self._closed = self._failed = self._active = False
+                  self._close_errors = ()
+                  self._last = None
+                  self._now = now
+                  self.creation_attempted = False
+                  stage = 'admission'
+                  try:
+                      need(callable(now) and (stopped is None or callable(stopped)))
+                      self._parent_path = Path(parent)
+                      need(self._parent_path.is_absolute() and self._parent_path.resolve(strict=True) == self._parent_path)
+                      self._parent_fd = os.open(self._parent_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                      self._parent_identity = self._identity(os.fstat(self._parent_fd))
+                      self._parent_matches()
+                      name = 'bw-ios-assets-'+uuid.uuid4().hex+'.deviceset'
+                      need(re.fullmatch(r'bw-ios-assets-[a-f0-9]{32}\.deviceset', name) is not None)
+                      self._path = self._parent_path/name
+                      def check_stop():
+                          self._tick(deadline)
+                          if stopped is not None:
+                              flag = stopped()
+                              need(type(flag) is bool and not flag)
+                          self._tick(deadline)
+                      check_stop()
+                      self._parent_matches()
+                      stage = 'exclusive-create'
+                      self.creation_attempted = True
+                      os.mkdir(name, 0o700, dir_fd=self._parent_fd)
+                      stage = 'directory-open'
+                      named = os.stat(name, dir_fd=self._parent_fd, follow_symlinks=False)
+                      self._directory_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=self._parent_fd)
+                      self._directory_identity = self._identity(os.fstat(self._directory_fd))
+                      need(self._identity(named) == self._directory_identity)
+                      stage = 'created-readback'
+                      self.verify(deadline=deadline)
+                      check_stop()
+                  except BaseException as error:
+                      closing_interrupt = None
+                      try:
+                          self.close()
+                      except BaseException as closing:
+                          closing_interrupt = closing
+                      if not isinstance(error, Exception):
+                          error.device_set_cleanup_failures = self._close_errors
+                          error.device_set_secondary_interrupts = (() if closing_interrupt is None else (closing_interrupt,))
+                          raise
+                      if closing_interrupt is not None and not isinstance(closing_interrupt, Exception):
+                          closing_interrupt.device_set_primary_error = error
+                          raise closing_interrupt
+                      raise SimulatorDeviceSetRefused(stage, self._close_errors,
+                          creation_attempted=self.creation_attempted) from None
+
+              @staticmethod
+              def _identity(info):
+                  need(stat.S_ISDIR(info.st_mode) and info.st_uid == os.geteuid() and not info.st_mode & 0o022)
+                  return info.st_dev, info.st_ino, info.st_uid, stat.S_IMODE(info.st_mode)
+
+              @property
+              def path(self):
+                  return self._path
+
+              def _tick(self, deadline):
+                  tick = self._now()
+                  need(not self._closed and not self._failed and type(tick) in (int, float) and
+                       type(deadline) in (int, float) and math.isfinite(tick) and math.isfinite(deadline) and
+                       (self._last is None or tick >= self._last) and 0 < deadline-tick <= 15)
+                  self._last = tick
+
+              def _parent_matches(self):
+                  held = os.fstat(self._parent_fd)
+                  named = self._parent_path.stat(follow_symlinks=False)
+                  need(self._identity(held) == self._identity(named) == self._parent_identity and
+                       self._parent_path.resolve(strict=True) == self._parent_path)
+
+              def verify(self, *, deadline):
+                  try:
+                      need(not self._active)
+                      self._active = True
+                      self._tick(deadline)
+                      self._parent_matches()
+                      held = os.fstat(self._directory_fd)
+                      named = self._path.stat(follow_symlinks=False)
+                      need(self._identity(held) == self._identity(named) == self._directory_identity and
+                           stat.S_IMODE(held.st_mode) == 0o700 and self._path.resolve(strict=True) == self._path)
+                      self._tick(deadline)
+                      return self._path
+                  except BaseException:
+                      self._failed = True
+                      raise
+                  finally:
+                      self._active = False
+
+              def close(self):
+                  if not self._closed:
+                      errors = []
+                      interrupt = None
+                      for attribute in ('_directory_fd', '_parent_fd'):
+                          fd = getattr(self, attribute)
+                          setattr(self, attribute, None)  # Never retry a potentially reused descriptor number.
+                          if fd is not None:
+                              try:
+                                  os.close(fd)
+                              except BaseException as error:
+                                  errors.append(attribute+'-close')
+                                  if not isinstance(error, Exception) and interrupt is None:
+                                      interrupt = error
+                      self._close_errors = tuple(errors)
+                      self._closed = True
+                      if interrupt is not None:
+                          interrupt.add_note('device-set descriptor cleanup uncertain: '+','.join(errors))
+                          raise interrupt
+                  return self._close_errors
+
+
+          def bounded_simulator_command(arguments, *, device_set, deadline, output_limit, stopped=None, prepared_launch=None, cleanup_originals=None, command_originals=None, device_set_owner=None):
+              """Unwired simctl client adapter; not containment of delegated services/apps.
+
+              Requires non-reaping waitid (macOS Python 3.13+) and the default SIGCHLD
+              disposition. No concurrent child reaper may steal this direct child.
+              """
+              import math
+              import re
+              import selectors
+              import signal
+              stage = 'admission'
+              process = None
+              selector = None
+              directory_fd = None
+              primary = None
+              cleanup = []
+              output = bytearray()
+              last = None
+              retained_bytes = 0
+              def retain(kind, raw):
+                  nonlocal retained_bytes
+                  if command_originals is None:
+                      return
+                  need(type(raw) is bytes and len(raw)<=65536)
+                  row=json.dumps({'kind':kind,'rawHex':raw.hex()},sort_keys=True,separators=(',',':')).encode()
+                  need(len(command_originals)<1024 and retained_bytes+len(row)<=2*(output_limit+65536)+131072)
+                  list.append(command_originals,row)
+                  retained_bytes+=len(row)
+              def check():
+                  nonlocal last, stage
+                  stage = 'deadline'
+                  tick = time.monotonic()
+                  need(math.isfinite(tick) and (last is None or tick >= last) and tick < deadline)
+                  last = tick
+                  if stopped is not None:
+                      stage = 'stop'
+                      value = stopped()
+                      need(type(value) is bool and not value)
+                  return tick
+              try:
+                  need(type(deadline) in (int, float) and math.isfinite(deadline))
+                  need(type(output_limit) is int and 0 < output_limit <= 1024*1024)
+                  need(stopped is None or callable(stopped))
+                  need(device_set_owner is None or type(device_set_owner) is SimulatorDeviceSetDirectory)
+                  need(cleanup_originals is None or (type(cleanup_originals) is list and not cleanup_originals))
+                  need(command_originals is None or (type(command_originals) is list and not command_originals))
+                  need(command_originals is None or command_originals is not cleanup_originals)
+                  need(callable(getattr(BaseException, 'add_note', None)))
+                  need(callable(getattr(os, 'waitid', None)) and
+                       all(hasattr(os, name) for name in ('P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT', 'CLD_EXITED')))
+                  need(signal.getsignal(signal.SIGCHLD) == signal.SIG_DFL)
+                  need(0 < deadline-check() <= 15)
+                  stage = 'arguments'
+                  need(type(arguments) is tuple and 0 < len(arguments) <= 4 and
+                       all(type(arg) is str and 0 < len(arg.encode()) <= 4096 and
+                           not any(ord(c) < 32 or ord(c) == 127 for c in arg) for arg in arguments))
+                  operation = arguments[0]
+                  if operation == 'list':
+                      need(arguments in (('list', 'devices', '--json'), ('list', 'runtimes', '--json'),
+                                         ('list', 'devicetypes', '--json')))
+                  elif operation == 'runtime':
+                      need(arguments == ('runtime', 'list', '--json'))
+                  elif operation == 'get_app_container':
+                      need(len(arguments) == 4 and
+                           re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', arguments[1]) is not None and
+                           re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+', arguments[2]) is not None and
+                           arguments[3] in ('app', 'data'))
+                  elif operation == 'create':
+                      need(len(arguments) == 4 and re.fullmatch(r'bw-asset-audit-[a-f0-9]{32}', arguments[1]) is not None and
+                           re.fullmatch(r'com\.apple\.CoreSimulator\.SimDeviceType\.[A-Za-z0-9-]+', arguments[2]) is not None and
+                           re.fullmatch(r'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9]{1,3}-[0-9]{1,3}(?:-[0-9]{1,3})?', arguments[3]) is not None)
+                  else:
+                      need(operation in ('boot', 'bootstatus', 'install', 'launch', 'terminate', 'shutdown', 'delete'))
+                      expected = 2 if operation in ('boot', 'shutdown', 'delete') else 3
+                      need(len(arguments) == expected and re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', arguments[1]) is not None)
+                      if operation == 'bootstatus':
+                          need(arguments[2] == '-b')
+                      elif operation == 'install':
+                          need(Path(arguments[2]).is_absolute() and arguments[2].endswith('.app'))
+                      elif operation in ('launch', 'terminate'):
+                          need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+', arguments[2]) is not None)
+                  need(prepared_launch is None or (operation == 'launch' and
+                       type(prepared_launch) is PreparedInstalledObservation))
+                  stage = 'device-set'
+                  directory = Path(device_set)
+                  need(directory.is_absolute() and directory.resolve(strict=True) == directory and
+                       re.fullmatch(r'bw-ios-assets-[a-f0-9]{32}\.deviceset', directory.name) is not None)
+                  if device_set_owner is not None:
+                      need(device_set_owner.verify(deadline=deadline) == directory)
+                  directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                  identity = os.fstat(directory_fd)
+                  need(stat.S_ISDIR(identity.st_mode))
+                  # Path snapshots are not an atomic namespace lease; actual ownership is
+                  # independently admitted before any future wiring of this adapter.
+                  def same_directory():
+                      if device_set_owner is not None:
+                          need(device_set_owner.verify(deadline=deadline) == directory)
+                      current = directory.stat(follow_symlinks=False)
+                      need(stat.S_ISDIR(current.st_mode) and
+                           (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino) and
+                           directory.resolve(strict=True) == directory)
+                  same_directory()
+                  check()
+                  stage = 'spawn'
+                  selector = selectors.DefaultSelector()
+                  environment = {key: value for key, value in os.environ.items() if key in (
+                      'PATH', 'HOME', 'TMPDIR', 'DEVELOPER_DIR', 'SDKROOT', 'LANG', 'LC_ALL', '__CF_USER_TEXT_ENCODING')}
+                  if prepared_launch is not None:
+                      stage = 'launch-binding'
+                      audit_path = prepared_launch._launch_path(directory, arguments[1], arguments[2], deadline, starting=True)
+                      check()
+                      stage = 'launch-binding'
+                      prepared_launch._parent_matches()
+                      environment['SIMCTL_CHILD_BW_EMBEDDED_ASSET_AUDIT_PATH'] = audit_path
+                  stage = 'device-set'
+                  same_directory()
+                  check()
+                  stage = 'spawn'
+                  process = subprocess.Popen(['/usr/bin/xcrun', 'simctl', '--set', str(directory), *arguments],
+                      stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                      start_new_session=True, close_fds=True, env=environment)
+                  for pipe in (process.stdout, process.stderr):
+                      os.set_blocking(pipe.fileno(), False)
+                      selector.register(pipe, selectors.EVENT_READ)
+                  used = 0
+                  while True:
+                      current = check()
+                      for key, _ in selector.select(min(0.05, deadline-current)):
+                          stage = 'read'
+                          raw = os.read(key.fileobj.fileno(), 65536)
+                          retain('stdout' if key.fileobj is process.stdout else 'stderr',raw)
+                          if not raw:
+                              selector.unregister(key.fileobj)
+                              continue
+                          used += len(raw)
+                          stage = 'output'
+                          need(used <= output_limit)
+                          if key.fileobj is process.stdout:
+                              output.extend(raw)
+                      stage = 'exit-observation'
+                      # Never poll()/wait() before the final killpg: retain the direct child
+                      # PID until signaling the group so its numeric identity cannot recycle.
+                      info = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                      if info is not None:
+                          import struct
+                          fields=tuple(getattr(info,key) for key in ('si_pid','si_uid','si_signo','si_status','si_code'))
+                          need(all(type(value) is int and -(2**63)<=value<2**63 for value in fields))
+                          retain('wait-terminal',struct.pack('<5q',*fields))
+                          need(info.si_pid == process.pid)
+                          if info.si_code != os.CLD_EXITED or info.si_status != 0:
+                              stage = 'exit'
+                              raise ValueError('command exit refused')
+                          if not selector.get_map():
+                              break
+                  check()
+                  stage = 'device-set'
+                  same_directory()
+              except BaseException as error:
+                  primary = error
+                  reason = stage
+              finally:
+                  if process is not None:
+                      # Signal only this newly created command session, before reaping its
+                      # leader. Descendants that leave the group/services are not contained.
+                      try:
+                          if sys.platform == 'darwin':
+                              originals = darwin_owned_command_cleanup(process, deadline=time.monotonic()+2)
+                              for row in originals:
+                                  retain('darwin-cleanup',row)
+                              if cleanup_originals is not None:
+                                  list.extend(cleanup_originals, originals)
+                          else:
+                              os.killpg(process.pid, signal.SIGKILL)
+                      except ProcessLookupError:
+                          pass
+                      except BaseException as error:
+                          if cleanup_originals is not None:
+                              list.extend(cleanup_originals, getattr(error,'originals',
+                                  getattr(error,'command_cleanup_originals',())))
+                          cleanup.append('group-signal')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
+                      try:
+                          code=process.wait(timeout=2)
+                          retain('leader-reaped',str(code).encode('ascii'))
+                      except BaseException as error:
+                          cleanup.append('leader-reap')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
+                      for pipe in (process.stdout, process.stderr):
+                          try:
+                              pipe.close()
+                          except BaseException as error:
+                              cleanup.append('pipe-close')
+                              if not isinstance(error, Exception):
+                                  if primary is not None:
+                                      error.command_primary_error = primary
+                                  primary, reason = error, 'cleanup'
+                  if selector is not None:
+                      try:
+                          selector.close()
+                      except BaseException as error:
+                          cleanup.append('selector-close')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
+                  if directory_fd is not None:
+                      try:
+                          os.close(directory_fd)
+                      except BaseException as error:
+                          cleanup.append('directory-close')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.command_primary_error = primary
+                              primary, reason = error, 'cleanup'
+              if primary is None and not cleanup and device_set_owner is not None:
+                  try:
+                      stage = 'device-set'
+                      same_directory()
+                      check()
+                  except BaseException as error:
+                      primary, reason = error, stage
+              if primary is None and not cleanup and prepared_launch is not None:
+                  try:
+                      stage = 'launch-binding'
+                      prepared_launch._launch_path(directory, arguments[1], arguments[2], deadline, starting=False)
+                      check()  # Recheck after readback and command cleanup, before returning.
+                  except BaseException as error:
+                      primary, reason = error, stage
+              if primary is not None:
+                  if not isinstance(primary, Exception):
+                      if cleanup:
+                          primary.add_note('simulator command cleanup incomplete: '+','.join(cleanup))
+                      raise primary
+                  raise SimulatorCommandRefused(reason, cleanup) from None
+              if cleanup:
+                  raise SimulatorCommandRefused('cleanup', cleanup)
+              return bytes(output)
+
+
+          def runtime_admission():
+              import platform
+              import re
+              directory = Path(os.environ['RUNNER_TEMP']) / 'bw-ios-runtime-admission'
+              directory.mkdir(exist_ok=False)
+              value = {'schema': 'brickwright.ios-runtime-candidate.v1', 'status': 'partial',
+                  'refusal': 'runtime-admission-incomplete', 'launchAllowed': False,
+                  'actualAppObserved': False, 'deviceAdmitted': False,
+                  'runtimeArchitectureQualified': False, 'resourceLifetimeQualified': False,
+                  'executableLoadabilityQualified': False, 'officialArtifactAuthenticated': False}
+              try:
+                  value['refusal'] = 'runtime-request'
+                  requested = os.environ.get('BW_IOS_AUDIT_RUNTIME', '')
+                  build = os.environ.get('BW_IOS_AUDIT_RUNTIME_BUILD', '')
+                  need(re.fullmatch(r'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9]{1,3}-[0-9]{1,3}(?:-[0-9]{1,3})?', requested) is not None)
+                  need(re.fullmatch(r'[0-9]{1,3}[A-Z][0-9]{1,5}[a-z]?', build) is not None)
+                  value['refusal'] = 'host-architecture'
+                  need(platform.system() == 'Darwin' and platform.machine() == 'arm64')
+                  value['refusal'] = 'retained-identity'
+                  original = read_file(OUT/'completed.json', 8*1024*1024)
+                  manifest = json.loads(original)
+                  need(manifest['status'] == 'retained-candidates-only')
+                  for field, env in (('commit', 'GITHUB_SHA'), ('runID', 'GITHUB_RUN_ID'),
+                                     ('attempt', 'GITHUB_RUN_ATTEMPT'), ('job', 'GITHUB_JOB'), ('ref', 'GITHUB_REF')):
+                      need(manifest[field] == os.environ[env])
+                  need(manifest['commit'] == command(['git', 'rev-parse', 'HEAD']).decode().strip() and
+                       manifest['tree'] == command(['git', 'rev-parse', 'HEAD^{tree}']).decode().strip())
+                  need(all(manifest[key] is False for key in ('completeBuildInputGraphQualified',
+                      'effectiveConfigurationJoined', 'compilerUsedInputsProved', 'activeCodegenReferencesJoined',
+                      'actualAppObserved', 'signedTargetJoined', 'resourceLifetimeQualified')))
+                  rows = manifest['entries']
+                  need(type(rows) is list and 0 < len(rows) <= COUNT)
+                  need(len({r['path'].casefold() for r in rows}) == len(rows))
+                  originals = {}
+                  for name, cap in (('native/executable', 256*1024*1024), ('native/Info.plist', 1024*1024), ('producer/capture.py', FILE)):
+                      row, = [r for r in rows if r['path'] == name]
+                      raw = read_file(OUT/name, cap)
+                      need(type(row['bytes']) is int and row['bytes'] == len(raw) and row['sha256'] == hashlib.sha256(raw).hexdigest())
+                      originals[name] = raw
+                  need(originals['producer/capture.py'] == read_file(Path(__file__)))
+                  value['refusal'] = 'simulator-executable-metadata'
+                  info = plistlib.loads(originals['native/Info.plist'])
+                  need(info['CFBundleSupportedPlatforms'] == ['iPhoneSimulator'])
+                  minimum = simulator_header(originals['native/executable'])
+                  need(minimum == version(info['MinimumOSVersion']))
+                  value['refusal'] = 'runtime-inventory'
+                  inventory = bounded_inventory()
+                  def unique(pairs):
+                      result = {}
+                      for k, v in pairs:
+                          need(k not in result)
+                          result[k] = v
+                      return result
+                  parsed = json.loads(inventory, object_pairs_hook=unique,
+                      parse_constant=lambda _: need(False))
+                  value['refusal'] = 'runtime-selection'
+                  runtimes = parsed['runtimes']
+                  need(type(runtimes) is list and len(runtimes) <= 128)
+                  runtime, = [r for r in runtimes if r.get('identifier') == requested]
+                  need(runtime.get('isAvailable') is True and not runtime.get('availabilityError'))
+                  need(runtime['buildversion'] == build and version(runtime['version']) >= minimum)
+                  need(version(requested.rsplit('.iOS-', 1)[1].replace('-', '.')) == version(runtime['version']))
+                  value.update(status='runtime-candidate-only-launch-refused', refusal='device-resource-launch-admission-required',
+                      commit=manifest['commit'], tree=manifest['tree'], runID=manifest['runID'],
+                      attempt=manifest['attempt'], job=manifest['job'], ref=manifest['ref'],
+                      retainedManifestSHA256=hashlib.sha256(original).hexdigest(),
+                      producerSHA256=hashlib.sha256(originals['producer/capture.py']).hexdigest(),
+                      executableSHA256=hashlib.sha256(originals['native/executable']).hexdigest(),
+                      plistSHA256=hashlib.sha256(originals['native/Info.plist']).hexdigest(),
+                      inventorySHA256=hashlib.sha256(inventory).hexdigest(), inventoryBytes=len(inventory),
+                      runtimeIdentifier=requested, runtimeBuild=build, runtimeVersion=runtime['version'],
+                      executableMinimumOS=list(minimum), executableArchitecture='arm64', hostArchitecture='arm64')
+              finally:
+                  # The inventory can contain host paths; retain only its digest and reviewed fields.
+                  with (directory/'candidate.json').open('x') as stream:
+                      json.dump(value, stream, sort_keys=True)
+              print('iOS runtime candidate recorded; app launch remains refused')
+
+
+          def owned_simulator_transaction(plan, invoke, observe, now=time.monotonic, *, prepare, release, stopped=None, cleanup_invoke=None):
+              """Unwired transaction core. Adapters must enforce command/observation bounds.
+
+              Supplied admission fields are not authenticated capabilities. No workflow phase
+              invokes this core until runtime/device/resource admission and adapters qualify.
+              """
+              import math
+              import re
+              keys = {'schema', 'runtimeIdentifier', 'deviceTypeIdentifier', 'name', 'bundleIdentifier',
+                      'appPath', 'sourceSHA256', 'executableSHA256', 'runtimeArchitectureAdmitted',
+                      'deviceModelAdmitted', 'processEnvelopeAdmitted'}
+              need(all(callable(callback) for callback in (invoke, observe, now, prepare, release)))
+              need(stopped is None or callable(stopped))
+              need(cleanup_invoke is None or callable(cleanup_invoke))
+              need(type(plan) is dict and plan.keys() == keys)
+              plan = dict(plan)  # Caller mutation during an adapter call cannot retarget ownership.
+              need(plan['schema'] == 'brickwright.ios-owned-simulator-plan.v1')
+              for field, expression in (
+                  ('runtimeIdentifier', r'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]+'),
+                  ('deviceTypeIdentifier', r'com\.apple\.CoreSimulator\.SimDeviceType\.[A-Za-z0-9-]+'),
+                  ('name', r'bw-asset-audit-[a-f0-9]{32}'),
+                  ('bundleIdentifier', r'[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+'),
+                  ('sourceSHA256', r'[a-f0-9]{64}'), ('executableSHA256', r'[a-f0-9]{64}')):
+                  need(type(plan[field]) is str and re.fullmatch(expression, plan[field]) is not None)
+              need(type(plan['appPath']) is str and 0 < len(plan['appPath'].encode()) <= 4096 and
+                   not any(ord(c) < 32 or ord(c) == 127 for c in plan['appPath']))
+              need(all(plan[key] is True for key in ('runtimeArchitectureAdmitted',
+                   'deviceModelAdmitted', 'processEnvelopeAdmitted')))
+              limits = {'activeSeconds': 90, 'cleanupSeconds': 20, 'commandSeconds': 15,
+                        'maxActiveCommands': 32, 'maxCleanupCommands': 8,
+                        'commandBytes': 1024*1024, 'receiptBytes': 8*1024*1024, 'observationSeconds': 30,
+                        'preparationSeconds': 15, 'releaseSeconds': 5}
+              result = {'schema': 'brickwright.ios-owned-simulator-transaction.v1', 'status': 'partial',
+                        'primaryFailure': None, 'cleanupFailures': [], 'trace': [], 'limits': limits.copy(),
+                        'creationAttempted': False, 'ownershipEstablished': False, 'creationUncertain': False,
+                        'observationRetained': False, 'cleanupAbsenceObserved': False,
+                        'cancellationObserved': False,
+                        'preparationReturned': False, 'preparationReleased': False,
+                        'suppliedAdmissionAuthenticated': False, 'callbackBoundsQualified': False,
+                        'resourceLifetimeQualified': False, 'actualAppQualified': False}
+              interrupt = None
+              secondary_interrupts = []
+              def remember_interrupt(error):
+                  nonlocal interrupt
+                  if not isinstance(error, Exception):
+                      if interrupt is None:
+                          interrupt = error
+                      elif error is not interrupt and all(error is not saved for saved in secondary_interrupts):
+                          secondary_interrupts.append(error)
+              last = None
+              broken_clock = False
+              def tick():
+                  nonlocal last, broken_clock
+                  value = now()
+                  if (broken_clock or type(value) not in (int, float) or not math.isfinite(value) or
+                          (last is not None and value < last)):
+                      broken_clock = True
+                      raise ValueError('transaction clock refused')
+                  last = value
+                  return value
+              start = tick()
+              deadline = start + limits['activeSeconds']
+              def check_stop(*, active=True):
+                  if stopped is not None:
+                      flag = stopped()
+                      need(type(flag) is bool)
+                      result['cancellationObserved'] |= flag
+                      need(not result['cancellationObserved'])
+                  current = tick()  # Also fence a late/malformed supplied Stop callback.
+                  need(current < deadline if active else current < start +
+                       limits['activeSeconds'] + limits['cleanupSeconds'] + limits['releaseSeconds'])
+              counts = [0, 0]
+              def call(args, cleanup=False):
+                  current = tick()
+                  need(current < deadline)
+                  slot = int(cleanup)
+                  maximum = limits['maxCleanupCommands'] if cleanup else limits['maxActiveCommands']
+                  need(counts[slot] < maximum)
+                  counts[slot] += 1
+                  command_deadline = min(deadline, current+limits['commandSeconds'])
+                  callback = cleanup_invoke if cleanup and cleanup_invoke is not None else invoke
+                  value = callback(tuple(args), deadline=command_deadline, output_limit=limits['commandBytes'])
+                  need(tick() < command_deadline and type(value) is bytes and len(value) <= limits['commandBytes'])
+                  return value
+              def catalog(cleanup=False):
+                  def unique(pairs):
+                      value = {}
+                      for key, item in pairs:
+                          need(key not in value)
+                          value[key] = item
+                      return value
+                  raw = call(('list', 'devices', '--json'), cleanup)
+                  devices = json.loads(raw, object_pairs_hook=unique, parse_constant=lambda _: need(False))['devices']
+                  need(type(devices) is dict and len(devices) <= 128)
+                  rows = {}
+                  for runtime, entries in devices.items():
+                      need(type(entries) is list and len(entries) <= 1024)
+                      for entry in entries:
+                          identifier = entry['udid']
+                          need(type(identifier) is str and re.fullmatch(r'[A-Fa-f0-9]{8}(?:-[A-Fa-f0-9]{4}){3}-[A-Fa-f0-9]{12}', identifier) is not None)
+                          key = identifier.upper()
+                          need(key not in rows and len(rows) < 4096)
+                          rows[key] = (runtime, entry)
+                  return rows
+              owned = None
+              boot_attempted = False
+              launch_attempted = False
+              observation = None
+              prepared = None
+              preparation_returned = False
+              stage = 'initial-catalog'
+              def verify(cleanup=False):
+                  rows = catalog(cleanup)
+                  need(owned is not None and owned in rows)
+                  runtime, row = rows[owned]
+                  need(runtime == plan['runtimeIdentifier'] and row['name'] == plan['name'] and
+                       row['deviceTypeIdentifier'] == plan['deviceTypeIdentifier'])
+                  return row
+              def operation(command, *arguments, cleanup=False):
+                  if not cleanup:
+                      check_stop()
+                  row = verify(cleanup)
+                  if not cleanup:
+                      check_stop()  # Readback must not dispatch a later cancelled effect.
+                  if not cleanup:
+                      need(row['isAvailable'] is True)
+                      if command == 'boot':
+                          need(row['state'] == 'Shutdown')
+                      elif command in ('install', 'launch'):
+                          need(row['state'] == 'Booted')
+                  return call((command, owned, *arguments), cleanup)
+              try:
+                  check_stop()
+                  before = catalog()
+                  need(not any(row['name'] == plan['name'] for _, row in before.values()))
+                  stage = 'create'
+                  check_stop()
+                  result['creationAttempted'] = True
+                  raw = call(('create', plan['name'], plan['deviceTypeIdentifier'], plan['runtimeIdentifier']))
+                  identifier = raw.decode('ascii').strip().upper()
+                  need(re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', identifier) is not None)
+                  need(identifier not in before)
+                  stage = 'created-identity'
+                  after = catalog()
+                  need(identifier in after)
+                  runtime, row = after[identifier]
+                  need(runtime == plan['runtimeIdentifier'] and row['name'] == plan['name'] and
+                       row['deviceTypeIdentifier'] == plan['deviceTypeIdentifier'] and
+                       row['state'] == 'Shutdown' and row['isAvailable'] is True)
+                  owned = identifier
+                  result['ownershipEstablished'] = True
+                  result['trace'].append('created-identity')
+                  check_stop()  # Resolve the returned ownership before cancellation cleanup.
+                  stage = 'boot'
+                  boot_attempted = True
+                  operation('boot')
+                  stage = 'boot-ready'
+                  operation('bootstatus', '-b')
+                  need(verify()['state'] == 'Booted')
+                  stage = 'install'
+                  operation('install', plan['appPath'])
+                  stage = 'prepare-observation'
+                  need(verify()['state'] == 'Booted')
+                  check_stop()
+                  current = tick()
+                  need(current < deadline)
+                  preparation_deadline = min(deadline, current+limits['preparationSeconds'])
+                  # Adapter discovers the installed containers and prepares an absent output
+                  # here, BEFORE launch. It owns cleanup if it raises before returning.
+                  prepared = prepare(owned, deadline=preparation_deadline,
+                                     output_limit=limits['receiptBytes'])
+                  preparation_returned = True
+                  result['preparationReturned'] = True
+                  need(prepared is not None and tick() < preparation_deadline)
+                  check_stop()
+                  result['trace'].append('prepared-before-launch')
+                  stage = 'launch'
+                  launch_attempted = True
+                  raw = operation('launch', plan['bundleIdentifier'])
+                  match = re.fullmatch(re.escape(plan['bundleIdentifier']) + r': ([1-9][0-9]{0,9})\s*', raw.decode('ascii'))
+                  need(match is not None and int(match[1]) <= 2147483647)
+                  stage = 'observe'
+                  need(verify()['state'] == 'Booted')
+                  check_stop()
+                  current = tick()
+                  need(current < deadline)
+                  # Adapter owns environment binding, installed-code/readback, PID/RSS checks,
+                  # bounded waiting and original retention; this core cannot invent those facts.
+                  observation_deadline = min(deadline, current+limits['observationSeconds'])
+                  observation = observe(owned, int(match[1]), prepared=prepared, deadline=observation_deadline,
+                                        output_limit=limits['receiptBytes'])
+                  need(type(observation) is bytes and 0 < len(observation) <= limits['receiptBytes'])
+                  result['observationRetained'] = True
+                  result['observationSHA256'] = hashlib.sha256(observation).hexdigest()
+                  result['observationBytes'] = len(observation)
+                  need(tick() < observation_deadline)
+                  check_stop()  # Keep returned originals, refuse successful publication.
+              except BaseException as error:
+                  remember_interrupt(error)
+                  result['primaryFailure'] = stage  # No exception payload, args, paths, UUIDs or device names.
+              finally:
+                  result['creationUncertain'] = result['creationAttempted'] and not result['ownershipEstablished']
+                  try:
+                      if owned is not None:
+                          try:
+                              deadline = tick() + limits['cleanupSeconds']
+                          except BaseException as error:
+                              remember_interrupt(error)
+                              result['cleanupFailures'].append('cleanup-clock')
+                              deadline = float('-inf')
+                          for command, arguments, required in (
+                                  ('terminate', (plan['bundleIdentifier'],), launch_attempted),
+                                  ('shutdown', (), boot_attempted), ('delete', (), True)):
+                              if required:
+                                  try:
+                                      operation(command, *arguments, cleanup=True)
+                                      result['trace'].append(command)
+                                  except BaseException as error:
+                                      remember_interrupt(error)
+                                      result['cleanupFailures'].append(command)
+                          try:
+                              need(owned not in catalog(cleanup=True))
+                              result['cleanupAbsenceObserved'] = True
+                          except BaseException as error:
+                              remember_interrupt(error)
+                              result['cleanupFailures'].append('absence-readback')
+                  finally:
+                      if preparation_returned:
+                          # Close the returned context exactly once, including None/late values.
+                          # Device cleanup runs first, so a release interrupt cannot skip it.
+                          try:
+                              try:
+                                  release_deadline = tick() + limits['releaseSeconds']
+                              except BaseException as error:
+                                  remember_interrupt(error)
+                                  release_deadline = None
+                              value = release(prepared)  # Must close even if the clock is broken.
+                              need(value is None)
+                              result['preparationReleased'] = True
+                              need(release_deadline is not None and tick() < release_deadline)
+                          except BaseException as error:
+                              remember_interrupt(error)
+                              result['cleanupFailures'].append('preparation-release')
+              try:
+                  check_stop(active=False)
+              except BaseException as error:
+                  remember_interrupt(error)
+                  if result['primaryFailure'] is None:
+                      result['primaryFailure'] = 'publication'
+              result['activeCommands'] = counts[0]
+              result['cleanupCommands'] = counts[1]
+              if result['primaryFailure'] is None and not result['cleanupFailures'] and result['observationRetained']:
+                  result['status'] = 'observed-transaction-only'
+              if interrupt is not None:
+                  # Private immutable snapshots survive cancellation; never publish success.
+                  result['status'] = 'partial'
+                  interrupt.simulator_transaction_result = json.dumps(result, sort_keys=True,
+                      separators=(',', ':')).encode()
+                  interrupt.simulator_transaction_observation = observation if result['observationRetained'] else None
+                  interrupt.simulator_transaction_secondary_interrupts = tuple(secondary_interrupts)
+                  raise interrupt
+              return result, observation if result['observationRetained'] else None
+
+
+          def simulator_code_directory(raw, *, deadline, now=time.monotonic, stopped=None):
+              """Bounded thin arm64 ad-hoc CodeDirectory/page consistency, not signature trust."""
+              import struct
+              last = now()
+              need(type(raw) is bytes and 32 <= len(raw) <= 256*1024*1024 and
+                   type(deadline) in (int,float) and math.isfinite(deadline) and
+                   type(last) in (int,float) and math.isfinite(last) and last <= deadline <= last+5 and
+                   callable(now) and (stopped is None or callable(stopped)))
+              def check():
+                  nonlocal last
+                  tick=now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and last <= tick <= deadline)
+                  last=tick
+                  if stopped is not None:
+                      flag=stopped()
+                      need(type(flag) is bool and not flag)
+                  tick=now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and last <= tick <= deadline)
+                  last=tick
+              check()
+              magic,cpu,subtype,kind,count,commands,flags,reserved=struct.unpack_from('<8I',raw)
+              need(magic==0xfeedfacf and cpu==0x100000c and kind==2 and 0<count<=256 and
+                   8<=commands<=65536 and 32+commands<=len(raw))
+              cursor=32
+              signatures=[]
+              for _ in range(count):
+                  check()
+                  need(cursor+8<=32+commands)
+                  command,size=struct.unpack_from('<II',raw,cursor)
+                  need(size>=8 and size%4==0 and cursor+size<=32+commands)
+                  if command==0x1d:
+                      need(size==16)
+                      signatures.append(struct.unpack_from('<II',raw,cursor+8))
+                  cursor+=size
+              need(cursor==32+commands and len(signatures)==1)
+              offset,length=signatures[0]
+              need(offset>=cursor and 12<=length<=16*1024*1024 and offset+length==len(raw))
+              blob=memoryview(raw)[offset:offset+length]
+              magic,total,count=struct.unpack_from('>III',blob)
+              need(magic==0xfade0cc0 and 12<=total<=length and length-total<=15 and
+                   not any(blob[total:]) and 0<count<=16 and 12+count*8<=total)
+              directories=[];ranges=[];slots=set()
+              for index in range(count):
+                  check()
+                  slot,start=struct.unpack_from('>II',blob,12+index*8)
+                  need(slot not in slots and start>=12+count*8 and start+8<=total)
+                  slots.add(slot)
+                  tag,size=struct.unpack_from('>II',blob,start)
+                  need(size>=8 and start+size<=total and all(start+size<=a or start>=b for a,b in ranges))
+                  ranges.append((start,start+size))
+                  if slot==0:
+                      need(tag==0xfade0c02);directories.append(bytes(blob[start:start+size]))
+                  # Alternate CodeDirectories need a separately reviewed kernel-selection join.
+                  need(not 0x1000<=slot<=0x1005)
+              need(len(directories)==1)
+              directory=directories[0]
+              need(len(directory)>=88)
+              magic,size,version,cd_flags,hash_offset,ident,special,pages,limit=struct.unpack_from('>9I',directory)
+              hash_size,hash_type,platform,page_power=struct.unpack_from('4B',directory,36)
+              need(size==len(directory) and version in (0x20400,0x20500,0x20600) and cd_flags&2 and
+                   hash_size==32 and hash_type==2 and 12<=page_power<=16 and special<=32)
+              header={0x20400:88,0x20500:96,0x20600:108}[version]
+              need(len(directory)>=header and struct.unpack_from('>I',directory,44)[0]==0)
+              if limit==0:
+                  limit=struct.unpack_from('>Q',directory,56)[0]
+              page=1<<page_power
+              need(limit==offset and 0<pages<=65536 and pages==(limit+page-1)//page and
+                   hash_offset-special*hash_size>=header and hash_offset+pages*hash_size<=len(directory) and
+                   header<=ident<hash_offset-special*hash_size and
+                   b'\0' in directory[ident:hash_offset-special*hash_size])
+              for index in range(pages):
+                  check()
+                  actual=hashlib.sha256(memoryview(raw)[index*page:min(limit,(index+1)*page)]).digest()
+                  expected=directory[hash_offset+index*hash_size:hash_offset+(index+1)*hash_size]
+                  need(actual==expected)
+              result={'schema':'brickwright.simulator-code-directory.v1',
+                      'executableSHA256':hashlib.sha256(raw).hexdigest(),
+                      'codeDirectorySHA256':hashlib.sha256(directory).hexdigest(),
+                      'cdhash':hashlib.sha256(directory).digest()[:20].hex(),
+                      'hashType':hash_type,'codeSlots':pages,'codeLimit':limit,'signatureTrustQualified':False}
+              check()
+              return result
+
+
+          class DarwinAuditIdentity:
+              """Unwired audit-token/code-hash checks. The caller must join expected file bytes.
+
+              No task_for_pid/debugger privilege fallback, process mutation, or fabricated
+              audit token. Actual target SDK exports and permission behavior remain unqualified.
+              """
+              def __init__(self,pid,cdhash,*,deadline,now=time.monotonic,stopped=None):
+                  import ctypes
+                  import platform
+                  import re
+                  need(sys.platform=='darwin' and platform.machine()=='arm64' and
+                       ctypes.sizeof(ctypes.c_void_p)==8 and sys.byteorder=='little')
+                  need(type(pid) is int and 0<pid<=2147483647 and type(cdhash) is str and
+                       re.fullmatch('[a-f0-9]{40}',cdhash) is not None and cdhash!='0'*40 and
+                       callable(now) and (stopped is None or callable(stopped)))
+                  self._c,self._pid,self._expected=ctypes,pid,bytes.fromhex(cdhash)
+                  self._deadline,self._now,self._stopped=deadline,now,stopped
+                  self._last=now();self._port=0;self._closed=False;self._failed=False;self._active=False
+                  self._records=[];self._bytes=0;self._polls=0;self._token=None
+                  need(type(self._last) in (int,float) and type(deadline) in (int,float) and
+                       math.isfinite(self._last) and math.isfinite(deadline) and self._last<=deadline<=self._last+30)
+                  self._check()
+                  system=ctypes.CDLL('/usr/lib/libSystem.B.dylib',use_errno=True)
+                  self._selfport=ctypes.c_uint32.in_dll(system,'mach_task_self_').value
+                  need(self._selfport!=0)
+                  self._acquire=system.task_name_for_pid
+                  self._acquire.argtypes=[ctypes.c_uint32,ctypes.c_int,ctypes.POINTER(ctypes.c_uint32)]
+                  self._acquire.restype=ctypes.c_int
+                  self._info=system.task_info
+                  self._info.argtypes=[ctypes.c_uint32,ctypes.c_uint32,ctypes.c_void_p,ctypes.POINTER(ctypes.c_uint32)]
+                  self._info.restype=ctypes.c_int
+                  self._csops=system.csops_audittoken
+                  self._csops.argtypes=[ctypes.c_int,ctypes.c_uint32,ctypes.c_void_p,ctypes.c_size_t,ctypes.c_void_p]
+                  self._csops.restype=ctypes.c_int
+                  self._deallocate=system.mach_port_deallocate
+                  self._deallocate.argtypes=[ctypes.c_uint32,ctypes.c_uint32]
+                  self._deallocate.restype=ctypes.c_int
+                  port=ctypes.c_uint32()
+                  try:
+                      status=self._acquire(self._selfport,pid,ctypes.byref(port))
+                      self._port=port.value if status==0 else 0
+                      self._record('task-name',status,0,bytes(port))
+                      self._check();need(status==0 and self._port not in (0,0xffffffff))
+                  except BaseException as primary:
+                      self._failed=True
+                      try:self.close()
+                      except Exception:primary.identity_cleanup_failed=True
+                      primary.identity_originals=self.originals()
+                      raise
+
+              def _check(self):
+                  need(not self._closed and not self._failed)
+                  tick=self._now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and self._last<=tick<=self._deadline)
+                  self._last=tick
+                  if self._stopped is not None:
+                      flag=self._stopped();need(type(flag) is bool and not flag)
+                  tick=self._now()
+                  need(type(tick) in (int,float) and math.isfinite(tick) and self._last<=tick<=self._deadline and
+                       not self._closed and not self._failed)
+                  self._last=tick
+
+              def _record(self,kind,status,error,raw):
+                  row={'kind':kind,'status':status,'errno':error,'rawHex':raw.hex()}
+                  size=len(json.dumps(row,separators=(',',':')).encode())
+                  need(len(self._records)<1024 and self._bytes+size<=256*1024)
+                  self._records.append(row);self._bytes+=size
+
+              def originals(self):
+                  return [dict(row) for row in self._records]
+
+              def _audit(self):
+                  self._check()
+                  c=self._c;token=(c.c_uint32*8)();count=c.c_uint32(8)
+                  status=self._info(self._port,15,token,c.byref(count))
+                  self._record('task-audit-token',status,0,bytes(token)+bytes(count));self._check()
+                  need(status==0 and count.value==8 and token[5]==self._pid and token[1]==os.geteuid())
+                  raw=bytes(token)
+                  need(self._token is None or raw==self._token)
+                  self._token=raw
+                  return token
+
+              def sample(self):
+                  try:
+                      need(not self._active);self._active=True;self._check()
+                      need(self._polls<200 and len(self._records)+4<=1024 and self._bytes+1024<=256*1024)
+                      self._polls+=1;c=self._c;token=self._audit()
+                      for kind,operation,value in [('code-status',0,c.c_uint32()),('code-directory-hash',5,(c.c_ubyte*20)())]:
+                          self._check();c.set_errno(0)
+                          status=self._csops(self._pid,operation,c.byref(value),c.sizeof(value),token)
+                          self._record(kind,status,c.get_errno(),bytes(value));self._check()
+                          need(status==0)
+                          if operation==0:need(value.value&1)
+                          else:need(bytes(value)==self._expected)
+                      need(bytes(self._audit())==bytes(token))
+                      result=hashlib.sha256(bytes(token)+self._expected).hexdigest()
+                      self._check();return result
+                  except BaseException:
+                      self._failed=True
+                      raise
+                  finally:self._active=False
+
+              def close(self):
+                  if self._closed:return
+                  self._closed=True
+                  port=self._port;self._port=0
+                  if port not in (0,0xffffffff):
+                      status=self._deallocate(self._selfport,port)
+                      self._record('port-deallocate',status,0,b'')
+                      need(status==0)
+
+
+          class DarwinProcessSampler:
+              """Unwired, cooperative single-PID observations; no ownership or image lease.
+
+              ABI references: Apple XNU sys/resource.h, libproc.c, mach/mach_time.h;
+              CPU units follow fill_task_rusage -> task_power_info_locked. Target SDK
+              layout and actual kernel behavior still require independent admission.
+              """
+              def __init__(self, pid, executable, *, deadline, now=time.monotonic, stopped=None):
+                  import ctypes
+                  import platform
+                  need(sys.platform == 'darwin' and platform.machine() == 'arm64' and
+                       ctypes.sizeof(ctypes.c_void_p) == 8 and sys.byteorder == 'little')
+                  need(type(pid) is int and 0 < pid <= 2147483647 and type(executable) is str and
+                       executable.startswith('/') and str(Path(executable)) == executable and
+                       '..' not in Path(executable).parts and '\x00' not in executable and
+                       0 < len(executable.encode('utf-8')) < 4096 and callable(now) and
+                       (stopped is None or callable(stopped)))
+                  class Usage(ctypes.Structure):
+                      _fields_ = [('uuid', ctypes.c_ubyte * 16)] + [
+                          (name, ctypes.c_uint64) for name in (
+                              'user', 'system', 'packageWakeups', 'interruptWakeups', 'pageins',
+                              'wired', 'resident', 'footprint', 'birth', 'exit')]
+                  class Timebase(ctypes.Structure):
+                      _fields_ = [('numer', ctypes.c_uint32), ('denom', ctypes.c_uint32)]
+                  need(ctypes.sizeof(Usage) == 96 and ctypes.alignment(Usage) == 8 and
+                       Usage.user.offset == 16 and Usage.resident.offset == 64 and
+                       Usage.birth.offset == 80 and Usage.exit.offset == 88 and ctypes.sizeof(Timebase) == 8)
+                  self._ctypes, self._usage = ctypes, Usage
+                  self._pid, self._executable = pid, executable.encode('utf-8')
+                  self._now, self._stopped, self._deadline = now, stopped, deadline
+                  self._last = now()
+                  need(type(self._last) in (int, float) and type(deadline) in (int, float) and
+                       math.isfinite(self._last) and math.isfinite(deadline) and
+                       self._last <= deadline <= self._last + 30)
+                  self._failed, self._active, self._polls = False, False, 0
+                  self._records, self._bytes = [], 0
+                  self._identity, self._previous = None, None
+                  self._check()
+                  lib = ctypes.CDLL('/usr/lib/libproc.dylib', use_errno=True)
+                  system = ctypes.CDLL('/usr/lib/libSystem.B.dylib', use_errno=True)
+                  self._rusage, self._path = lib.proc_pid_rusage, lib.proc_pidpath
+                  self._rusage.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_void_p]
+                  self._rusage.restype = ctypes.c_int
+                  self._path.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+                  self._path.restype = ctypes.c_int
+                  timebase = system.mach_timebase_info
+                  timebase.argtypes, timebase.restype = [ctypes.POINTER(Timebase)], ctypes.c_int
+                  ratio = Timebase()
+                  ctypes.set_errno(0)
+                  status = timebase(ctypes.byref(ratio))
+                  self._record('timebase', status, ctypes.get_errno(), bytes(ratio))
+                  self._check()
+                  need(status == 0 and ratio.numer > 0 and ratio.denom > 0)
+                  self._numer, self._denom = int(ratio.numer), int(ratio.denom)
+
+              def _check(self):
+                  tick = self._now()
+                  need(not self._failed and type(tick) in (int, float) and self._last <= tick <= self._deadline)
+                  self._last = tick
+                  if self._stopped is not None:
+                      flag = self._stopped()
+                      need(type(flag) is bool and not flag)
+                  # A cancellation callback can itself consume the remaining budget.
+                  tick = self._now()
+                  need(type(tick) in (int, float) and self._last <= tick <= self._deadline and not self._failed)
+                  self._last = tick
+
+              def _reserve(self, bound):
+                  # Refuse before entering a syscall whose original would not fit.
+                  need(len(self._records) < 2048 and self._bytes + bound <= 1024*1024)
+
+              def _record(self, kind, status, error, raw):
+                  # Raw syscall originals stay private, including failed/partial buffers.
+                  row = {'kind': kind, 'status': status, 'errno': error, 'rawHex': raw.hex()}
+                  size = len(json.dumps(row, separators=(',', ':')).encode('utf-8'))
+                  need(len(self._records) < 2048 and self._bytes + size <= 1024*1024)
+                  self._records.append(row)
+                  self._bytes += size
+
+              def originals(self):
+                  return [dict(row) for row in self._records]
+
+              def _resource(self):
+                  self._check()
+                  c = self._ctypes
+                  self._reserve(512)
+                  value = self._usage()
+                  c.set_errno(0)
+                  status = self._rusage(self._pid, 0, c.byref(value))
+                  self._record('rusage-v0', status, c.get_errno(), bytes(value))
+                  self._check()
+                  need(status == 0 and value.birth > 0 and value.exit == 0 and any(value.uuid))
+                  cpu = (int(value.user) + int(value.system)) * self._numer // self._denom
+                  need(value.resident <= 1024*1024*1024 and cpu <= 5_000_000_000)
+                  identity = (int(value.birth), bytes(value.uuid))
+                  counters = (int(value.user), int(value.system))
+                  if self._previous is not None:
+                      prior_identity, prior_counters = self._previous
+                      need(identity == prior_identity and all(a >= b for a, b in zip(counters, prior_counters)))
+                  self._previous = (identity, counters)
+                  return value, identity
+
+              def __call__(self, pid):
+                  try:
+                      need(not self._active and not self._failed and type(pid) is int and pid == self._pid)
+                      self._active = True
+                      self._check()
+                      need(self._polls < 100)
+                      self._polls += 1
+                      before, identity = self._resource()
+                      self._check()
+                      c = self._ctypes
+                      self._reserve(8448)
+                      buffer = c.create_string_buffer(4096)
+                      c.set_errno(0)
+                      status = self._path(pid, buffer, 4096)
+                      # Keep the complete bounded buffer, not just the reported substring.
+                      self._record('pidpath', status, c.get_errno(), bytes(buffer))
+                      self._check()
+                      need(0 < status < 4096 and buffer.raw[status] == 0 and
+                           b'\x00' not in buffer.raw[:status] and buffer.raw[:status] == self._executable)
+                      after, after_identity = self._resource()
+                      need(identity == after_identity)
+                      token = hashlib.sha256(json.dumps({'pid': pid, 'birth': identity[0],
+                          'uuid': identity[1].hex(), 'pathHex': self._executable.hex()},
+                          sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
+                      need(self._identity is None or token == self._identity)
+                      self._identity = token
+                      self._check()
+                      return {'pid': pid, 'identitySHA256': token,
+                              'rssBytes': max(int(before.resident), int(after.resident))}
+                  except BaseException:
+                      self._failed = True
+                      raise
+                  finally:
+                      self._active = False
+
+
+          class PreparedInstalledObservation:
+              """Unwired receiver. Prepare an absent output before launch; caller owns admission.
+
+              Process samples and expected pins are supplied, not authenticated by this class.
+              Receipt headers are checked here; standalone readers must join asset contents.
+              """
+              def __init__(self, spec, *, deadline, now=time.monotonic):
+                  import re
+                  keys = {'schema', 'appDirectory', 'bundleIdentifier', 'executableSHA256',
+                          'plistSHA256', 'receiptPath', 'sourceCommit', 'baseConfigSHA256'}
+                  self._parent = None
+                  self._receipt = None
+                  self._closed = False
+                  self._started = False
+                  self._launch_binding = None
+                  self._launch_attempted = False
+                  self._close_errors = ()
+                  self._last_tick = None
+                  self._now = now
+                  self.last_raw = None
+                  try:
+                      need(type(spec) is dict and spec.keys() == keys)
+                      self._spec = dict(spec)
+                      need(spec['schema'] == 'brickwright.ios-installed-observation-plan.v1')
+                      for field, expression in (('sourceCommit', r'[a-f0-9]{40}'),
+                              ('executableSHA256', r'[a-f0-9]{64}'), ('plistSHA256', r'[a-f0-9]{64}'),
+                              ('baseConfigSHA256', r'[a-f0-9]{64}'),
+                              ('bundleIdentifier', r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+')):
+                          need(type(spec[field]) is str and re.fullmatch(expression, spec[field]) is not None)
+                      tick = self._check(deadline)
+                      need(deadline-tick <= 15)
+                      app = Path(spec['appDirectory'])
+                      need(app.is_absolute() and app.name.endswith('.app') and app.resolve(strict=True) == app)
+                      self._plist_path = app/'Info.plist'
+                      self._plist_identity, digest, raw = self._file(self._plist_path, 1024*1024, deadline, keep=True)
+                      need(digest == spec['plistSHA256'])
+                      info = plistlib.loads(raw)
+                      name = info['CFBundleExecutable']
+                      need(type(name) is str and re.fullmatch(r'[A-Za-z0-9_-][A-Za-z0-9_.-]*', name) is not None and
+                           info['CFBundleIdentifier'] == spec['bundleIdentifier'] and
+                           info['CFBundleSupportedPlatforms'] == ['iPhoneSimulator'])
+                      self._executable = app/name
+                      self._exe_identity, digest, _ = self._file(self._executable, 256*1024*1024, deadline)
+                      need(digest == spec['executableSHA256'])
+                      target = Path(spec['receiptPath'])
+                      need(target.is_absolute() and target.name == 'bw-embedded-asset-observation.json' and
+                           target.parent.resolve(strict=True) == target.parent)
+                      self._parent_path = target.parent
+                      self._parent = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                      self._parent_identity = os.fstat(self._parent)
+                      need(stat.S_ISDIR(self._parent_identity.st_mode))
+                      self._parent_matches()
+                      try:
+                          os.stat(target.name, dir_fd=self._parent, follow_symlinks=False)
+                      except FileNotFoundError:
+                          pass
+                      else:
+                          raise ValueError('receipt already exists')
+                      self._name = target.name
+                      self._check(deadline)
+                  except BaseException:
+                      self.close()
+                      raise
+
+              def _launch_path(self, device_set, device, bundle, deadline, *, starting):
+                  # Internal consistency checks, not an authenticated namespace capability.
+                  need(not self._closed and not self._started and type(starting) is bool and
+                       type(self._launch_binding) is tuple and len(self._launch_binding) == 4)
+                  if starting:
+                      need(not self._launch_attempted)
+                      self._launch_attempted = True  # Burn before clock/filesystem callbacks.
+                  else:
+                      need(self._launch_attempted)
+                  need(self._launch_binding[:3] == (str(device_set), device, bundle))
+                  self._check(deadline)
+                  for name, identity in self._launch_binding[3]:
+                      path = Path(name)
+                      current = path.stat(follow_symlinks=False)
+                      need(path.resolve(strict=True) == path and stat.S_ISDIR(current.st_mode) and
+                           (current.st_dev, current.st_ino) == identity)
+                  self._parent_matches()
+                  for path, cap, expected_identity, expected_hash in (
+                          (self._plist_path, 1024*1024, self._plist_identity, self._spec['plistSHA256']),
+                          (self._executable, 256*1024*1024, self._exe_identity, self._spec['executableSHA256'])):
+                      identity, digest, _ = self._file(path, cap, deadline)
+                      need(identity == expected_identity and digest == expected_hash)
+                  if starting:
+                      try:
+                          os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                      except FileNotFoundError:
+                          pass
+                      else:
+                          raise ValueError('receipt exists before launch')
+                  self._check(deadline)
+                  self._parent_matches()
+                  return str(self._parent_path/self._name)
+
+              def _check(self, deadline):
+                  import math
+                  need(not self._closed)
+                  tick = self._now()
+                  need(type(deadline) in (int, float) and math.isfinite(deadline) and
+                       type(tick) in (int, float) and math.isfinite(tick) and
+                       (self._last_tick is None or tick >= self._last_tick) and tick < deadline)
+                  self._last_tick = tick
+                  return tick
+
+              @staticmethod
+              def _identity(info):
+                  return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_nlink)
+
+              def _file(self, path, cap, deadline, keep=False):
+                  need(path.is_absolute() and path.resolve(strict=True) == path)
+                  fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                  try:
+                      before = os.fstat(fd)
+                      need(stat.S_ISREG(before.st_mode) and before.st_nlink == 1 and 0 < before.st_size <= cap)
+                      digest = hashlib.sha256()
+                      body = bytearray()
+                      used = 0
+                      while True:
+                          self._check(deadline)
+                          raw = os.read(fd, min(65536, cap+1-used))
+                          if not raw:
+                              break
+                          used += len(raw)
+                          need(used <= cap)
+                          digest.update(raw)
+                          if keep:
+                              body.extend(raw)
+                      need(used == before.st_size and self._identity(before) == self._identity(os.fstat(fd)))
+                      return self._identity(before), digest.hexdigest(), bytes(body)
+                  finally:
+                      os.close(fd)
+
+              def _parent_matches(self):
+                  need(not self._closed and self._parent is not None)
+                  held = os.fstat(self._parent)
+                  need((held.st_dev, held.st_ino) == (self._parent_identity.st_dev, self._parent_identity.st_ino))
+                  current = self._parent_path.stat(follow_symlinks=False)
+                  need(self._parent_path.resolve(strict=True) == self._parent_path and
+                       stat.S_ISDIR(current.st_mode) and (current.st_dev, current.st_ino) ==
+                       (self._parent_identity.st_dev, self._parent_identity.st_ino))
+
+              def _read_receipt(self, deadline, cap):
+                  self._parent_matches()
+                  if self._receipt is None:
+                      try:
+                          self._receipt = os.open(self._name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=self._parent)
+                      except FileNotFoundError:
+                          return None
+                  before = os.fstat(self._receipt)
+                  current = os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                  need(stat.S_ISREG(before.st_mode) and before.st_nlink == 1 and 0 <= before.st_size <= cap and
+                       (current.st_dev, current.st_ino) == (before.st_dev, before.st_ino))
+                  os.lseek(self._receipt, 0, os.SEEK_SET)
+                  body = bytearray()
+                  while True:
+                      self._check(deadline)
+                      raw = os.read(self._receipt, min(65536, cap+1-len(body)))
+                      if not raw:
+                          break
+                      body.extend(raw)
+                      need(len(body) <= cap)
+                  self.last_raw = bytes(body)
+                  after = os.fstat(self._receipt)
+                  self._parent_matches()
+                  current = os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                  need((current.st_dev, current.st_ino) == (before.st_dev, before.st_ino))
+                  if self._identity(before) != self._identity(after) or len(body) != before.st_size:
+                      return None  # A still-growing original is partial, not a complete replacement.
+                  self._last_receipt_identity = self._identity(after)
+                  return self.last_raw
+
+              def _header(self, raw):
+                  import re
+                  def unique(pairs):
+                      result = {}
+                      for key, value in pairs:
+                          need(key not in result)
+                          result[key] = value
+                      return result
+                  try:
+                      value = json.loads(raw, object_pairs_hook=unique, parse_float=lambda _: need(False),
+                                         parse_constant=lambda _: need(False))
+                  except json.JSONDecodeError:
+                      return False  # The single original may still be in the middle of its write.
+                  fields = {'schema', 'observation', 'asset_config_projection', 'source_label',
+                      'source_label_is_build_proof', 'effective_config_sha256', 'base_config_sha256',
+                      'executable_and_artifact_join', 'development_filesystem_fallback',
+                      'resolver_internal_fallback_excluded', 'signed_target_map_joined',
+                      'resource_and_process_lifetime_admitted'}
+                  need(type(value) is dict and value.keys() == fields and
+                       value['schema'] == 'brickwright.installed-asset-envelope.v2' and
+                       value['source_label'] == self._spec['sourceCommit'] and
+                       value['base_config_sha256'] == self._spec['baseConfigSHA256'])
+                  need(all(value[key] is False for key in ('source_label_is_build_proof',
+                      'development_filesystem_fallback', 'resolver_internal_fallback_excluded',
+                      'signed_target_map_joined', 'resource_and_process_lifetime_admitted')) and
+                      value['executable_and_artifact_join'] == 'required-external-independent-qualification')
+                  observation = value['observation']
+                  need(observation['schema'] == 'brickwright.installed-asset-observation.v1' and
+                       observation['status'] == 'complete-observation-only' and observation['refusal'] is None)
+                  projection = value['asset_config_projection']
+                  need(projection.keys() == {'schema', 'status', 'refusal', 'profile', 'runtime_config_sha256',
+                       'values', 'full_configuration_joined', 'raw_configuration_exposed', 'compiler_inputs_proved'} and
+                       projection['schema'] == 'brickwright.asset-config-projection.v1' and
+                       projection['status'] == 'complete-projection-only' and projection['refusal'] is None and
+                       projection['profile'] == 'tauri-2.11.5-utils-2.9.3-codegen-2.6.3-asset-config.v1')
+                  digest = value['effective_config_sha256']
+                  need(type(digest) is str and re.fullmatch(r'[a-f0-9]{64}', digest) is not None and
+                       projection['runtime_config_sha256'] == digest and
+                       all(projection[key] is False for key in ('full_configuration_joined',
+                           'raw_configuration_exposed', 'compiler_inputs_proved')))
+                  expected = {'dev_url_absent': True, 'csp_absent': True, 'dev_csp_absent': True,
+                              'pattern': 'brownfield', 'freeze_prototype': False,
+                              'disable_asset_csp_modification': False, 'asset_protocol_enabled': False}
+                  values = projection['values']
+                  need(type(values) is dict and values.keys() == expected.keys() and
+                       all(type(values[key]) is type(want) and values[key] == want for key, want in expected.items()))
+                  return True
+
+              def capture(self, pid, identity_sha256, sample, *, deadline, output_limit, stopped=None, pause=time.sleep):
+                  import re
+                  need(not self._closed and not self._started)
+                  self._started = True
+                  result = {'schema': 'brickwright.ios-installed-capture.v1', 'status': 'partial',
+                      'refusal': 'capture-admission', 'polls': 0, 'sampledPeakRSSBytes': 0,
+                      'sampledRSSThresholdBytes': 1024*1024*1024, 'cleanupFailures': [],
+                      'receiverClosed': False, 'installedFilesStable': False, 'receiptHeaderMatched': False,
+                      'samplerAuthenticated': False, 'hardMemoryLimitQualified': False,
+                      'runningExecutableJoined': False, 'assetContentsJoined': False, 'actualAppQualified': False}
+                  stage = 'capture-admission'
+                  interrupt = None
+                  secondary_interrupts = []
+                  try:
+                      need(not self._closed and type(pid) is int and 0 < pid <= 2147483647 and
+                           type(identity_sha256) is str and re.fullmatch(r'[a-f0-9]{64}', identity_sha256) is not None and
+                           type(output_limit) is int and 0 < output_limit <= 8*1024*1024 and
+                           callable(sample) and callable(pause) and (stopped is None or callable(stopped)))
+                      need(deadline-self._check(deadline) <= 30)
+                      def check_stop():
+                          nonlocal stage
+                          if stopped is not None:
+                              stage = 'stop'
+                              flag = stopped()
+                              need(type(flag) is bool and not flag)
+                      def process_sample():
+                          nonlocal stage
+                          stage = 'process-sample'
+                          snapshot = sample(pid)
+                          self._check(deadline)
+                          check_stop()
+                          stage = 'process-sample'
+                          need(type(snapshot) is dict and snapshot.keys() == {'pid', 'identitySHA256', 'rssBytes'} and
+                               type(snapshot['pid']) is int and snapshot['pid'] == pid and
+                               type(snapshot['identitySHA256']) is str and snapshot['identitySHA256'] == identity_sha256 and
+                               type(snapshot['rssBytes']) is int and
+                               0 <= snapshot['rssBytes'] <= result['sampledRSSThresholdBytes'])
+                          result['sampledPeakRSSBytes'] = max(result['sampledPeakRSSBytes'], snapshot['rssBytes'])
+                      for _ in range(600):
+                          stage = 'deadline'
+                          tick = self._check(deadline)
+                          check_stop()
+                          process_sample()
+                          stage = 'receipt-read'
+                          raw = self._read_receipt(deadline, output_limit)
+                          stage = 'receipt-header'
+                          if raw and self._header(raw):
+                              process_sample()
+                              stage = 'installed-files'
+                              identity, digest, _ = self._file(self._plist_path, 1024*1024, deadline)
+                              need(identity == self._plist_identity and digest == self._spec['plistSHA256'])
+                              identity, digest, _ = self._file(self._executable, 256*1024*1024, deadline)
+                              need(identity == self._exe_identity and digest == self._spec['executableSHA256'])
+                              stage = 'receipt-readback'
+                              self._parent_matches()
+                              current = os.stat(self._name, dir_fd=self._parent, follow_symlinks=False)
+                              need((current.st_dev, current.st_ino) == self._last_receipt_identity[:2])
+                              need(self._identity(os.fstat(self._receipt)) == self._last_receipt_identity)
+                              self._check(deadline)
+                              check_stop()
+                              result.update(status='captured-header-only', refusal=None,
+                                            installedFilesStable=True, receiptHeaderMatched=True)
+                              break
+                          result['polls'] += 1
+                          stage = 'deadline'
+                          pause(min(0.05, max(0, deadline-self._check(deadline))))
+                      else:
+                          raise ValueError('poll budget refused')
+                  except BaseException as error:
+                      result['refusal'] = stage  # No paths, process records, exception payload or raw bytes.
+                      if not isinstance(error, Exception):
+                          interrupt = error
+                  finally:
+                      try:
+                          result['cleanupFailures'] = list(self.close())
+                      except BaseException as error:
+                          result['cleanupFailures'] = list(self._close_errors)
+                          if not isinstance(error, Exception):
+                              if interrupt is None:
+                                  interrupt = error
+                              elif error is not interrupt:
+                                  secondary_interrupts.append(error)
+                          else:
+                              result['cleanupFailures'].append('receiver-close')
+                      result['receiverClosed'] = not result['cleanupFailures'] and self._closed
+                      if result['cleanupFailures']:
+                          result['status'] = 'partial'
+                          if result['refusal'] is None:
+                              result['refusal'] = 'receiver-cleanup'
+                  if self.last_raw is not None:
+                      result['rawBytes'] = len(self.last_raw)
+                      result['rawSHA256'] = hashlib.sha256(self.last_raw).hexdigest()
+                  if interrupt is not None:
+                      result['status'] = 'partial'
+                      interrupt.installed_capture_result = json.dumps(result, sort_keys=True,
+                          separators=(',', ':')).encode()
+                      interrupt.installed_capture_observation = self.last_raw
+                      interrupt.installed_capture_secondary_interrupts = tuple(secondary_interrupts)
+                      raise interrupt
+                  return result, self.last_raw
+
+              def close(self):
+                  if not self._closed:
+                      errors = []
+                      interrupt = None
+                      for attribute in ('_receipt', '_parent'):
+                          fd = getattr(self, attribute)
+                          setattr(self, attribute, None)
+                          if fd is not None:
+                              try:
+                                  os.close(fd)
+                              except BaseException as error:
+                                  errors.append(attribute+'-close')
+                                  if not isinstance(error, Exception) and interrupt is None:
+                                      interrupt = error
+                      self._close_errors = tuple(errors)
+                      self._closed = True
+                      if interrupt is not None:
+                          interrupt.add_note('installed receiver cleanup uncertain: '+','.join(errors))
+                          raise interrupt
+                  return self._close_errors
+
+
+          class InstalledPreparationRefused(RuntimeError):
+              def __init__(self, reason, cleanup_failures=()):
+                  super().__init__('installed observation preparation refused')
+                  self.reason = reason
+                  self.cleanup_failures = tuple(cleanup_failures)
+
+
+          def prepare_installed_observation(spec, device, invoke, *, deadline, now=time.monotonic, stopped=None):
+              """Unwired container adapter; path snapshots are not authenticated ownership.
+
+              Invoke must target the separately admitted device set. It owns private command
+              originals. This function never forwards an environment or launches an app.
+              """
+              import math
+              import re
+              primary = None
+              stage = 'admission'
+              receiver = None
+              directories = []
+              cleanup = []
+              last = None
+              def check():
+                  nonlocal last, stage
+                  stage = 'deadline'
+                  tick = now()
+                  need(type(tick) in (int, float) and math.isfinite(tick) and
+                       (last is None or tick >= last) and tick < deadline)
+                  last = tick
+                  if stopped is not None:
+                      stage = 'stop'
+                      flag = stopped()
+                      need(type(flag) is bool and not flag)
+                  return tick
+              def pin_directory(path):
+                  need(path.is_absolute() and path.resolve(strict=True) == path)
+                  fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                  # Record ownership before fstat/checks, so any failure still closes this FD.
+                  directories.append((path, fd, None))
+                  info = os.fstat(fd)
+                  need(stat.S_ISDIR(info.st_mode))
+                  directories[-1] = (path, fd, (info.st_dev, info.st_ino))
+              def same_directories():
+                  for path, fd, identity in directories:
+                      held = os.fstat(fd)
+                      current = path.stat(follow_symlinks=False)
+                      need(identity == (held.st_dev, held.st_ino) == (current.st_dev, current.st_ino) and
+                           stat.S_ISDIR(current.st_mode) and path.resolve(strict=True) == path)
+              def container(role):
+                  nonlocal stage
+                  check()
+                  stage = 'container-'+role
+                  same_directories()
+                  raw = invoke(('get_app_container', device, spec['bundleIdentifier'], role),
+                               deadline=deadline, output_limit=4097)
+                  check()
+                  stage = 'container-'+role
+                  same_directories()
+                  need(type(raw) is bytes and 0 < len(raw) <= 4097)
+                  value = (raw[:-1] if raw.endswith(b'\n') else raw).decode('utf-8', errors='strict')
+                  need(0 < len(value.encode('utf-8')) <= 4096 and value == value.strip() and
+                       not any(ord(c) < 32 or ord(c) == 127 for c in value))
+                  path = Path(value)
+                  need(path.is_absolute() and path.resolve(strict=True) == path and
+                       path != device_data and device_data in path.parents)
+                  return path
+              try:
+                  keys = {'schema', 'deviceSet', 'bundleIdentifier', 'sourceCommit',
+                          'executableSHA256', 'plistSHA256', 'baseConfigSHA256'}
+                  need(type(spec) is dict and spec.keys() == keys)
+                  spec = dict(spec)
+                  need(spec['schema'] == 'brickwright.ios-installed-container-plan.v1' and
+                       callable(invoke) and callable(now) and (stopped is None or callable(stopped)) and
+                       type(deadline) in (int, float) and math.isfinite(deadline) and
+                       type(device) is str and re.fullmatch(r'[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}', device) is not None)
+                  for key, pattern in (('bundleIdentifier', r'[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)+'),
+                          ('sourceCommit', r'[a-f0-9]{40}'), ('executableSHA256', r'[a-f0-9]{64}'),
+                          ('plistSHA256', r'[a-f0-9]{64}'), ('baseConfigSHA256', r'[a-f0-9]{64}')):
+                      need(type(spec[key]) is str and re.fullmatch(pattern, spec[key]) is not None)
+                  need(0 < deadline-check() <= 15)
+                  stage = 'device-set'
+                  need(type(spec['deviceSet']) is str and 0 < len(spec['deviceSet'].encode()) <= 4096 and
+                       not any(ord(c) < 32 or ord(c) == 127 for c in spec['deviceSet']))
+                  device_set = Path(spec['deviceSet'])
+                  need(re.fullmatch(r'bw-ios-assets-[a-f0-9]{32}\.deviceset', device_set.name) is not None)
+                  device_data = device_set/device/'data'
+                  for directory in (device_set, device_set/device, device_data):
+                      pin_directory(directory)
+                  same_directories()
+                  app = container('app')
+                  data = container('data')
+                  stage = 'container-layout'
+                  need(app.name.endswith('.app') and app != data and app not in data.parents and data not in app.parents)
+                  pin_directory(app)
+                  pin_directory(data)
+                  same_directories()
+                  stage = 'receiver-prepare'
+                  receiver_spec = {key: spec[key] for key in ('bundleIdentifier', 'sourceCommit',
+                      'executableSHA256', 'plistSHA256', 'baseConfigSHA256')}
+                  receiver_spec.update(schema='brickwright.ios-installed-observation-plan.v1',
+                      appDirectory=str(app), receiptPath=str(data/'Documents'/'bw-embedded-asset-observation.json'))
+                  receiver = PreparedInstalledObservation(receiver_spec, deadline=deadline, now=now)
+                  check()
+                  stage = 'container-readback'
+                  need(container('app') == app and container('data') == data)
+                  check()
+                  stage = 'container-readback'
+                  same_directories()
+              except BaseException as error:
+                  primary = error
+                  reason = stage
+              finally:
+                  for _, fd, _ in reversed(directories):
+                      try:
+                          os.close(fd)
+                      except BaseException as error:
+                          cleanup.append('directory-close')
+                          if not isinstance(error, Exception):
+                              if primary is not None:
+                                  error.add_note('installed preparation primary failure: '+reason)
+                              primary, reason = error, 'directory-close'
+                  if primary is None and not cleanup:
+                      try:
+                          check()  # Final fence after directory cleanup.
+                      except BaseException as error:
+                          primary, reason = error, stage
+                  if receiver is not None and (primary is not None or cleanup):
+                      try:
+                          cleanup.extend(receiver.close())
+                      except BaseException as error:
+                          cleanup.extend(receiver._close_errors)
+                          if primary is not None:
+                              error.add_note('installed preparation primary failure: '+reason)
+                          primary, reason = error, 'receiver-close'
+              if primary is not None:
+                  if not isinstance(primary, Exception):
+                      if cleanup:
+                          primary.add_note('installed preparation cleanup uncertain: '+','.join(cleanup))
+                      raise primary
+                  raise InstalledPreparationRefused(reason, cleanup) from None
+              if cleanup:
+                  raise InstalledPreparationRefused('cleanup', cleanup)
+              receiver._launch_binding = (str(device_set), device, spec['bundleIdentifier'],
+                  tuple((str(path), identity) for path, _, identity in directories))
+              return receiver
+
+
+          def release_installed_observation(receiver):
+              """Translate close uncertainty; never retry descriptor numbers after close."""
+              need(type(receiver) is PreparedInstalledObservation)
+              errors = receiver.close()
+              if errors:
+                  raise InstalledPreparationRefused('receiver-close', errors)
+
+
+          def main():
+              global ROWS, USED
+              need(os.environ.get('GITHUB_EVENT_NAME') == 'workflow_dispatch' and
+                   os.environ.get('GITHUB_REPOSITORY') == 'CrispStrobe/brickwright-lite' and
+                   os.environ.get('GITHUB_REF') in ('refs/heads/main',
+                       'refs/heads/lane/ios-active-asset-source-20261018') and
+                   os.environ.get('BW_RETAIN_IOS_INPUTS') == 'true' and
+                   os.environ.get('BW_SIGN_IOS') == 'false' and os.environ.get('BW_DEVICE_IPA') == 'false')
+              phase = sys.argv[1]
+              need(phase in ('before', 'after', 'runtime'))
+              if phase == 'runtime':
+                  runtime_admission()
+                  return
+              if phase == 'before':
+                  OUT.mkdir(exist_ok=False)
+                  record_sources()
+                  retain('producer/capture.py', read_file(Path(__file__)))
+                  toolchain = {}
+                  for name, args in (
+                      ('rustc', ['rustc', '-Vv']), ('cargo', ['cargo', '--version']),
+                      ('xcode', ['xcodebuild', '-version']),
+                      ('simulatorSDK', ['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version'])):
+                      text = command(args).decode().strip()
+                      need(len(text.encode()) <= 65536 and not any(x in text for x in ('/Users/', '/home/', '/mnt/')))
+                      toolchain[name] = text
+                  retain('toolchain/versions.json', (json.dumps(toolchain, sort_keys=True)+'\n').encode())
+                  commit = command(['git', 'rev-parse', 'HEAD']).decode().strip()
+                  need(commit == os.environ['GITHUB_SHA'])
+                  manifest = {'schema': 'brickwright.ios-retained-inputs.v1', 'status': 'before-build-inputs-only',
+                      'commit': commit, 'tree': command(['git', 'rev-parse', 'HEAD^{tree}']).decode().strip(),
+                      'runID': os.environ['GITHUB_RUN_ID'], 'attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+                      'job': os.environ['GITHUB_JOB'], 'ref': os.environ['GITHUB_REF'], 'entries': ROWS,
+                      'totalBytes': USED, 'completeBuildInputGraphQualified': False,
+                      'effectiveConfigurationJoined': False, 'compilerUsedInputsProved': False,
+                      'activeCodegenReferencesJoined': False, 'actualAppObserved': False,
+                      'signedTargetJoined': False, 'resourceLifetimeQualified': False}
+                  with (OUT/'manifest.json').open('x') as stream:
+                      json.dump(manifest, stream, sort_keys=True)
+              else:
+                  manifest = json.loads(read_file(OUT/'manifest.json', 8*1024*1024))
+                  need(manifest['status'] == 'before-build-inputs-only' and
+                       manifest['commit'] == os.environ['GITHUB_SHA'] and
+                       manifest['runID'] == os.environ['GITHUB_RUN_ID'] and
+                       manifest['attempt'] == os.environ['GITHUB_RUN_ATTEMPT'])
+                  need(manifest['commit'] == command(['git', 'rev-parse', 'HEAD']).decode().strip() and
+                       all(manifest[key] is False for key in ('completeBuildInputGraphQualified',
+                           'effectiveConfigurationJoined', 'compilerUsedInputsProved',
+                           'activeCodegenReferencesJoined', 'actualAppObserved', 'signedTargetJoined',
+                           'resourceLifetimeQualified')))
+                  ROWS = manifest['entries']
+                  need(type(ROWS) is list and 0 < len(ROWS) <= COUNT)
+                  for row in ROWS:
+                      canonical(row['path'])
+                      need(type(row['bytes']) is int and 0 <= row['bytes'] <= FILE and
+                           type(row['sha256']) is str and len(row['sha256']) == 64)
+                  need(len({row['path'].casefold() for row in ROWS}) == len(ROWS))
+                  USED = sum(row['bytes'] for row in ROWS)
+                  need(USED == manifest['totalBytes'] and USED <= TOTAL)
+                  expected_sources = sorted(row['path'][7:] for row in ROWS if row['path'].startswith('source/'))
+                  expected_web = sorted(row['path'][4:] for row in ROWS if row['path'].startswith('web/'))
+                  need(sources() == expected_sources and web_files() == expected_web)
+                  for row in ROWS:
+                      original = read_file(OUT/row['path'])
+                      need(len(original) == row['bytes'] and hashlib.sha256(original).hexdigest() == row['sha256'])
+                      if row['path'] == 'producer/capture.py':
+                          need(read_file(Path(__file__)) == original)
+                      if row['path'].startswith(('source/', 'web/')):
+                          local = ROOT/row['path'][7:] if row['path'].startswith('source/') else ROOT/'packages/scratch-gui/build'/row['path'][4:]
+                          need(read_file(local) == original)
+                  metadata = json.loads(command(['cargo', 'metadata', '--no-deps', '--format-version', '1',
+                                                 '--locked', '--offline'], ROOT/'apps/tauri/src-tauri'))
+                  target = Path(metadata['target_directory'])/'aarch64-apple-ios-sim/release/build'
+                  candidates = sorted(target.glob('brickwright-tauri-*/out/tauri-codegen-assets'))
+                  need(0 < len(candidates) <= 32)
+                  count = 0
+                  for candidate in candidates:
+                      # Retain all observed candidates, including stale ones. No active-use inference.
+                      for base, dirs, files in os.walk(candidate, followlinks=False):
+                          clock()
+                          need(not Path(base).is_symlink())
+                          for name in dirs:
+                              need(not (Path(base)/name).is_symlink())
+                          for name in sorted(files):
+                              file = Path(base)/name
+                              relative = file.relative_to(target).as_posix()
+                              retain('codegen/'+relative, read_file(file))
+                              count += 1
+                  need(count > 0)
+                  apps = list((ROOT/'apps/tauri/src-tauri/gen/apple/build').rglob('*.app'))
+                  need(len(apps) == 1)
+                  app = apps[0]
+                  plist = read_file(app/'Info.plist', 1024*1024)
+                  info = plistlib.loads(plist)
+                  name = info['CFBundleExecutable']
+                  canonical(name)
+                  need('/' not in name and info['CFBundleSupportedPlatforms'] == ['iPhoneSimulator'])
+                  retain('native/Info.plist', plist)
+                  retain('native/executable', read_file(app/name, 256*1024*1024))
+                  manifest.update(status='retained-candidates-only', entries=ROWS, totalBytes=USED,
+                                  rawCodegenCandidates=len(candidates), rawCodegenFiles=count,
+                                  rawCodegenSelection='all-observed-package-output-candidates; active-reference-join-required')
+                  with (OUT/'completed.json').open('x') as stream:
+                      json.dump(manifest, stream, sort_keys=True)
+              toolchain_observation(phase, manifest)
+              print('iOS input retention: '+phase+' complete; no app launched')
+
+
+          try:
+              main()
+          except Exception:
+              # No exception payloads, tool stderr, host paths or environment dumps in CI.
+              print('::error::iOS input retention refused; retained partial inputs are not qualification')
+              sys.exit(1)
+          PY
+          # END IOS INPUT RETENTION
+          python3 "$RUNNER_TEMP/bw-ios-audit-capture.py" before
+
       - name: Build iOS app (simulator, unsigned)
         working-directory: apps/tauri
         run: |
           npx tauri ios init --ci
+          node scripts/prepare-ios-device-build.mjs
           # PrivacyInfo.xcprivacy has no tauri.conf equivalent, so it is patched
           # straight into the generated pbxproj. Deliberately NOT via project.yml
           # + `xcodegen generate`: regenerating discards the signing settings the
@@ -226,6 +3007,58 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Retain unsigned iOS products after build
+        if: github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018')
+        timeout-minutes: 3
+        env:
+          BW_RETAIN_IOS_INPUTS: ${{ inputs.retain_ios_audit_inputs }}
+          BW_SIGN_IOS: ${{ inputs.sign_ios }}
+          BW_DEVICE_IPA: ${{ inputs.device_ipa }}
+        run: |
+          set -euo pipefail
+          python3 "$RUNNER_TEMP/bw-ios-audit-capture.py" after
+
+      - name: Admit installed unsigned iOS runtime candidate
+        if: (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018')) && inputs.ios_audit_runtime != ''
+        timeout-minutes: 3
+        env:
+          BW_RETAIN_IOS_INPUTS: ${{ inputs.retain_ios_audit_inputs }}
+          BW_SIGN_IOS: ${{ inputs.sign_ios }}
+          BW_DEVICE_IPA: ${{ inputs.device_ipa }}
+          BW_IOS_AUDIT_RUNTIME: ${{ inputs.ios_audit_runtime }}
+          BW_IOS_AUDIT_RUNTIME_BUILD: ${{ inputs.ios_audit_runtime_build }}
+        run: |
+          set -euo pipefail
+          python3 "$RUNNER_TEMP/bw-ios-audit-capture.py" runtime
+
+      - name: Upload unsigned iOS runtime admission
+        if: always() && inputs.ios_audit_runtime != '' && (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-runtime-admission
+          path: ${{ runner.temp }}/bw-ios-runtime-admission
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload retained unsigned iOS inputs
+        if: always() && (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-audit-inputs
+          path: ${{ runner.temp }}/bw-ios-audit-inputs
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload unsigned iOS toolchain observations
+        if: always() && (github.event_name == 'workflow_dispatch' && inputs.retain_ios_audit_inputs && !inputs.sign_ios && !inputs.device_ipa && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/lane/ios-active-asset-source-20261018'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-toolchain-inputs
+          path: ${{ runner.temp }}/bw-ios-toolchain-inputs
+          if-no-files-found: error
+          retention-days: 3
+
   # Signed, App-Store-shaped IPA. Opt-in — runs on a version tag, or on a manual
   # dispatch with sign_ios=true.
   #
@@ -280,6 +3113,7 @@ jobs:
           done
 
           npx tauri ios init --ci
+          node scripts/prepare-ios-device-build.mjs
           node scripts/patch-ios-privacy.mjs
           node scripts/patch-mobile-icons.mjs ios
 
@@ -489,6 +3323,7 @@ jobs:
           done
 
           npx tauri ios init --ci
+          node scripts/prepare-ios-device-build.mjs
           node scripts/patch-ios-privacy.mjs
           node scripts/patch-mobile-icons.mjs ios
 
@@ -523,10 +3358,11 @@ jobs:
 
           # The whole point of this job: without ProvisionedDevices the IPA is
           # an App Store package and devicectl will reject it.
-          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" \
+          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" >/dev/null \
             || { echo "::error::the built IPA names no devices — it cannot be sideloaded"; exit 1; }
-          echo "devices named in the embedded profile:"
-          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" | grep '<string>'
+          DEVICE_COUNT=$(plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" | grep -c '<string>')
+          [ "$DEVICE_COUNT" -gt 0 ] || { echo "::error::ad-hoc profile has no registered devices"; exit 1; }
+          echo "ad-hoc profile verified: provisioned device count=$DEVICE_COUNT"
 
           [ -f "$APP/PrivacyInfo.xcprivacy" ] \
             || { echo "::error::PrivacyInfo.xcprivacy missing from the IPA"; exit 1; }
