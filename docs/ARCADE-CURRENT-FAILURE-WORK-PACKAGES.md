@@ -17,27 +17,28 @@ observation even without a query. Do not select that path by method-name absence
 or hide decoder effects. The next measured cost change still needs evidence
 from the actual importer or Creator workload.
 
-A connected native VM test also reproduces a real functional failure:
-`createEmpty` -> `namedReference` -> text addition has no primitive backing
-proof. The candidate creates the empty body in the current host operation,
-retains its identity through named-reference publication, and adds eight actual
-VM groups. Supplier protocol26 and Lite source17 pass; a fresh normal installer
-reproduces all364 outputs. Independent saved-data checks accept the installation and all57 native
-controls (49 unchanged plus eight new groups), with zero skips. Named-factory
-Code/export/reimport acceptance remains pending. See [the exact allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md).
+The Arrays-only coordinator, named empty/JSON allocation, reload replacement and
+custom-parser repairs now have an accepted normal installation at their tested
+candidate. All 64 existing native controls, 17 additional lifecycle/parser
+controls and both public Code/export/reimport cases pass with independent
+saved-data review. Original failures remain retained. These finite results do
+not establish graphics, full-game compatibility or current corpus counts.
+See [the allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md) and
+[the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md).
 
-After that narrow allocation, qualify the named JSON constructor used by some
-export/reimport paths. Source review shows a named item getter can cause export
-to reconstruct an empty registry through `create1D`; its backing currently has
-no primitive proof. Capture actual emitted files and selected opcodes before
-claiming a failure or fixing it. Preserve legacy malformed/nonarray JSON and
-coercion behavior. Zeros, range, derived arrays and serialized aliases remain
-separate acceptance families.
+The next authentic-project check uses the current asynchronous dependency-import
+API with the retained complete resource-bearing project, not just its raw
+TypeScript fragment. The earlier eight-stage success used the legacy import
+path. Preserve that distinction and the actual resolver identity checks. An
+exported file map requires a fresh resolver result for modern asynchronous
+reimport; never reuse the original project's certificate. Explicit synchronous
+reimport can be tested separately. No new hydrator or missing feature is
+justified until the current public path exposes a concrete disagreement.
 
 | Priority | Current evidence | Concrete next task and acceptance |
 | --- | --- | --- |
-| 1. Complete conversion assessment | All 151 selected conversion regressions, 31 complete Console/Font source/export controls and 28 CI contract controls pass. Latest full assessment reaches its unchanged CPU bound without a report. A real-input profile failed saving a large observation; its partial samples are diagnostic only. | Target measured importer/Creator work with semantics-preserving changes; keep public fallback observations, all diagnostics, full input order and existing bounds. Qualify complete affected modules. Obtain and independently read the full 225-input JSON/gzip report before updating counts. |
-| 2. Native Array semantics | Supplier PR52 merged with all seven enabled checks successful. Fresh installation, all 49 native controls and three genuine original/Code/export-reimport executions pass independent saved-data review. Array text remains `5`; Stop/quit cleanup completed. | Preserve these expectations and source identities. Extend actual runtime comparisons when conversion changes affect emitted code; verify unrelated scripts, errors and runtime ownership. These finite scalar cases do not qualify graphics or full games. |
+| 1. Complete conversion assessment | All 151 selected conversion regressions, 31 complete Console/Font source/export controls and 28 CI contract controls pass. Latest full assessment reaches its unchanged CPU bound without a report. A real-input profile failed saving a large observation; its partial samples are diagnostic only. | Measure importer and Creator costs before selecting a change. The proposed negative-regex shortcut is deferred: mutable regexes and observable callbacks require checks whose net saving is unproven. Preserve fallback observations, diagnostics, full input order and existing bounds. Qualify complete affected modules. Obtain and independently read the full 225-input JSON/gzip report before updating counts. |
+| 2. Native Array semantics | Supplier PR57 is merged; Lite retains the explicit reviewed source pin. The repaired installation, 64 native controls, 17 additional controls and two public roundtrips have independent saved-data review at their exact tested source. Stop/quit cleanup completed. | Preserve these expectations and source identities. Extend actual runtime comparisons when conversion changes affect emitted code; verify unrelated scripts, errors and runtime ownership. These finite scalar cases do not qualify graphics or full games. |
 | 3. Original compiler and simulator | The 41 dependency contexts retain 29 original compiler successes and 12 failures. Six broader controls lack their required original SDK/browser runtime. | Use one final hosted SDK/browser qualification for the actual final candidate, with emitted file maps, assets and dependencies. Preserve original compiler diagnostics. Do not substitute a different SDK or call missing-runtime cases passes. |
 | 4. Diagnostic-led feature work | Historical unsupported constructs are not a fresh census. | Group completed current report diagnostics by construct, source location and project. Implement one family at a time with successful, negative and roundtrip cases. Keep import, Creator, native runtime and original-runtime results separate. |
 | 5. Visible parity | Component and native tests provide no new visible authoring qualification. | Follow the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md): create and edit in Blocks and Code, edit graphics/tiles/animation/sound, steer through controllers, save and reopen in a fresh session, then export and import into MakeCode. Retain unsupported-element navigation. |
