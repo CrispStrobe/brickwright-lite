@@ -131,3 +131,50 @@ test('links round fewer than two gears say so; a link on a sprocket\'s teeth is 
         assert.deepEqual(solidOverlaps(model, CATALOG, l), [], `${l.id} shares volume only with its sprockets and neighbours`);
     }
 });
+
+test('in Simulate the links run round: a sprocket turned by one link\'s angle puts each link on the next one\'s place', async () => {
+    const {Group, Mesh, Quaternion, Vector3} = await import('three');
+    const {createChainMotion, orderLoop, placedPivots, twistAbout, slotAt} = await import('../overlay/scratch-gui/src/lib/bw-sim/view/chain-motion.js');
+    const {model} = withChain(bench());
+    const mech = compile(model, CATALOG, {version: 2});
+    const conn = CATALOG.get('3711.dat').connectors[0];
+    const links = model.parts.filter(p => p.part === '3711.dat');
+    const loop = orderLoop(links.map(l => ({id: l.id, pivots: placedPivots(l, conn)})));
+    assert.deepEqual(loop.map(l => l.id), links.map(l => l.id), 'chainRound laid them in running order');
+    assert.equal(orderLoop(links.slice(1).map(l => ({id: l.id, pivots: placedPivots(l, conn)}))), null, 'an open chain is no loop');
+    assert.ok(Math.abs(twistAbout([0, Math.sin(0.3), 0, Math.cos(0.3)], [0, 1, 0]) - 0.6) < 1e-12);
+    assert.deepEqual(slotAt(3, -1.25, 16), {from: 1, to: 2, frac: 0.75});
+    // A stand-in for the scene: a group per body at its t=0 pose, a mesh per link in the frame's group.
+    const bodyGroups = new Map();
+    for (const b of mech.bodies) {
+        const g = new Group();
+        g.position.set(...b.position);
+        g.quaternion.set(...b.rotation);
+        bodyGroups.set(b.id, g);
+    }
+    const partMeshes = new Map();
+    const frame = mech.bodies.find(b => b.parts.includes(links[0].id));
+    links.forEach((l, k) => {
+        const m = new Mesh();
+        m.position.set(k, 0, 0); // any distinct base places do: the motion moves between them
+        bodyGroups.get(frame.id).add(m);
+        partMeshes.set(l.id, m);
+    });
+    const motion = createChainMotion({model, mechanism: mech, catalog: CATALOG, built: {bodyGroups, partMeshes}});
+    assert.equal(motion.loops, 1);
+    // Turn the first gear of the coupling (the 24T: g24 sorts first) by one link: 16 LDU of its 30 LDU pitch radius.
+    const gearBody = mech.bodies.find(b => b.parts.includes('g24'));
+    const g = bodyGroups.get(gearBody.id);
+    const axis = new Vector3(0, 1, 0); // the gears' axles are vertical (LDraw y), world y
+    const steps = 8;
+    for (let i = 1; i <= steps; i++) {
+        g.quaternion.copy(new Quaternion().setFromAxisAngle(axis, (16 / 30) * i / steps).multiply(new Quaternion(...gearBody.rotation)));
+        motion.update();
+    }
+    const xs = links.map(l => Math.round(partMeshes.get(l.id).position.x * 1e6) / 1e6);
+    const n = links.length;
+    const shifted = xs.map(x => ((x % n) + n) % n);
+    const delta = shifted.map((x, k) => (((x - k) % n) + n) % n);
+    assert.ok(delta.every(d => Math.abs(d - delta[0]) < 1e-6) && [1, n - 1].includes(Math.round(delta[0])) && Math.abs(delta[0] - Math.round(delta[0])) < 1e-6,
+        `every link moved one place along: ${delta}`);
+});

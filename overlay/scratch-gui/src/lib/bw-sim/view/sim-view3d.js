@@ -12,6 +12,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {LDU_M, dirToWorld, lduToWorld} from '../contracts.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
+import {createChainMotion} from './chain-motion.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
@@ -84,6 +85,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     container.appendChild(canvas);
 
     const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config), catalog});
+    // Chain links run round with their sprocket (drawing only: the core welds them to the frame).
+    const chainMotion = createChainMotion({model, mechanism, catalog, built});
     // The scene builder owns the model; the view adds light only when the builder brought none.
     if (!built.scene.children.some(c => c.isLight)) addPartLights(built.scene);
     // A light sky and a 1 cm grid on the floor (10 cm major lines): without them a
@@ -340,6 +343,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
         dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
+        if (snapshot && chainMotion) chainMotion.update();
         const centre = (followPartId && partCentre(followPartId)()) || modelBox().getCenter(new Vector3());
         if (followed) {
             const delta = centre.clone().sub(followed);
