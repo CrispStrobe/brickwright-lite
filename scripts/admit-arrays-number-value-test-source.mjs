@@ -100,7 +100,8 @@ export function assertArraysNumberValueWorkflow(source) {
         admission.text.includes("if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}") &&
         admission.text.includes('run: node scripts/admit-arrays-number-value-test-source.mjs'), 'ARRAY_INPUT_WORKFLOW_ADMISSION');
     requireFact(run.text.includes("steps.arrays_number_value_source.outcome == 'success'") &&
-        run.text.includes('BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/' + ARRAYS_INPUT.outputSource) &&
+        ['BW_ARRAY_NUMBER_VALUE_SOURCE','BW_ARRAY_NAMED_JSON_SOURCE','BW_ARRAY_PRIOR_BINDING_SOURCE'].every(name =>
+            run.text.includes(name + ': ${{ github.workspace }}/' + ARRAYS_INPUT.outputSource)) &&
         run.text.includes('npm run test:fast:shard'), 'ARRAY_INPUT_WORKFLOW_ENV_OR_PREREQUISITE');
     requireFact(evidence.text.includes(ARRAYS_INPUT.outputDirectory + '/'), 'ARRAY_INPUT_WORKFLOW_RECEIPT_UPLOAD');
 }

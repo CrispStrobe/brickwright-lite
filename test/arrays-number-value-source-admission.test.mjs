@@ -96,4 +96,10 @@ test('the complete fast shard requires admission after overlays with explicit en
         workflow.replace('BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js', 'BW_ARRAY_NUMBER_VALUE_SOURCE: unreviewed.js'),
         workflow.replace('            test-results/arrays-number-value-input/\n', '')
     ]) assert.throws(() => assertArraysNumberValueWorkflow(bad), /ARRAY_INPUT_WORKFLOW_/);
+    for (const name of ['BW_ARRAY_NAMED_JSON_SOURCE','BW_ARRAY_PRIOR_BINDING_SOURCE']) {
+        const line = '          ' + name + ': ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js\n';
+        assert.equal(workflow.split(line).length, 2, name + ' has one explicit admitted source');
+        for (const bad of [workflow.replace(line, ''), workflow.replace(line, `          ${name}: unreviewed.js\n`)])
+            assert.throws(() => assertArraysNumberValueWorkflow(bad), /ARRAY_INPUT_WORKFLOW_/);
+    }
 });

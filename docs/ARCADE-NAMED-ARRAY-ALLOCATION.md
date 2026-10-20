@@ -127,3 +127,9 @@ a real reload ownership repair are now composed. A fresh normal installation,
 all64 existing native controls, all14 new JSON/replacement controls and the
 public Code/export/reimport journeys remain required. The proposal is not an
 adoption on Lite main or a reduction of corpus partial counts.
+
+All three native input names (Number values, named JSON and replacement fault
+controls) refer explicitly to the same admitted canonical source file. Workflow
+controls reject a missing input, an unreviewed replacement path or bypassed
+admission. A source candidate must not rely on a local-only environment variable
+that the hosted unit shard never supplies.

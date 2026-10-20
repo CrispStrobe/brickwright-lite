@@ -794,6 +794,8 @@ jobs:
           TMPDIR: ${{ runner.temp }}
           BW_TEST_SHARD: ${{ matrix.shard }}/4
           BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
+          BW_ARRAY_NAMED_JSON_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
+          BW_ARRAY_PRIOR_BINDING_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
         run: |
           if ! grep -q '"test"' package.json; then
