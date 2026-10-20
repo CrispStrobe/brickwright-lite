@@ -5858,6 +5858,73 @@
    }
   },
   {
+   "part": "3711.dat",
+   "name": "Technic chain link",
+   "category": "gear",
+   "massGrams": 0.1,
+   "connectors": [
+    {
+     "id": "k",
+     "type": "chain-link",
+     "position": [
+      0,
+      0,
+      8
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "along": [
+       0,
+       0,
+       1
+      ],
+      "pitchLdu": 16
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.75,
+      5,
+      13
+     ],
+     "position": [
+      0,
+      0,
+      8
+     ]
+    }
+   ],
+   "nameDe": "Technic-Kettenglied",
+   "mirrorOf": {
+    "part": "3711.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  {
    "part": "6589.dat",
    "name": "Technic gear 12 tooth bevel",
    "category": "gear",

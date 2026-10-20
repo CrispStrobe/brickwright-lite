@@ -97,6 +97,7 @@ import {
     turnAboutLine
 } from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
+import {chainRound} from './chain-path.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
@@ -1537,6 +1538,22 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
         if (run({type: 'moveMany', moves: [move]}, {turned: 1})) status({kind: 'flipped'});
     };
+    /**
+     * Chain round the selected gears (editor/chain-path.js): Technic chain links laid round their
+     * pitch circles in one undo step, then selected; refused when a link would go into a part.
+     */
+    const chainRoundSelection = () => {
+        if (!needSelection()) return;
+        const r = chainRound(editor.model, catalogMap, selection);
+        if (r.error) { status({kind: 'refused', reason: `chain_${r.error}`}); return; }
+        const blocked = r.links.map(l => placeBlockedBy(l.part, l)).find(Boolean);
+        if (blocked) { status({kind: 'refused', reason: 'overlapPlace', target: blocked.target}); return; }
+        const before = new Set(editor.model.parts.map(p => p.id));
+        const commands = r.links.map(l => ({type: 'place', part: l.part, position: l.position, rotation: l.rotation, color: l.color}));
+        if (!run({type: 'batch', commands}, {placed: commands[0].part})) return;
+        setSelection(editor.model.parts.filter(p => !before.has(p.id)).map(p => p.id));
+        status({kind: 'chained', count: commands.length, gears: r.gears.length});
+    };
     /** Selects every part joined to the selection through pairs (Studio's "By Connected"). */
     const selectConnected = () => {
         if (!needSelection()) return;
@@ -2865,7 +2882,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         get pinnedTarget () { return pinned ? {partId: pinned.partId, connectorId: pinned.connectorId, part: pinned.part} : null; },
         clearTarget: () => setPinned(null),
         /** In hand: place it (the touch ✓), turn it (⟳), the next way (Tab). */
-        placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected,
+        placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected, chainRoundSelection,
         /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
         setWheelMode (next) { if (['auto', 'mouse', 'trackpad'].includes(next)) wheelMode = next; },
         get wheelMode () { return wheelMode; },

@@ -5179,6 +5179,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
   },
+  "parts/3711.dat": {
+   "sha256": "ddd4c9a38f974a891b1998356ca38e85e7672e72810d19c838cae6f17bc0f97d",
+   "release": "G Part UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Fredrik Hareide [fhareide]"
+  },
   "parts/3712.dat": {
    "sha256": "5a9bb06d58ac846ae32f645bad4b5b9fc52bb93c1d6f6cbabd10d6c9054e7820",
    "release": "G Part UPDATE 2019-03",
@@ -7326,6 +7332,24 @@
    "release": "G Subpart UPDATE 2023-06",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Massimo Maso [Sirio]"
+  },
+  "parts/s/3711s01.dat": {
+   "sha256": "a9e4d0a3c56eca5bcc8e0f780f60c53491937d76b091ed34c6d4820f2b269ed7",
+   "release": "G Subpart UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Fredrik Hareide [fhareide]"
+  },
+  "parts/s/3711s02.dat": {
+   "sha256": "9635fa241de3c82eb8b0d9427daceb1e53feb4acf66178be7cfc5c1203dd85ff",
+   "release": "G Subpart UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Fredrik Hareide [fhareide]"
+  },
+  "parts/s/3711s03.dat": {
+   "sha256": "5bfeb0dafa13d9e47dbb10f3a37f5803f7699bda454071af7fa5f2cf17329cc5",
+   "release": "G Subpart UPDATE 2025-06",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Gerald Lasser [GeraldLasser]"
   },
   "parts/s/3754s01.dat": {
    "sha256": "9928a154a565f9946deaaecdb0c8dc019c864061a77c13e6e17ff84bb4d0bbe0",

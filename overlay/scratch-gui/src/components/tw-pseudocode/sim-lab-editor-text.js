@@ -21,6 +21,7 @@ export const EDITOR_TEXT = {
         port: 'Port', none: 'none',
         position: 'Position (LDU, 20 = one hole)', positionMany: 'Move all by (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Rotation (°)', turnAbout: 'Turn about {axis}', minus90: '−90°', plus90: '+90°',
+        chainRound: 'Chain round gears', chainRoundHelp: 'Lay a closed chain round the selected gears: they then turn the same way',
         group: 'Group', notInGroup: 'Not in a group', groupName: 'Name', editGroup: 'Edit inside', leaveGroup: 'Leave group (Esc)',
         ungroup: 'Ungroup',
         align: 'Line up', alignAxis: 'Direction', axisX: 'Left – right', axisY: 'Down – up', axisZ: 'Back – front',
@@ -108,7 +109,15 @@ export const EDITOR_TEXT = {
             measureFirst: 'Measuring: click the first point (holes and pins snap)', measureSecond: 'Now click the second point',
             measured: '{ldu} LDU = {studs} studs = {mm} mm. Click again to measure anew, Esc stops.',
             groupEdit: 'Inside group “{name}”: click its parts one by one, Esc leaves', groupLeft: 'Left group “{name}”',
-            turnedBy: 'Turned {deg}°', clipboardUnknown: 'The clipboard holds LDraw parts this lab does not have.'
+            turnedBy: 'Turned {deg}°', clipboardUnknown: 'The clipboard holds LDraw parts this lab does not have.',
+            chained: 'A chain of {n} links round {g} gears: they now turn the same way',
+            chain_needTwoGears: 'Select two or more gears to lay a chain round them.',
+            chain_notSpur: 'A chain goes round ordinary (spur) gears only.',
+            chain_notParallel: 'The gears\' axles must point the same way for a chain.',
+            chain_notOnePlane: 'The gears must sit side by side in one plane for a chain: move one along its axle.',
+            chain_tooClose: 'These gears are too close for a chain between them: their teeth would touch.',
+            chain_gearInside: 'One gear lies inside the chain round the others: select only the outer ones.',
+            chain_tooShort: 'These gears are too close together for a chain of whole links.'
         }
     },
     de: {
@@ -124,6 +133,7 @@ export const EDITOR_TEXT = {
         port: 'Port', none: 'keiner',
         position: 'Position (LDU, 20 = ein Loch)', positionMany: 'Alle verschieben um (LDU)', x: 'X', y: 'Y ↑', z: 'Z',
         rotation: 'Drehung (°)', turnAbout: 'Um {axis} drehen', minus90: '−90°', plus90: '+90°',
+        chainRound: 'Kette herum', chainRoundHelp: 'Eine geschlossene Kette um die gewählten Zahnräder legen: Sie drehen sich dann gleich herum',
         group: 'Gruppe', notInGroup: 'In keiner Gruppe', groupName: 'Name', editGroup: 'Innen bearbeiten', leaveGroup: 'Gruppe verlassen (Esc)',
         ungroup: 'Gruppe lösen',
         align: 'Ausrichten', alignAxis: 'Richtung', axisX: 'Links – rechts', axisY: 'Unten – oben', axisZ: 'Hinten – vorne',
@@ -210,7 +220,15 @@ export const EDITOR_TEXT = {
             measureFirst: 'Messen: klicke den ersten Punkt an (Löcher und Pins rasten ein)', measureSecond: 'Jetzt den zweiten Punkt anklicken',
             measured: '{ldu} LDU = {studs} Noppen = {mm} mm. Nochmal klicken misst neu, Esc beendet.',
             groupEdit: 'In der Gruppe „{name}“: klicke ihre Teile einzeln an, Esc verlässt sie', groupLeft: 'Gruppe „{name}“ verlassen',
-            turnedBy: 'Um {deg}° gedreht', clipboardUnknown: 'In der Zwischenablage sind LDraw-Teile, die es hier nicht gibt.'
+            turnedBy: 'Um {deg}° gedreht', clipboardUnknown: 'In der Zwischenablage sind LDraw-Teile, die es hier nicht gibt.',
+            chained: 'Eine Kette aus {n} Gliedern um {g} Zahnräder: Sie drehen sich jetzt gleich herum',
+            chain_needTwoGears: 'Wähle zwei oder mehr Zahnräder, um eine Kette um sie zu legen.',
+            chain_notSpur: 'Eine Kette läuft nur um gewöhnliche (Stirn-)Zahnräder.',
+            chain_notParallel: 'Für eine Kette müssen die Achsen der Zahnräder in dieselbe Richtung zeigen.',
+            chain_notOnePlane: 'Für eine Kette müssen die Zahnräder nebeneinander in einer Ebene sitzen: Schieb eins auf seiner Achse.',
+            chain_tooClose: 'Diese Zahnräder stehen zu nah für eine Kette dazwischen: Ihre Zähne würden sich berühren.',
+            chain_gearInside: 'Ein Zahnrad liegt innerhalb der Kette um die anderen: Wähle nur die äußeren.',
+            chain_tooShort: 'Diese Zahnräder stehen zu nah für eine Kette aus ganzen Gliedern.'
         },
         colourNames: {
             15: 'Weiß', 0: 'Schwarz', 71: 'Hellgrau', 72: 'Dunkelgrau', 4: 'Rot', 320: 'Dunkelrot', 25: 'Orange', 191: 'Hellorange',

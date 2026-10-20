@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ☐ a Studio-style hinge tool, ☐ flexible parts.
+- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ☐ a Studio-style hinge tool, ◐ flexible parts (chains: §11; tracks, rubber bands and cables to come).
 
 ## 5. Browser-gate acceptance tests
 
@@ -328,3 +328,26 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Tests: `test/bw-sim-challenges.test.mjs` (each challenge won, each way of losing, on made-up runs);
   gate `scripts/lib/sim-lab-challenges-gate.mjs` (`--part=ui`): the Wall stopper's own program
   wins "Stop at the wall"; on the sumo mat, driving straight on leaves the ring.
+
+## 11. Chains round gears (2026-10-20)
+
+- The first flexible part: the Technic chain link (3711). Select two or more spur gears side by
+  side in one plane and press **Chain round gears** in the properties panel: a closed chain runs
+  round the outside of their pitch circles (a gear inside it is not wrapped), its links' pivots
+  16 LDU apart (one link spans two teeth), laid in one undo step and then selected
+  (`lib/bw-sim/editor/chain-path.js`). The pivots are spaced by the link's straight chord, and the
+  chain closes within a fraction of a link's play.
+- Refused, with a reason: fewer than two gears, not spur gears, axles not parallel, not in one
+  plane, gears too close (their teeth would touch), a gear inside the chain, a link that would
+  go into another part.
+- Simulate (`lib/bw-sim/kinds/chain.js`, architecture M6): links join where a pivot of one is on a
+  pivot of the next; a chain goes round a gear when two of its pivots are on the gear's pitch
+  circle. Gears on hinges in one frame then turn the same way at the teeth's ratio (the fork's
+  `GearConstraint` on the two hinges; a step-up is built the other way round, as |mRatio| < 1
+  diverges). The links are welded to the frame: drawn, not simulated. They do not run round yet.
+  So a chain in a Studio or LDraw file works as well: the detector reads the links, not a record
+  of the tool.
+- Warnings: a chain round fewer than two gears; gears whose axles sit in different parts; a gear
+  fixed to the frame locks the chain.
+- Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3,
+  two 8Ts 1:1); gate `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).

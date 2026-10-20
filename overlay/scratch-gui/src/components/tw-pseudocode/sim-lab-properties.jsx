@@ -190,6 +190,10 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                     ))}
                     <button type="button" style={small} data-testid="bw-sim-lab-select-connected" title={T.connect.selectConnected}
                         onClick={run(() => view?.selectConnected())}>{T.connect.selectConnected}</button>
+                    {parts.length > 1 && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-chain" title={T.chainRoundHelp}
+                            onClick={run(() => view?.chainRoundSelection())}>{T.chainRound}</button>
+                    )}
                 </Section>
             )}
 
