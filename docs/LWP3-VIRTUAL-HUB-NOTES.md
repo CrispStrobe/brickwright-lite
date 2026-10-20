@@ -146,7 +146,13 @@ an Input Values notification is not interpreted by any reader cited; it is sent 
 (`scripts/spike/bundled-upstream.mjs`): legoboostunified sends MaxPower = power + 10 (clamped to 100), as
 scratch3_boost does, and picks the Move Hub's port map from the firmware version and the attached I/O;
 legoboostunified and legopoweredup queue their messages (one per port, coalesced, 50 ms apart) instead of
-dropping them, so "AB" reaches both motors; legopoweredup sends end states float 0, hold 126, brake 127. The
+dropping them, so "AB" reaches both motors; legopoweredup sends end states float 0, hold 126, brake 127. **Status (2026-10-20): fixed upstream** in CrispStrobe/extensions PR #55 (merge `1c97061`, vendored here):
+legopoweredup's "turn motor off" and stop-all honour the stop action — float sends StartPower 0, brake
+StartPower 127 (WriteDirectModeData mode 0, §6.1), hold StartSpeed 0 (§3.27.5; a motor without a tacho brakes)
+— and the hub type is named from the Hub Property System Type ID (§3.5; 0x00 WeDo 2.0, 0x20 Duplo train, 0x40
+BOOST Move Hub, 0x41 City hub, 0x42 remote from LEGO's list; 0x80 "Control+ Hub", 0x81, 0x83, 0x84 and the Mario
+ids community), "Unknown Hub (0xNN)" only for an id it does not know. Tests: `test/lab-hubs-extensions.test.mjs`
+(each stop action ends the Technic Hub's motor in that state; the hub type). The
 list below is the history, as found against the extensions before `ea3e08e`.
 
 **What the queue still means.** A block for "AB" sends A's command, then B's 50 ms later, and the hub starts
