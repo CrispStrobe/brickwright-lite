@@ -94,7 +94,7 @@ import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from '../view/
 import {createInstancedParts, useInstancing} from '../view/instanced-parts.js';
 import {
     SNAP_PX, axisRotation, connectedComponent, connectionLine, connectorUnderPointer, joinRule, pairedParts, snapAtPointer, snapCandidates, rotateAboutSnap,
-    turnAboutLine
+    turnAboutLine, hingeCandidates
 } from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
@@ -686,9 +686,15 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     };
 
     // ---- selection -----------------------------------------------------------
+    // The hinge tool's hinges for the selection they were worked out for (see nextHinge below).
+    let hinge = {key: null, parts: null, list: [], index: 0};
     const setSelection = ids => {
         // Inside a group its members are picked one by one; hidden parts are never selected.
         selection = (editingGroup ? [...new Set(ids)] : expandToGroups(editor.model, ids)).filter(pickable);
+        if (hinge.key !== null && hinge.key !== selection.join(',')) {
+            hinge = {key: null, parts: null, list: [], index: 0};
+            drawHinge(null);
+        }
         drawOutlines();
         updateGizmo();
         onSelect(selection.slice());
@@ -1494,17 +1500,73 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return; }
         if (run({type: 'moveMany', moves}, {turned: moves.length})) status({kind: 'turned', count: moves.length});
     };
+    // The hinge tool: the selection turns on a round connection line next to it, carrying what
+    // hangs off it (snap.js hingeCandidates, the fewest moving parts first); N tries the next one.
+    // Worked out only when asked for ([ ], N), never on a selection change: a Select all of a
+    // 2,000-part model would search every joint.
+    const hingeGroup = new Group();
+    s.add(hingeGroup);
+    const hingeLine = new LineBasicMaterial({color: 0x16a34a, depthTest: false, transparent: true});
+    const HINGE_HALF_LDU = 50;
+    const drawHinge = h => {
+        for (const c of [...hingeGroup.children]) { hingeGroup.remove(c); c.geometry.dispose(); }
+        invalidate();
+        if (!h) return;
+        const ends = [-1, 1].map(k => lduToWorld(h.point.map((v, i) => v + h.axis[i] * k * HINGE_HALF_LDU)));
+        const g = new BufferGeometry();
+        g.setAttribute('position', new Float32BufferAttribute([...ends[0], ...ends[1]], 3));
+        const line = new LineSegments(g, hingeLine);
+        line.renderOrder = 30;
+        hingeGroup.add(line);
+    };
+    const hingesNow = () => {
+        const key = selection.join(',');
+        if (hinge.key !== key || hinge.parts !== editor.model.parts) {
+            const index = hinge.key === key ? hinge.index : 0;
+            const list = hingeCandidates(editor.model, catalogMap, selection);
+            hinge = {key, parts: editor.model.parts, list, index: index < list.length ? index : 0};
+        }
+        return hinge;
+    };
+    const hingeStatus = (h, extra) => ({count: h.list[h.index].moving.length, index: h.index, of: h.list.length, ...extra});
+    /** N: the selection's hinge, shown as a green line on its axis; pressed again, the next one. */
+    const nextHinge = (step = 1) => {
+        if (tool || dragging() || !needSelection()) return;
+        const shown = hinge.key === selection.join(',') && hingeGroup.children.length > 0;
+        const h = hingesNow();
+        if (!h.list.length) { drawHinge(null); status({kind: 'refused', reason: 'hingeNone'}); return; }
+        if (shown) h.index = (h.index + step + h.list.length) % h.list.length;
+        drawHinge(h.list[h.index]);
+        status({kind: 'hingeShown', ...hingeStatus(h)});
+    };
+    /** The selection and what hangs off it turned by `degrees` on its hinge; false when there is none or it is blocked. */
+    const turnOnHinge = degrees => {
+        const h = hingesNow();
+        if (!h.list.length) return false;
+        const c = h.list[h.index];
+        const byId = partsById();
+        const moves = turnAboutLine(c.moving.map(id => byId.get(id)), c.axis, c.point, degrees * Math.PI / 180)
+            .map(m => ({id: m.id, position: m.position, rotation: m.rotation}));
+        const blocked = blockedBy(moves, c.fixed);
+        if (blocked) { status({kind: 'refused', reason: 'overlapTurn', target: blocked.target}); return true; }
+        if (run({type: 'moveMany', moves}, {turned: moves.length})) {
+            drawHinge(c);
+            status({kind: 'hinged', ...hingeStatus(h, {degrees})});
+        }
+        return true;
+    };
     /**
-     * [ / ]: 15° about a round connection (a pin or an axle in a round hole, a ball), in hand or for a
-     * lone selected part sitting on one; refused on an axle in an axle hole and on studs.
+     * [ / ]: 15° about a round connection (a pin or an axle in a round hole, a ball), in hand, or for
+     * the selection on its hinge (with what hangs off it); refused on an axle in an axle hole and on studs.
      */
     const fineTurn = direction => {
         if (tool) { turnHeld('fine', direction); return; }
         if (dragging()) { turnDrag('fine', direction); return; }
         if (!needSelection()) return;
+        if (turnOnHinge(15 * direction)) return;
         const parts = selectedParts();
         const line = parts.length === 1 ? connectionLine(editor.model, catalogMap, parts[0].id) : null;
-        if (!line || line.many) { status({kind: 'refused', reason: 'fineNeedsConnection'}); return; }
+        if (!line || line.many) { status({kind: 'refused', reason: parts.length > 1 ? 'hingeNone' : 'fineNeedsConnection'}); return; }
         if (!line.round) {
             const studs = ['stud', 'antistud', 'tube'].includes(line.shaft) || ['stud', 'antistud', 'tube'].includes(line.hole);
             status({kind: 'refused', reason: studs ? 'studsQuarterOnly' : 'axleQuarterOnly'});
@@ -2617,6 +2679,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             h: () => (event.shiftKey ? showAll() : hideSelection()),
             i: isolate,
             k: () => setPick('color'),
+            n: () => nextHinge(event.shiftKey ? -1 : 1),
             m: () => setPick('measure'),
             '?': onShortcuts,
             Delete: deleteSelection, Backspace: deleteSelection
@@ -2817,6 +2880,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         drawMeasure();
         measureLine.dispose();
         measureDot.dispose();
+        drawHinge(null);
+        hingeLine.dispose();
         measureDiv.remove();
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
@@ -2866,6 +2931,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         clearTarget: () => setPinned(null),
         /** In hand: place it (the touch ✓), turn it (⟳), the next way (Tab). */
         placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected,
+        /** The hinge tool: the next hinge (N), and a turn of the selection on it (±15° is [ ]). */
+        nextHinge, turnOnHinge,
         /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
         setWheelMode (next) { if (['auto', 'mouse', 'trackpad'].includes(next)) wheelMode = next; },
         get wheelMode () { return wheelMode; },
@@ -2885,7 +2952,13 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
                 const r = cubeRect();
                 return {left: rect.left + r.left, top: rect.top + r.top, size: r.size};
             },
-            animating: () => Boolean(camAnim)
+            animating: () => Boolean(camAnim),
+            /** The hinge [ ] would turn on now (null: none, or not asked for yet): its line, what moves, what stays. */
+            hinge: () => {
+                const c = hinge.key === selection.join(',') && hinge.list[hinge.index];
+                return c ? {axis: c.axis.slice(), point: c.point.slice(), moving: c.moving.slice(), fixed: c.fixed.slice(), index: hinge.index, of: hinge.list.length,
+                    shown: hingeGroup.children.length > 0} : null;
+            }
         },
         /** Whether a part from the palette is being dragged right now. */
         get draggingFromPalette () { return Boolean(paletteDrag && paletteDrag.dragging); },

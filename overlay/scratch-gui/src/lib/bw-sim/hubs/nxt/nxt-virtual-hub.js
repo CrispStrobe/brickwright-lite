@@ -16,8 +16,16 @@
 // block count (relative = TRUE) or the rotation count (FALSE). One count per degree (the NXT
 // motor's encoder: devices/catalog.js).
 //
-// What the firmware does with them is not published beyond those field descriptions, so the
-// rest is OUR MODEL (docs/ROBOT-LAB-EV3-NXT.md "NXT motor model"):
+// From LEGO's open-source firmware (its output driver; docs/NXT-PROTOCOL-FACTS.md "Outputs"):
+//   - no direct command resets TachoCount: it counts from power-on (only the program-side
+//     reset-count flag clears it), so it is NOT restarted by SETOUTPUTSTATE;
+//   - a tacho limit is added to the previous move's target (in TachoCount units), in the direction
+//     of the power's sign — consecutive moves do not accumulate their overshoot; while a port runs
+//     without a limit the target follows the count, so the next limited move starts from there;
+//   - the power is stored as sent and the drive limited to ±100.
+//
+// The firmware's control loops themselves are not modelled; the rest is OUR MODEL
+// (docs/ROBOT-LAB-EV3-NXT.md "NXT motor model"):
 //   - MOTORON off, or run state IDLE: the port is off — braked with the BRAKE bit, else floating;
 //   - unregulated: duty = power / 100, the off phase braked (BRAKE) or floating;
 //   - MOTOR_SPEED: a regulated speed, power % of the motor's no-load speed (FULL_SCALE_DPS), by
@@ -27,8 +35,7 @@
 //     regulated move decelerates onto it (ACCEL_DPS2) and ends on the encoder within
 //     END_TOLERANCE_DEG, an unregulated one at the count. Then the run state is IDLE and the motor
 //     brakes (BRAKE) or floats — a regulated move with BRAKE holds the count it ended on (the speed
-//     loop keeps the shaft there) until the next command. TachoCount restarts at each command
-//     with a tacho limit.
+//     loop keeps the shaft there) until the next command.
 //
 // INPUTS: SETINPUTMODE's type and mode; GETINPUTVALUES's raw / normalized / scaled values from
 // devices/nxt-sensors.js; the ultrasonic sensor as an I2C device (LSWRITE / LSGETSTATUS / LSREAD).
@@ -37,7 +44,7 @@ import {NXT_PROFILE, NXT_OUTPUTS, NXT_INPUTS} from './profile.js';
 import {dcMotorFor} from '../../devices/dc-motors.js';
 import {freshOutput, readEncoder, driveOpen, drivePassive, driveRegulated, driveHold} from '../mindstorms-output.js';
 import {MODE, REGULATION, RUN_STATE, STATUS} from './nxt-direct-commands.js';
-import {NXT_SENSOR_TYPE, nxtAnalog, nxtScaled, usRegister, US_I2C_ADDRESS} from '../../devices/nxt-sensors.js';
+import {NXT_SENSOR_TYPE, nxtAnalog, nxtScaled, usRead, usWrite, usFreshState, US_I2C_ADDRESS} from '../../devices/nxt-sensors.js';
 
 /** Regulated speed at power 100, °/s: the NXT motor's no-load speed at 9 V (Philo: 170 rpm). */
 export const FULL_SCALE_DPS = 1020;
@@ -57,12 +64,16 @@ const NXT_DEVICES = Object.freeze({'nxt-touch': 'touch', 'nxt-light': 'light', '
 const freshPort = () => ({
     ...freshOutput(), device: null,
     power: 0, mode: 0, regulation: 0, turnRatio: 0, runState: RUN_STATE.IDLE, tachoLimit: 0,
-    tachoZero: 0, blockZero: 0, rotationZero: 0, moveStartDeg: 0, stalledMs: 0, lastProgressDeg: 0,
+    tachoZero: 0, blockZero: 0, rotationZero: 0, moveStartDeg: 0, targetDeg: 0, stalledMs: 0, lastProgressDeg: 0,
     holdDeg: null
 });
 
 const freshInput = () => ({device: null, type: NXT_SENSOR_TYPE.none, mode: 0, probe: null, valid: false,
-    memory: {bool: false, transitions: 0}, i2c: []});
+    memory: {bool: false, transitions: 0}, i2c: [], lsError: false, us: usFreshState()});
+
+/** The firmware's message queues: 20 of 5 messages; 0–9 a program's inboxes, 10–19 what it sends its master. */
+const MESSAGE_QUEUES = 20;
+const MESSAGES_PER_QUEUE = 5;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -75,8 +86,7 @@ export class NxtVirtualHub {
             outputs: NXT_OUTPUTS.map(freshPort),
             inputs: NXT_INPUTS.map(freshInput),
             toneEndMs: 0, keepAliveMs: 0,
-            inboxes: Array.from({length: 10}, () => []),
-            outboxes: Array.from({length: 10}, () => [])
+            queues: Array.from({length: MESSAGE_QUEUES}, () => [])
         };
         this.specs = new Map();
         this.events = [];
@@ -144,10 +154,12 @@ export class NxtVirtualHub {
         if (!on) { off(); return; }
         const regulated = (port.mode & MODE.REGULATED) && port.regulation !== REGULATION.IDLE;
         const spec = this.specs.get(i);
-        const level = port.power * (regulated ? this._sync(i) : 1);
+        const level = clamp(port.power, -100, 100) * (regulated ? this._sync(i) : 1);
         const limit = port.tachoLimit;
+        // Running without a limit: the firmware's target follows the count.
+        if (!(limit > 0) && port.power !== 0) port.targetDeg = port.angleDeg;
         if (limit > 0) {
-            const dir = Math.sign(level) || 1;
+            const dir = Math.sign(port.power) || 1;
             const travelled = (port.angleDeg - port.moveStartDeg) * dir;
             const remaining = limit - travelled;
             if (!regulated) {
@@ -255,9 +267,12 @@ export class NxtVirtualHub {
         Object.assign(p, {power, mode, regulation, turnRatio, runState, tachoLimit});
         p.holdDeg = null;
         if (tachoLimit > 0) {
-            p.moveStartDeg = p.angleDeg;
-            p.tachoZero = p.angleDeg;
-            p.lastProgressDeg = 0;
+            // The new target is the previous one plus the limit, in the power's direction (firmware
+            // output driver); TachoCount is not reset.
+            const dir = Math.sign(power) || 1;
+            p.moveStartDeg = p.targetDeg ?? p.angleDeg;
+            p.targetDeg = p.moveStartDeg + dir * tachoLimit;
+            p.lastProgressDeg = (p.angleDeg - p.moveStartDeg) * dir;
             p.stalledMs = 0;
             p.regulating = false;
         }
@@ -284,6 +299,7 @@ export class NxtVirtualHub {
         input.valid = true;
         input.memory = {bool: false, transitions: 0};
         input.i2c = [];
+        input.lsError = false;
     }
 
     getInputValues (i) {
@@ -293,39 +309,49 @@ export class NxtVirtualHub {
         // A digital (I2C) sensor has no analog value; an empty input reads full scale.
         const {raw, normalized} = input.device && !lowspeed ? nxtAnalog(input.device, input.probe, input.type) : {raw: 1023, normalized: 1023};
         const scaled = unconfigured || lowspeed ? 0 : nxtScaled(input.mode, normalized, input.memory);
-        return {valid: input.valid, calibrated: false, type: input.type, mode: input.mode, raw, normalized, scaled, calibratedValue: 0};
+        // "Calibrated?" is always FALSE and the calibrated field carries the normalized value (firmware;
+        // the BDK calls the field "currently unused").
+        return {valid: input.valid, calibrated: false, type: input.type, mode: input.mode, raw, normalized, scaled, calibratedValue: normalized};
     }
 
     resetInputScaledValue (i) {
         this.s.inputs[i].memory.transitions = 0;
     }
 
+    // The low-speed (I2C) channel, as the firmware reports it: a port not set to LOWSPEED / LOWSPEED_9V is
+    // CHANNEL_NOT_READY; LSWRITE only starts a transaction, so an address nobody answers shows up later,
+    // as BUS_ERROR from LSGETSTATUS / LSREAD. The transaction itself completes at once here.
+
+    _lowspeed (input) {
+        return input.type === NXT_SENSOR_TYPE.lowspeed || input.type === NXT_SENSOR_TYPE.lowspeed9v;
+    }
+
     lsGetStatus (i) {
         const input = this.s.inputs[i];
-        if (!input) return {status: STATUS.BAD_PORT};
-        if (input.type !== NXT_SENSOR_TYPE.lowspeed && input.type !== NXT_SENSOR_TYPE.lowspeed9v) return {status: STATUS.BUS_ERROR};
+        if (!this._lowspeed(input)) return {status: STATUS.CHANNEL_NOT_READY, bytesReady: 0};
+        if (input.lsError) return {status: STATUS.BUS_ERROR, bytesReady: 0};
         return {status: STATUS.SUCCESS, bytesReady: input.i2c.length};
     }
 
-    /** An I2C write: [address, register, …]; the reply's rxLength bytes come from the register file. */
+    /** An I2C transaction: [address, register, data…] written, then rxLength bytes read from the register file. */
     lsWrite (i, tx, rxLength) {
         const input = this.s.inputs[i];
-        if (!input) return STATUS.BAD_PORT;
-        if (input.type !== NXT_SENSOR_TYPE.lowspeed && input.type !== NXT_SENSOR_TYPE.lowspeed9v) return STATUS.BUS_ERROR;
+        if (!this._lowspeed(input)) return STATUS.CHANNEL_NOT_READY;
+        input.i2c = [];
         // Nothing acknowledges an address no device on the port answers to.
-        if (input.device !== 'nxt-ultrasonic' || tx[0] !== US_I2C_ADDRESS) {
-            input.i2c = [];
-            return STATUS.BUS_ERROR;
-        }
+        input.lsError = input.device !== 'nxt-ultrasonic' || tx[0] !== US_I2C_ADDRESS;
+        if (input.lsError) return STATUS.SUCCESS;
+        if (!input.us) input.us = usFreshState();
         const register = tx[1] ?? 0;
-        input.i2c = Array.from({length: rxLength}, (_, k) => usRegister(register + k, input.probe));
+        if (tx.length > 2) usWrite(input.us, register, tx.slice(2), input.probe);
+        input.i2c = usRead(register, rxLength, input.probe, input.us);
         return STATUS.SUCCESS;
     }
 
     lsRead (i) {
         const input = this.s.inputs[i];
-        if (!input) return {status: STATUS.BAD_PORT};
-        if (!input.i2c.length) return {status: STATUS.BUS_ERROR};
+        if (!this._lowspeed(input)) return {status: STATUS.CHANNEL_NOT_READY, data: []};
+        if (input.lsError) return {status: STATUS.BUS_ERROR, data: []};
         const data = input.i2c;
         input.i2c = [];
         return {status: STATUS.SUCCESS, data};
@@ -350,36 +376,51 @@ export class NxtVirtualHub {
         this.event('sound-stop', {});
     }
 
-    /** No .rxe programs run on this brick yet (L2: docs/ROBOT-LAB-EV3-NXT.md). */
-    startProgram () { return STATUS.FILE_NOT_FOUND; }
+    /**
+     * No .rxe programs run on this brick yet (L2: docs/ROBOT-LAB-EV3-NXT.md): every program file is
+     * missing, which the firmware answers with OUT_OF_RANGE (the BDK's list suggests FILE_NOT_FOUND).
+     */
+    startProgram () { return STATUS.OUT_OF_RANGE; }
 
     stopProgram () { return STATUS.NO_PROGRAM; }
 
     currentProgramName () { return null; }
 
-    messageWrite (inbox, bytes) {
-        const box = this.s.inboxes[inbox % 10];
+    /**
+     * The mailboxes, as the firmware keeps them: they exist only while a program runs (else NO_PROGRAM);
+     * a full queue drops its oldest message.
+     */
+    messageWrite (queue, bytes) {
+        if (!(queue < MESSAGE_QUEUES)) return STATUS.BAD_QUEUE;
+        if (!this.currentProgramName()) return STATUS.NO_PROGRAM;
+        const box = this.s.queues[queue];
         box.push(bytes);
-        if (box.length > 5) box.shift();
+        if (box.length > MESSAGES_PER_QUEUE) box.shift();
+        return STATUS.SUCCESS;
     }
 
-    messageRead (inbox, remove) {
-        const box = this.s.outboxes[inbox % 10];
-        if (!box || !box.length) return null;
-        return remove ? box.shift() : box[0];
+    messageRead (queue, remove) {
+        if (!this.currentProgramName()) return {status: STATUS.NO_PROGRAM};
+        if (!(queue < MESSAGE_QUEUES)) return {status: STATUS.BAD_QUEUE};
+        const box = this.s.queues[queue];
+        if (!box.length) return {status: STATUS.MAILBOX_EMPTY};
+        return {status: STATUS.SUCCESS, message: remove ? box.shift() : box[0]};
     }
 
     /** Six AA cells, full (estimated, devices/catalog.js HUB_SUPPLY_VOLTS.nxt). */
     batteryMillivolts () { return 9000; }
 
-    /** KEEPALIVE: the current sleep time limit, ms (the NXT's default sleep setting, 10 minutes; estimated). */
+    /** KEEPALIVE: the current sleep time limit, ms (the firmware's default sleep setting, 10 minutes). */
     keepAlive () {
         this.s.keepAliveMs = this.s.timeMs;
         return 10 * 60 * 1000;
     }
 
-    /** What GET FIRMWARE VERSION reports: [major, minor] — the protocol and firmware numbers of LEGO's last NXT firmware (1.31), which this protocol follows; no firmware of LEGO's runs here. */
-    versions () { return {protocol: [1, 124], firmware: [1, 31]}; }
+    /**
+     * What GET FIRMWARE VERSION reports: [major, minor] — protocol 1.124 and firmware 1.29, the numbers of
+     * LEGO's open-source firmware release this protocol was verified against; no firmware of LEGO's runs here.
+     */
+    versions () { return {protocol: [1, 124], firmware: [1, 29]}; }
 
     deviceInfo () { return {name: 'Virtual NXT', address: [0, 0, 0, 0, 0, 0], signal: 0, freeFlash: 65536}; }
 }
