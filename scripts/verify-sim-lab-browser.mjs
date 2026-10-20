@@ -121,7 +121,8 @@
 //  25. chains and treads (scripts/lib/sim-lab-chain-gate.mjs, --part=editor): an 8T and a 24T selected,
 //      the properties panel's button lays a closed chain of links in one undo step; Simulate couples
 //      the gears by it; two gears too close for a chain are refused; round two sprockets it lays a
-//      tread, and each sprocket becomes a wheel of the tread's outer radius.
+//      tread, and each sprocket becomes a wheel of the tread's outer radius; then rubber bands,
+//      a rope on a winch, and hoses from a pneumatic valve to a cylinder (steps 5-7).
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -1034,7 +1035,8 @@ try {
         console.log(`PASS chain: "Chain or tread round" lays ${ch.links} links round an 8T and a 24T in one undo step; Simulate couples them by the chain ` +
             `(ratio ${ch.ratio.toFixed(4)}, the same way round); gears too close are refused; a tread of ${ch.treadLinks} links round two sprockets ` +
             `couples them 1:1 and makes each a wheel of its outer radius; "Rubber band round" puts a ${ch.band} band round 8T and 24T that drives it, ` +
-            'taken off and put back with Ctrl+Z; "Tie a rope" ties a winch drum to a hook, a \'rope\' on the drum\'s hinge in Simulate');
+            'taken off and put back with Ctrl+Z; "Tie a rope" ties a winch drum to a hook, a \'rope\' on the drum\'s hinge in Simulate; ' +
+            `"Connect a hose" twice hoses both valve outlets to a cylinder (${ch.hoses.join(', ')}), a 'pneumatic' coupling in Simulate`);
         await chainPage.close();
         // 21. Parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1).
         const cat = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});

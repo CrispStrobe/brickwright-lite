@@ -23,7 +23,7 @@ const goodPair = (r1, r2) => {
 
 /**
  * A hose between the two selected parts: the nearest pair of their free air ports, a valve's outlet
- * and a cylinder's port first: {a: {part, port}, b: {part, port}} or {error: 'needTwo'|'noPorts'|'allUsed'}.
+ * and a cylinder's port first: {a: {part, port}, b: {part, port}, roles: [a's, b's]} or {error: 'needTwo'|'noPorts'|'allUsed'}.
  * @param {{parts: object[], hoses?: object[]}} model
  * @param {Map<string, object>} catalogMap
  * @param {string[]} ids
@@ -41,7 +41,7 @@ export const hoseTie = (model, catalogMap, ids) => {
     if (!pairs.length) return {error: 'allUsed'};
     pairs.sort((x, y) => (y.good - x.good) || (x.d - y.d));
     const [best] = pairs;
-    return {a: {part: p.id, port: best.a.id}, b: {part: q.id, port: best.b.id}};
+    return {a: {part: p.id, port: best.a.id}, b: {part: q.id, port: best.b.id}, roles: [best.a.role, best.b.role]};
 };
 
 /** A hose's drawn path (model frame, LDU): from one nozzle, out along it, sagging, into the other. null when a part or port is gone. */

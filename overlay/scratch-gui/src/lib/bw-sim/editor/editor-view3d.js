@@ -1666,7 +1666,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (!needSelection()) return;
         const h = hoseTie(editor.model, catalogMap, selection);
         if (h.error) { status({kind: 'refused', reason: `hose_${h.error}`}); return; }
-        if (run({type: 'addHose', a: h.a, b: h.b})) status({kind: 'hosed', from: `${h.a.part}.${h.a.port}`, to: `${h.b.part}.${h.b.port}`});
+        if (run({type: 'addHose', a: h.a, b: h.b})) status({kind: 'hosed', from: h.roles[0], to: h.roles[1]});
     };
     /** Removes every hose on a selected part, one undo step. */
     const removeHosesOfSelection = () => {
