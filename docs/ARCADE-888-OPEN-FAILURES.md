@@ -42,10 +42,13 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 - Tried: Not yet diagnosed.
 - Next: Two extension instances in one runtime; scope the exception owner per instance or test fixture.
 
-### H. `Math.idiv` source/PXT path (2)
+### H. `Math.idiv` source/PXT path (1)
 
-- Tried: Not yet diagnosed.
-- Next: Compare the idiv lowering and the census program with main.
+- Tried: The micro:bit census batch 1 program now passes: Math.idiv imports as
+  `((a | 0) / (b | 0)) | 0` and that exact shape exports back as Math.idiv
+  (owner decision 2026-10-20: Math.idiv imports with real semantics); its
+  `{todo}` is removed.
+- Next: The remaining Arcade source row (helper/captured operands).
 
 ### I. Other export/roundtrip regression (4)
 
@@ -96,7 +99,6 @@ changed. Source of the list: hosted Build run 39297263647 (head f2ecafef1).
 | F | `test/makecode-arcade-image-mutation.test.mjs` | VM mutations isolate clones, update transparent collisions, and release renderer skins | The expression evaluated to a falsy value: assert.ok(probeExtension(Arcade, rt).opcodes.has('mutateSpriteImage')) |
 | G | `test/makecode-arcade-buffer-lifetime.test.mjs` | independent Buffer owners in one runtime cannot resolve each other's issued IDs | Arcade exception runtime already has an owner |
 | H | `test/makecode-arcade-idiv-source.test.mjs` | idiv actual mutable Number aliases ordinary helpers and captured entry dominance qualify | unsupported diagnostic; actual source: function outer(a){function read(){return a};return Math.idiv(read(),2)};let q=outer(7) |
-| H | `test/makecode-pxt-runtime.test.mjs` | census batch 1: a program using every call comes back from lite and MakeCode compiles it | Math.idiv did not come back: let v = 0 basic.forever(function () { led.plotBarGraph(input.lightLevel(), 255) led.toggle(1, 2) led.setBrightness((v * 2)) led.sto |
 | I | `test/makecode-arcade-loop-control.test.mjs` | condition and update side effects agrees with original PXT and complete roundtrips | checks 1 !== 4 |
 | I | `test/makecode-arcade-loop-control.test.mjs` | for continue and update agrees with original PXT and complete roundtrips | updates 0 !== 4 |
 | I | `test/makecode-discarded-map-edited-export.test.mjs` | typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress | 0 !== 1 |
