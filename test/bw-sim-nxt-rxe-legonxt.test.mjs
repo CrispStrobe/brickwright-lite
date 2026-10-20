@@ -6,10 +6,12 @@
  * system commands (DELETE, OPEN WRITE, WRITE in 32-byte chunks, CLOSE) and starts it with its own
  * STARTPROGRAM block; the brick runs it in the Robot Lab on the nxt-bumper-bot.
  *
- * The compile step is not exercised: legonxt reaches the hosted compiler through `Scratch.fetch`, which the
- * CrispStrobe adapter's `Scratch` object does not provide (docs/NXT-RXE-VM.md "Open"). The test hands the
- * extension the compiler's answer the way its compile block stores it (`rxeBase64`) — the committed
- * fixture test/fixtures/nxt-rxe/touch-bumper.rxe, which that compiler produced. No network.
+ * The first test hands the extension the compiler's answer the way its compile block stores it (`rxeBase64`).
+ * The second runs legonxt's whole compile route — its workflow block transpiles the project to NXC, POSTs it
+ * to the hosted compiler through `Scratch.fetch` (the CrispStrobe adapter's, TurboWarp's shape: a fetch
+ * wrapper), uploads the answer and starts it — with the network replaced by a stub that checks the request
+ * and answers what that compiler produced for the bumper bot: the committed fixture
+ * test/fixtures/nxt-rxe/touch-bumper.rxe. No network in either.
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -73,6 +75,60 @@ if (!existsSync(missing)) {
             const before = track.find(p => p.t >= last.t - 500);
             for (const port of ['B', 'C']) assert.ok(Math.abs(last.motors[port] - before.motors[port]) < 3, `${port} stopped`);
         } finally {
+            globalThis.alert = savedAlert;
+        }
+    });
+
+    test('legonxt\'s compile route: transpile → Scratch.fetch to the compiler (stubbed) → upload → start, on the Virtual NXT', async t => {
+        const nxt = MODELS.find(m => m.file === 'nxt-bumper-bot.ldr');
+        const rxe = readFileSync(path.join(REPO, 'test/fixtures/nxt-rxe/touch-bumper.rxe'));
+        const requests = [];
+        const savedFetch = globalThis.fetch;
+        const savedAlert = globalThis.alert;
+        globalThis.alert = () => {};
+        // What lego-compiler.vercel.app answers a successful compile: {success, base64}.
+        globalThis.fetch = async (url, options = {}) => {
+            requests.push({url: String(url), method: options.method, body: JSON.parse(options.body)});
+            return {ok: true, status: 200, statusText: 'OK', json: async () => ({success: true, base64: rxe.toString('base64')}),
+                text: async () => ''};
+        };
+        let workflow = null;
+        let workflowError = null;
+        let workflowDone = false;
+        let pressedAt = null;
+        let stoppedAt = null;
+        try {
+            const {track, hub, connectError} = await runOnBtHub({project: projectOfBlocks({extensions: ['legonxt'], blocks: {}})}, {
+                modelText: readFileSync(path.join(GUI, MODELS_BASE, nxt.file), 'utf8'), mat: nxt.mat, profile: 'nxt',
+                extensionId: 'legonxt', timeLimitMs: 15000,
+                stopWhen: (point, all, brick, {extension}) => {
+                    if (!workflow) {
+                        workflow = (async () => {
+                            await extension.fullWorkflow({FILENAME: 'bumper.rxe'});
+                            await extension.startProgram({FILENAME: 'bumper.rxe'});
+                        })().then(() => { workflowDone = true; }, e => { workflowError = e; workflowDone = true; });
+                    }
+                    if (pressedAt === null && brick.getInputValues(0).scaled === 1) pressedAt = point.t;
+                    if (stoppedAt === null && brick.events.some(e => e.kind === 'display' && e.text === 'bumped')) stoppedAt = point.t;
+                    return workflowError !== null || (stoppedAt !== null && point.t > stoppedAt + 800);
+                }
+            });
+            assert.equal(connectError, null, 'legonxt connected to the Virtual NXT');
+            assert.equal(workflowError, null, String(workflowError && workflowError.stack));
+            assert.ok(workflowDone, 'transpile, compile, upload and start finished');
+            assert.equal(requests.length, 1, 'one compile request');
+            const [request] = requests;
+            assert.equal(request.url, 'https://lego-compiler.vercel.app/compile');
+            assert.equal(request.method, 'POST');
+            assert.equal(request.body.compiler, 'nxc');
+            assert.match(request.body.code, /task main\s*\(\s*\)/, 'the transpiled NXC went to the compiler');
+            assert.deepEqual(hub.s.files['bumper.rxe'], Array.from(rxe), 'the brick holds exactly the compiler\'s answer');
+            assert.ok(pressedAt !== null && stoppedAt !== null, 'it drove into the wall and saw the bumper');
+            const last = track.at(-1);
+            t.diagnostic(`pressed ${(pressedAt / 1000).toFixed(2)} s; x = ${last.position[0].toFixed(3)} m (wall ${WALL.faceX} m)`);
+            assert.ok(last.position[0] < WALL.faceX, 'in front of the wall');
+        } finally {
+            globalThis.fetch = savedFetch;
             globalThis.alert = savedAlert;
         }
     });

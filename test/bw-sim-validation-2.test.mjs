@@ -720,14 +720,11 @@ test('two carts collide: the sum of momenta changes only by the rolling resistan
     assert.ok(relErr(p1, want) <= 0.01, `momentum ${p0} → ${p1}, want ${want}`);
 });
 
-test('two carts collide: below the bounce speed (1 m/s) they leave together', {
-    todo: 'they bounce apart (e ≈ 0.065 measured 2026-10-20 with rolling resistance; 0.24 on 2026-10-19 without): the ' +
-        'bumper beam is a 4.8 g body hinged to two 25 g wheel sets, and the hinges\' compliance stores the impact and gives ' +
-        'it back (control: the same carts with all their mass in the bumper body leave together, e ≈ 0); the ' +
-        'light-body-between-hinges problem of round 1, bug 2. Not the material model (at 0.12 m/s no restitution acts: ' +
-        'jolt-core.js LEGO_MIN_BOUNCE_SPEED_M_S) and not fixable by the 20 g solver floor the gears and actuators use: in an ' +
-        'impact the floored mass IS the mass, so momentum (the check above) would not be conserved; see docs/ROBOT-LAB-VALIDATION.md'
-}, async t => {
+test('two carts collide: below the bounce speed (1 m/s) they leave together', async t => {
+    // Was todo until 2026-10-20 (e 0.24, then 0.065, 0.097): each cart's 4.8 g bumper beam is hinged to two 25 g
+    // wheel sets, and Jolt's 10 velocity iterations did not carry the impact along that light link: the carts
+    // bounced apart with nothing elastic in them. A light body between joints now gets LIGHT_BODY_VELOCITY_STEPS
+    // (jolt-core.js): e 0.000.
     // Restitution acts only on impacts faster than LEGO_MIN_BOUNCE_SPEED_M_S (1 m/s; the carts meet at 0.12 m/s):
     // a perfectly inelastic impact, both carts at the common speed. e = (v2' − v1') / (v1 − v2) ≤ 0.05.
     const c = await cartsRun();

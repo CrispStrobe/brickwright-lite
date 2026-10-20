@@ -35,6 +35,73 @@ candidate. All 64 existing native controls, 17 additional lifecycle/JSON/parser
 controls and both public Code/export/reimport cases pass, with independent
 saved-result checks. Final composed hosted and visible authoring qualification
 remain required; this does not establish complete games or corpus completion.
+## Arcade slice-result element presence — 2026-10-20
+
+CLAIM CANDIDATE — Codex Arcade Array/export lane. Merge before implementation.
+An unchanged complete four-group, twelve-program pure baseline has two failing
+positive groups and two passing refusal groups. Literal bounded slice results
+lose nested Array presence during export; the importer and Creator retain them.
+This is a specific source/export defect, not a whole corpus classification.
+
+Envelope: `bw-makecode/array-reference-export-authority.js` and its tracked GUI
+mirror, narrowly required existing literal-input proof helpers, focused owned
+pure/native/original-compiler/export and visible authoring controls, capability
+ledger/work-package docs and this lane. Extend only slice-result minimum presence
+under the existing literal-Array owner. The mandatory-callee and occurrence
+initialization claims still grant no new element authority.
+
+Derive lower length at the actual slice occurrence, with exact owned constant
+bound expressions only in a proven monotonic domain. A lower length alone cannot
+justify negative-start/nonnegative-end windows; decline those until a separate
+upper/exact-length proof exists. Do not use later pushes, annotations, nominal
+Array lengths or runtime helper names as facts. Retain complete element unions,
+source initialization/all-writer/alias/reset/currentness checks, result shrink
+ordering and recursive length guards. No positional mixed-slot, concat or
+push-built element-type expansion, convergence shortcut or caller certificate.
+
+Acceptance: complete affected pure authority modules, the full baseline cohort
+including empty/OOB/later-push/shrink/alias/writer/reset refusals, genuine native
+and original slice behavior, current export/reimport and same/fresh SB3. Verify
+visible Blocks/Code bound edits invalidate/refine current export without restoring
+old source. Keep original failures, TODO bodies, corpus order and resource limits.
+No runtime/supplier/pin change, framework guard relaxation, budget/workflow edit,
+complete-corpus retry or inferred reduction of historical partial counts.
+
+## Arcade source bitwise and unary operations — 2026-10-20
+
+CLAIM CANDIDATE — Codex Arcade lane. Merge this claim before implementation.
+The original PXT probe records 370 scalar results across six binary bitwise
+operators, unary complement, primitive values and opaque Array aliases,
+including empty, nested and cyclic collections. This is original behavior
+observation only; it does not establish implemented support or corpus credit.
+
+Envelope: `bw-makecode/arcade-translate.js`, narrowly required source operator
+proof/lowering helpers, `bw-makecode/export-arcade.js`, canonical supplier
+`src/utils/arcadeDialect.js` and its explicit Lite adoption, the Arcade extension
+index, `bw-array-operations.js`, and the primitive-owner/current-number-input/
+exception allow-lists only where the genuine new unary opcode needs ownership.
+Include corresponding tracked mirrors, focused actual parser/VM/original-PXT/
+export controls, existing visible authoring journeys, GUI capability ledger and
+handoff/work-package documentation. No dependency pin moves without a separately
+reviewed canonical supplier adoption.
+
+Use fixed binary selectors and a real single-input source unary reporter. Keep
+native authored Array binary/unary semantics and their opaque-reference refusals
+unchanged. No Array body loan, element traversal, guessed reference, selector
+reporter, foreign-object coercion or relaxed intrinsic/heap/intern/generation/
+current-call admission. Preserve operand order, single evaluation, original
+failures and fiber routing. Exported helper recognition requires complete body,
+binding and all-use proofs; helper names are not authority.
+
+Acceptance: fresh normal-installation and independent saved-data qualification
+for new runtime bytes; complete affected native/Creator/export/original-PXT
+controls including stale/foreign/off-thread and reentrant failure cases; actual
+Blocks/Code creation and fixed-selector edits, save/reopen and exported-file
+reimport. Keep existing resource limits, corpus order, negative controls,
+thresholds and browser assertions. Do not infer complete games or a reduced
+partial count from component tests. No workflow, budget, compiler shortcut,
+late intrinsic capture or complete-corpus classification change is in scope.
+
 ## Optional upload parser loading and unchanged P17 budget — 2026-10-20
 
 CLAIM MERGED in #1140 / CSV SOURCE CANDIDATE — Codex GUI integration.
@@ -93,6 +160,16 @@ ultrasonic pinging towards the probe) read by the EV3 listen mode and the NXT ev
 docs/NXT-PROTOCOL-FACTS.md §Sync, §Buttons; docs/ROBOT-LAB-EV3-NXT.md. Tests:
 test/bw-sim-mindstorms-model-limits.test.mjs. Follow-up (after #1127 and #1123): EV3 sync turn ratio and
 buttons, the runtime.robotLab button API and its Lab UI.
+
+## micro:bit importer arithmetic: Math.idiv semantics and bitwise grouping — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (owner decision 2026-10-20: Math.idiv imports with
+real semantics). Math.idiv(a, b) imports as `(((a bitor 0) / (b bitor 0)) bitor 0)`, pxt's own
+definition (both operands and the quotient truncated), and only that exact shape exports back as
+Math.idiv. Bitwise words and unary minus/bitnot now group compound operands: `(v / 4) | 0` no
+longer comes back as `v / (4 | 0)`, nor `-(a + b)` as `(0 - a) + b`. Files: bw-makecode
+translate-base.js, microbit-translate.js, export.js. Tests:
+test/makecode-arithmetic-roundtrip.test.mjs (both sides evaluated), updated idiv assertions.
 
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
@@ -212,6 +289,17 @@ symbols for dc_motor, ntc, inductor, slide_switch, tilt_sensor, opamp, relay;
 f84ba60 -> fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7 (bw-board #659 light_sensor
 divider model; 393 commits, owner-approved, dependencies unchanged). Exact SHA
 swap across the same 16 pin surfaces; licence hashes unchanged.
+
+## Robot Lab physics 2: jolt-physics 1.1.0-bw.3, pair restitution, static rolling resistance — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner request "fix it all"; follow-up to #1126).
+jolt-physics 1.1.0-bw.2 -> 1.1.0-bw.3 (JoltPhysics.js fork release `v1.1.0-bw.3`, tarball sha256
+112f6281...df890c, lockfile sha512 integrity; JoltPhysics fork commit a40ff0b): a CCD impact that would
+bounce while the body touches a second body is left to the discrete solve (a brick on two beams turned
+over), and a MaterialPairs restitution table. Owns the pin surfaces (scripts/integrate.mjs,
+packages/scratch-gui/package.json and package-lock.json, THIRD-PARTY-NOTICES.md, the fetch-pinning row)
+and bw-sim's materials and rolling resistance (contracts.js MATERIALS, physics/rolling.js,
+physics/materials.js), plus jolt-core.js's material table install and light-body iterations.
 
 ## Robot Lab: jolt-physics -> Brickwright fork 1.1.0-bw.2 (Jolt master) — 2026-10-19
 
