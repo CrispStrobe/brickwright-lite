@@ -7315,3 +7315,16 @@ operation for the authored Number marker, and use the admitted callable opcode
 for both physical nested cancellation frames. The original 61-pass/3-failure
 run is retained. SB3 reload ownership remains unresolved; compare complete
 actual reload observations before a product change or qualification claim.
+
+### Named Array prior-binding replacement — 2026-10-20
+
+SOURCE CANDIDATE within the existing Array ownership lane. A current declared
+bind operation with an original primitive String name can acknowledge discard
+of its prior binding without traversing or granting that discarded body. Keep
+all actual reads, aliases, writes and escapes checked. New native empty/JSON
+publication must still join the current own-data registry binding after runtime
+callbacks and before callback-free birth enrollment. Preserve uncertain names,
+no-ticket calls and older pure-host fallback. Generic/custom publication keeps
+its old unqualified semantics; this is not a transactional factory guarantee.
+Supplier publication/pin adoption, fresh normal installation and complete
+affected native controls are mandatory before a qualified runtime claim.

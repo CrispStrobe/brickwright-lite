@@ -17,6 +17,9 @@ const registrations = new WeakMap(), tickets = new WeakMap(), failures = new Wea
 const bodies = new WeakMap(), references = new Map(), inflight = new WeakMap();
 const parsedMetadata = new WeakMap();
 const allocationMethods = new Set(['createReference','create1D','create2D','createEmpty','createZeros','createRange','referenceSlice','referenceConcat']);
+// Necessary replacement-role denial schema, not an allocation/provenance
+// certificate: source declarations cannot turn read/write/alias into discard.
+const namedReplacementMethods = new Set(['create1D','create2D','createEmpty','createZeros','createRange']);
 const methods = new Set(["valueBinary", "create1D", "create2D", "createEmpty", "createZeros", "createRange", "delete", "get", "get2D", "getMulti", "set", "set2D", "setMulti", "push", "pop", "insert", "remove", "length", "shape", "contains", "indexOf", "slice", "getRow", "getColumn", "map", "filter", "reduce", "sort", "reverse", "sum", "mean", "min", "max", "transpose", "flatten", "reshape", "toJSON", "toString", "listAll", "namedReference", "referenceValues", "createReference", "parseLegacyValue", "jsonValue", "referenceTruthy", "referenceItem", "referenceRemove", "referenceRandom", "referenceLength", "referenceSlice", "referenceConcat", "referenceIndexOf", "referenceTake", "mutateReference", "showTable", "hideTable", "setTableTitle", "setTableStyle", "markCell", "unmarkCell", "clearMarks", "isMarked", "markedCount"]);
 // The primitive loan performs no user coercion. Capture its inspection ingress
 // before extension code runs, and refuse changed intrinsic descriptor surfaces.
@@ -286,6 +289,7 @@ function bind(runtime,registration,source,instance) {
         if(record?.method==='createEmpty')record.emptyExpired=true;
         if(record?.jsonAttempted)record.jsonExpired=true;
         if(record?.namedSelected)record.namedExpired=true;
+        if(record?.priorRole)record.priorExpired=true;
         if(record?.method==='createReference'&&!record.literalFailure)record.literalFailure=error;
         // Only this bound service can issue a lease. Already adopted signals
         // cannot pass ownsActualCall after retirement and are rethrown unchanged.
@@ -436,12 +440,13 @@ function bind(runtime,registration,source,instance) {
         return result;
     };
     const service=Object.freeze({
-        begin(method,args,util){
+        begin(method,args,util,bindingMetadata){
             const failureCall=(method==='valueBinary'||method==='createReference'||method==='createEmpty'||method==='create1D'||method==='create2D')&&
                 primitiveOwner.captureFailureCall(runtime,'arrays_'+method);
             const failureRecord=failureCall?{runtime,binding,failureOnly:true,failureCall,
                 state,generation:state.generation,instance,boundInstance:instance(),method,closed:false,
-                emptyExpired:false,namedSelected:null,namedExpired:false,jsonAttempted:false,jsonExpired:false}:null;
+                emptyExpired:false,namedSelected:null,namedExpired:false,jsonAttempted:false,jsonExpired:false,
+                priorRole:null,priorLookup:null,priorName:undefined,priorPhase:0,priorSeen:false,priorExpired:false,priorLookupActive:false}:null;
             try {
             if(failureCall&&!primitiveOwner.current(util,args))
                 reject(failureRecord,'tracked Array requires its current operation');
@@ -460,7 +465,23 @@ function bind(runtime,registration,source,instance) {
                 // new birth/selection paths can reach their intrinsic fences.
                 emptyAttempted:false,emptyExpired:false,emptyBody:null,emptyCurrent:null,emptyCommitted:false,
                 namedSelectionSeen:false,namedSelected:null,namedRaw:undefined,namedExpired:false,
+                priorRole:null,priorLookup:null,priorName:undefined,priorPhase:0,priorSeen:false,priorExpired:false,priorLookupActive:false,
                 jsonAttempted:false,jsonExpired:false,jsonText:null,jsonBody:null,jsonEligible:false,jsonCurrent:null,jsonNative:null,jsonCommitted:false};
+            // Optional source-held replacement metadata is inspected only
+            // after the actual cached call has issued a ticket. Legacy/no-call
+            // and non-string destination paths retain their original behavior.
+            if(bindingMetadata!==undefined){
+              const name=primitiveDescriptor(args,'NAME');
+              if(name&&primitiveOwn(name,'value')&&typeof name.value==='string'){
+                const role=primitiveDescriptor(bindingMetadata,'role'),lookup=primitiveDescriptor(bindingMetadata,'lookup');
+                if(!primitiveFrozen(bindingMetadata)||primitiveKeys(bindingMetadata).length!==2||
+                    !role||!lookup||!primitiveOwn(role,'value')||!primitiveOwn(lookup,'value')||
+                    role.value!=='bind'||!primitiveApply(primitiveSetHas,namedReplacementMethods,[method])||
+                    typeof lookup.value!=='function'||!graphValid(record)||!primitiveIntrinsicsCurrent())
+                    reject(record,'Named replacement declaration differs');
+                record.priorRole='bind';record.priorLookup=lookup.value;record.priorName=name.value;
+              }
+            }
             tickets.set(ticket,record);inflight.set(runtime,record);return ticket;
             }catch(error){return rejectError(failureRecord,error);}
         },
@@ -498,6 +519,18 @@ function bind(runtime,registration,source,instance) {
                 if(facts.parser!==literalParser||facts.owner!==primitiveJSON||!primitiveIntrinsicsCurrent())
                     return primitiveFreeze({status:'unqualified'});
                 record.jsonAttempted=true;record.jsonText=input.value;
+            }
+            const prior=facts.kind==='prior-binding';
+            if(prior){
+                if(!record||record.priorRole!=='bind'||record.priorSeen||record.priorExpired||record.priorPhase!==1)
+                    reject(record,'Named replacement phase differs');
+                record.priorSeen=true;record.priorPhase=2;
+                const name=primitiveDescriptor(record.args,'NAME');
+                if(!name||!primitiveOwn(name,'value')||name.value!==record.priorName||
+                    facts.slot!=='NAME'||facts.raw!==record.priorName||facts.name!==record.priorName||
+                    facts.body!==undefined||facts.parent!==undefined||facts.key!==undefined||
+                    primitiveKeys(facts).length!==9||!primitiveIntrinsicsCurrent())
+                    reject(record,'Named replacement destination differs');
             }
             if(empty){
                 // Reserve once before scanning raw metadata. A recursive request
@@ -562,6 +595,15 @@ function bind(runtime,registration,source,instance) {
                 record.literalBody=facts.body;record.literalCurrent=observed.current;
             }
             scan(record,facts.raw);scan(record,facts.body);
+            if(record?.priorRole&&!record.priorSeen&&facts.kind==='transport'){
+                if(record.priorExpired||record.priorPhase!==0||facts.slot!==null||facts.raw!==record.args||facts.body!==undefined)
+                    reject(record,'Named replacement transport differs');
+                record.priorPhase=1;
+            }
+            if(prior){
+                if(record.priorExpired||!graphValid(record)||!primitiveIntrinsicsCurrent())reject(record,'Named replacement proof expired');
+                return true; // Acknowledgement only, never prior-body authority.
+            }
             if(literalBody&&(!record.literalCurrent()||!primitiveIntrinsicsCurrent()))reject(record,'Array literal allocation changed during observation');
             if(facts.kind==='escape'&&facts.body&&primitiveApply(primitiveWeakHas,bodies,[facts.body]))reject(record,'tracked Array cannot escape to a legacy callback');
             if(record&&(record.method==='createReference'||record.method==='valueBinary')&&
@@ -716,6 +758,33 @@ function bind(runtime,registration,source,instance) {
                     for(let i=0;i<record.primitiveLoans.length;i++)if(!record.primitiveLoans[i].nativeCurrent())
                         reject(record,'Array primitive backing changed before publication');
                     if(!primitiveIntrinsicsCurrent())reject(record,'Array primitive intrinsic surface changed before publication');
+                }
+                if(record.priorRole){
+                    if(record.priorExpired||!record.priorSeen||record.priorPhase!==2)
+                        reject(record,'Named replacement completion phase differs');
+                    const name=primitiveDescriptor(record.args,'NAME');
+                    if(!name||!primitiveOwn(name,'value')||name.value!==record.priorName)
+                        reject(record,'Named replacement completion destination differs');
+                }
+                // Only selected host-born bodies get this native publication
+                // join. Other/custom bodies retain the old unqualified lane.
+                if(record.priorSeen&&(record.emptyAttempted||record.jsonEligible)){
+                    if(record.priorLookupActive||!graphValid(record)||!primitiveIntrinsicsCurrent())
+                        reject(record,'Named replacement publication expired');
+                    record.priorLookupActive=true;
+                    let actual;
+                    try{actual=primitiveApply(record.priorLookup,undefined,[record.priorName]);}
+                    finally{record.priorLookupActive=false;}
+                    // The held source closure uses captured descriptors on its
+                    // own native registry: no raw getter/runtime callback here.
+                    const name=actual&&primitiveDescriptor(actual,'name'),body=actual&&primitiveDescriptor(actual,'body');
+                    if(record.closed||record.priorExpired||state!==record.state||!state.active||state.disposed||
+                        state.generation!==record.generation||primitiveApply(primitiveWeakGet,tickets,[ticket])!==record||
+                        primitiveApply(primitiveWeakGet,inflight,[runtime])!==record||
+                        !actual||!primitiveFrozen(actual)||primitiveKeys(actual).length!==2||
+                        !name||!body||!primitiveOwn(name,'value')||!primitiveOwn(body,'value')||
+                        name.value!==record.priorName||body.value!==(record.emptyAttempted?record.emptyBody:record.jsonBody)||!primitiveIntrinsicsCurrent())
+                        reject(record,'Named replacement registry/body differs at publication');
                 }
                 // This last native-only check follows every raw/context/graph
                 // observation. No callback can replace or fill the birth body

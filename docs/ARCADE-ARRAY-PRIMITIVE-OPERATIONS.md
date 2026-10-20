@@ -181,3 +181,27 @@ explicit arithmetic Number marker; a numeric-looking Scratch literal retains
 its string value. The initial 64-test run had 61 passes and three failures.
 Reload ownership remains pending a separate complete-state diagnostic; these
 control corrections do not establish a runtime fix or qualify public reload.
+
+### Replacing an existing named binding
+
+A constructor overwrites its destination; its previous Array body is not an
+operand. The proposed replacement notice therefore carries the actual current
+String destination, with no prior body payload or primitive permission. Genuine
+reads of stale bodies remain refused. A native empty or eligible JSON birth is
+published only if the current own-data named binding still identifies that same
+body after callbacks, immediately before its final native validation/enrollment.
+
+Object/nonstring names and calls without a successful operation ticket keep the
+old coercion and checking path. Older pure hosts may decline the optional notice.
+Custom-parser and other generic factory results retain their previous unqualified
+publication behavior and gain no native primitive-birth proof. Atomic generic
+factory enrollment remains separate work. Source controls cover old accessor
+bodies, genuine Start/SB3 reload, stale true reads and callback registry replacement;
+actual affected execution and explicit supplier adoption remain pending.
+
+The host also denies replacement-role declarations outside the actual five
+named-binding constructors. This is a necessary permission/schema check; it
+never certifies a new allocation or primitive eligibility. Registered alternate
+sources cannot turn read, write or alias calls into binding discard. The focused
+negative control uses real registered source variants and the actual adapter/VM;
+those fault variants are admission tests, not candidate feature executions.
