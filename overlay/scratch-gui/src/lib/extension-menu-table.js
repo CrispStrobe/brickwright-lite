@@ -471,6 +471,7 @@ export default {
     "spikeprime_motorSetSpeed": {"PORT":"+MULTIPLE_PORT"},
     "spikeprime_motorSetStopAction": {"PORT":"+PORT","ACTION":"STOP_ACTION"},
     "spikeprime_motorStart": {"PORT":"+MULTIPLE_PORT","DIRECTION":"DIRECTION"},
+    "spikeprime_motorStartPower": {"PORT":"+MULTIPLE_PORT"},
     "spikeprime_motorStop": {"PORT":"+MULTIPLE_PORT"},
     "spikeprime_moveForward": {"DIRECTION":"MOVE_DIRECTION","UNIT":"MOVE_UNIT"},
     "spikeprime_playHubSound": {"SOUND":"HUB_SOUND"},
