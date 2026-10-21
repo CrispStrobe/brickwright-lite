@@ -9,7 +9,7 @@ import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
-    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null}) => {
+    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -44,6 +44,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
                 record.track.push({t: s.time, bodies, joints, busy});
             });
         });
+        await page.getByTestId('bw-sim-lab-speed').selectOption(String(speed));
         await page.getByTestId('bw-sim-lab-run').click();
         await page.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= ms,
             simulatedMs, {timeout});

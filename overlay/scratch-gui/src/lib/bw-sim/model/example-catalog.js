@@ -169,6 +169,118 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "mean-machine.ldr": {
+        "pieces": 212,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two motors drive a differential; the pointer computes their signed mean while the spider absorbs their difference.",
+            "de": "Zwei Motoren treiben ein Differential. Der Zeiger bildet ihren vorzeichenbehafteten Mittelwert; das Ausgleichsrad nimmt die Differenz auf."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "stepworks.ldr": {
+        "pieces": 240,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A phased six-gear train lifts a loose pallet, carries it forward and returns underneath. Three transfers, then reset or reload.",
+            "de": "Ein phasenrichtiges Sechser-Zahnradgetriebe hebt eine freie Palette, trägt sie vor und fährt darunter zurück. Drei Hübe, dann zurücksetzen oder neu auflegen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "stride-lab.ldr": {
+        "pieces": 75,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One crank drives a Hoeken-type coupler tip through a nearly straight working stroke and curved return.",
+            "de": "Eine Kurbel führt den Koppelpunkt eines Hoeken-Viergelenks durch einen fast geraden Arbeitshub und einen gekrümmten Rücklauf."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "twinpoint.ldr": {
+        "pieces": 117,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two base-mounted motors coordinate a five-bar loop to draw a circle and a bounded vertical line.",
+            "de": "Zwei feststehende Motoren koordinieren ein Fünfgelenk und zeichnen einen Kreis sowie eine begrenzte senkrechte Linie."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "butterfly.ldr": {
+        "pieces": 224,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One crank and a sliding crosshead lift two rigid triangular wings together.",
+            "de": "Eine Kurbel und ein gleitender Kreuzkopf heben zwei starre Dreiecksflügel gemeinsam."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "tempo-loop.ldr": {
+        "pieces": 85,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two full-turn cranks share a coupler: equal revolution counts, changing angular-speed ratio.",
+            "de": "Zwei umlaufende Kurbeln teilen eine Koppel: gleiche Umdrehungszahlen, wechselndes Winkelgeschwindigkeitsverhältnis."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "tilt-lab.ldr": {
+        "pieces": 161,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two nested motor axes tilt a maze tray beneath a free ball. Explore slope, gravity, inertia and wall contacts; use ±6° on A and ±10° on B.",
+            "de": "Zwei verschachtelte Motorachsen neigen eine Labyrinthschale unter einer freien Kugel. Untersuche Neigung, Schwerkraft, Trägheit und Wandkontakte; nutze ±6° an A und ±10° an B."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "axis-plotter.ldr": {
+        "pieces": 256,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two rack stages coordinate XY drawing while a third lifts the marker. Compare motor feedback, travel, diagonals and pen-up moves.",
+            "de": "Zwei Zahnstangenachsen koordinieren XY-Zeichnungen, eine dritte hebt den Stift. Vergleiche Motorfeedback, Wege, Diagonalen und Fahrten mit angehobenem Stift."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "atlas-arm.ldr": {
         "pieces": 237,
         "motors": 3,

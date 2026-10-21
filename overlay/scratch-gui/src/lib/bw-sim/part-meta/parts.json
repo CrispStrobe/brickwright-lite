@@ -17899,7 +17899,7 @@
     {
      "shape": "box",
      "halfExtents": [
-      12,
+      10,
       10,
       150
      ],
@@ -17912,7 +17912,7 @@
     {
      "shape": "box",
      "halfExtents": [
-      12,
+      10,
       10,
       150
      ],
@@ -17927,7 +17927,7 @@
      "halfExtents": [
       110,
       10,
-      12
+      10
      ],
      "position": [
       0,
@@ -17940,7 +17940,7 @@
      "halfExtents": [
       110,
       10,
-      12
+      10
      ],
      "position": [
       0,
@@ -143318,6 +143318,189 @@
    ],
    "derived": true,
    "mirrorOf": null
+  },
+  {
+   "part": "6573.dat",
+   "name": "Technic differential with 16 and 24 tooth gears",
+   "nameDe": "Technic-Differential mit 16 und 24 Zähnen",
+   "category": "gear",
+   "massGrams": 3.5,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "q0",
+     "type": "gear-seat",
+     "position": [
+      0,
+      17,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 17.1,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 17.1,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      30
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 22.5,
+     "halfHeight": 5,
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 25,
+     "halfHeight": 2.5,
+     "position": [
+      0,
+      0,
+      -22.5
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 25,
+     "halfHeight": 20,
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 25,
+     "halfHeight": 2,
+     "position": [
+      0,
+      0,
+      22
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 33.5,
+     "halfHeight": 5.5,
+     "position": [
+      0,
+      0,
+      29.5
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "gear": {
+    "type": "spur",
+    "teeth": 16,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     -30
+    ],
+    "faceWidthLdu": 10
+   }
   }
  ]
 }

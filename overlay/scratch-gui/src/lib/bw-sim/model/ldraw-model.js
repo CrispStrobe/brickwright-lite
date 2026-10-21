@@ -273,6 +273,7 @@ export const parseModel = (text, {catalog} = {}) => {
     // State for main model
     let pendingPort = null; // string or null
     let pendingRotor = null;
+    let pendingSlides = [];
     let pendingLoad = false; // intentional free payload, placed by contact rather than a connector
     let pendingPen = false; // a `0 !BW PEN` line: the next part draws on the floor
     let pendingId = null;
@@ -328,7 +329,9 @@ export const parseModel = (text, {catalog} = {}) => {
         const sec = fileSections.get(norm);
         if (!sec) return result;
         let localPendingRotor = null;
+        let localPendingSlides = [];
         let localPendingLoad = false;
+        let localPendingPen = false;
         let localPendingPort = null;
         let localPendingId = null;
         for (let i = 0; i < sec.lines.length; i++) {
@@ -347,7 +350,13 @@ export const parseModel = (text, {catalog} = {}) => {
                 if (localPendingRotor === null) refusals.push({line: lineNo, code: 'bad-rotor', message: 'ROTOR needs a finite angle in degrees'});
                 continue;
             }
+            if (/^0\s+!BW\s+SLIDE(?:\s|$)/i.test(trimmed)) {
+                localPendingSlides = trimmed.replace(/^0\s+!BW\s+SLIDE\s*/i, '').trim().split(/\s+/).filter(Boolean);
+                if (!localPendingSlides.length) refusals.push({line: lineNo, code: 'bad-slide', message: 'SLIDE needs round-bore connector IDs'});
+                continue;
+            }
             if (/^0\s+!BW\s+LOAD\s*$/i.test(trimmed)) { localPendingLoad = true; continue; }
+            if (/^0\s+!BW\s+PEN\s*$/i.test(trimmed)) { localPendingPen = true; continue; }
             if (/^0\s+!BW\s+PORT\s+/i.test(trimmed)) {
                 const m = trimmed.match(/^0\s+!BW\s+PORT\s+(.+?)\s*$/i);
                 const val = m ? m[1].trim() : '';
@@ -372,8 +381,12 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             const parsed = parseType1(line);
             if (parsed && !parsed.error) {
+                const pendingSlidesHere = localPendingSlides;
+                localPendingSlides = [];
                 const pendingRotorHere = localPendingRotor;
                 localPendingRotor = null;
+                const pendingPenHere = localPendingPen;
+                localPendingPen = false;
                 const pendingLoadHere = localPendingLoad;
                 localPendingLoad = false;
                 const pendingPortHere = localPendingPort;
@@ -444,7 +457,9 @@ export const parseModel = (text, {catalog} = {}) => {
                 seenIds.add(id);
                 const part = {id, part: parsed.file, color, position: placed.position, rotation: placed.rotation};
                 if (pendingPortHere) part.port = pendingPortHere;
+                if (pendingSlidesHere.length) part.slides = pendingSlidesHere;
                 if (pendingLoadHere) part.load = true;
+                if (pendingPenHere) part.pen = true;
                 if (pendingRotorHere !== null) part.rotorAngle = pendingRotorHere;
                 result.push(part);
                 if (parts.length + result.length > MAX_PARTS) {
@@ -473,6 +488,7 @@ export const parseModel = (text, {catalog} = {}) => {
         pendingPen = false;
         pendingLoad = false;
         pendingRotor = null;
+        pendingSlides = [];
         pendingId = null;
         pendingGroup = null;
     };
@@ -486,6 +502,11 @@ export const parseModel = (text, {catalog} = {}) => {
             if (stepParts.length) steps.push(stepParts);
             stepParts = [];
             sawStep = true;
+            continue;
+        }
+        if (/^0\s+!BW\s+SLIDE(?:\s|$)/i.test(trimmed)) {
+            pendingSlides = trimmed.replace(/^0\s+!BW\s+SLIDE\s*/i, '').trim().split(/\s+/).filter(Boolean);
+            if (!pendingSlides.length) refusals.push({line: lineNo, code: 'bad-slide', message: 'SLIDE needs round-bore connector IDs'});
             continue;
         }
         if (/^0\s+!BW\s+LOAD\s*$/i.test(trimmed)) { pendingLoad = true; continue; }
@@ -648,6 +669,7 @@ export const parseModel = (text, {catalog} = {}) => {
             const part = {id, part: parsed.file, color: parsed.color, position: parsed.position, rotation: parsed.rotation};
             if (pendingPort) part.port = pendingPort;
             if (pendingPen) part.pen = true;
+            if (pendingSlides.length) part.slides = [...pendingSlides];
             if (pendingLoad) part.load = true;
             if (pendingRotor !== null) part.rotorAngle = pendingRotor;
             if (pendingGroup) {
@@ -661,8 +683,9 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             pendingPort = null;
             pendingPen = false;
-        pendingLoad = false;
-        pendingRotor = null;
+            pendingLoad = false;
+            pendingRotor = null;
+            pendingSlides = [];
             pendingId = null;
             pendingGroup = null;
             parts.push(part);
@@ -813,6 +836,7 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
         if (gid) lines.push(`0 !BW IN ${gid}`);
         if (p.port) lines.push(`0 !BW PORT ${p.port}`);
         if (p.pen) lines.push('0 !BW PEN');
+        if (p.slides?.length) lines.push(`0 !BW SLIDE ${p.slides.join(' ')}`);
         if (p.load) lines.push('0 !BW LOAD');
         if (p.rotorAngle !== undefined) lines.push(`0 !BW ROTOR ${formatNumber(p.rotorAngle)}`);
         const x = formatNumber(p.position[0]);

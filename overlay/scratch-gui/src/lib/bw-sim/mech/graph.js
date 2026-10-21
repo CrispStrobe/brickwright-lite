@@ -49,8 +49,15 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
 
     // Create nodes, handle motors
     for (const pl of model.parts) {
-        const meta = motorPhaseMeta(upgradePartMeta(catalogMap.get(pl.part)), pl.rotorAngle);
+        let meta = motorPhaseMeta(upgradePartMeta(catalogMap.get(pl.part)), pl.rotorAngle);
         if (!meta) continue; // unknown, caller handles diagnostic
+        if (pl.slides?.length) {
+            const ids = new Set(pl.slides);
+            const valid = meta.connectors.filter(c => ids.has(c.id) && c.type === 'pinhole');
+            if (valid.length !== ids.size) diagnostics.push({severity: 'error', code: 'bad-slide', message: `SLIDE must name existing round pinholes on ${pl.id}`, parts: [pl.id]});
+            const selected = new Set(valid.map(c => c.id));
+            meta = {...meta, connectors: meta.connectors.map(c => selected.has(c.id) ? {...c, type: 'slide-bore'} : c)};
+        }
         const rot = pl.rotation;
         const driven = partDrivenJoints(meta);
         if (driven.length) {

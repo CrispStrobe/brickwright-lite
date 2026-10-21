@@ -201,6 +201,13 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             // circles within a module of touching (a spur and a bevel gear across a model are not a pair).
             if (!module && Math.hypot(...[0, 1, 2].map(i => g1.centerLdu[i] - g2.centerLdu[i])) > g1.r + g2.r + 2.5) continue;
             if (!module) {
+                // Internal side/planet gears occupy a casing with its own external flange.
+                // The seat kind explicitly permits that placement; its outer tooth profile
+                // does not engage the internal gears. Keep all actual gear-pair checks.
+                const n1 = nodes.get(g1.nodeId), n2 = nodes.get(g2.nodeId);
+                const seatKind = kinds.connectors.list().find(k => k.kind === 'gear-seat');
+                if (seatKind?.placedShare && (seatKind.placedShare(n1.placed, n1.meta, n2.placed, n2.meta) ||
+                    seatKind.placedShare(n2.placed, n2.meta, n1.placed, n1.meta))) continue;
                 // Only gears near enough to touch (centres within the two tip radii) are a pair to warn about.
                 if (vecLen(vecSub(g1.centerLdu, g2.centerLdu)) > g1.r + g2.r + 5 + 1e-9) continue;
                 let message = `Gear pair ${g1.partId}(${t1})–${g2.partId}(${t2}) unsupported`;

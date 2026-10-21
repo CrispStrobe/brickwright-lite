@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "stepworks",
+  "language": "de",
+  "what": "Ein Motor synchronisiert vier Kurbeln über sechs gleiche Zahnräder. Zwei Hubbalken steigen zwischen festen Schienen auf und tragen eine freie Palette. Ein phasenrichtiges Sechser-Zahnradgetriebe hebt eine freie Palette, trägt sie vor und fährt darunter zurück. Drei Hübe, dann zurücksetzen oder neu auflegen.",
+  "try": [
+    "Palette zurücksetzen und drei Hübe starten. Beobachte Heben, Vortragen und Absenken.",
+    "Verfolge die gelben Balken beim Rücklauf unter der ruhenden Palette.",
+    "Vor einer Wiederholung zurücksetzen. Das Beispiel stoppt nach drei Hüben und bringt die Palette nicht automatisch zurück."
+  ],
+  "why": "Gleiche phasengleiche Kurbeln verschieben die Balken parallel. Die Schwerkraft setzt die Palette auf den jeweils tragenden Schienen ab. Reibung nimmt sie im angehobenen Teil mit. Ohne Schlupf beträgt der ideale Vorschub 16 mm pro Umlauf; Kontakt, Trägheit und Schlupf beeinflussen den tatsächlichen Weg.",
+  "matters": "Hubbalkenförderer transportieren Werkstücke zwischen Stationen, ohne sie im Rückhub zurückzuziehen. Dies ist ein begrenzter Demonstrator, kein Endlosförderer.",
+  "question": "Fährt ein umgekehrter Motor nur die leeren Balken zurück und lässt die Palette stehen?",
+  "answer": "Nein. Der leere Rückhub erfolgt bereits in jedem Vorwärtsumlauf unter der Palette. Umkehr der Umlaufrichtung kehrt bei ausreichendem Reibkontakt die Transportrichtung um. Drei ideale Vorwärtshübe ergeben 48 mm.",
+  "further": [
+    "Vergleiche den Bahndurchmesser von 16 mm mit dem Palettenvorschub.",
+    "Vergleiche langsame und schnellere Umläufe. Die Geometrie bleibt gleich, Kontakt und Schlupf können sich ändern."
+  ],
+  "formula": "Kurbelradius r = 8 mm; idealer Vorschub ≤ 2r = 16 mm/Umlauf; drei Umläufe = 48 mm",
+  "related": [
+    "crank-rocker.ldr",
+    "switchback-lift.ldr"
+  ]
+}

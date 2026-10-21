@@ -1639,6 +1639,351 @@
         "forklift.ldr",
         "rack-shuttle.ldr"
       ]
+    },
+    "stride-lab": {
+      "en": {
+        "what": "A single motor turns a 16 mm crank. A 40 mm coupler, a 40 mm rocker and two fixed pivots 32 mm apart constrain an extended tip. The coupler continues 40 mm beyond its rocker joint. This Hoeken-type linkage gives the tip a nearly straight working stroke and an arched return.",
+        "try": [
+          "Reset, load stride-lab.bw and Run. Follow the highlighted tip through two slow forward turns and two reverse turns.",
+          "Compare the long, nearly straight working stroke with the curved return. Watch the crank keep turning while the tip changes direction.",
+          "Watch equal intervals of time along the working stroke. Is the tip speed constant? Compare forward and reverse travel."
+        ],
+        "why": "The tip follows the geometry of a closed four-bar loop. Equal 40 mm coupler and rocker lengths, a 16 mm crank, a 32 mm pivot spacing and an equal coupler extension make one half of the tip path almost straight. In ideal planar geometry, crank angles 90° to 270° give a 64 mm stroke whose vertical deviation from y = 64 mm is at most about 0.1561 mm. The motor drives the crank; it does not program the tip path.",
+        "matters": "Approximate straight-line linkages can generate useful repeated working and return strokes using revolute joints, as in walking and handling mechanisms. This model illustrates the kinematics; it is not a walking robot or a load-rated machine.",
+        "question": "Does a nearly straight tip path mean exact straightness or constant tip speed?",
+        "answer": "No. The ideal working stroke has a small geometric deviation, and the nonlinear linkage makes tip speed vary even when crank speed is steady. Reversing the drive retraces the same ideal path in the opposite direction.",
+        "further": [
+          "Compare the tip path with the crank circle and the rocker arc. All three belong to the same one-motor mechanism.",
+          "The 0.1561 mm deviation describes ideal rigid, planar geometry. It is not a prediction of real LEGO tolerances, joint play, flex or simulated tracking accuracy."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht eine 16-mm-Kurbel. Eine 40-mm-Koppel, eine 40-mm-Schwinge und zwei feste Drehpunkte mit 32 mm Abstand bestimmen die Bewegung einer verlängerten Spitze. Die Koppel reicht 40 mm über ihr Schwingengelenk hinaus. Dieses Hoeken-ähnliche Getriebe erzeugt einen nahezu geraden Arbeitshub und einen bogenförmigen Rücklauf.",
+        "try": [
+          "Setze das Modell zurück, lade stride-lab.bw und starte das Programm. Verfolge die markierte Spitze bei zwei langsamen Vorwärts- und zwei Rückwärtsumdrehungen.",
+          "Vergleiche den langen, nahezu geraden Arbeitshub mit dem gekrümmten Rücklauf. Beobachte, wie sich die Kurbel weiterdreht, während die Spitze ihre Bewegungsrichtung ändert.",
+          "Beobachte gleiche Zeitabschnitte während des Arbeitshubs. Ist die Geschwindigkeit der Spitze konstant? Vergleiche Vorwärts- und Rückwärtslauf."
+        ],
+        "why": "Die Spitze folgt der Geometrie eines geschlossenen Viergelenks. Je 40 mm lange Koppel und Schwinge, eine 16-mm-Kurbel, 32 mm Abstand zwischen den festen Drehpunkten und eine gleich lange Koppelverlängerung machen eine Hälfte der Spitzenbahn nahezu gerade. In der idealen ebenen Geometrie ergeben Kurbelwinkel von 90° bis 270° einen 64-mm-Hub mit höchstens etwa 0,1561 mm vertikaler Abweichung von y = 64 mm. Der Motor treibt die Kurbel an; er programmiert nicht die Spitzenbahn.",
+        "matters": "Näherungsweise geradführende Getriebe erzeugen wiederholte Arbeits- und Rücklaufbewegungen mit Drehgelenken, etwa in Lauf- und Handhabungsmechanismen. Dieses Modell veranschaulicht die Kinematik; es ist weder ein Laufroboter noch eine für bestimmte Lasten ausgelegte Maschine.",
+        "question": "Bedeutet eine nahezu gerade Spitzenbahn exakte Geradführung oder konstante Spitzengeschwindigkeit?",
+        "answer": "Nein. Der ideale Arbeitshub hat eine kleine geometrische Abweichung. Außerdem verändert das nichtlineare Getriebe die Spitzengeschwindigkeit selbst bei gleichmäßiger Kurbeldrehzahl. Bei umgekehrtem Antrieb wird dieselbe ideale Bahn in Gegenrichtung durchlaufen.",
+        "further": [
+          "Vergleiche die Spitzenbahn mit dem Kurbelkreis und dem Schwingenbogen. Alle drei gehören zu demselben Mechanismus mit nur einem Motor.",
+          "Die Abweichung von 0,1561 mm gilt für die ideale starre, ebene Geometrie. Sie sagt nichts über reale LEGO-Toleranzen, Gelenkspiel, Verformung oder die Genauigkeit der Simulation aus."
+        ]
+      },
+      "formula": {
+        "en": "A = (0, 0), D = (32, 0); B = (16 cos θ, 16 sin θ); |C − B| = |C − D| = 40; P = 2C − B [mm]. Upper branch: θ = 90°…270° gives x = 64…0 mm, y ≈ 64 mm.",
+        "de": "A = (0, 0), D = (32, 0); B = (16 cos θ, 16 sin θ); |C − B| = |C − D| = 40; P = 2C − B [mm]. Oberer Lösungszweig: θ = 90°…270° ergibt x = 64…0 mm, y ≈ 64 mm."
+      },
+      "related": [
+        "crank-rocker.ldr",
+        "tidal-trio.ldr"
+      ]
+    },
+    "twinpoint": {
+      "en": {
+        "what": "Two stationary motors drive a five-bar parallel arm. Each motor turns a 32 mm crank; two passive 64 mm links meet at the tip. Coordinating the same hardware in two ways gives a 32 mm radius circle or a vertical line in ideal geometry.",
+        "try": [
+          "Reset, load twinpoint.bw and Run. Watch the tip trace one circle, enter the line experiment, make two down-and-up strokes, then return to its starting pose.",
+          "During the circle, compare both crank directions in the same view. During the line, watch one crank angle increase while the other decreases. The opposite-facing motor bodies make their named program directions differ from these world-view directions.",
+          "Reset before loading twinpoint-circle.bw or twinpoint-line.bw for a separate experiment. Along the line, compare the tip's travel over equal time intervals: a straight path does not imply constant speed."
+        ],
+        "why": "The two distal links constrain the tip to the intersection of two circles of radius 64 mm, centered at the crank elbows. Equal crank angles translate both elbows together, so the tip traces a circle of radius 32 mm. Crank angles that add to 180° make the elbows mirror images across x = 0, so the upper intersection stays on that vertical line. The supplied line sweep uses left angles 75° to 120° and right angles 105° to 60°; its ideal travel is about 27.801 mm.",
+        "matters": "A parallel arm shares the positioning task between two paths through a closed loop. Both motors stay on the base, so the links do not carry a motor. The benefit comes with a coordination problem: each motor affects both tip coordinates, and some angle pairs cannot close the linkage.",
+        "question": "Are motors A and B independent controls for the tip's horizontal and vertical coordinates?",
+        "answer": "No. Each motor moves an elbow, and the tip must remain 64 mm from both elbows. The circle and line come from coordinated angle relationships. The program starts paired commands together; it does not measure or correct the tip path, so motor tracking errors, joint play and flex can disturb the ideal result.",
+        "further": [
+          "Compare Twinpoint with the serial positioning arm. Here both motors are fixed; in a serial arm the shoulder carries the elbow joint and its drive.",
+          "The two elbow centers must stay less than 128 mm apart for a non-straight distal-link posture. In the supplied circle they remain 80 mm apart, and in the line sweep their separation ranges from about 63.436 to 112 mm. Do not extend the angle ranges or rotate one motor a full turn while holding the other."
+        ]
+      },
+      "de": {
+        "what": "Zwei fest montierte Motoren treiben einen Parallelarm aus fünf Gliedern an. Jeder Motor dreht eine 32 mm lange Kurbel; zwei passive Glieder von je 64 mm treffen sich an der Spitze. Zwei unterschiedliche Abstimmungen derselben Mechanik erzeugen in der idealen Geometrie einen Kreis mit 32 mm Radius oder eine senkrechte Gerade.",
+        "try": [
+          "Setze das Modell zurück, lade twinpoint.bw und starte. Die Spitze beschreibt einen Kreis, fährt zur Geraden, macht zwei Abwärts- und Aufwärtshübe und kehrt anschließend in die Ausgangslage zurück.",
+          "Vergleiche beim Kreis die Drehrichtungen beider Kurbeln aus derselben Ansicht. Bei der Geraden nimmt ein Kurbelwinkel zu, während der andere abnimmt. Weil die Motorgehäuse einander entgegengesetzt ausgerichtet sind, unterscheiden sich die Richtungsnamen im Programm von diesen Drehrichtungen in der gemeinsamen Ansicht.",
+          "Setze vor dem Laden von twinpoint-circle.bw oder twinpoint-line.bw zurück, um einen Versuch einzeln auszuführen. Vergleiche auf der Geraden den Spitzenweg in gleichen Zeitabschnitten: Eine gerade Bahn bedeutet keine konstante Geschwindigkeit."
+        ],
+        "why": "Die beiden äußeren Glieder halten die Spitze am Schnittpunkt zweier Kreise mit 64 mm Radius um die Kurbelenden. Bei gleichen Kurbelwinkeln verschieben sich beide Kurbelenden gemeinsam; die Spitze beschreibt dadurch einen Kreis mit 32 mm Radius. Ergänzen sich die Kurbelwinkel zu 180°, liegen die Kurbelenden spiegelbildlich zur Geraden x = 0. Der obere Schnittpunkt bleibt deshalb auf dieser senkrechten Geraden. Der vorgegebene Hub verwendet links 75° bis 120° und rechts 105° bis 60°; der ideale Spitzenweg beträgt etwa 27,801 mm.",
+        "matters": "Ein Parallelarm verteilt die Positionierung auf zwei Wege durch eine geschlossene Gliederkette. Beide Motoren bleiben am Gestell; die bewegten Glieder tragen keinen Motor. Dafür müssen beide Antriebe zusammenpassen: Jeder Motor beeinflusst beide Spitzenkoordinaten, und manche Winkelpaare lassen sich mit den gegebenen Gliedlängen nicht erreichen.",
+        "question": "Steuern die Motoren A und B unabhängig voneinander die waagerechte und die senkrechte Spitzenkoordinate?",
+        "answer": "Nein. Jeder Motor verschiebt ein Kurbelende, und die Spitze muss von beiden Kurbelenden jeweils 64 mm entfernt bleiben. Kreis und Gerade entstehen durch abgestimmte Winkelbeziehungen. Das Programm startet die Befehle paarweise; es misst und korrigiert die Spitzenbahn nicht. Nachführfehler der Motoren, Gelenkspiel und Verformung können deshalb Abweichungen vom idealen Ergebnis verursachen.",
+        "further": [
+          "Vergleiche Twinpoint mit dem seriellen Positionierarm. Hier sind beide Motoren fest montiert; beim seriellen Arm trägt das Schultergelenk das Ellbogengelenk und dessen Antrieb.",
+          "Für eine nicht gestreckte Lage der äußeren Glieder müssen die Kurbelenden weniger als 128 mm Abstand haben. Beim vorgegebenen Kreis beträgt ihr Abstand stets 80 mm, beim geraden Hub liegt er zwischen etwa 63,436 und 112 mm. Erweitere die Winkelbereiche nicht und drehe nicht einen Motor vollständig, während der andere festgehalten wird."
+        ]
+      },
+      "formula": {
+        "en": "Millimetres, y upward: A = (-40, 0), D = (40, 0); B = A + 32(cos α, sin α); C = D + 32(cos β, sin β); |P-B| = |P-C| = 64, upper branch. Circle: α = β = θ gives P = (32 cos θ, 32 sin θ + √2496). Line: β = 180°-α, α = 75°…120°, gives xP = 0 and yP = 32 sin α + √[4096-(40-32 cos α)²].",
+        "de": "Millimeter, y nach oben: A = (-40, 0), D = (40, 0); B = A + 32(cos α, sin α); C = D + 32(cos β, sin β); |P-B| = |P-C| = 64, oberer Schnittpunkt. Kreis: α = β = θ ergibt P = (32 cos θ, 32 sin θ + √2496). Gerade: β = 180°-α, α = 75°…120°, ergibt xP = 0 und yP = 32 sin α + √[4096-(40-32 cos α)²]."
+      },
+      "related": [
+        "positioning-arm.ldr",
+        "parallel-lift.ldr"
+      ]
+    },
+    "tempo-loop": {
+      "en": {
+        "what": "One motor drives a four-bar double-crank linkage. The red input crank and blue output crank both make complete turns in the same direction. Over a whole turn the ratio is 1:1, yet the blue crank speeds up and slows down within that turn. A yellow coupler carries the motion between them.",
+        "try": [
+          "Reset, load tempo-loop.bw and Run. Count two complete red-crank turns and two blue-crank turns, then watch both retrace their motion in reverse.",
+          "Watch the blue crank catch up and fall behind during one turn. In ideal motion with steady input speed, its instantaneous angular speed ranges from about 0.560 to 2.014 times the input speed.",
+          "Pause during the continuous run at several input angles. Compare the red and blue crank advances over equal input sectors. Reset before restarting the demonstration."
+        ],
+        "why": "The fixed pivots are 16 mm apart. The input crank is 32 mm long, and both the coupler and output crank span 40 mm between joints. These lengths allow both cranks to rotate continuously. The coupler must preserve its length as the input pin moves around its circle, so equal input-angle changes need not produce equal output-angle changes. The continuous assembly branch repeats after every full input turn, giving a mean revolution ratio of 1:1.",
+        "matters": "Link geometry can shape the timing of a rotating output without gears or a second motor. This model separates the number of completed turns from the angular speed at a particular moment. Its kinematics make no assumption that the motor supplies constant torque or constant power.",
+        "question": "If both cranks complete one turn in the same cycle, must they turn at the same speed throughout that cycle?",
+        "answer": "No. Their total angle changes match over the cycle, but their instantaneous angular speeds differ. For a continuously turning input, the output keeps the input's direction: it has a slower part and a faster part, with no stop or reversal imposed by the geometry. The equal-step program makes the unequal angle changes easy to compare.",
+        "further": [
+          "Compare with crank-rocker.ldr: there the output swings back and forth; here both cranks turn fully. Compare with ratio-workbench.ldr: fixed gear ratios preserve a constant angular-speed relationship, while this linkage varies that relationship through each turn.",
+          "The quoted speeds and step angles come from rigid planar geometry. Motor tracking, pin play, friction, flex and collisions can affect actual operation; the supplied files have not been run in the Brickwright runtime or physically built here."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor treibt eine Doppelkurbel aus vier Gliedern an. Die rote Antriebskurbel und die blaue Abtriebskurbel machen beide vollständige Umdrehungen in derselben Richtung. Über eine ganze Umdrehung beträgt das Verhältnis 1:1, doch innerhalb der Umdrehung wird die blaue Kurbel schneller und langsamer. Eine gelbe Koppel überträgt die Bewegung zwischen ihnen.",
+        "try": [
+          "Setze zurück, lade tempo-loop.bw und starte. Zähle zwei vollständige Umdrehungen der roten und der blauen Kurbel. Beobachte anschließend, wie beide ihre Bewegung rückwärts durchlaufen.",
+          "Beobachte, wie die blaue Kurbel während einer Umdrehung aufholt und zurückbleibt. Bei ideal gleichmäßigem Antrieb liegt ihre momentane Winkelgeschwindigkeit etwa zwischen dem 0,560- und dem 2,014-Fachen der Antriebsgeschwindigkeit.",
+          "Pausiere den kontinuierlichen Lauf bei mehreren Eingangswinkeln. Vergleiche die roten und blauen Winkelzuwächse über gleiche Eingangssektoren. Setze vor einem neuen Durchlauf zurück."
+        ],
+        "why": "Die festen Drehpunkte liegen 16 mm auseinander. Die Antriebskurbel ist 32 mm lang; Koppel und Abtriebskurbel haben jeweils 40 mm Gelenkabstand. Mit diesen Längen können beide Kurbeln vollständig umlaufen. Während sich der Antriebszapfen auf seinem Kreis bewegt, muss die Koppel ihre Länge beibehalten. Gleiche Änderungen des Antriebswinkels ergeben deshalb nicht immer gleiche Änderungen des Abtriebswinkels. Die kontinuierlich durchlaufene Montagelage wiederholt sich nach jeder vollen Antriebsumdrehung; das mittlere Umdrehungsverhältnis ist 1:1.",
+        "matters": "Die Gliedgeometrie kann den zeitlichen Verlauf einer Drehbewegung ohne Zahnräder oder einen zweiten Motor verändern. Das Modell unterscheidet die Zahl vollständiger Umdrehungen von der Winkelgeschwindigkeit in einem bestimmten Augenblick. Die kinematischen Beziehungen setzen weder konstantes Motordrehmoment noch konstante Motorleistung voraus.",
+        "question": "Wenn beide Kurbeln in demselben Zyklus eine Umdrehung schaffen, müssen sie dann während des gesamten Zyklus gleich schnell drehen?",
+        "answer": "Nein. Ihre gesamten Winkeländerungen sind über den Zyklus gleich, ihre momentanen Winkelgeschwindigkeiten aber verschieden. Bei kontinuierlich drehendem Antrieb behält der Abtrieb dessen Drehrichtung bei: Es gibt einen langsameren und einen schnelleren Abschnitt, ohne einen durch die Geometrie erzwungenen Stillstand oder Richtungswechsel. Das Schrittprogramm macht die ungleichen Winkeländerungen gut vergleichbar.",
+        "further": [
+          "Vergleiche mit crank-rocker.ldr: Dort schwingt der Abtrieb hin und her; hier laufen beide Kurbeln vollständig um. Vergleiche mit ratio-workbench.ldr: Feste Zahnradübersetzungen erhalten ein konstantes Verhältnis der Winkelgeschwindigkeiten, während dieses Gestänge es innerhalb jeder Umdrehung verändert.",
+          "Die angegebenen Geschwindigkeiten und Winkelschritte stammen aus starrer ebener Geometrie. Motornachführung, Gelenkspiel, Reibung, Verformung und Kollisionen können den tatsächlichen Lauf beeinflussen. Die Dateien wurden hier weder in der Brickwright-Laufzeit ausgeführt noch als reales Modell gebaut."
+        ]
+      },
+      "formula": {
+        "en": "Positions in mm; α and β are continuous angles in radians. A = (0, 0), D = (16, 0), B = (32 cos α, 32 sin α), q = |B-D|. β = α + atan2(16 sin α, 32-16 cos α) + acos(q/80). Reset: α = 0°, β ≈ 78.463041°. β(α+2π) = β(α)+2π; 0.559903… ≤ dβ/dα ≤ 2.013878….",
+        "de": "Positionen in mm; α und β sind fortlaufende Winkel im Bogenmaß. A = (0, 0), D = (16, 0), B = (32 cos α, 32 sin α), q = |B-D|. β = α + atan2(16 sin α, 32-16 cos α) + acos(q/80). Ausgangslage: α = 0°, β ≈ 78,463041°. β(α+2π) = β(α)+2π; 0,559903… ≤ dβ/dα ≤ 2,013878…."
+      },
+      "related": [
+        "crank-rocker.ldr",
+        "ratio-workbench.ldr"
+      ]
+    },
+    "mean-machine": {
+      "en": {
+        "what": "Two opposed motors drive the side gears of a differential. The output pointer follows their signed average; the spider gear turns to absorb their difference.",
+        "try": [
+          "Reset and run. Watch ADD, CANCEL, UNEQUAL and NEGATIVE, with a return home between each case.",
+          "Pause after the +90°/−90° pair. The input shafts move while the pointer remains near zero.",
+          "Compare the +120°/−30° case with the equal-input case. Keep both motor commands active or holding."
+        ],
+        "why": "The two equal bevel side gears have equal tooth counts. Their speeds relative to the carrier are opposite. Two equal external gear meshes pass the carrier angle to the pointer without changing its net sign. Motor directions here use one common pointer view; the opposed housings alone do not determine the app command signs.",
+        "matters": "A differential can combine rotations in analog computation, or allow vehicle wheels to turn at different speeds. It computes a kinematic mean rather than measuring or correcting the pointer position.",
+        "question": "A turns +120° and B turns −30° from home. Where should the pointer stop?",
+        "answer": "At +45°: (120 − 30)/2 = 45. Equal and opposite inputs cancel at the carrier while the internal spider still turns.",
+        "further": [
+          "Change one bounded input target and predict the mean before running.",
+          "Compare this averager with the vehicle differential and identify the carrier and both side gears."
+        ]
+      },
+      "de": {
+        "what": "Zwei gegenüberliegende Motoren treiben die Seitenräder eines Differentials. Der Zeiger folgt ihrem vorzeichenbehafteten Mittelwert; das Ausgleichsrad nimmt ihre Differenz auf.",
+        "try": [
+          "Zurücksetzen und starten. Beobachte Addition, Aufhebung, ungleiche und negative Eingaben mit Rückkehr nach Hause.",
+          "Pausiere nach +90°/−90°. Die Eingangswellen bewegen sich, der Zeiger bleibt nahe null.",
+          "Vergleiche +120°/−30° mit gleichen Eingaben. Beide Motoren müssen angetrieben werden oder halten."
+        ],
+        "why": "Die gleich großen Kegelräder drehen sich relativ zum Träger entgegengesetzt. Zwei äußere Zahnradpaare übertragen den Trägerwinkel zum Zeiger mit gleichem Vorzeichen. Die Befehlsrichtungen beziehen sich auf eine gemeinsame Zeigeransicht.",
+        "matters": "Differentiale kombinieren Drehungen in mechanischen Rechenwerken und erlauben unterschiedliche Raddrehzahlen. Das Getriebe bildet einen Mittelwert, ohne den Zeiger zu messen oder aktiv zu korrigieren.",
+        "question": "A dreht +120°, B dreht −30° aus der Ausgangslage. Wo hält der Zeiger?",
+        "answer": "Bei +45°: (120 − 30)/2 = 45. Gleiche entgegengesetzte Eingaben heben sich am Träger auf, während sich das Ausgleichsrad weiter dreht.",
+        "further": [
+          "Ändere einen begrenzten Zielwinkel und sage den Mittelwert vorher.",
+          "Vergleiche mit dem Fahrzeugdifferential und finde Träger und Seitenräder."
+        ]
+      },
+      "formula": {
+        "en": "C = (A + B)/2; spider rotation relative to carrier = (B − A)/2",
+        "de": "C = (A + B)/2; Ausgleichsraddrehung relativ zum Träger = (B − A)/2"
+      },
+      "related": [
+        "differential.ldr",
+        "flywheel-differential.ldr"
+      ]
+    },
+    "stepworks": {
+      "en": {
+        "what": "One motor synchronizes four cranks through six equal gears. Two walking rails rise between fixed rails and carry a genuinely free pallet.",
+        "try": [
+          "Reset the pallet to the start and run three transfers. Watch each lift, forward carry and lowering.",
+          "Follow the yellow rails returning underneath while the pallet rests on the fixed rails.",
+          "Reset before repeating. The example stops after three transfers; it does not return the cargo automatically."
+        ],
+        "why": "Equal-radius cranks in phase translate each carrier rail without changing its angle. Gravity lowers the pallet onto whichever rails support it. Friction carries it during the raised part of the orbit. Ideal no-slip travel is 16 mm per cycle; contact, inertia and slip can reduce actual travel.",
+        "matters": "Walking-beam conveyors move parts through successive work stations without dragging them along the return stroke. This is a finite tabletop demonstrator, not an endless conveyor.",
+        "question": "Does reversing the motor merely return the empty rails while leaving the pallet where it is?",
+        "answer": "No. The rails already return underneath during every forward cycle. Reversing the orbit reverses the transport direction when contact and friction carry the pallet. Three ideal forward cycles advance it 48 mm.",
+        "further": [
+          "Compare the 16 mm rail orbit diameter with the observed pallet advance.",
+          "Compare slow and faster cycles. The geometric orbit is unchanged, but contact and slip can change."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor synchronisiert vier Kurbeln über sechs gleiche Zahnräder. Zwei Hubbalken steigen zwischen festen Schienen auf und tragen eine freie Palette.",
+        "try": [
+          "Palette zurücksetzen und drei Hübe starten. Beobachte Heben, Vortragen und Absenken.",
+          "Verfolge die gelben Balken beim Rücklauf unter der ruhenden Palette.",
+          "Vor einer Wiederholung zurücksetzen. Das Beispiel stoppt nach drei Hüben und bringt die Palette nicht automatisch zurück."
+        ],
+        "why": "Gleiche phasengleiche Kurbeln verschieben die Balken parallel. Die Schwerkraft setzt die Palette auf den jeweils tragenden Schienen ab. Reibung nimmt sie im angehobenen Teil mit. Ohne Schlupf beträgt der ideale Vorschub 16 mm pro Umlauf; Kontakt, Trägheit und Schlupf beeinflussen den tatsächlichen Weg.",
+        "matters": "Hubbalkenförderer transportieren Werkstücke zwischen Stationen, ohne sie im Rückhub zurückzuziehen. Dies ist ein begrenzter Demonstrator, kein Endlosförderer.",
+        "question": "Fährt ein umgekehrter Motor nur die leeren Balken zurück und lässt die Palette stehen?",
+        "answer": "Nein. Der leere Rückhub erfolgt bereits in jedem Vorwärtsumlauf unter der Palette. Umkehr der Umlaufrichtung kehrt bei ausreichendem Reibkontakt die Transportrichtung um. Drei ideale Vorwärtshübe ergeben 48 mm.",
+        "further": [
+          "Vergleiche den Bahndurchmesser von 16 mm mit dem Palettenvorschub.",
+          "Vergleiche langsame und schnellere Umläufe. Die Geometrie bleibt gleich, Kontakt und Schlupf können sich ändern."
+        ]
+      },
+      "formula": {
+        "en": "crank radius r = 8 mm; ideal advance ≤ 2r = 16 mm/cycle; three cycles = 48 mm",
+        "de": "Kurbelradius r = 8 mm; idealer Vorschub ≤ 2r = 16 mm/Umlauf; drei Umläufe = 48 mm"
+      },
+      "related": [
+        "crank-rocker.ldr",
+        "switchback-lift.ldr"
+      ]
+    },
+    "butterfly": {
+      "en": {
+        "what": "A crank and connecting rod move a crosshead along two axle guides. Two passive links rotate the rigid triangular wings together. The wings move because their joints close, not because an animation assigns their poses.",
+        "try": [
+          "Reset and run one slow flap. Compare the crank circle, straight crosshead travel and wing arcs.",
+          "Pause near the lowest crosshead position: both wings are nearly level.",
+          "Stop and enable the motor override for short slow jogs; switch it off before running the program again."
+        ],
+        "why": "The crank radius is 8 mm and the rod length is 48 mm. Their slider-crank loop gives the crosshead a 16 mm stroke. Two 40 mm links push the 8 mm wing drive arms. Mirrored geometry gives the wings opposite angular signs in a common view, but both rise together.",
+        "matters": "This automaton illustrates conversion of rotary motion to reciprocating and oscillating motion, with paired guides and triangular bracing. It illustrates flapping kinematics, not aerodynamic lift or flight.",
+        "question": "How many complete flaps result from two complete motor turns?",
+        "answer": "Two. Each full crank revolution lowers and raises the crosshead once. Ideal wing travel is 53.130102°; the motor rotates continuously while the wings reverse at each end.",
+        "further": [
+          "Compare crosshead displacement during the first and last quarter-turn; the finite rod makes its speed nonuniform.",
+          "Find the triangular braces and distinguish rigid wing members from freely turning linkage pivots.",
+          "The nominal 53.13° sweep is an ideal-geometry value. The small 8 mm drive arms amplify sub-millimetre numerical joint error; transient overshoot is visible."
+        ]
+      },
+      "de": {
+        "what": "Kurbel und Pleuel bewegen einen Kreuzkopf auf zwei Achsführungen. Zwei passive Koppeln drehen die starren Dreiecksflügel gemeinsam. Die Bewegung entsteht aus geschlossenen Gelenkketten und nicht aus vorgegebenen Animationsposen.",
+        "try": [
+          "Zurücksetzen und einen langsamen Flügelschlag starten. Vergleiche Kurbelkreis, geraden Kreuzkopfhub und Flügelbögen.",
+          "Pausiere am tiefsten Kreuzkopfpunkt: Beide Flügel sind fast waagerecht.",
+          "Für kurze langsame Tippbewegungen Motorübersteuerung einschalten; vor dem nächsten Programmlauf wieder ausschalten."
+        ],
+        "why": "Der Kurbelradius beträgt 8 mm, die Pleuellänge 48 mm. Der Schubkurbelkreis erzeugt 16 mm Kreuzkopfhub. Zwei 40-mm-Koppeln drücken auf die 8-mm-Flügelarme. Die gespiegelten Flügel haben in einer gemeinsamen Ansicht entgegengesetzte Winkelvorzeichen und steigen dennoch gemeinsam.",
+        "matters": "Der Automat wandelt Drehung in Hin-und-her-Bewegung und Schwingung um. Er zeigt parallele Führungen und Dreiecksversteifung, jedoch keinen aerodynamischen Auftrieb oder Flug.",
+        "question": "Wie viele volle Flügelschläge ergeben zwei volle Motorumdrehungen?",
+        "answer": "Zwei. Jeder Kurbelumlauf senkt und hebt den Kreuzkopf einmal. Der ideale Flügelhub beträgt 53,130102°. Der Motor läuft durch, während die Flügel an jedem Ende umkehren.",
+        "further": [
+          "Vergleiche den Kreuzkopfweg im ersten und letzten Viertelumlauf: Das endliche Pleuel bewirkt ungleichförmige Geschwindigkeit.",
+          "Finde Dreiecksverbände und unterscheide starre Flügelteile von frei drehenden Koppelgelenken.",
+          "Der Nennhub von 53,13° gilt für ideale Geometrie. Die kurzen 8-mm-Antriebsarme verstärken numerische Gelenkfehler unter einem Millimeter; vorübergehendes Überschwingen ist sichtbar."
+        ]
+      },
+      "formula": {
+        "en": "crosshead stroke = 2r = 16 mm; one crank revolution = one flap; ideal wing sweep = 53.130102°",
+        "de": "Kreuzkopfhub = 2r = 16 mm; ein Kurbelumlauf = ein Flügelschlag; idealer Flügelhub = 53,130102°"
+      },
+      "related": [
+        "crank-rocker.ldr",
+        "parallel-lift.ldr"
+      ]
+    },
+    "tilt-lab": {
+      "en": {
+        "what": "Motor A tilts an outer gimbal. Motor B rides on it and tilts the maze tray about a perpendicular local axis. A separate free ball responds to gravity and the walls.",
+        "try": [
+          "Reset at the saved level pose and run the bounded demonstration. Follow both the tray and the ball.",
+          "Pause at a single-axis tilt and compare the direction of the ball motion with the low side of the tray.",
+          "Use only short slow manual jogs. Keep A within ±6° and B within ±10°, and return level before repeating. The program is a tilt demonstration, not an automatic maze solver."
+        ],
+        "why": "The downhill gravity component grows with sin(tilt). The ball accelerates, rolls or slips, and exchanges momentum with the walls; changing slope does not instantly set its position or speed. The inner motor axis moves with the outer gimbal, so combined tilts are nested rotations rather than two independent fixed world axes.",
+        "matters": "The same separation between platform orientation and payload motion appears in gimbal stages, balance games and handling equipment. This maze has no ball-position sensor or feedback controller.",
+        "question": "If the tray returns level, does the ball immediately stop and return to the start?",
+        "answer": "No. Level removes the downhill component of gravity but does not remove existing momentum. Contact friction and wall impacts can slow the ball. Returning to the start needs deliberate steering or a reset.",
+        "further": [
+          "Compare a 5° tilt with 10°; the ideal downhill gravity components have ratio sin(10°)/sin(5°), about 1.99.",
+          "Try to guide the ball through the alternating openings using bounded tilts. Reverse a tilt early to brake before the next wall.",
+          "Physical startup stops bound the outer gimbal; the example uses ±6° on A and ±10° on B. Keep edits within these operating ranges."
+        ]
+      },
+      "de": {
+        "what": "Motor A neigt einen äußeren Kardanrahmen. Motor B bewegt sich mit ihm und kippt die Labyrinthschale um eine senkrechte lokale Achse. Eine unabhängige freie Kugel reagiert auf Schwerkraft und Wände.",
+        "try": [
+          "In der gespeicherten waagerechten Lage zurücksetzen und die begrenzte Vorführung starten. Beobachte Schale und Kugel.",
+          "Bei einer einachsigen Neigung pausieren und Kugelbewegung mit der tieferen Schalenseite vergleichen.",
+          "Nur kurze langsame manuelle Tippbewegungen verwenden. A innerhalb ±6° und B innerhalb ±10° halten und vor einer Wiederholung waagerecht stellen. Das Programm demonstriert Neigung und löst das Labyrinth nicht automatisch."
+        ],
+        "why": "Der hangabwärts wirkende Schwerkraftanteil wächst mit sin(Neigung). Die Kugel beschleunigt, rollt oder gleitet und tauscht mit den Wänden Impuls aus. Eine neue Neigung setzt weder Ort noch Geschwindigkeit sofort. Die innere Motorachse bewegt sich mit dem äußeren Rahmen: Die Drehungen sind verschachtelt.",
+        "matters": "Die Trennung zwischen Plattformlage und Nutzlastbewegung tritt bei Kardanführungen, Balancierspielen und Handhabungsanlagen auf. Dieses Labyrinth besitzt keinen Kugelpositionssensor und keinen Rückkopplungsregler.",
+        "question": "Stoppt die Kugel sofort und kehrt zum Start zurück, wenn die Schale wieder waagerecht steht?",
+        "answer": "Nein. Waagerecht entfällt der hangabwärts wirkende Schwerkraftanteil, nicht aber der vorhandene Impuls. Reibung und Wandstöße können die Kugel abbremsen. Für den Rückweg sind gezieltes Steuern oder Zurücksetzen nötig.",
+        "further": [
+          "Vergleiche 5° mit 10°: Die idealen hangabwärts wirkenden Schwerkraftanteile verhalten sich wie sin(10°)/sin(5°), etwa 1,99.",
+          "Versuche, die Kugel mit begrenzten Neigungen durch die wechselnden Öffnungen zu führen. Neige früh zurück, um vor der nächsten Wand zu bremsen.",
+          "Physische Anlaufanschläge begrenzen den äußeren Rahmen; das Beispiel nutzt ±6° an A und ±10° an B. Halte Änderungen in diesen Betriebsbereichen."
+        ]
+      },
+      "formula": {
+        "en": "downhill gravity = g sin(tilt); tray orientation R = Rx(A) Rz(B); |A| ≤ 6°, |B| ≤ 10°",
+        "de": "Hangabtrieb = g sin(Neigung); Schalenlage R = Rx(A) Rz(B); |A| ≤ 6°, |B| ≤ 10°"
+      },
+      "related": [
+        "switchback-lift.ldr",
+        "atlas-arm.ldr"
+      ]
+    },
+    "axis-plotter": {
+      "en": {
+        "what": "Three motors make a Cartesian plotter. A and B move two perpendicular rack stages; C raises and lowers the marker. A saved SVG becomes a sequence of measured motor moves. Robot Lab records the moving marker's actual contact trace, so the drawing depends on the mechanism and its controllers.",
+        "try": [
+          "Load axis-plotter.ldr on the plain mat and Reset. In Code, use the three-dot menu → Open to open calibration.bw, click To blocks, and click the green flag. Watch a square and a separate diagonal appear. The marker should rise during the move between them.",
+          "Reset and try original-curves.bw. Look at the rounded rectangle, circular arc and cubic curve. These are made from short coordinated moves whose endpoints follow the imported SVG.",
+          "Save any pending pixel edits with the pixel editor's Save, then use Save file in Costumes to export your SVG. Open it in plotter.html, review the planned path, download the .bw program, then Reset the model and run the program as blocks. Start with the default 36 mm box and 3 mm/s drawing speed.",
+          "Try original-pixel-costume.bw after a Reset. The app's actual pixel editor export describes the original pixels as rectangles, so the plotter follows their outlines and lifts between subpaths. A one-pen plot does not reproduce solid fills or source colors."
+        ],
+        "why": "The two drawing axes convert rotation directly into independent linear coordinates. With a 4 mm pinion pitch radius, each full turn advances its rack by 8π mm, about 25.133 mm. For a diagonal, both axes move together and their speeds are proportional to the required X and Y distances. The program reads the current encoder angle before every target and waits for both axes before advancing. Short segments limit deviations caused by the independent controllers' acceleration and settling.",
+        "matters": "This is the same separation of geometry, motion planning, feedback and tool contact used in many drawing and manufacturing machines. The SVG says where the line should be. The planner chooses bounded moves and pen lifts. Encoders determine motor completion, and the actual marker pose determines the trace. A good preview alone cannot establish that a machine drew the requested path.",
+        "question": "To draw a diagonal from one corner of a square to the opposite corner, can the plotter finish the whole X move and then finish the whole Y move while leaving the pen down?",
+        "answer": "That would draw two perpendicular edges. A diagonal requires coordinated motion: both coordinates change during the same stroke. Equal component distances use equal axis speeds; a steeper line needs a larger Y component. The separate C motor lifts the marker for travel between disconnected strokes.",
+        "further": [
+          "Compare rack-shuttle.ldr to see one rotation-to-translation stage. Compare positioning-arm.ldr: its rotating joints require nonlinear coordinate conversion, while this plotter has a constant millimetres-per-degree conversion for each drawing axis.",
+          "The supplied 40 × 40 mm workspace is fitted with a default 2 mm margin. Reset before a new plot establishes the saved calibration. Each receiver holds its motor after a move; an encoder error above 2° holds all motors and stops the native program.",
+          "The marked 12L Technic axle z_pen_proxy is the simulator’s removable marker. For a physical pen, remove the three-part cassette and secure a suitable 7–8 mm barrel with two rubber bands. The geometry provides 64 mm between clamp stations and requires 118.4 mm from the upper clamp to the tip. Physical fit and paper contact need separate testing; this assembly has not been physically built here."
+        ]
+      },
+      "formula": {
+        "en": "Ideal 8-tooth rack drive: s = 4θ mm with θ in radians; s = (4π/180)θdeg mm. Thus θA = 14.323944878 x and θB = 14.323944878 y for this calibration. For displacement (Δx, Δy), L = √(Δx² + Δy²) and feed v, component speeds are vx = vΔx/L and vy = vΔy/L. Motor C uses the separately calibrated raised and drawing angles.",
+        "de": "Idealer Zahnstangenantrieb mit 8-Zahn-Ritzel: s = 4θ mm für θ im Bogenmaß; s = (4π/180)θGrad mm. In dieser Kalibrierung gilt θA = 14,323944878 x und θB = 14,323944878 y. Für den Weg (Δx, Δy), L = √(Δx² + Δy²) und die Bahngeschwindigkeit v gelten vx = vΔx/L und vy = vΔy/L. Motor C verwendet separat kalibrierte Winkel für angehobenen und abgesenkten Stift."
+      },
+      "related": [
+        "rack-shuttle.ldr",
+        "positioning-arm.ldr",
+        "drawing-robot.ldr"
+      ],
+      "de": {
+        "what": "Drei Motoren bilden einen kartesischen Plotter. A und B bewegen zwei senkrecht zueinander angeordnete Zahnstangenführungen; C hebt und senkt den Stiftträger. Aus einer gespeicherten SVG-Datei entsteht eine Folge überwachter Motorbewegungen. Robot Lab zeichnet die tatsächliche Kontaktspur des bewegten Stiftmodells auf. Das Ergebnis hängt damit von der Mechanik und ihren Motorreglern ab.",
+        "try": [
+          "Lade axis-plotter.ldr auf die einfache Unterlage und setze das Modell zurück. Öffne calibration.bw in Code, wandle das Programm in Blöcke um und klicke auf die grüne Flagge. Beobachte das Quadrat und die getrennte Diagonale. Bei der Fahrt dazwischen soll der Stift angehoben sein.",
+          "Setze das Modell zurück und probiere original-curves.bw. Betrachte das abgerundete Rechteck, den Kreisbogen und die kubische Kurve. Sie entstehen aus kurzen, koordinierten Bewegungen, deren Endpunkte der importierten SVG-Geometrie folgen.",
+          "Speichere offene Pixeländerungen zuerst mit Speichern im Pixeleditor. Exportiere danach im Kostümeditor mit Datei speichern deine SVG-Datei. Öffne sie in plotter.html, prüfe den geplanten Pfad und lade das .bw-Programm herunter. Setze das Modell zurück und führe das Programm als Blöcke aus. Beginne mit dem voreingestellten 36-mm-Zeichenfeld und 3 mm/s Zeichengeschwindigkeit.",
+          "Probiere nach dem Zurücksetzen original-pixel-costume.bw. Der tatsächliche Export des Pixel-Kostümeditors beschreibt die neu erstellten Pixel als Rechtecke. Der Plotter zeichnet deshalb deren Umrisse und hebt zwischen Teilpfaden ab. Ein einzelner Stift gibt weder Flächenfüllungen noch die ursprünglichen Farben wieder."
+        ],
+        "why": "Die beiden Zeichenachsen wandeln Drehung direkt in voneinander unabhängige lineare Koordinaten um. Bei 4 mm Teilkreisradius bewegt eine volle Ritzelumdrehung die Zahnstange um 8π mm, also ungefähr 25,133 mm. Für eine Diagonale bewegen sich beide Achsen gleichzeitig. Ihre Geschwindigkeiten stehen im Verhältnis der benötigten X- und Y-Wege. Vor jedem Ziel liest das Programm den aktuellen Motorwinkel und wartet anschließend auf beide Achsen. Kurze Abschnitte begrenzen Abweichungen, die durch das Beschleunigen und Einschwingen der getrennten Regler entstehen.",
+        "matters": "Viele Zeichen- und Fertigungsmaschinen trennen Geometrie, Bahnplanung, Rückmeldung und Werkzeugkontakt auf diese Weise. Die SVG-Datei beschreibt den gewünschten Linienverlauf. Die Planung bestimmt begrenzte Bewegungen und Stifthebungen. Encoder melden das Ende der Motorbewegung; die tatsächliche Lage des Stiftmodells bestimmt die gezeichnete Spur. Eine passende Vorschau allein beweist noch nicht, dass eine Maschine den gewünschten Pfad ausgeführt hat.",
+        "question": "Kann der Plotter eine Diagonale von einer Quadratecke zur gegenüberliegenden Ecke zeichnen, indem er bei abgesenktem Stift zuerst den gesamten X-Weg und anschließend den gesamten Y-Weg fährt?",
+        "answer": "Dabei würden zwei senkrecht zueinander stehende Kanten entstehen. Für eine Diagonale müssen sich beide Koordinaten während desselben Strichs ändern. Gleiche Weganteile benötigen gleiche Achsgeschwindigkeiten; eine steilere Linie braucht einen größeren Y-Anteil. Der dritte Motor C hebt den Stift für Fahrten zwischen getrennten Teilpfaden an.",
+        "further": [
+          "Vergleiche rack-shuttle.ldr: Dort siehst du eine einzelne Stufe zur Umwandlung von Drehung in Verschiebung. Bei positioning-arm.ldr erfordern die Drehgelenke eine nichtlineare Koordinatenumrechnung. Hier ist die Umrechnung von Motorgrad zu Millimeter für jede Zeichenachse konstant.",
+          "Der Arbeitsbereich beträgt 40 × 40 mm; standardmäßig bleibt ein Rand von 2 mm. Das Zurücksetzen vor einem neuen Bild stellt die gespeicherte Kalibrierung her. Nach jeder Bewegung hält der Motor seine Position. Bei mehr als 2° verbleibendem Encoderfehler hält das Programm alle Motoren an und beendet die Ausführung.",
+          "Die markierte 12L-Technic-Achse z_pen_proxy ist die herausnehmbare Stiftattrappe des Simulators. Entferne für einen echten Stift die dreiteilige Kassette und befestige einen geeigneten Schaft mit 7–8 mm Durchmesser mit zwei Gummibändern. Die Klemmstellen liegen 64 mm auseinander; von der oberen Klemmstelle bis zur Spitze sind 118,4 mm erforderlich. Passform und Papierkontakt müssen separat geprüft werden; ein physischer Aufbau wurde hier nicht erprobt."
+        ]
+      }
     }
   }
 }

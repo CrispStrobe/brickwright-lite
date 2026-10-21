@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "axis-plotter",
+  "language": "de",
+  "what": "Drei Motoren bilden einen kartesischen Plotter. A und B bewegen zwei senkrecht zueinander angeordnete Zahnstangenführungen; C hebt und senkt den Stiftträger. Aus einer gespeicherten SVG-Datei entsteht eine Folge überwachter Motorbewegungen. Robot Lab zeichnet die tatsächliche Kontaktspur des bewegten Stiftmodells auf. Das Ergebnis hängt damit von der Mechanik und ihren Motorreglern ab. Zwei Zahnstangenachsen koordinieren XY-Zeichnungen, eine dritte hebt den Stift. Vergleiche Motorfeedback, Wege, Diagonalen und Fahrten mit angehobenem Stift.",
+  "try": [
+    "Lade axis-plotter.ldr auf die einfache Unterlage und setze das Modell zurück. Öffne calibration.bw in Code, wandle das Programm in Blöcke um und klicke auf die grüne Flagge. Beobachte das Quadrat und die getrennte Diagonale. Bei der Fahrt dazwischen soll der Stift angehoben sein.",
+    "Setze das Modell zurück und probiere original-curves.bw. Betrachte das abgerundete Rechteck, den Kreisbogen und die kubische Kurve. Sie entstehen aus kurzen, koordinierten Bewegungen, deren Endpunkte der importierten SVG-Geometrie folgen.",
+    "Speichere offene Pixeländerungen zuerst mit Speichern im Pixeleditor. Exportiere danach im Kostümeditor mit Datei speichern deine SVG-Datei. Öffne sie in plotter.html, prüfe den geplanten Pfad und lade das .bw-Programm herunter. Setze das Modell zurück und führe das Programm als Blöcke aus. Beginne mit dem voreingestellten 36-mm-Zeichenfeld und 3 mm/s Zeichengeschwindigkeit.",
+    "Probiere nach dem Zurücksetzen original-pixel-costume.bw. Der tatsächliche Export des Pixel-Kostümeditors beschreibt die neu erstellten Pixel als Rechtecke. Der Plotter zeichnet deshalb deren Umrisse und hebt zwischen Teilpfaden ab. Ein einzelner Stift gibt weder Flächenfüllungen noch die ursprünglichen Farben wieder."
+  ],
+  "why": "Die beiden Zeichenachsen wandeln Drehung direkt in voneinander unabhängige lineare Koordinaten um. Bei 4 mm Teilkreisradius bewegt eine volle Ritzelumdrehung die Zahnstange um 8π mm, also ungefähr 25,133 mm. Für eine Diagonale bewegen sich beide Achsen gleichzeitig. Ihre Geschwindigkeiten stehen im Verhältnis der benötigten X- und Y-Wege. Vor jedem Ziel liest das Programm den aktuellen Motorwinkel und wartet anschließend auf beide Achsen. Kurze Abschnitte begrenzen Abweichungen, die durch das Beschleunigen und Einschwingen der getrennten Regler entstehen.",
+  "matters": "Viele Zeichen- und Fertigungsmaschinen trennen Geometrie, Bahnplanung, Rückmeldung und Werkzeugkontakt auf diese Weise. Die SVG-Datei beschreibt den gewünschten Linienverlauf. Die Planung bestimmt begrenzte Bewegungen und Stifthebungen. Encoder melden das Ende der Motorbewegung; die tatsächliche Lage des Stiftmodells bestimmt die gezeichnete Spur. Eine passende Vorschau allein beweist noch nicht, dass eine Maschine den gewünschten Pfad ausgeführt hat.",
+  "question": "Kann der Plotter eine Diagonale von einer Quadratecke zur gegenüberliegenden Ecke zeichnen, indem er bei abgesenktem Stift zuerst den gesamten X-Weg und anschließend den gesamten Y-Weg fährt?",
+  "answer": "Dabei würden zwei senkrecht zueinander stehende Kanten entstehen. Für eine Diagonale müssen sich beide Koordinaten während desselben Strichs ändern. Gleiche Weganteile benötigen gleiche Achsgeschwindigkeiten; eine steilere Linie braucht einen größeren Y-Anteil. Der dritte Motor C hebt den Stift für Fahrten zwischen getrennten Teilpfaden an.",
+  "further": [
+    "Vergleiche rack-shuttle.ldr: Dort siehst du eine einzelne Stufe zur Umwandlung von Drehung in Verschiebung. Bei positioning-arm.ldr erfordern die Drehgelenke eine nichtlineare Koordinatenumrechnung. Hier ist die Umrechnung von Motorgrad zu Millimeter für jede Zeichenachse konstant.",
+    "Der Arbeitsbereich beträgt 40 × 40 mm; standardmäßig bleibt ein Rand von 2 mm. Das Zurücksetzen vor einem neuen Bild stellt die gespeicherte Kalibrierung her. Nach jeder Bewegung hält der Motor seine Position. Bei mehr als 2° verbleibendem Encoderfehler hält das Programm alle Motoren an und beendet die Ausführung.",
+    "Die markierte 12L-Technic-Achse z_pen_proxy ist die herausnehmbare Stiftattrappe des Simulators. Entferne für einen echten Stift die dreiteilige Kassette und befestige einen geeigneten Schaft mit 7–8 mm Durchmesser mit zwei Gummibändern. Die Klemmstellen liegen 64 mm auseinander; von der oberen Klemmstelle bis zur Spitze sind 118,4 mm erforderlich. Passform und Papierkontakt müssen separat geprüft werden; ein physischer Aufbau wurde hier nicht erprobt."
+  ],
+  "formula": "Idealer Zahnstangenantrieb mit 8-Zahn-Ritzel: s = 4θ mm für θ im Bogenmaß; s = (4π/180)θGrad mm. In dieser Kalibrierung gilt θA = 14,323944878 x und θB = 14,323944878 y. Für den Weg (Δx, Δy), L = √(Δx² + Δy²) und die Bahngeschwindigkeit v gelten vx = vΔx/L und vy = vΔy/L. Motor C verwendet separat kalibrierte Winkel für angehobenen und abgesenkten Stift.",
+  "related": [
+    "rack-shuttle.ldr",
+    "positioning-arm.ldr",
+    "drawing-robot.ldr"
+  ]
+}

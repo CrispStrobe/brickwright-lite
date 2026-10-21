@@ -112,3 +112,64 @@ above, the LDraw.org OMR. Nothing in the files is changed.
 - Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction. This supersedes the initial generated OpenAI / CC BY headers; raw bytes are preserved.
 - `scripts/adapt-arm-lift.mjs` hash-gates the source and supplies explicit IDs/ports, a pinned hub and keyed mount braces. See `docs/ROBOT-LAB-ARM-LIFT-AND-STRAIGHT-LINE.md` for the changes and qualification.
 - Full app notice: `static/sim-lab/licenses/switchback-lift.txt`. Referenced LDraw parts keep their separate licences. Downloaded controllers and generators were not executed.
+
+## mean-machine (bundled adapted Robot Lab model)
+
+- Source: owner-supplied archive; exact flat original and initial README in `mean-machine-source/`.
+- Input SHA256: `569e9e9661d1f4900a4528abc685577554d48abd397edf37f6fb1cd21484512d`.
+- Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction, superseding initial generated attribution. Raw source bytes are preserved.
+- Hash-gated adaptation: `scripts/adapt-seven-machines.mjs`. LDraw geometry retains separate attribution; downloaded executable code was not executed.
+- App notice: `static/sim-lab/licenses/mean-machine.txt`.
+
+## stepworks (bundled adapted Robot Lab model)
+
+- Source: owner-supplied archive; exact flat original and initial README in `stepworks-source/`.
+- Input SHA256: `3e7474b2c83f14414f5f05e7763f76c9d80fc0ef5e7aeca3f9fc661f8a1a394c`.
+- Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction, superseding initial generated attribution. Raw source bytes are preserved.
+- Hash-gated adaptation: `scripts/adapt-seven-machines.mjs`. LDraw geometry retains separate attribution; downloaded executable code was not executed.
+- App notice: `static/sim-lab/licenses/stepworks.txt`.
+
+## stride-lab (bundled adapted Robot Lab model)
+
+- Source: owner-supplied archive; exact flat original and initial README in `stride-lab-source/`.
+- Input SHA256: `a7b53fd9965ecf113d7fda4138434cbb03af743f28d1fa43acc7b04e49d776f7`.
+- Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction, superseding initial generated attribution. Raw source bytes are preserved.
+- Hash-gated adaptation: `scripts/adapt-seven-machines.mjs`. LDraw geometry retains separate attribution; downloaded executable code was not executed.
+- App notice: `static/sim-lab/licenses/stride-lab.txt`.
+
+## twinpoint (bundled adapted Robot Lab model)
+
+- Source: owner-supplied archive; exact flat original and initial README in `twinpoint-source/`.
+- Input SHA256: `266de2d4580f3ea253d40c11eefe8dd74062e80bf3a4182b1ac13dc1e8eca6b0`.
+- Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction, superseding initial generated attribution. Raw source bytes are preserved.
+- Hash-gated adaptation: `scripts/adapt-seven-machines.mjs`. LDraw geometry retains separate attribution; downloaded executable code was not executed.
+- App notice: `static/sim-lab/licenses/twinpoint.txt`.
+
+## butterfly (bundled adapted Robot Lab model)
+
+- Source: owner-supplied archive; exact flat original and initial README in `butterfly-source/`.
+- Input SHA256: `c9ff4305b5cc57a92edc0f2186e8ac80bd5e9be93d15323429d6b45f5380fef4`.
+- Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction, superseding initial generated attribution. Raw source bytes are preserved.
+- Hash-gated adaptation: `scripts/adapt-seven-machines.mjs`. LDraw geometry retains separate attribution; downloaded executable code was not executed.
+- App notice: `static/sim-lab/licenses/butterfly.txt`.
+
+## tempo-loop (bundled adapted Robot Lab model)
+
+- Source: owner-supplied BSD source archive; exact original and initial README in `tempo-loop-source/`.
+- Input SHA256: `2502e4c259854123d2cf3fb6806ffc2d483f6ccb332bcab2c826c0f902660693`.
+- Owner-confirmed CrispStrobe / BSD-3-Clause for the original work. Referenced LDraw parts retain separate attribution.
+- Hash-gated adaptation: `scripts/adapt-seven-machines.mjs`. Downloaded executable code was not executed.
+
+## tilt-lab (bundled adapted Robot Lab model)
+
+- Source: owner-supplied complete archive; exact flat original and README in `tilt-lab-source/`.
+- Input SHA256: `7d1f72ce0f877fcd9d88e402e3e1b2905fa88fe61fce2c13979a62a942239b46`.
+- Original work CrispStrobe / BSD-3-Clause, per persistent owner instruction. Downloaded generators were not executed.
+- Hash-gated adaptation: `scripts/adapt-seven-machines.mjs`; LDraw geometry retains separate authors and licences.
+
+### Axis Plotter
+
+Owner-supplied `axis-plotter-bsd-source.zip`, original BSD-3-Clause work by
+Christian Ströbele (CrispStrobe). Raw model SHA-256: `2a67c5cddeed7b7480635cf4f593ff4ceea215a356e99a2064d576b8eb6dc934`.
+Raw model and README retained in `axis-plotter-source/`; the adapter checks
+the model hash. Supplied validation reports are reference data only.

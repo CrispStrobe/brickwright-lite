@@ -1975,6 +1975,18 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Willy Tschager [Holly-Wood]"
   },
+  "p/48/4-4ring15.dat": {
+   "sha256": "dc2921ac0330bc4644b35b4d357058159cf60b17859f63bf0e61f68136f9745a",
+   "release": "G 48_Primitive UPDATE 2024-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
+  },
+  "p/48/4-4ring16.dat": {
+   "sha256": "e3835c9be486d18562026e99c9003166f3b5c614b40670e8068179d8dbe5ae15",
+   "release": "G 48_Primitive UPDATE 2024-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
+  },
   "p/48/4-4ring17.dat": {
    "sha256": "7710b22eb917ca14083f0acdf8de4a3d3c380d9ab1adad4a869ca70778738fb7",
    "release": "G 48_Primitive UPDATE 2024-02",
@@ -1983,6 +1995,18 @@
   },
   "p/48/4-4ring18.dat": {
    "sha256": "72d3ac2c30dc84f7f503633895e7fff3375d6c8cdd8d7dfb394e61a98a8b53c7",
+   "release": "G 48_Primitive UPDATE 2024-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
+  },
+  "p/48/4-4ring2.dat": {
+   "sha256": "bd89c3e763a34c598455330647ae0c5c16ad4a031e1c72408be7f6eebb4133a9",
+   "release": "G 48_Primitive UPDATE 2024-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
+  },
+  "p/48/4-4ring24.dat": {
+   "sha256": "7fcd1b65344034436b8cdc9779a12fa0e6e06ee6dea01b4aa3c5288703af8f98",
    "release": "G 48_Primitive UPDATE 2024-02",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Willy Tschager [Holly-Wood]"
@@ -6418,6 +6442,12 @@
   "parts/6558.dat": {
    "sha256": "28d5dfb1009599f84edfae076be13eb648bbfae32cdba57b12b7d7829465057c",
    "release": "G Part UPDATE 2009-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
+  },
+  "parts/6573.dat": {
+   "sha256": "81d89ed81a21986f6f7420162067f74c2043a2eb54b2aff143526b31ee898f0f",
+   "release": "G Part UPDATE 2024-02",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
   },

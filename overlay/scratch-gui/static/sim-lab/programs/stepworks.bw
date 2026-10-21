@@ -1,0 +1,10 @@
+DEVICE SPIKE
+
+# STEPWORKS — three walking-beam transfers. CrispStrobe / BSD-3-Clause.
+# Reset/reload the free pallet before another run. No automatic cargo return.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 5
+  REPEAT 3:
+    run motor A counterclockwise 360 degrees
+    wait 1 seconds

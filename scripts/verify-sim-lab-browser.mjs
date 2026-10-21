@@ -164,6 +164,7 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
+import {sevenMachinesInteractions,sevenGermanLessons,fixedMachinesInteractions} from './lib/sim-lab-seven-machines-gate.mjs';
 import {armLiftInteractions} from './lib/sim-lab-arm-lift-gate.mjs';
 import {straightEightInteractions} from './lib/sim-lab-straight-eight-gate.mjs';
 import {oscillationClutchInteractions} from './lib/sim-lab-oscillation-clutch-gate.mjs';
@@ -740,6 +741,20 @@ try {
             await ex.close();
         }
 
+        if (runExample('fixed-machines.ldr')) {
+            const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            fixed.on('pageerror',error=>errors.push(error.message));fixed.on('dialog',dialog=>dialog.accept());
+            await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
+        }
+        if (runExample('seven-machines.ldr')) {
+            const machines=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            machines.on('pageerror',error=>errors.push(error.message));machines.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'seven-machines'),timeout:wallBudget(90000)*2};
+            await sevenMachinesInteractions(machines,opts);await machines.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await sevenGermanLessons(german,opts);await german.close();
+        }
         if (runExample('arm-lift.ldr')) {
             const machines = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             machines.on('pageerror', error => errors.push(error.message)); machines.on('dialog', dialog => dialog.accept());

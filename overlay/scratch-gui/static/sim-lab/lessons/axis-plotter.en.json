@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "axis-plotter",
+  "language": "en",
+  "what": "Three motors make a Cartesian plotter. A and B move two perpendicular rack stages; C raises and lowers the marker. A saved SVG becomes a sequence of measured motor moves. Robot Lab records the moving marker's actual contact trace, so the drawing depends on the mechanism and its controllers. Two rack stages coordinate XY drawing while a third lifts the marker. Compare motor feedback, travel, diagonals and pen-up moves.",
+  "try": [
+    "Load axis-plotter.ldr on the plain mat and Reset. In Code, use the three-dot menu → Open to open calibration.bw, click To blocks, and click the green flag. Watch a square and a separate diagonal appear. The marker should rise during the move between them.",
+    "Reset and try original-curves.bw. Look at the rounded rectangle, circular arc and cubic curve. These are made from short coordinated moves whose endpoints follow the imported SVG.",
+    "Save any pending pixel edits with the pixel editor's Save, then use Save file in Costumes to export your SVG. Open it in plotter.html, review the planned path, download the .bw program, then Reset the model and run the program as blocks. Start with the default 36 mm box and 3 mm/s drawing speed.",
+    "Try original-pixel-costume.bw after a Reset. The app's actual pixel editor export describes the original pixels as rectangles, so the plotter follows their outlines and lifts between subpaths. A one-pen plot does not reproduce solid fills or source colors."
+  ],
+  "why": "The two drawing axes convert rotation directly into independent linear coordinates. With a 4 mm pinion pitch radius, each full turn advances its rack by 8π mm, about 25.133 mm. For a diagonal, both axes move together and their speeds are proportional to the required X and Y distances. The program reads the current encoder angle before every target and waits for both axes before advancing. Short segments limit deviations caused by the independent controllers' acceleration and settling.",
+  "matters": "This is the same separation of geometry, motion planning, feedback and tool contact used in many drawing and manufacturing machines. The SVG says where the line should be. The planner chooses bounded moves and pen lifts. Encoders determine motor completion, and the actual marker pose determines the trace. A good preview alone cannot establish that a machine drew the requested path.",
+  "question": "To draw a diagonal from one corner of a square to the opposite corner, can the plotter finish the whole X move and then finish the whole Y move while leaving the pen down?",
+  "answer": "That would draw two perpendicular edges. A diagonal requires coordinated motion: both coordinates change during the same stroke. Equal component distances use equal axis speeds; a steeper line needs a larger Y component. The separate C motor lifts the marker for travel between disconnected strokes.",
+  "further": [
+    "Compare rack-shuttle.ldr to see one rotation-to-translation stage. Compare positioning-arm.ldr: its rotating joints require nonlinear coordinate conversion, while this plotter has a constant millimetres-per-degree conversion for each drawing axis.",
+    "The supplied 40 × 40 mm workspace is fitted with a default 2 mm margin. Reset before a new plot establishes the saved calibration. Each receiver holds its motor after a move; an encoder error above 2° holds all motors and stops the native program.",
+    "The marked 12L Technic axle z_pen_proxy is the simulator’s removable marker. For a physical pen, remove the three-part cassette and secure a suitable 7–8 mm barrel with two rubber bands. The geometry provides 64 mm between clamp stations and requires 118.4 mm from the upper clamp to the tip. Physical fit and paper contact need separate testing; this assembly has not been physically built here."
+  ],
+  "formula": "Ideal 8-tooth rack drive: s = 4θ mm with θ in radians; s = (4π/180)θdeg mm. Thus θA = 14.323944878 x and θB = 14.323944878 y for this calibration. For displacement (Δx, Δy), L = √(Δx² + Δy²) and feed v, component speeds are vx = vΔx/L and vy = vΔy/L. Motor C uses the separately calibrated raised and drawing angles.",
+  "related": [
+    "rack-shuttle.ldr",
+    "positioning-arm.ldr",
+    "drawing-robot.ldr"
+  ]
+}

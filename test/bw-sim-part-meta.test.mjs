@@ -317,9 +317,19 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
     for (const p of META.parts.filter(q => q.gear && q.gear.type !== 'sprocket')) {
         const {teeth, axis, center} = p.gear;
         let tip = 0;
-        for (const poly of flat.get(p.part).polys) {
+        // The 6573 has separate moulded 16T and 24T flanges. Read the
+        // actual 16 tooth primitives, rather than measuring its other flange.
+        let toothPolys = flat.get(p.part).polys;
+        if (p.part === '6573.dat') {
+            const refs = parseLDraw(read('parts/6573.dat')).refs;
+            const selected = refs.map((r,i) => r.file === 'tooth16.dat' ? i : -1).filter(i => i >= 0);
+            assert.equal(selected.length, teeth, 'all sixteen moulded teeth');
+            toothPolys = flattenPart(p.part, read, {topOwn:false, topRef:i=>selected.includes(i)}).polys;
+        }
+        for (const poly of toothPolys) {
             for (const v of poly) {
                 const d = sub(v, center);
+
                 tip = Math.max(tip, len(d.map((x, i) => x - dot(d, axis) * axis[i])));
             }
         }
@@ -349,6 +359,8 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
             if (groups.length > 1 && groups[0] + 360 - groups[groups.length - 1] < 360 / teeth / 2) groups.pop();
             assert.equal(groups.length, teeth, `${p.part}: ${groups.length} tooth crests on the mesh, the description says ${teeth}`);
             continue;
+        } else if (p.part === '6573.dat') {
+            assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 1.0, '6573: official 16T tooth tips are shortened like 94925');
         } else if (p.part === '94925.dat') {
         } else if (['94925.dat', '18946.dat', '76019.dat'].includes(p.part)) {
             // 18946 (16T clutch, 21.79) and 76019 (24T slip clutch, 31.70): LDraw draws their tips

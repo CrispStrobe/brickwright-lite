@@ -2446,3 +2446,23 @@ Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
 The 54-piece motor-excited pendulum array and 26-piece clutch load bench, their
 native example programs and bilingual lessons are original assemblies/content.
 Referenced LDraw geometry retains its separate authors and licences above.
+
+## Original Robot Lab assemblies: Mean Machine, Stepworks, Stride Lab, Twinpoint, Butterfly and Tempo Loop
+
+Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+Owner-supplied original designs, native programs and bilingual lessons. The
+owner’s authorship/licence instruction supersedes initial generated archive
+wording; exact source fixtures preserve provenance. Per-model notices are
+packaged in `static/sim-lab/licenses/`. Referenced official LDraw geometry
+retains its separate authors and CC BY licences. No NC model, downloaded
+executable controller, or predicted animation is bundled as physics output.
+
+Tilt Lab, its native bounded example and bilingual lesson are also original
+CrispStrobe / BSD-3-Clause work supplied by the owner. Its independent ball
+and referenced LDraw parts retain their separately documented geometry credits.
+
+### Axis Plotter
+
+Original model, native control programs and lessons: Copyright (c) 2026
+CrispStrobe, BSD-3-Clause. Full notice: `static/sim-lab/licenses/axis-plotter.txt`.
+Official LDraw part geometry retains its separate attribution and licence.

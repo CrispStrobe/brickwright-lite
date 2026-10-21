@@ -7935,3 +7935,27 @@ preserve raw input provenance, apply original-work CrispStrobe/BSD attribution,
 and test actual body motion, motor controls, instructions and EN/DE lessons.
 Supplied renders and analytical validation are references, not app qualification.
 Preserve peer worktrees and the four separately owned core/compiler files.
+
+Owner added Tempo Loop to the same intake: one-motor double-crank mechanism,
+85 source pieces, varying instantaneous ratio with a 1:1 revolution ratio.
+
+Owner added Tilt Lab to this intake: 139 source parts, two nested powered
+gimbal axes and an independent free ball. Check actual ball contact and
+bounded tilts; the supplied demo is not an automatic maze solver.
+
+Owner added Axis Plotter: 256 source pieces, three powered rack stages and a
+removable virtual pen cassette. Verify measured coordinated XY travel and
+pen lift against the source calibration, including disconnected strokes.
+
+Eight-machine implementation checkpoint: 212 / 240 / 75 / 117 / 224 / 85 /
+161 / 256 pieces, respectively. Native VM and actual-worker body-pose checks
+pass for all eight. Manual motor controls, EN/DE lesson reveals and instruction
+first/next/Home/End/BOM pass. Axis Plotter also completes its three-curve and
+24-stroke native programs headlessly; its calibration uses separate square and
+diagonal strokes. All eight assemblies pass the focused detailed official-mesh
+checks. Original source bytes and hash-gated adaptations are retained. One
+unqualified optional Tempo Loop stop/start program is excluded. Final exported
+file input/rendered-ink checks and preview promotion follow this checkpoint.
+No existing tolerance is relaxed, no peer worktree or four protected core files
+are changed, and no physical build or hosted exact-head acceptance is claimed.
+See docs/ROBOT-LAB-COORDINATED-MACHINES.md for geometry and numerical limits.
