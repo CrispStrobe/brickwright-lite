@@ -52,7 +52,7 @@ export const sevenGermanLessons=async(page,opts)=>{
 // Verify the distributable files through the actual file input, then assert
 // that the rendered pen layer agrees with the physical calibration run.
 export const fixedMachinesInteractions=async(page,opts)=>{
- const {readFileSync,writeFileSync}=await import('node:fs');
+ const {readFileSync}=await import('node:fs');
  assert.ok(opts.fixedModelsDir,'exported library directory is required');
  await opts.openSimLab(page,{program:null});
  for(const [id,pieces]of SEVEN_MODELS)for(const ext of ['ldr','mpd']){
@@ -73,6 +73,5 @@ const checkPlotterInk=async(page,opts)=>{
  writeFileSync(resolve(opts.shotsDir,'axis-plotter-ink.json'),JSON.stringify(ink));
  console.log('Axis Plotter sampled stroke sizes: '+ink.map(s=>s.length).join('/'));
  assert.equal(ink.length,2,'rendered pen lifts between square and diagonal');assert.ok(ink[0].length>200&&ink[1].length>40,'rendered drawing has full-length strokes');
- writeFileSync(resolve(opts.shotsDir,'axis-plotter-ink.json'),JSON.stringify(ink));
  console.log(`PASS Axis Plotter rendered ink: ${ink.map(s=>s.length).join('/')} points in two strokes`);
 };

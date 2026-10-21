@@ -53,6 +53,10 @@ and ±10° B for commanded edits. The free ball remains on the floor and within
 the tray walls. The example demonstrates gravity and nested rotations; it does
 not locate the ball or solve the maze automatically.
 
+Floor markers now sample on simulation advances, alongside the rotating-paper
+markers. The final browser calibration renders 257 square points and 53 diagonal
+points even when display painting is busy.
+
 Nested MPD import now preserves `!BW PEN` on a leaf part, allowing the Axis
 Plotter's marker to survive both flat and nested model round trips. Axis Plotter
 retains all 256 source parts and placements. Its default calibration runs two

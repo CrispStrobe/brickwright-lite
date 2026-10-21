@@ -7959,3 +7959,15 @@ file input/rendered-ink checks and preview promotion follow this checkpoint.
 No existing tolerance is relaxed, no peer worktree or four protected core files
 are changed, and no physical build or hosted exact-head acceptance is claimed.
 See docs/ROBOT-LAB-COORDINATED-MACHINES.md for geometry and numerical limits.
+
+Final export checkpoint: the production build passes, all 16 new LDR/MPD files
+reopen through the actual browser file input, and Axis Plotter renders complete
+257/53-point square/diagonal strokes. Floor-pen sampling now uses simulation
+advances; its previous display-paint sampling failed this drawing check. Twelve
+affected pen/surface/MPD controls pass. New native/body-pose/cold-start controls,
+all three Axis programs and metadata pass; the one stale model-order expectation
+in the broad unit run was corrected and the 14 registry/dialect/catalogue controls
+rerun successfully. Forty-four affected mechanism controls and twenty lesson/
+notice controls pass. LDraw lock, adapter reproduction, asset equality and scope
+checks pass. The 46-pair/54-choice export and local preview are delivered. Current
+main composition and hosted exact-head CI remain pending for draft #1138.
