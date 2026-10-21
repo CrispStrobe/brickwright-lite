@@ -96,3 +96,19 @@ The exact movement-wait methods already match upstream. This is vendor identity
 acceptance, not extension execution, motor, guest or editor qualification.
 Fresh complete metadata generation and the entire eight-control motor module
 remain pending alongside the existing independent gate and affected guest.
+
+## Complete metadata observation
+
+The fresh, read-only metadata consumer completed all 30 bundled and 12 stock
+extension attempts. Its full generated table has 615 opcode rows and retains
+only the existing camera skip. Independent saved-output review confirms that
+the sole table change is the SPIKE motor power menu row; the complete generated
+artifact is adopted unchanged. No row was inserted by hand. Native process
+denial and the original XHR gate remained active, with no module refusals.
+
+The preceding installation episode exceeded its CPU bound. That failure is
+retained; its exact 365 output files were independently admitted only as
+immutable inputs to this separate, successful metadata operation. The installer
+was not repeated, and neither a combined resource pass nor motor execution is
+claimed. The actual generator CLI check, complete eight-control motor module,
+independent SPIKE gate, integrated mirror and affected guest remain pending.
