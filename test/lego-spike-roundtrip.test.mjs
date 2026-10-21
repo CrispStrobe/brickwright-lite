@@ -310,8 +310,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // complete executable artifact and round-trip assertions below required.
     // -> 74f89846 (2026-10-20): one canonical Arcade source-arithmetic word;
     // SPIKE producer bytes are unchanged. Re-run every artifact assertion.
+    // -> f4b1a789 (2026-10-21): merged supplier #159, including the source
+    // operation dialect and qualified compiler/sensor fixes; SPIKE producer
+    // source remains unchanged from 7d3f8be7. All artifact assertions remain.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '74f89846eed496a2326bd8d328948eafc1e284f4');
+        'f4b1a789e0733d310109f056a08de4621092c0eb');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

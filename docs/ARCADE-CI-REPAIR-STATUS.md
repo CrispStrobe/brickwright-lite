@@ -547,3 +547,21 @@ Earlier native qualification does not qualify this new composition; rerun the
 affected complete controls on the final source and use every enabled final-head
 hosted check before merging. No new full-CI request or unchanged-job retry is
 needed merely to inspect existing failures.
+
+## Canonical supplier and current native qualification — 2026-10-21
+
+Supplier [#159](https://github.com/CrispStrobe/sb3-creator/pull/159) is merged
+at `f4b1a789e0733d310109f056a08de4621092c0eb`, after every enabled final-head
+check passed. The consumer now explicitly selects that canonical revision. Its
+Arcade dialect is byte-identical to the reviewed consumer overlay. The two
+disabled x86 readers and SPIKE fixture select the same revision; their admission
+policies and artifact assertions remain intact. Other dependency pins retain
+their separately qualified revisions. Final composed hosted checks remain required.
+
+The current-main composition at `45d495832` passes all twelve complete native
+source-operation controls with a fresh normal installation: actual Number
+parameters, unary and binary operations, typeof, export/reimport and hostile
+prototype/setter cases. Source, Node and package identities were checked before
+and after execution. This qualifies those controls, not whole games or GUI
+initialization. The historical 36 partial applications remain unchanged until
+a complete replacement report exists.
