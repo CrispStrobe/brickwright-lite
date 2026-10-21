@@ -7,10 +7,21 @@ passes 15 tests; genuine metadata generation produced the complete 615-row
 table. Neither result reduces the historical partial-app count. Qualification
 still needs the corrected complete 32-test SDK cohort, public CLI module,
 word-table module, motor/guest controls and integrated browser journey.
-The next semantic decision must use the complete app diagnostic's original
-source, actual project, artwork and observed refusal facts. Scope a separate
-lexical-readiness proof if those facts require it; preserve initialization,
+Captured lexical declaration readiness now passes its complete eight-module,
+23-test source cohort. Nullable Array length normal results pass the complete
+nine-module, 31-test follow-up, retaining the preceding 23 controls. These are
+source capabilities, not new complete applications. Preserve initialization,
 writer, TDZ and unknown-entry negatives rather than weakening the operand guard.
+
+The actual edited-animation case remains two passes and one export refusal,
+first at the initialized count after frames.length. Next close static fresh
+resource emission through actual owned serialized data and the current producer,
+then genuine image pixel result/effect provenance. Logging can invoke listeners;
+unknown fallback is not inert. Keep dynamic evaluation, fresh/shared identity,
+missing values and all original assertions. The
+[producer contract](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md) defines scope and
+refusal obligations. Do not replay the unchanged carrier while its effect
+boundary remains ineligible.
 
 Read [the latest handoff](ARCADE-AGENT-HANDOFF.md#latest-observed-state-and-next-work--2026-10-21)
 and [complete hosted failure census](ARCADE-CI-REPAIR-STATUS.md#latest-complete-hosted-observation--2026-10-21)
@@ -28,9 +39,11 @@ Close these work packages in order:
    metadata table and pass the actual opcode/menu and affected guest controls.
    Repair the CLI output fixture and word-table fixture without relaxing
    product protection or changing the producer to match a stale expectation.
-3. Coordinate the x86 current supplier boundary with its lane. Retain original
-   source-bound receipts; require fresh affected acceptance before claiming a
-   new consumer pin. Existing historical evidence is not rewritten.
+3. The operator-authorized x86 consumer takeover has a merged claim and two
+   corrected fixed D7 identities. Qualify both complete existing source-control
+   modules in the normal hosted batch; source consistency does not authorize
+   actual execution. Fresh affected GUI/guest, tool, request/event and original
+   reader admission remain required. Existing source-bound receipts stay intact.
 4. Qualify the public hosted filesystem/process/network/resource controls,
    bind private assessment input and encryption, then obtain a complete current
    report. Preserve missing assets and packages as explicit unresolved inputs;
