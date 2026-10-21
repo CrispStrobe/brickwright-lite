@@ -228,6 +228,12 @@ const describeSkips = ({unreadable, nul}) => {
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
     {
+        file: 'test/fixtures/model-files/axis-plotter-source/README.txt', kind: 'git',
+        text: 'git clone https://github.com/CrispStrobe/brickwright-lite.git brickwright-lite',
+        class: 'shell-pin',
+        why: 'Historical source-package reproduction instructions, never executed by the app or its build. The next command checks out the full reference commit df32b7ff33595406ce7356d249ec61baec1fecf6 before using any sources; SHA_CONSTANTS checks that checkout remains a full SHA.'
+    },
+    {
         file: 'test/vendor-bundles-targeted.test.mjs', kind: 'raw',
         text: 'raw.githubusercontent.com/${UPSTREAM_REPO}/${candidate}/extensions/CrispStrobe/arrays.js',
         class: 'source-link',
@@ -643,6 +649,7 @@ const CENSUS = [
 // is the defect that cost seven blind CI commits: `git` will resolve a short
 // sha inside one repo at one moment and nothing else will.
 const SHA_CONSTANTS = [
+    ['test/fixtures/model-files/axis-plotter-source/README.txt', /git -C brickwright-lite checkout ([0-9a-zA-Z]+)/],
     ['scripts/vendor.mjs', /const GUI_COMMIT = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-emu8051-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],

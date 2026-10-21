@@ -1,0 +1,17 @@
+DEVICE SPIKE
+
+# Centrifugal governor demonstrator, CrispStrobe — BSD-3-Clause.
+# Reset first. A controls the rotor; the two arms swing freely under gravity.
+# Compare three angular speeds, then reverse at the middle speed.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 15
+  run motor A clockwise 1440 degrees
+  set motor speed A 30
+  run motor A clockwise 2880 degrees
+  set motor speed A 45
+  run motor A clockwise 4320 degrees
+  wait 4 seconds
+  set motor speed A 30
+  run motor A counterclockwise 2880 degrees
+  wait 4 seconds

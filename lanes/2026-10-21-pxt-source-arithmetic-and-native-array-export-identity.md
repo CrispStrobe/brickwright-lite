@@ -15,4 +15,3 @@ domain, including aliases and actual writers. Unknown/nested native domains
 refuse rather than borrowing source-language semantics. Isolated parser/domain
 controls have passed; fresh provider, native, original SDK comparison and public
 roundtrip qualification remain pending. No runtime feature claim is made.
-

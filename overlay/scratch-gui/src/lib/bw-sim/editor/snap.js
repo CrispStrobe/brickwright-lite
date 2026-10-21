@@ -8,6 +8,7 @@
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize, vecDist, mat3MulMat3, quatFromMat3, quatMul, quatNormalize} from '../mech/vec.js';
 import {edgeKind, shaftEngagement} from '../mech/graph.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
+import {connectorSeatPosition,connectorSeatLength,connectorNormal} from '../kinds/connector-frame.js';
 import {validatePlacedModel, det3} from '../contracts.js';
 import {collidersOf, partOverlaps, primitivesOverlap, rayHitParts, solidColliders, solidOverlaps} from './overlap.js';
 import {PAIR_REACH_LDU, boxOfPoints, grow, indexFor, partBounds} from '../mech/spatial-index.js';
@@ -198,7 +199,7 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
     // `radius` of the dragged part's, in model order (the order decides which of two equal poses is kept).
     const index = indexFor(model.parts, catalogMap);
     const near = box => (index ? index.queryBox(box).map(i => model.parts[i]) : model.parts).filter(pl => !excluded.has(pl.id));
-    const draggedBox = boxOfPoints(movingConnectors.map(c => transformPoint(pose.position, pose.rotation, c.position)));
+    const draggedBox = boxOfPoints(movingConnectors.map(c => transformPoint(pose.position, pose.rotation, connectorSeatPosition(c))));
     const sceneParts = near(grow(draggedBox, radius + 1));
 
     const worldConnectors = pl => {
@@ -208,11 +209,12 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
             partId: pl.id,
             connectorId: c.id,
             type: c.type,
-            position: transformPoint(pl.position, pl.rotation, c.position),
+            position: transformPoint(pl.position, pl.rotation, connectorSeatPosition(c)),
             axis: transformAxis(pl.rotation, c.axis),
-            length: c.length,
+            length: connectorSeatLength(c),
             friction: c.friction,
             closedEnd: c.closedEnd,
+            normal: connectorNormal(c,pl.rotation),
             metaConnector: c,
             placed: pl
         }));
@@ -250,7 +252,7 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
             if (!kind) continue;
 
             // Radius check: distance between dragged moving connector world pos and fixed connector world pos should be within radius
-            const draggedMovPos = transformPoint(pose.position, pose.rotation, movConn.position);
+            const draggedMovPos = transformPoint(pose.position, pose.rotation, connectorSeatPosition(movConn));
             const distToFixed = vecDist(draggedMovPos, fixed.position);
             if (distToFixed > radius + 1e-9) continue;
 
@@ -258,7 +260,7 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
             let newPos, newRot;
             const fixedPos = fixed.position;
             const fixedAxis = fixed.axis;
-            const movLocalPos = movConn.position;
+            const movLocalPos = connectorSeatPosition(movConn);
             const movLocalAxis = movConn.axis;
 
             // Determine target axis for moving connector: should be parallel to fixed axis (choose closest direction)
@@ -339,9 +341,10 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
             const movingWorldConns = movingConnectors.map(c => ({
                 id: c.id,
                 type: c.type,
-                position: transformPoint(newPos, newRot, c.position),
+                position: transformPoint(newPos, newRot, connectorSeatPosition(c)),
+                normal: connectorNormal(c,newRot),
                 axis: transformAxis(newRot, c.axis),
-                length: c.length,
+                length: connectorSeatLength(c),
                 friction: c.friction,
                 closedEnd: c.closedEnd
             }));
@@ -552,8 +555,9 @@ export const isRoundJoin = (shaftType, holeType) => (holeType === 'pinhole' && (
     (shaftType === 'ball' && holeType === 'ballsocket') || (shaftType === 'ballsocket' && holeType === 'ball');
 
 const worldConnector = (pl, c) => {
-    const out = {partId: pl.id, connectorId: c.id, id: c.id, type: c.type, position: transformPoint(pl.position, pl.rotation, c.position),
-        axis: transformAxis(pl.rotation, c.axis), length: c.length, friction: c.friction};
+    const out = {partId: pl.id, connectorId: c.id, id: c.id, type: c.type, position: transformPoint(pl.position, pl.rotation, connectorSeatPosition(c)),
+        axis: transformAxis(pl.rotation, c.axis), length: connectorSeatLength(c), friction: c.friction};
+    if (c.data?.normal) out.normal = connectorNormal(c,pl.rotation);
     if (c.closedEnd !== undefined) out.closedEnd = c.closedEnd;
     return out;
 };

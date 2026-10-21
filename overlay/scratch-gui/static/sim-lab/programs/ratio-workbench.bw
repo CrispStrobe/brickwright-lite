@@ -1,0 +1,18 @@
+DEVICE SPIKE
+
+# A: 24:24:24 idlers, B: 8:24 then 8:40, C: five 8:24 stages.
+# Reset before repeating. Ratios concern shaft motion; gearing creates no power.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor stop action C hold
+  set motor speed A 50
+  set motor speed B 80
+  set motor speed C 100
+  run motor A clockwise 360 degrees
+  run motor B clockwise 1800 degrees
+  run motor C clockwise 3600 degrees
+  wait 1 seconds
+  run motor C counterclockwise 3600 degrees
+  run motor B counterclockwise 1800 degrees
+  run motor A counterclockwise 360 degrees

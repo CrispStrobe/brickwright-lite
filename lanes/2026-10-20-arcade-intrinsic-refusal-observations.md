@@ -10,4 +10,3 @@ Numeric authoring's first unchanged run also reports the original
 intrinsic refusal; the exact changed descriptor remains unobserved. No
 polyfill fix, descriptor rebaseline or relaxed admission is authorized by this
 observation alone.
-

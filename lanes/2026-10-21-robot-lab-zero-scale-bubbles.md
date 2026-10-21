@@ -22,3 +22,11 @@ unknown patch anchors. Retain the original failing source and browser evidence.
 Rebuild through managed dependency provenance and verify actual native programs,
 hide/show transitions, automatic project conversion and browser error capture.
 CI remains mandatory before source/release integration.
+
+Implemented through the canonical renderer overlay. Five regression controls
+reproduce the upstream failure, preserve dirty text across hidden stages and
+check ordinary/flipped scales, reuse and source-patch guards. The production
+build passes. The built browser renderer passes zero-scale first render,
+text changes while hidden, reveal and flipped-scale checks; automatic Blocks
+conversion for Pendulum Array and Clutch Bench still passes. Larger model browser
+qualification and full hosted CI remain required before delivery.

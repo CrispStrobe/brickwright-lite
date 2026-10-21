@@ -14,6 +14,8 @@
 // menu), and only one of the two is rendered at a time.
 
 import React from 'react';
+import {createPortal} from 'react-dom';
+import {createPopupTrigger} from './sim-lab-popup-trigger.js';
 
 /** 24×24 stroke paths; an array entry {d, fill: true} is a filled shape. */
 export const ICONS = {
@@ -148,21 +150,41 @@ export const ToolButton = ({item, T, coarse, inMenu = false}) => {
  * Closes on Escape and on a press outside it (the pane's outside-press handler,
  * which looks for [data-sim-lab-popup]).
  */
-export const Popup = ({id, open, onToggle, onClose, button, children, align = 'left', width = 260, label, closeOnPick = true, testId}) => (
-    <div data-sim-lab-popup={id} style={{position: 'relative', flex: '0 0 auto'}}
+export const Popup = ({id, open, onToggle, onClose, button, children, align = 'left', width = 260, label, closeOnPick = true, testId}) => {
+    const anchor = React.useRef(null);
+    const toggle = React.useRef(onToggle);
+    toggle.current = onToggle;
+    const trigger = React.useRef(null);
+    if (!trigger.current) trigger.current = createPopupTrigger(() => toggle.current());
+    const [position, setPosition] = React.useState({left: 8, top: 8});
+    React.useLayoutEffect(() => {
+        if (!open) return undefined;
+        const place = () => {
+            const rect = anchor.current?.getBoundingClientRect();
+            if (!rect) return;
+            const w = Math.min(width, window.innerWidth - 16);
+            setPosition({left: Math.max(8, Math.min(window.innerWidth - w - 8, align === 'right' ? rect.right - w : rect.left)),
+                top: Math.min(rect.bottom + 4, Math.max(8, window.innerHeight - 220))});
+        };
+        place();
+        window.addEventListener('resize', place);
+        window.addEventListener('scroll', place, true);
+        return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); };
+    }, [open, width, align]);
+    return <div ref={anchor} data-sim-lab-popup={id} style={{position: 'relative', flex: '0 0 auto'}}
         onKeyDown={e => { if (open && e.key === 'Escape') { e.stopPropagation(); onClose(); } }}>
-        {React.cloneElement(button, {'aria-haspopup': 'true', 'aria-expanded': open, onClick: onToggle})}
-        {open ? (
-            <div role="group" aria-label={label} data-testid={testId || `bw-sim-lab-${id}-menu`}
+        {React.cloneElement(button, {'aria-haspopup': 'true', 'aria-expanded': open, ...trigger.current})}
+        {open ? createPortal(
+            <div role="group" data-sim-lab-popup={id} aria-label={label} data-testid={testId || `bw-sim-lab-${id}-menu`}
                 onClick={e => { if (closeOnPick && e.target.closest && e.target.closest('button')) onClose(); }}
-                style={{position: 'absolute', [align]: 0, top: 'calc(100% + 4px)', zIndex: 30, width, maxWidth: '80vw', maxHeight: '65vh',
+                style={{position: 'fixed', ...position, zIndex: 3000, width, maxWidth: 'calc(100vw - 16px)', maxHeight: '65vh',
                     overflowY: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 2, padding: 6, fontSize: 12,
                     background: '#fff', border: '1px solid #94a3b8', borderRadius: 8, boxShadow: '0 6px 18px rgba(15, 23, 42, 0.25)', boxSizing: 'border-box'}}>
                 {children}
             </div>
-        ) : null}
-    </div>
-);
+        , document.body) : null}
+    </div>;
+};
 
 /** A thin rule between groups (decorative). */
 export const Separator = ({coarse}) => <span aria-hidden="true" style={toolStyles(coarse).separator} />;

@@ -447,7 +447,7 @@ test('balance, equal masses: the lever stays on its pin\'s axis (no droop)', t =
  * own colliders (so a part's mass sits at its colliders' centroid). Torque about the pin (world z
  * through the origin) τ = −Σ m_i·g·x_i (world x, y up: a weight at +x turns the lever clockwise
  * seen from +z, i.e. negative), moment of inertia I_z = Σ m_i[(w_x² + w_y²)/3 + x_i² + y_i²] over
- * the parts' boxes (w the half extents along world x, y). α0 = τ / I_z. For the diagnosis, the same
+ * each collider's rotated principal inertia (boxes, cylinders and spheres). α0 = τ / I_z. For the diagnosis, the same
  * with every collider at ONE density (what Jolt does when a body's colliders become one shape).
  */
 const leverStart = model => {
@@ -455,18 +455,38 @@ const leverStart = model => {
     const items = [];
     for (const p of model.parts.filter(q => !fixed.has(q.id))) {
         const m = meta(p.part);
-        const boxes = m.colliders.map(c => {
+        const shapes = m.colliders.map(c => {
             const centre = [0, 1, 2].map(i => [0, 1, 2].reduce((s, k) => s + p.rotation[i * 3 + k] * (c.position || [0, 0, 0])[k], 0) + p.position[i]);
-            const w = worldHalfExtents(p, c).map(v => v * LDU_M);
+            // Independent principal inertias per unit mass, including the rounded
+            // cylinder ends in the measured liftarm catalogue.
+            let volume, principal;
+            if (c.shape === 'box') {
+                const [x,y,z] = c.halfExtents;
+                volume = 8*x*y*z;
+                principal = [(y*y+z*z)/3,(x*x+z*z)/3,(x*x+y*y)/3];
+            } else if (c.shape === 'cylinder') {
+                const r2=c.radius**2,h2=c.halfHeight**2;
+                volume=2*Math.PI*r2*c.halfHeight;
+                principal=[r2/4+h2/3,r2/2,r2/4+h2/3];
+            } else if (c.shape === 'sphere') {
+                volume=4*Math.PI*c.radius**3/3;
+                principal=Array(3).fill(2*c.radius**2/5);
+            } else throw Error(`unsupported analytical shape ${c.shape}`);
+            // Rotate world z into the collider's principal frame. A reflection
+            // of LDraw y has no effect on the squared components of I_z.
+            const zPart=p.rotation.slice(6,9);
+            const q=c.rotation || [0,0,0,1];
+            const axis=qrot([-q[0],-q[1],-q[2],q[3]],zPart);
+            const inertiaZ=principal.reduce((v,x,i)=>v+x*axis[i]**2,0)*LDU_M**2;
             const world = [centre[0] * LDU_M, -centre[1] * LDU_M];
-            return {w, world, volume: 8 * c.halfExtents[0] * c.halfExtents[1] * c.halfExtents[2]};
+            return {inertiaZ, world, volume};
         });
-        const vol = boxes.reduce((s, b) => s + b.volume, 0);
-        for (const b of boxes) items.push({...b, mass: m.massGrams / 1000 * b.volume / vol});
+        const vol = shapes.reduce((s, b) => s + b.volume, 0);
+        for (const b of shapes) items.push({...b, mass: m.massGrams / 1000 * b.volume / vol});
     }
     const moments = weight => {
         const tau = -items.reduce((s, b) => s + weight(b) * G * b.world[0], 0);
-        const I = items.reduce((s, b) => s + weight(b) * ((b.w[0] ** 2 + b.w[1] ** 2) / 3 + b.world[0] ** 2 + b.world[1] ** 2), 0);
+        const I = items.reduce((s, b) => s + weight(b) * (b.inertiaZ + b.world[0] ** 2 + b.world[1] ** 2), 0);
         return tau / I;
     };
     const total = items.reduce((s, b) => s + b.mass, 0);

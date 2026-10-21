@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "mean-machine",
+  "language": "de",
+  "what": "Zwei gegenüberliegende Motoren treiben die Seitenräder eines Differentials. Der Zeiger folgt ihrem vorzeichenbehafteten Mittelwert; das Ausgleichsrad nimmt ihre Differenz auf. Zwei Motoren treiben ein Differential. Der Zeiger bildet ihren vorzeichenbehafteten Mittelwert; das Ausgleichsrad nimmt die Differenz auf.",
+  "try": [
+    "Zurücksetzen und starten. Beobachte Addition, Aufhebung, ungleiche und negative Eingaben mit Rückkehr nach Hause.",
+    "Pausiere nach +90°/−90°. Die Eingangswellen bewegen sich, der Zeiger bleibt nahe null.",
+    "Vergleiche +120°/−30° mit gleichen Eingaben. Beide Motoren müssen angetrieben werden oder halten."
+  ],
+  "why": "Die gleich großen Kegelräder drehen sich relativ zum Träger entgegengesetzt. Zwei äußere Zahnradpaare übertragen den Trägerwinkel zum Zeiger mit gleichem Vorzeichen. Die Befehlsrichtungen beziehen sich auf eine gemeinsame Zeigeransicht.",
+  "matters": "Differentiale kombinieren Drehungen in mechanischen Rechenwerken und erlauben unterschiedliche Raddrehzahlen. Das Getriebe bildet einen Mittelwert, ohne den Zeiger zu messen oder aktiv zu korrigieren.",
+  "question": "A dreht +120°, B dreht −30° aus der Ausgangslage. Wo hält der Zeiger?",
+  "answer": "Bei +45°: (120 − 30)/2 = 45. Gleiche entgegengesetzte Eingaben heben sich am Träger auf, während sich das Ausgleichsrad weiter dreht.",
+  "further": [
+    "Ändere einen begrenzten Zielwinkel und sage den Mittelwert vorher.",
+    "Vergleiche mit dem Fahrzeugdifferential und finde Träger und Seitenräder."
+  ],
+  "formula": "C = (A + B)/2; Ausgleichsraddrehung relativ zum Träger = (B − A)/2",
+  "related": [
+    "differential.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

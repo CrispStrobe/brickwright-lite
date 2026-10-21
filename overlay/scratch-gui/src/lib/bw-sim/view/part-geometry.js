@@ -23,8 +23,9 @@
 // metres, LDraw → world (x, -y, -z)*0.0004, a proper rotation that keeps winding.
 
 import {BufferGeometry, Color, Float32BufferAttribute} from 'three';
-import {SEARCH_DIRS, apply, bounds, flattenPart, parseLDraw, refKey} from '../ldraw/ldraw-geometry.js';
-import {partMotorJoint} from '../contracts.js';
+import {flattenPart, refKey} from '../ldraw/ldraw-geometry.js';
+import {phasedMotorRead} from '../ldraw/motor-phase.js';
+export {driveHubRef} from '../ldraw/motor-phase.js';
 
 const LDU_M = 0.0004;
 
@@ -195,9 +196,10 @@ const linesGeometry = (lines, codes, direct, colors, conditional) => {
  * @returns {{faces: BufferGeometry, edges: BufferGeometry, conditional: BufferGeometry}}
  */
 export const partVisual = (name, read, colors, piece = null) => {
-    const key = name.toLowerCase() + (piece ? `#${piece.take}${piece.ref}` : '');
+    const key = name.toLowerCase() + (piece?.ref !== undefined ? `#${piece.take}${piece.ref}` : '') + `@${piece?.rotor?.angle || 0}`;
     if (cache.has(key)) return cache.get(key);
-    const flat = flattenPart(name, read, piece ? {topRef: i => (i === piece.ref) === (piece.take === 'ref'), topOwn: piece.take === 'rest'} : {});
+    const source = piece?.rotor ? phasedMotorRead(name, read, piece.rotor.meta, piece.rotor.angle) : read;
+    const flat = flattenPart(name, source, piece?.ref !== undefined ? {topRef: i => (i === piece.ref) === (piece.take === 'ref'), topOwn: piece.take === 'rest'} : {});
     const visual = {
         faces: flat.polys.length ? facesGeometry(flat, colors) : new BufferGeometry(),
         edges: linesGeometry(flat.edges, flat.edgeColours, flat.edgeDirect, colors, false),
@@ -220,30 +222,6 @@ export const partVisual = (name, read, colors, piece = null) => {
  * @param {object} meta the part's PartMeta (a motor: its turning joint's movingColliders)
  * @returns {number} the reference's index in file order, or -1
  */
-export const driveHubRef = (name, read, meta) => {
-    const centres = (partMotorJoint(meta)?.movingColliders || []).map(i => meta.colliders[i]?.position).filter(Boolean);
-    if (!centres.length) return -1;
-    let text;
-    for (const dir of SEARCH_DIRS) {
-        text = read(dir + refKey(name));
-        if (text !== undefined) break;
-    }
-    if (text === undefined) return -1;
-    let best = -1;
-    let bestVolume = Infinity;
-    parseLDraw(text).refs.forEach((r, i) => {
-        const polys = flattenPart(r.file, read).polys.map(poly => poly.map(v => apply(r.x, v)));
-        if (!polys.length) return;
-        const {min, max} = bounds(polys);
-        const inside = centres.every(c => c.every((v, k) => v >= min[k] - 1e-6 && v <= max[k] + 1e-6));
-        const volume = (max[0] - min[0]) * (max[1] - min[1]) * (max[2] - min[2]);
-        if (inside && volume < bestVolume) {
-            best = i;
-            bestVolume = volume;
-        }
-    });
-    return best;
-};
 
 /**
  * The part's face geometry (see partVisual).

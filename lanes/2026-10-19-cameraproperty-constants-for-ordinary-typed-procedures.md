@@ -10,4 +10,3 @@ physical SDK binding, source effects, currentness and intrinsic checks are
 required; unknown and changed inputs retain the original conservative path.
 Actual camera/public/native/compiler and hosted qualification remain separate.
 See [producer scope](docs/ARCADE-CAMERA-PROPERTY-PRODUCERS.md).
-

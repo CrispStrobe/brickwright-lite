@@ -28,7 +28,7 @@ const prepare = async (page, {file, extension, mat = null}) => {
     await page.getByTestId('bw-sim-lab-model').selectOption(file);
     await page.waitForFunction(f => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === f &&
         window.__bwSimLab._pane.session, file, {timeout: 60000});
-    await page.getByRole('button', {name: 'Load example program'}).click();
+
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
         null, {timeout: 60000});
     if (mat) {

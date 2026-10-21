@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "tidal-trio-reverse",
+  "language": "de",
+  "what": "Eine umlaufende Kurbel treibt über eine Koppel eine Schwinge in einem geschlossenen Viergelenk an. Gegenwelle: Drei Viergelenke mit 16/48/32/48 mm vergleichen Kurbelphase und nichtlineare Schwingbewegung. Versatz [0, 240, 120] Grad.",
+  "try": [
+    "Setze zurück und starte. Vergleiche die umlaufende Kurbel mit dem schwingenden Abtrieb.",
+    "Finde beide Endlagen und beobachte die wechselnde Geschwindigkeit dazwischen.",
+    "Vergleiche beim Gezeiten-Trio Welle, Gleichlauf, Abwechselnd und Gegenwelle jeweils nach Zurücksetzen."
+  ],
+  "why": "Alle vier Gliedlängen bestimmen gemeinsam die geschlossene Schleife. Der Ausgangswinkel hängt nichtlinear vom Kurbelwinkel ab. Das Trio hat 16/48/32/48-mm-Glieder und etwa 63,07° Schwingbereich; drei Kurbelphasen erzeugen ein wanderndes Muster.",
+  "matters": "Gelenkgetriebe machen aus einfachen Drehantrieben nützliche wiederholte Bewegungen.",
+  "question": "Bedeuten 120° Kurbelversatz auch 120° Schwingenversatz?",
+  "answer": "Nein. Die nichtlineare Viergelenkbeziehung verändert Winkel und Geschwindigkeit der Schwinge während des Umlaufs.",
+  "further": [
+    "Vergleiche gleiche Kurbelphasen mit den Zeitabständen der Schwingenspitzen.",
+    "Vergleiche die fast parallele Plattform des Hebers."
+  ],
+  "formula": "Kurbelvektor + Koppelvektor = Festlagervektor + Schwingenvektor",
+  "related": [
+    "tidal-trio.ldr",
+    "parallel-lift.ldr"
+  ]
+}

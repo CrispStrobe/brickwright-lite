@@ -20,4 +20,3 @@ callback, resource and element authorities remain independent. No new value
 kind, runtime, pin, workflow, budget or GUI qualification is claimed. Calls,
 control paths, other entries and unknown effects do not acquire new credit;
 affected actual qualification is required before adoption.
-

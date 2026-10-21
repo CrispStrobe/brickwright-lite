@@ -1,0 +1,219 @@
+# Orbit Mixer — six settled orientation-compensation steps
+# Original control program. SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Reset/reload the supplied model to its saved pose before starting.
+# A is the carrier drive; B is the sun. Both inputs remain powered or holding.
+# Common world-axis mapping: C = -A/3; S = B; P = (8/3)C - (5/3)S.
+# Targets below are absolute, unwrapped motor-encoder angles.
+# Each move reads fresh feedback. Speeds are degrees per second.
+# A target error over 2 degrees holds BOTH motors and stops the program.
+# Barriers wait for both receivers; pauses allow the mechanism to settle.
+# Matched nominal speeds do not guarantee identical acceleration profiles.
+# Each outward step adds C = +15 and S = +24; heading may vary between stops.
+# 7 finite phases; 14 native motor-move blocks.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Step 1/6: C = +15, S = +24; ideal settled paddle change = 0.
+  broadcast "orbit compensation step 01" and wait
+  wait 1 seconds
+  IF (abs of (-45 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (24 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Step 2/6: C = +30, S = +48; ideal settled paddle change = 0.
+  broadcast "orbit compensation step 02" and wait
+  wait 1 seconds
+  IF (abs of (-90 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (48 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Step 3/6: C = +45, S = +72; ideal settled paddle change = 0.
+  broadcast "orbit compensation step 03" and wait
+  wait 1 seconds
+  IF (abs of (-135 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (72 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Step 4/6: C = +60, S = +96; ideal settled paddle change = 0.
+  broadcast "orbit compensation step 04" and wait
+  wait 1 seconds
+  IF (abs of (-180 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (96 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Step 5/6: C = +75, S = +120; ideal settled paddle change = 0.
+  broadcast "orbit compensation step 05" and wait
+  wait 1 seconds
+  IF (abs of (-225 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (120 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Step 6/6: C = +90, S = +144; ideal settled paddle change = 0.
+  broadcast "orbit compensation step 06" and wait
+  wait 1 seconds
+  IF (abs of (-270 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (144 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Continuous return to zero, then hold. Reset before another run.
+  broadcast "orbit compensation steps home" and wait
+  wait 1.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  lab stop motor A hold
+  lab stop motor B hold
+
+WHEN I receive "orbit compensation step 01":
+  lab run motor A for (-45 - (lab motor A angle)) degrees at 22.5 degrees per second
+  lab stop motor A hold
+  IF (abs of (-45 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 01":
+  lab run motor B for (24 - (lab motor B angle)) degrees at 12 degrees per second
+  lab stop motor B hold
+  IF (abs of (24 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 02":
+  lab run motor A for (-90 - (lab motor A angle)) degrees at 22.5 degrees per second
+  lab stop motor A hold
+  IF (abs of (-90 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 02":
+  lab run motor B for (48 - (lab motor B angle)) degrees at 12 degrees per second
+  lab stop motor B hold
+  IF (abs of (48 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 03":
+  lab run motor A for (-135 - (lab motor A angle)) degrees at 22.5 degrees per second
+  lab stop motor A hold
+  IF (abs of (-135 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 03":
+  lab run motor B for (72 - (lab motor B angle)) degrees at 12 degrees per second
+  lab stop motor B hold
+  IF (abs of (72 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 04":
+  lab run motor A for (-180 - (lab motor A angle)) degrees at 22.5 degrees per second
+  lab stop motor A hold
+  IF (abs of (-180 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 04":
+  lab run motor B for (96 - (lab motor B angle)) degrees at 12 degrees per second
+  lab stop motor B hold
+  IF (abs of (96 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 05":
+  lab run motor A for (-225 - (lab motor A angle)) degrees at 22.5 degrees per second
+  lab stop motor A hold
+  IF (abs of (-225 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 05":
+  lab run motor B for (120 - (lab motor B angle)) degrees at 12 degrees per second
+  lab stop motor B hold
+  IF (abs of (120 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 06":
+  lab run motor A for (-270 - (lab motor A angle)) degrees at 22.5 degrees per second
+  lab stop motor A hold
+  IF (abs of (-270 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation step 06":
+  lab run motor B for (144 - (lab motor B angle)) degrees at 12 degrees per second
+  lab stop motor B hold
+  IF (abs of (144 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation steps home":
+  lab run motor A for (0 - (lab motor A angle)) degrees at 22.5 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensation steps home":
+  lab run motor B for (0 - (lab motor B angle)) degrees at 12 degrees per second
+  lab stop motor B hold
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all

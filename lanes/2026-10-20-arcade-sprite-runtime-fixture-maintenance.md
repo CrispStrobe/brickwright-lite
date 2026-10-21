@@ -6,4 +6,3 @@ use the existing explicit empty-target helper; two guest-oriented modules use
 owned actual VM runtimes with cleanup. Product binding authority, physics,
 speech, artwork and callback assertions are unchanged. Complete affected-module
 qualification remains required; this does not qualify a rendered game.
-

@@ -24,4 +24,3 @@ nonempty obligations, Throw and uncertainty fallbacks. No type grant, semantic
 cache, trust flag, SDK effect whitelist, cap change or runtime/editor claim.
 Meaningful affected controls and actual changed-source cost evidence remain
 required before selection.
-

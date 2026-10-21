@@ -17,10 +17,9 @@
 //   - a fastener (a pin, an axle, a bush; one that sits in another, such as a
 //     bush on an axle, counts with it as one cluster) goes in the step where
 //     the second thing it joins is placed: a pin with the beam it holds on, an
-//     axle with the wheel it carries (never before it, however many other parts
-//     it joins: a differential's half axle); one that joins only one part goes with it;
-//   - steps hold about STEP_TARGET parts, at most STEP_MAX unless one part
-//     brings more fasteners with it;
+//     axle with the wheel it carries (never before it, including a differential half axle); one that joins only one part goes with it;
+//   - steps hold about STEP_TARGET parts; long fastener clusters are split
+//     into connected pages of at most STEP_MAX parts;
 //   - an editor group (`0 !BW GROUP`) whose parts hold together is a
 //     sub-assembly: built in its own steps (drawn alone) right before the step
 //     that attaches it to the model.
@@ -54,7 +53,7 @@ import {partHubProfile} from '../contracts.js';
 import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../kinds/chain.js';
 import {placedSpur, placedTooth} from '../kinds/tooth-parts.js';
 
-/** Parts per derived step the walk aims for, and the most it puts in one (unless one part brings more fasteners). */
+/** Parts per derived step the walk aims for, and the maximum per insertion page. */
 export const STEP_TARGET = 4;
 export const STEP_MAX = 6;
 
@@ -199,17 +198,45 @@ const pinsFirst = (steps, adjacency, meta, groups) => {
         for (;;) {
             const fasteners = rest.filter(id => isFastener(meta(id)));
             const covers = new Set([...rest.filter(id => !isFastener(meta(id))), ...attached]);
-            // Pins in the model so far that a part of this step goes onto.
-            const first = covers.size ? fasteners.filter(f => touches(f, built) && touches(f, covers)) : [];
-            // A fastener on one of them (a bush on its axle) is one cluster with it: it goes in with it.
-            for (let grew = first.length > 0; grew;) {
-                grew = false;
-                for (const f of fasteners) {
-                    if (!first.includes(f) && [...(adjacency.get(f) || [])].some(n => first.includes(n))) { first.push(f); grew = true; }
+            const fastenerSet = new Set(fasteners);
+            const reachesCover = id => {
+                const seen = new Set([id]); const queue = [id];
+                while (queue.length) {
+                    for (const n of adjacency.get(queue.shift()) || []) {
+                        if (covers.has(n)) return true;
+                        if (fastenerSet.has(n) && !seen.has(n)) { seen.add(n); queue.push(n); }
+                    }
                 }
+                return false;
+            };
+            // Pins in the model so far that a part of this step goes onto.
+            // A perpendicular pin-hole connector followed by a stud half-pin is two insertion
+            // stages before the plate. Walk the remaining fasteners rather than burying both with it.
+            const first = [];
+            const selected = new Set();
+            const seeds = covers.size ? fasteners.filter(f => touches(f, built) && reachesCover(f)) : [];
+            for (const seed of seeds) {
+                if (selected.has(seed)) continue;
+                const unit = new Set([seed]); const queue = [seed];
+                while (queue.length) {
+                    for (const n of adjacency.get(queue.shift()) || []) {
+                        // Retaining bushes follow their axle in connected insertion order. A stud half-pin
+                        // also touches the plate it will carry, so it remains a separate stage.
+                        if (fastenerSet.has(n) && !unit.has(n) && !selected.has(n) &&
+                            [...(adjacency.get(n) || [])].every(id => isFastener(meta(id)))) {
+                            unit.add(n); queue.push(n);
+                        }
+                    }
+                }
+                if (first.length && first.length + unit.size > STEP_MAX) break;
+                for (const id of unit) { first.push(id); selected.add(id); }
             }
             if (first.length) {
-                pieces.push({parts: first, pins: true});
+                // Long shafts can carry more collars than fit on one manual page.
+                // Breadth-first order keeps each chunk attached to the shaft already placed.
+                for (let i = 0; i < first.length; i += STEP_MAX) {
+                    pieces.push({parts: first.slice(i, i + STEP_MAX), pins: true});
+                }
                 for (const id of first) built.add(id);
                 rest = rest.filter(id => !first.includes(id));
                 continue;
@@ -333,13 +360,57 @@ export const mirrorPairs = (model, catalog, adjacency) => {
     const sameSet = (a, b) => a.length === b.length && a.length > 0 &&
         a.every(v => b.some(w => Math.hypot(v[0] - w[0], v[1] - w[1], v[2] - w[2]) <= MIRROR_EPS)) &&
         b.every(v => a.some(w => Math.hypot(v[0] - w[0], v[1] - w[1], v[2] - w[2]) <= MIRROR_EPS));
+    // Equal connector sets have equal bounds (within MIRROR_EPS), even with
+    // repeated points. Index their lower corner; the exact sameSet test below
+    // still decides the match. Keep input order to preserve Array.find ties.
+    const cell = 2 * MIRROR_EPS;
+    const boxes = new Map(), buckets = new Map(), ordinal = new Map();
+    const kindBuckets = new Map();
+    model.parts.forEach((p, i) => {
+        ordinal.set(p.id, i);
+        const pts = points.get(p.id);
+        if (!pts.length) return;
+        const lo = [0,1,2].map(k => pts.reduce((v,p) => Math.min(v,p[k]), Infinity));
+        const hi = [0,1,2].map(k => pts.reduce((v,p) => Math.max(v,p[k]), -Infinity));
+        boxes.set(p.id, {lo, hi});
+        const kind = key(p);
+        if (!buckets.has(kind)) buckets.set(kind, new Map());
+        const root = buckets.get(kind);
+        kindBuckets.set(p.id, root);
+        const [x,y,z] = lo.map(v => Math.floor(v / cell));
+        if (!root.has(x)) root.set(x, new Map());
+        const ys = root.get(x);
+        if (!ys.has(y)) ys.set(y, new Map());
+        const zs = ys.get(y);
+        if (!zs.has(z)) zs.set(z, []);
+        zs.get(z).push(p);
+    });
+    const nearby = (p, k, c) => {
+        const box = boxes.get(p.id);
+        if (!box) return [];
+        const xyz = box.lo.map((v,i) => Math.floor((i === k ? 2*c-box.hi[i] : v) / cell));
+        const found = [], root = kindBuckets.get(p.id);
+        for (let x=-1; x<=1; x++) {
+            const ys = root.get(xyz[0]+x);
+            if (!ys) continue;
+            for (let y=-1; y<=1; y++) {
+                const zs = ys.get(xyz[1]+y);
+                if (!zs) continue;
+                for (let z=-1; z<=1; z++) {
+                    const matches = zs.get(xyz[2]+z);
+                    if (matches) found.push(...matches);
+                }
+            }
+        }
+        return found.sort((a,b) => ordinal.get(a.id)-ordinal.get(b.id));
+    };
     /** Mirror map for plane (k, c): id → image id (self allowed). */
     const mapFor = (k, c) => {
         const m = new Map();
         for (const p of model.parts) {
             if (m.has(p.id)) continue;
             const img = imageOf(k, c, p.id);
-            const q = model.parts.find(o => key(o) === key(p) && (o.id === p.id || !m.has(o.id)) && sameSet(img, points.get(o.id)));
+            const q = nearby(p,k,c).find(o => (o.id === p.id || !m.has(o.id)) && sameSet(img, points.get(o.id)));
             if (q) { m.set(p.id, q.id); m.set(q.id, p.id); }
         }
         return m;

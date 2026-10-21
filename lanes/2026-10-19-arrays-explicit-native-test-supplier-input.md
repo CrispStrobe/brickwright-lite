@@ -10,4 +10,3 @@ input. No supplier evaluation, downloads, pin/gate/threshold changes or test
 fallback. Preserve other build jobs and strict lockfile/source-manifest checks.
 Both unchanged native Arrays modules still require genuine affected execution;
 source-data admission alone is not runtime or compatibility qualification.
-

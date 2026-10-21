@@ -11,4 +11,3 @@ generated mutation controls; their earlier 5-pass/27-fail baseline is retained.
 Fresh complete native qualification and normal installed mirror validation are
 required. GUI/runtime coercion, trusted registration and broader qualification
 remain separate work; no public result or scope is promoted from a source edit.
-

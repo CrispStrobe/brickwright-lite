@@ -45,6 +45,7 @@ import {readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmSync,
 import {createHash} from 'node:crypto';
 import {dirname, join, relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {checkOwnedParts} from './sync-bw-material-parts.mjs';
 import {flattenPart, parseLDraw} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -89,7 +90,7 @@ const reader = libDir => {
 /** Every LDraw file parts.json needs: its parts, and the reference assemblies the metadata test reads. */
 export const partList = () => {
     const meta = JSON.parse(readFileSync(PART_META, 'utf8'));
-    return [...meta.parts.map(p => p.part), ...(meta.references ?? [])];
+    return [...meta.parts.filter(p => !p.ownedGeometry).map(p => p.part), ...(meta.references ?? [])];
 };
 
 /** Closure of every listed part: library-relative lower-case paths. */
@@ -148,6 +149,7 @@ const write = (from, sourceSha256, sourceDate) => {
 
 /** @returns {string[]} problems; empty when the vendored tree matches its lock and covers parts.json. */
 export const check = () => {
+    const materialProblems = checkOwnedParts();
     const out = [];
     if (!existsSync(LOCK)) return [`${relative(ROOT, LOCK)} is missing; run the sync`];
     const lock = JSON.parse(readFileSync(LOCK, 'utf8'));
@@ -179,7 +181,7 @@ export const check = () => {
     for (const f of Object.keys(lock.files)) {
         if (!EXTRA_FILES.includes(f) && !files.includes(f)) out.push(`${f}: vendored but no part in parts.json needs it`);
     }
-    return out;
+    return [...out, ...materialProblems];
 };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

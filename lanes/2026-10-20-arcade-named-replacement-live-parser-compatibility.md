@@ -7,4 +7,3 @@ allocation, current call, destination and publication proofs remain independent
 and strict. Existing native modules remain unchanged; new complete controls
 cover actual parser effects and unrelated surface refusal. Affected actual
 execution and a fresh normal installation are required before qualification.
-

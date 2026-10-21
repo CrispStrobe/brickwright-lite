@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "sarrus-lift",
+  "language": "de",
+  "what": "Ein Motor und ein 24:1-Schneckengetriebe heben eine Plattform über sechs räumliche Drehgelenke. Innerhalb jeder der beiden Ketten sind die Achsen parallel; die Ketten stehen rechtwinklig zueinander. Die gemeinsame Plattform bewegt sich senkrecht und bleibt waagerecht. Vier zusätzliche Distanzplatten geben den oberen Gliedern im Modell mit 144 Teilen Platz. Zwei rechtwinklige Gelenkketten führen eine Plattform senkrecht. Vergleiche die Höhe mit dem Sinusgesetz und dem 24:1-Schneckenantrieb.",
+  "try": [
+    "Wähle Sarrus Lift unter Beispiele; das Programm wird automatisch in Blöcke geladen. Setze auf die gespeicherte 45°-Stellung zurück und drücke Start. Die Gelenke fahren auf 20°, zurück auf 45°, auf 70° und wieder nach Hause.",
+    "Vergleiche die Motorwinkel A = −600°, 0° und +600° mit der Plattformhöhe. Für eine Abtriebsumdrehung braucht die Schnecke 24 Antriebsumdrehungen.",
+    "Nutze die manuelle Übersteuerung nur für kleine Schritte nahe der Ausgangslage. Halte den Gelenkwinkel zwischen 20° und 70°; setze vor einem neuen Versuch zurück."
+  ],
+  "why": "Die vertikalen Projektionen zweier Glieder mit je 120 LDU ergeben bei 0,4 mm je LDU h = 96 sin φ mm. Aus der gespeicherten 45°-Stellung gilt Δh = 96[sin(45° + A/24) − sin 45°] mm. Die rechtwinkligen Ketten verhindern die seitliche Bewegung, die eine einzelne ebene Kette erlauben würde.",
+  "matters": "Die räumliche Geradführung kommt ohne echte Gleitschiene aus. Der Löser stabilisiert den geschlossenen Gelenkring durch eine äquivalente passive Plattformbedingung und lockert eine redundante Ellenbogenbedingung. Schwerkraft, Kontakte und endliches Motordrehmoment bestimmen weiterhin die Körperbewegung.",
+  "question": "Hebt +600° an Motor A die Plattform genauso weit, wie −600° sie aus der 45°-Stellung absenkt?",
+  "answer": "Nein. Die Gelenkwinkel betragen 70° und 20°. Ideal sind die Höhenänderungen etwa +22,33 mm und −35,06 mm. Wegen der nichtlinearen Sinusfunktion ergeben gleiche Winkeländerungen unterschiedliche Wege.",
+  "further": [
+    "Vergleiche mit Parallel Lift: räumliche senkrechte Führung und gekrümmte ebene Bahn.",
+    "Die Schnecke hemmt im Simulator den Rücktrieb. Vergleiche das mit aktivem Halten; daraus folgen keine gemessenen realen Reibungswerte oder Traglasten.",
+    "Beobachte neben dem Motorencoder auch den Plattformwinkel. Ein drehender Motor allein beweist keine funktionierende Gelenkschleife."
+  ],
+  "formula": "Δh = 96[sin(45° + A/24) − sin 45°] mm; 20° ≤ φ ≤ 70°. Vier zusätzliche Distanzplatten; 144 physische Teile.",
+  "related": [
+    "parallel-lift.ldr",
+    "switchback-lift.ldr"
+  ]
+}

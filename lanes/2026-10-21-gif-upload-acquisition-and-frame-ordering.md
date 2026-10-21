@@ -26,4 +26,3 @@ the existing PNG error chain. A throwing error handler is not swallowed by the
 acquisition catch. The focused factory returns its acquisition promise for
 observation; public costumeUpload still returns undefined and remains callback
 based. This promise does not represent completion of later decoder timers.
-

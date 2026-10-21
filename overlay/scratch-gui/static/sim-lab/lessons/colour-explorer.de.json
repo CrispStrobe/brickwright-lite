@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "colour-explorer",
+  "language": "de",
+  "what": "Der Roboter verbindet Farbmessungen mit Radbewegungen auf einer markierten Fläche. Erreiche mit Farb- und Richtungsrückmeldung ein Ziel auf dem Boden.",
+  "try": [
+    "Starte das Beispiel auf seiner Farbzonenmatte.",
+    "Beobachte die Blickstelle des Farbsensors, wenn sich die Fahrentscheidung ändert.",
+    "Setze zurück und ändere eine farbabhängige Aktion im Code."
+  ],
+  "why": "Die Messung beschreibt die Stelle unter dem Sensor, nicht den ganzen Roboter. Das Programm macht daraus eine Navigationsentscheidung.",
+  "matters": "So entsteht eine einfache ereignisgesteuerte Navigation.",
+  "question": "Ändert sich die Farbe schon, wenn ein Rad die Fläche erreicht?",
+  "answer": "Erst wenn der Messfleck des Sensors sie erreicht. Sein Abstand zu den Rädern spielt eine Rolle.",
+  "further": [
+    "Vergleiche ein Sensorereignis mit der Position der Antriebsachse.",
+    "Erkunde Helligkeitsregelung an einer Linie."
+  ],
+  "formula": "",
+  "related": [
+    "line-follower.ldr"
+  ]
+}

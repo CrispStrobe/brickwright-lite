@@ -52,4 +52,3 @@ Function.prototype.toString replacement. This does not execute the browser ES
 bundle, a VM or tooltip DOM lifecycle. Exact ES/native initialization, sticky
 late-mutation/ABA refusal, fresh VM and affected hosted browser journeys remain
 required. Direct VM consumers remain outside this GUI initialization path.
-

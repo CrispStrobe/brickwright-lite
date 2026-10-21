@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "boost-rover",
+  "language": "en",
+  "what": "Two driven wheels share one chassis. Their speed difference changes the path. Two built-in wheel motors produce straight motion and rotation.",
+  "try": [
+    "Reset, load the example program and run it. Watch the path rather than only the encoder values.",
+    "Stop the program. Use equal motor settings, then make one wheel slower.",
+    "Reset and reverse both wheels. Predict the curve before moving."
+  ],
+  "why": "Each wheel covers its own distance. Equal wheel speeds produce translation; a difference rotates the chassis. Opposite speeds can turn it nearly on the spot.",
+  "matters": "The same geometry steers mobile robots and tracked vehicles.",
+  "question": "What happens when one wheel travels farther than the other?",
+  "answer": "The chassis curves toward the slower wheel. Equal magnitudes in opposite directions largely cancel translation.",
+  "further": [
+    "Compare a broad curve with a tight turn.",
+    "Try the pivot-steered rover: its front wheels steer mechanically."
+  ],
+  "formula": "v = (vR + vL) / 2;  yaw rate = (vR − vL) / track width",
+  "related": [
+    "pivot-rover.ldr"
+  ]
+}

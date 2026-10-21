@@ -43,4 +43,3 @@ reports, input selection, product errors and execution limits. Journal failures
 remain sticky observer failures outside product classification. Earlier complete
 census attempts produced no report; all their current input outcomes remain
 unobserved. Progress prefixes confer no feature, runtime or corpus count credit.
-

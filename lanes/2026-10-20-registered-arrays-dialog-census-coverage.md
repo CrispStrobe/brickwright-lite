@@ -42,4 +42,3 @@ Scratch primitives, mutable accessors or methods from passive observers; unknown
 shapes and callable/private implementations remain explicitly unobserved. All
 original clicks, frame sampling and assertions remain unchanged. Source review
 and syntax checks pass; this is not a browser result or a cause determination.
-

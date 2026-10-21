@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "forklift",
+  "language": "de",
+  "what": "Ein Ritzel schiebt eine geführte Zahnstange und macht aus Drehung eine geradlinige Bewegung. Eine Zahnstange wandelt Drehung in Hub um: Miss den Hub je Motorumdrehung.",
+  "try": [
+    "Setze zurück und starte die Hin-und-zurück-Bewegung des Beispiels.",
+    "Zähle Motorumdrehungen und vergleiche den Zahnstangenweg.",
+    "Stoppe das Programm und nähere dich mit kleiner manueller Geschwindigkeit einem Endanschlag."
+  ],
+  "why": "Der Tangentialweg am Teilkreis wird zum Zahnstangenweg. Die Führung verhindert seitliches Ausweichen. Am Anschlag bleibt der Mechanismus stehen, statt durch das Ende der Schiene zu fahren.",
+  "matters": "Zahnstangen werden in Hebezeugen, Maschinenschlitten und Lenkungen genutzt.",
+  "question": "Was geschieht bei doppeltem Ritzelwinkel vor dem Anschlag?",
+  "answer": "Der ideale Zahnstangenweg verdoppelt sich. Ein Anschlag begrenzt den wirklichen Weg; der Encoderwert allein genügt daher nicht.",
+  "further": [
+    "Vergleiche Heben gegen die Schwerkraft mit dem waagerechten Schlitten.",
+    "Warum liefert ein größeres Ritzel mehr Weg, aber bei gleichem Drehmoment weniger Kraft?"
+  ],
+  "formula": "Weg = Teilkreisradius × Winkel im Bogenmaß;  Ritzel mit 8 Zähnen: r = 4 mm",
+  "related": [
+    "rack-shuttle.ldr",
+    "screw-crane.ldr"
+  ]
+}

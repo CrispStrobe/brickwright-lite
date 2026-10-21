@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "pendulum-array",
+  "language": "de",
+  "what": "Ein Motor dreht eine gemeinsame Aufhängung mit drei freien Pendeln. Der rote 7L-Arm, gelbe 11L-Arm und blaue 13L-Arm haben 48, 80 und 96 mm Abstand vom Lager zur Spitze. Drehe und stoppe die Aufhängung: Drei freie Arme vergleichen längenabhängige Perioden und Phasendrift.",
+  "try": [
+    "Setze zurück, lade das Programm und starte. Die Aufhängung macht eine halbe Umdrehung und hält dann, während die Arme weiterschwingen.",
+    "Zähle in Zeitlupe vollständige Schwingungen, während die Aufhängung stillsteht. Vergleiche Rot, Gelb und Blau.",
+    "Beobachte die zweite halbe Umdrehung in Gegenrichtung. Vergleiche neue Amplituden und die anschließende Phasendrift."
+  ],
+  "why": "Die Schwerkraft erzeugt das rückstellende Moment, die Massenverteilung das Trägheitsmoment. Beim gleichmäßigen schlanken Stab mit Lager am Ende wächst die Kleinwinkel-Periode mit der Quadratwurzel der Länge. LEGO-Balken haben verteilte Masse, Stiftmasse, endliche Amplitude und simulierte Dämpfung. Ihre Perioden entsprechen daher nicht exakt einer idealen Punktmasse.",
+  "matters": "Unterschiedliche Eigenperioden verändern die relative Phase. Ein scheinbar wanderndes Muster beweist allein noch keinen Energietransport zwischen den Pendeln.",
+  "question": "Verdoppelt sich die Kleinwinkel-Periode, wenn der Abstand zwischen Lager und Spitze verdoppelt wird?",
+  "answer": "Nein. Bei ähnlicher Massenverteilung wächst die Periode näherungsweise mit der Quadratwurzel der Länge. Doppelte Länge ergibt etwa die 1,41-fache Periode; große Amplituden und die Balkenform verändern den Messwert.",
+  "further": [
+    "Vergleiche gemessene Perioden nahe 0,38, 0,49 und 0,52 Sekunden, statt nur Motorumdrehungen zu zählen.",
+    "Pausiere das Programm, errege die Pendel mit einem kleinen A-Wert und halte die Aufhängung mit Alle stoppen. Welche Teile bewegen sich weiter?"
+  ],
+  "formula": "Gleichmäßiger Stab, kleine Winkel: T ≈ 2π √(2L / 3g)",
+  "related": [
+    "centrifugal-governor.ldr",
+    "tidal-trio.ldr",
+    "pulse-percussion.ldr"
+  ]
+}

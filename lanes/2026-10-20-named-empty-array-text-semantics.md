@@ -18,5 +18,3 @@ validation; do not grant primitive eligibility to arbitrary factory bodies.
 Preserve default/unqualified behavior, existing rejection leases and the
 separate derived-reference work. Explicit supplier publication/adoption and
 fresh installed qualification are pending; no source-only runtime claim.
-
-

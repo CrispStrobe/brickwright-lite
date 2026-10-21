@@ -94,7 +94,7 @@ export class SimLabClock {
         this.steps = new VmStepClock({beforeStep: () => this._beforeStep(), afterStep: ms => this._afterStep(ms)});
         this.runtime = null;
         this.session = null;
-        /** Simulated per real time, (0, 1]: slow motion below 1 (the Robot Lab API's setTimeScale). */
+        /** Requested simulated time per wall time; hardware may run slower. */
         this.timeScale = 1;
         this._reset();
     }
@@ -219,13 +219,13 @@ export class SimLabClock {
         const applied = () => { if (generation === this._generation) this._applied(ms); };
         if (!session || session.failed || session._disposed) { applied(); return; }
         session.tick(ms);
-        // Slow motion (setTimeScale < 1): the step is held back until the wall clock says simulated time
-        // may have advanced this far (slowMotionWait), whatever the step and the VM's own cadence took.
+        // Pace slow motion and fast forward against elapsed wall time. The VM still
+        // buys one unchanged physics interval per step, so waits and motors agree.
         // At 1 (always, unless asked) the order of operations is exactly as it was.
-        if (this.timeScale > 0 && this.timeScale < 1) {
+        if (this.timeScale > 0 && this.timeScale !== 1) {
             const until = this.programMs + ms;
             session.idle().then(() => {
-                const wait = slowMotionWait(this._pace, {scale: this.timeScale, simMs: until, nowMs: wallNow()});
+                const wait = slowMotionWait(this._pace, {scale: this.timeScale, simMs: until, nowMs: this.wallNow()});
                 this._pace = wait.pace;
                 return wait.ms > 0 ? new Promise(resolve => setTimeout(resolve, wait.ms)) : null;
             }).then(applied, applied);
@@ -240,11 +240,13 @@ export class SimLabClock {
         this.programMs += ms;
         this._sample();
         this._runTimers();
-        if (this.deferred) {
+        if (this.deferred || this.timeScale > 1) {
+            // Fast forward requests the next VM step after physics and timer
+            // continuations finish, rather than waiting for the normal 30 Hz tick.
             const generation = this._generation;
             // A macrotask, so the timers' continuations (a resolved wait, a rate-limited send) come first.
             this.defer(() => {
-                if (generation !== this._generation || !this.deferred || this.owedMs > 0) return;
+                if (generation !== this._generation || (!this.deferred && this.timeScale <= 1) || this.owedMs > 0) return;
                 this.runtime._step();
             });
         }

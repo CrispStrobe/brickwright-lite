@@ -8,5 +8,3 @@ input, Array body or primitive operand authority. Unknown and nested direct
 operands, helper mutations and foreign effects on actual Array joins still
 refuse. The public source graph and emitted unary operations remain unchanged.
 Focused source controls and affected original roundtrip qualification are pending.
-
-

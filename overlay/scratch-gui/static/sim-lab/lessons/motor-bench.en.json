@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "motor-bench",
+  "language": "en",
+  "what": "This hub or motor bench exposes the port-to-motion relationship with a small mechanism. A motor accelerates an axle and gear; compare running and braking.",
+  "try": [
+    "Reset and load the example when available.",
+    "Stop the program and operate one motor slider at a low setting.",
+    "Compare direction, speed and the response after Stop."
+  ],
+  "why": "A motor command acts through the supported port and mechanism. Motor families differ in feedback: encoder-equipped motors can report angle and hold a target; an encoderless motor cannot gain that feedback merely from a program.",
+  "matters": "Understanding the port boundary helps compare LEGO hub generations honestly.",
+  "question": "Can software alone turn an encoderless motor into a measured position servo?",
+  "answer": "No. A position loop needs a position measurement or another suitable feedback source.",
+  "further": [
+    "Identify the motor and hub used by this model.",
+    "Compare its controls with the SPIKE survey rover."
+  ],
+  "formula": "",
+  "related": [
+    "survey-rover.ldr"
+  ]
+}

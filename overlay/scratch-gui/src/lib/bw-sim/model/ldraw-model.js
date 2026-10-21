@@ -281,10 +281,14 @@ export const parseModel = (text, {catalog} = {}) => {
 
     // State for main model
     let pendingPort = null; // string or null
+    let pendingRotor = null;
+    let pendingSlides = [];
+    let pendingLoad = false; // intentional free payload, placed by contact rather than a connector
     let pendingPen = false; // a `0 !BW PEN` line: the next part draws on the floor
     let pendingId = null;
     let pendingGroup = null; // groupId or null
     const seenIds = new Set();
+    const drawings = [];
     // Ids the main model gives explicitly: a generated id (p<n>) never takes one of them.
     const reservedIds = new Set();
     for (const {text: line} of mainLines) {
@@ -333,6 +337,10 @@ export const parseModel = (text, {catalog} = {}) => {
         const norm = normalizeFile(subFileName);
         const sec = fileSections.get(norm);
         if (!sec) return result;
+        let localPendingRotor = null;
+        let localPendingSlides = [];
+        let localPendingLoad = false;
+        let localPendingPen = false;
         let localPendingPort = null;
         let localPendingId = null;
         for (let i = 0; i < sec.lines.length; i++) {
@@ -344,6 +352,20 @@ export const parseModel = (text, {catalog} = {}) => {
             const {text: line, lineNo} = sec.lines[i];
             const trimmed = line.trim();
             if (!trimmed) continue;
+            if (/^0\s+!BW\s+ROTOR(?:\s|$)/i.test(trimmed)) {
+                const raw = trimmed.replace(/^0\s+!BW\s+ROTOR\s*/i, '').trim();
+                const v = raw ? Number(raw) : NaN;
+                localPendingRotor = Number.isFinite(v) ? v % 360 : null;
+                if (localPendingRotor === null) refusals.push({line: lineNo, code: 'bad-rotor', message: 'ROTOR needs a finite angle in degrees'});
+                continue;
+            }
+            if (/^0\s+!BW\s+SLIDE(?:\s|$)/i.test(trimmed)) {
+                localPendingSlides = trimmed.replace(/^0\s+!BW\s+SLIDE\s*/i, '').trim().split(/\s+/).filter(Boolean);
+                if (!localPendingSlides.length) refusals.push({line: lineNo, code: 'bad-slide', message: 'SLIDE needs round-bore connector IDs'});
+                continue;
+            }
+            if (/^0\s+!BW\s+LOAD\s*$/i.test(trimmed)) { localPendingLoad = true; continue; }
+            if (/^0\s+!BW\s+PEN\s*$/i.test(trimmed)) { localPendingPen = true; continue; }
             if (/^0\s+!BW\s+PORT\s+/i.test(trimmed)) {
                 const m = trimmed.match(/^0\s+!BW\s+PORT\s+(.+?)\s*$/i);
                 const val = m ? m[1].trim() : '';
@@ -368,6 +390,14 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             const parsed = parseType1(line);
             if (parsed && !parsed.error) {
+                const pendingSlidesHere = localPendingSlides;
+                localPendingSlides = [];
+                const pendingRotorHere = localPendingRotor;
+                localPendingRotor = null;
+                const pendingPenHere = localPendingPen;
+                localPendingPen = false;
+                const pendingLoadHere = localPendingLoad;
+                localPendingLoad = false;
                 const pendingPortHere = localPendingPort;
                 const pendingIdHere = localPendingId;
                 localPendingPort = null;
@@ -436,6 +466,10 @@ export const parseModel = (text, {catalog} = {}) => {
                 seenIds.add(id);
                 const part = {id, part: parsed.file, color, position: placed.position, rotation: placed.rotation};
                 if (pendingPortHere) part.port = pendingPortHere;
+                if (pendingSlidesHere.length) part.slides = pendingSlidesHere;
+                if (pendingLoadHere) part.load = true;
+                if (pendingPenHere) part.pen = true;
+                if (pendingRotorHere !== null) part.rotorAngle = pendingRotorHere;
                 result.push(part);
                 if (parts.length + result.length > MAX_PARTS) {
                     overflow = true;
@@ -461,6 +495,9 @@ export const parseModel = (text, {catalog} = {}) => {
     const dropPending = () => {
         pendingPort = null;
         pendingPen = false;
+        pendingLoad = false;
+        pendingRotor = null;
+        pendingSlides = [];
         pendingId = null;
         pendingGroup = null;
     };
@@ -476,8 +513,21 @@ export const parseModel = (text, {catalog} = {}) => {
             sawStep = true;
             continue;
         }
+        if (/^0\s+!BW\s+SLIDE(?:\s|$)/i.test(trimmed)) {
+            pendingSlides = trimmed.replace(/^0\s+!BW\s+SLIDE\s*/i, '').trim().split(/\s+/).filter(Boolean);
+            if (!pendingSlides.length) refusals.push({line: lineNo, code: 'bad-slide', message: 'SLIDE needs round-bore connector IDs'});
+            continue;
+        }
+        if (/^0\s+!BW\s+LOAD\s*$/i.test(trimmed)) { pendingLoad = true; continue; }
         if (/^0\s+!BW\s+PEN\s*$/i.test(trimmed)) {
             pendingPen = true;
+            continue;
+        }
+        if (/^0\s+!BW\s+ROTOR(?:\s|$)/i.test(trimmed)) {
+            const raw = trimmed.replace(/^0\s+!BW\s+ROTOR\s*/i, '').trim();
+            const v = raw ? Number(raw) : NaN;
+            pendingRotor = Number.isFinite(v) ? v % 360 : null;
+            if (pendingRotor === null) refusals.push({line: lineNo, code: 'bad-rotor', message: 'ROTOR needs a finite angle in degrees'});
             continue;
         }
         // Check for !BW PORT
@@ -501,6 +551,17 @@ export const parseModel = (text, {catalog} = {}) => {
             } else {
                 pendingId = val;
             }
+            continue;
+        }
+        if (/^0\s+!BW\s+DRAW(\s|$)/i.test(trimmed)) {
+            // Flat-model binding: paper part, pen carrier, carrier-local tip, paper-local centre, radius (LDU).
+            const words = trimmed.split(/\s+/).slice(3);
+            const values = words.slice(2).map(Number);
+            if (words.length !== 9 || !words.slice(2).every(w => NUMBER.test(w)) ||
+                !values.every(n => Number.isFinite(n) && Math.abs(n) <= MAX_COORDINATE) || values[6] <= 0) {
+                refusals.push({line: lineNo, code: 'bad-drawing', message: `Bad DRAW at line ${lineNo}`});
+            } else drawings.push({line: lineNo, surface: words[0], pen: words[1], tip: values.slice(0, 3),
+                center: values.slice(3, 6), radiusLdu: values[6]});
             continue;
         }
         if (/^0\s+!BW\s+HOSE(\s|$)/i.test(trimmed)) {
@@ -617,6 +678,9 @@ export const parseModel = (text, {catalog} = {}) => {
             const part = {id, part: parsed.file, color: parsed.color, position: parsed.position, rotation: parsed.rotation};
             if (pendingPort) part.port = pendingPort;
             if (pendingPen) part.pen = true;
+            if (pendingSlides.length) part.slides = [...pendingSlides];
+            if (pendingLoad) part.load = true;
+            if (pendingRotor !== null) part.rotorAngle = pendingRotor;
             if (pendingGroup) {
                 const g = groupsById.get(pendingGroup);
                 if (partToGroup.has(id)) {
@@ -628,6 +692,9 @@ export const parseModel = (text, {catalog} = {}) => {
             }
             pendingPort = null;
             pendingPen = false;
+            pendingLoad = false;
+            pendingRotor = null;
+            pendingSlides = [];
             pendingId = null;
             pendingGroup = null;
             parts.push(part);
@@ -655,6 +722,21 @@ export const parseModel = (text, {catalog} = {}) => {
     }
 
     const model = {version: 1, parts};
+    // Keep a supplied model's attribution when Build edits or exports a derivative.
+    const header = mainLines.map(l => l.text);
+    const author = header.map(l => /^0\s+Author:\s*(.+)$/i.exec(l)?.[1]?.trim()).find(Boolean);
+    const license = header.map(l => /^0\s+!LICENSE\s+(.+)$/i.exec(l)?.[1]?.trim()).find(Boolean);
+    if ((author && author !== 'Brickwright') || license) model.attribution = {author: author || '', license: license || ''};
+    if (drawings.length) {
+        const ids = new Set(parts.map(p => p.id));
+        model.drawings = [];
+        for (const {line, ...drawing} of drawings) {
+            if (!ids.has(drawing.surface) || !ids.has(drawing.pen) || drawing.surface === drawing.pen) {
+                refusals.push({line, code: 'bad-drawing', message: `DRAW needs distinct existing surface and pen parts at line ${line}`});
+            } else model.drawings.push(drawing);
+        }
+        if (!model.drawings.length) delete model.drawings;
+    }
     if (decor.length) model.decor = decor;
     // The parts the file ships itself (an MPD's embedded part sections: unofficial parts, LDCad's
     // cable segments), by name: the views draw them from here, and serializeModel writes them back.
@@ -714,15 +796,18 @@ export const parseModel = (text, {catalog} = {}) => {
  * @param {{name?:string, title?:string}} opts
  * @returns {string} LDraw text with CRLF
  */
-export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model', author = 'Brickwright'} = {}) => {
+export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model', author = model.attribution?.author || 'Brickwright'} = {}) => {
     const lines = [];
     // A model that ships parts of its own (model.files) is an MPD: the model, then each part's FILE section.
     const files = Object.entries(model.files || {});
     if (files.length) lines.push(`0 FILE ${name}`);
     lines.push(`0 ${title}`);
     lines.push(`0 Name: ${name}`);
-    // `Author: Brickwright` marks our own file (sim-session.js OWN_FILE); an imported model keeps its own author.
     lines.push(`0 Author: ${author}`);
+    if (model.attribution?.license) lines.push(`0 !LICENSE ${model.attribution.license}`);
+    for (const d of model.drawings || []) {
+        lines.push(`0 !BW DRAW ${d.surface} ${d.pen} ${[...d.tip, ...d.center, d.radiusLdu].map(formatNumber).join(' ')}`);
+    }
     lines.push(`0 !LDRAW_ORG Unofficial_Model`);
     // Groups: output 0 !BW GROUP lines first
     if (model.groups) {
@@ -760,6 +845,9 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
         if (gid) lines.push(`0 !BW IN ${gid}`);
         if (p.port) lines.push(`0 !BW PORT ${p.port}`);
         if (p.pen) lines.push('0 !BW PEN');
+        if (p.slides?.length) lines.push(`0 !BW SLIDE ${p.slides.join(' ')}`);
+        if (p.load) lines.push('0 !BW LOAD');
+        if (p.rotorAngle !== undefined) lines.push(`0 !BW ROTOR ${formatNumber(p.rotorAngle)}`);
         const x = formatNumber(p.position[0]);
         const y = formatNumber(p.position[1]);
         const z = formatNumber(p.position[2]);

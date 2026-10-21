@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "rcx-line-follower",
+  "language": "de",
+  "what": "Ein Lichtsensor misst die reflektierte Helligkeit, während die Motoren lenken. Ein RCX-Lichtsensor schließt den Regelkreis der Lenkung.",
+  "try": [
+    "Wähle das Beispiel mit seiner Linienmatte und starte nach Zurücksetzen.",
+    "Beobachte den Sensorwert am Rand der Linie.",
+    "Ändere Schwelle oder Lenkkorrektur im Programm, setze zurück und vergleiche."
+  ],
+  "why": "Der Regler misst wiederholt, vergleicht mit einem Sollwert und verändert die Motorleistung. Eine zu starke Korrektur erzeugt Zickzack; eine zu schwache verliert die Kante.",
+  "matters": "Rückkopplung folgt einem Weg, der vorher nicht vollständig bekannt ist.",
+  "question": "Warum ist eine stärkere Korrektur nicht immer besser?",
+  "answer": "Der Roboter kann die Kante vor der nächsten Messung überschießen. Die folgende Korrektur muss ihn wieder zurücklenken.",
+  "further": [
+    "Vergleiche sanfte und starke Korrektur bei gleicher Geschwindigkeit.",
+    "Erkunde die Abstandsregelung beim Wandstopper."
+  ],
+  "formula": "Regelfehler = gemessene Reflexion − Sollwert",
+  "related": [
+    "wall-stopper.ldr"
+  ]
+}

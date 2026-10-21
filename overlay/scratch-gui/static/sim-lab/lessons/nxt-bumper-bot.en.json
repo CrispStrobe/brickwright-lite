@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "nxt-bumper-bot",
+  "language": "en",
+  "what": "A contact sensor changes the drive commands when the robot touches an obstacle. A touch sensor gives contact feedback to the NXT controller.",
+  "try": [
+    "Use the supplied example and obstacle mat. Reset and run.",
+    "Watch the touch reading when the bumper reaches the obstacle.",
+    "Compare contact-triggered reversal with the distance-triggered wall-stopper."
+  ],
+  "why": "Contact feedback is an event at the bumper, followed by a programmed reaction. The location of the contact surface and sensor travel determine when the event happens.",
+  "matters": "Bumpers are a simple way to detect a failed path or physical contact.",
+  "question": "Can this contact sensor stop the robot before any physical contact occurs?",
+  "answer": "No. It detects contact. Detecting an obstacle in advance requires a suitable non-contact sensor.",
+  "further": [
+    "Compare the bumper’s position with the body front.",
+    "Experiment with a lower approach speed."
+  ],
+  "formula": "",
+  "related": [
+    "wall-stopper.ldr"
+  ]
+}

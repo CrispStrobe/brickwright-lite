@@ -1,4 +1,4 @@
-// Lay Brickwright's one scratch-render change over node_modules/scratch-render
+// Lay Brickwright's scratch-render changes over node_modules/scratch-render
 // after `npm install`, before `npm run build`. Same shape as
 // apply-vm-overlay.mjs's string patches, same reasons: webpack builds
 // scratch-render from src, the package is pinned, and a file: link would make
@@ -17,6 +17,7 @@
 // asserts the patch's marker is in the built bundle.
 import {existsSync, readFileSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
+import {patchTextBubbleScale} from './lib/render-text-bubble-patch.mjs';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const skinPath = path.join(ROOT, 'packages', 'scratch-gui', 'node_modules', 'scratch-render', 'src', 'SVGSkin.js');
@@ -75,4 +76,14 @@ if (src.includes('this._bwFontWait = null;')) {
 if (changed) {
     writeFileSync(skinPath, src);
     console.log('  patched scratch-render/src/SVGSkin.js (text costumes wait for the lazy render fonts)');
+}
+
+// A hidden Scratch stage can request a zero-scale speech bubble during a
+// Robot Lab program. Retain its dirty state until it has pixels to render.
+const bubblePath = path.join(path.dirname(skinPath), 'TextBubbleSkin.js');
+const bubbleSource = readFileSync(bubblePath, 'utf8');
+const patchedBubble = patchTextBubbleScale(bubbleSource);
+if (patchedBubble !== bubbleSource) {
+    writeFileSync(bubblePath, patchedBubble);
+    console.log('  patched scratch-render/src/TextBubbleSkin.js (defer hidden-stage text)');
 }
