@@ -7869,3 +7869,18 @@ ABA restoration, fresh second VM, and the existing numeric, rotation, paint/menu
 and public roundtrip browser journeys. Preserve all current P17/boot size and
 performance thresholds, baselines, assertions and enabled exact-head gates.
 A build dependency/order claim is not browser, performance, game or corpus credit.
+
+### Compatibility initialization candidate
+
+The merged initialization claim now has a source candidate: both GUI entries
+first depend on one shared bootstrap for the existing Promise.finally and tooltip
+packages. The integration overlay carries both entry boundaries and the shared
+module. Tooltip consumers, library exports, unsupported-browser flow, intrinsic
+guards, dependency pins and browser budgets retain their existing behavior.
+The complete three-test Node control passed with the genuine normal CJS packages:
+both entry/mirror boundaries, Promise.finally fulfillment/rejection identity and
+order, tooltip show/hide/rebuild API and module reuse, and nonrepair of a later
+Function.prototype.toString replacement. This does not execute the browser ES
+bundle, a VM or tooltip DOM lifecycle. Exact ES/native initialization, sticky
+late-mutation/ABA refusal, fresh VM and affected hosted browser journeys remain
+required. Direct VM consumers remain outside this GUI initialization path.
