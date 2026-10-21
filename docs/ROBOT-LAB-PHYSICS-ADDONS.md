@@ -1,6 +1,6 @@
-# Pantographs, Cardan joints and an Oldham coupling
+# Nine motorized physics experiments
 
-Seven original CrispStrobe/BSD-3-Clause machines extend the existing Robot Lab
+Nine original CrispStrobe/BSD-3-Clause machines extend the existing Robot Lab
 library. Each has a real hub and one or two SPIKE medium angular motors. All use
 ordinary LDraw parts, finite feedback programs and passive mechanical outputs.
 Selecting their gallery card loads the matching Code/Blocks program and title.
@@ -139,3 +139,11 @@ source geometries pass eight targeted standard winding-mesh, fastener-depth,
 shared-bore and negative controls. Gallery/menu registration and EN/DE lessons
 are additive; existing models are preserved. Browser qualification is pending.
 No physical LEGO construction or payload capacity is claimed.
+
+Local qualification of the 66-assembly candidate passes all 30 focused native
+controls and complete WebKit programs, manual ports, both lesson languages and
+connected instructions/BOMs for all nine additions. Eighteen actual LDraw/MPD
+imports also pass automatic Blocks/title loading, with no missing DAT requests,
+duplicate block definitions or page errors. The parent release additionally
+repairs the model/program loading transaction and bounds Simulate GPU frames;
+full hosted qualification of the composed source remains pending.
