@@ -2,7 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 // These fresh diagnostic cores are NEVER advanced. Actual program execution is
 // a separate SimSession and receives none of the unit diagnostic velocities.
-import{catalogFrom,prepareModel,SimSession}from'../../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import{prepareModel,SimSession}from'../../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import{loadJolt,createPhysicsCore}from'../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import{HubState}from'./spike-arena-vm.mjs';
 const dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0);

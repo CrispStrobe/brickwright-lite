@@ -546,8 +546,7 @@ its full modules and catalog controls pass with a missing-input negative.
 
 ## Counterturn and Snapgate — 2026-10-22
 
-IMPLEMENTED / native and geometry qualified; browser and hosted qualification
-pending. Continue the original owner-requested model intake with Counterturn
+DONE locally / exact-head hosted qualification pending. Continue the original owner-requested model intake with Counterturn
 (120 placements, A) and Snapgate (205 CAD placements / 204 stock items, A).
 Exact source hashes, raw CAD, original finite programs and BSD/CrispStrobe
 notices are retained. Counterturn's real 12:20 bevel pair drives a vertical
@@ -563,6 +562,17 @@ closure, inertia, momentum, startup and repeatability bounds are preserved.
 Seven ordinary/strict native controls pass, including an actual real-part
 Counterturn locking brace and independently rejected frozen-output records.
 The two revised models pass all eight detailed mesh/fastener checks, zero editor
-overlaps and connected automatic instructions. Browser snapshots, manual controls,
-EN/DE lessons, LDR/MPD imports and the 72-assembly / 80-choice / 160-lesson library
-remain final candidate gates. These are separate from release 0.1.26.
+overlaps and connected automatic instructions. Both full native programs, manual controls, English/German lessons and
+56/99 connected instruction pages pass in actual WebKit. All four exported
+LDR/MPD imports pass with automatic Blocks/titles, no missing DAT requests,
+no duplicate block definitions and no page errors. All 1,280 Sim Lab regressions
+and 21 delivery-metadata controls pass. The 72-assembly / 80-choice / 160-lesson
+library is separate from release 0.1.26; hosted CI remains the integration gate.
+
+The browser observes batched worker poses. Its snap timing is reported as a
+bracketed upper bound and secant speed; the original fine-native requirement
+of at least three transition samples stays mandatory. A downsampled copy of
+actual poses passes the browser observation criterion and is rejected by that
+fine gate. No expected poses, fitted dimensions or relaxed physical bounds are
+used. The two new browser steps use the existing eight-minute budget and were
+registered with zero readings through the canonical budget generator.

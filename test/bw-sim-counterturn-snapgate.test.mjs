@@ -2,7 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';import{createHash}from'node:crypto';
 import{catalogFrom,prepareModel}from'../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';import{solidOverlaps}from'../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';import{buildSteps}from'../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
-import{adaptAddonProgram}from'../scripts/lib/physics-addon-program.mjs';import{reviseCounterturnSnapgate}from'../scripts/lib/counterturn-snapgate-model.mjs';import{judgeCounterturn,judgeSnapgate,measureCounterturn}from'../scripts/lib/sim-lab-counterturn-snapgate-judge.mjs';import{counterturnInertia}from'./helpers/counterturn-inertia.mjs';import{runRobotLabProgram}from'./helpers/robot-lab-direct-vm.mjs';
+import{adaptAddonProgram}from'../scripts/lib/physics-addon-program.mjs';import{reviseCounterturnSnapgate}from'../scripts/lib/counterturn-snapgate-model.mjs';import{judgeCounterturn,judgeSnapgate,measureSnapgate}from'../scripts/lib/sim-lab-counterturn-snapgate-judge.mjs';import{counterturnInertia}from'./helpers/counterturn-inertia.mjs';import{runRobotLabProgram}from'./helpers/robot-lab-direct-vm.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),base='overlay/scratch-gui/static/sim-lab/',C=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const variables=vm=>Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
 const observeCounter=({session,vm,prepared})=>{const origin=prepared.runModel.parts.find(p=>p.id==='yaw_base').position.map((x,i)=>x*(i?-.0004:.0004));return{variables:variables(vm),momentum:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.parts.length).map(b=>[b.id,session.core.bodyAngularMomentum(b.id,origin)]))};};
@@ -23,5 +23,10 @@ test('Counterturn: a removable real-part brace locks the carrier while the same 
 });
 for(const autoPorts of[undefined,false])test('Snapgate '+(autoPorts===false?'strict':'ordinary')+': 5 ms native observations, cold start, four fast snaps and repeated memory',async t=>{
  const r=await runRobotLabProgram(read(base+'programs/snapgate.bw'),{modelText:read(base+'models/snapgate.ldr'),timeLimitMs:65000,autoPorts,frameMs:5,coldMs:500,afterMs:500,observeFrame:({vm})=>({variables:variables(vm)})});assert.equal(Number(r.track.at(-1).extra.variables.completed),1);assert.equal(Number(r.track.at(-1).extra.variables.failed),0);t.diagnostic(JSON.stringify(judgeSnapgate('snapgate',r,{fine:true,cold:true})));
+ // Remove intermediate observations only, as a worker batch can do; keep the
+ // actual before/after poses. This is measurement downsampling, not simulation.
+ const rows=measureSnapgate(r),omit=new Set();
+ for(const cycle of[1,2])for(const stage of[1,3]){const direction=stage===1?1:-1,indices=rows.map((x,i)=>x.cycle===cycle&&x.stage===stage?i:-1).filter(i=>i>=0),c=indices.find(i=>i&&rows[i-1].out*direction<0&&rows[i].out*direction>=0);assert.ok(c);let lo=c,hi=c;while(lo>0&&rows[lo].out*direction>-.8*19.23533)lo--;while(hi<rows.length-1&&rows[hi].out*direction<.8*19.23533)hi++;for(let i=lo+1;i<hi;i++)omit.add(i);}
+ const batched={...r,track:r.track.filter((_,i)=>!omit.has(i))};assert.equal(judgeSnapgate('snapgate',batched,{cold:true}).snaps.length,4);assert.throws(()=>judgeSnapgate('snapgate',batched,{fine:true,cold:true}),'two-pose batches cannot substitute for the fine native transition gate');
  const b=r.mechanism.bodies.find(b=>b.parts.includes('rocker')),frozen={...r,track:r.track.map(f=>({...f,bodies:{...f.bodies,[b.id]:r.track[0].bodies[b.id]}}))};assert.throws(()=>judgeSnapgate('snapgate',frozen,{fine:true,cold:true}),'a frozen output cannot pass memory or snap tests');
 });
