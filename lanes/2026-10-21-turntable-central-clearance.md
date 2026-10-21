@@ -11,7 +11,7 @@ pair and concealed the defect. Its broad collision exemption is not a repair.
 Scope: turntable collision derivation in
 `overlay/scratch-gui/src/lib/bw-sim/part-meta/derive.js`; the affected turntable
 entries in `parts.json` and any canonical derived metadata required by repository
-checks; focused turntable/geometry and Counterturn regression tests; model-lane
+checks; the nonmeshing-pair warning proximity test in `mech/gears.js`; focused turntable/geometry and Counterturn regression tests; model-lane
 integration and this claim. No Jolt binding, solver, mass-floor, damping, motor,
 foreign-import policy, controller or existing tolerance change is included.
 
@@ -21,4 +21,8 @@ through the opening and retained contact with the surrounding ring. Qualify the
 actual native reaction against independently measured inertia, preserving the
 passive carrier, physical locking control and frozen-output negative. Run the
 affected existing turntable/model controls before integrating the new models.
+The same model exposes warnings for bevel gears well above the turntable tooth
+plane: center distance alone is insufficient. Reject a warning candidate only
+when its measured finite tooth envelopes are separated; retain warnings for
+actual nearby unsupported meshes. Do not change coupling detection or ratios.
 Merge this claim before changing collision derivation or metadata.
