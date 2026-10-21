@@ -5,6 +5,10 @@ DEVICE SPIKE
 # marked "Draws on the floor", so it draws a line wherever it rolls).
 # Four times: drive 20 cm, then turn a quarter on the spot. That is a square.
 # The ball sits behind the wheels, so at each corner its line swings round in a loop.
+# A turn goes on a little after the gyro passes the mark: the program sees the yaw
+# once a frame, and the robot needs a moment to stop. So it turns quickly to 70°,
+# then slowly to 89°, where it stops at about 90°. (Stopping at once from full
+# speed overshoots by 6 or 7 degrees, and the square does not close.)
 # Try a triangle: 3 times, a third of a turn (120°) each.
 WHEN flag clicked:
   set movement motors A B
@@ -13,6 +17,8 @@ WHEN flag clicked:
     move forward 20 cm
     reset yaw
     start tank 20 -20
-    wait until (spike angle yaw) > 88
+    wait until (spike angle yaw) > 70
+    start tank 5 -5
+    wait until (spike angle yaw) > 89
     stop movement
     wait 0.3 seconds
