@@ -545,7 +545,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // docs/ROBOT-LAB-ARCHITECTURE.md ("Motion quality").
             const sweep = !experiments.discrete && b.colliders.length <= (experiments.ccdMaxColliders ?? CCD_MAX_COLLIDERS);
             bcs.mMotionQuality = sweep ? J.EMotionQuality_LinearCast : J.EMotionQuality_Discrete;
-            if (experiments.maxLinearVelocity) bcs.mMaxLinearVelocity = experiments.maxLinearVelocity;
+            const maxSpeed = experiments.maxLinearVelocity ?? mechanism.solver?.maxLinearVelocity;
+            if (maxSpeed) bcs.mMaxLinearVelocity = maxSpeed;
             bcs.mOverrideMassProperties = J.EOverrideMassProperties_CalculateInertia;
             const mp = bcs.mMassPropertiesOverride;
             mp.mMass = Math.max(b.massKg, massFloorKg);
@@ -1179,7 +1180,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // rotation by physics/screw.js, once the joint states are known (below).
             screwCouplings.push(g);
             gearInfos.push({ type: 'screw', id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
-        } else if (g.kind === 'universalJoint') {
+        } else if (g.kind === 'universalJoint' || g.kind === 'cvJoint') {
             // kinds/universal-joint.js: a cross on two hinges between the two ends (physics/universal-joint.js).
             const uj = buildUniversalJoint({ J, c: g, bodyInterface, physicsSystem, bodyOf: getBodyForId, layer: LAYER_GHOST });
             allBodyIDs.push(uj.bodyID);
@@ -1187,7 +1188,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // The ends' shafts get a gear's inertia floor: a bare axle (~1e-8 kg·m²) on each side of the cross let a
             // load on the output stall the drive by turns (the solver's chain end → cross → end did not converge).
             for (const bid of [g.body1, g.body2]) floorInertia(bid);
-            gearInfos.push({ type: 'universalJoint', id: g.id, body1: g.body1, body2: g.body2 });
+            gearInfos.push({ type: g.kind, id: g.id, body1: g.body1, body2: g.body2 });
         } else if (g.kind === 'turntable') {
             // kinds/turntable.js emits none; a hand-built mechanism naming the kind has nothing to build.
         } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
@@ -1641,7 +1642,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
                 for (const r of racks) r.constraint.SetConstraints(r.hinge, r.slider);
-                joltInterface.Step(dtFixed, 1);
+                joltInterface.Step(dtFixed, experiments.collisionSteps || 1);
                 timeSteps += 1;
                 acc -= dtFixed;
                 if (acc < 0 && acc > -1e-12) acc = 0;

@@ -188,6 +188,51 @@ thread, and it runs on Jolt's worker threads. With it, the multithreaded build w
 1.1–1.25× on the biggest sets, nothing on the 4x4. Shipping that needs the multithreaded file served unbundled, and
 COOP/COEP from the host.
 
+## Drive lines: round tyres, CV joints, differentials, a speed limit (2026-10-21)
+
+The 4x4 Off-Roader (42099) turned its motors and did not move: 1.4 cm in 2 s. Four things held it.
+
+- **Tyres were boxes.** Every tyre derived from the LDraw library (30 of them, the decoration path in
+  `part-meta/catalog-parts.js`) got a box collider; a box does not roll, so the front wheels held the front motor.
+  A tyre is now a cylinder along its box's odd side (`tyreCylinder`).
+- **CV joints and wheel hubs.** The CV ball 52731 and its sockets 52730 and the hub 46490c01 are a new coupling kind,
+  `cvJoint` (`kinds/cv-joint.js`), built as the universal joint's cross. The hub's flange turns on a free internal
+  hinge. Its planetary reduction is not modelled (1:1); no reliable source for its ratio was found (forum figures range
+  from about 3:1 to 5:1).
+- **The differential 62821** is locked: its bores hold the half axles, so both wheels turn with the casing. That is
+  exact going straight. Open, the casing has to be hinged in the chassis, and in real files it turns on its half axles,
+  which locked the drive. Its ring's pitch radius is where the models put the 20T double bevel that drives it, 40 LDU
+  (2 studs). The 28 teeth would say 35, so the mesh's ratio is 1.6, not the teeth's 1.4.
+- **Double bevels mesh as spur gears with a parallel partner** (`mech/gears.js`), for every model: a 12T and a 20T
+  double bevel on axles 2 studs apart. For models from elsewhere, gears within 2° of square or parallel and 1.5 LDU of
+  their partner's axis mesh, and a gear up to 3.5 LDU off its axle sits on it.
+
+The 4x4 now drives 0.67 m in 2 s. With every body free to roll, models that had been held still by their box tyres
+moved, and some flung a light part to NaN. A model from elsewhere now caps every body's speed at 5 m/s
+(`FOREIGN_MAX_SPEED_M_S`; Jolt's own limit is 500 m/s). The 96-model bench, every motor at 60 %, 2 s:
+
+| | before | after |
+|---|---|---|
+| NaN | 17 | 12 |
+| drove 0.1–5 m | 19 | 25 |
+| under real time (≤ 5 ms a step) | 58 | 58 |
+
+Eight models stop going NaN (42042, 42043 Flatbed Trailer, 42055, 42070, 42109, 8094 Robotic Arm, 8258, odin). Three
+newly do: 42080, 42113 and 42131. In each, a light linkage spins free once the machine moves (42080's arm at 16 rad/s
+against its neighbours). The 5 m/s cap does not catch them. They are open.
+
+**Pin friction on free hinges.** A hinge in a model from elsewhere that nothing drives, limits or couples now turns
+with 0.02 N·m of friction (`FOREIGN_FREE_HINGE_NM`). A friction pin holds a 10 g liftarm level 6 cm out, which is
+0.006 N·m, so 0.02 is that order. Frictionless, 42080's arm was hit by its neighbours and spun up to 16 rad/s. Exempt:
+- hinges on a wheel's body (it rolls);
+- hinges on a motor's body (a train motor's idler axles are its own free joints; with friction, the 7760 shunter
+  stopped);
+- hinges on a body a coupling moves (a CV joint drives the hub through it).
+
+On 19 models: NaN 13 with no friction, 9 at 0.005, 7 at 0.02, 6 at 0.05. On all 96: NaN 12 → 11, driving 25 → 30
+(42080, 42131, 42043, 8868 and brickhub-9 hold together; 42055, 42066, 42129 and 75253 now fail late in the 2 s).
+Small changes reshuffle which models fail, so the totals are the measure.
+
 ## Old motors and the LeoCAD and LDD files (2026-10-21)
 
 **Old motors are motor parts now** (`parts.json`, `devices/catalog.js`):

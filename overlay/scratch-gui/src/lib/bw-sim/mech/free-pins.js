@@ -15,7 +15,7 @@
 //
 // A body is a free pin when every part on it is a shaft (no solid collider: pins and axles,
 // kinds/pin-axle.js solidColliders), it has two or more joints, all hinges without a motor, to different
-// bodies, on one line (a pin through three beams: each beam hinges on the one it is welded to) (parallel 1°, 0.5 LDU), and no part on it has teeth (a gear on an
+// bodies, on one line (with `dangling`, also a single hinge: a pin that holds nothing) (a pin through three beams: each beam hinges on the one it is welded to) (parallel 1°, 0.5 LDU), and no part on it has teeth (a gear on an
 // axle is a body of its own) or a tooth connector.
 
 import {COS_1_DEG, vecDot, vecSub, vecScale, vecLen, vecNormalize} from './vec.js';
@@ -36,7 +36,7 @@ const onLine = (q, p, a, tol) => {
  * @param {Array} joints joints.js joints (world frame, m)
  * @returns {[string, string][]} [pin body, part body] pairs to weld
  */
-export const freePinWelds = (nodes, islands, joints) => {
+export const freePinWelds = (nodes, islands, joints, {dangling = false} = {}) => {
     const metaOfBody = new Map();
     for (const [nodeId, node] of nodes.entries()) {
         const b = islands.nodeToBody.get(nodeId);
@@ -51,7 +51,14 @@ export const freePinWelds = (nodes, islands, joints) => {
         if (metas.some(m => m.internalJoints && m.internalJoints.length)) continue;
         const mine = joints.filter(j => j.body1 === body.id || j.body2 === body.id);
         // A hinge with friction or end stops (a slip clutch's hub on its axle) is a joint that does something.
-        if (mine.length < 2 || mine.some(j => j.type !== 'hinge' || j.motor || j.frictionNm || j.limits)) continue;
+        if (mine.some(j => j.type !== 'hinge' || j.motor || j.frictionNm || j.limits)) continue;
+        // dangling (a model from elsewhere): a pin on ONE hinge, holding nothing (odin's 0.25 g 3673 at the end of a
+        // linkage spun up to 500 rad/s and took the model to NaN), is welded to the part it hangs on.
+        if (mine.length === 1 && dangling) {
+            out.push([body.id, mine[0].body1 === body.id ? mine[0].body2 : mine[0].body1]);
+            continue;
+        }
+        if (mine.length < 2) continue;
         const others = mine.map(j => (j.body1 === body.id ? j.body2 : j.body1));
         if (new Set(others).size !== others.length) continue;
         const a = vecNormalize(mine[0].axis);
