@@ -1,3 +1,4 @@
+import {nullableArrayLengthSource} from './nullable-array-length-source.js';
 import {lexicalDeclarationReadiness} from './lexical-declaration-readiness.js';
 import {constraints} from './ordinary-procedure-constraint-metadata.js';
 import {CAMERA_PROPERTIES} from './camera-property-constants.js';
@@ -99,6 +100,8 @@ function deadLocalResets(program) {
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
 function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
+    const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
+    const nullableLengthIssued=new Set();let nullableLengthUsed=false;
     const lexicalSource=initializationEntries?lexicalDeclarationReadiness(program):null;
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
@@ -196,7 +199,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
-        if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',receiver:cell(node.object),result:current});return;}
+        if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',node,receiver:cell(node.object),result:current});return;}
         if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&['map','push','pop','shift','unshift'].includes(node.callee.name)){
             const operation={kind:node.callee.name,node,receiver:cell(node.callee.object),result:current};arrayOperations.push(operation);
             if(operation.kind==='map'){operation.token=arrayToken(node);add(current,operation.token);arrayMaps.push(operation);}return;
@@ -306,8 +309,39 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // importer separately requires actual Array-or-primitive operand writers.
     const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection||arrayValues||primitiveComparisons)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(item.domain==='SourceBitwise'||stringConcat(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
     const arrayTypes=value=>{const set=types.get(value);return set?.size&&[...set].every(type=>type?.kind==='Array')?[...set]:null;};
+    // Result-only alternative. The original strict Array receiver API above
+    // remains unchanged; no nullish value becomes an Array or initialized read.
+    const nativeLengthDomain=value=>{
+        const set=types.get(value);if(!set?.size)return false;
+        let allocation=false;
+        for(const type of set){
+            if(type==='Null'||type==='Undefined')continue;
+            if(type?.kind!=='Array'||arraySites.get(type.site)!==type||unsafeArrayMethods.has(type))return false;
+            allocation=true;
+        }
+        return allocation;
+    };
+    const nullableLengthDomain=value=>nativeLengthDomain(value)&&[...types.get(value)].some(type=>type==='Null'||type==='Undefined');
+    const nullableLengthClosed=()=>nullableLengthSource?.closed({
+        nativeLength:node=>nativeLengthDomain(cell(node.object)),
+        bound:node=>!!declarations.get(knownBinding(node))?.size,
+        functionAt:node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;},
+        primitive:node=>{
+            const found=types.get(cell(node));
+            return !!found?.size&&[...found].every(type=>primitiveTypes.has(type))||
+                node?.type==='Member'&&node.name==='length'&&nullableLengthDomain(cell(node.object));
+        },
+        imageLiteral:node=>typeof node.value==='string'&&!declarations.get(knownBinding(node,'img'))?.size&&
+            !!parseExactImgLiteral('img`'+node.value+'`')
+    })===true;
+    const nullableLengthEligible=op=>op.kind==='length'&&nullableLengthDomain(op.receiver)&&nullableLengthClosed();
     const propagateArrays=()=>{let changed=false;
-        for(const op of arrayOperations){const tokens=arrayTypes(op.receiver);if(!tokens)continue;
+        for(const op of arrayOperations){const tokens=arrayTypes(op.receiver);if(!tokens){
+                if(nullableLengthEligible(op)){
+                    nullableLengthUsed=true;nullableLengthIssued.add(op);changed=add(op.result,'Number')||changed;
+                }
+                continue;
+            }
             if(['escape','methodWrite'].includes(op.kind)||['write','update'].includes(op.kind)&&types.get(op.index)?.size&&!exactType(op.index,'Number'))for(const token of tokens){if(!unsafeArrayMethods.has(token)){unsafeArrayMethods.add(token);changed=true;}if(op.kind==='escape')changed=add(token.element,'Opaque')||changed;}
             if(op.kind==='update')for(const token of tokens){const prior=types.get(token.element);if(prior&&[...prior].some(type=>!primitiveTypes.has(type))){if(!unsafeArrayMethods.has(token)){unsafeArrayMethods.add(token);changed=true;}}else changed=add(token.element,'Number')||changed;}
             if(op.kind==='length'||['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
@@ -330,10 +364,10 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     }while(changed);};propagate();
     if(arrayValues)for(const operation of arrayOperations)if(['write','update'].includes(operation.kind)&&!types.get(operation.index)?.size)for(const token of arrayTypes(operation.receiver)||[])unsafeArrayMethods.add(token);
     const playerWriteUnsafe=()=>!!multiplayer?.computedWrites.some(node=>{const keys=types.get(cell(node));return !keys?.size||[...keys].some(type=>!['Number','Boolean','Null','Undefined'].includes(type));});
-    let invalidated;do{invalidated=false;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
+    let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
+    const currentTypes=value=>new Set((!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
     // Construct this independent execution frontier only on demand. It cannot
     // add initialization/type facts or be selected by public source options.
     let lexicalReadiness;
@@ -358,6 +392,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         isLexicalDeclarationExecutedAt:(node,binding)=>lexical().isDeclarationExecutedAt(node,binding),
         isCapturedLexicalDeclarationReadyAt:node=>lexical().isCapturedReadyAt(node),
         lexicalDeclarationReadinessCurrent:()=>!lexicalSource||lexicalSource.current(),
+        nullableArrayLengthCurrent:()=>!nullableLengthSource||nullableLengthSource.current(),
         isInitializedAt:node=>initializedReads.has(node),
         isBindingInitializedAt:(node,binding)=>initializationAt.get(node)?.has(binding)===true,
         localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),

@@ -1,9 +1,11 @@
-# Arcade animation collection and numeric image producers — CLAIM ONLY
+# Arcade animation collection and numeric image producers
 
 Owner: Arcade integration, with the operator's continuing authorization to
 close conversion and editor/runtime gaps. Base:
 `9ac6e3d9ade022dc016bc2becb47e2d244623773`.
-Merge this claim before implementing behavior. Preserve the preceding
+Claim merged before this first source candidate. The first source cohort is qualified;
+hosted integration and the remaining pixel/resource work are still pending.
+Preserve the preceding
 lexical-readiness candidate and its failures as a separate capability.
 
 ## Observed boundary
@@ -74,3 +76,32 @@ integration; do not request extra full browser cycles without a changed gate.
 Publish each next unsupported operand while work remains. Source controls are
 not corpus completions. The historical 36 partial applications remain the
 last measurement until a complete admitted replacement report is available.
+
+
+## First candidate: nullable native Array length only
+
+The first candidate adds a private, physical-source-bound normal-result proof
+for `.length` whose complete actual receiver domain contains genuine Array
+allocations plus null or undefined, with at least one allocation. Receiver
+values, initialization and strict Array/element/coercion APIs stay unchanged.
+A separate conservative complete source/effect fence rejects callbacks,
+defaults, reflection, unknown calls and member/computed mutation; direct local
+calls require immutable closed bodies and direct references. Every length read needs genuine native receiver provenance, and executable
+records outside real grammar edges cannot contribute allocation or writer
+authority. Dense own list indices and own child data exclude inherited writers. Late invalidation adds Opaque rather than removing any observed writer. Only newly issued facts
+are source-currentness bound; older exact-Array behavior is not presented as
+repaired by this theorem.
+
+The complete new eight-group control module and all original eight modules,
+twenty-three controls now pass together: **31 tests, no failures or skips**.
+An independent saved-original reader checked source, dependencies and results.
+The earlier 29-pass/two-failure original is retained. The correction accepts
+only the parser's own null no-else alternate and fixes the new test fixture to
+select the canonical helper; explicit selection witnesses make its negative
+domain checks nonvacuous. No product helper recognizer was expanded.
+
+No exporter specialization, pixel result proof, runtime, SDK, GUI or application
+completion is included in this first source-qualified slice. The original
+animation two-pass/one-failure remains preserved. Continue the scoped resource
+and pixel work under this claim; see
+[the next-step contract](../docs/ARCADE-ANIMATION-NUMERIC-PRODUCERS.md).
