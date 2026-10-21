@@ -1,0 +1,43 @@
+// Ripple Relay — one motor, two Cardan joints, three measured shafts.
+// Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause
+// Start from the saved correctly phased shaft positions.
+// The native controller completes inside its endpoint tolerance;
+// the separate final 20 degree approach uses 2 degrees/second.
+// Guard pattern adapted from the supplied Orbit/Quickstroke examples.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (1080 - (lab motor A angle)) degrees at 45 degrees per second
+  lab stop motor A hold
+  IF (abs of (1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  IF (abs of (1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (20 - (lab motor A angle)) degrees at 45 degrees per second
+  lab stop motor A hold
+  IF (abs of (20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  IF (abs of (20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (0 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab stop motor A hold

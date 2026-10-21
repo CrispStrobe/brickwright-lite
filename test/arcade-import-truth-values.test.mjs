@@ -12,6 +12,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {arcadeSimAvailable, compileArcade, runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
 import {SB3Creator, runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
+import {createArcadeDiscreteTimers} from './helpers/arcade-discrete-timers.mjs';
 
 const FORMS = {
     not: '!flag', notcmp: '!(n < 3)', lt: 'n < 3', le: 'n <= 3', eq: 'n == 3', ne: 'n != 3', seq: 'n === 3',
@@ -298,12 +299,20 @@ test('native pauseUntil consumes actual held controller input after readiness', 
     const values = () => Object.fromEntries(run.vm.runtime.targets.flatMap(target => Object.values(target.variables))
         .map(variable => [variable.name.replace(/^(?:Game_)+/, ''), variable.value]));
     try {
-        const pending = stepFrames(run.vm, 1);
-        for (let count=0; count<30 && values().ready!==1; count++) await new Promise(resolve => setImmediate(resolve));
+        const clock = createArcadeDiscreteTimers();
+        run.vm.stopAll();
+        run.vm.runtime.bwArcadeProgramClock = clock;
+        run.vm.greenFlag();
+        await stepFrames(run.vm, 1);
         assert.equal(values().ready, 1, 'actual authored initialization completed');
+        await clock.advanceTo(0);
         assert.equal(values().done, 0, 'the false held predicate remains pending');
+        // Source pauseUntil polls its program clock independently of scene frames.
+        // Input arrives after the initialization frame and first false sample.
         run.vm.postIOData('keyboard', {key: ' ', isDown: true});
-        await pending;
+        await clock.advanceTo(49);
+        assert.equal(values().done, 0, 'input waits for the next actual polling turn');
+        await clock.advanceTo(50);
         assert.equal(values().done, 1); assert.deepEqual(run.errors, []);
-    } finally {run.vm.quit(); clearStrayTimers();}
+    } finally {run.vm.stopAll(); run.vm.quit(); clearStrayTimers();}
 });

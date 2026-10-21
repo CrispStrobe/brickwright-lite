@@ -269,7 +269,27 @@
      "halfExtents": [
       9,
       10,
-      69
+      60
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      -60
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      60
      ]
     }
    ],

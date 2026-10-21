@@ -1,0 +1,38 @@
+# Linger — a continuous crank gives a mechanical near-dwell
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe)
+# Reload the saved model before starting. The native motor-sign probe gives
+# physical crank theta = -encoder A. Targets below are unwrapped encoder degrees.
+# Physical motion is 0 -> 360 -> 720 -> 0 degrees, without a programmed pause
+# inside any 186–276 degree near-dwell interval. Only whole turns are held.
+DEVICE SPIKE
+GLOBAL target = 0
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  set target to -360
+  broadcast "move and observe" and wait
+  set target to -720
+  broadcast "move and observe" and wait
+  set target to 0
+  broadcast "move and observe" and wait
+  lab stop motor A hold
+
+WHEN I receive "move and observe":
+  IF (abs of (target - (lab motor A angle))) > 722 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (target - (lab motor A angle)) degrees at 10 degrees per second
+  lab stop motor A hold
+  IF (abs of (target - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  IF (abs of (target - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
