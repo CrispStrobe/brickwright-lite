@@ -8,8 +8,9 @@ The extension menu table now includes the two missing source-operation menus.
 It is copied from a complete run of the actual normal-installation metadata
 generator: 614 opcode rows across 30 bundled and 12 stock extension attempts,
 with only the existing camera-extension skip. No rows were supplied by hand.
-This qualifies metadata generation; the actual CLI `--check`, integrated mirror,
-complete extension-menu/SPIKE module and visible editor journeys remain gates.
+The actual generator CLI `--check` also passes against that complete table.
+Integrated mirror checks, the complete extension-menu/SPIKE module and visible
+editor journeys remain gates; metadata checks do not qualify game execution.
 
 The class/Array declaration candidate exposed six failures in its complete
 24-control regression group (17 pass, six fail, one named missing-SDK skip).
@@ -42,8 +43,9 @@ complete public CLI module with SB3/VM prerequisites, report admission and
 filesystem isolation remain separate gates. Read
 [the wire contract and pending work](ARCADE-PRIVATE-ASSESSMENT-STDIO.md).
 
-Canonical Array menu shadows now have a strict reader shared by the affected
-export analyses. Reimported null initialization exposes a further requirement:
+A separate pending candidate adds a strict canonical Array menu reader shared
+by the affected export analyses; it is not included in this composed slice.
+Its reimported null initialization exposes a further requirement:
 prove that an independent Array assignment precedes every read. The new proof
 must use the existing immutable project-JSON export boundary, preserve direct
 mutable-object refusals and retain all producer/writer checks. Its complete
@@ -52,9 +54,9 @@ does not close those application gaps.
 
 Current main also adds generated extension menu normalization. The composed
 candidate now adopts the complete actual `getInfo()` table, including
-`arcade_sourceValueBinary` and `arcade_sourceValueUnary`. Before publishing, run
-the genuine CLI `scripts/gen-extension-menu-args.mjs --check` and verify the
-source-integrated table mirror. Preserve the declared camera skip; it does not
+`arcade_sourceValueBinary` and `arcade_sourceValueUnary`. The genuine CLI
+`scripts/gen-extension-menu-args.mjs --check` passes. Verify the source-integrated
+table mirror in hosted qualification. Preserve the declared camera skip; it does not
 qualify camera behavior or the complete extension-menu/SPIKE module.
 
 Qualify the real outer creator/editor menu wrappers as well as the bare
