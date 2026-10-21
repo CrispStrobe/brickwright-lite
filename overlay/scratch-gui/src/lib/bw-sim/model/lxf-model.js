@@ -109,10 +109,9 @@ export const lddToLdraw = (bone, row) => {
  * @returns {{part: string, translation: number[], rotation: number[]}|null}
  */
 const derivedRow = (design, catalog) => {
-    if (!catalog || !/^[0-9A-Za-z]+$/.test(design)) return null;
-    const part = `${design.toLowerCase()}.dat`;
+    const part = lddCataloguePart(design, catalog);
+    if (!part) return null;
     const meta = catalog.get(part);
-    if (!meta) return null;
     const frame = importFrame(meta);
     return frame ? {part, ...rowOfFrame(frame)} : null;
 };
@@ -128,7 +127,10 @@ export const lxfDesigns = xml => {
 export const lddCataloguePart = (design, catalog) => {
     if (!catalog || !/^[0-9A-Za-z]+$/.test(design)) return null;
     const part = `${design.toLowerCase()}.dat`;
-    return catalog.get(part) ? part : null;
+    const meta = catalog.get(part);
+    if (!meta) return null;
+    // An LDraw alias (catalog-parts.js aliasOf) is placed as the part it stands for, when the catalogue has that.
+    return meta.aliasOf && catalog.get(meta.aliasOf) ? meta.aliasOf : part;
 };
 
 /**

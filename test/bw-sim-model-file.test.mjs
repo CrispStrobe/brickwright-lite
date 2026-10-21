@@ -150,6 +150,20 @@ test('a hand-made .lxf opens with its parts at poses worked out by hand from the
     ]);
 });
 
+test('an LDD design that is an LDraw alias is placed as the part it stands for (64290: the 11L beam 32525)', () => {
+    // The app's catalogue derives 64290.dat from LDraw's "=Technic Beam 11" alias file (part-meta/catalog-parts.js).
+    const catalog = new Map(CATALOG);
+    catalog.set('64290.dat', {...CATALOG.get('32525.dat'), part: '64290.dat', aliasOf: '32525.dat'});
+    const {model, refusals} = parseLxfml(text('interop/IMAGE100.LXFML'), {colours: lddColours(LDCONFIG), catalog});
+    assert.deepEqual(model.parts.map(p => p.part), ['32523.dat', '3705.dat', '32525.dat', '3648.dat', '3001.dat']);
+    assert.ok(!refusals.some(r => r.code === 'lxf-unknown-design' && r.design === '64290'));
+    // An alias whose target the catalogue lacks stays the alias's own part.
+    const lone = new Map(CATALOG);
+    lone.delete('32525.dat');
+    lone.set('64290.dat', {...CATALOG.get('32525.dat'), part: '64290.dat', aliasOf: '32525.dat'});
+    assert.ok(parseLxfml(text('interop/IMAGE100.LXFML'), {colours: lddColours(LDCONFIG), catalog: lone}).model.parts.some(p => p.part === '64290.dat'));
+});
+
 test('colours: an LDD material is the LEGO colour number LDConfig writes as LEGOID', () => {
     const map = lddColours(LDCONFIG);
     // Spot checks against the file's own lines, read independently here.
