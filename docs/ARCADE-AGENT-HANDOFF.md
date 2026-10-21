@@ -4,6 +4,25 @@
 
 ### Current composition and next acceptance
 
+The extension menu table now includes the two missing source-operation menus.
+It is copied from a complete run of the actual normal-installation metadata
+generator: 614 opcode rows across 30 bundled and 12 stock extension attempts,
+with only the existing camera-extension skip. No rows were supplied by hand.
+This qualifies metadata generation; the actual CLI `--check`, integrated mirror,
+complete extension-menu/SPIKE module and visible editor journeys remain gates.
+
+The class/Array declaration candidate exposed six failures in its complete
+24-control regression group (17 pass, six fail, one named missing-SDK skip).
+Correct class temporaries also made an existing raw safe-prefix proof applicable;
+that case needs a positive control alongside a genuine immutable-boundary
+negative. Mixed Array startup reimport still needs a closed constructor-effect
+proof. The exact scope and unsafe-constructor controls are in
+[`lanes/2026-10-21-arcade-class-reset-effects.md`](../lanes/2026-10-21-arcade-class-reset-effects.md).
+Preserve complete failing graphs, actual writes and initializers; require the
+full affected cohort and genuine original/emitted SDK compilation. A missing
+compiler is an unqualified prerequisite. The historical 36 partials are unchanged.
+
+
 The SDK Sprite receiver candidate now passes its complete nine-module,
 35-control source cohort. It admits the genuine Sprite `x` slot through checked
 Image ingress and closed `sprites.allOfKind` receiver sets, preserving possible
@@ -31,12 +50,12 @@ mutable-object refusals and retain all producer/writer checks. Its complete
 round-trip and hostile-input controls remain pending; menu syntax support alone
 does not close those application gaps.
 
-Current main also adds generated extension menu normalization. Before publishing
-the composed Arcade candidate, regenerate `extension-menu-table.js` from actual
-normal-installation `getInfo()` using `scripts/gen-extension-menu-args.mjs`, then
-run its `--check` path. The candidate adds `arcade_sourceValueBinary` and
-`arcade_sourceValueUnary` operation menus missing from the main-only table. Do
-not supply hand-written rows or a fake provider to make that check pass.
+Current main also adds generated extension menu normalization. The composed
+candidate now adopts the complete actual `getInfo()` table, including
+`arcade_sourceValueBinary` and `arcade_sourceValueUnary`. Before publishing, run
+the genuine CLI `scripts/gen-extension-menu-args.mjs --check` and verify the
+source-integrated table mirror. Preserve the declared camera skip; it does not
+qualify camera behavior or the complete extension-menu/SPIKE module.
 
 Qualify the real outer creator/editor menu wrappers as well as the bare
 converter: literal menu shadows must survive import, Blocks/Code changes,
