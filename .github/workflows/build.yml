@@ -1848,6 +1848,27 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
         run: npm run verify:sim-lab -- --part=examples --examples=lessons,physics-workshops
 
+
+      - name: Browser gate — Robot Lab robotdraw additional mechanisms
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=pantograph-doubler,scale-studio
+
+      - name: Browser gate — Robot Lab robotlink additional mechanisms
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=crossglide,amplify
+
+      - name: Browser gate — Robot Lab robotmotion additional mechanisms
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=momentum-twins,bloom-gate
+
+      - name: Browser gate — Robot Lab robotbench additional mechanisms
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=ripple-relay
+
       - name: Browser gate — Robot Lab automatic example blocks
         timeout-minutes: 8
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}

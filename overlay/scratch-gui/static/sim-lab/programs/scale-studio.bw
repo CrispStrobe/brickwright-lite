@@ -1,0 +1,56 @@
+DEVICE SPIKE
+
+# SCALE STUDIO - 2:1 pantograph. Original program by CrispStrobe, 2026.
+# SPDX-License-Identifier: BSD-3-Clause
+# Import scale-studio.ldr or scale-studio.mpd before pressing the green flag.
+# Gallery selection loads the saved pose; use Reset before rerunning after manual motion.
+# A is the sole motor. All lab speeds below are degrees per second.
+# Quarter turns use target minus the freshly read UNWRAPPED encoder angle.
+# Nominal motion: 24 s, plus nine 0.25 s observation dwells; watchdog: 45 s.
+# The pantograph output is passive. No expected position is sent to physics.
+
+WHEN flag clicked:
+  set complete to 0
+  set fault to 0
+  if (lab status) = "no-model" then:
+    say "Import Scale Studio in Robot Lab first."
+    stop all
+  reset timer
+  broadcast "Scale Studio watchdog"
+  lab start
+  lab stop motor A hold
+  wait 0.25 seconds
+  if (abs of (lab motor A angle)) > 1 then:
+    set fault to 1
+    say "Saved encoder datum failed. Reset the model and check port A."
+    lab stop motor A hold
+    stop all
+  set target to 90
+  repeat 4:
+    broadcast "Scale Studio sample" and wait
+    change target by 90
+  set target to 270
+  repeat 4:
+    broadcast "Scale Studio sample" and wait
+    change target by -90
+  lab stop motor A hold
+  set complete to 1
+  say "Complete: forward circle, reverse circle, datum held."
+
+WHEN I receive "Scale Studio sample":
+  lab run motor A for (target - (lab motor A angle)) degrees at 30 degrees per second
+  lab stop motor A hold
+  if (abs of (target - (lab motor A angle))) > 2 then:
+    set fault to 1
+    say "Motor target failed. Check the linkage and port A."
+    stop all
+  wait 0.25 seconds
+
+WHEN I receive "Scale Studio watchdog":
+  repeat until complete = 1:
+    if timer > 45 then:
+      set fault to 1
+      lab stop motor A hold
+      say "45 second watchdog: stopped and holding. Reset before retrying."
+      stop all
+    wait 0.02 seconds

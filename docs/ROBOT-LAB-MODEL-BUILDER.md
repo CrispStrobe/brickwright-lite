@@ -84,7 +84,7 @@ Write a short finite `.bw` experiment using vocabulary verified against the actu
 
 `lab` speeds are degrees per second in current source; ordinary hub speed commands can use percent. Verify signs from the placed drive. Simulation commands are not automatically downloadable hardware firmware.
 
-Run the actual exported bytes through the actual parser, compiler, extension, VM and controller/physics when available. A handwritten dispatcher can test a limited API sequence, but cannot establish Scratch scheduling or full-program behavior. A VM finishing can also conceal no-op commands: require useful physical output, correct travel and completion evidence.
+Run the actual exported bytes through the actual parser, compiler, extension, VM and controller/physics when available. A handwritten dispatcher can test a limited API sequence, but cannot establish Scratch scheduling or full-program behavior. A VM finishing can also conceal no-op commands: require useful physical output, correct travel and completion evidence. Implement every host callback the program uses: an absent reset/load hook can silently do nothing in a headless adapter. Gallery selection already loads the saved pose, so prefer a starting-datum guard over a redundant in-program reset. If a reset is required, verify it recreates the world and preserves the intended program/clock behavior in the actual app.
 
 Measure output points/angles from actual body poses relative to the measured chassis. Keep the measured data independent of the expected equation. Check the whole trajectory, continuity, direction, joint closure, passive stability, payload transport and return—not only motor endpoints. Reject empty selections and require enough motion/samples to support the claim. Unwrap rotations.
 

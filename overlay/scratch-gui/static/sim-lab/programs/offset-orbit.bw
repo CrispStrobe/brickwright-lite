@@ -1,0 +1,49 @@
+# Offset Orbit — CrispStrobe, BSD-3-Clause.
+# Reset to the saved model pose before running. Motor A uses degrees/second.
+# Two input turns, then return to the datum through two reverse turns.
+# Output shaft phase and the floating cross's orbit are measured independently.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set completed to 0
+  set failed to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    say "Reset the input to the saved model datum before running."
+    stop all
+  broadcast "watchdog"
+  set stage to 1
+  lab run motor A for (720 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (720 - (lab motor A angle))) > 1.5 THEN:
+    set failed to 1
+    say "The input did not finish its forward turns. Inspect and reset."
+    stop all
+  wait 0.5 seconds
+  set stage to 2
+  lab run motor A for (0 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1.5 THEN:
+    set failed to 1
+    say "The input did not return to its datum. Inspect and reset."
+    stop all
+  wait 0.5 seconds
+  lab stop motor A hold
+  set stage to 3
+  set completed to 1
+
+WHEN I receive "watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 59 THEN:
+      lab stop motor A hold
+      set failed to 1
+      say "The coupling experiment timed out. Inspect the model and reset."
+      stop all
+    wait 0.1 seconds

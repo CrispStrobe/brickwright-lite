@@ -1,0 +1,46 @@
+# Pantograph doubler — CrispStrobe, BSD-3-Clause.
+# Reset the model first. Saved crank datum: C is one radius from S along +LDraw Z.
+# Motor A: 20 degrees per second. One forward revolution, then return to encoder zero.
+# The two independent points C and E are measured by the native validation host.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    say "Reset the model to its saved datum before running."
+    stop all
+  broadcast "watchdog"
+  set targetA to 360
+  broadcast "move A" and wait
+  wait 0.5 seconds
+  set targetA to 0
+  broadcast "move A" and wait
+  wait 0.5 seconds
+  lab stop motor A hold
+  set completed to 1
+
+WHEN I receive "move A":
+  IF (abs of (targetA - (lab motor A angle))) > 0.001 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 20 degrees per second
+  lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    set failed to 1
+    say "The commanded position was not reached. Inspect the linkage and reset."
+    stop all
+
+WHEN I receive "watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 59 THEN:
+      lab stop motor A hold
+      set failed to 1
+      say "The experiment timed out. Inspect the mechanism and reset."
+      stop all
+    wait 0.1 seconds

@@ -1,0 +1,41 @@
+# Ellipsa — two perpendicular sliders guide one point around an ellipse
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe)
+# Reload the saved model before starting. Motor angles are unwrapped degrees.
+# One native move receiver is reused for eight 45-degree teaching steps,
+# then a continuous turn to 720 degrees, then two turns back to the saved pose.
+# The coordinator changes its target only after the receiver has joined.
+# The two degree endpoint guards are finite-program checks, not fitted offsets.
+DEVICE SPIKE
+GLOBAL target = 0
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  set target to 0
+  REPEAT 8:
+    change target by 45
+    broadcast "move and observe" and wait
+  set target to 720
+  broadcast "move and observe" and wait
+  set target to 0
+  broadcast "move and observe" and wait
+  lab stop motor A hold
+
+WHEN I receive "move and observe":
+  IF (abs of (target - (lab motor A angle))) > 722 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (target - (lab motor A angle)) degrees at 10 degrees per second
+  lab stop motor A hold
+  IF (abs of (target - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  IF (abs of (target - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all

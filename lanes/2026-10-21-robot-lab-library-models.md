@@ -473,3 +473,16 @@ bilingual lessons. Full hosted qualification is pending. The separately packaged
 0.1.25 / 53-assembly iOS beta was accepted by Apple, assigned to both tester groups
 and submitted to Beta App Review; external review is pending. Release 0.1.26 and
 its Android/Windows binaries are owned in the separate release claim.
+
+## Nine follow-on physics machines — 2026-10-21
+
+IN PROGRESS — original CrispStrobe/BSD-3-Clause additions in the existing model
+lane: Pantograph Doubler (83), Scale Studio (101), Ripple Relay (191 explicit,
+193 including inferred crosses), Crossglide (216), Momentum Twins (125),
+Bloom Gate (170), Amplify (155), Offset Orbit (141) and Ellipsa (187).
+Source placements, hashes and notices are retained. Native programs, ordinary
+and strict preparation, independent useful-output measurements and frozen-output
+negative controls pass. Detailed geometry is checked separately. Ellipsa also
+passes an unpowered cold start. The additive source totals 66 assemblies,
+74 choices and 148 bilingual lessons. Browser and full hosted qualification
+remain pending; these additions are separate from the 57-assembly release.

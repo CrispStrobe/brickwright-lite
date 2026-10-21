@@ -29,6 +29,6 @@ export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=C
    track.push({t:session.time,bodies:Object.fromEntries(p.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,session.core.bodyPose(b.id)])),joints:Object.fromEntries(p.mechanism.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,session.core.jointState(j.id)])),busy:Object.fromEntries(p.mechanism.actuators.map(a=>[a.port,hub.motors.busy(a.port)]))});
    if(i>5&&!vm.runtime.threads.some(t=>t.status!==4)){finishedAt=session.time;break;}
   }
-  return {track,mechanism:p.mechanism,issues:p.issues,hubId:hubBodyOf(p.model,p.mechanism,catalog),unsupported:[],finishedAt};
+  return {track,runModel:p.runModel,mechanism:p.mechanism,issues:p.issues,hubId:hubBodyOf(p.model,p.mechanism,catalog),unsupported:[],finishedAt};
  }finally{api.dispose();vm.stopAll();vm.quit();if(clockInstalled)clock.uninstall();session.dispose();}
 }
