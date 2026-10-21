@@ -127,6 +127,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "differential-car.ldr": {
+        "pieces": 86,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "A differential lets the rear wheels turn at different speeds while a rack steers the front wheels. Compare straight travel and a full turn.",
+            "de": "Ein Differenzial erlaubt verschiedene Drehzahlen der Hinterräder, während eine Zahnstange die Vorderräder lenkt. Vergleiche Geradeausfahrt und einen Vollkreis."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
     "chain-drive.ldr": {
         "pieces": 35,
         "motors": 1,
@@ -767,6 +781,20 @@ export const MODEL_LESSONS = Object.freeze({
         "description": {
             "en": "A slewing frame and three screw actuators: leverage, self-locking and end-of-travel clutches.",
             "de": "Drehgestell und drei Spindelantriebe: Hebelwirkung, Selbsthemmung und Rutschkupplungen am Hubende."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "crane.ldr": {
+        "pieces": 44,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A linear actuator raises a boom while a geared turntable slews it. Compare spindle travel, hook height and gear reduction.",
+            "de": "Ein Linearaktuator hebt den Ausleger, ein Getriebedrehkranz schwenkt ihn. Vergleiche Spindelweg, Hakenhöhe und Untersetzung."
         },
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"

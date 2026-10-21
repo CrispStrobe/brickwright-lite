@@ -76,6 +76,22 @@ export const MODELS = Object.freeze([
         example: 'gearbox.bw'},
     {file: 'differential.ldr', title: {en: 'Differential', de: 'Differenzialgetriebe'},
         example: 'differential.bw'},
+    // The differential on wheels (docs/ROBOT-LAB-ARCHITECTURE.md T6): motor A drives the rear axle through it,
+    // motor B steers the front wheels (an Ackermann tie rod). The `intro` is the pane's one-paragraph story.
+    {file: 'differential-car.ldr', title: {en: 'Differential car', de: 'Differenzial-Auto'},
+        example: 'differential-car.bw', mat: 'plain',
+        intro: {
+            en: 'A car that steers like a real one. Motor A turns the back wheels through a differential, ' +
+                'so in a curve the outer wheel can roll faster than the inner one. Motor B steers with a rack and ' +
+                'pinion: its gear slides a toothed bar, and rods from the bar\'s ends turn the front wheels, the ' +
+                'inner one a little more. Run it: the car drives ahead, goes once round a circle and backs up to ' +
+                'where it started.',
+            de: 'Ein Auto, das lenkt wie ein echtes. Motor A dreht die Hinterräder über ein Differenzial, ' +
+                'so kann in der Kurve das äußere Rad schneller rollen als das innere. Motor B lenkt mit einer ' +
+                'Zahnstange: Sein Zahnrad schiebt die Stange, und Spurstangen an ihren Enden drehen die ' +
+                'Vorderräder, das innere etwas stärker. Starte es: Das Auto fährt geradeaus, einmal im Kreis ' +
+                'und rückwärts zurück zum Start.'
+        }},
     // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
     {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
         example: 'chain-drive.bw'},
@@ -147,6 +163,9 @@ export const MODELS = Object.freeze([
         example: 'survey-rover.bw', mat: 'plain'},
     {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
         example: 'excavator.bw', mat: 'plain'},
+    // A slewing crane (docs/ROBOT-LAB-ARCHITECTURE.md T1): the turntable on A, the boom luffed by a linear actuator on B.
+    {file: 'crane.ldr', title: {en: 'Crane', de: 'Kran'},
+        example: 'crane.bw', mat: 'plain'},
     // The LEGO MINDSTORMS RCX (hubs/rcx/, docs/ROBOT-LAB-RCX.md): its examples are NQC (`.nqc`), compiled
     // by nqc-wasm and downloaded to the Lab's RCX, where the clean-room bytecode VM runs them.
     {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car', de: 'RCX-Rempelauto'},
@@ -197,9 +216,30 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
 /** A file we wrote ourselves (serializeModel's header): its ports are as the builder left them, unplugged ones too. */
 const OWN_FILE = /^0 Author: (?:Brickwright|CrispStrobe)\s*$/m;
 
-export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text)} = {}) => {
+export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text), breakLoops = true, freeHingeFrictionNm} = {}) => {
     const {model: parsedModel, refusals} = parseModel(text, {catalog});
-    const issues = refusals.map(r => ({severity: 'warning', ...r}));
+    // One issue per unknown file, however often it is placed: a real model's cables and hoses are thousands of
+    // segment lines (6,424 on one set), and the Lab lists every issue.
+    const unknownOf = new Map();
+    const issues = [];
+    for (const r of refusals) {
+        const file = r.code === 'unknown-part' ? /'(.+)'/.exec(r.message)?.[1] : null;
+        if (file && unknownOf.has(file)) {
+            const first = unknownOf.get(file);
+            first.count += 1;
+            if (first.lines.length < 20) first.lines.push(r.line);
+            continue;
+        }
+        const issue = {severity: 'warning', ...r};
+        if (file) {
+            Object.assign(issue, {count: 1, lines: [r.line]});
+            unknownOf.set(file, issue);
+        }
+        issues.push(issue);
+    }
+    for (const issue of unknownOf.values()) {
+        if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
+    }
     if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
         return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
@@ -219,7 +259,7 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
-    const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
+    const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(freeHingeFrictionNm !== undefined ? {freeHingeFrictionNm} : {}), ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
     // An explicitly declared payload is free to roll or be carried by contact.
     // Admit only wholly free payload islands: marking one structural member as

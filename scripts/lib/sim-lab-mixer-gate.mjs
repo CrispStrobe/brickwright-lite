@@ -26,6 +26,10 @@ export const mixerInteractions = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'forklift.ldr' &&
         window.__bwSimLab._pane.session, null, {timeout: 60000});
+    // From the start pose: an earlier section may have left the Forklift loaded with its lift run up (the select
+    // does not reload a model already chosen), and a pinion stalled at the top only slips on.
+    await page.evaluate(() => window.__bwSimLab.api.reset());
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 60000});
     // 1. Unfold.
     await openManualControls(page, {override: true});
     const toggle = page.getByTestId('bw-sim-lab-mixer-toggle');

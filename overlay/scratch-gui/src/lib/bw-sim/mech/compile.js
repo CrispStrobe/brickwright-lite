@@ -13,7 +13,7 @@
 // mechanism plus hubs, actuators bound to {hub, port}, couplings, devices,
 // body roles and the no-collide pairs; the default is the v1 mechanism.
 
-import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld,
+import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, GROUND_RESTITUTION, GROUND_MATERIAL, MATERIALS, LDU_M, lduToWorld, dirToWorld,
     partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd, quatNormalize} from './vec.js';
@@ -24,8 +24,28 @@ import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
-import {sharedAxisBodyPairs, localNoCollide} from './collision-filter.js';
+import {sharedAxisBodyPairs, localNoCollide, asBuiltOverlaps} from './collision-filter.js';
 import {freePinWelds} from './free-pins.js';
+import {rescueLoose, weldByContact, nearBallJoints} from './loose-rescue.js';
+import {breakHingeLoops} from './loops.js';
+
+/**
+ * Solver iterations for the joints of a model from elsewhere that hold a light body (below massKg) against one ratio
+ * times heavier (physics/jolt-core.js lightLinks). Bodies keep their parts' masses.
+ */
+export const FOREIGN_LIGHT_LINKS = Object.freeze({massKg: 0.01, ratio: 20, velocity: 30, position: 10});
+/**
+ * A model from elsewhere: no body moves faster than this (Jolt's own limit is 500 m/s). A LEGO model's fastest part
+ * is well under it; a part the solver flings is caught before it reaches a non-finite pose (42109, 42052, 75253 and
+ * 42066 went to NaN in the bench with every motor at 60 %, and held together with the limit).
+ */
+export const FOREIGN_MAX_SPEED_M_S = 5;
+/**
+ * A model from elsewhere: the friction (N·m) of a hinge nothing drives, limits or couples, as a Technic pin's. A
+ * friction pin holds a 10 g liftarm level 6 cm out (0.006 N·m); 0.02 is that order. Bench (19 models, every motor at
+ * 60 %, 2 s): NaN 13 with none, 9 at 0.005, 7 at 0.02, 6 at 0.05; the plain drivers' distances unchanged.
+ */
+export const FOREIGN_FREE_HINGE_NM = 0.02;
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -93,6 +113,8 @@ const makeGround = (bodies, opts = {}) => {
         colliders: [{shape: 'box', halfExtents: [FLOOR_HALF_M, halfThick, FLOOR_HALF_M]}],
         parts: [],
         friction: GROUND_FRICTION,
+        restitution: GROUND_RESTITUTION,
+        material: GROUND_MATERIAL,
         color: opts.groundColor !== undefined ? opts.groundColor : 10,
         ...(opts.mat ? {mat: opts.mat} : {}),
     };
@@ -195,7 +217,20 @@ export const compile = (model, catalog, opts = {}) => {
 
     // If filtered model has no valid parts, we still need to produce a mechanism with maybe ground only plus diagnostics
     // Build graph (even if empty)
-    const {nodes, edges: graphEdges} = buildGraph(filteredModel, catalogMap, diagnostics, kinds);
+    const {nodes, edges: builtEdges} = buildGraph(filteredModel, catalogMap, diagnostics, kinds);
+    // A model from elsewhere: groups that connect to nothing are joined by their nearest near-miss (mech/loose-rescue.js).
+    let graphEdges = builtEdges;
+    if (opts.rescueLoose) {
+        // Towballs a file places a hair off their sockets first: they join what would otherwise look loose.
+        const balls = nearBallJoints(nodes, builtEdges);
+        if (balls.length) graphEdges = [...builtEdges, ...balls];
+        const rescued = rescueLoose(nodes, graphEdges);
+        if (rescued.edges.length) {
+            graphEdges = [...graphEdges, ...rescued.edges];
+            diagnostics.push({severity: 'warning', code: 'seated-loosely', parts: rescued.groups.flat(),
+                message: `Joined where their pins or axles almost fit: ${rescued.groups.map(g => g.length).join(', ')} parts`});
+        }
+    }
 
     // Topology fixpoint. Islands come from rigid edges; two things can then
     // weld islands together and force a rebuild: hinges between one island pair
@@ -204,6 +239,15 @@ export const compile = (model, catalog, opts = {}) => {
     // joints and gears from the graph plus the welds found so far; the gear pass's
     // other diagnostics are kept from the final pass only.
     const extraRigidPairs = [];
+    // ...and a group still connected to nothing is welded to what it touches most (mech/loose-rescue.js weldByContact).
+    if (opts.rescueLoose) {
+        const welded = weldByContact(nodes, graphEdges);
+        if (welded.pairs.length) {
+            extraRigidPairs.push(...welded.pairs);
+            diagnostics.push({severity: 'warning', code: 'seated-loosely', parts: welded.groups.flat(),
+                message: `Held where they touch the rest: ${welded.groups.map(g => g.length).join(', ')} parts`});
+        }
+    }
     const firstNodeOf = (islandsNow, bodyId) => {
         for (const [nid, bid] of islandsNow.nodeToBody.entries()) if (bid === bodyId) return nid;
         return null;
@@ -235,13 +279,15 @@ export const compile = (model, catalog, opts = {}) => {
         }
         // A free pin (mech/free-pins.js) is welded to one of the two parts it joins: one hinge, no
         // light body between two constraints.
-        const freePins = freePinWelds(nodes, islands, jointsResult.joints);
+        const freePins = freePinWelds(nodes, islands, jointsResult.joints, {dangling: Boolean(opts.rescueLoose)});
         if (freePins.length > 0) {
             for (const [bA, bB] of freePins) weld(islands, bA, bB);
             continue;
         }
         gearDiagnostics = [];
-        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds);
+        // A model from elsewhere: gears a hair off square or parallel still mesh (mech/gears.js squaredUp).
+        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds,
+            opts.rescueLoose ? {slack: {deg: 2, ldu: 1.5, hingeLdu: 3.5}} : {});
         if (gearResult.lockedPairs.length === 0) {
             // Registered coupling detectors (kinds/worm.js, kinds/rack.js): their welds re-run the fixpoint too.
             detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel, gearCouplings: [...gearResult.gears,...(gearResult.relative||[])]});
@@ -285,6 +331,34 @@ export const compile = (model, catalog, opts = {}) => {
     const gears = [...gearResult.gears, ...detectedCouplings.filter(c => V1_COUPLING_KINDS.includes(c.kind))
         .map(({id, kind, ...rest}) => ({id, type: kind, ...rest}))];
 
+    // A model from elsewhere: each closed loop of hinges is broken with a ball joint (mech/loops.js).
+    let loopBalls = [];
+    if (opts.rescueLoose && opts.breakLoops !== false) {
+        const named = JSON.stringify([gearResult.gears, gearResult.relative || [], detected.couplings]);
+        const keep = new Set(joints.filter(j => j.motor || j.limits || j.spring || named.includes(`"${j.id}"`)).map(j => j.id));
+        const massOf = id => islands.bodies.find(b => b.id === id)?.massKg ?? Infinity;
+        const broken = breakHingeLoops(joints, {keep, massOf});
+        joints.splice(0, joints.length, ...broken.joints);
+        loopBalls = broken.balls;
+    }
+    // A model from elsewhere: a hinge nothing drives, limits or couples turns with a pin's friction
+    // (FOREIGN_FREE_HINGE_NM). Frictionless, a light arm hit by its neighbours spun up until the solver flung it.
+    // Not a wheel's (it rolls), not one on a motor (a train motor's idler axles are its own free joints), and not one on
+    // a body a coupling moves (a CV joint's hub is driven through it).
+    const freeNm = opts.rescueLoose ? (opts.freeHingeFrictionNm ?? FOREIGN_FREE_HINGE_NM) : 0;
+    if (freeNm > 0) {
+        const named = JSON.stringify([gearResult.gears, gearResult.relative || [], detected.couplings]);
+        const partOf = new Map(model.parts.map(p => [p.id, p.part]));
+        const rolls = meta => meta && (meta.category === 'wheel' || meta.category === 'motor' || Boolean(meta.device));
+        const wheels = new Set(islands.bodies.filter(b => b.parts.some(id => rolls(catalogMap.get(partOf.get(id))))).map(b => b.id));
+        const driven = j => named.includes(`"${j.id}"`) || named.includes(`"${j.body1}"`) || named.includes(`"${j.body2}"`);
+        for (const j of joints) {
+            if (j.type !== 'hinge' || j.motor || j.limits || j.spring || j.frictionNm !== undefined) continue;
+            if (driven(j) || wheels.has(j.body1) || wheels.has(j.body2)) continue;
+            j.frictionNm = freeNm;
+        }
+    }
+
     // Loose parts: bodies that no joint links, directly or through other bodies, to the
     // body carrying the hub (or, without a hub, to the largest connected group). They are
     // not held by the robot: they fall off or lie where they are.
@@ -307,6 +381,10 @@ export const compile = (model, catalog, opts = {}) => {
         body.colliders.push({shape: 'cylinder', radius: w.radiusLdu * LDU_M, halfHeight: Math.max(w.halfWidthLdu, 1) * LDU_M,
             position: c, rotation: q, part: w.part, massKg: TREAD_WHEEL_MASS_KG});
         body.friction = Math.max(body.friction ?? 0, w.friction);
+        // A tread's links meet the floor: they bounce and roll like a tread (contracts.js MATERIALS.tread).
+        body.material = 'tread';
+        body.restitution = MATERIALS.tread.restitution;
+        body.rollingResistance = MATERIALS.tread.rollingResistance;
     }
 
     // Bodies final list: islands.bodies plus ground
@@ -367,6 +445,7 @@ export const compile = (model, catalog, opts = {}) => {
                 massKg: 0,
                 colliders: [{shape: 'box', halfExtents: [size[0] / 2, size[1] / 2, size[2] / 2]}],
                 parts: [],
+                material: GROUND_MATERIAL, // a wall of the arena: rigid, as the floor
             };
             if (obs.color !== undefined) body.color = obs.color;
             bodies.push(body);
@@ -458,8 +537,23 @@ export const compile = (model, catalog, opts = {}) => {
         couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
     const slidingPairs = kinds.couplings.detectors().flatMap(module => module.collisionPairs?.({nodes, islands}) || []);
-    const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes, slidingPairs);
+    const local = opts.rescueLoose ? [] : localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes, slidingPairs);
     if (local.length) mechanismV2.noCollideParts = local;
+    // A model from elsewhere: its light links solve with more iterations (FOREIGN_LIGHT_LINKS, physics/jolt-core.js);
+    // every body pair a joint or a coupling relates, and every pair whose parts overlap as built (mech/collision-filter.js
+    // asBuiltOverlaps), never collides — whole, not part by part. Our colliders are boxes: a beam's holes are solid,
+    // so an axle swinging through them as the set means it to hits solid collider and is shot out (the 4x4 Off-Roader
+    // went to NaN within 2 s with its motors coasting; 42131 and 42055 at 0.5–2 s a step). A real set is built so its
+    // jointed parts do not collide; filtered whole, they do not, and no shape filter runs at all (3x faster steps).
+    if (opts.rescueLoose) {
+        mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}, maxLinearVelocity: FOREIGN_MAX_SPEED_M_S, ...(loopBalls.length ? {loopBalls} : {})};
+        const pairs = new Set(mechanismV2.noCollide.map(([a, b]) => `${a}|${b}`));
+        for (const [a, b] of asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, [])) {
+            if (!pairs.has(`${a}|${b}`)) { mechanismV2.noCollide.push([a, b]); pairs.add(`${a}|${b}`); }
+        }
+        mechanismV2.noCollide.sort((x, y) => (x[0] + '|' + x[1] < y[0] + '|' + y[1] ? -1 : 1));
+        delete mechanismV2.noCollideParts;
+    }
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);

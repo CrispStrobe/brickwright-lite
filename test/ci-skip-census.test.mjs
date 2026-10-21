@@ -4,7 +4,7 @@
  * Measured 2026-09-07 from the unit step's TAP on 20 green main runs: 21
  * skipped tests, 18 of them never executed in any run they existed in, five
  * files with no record anywhere of ever running. A skip reason is honest about
- * one run; the pointer — LANES.md, "Skips that execute elsewhere", keyed by file
+ * one run; the pointer — CI-POINTERS.md, "Skips that execute elsewhere", keyed by file
  * and the VERBATIM reason — is what says the gate runs at all. This test holds
  * the readings docs/generated/ci-skip-census.json (scripts/gen-ci-skips.mjs
  * --fetch, never hand-edited) to the pointers, and proves the shapes that must
@@ -23,7 +23,7 @@ import {parsePointers, judgeSkips, skipsFromCensus, tapSkips, expiredTemporary, 
 import {census, classify, fileFor, reasonLive, READINGS} from '../scripts/gen-ci-skips.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const lanes = readFileSync(path.join(ROOT, 'LANES.md'), 'utf8');
+const lanes = readFileSync(path.join(ROOT, 'CI-POINTERS.md'), 'utf8');
 const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
 const pointers = parsePointers(lanes);
 
@@ -35,7 +35,7 @@ test('the readings are the generator\'s and name their runs; every skipped test 
 });
 
 test('every skipped test in the readings points at where it executes; pointers are dated and their workflows name the file', t => {
-    assert.ok(pointers.length > 0, `no "${HEADING}" section in LANES.md`);
+    assert.ok(pointers.length > 0, `no "${HEADING}" section in CI-POINTERS.md`);
     // Readings are history. A reason the file's source no longer carries was retired since the
     // runs were read; its successor is judged LIVE by check-test-run on the next run's census.
     const retired = readings.tests.filter(x => !x.reasonLive);
@@ -72,7 +72,7 @@ test('mutation: the five shapes that must redden', () => {
     assert.deepEqual(judgeSkips(skips, good), {unpointed: [], moved: [], undated: [], deadWorkflow: [], orphan: [], stale: []});
     // A pointer whose test file is gone: silent by construction until this list existed.
     const gone = judgeSkips([], [{...good[0], file: 'test/no-such-test-ever.test.mjs', line: 9}], {root: ROOT}).orphan;
-    assert.equal(gone.length, 1); assert.match(gone[0], /LANES\.md:9 test\/no-such-test-ever\.test\.mjs does not exist/);
+    assert.equal(gone.length, 1); assert.match(gone[0], /CI-POINTERS\.md:9 test\/no-such-test-ever\.test\.mjs does not exist/);
     assert.deepEqual(judgeSkips([], [{...good[0], file: 'test/ci-skip-census.test.mjs', line: 9}], {root: ROOT}).orphan, [], 'an existing file is not an orphan');
     // The same orphan through the PARSER, not a constructed object: if the row grammar
     // stops matching, parsePointers returns nothing and zero orphans would read like a
@@ -87,7 +87,7 @@ test('mutation: the five shapes that must redden', () => {
     assert.match(judgeSkips(skips, []).unpointed[0], /x\.test\.mjs: "a" skipped \("X unset"\) and nothing says where it executes — a gate nobody runs/);
     // the reason moved
     const moved = judgeSkips([{file: 'test/x.test.mjs', name: 'a', reason: 'X is not set'}], good);
-    assert.equal(moved.unpointed.length, 0); assert.match(moved.moved[0], /"X is not set" but the pointer\(s\) at LANES\.md:3 vouch for "X unset" — the reason moved/);
+    assert.equal(moved.unpointed.length, 0); assert.match(moved.moved[0], /"X is not set" but the pointer\(s\) at CI-POINTERS\.md:3 vouch for "X unset" — the reason moved/);
     // undated
     const undated = parsePointers(`${HEADING}\n- test/x.test.mjs :: X unset :: box somewhere, someone\n`);
     assert.match(judgeSkips(skips, undated).undated[0], /a pointer without a date is a claim nobody can check/);

@@ -7,7 +7,7 @@
 // Ground added unless opts.ground===false.
 
 import {vecAdd, vecSub, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize} from './vec.js';
-import {LDU_M, PART_FRICTION, lduToWorld, motorNodeShare, colliderVolume} from '../contracts.js';
+import {LDU_M, PART_FRICTION, MATERIALS, PART_MATERIAL, lduToWorld, motorNodeShare, colliderVolume} from '../contracts.js';
 
 /** Fraction of a v1 motor's mass that belongs to the output (turning) body (PartMeta v2: internalJoints[].massFraction). */
 export {MOTOR_OUTPUT_MASS_FRACTION} from '../contracts.js';
@@ -93,12 +93,19 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
         const partIdSet = new Set();
         for (const nid of nodeIdsInGroup) partIdSet.add(nodes.get(nid).partId);
         const parts = [...partIdSet].sort((a, b) => a.localeCompare(b));
+        // The group's nodes by part, in group order (filtering the group per part was quadratic in a big body).
+        const nodesOfPart = new Map();
+        for (const nid of nodeIdsInGroup) {
+            const pid = nodes.get(nid).partId;
+            if (!nodesOfPart.has(pid)) nodesOfPart.set(pid, []);
+            nodesOfPart.get(pid).push(nid);
+        }
 
         // Mass sum: sum over nodes in group with motor fraction handling
         // For motor parts, output gets 15%, housing 85%; if both nodes in same island (locked) they sum to 100%
         let totalMassGrams = 0;
         for (const pid of parts) {
-            const nodesForPart = nodeIdsInGroup.filter(nid => nodes.get(nid).partId === pid);
+            const nodesForPart = nodesOfPart.get(pid);
             for (const nid of nodesForPart) {
                 const meta = nodes.get(nid).meta;
                 const share = motorNodeShare(meta, nid);
@@ -117,7 +124,7 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
         let comX = 0; let comY = 0; let comZ = 0;
         if (totalMassGrams > 0) {
             for (const pid of parts) {
-                const nodesForPart = nodeIdsInGroup.filter(nid => nodes.get(nid).partId === pid);
+                const nodesForPart = nodesOfPart.get(pid);
                 for (const nid of nodesForPart) {
                     const node = nodes.get(nid);
                     const meta = node.meta;
@@ -153,7 +160,7 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
         // For each distinct partId, determine which colliders belong to this island
         for (const pid of parts) {
             // Find all nodes in group with this partId (could be 1 for normal, 2 for motor if both nodes ended up in same island due to locked merging)
-            const nodesForPart = nodeIdsInGroup.filter(nid => nodes.get(nid).partId === pid);
+            const nodesForPart = nodesOfPart.get(pid);
             // There should be 1 or 2 nodes; we need to decide collider ownership
             // If motor part and nodesForPart includes both housing and output (i.e., motor's both nodes in same island because they got locked together), then we should include all colliders once.
             // If only one node for this part in this island, need to filter by motor outputColliders
@@ -242,6 +249,11 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
         // A rigid island touches the ground with whichever of its parts does; v1 takes
         // the grippiest (a tyred wheel makes its whole island grip like rubber).
         const friction = Math.max(...nodeIdsInGroup.map(nid => nodes.get(nid).meta.friction ?? PART_FRICTION));
+        // Its bounce and rolling drag are that part's material's (contracts.js MATERIALS): a tyred wheel's island
+        // bounces and rolls like rubber, a beam's like ABS.
+        const grip = nodeIdsInGroup.map(nid => nodes.get(nid).meta).find(m => (m.friction ?? PART_FRICTION) === friction);
+        const materialName = grip && MATERIALS[grip.material] ? grip.material : PART_MATERIAL;
+        const material = MATERIALS[materialName];
         const body = {
             id: bodyId,
             motion: 'dynamic',
@@ -251,6 +263,9 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
             colliders,
             parts,
             friction,
+            material: materialName,
+            restitution: material.restitution,
+            ...(material.rollingResistance > 0 ? {rollingResistance: material.rollingResistance} : {}),
         };
         bodies.push(body);
         bodyMap.set(bodyId, body);

@@ -99,3 +99,193 @@ damaged heap. Both are fixed, and `test/bw-sim-jolt-debug-build.test.mjs` runs b
 
 Not shipped yet: merging a big body's boxes into fewer (a voxel merge, 676 → 567 boxes on the 4x4, 786 → 251 on
 42052). It flings bodies on two of three models, so it needs more work.
+
+## Holding together: aliases, embedded copies, near-misses, nesting (2026-10-20)
+
+On the 4x4 Off-Roader (42099), 56 unknown parts and 51 loose groups were down to four causes, none of them the model:
+
+1. **Alias files.** 3023, 32556 and 2654 are `~Moved to 3023b`-style redirects in today's library; 74695 is a `=` alias.
+   They derive as their target now: a `~Moved to` or `=` file whose body is one part placed unturned at the origin
+   (`part-meta/catalog-parts.js` aliasTarget).
+2. **Embedded copies.** An MPD may carry an (unofficial) copy of a part under its own name: `42099 - 52731.dat`.
+   `catalogFor` derives the library part it names, and `knownAs` maps the copy to it.
+3. **Near-misses** (`mech/loose-rescue.js`, models from elsewhere only). A group connected inside but to nothing
+   else is joined by its nearest pin- or axle-in-hole near-miss: about 2°, 4 LDU across, 1 LDU engaged, blind
+   bottoms ignored. The turntable 18938/18939's holes derive as blind, and 268 parts hung on one 3L axle-pin
+   through it. Warning `seated-loosely`.
+4. **Nesting** (`mech/collision-filter.js` asBuiltOverlaps, models from elsewhere only). Two parts of different
+   bodies whose colliders overlap by more than 0.5 mm as built never collide with each other. A CV joint's ball
+   sits in its solid-filled cup 8–16 mm deep, and Jolt pushed it out at 7 m/s on the first step.
+
+42099 after these fixes: 0 unknown and 18 small loose groups (from 51). Over 1 s with every motor at 60 %, nothing is
+flung, all three motors turn, and it runs at 13 ms per 5 ms step (headless, CPU). Our own files
+(`0 Author: Brickwright`) get neither 3 nor 4: there a loose or overlapping part is the builder's to fix.
+5. **Obsolete pieces.** `~… (Obsolete)` files are real pieces a newer one replaced (minifig hips 3815, the 1x2x5
+   brick 2454, the 4.5 V Technic motor 6216m), so they derive like any part. Other `~` files are pieces of a part
+   (a cable's or hose's segment, a shock absorber's rod) and stay drawings. Across the 148 models, the
+   most-refused files were 3660 (inverted slope, 22 models), the minifig hips and legs (15) and 61409 (12).
+
+## Speed in the app, and multithreading (2026-10-20, measured)
+
+- **Rendering is not the bottleneck.** With the GPU (headless Chromium, ANGLE on Metal), the 4x4 Off-Roader's 949 parts
+  draw at 60 fps. With SwiftShader, which the CI gates use, 0–1 fps: frame rates from the gates say nothing.
+- **The physics worker is.** The 4x4 costs about 20–30 ms of worker time a step in the browser, against 5–9 ms on the
+  bare core in node, and almost all of it is inside Jolt's `Step`. Node's session path costs 12–18 ms: the hub bridge and
+  the worker protocol add little, the rest is the browser. On this shared machine (load average 6–17) every number
+  varies by about 2×.
+- **Jolt's multithreaded build** (cross-origin isolated pages only, COOP + COEP) fails as long as the part-pair filter
+  is JavaScript: Jolt calls `SimShapeFilterJS` from its worker threads, where the JS object does not exist. With the
+  filter off on both sides (a fair comparison; physically wrong), threads make the step 2.2× faster on 42099 (80 → 37 ms)
+  and 1.45× on 42055 (85 → 60 ms). Prerequisites: (1) the part-pair filter in C++ in the Jolt fork, which on its own
+  saves the 5–12 % the JS callback costs; (2) cross-origin isolation from the host (the desktop app can set it; for the
+  website it is a deployment decision); (3) the multithreaded build served unbundled, since webpack's runtime breaks its
+  pthread workers.
+- **Loading a big set takes 10–26 s** in the app: the library's parts are fetched and derived in the browser on first
+  use. That is next.
+
+## Real masses, more iterations for light links (2026-10-20)
+
+Bodies weigh what their parts weigh (each part's LDraw-derived mass, shared out over its colliders; Jolt computes
+centre of mass and inertia from those). A 5 g solver mass floor for models from elsewhere was tried and replaced. Jolt's
+iterative solver loses linkages that hang a 1–3 g liftarm between frames of hundreds of grams; the remedy kept is more
+solver iterations (30 velocity, 10 position) for the joints that hold a body under 10 g against one more than 20 times
+heavier (`mechanism.solver.lightLinks`, models from elsewhere only). Flung bodies over 1 s, every motor at 60 %:
+
+| Model | real masses | real + iterations | 5 g floor |
+|---|---|---|---|
+| 42109 | 24 | 24 | 0 |
+| 42095 | 0 | 0 | 0 |
+| 8275 Bulldozer | 5 (blade jammed) | 5 | 57 |
+| brickhub-322 | 13 | 0 | 0 |
+| odin | 0 | 0 | 10 |
+
+42109 is still open. The part-pair collision filter moves to C++ in the Jolt fork (`PartPairSimShapeFilter`,
+jolt-physics 1.1.0-bw.5); the core uses it when the loaded Jolt has it and the JS filter otherwise.
+
+## Jointed pairs filtered whole for models from elsewhere (2026-10-21)
+
+In the app, every idle motor coasts (the hub's PWM 0), and coasting the 4x4 Off-Roader went to NaN within 2 s, though
+the bare core with untouched motors stayed put. The free steering and suspension linkages swing, and our colliders are
+boxes, so a beam's holes are solid: an axle swinging through them hits solid collider and is shot out. The part-level
+filter only exempts the pairs that touch in the start pose. For a model from elsewhere, every body pair a joint or a
+coupling relates, and every pair whose parts overlap as built, now never collides. Real sets are built so their jointed
+parts do not collide. Our own files keep part-by-part filtering. Bench, every motor at 60 %, CPU time per 5 ms step:
+
+| Model | part by part | whole |
+|---|---|---|
+| 42099 4x4 Off-Roader | 6.1 ms, steering motor stuck | 1.6 ms, all three motors turn |
+| 42131 | 510 ms, NaN | 14 ms |
+| 42055 | 1,960 ms, NaN | 19 ms |
+| 8275 Bulldozer | 9.3 ms, blade motors stuck | 4.5 ms, all four turn |
+| 17101 Vernie | 3.2 ms, motors stuck | 1.8 ms |
+
+Compile is faster too (42131: 5 s → 0.5 s), since no part pairs are computed. Still open: 42109 (one NaN body), and
+bodies coming apart on 42131 (57), 42055 (18) and the Tower Crane (16).
+
+The part-pair filter is also C++ now (Jolt fork `PartPairSimShapeFilter`, jolt-physics 1.1.0-bw.5, tested in this lane;
+our own models use it when the package has it). It gives the same results as the JS filter at the same speed in one
+thread, and it runs on Jolt's worker threads. With it, the multithreaded build works in a cross-origin isolated page:
+1.1–1.25× on the biggest sets, nothing on the 4x4. Shipping that needs the multithreaded file served unbundled, and
+COOP/COEP from the host.
+
+## Drive lines: round tyres, CV joints, differentials, a speed limit (2026-10-21)
+
+The 4x4 Off-Roader (42099) turned its motors and did not move: 1.4 cm in 2 s. Four things held it.
+
+- **Tyres were boxes.** Every tyre derived from the LDraw library (30 of them, the decoration path in
+  `part-meta/catalog-parts.js`) got a box collider; a box does not roll, so the front wheels held the front motor.
+  A tyre is now a cylinder along its box's odd side (`tyreCylinder`).
+- **CV joints and wheel hubs.** The CV ball 52731 and its sockets 52730 and the hub 46490c01 are a new coupling kind,
+  `cvJoint` (`kinds/cv-joint.js`), built as the universal joint's cross. The hub's flange turns on a free internal
+  hinge. Its planetary reduction is not modelled (1:1); no reliable source for its ratio was found (forum figures range
+  from about 3:1 to 5:1).
+- **The differential 62821** is locked: its bores hold the half axles, so both wheels turn with the casing. That is
+  exact going straight. Open, the casing has to be hinged in the chassis, and in real files it turns on its half axles,
+  which locked the drive. Its ring's pitch radius is where the models put the 20T double bevel that drives it, 40 LDU
+  (2 studs). The 28 teeth would say 35, so the mesh's ratio is 1.6, not the teeth's 1.4.
+- **Double bevels mesh as spur gears with a parallel partner** (`mech/gears.js`), for every model: a 12T and a 20T
+  double bevel on axles 2 studs apart. For models from elsewhere, gears within 2° of square or parallel and 1.5 LDU of
+  their partner's axis mesh, and a gear up to 3.5 LDU off its axle sits on it.
+
+The 4x4 now drives 0.67 m in 2 s. With every body free to roll, models that had been held still by their box tyres
+moved, and some flung a light part to NaN. A model from elsewhere now caps every body's speed at 5 m/s
+(`FOREIGN_MAX_SPEED_M_S`; Jolt's own limit is 500 m/s). The 96-model bench, every motor at 60 %, 2 s:
+
+| | before | after |
+|---|---|---|
+| NaN | 17 | 12 |
+| drove 0.1–5 m | 19 | 25 |
+| under real time (≤ 5 ms a step) | 58 | 58 |
+
+Eight models stop going NaN (42042, 42043 Flatbed Trailer, 42055, 42070, 42109, 8094 Robotic Arm, 8258, odin). Three
+newly do: 42080, 42113 and 42131. In each, a light linkage spins free once the machine moves (42080's arm at 16 rad/s
+against its neighbours). The 5 m/s cap does not catch them. They are open.
+
+**Pin friction on free hinges.** A hinge in a model from elsewhere that nothing drives, limits or couples now turns
+with 0.02 N·m of friction (`FOREIGN_FREE_HINGE_NM`). A friction pin holds a 10 g liftarm level 6 cm out, which is
+0.006 N·m, so 0.02 is that order. Frictionless, 42080's arm was hit by its neighbours and spun up to 16 rad/s. Exempt:
+- hinges on a wheel's body (it rolls);
+- hinges on a motor's body (a train motor's idler axles are its own free joints; with friction, the 7760 shunter
+  stopped);
+- hinges on a body a coupling moves (a CV joint drives the hub through it).
+
+On 19 models: NaN 13 with no friction, 9 at 0.005, 7 at 0.02, 6 at 0.05. On all 96: NaN 12 → 11, driving 25 → 30
+(42080, 42131, 42043, 8868 and brickhub-9 hold together; 42055, 42066, 42129 and 75253 now fail late in the 2 s).
+Small changes reshuffle which models fail, so the totals are the measure.
+
+## Old motors and the LeoCAD and LDD files (2026-10-21)
+
+**Old motors are motor parts now** (`parts.json`, `devices/catalog.js`):
+
+| LDraw part | motor | device numbers |
+|---|---|---|
+| 2894c01, 70358 | 9 V train motor | Philo's page, "9V Train" (Stefan Vorst's measurement): 2000 rpm, 2.8 N·cm at 9 V |
+| 501bc01 | 12 V train motor | stand-in: the 9 V train motor's fitted line at 12 V (no published measurement) |
+| 74569p01, 74569, 2838c01 | 9 V Technic motor 2838 | Philo, "2838" (existing device) |
+| 47154c01 | 9 V geared motor | Philo, "47154" (existing device) |
+| 71427c01 | 9 V mini-motor (LDraw's alias of 71427) | Philo, "71427" (existing device) |
+| 6216m | 4.5 V Technic motor | stand-in: the 2838's line at 4.5 V (no published measurement) |
+| 99498 (and 99498c01, 22169c01, 22172c01: the motor with its cable) | PF servo 88004 | stand-in: PF Medium; turns to an angle, 90° either way |
+
+A **train motor** is a bogie with its wheels built in: its driven wheelset is the device's
+internal hinge, its other wheelsets free internal hinges (`actuatedBy: 'none'`, new: contracts.js
+`partFreeJoints`, mech/graph.js), on a `wheel-axle` connector that joins nothing
+(`kinds/wheelset.js`); the wheels are cylinders that meet the floor. Alone on the floor it rolls as
+far as its wheels turn (`test/bw-sim-old-motors.test.mjs`). The **servo** carries
+`limitsDeg: [-90, 90]` on its internal joint (`kinds/servo-stops.js` gives the compiler the end
+stops), and the lab-direct hub reads a power or speed command to it as an angle (full power one way
+is its 90° end; no signal centres it), with a proportional loop of its own. 43362 (the later
+mini-motor) is not in the LDraw library under that number; PF and Powered Up train motors (87574,
+which takes separate wheels) have no part yet.
+
+Bench (`STEPS=200`, every motor at 60 %), the reference sets that use them, before → after:
+
+| set | motors | turned (°, after) |
+|---|---|---|
+| 4558, 4558 B (9 V train) | 0 → 1 | 2685, 2700 |
+| 4563, 4565 (9 V train) | 0 → 1 | 2700, 2700 |
+| 7722, 7725, 7735, 7735 B, 7740, 7745, 7755, 7760 (12 V train) | 0 → 1 | 2700 each |
+| 8054 models A, C, D (4.5 V) | 0 → 1 | 2700, 2694, 2708 |
+| 8094 crane, plotter, robot plotter, robotic arm (2838) | 0 → 2 | −170/276, 2463/2463, 2700/2700, 294/316 |
+| 8868, 8868 dump truck (2838) | 0 → 1 | 884, 971 |
+| brickhub-302/305/347/584/587/588/9 (PF servo) | 1–2 → 2–3 | the servo's ≤ 90 |
+| brickhub-596 (99498c01) | 0 → 1 | 1 |
+| Philo's hammerhead, display, rama | 0 → 2, 2, 3 | 255/335, 1297/1297, 1306/−833/−359 |
+
+2700° in 2 s is Jolt's cap on a body's spin (47 rad/s, `jolt-core.js` keeps Jolt's default), not
+the motor: an ungeared 2838 or a train motor's axle runs faster than that at full power. The
+4558 file starts with a UTF-8 byte-order mark; the app's text decoder drops it, a Latin-1 read
+must too. hammerhead's 47154 is drawn from its four pieces, not as 47154c01, so it stays a drawing.
+
+**LeoCAD `.lcd`** (`model/lcd-model.js`, our own reader): the binary project format of LeoCAD
+0.x, pieces with their LDraw part numbers, LeoCAD's 28-colour table as LDraw colours, the poses
+of the building instructions (25 LDU units, z up) and their steps; hidden pieces are left out
+with a note. The model keeps its author, so it is a model from elsewhere. Philo's 11 LeoCAD
+models in the collection open (they could not before): cardreader 159 parts, cardreader2 106,
+radarcar 235, brickmixer 544, seesaw 107, sorter3 565, steercar 340, panobot 241, panobot2 228,
+turntable 107, skyshooter 245; every one has its motors (1–3) turning, none NaN, unknown parts
+0–6, loose 0 except brickmixer (44) and panobot (42).
+
+**LDD `.lxf`**: see ROBOT-LAB-LDD-FRAMES.md "Snap to connections, built": no per-part table any more
+(frames from geometry where safe, else from the model's connections); 13 files, the parts refused
+fall from 34–264 to 10–40 per file, and all 13 run with their motors turning (1–4 each).

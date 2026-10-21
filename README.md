@@ -371,7 +371,8 @@ git SHAs; `sb3-creator`, the only vendored upstream, is checked for pinned byte
 identity and matching tracked mirrors. Shared behavior lands in its upstream
 repository first and reaches Lite through an explicit pin move. The enforced
 invariants are in [the vendoring regime](docs/VENDORING-REGIME.md); check
-[LANES.md](LANES.md) before claiming implementation.
+[LANES.md](LANES.md) before claiming implementation. A new claim is its own file,
+`lanes/<YYYY-MM-DD>-<slug>.md`; new PRs never edit LANES.md.
 
 ---
 

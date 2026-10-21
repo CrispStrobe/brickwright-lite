@@ -17,7 +17,7 @@
 //   - a fastener (a pin, an axle, a bush; one that sits in another, such as a
 //     bush on an axle, counts with it as one cluster) goes in the step where
 //     the second thing it joins is placed: a pin with the beam it holds on, an
-//     axle with the wheel it carries; one that joins only one part goes with it;
+//     axle with the wheel it carries (never before it, including a differential half axle); one that joins only one part goes with it;
 //   - steps hold about STEP_TARGET parts; long fastener clusters are split
 //     into connected pages of at most STEP_MAX parts;
 //   - an editor group (`0 !BW GROUP`) whose parts hold together is a
@@ -544,6 +544,8 @@ const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
             }
         }
     }
+    // A structural unit that is a wheel: an axle that carries one goes on with it (below), not before.
+    for (const unit of units) unit.wheel = !unit.fastener && unit.parts.some(id => meta(id)?.category === 'wheel');
     // Structural neighbours: touching directly, or through fastener units only.
     const structural = units.filter(u => !u.fastener);
     for (const unit of structural) {
@@ -584,8 +586,17 @@ const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
     const open = loose => {
         current = {parts: [], attach: [], subassembly: null, loose: Boolean(loose), size: 0};
     };
+    /**
+     * An axle that carries a wheel waits for it: a half axle that also turns in a beam and holds a gear
+     * (a differential's) would otherwise go on with those, a step before its wheel. One wheel placed is
+     * enough (an axle carrying two goes on with the first).
+     */
+    const waitsForWheel = (u, placing = null) => {
+        const wheels = [...u.touches].filter(o => o.wheel);
+        return wheels.length > 0 && !wheels.some(o => o === placing || placed.has(o));
+    };
     /** Fastener units ready to go on: they join two placed things now, or the one thing they touch. */
-    const readyFasteners = () => units.filter(u => u.fastener && !placed.has(u) && (() => {
+    const readyFasteners = () => units.filter(u => u.fastener && !placed.has(u) && !waitsForWheel(u) && (() => {
         let ends = u.touchesBuilt ? 1 : 0;
         for (const other of u.touches) if (placed.has(other)) ends++;
         const degree = u.touches.size + (u.touchesBuilt ? 1 : 0);
@@ -605,7 +616,7 @@ const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
     const bringsAlong = unit => {
         let n = 0;
         for (const f of unit.touches) {
-            if (!f.fastener || placed.has(f)) continue;
+            if (!f.fastener || placed.has(f) || waitsForWheel(f, unit)) continue;
             let ends = (f.touchesBuilt ? 1 : 0) + 1;
             for (const other of f.touches) if (other !== unit && placed.has(other)) ends++;
             if (ends >= Math.min(2, f.touches.size + (f.touchesBuilt ? 1 : 0))) n += f.parts.length;

@@ -32,6 +32,7 @@ import {updateMetrics} from '../reducers/workspace-metrics';
 import LazyScratchBlocks from '../lib/lazy-scratch-blocks';
 import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../lib/global-undo.js';
 import {blocklyConfirm} from '../lib/native-dialog.js';
+import {runAsWorkspaceReload, vmBlockListenerFor} from '../lib/workspace-reload-events.js';
 
 import {
     activateTab,
@@ -340,7 +341,7 @@ class Blocks extends React.Component {
     }
 
     attachVM () {
-        this.workspace.addChangeListener(this.props.vm.blockListener);
+        this.workspace.addChangeListener(vmBlockListenerFor(this.props.vm));
         this.flyoutWorkspace = this.workspace
             .getFlyout()
             .getWorkspace();
@@ -478,10 +479,14 @@ class Blocks extends React.Component {
         }
 
         // Remove and reattach the workspace listener (but allow flyout events)
-        this.workspace.removeChangeListener(this.props.vm.blockListener);
+        this.workspace.removeChangeListener(vmBlockListenerFor(this.props.vm));
         const dom = this.ScratchBlocks.Xml.textToDom(data.xml);
         try {
-            this.ScratchBlocks.Xml.clearWorkspaceAndLoadFromXml(dom, this.workspace);
+            // Blockly fires the clear/load events on a later task, after the
+            // listener is back: tagged, so the VM does not delete and recreate
+            // its own blocks (lib/workspace-reload-events.js).
+            runAsWorkspaceReload(this.ScratchBlocks.Events, () =>
+                this.ScratchBlocks.Xml.clearWorkspaceAndLoadFromXml(dom, this.workspace));
         } catch (error) {
             // The workspace is likely incomplete. What did update should be
             // functional.
@@ -497,7 +502,7 @@ class Blocks extends React.Component {
             }
             log.error(error);
         }
-        this.workspace.addChangeListener(this.props.vm.blockListener);
+        this.workspace.addChangeListener(vmBlockListenerFor(this.props.vm));
 
         if (this.props.vm.editingTarget && this.props.workspaceMetrics.targets[this.props.vm.editingTarget.id]) {
             const {scrollX, scrollY, scale} = this.props.workspaceMetrics.targets[this.props.vm.editingTarget.id];

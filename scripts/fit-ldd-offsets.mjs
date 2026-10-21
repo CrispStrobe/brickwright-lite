@@ -7,8 +7,8 @@
 // owner points it at (read-only) and prints NUMBERS: per part, the rotation and
 // offset that take an LDD part-local point to the LDraw part-local point, with the
 // fit residual. No LDD data is in this repository, and none may be committed:
-// only fitted numbers may be, with a note of where they came from (as
-// model/ldd-parts.js does for its 27 rows).
+// nor any per-part frame from it: the importer works frames out from geometry and
+// connections (model/ldd-frame.js, model/ldd-snap.js); this is a local check of them.
 //
 // INPUT: LDD's part primitives, `Primitives/<designID>.xml` (inside LDD's
 // `Assets/db.lif`; extract the archive first — this script does not read .lif).
@@ -27,7 +27,7 @@
 // THE FIT, per part: LDD lines (centre, direction) against the part's derived line
 // connectors (parts.json pinhole/axlehole/pin/axle). The rotation is one of the 24
 // axis rotations Q composed with LDraw's flip F = diag(1, −1, −1) (both libraries
-// draw parts axis-aligned; all 27 rows of ldd-parts.js are such rotations); the
+// draw parts axis-aligned; every frame the importer works out is such a rotation); the
 // offset comes from pairing one LDD line with each parallel LDraw line and is then
 // averaged over every matched pair. The residual is the RMS distance between mapped
 // LDD line centres and their LDraw partners, both ways (an unmatched line counts).
@@ -41,11 +41,10 @@
 // and in ldd-parts.js's row form (lxf-model.js lddToLdraw): Q = Rot(axis, angle),
 // translation t = F·d / 25 (LDD units).
 //
-// CROSS-CHECK: for every design ID in model/ldd-parts.js the fitted transform is
-// compared with the row's, modulo the LDraw part's connector symmetry (a fit that
-// flips a symmetric beam is the same fit): rotation difference (degrees) and offset
-// difference (LDU). The rows keep LDD's 0.02-unit (0.5 LDU) sub-offsets, so an
-// agreement shows ~0.5 LDU.
+// CROSS-CHECK: for every part the importer places by its shape (ldd-frame.js
+// importFrame) the fitted transform is compared with that frame, modulo the LDraw
+// part's connector symmetry (a fit that flips a symmetric beam is the same fit):
+// rotation difference (degrees) and offset difference (LDU).
 //
 // Usage:
 //   node scripts/fit-ldd-offsets.mjs --ldd <dir with Primitives/ (or the Primitives dir)> \
@@ -55,7 +54,8 @@ import {readFileSync, writeFileSync, readdirSync, existsSync, statSync} from 'no
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {SIGNED_PERMUTATIONS, axisAngle, connectorsMap, det, describe, mul, mulVec, transpose} from '../overlay/scratch-gui/src/lib/bw-sim/part-meta/canonical-frame.js';
-import {LDD_PARTS, LDD_UNIT_LDU} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-parts.js';
+import {LDD_UNIT_LDU} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-parts.js';
+import {importFrame, rowOfFrame} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-frame.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PARTS_FILE = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json');
@@ -172,7 +172,7 @@ export const fitPart = (ours, theirs, typeMap) => {
     return {...best, ambiguous: distinct.length, fits: distinct};
 };
 
-/** A fit in ldd-parts.js row form: {translation (LDD units), axis, angle (radians)}. */
+/** A fit in row form: {translation (LDD units), axis, angle (radians)}. */
 export const rowForm = fit => {
     const w = describe(fit.Q);
     const axis = w.kind === 'identity' ? [1, 0, 0] : w.axis;
@@ -183,8 +183,12 @@ export const rowForm = fit => {
     return {translation: mulVec(F, fit.d).map(v => r6(v / LDD_UNIT_LDU)), axis: axis.map(r6), angle: r6(sign * angle)};
 };
 
-/** A ldd-parts.js row as p = 25·A·q + d (A = F·Rot(axis, angle), d = 25·F·t). */
-export const rowTransform = row => ({A: mul(F, axisAngle(row.axis, row.angle)), d: scale(mulVec(F, row.translation), LDD_UNIT_LDU)});
+/**
+ * A frame row as p = 25·A·q + d: A = F·Rot(axis, angle) for an axis-angle row, F·Rnᵀ for a row with its
+ * rotation Rn (ldd-frame.js rowOfFrame); d = 25·F·t.
+ */
+export const rowTransform = row => ({A: row.rotation ? mul(F, transpose(row.rotation)) : mul(F, axisAngle(row.axis, row.angle)),
+    d: scale(mulVec(F, row.translation), LDD_UNIT_LDU)});
 
 /** The LDraw part's connector symmetries (proper and improper maps about its connector centroid). */
 export const connectorSymmetries = meta => {
@@ -216,8 +220,8 @@ export const compareWithRow = (fit, row, meta) => {
 
 // ---- the library --------------------------------------------------------------------------
 
-/** design ID → LDraw part: ldd-parts.js where it knows the design, else `<designID>.dat` when the catalogue has it. */
-const partFor = (designId, catalogue) => LDD_PARTS.get(designId)?.part ?? (catalogue.has(`${designId}.dat`) ? `${designId}.dat` : null);
+/** design ID → LDraw part: `<designID>.dat` when the catalogue has it. */
+const partFor = (designId, catalogue) => (catalogue.has(`${designId}.dat`) ? `${designId}.dat` : null);
 
 /** The Primitives directory under `dir` (or `dir` itself). */
 export const primitivesDir = dir => {
@@ -277,7 +281,8 @@ export const fitLibrary = (dir, {parts, only, convention} = {}) => {
     const chosen = tried[0];
     const results = chosen.rows.map(r => {
         if (!r.fit) return r;
-        const row = LDD_PARTS.get(r.designId);
+        const frame = importFrame(catalogue.get(r.part));
+        const row = frame ? rowOfFrame(frame) : null;
         return {designId: r.designId, part: r.part, lines: items.find(i => i.designId === r.designId).prim.axels.length,
             residualLDU: r6(r.fit.rms), maxLDU: r6(r.fit.max), ambiguous: r.fit.ambiguous,
             rotation: r.fit.A.map(r6), offsetLDU: r.fit.d, row: rowForm(r.fit),

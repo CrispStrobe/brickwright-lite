@@ -61,7 +61,7 @@ test('guide collision pairs follow only the engaged continuous run and preserve 
  const bodies=[{id:'b0',parts:['rail1','rail2','stop'],position:[0,0,0],colliders:[shape('rail1',0),shape('rail2',.02),shape('stop',.04)]},{id:'b1',parts:['groove'],position:[0,0,0],colliders:[shape('groove',.01)]}];
  const joints=[{type:'slider',body1:'b0',body2:'b1',axis:[1,0,0],point:[0,0,0]}];
  const filtered=localNoCollide(bodies,joints,[['b0','b1']],[],[],islands,nodes,pairs);
- assert.deepEqual(filtered,[['b0','b1',[['rail1','groove'],['rail2','groove']]]],'a frame stop remains collidable while the groove passes between rail segments');
+ assert.deepEqual(filtered,[['b0','b1',[['stop','groove']],'collide']],'a frame stop remains collidable while the groove passes between rail segments');
  assert.deepEqual(localNoCollide(bodies,joints,[['b0','b1']],[],[],islands,nodes),[['b0','b1',[]]],'without matching guide contacts none are excluded');
 });
 

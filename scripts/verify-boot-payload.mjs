@@ -53,6 +53,10 @@ const LAZY = [
         why: 'lazyBuiltinExtensions.arcade in extension-manager.js'},
     {what: 'Robot Lab blocks', marker: 'when part [PART] touches [OTHER]', chunk: 'ext-robotlab',
         why: 'lazyBuiltinExtensions.robotlab in extension-manager.js'},
+    // The extension menu-shape table (~35 KB): read by the Code tab's compiler and by the
+    // load-time repair of extension projects; the first load carries only the import() call.
+    {what: 'extension menu shape table', marker: '+MULTIPLE_PORT', chunk: 'bw-extension-menus',
+        why: 'the import() in lib/arcade-project-migration.js (lib/extension-menu-args.js)'},
     {what: 'Robot Lab tab', marker: 'Open the Robot Lab here', chunk: 'bw-robotlab-tab',
         why: 'the React.lazy RobotLabTab in components/gui/gui.jsx'},
     {what: 'LEGO SPIKE Prime driver', marker: 'ID: spikeprime\\n', altMarkers: ['ID: spikeprime\n'], chunk: 'ext-spikeprime',

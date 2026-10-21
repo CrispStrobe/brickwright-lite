@@ -12,7 +12,7 @@ for(const [name,n,motors,judge,output,minTime]of [['scale-echo',148,2,judgeScale
   for(const part of p.model.parts)assert.deepEqual(solidOverlaps(p.model,C,part),[],part.id);
   const plan=buildSteps(p.model,C);assert.equal(plan.steps.flatMap(s=>s.parts).length,n);assert.ok(plan.steps.every(s=>!s.loose&&s.parts.length<=6));
  });
- for(const autoPorts of [true,false])test(`${name} (${autoPorts?'ordinary':'strict'}): actual VM and physical output, including frozen-output refusal`,async()=>{
+ for(const autoPorts of [undefined,false])test(`${name} (${autoPorts===false?'strict':'ordinary'}): actual VM and physical output, including frozen-output refusal`,async()=>{
   const r=await runRobotLabProgram(read(base+'programs/'+name+'.bw'),{modelText:source,timeLimitMs:110000,autoPorts});assert.ok(r.finishedAt>minTime&&r.finishedAt<110000);judge(name,r);
   const frozen=structuredClone(r),body=r.mechanism.bodies.find(b=>b.parts.includes(output)).id;for(const f of frozen.track)f.bodies[body]=structuredClone(frozen.track[0].bodies[body]);assert.throws(()=>judge(name,frozen));
  });

@@ -137,7 +137,7 @@ custom constraint (§8 D1).
 | M13 | Sliding joints (fork carriage, plotter carriage, telescopic boom) | beams on axles, axle connectors sliding on axles (frictionless), 6538 sliding on 3L axles | Axle in a **round** hole today is a hinge; a part that slides **and** turns on an axle needs a hinge+slider = Jolt `SixDOF` with rotation-about-axis and translation-along-axis free (new joint kind `cylindrical`). Stock. Axial friction and end stops from the axle's length (both connectors' extents are already in `PartMeta`). |
 | M14 | Limit switch / touch sensor | RCX touch 879, NXT/EV3 touch, SPIKE force, Technic Control touch sensor | Contact-based, not a raycast: `ContactListenerJS` collects contact impulses on the plunger collider (a separate small body on a slider with a spring, so it really travels), pressed = plunger travel > threshold. Requires dynamic–dynamic collisions between plunger and robot parts (`GroupFilterTable`). Stock. |
 | M15 | Pen and paper (plotter) | plotter pen holder (any Technic pen clip; the 1990 set used a felt pen in a holder), paper sheet | Pen = `MarkerDevice` (a point on a body + a "down" condition: tip within 0.4 mm of the paper surface, or a pen-lift slider at its lower limit). Each physics step with the pen down appends the tip's position in the **paper's frame** to a polyline (`world/paper.js`): the paper is a world object (static sheet, or a body moved by feed rollers). Rendered as a texture; read by the acceptance test as vectors. Stock (no physics beyond poses). **Built 2026-10-20** (view/pen-layer.js): any part marked `pen` (properties "Draws on the floor"; `0 !BW PEN`) draws its track wherever the lowest point of its colliders is within 1.2 mm of the floor (a rolling ball's tip under its centre); the strokes are the Robot Lab API's `drawing()` (cm). The floor is the paper; a moving paper sheet is not built. |
-| M16 | Steering (Ackermann, towball links) | steering arms, towball 2736 + ball sockets (already have `ball`/`ballsocket`), rack | Rack-and-pinion (M4) + ball joints (exists) + hinges. Stock. |
+| M16 | Steering (Ackermann, towball links) | steering arms, towball 2736 + ball sockets (already have `ball`/`ballsocket`), rack | Rack-and-pinion (M4) + ball joints (exists) + hinges. Stock. **Built 2026-10-20** (the Differential car, *Differential car as built* below), first with a motor on one kingpin and a single tie rod; **with a rack and pinion since 2026-10-21** (bw.4's `RackMeshConstraint`): motor B's 12T on a rack in a toggle-joint guide, a tie rod from each rack end to an arm. |
 | M17 | Shock absorbers / springs | shock absorbers 6.5L and 9.5L | Slider with limit spring (stiffness + damping). Stock. **Built 2026-10-20** (kinds/shock.js): the 9L shock absorber's cylinder 2909 and rod 2910 ('shock-bore' / 'shock-rod' → a slider), the stroke 40 LDU as the slider's limits, and a spring (150 N/m, damped) as the slider's position motor towards full extension (jolt-core; `joint.spring`). Test: a weight sinks mg/k, a heavy one bottoms out. The spring's own formed part (u9409-f1/f2) is not drawn. |
 | M18 | Ratchet / one-way (crane pawl) | pawl on a gear | Hinge limit on a pawl body + contact; or a `oneWay` coupling flag on a hinge (motor locks one direction). Stock approx. |
 
@@ -154,6 +154,18 @@ Loads: a 50 g weight with a hook loop (world `load`, §5.5); collision hook–lo
 dynamic–dynamic contact (M14 prerequisite).
 Hard: rope over a moving boom tip (M10 approx), sway (the hook body on a rope swings: real,
 and it is the fun part), worm self-locking holding the load when the motor stops.
+*As built (2026-10-20, `crane.ldr`, `scripts/gen-crane-model.mjs`):* slewing and luffing, no hoist yet.
+A SPIKE hub on the floor carries the Excavator's 28T turntable (8T on motor A, run at 10 % speed: a
+direct 8:28 slew tips a loaded upper at full power) and posts; a 15L boom is luffed by a small linear
+actuator (motor B, 1:1:1 to the spindle; the screw self-locks, so the boom holds with B stopped: 0.01 mm
+of sag in 1 s); a hook (5L link + Technic brick 1 x 4) hangs on a frictionless pin at the tip. The
+winch waits for ropes (M10, PR #1123): a drum on the upper and a rope over the tip then replace the
+fixed link. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
+the build: the boom from about 4° to past 70°); past an end the actuator's own slip clutch (the screw
+coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). The
+end stops of lane/robot-lab-flex4 deliberately leave linear actuators out (they walk gears, chains, bands,
+racks and shift forks only), so they do not stop motor B here.
+`test/bw-sim-crane.test.mjs`.
 
 **T2 Shifting gearbox (Schaltgetriebe) — 2-speed then 4-speed, as on the 8448/8880 cars.**
 Mechanisms: M8 driving ring + clutch gears, M1 spur pairs, shift via changeover catch or a
@@ -189,7 +201,7 @@ does not slip (friction rollers are the risk; the XY-table variant is exact).
 
 **T6 Differential car** (classic Technic 8860-style chassis or SPIKE-sized): M7 diff, M16
 steering, M1, M17 suspension. Drives on the mats. Hard: the diff is the custom-constraint
-case.
+case. **Built 2026-10-20** (SPIKE-sized, no suspension): *Differential car as built* below.
 
 **T7 Pneumatic arm / press** (8868/8862 lineage): M12 pump-valve-cylinder, M1, manual pump
 or compressor motor. Hard: the pressure model's tuning against the real feel (time to raise
@@ -1779,6 +1791,31 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
   `test/bw-sim-excavator.test.mjs`; the model is in `test/bw-sim-models-solid.test.mjs` and the
   instructions tests like every MODELS entry.
 
+### The Jolt fork, 1.1.0-bw.4 (2026-10-20): a rack and pinion relative to its frames
+
+`jolt-physics` **1.1.0-bw.4** adds the fork's `RackMeshConstraint` (JoltPhysics `1631b95`, its `BRICKWRIGHT.md`
+section 4). Jolt's `RackAndPinionConstraint` ties the pinion's WORLD rotation rate to the rack's WORLD velocity, which is
+right only while the frame carrying both is at rest: on a turning or driving robot the frame's own motion drove the rack.
+The Forklift's lift motor driven past the carriage's end stop turned the whole machine (36.9° of tip in 6 s, measured),
+and a steering rack on a turning car slid 132 mm in a second and twisted the car. `RackMeshConstraint` holds the same
+equation relative to the frames, (ω_pinion − Ω_Fp)·a = r (v_rack − v_Fr − Ω_Fr × d)·b, with the frames from the pinion's
+hinge and the rack's slider; the core (`'rackAndPinion'` and `'shiftFork'` couplings) hands them over and re-bases the
+drift correction before every step, as for the gear meshes. Now: the Forklift tips 0.17° and stalls against the end; a
+rack on a chassis spinning at 3 rad/s stays put with its pinion held and travels r·θ (8.008 mm for 8.000) with it
+turned; the steering rack stays put and the car keeps its yaw rate (`test/bw-sim-rack-frame.test.mjs`, each with the
+world-rate constraint as the control). A Jolt build without the class falls back to `RackAndPinionConstraint`.
+
+### The Jolt fork, 1.1.0-bw.3 (2026-10-20): a bounce across two bodies, restitution per material pair
+
+`jolt-physics` is **1.1.0-bw.3** (same pinning as below: `scripts/integrate.mjs` URL + sha512, the GUI lockfile).
+Two additions, both documented in the forks' `BRICKWRIGHT.md` files: (3) JoltPhysics `a40ff0b`,
+`JobResolveCCDContacts` leaves a CCD impact that would bounce while the body touches another body as well to the
+next step's discrete solve (a brick landing across two beams turned over; single-body bounces and impacts that do
+not bounce are upstream's bit for bit); (4) JoltPhysics.js `MaterialPairs` (bindings only): restitution from a
+material-pair table, a body's material in its user data. The core installs the table from `contracts.js
+restitutionOf` (`physics/materials.js`); a Jolt build without it falls back to Jolt's max rule. Results:
+docs/ROBOT-LAB-VALIDATION.md "Materials".
+
 ### Gear meshes as built: the Jolt fork (2026-10-19, `lane/simlab-next6-20261019`)
 
 Owner decision: patch Jolt in our fork. `jolt-physics` is now **1.1.0-bw.2**, the Brickwright fork
@@ -1835,3 +1872,53 @@ upstream. Everything but the gear constraints is bit-identical to 1.1.0 (the for
   Differential 611 → 427 (−30 %), Two-speed gearbox 468 → 568 (+21 %: 120 iterations instead of 30),
   Forklift 121 → 118; models without gears and the 2,054-part stress model unchanged within the
   noise (60–80 µs; 1855 → 1891).
+
+### Differential car as built (2026-10-20, `lane/robot-lab-diffcar-20261020`; rack and pinion 2026-10-21)
+
+T6 on main's mechanics, no new physics: `static/sim-lab/models/differential-car.ldr`, written by
+`scripts/gen-differential-car-model.mjs`; example `programs/differential-car.bw`; test
+`test/bw-sim-differential-car.test.mjs`; docs/SIM-LAB.md *The differential car, ready to run*.
+
+- **Drive (M7):** the Differential example's gear set, turned upside down: motor A lies over the rear
+  axle, its 12T pinion on the 28T casing from above; the 'relativeGear' couplings (Willis, relative to
+  the casing) carry it as they do on the bench. Measured in a steady turn: outer/inner = (R + t/2)/(R − t/2)
+  to 0.01 %, the casing at the mean of the wheels.
+- **Steering (M16): rack and pinion** (since 2026-10-21; the first build, until `RackMeshConstraint`, put motor
+  B's output on the left kingpin and joined the arms with one tie rod: inner 20.00°, outer 17.38°, exact
+  Ackermann 17.11°). Motor B stands upright in front of the hub, between the front beams (two 3L pins on each
+  side into their holes across; the 11L beams with alternating holes give the kingpins and the hub's pins
+  standing holes and motor B holes across), its output pointing back; a 3L axle carries a 12T pinion onto a
+  1 × 13 rack (64781) lying across behind the kingpins, teeth up. (For motor B the hub sits 40 LDU further back
+  and 20 lower than in the first build, on a thin 7L beam over motor A.) A 5L tie rod from each of the rack's end holes
+  (a frictionless pin) turns a steering arm (32250, one hole in and four back: their lines meet at the rear
+  axle's middle, the Ackermann trapezoid). The coupling is `kinds/rack.js`'s, 6 mm per radian (the 12T's pitch
+  radius); measured parked, 14.98 LDU of rack per radian of the pinion (0.1046 mm per degree for 0.1047), and the
+  front wheels within 0.01° of the angles the linkage gives for the rack's position.
+- **The rack's guide:** on each side a 2L axle in the rack's axle hole carries a 3L beam with an axle hole (7229),
+  and a smooth toggle joint (48496) on its two pins; the toggle's eyes slide along a 6L axle across the car. The
+  axle sits in motor B's side hole and in a 1 × 4 thin liftarm's axle hole (the liftarm held by B's lower 3L pin),
+  so it is the chassis. The rack, its axles, beams and toggles are one body; the two guides are one slider joint.
+  Its travel is the compiler's (`mech/joints.js` `sliderTravel`): each toggle's inner eye meets the liftarm 30 LDU
+  in, and the guide on the other side ends the same direction for the first; so ±30 LDU = ±12 mm, ±114.6° of
+  motor B, about ±22° at the wheels. The program steers to B ±100° (rack 10.45 mm).
+- **What the rack costs:** with the rack moving both inner pivots as one, the linkage gives less Ackermann than the
+  trapezoid alone: at the program's angle inner 19.32°, outer 18.31° (exact Ackermann 16.61°). The front tyres
+  scrub, and the car turns about a point between the two wheels' own centres (266.1 mm and 297.8 mm): R = 295.7 mm,
+  4.9 % from the bicycle model's 282.0 mm, inside half the wheels' disagreement. The arm's hole x2 (two in) would
+  give more back, but its tie rod's inner end would reach in under motor A's front face and rub it.
+- **Steering at speed:** B to ±100° and back while the car drives at full speed and yaws at up to 42.5°/s: the rack
+  stays within 0.15 LDU of the pinion's turn × its pitch radius, and the chassis tips at most 0.12°. Parked, B
+  swinging the wheels ±19° turns the car 0.000° and moves its rear axle 0.01 mm.
+- **No trail:** knuckles 5713 (axle 3L with a perpendicular pin hole): the kingpin passes through the
+  wheel's axle. With the 6536 connector as knuckle (20 LDU trail) a parked car turned ~3° per 30° of
+  steering, because each wheel's contact point swings sideways round its kingpin.
+- **The end of the steering's travel** is the guide's: the stop is the rack slider's `limits` (±30 LDU), and since
+  #1137's end stops (jolt-physics 1.1.0-bw.5) the core carries it through the rack-and-pinion coupling to motor B's
+  hinge, so B stalls there as a real motor does. Driven on open-ended at 15 % speed the rack stops at 30.1 LDU with
+  B at 115.7° (the geometry's 114.6°); at 50 % speed B stops at 119.4°, at 50 % power (the motor's DC model at half
+  duty) at 112.8–114.5°, and the parked car turns at most 0.08° (`test/bw-sim-differential-car.test.mjs`). Until
+  then the pinion slipped round on the stopped rack (B past 370°) and the parked car turned 2.3°. The program steers
+  by position and never runs B open-ended.
+- **Floor:** main's floor is 2 m square; the program's circle (R ≈ 0.30 m) keeps every part within 0.66 m
+  of its middle.
+

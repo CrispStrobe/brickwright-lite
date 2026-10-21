@@ -116,9 +116,19 @@ test('a catalogue part is a normal part, a decoration, or nothing', async () => 
     assert.deepEqual(validatePartMeta(sticker.meta, {connectorKinds: CHECK.kinds}), [], 'the session accepts a decoration');
     assert.ok(sticker.why.length > 0, 'it says why it joins nothing');
 
+    // An alias ('~Moved to 3001': one part, placed unturned at the origin) is its target under its own name, so
+    // a model naming the old number works (3023.dat → 3023b.dat in today's library). The catalogue's "+" still
+    // does not offer it (scripts/lib/sim-lab-catalogue-gate.mjs).
     const alias = catalogPartMeta('zz-alias.dat', read, CHECK);
-    assert.equal(alias.meta, null);
-    assert.match(alias.why[0], /alias or obsolete/);
+    const target = catalogPartMeta('3001.dat', read, CHECK);
+    assert.equal(alias.meta.part, 'zz-alias.dat');
+    assert.deepEqual(alias.meta.connectors, target.meta.connectors);
+    // An obsolete file that is anything else (two parts, or one turned) is still nothing.
+    const obsolete = p => (p === 'parts/zz-obsolete.dat'
+        ? '0 ~Obsolete pair\n1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n1 16 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n' : read(p));
+    const old = catalogPartMeta('zz-obsolete.dat', obsolete, CHECK);
+    assert.equal(old.meta, null);
+    assert.match(old.why[0], /alias or obsolete/);
     assert.equal(catalogPartMeta('nothing.dat', read, CHECK).meta, null);
 });
 

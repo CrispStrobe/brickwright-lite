@@ -1,6 +1,6 @@
 # WeDo / iPad / CPX integration handoff — 2026-10-18
 
-This is the current delivery record; older session notes are historical. Follow [LANES.md](../LANES.md) for claims and qualification, and the [owner queue](OPEN-TASKS-2026-09-29.md) for other work. Machine paths, device identifiers, signing details, screenshots, build receipts and continuation commands belong only in the **gitignored local `CLAUDE.md`**.
+This is the current delivery record; older session notes are historical. Follow [LANES.md](../LANES.md) for claims and qualification (a claim is a new `lanes/<YYYY-MM-DD>-<slug>.md` file; never edit LANES.md), and the [owner queue](OPEN-TASKS-2026-09-29.md) for other work. Machine paths, device identifiers, signing details, screenshots, build receipts and continuation commands belong only in the **gitignored local `CLAUDE.md`**.
 
 ## Landed source
 

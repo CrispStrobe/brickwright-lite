@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = '1cf214d1a684a39378111567dd4f1c741d0627d9';
+export const UPSTREAM_COMMIT = '5841b15c80a77e4da9acceca7e6dd22166cef607';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**

@@ -11,15 +11,19 @@
 //
 // One direct command runs at a time, in the order they came, as in the brick's single direct-
 // command thread [CDK §2]: one that blocks (OUTPUT_READY …) holds the ones behind it, and is
-// resumed each time the hub publishes a physics batch.
+// resumed each time the hub publishes a physics batch. System commands (file transfer, CDK §3) are
+// served by the brick's file system (ev3-system-commands.js), in the same order.
 
 import {startDirectCommand, stepDirectCommand, parseFrame, systemCommandReply,
     SYSTEM_COMMAND_REPLY, SYSTEM_COMMAND_NO_REPLY} from './ev3-direct-commands.js';
 
 export const EV3_PERIPHERAL_ID = 'brickwright-robot-lab-ev3';
 export const EV3_PERIPHERAL_NAME = 'Virtual EV3';
-/** A frame larger than this is refused (the EV3's own direct-command limit is 1024 bytes of globals). */
-const MAX_FRAME = 1024 + 64;
+/**
+ * A frame larger than this is refused: a system command may carry up to 65534 bytes after its length
+ * field (CDK §3.2, "total command size excl. length bytes = 65534 bytes").
+ */
+const MAX_FRAME = 65534 + 2;
 
 /**
  * A session of one connection to the brick getHub() returns.
@@ -56,7 +60,7 @@ export const createEv3Session = (getHub, link, {onCommand = null} = {}) => {
                     if (!packet) return;
                     const frame = parseFrame(packet);
                     if (frame.type === SYSTEM_COMMAND_REPLY || frame.type === SYSTEM_COMMAND_NO_REPLY) {
-                        const reply = systemCommandReply(frame);
+                        const reply = typeof brick.systemCommand === 'function' ? brick.systemCommand(frame) : systemCommandReply(frame);
                         if (reply) link.send(reply);
                         continue;
                     }

@@ -47,6 +47,23 @@ export const vendoredFiles = async ({fetchImpl = globalThis.fetch, base = LDRAW_
  *          read() takes library-relative paths ('parts/3001.dat', 'p/4-4cyli.dat');
  *          missing lists references found in no search directory; fromCatalogue the paths the fallback supplied
  */
+/**
+ * A vendored file's text (null when it is not there), fetched once per fetch function: a big model's parts share their
+ * primitives (the stud, the pin hole's rings), and each part's closure asked for them again (the 4x4 Off-Roader:
+ * 2,266 requests). A failed request is forgotten, so it may be tried again.
+ */
+const fetched = new WeakMap();
+const fetchText = (fetchImpl, url) => {
+    if (!fetched.has(fetchImpl)) fetched.set(fetchImpl, new Map());
+    const cache = fetched.get(fetchImpl);
+    if (!cache.has(url)) {
+        const p = Promise.resolve(fetchImpl(url)).then(r => (r.ok ? r.text() : null));
+        p.catch(() => cache.delete(url));
+        cache.set(url, p);
+    }
+    return cache.get(url);
+};
+
 export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, base = LDRAW_BASE, withConfig = false,
     fallback = defaultFallback} = {}) => {
     const files = new Map();
@@ -76,9 +93,9 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
             if (files.has(path)) return path;
             if (!dir) continue;
             if (local && !local.has(path)) continue; // not vendored: no request that can only 404
-            const response = await fetchImpl(`${base}${path}`);
-            if (response.ok) {
-                files.set(path, await response.text());
+            const text = await fetchText(fetchImpl, `${base}${path}`);
+            if (text !== null) {
+                files.set(path, text);
                 return path;
             }
         }

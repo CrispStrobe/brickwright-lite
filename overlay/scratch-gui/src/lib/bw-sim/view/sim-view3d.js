@@ -11,7 +11,7 @@ import {Box3, BufferGeometry, Color, Float32BufferAttribute, GridHelper, LineBas
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {LDU_M, dirToWorld, lduToWorld} from '../contracts.js';
-import {buildSimScene, applySnapshot} from './sim-scene3d.js';
+import {buildSimScene, applySnapshot, movingMassCentre} from './sim-scene3d.js';
 import {createChainMotion} from './chain-motion.js';
 import {createSimBelts} from './belt-layer.js';
 import {createPenLayer} from './pen-layer.js';
@@ -209,6 +209,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const insight = createInsightLayer({container, scene: built.scene});
     const pulse = createPulse();
     const bodyStart = new Map(mechanism.bodies.map(b => [b.id, new Vector3(...b.position)]));
+    // The followed centre: the moving bodies' centre of mass (sim-scene3d.js movingMassCentre), not the meshes' box.
+    const massCentre = () => movingMassCentre(built, mechanism);
     /** An anchor on a body: a world point at t = 0, carried along by the body's pose now. */
     const onBody = (bodyId, world) => {
         const group = built.bodyGroups.get(bodyId);
@@ -371,7 +373,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (drawingPreview) drawingPreview.update();
         if (snapshot && simRopes) simRopes.update();
         if (snapshot && simHoses) simHoses.update();
-        const centre = (followPartId && partCentre(followPartId)()) || followFrame?.position.clone();
+        const centre = (followPartId && partCentre(followPartId)()) || followFrame?.position.clone() || massCentre() || modelBox().getCenter(new Vector3());
         if (followed && centre) {
             const delta = centre.clone().sub(followed);
             delta.y = 0;

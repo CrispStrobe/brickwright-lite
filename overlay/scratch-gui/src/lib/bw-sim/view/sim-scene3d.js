@@ -239,6 +239,11 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
                 // Create a plane for the mat, slightly above ground to avoid z-fighting
                 const matGeo = new PlaneGeometry(matW, matD);
                 matGeo.rotateX(-Math.PI / 2);
+                // The texture's row 0 is the mat's −z edge (paint), and a DataTexture is not flipped (flipY false):
+                // row 0 is v = 0. The turned plane has v = 0 at +z, so v is mirrored here; without it the mat was
+                // drawn front to back, and the Colour Zones' red corner showed where colorAt has green.
+                const uv = matGeo.attributes.uv;
+                for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
                 const matMaterial = new MeshStandardMaterial({map: matTexture, roughness: 0.9});
                 createdGeometries.add(matGeo);
                 createdMaterials.add(matMaterial);
@@ -350,6 +355,25 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
  * @param {{scene: any, bodyGroups: Map<string,Group>|Record<string,Group>, partMeshes: Map<string,Mesh>|Record<string,Mesh>, ground: any}} built
  * @param {{bodyIds: string[], bodies: Float32Array}} snapshot
  */
+/**
+ * The moving bodies' centre of mass as drawn now (a body group's origin is its body's centre of mass, mech/islands.js),
+ * or null when nothing moves: what the camera follows (sim-view3d.js). Not the meshes' box: Box3 boxes each mesh's own
+ * box, which swings round a turning part's axis — the Flywheel differential's box centre swung 9 mm side to side at
+ * every turn of its casing, and the camera with it.
+ */
+export const movingMassCentre = (built, mechanism) => {
+    const c = new Vector3();
+    let mass = 0;
+    for (const b of mechanism.bodies) {
+        if (b.motion === 'static' || !(b.massKg > 0)) continue;
+        const group = built.bodyGroups.get(b.id);
+        if (!group) continue;
+        c.addScaledVector(group.position, b.massKg);
+        mass += b.massKg;
+    }
+    return mass > 0 ? c.divideScalar(mass) : null;
+};
+
 export const applySnapshot = (built, snapshot) => {
     const {bodyGroups} = built;
     const {bodyIds, bodies} = snapshot;

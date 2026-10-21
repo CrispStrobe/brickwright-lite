@@ -75,6 +75,10 @@ const LENIENT = {minEnclosed: 0.96, gearSlack: 0.5};
 const repair = (meta, why, minEngage) => {
     const drop = new Set();
     for (const w of why) {
+        // A shaft with no mesh round it at all (reach 0.00: nothing in its slab) is a profile the part draws, not a
+        // shaft to hold (a 6L steering link's axle-shaped middle, 2739a): dropped when the part keeps other connectors.
+        const ghost = /^(\S+): the mesh reaches 0\.00 LDU from the (?:pin|axle)'s axis$/.exec(w);
+        if (ghost && meta.connectors.length > 1) { drop.add(ghost[1]); continue; }
         const m = /^holes (\S+)\/(\S+) /.exec(w);
         if (!m) continue;
         const [a, b] = [m[1], m[2]].map(id => meta.connectors.find(c => c.id === id));
@@ -85,11 +89,90 @@ const repair = (meta, why, minEngage) => {
         ((c.type === 'pinhole' || c.type === 'axlehole') && c.length < minEngage ? {...c, length: minEngage} : c))};
 };
 
-export const catalogPartMeta = (part, read, check) => {
+/**
+ * The part an alias file stands for: a '~Moved to …' or '=…' file whose whole body is one part placed at the
+ * origin unturned (3023.dat is 3023b.dat; 74695.dat is a 2-hole liftarm). Null when it is anything else.
+ */
+const aliasTarget = text => {
+    const refs = text.split(/\r?\n/).filter(l => /^\s*1\s/.test(l));
+    if (refs.length !== 1) return null;
+    const t = refs[0].trim().split(/\s+/);
+    if (t.length < 15) return null;
+    const n = t.slice(2, 14).map(Number);
+    const identity = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1];
+    if (!n.every((v, i) => Math.abs(v - identity[i]) < 1e-6)) return null;
+    const file = t.slice(14).join(' ').replace(/\\/g, '/');
+    return /\.dat$/i.test(file) && !file.includes('/') ? file.toLowerCase() : null;
+};
+
+/**
+ * What derivation cannot read off a compound part's mesh: a CV joint's male end, and the planetary wheel hub whose
+ * flange turns in its knuckle (kinds/cv-joint.js). Each entry adds connectors and internal joints to the derived meta,
+ * by the derived connectors' ids; a part whose derivation does not give those ids is left as derived. Geometry from
+ * the LDraw files: 52731's ball, 52730's socket and 46490c01's driving shaft (u9477, the CV socket 52730s01) are at the part origin,
+ * the hub's flange (46434) along -z with its three wheel pins (p0-p2, colliders 0-2). The hub's planetary reduction
+ * is not modelled: no source gives its ratio (docs/ROBOT-LAB-REAL-MODELS.md), so the flange turns with the CV 1:1.
+ */
+const COMPOUND = {
+    '52731.dat': {needs: ['x0'], connectors: [{id: 'cv', type: 'cv-ball', position: [0, 0, 0], axis: [1, 0, 0], data: {shaft: [0, 0, 1]}}]},
+    // The female end with its own 3L axle (a0 along -z): its socket (52730s01) at the origin.
+    '52730.dat': {needs: ['a0'], connectors: [{id: 'cv', type: 'cv-socket', position: [0, 0, 0], axis: [1, 0, 0], data: {shaft: [0, 0, -1]}}]},
+    '46490c01.dat': {needs: ['p0', 'p1', 'p2'], colliders: 3,
+        connectors: [{id: 'cv', type: 'cv-socket', position: [0, 0, 0], axis: [1, 0, 0], data: {shaft: [0, 0, -1]}}],
+        internalJoints: [{id: 'hub', type: 'hinge', point: [0, 0, 0], axis: [0, 0, 1], movingConnectors: ['p0', 'p1', 'p2', 'cv'],
+            movingColliders: [0, 1, 2], massFraction: 0.3, actuatedBy: 'none'}]},
+    // The older differential (62821, "with One Gear 28 Tooth Bevel"; architecture doc M7: not done before), LOCKED: its
+    // bores hold the half axles rigidly, so both wheels turn with the casing (a solid axle; exact going straight, only
+    // a corner differs). Open, it needs its casing hinged in the chassis, and in real files it turns on its half axles:
+    // the spider meshes then relate the ring to an output shaft instead of the chassis, and the drive locked (42099).
+    // Its ring is 28 tootb28 teeth round z at z 26; its pitch radius is where LDraw models put the 20T double bevel
+    // that drives it: 40 LDU from its centre (2 studs; the 28 teeth would say 35, and the bevel mesh rule allows 2). The
+    // mesh's ratio then follows the radii, 1.6 for the teeth's 1.4 (docs/ROBOT-LAB-REAL-MODELS.md).
+    '62821.dat': {needs: ['h0', 'h1'], category: 'gear', gear: {type: 'bevel', teeth: 28, pitchRadiusLdu: 40, axis: [0, 0, 1], center: [0, 0, 26]},
+        retype: {h0: 'axlehole', h1: 'axlehole'}, connectors: []}
+};
+const compound = (part, meta) => {
+    const add = COMPOUND[part.toLowerCase()];
+    if (!add || !meta || !add.needs.every(id => meta.connectors.some(c => c.id === id)) || (add.colliders && meta.colliders.length < add.colliders)) return meta;
+    const retyped = meta.connectors.map(c => (add.retype && add.retype[c.id] ? {...c, type: add.retype[c.id]} : c));
+    return {...meta, connectors: [...retyped, ...add.connectors.map(c => structuredClone(c))],
+        ...(add.internalJoints ? {internalJoints: add.internalJoints.map(j => structuredClone(j))} : {}),
+        ...(add.gear ? {gear: structuredClone(add.gear), category: add.category || meta.category} : {})};
+};
+
+/** The y → x, none, y → z turns (quaternions [x, y, z, w]) a cylinder (its axis y) takes to lie along axis k. */
+const CYLINDER_ALONG = [[0, 0, -Math.SQRT1_2, Math.SQRT1_2], null, [Math.SQRT1_2, 0, 0, Math.SQRT1_2]];
+
+/**
+ * A tyre's box as the round thing it is: a cylinder along the box's odd side (two equal half extents are its
+ * radius). As a box, a tyre does not roll: no car from elsewhere drove (the 4x4 Off-Roader's front wheels held its
+ * front motor). A box with no odd side, or already turned, stays a box.
+ */
+export const tyreCylinder = c => {
+    if (c.shape !== 'box' || c.rotation) return c;
+    const h = c.halfExtents;
+    const k = [0, 1, 2].find(i => Math.abs(h[(i + 1) % 3] - h[(i + 2) % 3]) < 1e-6 && Math.abs(h[i] - h[(i + 1) % 3]) > 1e-6);
+    if (k === undefined) return c;
+    const {halfExtents, ...rest} = c;
+    const out = {...rest, shape: 'cylinder', radius: h[(k + 1) % 3], halfHeight: h[k]};
+    if (CYLINDER_ALONG[k]) out.rotation = [...CYLINDER_ALONG[k]];
+    return out;
+};
+
+export const catalogPartMeta = (part, read, check, depth = 0) => {
     const text = read(`parts/${part.toLowerCase()}`);
     if (text === undefined) return {meta: null, decoration: false, why: [`${part}: not in the library`], desc: ''};
     const desc = (text.split(/\r?\n/, 1)[0] || '').replace(/^0\s*/, '').replace(/\s+/g, ' ').trim();
-    if (/^~|^=|^_/.test(desc)) return {meta: null, decoration: false, why: [`${part}: '${desc}' is an alias or obsolete file`], desc};
+    // '~… (Obsolete)' is a real piece with all its geometry, marked only because a newer one replaced it (minifig hips
+    // 3815, the 4.5 V motor 6216m): it derives like any part. Other '~' files are pieces of a part (a cable's segment,
+    // a shock absorber's rod) and stay drawings.
+    if (/^~|^=|^_/.test(desc) && !/^~.*\(Obsolete\)$/.test(desc)) {
+        const target = depth < 3 && /^~Moved to |^=/.test(desc) ? aliasTarget(text) : null;
+        if (!target) return {meta: null, decoration: false, why: [`${part}: '${desc}' is an alias or obsolete file`], desc};
+        const r = catalogPartMeta(target, read, check, depth + 1);
+        // aliasOf: the part this file stands for (64290, LDD's number for the 11L beam, is LDraw's alias of 32525).
+        return {...r, meta: r.meta ? {...r.meta, part, aliasOf: r.meta.aliasOf || target} : null, desc};
+    }
     let why;
     let meta = null;
     try {
@@ -116,12 +199,13 @@ export const catalogPartMeta = (part, read, check) => {
         why = [`the deriver failed: ${error.message}`];
     }
     if (meta && !why.length) {
+        meta = compound(part, meta);
         meta.catalogue = true;
         return {meta, decoration: false, why: [], desc};
     }
     let deco = decorationMeta(part, read, desc);
     // A tyre has no pin or axle: it grips its rim. It is a wheel's rubber (kinds/tyre.js welds it to the part it is round).
-    if (deco && /^Tyre\b/i.test(desc)) deco = {...deco, category: 'wheel', tyre: true};
+    if (deco && /^Tyre\b/i.test(desc)) deco = {...deco, category: 'wheel', tyre: true, colliders: deco.colliders.map(tyreCylinder)};
     if (deco) {
         const invalid = check.validate(deco, {connectorKinds: check.kinds});
         if (!invalid.length) return {meta: {...deco, catalogue: true}, decoration: true, why, desc};

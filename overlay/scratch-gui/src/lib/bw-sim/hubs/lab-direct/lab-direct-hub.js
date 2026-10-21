@@ -50,6 +50,7 @@
 
 import {controlStep, freshPortState, STALL_DPS, STALL_MS} from '../spike/spike-motor-controller.js';
 import {dcMotorFor} from '../../devices/dc-motors.js';
+import {deviceModels} from '../../devices/catalog.js';
 
 const DEG = 180 / Math.PI;
 
@@ -61,6 +62,8 @@ export const POSITION_TOLERANCE_DEG = 1;
 export const SPEED_TOLERANCE_DPS = 10;
 /** The fastest reference asked of a motor: this share of its no-load speed, so the loop keeps headroom. */
 export const SPEED_LIMIT_SHARE = 0.9;
+/** A servo motor's loop: full drive this far (°) or further from its target, proportionally less nearer. */
+export const SERVO_BAND_DEG = 20;
 /** The id this hub has in a scene (it is no placed part). */
 export const LAB_DIRECT_ID = 'lab-direct';
 
@@ -96,7 +99,7 @@ const finite = v => typeof v === 'number' && Number.isFinite(v);
 /** A port's state: plain data, everything advanceTo reads (exported to the worker's mirror). */
 const freshMotor = () => ({
     kind: 'motor',
-    mode: 'brake',            // 'power' | 'speed' | 'position' | 'hold' | 'brake' | 'coast'
+    mode: 'brake',            // 'power' | 'speed' | 'position' | 'hold' | 'brake' | 'coast' | 'servo'
     power: 0, speedDps: 0, targetDeg: 0, then: 'brake',
     refDeg: 0, refDps: 0, arrived: false,
     angleDeg: 0, measuredDps: 0,
@@ -115,6 +118,8 @@ export class LabDirectHub {
         this.motors = new Map();
         /** port -> the motor's DC spec ({noLoadRadPerSec, stallTorqueNm, …}) */
         this.specs = new Map();
+        /** port -> {rangeDeg}: a servo motor (device class 'servo-motor', the PF servo 88004) */
+        this.servos = new Map();
         /** port -> {kind, …raw}: the last probe of each sensor */
         this.sensors = new Map();
         /** port -> {seq, resolve}: a degrees/position command someone waits on (main thread only) */
@@ -131,6 +136,8 @@ export class LabDirectHub {
                 }
                 this.motors.set(b.port, freshMotor());
                 this.specs.set(b.port, (b.dcMotor || dcMotorFor({device: b.device ?? null, ids: b.ids || {}})).motor);
+                const model = typeof b.device === 'string' ? deviceModels.get(b.device) : null;
+                if (model && model.class === 'servo-motor') this.servos.set(b.port, {rangeDeg: (model.servo && model.servo.rangeDeg) || 90});
             } else if (b.class === 'sensor') {
                 this.sensors.set(b.port, {kind: b.sensor || 'sensor'});
             }
@@ -153,8 +160,14 @@ export class LabDirectHub {
      * @returns {{ok: true, done?: Promise<'completed'|'interrupted'|'stalled'>} | {ok: false, code: string, message: string}}
      */
     directCommand (port, command = {}) {
+        if (!this.motors.has(port)) return {ok: false, code: 'no-motor', message: `there is no motor on port ${port}`};
+        const servo = this.servos.get(port);
+        return servo ? this._servoCommand(port, servo, command) : this._motorCommand(port, command);
+    }
+
+    /** A motor's command (directCommand), as the controller runs it. */
+    _motorCommand (port, command = {}) {
         const st = this.motors.get(port);
-        if (!st) return {ok: false, code: 'no-motor', message: `there is no motor on port ${port}`};
         const c = command;
         const limit = this.speedLimit(port);
         const start = mode => {
@@ -209,6 +222,47 @@ export class LabDirectHub {
         return {ok: false, code: 'bad-command', message: 'a motor command is {power}, {speedDps}, {degrees, speedDps}, {position, speedDps} or {stop}'};
     }
 
+    /**
+     * A servo motor (the PF servo 88004) is not driven at a speed: what a PF receiver or battery box
+     * sends it as a speed step, it takes as an ANGLE — full speed one way is its end, 90° that way;
+     * no signal brings it back to the centre (LEGO's product page). So {power} and {speedDps} turn it
+     * to that share of its range and hold it there, {stop: 'brake'|'coast'} centres it, {stop: 'hold'}
+     * keeps it where it is, and {degrees} / {position} move it as on any motor, within its range.
+     * The servo's own loop (mode 'servo', advanceTo) is proportional, as a hobby servo's is: full drive
+     * SERVO_BAND_DEG or more from the target, less as it closes in.
+     */
+    _servoCommand (port, servo, c) {
+        const st = this.motors.get(port);
+        const limit = this.speedLimit(port);
+        const range = servo.rangeDeg;
+        const to = targetDeg => {
+            this._interrupt(port);
+            st.seq += 1;
+            st.result = null;
+            st.mode = 'servo';
+            st.targetDeg = clamp(targetDeg, -range, range);
+            st.ctl = freshPortState();
+            return {ok: true};
+        };
+        if (c.stop !== undefined) {
+            if (!STOP_ACTIONS.includes(c.stop)) return {ok: false, code: 'bad-command', message: `stop takes ${STOP_ACTIONS.join(', ')}`};
+            return to(c.stop === 'hold' ? st.angleDeg : 0);
+        }
+        if (c.power !== undefined) {
+            if (!finite(c.power)) return {ok: false, code: 'bad-command', message: 'power is a number from -100 to 100'};
+            return to(range * clamp(c.power, -100, 100) / 100);
+        }
+        const speed = c.speedDps === undefined ? null : c.speedDps;
+        if (speed !== null && !finite(speed)) return {ok: false, code: 'bad-command', message: 'speed is a number of degrees per second'};
+        if (c.degrees !== undefined || c.position !== undefined) {
+            const amount = c.degrees !== undefined ? c.degrees : c.position;
+            if (!finite(amount)) return {ok: false, code: 'bad-command', message: 'degrees is a number'};
+            return to(c.degrees !== undefined ? st.angleDeg + amount * (Math.sign(speed === null ? 1 : speed) || 1) : amount);
+        }
+        if (speed !== null) return to(limit > 0 ? range * clamp(speed / limit, -1, 1) : 0);
+        return {ok: false, code: 'bad-command', message: 'a motor command is {power}, {speedDps}, {degrees, speedDps}, {position, speedDps} or {stop}'};
+    }
+
     _interrupt (port) {
         this._finish(port, 'interrupted');
     }
@@ -240,6 +294,11 @@ export class LabDirectHub {
                 st.refDeg = target;
                 st.refDps = 0;
                 this._finish(port, 'completed');
+            }
+            if (st.mode === 'servo') {
+                st.duty = clamp((st.targetDeg - st.angleDeg) / SERVO_BAND_DEG, -1, 1);
+                st.decay = 'brake';
+                continue;
             }
             if (st.mode === 'power') {
                 st.duty = st.power / 100;

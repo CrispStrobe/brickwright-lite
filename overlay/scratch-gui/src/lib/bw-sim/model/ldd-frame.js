@@ -11,10 +11,10 @@
 // x, y, z axes; rowOfFrame turns it into the row form lxf-model.js applies
 // (ldd-parts.js documents that formula, which LeoCAD's lc_lxf.cpp applies too).
 //
-// THE RULE, learnt on a training half of the parts that the LDD↔LDraw mapping file
-// `ldraw.xml` and the LDraw library share and scored on the other half
-// (scripts/eval-ldd-frames.mjs; method, scores and the disagreements in
-// docs/ROBOT-LAB-LDD-FRAMES.md):
+// THE RULE, written while looking at a training half of the parts that the LDD↔LDraw
+// mapping file `ldraw.xml` and the LDraw library share and checked on the other half,
+// locally (scripts/eval-ldd-frames.mjs; the method in docs/ROBOT-LAB-LDD-FRAMES.md; no
+// figure from that file is kept here):
 //
 //   grid      a part with studs or an underside on the stud grid (stud, anti-stud,
 //             tube connectors pointing up): LDD y is up. A System part (brick,
@@ -33,9 +33,10 @@
 //             the middle of its connectors, LDD y up where it can be.
 //   ldraw-origin  a part with no connectors at all: LDD's frame is LDraw's (o = 0).
 //
-// Only `grid` is trusted for import (DERIVED_RULES): it is the rule that agrees with
-// ldraw.xml well enough on the parts the Robot Lab has; the others agree too rarely
-// to place a part silently, so those designs stay refused.
+// Trusted for import (importFrame): `grid`, and the Technic rules on the simple shapes
+// (technicShape) where LDD's choice of end and sense cannot change the placement. Other
+// parts are placed by their connections (model/ldd-snap.js), with these rules only as a
+// tie-break.
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -55,8 +56,60 @@ const UP = [0, -1, 0];
 const SYSTEM = new Set(['brick', 'plate', 'tile', 'slope']);
 const GRID = new Set(['stud', 'antistud', 'tube']);
 const LINE = new Set(['pin', 'pinhole', 'axle', 'axlehole']);
+/**
+ * The simple Technic shapes (from the part's connectors alone): 'line' — every connector a pin, axle,
+ * pin hole or axle hole on one line (a pin, an axle, a bush, a gear's hub); 'row' — every connector a
+ * pin or axle hole, all parallel, their centres a straight row at the 20 LDU pitch (a straight beam).
+ * Null for anything else.
+ */
+export const technicShape = meta => {
+    const cs = meta.connectors || [];
+    if (!cs.length || !cs.every(c => LINE.has(c.type) && c.axis)) return null;
+    const a = cs[0].axis;
+    if (!cs.every(c => Math.abs(Math.abs(dot(c.axis, a)) - 1) < 1e-6)) return null;
+    const foot = c => sub(c.position, scale(a, dot(c.position, a)));
+    const feet = cs.map(foot);
+    if (feet.every(f => len(sub(f, feet[0])) < 0.5)) {
+        // Only a line that is the same from either end (a pin, an axle, a bush): which end LDD starts at
+        // then does not matter. An axle pin (a pin one side, an axle the other) is not.
+        const ts = cs.map(c => dot(c.position, a));
+        const mid = (Math.min(...ts.map((t, i) => t - cs[i].length / 2)) + Math.max(...ts.map((t, i) => t + cs[i].length / 2))) / 2;
+        const mirrored = cs.every((c, i) => cs.some((d, k) => d.type === c.type && Math.abs(d.length - c.length) < 0.5 &&
+            Math.abs((ts[k] - mid) + (ts[i] - mid)) < 0.5));
+        // ... and so is its body: each collider has a twin mirrored across the middle (a bevel gear's teeth,
+        // a stop bush on one end, are not).
+        const cols = meta.colliders || [];
+        const cz = c => dot(c.position || [0, 0, 0], a) - mid;
+        const body = cols.every(c => cols.some(d => d.shape === c.shape && Math.abs(cz(d) + cz(c)) < 0.5));
+        return mirrored && body ? 'line' : null;
+    }
+    if (!cs.every(c => c.type === 'pinhole' || c.type === 'axlehole')) return null;
+    const far = feet.reduce((b, f) => (len(sub(f, feet[0])) > len(sub(b, feet[0])) ? f : b), feet[0]);
+    const dir = norm(sub(far, feet[0]));
+    const along = feet.map(f => dot(sub(f, feet[0]), dir)).sort((x, y) => x - y);
+    const straight = feet.every(f => len(cross(sub(f, feet[0]), dir)) < 0.5);
+    const pitched = along.every((t, i) => i === 0 || Math.abs(t - along[i - 1] - 20) < 0.5 || Math.abs(t - along[i - 1]) < 0.5);
+    // A row that is the same from either end (a beam of round holes, or axle holes at both ends alike).
+    const mid = (along[0] + along[along.length - 1]) / 2;
+    const at = c => dot(sub(foot(c), feet[0]), dir) - mid;
+    const mirrored = cs.every(c => cs.some(d => d.type === c.type && Math.abs(at(d) + at(c)) < 0.5));
+    return straight && pitched && mirrored ? 'row' : null;
+};
+
 /** The rules whose frames the .lxf import uses for a design outside ldd-parts.js. */
 export const DERIVED_RULES = Object.freeze(new Set(['grid']));
+
+/**
+ * The LDD frame the .lxf import places a part with outright: the grid rule's, or the Technic rules'
+ * on a simple shape (technicShape: 'line', 'row'). Null: the part waits for its connections.
+ */
+export const importFrame = meta => {
+    const frame = lddFrameOf(meta);
+    if (!frame) return null;
+    if (DERIVED_RULES.has(frame.rule)) return frame;
+    if ((frame.rule === 'technic-beam' || frame.rule === 'technic-hub') && technicShape(meta)) return frame;
+    return null;
+};
 
 /** Quaternion [x, y, z, w] → row-major 3×3. */
 const quatMatrix = ([x, y, z, w]) => [

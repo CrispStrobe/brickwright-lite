@@ -15,13 +15,14 @@ const convert=(label,source)=>{const result=arcadeToPseudocode(source);record({s
 const exported=(label,creator)=>{const result=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:label,result,channels:channels(result)});return result;};
 const inspectExport=(label,result)=>{
     clean(result);assert.equal(typeof result.ts,'string');assert.ok(result.ts.length);
+    // Owner decision 2026-10-20: a Scratch-sprite procedure exports as <Sprite>_<name>.
     const ast=parseMakeCodeTs(result.ts,{parameterDefaults:true,retainParentheses:true,retainPrimitiveProcedureDefaults:true});record({stage:label+'-actual-AST',ast});
-    const procedures=nodes(ast).filter(n=>n.type==='FunctionDeclaration'&&n.name==='effect');assert.equal(procedures.length,1);assert.equal(procedures[0].paramTypes?.value?.text,'number','actual exported formal keeps its original constraint');
-    const calls=nodes(ast).filter(n=>n.type==='Call'&&n.callee?.type==='Identifier'&&n.callee.name==='effect');assert.equal(calls.length,1);assert.equal(calls[0].args.length,1);
+    const procedures=nodes(ast).filter(n=>n.type==='FunctionDeclaration'&&n.name==='Game_effect');assert.equal(procedures.length,1);assert.equal(procedures[0].paramTypes?.value?.text,'number','actual exported formal keeps its original constraint');
+    const calls=nodes(ast).filter(n=>n.type==='Call'&&n.callee?.type==='Identifier'&&n.callee.name==='Game_effect');assert.equal(calls.length,1);assert.equal(calls[0].args.length,1);
     return convert(label+'-reimport',result.files);
 };
 
-test('typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress', {todo:"other export/roundtrip regression \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},()=>{
+test('typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress',()=>{
     const imported=convert('original-import',SOURCE);clean(imported);
     const creator=new Creator();creator.parse(imported.code);record({stage:'actual-Creator',project:creator.project,channels:channels(creator)});clean(creator,['warnings','errors','unparsed']);
     const firstExport=exported('original-export',creator),firstAgain=inspectExport('original-export',firstExport);

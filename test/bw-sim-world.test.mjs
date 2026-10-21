@@ -12,7 +12,7 @@ import {fileURLToPath} from 'node:url';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {validateCompiledMechanism} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {createMat} from '../overlay/scratch-gui/src/lib/bw-sim/world/mats.js';
-import {buildSimScene} from '../overlay/scratch-gui/src/lib/bw-sim/view/sim-scene3d.js';
+import {buildSimScene, movingMassCentre} from '../overlay/scratch-gui/src/lib/bw-sim/view/sim-scene3d.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import {Box3, Vector3} from 'three';
 
@@ -207,4 +207,60 @@ test('4. dispose() disposes the texture', () => {
     tex.dispose = () => { disposed = true; orig(); };
     built.dispose();
     assert.ok(disposed, 'texture.dispose was called');
+});
+
+test('the mat is drawn where colorAt has it: a vertex at world (x, z) samples the texel paint wrote for (x, z)', () => {
+    const emptyModel = {version: 1, parts: []};
+    const mech = compile(emptyModel, new Map(), {mat: 'colour-zones'});
+    const colors = new Map([[16, {value: '#ffffff', edge: '#000000', alpha: 1}]]);
+    const built = buildSimScene({model: emptyModel, mechanism: mech, read: () => undefined, colors});
+    const mesh = built.matMesh;
+    assert.ok(mesh, 'the mat plane exists');
+    const [w, d] = createMat('colour-zones').sizeM;
+    const pos = mesh.geometry.attributes.position;
+    const uv = mesh.geometry.attributes.uv;
+    // paint: column ↔ x, row ↔ z, row 0 the −z edge; a DataTexture is not flipped, so row 0 is v = 0.
+    for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i) + mesh.position.x;
+        const z = pos.getZ(i) + mesh.position.z;
+        assert.ok(Math.abs(uv.getX(i) - (x + w / 2) / w) < 1e-6, `u at (${x}, ${z})`);
+        assert.ok(Math.abs(uv.getY(i) - (z + d / 2) / d) < 1e-6, `v at (${x}, ${z}): ${uv.getY(i)}`);
+    }
+    assert.equal(built.matTexture.flipY, false, 'the row order above assumes an unflipped texture');
+    // The red corner is drawn bright red, not a fifth of full brightness.
+    const tex = built.matTexture.image;
+    const px = Math.round(-0.35 * tex.width / w + tex.width / 2 - 0.5);
+    const py = Math.round(-0.35 * tex.height / d + tex.height / 2 - 0.5);
+    const [r, g, b] = tex.data.slice((py * tex.width + px) * 4, (py * tex.width + px) * 4 + 3);
+    assert.ok(r > 150 && g < 80 && b < 80, `red corner drawn ${r},${g},${b}`);
+    built.dispose();
+});
+
+test('the camera follows the moving bodies\' centre of mass, which stays put while a lopsided part turns about it', () => {
+    // A 3 x 0.5 liftarm: its mesh's box is not centred on its body's origin (the centre of mass) in every pose.
+    const model = {version: 1, parts: [{id: 'arm', part: '6632.dat', position: [0, -100, 0], rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1]}]};
+    const mech = compile(model, CATALOG, {ground: false});
+    const LDRAW = path.join(ROOT, 'overlay/scratch-gui/static/ldraw/');
+    const read = p => { try { return readFileSync(path.join(LDRAW, p), 'utf8'); } catch { return undefined; } };
+    const colors = new Map([[16, {value: '#ffffff', edge: '#000000', alpha: 1}]]);
+    const built = buildSimScene({model, mechanism: mech, read, colors, catalog: CATALOG});
+    const group = built.bodyGroups.get(mech.bodies.find(b => b.motion !== 'static').id);
+    const boxCentre = () => {
+        built.scene.updateMatrixWorld(true);
+        const box = new Box3();
+        for (const mesh of built.partMeshes.values()) box.expandByObject(mesh);
+        return box.getCenter(new Vector3());
+    };
+    const followed = [];
+    const boxed = [];
+    for (let k = 0; k < 12; k++) {
+        group.rotation.set(0.3 * k, 0.5 * k, 0);
+        followed.push(movingMassCentre(built, mech));
+        boxed.push(boxCentre());
+    }
+    const spread = pts => Math.max(...pts.map(p => p.distanceTo(pts[0])));
+    assert.ok(spread(boxed) > 0.002, `the mesh box's centre swings ${spread(boxed)} m (what the camera followed before)`);
+    assert.ok(spread(followed) < 1e-9, `the followed centre stays put: ${spread(followed)} m`);
+    assert.equal(movingMassCentre(built, {bodies: []}), null, 'nothing moving: nothing to follow');
+    built.dispose();
 });

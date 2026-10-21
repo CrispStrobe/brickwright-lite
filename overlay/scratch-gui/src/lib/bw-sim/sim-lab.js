@@ -29,7 +29,7 @@ import {PhysicsClient} from './physics/physics-client.js';
 import {upgradePartMeta, validatePartMeta} from './contracts.js';
 import {BUILTIN_KINDS} from './kinds/index.js';
 import {MIN_ENGAGE_LDU} from './kinds/pin-axle.js';
-import {referencedFiles} from './model/ldraw-model.js';
+import {referencedFiles, WITH_CABLE} from './model/ldraw-model.js';
 import {openLDrawCatalog} from './ldraw/ldraw-catalog.js';
 import {fetchLDrawClosure, setLDrawFallback, vendoredFiles} from './ldraw/ldraw-fetch.js';
 import {createCatalogPartStore, creditOf} from './part-meta/catalog-store.js';
@@ -197,7 +197,12 @@ export const removeCatalogPart = part => {
 export const catalogFor = async text => {
     const catalog = await parts.catalogFor(text);
     if (!CATALOGUE_PARTS) return catalog;
-    const unknown = [...referencedFiles(text)].filter(name => !catalog.has(name) && /\.dat$/i.test(name));
+    // A part an MPD embeds under its own name ('42099 - 52731.dat', an unofficial copy) is derived as the library
+    // part it names (model/ldraw-model.js knownAs then maps the embedded name to it).
+    const named = name => /^.+? - (.+\.dat)$/i.exec(name)?.[1].toLowerCase() || name;
+    // A motor with its cable (model/ldraw-model.js WITH_CABLE) is the catalogue's motor: nothing to derive.
+    const unknown = [...new Set([...referencedFiles(text)].map(named))].filter(name => !catalog.has(name) &&
+        !(WITH_CABLE[name] && catalog.has(WITH_CABLE[name])) && /\.dat$/i.test(name));
     if (!unknown.length) return catalog;
     let lib;
     try {
@@ -205,14 +210,24 @@ export const catalogFor = async text => {
     } catch (_) {
         return catalog; // offline: the session reports the parts it cannot find
     }
-    for (const name of unknown) {
-        if (!lib.has(`parts/${name.toLowerCase()}`)) continue;
-        try {
-            await addCatalogPart(name);
-        } catch (_) { /* named by the session as an unknown part */ }
-    }
+    // Several at a time (DERIVE_AT_ONCE): one after the other, each part's file waves and its deriver's start-up made a
+    // big set wait 9 s of mostly idle time (the 4x4 Off-Roader: 62 parts, 2,400 small requests).
+    const todo = unknown.filter(name => lib.has(`parts/${name.toLowerCase()}`));
+    let next = 0;
+    const lane = async () => {
+        while (next < todo.length) {
+            const name = todo[next++];
+            try {
+                await addCatalogPart(name);
+            } catch (_) { /* named by the session as an unknown part */ }
+        }
+    };
+    await Promise.all(Array.from({length: Math.min(DERIVE_AT_ONCE, todo.length)}, lane));
     return catalog;
 };
+
+/** Parts derived at the same time when a model names several the catalogue lacks: the cores but one, at most 6. */
+const DERIVE_AT_ONCE = Math.max(1, Math.min(6, ((globalThis.navigator && globalThis.navigator.hardwareConcurrency) || 2) - 1));
 
 /**
  * Starts physics-worker.js in a Web Worker (webpack emits it as its own chunk, and

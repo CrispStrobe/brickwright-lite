@@ -81,6 +81,63 @@ export const PART_FRICTION = 0.4;
 export const GROUND_FRICTION = 0.8;
 
 /**
+ * What a part is made of (PartMeta `material`, default PART_MATERIAL): the surface numbers the physics
+ * core gives the body that part makes its island touch the ground with (mech/islands.js: the grippiest
+ * part's; the body's `material`). docs/ROBOT-LAB-VALIDATION.md "Materials" has the sources and the limits.
+ *   friction            Coulomb coefficient (Jolt combines two bodies' as √(μ1·μ2)); a part's own
+ *                       `friction` still wins over its material's.
+ *   restitution         e against a rigid surface (a hard table): the speed ratio of a bounce, rebound height
+ *                       e²·drop height. Two materials meet with restitutionOf(a, b) (below). ABS 0.4: solid
+ *                       polymers rebound with e 0.6–0.9 (particles: ~0.9, Journal of Physics: Conference Series
+ *                       2557 012057, "Restitution coefficient of various particles"; polymer composites 0.63–0.82,
+ *                       Bulletin of Materials Science 22(6) 1009), a hollow moulded brick lands on its rim and
+ *                       rings, so less: 0.4 is an estimate (rebound 16 % of the height), not a measurement. A LEGO
+ *                       tyre 0.05 (soft rubber on a hollow rim: it barely bounces). Only impacts faster than
+ *                       physics/jolt-core.js LEGO_MIN_BOUNCE_SPEED_M_S bounce.
+ *   modulusGPa          Young's modulus: how the two sides of an impact share it (restitutionOf). ABS 2.3
+ *                       (datasheet range 2.0–2.6); the tyres' soft rubber 0.0055 (Shore A ≈ 70, Gent's
+ *                       relation E ≈ 0.0981·(56 + 7.62336·S)/(0.137505·(254 − 2.54·S)) MPa); a LEGO tread's
+ *                       hard plastic links as ABS.
+ *   rollingResistance   c_rr, the rolling drag over the normal load (physics/rolling.js: c_rr·N·r on a wheel that
+ *                       rolls, and up to that holding a parked one). Rubber on a hard floor 0.010–0.025 (a drum
+ *                       rig's deceleration method: Hungarian Journal of Industry and Chemistry, "Laboratory
+ *                       Measurement of Rolling Resistance Coefficient under Different Conditions"); a LEGO tyre on
+ *                       a vinyl mat 0.02. A tread 0.05: link (steel) tracks on concrete 0.03–0.06 in the literature
+ *                       table of Łopatka & Muszyński, "Validation of rolling and steer resistance of articulated
+ *                       tracked robot", ISARC 2013 (whose elastomeric belt tracks measured 0.14); LEGO's are
+ *                       pinned plastic links on plastic sprockets. Hard plastic rolling on its rim is not modelled.
+ */
+export const MATERIALS = Object.freeze({
+    abs: Object.freeze({friction: PART_FRICTION, restitution: 0.4, modulusGPa: 2.3, rollingResistance: 0}),
+    rubber: Object.freeze({friction: 1, restitution: 0.05, modulusGPa: 0.0055, rollingResistance: 0.02}),
+    tread: Object.freeze({friction: 1, restitution: 0.4, modulusGPa: 2.3, rollingResistance: 0.05}),
+    // The floor and the arena's walls: a hard table under a thin mat, rigid next to any part (it takes no share
+    // of an impact's energy), so a part bounces off it with its own e.
+    floor: Object.freeze({friction: GROUND_FRICTION, restitution: 1, modulusGPa: Infinity, rollingResistance: 0})
+});
+export const PART_MATERIAL = 'abs';
+/** The floor's material (a printed mat on a table): see MATERIALS.floor. */
+export const GROUND_MATERIAL = 'floor';
+/** The floor body's own restitution, for Jolt's max rule where a body has no material: 0, so a part's own e counts. */
+export const GROUND_RESTITUTION = 0;
+
+/**
+ * The restitution of an impact between two materials. Each side stores the impact's energy in proportion to its
+ * compliance 1/E (two springs in series) and gives back e² of what it stored, so
+ *   e_ab² = (e_a²/E_a + e_b²/E_b) / (1/E_a + 1/E_b).
+ * A part on the rigid floor: its own e. ABS on ABS: 0.4. A brick on a tyre: the soft rubber takes the impact,
+ * e ≈ 0.05. (A model, as Jolt's rules are; it keeps both materials' numbers, which max(e_a, e_b) does not.)
+ */
+export const restitutionOf = (a, b) => {
+    const A = MATERIALS[a] || MATERIALS[PART_MATERIAL];
+    const B = MATERIALS[b] || MATERIALS[PART_MATERIAL];
+    const ca = 1 / A.modulusGPa;
+    const cb = 1 / B.modulusGPa;
+    if (ca + cb === 0) return Math.min(A.restitution, B.restitution);
+    return Math.sqrt((A.restitution ** 2 * ca + B.restitution ** 2 * cb) / (ca + cb));
+};
+
+/**
  * @typedef {[number, number, number]} Vec3
  * @typedef {[number, number, number, number]} Quat   x, y, z, w (unit)
  * @typedef {[number, number, number, number, number, number, number, number, number]} Mat3
@@ -133,6 +190,7 @@ export const GROUND_FRICTION = 0.8;
  *   massGrams: number,
  *   friction?: number,            Coulomb friction coefficient of the part surface, 0..2;
  *                                 default PART_FRICTION (hard plastic). A tyred wheel is ~1.
+ *   material?: string,            a MATERIALS key (default PART_MATERIAL 'abs'); a tyred wheel is 'rubber'
  *   connectors: Connector[],
  *   colliders: Collider[],
  *   gear?: {type: string, teeth: number, axis: Vec3, center: Vec3},
@@ -253,7 +311,9 @@ export const portRefOf = placed => {
  *   gravity: Vec3,
  *   bodies: {id: string, motion: 'static'|'dynamic', position: Vec3, rotation: Quat,
  *            massKg: number, com?: Vec3, colliders: Collider[], parts: string[],
- *            friction?: number, restitution?: number, color?: number, mat?: string}[],
+ *            friction?: number, restitution?: number, rollingResistance?: number, material?: string, color?: number, mat?: string}[],
+ *     (restitution 0..1 and rollingResistance ≥ 0: MATERIALS; c_rr acts on a body that turns on a hinge; `material`
+ *      a MATERIALS key: two bodies with one meet with restitutionOf, others with Jolt's max of `restitution`)
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
  *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number, deviceId?: number}} |
  *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
@@ -355,6 +415,9 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
     if (meta.ownedGeometry !== undefined && typeof meta.ownedGeometry !== 'boolean') out.push(`${p}.ownedGeometry: must be boolean`);
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);
+    }
+    if (meta.material !== undefined && !Object.prototype.hasOwnProperty.call(MATERIALS, meta.material)) {
+        out.push(`${p}.material: '${meta.material}' is not one of ${Object.keys(MATERIALS).join('|')}`);
     }
     if (!Array.isArray(meta.connectors)) out.push(`${p}.connectors: not an array`);
     else {
@@ -459,6 +522,9 @@ const checkPartMetaV2 = (meta, p, out) => {
                     if (!(typeof meta.hubProfile === 'string' || meta.hub)) out.push(`${w}: only a hub part has built-in motors`);
                 }
                 if (j?.limitsLdu !== undefined && !(isVec(j.limitsLdu, 2) && j.limitsLdu[0] <= j.limitsLdu[1])) out.push(`${w}.limitsLdu: [min, max]`);
+                // A hinge's end stops in degrees from the start pose (a servo: kinds/servo-stops.js).
+                if (j?.limitsDeg !== undefined && !(j.type === 'hinge' && isVec(j.limitsDeg, 2) && j.limitsDeg[0] <= 0 && j.limitsDeg[1] >= 0 &&
+                    j.limitsDeg[0] >= -180 && j.limitsDeg[1] <= 180)) out.push(`${w}.limitsDeg: a hinge's [min ≤ 0, max ≥ 0] within ±180`);
             }
         }
     }
@@ -596,12 +662,27 @@ export const partDrivenJoints = meta => {
 };
 
 /**
- * A graph node's share of its part (mech/graph.js makes one node per driven joint's moving side
- * and one for the rest): {fraction of the part's mass, collider indices}, or null for a part
- * with no driven joint (one node, everything).
+ * A part's free internal hinges (actuatedBy 'none'): a wheelset that turns in its housing with nothing
+ * driving it, as a train motor's second axle does ('#free-<joint id>', mech/graph.js).
+ * [{joint, suffix}]
+ */
+export const partFreeJoints = meta => {
+    const m = upgradePartMeta(meta);
+    return (m && Array.isArray(m.internalJoints) ? m.internalJoints : [])
+        .filter(j => j && j.actuatedBy === 'none' && j.type === 'hinge')
+        .map(j => ({joint: j, suffix: `#free-${j.id}`}));
+};
+
+/** Every internal joint that splits its part into graph nodes: the driven ones, then the free ones. */
+export const partMovingJoints = meta => [...partDrivenJoints(meta), ...partFreeJoints(meta)];
+
+/**
+ * A graph node's share of its part (mech/graph.js makes one node per driven or free joint's moving
+ * side and one for the rest): {fraction of the part's mass, collider indices}, or null for a part
+ * with no such joint (one node, everything).
  */
 export const motorNodeShare = (meta, nodeId) => {
-    const driven = partDrivenJoints(meta);
+    const driven = partMovingJoints(meta);
     if (!driven.length) return null;
     const moving = driven.find(d => nodeId.endsWith(d.suffix));
     if (moving) return {fraction: moving.joint.massFraction, colliders: [...(moving.joint.movingColliders || [])]};
@@ -772,6 +853,11 @@ const checkMechanismV1 = (m, out, v2 = false, jointTypes = JOINT_TYPES_V1) => {
         if (!Array.isArray(b?.parts)) out.push(`${w}.parts: not an array`);
         if (b?.color !== undefined && !(Number.isInteger(b.color) && b.color >= 0 && b.color <= 10)) out.push(`${w}.color: need an integer 0..10`);
         if (b?.mat !== undefined && typeof b.mat !== 'string') out.push(`${w}.mat: need a string`);
+        if (b?.restitution !== undefined && !(isNum(b.restitution) && b.restitution >= 0 && b.restitution <= 1)) out.push(`${w}.restitution: need a number in 0..1`);
+        if (b?.material !== undefined && !Object.prototype.hasOwnProperty.call(MATERIALS, b.material)) out.push(`${w}.material: '${b.material}' is not one of ${Object.keys(MATERIALS).join('|')}`);
+        if (b?.rollingResistance !== undefined && !(isNum(b.rollingResistance) && b.rollingResistance >= 0 && b.rollingResistance < 1)) {
+            out.push(`${w}.rollingResistance: need a number in 0..1`);
+        }
     });
     const joints = new Map();
     uniqueIds(m.joints, 'joints', out);
@@ -918,7 +1004,14 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *   noCollideParts? [[bodyA, bodyB, [[partA, partB], …]]] a noCollide pair filtered PART BY PART
  *               (mech/collision-filter.js localNoCollide): only those part pairs (partA's colliders
  *               on bodyA, partB's on bodyB: colliders carry `part`) are kept apart, the others
- *               collide. A noCollide pair not listed is filtered whole.
+ *               collide. A noCollide pair not listed is filtered whole. With a fourth element 'collide'
+ *               the list is inverted: only those part pairs collide (the shorter of the two lists is
+ *               written: two frames of 1,000 and 600 parts kept 1.19 million pairs apart, 2026-10-20).
+ *   solver?     {lightLinks: {massKg, ratio, velocity, position}} more solver iterations for joints
+ *               holding a body below massKg against one ratio times heavier (mech/compile.js
+ *               FOREIGN_LIGHT_LINKS, models from elsewhere only); bodies keep their own massKg.
+ *               loopBalls?: the ids of the hinges made ball joints to break closed hinge loops (mech/loops.js).
+ *               maxLinearVelocity?: m/s no body exceeds (mech/compile.js FOREIGN_MAX_SPEED_M_S).
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)
@@ -1154,7 +1247,8 @@ const validateMechanismV2 = (m, kinds, out) => {
         if (!Array.isArray(m.noCollideParts)) out.push('mechanism.noCollideParts: not an array');
         else {
             m.noCollideParts.forEach((entry, i) => {
-                const ok = Array.isArray(entry) && entry.length === 3 && pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
+                const ok = Array.isArray(entry) && (entry.length === 3 || (entry.length === 4 && entry[3] === 'collide')) &&
+                    pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
                     entry[2].every(pp => Array.isArray(pp) && pp.length === 2 && typeof pp[0] === 'string' && typeof pp[1] === 'string');
                 if (!ok) out.push(`noCollideParts[${i}]: need [bodyA, bodyB, [[partA, partB], …]] of a noCollide pair`);
             });

@@ -62,7 +62,7 @@ const modelKey = m => m.id || m.file;
 
 const TEXT = {
     en: {
-        model: 'Model', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
+        model: 'Model', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io), LEGO Digital Designer (.lxf) or LeoCAD (.lcd)', loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
@@ -80,7 +80,9 @@ const TEXT = {
             'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.',
             'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. The blocks are loaded automatically. Press Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
             'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. The blocks are loaded automatically. Press Run: the Move Hub drives ahead with its motors A and B, then spins on the spot. Challenge: make it spin the other way.',
-            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. The blocks are loaded automatically. Press Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.'
+            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. The blocks are loaded automatically. Press Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.',
+            'crane.bw': 'The example program is in the Code tab now. Press Run: the crane lifts its boom, swings the hook a quarter turn, lets it down and swings back. Challenge: make it swing the other way.',
+            'drawing-robot.bw': 'The example program is in the Code tab now. Press Run and watch a drawing robot draw a square: each corner turns fast, then slowly to 90°. Challenge: draw a triangle.'
         },
         noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
         noProgramBt: 'No {brick} program is loaded yet, so nothing tells the motors to turn. Add the {brick} blocks (Add Extension) or load the example program, then press Run.',
@@ -100,7 +102,9 @@ const TEXT = {
             'lxf-no-lxfml': 'this LEGO Digital Designer file holds no model (.LXFML).',
             'lxf-unreadable': 'this LEGO Digital Designer model could not be read.',
             'lxf-version': 'this LEGO Digital Designer file is from a version the Robot Lab cannot read (only LDD 4).',
-            'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io and .lxf files.'
+            'lcd-unreadable': 'this LeoCAD project could not be read.',
+            'lcd-version': 'this LeoCAD project is from a version the Robot Lab cannot read (LeoCAD 0.5 to 0.79 files only).',
+            'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io, .lxf and .lcd files.'
         },
         instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
@@ -175,7 +179,7 @@ const TEXT = {
         }
     },
     de: {
-        model: 'Modell', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
+        model: 'Modell', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io), LEGO Digital Designer (.lxf) oder LeoCAD (.lcd)', loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
@@ -193,7 +197,9 @@ const TEXT = {
             'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.',
             'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Die Blöcke werden automatisch geladen. Drücke Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
             'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Die Blöcke werden automatisch geladen. Drücke Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht sich dann auf der Stelle. Aufgabe: Lass ihn andersherum drehen.',
-            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Die Blöcke werden automatisch geladen. Drücke Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.'
+            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Die Blöcke werden automatisch geladen. Drücke Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.',
+            'crane.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Kran hebt seinen Ausleger, schwenkt den Haken eine Vierteldrehung, lässt ihn ab und schwenkt zurück. Aufgabe: Lass ihn in die andere Richtung schwenken.',
+            'drawing-robot.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und sieh zu, wie der Malroboter ein Quadrat malt: Jede Ecke dreht er erst schnell, dann langsam bis 90°. Aufgabe: Mal ein Dreieck.'
         },
         noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         noProgramBt: 'Es ist noch kein {brick}-Programm geladen, darum dreht sich kein Motor. Füge die {brick}-Blöcke hinzu (Erweiterung hinzufügen) oder lade das Beispielprogramm, dann drücke Start.',
@@ -213,7 +219,9 @@ const TEXT = {
             'lxf-no-lxfml': 'Diese LEGO-Digital-Designer-Datei enthält kein Modell (.LXFML).',
             'lxf-unreadable': 'Dieses LEGO-Digital-Designer-Modell konnte nicht gelesen werden.',
             'lxf-version': 'Diese LEGO-Digital-Designer-Datei stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur LDD 4).',
-            'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io- und .lxf-Dateien.'
+            'lcd-unreadable': 'Dieses LeoCAD-Projekt konnte nicht gelesen werden.',
+            'lcd-version': 'Dieses LeoCAD-Projekt stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur Dateien von LeoCAD 0.5 bis 0.79).',
+            'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io-, .lxf- und .lcd-Dateien.'
         },
         instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
@@ -315,7 +323,7 @@ const HIGHLIGHT_MS = 3000;
  * What "Open…" accepts (lib/bw-sim/model/model-file.js OPEN_ACCEPT, kept here so the first load does not
  * pull the model readers in; test/bw-sim-model-file.test.mjs holds the two equal) and what "Save as…" offers.
  */
-const OPEN_ACCEPT = '.ldr,.mpd,.io,.lxf';
+const OPEN_ACCEPT = '.ldr,.mpd,.io,.lxf,.lcd';
 const SAVE_FORMATS = ['ldr', 'mpd', 'io'];
 /** The `0 <title>` line every model the pane writes carries (it is not parsed back, so it must not vary). */
 const MODEL_TITLE = 'Robot Lab model';
@@ -977,7 +985,9 @@ class SimLabPane extends React.Component {
         const model = this.editor ? this.editor.model : this.session?.model;
         if (!model || !this.lib) return;
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
-        const {data, filename, mime} = await this.lib.saveModelFile(model, format, {name, title: MODEL_TITLE});
+        // The model's own author line (an imported model's stays: Brickwright would make it one of ours).
+        const author = (/^0 Author: (.*?)\r?$/m.exec(this.lastText || '') || [])[1];
+        const {data, filename, mime} = await this.lib.saveModelFile(model, format, {name, title: MODEL_TITLE, ...(author ? {author} : {})});
         const url = URL.createObjectURL(new Blob([data], {type: mime}));
         const a = document.createElement('a');
         a.href = url;
@@ -1036,7 +1046,7 @@ class SimLabPane extends React.Component {
         if (updateTitle) this.props.onSetProjectTitle?.(entry.title[this.locale] || entry.title.en);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
         if (!this.disposed) this.setState({...(this.state.lessonKey ? {lessonKey: key} : {}),
-            ...(!includeProgram ? {info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''} : {})});
+            ...(!includeProgram ? {info: this.shippedModel()?.example && !this.spikeLoaded() ? this.withIntro(this.text.exampleOffer) : ''} : {})});
     }
 
     /** The gallery uses the same model/program loaders as the dropdown and example button. */
@@ -1063,6 +1073,12 @@ class SimLabPane extends React.Component {
     /** The MODELS entry of the model on show, or null for a built or imported one. */
     shippedModel () {
         return this.lib?.MODELS.find(m => modelKey(m) === this.state.shipped) || null;
+    }
+
+    /** A shipped model's own short story (MODELS `intro`, EN/DE) before `text`, when it has one. */
+    withIntro (text) {
+        const intro = this.shippedModel()?.intro;
+        return intro ? `${intro[this.locale] || intro.en} ${text}` : text;
     }
 
     /**
@@ -1100,7 +1116,7 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         this.setState({programLoading: false});
-        this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
+        this.setState({info: this.text.exampleGoal[entry.example] || this.withIntro(this.text.exampleLoaded)});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
 
@@ -1118,7 +1134,10 @@ class SimLabPane extends React.Component {
             const bytes = new Uint8Array(await f.arrayBuffer());
             const ldconfig = /\.lxf$/i.test(f.name) ?
                 (await this.lib.fetchLDrawClosure([], {withConfig: true})).read('ldconfig.ldr') || '' : '';
-            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE, catalog: this.lib.CATALOG});
+            // An LDD file names its parts by design number: those the catalogue lacks are derived first, so
+            // the import can place them by their connections (lib/bw-sim/model/ldd-snap.js).
+            const prepareCatalog = parts => this.lib.catalogFor(parts.map(p => `1 16 0 0 0 1 0 0 0 1 0 0 0 1 ${p}`).join('\n'));
+            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE, catalog: this.lib.CATALOG, prepareCatalog});
         } catch (error) {
             const reason = (error && this.text.fileErrors[error.code]) || (error && error.message) || String(error);
             if (!this.disposed) this.setState({message: this.t('fileFailed', {name: f.name, error: reason})});

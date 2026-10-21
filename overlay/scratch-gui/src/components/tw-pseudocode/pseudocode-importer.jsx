@@ -5291,6 +5291,12 @@ class PseudocodeImporter extends React.Component {
             } else {
                 this.props.vm.runtime.stc = stc;
             }
+            // Announce it. The readers (circuit-tab, the debugger pane, the
+            // engine picker) re-read runtime.stc on PROJECT_CHANGED, and until
+            // now that event only came from the workspace reload echoing its
+            // own Blockly events into the VM a task later — an echo that also
+            // replaced every block object (lib/workspace-reload-events.js).
+            if (this.props.vm.runtime.emitProjectChanged) this.props.vm.runtime.emitProjectChanged();
             this.publishAppliedDevice(stc);
             // Re-call getInfo() on loaded extensions so device-dependent gating
             // (e.g. hiding PWM blocks on AVR, PCA blocks on STC89) takes effect.

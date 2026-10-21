@@ -65,10 +65,10 @@ pkg.dependencies['@xyflow/react'] = pkg.dependencies['@xyflow/react'] || '^12.3.
 pkg.dependencies['@xterm/xterm'] = '6.0.0';                       // MIT — the Linux lesson's terminal emulator (lazy-imported, exact pin)
 pkg.dependencies['three'] = '0.186.1';                               // MIT — the SPIKE arena's 3D view (lazy-imported, exact pin)
 // MIT — the Sim Lab physics engine (WASM, lazy-imported). OUR FORK, pinned to an immutable release
-// tarball (sha256 e45f1c127c6d0bcb79f5c87124106700746493e898246ad31dead483004ac516): upstream Jolt's GearConstraint passed
+// tarball (sha256 3342ec69f60e6a0a935f0ecfe0372e633243b23bf6f748d7871a5d94f74b26e9): upstream Jolt's GearConstraint passed
 // torque across a mesh 1:1 (an 8:24 train put 3× the load on its motor) and is angular-only (no axle
 // reaction: a gearbox on a free frame gained angular momentum). The fork fixes the ratio and adds
-// GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.2, branch brickwright/gear-mesh-master).
+// GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.5, branch brickwright/part-pair-filter on brickwright/gear-mesh-master; bw.3 adds the CCD bounce fix and MaterialPairs, bw.4 RackMeshConstraint, bw.5 PartPairSimShapeFilter: the Robot Lab's part-pair collision filter in C++).
 // https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh-master/BRICKWRIGHT.md
 // The release URL names a tag, which can move; the bytes are what is trusted: npm checks the tarball
 // against the lockfile's integrity before it unpacks anything, and the lockfile must carry THIS value.
