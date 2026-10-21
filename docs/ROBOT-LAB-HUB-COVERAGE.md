@@ -50,7 +50,7 @@ Virtual hub: `G/bw-sim/hubs/spike/spike-virtual-hub.js` + `G/virtual-hub/spike-p
 | spikeprimeble (direct BLE) | WB | blocks | GREEN | `bw-sim-spike-routes` "(a) a spikeprimeble project (SPIKE 3 direct BLE) migrates to spikeprime and stops the Wall stopper by its reading, in the Lab over Web Bluetooth". Legacy ids migrate to spikeprime on load (`lib/spike-project-migration.js`), and the test checks that only real spikeprimeble opcodes were in the file |
 | spikeprimeBTC / spikeprime | SL-BT (RFCOMM double, 2.x firmware) | blocks | GREEN | `bw-sim-spike-routes` "(b) … motor A turns 360 degrees in the physics" and "(b) spikeprime over Scratch Link BT Classic stops the Wall stopper by its reading". The second needed two fixes to the double: the port report now streams on every hub change, and its distance is in whole cm, as a 2.x hub sends it (it was mm read as cm). |
 | spikeprime | SL-BLE | blocks | GREEN | `bw-sim-spike-routes` "(c) spikeprime over Scratch Link BLE (the BLE double, SPIKE 3 GATT) stops the Wall stopper by its reading" (+ a judge-can-fail control) |
-| spikeprimeBridge / legospikeprimeBLE | bridge | blocks | GAP | legacy ids migrated (`spike-legacy-migration`); no virtual bridge |
+| spikeprime (absorbed spikeprimeBridge) | bridge (WebSocket relay, 2.x REPL) | `DEVICE SPIKE` pseudocode | GREEN | `bw-sim-spike-bridge` "spikeprime over its WebSocket bridge (firmware 2.x REPL) stops the Wall stopper by its reading" (+ a judge-can-fail control). The real extension's own `connect to bridge at [URL]` (ws://localhost:8081) -> `G/bw-sim/transports/virtual-bridge.js` (text both ways) -> `virtual-spike-stream.js`, which unwraps the same 2.x REPL double Scratch Link BT reaches. Needed CrispStrobe/extensions#58: BridgeLink sent the relay base64 while reading the hub's text as text. Legacy spikeprimeBridge / legospikeprimeBLE projects migrate to spikeprime (`spike-legacy-migration`) |
 | Renode firmware (lockstep) | firmware route | blocks / pseudocode compiled for the firmware | PARTIAL | `bw-sim-renode-lockstep`, `bw-sim-renode-lockstep-program` against the in-process fake (`bw-sim-renode-lockstep-fake.mjs`); `-native` checks only the desktop contract |
 | Renode firmware | firmware route | MicroPython on the hub | GAP | MicroPython exercised in the arena pane only (`spike-arena-pane-units`) |
 
@@ -64,8 +64,8 @@ Virtual hub: `G/bw-sim/hubs/ev3/ev3-virtual-hub.js`, `ev3-peripheral.js`, `ev3-d
 | ev3comprehensive | SL-BT | `DEVICE EV3` pseudocode / blocks | GREEN | `bw-sim-bt-hubs-program` "EV3 wall stopper: the DEVICE EV3 example through ev3comprehensive" (no longer `{todo}`; vendored ev3comprehensive has the `msgCounter`/`readBuffer` fix from upstream PR #53). Byte-level breadth (tank, sensors, sound/screen): `bw-sim-ev3-extension-bytes` |
 | ev3comprehensive | upload + run | `.rbf` on-brick | GREEN (#1127) | `bw-sim-ev3-rbf-brick` "Robot Lab: the EV3 wall stopper runs wall-stopper.rbf — drives at the wall, stops before it" (clean-room VM, `routes/ev3-vm/`), plus the CDK download/start/stop system commands in the same file |
 | ev3comprehensive | HTTP / `Scratch.fetch` | blocks | GREEN (#1127) | `bw-sim-ev3-rbf-ev3comprehensive` "ev3comprehensive: transpile → Scratch.fetch to the LMS compiler (stubbed) → the .rbf runs on the Virtual EV3". The real extension transpiles and posts. Only the hosted LMS compiler's reply is a recorded fixture, because that service is outside the repo. |
-| ev3comprehensive | Web Serial, bridge | blocks | GAP | virtual peripheral only on SL-BT |
-| ev3dev | HTTP / SSH | blocks | GAP | no virtual ev3dev brick |
+| ev3comprehensive | Web Serial, bridge | `DEVICE EV3` pseudocode | GREEN | `bw-sim-virtual-transports-ev3` "ev3comprehensive over Web Serial (115200 baud) stops the EV3 wall stopper …", "… in auto mode finds an already-authorised virtual serial port first", "… over its WebSocket bridge stops the EV3 wall stopper …" (+ two controls). The real extension connects with its own `set connection mode` / `connect` blocks, with no Scratch Link present; `G/bw-sim/transports/virtual-serial.js` (a `navigator.serial` double) and `virtual-bridge.js` (ws://localhost:8080, binary frames) carry the same EV3 command frames to the Virtual EV3 session |
+| ev3dev | HTTP(S) | blocks | GREEN | `bw-sim-virtual-ev3dev` "ev3dev: its blocks drive the EV3 wall stopper at the wall and stop it before the wall by the ultrasonic reading", "ev3dev: motor position reads the brick's encoder", "… with the right credentials …" (+ two controls). The real extension (`scratchtoev3`) is set up by its own `set connection` / `test connection` blocks; its `Scratch.fetch` requests (GET `/`, POST `/` `{cmd,…}`, GET `/motor/…`, `/sensor/…`, `/button/…`, Basic auth) are answered by `G/bw-sim/transports/virtual-ev3dev.js` over `virtual-http.js`, which drives the scene's EV3. Only the requests the extension sends are served; other commands answer `{status: "error"}`. The SSH route is the extension's generated upload script, run outside the browser: n/a |
 | ev3comprehensive | any | Python/JS calls | GAP | The Code tab's Python/JS readers (`lib/robot-lab-pseudocode.js` `readPython` / `readJavaScript`, on the Translator in `sb3-creator-python.js`) lift only `scratch.*`, `_stc12.*`, `_arrays.*` and `_robotlab.*`. Every `_ev3comprehensive.*` call is dropped ("dropped expression statement"). Pinned as todo in `hub-runtime-calls-to-blocks`. Fix: a lift in `installRobotLabReaders` driven by `SB3Creator.RUNTIME_EXTENSIONS`, after #1129, which edits the same file |
 | MakeCode EV3 | — | — | n/a | separate MakeCode simulator, not the Lab |
 
@@ -80,7 +80,7 @@ Virtual hub: `G/bw-sim/hubs/lwp3/` (profile `boost-move-hub`), peripheral `G/vir
 | legoboostunified | SL-BLE | `boost` words | GREEN | `lab-hubs-coverage` "legoboostunified drives the BOOST Move Hub rover ahead over Scratch Link BLE" |
 | legopoweredup | WB | `pup` words on the Move Hub | GREEN | `lab-hubs-coverage` "legopoweredup also drives the BOOST Move Hub ..." (SL-BLE is the same extension path, proven on the Technic and City hubs) |
 | legoboostunified / legopoweredup | any | Python/JS calls | GAP | |
-| any | bridge | blocks | GAP | no virtual bridge |
+| legoboostunified / legopoweredup | HTTP bridge | `boost` / `pup` words | GREEN | `lab-hubs-bridge` "legoboostunified over its HTTP bridge drives the BOOST Move Hub rover ahead (the shipped example)", "legopoweredup over the bridge also drives the BOOST Move Hub: motor A one full turn". The real extension is set up by its own `set connection type` (bridge) and `set bridge URL` (http://localhost:8080) blocks; its BridgeAdapter's `Scratch.fetch` requests (POST `/scan`, `/connect`, `/write` `{deviceId, characteristic, data}`, GET `/notifications` polled every 100 ms) are answered by `G/bw-sim/transports/virtual-ble-bridge.js` over `virtual-http.js`, which writes to and notifies from the hub's GATT peripheral (`G/virtual-hub/lab-ble-peripherals.js`). No Web Bluetooth or Scratch Link takes part |
 
 ## Powered Up City / Technic hubs
 
@@ -93,7 +93,7 @@ Virtual hub: `G/bw-sim/hubs/lwp3/` (profiles `pup-city-hub`, `technic-hub`); pro
 | legopoweredup | WB / SL-BLE | City Hub | GREEN | `lab-hubs-coverage` "legopoweredup turns a motor on the Powered Up City Hub's port A one full turn (over ble / scratchlink)", judged against the same free motor on a Technic Hub |
 | legopoweredup | WB | stop actions (brake/coast/hold) | GREEN (#1127) | `lab-hubs-extensions` "legopoweredup \"turn motor A off\" with stop action …: the Technic Hub's motor ends in …" |
 | legopoweredup | any | Python/JS `_legopoweredup.*` calls | GAP | The Code tab's Python/JS readers (`lib/robot-lab-pseudocode.js` `readPython` / `readJavaScript`, on the Translator in `sb3-creator-python.js`) lift only `scratch.*`, `_stc12.*`, `_arrays.*` and `_robotlab.*`. Every `_legopoweredup.*` call is dropped ("dropped expression statement"). Pinned as todo in `hub-runtime-calls-to-blocks`. Fix: a lift in `installRobotLabReaders` driven by `SB3Creator.RUNTIME_EXTENSIONS`, after #1129, which edits the same file |
-| any | bridge | blocks | GAP | |
+| legopoweredup | HTTP bridge | `pup` words, Technic Hub | GREEN | `lab-hubs-bridge` "legopoweredup over its HTTP bridge turns the Technic Hub's large motor on port A by 360 ± 2°" (+ a 180° control the judge rejects). The real extension is set up by its own `set connection type` (bridge) and `set bridge URL` (http://localhost:8080) blocks; its BridgeAdapter's `Scratch.fetch` requests (POST `/scan`, `/connect`, `/write` `{deviceId, characteristic, data}`, GET `/notifications` polled every 100 ms) are answered by `G/bw-sim/transports/virtual-ble-bridge.js` over `virtual-http.js`, which writes to and notifies from the hub's GATT peripheral (`G/virtual-hub/lab-ble-peripherals.js`). No Web Bluetooth or Scratch Link takes part |
 
 ## WeDo 2.0
 
@@ -128,7 +128,7 @@ Virtual hub: `G/bw-sim/hubs/nxt/` (direct + system commands, files); VM `G/bw-si
 | legonxt | SL-BT | `nxt` DEVICE words | PENDING #1129 | |
 | legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PARTIAL (#1130 merged) | `bw-sim-mindstorms-model-limits` drives the virtual NXT's sync controller, buttons and ultrasonic event capture directly (and the .rxe VM's ReadButton); no test yet sends them from the legonxt extension |
 | legonxt | hosted NXC -> `.rxe` | NXC source | PARTIAL | fixtures are precompiled (`test/fixtures/nxt-rxe/`); no NXC-compile-then-run test |
-| legonxt | Web Serial, bridge | blocks | GAP | |
+| legonxt | Web Serial ("direct"), bridge | blocks | GREEN | `bw-sim-virtual-transports-nxt` "legonxt over Web Serial (\"direct\", 9600 baud): the bumper bot drives until the bumper meets the wall and stops", "legonxt over its WebSocket bridge (base64 telegrams): …" (+ a no-stop control on both). Connected by its own `set connection mode` / `connect` blocks with no Scratch Link; `G/bw-sim/transports/virtual-serial.js` and `virtual-bridge.js` (ws://localhost:8765, one base64 text message per length-prefixed telegram) -> the Virtual NXT session. Needed CrispStrobe/extensions#58: both backends called methods they do not have, so neither could connect, and the bridge resolved numbers its callers parse as telegrams |
 
 ## RCX
 
@@ -145,15 +145,15 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 
 | Hub | GREEN | PARTIAL | PENDING | GAP |
 |---|---|---|---|---|
-| SPIKE Prime / Robot Inventor | 5 | 1 | 0 | 3 |
-| EV3 | 4 | 0 | 0 | 3 |
-| BOOST Move Hub | 4 | 0 | 0 | 2 |
-| Powered Up City / Technic | 4 | 0 | 0 | 2 |
+| SPIKE Prime / Robot Inventor | 6 | 1 | 0 | 2 |
+| EV3 | 6 | 0 | 0 | 1 |
+| BOOST Move Hub | 5 | 0 | 0 | 1 |
+| Powered Up City / Technic | 5 | 0 | 0 | 1 |
 | WeDo 2.0 | 3 | 1 | 0 | 1 |
 | SPIKE Essential | 0 | 0 | 0 | 2 |
-| NXT | 2 | 2 | 1 | 1 |
+| NXT | 3 | 2 | 1 | 0 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **24** | **4** | **1** | **14** |
+| **Total** | **30** | **4** | **1** | **8** |
 
 ## Gaps, by user impact
 
@@ -166,20 +166,20 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 4. SPIKE Prime, Python/JS `_spikeprime` calls: confirmed gap. No Code-tab reader lifts them (see the row); this needs the lift in
     `robot-lab-pseudocode.js` after #1129.
 5. SPIKE Prime, real Renode lockstep and MicroPython on the hub: virtual support (needs Renode in CI).
-6. SPIKE Prime, bridge route: virtual bridge support missing.
-7. EV3, Web Serial / bridge: virtual support missing (peripheral only on SL-BT).
-8. EV3, ev3dev: virtual ev3dev brick missing.
+6. ~~SPIKE Prime, bridge route~~: closed by `bw-sim-spike-bridge` (virtual WebSocket relay + 2.x REPL stream; extension fix CrispStrobe/extensions#58).
+7. ~~EV3, Web Serial / bridge~~: closed by `bw-sim-virtual-transports-ev3` (virtual Web Serial port and WebSocket bridge, `G/bw-sim/transports/`).
+8. ~~EV3, ev3dev~~: closed by `bw-sim-virtual-ev3dev` (virtual ev3dev brick over HTTP, `G/bw-sim/transports/virtual-ev3dev.js`).
 9. EV3, Python/JS calls: confirmed gap, same missing lift as 4.
 10. ~~BOOST, legoboostunified over SL-BLE~~: closed by `lab-hubs-coverage`.
 11. ~~BOOST, legopoweredup on the Move Hub~~: closed by `lab-hubs-coverage`.
 12. ~~Powered Up City Hub, legopoweredup~~: closed by `lab-hubs-coverage` (an in-test City Hub bench).
 13. BOOST / Powered Up, Python/JS `_legopoweredup.*`: confirmed gap, same missing lift as 4.
-14. BOOST / Powered Up, bridge: virtual support missing.
+14. ~~BOOST / Powered Up, bridge~~: closed by `lab-hubs-bridge` (virtual HTTP BLE bridge, `G/bw-sim/transports/virtual-ble-bridge.js`).
 15. WeDo 2.0, tilt / lights / tones through the Lab hub: test-only (protocol exists in `hubs/wedo2`).
 16. SPIKE Essential, legopoweredup over WB and SL-BLE: needs virtual support. The profile is registered,
     but part 67351.dat has no `part-meta/parts.json` entry, so no model can place the hub (a `bw-sim/` change;
     waits for the open Robot Lab PRs).
-17. NXT, NXC compile-then-run: needs the hosted compiler; Web Serial / bridge: virtual support missing.
+17. NXT, NXC compile-then-run: needs the hosted compiler. (~~Web Serial / bridge~~: closed by `bw-sim-virtual-transports-nxt`, with extension fixes CrispStrobe/extensions#58.)
     #1129 (open) covers the words; #1130 (merged) added sync, buttons and ultrasonic listening to the
     virtual NXT, proven at the model level only.
 18. ~~RCX, legorcx blocks into the Lab RCX~~: closed by `bw-sim-rcx-legorcx`.
