@@ -32,7 +32,9 @@
 //               pneumatic.js: a cylinder fed by a valve through the model's hoses → 'pneumatic', a pump → 'pump';
 //               shock.js: a shock absorber's rod in its cylinder — no coupling, the slider's
 //               stroke (limits) and its spring (springs);
-//               universal-joint.js: two U-joint ends fork in fork → 'universalJoint' (a Cardan joint)
+//               universal-joint.js: two U-joint ends fork in fork → 'universalJoint' (a Cardan joint);
+//               servo-stops.js: a servo motor's end stops (internalJoints[].limitsDeg) — no
+//               coupling, the motorised hinge's limits
 //   gearbox     transmission.js: spline, spline-bore (slider), clutch, clutch-teeth,
 //               fork, fork-groove; slip-clutch.js: clutch-axlehole (a slipping hinge);
 //               gear-seat.js: gear-seat (a satellite in its cradle: hinge), snap (rigid)
@@ -41,6 +43,8 @@
 //               universal-joint.js 'uj-fork': a U-joint end's fork round the cross's centre
 //   sensors     rotation-sensor.js: 'sensor-axlehole' (the RCX rotation sensor's turning
 //               insert: an axle in it is a hinge the sensor reads)
+//   wheelsets   wheelset.js: 'wheel-axle' (a wheelset built into a part, a train motor's: joins
+//               nothing, names what turns with the part's internal hinge)
 //   joints      hinge, slider, ball — what the physics core builds today
 
 import {ConnectorKindRegistry, CouplingKindRegistry, JointKindRegistry} from '../registry/kinds.js';
@@ -58,6 +62,8 @@ import {CLUTCH_AXLEHOLE} from './slip-clutch.js';
 import {GEAR_SEAT, SNAP} from './gear-seat.js';
 import {RELATIVE_GEAR} from './relative-gear.js';
 import {SENSOR_AXLEHOLE} from './rotation-sensor.js';
+import {WHEEL_AXLE} from './wheelset.js';
+import {SERVO_STOPS} from './servo-stops.js';
 import {CHAIN, CHAIN_LINK} from './chain.js';
 import {BAND_DRIVE, BAND_SPRING} from './belt.js';
 import {SHOCK, SHOCK_BORE, SHOCK_ROD} from './shock.js';
@@ -77,8 +83,8 @@ export const BUILTIN_KINDS = Object.freeze({
     connectors: new ConnectorKindRegistry([...PIN_AXLE_KINDS, SLIDE_BORE, WORM_THREAD, RACK_TEETH, TUBE,
         SPLINE, SPLINE_BORE, CLUTCH, CLUTCH_TEETH, FORK, FORK_GROOVE, CLUTCH_AXLEHOLE, GEAR_SEAT, SNAP,
         TURNTABLE_RING, TURNTABLE_RACE, ...SCREW_CONNECTORS, SENSOR_AXLEHOLE, CHAIN_LINK, SHOCK_BORE, SHOCK_ROD,
-        PNEU_BORE, PNEU_ROD, PUMP_BORE, PUMP_ROD, VALVE_LEVER, AIR_PORT, UJ_FORK]),
-    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, DOG_CLUTCH, SHIFT_FORK, RELATIVE_GEAR, SCREW, TURNTABLE_NEST, CHAIN, BAND_DRIVE, BAND_SPRING, SHOCK, ROPE, PNEUMATIC, PUMP, TYRE, UNIVERSAL_JOINT]),
+        PNEU_BORE, PNEU_ROD, PUMP_BORE, PUMP_ROD, VALVE_LEVER, AIR_PORT, UJ_FORK, WHEEL_AXLE]),
+    couplings: new CouplingKindRegistry([SPUR, BEVEL, WORM, RACK, DOG_CLUTCH, SHIFT_FORK, RELATIVE_GEAR, SCREW, TURNTABLE_NEST, CHAIN, BAND_DRIVE, BAND_SPRING, SHOCK, ROPE, PNEUMATIC, PUMP, TYRE, UNIVERSAL_JOINT, SERVO_STOPS]),
     joints: new JointKindRegistry(JOINT_KINDS)
 });
 

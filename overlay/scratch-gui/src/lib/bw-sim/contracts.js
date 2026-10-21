@@ -513,6 +513,9 @@ const checkPartMetaV2 = (meta, p, out) => {
                     if (!(typeof meta.hubProfile === 'string' || meta.hub)) out.push(`${w}: only a hub part has built-in motors`);
                 }
                 if (j?.limitsLdu !== undefined && !(isVec(j.limitsLdu, 2) && j.limitsLdu[0] <= j.limitsLdu[1])) out.push(`${w}.limitsLdu: [min, max]`);
+                // A hinge's end stops in degrees from the start pose (a servo: kinds/servo-stops.js).
+                if (j?.limitsDeg !== undefined && !(j.type === 'hinge' && isVec(j.limitsDeg, 2) && j.limitsDeg[0] <= 0 && j.limitsDeg[1] >= 0 &&
+                    j.limitsDeg[0] >= -180 && j.limitsDeg[1] <= 180)) out.push(`${w}.limitsDeg: a hinge's [min ≤ 0, max ≥ 0] within ±180`);
             }
         }
     }
@@ -650,12 +653,27 @@ export const partDrivenJoints = meta => {
 };
 
 /**
- * A graph node's share of its part (mech/graph.js makes one node per driven joint's moving side
- * and one for the rest): {fraction of the part's mass, collider indices}, or null for a part
- * with no driven joint (one node, everything).
+ * A part's free internal hinges (actuatedBy 'none'): a wheelset that turns in its housing with nothing
+ * driving it, as a train motor's second axle does ('#free-<joint id>', mech/graph.js).
+ * [{joint, suffix}]
+ */
+export const partFreeJoints = meta => {
+    const m = upgradePartMeta(meta);
+    return (m && Array.isArray(m.internalJoints) ? m.internalJoints : [])
+        .filter(j => j && j.actuatedBy === 'none' && j.type === 'hinge')
+        .map(j => ({joint: j, suffix: `#free-${j.id}`}));
+};
+
+/** Every internal joint that splits its part into graph nodes: the driven ones, then the free ones. */
+export const partMovingJoints = meta => [...partDrivenJoints(meta), ...partFreeJoints(meta)];
+
+/**
+ * A graph node's share of its part (mech/graph.js makes one node per driven or free joint's moving
+ * side and one for the rest): {fraction of the part's mass, collider indices}, or null for a part
+ * with no such joint (one node, everything).
  */
 export const motorNodeShare = (meta, nodeId) => {
-    const driven = partDrivenJoints(meta);
+    const driven = partMovingJoints(meta);
     if (!driven.length) return null;
     const moving = driven.find(d => nodeId.endsWith(d.suffix));
     if (moving) return {fraction: moving.joint.massFraction, colliders: [...(moving.joint.movingColliders || [])]};

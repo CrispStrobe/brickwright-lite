@@ -371,14 +371,16 @@ export const scaleInteractions = async (page, {root, shotsDir, JSZip}) => {
     const opened = await page.evaluate(() => ({status: window.__bwSimLab.status, parts: window.__bwSimLab._pane.session?.model.parts.map(p => p.part),
         codes: window.__bwSimLab.issues.map(i => i.code)}));
     assert.equal(opened.status, 'ready', JSON.stringify(opened));
-    // 3001 (a 2 x 4 brick) is outside the 27-row table: with the catalogue the pane passes, the
-    // studded-part rule places it from its geometry and flags it (docs/ROBOT-LAB-LDD-FRAMES.md).
+    // 3001 (a 2 x 4 brick): with the catalogue the pane passes, the studded-part rule places it from its
+    // geometry and flags it, as every derived frame is flagged (docs/ROBOT-LAB-LDD-FRAMES.md).
     assert.deepEqual(opened.parts, ['32523.dat', '3705.dat', '32525.dat', '3648.dat', '3001.dat']);
-    for (const code of ['lxf-unknown-design', 'lxf-bad-transform', 'lxf-unknown-material', 'lxf-derived-frame']) {
+    // 54696 is LDraw's "~Moved to 54696p01", the SPIKE Medium motor: a catalogue part (part-meta/catalog-parts.js
+    // aliasOf), which no frame rule or connection places, so it is refused as unplaced, not unknown.
+    for (const code of ['lxf-unplaced-design', 'lxf-bad-transform', 'lxf-unknown-material', 'lxf-derived-frame']) {
         assert.ok(opened.codes.includes(code), `${code} listed: ${opened.codes}`);
     }
     const issuesText = await page.getByTestId('bw-sim-lab-issues').textContent();
-    assert.match(issuesText, /LEGO Digital Designer part 3001 was placed by measuring its studs/);
+    assert.match(issuesText, /LEGO Digital Designer part 3001 was placed by measuring its shape/);
     assert.match(issuesText, /LEGO Digital Designer part 54696/);
     results.lxf = opened;
 

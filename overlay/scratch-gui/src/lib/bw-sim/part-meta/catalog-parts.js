@@ -112,7 +112,8 @@ export const catalogPartMeta = (part, read, check, depth = 0) => {
         const target = depth < 3 && /^~Moved to |^=/.test(desc) ? aliasTarget(text) : null;
         if (!target) return {meta: null, decoration: false, why: [`${part}: '${desc}' is an alias or obsolete file`], desc};
         const r = catalogPartMeta(target, read, check, depth + 1);
-        return {...r, meta: r.meta ? {...r.meta, part} : null, desc};
+        // aliasOf: the part this file stands for (64290, LDD's number for the 11L beam, is LDraw's alias of 32525).
+        return {...r, meta: r.meta ? {...r.meta, part, aliasOf: r.meta.aliasOf || target} : null, desc};
     }
     let why;
     let meta = null;
