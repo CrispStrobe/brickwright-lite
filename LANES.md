@@ -7901,3 +7901,12 @@ boundary. The directory profile control compares stable identity fields rather
 than promoting mutable link count to identity. No production directory guard or
 threshold changed. Actual SDK/environment binding, service/family ownership,
 resources, guarded wrapper and affected installed qualification remain open.
+## Straight Eight straight-line linkage intake — 2026-10-21
+
+CLAIMED — Codex, explicit owner request in the model-design lane. Adapt the
+supplied 113-piece, one-motor Peaucellier linkage; preserve source provenance
+and apply the owner's CrispStrobe / BSD-3-Clause credit to the original design.
+Verify physical joint closure, straight output travel, bounded motor motion,
+connected instructions, controls and EN/DE lesson before vendoring it. Treat
+supplied kinematic animation and review reports as reference, not app results.
+
