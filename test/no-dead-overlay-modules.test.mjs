@@ -162,7 +162,14 @@ const KNOWN_DEAD = new Map([
     // hubs/rcx/rcx-virtual-hub.js runs it in the Robot Lab.
 ]);
 
-const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;
+const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]|\bimport\s*['"]([^'"]+)['"]/g;
+
+test('module references include actual side-effect imports from both GUI entries', () => {
+    for (const text of ["import './lib/compatibility-bootstrap.js';", "import '../lib/compatibility-bootstrap.js';",
+        "import value from './named.js';", "const value = import('./dynamic.js');", "const value = require('./common.js');"])
+        assert.equal([...text.matchAll(SPEC)].length, 1, text);
+    assert.equal([..."const value = 1;".matchAll(SPEC)].length, 0);
+});
 
 /**
  * Two ways a module is reached WITHOUT an import statement, both of which this
@@ -215,7 +222,7 @@ function referencedBasenames () {
         const text = readFileSync(f, 'utf8');
         for (const re of [SPEC, NON_IMPORT_SPEC]) {
             for (const m of text.matchAll(re)) {
-                const spec = m[1] || m[2] || m[3];
+                const spec = m[1] || m[2] || m[3] || m[4];
                 if (!spec) continue;
                 const base = spec.replace(/\/$/, '').split('/').pop();
                 referenced.add(base);
