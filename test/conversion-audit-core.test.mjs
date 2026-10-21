@@ -115,3 +115,24 @@ test('pure shared core excludes CLI filesystem subprocess SDK and runtime import
     assert.match(source, /await importProjectFilesWithDependencies\(files, options\)/);
     assert.match(source, /importProjectFiles\(files, options\)/); assert.match(source, /creator\.parse\(imported\.code\)/);
 });
+
+test('optional actual Creator callback runs once with the observed identity and never on parse failure', async () => {
+    const creators = [];
+    const result = await auditConversionSubject(raw('let count=1;'), {onCreator: creator => creators.push(creator)});
+    assert.equal(creators.length, 1);
+    assert.ok(creators[0] instanceof Creator);
+    assert.equal(creators[0].project, result.creator.project);
+    assert.equal(creators[0].assets, result.creator.assets);
+    const failed = await auditConversionSubject({kind: 'IMPORTED_ARTEFACT', id: 'bad-code', target: 'arcade',
+        imported: {lang: 'pseudocode', code: 'SPRITE "unterminated', unsupported: []}},
+    {onCreator: creator => creators.push(creator)});
+    assert.equal(failed.creator.status, 'throw');
+    assert.equal(creators.length, 1);
+});
+
+test('optional Creator observer rejection is not reclassified as a product parse failure', async () => {
+    for (const marker of [Object.freeze(new Error('Creator observer')), undefined]) {
+        await assert.rejects(auditConversionSubject(raw('let count=1;'), {onCreator () { throw marker; }}),
+            actual => Object.is(actual, marker));
+    }
+});

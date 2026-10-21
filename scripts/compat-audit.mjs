@@ -8,7 +8,7 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -120,6 +120,8 @@ let doCompile = false;
 let fetchExtensions = false;
 let prepareExtensions = false;
 let execute = false;
+let journey = false;
+let journeyCreator = null;
 let limit = Infinity;
 let contextCatalogue = null;
 let progressFile = null;
@@ -146,8 +148,14 @@ for (let i = 0; i < args.length; i++) {
     else if (a === '--fetch-extensions') fetchExtensions = true;
     else if (a === '--prepare-extensions') prepareExtensions = true;
     else if (a === '--execute') execute = true;
+    else if (a === '--journey') journey = true;
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else inputs.push(a);
+}
+if (journey) {
+    if (execute) throw new Error('--journey and legacy --execute are separate runtime policies');
+    if (args.includes('--target') && target !== 'arcade') throw new Error('--journey is Arcade-only');
+    if (!args.includes('--target')) target = 'arcade';
 }
 // No progress module/file/callback is acquired on the default path.
 const progress = progressFile === null ? null : (await import('./lib/conversion-progress.mjs')).createAuditProgress(progressFile,
@@ -164,7 +172,7 @@ invocationIdentity = snapshotIdentity();
 mark('PROVENANCE_END');
 if ((!inputs.length && !contextCatalogue) || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -182,20 +190,22 @@ const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
 mark('CATALOGUE_OPEN_BEGIN');
 const contexts = contextCatalogue ? openConversionCatalogue(contextCatalogue, {roots: contextRoots}) : null;
 mark('CATALOGUE_OPEN_END');
+if (journey && files.some(file => path.extname(file).toLowerCase() === '.sb3')) throw new Error('--journey requires MakeCode Arcade input, not raw SB3');
 const selectedContexts = contexts ? contexts.subjects.slice(0, Math.max(0, limit - files.length)) : [];
+if (journey && selectedContexts.some(subject => subject.target !== 'arcade')) throw new Error('--journey catalogue subjects must all target Arcade');
 if (contexts && args.includes('--target') && selectedContexts.some(subject => subject.target !== target)) throw new Error('--target differs from context target');
 const provenance = auditProvenance(contextCatalogue ? [...files, contextCatalogue] : files, corpusCommit);
 if (contexts) provenance.contextCatalogue = {sha256: contexts.catalogueSHA256, selectedSubjects: selectedContexts,
     scope: 'Exact local catalogue inputs; retained original compiler outcomes are data. Fresh compiler/runtime work occurs only under explicit flags.'};
 const rows = [];
 const tally = {};
-const normalize = e => String(e?.message || e).slice(0, 350);
+const normalize = e => String(e?.message ?? e);
 
 // Missing offline package inputs are an unavailable original-compiler gate,
 // not a TypeScript diagnostic. Preserve the compiler's typed dependency list.
 const compileFailure = error => error?.code === 'NO_EXTENSION' ?
-    {status: 'unavailable', reason: normalize(error), code: error.code, extensions: Array.from(error.extensions || [], String), refused: error.refused || [], fetchedExtensions: error.fetchedExtensions || []} :
-    {status: 'fail', reason: normalize(error)};
+    {status: 'unavailable', reason: normalize(error), exception: conversionObservationGraph(conversionException(error)), code: error.code, extensions: Array.from(error.extensions || [], String), refused: error.refused || [], fetchedExtensions: error.fetchedExtensions || []} :
+    {status: 'fail', reason: normalize(error), exception: conversionObservationGraph(conversionException(error))};
 
 function conversionRow (file, format, observation) {
     mark('ROW_WIRE_CAPTURE_BEGIN');
@@ -211,16 +221,19 @@ function conversionRow (file, format, observation) {
     return row;
 }
 
+function conversionOptions () {
+    return {...(progress ? {onObservation: event => progress.onObservation(event, progressSubject)} : {}),
+        ...(journey ? {animationResources: true, onCreator: creator => { journeyCreator = creator; }} : {})};
+}
 async function observeConversion (subject) {
     mark('CONVERSION_BEGIN');
-    const observed = await auditConversionSubject(subject, progress ?
-        {onObservation: event => progress.onObservation(event, progressSubject)} : undefined);
+    const observed = await auditConversionSubject(subject, conversionOptions());
     mark('CONVERSION_END');
     return observed;
 }
-async function optionalGates (row, imported, preCompile = null) {
+async function optionalGates (row, imported, preCompile = null, observed = null) {
     mark('OPTIONAL_GATES_BEGIN');
-    const result = await applyOptionalGates(row, imported, preCompile);
+    const result = await applyOptionalGates(row, imported, preCompile, observed);
     mark('OPTIONAL_GATES_END');
     return result;
 }
@@ -232,6 +245,7 @@ function observedFinalProvenance (value) {
 }
 
 async function makecode (file) {
+    journeyCreator = null;
     const ext = path.extname(file).toLowerCase();
     let imported;
     let observed;
@@ -246,29 +260,30 @@ async function makecode (file) {
             try {
                 const result = await compile(target, projectFiles, {fetchExtensions});
                 preCompile = {status: result.success ? 'pass' : 'fail', fetchedExtensions: result.fetchedExtensions || [],
-                    diagnostics: (result.diagnostics || []).slice(0, 10).map(d =>
+                    diagnosticDetails: compactConversionObservationGraph(result.diagnostics || []),
+                    diagnostics: (result.diagnostics || []).map(d =>
                         `${d.file}:${d.line + 1}: ${d.message}`)};
             } catch (error) { preCompile = compileFailure(error); }
         }
         if (progress) observed = await observeConversion({kind: 'RAW_BASELINE', id: file, target,
             name: path.basename(file, ext), files: projectFiles});
         else observed = await auditConversionSubject({kind: 'RAW_BASELINE', id: file, target,
-            name: path.basename(file, ext), files: projectFiles});
+            name: path.basename(file, ext), files: projectFiles}, conversionOptions());
         imported = observed.import.status === 'return' ? observed.import.value : null;
         if (!imported) return {...conversionRow(file, 'typescript', observed), compile: preCompile};
     } else {
-        imported = await importArtefact(new Uint8Array(fs.readFileSync(file)), {name: path.basename(file)});
+        imported = await importArtefact(new Uint8Array(fs.readFileSync(file)), {name: path.basename(file), ...(journey ? {animationResources: true} : {})});
         if (progress) observed = await observeConversion({kind: 'IMPORTED_ARTEFACT', id: file, target,
             name: path.basename(file), imported});
         else observed = await auditConversionSubject({kind: 'IMPORTED_ARTEFACT', id: file, target,
-            name: path.basename(file), imported});
+            name: path.basename(file), imported}, conversionOptions());
     }
     const row = conversionRow(file, ext === '.ts' ? 'typescript' : imported.format, observed);
     if (row.stage === 'source-only') return row;
-    return progress ? optionalGates(row, imported, preCompile) : applyOptionalGates(row, imported, preCompile);
+    return progress ? optionalGates(row, imported, preCompile, observed) : applyOptionalGates(row, imported, preCompile, observed);
 }
 
-async function applyOptionalGates (row, imported, preCompile = null) {
+async function applyOptionalGates (row, imported, preCompile = null, observed = null) {
     row.staticTranslation = {status: row.stage};
     if (prepareExtensions && row.target === 'arcade') {
         try {
@@ -289,7 +304,8 @@ async function applyOptionalGates (row, imported, preCompile = null) {
             try {
                 const result = await compile(row.target, imported.files, {fetchExtensions});
                 row.compile = {status: result.success ? 'pass' : 'fail', fetchedExtensions: result.fetchedExtensions || [],
-                    diagnostics: (result.diagnostics || []).slice(0, 10).map(d => `${d.file}:${d.line + 1}: ${d.message}`)};
+                    diagnosticDetails: compactConversionObservationGraph(result.diagnostics || []),
+                    diagnostics: (result.diagnostics || []).map(d => `${d.file}:${d.line + 1}: ${d.message}`)};
             } catch (error) { row.compile = compileFailure(error); }
         }
     }
@@ -299,6 +315,15 @@ async function applyOptionalGates (row, imported, preCompile = null) {
     // neutral stage name instead of declaring the original app invalid.
     if (row.compile?.status === 'fail' && row.compile.diagnostics?.length &&
         row.stage !== 'parse-failed') row.stage = 'pxt-compile-failed';
+    if (journey && observed) {
+        const {auditConversionJourney} = await import('./lib/conversion-journey.mjs');
+        const result = await auditConversionJourney(observed, {creator: journeyCreator,
+            onObservation: progress ? event => progress.mark('CORE_OBSERVATION', progressSubject,
+                {phase: event.phase, status: event.status}) : undefined});
+        row.journey = compactConversionObservationGraph(result);
+        row.journeyStatus = result.operationStatus;
+        row.journeyCompatibility = result.compatibilityStatus;
+    }
     if (execute && !['parse-failed', 'pxt-compile-failed'].includes(row.stage)) {
         try {
             const {runProgram, quitStrandedVMs} = await import('../test/helpers/bw-vm.mjs');
@@ -311,9 +336,9 @@ async function applyOptionalGates (row, imported, preCompile = null) {
                 row.execution = {status: run.errors.length ? 'block-error' :
                     run.threadsStarted ? 'stepped' : 'no-green-flag-thread',
                 threadsStarted: run.threadsStarted, extensionCalls: run.extensionCalls,
-                variablesChanged: run.variablesChanged, errors: run.errors.slice(0, 10)};
+                variablesChanged: run.variablesChanged, errors: run.errors, errorEvents: compactConversionObservationGraph(run.errorEvents)};
             } finally { quitStrandedVMs(); }
-        } catch (error) { row.execution = {status: 'failed', reason: normalize(error)}; }
+        } catch (error) { row.execution = {status: 'failed', reason: normalize(error), exception: conversionObservationGraph(conversionException(error))}; }
     }
     return row;
 }
@@ -377,16 +402,16 @@ async function sb3 (file) {
             clearTimers = harness.clearStrayTimers;
             vm = new VM();
             await vm.loadProject(fs.readFileSync(file));
-            const errors = [];
-            vm.runtime.on('BLOCKS_ERROR', e => errors.push(String(e)));
+            const errors = [], errorEvents = [];
+            vm.runtime.on('BLOCKS_ERROR', (e, ...details) => { errors.push(String(e)); errorEvents.push({error: e, details}); });
             vm.start();
             vm.greenFlag();
             const threadsStarted = vm.runtime.threads.length;
             for (let i = 0; i < 24; i++) vm.runtime._step();
             row.execution = {status: errors.length ? 'block-error' :
                 threadsStarted ? 'stepped' : 'no-green-flag-thread',
-            threadsStarted, errors: errors.slice(0, 10)};
-        } catch (error) { row.execution = {status: 'failed', reason: normalize(error)}; }
+            threadsStarted, errors, errorEvents: compactConversionObservationGraph(errorEvents)};
+        } catch (error) { row.execution = {status: 'failed', reason: normalize(error), exception: conversionObservationGraph(conversionException(error))}; }
         finally { if (vm) vm.quit(); if (clearTimers) clearTimers(); }
     }
     return row;
@@ -401,7 +426,7 @@ for (const file of files) {
         row.qualification = {staticTranslation: row.staticTranslation.status,
             originalCompile: row.compile?.status || 'not-requested',
             runtimeSmoke: row.execution?.status || (execute ? 'not-run' : 'not-requested'),
-            behavioralEquivalence: 'not-measured'};
+            behavioralEquivalence: 'not-measured', ...(journey ? {journey: row.journeyStatus || 'unattempted', journeyCompatibility: row.journeyCompatibility || 'unattempted'} : {})};
         rows.push(row);
         tally[row.stage] = (tally[row.stage] || 0) + 1;
         mark('ROW_GRAPH_CAPTURED_IN_MEMORY');
@@ -423,17 +448,18 @@ for (let index = 0; index < selectedContexts.length; index++) {
         mark('LOAD_SUBJECT_BEGIN');
         const subject = contexts.loadSubject(index);
         mark('LOAD_SUBJECT_END');
-        const observed = progress ? await observeConversion(subject) : await auditConversionSubject(subject);
+        journeyCreator = null;
+        const observed = progress ? await observeConversion(subject) : await auditConversionSubject(subject, conversionOptions());
         let row = conversionRow(identity.id, 'retained-context', observed);
         if (observed.import.status === 'return' && row.stage !== 'source-only') {
-            if (progress) row = await optionalGates(row, observed.import.value);
-            else row = await applyOptionalGates(row, observed.import.value);
+            if (progress) row = await optionalGates(row, observed.import.value, null, observed);
+            else row = await applyOptionalGates(row, observed.import.value, null, observed);
         }
         row.context = {id: identity.id, kind: identity.kind, originalCompile: subject.originalCompile,
             provenance: subject.provenance};
         row.staticTranslation ||= {status: row.stage};
         row.qualification = {staticTranslation: row.stage, originalCompile: row.compile?.status || 'retained-original-data',
-            runtimeSmoke: row.execution?.status || (execute ? 'not-run' : 'not-requested'), behavioralEquivalence: 'not-measured'};
+            runtimeSmoke: row.execution?.status || (execute ? 'not-run' : 'not-requested'), behavioralEquivalence: 'not-measured', ...(journey ? {journey: row.journeyStatus || 'unattempted', journeyCompatibility: row.journeyCompatibility || 'unattempted'} : {})};
         rows.push(row); tally[row.stage] = (tally[row.stage] || 0) + 1;
         mark('ROW_GRAPH_CAPTURED_IN_MEMORY');
     } catch (error) {
@@ -456,6 +482,9 @@ const report = {schema: 'brickwright/compat-audit/v1', outputEncoding: out?.ends
         return counts;
     },{}),
     qualificationBoundary: 'Static translation, original compilation, and runtime smoke are independent; stepped is not behavioral equivalence.',
+    ...(journey ? {journeyPolicy: {target: 'arcade', frames: 24, frameAuthority: 'manual',
+        reimport: 'public-sync-exact-exported-files', originalCompilation: 'only under separate --compile',
+        behavioralEquivalence: 'not-measured', browserPixels: 'unobserved'}} : {}),
     gapRanking: rankGaps(rows, row => [
         ...(row.unsupported || []).map(x => `${row.target}: ${x}`),
         ...(row.missingOpcodes || []).map(x => `scratch: ${x.opcode}`),
@@ -513,7 +542,7 @@ if (markdown) {
 }
 console.log(JSON.stringify({count: report.count, tally, preparedTally:report.preparedTally, report: out}, null, 2));
 process.exitCode = rows.some(r => ['read-failed', 'parse-failed', 'missing-assets', 'unsupported-blocks'].includes(r.stage) ||
-    ['preparation-failed','parse-failed'].includes(r.preparedTranslation?.stage)) ? 1 : 0;
+    ['preparation-failed','parse-failed'].includes(r.preparedTranslation?.stage) || (journey && (r.journeyStatus !== 'completed' || r.journeyCompatibility !== 'no-reported-diagnostics'))) ? 1 : 0;
 
 mark('CLI_REPORTS_FINISHED');
 if (progress) progress.close();
