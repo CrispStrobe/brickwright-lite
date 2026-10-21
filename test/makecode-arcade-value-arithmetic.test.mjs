@@ -68,7 +68,7 @@ let minusZero=-0
 function echo(value:any){return value}
 let copiedZero=echo(minusZero)
 let values=[text,counter,rows[0],rows[1],returned,minusZero,copiedZero]`,async run=>{
-        const deadline=Date.now()+3000;
+        const deadline=Date.now()+20000; // wall-clock guard only: the loop exits as soon as the program has run (3 s was too short on a busy CI runner)
         while(vars(run).values?.bwReference?.kind!=='array' && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
         const v=vars(run);
         const actual=[];
@@ -100,7 +100,7 @@ info.onLifeZero(function(){hits+=1;info.setLife(1)})`,async run=>{
         assert.ok(life);assert.equal(Number(vars(run).hits),0);
         for(let count=1;count<=2;count++){
             run.vm.runtime._primitives.arcade_setLife({PLAYER:1,VALUE:0},{});
-            const deadline=Date.now()+3000;
+            const deadline=Date.now()+20000; // wall-clock guard only: the loop exits as soon as the program has run (3 s was too short on a busy CI runner)
             while(Number(vars(run).hits)!==count && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
             assert.equal(Number(vars(run).hits),count);assert.equal(Number(life.life),1);
             await stepFrames(run.vm,5);
