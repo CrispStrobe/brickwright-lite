@@ -281,6 +281,48 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "echo-bridge.ldr": {
+        "pieces": 110,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor briefly moves the left support and returns home. Two free pendulums then exchange motion through balanced elastic links; compare their changing amplitudes with a no-band control.",
+            "de": "Ein Motor bewegt kurz die linke Aufhängung und kehrt zurück. Danach tauschen zwei freie Pendel über symmetrische Gummibänder Bewegung aus; vergleiche ihre wechselnden Amplituden mit dem Versuch ohne Bänder."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "linger.ldr": {
+        "pieces": 158,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns continuously through two coupled four-bar loops. The output swings about 69 degrees but barely moves during a quarter-turn of the input. Measure the approximate dwell, the tiny reversal within it, and the changing velocity ratio.",
+            "de": "Ein Motor dreht gleichmäßig durch zwei gekoppelte Viergelenke. Der Abtrieb schwenkt um etwa 69 Grad, bewegt sich während einer Vierteldrehung des Antriebs aber kaum. Miss die angenäherte Rast, die winzige Umkehr darin und das veränderliche Geschwindigkeitsverhältnis."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "crossline.ldr": {
+        "pieces": 147,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor drives a carrier while an external 16:8:8 gear train turns the marker arm the opposite way. Two opposite markers trace perpendicular 80 mm straight strokes using only rotary joints.",
+            "de": "Ein Motor treibt den Träger an, während ein äußeres 16:8:8-Zahnradgetriebe den Markerarm entgegengesetzt dreht. Zwei gegenüberliegende Marker beschreiben rechtwinklige gerade Hübe von je 80 mm – ausschließlich mit Drehgelenken."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "offset-orbit.ldr": {
         "pieces": 141,
         "motors": 1,
@@ -292,7 +334,7 @@ export const MODEL_LESSONS = Object.freeze({
             "en": "One motor drives a parallel offset shaft at the same angular motion through two perpendicular sliders. The floating middle cross rotates once while its centre orbits twice per input turn.",
             "de": "Ein Motor treibt über zwei senkrecht zueinander stehende Schiebeführungen eine parallel versetzte Welle mit gleicher Drehbewegung an. Das schwimmende Kreuz dreht sich einmal, während sein Mittelpunkt pro Eingangsumdrehung zweimal umläuft."
         },
-        "author": "Brickwright contributors",
+        "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
     "ellipsa.ldr": {
@@ -306,7 +348,7 @@ export const MODEL_LESSONS = Object.freeze({
             "en": "One motor rides an X carriage and turns a rigid arm joined to a perpendicular Z carriage. Its extended tip traces a 3:1 ellipse. Compare the two slider motions and the changing tip speed, then reverse and return.",
             "de": "Ein Motor fährt auf einem X-Schlitten und dreht einen starren Arm, der mit einem senkrechten Z-Schlitten verbunden ist. Seine verlängerte Spitze beschreibt eine 3:1-Ellipse. Vergleiche die Schlittenbewegungen und das wechselnde Spitzentempo; kehre danach um und fahre zurück."
         },
-        "author": "Brickwright contributors",
+        "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
     "momentum-twins.ldr": {

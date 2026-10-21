@@ -9,6 +9,9 @@ import { catalogFrom, prepareModel } from '../overlay/scratch-gui/src/lib/bw-sim
 import { solidOverlaps } from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 const [id, source, output, programSource, programOutput] = process.argv.slice(2),
   spec = {
+    "crossline": ["1fc3d0868344fe581bde48d17fbda1a279356b991a9495689b9036b1f0d75041", 147, "Crossline \u2014 geared straight-line pair"],
+    "linger": ["78c9a9e9da8fe94ec34beae8e742ec80582f7a649baf3a2ead20f28bb9489169", 158, "Linger \u2014 six-bar dwell machine"],
+    "echo-bridge": ["80a49a442dba7175cbec0040d9cb36a38b6e040bd076ae9c1744a431d59f6a4e", 108, "Echo Bridge \u2014 motion passed between pendulums"],
     'offset-orbit': ["d432f7b2c179e1a287bed0e085666dc5b83cdb4f5e2725ddccc41bc8eb24b709", 141, "Offset Orbit \u2014 Oldham coupling"],
     'ellipsa': ["98616c6f460c930522d122a6d15bc1814d758e7a21db8f854fdd71ed5cc3cd3f", 187, "Ellipsa \u2014 one-motor ellipsograph"],
     'pantograph-doubler': ['1704386e0b6531fd45fe1179c5264da0e6ff0b6716fe94ba2423c29c3c62600a', 83, 'Pantograph Doubler — one motor, double scale'],

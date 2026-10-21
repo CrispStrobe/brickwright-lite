@@ -147,3 +147,34 @@ imports also pass automatic Blocks/title loading, with no missing DAT requests,
 duplicate block definitions or page errors. The parent release additionally
 repairs the model/program loading transaction and bounds Simulate GPU frames;
 full hosted qualification of the composed source remains pending.
+
+## Coupled pendulums, near dwell and geared straight strokes
+
+Three further original CrispStrobe/BSD-3-Clause examples preserve the source
+placements and finite motor commands. Echo Bridge has 108 rigid placements and
+two actual flexible bands (110 physical pieces); Linger has 158 placements;
+Crossline has 147. Each uses one SPIKE motor on A. Gallery counts include the
+bands; the connected rigid assembly instructions contain 108 Echo placements.
+The two flexible loops remain explicit BELT records in both export formats.
+
+Echo Bridge briefly moves a suspension, restores the level datum and then holds
+its motor while two free pendulums exchange motion through balanced elastic
+links. The native receiver travels about 7.8 mm and changes amplitude dominance
+repeatedly. Removing only both bands prevents that receiver motion. Its source
+program's redundant reset is removed after gallery loading, retaining the pulse,
+encoder trim, observation time, guards and watchdog.
+
+Linger combines two passive four-bar loops. Its output swings about 69 degrees,
+but changes only about 0.13 degrees during each fixed 186–276-degree input
+window. All four forward/reverse windows retain a moving crank and nearly nine
+seconds of measured near dwell. This is an approximate pause with a small
+reversal, without an exact lock or a load-holding claim. Crossline's external
+16:8:8 gears make an arm counter-rotate with its carrier: the two real markers
+trace perpendicular 80 mm strokes without linear guides.
+
+Eight native ordinary/strict, frozen-output, no-band and unpowered startup
+controls pass. The actual-mesh winding, retained-fastener, shared-bore and
+phased-motor checks also pass all three assemblies. The independent observer
+uses real body poses in the normalized chassis frame; analytical predictions
+never write poses. The source-only Linger geometry equations are retained with
+their BSD notice. Browser integration and this batch's delivery are pending.

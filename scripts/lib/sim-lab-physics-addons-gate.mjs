@@ -7,12 +7,14 @@ import { scalingSteeringLesson as addonLesson } from './sim-lab-scaling-steering
 import { judgeNewAddon } from './sim-lab-momentum-bloom-amplify-judge.mjs';
 import { judgeAddon } from './sim-lab-addon-judge.mjs';
 import {judgeOffsetEllipsa} from './sim-lab-offset-ellipsa-judge.mjs';
+import {judgeEchoLingerCrossline} from './sim-lab-echo-linger-crossline-judge.mjs';
 export { addonLesson };
 export async function physicsAddonInteractions(page, opts) {
   const {
       id
     } = opts,
     n = {
+      'echo-bridge': 108, linger: 158, crossline: 147,
       'pantograph-doubler': 83,
       'scale-studio': 101,
       'ripple-relay': 191,
@@ -26,9 +28,9 @@ export async function physicsAddonInteractions(page, opts) {
   await mechanicsInteractions(page, {
     ...opts,
     models: [id],
-    simulatedMs: id === 'scale-studio' || id === 'bloom-gate' ? 40000 : id === 'amplify' || id === 'ellipsa' ? 170000 : 75000,
+    simulatedMs: id === 'linger' ? 155000 : id === 'echo-bridge' ? 30000 : id === 'crossline' ? 30000 : id === 'scale-studio' || id === 'bloom-gate' ? 40000 : id === 'amplify' || id === 'ellipsa' ? 170000 : 75000,
     speed: 4,
-    judge: ['offset-orbit','ellipsa'].includes(id) ? judgeOffsetEllipsa : ['momentum-twins', 'bloom-gate', 'amplify'].includes(id) ? judgeNewAddon : judgeAddon
+    judge: ['echo-bridge','linger','crossline'].includes(id) ? judgeEchoLingerCrossline : ['offset-orbit','ellipsa'].includes(id) ? judgeOffsetEllipsa : ['momentum-twins', 'bloom-gate', 'amplify'].includes(id) ? judgeNewAddon : judgeAddon
   });
   await manualMechanicsInteractions(page, {
     ...opts,
