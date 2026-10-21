@@ -15,8 +15,19 @@ import {expandConversionObservationGraph} from '../scripts/lib/conversion-observ
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CLI = path.join(ROOT, 'scripts/compat-audit.mjs');
 
+// Catalogue parents are protected inputs. Keep every output in a fresh sibling.
+async function withAuditOutput (fixture, operation) {
+    const directory = fs.mkdtempSync(path.join(path.dirname(fixture.directory), 'conversion-audit-output-'));
+    try {
+        assert.equal(path.dirname(directory), path.dirname(fixture.directory));
+        assert.notEqual(directory, fixture.directory);
+        return await operation(directory);
+    }
+    finally {fs.rmSync(directory, {recursive: true, force: false});}
+}
+
 for (const expectedExit of [0, 1]) test(`stdout audit retains complete mixed-catalogue results and actual exit ${expectedExit}`,
-    async () => contextFixture(async f => {
+    async () => contextFixture(async f => withAuditOutput(f, async outputDirectory => {
         const raw = f.raw(), context = f.context();context.id = raw.id;
         f.catalogue.subjects.push(raw, context);
         const catalogue = f.save(), positional = [];
@@ -29,11 +40,15 @@ for (const expectedExit of [0, 1]) test(`stdout audit retains complete mixed-cat
             fs.writeFileSync(input, await zip.generateAsync({type: 'nodebuffer'}));positional.push(input);
         }
         const common = ['--target', 'arcade', '--context-catalogue', catalogue, ...positional];
-        const reportFile = path.join(f.directory, 'ordinary.json'), markdownFile = path.join(f.directory, 'ordinary.md');
-        const journal = path.join(f.directory, 'ordinary.jsonl');
+        const reportFile = path.join(outputDirectory, 'ordinary.json'), markdownFile = path.join(outputDirectory, 'ordinary.md');
+        const journal = path.join(outputDirectory, 'ordinary.jsonl');
         const ordinary = spawnSync(process.execPath, [CLI, ...common, '--out', reportFile,
             '--markdown', markdownFile, '--progress-jsonl', journal], {cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 ** 2});
         assert.equal(ordinary.status, expectedExit, ordinary.stderr);
+        for (const file of [reportFile, markdownFile, journal]) {
+            assert.ok(fs.existsSync(file), 'ordinary mode actually produced ' + path.basename(file));
+            assert.ok(fs.statSync(file).isFile() && fs.statSync(file).size > 0, 'ordinary artifact is a nonempty file');
+        }
         const run = spawnSync(process.execPath, [CLI, ...common, '--stdio-transcript'],
             {cwd: ROOT, maxBuffer: 8 * 1024 ** 2});
         assert.equal(run.status, expectedExit, run.stderr.toString());
@@ -72,9 +87,9 @@ for (const expectedExit of [0, 1]) test(`stdout audit retains complete mixed-cat
         assert.match(run.stderr.toString(), /"count":/);
         assert.equal(JSON.parse(ordinary.stdout).report, reportFile, 'default stdout remains the ordinary summary');
         if (expectedExit === 1) assert.ok(report.rows.some(row => row.missingOpcodes?.some(op => op.opcode === 'unknownwidget_doThing')));
-    }));
+    })));
 
-test('stdout audit rejects file-option conflicts before acquiring output', async () => contextFixture(f => {
+test('stdout audit rejects file-option conflicts before acquiring output', async () => contextFixture(f => withAuditOutput(f, outputDirectory => {
     f.catalogue.subjects.push(f.raw());const catalogue = f.save();
     for (const option of ['--out', '--markdown', '--progress-jsonl']) {
         const output = path.join(f.directory, 'protected');fs.writeFileSync(output, 'unchanged original');
@@ -83,7 +98,15 @@ test('stdout audit rejects file-option conflicts before acquiring output', async
         assert.notEqual(run.status, 0);assert.equal(run.stdout.length, 0);
         assert.match(run.stderr.toString(), /cannot be combined/);assert.equal(fs.readFileSync(output, 'utf8'), 'unchanged original');
     }
-}));
+    const protectedJournal = path.join(f.directory, 'forbidden.jsonl');
+    const report = path.join(outputDirectory, 'protected-report.json'), markdown = path.join(outputDirectory, 'protected-report.md');
+    const collision = spawnSync(process.execPath, [CLI, '--context-catalogue', catalogue,
+        '--out', report, '--markdown', markdown, '--progress-jsonl', protectedJournal],
+        {cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 ** 2});
+    assert.notEqual(collision.status, 0);assert.equal(collision.stdout, '');
+    assert.match(collision.stderr, /Progress journal collides with input or report/);
+    for (const file of [protectedJournal, report, markdown]) assert.equal(fs.existsSync(file), false, 'protected journal refusal acquires no output');
+})));
 
 test('CLI reports both a real MakeCode import and a missing Scratch extension opcode', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-compat-'));
