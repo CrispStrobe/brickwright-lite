@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 /**
- * The `pup …`, `boost …` and `wedo …` words (overlay/scratch-gui/src/lib/legoHubsDialect.js): one
+ * The `pup …`, `boost …`, `wedo …` and `nxt …` words (overlay/scratch-gui/src/lib/legoHubsDialect.js): one
  * table for the parser and the decompiler of the bundled legopoweredup, legoboostunified and
- * wedo2unified blocks, layered at the robot-lab door (lib/robot-lab-pseudocode.js).
+ * wedo2unified and legonxt blocks, layered at the robot-lab door (lib/robot-lab-pseudocode.js).
  *
  *   - THE SLICE IS COUNTED: every opcode of each extension's getInfo() is a word or in exactly
  *     one exclusion class, and nothing else is;
@@ -44,7 +44,7 @@ try {
     [globalThis.setInterval, globalThis.setTimeout] = saved;
 }
 
-test('the slice is counted: every opcode of the three extensions is a word or excluded, once', () => {
+test('the slice is counted: every opcode of the four extensions is a word or excluded, once', () => {
     const excluded = Object.values(LEGO_HUB_EXCLUSIONS).flat();
     const words = LEGO_HUB_WORDS.map(e => e.op);
     assert.equal(new Set(words).size, words.length, 'one word per opcode');
@@ -68,8 +68,9 @@ test('each word\'s slots are its block\'s arguments, menus as the extension decl
             if (menu.acceptReporters) {
                 assert.equal(spec, `menu:${arg.menu}:${items.join('|')}`, `${entry.op} ${name}: a shadow menu`);
             } else {
-                assert.deepEqual(spec.split('|'), items.filter(v => spec.split('|').includes(v)), `${entry.op} ${name}`);
-                assert.ok(spec.split('|').every(v => items.includes(v)), `${entry.op} ${name}: only the menu's values`);
+                const choices = spec.split('|');
+                assert.deepEqual(choices, items.filter(v => choices.includes(v)), `${entry.op} ${name}`);
+                assert.ok(choices.every(v => items.includes(v)), `${entry.op} ${name}: only the menu's values`);
             }
         }
     }
@@ -81,11 +82,11 @@ test('every word round-trips: text → blocks → text', () => {
         const choices = spec.startsWith('menu:') ? spec.split(':')[2].split('|') : spec.split('|');
         return choices[1] || choices[0];
     });
-    const lines = LEGO_HUB_WORDS.map(e => (e.kind === 'command' ? sample(e) : `say (${sample(e)})`));
+    const lines = LEGO_HUB_WORDS.map(e => (e.kind === 'command' ? sample(e) : e.kind === 'boolean' ? `wait until ${sample(e)}` : `say (${sample(e)})`));
     const source = `WHEN flag clicked:\n${lines.map(l => `  ${l}`).join('\n')}\n`;
     const c = new Creator();
     c.parse(source);
-    assert.deepEqual(c.project.extensions.sort(), ['legoboostunified', 'legopoweredup', 'looks', 'wedo2unified'].filter(x => x !== 'looks').sort());
+    assert.deepEqual(c.project.extensions.sort(), ['legoboostunified', 'legonxt', 'legopoweredup', 'wedo2unified']);
     const opcodes = Object.values(c.project.targets.find(t => Object.keys(t.blocks).length).blocks).map(b => b.opcode);
     for (const e of LEGO_HUB_WORDS) assert.ok(opcodes.includes(e.op), `${e.op} parsed`);
     const back = new Creator().decompile(c.project).split('\n').map(l => l.trim()).filter(Boolean);
@@ -100,4 +101,60 @@ test('the shipped radio-hub examples parse into the real extensions\' blocks', (
         const ops = Object.values(c.project.targets.find(t => Object.keys(t.blocks).length).blocks).map(b => b.opcode);
         for (const op of ops.filter(o => o.startsWith(`${ext}_`) && !o.includes('_menu_'))) assert.ok(legoHubWordFor(op), op);
     }
+});
+
+// The NXT bumper bot (docs/ROBOT-LAB-EV3-NXT.md) in words: the same script as the shipped
+// blocks example, block for block (static/sim-lab/programs/nxt-bumper-bot.blocks.json).
+const NXT_BUMPER_BOT = `WHEN flag clicked:
+  nxt setup touch sensor S1
+  nxt motor B power 75 for 360 degrees
+  nxt motor C power 75 for 360 degrees
+  wait 2 seconds
+  nxt motor B power 60
+  nxt motor C power 60
+  wait until nxt touch sensor S1 pressed
+  nxt stop motor B brake
+  nxt stop motor C brake
+`;
+
+const script = project => {
+    const target = project.targets.find(t => Object.keys(t.blocks).length);
+    const {blocks} = target;
+    const value = (input) => {
+        if (Array.isArray(input[1])) return String(input[1][1]);
+        const b = blocks[input[1]];
+        if (!b) return null;
+        const field = Object.values(b.fields || {})[0];
+        return field ? String(field[0]) : b.opcode;
+    };
+    const out = [];
+    for (let b = Object.values(blocks).find(x => x.topLevel); b; b = blocks[b.next]) {
+        const ins = Object.fromEntries(Object.entries(b.inputs || {}).map(([k, v]) => {
+            const inner = blocks[v[1]];
+            return [k, inner && inner.opcode === 'legonxt_isTouchPressed' ? `${inner.opcode}(${value(inner.inputs.PORT)})` : value(v)];
+        }));
+        const fields = Object.fromEntries(Object.entries(b.fields || {}).map(([k, v]) => [k, v[0]]));
+        out.push([b.opcode, ins, fields]);
+    }
+    return out;
+};
+
+test('NXT: the bumper bot in words is the shipped blocks example, and spells back the same', () => {
+    const shipped = JSON.parse(readFileSync(path.join(REPO, 'overlay/scratch-gui/static/sim-lab/programs/nxt-bumper-bot.blocks.json'), 'utf8'));
+    const c = new Creator();
+    c.parse(NXT_BUMPER_BOT);
+    assert.deepEqual(c.project.extensions, ['legonxt']);
+    assert.deepEqual(script(c.project), script({targets: [{blocks: shipped.blocks}]}));
+    const back = new Creator().decompile(c.project).split('\n').map(l => l.trim()).filter(Boolean);
+    for (const line of NXT_BUMPER_BOT.split('\n').map(l => l.trim()).filter(Boolean)) assert.ok(back.includes(line), `round trip of "${line}"`);
+});
+
+test('NXT: reporters read inside expressions, and port menus take a reporter', () => {
+    const c = new Creator();
+    c.parse('WHEN flag clicked:\n  if (nxt distance S4 cm) < 20 then:\n    nxt play tone 440 Hz for 200 ms\n  say (nxt motor B position)\n');
+    const ops = Object.values(c.project.targets.find(t => Object.keys(t.blocks).length).blocks).map(b => b.opcode);
+    for (const op of ['legonxt_getDistance', 'legonxt_playTone', 'legonxt_getMotorPosition', 'operator_lt']) assert.ok(ops.includes(op), op);
+    const back = new Creator().decompile(c.project);
+    assert.match(back, /nxt distance S4 cm/);
+    assert.match(back, /nxt play tone 440 Hz for 200 ms/);
 });
