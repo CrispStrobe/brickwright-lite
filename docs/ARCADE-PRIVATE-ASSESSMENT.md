@@ -1,5 +1,31 @@
 # Complete private-input Arcade assessment
 
+## Manual entry registration and first hosted qualification
+
+GitHub requires a manual workflow to exist on the default branch before it can
+be dispatched; a subsequent `--ref` selects the candidate branch.
+[GitHub's manual-run documentation](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow?tool=cli)
+describes this requirement and the CLI branch selector.
+
+The default-branch `arcade-private-assessment.yml` is an inert registration entry.
+It has no checkout, credentials, controller, private inputs, privileged setup or
+artifact upload. Its registration job does not establish any isolation,
+conversion, runtime or corpus result. The kernel implementation remains on its
+separate candidate until independently qualified.
+
+Use a source-reviewed candidate ref for the first public metadata probe:
+
+```sh
+gh workflow run arcade-private-assessment.yml --ref REVIEWED_CANDIDATE_BRANCH -f mode=metadata-probe
+```
+
+Admit the actual run's workflow/source SHA, runner image and public tool metadata
+before updating the candidate's tool policy. Unknown identities must fail before
+privileged setup. Then qualify the entire fixed nine-control synthetic cohort
+on that reviewed candidate. Preserve original failures and all output/resource
+and cleanup checks; no private inputs or live assessment are enabled by this
+registration. Normal exact-head checks and matched-head landing still apply.
+
 Status: claim merged in [PR1167](https://github.com/CrispStrobe/brickwright-lite/pull/1167); controller implementation and qualification in progress. No credential setup, dispatch or complete-corpus result.
 
 Honor actual configured environment policies; this proposal introduces no mandatory human reviewer or confirmation gate. Scope a manual, reviewed Actions workflow and bounded input-admission, isolated-converter and ciphertext-only upload controllers. Use a repository-specific read-only deploy key, remove credential access before conversion, and admit every original raw and contextual subject without filtering. Use the already selected private input repository; a separate minimal input repository is an optional alternative, not a prerequisite.
