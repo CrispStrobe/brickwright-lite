@@ -15,6 +15,7 @@
 
 import React from 'react';
 import {createPortal} from 'react-dom';
+import {createPopupTrigger} from './sim-lab-popup-trigger.js';
 
 /** 24×24 stroke paths; an array entry {d, fill: true} is a filled shape. */
 export const ICONS = {
@@ -151,6 +152,10 @@ export const ToolButton = ({item, T, coarse, inMenu = false}) => {
  */
 export const Popup = ({id, open, onToggle, onClose, button, children, align = 'left', width = 260, label, closeOnPick = true, testId}) => {
     const anchor = React.useRef(null);
+    const toggle = React.useRef(onToggle);
+    toggle.current = onToggle;
+    const trigger = React.useRef(null);
+    if (!trigger.current) trigger.current = createPopupTrigger(() => toggle.current());
     const [position, setPosition] = React.useState({left: 8, top: 8});
     React.useLayoutEffect(() => {
         if (!open) return undefined;
@@ -168,7 +173,7 @@ export const Popup = ({id, open, onToggle, onClose, button, children, align = 'l
     }, [open, width, align]);
     return <div ref={anchor} data-sim-lab-popup={id} style={{position: 'relative', flex: '0 0 auto'}}
         onKeyDown={e => { if (open && e.key === 'Escape') { e.stopPropagation(); onClose(); } }}>
-        {React.cloneElement(button, {'aria-haspopup': 'true', 'aria-expanded': open, onClick: onToggle})}
+        {React.cloneElement(button, {'aria-haspopup': 'true', 'aria-expanded': open, ...trigger.current})}
         {open ? createPortal(
             <div role="group" data-sim-lab-popup={id} aria-label={label} data-testid={testId || `bw-sim-lab-${id}-menu`}
                 onClick={e => { if (closeOnPick && e.target.closest && e.target.closest('button')) onClose(); }}

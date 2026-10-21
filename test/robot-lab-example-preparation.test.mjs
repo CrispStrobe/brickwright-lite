@@ -17,3 +17,8 @@ test('dropdown prepares the example mat before one model build and program impor
 test('model-only API load preserves the caller mat and leaves its program alone',async()=>{
  const{p,builds,events}=make('line-oval');await openShipped.call(p,'example.ldr');assert.deepEqual(builds,['line-oval']);assert.deepEqual(events,[]);
 });
+test('an automatic example mat change ends the challenge on the previous mat',async()=>{
+ const {p,builds}=make('sumo');p.state.challenge='sumo-stay';p.lib.CHALLENGES=[{id:'sumo-stay',mat:'sumo'}];let ended=0;
+ p.endChallenge=()=>{ended++;p.state.challenge=null;};
+ await openShipped.call(p,'example.ldr',{includeProgram:true});assert.equal(ended,1);assert.equal(p.state.challenge,null);assert.deepEqual(builds,['wall']);
+});
