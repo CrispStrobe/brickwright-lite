@@ -65,7 +65,7 @@ pkg.dependencies['@xyflow/react'] = pkg.dependencies['@xyflow/react'] || '^12.3.
 pkg.dependencies['@xterm/xterm'] = '6.0.0';                       // MIT — the Linux lesson's terminal emulator (lazy-imported, exact pin)
 pkg.dependencies['three'] = '0.186.1';                               // MIT — the SPIKE arena's 3D view (lazy-imported, exact pin)
 // MIT — the Sim Lab physics engine (WASM, lazy-imported). OUR FORK, pinned to an immutable release
-// tarball (sha256 112f6281f8cddaa17927e63b2c9bae77f9f28c8b915ac8aeffac330d75df890c): upstream Jolt's GearConstraint passed
+// tarball (sha256 3342ec69f60e6a0a935f0ecfe0372e633243b23bf6f748d7871a5d94f74b26e9): upstream Jolt's GearConstraint passed
 // torque across a mesh 1:1 (an 8:24 train put 3× the load on its motor) and is angular-only (no axle
 // reaction: a gearbox on a free frame gained angular momentum). The fork fixes the ratio and adds
 // GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.5, branch brickwright/part-pair-filter on brickwright/gear-mesh-master; bw.3 adds the CCD bounce fix and MaterialPairs, bw.4 RackMeshConstraint, bw.5 PartPairSimShapeFilter: the Robot Lab's part-pair collision filter in C++).

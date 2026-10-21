@@ -76,6 +76,20 @@ export const MODELS = Object.freeze([
         example: 'gearbox.bw'},
     {file: 'differential.ldr', title: {en: 'Differential', de: 'Differenzialgetriebe'},
         example: 'differential.bw'},
+    // The differential on wheels (docs/ROBOT-LAB-ARCHITECTURE.md T6): motor A drives the rear axle through it,
+    // motor B steers the front wheels (an Ackermann tie rod). The `intro` is the pane's one-paragraph story.
+    {file: 'differential-car.ldr', title: {en: 'Differential car', de: 'Differenzial-Auto'},
+        example: 'differential-car.bw', mat: 'plain',
+        intro: {
+            en: 'A car that steers like a real one. Motor A turns the back wheels through a differential, ' +
+                'so in a curve the outer wheel can roll faster than the inner one. Motor B turns the front ' +
+                'wheels; a bar joins them so that the inner wheel turns a little more. Run it: the car drives ' +
+                'ahead, goes once round a circle and backs up to where it started.',
+            de: 'Ein Auto, das lenkt wie ein echtes. Motor A dreht die Hinterräder über ein Differenzial, ' +
+                'so kann in der Kurve das äußere Rad schneller rollen als das innere. Motor B dreht die ' +
+                'Vorderräder; eine Stange verbindet sie, damit das innere Rad etwas stärker einschlägt. ' +
+                'Starte es: Das Auto fährt geradeaus, einmal im Kreis und rückwärts zurück zum Start.'
+        }},
     // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
     {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
         example: 'chain-drive.bw'},

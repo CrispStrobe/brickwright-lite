@@ -1022,12 +1022,18 @@ class SimLabPane extends React.Component {
         }
         await this.openText(await response.text(), file, key);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
-        if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
+        if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.withIntro(this.text.exampleOffer) : ''});
     }
 
     /** The MODELS entry of the model on show, or null for a built or imported one. */
     shippedModel () {
         return this.lib?.MODELS.find(m => modelKey(m) === this.state.shipped) || null;
+    }
+
+    /** A shipped model's own short story (MODELS `intro`, EN/DE) before `text`, when it has one. */
+    withIntro (text) {
+        const intro = this.shippedModel()?.intro;
+        return intro ? `${intro[this.locale] || intro.en} ${text}` : text;
     }
 
     /**
@@ -1052,7 +1058,7 @@ class SimLabPane extends React.Component {
         if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
         else if (entry.example.endsWith('.blocks.json')) await this.loadBlocksExample(code);
         else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
-        this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
+        this.setState({info: this.text.exampleGoal[entry.example] || this.withIntro(this.text.exampleLoaded)});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
 

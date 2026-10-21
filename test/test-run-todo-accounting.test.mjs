@@ -29,7 +29,7 @@ test('actual Node TODO outcomes survive census and a lost pending record or hidd
         mkdirSync(path.join(root, 'test'));
         for (const name of ['check-test-run.mjs', 'check-tap-failures.mjs', 'list-tests.mjs', 'lib/skip-pointers.mjs', 'lib/tap-outcomes.mjs', 'lib/test-census-reporter.mjs'])
             copyFileSync(new URL('../scripts/' + name, import.meta.url), path.join(root, 'scripts', name));
-        writeFileSync(path.join(root, 'LANES.md'), '');
+        writeFileSync(path.join(root, 'CI-POINTERS.md'), '');
         mkdirSync(path.join(root, 'docs'));writeFileSync(path.join(root, 'docs/PENDING.md'), '# pending\n');
         writeFileSync(path.join(root, 'test/fixture.test.mjs'), `import test, {describe} from 'node:test';
 import assert from 'node:assert/strict';

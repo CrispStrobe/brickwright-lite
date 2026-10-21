@@ -1,0 +1,1 @@
+| costume gate: the baseline+15% interactivity ceiling is quarantined by name | lego-b9 (VPS Claude session) | main `de7dec720` (branch `ci/costume-ceiling`) | **DONE.** 3 of 10 main runs crossed the relative ceiling by 1–5%; the absolute 1000 ms check is the verdict, the relative one is recorded not judged, with the rate and the date in the note line. |
