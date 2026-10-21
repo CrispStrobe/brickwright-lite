@@ -71,7 +71,7 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PINS = path.join(ROOT, 'vendor-pins.json');
 const REPOS = ['bw-board', 'sb3-creator', 'bw-circuit-ui'];
-const SCOPED_PINS = ['stc-compiler-flasher', 'arrays-values', 'circuitplayground', 'wedo2unified'];
+const SCOPED_PINS = ['stc-compiler-flasher', 'arrays-values', 'circuitplayground', 'wedo2unified', 'spikeprime'];
 const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', 'bw-circuit-ui': 'BW_CIRCUIT_UI_DIR'};
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;

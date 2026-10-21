@@ -64,8 +64,10 @@
         },
         "spikeprime": {
             "path": "extensions/CrispStrobe/legospike_turbowarp_transpile.js",
-            "sha256": "5cf903ddda8a4feaf8c9decb26494818357b6e9f8197f08abd69208e44bcc073",
-            "bytes": 259740
+            "sha256": "e191b044827f222a7c7ad234428a1c0ad6c3f8fe4096a56d009ce5a345d360c5",
+            "bytes": 263344,
+            "repo": "CrispStrobe/extensions",
+            "commit": "ff74f1309b8807713508884048292182a369f8f5"
         },
         "spikeprimeBTC": {
             "path": "extensions/CrispStrobe/legospikeprime_btc_scratchlink.js",
