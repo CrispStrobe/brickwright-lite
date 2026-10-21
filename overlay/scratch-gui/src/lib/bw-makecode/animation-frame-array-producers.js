@@ -136,6 +136,13 @@ export const createAnimationFrameArrayProducers = options => {
     const producer = Object.freeze({
         entries: Object.freeze(entries),
         isCurrent: unchanged,
+        // Exact private normalized resource identity, never a caller-supplied ID
+        // or image literal. Existing resolve remains the allocation admission.
+        freshResource(target, node) {
+            if(node?.opcode!=='arcade_animationAssetFreshFrames')return null;
+            const resource=resources.get(resourceLiteral(target,node))?.resource||null;
+            return unchanged()?resource:null;
+        },
         resolve(target, node) {
             if (!['arcade_animationAssetFrames', 'arcade_animationAssetFreshFrames'].includes(node?.opcode) ||
                 node.mutation != null || Object.keys(node.fields || {}).length ||
