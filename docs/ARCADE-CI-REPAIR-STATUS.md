@@ -34,7 +34,8 @@ capture established the actual singleton Undefined occurrence and empty writer
 set. The correction proves only a direct module read after its declaration and
 refuses hoisted-function entry, later writers and opaque coercion. It grants no
 initialization, Number input or Array permission. Complete affected
-native/original modules remain required.
+native/original modules remain required. On the composed source, all eleven
+controls in the four complete affected domain modules also pass, without skips.
 
 The new score callback syntax passes all 463 controls in three complete
 canonical modules. [Supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160)
@@ -46,7 +47,16 @@ after a balanced actual-input episode found it slower; it is excluded from
 delivery. Historical 36 partials remain unchanged pending a complete replacement
 census.
 
-## Latest hosted failure and corrected candidate — 2026-10-21
+At the same head, the existing [hosted campaign](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39551853068)
+passes official-build Arcade numeric authoring, Robot Lab and FPGA jobs. The
+light job records a passing painted-level journey through fresh reopen, live
+pixels/walls, original MakeCode compilation/rendering and file reimport. Its
+separate debugger-only pane check fails because it sees the empty-program
+message; the whole light job remains failed. Preserve that original and diagnose
+its actual program/target readiness before changing a test wait or product code.
+These results do not qualify the later score or numeric proof candidates.
+
+## Earlier prerequisite failure and corrected candidate — 2026-10-21
 
 The later `470228d6e` campaign did not reach the actual unit shards: each shard
 and build stopped at a shared prerequisite with 177 passes and one stale
@@ -73,7 +83,7 @@ Fresh combined hosted results remain required before merging the delivery PR.
 Historical 36 partials remain unchanged; the lesson-corpus check is separate.
 
 
-## Current complete CI failure census — 2026-10-21
+## Earlier complete CI failure census at `340f9eb0e` — 2026-10-21
 
 All four unit shards have now finished at `340f9eb0e`: 246 ordinary failing
 leaves comprise 198 native-addition operand-domain refusals, 43 complete-helper
