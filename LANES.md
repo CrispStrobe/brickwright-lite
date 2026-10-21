@@ -8115,3 +8115,14 @@ existing instruction suite pass 127 tests. The original Chess instruction
 BOM remains complete (357 pages, 1,208 pieces). Direct hexadecimal LDraw print
 colours now pass through the geometry reader and renderer, with 13 drawing,
 MPD and instancing controls. This fixes the previously grey chessboard print.
+
+Qualification update: the complete shipped/fixture real-mesh sweep passes all
+8 controls, including collider overlaps, solid mesh interpenetration, shaft
+insertion and shared-hole occupancy. All three new Chromium worker/browser
+programs, manual ports, instructions/BOMs and EN/DE lessons pass without page
+errors. Sarrus rollback is bit-identical with its retained worm phase.
+The final authored print-only adjustment separates coincident graphic planes
+within the unchanged glass collider to avoid depth flicker; no physical body,
+connector, program or glass dimension changes. The original failed source and
+intermediate diagnostics remain retained. Hosted integration and release
+ownership remain separate from this lane's local simulation qualification.
