@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {openManualControls} from './lib/sim-lab-manual-controls.mjs';
+import {phaseBridgeInteractions,phaseBridgeGermanLessons} from './lib/sim-lab-phase-bridge-gate.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -745,6 +746,15 @@ try {
             const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             fixed.on('pageerror',error=>errors.push(error.message));fixed.on('dialog',dialog=>dialog.accept());
             await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
+        }
+        if (runExample('phase-bridge.ldr')) {
+            const phase=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            phase.on('pageerror',error=>errors.push(error.message));phase.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'phase-bridge'),timeout:wallBudget(90000)};
+            await phaseBridgeInteractions(phase,opts);await phase.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await phaseBridgeGermanLessons(german,opts);await german.close();
         }
         if (runExample('seven-machines.ldr')) {
             const machines=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});

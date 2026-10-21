@@ -74,3 +74,23 @@ duplicate-definition warnings, both physical strokes (257/53 points), and govern
 camera stability below 0.02 mm. This is local source/build qualification in draft
 #1138; main composition and exact-head hosted CI remain release gates. Phase
 Bridge and Magnetic Chess intake remains in progress separately.
+
+### Phase Bridge intake — locally qualified
+
+Two original CrispStrobe / BSD-3-Clause double-Cardan comparisons are bundled.
+Equal bends cancel the outer-shaft speed ripple with correct phasing; rotating
+the second fork assembly by a quarter turn makes the ripple accumulate. The
+actual hinge/cross solver is adopted from the already published universal-joint
+implementation, preserving existing core fixes. It does not prescribe shaft poses.
+The 144 explicit placements need two inferred crosses, for 146 physical pieces;
+lessons and notices distinguish the placement BOM from this physical total.
+
+Eight geometry/native-program/stress controls pass, including frozen-output
+negatives, as do fourteen affected registry/lesson/lazy-load controls. Chromium
+and WebKit actual-worker native programs, manual A, 64-page connected manuals,
+144-placement BOMs and bilingual lessons pass. Maximum measured angle-law error
+is below 0.020°, with roughly ±6.38° intermediate variation and ±12.70° misphased
+output variation. Production build, adapter reproduction and vendored-asset
+freshness pass. Export grows to 48 assemblies and 56 choices. Magnetic Chess is
+still being adapted and has no functioning-library claim. Draft #1138 still
+requires current-main composition and exact-head hosted CI before release.

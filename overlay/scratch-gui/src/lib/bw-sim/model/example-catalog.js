@@ -267,6 +267,34 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "phase-bridge.ldr": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Equal bends and correctly phased forks cancel the speed ripple of two universal joints. Compare the middle shaft with the output.",
+            "de": "Gleiche Knickwinkel und richtig ausgerichtete Gabeln gleichen die Drehzahlschwankung zweier Kardangelenke aus. Vergleiche Zwischenwelle und Abtrieb."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "phase-bridge-misphased.ldr": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "A quarter-turn phasing error makes the two universal joints reinforce their speed ripple. Compare with the correctly phased bridge.",
+            "de": "Ein Ausrichtungsfehler von einer Vierteldrehung verstärkt die Drehzahlschwankung beider Kardangelenke. Vergleiche mit der richtig ausgerichteten Brücke."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "axis-plotter.ldr": {
         "pieces": 256,
         "motors": 3,

@@ -8004,3 +8004,19 @@ points in the two measured strokes; square/diagonal errors stay below 0.05 mm.
 Governor camera movement stays below 0.02 mm during the browser run. Loom's
 rigid assembly notes retain their diagnostics and clarify that other joints turn.
 Current-main composition and exact-head hosted CI remain pending for draft #1138.
+
+### Phase Bridge qualified
+
+The two variants are now bundled with one-motor native programs, optional 45°
+steps, complete 64-page connected instructions and EN/DE lessons. Eight model,
+stress and actual-VM controls pass, including frozen-output negatives; fourteen
+registry/catalogue/lesson/lazy-load controls also pass. Initial geometry assertion
+was corrected for serialized negative zero, with no physical tolerance change.
+Production build, hash-gated adaptation, catalogue/lesson freshness and LDraw
+lock checks pass. Chromium and WebKit actual-worker programs pass: middle angle
+law error <0.011°, output error <0.020°; the in-phase output cancels the ripple,
+while the misphased output reaches ±12.70°. Joint pivots stay within 0.001 mm.
+Manual A, connected BOMs and both-language lessons pass. The 144 explicit parts
+plus two inferred crosses (146 physical pieces) are documented in the lessons
+and notices. Library export: 48 assemblies / 56 choices / 112 bilingual lessons.
+Magnetic Chess remains in development and is not added to the library yet.

@@ -2466,3 +2466,11 @@ and referenced LDraw parts retain their separately documented geometry credits.
 Original model, native control programs and lessons: Copyright (c) 2026
 CrispStrobe, BSD-3-Clause. Full notice: `static/sim-lab/licenses/axis-plotter.txt`.
 Official LDraw part geometry retains its separate attribution and licence.
+
+### Phase Bridge
+
+Original apparatus, in-phase/misphased variants, native programs and bilingual
+lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Per-model notices retain
+the full licence. Official LDraw geometry retains its separate authors and
+CC BY licences. Two physically required universal-joint crosses are inferred
+by the solver; the explicit-placement BOM counts 144 pieces, 146 with crosses.

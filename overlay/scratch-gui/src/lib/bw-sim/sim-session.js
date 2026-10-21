@@ -92,6 +92,8 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'phase-bridge.ldr', title: {en: 'Phase Bridge — double-Cardan cancellation', de: 'Phase Bridge — Doppel-Kardan-Ausgleich'}, example: 'phase-bridge.bw', mat: 'plain'},
+    {file: 'phase-bridge-misphased.ldr', title: {en: 'Phase Bridge — misphased comparison', de: 'Phase Bridge — falsch ausgerichteter Vergleich'}, example: 'phase-bridge.bw', mat: 'plain'},
     {file: 'axis-plotter.ldr', title: {en: 'Axis Plotter — Cartesian drawing', de: 'Axis Plotter — kartesisches Zeichnen'}, example: 'axis-plotter.bw', mat: 'plain'},
     {file: 'atlas-arm.ldr', title: {en: 'Atlas Arm — worm drives and gripper', de: 'Atlas Arm — Schneckengetriebe und Greifer'}, example: 'atlas-arm.bw', mat: 'plain'},
     {file: 'switchback-lift.ldr', title: {en: 'Switchback Lift — ball return machine', de: 'Switchback Lift — Kugel-Rücklaufmaschine'}, example: 'switchback-lift.bw', mat: 'plain'},

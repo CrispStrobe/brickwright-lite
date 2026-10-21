@@ -116,7 +116,8 @@
       "test/bw-sim-straight-eight.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
       "test/bw-sim-seven-machines.test.mjs",
-      "test/bw-sim-universal-joint.test.mjs"
+      "test/bw-sim-universal-joint.test.mjs",
+      "test/bw-sim-phase-bridge.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },
