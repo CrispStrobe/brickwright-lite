@@ -1,3 +1,4 @@
+import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 /** Directed scalar flow for export. Reference identity remains the responsibility
  * of the reference graph; copying a scalar does not alias its source cell. */
 export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
@@ -12,7 +13,7 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
     };
     const add=(key,type)=>{if(!types.has(key))types.set(key,new Set());const values=types.get(key),before=values.size;values.add(type);return values.size!==before;};
     const child=(target,block,name)=>typeof block.inputs?.[name]?.[1]==='string'?target.blocks[block.inputs[name][1]]:null;
-    const literal=(target,block,name)=>{if(block.fields?.[name])return String(block.fields[name][0]);const slot=block.inputs?.[name]?.[1],node=child(target,block,name);return Array.isArray(slot)?String(slot[1]):node?.shadow?String(Object.values(node.fields || {})[0]?.[0]):null;};
+    const literal=(target,block,name)=>{if(isArrayMenuSelector(block,name))return arrayMenuLiteral(target,block,name);if(block.fields?.[name])return String(block.fields[name][0]);const slot=block.inputs?.[name]?.[1],node=child(target,block,name);return Array.isArray(slot)?String(slot[1]):node?.shadow?String(Object.values(node.fields || {})[0]?.[0]):null;};
     const key=(target,name)=>`${target.isStage?'':target.name}:${name}`;
     for(const target of project.targets)for(const [blockId,block] of Object.entries(target.blocks || {}))if(block.topLevel){
         const proto=block.opcode==='procedures_definition' && child(target,block,'custom_block');
@@ -69,7 +70,11 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
             add(value,'array');let item=child(target,block,'VALUES');while(item?.opcode==='arrays_referenceValues'){edge(input(target,item,'VALUE'),element(value));item=child(target,item,'REST');}
         }
         if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(op))edge(element(input(target,block,'ARRAY')),value);
-        if(op==='arrays_mutateReference' && ['push','unshift','set','insertAt'].includes(literal(target,block,'OP')))edge(input(target,block,'VALUE'),element(input(target,block,'ARRAY')));
+        if(isArrayMenuSelector(block,'OP')){
+            const operation=literal(target,block,'OP'),destination=element(input(target,block,'ARRAY'));
+            if(!isKnownArrayMenuOperation(block,operation))add(destination,'unknown');
+            else if(op==='arrays_mutateReference'&&['push','unshift','set','insertAt'].includes(operation))edge(input(target,block,'VALUE'),destination);
+        }
         if(!types.has(value) && !['data_variable','arcade_getLocal','arcade_callFunction','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_valueBinary','arrays_valueUnary','arrays_specialValue','argument_reporter_string_number','argument_reporter_boolean'].includes(op))add(value,'unknown');
     }
     let changed;

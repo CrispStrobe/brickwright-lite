@@ -3,7 +3,7 @@
 Owner: Codex, Arcade compatibility lane.
 Branch: `lane/arcade-array-menu-20261021`.
 Base: `07074c7a7ef1b7452f15df2efaef1aa9470b1d0c`.
-Status: claim only; merge before implementation after enabled checks succeed.
+Status: claim merged; SOURCE implementation candidate, complete acceptance pending.
 
 ## Scope
 
@@ -36,3 +36,42 @@ canonical/dynamic/malformed regression coverage without speculative changes.
 Root executes complete tests after source review. Native, original MakeCode,
 visible palette/controller/art editing and save/fresh-SB3 gates remain separate.
 No corpus count changes or full-CI label/dispatch from this claim.
+
+## Implementation candidate
+
+The focused test's existing canonical procedure-model dependency adds exactly
+its path to that existing GUI-scope key; no new fallback or provider is added.
+SOURCE candidate and complete affected-module execution are pending. The two
+Array selector readers also cover the emitter's private element-flow census.
+All other owners, menu tables, dependency pins and runtime files are unchanged.
+
+The successor keeps computed/malformed/unknown selectors in independent element,
+alias and shrink censuses; direct proof refusals accompany emitter diagnostics.
+
+The reader companion decodes only the two Array OPs against the original physical
+graph and adds inline syntax only to a reader clone. The malformed selectors keep
+their original blocks without projection; decompile retains the original project.
+Complete affected acceptance is fourteen whole modules: the original twelve, the
+new eight-group module, and all seven groups of `extension-menu-args.test.mjs`,
+including actual getInfo/table census and real SPIKE VM prerequisites. The first
+new-module run retained four passes/four failures; the changed-source successor
+and complete affected/native/GUI acceptance remain pending. No count changes.
+
+### Current bounded development result
+
+The complete two new modules ran together: fifteen groups passed and one failed.
+All three previously failing exact-file reimport examples now pass, including
+Code feedback and repeated physical projects. Owned JSON, inherited-container,
+unsafe monitor and selector controls passed. This does not qualify the complete
+fifteen-module affected selection or native, original compiler, getInfo, browser
+and visible-editing gates.
+
+The remaining original class assertion is retained as a failure. Five complete
+causal capture leaves show the actual primitive numeric writer is absent from
+class element facts, and emitted local declarations incorrectly use primitive
+Number types for class values. Appending that writer does not overwrite the
+example's consumed index zero, so the runtime-refusal expectation also needs a
+proper semantic control. A separate claimed workpackage must repair complete
+class/Array writer modeling and class-aware declaration types before changing
+that expectation. No successful MakeCode compilation or full export qualification
+is inferred from an empty diagnostic list. Historical project counts are unchanged.

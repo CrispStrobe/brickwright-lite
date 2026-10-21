@@ -1,3 +1,4 @@
+import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {checkClassPrimitiveExport} from './class-primitive-export-proof.js';
 import {hasSdkFontValues,seedSdkFontValueType,sdkFontGraphType} from './sdk-font-export-types.js';
 import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
@@ -10,6 +11,7 @@ import {createClassCallableExportProvider} from './class-callable-export-provide
 export function prepareObjectClassExport(emitter) {
     const definitions=new Map(),classes=new Map(),procedures=new Map(),graph=new ValueTypeGraph(),owners=new WeakMap();
     const literal=(target,block,name)=>{
+        if(isArrayMenuSelector(block,name))return arrayMenuLiteral(target,block,name);
         const slot=block.inputs?.[name]?.[1],child=typeof slot==='string' && target.blocks[slot];
         return Array.isArray(slot)?String(slot[1]):child?.shadow?String(Object.values(child.fields||{})[0]?.[0]):null;
     };
@@ -115,6 +117,7 @@ export function prepareObjectClassExport(emitter) {
             mark(block,proto?key(target,proto.mutation.proccode):`${target.name}:script:${block.id}`);
         }
     }
+    const unknownMenuElement=Symbol('unproved Array selector element');
     const variables=new Map(),cells=new WeakMap();
     const cell=(target,block)=>{
         if(!block)return 'missing-block';
@@ -159,11 +162,15 @@ export function prepareObjectClassExport(emitter) {
             }
             if(op==='arrays_createReference'){graph.add(value,'array');let item=child(target,block,'VALUES');while(item?.opcode==='arrays_referenceValues'){graph.merge(graph.element(value),input(target,item,'VALUE'));item=child(target,item,'REST');}}
             if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(op))graph.merge(value,graph.element(input(target,block,'ARRAY')));
-            if(op==='arrays_mutateReference' && ['push','unshift','insertAt','set'].includes(literal(target,block,'OP')))graph.merge(graph.element(input(target,block,'ARRAY')),input(target,block,'VALUE'));
+            if(isArrayMenuSelector(block,'OP')){
+                const operation=literal(target,block,'OP'),destination=graph.element(input(target,block,'ARRAY'));
+                if(!isKnownArrayMenuOperation(block,operation))graph.add(destination,unknownMenuElement);
+                else if(op==='arrays_mutateReference'&&['push','unshift','insertAt','set'].includes(operation))graph.merge(destination,input(target,block,'VALUE'));
+            }
         }
     }while(revision!==graph.revision);
     function typeOf(cell,seen=new Set()) {
-        const node=graph.node(cell);if(seen.has(node))return 'any';seen.add(node);
+        const node=graph.node(cell);if(seen.has(node)||node.types.has(unknownMenuElement))return 'any';seen.add(node);
         if(node.types.has('array'))return `${node.element?typeOf(node.element,seen):'any'}[]`;
         const types=[...node.types].filter(type=>type!=='any' && type!=='void');return types.length===1?sdkClassPublicName(types[0]):'any';
     }

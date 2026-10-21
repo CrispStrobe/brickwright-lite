@@ -1,3 +1,5 @@
+import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
+import {createArrayDefiniteOverwrite} from './array-definite-overwrite.js';
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create;
 import {sourceValueOperation} from './source-value-operator-helpers.js';
@@ -24,6 +26,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const block=(target,id)=>typeof id==='string'?target.blocks?.[id]:null;
     const child=(node,name,target)=>block(target,node?.inputs?.[name]?.[1]);
     const literal=(node,name,target)=>{
+        if(isArrayMenuSelector(node,name))return arrayMenuLiteral(target,node,name);
         if(node?.fields?.[name])return typeof node.fields[name][0]==='string'?node.fields[name][0]:null;
         const value=node?.inputs?.[name]?.[1];if(Array.isArray(value)&&value[0]===10)return String(value[1]);
         const leaf=block(target,value);return leaf?.shadow&&leaf.opcode==='text'?leaf.fields?.TEXT?.[0]:null;
@@ -91,7 +94,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const input=(node,name,target)=>{const raw=node?.inputs?.[name]?.[1];if(typeof raw==='string')return {target,node:block(target,raw)};if(Array.isArray(raw)&&raw[0]===12){const value=globalCell(target,raw[2]);const declaration=targets.find(t=>Object.hasOwn(t.variables||{},raw[2]))?.variables[raw[2]];return declaration?.[0]===raw[1]?{target,cell:value,at:node}:{target,raw:null,at:node};}return {target,raw,at:node};};
     const exactKeys=(node,inputs,fields=[])=>Object.keys(node.inputs||{}).sort().join('|')===[...inputs].sort().join('|')&&Object.keys(node.fields||{}).every(name=>fields.includes(name));
     const schemas={arrays_referenceTruthy:['ARRAY','INDEX'],arrays_referenceItem:['ARRAY','INDEX'],arrays_referenceRemove:['ARRAY','VALUE'],arrays_referenceRandom:['ARRAY'],arrays_referenceLength:['ARRAY'],arrays_referenceSlice:['ARRAY','START','END'],arrays_referenceConcat:['ARRAY','OTHER'],arrays_referenceIndexOf:['ARRAY','VALUE','INDEX'],arrays_referenceTake:['ARRAY','OP','INDEX'],arrays_mutateReference:['ARRAY','OP','INDEX','VALUE']};
-    const operationShape=node=>{const expected=schemas[node.opcode];if(!expected)return false;const fieldOp=Object.hasOwn(node.fields||{},'OP'),inputs=fieldOp?expected.filter(name=>name!=='OP'):expected;return exactKeys(node,inputs,fieldOp?['OP']:[]);};
+    const operationShape=node=>{const expected=schemas[node.opcode];if(!expected)return false;if(isArrayMenuSelector(node,'OP')&&!isKnownArrayMenuOperation(node,literal(node,'OP',owners.get(node)?.target)))return false;const fieldOp=Object.hasOwn(node.fields||{},'OP'),inputs=fieldOp?expected.filter(name=>name!=='OP'):expected;return exactKeys(node,inputs,fieldOp?['OP']:[]);};
     const argumentList=(target,node)=>{
         const args=[],seen=new Set();let edge=node.inputs?.ARGS?.[1];
         while(typeof edge==='string'){
@@ -1104,6 +1107,15 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     spriteDataReady=true;
     resetFlowReady=true;
+    const definiteOverwrite=createArrayDefiniteOverwrite({project,targets,scopes,records,calls,owners,invalid,implicitEntries,
+        block,child,input,literal,binding,globalCell,localCell,exactKeys,resetValue,
+        ordinarySummaryGlobal,statementOf,closedEffects,isArrayMenuSelector,isKnownArrayMenuOperation});
+    for(const c of cells.values())c.writers=c.writers.filter(writer=>{
+        if(!definiteOverwrite(c,writer))return true;
+        // Only a reaching reset of an owned immutable JSON tree is removed.
+        // Every actual overwrite and other writer retains its producer checks.
+        extendedResetUsed=true;return false;
+    });
     // A push precedes an occurrence in every activation when it executed
     // earlier in the occurrence's own scope (directly or on a called
     // procedure's straight prefix), or when the occurrence is in an ordinary
@@ -1182,12 +1194,25 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // Monotone producer flow handles genuine alias SCCs with an allocation;
     // cycles in the physical block graph were independently refused above.
     let changed;
-    const populate=(t,seen=new Set())=>{if(!t||typeof t!=='object'||!t.array||seen.has(t))return;seen.add(t);for(const item of t.items)for(const type of readInput(item))if(!t.elements.has(type)){t.elements.add(type);changed=true;}for(const type of t.elements)populate(type,seen);};
+    const arrayAllocations=new Set();
+    const populate=(t,seen=new Set())=>{if(!t||typeof t!=='object'||!t.array||seen.has(t))return;arrayAllocations.add(t);seen.add(t);for(const item of t.items)for(const type of readInput(item))if(!t.elements.has(type)){t.elements.add(type);changed=true;}for(const type of t.elements)populate(type,seen);};
     do{
         changed=false;
         for(const c of cells.values())for(const w of c.writers){const types=w.value&&!invalid.has(w.node)&&!w.scope.invalid?readInput(w.value):new Set([bad]);for(const type of types)if(!c.types.has(type)){c.types.add(type);changed=true;}}
         for(const {target,node}of records){const types=readNode(target,node);values.set(node,types);for(const t of types)populate(t);}
-        for(const {target,node,value}of mutations){const receiver=readInput(input(node,'ARRAY',target)),op=literal(node,'OP',target)||literal(node,'MODE',target);for(const t of receiver)if(t&&typeof t==='object'&&t.array){t.shrinks ||= new Set();if((['pop','shift','removeAt','length','removeElement'].includes(op)||node.opcode==='arrays_referenceRemove')&&!t.shrinks.has(node)){t.shrinks.add(node);changed=true;}if(['push','unshift','insertAt','set'].includes(op)){t.sources.add(value);for(const type of readInput(value))if(!t.elements.has(type)){t.elements.add(type);changed=true;}}}}
+        for(const {target,node,value}of mutations){
+            const receiver=readInput(input(node,'ARRAY',target)),op=isArrayMenuSelector(node,'OP')?literal(node,'OP',target):literal(node,'OP',target)||literal(node,'MODE',target);
+            const unknownOperation=isArrayMenuSelector(node,'OP')&&!isKnownArrayMenuOperation(node,op);
+            // An unresolved receiver may alias any discovered Array. Unknown
+            // selectors cannot silently disappear from its element/shrink census.
+            const affected=unknownOperation&&(!receiver.size||receiver.has(bad))?new Set([...receiver,...arrayAllocations]):receiver;
+            for(const t of affected)if(t&&typeof t==='object'&&t.array){
+                t.shrinks ||= new Set();
+                if((unknownOperation||['pop','shift','removeAt','length','removeElement'].includes(op)||node.opcode==='arrays_referenceRemove')&&!t.shrinks.has(node)){t.shrinks.add(node);changed=true;}
+                if(unknownOperation&&!t.elements.has(bad)){t.elements.add(bad);changed=true;}
+                if(['push','unshift','insertAt','set'].includes(op)){t.sources.add(value);for(const type of readInput(value))if(!t.elements.has(type)){t.elements.add(type);changed=true;}}
+            }
+        }
     }while(changed);
     for(const c of cells.values())if(!c.types.size)c.types.add(bad);
     const initializingCells=new Set();

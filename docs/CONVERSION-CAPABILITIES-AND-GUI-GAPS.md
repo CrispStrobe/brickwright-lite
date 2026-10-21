@@ -5454,3 +5454,85 @@ menu module also contains actual SPIKE VM tests, so its results require normal
 current runtime dependencies and cannot be called pure conversion evidence.
 Historical corpus counts remain unchanged until the complete original ordered
 assessment and the applicable application journey finish.
+
+
+### Canonical Array selector export candidate — 2026-10-21
+
+The selected Array `OP` readers now share a narrow syntax decoder for mutation
+and take menus, including the editor's declared menu shadows and supported
+legacy fields/inline text/text shadows. It checks the exact opcode, field and
+unique physical parent edge; computed selectors, fallback reporters, conflicting
+synthetic fields, shared shadows and malformed structures remain refused.
+This supplies no receiver, element, alias or initialized-value authority.
+
+The focused candidate uses the registered outer Creator, actual menu migration,
+Code feedback, exact exported-file reimport and repeated conversion. It also
+retains canonical animation-resource menus as a regression boundary; animation
+was not established as the Array selector defect. All existing affected Array,
+occurrence, scalar and class modules remain required in complete form. SOURCE
+review is not execution or visible authoring acceptance.
+
+Still required: palette mutation/take selection edits with actual aliases and
+later invalid writers; Code → Blocks → Code, save/fresh SB3 reopen and original
+export/reimport with current assets and unchanged values/errors. Arbitrary
+readable-view projections are not proof inputs. Native/original MakeCode and
+visible controller/graphics journeys remain separate; no retained corpus count
+has changed.
+
+Unknown selectors also remain in each independent writer census: affected
+scalar/class/private export elements stay opaque, named aliases refuse unknown
+operations, and Array element/presence facts cannot ignore potential writes or
+shrinks. A final emitter diagnostic alone is not proof that these independent
+facts were refused. The focused controls query the production proofs directly.
+
+### Canonical Array OP Code reader followup
+
+The source candidate supplies the two validated Array selectors to Code readers
+as inline syntax in a reader clone; export proofs continue to inspect the original
+physical project. Malformed/computed/shared selectors receive no projection. The
+first new-module run was four passes/four failures; reader and fixture corrections
+await changed-source qualification. Complete affected acceptance retains fourteen
+whole modules, including all seven menu-shape groups with real getInfo/SPIKE VM
+prerequisites. Visible editing, native execution, fresh SB3 and current-asset
+roundtrips remain separate acceptance gates. Historical project counts are unchanged.
+
+### Array reset overwrite source candidate
+
+Exact-file reimport retains real local/global null initializers. A separate
+source candidate discounts only reset values proved overwritten before every
+actual relevant read through a closed linear direct-call path. It preserves
+the overwrite expressions, all other writers, runtime effects and independent
+Array producer checks. Captures, unknown effects, branches, loops, recursion,
+competing entries and opaque writers remain refusals; class effects are not
+globally exempted. The previous menu diagnostic completed five groups with
+three genuine reimport failures; those failures remain historical evidence.
+The new complete eight-group proof module and all fourteen previously selected
+modules await qualification. No native, visible editing or project-count claim
+follows from this source candidate.
+
+The new overwrite theorem requires the existing owned, deeply frozen JSON
+snapshot entry. Complete serialized projects enter `projectJsonToArcade`; direct
+mutable ASTs, caller-frozen objects and Proxy wrappers retain their conservative
+refusal. Actual namespace ownership, monitor restrictions and every remaining
+producer/writer obligation still apply. GUI export source already uses the JSON
+entry, but visible editing/browser acceptance remains unqualified. This is not a
+general object-equivalence or native-execution claim.
+
+### Current bounded development result
+
+The complete two new modules ran together: fifteen groups passed and one failed.
+All three previously failing exact-file reimport examples now pass, including
+Code feedback and repeated physical projects. Owned JSON, inherited-container,
+unsafe monitor and selector controls passed. This does not qualify the complete
+fifteen-module affected selection or native, original compiler, getInfo, browser
+and visible-editing gates.
+
+The remaining original class assertion is retained as a failure. Five complete
+causal capture leaves show the actual primitive numeric writer is absent from
+class element facts, and emitted local declarations incorrectly use primitive
+Number types for class values. Appending that writer does not overwrite the
+example's consumed index zero, so the runtime-refusal expectation also needs a
+proper semantic control. A separate claimed workpackage must repair complete
+class/Array writer modeling and class-aware declaration types before changing
+that expectation. No successful MakeCode compilation or full export qualification
+is inferred from an empty diagnostic list. Historical project counts are unchanged.

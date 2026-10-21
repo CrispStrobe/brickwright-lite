@@ -1,3 +1,4 @@
+import {arrayMenuLiteral,isArrayMenuSelector} from './array-menu-literal.js';
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 
 // This profile never changes a cell-wide type or deletes a writer. It proves
@@ -135,7 +136,7 @@ function build(project){
     const scalar=Object.freeze({kind:'scalar'}),unknown=Object.freeze({kind:'unknown'});
     const local=name=>{if(typeof name!=='string'||Object.hasOwn(Object.prototype,name))return null;if(!locals.has(name))locals.set(name,{});return locals.get(name);};
     const row=(n,name)=>n.inputs[name]?.[1];
-    const text=(n,name)=>{const r=row(n,name);if(Array.isArray(r))return r[0]===10?r[1]:null;const b=owner.blocks[r];return b?.shadow&&b.opcode==='text'&&schema(b,[],['TEXT'])?b.fields.TEXT?.[0]:null;};
+    const text=(n,name)=>{if(isArrayMenuSelector(n,name))return arrayMenuLiteral(owner,n,name);const r=row(n,name);if(Array.isArray(r))return r[0]===10?r[1]:null;const b=owner.blocks[r];return b?.shadow&&b.opcode==='text'&&schema(b,[],['TEXT'])?b.fields.TEXT?.[0]:null;};
     const field=(n,name,choices)=>{const r=n.fields[name];return Array.isArray(r)&&r.length===2&&r[1]===null&&choices.includes(r[0])?r[0]:null;};
     const readCell=c=>{const v=env.get(c)||unknown;if(v.kind==='array')arrayDependencies.add(c);return v;};
     const assign=(c,value)=>{

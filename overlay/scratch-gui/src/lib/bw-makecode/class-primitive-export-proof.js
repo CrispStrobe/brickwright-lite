@@ -1,3 +1,4 @@
+import {arrayMenuLiteral,isArrayMenuSelector} from './array-menu-literal.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {sdkSpriteExportClasses} from './sdk-sprite-class-descriptors.js';
@@ -21,7 +22,7 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     };
     const owned=new WeakMap(),locations=new WeakMap(),definitions=new Map(),rows=[],bad=new Set(),methodOwners=new Map(),roots=new Set();
     const blocks=target=>target.blocks||{},child=(target,block,name)=>typeof block.inputs?.[name]?.[1]==='string'?blocks(target)[block.inputs[name][1]]:null;
-    const fixed=(target,block,name)=>{if(!block.inputs?.[name]&&typeof block.fields?.[name]?.[0]==='string')return block.fields[name][0];const input=block.inputs?.[name]?.[1],value=child(target,block,name);return Array.isArray(input)&&input[0]===10?String(input[1]):value?.shadow&&value.opcode==='text'?String(value.fields?.TEXT?.[0]):null;};
+    const fixed=(target,block,name)=>{if(isArrayMenuSelector(block,name))return arrayMenuLiteral(target,block,name);if(!block.inputs?.[name]&&typeof block.fields?.[name]?.[0]==='string')return block.fields[name][0];const input=block.inputs?.[name]?.[1],value=child(target,block,name);return Array.isArray(input)&&input[0]===10?String(input[1]):value?.shadow&&value.opcode==='text'?String(value.fields?.TEXT?.[0]):null;};
     const key=(target,name)=>`${project.targets.indexOf(target)}:${name}`;
     const opaque=()=>new Set(['Opaque']),union=sets=>new Set(sets.flatMap(set=>[...set]));
     const reporter=(block,names)=>!block.shadow&&!block.topLevel&&!block.next&&!block.mutation&&!Object.keys(block.fields||{}).length&&Object.keys(block.inputs||{}).sort().join(',')===names.slice().sort().join(',');

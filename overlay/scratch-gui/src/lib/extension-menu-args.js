@@ -24,6 +24,7 @@
  * vendors byte-identical to CrispStrobe/sb3-creator at its pin.
  */
 import TABLE from './extension-menu-table.js';
+import {arrayMenuLiteral, isArrayMenuSelector} from './bw-makecode/array-menu-literal.js';
 
 /** `{menu, reporters}` for one menu argument of an extension block, or null. */
 export const menuArgOf = (opcode, arg) => {
@@ -144,10 +145,15 @@ export const readableView = project => {
             let fields = null;
             let inputs = null;
             for (const arg of Object.keys(TABLE[block.opcode])) {
-                const value = valueOf(block, arg, blocks);
-                if (value === undefined) continue;
+                // Decode these selectors from the original physical graph only.
+                // The inline input below belongs solely to this reader clone.
+                const arraySelector = isArrayMenuSelector(block, arg);
+                const value = arraySelector ? arrayMenuLiteral(target, block, arg) : valueOf(block, arg, blocks);
+                if (value === undefined || (arraySelector && value === null)) continue;
                 if (!block.fields || block.fields[arg] === undefined) (fields = fields || {...block.fields})[arg] = [value, null];
-                if ((READ_AS_VALUE[block.opcode] || []).includes(arg) && (!block.inputs || block.inputs[arg] === undefined)) {
+                if (arraySelector) {
+                    (inputs = inputs || {...block.inputs})[arg] = [1, [10, value]];
+                } else if ((READ_AS_VALUE[block.opcode] || []).includes(arg) && (!block.inputs || block.inputs[arg] === undefined)) {
                     (inputs = inputs || {...block.inputs})[arg] = [1, [10, String(value)]];
                 }
             }

@@ -3,7 +3,7 @@
 Owner: Codex, Arcade compatibility lane.
 Branch: `lane/arcade-array-menu-reader-claim-20261021`.
 Base: `9ca0002579e6bd0891a4b34ea28400115a51e512`.
-Status: claim only; merge after every enabled exact-head check succeeds.
+Status: claim merged; SOURCE implementation candidate, complete acceptance pending.
 
 Extend the canonical Array export lane with only the two Array OP reader cases
 in `overlay/scratch-gui/src/lib/extension-menu-args.js` `readableView`.
@@ -26,3 +26,31 @@ incorrectly selected fixture. Root runs the complete corrected eight-group
 module, then complete affected source/native modules under real prerequisites
 or the hosted gate. Native, original MakeCode, visible editing and fresh-SB3
 acceptance remain separate. No corpus count or new full-CI label/dispatch.
+
+The reader companion decodes only the two Array OPs against the original physical
+graph and adds inline syntax only to a reader clone. The malformed selectors keep
+their original blocks without projection; decompile retains the original project.
+Complete affected acceptance is fourteen whole modules: the original twelve, the
+new eight-group module, and all seven groups of `extension-menu-args.test.mjs`,
+including actual getInfo/table census and real SPIKE VM prerequisites. The first
+new-module run retained four passes/four failures; the changed-source successor
+and complete affected/native/GUI acceptance remain pending. No count changes.
+
+### Current bounded development result
+
+The complete two new modules ran together: fifteen groups passed and one failed.
+All three previously failing exact-file reimport examples now pass, including
+Code feedback and repeated physical projects. Owned JSON, inherited-container,
+unsafe monitor and selector controls passed. This does not qualify the complete
+fifteen-module affected selection or native, original compiler, getInfo, browser
+and visible-editing gates.
+
+The remaining original class assertion is retained as a failure. Five complete
+causal capture leaves show the actual primitive numeric writer is absent from
+class element facts, and emitted local declarations incorrectly use primitive
+Number types for class values. Appending that writer does not overwrite the
+example's consumed index zero, so the runtime-refusal expectation also needs a
+proper semantic control. A separate claimed workpackage must repair complete
+class/Array writer modeling and class-aware declaration types before changing
+that expectation. No successful MakeCode compilation or full export qualification
+is inferred from an empty diagnostic list. Historical project counts are unchanged.

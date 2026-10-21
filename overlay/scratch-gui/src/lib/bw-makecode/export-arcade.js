@@ -1,3 +1,4 @@
+import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {createProjectJsonSnapshot} from './project-json-snapshot.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
@@ -871,6 +872,7 @@ class ArcadeEmitter {
     }
 
     literalInput (b, name) {
+        if(isArrayMenuSelector(b,name))return arrayMenuLiteral(this.target,b,name);
         const slot = b.inputs?.[name]?.[1];
         return Array.isArray(slot) && [10, 11].includes(slot[0]) ? String(slot[1]) : null;
     }
@@ -3151,6 +3153,7 @@ class ArcadeEmitter {
             return blocks[input];
         };
         const literal = (blocks, b, name) => {
+            if(isArrayMenuSelector(b,name))return arrayMenuLiteral({blocks},b,name);
             if(b.fields?.[name])return String(b.fields[name][0]);
             const input = b.inputs?.[name]?.[1];
             return Array.isArray(input) ? String(input[1]) : String(blocks[input]?.fields?.TEXT?.[0] || '');
@@ -3444,7 +3447,12 @@ class ArcadeEmitter {
                     const array=ref(inputBlock(blocks,block,'ARRAY'));if(array)arrays.add(array);
                     const index=ref(inputBlock(blocks,block,'INDEX'));if(index)numbers.add(index);
                     if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(block.opcode))elements.push([array,ref(block)]);
-                    if(block.opcode==='arrays_mutateReference' && ['push','unshift','insertAt','set'].includes(literal(blocks,block,'OP')))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
+                    if(isArrayMenuSelector(block,'OP')){
+                        const operation=literal(blocks,block,'OP');
+                        if(!isKnownArrayMenuOperation(block,operation)){
+                            const unknown=Symbol('unproved Array selector element');anys.add(unknown);opaqueCells.add(unknown);elements.push([array,unknown]);
+                        }else if(block.opcode==='arrays_mutateReference'&&['push','unshift','insertAt','set'].includes(operation))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
+                    }
                 }
                 if(REGISTERED_COMMANDS.has(block.opcode)){
                     const scope=callbackScopes.get(literal(blocks,block,'TOKEN'));

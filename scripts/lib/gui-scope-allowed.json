@@ -126,6 +126,7 @@
   },
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
+      "test/array-definite-overwrite.test.mjs",
       "test/animation-native-library-import.test.mjs",
       "test/animation-resource-native-helper-analysis.test.mjs",
       "test/arcade-animation-resource-carrier.test.mjs",
@@ -361,6 +362,7 @@
       "test/makecode-arcade-zero-image-sprite.test.mjs",
       "test/makecode-array-callee-initialization.test.mjs",
       "test/makecode-array-map-values.test.mjs",
+      "test/makecode-array-menu-export.test.mjs",
       "test/makecode-array-occurrence-authority.test.mjs",
       "test/makecode-array-reference-export-authority.test.mjs",
       "test/makecode-callable-default-admission.test.mjs",
