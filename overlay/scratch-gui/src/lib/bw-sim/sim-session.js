@@ -81,13 +81,15 @@ export const MODELS = Object.freeze([
         example: 'differential-car.bw', mat: 'plain',
         intro: {
             en: 'A car that steers like a real one. Motor A turns the back wheels through a differential, ' +
-                'so in a curve the outer wheel can roll faster than the inner one. Motor B turns the front ' +
-                'wheels; a bar joins them so that the inner wheel turns a little more. Run it: the car drives ' +
-                'ahead, goes once round a circle and backs up to where it started.',
+                'so in a curve the outer wheel can roll faster than the inner one. Motor B steers with a rack and ' +
+                'pinion: its gear slides a toothed bar, and rods from the bar\'s ends turn the front wheels, the ' +
+                'inner one a little more. Run it: the car drives ahead, goes once round a circle and backs up to ' +
+                'where it started.',
             de: 'Ein Auto, das lenkt wie ein echtes. Motor A dreht die Hinterräder über ein Differenzial, ' +
-                'so kann in der Kurve das äußere Rad schneller rollen als das innere. Motor B dreht die ' +
-                'Vorderräder; eine Stange verbindet sie, damit das innere Rad etwas stärker einschlägt. ' +
-                'Starte es: Das Auto fährt geradeaus, einmal im Kreis und rückwärts zurück zum Start.'
+                'so kann in der Kurve das äußere Rad schneller rollen als das innere. Motor B lenkt mit einer ' +
+                'Zahnstange: Sein Zahnrad schiebt die Stange, und Spurstangen an ihren Enden drehen die ' +
+                'Vorderräder, das innere etwas stärker. Starte es: Das Auto fährt geradeaus, einmal im Kreis ' +
+                'und rückwärts zurück zum Start.'
         }},
     // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
     {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
