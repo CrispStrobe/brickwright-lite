@@ -27,6 +27,7 @@ import {buildGears} from './gears.js';
 import {sharedAxisBodyPairs, localNoCollide, asBuiltOverlaps} from './collision-filter.js';
 import {freePinWelds} from './free-pins.js';
 import {rescueLoose, weldByContact} from './loose-rescue.js';
+import {breakHingeLoops} from './loops.js';
 
 /**
  * Solver iterations for the joints of a model from elsewhere that hold a light body (below massKg) against one ratio
@@ -263,7 +264,7 @@ export const compile = (model, catalog, opts = {}) => {
         }
         // A free pin (mech/free-pins.js) is welded to one of the two parts it joins: one hinge, no
         // light body between two constraints.
-        const freePins = freePinWelds(nodes, islands, jointsResult.joints);
+        const freePins = freePinWelds(nodes, islands, jointsResult.joints, {dangling: Boolean(opts.rescueLoose)});
         if (freePins.length > 0) {
             for (const [bA, bB] of freePins) weld(islands, bA, bB);
             continue;
@@ -311,6 +312,17 @@ export const compile = (model, catalog, opts = {}) => {
     const detectedCouplings = detected.couplings.map((c, i) => ({...c, id: `c${i}`}));
     const gears = [...gearResult.gears, ...detectedCouplings.filter(c => V1_COUPLING_KINDS.includes(c.kind))
         .map(({id, kind, ...rest}) => ({id, type: kind, ...rest}))];
+
+    // A model from elsewhere: each closed loop of hinges is broken with a ball joint (mech/loops.js).
+    let loopBalls = [];
+    if (opts.rescueLoose && opts.breakLoops !== false) {
+        const named = JSON.stringify([gearResult.gears, gearResult.relative || [], detected.couplings]);
+        const keep = new Set(joints.filter(j => j.motor || j.limits || j.spring || named.includes(`"${j.id}"`)).map(j => j.id));
+        const massOf = id => islands.bodies.find(b => b.id === id)?.massKg ?? Infinity;
+        const broken = breakHingeLoops(joints, {keep, massOf});
+        joints.splice(0, joints.length, ...broken.joints);
+        loopBalls = broken.balls;
+    }
 
     // Loose parts: bodies that no joint links, directly or through other bodies, to the
     // body carrying the hub (or, without a hub, to the largest connected group). They are
@@ -499,7 +511,7 @@ export const compile = (model, catalog, opts = {}) => {
     // went to NaN within 2 s with its motors coasting; 42131 and 42055 at 0.5–2 s a step). A real set is built so its
     // jointed parts do not collide; filtered whole, they do not, and no shape filter runs at all (3x faster steps).
     if (opts.rescueLoose) {
-        mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}};
+        mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}, ...(loopBalls.length ? {loopBalls} : {})};
         const pairs = new Set(mechanismV2.noCollide.map(([a, b]) => `${a}|${b}`));
         for (const [a, b] of asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, [])) {
             if (!pairs.has(`${a}|${b}`)) { mechanismV2.noCollide.push([a, b]); pairs.add(`${a}|${b}`); }

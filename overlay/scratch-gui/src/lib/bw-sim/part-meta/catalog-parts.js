@@ -75,6 +75,10 @@ const LENIENT = {minEnclosed: 0.96, gearSlack: 0.5};
 const repair = (meta, why, minEngage) => {
     const drop = new Set();
     for (const w of why) {
+        // A shaft with no mesh round it at all (reach 0.00: nothing in its slab) is a profile the part draws, not a
+        // shaft to hold (a 6L steering link's axle-shaped middle, 2739a): dropped when the part keeps other connectors.
+        const ghost = /^(\S+): the mesh reaches 0\.00 LDU from the (?:pin|axle)'s axis$/.exec(w);
+        if (ghost && meta.connectors.length > 1) { drop.add(ghost[1]); continue; }
         const m = /^holes (\S+)\/(\S+) /.exec(w);
         if (!m) continue;
         const [a, b] = [m[1], m[2]].map(id => meta.connectors.find(c => c.id === id));

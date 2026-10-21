@@ -1641,7 +1641,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
                 for (const r of racks) r.constraint.SetConstraints(r.hinge, r.slider);
-                joltInterface.Step(dtFixed, 1);
+                joltInterface.Step(dtFixed, experiments.collisionSteps || 1);
                 timeSteps += 1;
                 acc -= dtFixed;
                 if (acc < 0 && acc > -1e-12) acc = 0;

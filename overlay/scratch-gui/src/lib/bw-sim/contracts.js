@@ -974,6 +974,7 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *   solver?     {lightLinks: {massKg, ratio, velocity, position}} more solver iterations for joints
  *               holding a body below massKg against one ratio times heavier (mech/compile.js
  *               FOREIGN_LIGHT_LINKS, models from elsewhere only); bodies keep their own massKg.
+ *               loopBalls?: the ids of the hinges made ball joints to break closed hinge loops (mech/loops.js).
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)

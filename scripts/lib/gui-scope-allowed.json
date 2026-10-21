@@ -110,6 +110,7 @@
       "test/bw-sim-motor-stops.test.mjs",
       "test/bw-sim-jolt-debug-build.test.mjs",
       "test/bw-sim-loose-rescue.test.mjs",
+      "test/bw-sim-stability-rules.test.mjs",
       "test/bw-sim-model-real-robot.test.mjs",
       "test/bw-sim-rope.test.mjs"
     ],
