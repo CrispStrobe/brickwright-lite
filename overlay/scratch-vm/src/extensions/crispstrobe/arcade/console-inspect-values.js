@@ -291,10 +291,27 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
             if(!valid||proof.escaped&&!evidence.size)return false;
             for(const origin of evidence)origins?.add(origin);return true;
         };
+        // Domain queries are a least fixpoint over flow cycles. A backedge
+        // contributes the domains its node produced in the previous round, or
+        // PENDING (bottom) in the first; rounds repeat until no node's domains
+        // grow, and a result still PENDING is refused.
+        let cycleDomains=null,cycleGrew=false;
+        const PENDING='pending';
         const safe = (node,player=false,origins=null,domains=null) => {
             if (!node) return false;
             const visited=seen.get(player);
-            if (visited.has(node)) return !player; // A flow backedge cannot introduce an opaque producer; every outgoing writer is still checked.
+            if (visited.has(node)) { // A flow backedge cannot introduce an opaque producer; every outgoing writer is still checked.
+                if(domains&&!player){const prior=cycleDomains?.get(node);if(prior?.size)for(const type of prior)domains.add(type);else domains.add(PENDING);}
+                return !player;
+            }
+            if(!domains||player||!cycleDomains)return safeNode(node,player,origins,domains);
+            const local=new Set(),valid=safeNode(node,player,origins,local);
+            const known=cycleDomains.get(node)||new Set();
+            for(const type of local){domains.add(type);if(type!==PENDING&&!known.has(type)){known.add(type);cycleGrew=true;}}
+            cycleDomains.set(node,known);return valid;
+        };
+        const safeNode = (node,player,origins,domains) => {
+            const visited=seen.get(player);
             visited.add(node);
             try {
                 const op=node.opcode;
@@ -331,7 +348,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                 if (op === 'arcade_inspectValue') {
                     if(!domains)return safe(input(node,'VALUE'))&&safe(input(node,'LIMIT'));
                     const limit=new Set();if(!safe(input(node,'VALUE'))||!safe(input(node,'LIMIT'),false,null,limit))return false;
-                    domains.add(limit.size&&[...limit].every(type=>['number','undefined'].includes(type))?'string':'unknown');return true;
+                    domains.add(limit.has(PENDING)?PENDING:limit.size&&[...limit].every(type=>['number','undefined'].includes(type))?'string':'unknown');return true;
                 }
                 if (op === 'data_variable') {
                     const id=node.fields?.VARIABLE?.id, variable=target.lookupVariableById(id);
@@ -359,7 +376,11 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                     if(!domains)return safe(input(node,'LEFT'))&&safe(input(node,'RIGHT'));
                     const left=new Set(),right=new Set();if(!safe(input(node,'LEFT'),false,null,left)||!safe(input(node,'RIGHT'),false,null,right))return false;
                     const operation=literal(node,'OP');
-                    if(operation==='+') {if(left.has('string')||right.has('string'))domains.add('string');if([...left].some(type=>type!=='string')&&[...right].some(type=>type!=='string'))domains.add('number');if(!left.size||!right.size||left.has('unknown')||right.has('unknown'))domains.add('unknown');}
+                    if(operation==='+') {
+                        if(left.has(PENDING)||right.has(PENDING))domains.add(PENDING);
+                        const l=new Set([...left].filter(type=>type!==PENDING)),r=new Set([...right].filter(type=>type!==PENDING));
+                        if(l.has('string')||r.has('string'))domains.add('string');if([...l].some(type=>type!=='string')&&[...r].some(type=>type!=='string'))domains.add('number');
+                        if(!l.size&&!left.has(PENDING)||!r.size&&!right.has(PENDING)||l.has('unknown')||r.has('unknown'))domains.add('unknown');}
                     else domains.add(['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(operation)?'number':'unknown');
                     return true;
                 }
@@ -370,7 +391,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                 return false;
             } finally {visited.delete(node);}
         };
-        if(requested){for(const [index,request]of requested.entries()){const domains=new Set();structural=!!request.procedure;if(request.procedure){const scopes=captureProof.scopes.filter(scope=>scope.target===target&&scope.procedure===request.procedure);if(scopes.length!==1||!scopes[0].params.includes(request.formal))fail('actual formal binding differs');request.cell=captureProof.local(scopes[0],request.formal);}if(!(request.cell?safeCell(request.cell,false,null,domains):safe(input(request.node,request.name),false,null,domains))||!domains.size||domains.has('unknown'))fail('connected input lacks complete primitive domain evidence'+scoreDetail());possible.set(index,domains);}return;}
+        if(requested){for(const [index,request]of requested.entries()){const domains=new Set();structural=!!request.procedure;if(request.procedure){const scopes=captureProof.scopes.filter(scope=>scope.target===target&&scope.procedure===request.procedure);if(scopes.length!==1||!scopes[0].params.includes(request.formal))fail('actual formal binding differs');request.cell=captureProof.local(scopes[0],request.formal);}let valid=false;cycleDomains=new Map();try{for(let round=0;round<16;round++){domains.clear();cycleGrew=false;valid=request.cell?safeCell(request.cell,false,null,domains):safe(input(request.node,request.name),false,null,domains);if(!valid||!cycleGrew)break;}}finally{cycleDomains=null;}if(cycleGrew)valid=false;if(!valid||!domains.size||domains.has('unknown')||domains.has(PENDING))fail('connected input lacks complete primitive domain evidence'+scoreDetail());possible.set(index,domains);}return;}
         if (!safe(input(block,'VALUE')) || !safe(input(block,'LIMIT'))) fail('connected input lacks primitive producer authority'+scoreDetail());
         return {value:input(block,'VALUE'),limit:input(block,'LIMIT')};
     };

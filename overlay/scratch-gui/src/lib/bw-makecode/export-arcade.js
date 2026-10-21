@@ -3792,7 +3792,11 @@ class ArcadeEmitter {
         const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
         for(const [key,parameters] of scalarFlow.definitions) {
             const old=imageParameterTypes.get(key)||[];
-            imageParameterTypes.set(key,parameters.map((name,index)=>scalarFlow.primitive(`${key}:local:${name}`)?scalarFlow.type(`${key}:local:${name}`):old[index]||'any'));
+            // A formal that actually receives Undefined/Null (an omitted optional
+            // argument) is not a Number/String/Boolean formal: annotating it so
+            // would make the reimport's procedure constraint refuse its own caller.
+            const nullable=name=>[...(scalarFlow.types.get(`${key}:local:${name}`)||[])].some(type=>['undefined','null'].includes(type));
+            imageParameterTypes.set(key,parameters.map((name,index)=>scalarFlow.primitive(`${key}:local:${name}`)?nullable(name)?'any':scalarFlow.type(`${key}:local:${name}`):old[index]||'any'));
             if(scalarFlow.primitive(`${key}:result`))this.valueReturnTypes.set(key,scalarFlow.type(`${key}:result`));
         }
         for(const key of scalarFlow.types.keys()) {

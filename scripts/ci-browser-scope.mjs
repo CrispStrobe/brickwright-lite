@@ -25,7 +25,7 @@
  *      script MENTIONS by path (fixtures, the native bootstrap a light gate
  *      reads, a script a gate spawns)          -> the shards that mention it
  *   5. tests (test/), Rust/Tauri (apps/, *.rs, Cargo.*), the CLI (bin/),
- *      scripts no gate reaches, docs, LANES and root prose  -> no shard
+ *      scripts no gate reaches, docs, lane claims (lanes/), LANES and root prose  -> no shard
  *   6. anything else, i.e. any path this map does not know -> ALL
  *
  * An empty file list is not evidence of anything: ALL.
@@ -71,9 +71,10 @@ const NO_BROWSER = [
     [/^bin\//, 'cli'],
     [/^scripts\//, 'script no gate reaches'],
     [/^docs\//, 'docs'],
+    [/^lanes\//, 'docs'],
     [/^[^/]+\.md$/, 'docs'],
 ];
-const MENTIONABLE = /^(?:test|docs|apps|bin|scripts)\//;
+const MENTIONABLE = /^(?:test|docs|lanes|apps|bin|scripts)\//;
 
 const CODE = /\.(?:mjs|cjs|js)$/;
 const ROOT_REL = /(?:^|[^\w./-])((?:scripts|test|bin|apps)\/[\w./-]+\.(?:mjs|cjs|js|json))/g;

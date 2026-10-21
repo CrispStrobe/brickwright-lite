@@ -1,0 +1,1 @@
+| matrix N1: Z80 C target on stc-compiler | lego-ac delegate, reviewed end to end by a second session | stc-compiler branch `lane/z80-c-target` `6e40fb6e`, awaiting owner deploy | Compiled .bin drove the bench's OUT latch (bit0 toggle observed). Lite flag flip follows the deploy. |

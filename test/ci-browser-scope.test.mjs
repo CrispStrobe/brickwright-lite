@@ -22,6 +22,7 @@ test('the shards are the browser matrix plus fpga', () => {
 
 test('no browser shard: docs, tests, Tauri/Rust', () => {
     assert.deepEqual(run(['LANES.md', 'docs/SOME-UNREAD-NOTE.md', 'README.md']), [], 'docs-only');
+    assert.deepEqual(run(['lanes/2026-10-21-some-claim.md', 'CI-POINTERS.md']), [], 'lane claims and CI pointers are docs');
     assert.deepEqual(run(['test/ci-docs-only.test.mjs', 'test/bw-sim-hinge.test.mjs']), [], 'tests-only');
     assert.deepEqual(run(['apps/tauri/src-tauri/src/main.rs', 'apps/tauri/src-tauri/Cargo.toml', 'apps/tauri/src-tauri/Cargo.lock']), [], 'tauri-only');
     assert.deepEqual(run(['bin/bwlite.mjs', 'scripts/gen-ci-steps.mjs']), [], 'CLI and a script no gate reaches');

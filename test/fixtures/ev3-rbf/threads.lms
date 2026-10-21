@@ -1,0 +1,60 @@
+// Two VM threads counting into one global, both calling one subcall (the second waits for it),
+// and a BLOCK object started by OBJECT_TRIG. MAIN (object 1, the one the firmware starts) waits
+// for the block and for the second thread with OBJECT_WAIT.
+DATA32 Counter
+DATA32 MainDone
+DATA32 SecondDone
+DATA32 BlockRan
+DATA32 Order
+
+vmthread MAIN
+{
+  DATA32 I
+  OBJECT_START(SECOND)
+  MOVE32_32(0, I)
+Loop:
+  CALL(Bump, 1)
+  ADD32(I, 1, I)
+  JR_LT32(I, 5, Loop)
+  MOVE32_32(1, MainDone)
+  OBJECT_TRIG(Tick)
+  OBJECT_WAIT(Tick)
+  OBJECT_TRIG(Tick)
+  OBJECT_WAIT(Tick)
+  OBJECT_WAIT(SECOND)
+  MUL32(Order, 10, Order)
+  ADD32(Order, 3, Order)
+  // Report: each result written to the brick's console, in declaration order.
+  UI_WRITE(VALUE32, Counter)
+  UI_WRITE(VALUE32, MainDone)
+  UI_WRITE(VALUE32, SecondDone)
+  UI_WRITE(VALUE32, BlockRan)
+  UI_WRITE(VALUE32, Order)
+}
+
+subcall Bump
+{
+  IN_32 By
+  DATA32 Timer
+  ADD32(Counter, By, Counter)
+  TIMER_WAIT(20, Timer)
+  TIMER_READY(Timer)
+}
+
+block Tick
+{
+  ADD32(BlockRan, 1, BlockRan)
+}
+
+vmthread SECOND
+{
+  DATA32 J
+  MOVE32_32(0, J)
+Loop2:
+  CALL(Bump, 100)
+  ADD32(J, 1, J)
+  JR_LT32(J, 5, Loop2)
+  MOVE32_32(1, SecondDone)
+  MUL32(Order, 10, Order)
+  ADD32(Order, 2, Order)
+}

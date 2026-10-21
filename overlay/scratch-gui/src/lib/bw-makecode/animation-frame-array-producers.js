@@ -103,6 +103,11 @@ export const createAnimationFrameArrayProducers = options => {
                 if (typeof id === 'string') counts.set(id, (counts.get(id) || 0) + 1);
             }
             for (const document of documents) {
+                // A costume record without a timeline (an ordinary bitmap or
+                // Pixel document) is no animation source and no producer; the
+                // collection snapshot still binds it. A present but malformed
+                // animation is still reported below.
+                if (document == null || (typeof document === 'object' && !Object.hasOwn(document, 'animation'))) continue;
                 try {
                     const resource = normalized(animationResourceFromDocument(document));
                     // Normalized behavior export accepts a broader input form

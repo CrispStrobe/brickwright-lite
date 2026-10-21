@@ -1,8 +1,8 @@
 # Open tasks — owner-selected queue (2026-09-29)
 
 The owner chose these from a menu on 2026-09-29 and set the order below. They
-are worked **one after the other**. Each task is claimed in `LANES.md` (a merged
-claim-only commit, per the protocol there) **before** its implementation starts,
+are worked **one after the other**. Each task is claimed in its own `lanes/<YYYY-MM-DD>-<slug>.md` file (a merged
+claim-only commit, per [LANES.md](../LANES.md); new PRs never edit LANES.md) **before** its implementation starts,
 and this file records the claim and, when it lands, the result.
 
 Owner: VPS Claude (opus).
