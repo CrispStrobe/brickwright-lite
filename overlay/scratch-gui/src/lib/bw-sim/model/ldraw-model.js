@@ -714,14 +714,15 @@ export const parseModel = (text, {catalog} = {}) => {
  * @param {{name?:string, title?:string}} opts
  * @returns {string} LDraw text with CRLF
  */
-export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model'} = {}) => {
+export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright model', author = 'Brickwright'} = {}) => {
     const lines = [];
     // A model that ships parts of its own (model.files) is an MPD: the model, then each part's FILE section.
     const files = Object.entries(model.files || {});
     if (files.length) lines.push(`0 FILE ${name}`);
     lines.push(`0 ${title}`);
     lines.push(`0 Name: ${name}`);
-    lines.push(`0 Author: Brickwright`);
+    // `Author: Brickwright` marks our own file (sim-session.js OWN_FILE); an imported model keeps its own author.
+    lines.push(`0 Author: ${author}`);
     lines.push(`0 !LDRAW_ORG Unofficial_Model`);
     // Groups: output 0 !BW GROUP lines first
     if (model.groups) {

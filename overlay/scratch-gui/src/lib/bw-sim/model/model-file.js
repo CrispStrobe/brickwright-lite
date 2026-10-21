@@ -199,9 +199,9 @@ export const writeStudioIo = async ldraw => {
  * The model as an LDraw multi-part document: one `0 FILE` section holding the
  * .ldr text, which reads back to the same parts, ids, ports, groups and steps.
  */
-export const serializeMpd = (model, {name = 'model.ldr', title} = {}) => {
+export const serializeMpd = (model, {name = 'model.ldr', title, author} = {}) => {
     const section = renameTo(name, 'ldr');
-    const text = serializeModel(model, {name: section, title});
+    const text = serializeModel(model, {name: section, title, author});
     // A model that ships parts of its own is written as an MPD already (its FILE sections).
     if (/^0 FILE /.test(text)) return text;
     return `0 FILE ${section}\r\n${text}0 NOFILE\r\n`;
@@ -244,8 +244,7 @@ export const readLxf = async (bytes, {ldconfig, catalog, prepareCatalog, name = 
         throw error;
     }
     // A model from elsewhere, not ours: its motors and sensors are plugged in for it (sim-session.js prepareModel).
-    const text = serializeModel(parsed.model, {name: renameTo(name, 'ldr'), title})
-        .replace(/^0 Author: Brickwright(\r?)$/m, '0 Author: LEGO Digital Designer model (imported)$1');
+    const text = serializeModel(parsed.model, {name: renameTo(name, 'ldr'), title, author: 'LEGO Digital Designer model (imported)'});
     return {text, refusals: parsed.refusals};
 };
 
@@ -286,15 +285,16 @@ export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog,
  * The model as a file to save.
  * @param {object} model PlacedModel
  * @param {'ldr'|'mpd'|'io'} format
- * @param {{name?: string, title?: string}} [options] name: the base file name
+ * @param {{name?: string, title?: string, author?: string}} [options] name: the base file name; author: the model's
+ *        own (an imported model keeps it: `Brickwright` would make it one of ours, sim-session.js OWN_FILE)
  * @returns {Promise<{data: string|Uint8Array, filename: string, mime: string}>}
  */
-export const saveModelFile = async (model, format, {name = 'my-model.ldr', title} = {}) => {
+export const saveModelFile = async (model, format, {name = 'my-model.ldr', title, author} = {}) => {
     if (!MODEL_FORMATS[format]?.save) throw new ModelFileError('unsupported-format', `cannot save as .${format}`);
     const ldrName = renameTo(name, 'ldr');
     const filename = renameTo(name, format);
-    const ldraw = serializeModel(model, {name: ldrName, title});
-    const data = format === 'ldr' ? ldraw : format === 'mpd' ? serializeMpd(model, {name: ldrName, title}) : await writeStudioIo(ldraw);
+    const ldraw = serializeModel(model, {name: ldrName, title, author});
+    const data = format === 'ldr' ? ldraw : format === 'mpd' ? serializeMpd(model, {name: ldrName, title, author}) : await writeStudioIo(ldraw);
     return {data, filename, mime: MODEL_FORMATS[format].mime};
 };
 

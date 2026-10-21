@@ -981,7 +981,9 @@ class SimLabPane extends React.Component {
         const model = this.editor ? this.editor.model : this.session?.model;
         if (!model || !this.lib) return;
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
-        const {data, filename, mime} = await this.lib.saveModelFile(model, format, {name, title: MODEL_TITLE});
+        // The model's own author line (an imported model's stays: Brickwright would make it one of ours).
+        const author = (/^0 Author: (.*?)\r?$/m.exec(this.lastText || '') || [])[1];
+        const {data, filename, mime} = await this.lib.saveModelFile(model, format, {name, title: MODEL_TITLE, ...(author ? {author} : {})});
         const url = URL.createObjectURL(new Blob([data], {type: mime}));
         const a = document.createElement('a');
         a.href = url;

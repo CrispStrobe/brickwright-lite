@@ -114,7 +114,8 @@ catalogue part is placed by its connections.
 `model/lxf-model.js` keeps no per-part table (`model/ldd-parts.js` holds only the units and the
 colour reader). A design whose number is a catalogue part is placed with the frame
 `importFrame` works out, with a warning `lxf-derived-frame`; any other catalogue part by its
-connections (below); every other design is `lxf-unknown-design`. The pane passes its
+connections (below); every other design is `lxf-unknown-design`. A design whose LDraw file is an alias or a
+"~Moved to" (64290 for the 11L beam 32525; 54696 for the SPIKE Medium motor 54696p01) is the part it names. The pane passes its
 catalogue (`openModelFile(…, {catalog, prepareCatalog})`). `test/bw-sim-ldd-frames.test.mjs`
 loads a hand-written LXFML with a 2 x 4 brick and two 1 x 2 bricks, one turned a quarter, and
 checks the placement against the parts' own connectors; `test/bw-sim-model-file.test.mjs`

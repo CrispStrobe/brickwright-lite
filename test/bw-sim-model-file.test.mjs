@@ -29,6 +29,17 @@ const MODELS = ['driving-base.ldr', 'driving-base-steps.ldr'];
 
 const rejects = (promise, code) => assert.rejects(promise, e => e instanceof ModelFileError && e.code === code, `expected ${code}`);
 
+test('an imported model saved as .ldr, .mpd or .io keeps its author; ours stay Brickwright', async () => {
+    const model = parseModel(text(MODELS[0])).model;
+    const author = 'LEGO Digital Designer model (imported)';
+    const authorOf = t => /^0 Author: (.*?)\r?$/m.exec(t)[1];
+    assert.equal(authorOf((await saveModelFile(model, 'ldr', {title: 'T'})).data), 'Brickwright');
+    assert.equal(authorOf((await saveModelFile(model, 'ldr', {title: 'T', author})).data), author);
+    assert.equal(authorOf((await saveModelFile(model, 'mpd', {title: 'T', author})).data), author);
+    const io = await saveModelFile(model, 'io', {title: 'T', author});
+    assert.equal(authorOf(await (await JSZip.loadAsync(io.data)).file('model.ldr').async('string')), author);
+});
+
 test('ldr → io → ldr is byte-stable, and the .io is a plain ZIP whose model.ldr is the .ldr save', async () => {
     for (const file of MODELS) {
         const model = parseModel(text(file)).model;
@@ -148,6 +159,20 @@ test('a hand-made .lxf opens with its parts at poses worked out by hand from the
         ['lxf-unknown-design', '54696', 'error'],
         ['lxf-bad-transform', '2780', 'error']
     ]);
+});
+
+test('an LDD design that is an LDraw alias is placed as the part it stands for (64290: the 11L beam 32525)', () => {
+    // The app's catalogue derives 64290.dat from LDraw's "=Technic Beam 11" alias file (part-meta/catalog-parts.js).
+    const catalog = new Map(CATALOG);
+    catalog.set('64290.dat', {...CATALOG.get('32525.dat'), part: '64290.dat', aliasOf: '32525.dat'});
+    const {model, refusals} = parseLxfml(text('interop/IMAGE100.LXFML'), {colours: lddColours(LDCONFIG), catalog});
+    assert.deepEqual(model.parts.map(p => p.part), ['32523.dat', '3705.dat', '32525.dat', '3648.dat', '3001.dat']);
+    assert.ok(!refusals.some(r => r.code === 'lxf-unknown-design' && r.design === '64290'));
+    // An alias whose target the catalogue lacks stays the alias's own part.
+    const lone = new Map(CATALOG);
+    lone.delete('32525.dat');
+    lone.set('64290.dat', {...CATALOG.get('32525.dat'), part: '64290.dat', aliasOf: '32525.dat'});
+    assert.ok(parseLxfml(text('interop/IMAGE100.LXFML'), {colours: lddColours(LDCONFIG), catalog: lone}).model.parts.some(p => p.part === '64290.dat'));
 });
 
 test('colours: an LDD material is the LEGO colour number LDConfig writes as LEGOID', () => {
