@@ -1,5 +1,19 @@
 # Conversion capabilities and GUI closure ledger
 
+## Static fresh animation resources — source qualification, GUI work open
+
+Owned serialized exports preserve fresh evaluation at each literal animation
+resource use. The complete affected source cohort passes 32 tests without skips;
+raw AST, dynamic/shared/missing resources and namespace uncertainty retain their
+existing lookup behavior. This supplies no pixel-result or SDK execution proof.
+
+Required visible journey: author two fresh frame reporters in connected Blocks
+and Code/pseudocode, edit the referenced animation in the graphics editor,
+verify independent fresh collections and the edited running artwork, then
+save/reopen, export the full MakeCode project and freshly reimport it. Cover
+palette, resource names and IDs, unavailable resources and dynamic selectors.
+The source tests do not qualify these visible journeys or reduce corpus partials.
+
 ## Nullable collection length — source qualification, GUI work open
 
 [Native Array length normal results](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md)

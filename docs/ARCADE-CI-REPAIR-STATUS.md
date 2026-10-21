@@ -20,8 +20,12 @@ original is retained. The fix accepts the actual parser's null no-else child;
 the new helper tests now witness canonical helper selection before domain
 refusal, avoiding vacuous negatives. No product helper-name recognizer changed.
 
-This does not yet fix the complete edited-animation case. Static fresh-resource
-emission and exact image pixel producers remain open. The genuine SDK's
+Static fresh-resource emission through owned JSON now passes its complete
+three-module, 32-test affected source cohort without failures or skips. The
+preceding 31-pass/one-failure original is retained; only the new fixture's fixed
+settings menu spelling changed. This does not yet fix the complete edited
+animation case: exact image pixel producers and raw-API/factory effects remain
+open. The genuine SDK's
 logging invokes registered listeners, so do not exempt fallback logging as
 inert. Specialize only actual admitted constant resources, preserving every
 remaining dynamic fallback, then prove exact current image/index/operation

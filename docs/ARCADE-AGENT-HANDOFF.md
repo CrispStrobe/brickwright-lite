@@ -11,8 +11,11 @@ APIs remain unchanged. The original 29-pass/two-failure run is retained; the
 corrected run includes meaningful canonical-helper selection witnesses.
 See [the exact capability and next tasks](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md).
 
-The complete edited-animation export remains unqualified. Next close real
-static fresh-resource emission and exact image pixel result/effect provenance.
+Static fresh-resource emission now passes all **32 tests across three complete
+affected source modules**, without skips. It preserves the raw AST API and
+fallback paths; the earlier 31-pass/one-fail fixture original is retained.
+The complete edited-animation export remains unqualified. Next close exact
+image pixel result/effect provenance and the remaining raw-API/factory effects.
 SDK logging can call listeners and cannot be treated as inert. Preserve dynamic
 fallback and all original application assertions. The merged producer claim
 owns this work; changes to shared SDK/effect-contract paths need expanded scope.

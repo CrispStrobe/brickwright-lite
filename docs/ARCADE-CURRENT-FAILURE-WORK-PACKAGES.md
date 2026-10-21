@@ -14,9 +14,9 @@ source capabilities, not new complete applications. Preserve initialization,
 writer, TDZ and unknown-entry negatives rather than weakening the operand guard.
 
 The actual edited-animation case remains two passes and one export refusal,
-first at the initialized count after frames.length. Next close static fresh
-resource emission through actual owned serialized data and the current producer,
-then genuine image pixel result/effect provenance. Logging can invoke listeners;
+first at the initialized count after frames.length. Static fresh-resource emission through actual owned serialized data now passes
+its complete affected source cohort. Next close genuine image pixel
+result/effect provenance and remaining raw-API/factory effect boundaries. Logging can invoke listeners;
 unknown fallback is not inert. Keep dynamic evaluation, fresh/shared identity,
 missing values and all original assertions. The
 [producer contract](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md) defines scope and
@@ -32,12 +32,13 @@ factory activations, aliases, unknown entry points and all writers distinct.
 Preserve the eight original tests and add negative controls; annotations alone
 must not authorize a value. The merged numeric-closure claim defines this scope.
 
-Static fresh-animation source controls currently have 31 passes and one failed
-new test: its settings menu phrase is rejected before export. Correct that
-fixture using the existing dialect, retaining its real final-source settings
-prefix and all lookup-retention assertions. Then qualify the complete affected
-three-module cohort. This is separate from the deferred SDK cohort; neither
-result is a measured reduction of historical partial apps.
+Static fresh-animation source controls now pass all 32 tests across the three
+complete affected modules, with no skips. Preserve the earlier 31-pass/one-fail
+original: its new settings fixture used a quoted fixed-menu value rejected
+before export. Correcting that phrase left production and assertions unchanged.
+The SDK, GUI and existing raw-API carrier remain separate acceptance work;
+this cohort is distinct from the deferred SDK cohort. Neither component result
+is a measured reduction of historical partial apps.
 
 Read [the latest handoff](ARCADE-AGENT-HANDOFF.md#latest-observed-state-and-next-work--2026-10-21)
 and [complete hosted failure census](ARCADE-CI-REPAIR-STATUS.md#latest-complete-hosted-observation--2026-10-21)
