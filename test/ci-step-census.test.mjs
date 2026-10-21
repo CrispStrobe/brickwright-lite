@@ -7,7 +7,7 @@
  *   - a workflow in the tree with no completed run → "a workflow nobody runs";
  *   - a step in the file at that sha but in no run → "a step in no run";
  *   - a step or job that appeared and ran in none → a pointer under "Steps that
- *     run elsewhere" in LANES.md (where its condition holds, dated) or red;
+ *     run elsewhere" in CI-POINTERS.md (where its condition holds, dated) or red;
  *   - a step younger than the readings is reported, not judged.
  *
  * Measured 2026-09-07 over 247 runs of 10 workflows, 169 steps: none ran in no
@@ -50,7 +50,7 @@ test('a new workflow sources its own branch run until main has actually run it',
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
-const pointers = parseStepPointers(readFileSync(path.join(ROOT, 'LANES.md'), 'utf8'));
+const pointers = parseStepPointers(readFileSync(path.join(ROOT, 'CI-POINTERS.md'), 'utf8'));
 
 test('the readings are the generator\'s: they name their runs and sha, and cover every workflow in the tree', () => {
     assert.ok(readings.headSha && readings.runs.length >= 20 && readings.runs.every(r => Number.isInteger(r.run)), 'the readings name the runs and the sha they were read at');

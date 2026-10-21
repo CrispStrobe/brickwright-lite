@@ -85,6 +85,7 @@ on:
       - '**'
       - '!BLOCKED.md'
       - '!BUILD.md'
+      - '!CI-POINTERS.md'
       - '!CLAUDE.md'
       - '!HANDOFF.md'
       - '!HISTORY.md'
@@ -93,6 +94,8 @@ on:
       - '!PLAN.md'
       - '!README.md'
       - '!ROADMAP.md'
+      # lane claims, one file each since 2026-10-20 (LANES.md is their header)
+      - '!lanes/*'
       - '!docs/*.md'
       - 'docs/APP-STORE-COMPLIANCE.md'
       - 'docs/TARGET-EMULATOR-PERFORMANCE.md'

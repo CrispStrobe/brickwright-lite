@@ -29,7 +29,7 @@ import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseJobs} from './lib/workflow-gates.mjs';
-import {parseStepPointers, judgeSteps} from './lib/skip-pointers.mjs';
+import {parseStepPointers, judgeSteps, POINTERS_FILE} from './lib/skip-pointers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const READINGS = path.join(ROOT, 'docs', 'generated', 'ci-step-census.json');
@@ -219,7 +219,7 @@ if (isMain) {
         console.log(`ci-step-census: ${runs.length} runs, ${wfs.length} workflows, ${all.length} steps — never ${all.filter(s => s.class === 'never').length}, sometimes ${all.filter(s => s.class === 'sometimes').length}, always ${all.filter(s => s.class === 'always').length}; in workflow files at their recorded sourceShas but in no run: ${Object.values(workflows).reduce((a, w) => a + w.inFileInNoRun.length, 0)}`);
     }
     const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
-    const pointers = parseStepPointers(readFileSync(path.join(ROOT, 'LANES.md'), 'utf8'));
+    const pointers = parseStepPointers(readFileSync(path.join(ROOT, POINTERS_FILE), 'utf8'));
     const problems = judgeSteps(readings, pointers);
     for (const p of problems) console.log(`  ${p}`);
     console.log(problems.length ? `${problems.length} step(s)/job(s)/workflow(s) nobody runs` : 'every workflow step and job runs somewhere the readings can see');

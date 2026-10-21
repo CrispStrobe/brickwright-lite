@@ -1,0 +1,1 @@
+| socket rule, measured from both ends | lego-be, lego-ac | — | Cross-session sends fail per PAIR and not symmetrically; a "failed" send is often delivered (the worker acked one); silence carries no information in either direction. One labelled retry, then assume held; the recipient's owner may need to approve a held message (a session showing "waiting" with an unread inbox). |
