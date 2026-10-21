@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T07:04:55.440Z",
+  "generatedAt": "2026-10-21T23:34:57.243Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1929,6 +1929,7 @@
     "ack-z80-cpm.yml",
     "appstore-screenshots.yml",
     "arcade-controls.yml",
+    "arcade-private-assessment.yml",
     "basic-oracle.yml",
     "build.yml",
     "ci-metrics.yml",
@@ -6883,11 +6884,23 @@
         }
       },
       "sourceSha": "6a7be70c4"
+    },
+    "arcade-private-assessment.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Explain the inert default-branch entry"
+      ],
+      "inFileInNoRun": [
+        "Explain the inert default-branch entry"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "478750596aaeee882018dc89fa4a370e7bbbf796"
     }
   },
   "lastRefresh": {
-    "workflow": "i80386-hdd-gui-actual.yml",
-    "at": "2026-10-19T07:04:55.440Z",
-    "sourceSha": "6a7be70c4"
+    "workflow": "arcade-private-assessment.yml",
+    "at": "2026-10-21T23:34:57.243Z",
+    "sourceSha": "478750596aaeee882018dc89fa4a370e7bbbf796"
   }
 }

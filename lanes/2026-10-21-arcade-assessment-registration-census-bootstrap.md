@@ -3,7 +3,9 @@
 Owner: Codex, Arcade assessment lane.
 Branch: `lane/arcade-registration-census-bootstrap-20261021`.
 Base: `6d3472a6fd9fdace87c19f14eb89d9dacd7180ef`.
-Status: claim only; merge before implementation.
+Status: claim merged in PR1204; bounded declaration adopted after independent
+original-result review. The complete unchanged source tests and final hosted
+registration checks remain pending.
 
 ## Scope amendment
 
@@ -62,3 +64,12 @@ probe on its exact candidate ref. Public kernel controls and live private
 assessment remain separate, unqualified gates. This amendment authorizes no
 credentials, private inputs, privileged execution, workflow dispatch or
 assessment publication.
+
+## Candidate implementation
+
+The existing census and scoped-merge APIs generated the new declaration with
+zero observed runs. Independent comparison verified all 23 previous workflow
+objects, 320 ordered runs and main provenance unchanged. Only the new declaration
+and refresh metadata changed; the dated pointer records the unobserved state.
+The original missing-workflow test failure remains retained. No generator, test,
+browser budget, classifier, threshold or workflow condition changed.
