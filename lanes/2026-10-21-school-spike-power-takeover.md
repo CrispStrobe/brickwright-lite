@@ -43,3 +43,8 @@ Final Stop All review reproduced a stale passive state after a previous coast.
 Power mode now remembers the configured default stop action, as regulated mode
 already does. The new regression checks both brake and coast through actual hub
 drives; 40 affected controls and all 242 independent SPIKE controls pass.
+
+The hosted shard passed all 3,248 non-TODO controls but caught a missing GUI
+dependency declaration for the new real-Jolt power test. Its exact test path
+is now registered for the existing baseline Jolt specifier; the scope gate
+and its rejection controls remain in force.
