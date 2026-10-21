@@ -12,3 +12,15 @@ test('CI example groups cover every authored example branch exactly once',()=>{
  const actual=[...workflow.matchAll(/run: npm run verify:sim-lab -- --part=examples --examples=([^\n]+)/g)].flatMap(m=>m[1].split(','));
  assert.equal(new Set(actual).size,actual.length,'no duplicate work between CI groups');assert.deepEqual(actual.sort(),expected);
 });
+
+test('split mechanism groups retain every original machine exactly once', () => {
+ const script=read('scripts/verify-sim-lab-browser.mjs');
+ const helper=read('scripts/lib/sim-lab-seven-machines-gate.mjs');
+ const roster=helper.slice(helper.indexOf('export const SEVEN_MODELS='),helper.indexOf('export const sevenMachinesInteractions'));
+ const expected=[...roster.matchAll(/\['([^']+)',\d+,\d+\]/g)].map(m=>m[1]).sort();
+ const groups=[...script.matchAll(/await runSeven\('[^']+',\[([^\]]+)\]\)/g)];
+ const actual=groups.flatMap(m=>[...m[1].matchAll(/'([^']+)'/g)].map(n=>n[1])).sort();
+ assert.ok(expected.length>=8);
+ assert.deepEqual(actual,expected,'all original programs, manual controls, instructions and both lesson languages remain assigned');
+ assert.equal(new Set(actual).size,actual.length);
+});

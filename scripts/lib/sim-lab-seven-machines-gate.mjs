@@ -9,9 +9,11 @@ import {judgeSevenMachinesRun} from './sim-lab-seven-machines-judge.mjs';
 export const SEVEN_MODELS=[['mean-machine',212,26000],['stepworks',240,30000],['stride-lab',75,36000],['twinpoint',117,90000],['butterfly',224,40000],['tempo-loop',85,36000],['tilt-lab',161,40000],['axis-plotter',256,110000]];
 export const sevenMachinesInteractions=async(page,opts)=>{
  page.setDefaultTimeout(90000);const results={};
- for(const [id,,ms]of SEVEN_MODELS)Object.assign(results,await mechanicsInteractions(page,{...opts,models:[id],simulatedMs:ms,speed:4,judge:judgeSevenMachinesRun}));
- await checkPlotterInk(page,opts);
- await manualMechanicsInteractions(page,{...opts,models:SEVEN_MODELS.map(([id])=>id).filter(id=>id!=='tilt-lab')});
+ const roster=SEVEN_MODELS.filter(([id])=>!opts.models||opts.models.includes(id));
+ for(const [id,,ms]of roster)Object.assign(results,await mechanicsInteractions(page,{...opts,models:[id],simulatedMs:ms,speed:4,judge:judgeSevenMachinesRun}));
+ if(roster.some(([id])=>id==='axis-plotter'))await checkPlotterInk(page,opts);
+ await manualMechanicsInteractions(page,{...opts,models:roster.map(([id])=>id).filter(id=>id!=='tilt-lab')});
+ if(roster.some(([id])=>id==='tilt-lab')){
  await page.getByTestId('bw-sim-lab-model').selectOption('tilt-lab.ldr');await page.waitForFunction(()=>window.__bwSimLab.status==='ready'&&window.__bwSimLab._pane.state.modelFile==='tilt-lab.ldr');
  await page.getByTestId('bw-sim-lab-speed').selectOption('1');await openManualControls(page,{override:true,motors:true});
  await page.getByTestId('bw-sim-lab-mixer-stop-all').click();
@@ -24,7 +26,8 @@ export const sevenMachinesInteractions=async(page,opts)=>{
   assert.ok(Math.abs(await angle()-before)>.025,`Tilt Lab ${port} short jog responds`);assert.equal(await slider.inputValue(),'0');
  }
  await page.getByTestId('bw-sim-lab-mixer-stop-all').click();await page.screenshot({path:resolve(opts.shotsDir,'tilt-lab-manual.png')});
- for(const [id,pieces]of SEVEN_MODELS){
+ }
+ for(const [id,pieces]of roster){
   await page.getByTestId('bw-sim-lab-model').selectOption(id+'.ldr');await page.waitForFunction(file=>window.__bwSimLab.status==='ready'&&window.__bwSimLab._pane.state.modelFile===file,id+'.ldr');
   await page.getByTestId('bw-sim-lab-lesson').click();const lesson=page.getByTestId('bw-sim-lesson');
   await page.waitForFunction(id=>document.querySelector('[data-testid="bw-sim-lesson"]')?.dataset.lesson===id,id);
@@ -41,7 +44,7 @@ export const sevenMachinesInteractions=async(page,opts)=>{
 };
 export const sevenGermanLessons=async(page,opts)=>{
  await opts.openSimLab(page,{program:null});
- for(const [id]of SEVEN_MODELS){
+ for(const [id]of SEVEN_MODELS.filter(([id])=>!opts.models||opts.models.includes(id))){
   await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');await gallery.getByRole('searchbox').fill(id);
   await gallery.locator(`[data-model="${id}.ldr"]`).getByRole('button',{name:/^Lektion lesen:/}).click();await gallery.waitFor({state:'hidden'});
   const lesson=page.getByTestId('bw-sim-lesson');await page.waitForFunction(id=>document.querySelector('[data-testid="bw-sim-lesson"]')?.dataset.lesson===id,id);await lesson.getByRole('button',{name:'Erklärung zeigen',exact:true}).click();assert.ok((await lesson.getByTestId('bw-sim-lesson-answer').textContent()).length>70);

@@ -3,14 +3,13 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 import {mechanicsInteractions,manualMechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
-import {judgeStraightEightRun} from './sim-lab-straight-eight-judge.mjs';
 import {judgeArmLiftRun} from './sim-lab-arm-lift-judge.mjs';
 export const armLiftInteractions=async(page,opts)=>{
  page.setDefaultTimeout(90000);
- const models=['atlas-arm','switchback-lift'];
- const result=await mechanicsInteractions(page,{...opts,models,judge:judgeArmLiftRun,simulatedMs:30000});
+ const models=opts.models||['atlas-arm','switchback-lift'];
+ const result=await mechanicsInteractions(page,{...opts,models,judge:judgeArmLiftRun,simulatedMs:30000,speed:4});
  await manualMechanicsInteractions(page,{...opts,models,jogSign:id=>id==='switchback-lift'?-1:1});
- for(const [id,pieces]of [['atlas-arm',237],['switchback-lift',341]]){
+ for(const [id,pieces]of [['atlas-arm',237],['switchback-lift',341]].filter(([id])=>models.includes(id))){
   await page.getByTestId('bw-sim-lab-model').selectOption(id+'.ldr');
   await page.waitForFunction(file=>window.__bwSimLab.status==='ready'&&window.__bwSimLab._pane.state.modelFile===file,id+'.ldr');
   await page.getByTestId('bw-sim-lab-lesson').click();const lesson=page.getByTestId('bw-sim-lesson');
@@ -34,8 +33,5 @@ export const armLiftInteractions=async(page,opts)=>{
   await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
   console.log(`PASS ${id} instructions: ${plan.steps.length} planned pages; first/next/Home/End/BOM browser checks, ${pieces} pieces`);
  }
- const straightOpts={...opts,shotsDir:resolve(opts.shotsDir,'straight-eight-release'),models:['straight-eight']};
- Object.assign(result,await mechanicsInteractions(page,{...straightOpts,judge:(_id,r)=>judgeStraightEightRun(r),simulatedMs:14000}));
- await manualMechanicsInteractions(page,straightOpts);
  return result;
 };

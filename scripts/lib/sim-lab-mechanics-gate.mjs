@@ -50,6 +50,12 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
             simulatedMs, {timeout});
         const r = await page.evaluate(() => window.__bwMechanics);
         results[id] = judge(id, r);
+        // Capture the measured final pose without racing a continuously redrawn
+        // software WebGL surface. The next model selection starts a fresh run.
+        if (await page.getByTestId('bw-sim-lab-pause').isVisible()) {
+            await page.getByTestId('bw-sim-lab-pause').click();
+            await page.waitForFunction(() => window.__bwSimLab.status === 'paused');
+        }
         await openManualControls(page, {motors: true});
         const mixer = page.getByTestId('bw-sim-lab-mixer-toggle');
         if (await mixer.getAttribute('aria-expanded') !== 'true') await mixer.click();
