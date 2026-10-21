@@ -15,6 +15,18 @@ const read = name => {
     try { return readFileSync(new URL('overlay/scratch-gui/static/ldraw/' + name.toLowerCase(), root), 'latin1'); }
     catch { return undefined; }
 };
+test('turntable derivation is stable across last-bit trigonometric differences', () => {
+    const sin = Math.sin, cos = Math.cos;
+    try {
+        for (const direction of [-1, 1]) {
+            Math.sin = a => sin(a) + direction * 1e-15;
+            Math.cos = a => cos(a) + direction * 1e-15;
+            for (const part of ['18938.dat', '18939.dat', '99010.dat', '99009.dat']) {
+                assert.deepEqual(derivePart(part, read).meta.colliders, catalog.get(part).colliders, `${part}: trig perturbation ${direction}`);
+            }
+        }
+    } finally { Math.sin = sin; Math.cos = cos; }
+});
 for (const part of ['18938.dat', '18939.dat', '99010.dat', '99009.dat']) {
     test(`${part}: derived collision surfaces enclose the mesh and preserve its central opening`, () => {
         const derived = derivePart(part, read), meta = catalog.get(part), flat = flattenPart(part, read);

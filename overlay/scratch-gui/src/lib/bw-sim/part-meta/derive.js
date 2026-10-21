@@ -1099,6 +1099,10 @@ export const TURNTABLE_DESC = /^Technic Turntable (\d+) Tooth (Top|Bottom)$/;
 // turntable's central opening and brakes an independent shaft passing through it.
 // Clipping faces at sector boundaries also encloses faces between mesh vertices.
 const turntableSlabBoxes = (tris, slab) => {
+    // libm's last bits differ between platforms. Fix sector planes at much
+    // finer precision than the 0.01 LDU enclosure padding before clipping.
+    const sin = a => round(Math.sin(a), 1e-12) || 0;
+    const cos = a => round(Math.cos(a), 1e-12) || 0;
     const clip = (poly, normal, limit) => {
         const out = [];
         for (let i = 0; i < poly.length; i++) {
@@ -1114,18 +1118,18 @@ const turntableSlabBoxes = (tris, slab) => {
     const faces = tris.map(t => clip(clip(t.v, [0, 1, 0], low), [0, -1, 0], -high)).filter(p => p.length);
     const out = [], count = 16, half = Math.PI / count;
     for (let k = 0; k < count; k++) {
-        const a = 2 * Math.PI * k / count, c = Math.cos(a), s = Math.sin(a);
-        const left = [-Math.sin(a - half), 0, Math.cos(a - half)];
-        const right = [Math.sin(a + half), 0, -Math.cos(a + half)];
+        const a = 2 * Math.PI * k / count, c = cos(a), s = sin(a);
+        const left = [-sin(a - half), 0, cos(a - half)];
+        const right = [sin(a + half), 0, -cos(a + half)];
         const points = faces.flatMap(face => clip(clip(clip(face, left, 0), right, 0), [-c, 0, -s], -slab.radius))
             .map(v => [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]]);
         if (!points.length) continue;
-        const lo = [0, 1, 2].map(i => Math.floor(Math.min(...points.map(v => v[i])) * 100) / 100 - 0.01);
-        const hi = [0, 1, 2].map(i => Math.ceil(Math.max(...points.map(v => v[i])) * 100) / 100 + 0.01);
+        const lo = [0, 1, 2].map(i => Math.floor(round(Math.min(...points.map(v => v[i])), 1e-9) * 100) / 100 - 0.01);
+        const hi = [0, 1, 2].map(i => Math.ceil(round(Math.max(...points.map(v => v[i])), 1e-9) * 100) / 100 + 0.01);
         const mid = lo.map((v, i) => (v + hi[i]) / 2);
         out.push({shape: 'box', halfExtents: lo.map((v, i) => round((hi[i] - v) / 2, 0.001)),
             position: roundVec([c * mid[0] - s * mid[2], mid[1], s * mid[0] + c * mid[2]], 1e-6).map(v => v || 0),
-            rotation: roundVec([0, -Math.sin(a / 2), 0, Math.cos(a / 2)], 1e-12).map(v => v || 0)});
+            rotation: [0, -sin(a / 2) || 0, 0, cos(a / 2)]});
     }
     return out;
 };

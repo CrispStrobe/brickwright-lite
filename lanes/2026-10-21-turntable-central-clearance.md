@@ -34,3 +34,13 @@ matches independently measured inertia and conserves vertical momentum within
 0.06%; its real-part locking control and frozen-output negative behave as expected.
 Both new models also pass actual WebKit programs, controls and file imports.
 The existing protected physics implementation files remain unchanged.
+
+The first full hosted run found platform-dependent last-bit trigonometric
+differences crossing a 0.01 LDU outward-rounding boundary. A perturbation control
+reproduces the mismatch on all four turntable entries before the repair. Sector
+planes now use 1e-12 canonical trigonometric values and extrema use a 1e-9 LDU
+grid before outward rounding. The existing 0.01 LDU padding, opening and surface
+enclosure checks remain unchanged. All eleven focused derivation/contact checks
+pass, including both perturbation directions. Only these four entries' colliders
+are regenerated; other metadata and all masses remain unchanged. Complete model
+regression and production-browser qualification are required on this final repair.
