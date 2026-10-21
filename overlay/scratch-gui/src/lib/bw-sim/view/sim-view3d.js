@@ -117,9 +117,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         grid = new GridHelper(4, 40, 0x64748b, 0xcbd5e1);
         // and 10 cm lines over the rest of the floor (mech/compile.js FLOOR_HALF_M), so driving far still shows motion
         const far = new GridHelper(20, 200, 0x94a3b8, 0xdde3ea);
-        far.position.y = -0.0005;
+        far.renderOrder = 1;
+        grid.renderOrder = 2; // near lines cover coincident far lines consistently
         grid.add(far);
-        grid.position.y = floorY + 0.001; // above the floor mesh, so depth testing shows it
+        grid.position.y = floorY; // the floor faces have depth bias; lines stay below thin parts
         built.scene.add(grid);
     }
     const camera = new PerspectiveCamera(40, 1, 0.005, 50);

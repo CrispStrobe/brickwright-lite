@@ -502,3 +502,11 @@ triggers now activate completed touch taps directly and consume the optional
 following click once. Fresh mouse input and keyboard activation remain available;
 scrolls, cancellations and unmatched pointers do not activate. No timeout, forced
 click or retry substitutes for the missing input event.
+
+A reported Sarrus baseplate flicker reproduces numerically: the floor's painted
+plane, raised 1 mm for draw ordering, cuts 0.957 mm into the thin plate during
+the actual lift cycle. The floor paint and grid now remain at the physical
+floor; depth bias orders the ground and paint layers, and render order separates
+the grid levels. Model placements and physics remain unchanged. A native-motion
+scene regression fails on the raised plane and passes on the repaired floor;
+twelve affected scene, Sarrus motion/rollback and frame-queue controls pass.
