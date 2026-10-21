@@ -23,10 +23,13 @@ Further work is scoped as follows:
    constructors and writers. The current 15-test candidate passes 14; its valid
    accessor export still refuses opaque member results. Do not accept annotations
    as evidence or relax its positive assertion.
-2. **Source Number results:** the fresh installed candidate passes nine of twelve
-   whole-module controls. The repaired test loader reaches actual execution;
-   export composition, the setter injection boundary and a changed-primitive
-   negative remain open. Preserve the original errors and safety assertions.
+2. **Source Number results:** the composed candidate now passes all twelve
+   complete native controls, without skips or TODOs. Actual Number parameters,
+   `typeof`, export/reimport and the adversarial cases pass. Restore the Array
+   prototype length as well as the attacked index, and install primitive
+   replacements after project loading replaces its dispatch functions. Retain
+   all original failures. Adoption with the current supplier and newer main's
+   independent flow fixes, then final hosted/visible authoring, remain open.
 3. **CI readers:** account for the one genuinely added dialect word, align the
    two disabled x86 readers with the existing supplier pin, and select the
    costume picker's actual main button without weakening the GIF journey.
@@ -37,9 +40,11 @@ Further work is scoped as follows:
    and require hosted qualification. No filtered rerun or higher cap is used.
 4. **Browser initialization:** the official numeric artifact observes a changed
    `Function.prototype.toString` value. Investigate global tooltip/polyfill
-   initialization before runtime capture. Keep intrinsic checks unchanged;
-   obtain a separate ownership claim before implementation. Rotation, legacy
-   layout and animation failures need their own observed closure.
+   initialization before runtime capture. Keep intrinsic checks unchanged.
+   The separate ownership claim in [#1153](https://github.com/CrispStrobe/brickwright-lite/pull/1153)
+   has merged after all four enabled checks passed; implementation and actual
+   browser qualification follow. Rotation, legacy layout and animation failures
+   need their own observed closure.
 5. **Measurements:** adopt the canonical circuit repair explicitly, remeasure
    actual quantities and then update provenance. Qualify ARM guest execution
    through hosted checks. No stale pin restoration or provenance-only restamp.
