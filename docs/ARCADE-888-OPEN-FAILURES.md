@@ -219,7 +219,9 @@ Both failed on unrelated PRs (#1141, #1150 and others) and passed on a rerun.
   heavier definition Save, sometimes lost it. Fix:
   `lib/workspace-reload-events.js`. The reload runs under a reserved Blockly event
   group and the VM's listener ignores that group. Other listeners still get the events.
-  The gate is unchanged. Test: `test/workspace-reload-vm-roundtrip.test.mjs`, which
+  The gate is unchanged. The echo had also been the only PROJECT_CHANGED after "To
+  blocks" set `runtime.stc`, which the debugger pane and engine picker wait for, so
+  the importer now emits PROJECT_CHANGED itself once it has set `runtime.stc`. Test: `test/workspace-reload-vm-roundtrip.test.mjs`, which
   replays the echo on the real VM after a green flag. Untagged, it reproduces the CI
   error. Tagged, the blocks keep their identity and the program runs.
 
