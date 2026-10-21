@@ -12,8 +12,11 @@ The actual generator CLI `--check` also passes against that complete table.
 Integrated mirror checks, the complete extension-menu/SPIKE module and visible
 editor journeys remain gates; metadata checks do not qualify game execution.
 
-The class/Array declaration candidate exposed six failures in its complete
-24-control regression group (17 pass, six fail, one named missing-SDK skip).
+The separate class/Array declaration candidate first exposed six failures in
+its complete 24-control group (17 pass, six fail, one named missing-SDK skip).
+Its expanded constructor-effect group now has 24 passes, seven failures and
+one named SDK skip, and did not meet its declared local resource bound. Preserve
+the complete failures; qualify the corrected whole 32-test group in hosted CI.
 Correct class temporaries also made an existing raw safe-prefix proof applicable;
 that case needs a positive control alongside a genuine immutable-boundary
 negative. Mixed Array startup reimport still needs a closed constructor-effect

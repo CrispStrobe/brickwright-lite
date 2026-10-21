@@ -313,8 +313,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> f4b1a789 (2026-10-21): merged supplier #159, including the source
     // operation dialect and qualified compiler/sensor fixes; SPIKE producer
     // source remains unchanged from 7d3f8be7. All artifact assertions remain.
+    // -> d7c25891 (2026-10-21): reviewed supplier #160 score callbacks and #161
+    // SPIKE motor-power/PWM mapping adoption. SPIKE compiler/registry source changed;
+    // rerun every executable artifact and round-trip assertion at this exact pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'f4b1a789e0733d310109f056a08de4621092c0eb');
+        'd7c258910dd3837021a7a8c4b85d38a4e28e138a');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
