@@ -46,6 +46,12 @@ in four complete helper modules pass. Both captured original cases now prove
 current helper closures, but still fail the separate operand-domain check;
 those original failures and complete generated graphs remain retained.
 
+The first nested-result candidate passes twelve of thirteen controls across
+five complete domain modules, but fails a new declaration-order negative.
+A read before a `let` declaration was incorrectly accepted. Keep the failing
+control and correct the capture/entry initialization proof before integration;
+the candidate is held and earns no application-completion credit.
+
 The new score callback syntax passes all 463 controls in three complete
 canonical modules. [Supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160)
 is merged after all four enabled checks passed; merge tree and parents agree
@@ -76,6 +82,14 @@ import failure. Earlier browser download DNS errors recovered; they are not
 evidence that these later assertions passed. Preserve each failing assertion
 and investigate actual program/target publication and debugger ownership.
 Do not increase waits or relax the engine choices to hide the failure.
+
+Main subsequently merged [PR1159](https://github.com/CrispStrobe/brickwright-lite/pull/1159),
+including actual `PROJECT_CHANGED` publication after import and reload-event
+filtering. The integration now preserves that filtering and restores the VM
+listener even if XML parsing or error reporting throws. All 22 controls in the
+complete progress, gate-shape and real Blockly queue-boundary modules pass.
+The new main VM roundtrip and final composed browser jobs remain separate
+acceptance; the older failed job has not been relabeled as passing.
 
 ## Earlier prerequisite failure and corrected candidate — 2026-10-21
 

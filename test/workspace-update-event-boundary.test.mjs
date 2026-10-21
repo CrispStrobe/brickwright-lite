@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
+import {runAsWorkspaceReload,vmBlockListenerFor} from '../overlay/scratch-gui/src/lib/workspace-reload-events.js';
 const require = createRequire(import.meta.url);
 const createSourceCells = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/source-scalar-cells.js');
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -39,12 +40,14 @@ function fixture (options = {}) {
     const cells = createSourceCells({targets: [target]}, {encode: value => value});
     cells.initialize(); variable.value = false;
     const util = {target, thread: {peekStack: () => 'declare'}};
-    const event = type => ({type, blockId: type === 'change' ? 'unrelated' : 'declare', workspaceId: 'workspace', isNull: () => false});
-    const blockListener = e => {
+    const event = type => ({type, blockId: type === 'change' ? 'unrelated' : 'declare', workspaceId: 'workspace', group: Blockly.Events.getGroup(), isNull: () => false});
+    const onBlockEvent = e => {
         received.push(e.type);
         if (e.type === 'delete') delete target.blocks._blocks.declare;
         if (e.type === 'create') target.blocks._blocks.declare = {...initial.declare};
     };
+    const vm = {editingTarget: target, blockListener: onBlockEvent};
+    const blockListener = vmBlockListenerFor(vm);
     workspace = {
         removeChangeListener: fn => {assert.equal(fn, blockListener); actions.push('remove'); listeners.delete(fn);},
         addChangeListener: fn => {assert.equal(fn, blockListener); actions.push('add'); listeners.add(fn);},
@@ -53,9 +56,9 @@ function fixture (options = {}) {
         clearUndo: () => {actions.push('undo'); Blockly.Events.clearPendingUndo();}
     };
     listeners.add(blockListener);
-    const controller = new Function('log', `return ({${method}});`)({error: value => {
+    const controller = new Function('log','runAsWorkspaceReload','vmBlockListenerFor', `return ({${method}});`)({error: value => {
         logged.push(value); if (Object.hasOwn(options, 'loggerFailure')) throw options.loggerFailure;
-    }});
+    }},runAsWorkspaceReload,vmBlockListenerFor);
     Object.assign(controller, {workspace, ScratchBlocks: {Events: Blockly.Events, Xml: {
         textToDom (xml) {assert.equal(xml, '<original/>'); if (Object.hasOwn(options, 'parseFailure')) throw options.parseFailure; return xml;},
         clearWorkspaceAndLoadFromXml (dom, actual) {
@@ -67,7 +70,7 @@ function fixture (options = {}) {
             if (Object.hasOwn(options, 'loadFailure')) throw options.loadFailure;
         }
     }}, getToolboxXML: () => '<toolbox/>', onWorkspaceMetricsChange: () => actions.push('metrics'),
-    props: {vm: {editingTarget: target, blockListener}, updateToolboxState: xml => {assert.equal(xml, '<toolbox/>'); actions.push('toolbox');},
+    props: {vm, updateToolboxState: xml => {assert.equal(xml, '<toolbox/>'); actions.push('toolbox');},
         workspaceMetrics: {targets: {stage: {scrollX: 7, scrollY: 11, scale: 0.5}}}}});
     const drain = () => {while (timers.length) timers.shift()();};
     return {controller, Blockly, received, logged, actions, listeners, blockListener, event, drain, target, initial, cells, util, variable};

@@ -160,6 +160,24 @@ const KNOWN_DEAD = new Map([
     // new Worker(new URL('./physics-worker.js', import.meta.url)).
     // lib/bw-sim/routes/rcx-vm/rcx-vm.js LEFT THIS LIST on 2026-10-19 (ROADMAP §4.10):
     // hubs/rcx/rcx-virtual-hub.js runs it in the Robot Lab.
+    ['lib/bw-sim/transports/virtual-serial.js', {roadmap: '4.11',
+        reason: 'The Robot Lab navigator.serial double. test/bw-sim-virtual-transports-ev3 drives ev3comprehensive through it ' +
+            'into the Lab physics; the pane wiring that offers it in the app waits for the open Robot Lab PRs on sim-lab.js.'}],
+    ['lib/bw-sim/transports/virtual-bridge.js', {roadmap: '4.11',
+        reason: 'The Robot Lab WebSocket relay double. test/bw-sim-virtual-transports-ev3 drives ev3comprehensive\'s bridge ' +
+            'mode through it; the pane wiring waits for the open Robot Lab PRs on sim-lab.js.'}],
+    ['lib/bw-sim/transports/virtual-http.js', {roadmap: '4.11',
+        reason: 'The Robot Lab fetch double for endpoints on the network. test/bw-sim-virtual-ev3dev serves the ev3dev ' +
+            'extension through it; the pane wiring waits for the open Robot Lab PRs on sim-lab.js.'}],
+    ['lib/bw-sim/transports/virtual-ev3dev.js', {roadmap: '4.11',
+        reason: 'The virtual ev3dev brick (the ev3dev bridge requests answered by the scene EV3). test/bw-sim-virtual-ev3dev ' +
+            'drives the real ev3dev extension against it; the pane wiring waits for the open Robot Lab PRs on sim-lab.js.'}],
+    ['lib/bw-sim/transports/virtual-ble-bridge.js', {roadmap: '4.11',
+        reason: 'The virtual LWP3 HTTP bridge (legopoweredup / legoboostunified BridgeAdapter). test/lab-hubs-bridge drives ' +
+            'both extensions through it; the pane wiring waits for the open Robot Lab PRs on sim-lab.js.'}],
+    ['lib/bw-sim/transports/virtual-spike-stream.js', {roadmap: '4.11',
+        reason: 'The SPIKE 2.x REPL double as a byte stream for the virtual bridge. test/bw-sim-spike-bridge drives spikeprime ' +
+            'over its bridge through it; the pane wiring waits for the open Robot Lab PRs on sim-lab.js.'}],
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]|\bimport\s*['"]([^'"]+)['"]/g;

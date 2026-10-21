@@ -222,6 +222,47 @@ Both failed on #1085 (and debug history also on main) and passed on a rerun.
   minStep 2 takes zero steps under 25 ms. A press shorter than a frame was checked
   in the same node replay and is delivered, so dropped input is not the cause.
 
+### browser (light): debugger inspection and Arcade legacy layout, INTERMITTENT, FIXED
+
+Both failed on unrelated PRs (#1141, #1150 and others) and passed on a rerun.
+
+- **Debugger inspection** (`verify-debug-run-to-inspection.mjs:94`, waiting for
+  `data-debug-phase="running"`): every failing screenshot reads "not running  assembled
+  image on the Searle map — no designer board". That is the gate ROM runner's own
+  pre-start `ready` snapshot. Root cause, a product race: each assembled ROM booted
+  TWICE. circuit-tab re-dispatches the stashed `bw-asm-rom-ready` detail a frame after
+  the first delivery (the machineBooted transition, and again on re-entering Circuit).
+  `_bootFromMedia` drops a repeated media detail by identity, but `_onAsmRomReady`
+  wrapped every delivery in a fresh detail, so the guard never matched. The first runner
+  was torn down mid-attach, and when its attach finished after the second runner's
+  start, its late `ready` replaced `running` for good. All four failing runs (2026-10-20
+  16:01 to 2026-10-21 03:12 UTC) predate the runner-ownership guard of #1124, which now
+  drops that late snapshot. This fix removes the double boot itself:
+  `_onAsmRomReady` drops a repeated detail while the runner it booted lives. A repeat
+  after something else tore that runner down still boots again. Test:
+  `test/debug-asm-delivery-once.test.mjs`, which runs the gate's ROM on the real Z80
+  runner and finds the screenshot state as its pre-start snapshot.
+- **Arcade legacy layout** (`verify-arcade-legacy-layout.mjs:46`, second `runEdited`
+  after the definition Save): both failing artifacts hold exactly 910 identical page
+  errors, "Source scalar declaration has no current prelude binding", about one per
+  frame for the 30 s wait. Root cause, a product race: the painter's Save calls
+  `vm.emitWorkspaceUpdate()`. The GUI removes the VM's block listener, clears and
+  reloads the Blockly workspace, and re-adds the listener. But Blockly queues the
+  clear's delete events and the load's create events and fires them on a later task, to
+  the listeners attached then, which includes the VM's. For a refresh of the same target
+  the VM therefore deleted every block and recreated it from XML as a new object. A
+  green flag sent before that task bound the Arcade source prelude to the old block
+  objects, and the declaration then failed on every frame, so the game never set its
+  tile map. The first `runEdited` usually won the race and the second, after the
+  heavier definition Save, sometimes lost it. Fix:
+  `lib/workspace-reload-events.js`. The reload runs under a reserved Blockly event
+  group and the VM's listener ignores that group. Other listeners still get the events.
+  The gate is unchanged. The echo had also been the only PROJECT_CHANGED after "To
+  blocks" set `runtime.stc`, which the debugger pane and engine picker wait for, so
+  the importer now emits PROJECT_CHANGED itself once it has set `runtime.stc`. Test: `test/workspace-reload-vm-roundtrip.test.mjs`, which
+  replays the echo on the real VM after a green flag. Untagged, it reproduces the CI
+  error. Tagged, the blocks keep their identity and the program runs.
+
 ## Already-TODO items owned by other work
 
 These were already `# TODO` before this landing and are not part of this list:
