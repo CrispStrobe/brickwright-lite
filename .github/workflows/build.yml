@@ -1973,6 +1973,11 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=crossglide
 
+      - name: Browser gate — Robot Lab bit-keeper complete example
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=bit-keeper
+
       - name: Browser gate — Robot Lab offset-orbit complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}

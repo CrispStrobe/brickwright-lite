@@ -70,7 +70,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -91,10 +91,10 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
             const s = window.__bwSimLab._pane.session;
             return s.core.jointState(s.mechanism.actuators.find(a => a.port === p).joint).angle;
         }, port);
-        const advance = () => page.evaluate(() => new Promise(done => {
+        const advance = (ms = 250) => page.evaluate(ms => new Promise(done => {
             const s = window.__bwSimLab._pane.session; const t = s.time;
-            const off = s.onAdvance(() => { if (s.time - t >= 250) { off(); done(); } });
-        }));
+            const off = s.onAdvance(() => { if (s.time - t >= ms) { off(); done(); } });
+        }), ms);
         results[id] = {};
         for (const port of ports) {
             const slider = page.locator(`[data-testid="bw-sim-lab-mixer-slider"][data-port="${port}"]`);
@@ -103,7 +103,7 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
             const sign = jogSign(id, port);
             await page.keyboard.press(sign < 0 ? 'ArrowLeft' : 'ArrowRight');
             assert.equal(await slider.inputValue(), String(sign * 5));
-            await advance();
+            await advance(jogMs);
             const delta = await angle(port) - before;
             assert.ok(Math.abs(delta) > 0.03, `${id} motor ${port} responds to its slider: ${delta}`);
             await page.locator(`[data-testid="bw-sim-lab-mixer-stop"][data-port="${port}"]`).click();

@@ -323,6 +323,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "bit-keeper.ldr": {
+        "pieces": 134,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Motor A briefly shifts the top of an elastic band. Gravity and spring tension let a free rocker retain either of two positions when the motor returns to the same neutral angle. Write both states and compare the no-band control.",
+            "de": "Motor A verschiebt kurz den oberen Anker eines Gummibands. Schwerkraft und Bandspannung halten einen freien Hebel in zwei möglichen Stellungen, während der Motor zum gleichen Neutralwinkel zurückkehrt. Schreibe beide Zustände und vergleiche den Versuch ohne Band."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "offset-orbit.ldr": {
         "pieces": 141,
         "motors": 1,

@@ -784,7 +784,7 @@ try {
             fixed.on('pageerror',error=>errors.push(error.stack || error.message));fixed.on('dialog',dialog=>dialog.accept());
             await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
         }
-        for (const id of ['echo-bridge','linger','crossline','pantograph-doubler','scale-studio','ripple-relay','crossglide','offset-orbit','ellipsa','momentum-twins','bloom-gate','amplify']) if (runExample(id+'.ldr')) {
+        for (const id of ['bit-keeper','echo-bridge','linger','crossline','pantograph-doubler','scale-studio','ripple-relay','crossglide','offset-orbit','ellipsa','momentum-twins','bloom-gate','amplify']) if (runExample(id+'.ldr')) {
             const machine=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             machine.on('pageerror',error=>errors.push(error.stack || error.message));machine.on('dialog',dialog=>dialog.accept());
             const opts={id,openSimLab,shotsDir:resolve(artifacts,id),timeout:wallBudget(180000)};

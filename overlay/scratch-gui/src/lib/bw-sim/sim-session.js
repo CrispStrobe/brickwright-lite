@@ -111,6 +111,7 @@ export const MODELS = Object.freeze([
     {file: 'echo-bridge.ldr', title: {"en": "Echo Bridge — motion passed between pendulums", "de": "Echo Bridge — Bewegung wandert zwischen Pendeln"}, example: 'echo-bridge.bw', mat: 'plain'},
     {file: 'linger.ldr', title: {"en": "Linger — six-bar dwell machine", "de": "Linger — sechsgliedriges Rastgetriebe"}, example: 'linger.bw', mat: 'plain'},
     {file: 'crossline.ldr', title: {"en": "Crossline — geared straight-line pair", "de": "Crossline — Geradführung durch Gegenrotation"}, example: 'crossline.bw', mat: 'plain'},
+    {file: 'bit-keeper.ldr', title: {"en": "Bit Keeper — a mechanical memory", "de": "Bit Keeper — ein mechanisches Gedächtnis"}, example: 'bit-keeper.bw', mat: 'plain'},
     {file: 'offset-orbit.ldr', title: {"en": "Offset Orbit — Oldham coupling", "de": "Offset Orbit — Oldham-Kupplung"}, example: 'offset-orbit.bw', mat: 'plain'},
     {file: 'ellipsa.ldr', title: {"en": "Ellipsa — one-motor ellipsograph", "de": "Ellipsa — Ellipsenmechanik mit einem Motor"}, example: 'ellipsa.bw', mat: 'plain'},
     {file: 'momentum-twins.ldr', title: {"en": "Momentum Twins — reaction wheels", "de": "Momentum Twins — Reaktionsräder"}, example: 'momentum-twins.bw', mat: 'plain'},
