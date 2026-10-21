@@ -948,6 +948,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     /** Self-locking worms (built below): {wormJoint, wheel (hinge entry), holdNm, driver (hinge entry|null), held}. */
     const worms = [];
     /** Linear actuators' screw couplings (physics/screw.js drives them). */
+    const racks = [];
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
     const ropeCouplings = [];
@@ -1041,9 +1042,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // not shared with the slider) and the rack body (the slider's other side),
             // signed the way the gear's axes are. Contract: v(slider) = ratio·ω(hinge),
             // m/s per rad/s; Jolt's part is ω1·a = r·v2·b (rad/s per m/s), so r = 1/|ratio|
-            // and the ratio's sign goes into the slider axis b. Like a gear it couples
-            // WORLD rates: exact while the frame holding both does not turn about the
-            // pinion axis. Measured in test/bw-sim-sliders.test.mjs (both signs).
+            // and the ratio's sign goes into the slider axis b. Measured in test/bw-sim-sliders.test.mjs
+            // (both signs). Since jolt-physics 1.1.0-bw.4 it is the fork's RackMeshConstraint (BRICKWRIGHT.md
+            // section 4): the same equation RELATIVE TO THE FRAMES that carry the pinion and the rack (the hinge's
+            // and the slider's other bodies, handed over by SetConstraints and re-based before every step, as the
+            // gear meshes are). The world-rate RackAndPinionConstraint read a turning or driving chassis's own motion
+            // as pinion rotation: a forklift's carriage ran to its end stop as the robot turned, and a steering
+            // rack twisted the car. A Jolt build without it falls back to RackAndPinionConstraint.
             const jh = jointMap.get(g.hingeJoint);
             const js = jointMap.get(g.sliderJoint);
             if (!jh || !js) throw new Error(`${g.kind} ${g.id} joint not found`);
@@ -1055,10 +1060,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             };
             const pinion = sideOf(jh);
             const rack = sideOf(js);
-            const rs = new J.RackAndPinionConstraintSettings();
+            const relative = typeof J.RackMeshConstraintSettings === 'function';
+            const rs = relative ? new J.RackMeshConstraintSettings() : new J.RackAndPinionConstraintSettings();
             rs.mSpace = J.EConstraintSpace_WorldSpace;
-            rs.mHingeAxis = new J.Vec3(...jh.axis.map(v => v * pinion.sign));
-            rs.mSliderAxis = new J.Vec3(...js.axis.map(v => v * rack.sign * Math.sign(g.ratio)));
+            const tmp = [new J.Vec3(...jh.axis.map(v => v * pinion.sign)), new J.Vec3(...js.axis.map(v => v * rack.sign * Math.sign(g.ratio)))];
+            [rs.mHingeAxis, rs.mSliderAxis] = tmp;
             rs.mRatio = 1 / Math.abs(g.ratio);
             rs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
             rs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
@@ -1067,6 +1073,14 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
             J.destroy(rs);
+            for (const o of tmp) J.destroy(o);
+            if (relative) {
+                const rackMesh = J.castObject(constraint, J.RackMeshConstraint);
+                const hinge = hingeMap.get(jh.id).hinge;
+                const slider = sliderMap.get(js.id).slider;
+                rackMesh.SetConstraints(hinge, slider);
+                racks.push({ constraint: rackMesh, hinge, slider });
+            }
             gearInfos.push({ type: g.kind, id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
         } else if (g.kind === 'screw') {
             // A linear actuator (kinds/screw.js): the slider is driven from the spindle's relative
@@ -1481,7 +1495,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             h.hinge.SetMaxFrictionTorque(on ? RACK_STOP_NM : h.frictionNm);
         }
     };
-    endStops = buildEndStops();
+    endStops = experiments.noEndStops ? [] : buildEndStops();
     // The brakes are hinge friction, which Jolt's state does not record: a rollback puts them back as they were.
     if (endStops.length) stateRegistry.register('endStops', {
         save: () => [...hingeMap].filter(([, h]) => braked.has(h)).map(([id]) => id),
@@ -1525,6 +1539,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (dogClutches.length) applyDogClutches();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
+                for (const r of racks) r.constraint.SetConstraints(r.hinge, r.slider);
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -1678,6 +1693,17 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (!e) throw new Error(`unknown body ${bodyId}`);
             const v = bodyInterface.GetLinearVelocity(e.bodyID);
             return [v.GetX(), v.GetY(), v.GetZ()];
+        },
+        /** Set a dynamic body's linear (m/s) and angular (rad/s) velocity, world frame: a test bench's starting push. */
+        setBodyVelocity(bodyId, linear, angular) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            const v = new J.Vec3(...linear);
+            const w = new J.Vec3(...angular);
+            bodyInterface.SetLinearAndAngularVelocity(e.bodyID, v, w);
+            J.destroy(v);
+            J.destroy(w);
         },
         bodyAngularVelocity(bodyId) {
             ensureAlive();

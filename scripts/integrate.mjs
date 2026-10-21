@@ -72,8 +72,8 @@ pkg.dependencies['three'] = '0.186.1';                               // MIT — 
 // https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh-master/BRICKWRIGHT.md
 // The release URL names a tag, which can move; the bytes are what is trusted: npm checks the tarball
 // against the lockfile's integrity before it unpacks anything, and the lockfile must carry THIS value.
-const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.2/jolt-physics-1.1.0-bw.2.tgz';
-const JOLT_PHYSICS_INTEGRITY = 'sha512-1Vajqb4Dht8WQemXrOIl8lRiic378m5NhlFU8PyYFx0EfaO4QJebvkMxzw7nc5x1sJJJN8xBJBVwdx5dR3EYIA==';
+const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.5/jolt-physics-1.1.0-bw.5.tgz';
+const JOLT_PHYSICS_INTEGRITY = 'sha512-M1SVZ80BdRK6mVnrXK/bg3XFIi0s1NO4BBtmGuAkVBS+3WcYcDOEY+1bRRgjlKA1b6SNLtDOF9QbT1hE83dLGg==';
 pkg.dependencies['jolt-physics'] = JOLT_PHYSICS_URL;
 {
     const lockPath = path.join(GUI, 'package-lock.json');

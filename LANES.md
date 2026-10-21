@@ -8020,3 +8020,14 @@ Manual A, connected BOMs and both-language lessons pass. The 144 explicit parts
 plus two inferred crosses (146 physical pieces) are documented in the lessons
 and notices. Library export: 48 assemblies / 56 choices / 112 bilingual lessons.
 Magnetic Chess remains in development and is not added to the library yet.
+
+### Published rack-constraint dependency adopted for Chess
+
+IN PROGRESS — reuse the already merged frame-relative rack implementation from
+4942d86c9, its current-main negative-control fixture, and current-main's pinned
+Jolt 1.1.0-bw.5 URL/integrity. Preserve existing core fixes and avoid a parallel
+rack solver. The published noEndStops bench option keeps the old world-rate
+constraint a meaningful negative control; ordinary end stops remain enabled.
+Twenty-eight rack/slider/universal-joint controls pass. The dependency is linked
+through the managed content-keyed worktree dependency store. Full model and
+browser requalification is still required before updating the qualified preview.
