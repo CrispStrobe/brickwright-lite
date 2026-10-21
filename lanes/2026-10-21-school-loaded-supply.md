@@ -21,3 +21,10 @@ solver, execution budgets or workflows. Verify 4.5/9 V load, undo/redo, hidden
 load, actual AA DC scope/KCL, organ/intercom audio and package provenance.
 Merge this claim before implementation; final hosted school PR qualification
 and normal merge composition remain required.
+
+The last unit shard also identified exact adoption counterparts in
+`test/i8086-print-reach.test.mjs` (three new no-output programs), the existing
+Arcade word-table census (supplier adds a declared reporter), and the canonical
+8086 BIOS/demo ROM provenance. Own only those corpus counts/explicit new
+identities and normal ROM provenance producers, preserving executable ROM bytes,
+all original opcode spelling assertions and exhaustive/mutation controls.
