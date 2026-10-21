@@ -34,7 +34,7 @@ test('context-only CLI uses explicit catalogue roots and current shared operatio
     assert.match(cli, /progress \? await observeConversion\(subject\) : await auditConversionSubject\(subject, conversionOptions\(\)\)/);
     assert.match(cli, /--target differs from context target/);
     assert.match(cli, /originalCompile: subject.originalCompile/);
-    assert.match(cli, /row = await applyOptionalGates\(row, observed.import.value\)/);
+    assert.match(cli, /row = await applyOptionalGates\(row, observed.import.value, null, observed\)/);
 });
 test('actual conversion options add only selected observers and artwork without acquiring compiler capabilities', () => {
     const start = cli.indexOf('function conversionOptions () {');
