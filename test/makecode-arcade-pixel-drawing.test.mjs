@@ -57,7 +57,7 @@ outside = hero.image.getPixel(-1, 0)
 increased = hero.image.getPixel(0, 0) + 1
 controller.A.onEvent(ControllerButtonEvent.Pressed, function () { hero.image.setPixel(0, 0, 0) })`;
 
-test('sprite pixel reporters and drawing commands execute through Code, SB3, PXT export and reimport', {todo:"runtime mock lacks .on (Cannot read properties of undefined) \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"}, async () => {
+test('sprite pixel reporters and drawing commands execute through Code, SB3, PXT export and reimport', async () => {
     const source = pixelDrawingSource;
     const imported = arcadeToPseudocode(source); assert.deepEqual(imported.unsupported, []);
     const run = await runProgram(imported.code, {frames:10,uploads:imported.costumes,storage:true});

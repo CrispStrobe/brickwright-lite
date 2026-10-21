@@ -18,7 +18,7 @@ async function execute(source){
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);return run;
 }
 
-test('image.create follows pinned PXT bounds and integer conversion; clones copy pixels independently', {todo:"extension probe lacks an expected opcode \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},()=>{
+test('image.create follows pinned PXT bounds and integer conversion; clones copy pixels independently',()=>{
     const source=readFileSync(new URL('../packages/scratch-gui/static/makecode/arcade/sim/common-sim.js',import.meta.url),'utf8');
     const context={pxsim:{RefObject:class{},getScreenState:()=>({bpp:()=>4})},image:{}};
     const end=source.indexOf('pxsim.RefImage = RefImage;');
@@ -97,7 +97,7 @@ test('standalone images without sprites can be created and queried',async()=>{
     assert.equal(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='sampled').value,7);
 });
 
-test('generated-image projectiles share live artwork and preserve all four creation modes', {todo:"extension probe lacks an expected opcode \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('generated-image projectiles share live artwork and preserve all four creation modes',async()=>{
     const source=`let picture=image.create(4,2)
 picture.fill(7)
 let owner=sprites.create(img\`1\`,SpriteKind.Player)

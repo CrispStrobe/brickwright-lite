@@ -32,17 +32,18 @@ export function validationProblems (runs, jobs, sha, {buildSha = sha} = {}) {
 // simple ordered path patterns, and only unshipped root/top-level Markdown.
 // Unsupported policy syntax fails closed rather than guessing its meaning.
 export function excludedDocumentation (filename, entries) {
-    if (typeof filename !== 'string' || !/^(?:[^/]+|docs\/[^/]+)\.md$/.test(filename) ||
+    if (typeof filename !== 'string' || !/^(?:(?:[^/]+|docs\/[^/]+)\.md|lanes\/[^/]+\.(?:md|tsv))$/.test(filename) ||
         filename.includes('..') || filename.includes('\\')) return false;
     if (entries[0] !== '**') throw new Error('Build paths must start with the inclusive ** rule');
     let included = true;
     for (const entry of entries) {
         const pattern = entry.startsWith('!') ? entry.slice(1) : entry;
         if (!/^[\w./*-]+$/.test(pattern) ||
-            (pattern.includes('*') && pattern !== '**' && pattern !== 'docs/*.md')) {
+            (pattern.includes('*') && pattern !== '**' && pattern !== 'docs/*.md' && pattern !== 'lanes/*')) {
             throw new Error('Unsupported Build path pattern');
         }
-        const matches = pattern === '**' || (pattern === 'docs/*.md' ? /^docs\/[^/]+\.md$/.test(filename) : filename === pattern);
+        const matches = pattern === '**' || (pattern === 'docs/*.md' ? /^docs\/[^/]+\.md$/.test(filename)
+            : pattern === 'lanes/*' ? /^lanes\/[^/]+$/.test(filename) : filename === pattern);
         if (matches) included = !entry.startsWith('!');
     }
     return !included;

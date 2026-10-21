@@ -1,6 +1,6 @@
 # Current handoff — 2026-10-18
 
-See [WeDo/iPad integration handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for current delivery status and scoped next actions; [LANES.md](LANES.md) governs ownership. Machine-specific context is in gitignored `CLAUDE.md`.
+See [WeDo/iPad integration handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for current delivery status and scoped next actions; [LANES.md](LANES.md) governs ownership (claims are one file each, `lanes/<YYYY-MM-DD>-<slug>.md`; never edit LANES.md to claim). Machine-specific context is in gitignored `CLAUDE.md`.
 
 STM32, A13 and iPad/WeDo source integrations are on remote main. The integrated iOS app compiled; signing awaits Mac unlock. Follow the linked record for exact source, the signing continuation and remaining physical acceptance tasks.
 

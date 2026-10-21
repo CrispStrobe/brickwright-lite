@@ -79,10 +79,11 @@ const probeShim = runtime => {
 test('exposure: an adapter-built extension sees Scratch.BWValues, the VM\'s own instance', () => {
     const {shim} = probeShim(fakeRuntime());
     assert.equal(shim.BWValues, BW, 'Scratch.BWValues must be the module require() resolves in the VM (one intern table)');
-    // The shim gains exactly these keys (BWConfirm since E7 and the current Number-input seam);
+    // The shim gains exactly these keys (BWConfirm since E7, the current Number-input seam, and
+    // TurboWarp's `fetch` since 2026-10-20 — legonxt's and ev3comprehensive's compile blocks call it);
     // nothing an existing extension reads changes.
     assert.deepEqual(Object.keys(shim).sort(),
-        ['ArgumentType', 'BWConfirm', 'BWNumberInput', 'BWValues', 'BlockType', 'Cast', 'TargetType', 'extensions', 'runtime', 'translate', 'vm']);
+        ['ArgumentType', 'BWConfirm', 'BWNumberInput', 'BWValues', 'BlockType', 'Cast', 'TargetType', 'extensions', 'fetch', 'runtime', 'translate', 'vm']);
 });
 
 test('exposure: BWNumberInput uses the VM issuer, bound runtime and synchronous input lifetime', () => {

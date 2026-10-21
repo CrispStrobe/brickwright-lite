@@ -33,7 +33,7 @@ import {fileURLToPath} from 'node:url';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {catalogFrom, MODELS_BASE} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
-import {LDU_M, PART_FRICTION, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
+import {LDU_M, PART_FRICTION, MATERIALS, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
@@ -532,18 +532,45 @@ for (const h of [0.05, 0.2]) {
     });
 }
 
-test('drop from 50 cm and 1 m: the brick does not tunnel through the 8 mm beams', t => {
+test('drop from 50 cm and 1 m: the brick does not tunnel through the 8 mm beams, and its first bounce is straight', t => {
     // At 3–4.4 m/s the brick moves 16–22 mm per 5 ms step, more than the beams are thick: only continuous
-    // collision (jolt-core.js: every dynamic body is EMotionQuality_LinearCast) stops it on them.
+    // collision (jolt-core.js: every dynamic body is EMotionQuality_LinearCast) stops it on them. Since the
+    // materials (2026-10-20, ABS e 0.4) it also bounces: it leaves the beams at e·v, straight up (the Jolt fork's
+    // 1.1.0-bw.3 hands a bounce across two bodies to the discrete solve; 1.1.0-bw.2 turned it over), and comes down
+    // again. Not through them: its origin never sinks more than 4 mm (half a beam) below where it rests flat on
+    // them, and it ends on them. Where it ends is not asserted: the discrete solve leaves the first bounce with a
+    // little spin (Jolt's sequential impulses resolve a flat multi-point bounce non-uniquely, 0.1–0.3 rad/s), so the
+    // second landing is a few degrees off flat and may leave it leaning on a beam edge (measured 34° and 40°).
     const out = [];
     for (const h of [0.5, 1]) {
         const {core, body, y0} = dropFrom(h);
-        run(core, 2);
-        out.push({h, fell: y0 - core.bodyPose(body).position[1]});
+        let lowest = y0;
+        let prevV = 0;
+        let bounce = null;
+        let spin = 0;
+        let apexTilt = null;
+        run(core, 2, () => {
+            const p = core.bodyPose(body);
+            const v = core.bodyLinearVelocity(body)[1];
+            lowest = Math.min(lowest, p.position[1]);
+            if (bounce === null && v > 0) bounce = v / -prevV;
+            else if (bounce !== null && apexTilt === null) {
+                spin = Math.max(spin, Math.hypot(...core.bodyAngularVelocity(body)));
+                if (v <= 0) apexTilt = 2 * Math.acos(Math.min(1, Math.abs(p.rotation[3]))) * DEG;
+            }
+            prevV = v;
+        });
+        const end = y0 - core.bodyPose(body).position[1];
+        out.push({h, deepest: y0 - lowest - h, end: end - h, bounce, spin, apexTilt});
         core.destroy();
     }
-    t.diagnostic(out.map(o => `${o.h} m: fell ${(o.fell * 1000).toFixed(1)} mm (${((o.fell - o.h) * 1000).toFixed(1)} mm too far)`).join('; '));
-    for (const o of out) assert.ok(Math.abs(o.fell - o.h) <= 0.001, `from ${o.h} m it fell ${o.fell} m`);
+    t.diagnostic(out.map(o => `${o.h} m: first bounce ${o.bounce.toFixed(3)} (e ${MATERIALS.abs.restitution}), spin ${o.spin.toFixed(2)} rad/s, ` +
+        `tilt at its top ${o.apexTilt.toFixed(2)}°; deepest ${(o.deepest * 1000).toFixed(1)} mm, at rest ${(o.end * 1000).toFixed(1)} mm below flat on the beams`).join('; '));
+    for (const o of out) {
+        assert.ok(o.deepest <= 0.004 && o.end <= 0.004, `from ${o.h} m it sank ${o.deepest} m (rests ${o.end} m) below flat on the beams`);
+        assert.ok(Math.abs(o.bounce / MATERIALS.abs.restitution - 1) <= 0.05, `from ${o.h} m its first bounce is ${o.bounce}`);
+        assert.ok(o.spin < 0.5 && o.apexTilt < 5, `from ${o.h} m it left spinning ${o.spin} rad/s, ${o.apexTilt}° at its top`);
+    }
 });
 
 // ---- 8. driving base ----------------------------------------------------------------------------

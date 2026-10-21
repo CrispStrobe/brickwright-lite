@@ -513,12 +513,12 @@ const CENSUS = [
     {
         file: 'scripts/integrate.mjs',
         kind: 'release',
-        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.2/jolt-physics-1.1.0-bw.2.tgz',
+        text: 'github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.4/jolt-physics-1.1.0-bw.4.tgz',
         class: 'content-hash',
-        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.2 (Jolt master '
-           + 'plus the gear fixes), taken as an npm tarball dependency. The tag is movable, so it is not what '
+        why: 'The Sim Lab physics engine: the Brickwright JoltPhysics.js fork build 1.1.0-bw.4 (Jolt master '
+           + 'plus the gear fixes, the CCD bounce fix, MaterialPairs and RackMeshConstraint), taken as an npm tarball dependency. The tag is movable, so it is not what '
            + 'is trusted: packages/scratch-gui/package-lock.json holds the tarball\'s sha512 integrity '
-           + '(sha256 e45f1c127c6d0bcb79f5c87124106700746493e898246ad31dead483004ac516) and npm refuses '
+           + '(sha256 3342ec69f60e6a0a935f0ecfe0372e633243b23bf6f748d7871a5d94f74b26e9) and npm refuses '
            + 'different bytes. The fork\'s brickwright-release.yml re-derives the bytes from the pinned commits.'
     },
     {
