@@ -14,6 +14,10 @@ complete affected modules, current execution and export/reimport before claiming
 a gap closed. Local operational paths and raw receipts belong in private ignored
 handoff notes, never in this document.
 
+The proposed [complete private-input assessment route](ARCADE-PRIVATE-ASSESSMENT.md)
+scopes the remaining hosted census work, credential separation and encrypted
+output admission. It is a plan, with no dispatch or replacement census yet.
+
 
 Next, read [the complete application-journey acceptance work](ARCADE-COMPATIBILITY-NEXT-STEPS.md#next-acceptance-the-complete-application-journey--2026-10-21).
 The opt-in `--journey` driver now covers actual import, three VM runs, Code,
