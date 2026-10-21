@@ -69,7 +69,8 @@ test('a claim-only PR is docs-only, like a LANES.md-only PR was', () => {
 });
 
 const git = (cwd, ...args) => {
-    const r = spawnSync('git', ['-c', 'gc.auto=0', '-c', 'user.name=t', '-c', 'user.email=t@example.invalid',
+    // gate-shapes-allow: the subject is git's own merge of two claim files in a scratch repo; a missing git fails red.
+    const r = spawnSync('git', [  // gate-shapes-allow'-c', 'gc.auto=0', '-c', 'user.name=t', '-c', 'user.email=t@example.invalid',
         '-c', 'init.defaultBranch=main', '-c', 'commit.gpgsign=false', ...args], {cwd, encoding: 'utf8'});
     return r;
 };
