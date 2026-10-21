@@ -6,11 +6,84 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import JSZip from 'jszip';
 import {hasRuntime} from '../scripts/lib/pxt-node.mjs';
+import {fixture as contextFixture} from './fixtures/conversion-context-catalogue.mjs';
+import {readAssessmentTranscript} from '../scripts/private-assessment/read-stdio-transcript.mjs';
+import {expandConversionObservationGraph} from '../scripts/lib/conversion-observation-codec.mjs';
 
 // Ported from the parked Codex WIP (task F1 of docs/OPEN-TASKS-2026-09-29.md).
 // The corpus itself is not in this repository; these are small inline fixtures.
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CLI = path.join(ROOT, 'scripts/compat-audit.mjs');
+
+for (const expectedExit of [0, 1]) test(`stdout audit retains complete mixed-catalogue results and actual exit ${expectedExit}`,
+    async () => contextFixture(async f => {
+        const raw = f.raw(), context = f.context();context.id = raw.id;
+        f.catalogue.subjects.push(raw, context);
+        const catalogue = f.save(), positional = [];
+        if (expectedExit === 1) {
+            const zip = new JSZip();
+            zip.file('project.json', JSON.stringify({targets: [{isStage: true, name: 'Stage',
+                blocks: {x: {opcode: 'unknownwidget_doThing', next: null, parent: null, inputs: {}, fields: {}}},
+                costumes: [], sounds: []}], extensions: ['unknownwidget'], extensionURLs: {}}));
+            const input = path.join(f.directory, 'unsupported.sb3');
+            fs.writeFileSync(input, await zip.generateAsync({type: 'nodebuffer'}));positional.push(input);
+        }
+        const common = ['--target', 'arcade', '--context-catalogue', catalogue, ...positional];
+        const reportFile = path.join(f.directory, 'ordinary.json'), markdownFile = path.join(f.directory, 'ordinary.md');
+        const journal = path.join(f.directory, 'ordinary.jsonl');
+        const ordinary = spawnSync(process.execPath, [CLI, ...common, '--out', reportFile,
+            '--markdown', markdownFile, '--progress-jsonl', journal], {cwd: ROOT, encoding: 'utf8', maxBuffer: 8 * 1024 ** 2});
+        assert.equal(ordinary.status, expectedExit, ordinary.stderr);
+        const run = spawnSync(process.execPath, [CLI, ...common, '--stdio-transcript'],
+            {cwd: ROOT, maxBuffer: 8 * 1024 ** 2});
+        assert.equal(run.status, expectedExit, run.stderr.toString());
+        const decoded = readAssessmentTranscript({transcript: run.stdout});
+        assert.equal(decoded.terminal.intendedExitCode, run.status, 'actual child exit is joined separately');
+        const report = JSON.parse(decoded.reportJson), original = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+        assert.equal(report.count, expectedExit === 1 ? 3 : 2);
+        // These are independent conversions: Creator gives blocks random IDs.
+        // Retain and validate both full graphs, without normalizing their IDs or
+        // claiming byte equality across runs. Wire byte preservation has its
+        // own independently supplied payload controls.
+        const diagnosticRows = rows => rows.map(({conversion, ...diagnostics}) => diagnostics);
+        assert.deepEqual(diagnosticRows(report.rows), diagnosticRows(original.rows));
+        for (const output of [report, original]) {
+            const subjects = output.rows.filter(row => row.context);
+            assert.equal(subjects.length, 2);
+            for (const row of subjects) {
+                assert.equal(row.translated, true);assert.equal(row.stage, 'translated');
+                assert.deepEqual(row.unsupported, []);assert.ok(row.blockCount > 0);
+                assert.equal(row.conversion.schema, 'brickwright/conversion-observation-graph/v2');
+                const graph = expandConversionObservationGraph(row.conversion);
+                assert.ok(graph.nodes.length > 0);assert.ok(Number.isInteger(graph.root.ref));
+            }
+        }
+        assert.deepEqual(report.tally, original.tally);
+        assert.equal(report.outputEncoding, 'gzip-json');
+        assert.deepEqual(report.rows.filter(row => row.context?.id === raw.id).map(row => row.context.kind),
+            ['RAW_BASELINE', 'RETAINED_CONTEXT']);
+        const events = decoded.progressJsonl.trimEnd().split('\n').map(line => JSON.parse(line));
+        assert.deepEqual(events.filter(row => row.phase === 'SUBJECT_BEGIN' && row.subject.id === raw.id)
+            .map(row => [row.subject.kind, row.subject.id]), [['RAW_BASELINE', raw.id], ['RETAINED_CONTEXT', raw.id]]);
+        assert.equal(events[0].phase, 'CLI_PROGRESS_BEGIN');assert.equal(events.at(-1).phase, 'CLI_REPORTS_FINISHED');
+        assert.equal(decoded.markdown.toString().replace(report.generatedAt, '<generated-at>'),
+            fs.readFileSync(markdownFile, 'utf8').replace(original.generatedAt, '<generated-at>'),
+            'complete Markdown is retained; separate invocation timestamps differ');
+        assert.match(run.stderr.toString(), /"count":/);
+        assert.equal(JSON.parse(ordinary.stdout).report, reportFile, 'default stdout remains the ordinary summary');
+        if (expectedExit === 1) assert.ok(report.rows.some(row => row.missingOpcodes?.some(op => op.opcode === 'unknownwidget_doThing')));
+    }));
+
+test('stdout audit rejects file-option conflicts before acquiring output', async () => contextFixture(f => {
+    f.catalogue.subjects.push(f.raw());const catalogue = f.save();
+    for (const option of ['--out', '--markdown', '--progress-jsonl']) {
+        const output = path.join(f.directory, 'protected');fs.writeFileSync(output, 'unchanged original');
+        const run = spawnSync(process.execPath, [CLI, '--stdio-transcript', '--context-catalogue', catalogue, option, output],
+            {cwd: ROOT, maxBuffer: 8 * 1024 ** 2});
+        assert.notEqual(run.status, 0);assert.equal(run.stdout.length, 0);
+        assert.match(run.stderr.toString(), /cannot be combined/);assert.equal(fs.readFileSync(output, 'utf8'), 'unchanged original');
+    }
+}));
 
 test('CLI reports both a real MakeCode import and a missing Scratch extension opcode', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-compat-'));

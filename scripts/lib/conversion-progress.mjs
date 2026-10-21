@@ -34,12 +34,7 @@ function canonical (filename) {
 }
 export function createAuditProgress (filename, {protectedPaths = [], ...limits} = {}) {
     if (typeof filename !== 'string' || !filename) throw new Error('--progress-jsonl requires a fresh file');
-    const admitted = {...hard, ...limits};
-    for (const key of Object.keys(admitted)) {
-        if (!own(hard, key) || !Number.isInteger(admitted[key]) || admitted[key] <= 0 || admitted[key] > hard[key]) {
-            throw new Error('Progress journal limit must be a positive bounded integer');
-        }
-    }
+    const admitted = boundedLimits(limits);
     const output = canonical(filename);
     for (const input of protectedPaths) {
         if (!input) continue;
@@ -50,13 +45,34 @@ export function createAuditProgress (filename, {protectedPaths = [], ...limits} 
         }
     }
     const fd = open(filename, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+    return progressSink({writeLine: line => writeProgressBytes(fd, line), close: () => close(fd)}, admitted);
+}
+function boundedLimits (limits) {
+    const admitted = {...hard, ...limits};
+    for (const key of Object.keys(admitted)) {
+        if (!own(hard, key) || !Number.isInteger(admitted[key]) || admitted[key] <= 0 || admitted[key] > hard[key]) {
+            throw new Error('Progress journal limit must be a positive bounded integer');
+        }
+    }
+    return admitted;
+}
+/** The optional transport supplies its own held byte sink; no filename shortcut. */
+export function createAuditProgressSink (sink, limits = {}) {
+    // Capture methods once. The file factory uses only its private native FD sink.
+    const writeLine = sink?.writeLine, closeSink = sink?.close;
+    if (typeof writeLine !== 'function' || typeof closeSink !== 'function') {
+        throw new Error('Progress journal sink differs');
+    }
+    return progressSink({writeLine: writeLine.bind(sink), close: closeSink.bind(sink)}, boundedLimits(limits));
+}
+function progressSink (sink, admitted) {
     let failed = false, failure, closed = false, events = 0, bytes = 0;
     let observerWall = 0n, observerUser = 0, observerSystem = 0;
     const fail = error => {
         if (!failed) {
             failed = true; failure = error;
             try {write(2, 'CLI_PROGRESS_OBSERVATION_FAILURE\n');} catch { /* Original observer failure stays primary. */ }
-            if (!closed) {closed = true; try {close(fd);} catch { /* No cleanup can replace the first failure. */ }}
+            if (!closed) {closed = true; try {sink.close();} catch { /* No cleanup can replace the first failure. */ }}
         }
         throw failure;
     };
@@ -83,7 +99,7 @@ export function createAuditProgress (filename, {protectedPaths = [], ...limits} 
             if (events >= admitted.maxEvents || line.length > admitted.maxLineBytes || bytes + line.length > admitted.maxBytes) {
                 throw new Error('Progress journal bound exceeded');
             }
-            writeProgressBytes(fd, line); events++; bytes += line.length;
+            sink.writeLine(line); events++; bytes += line.length;
         } catch (error) {return fail(error);}
         finally {
             const after = cpu(); observerWall += clock() - begin;
@@ -107,7 +123,7 @@ export function createAuditProgress (filename, {protectedPaths = [], ...limits} 
         close () {
             throwIfFailed(); if (closed) return;
             closed = true;
-            try {close(fd);} catch (error) {return fail(error);}
+            try {sink.close();} catch (error) {return fail(error);}
         }
     });
 }

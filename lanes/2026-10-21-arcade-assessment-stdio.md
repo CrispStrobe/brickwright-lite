@@ -3,7 +3,10 @@
 Owner: Codex, Arcade assessment lane.
 Branch: `lane/arcade-assessment-stdio-claim-20261021`.
 Base: `c99c397f6ae0a3162f7fda9a0c4827d186585429`.
-Status: claim only; merge after every enabled exact-head check succeeds.
+Claim merged in [PR1177](https://github.com/CrispStrobe/brickwright-lite/pull/1177).
+Implementation branch: `lane/arcade-assessment-stdio-source-20261021`.
+Status: source implementation complete; actual CLI and final hosted
+qualification pending before landing.
 
 Add an explicit optional stdout transcript to the actual conversion audit CLI,
 preserving its default file outputs, catalogue, full diagnostics, progress,
@@ -35,3 +38,17 @@ existing report admission. Preserve failure evidence and local resource caps;
 no filtered modules or corpus promotion. Actual read-only process isolation,
 normal provider provenance, hosted bounds and complete private corpus remain
 separate gates before use. No full-CI label or live dispatch for this claim.
+
+## Source qualification
+
+The complete three-module writer, existing journal and independent decoder
+cohort passes 23 controls with no skips or TODOs. Independent saved-output
+review verified the entire selection and actual source, interpreter, dependency
+and scope identities. The original writer review finding and its correction
+are retained. Default filename journal controls are unchanged.
+
+Actual CLI integration, complete affected CLI and report-admission modules,
+VM/original-SDK regressions and hosted checks remain pending. The optional
+transport has not yet qualified real read-only process isolation, hosted
+resource bounds or a complete private corpus assessment. Historical corpus
+counts remain unchanged.
