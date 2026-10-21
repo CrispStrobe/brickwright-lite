@@ -2,6 +2,27 @@
 
 ## Latest observed state and next work — 2026-10-21
 
+### Latest incremental closure
+
+Nullable native Array `.length` now has a source-qualified Number result on
+normal completion: **31/31 tests across nine complete modules**, no skips.
+Null/Undefined receivers, initialization, all writers and strict Array/coercion
+APIs remain unchanged. The original 29-pass/two-failure run is retained; the
+corrected run includes meaningful canonical-helper selection witnesses.
+See [the exact capability and next tasks](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md).
+
+The complete edited-animation export remains unqualified. Next close real
+static fresh-resource emission and exact image pixel result/effect provenance.
+SDK logging can call listeners and cannot be treated as inert. Preserve dynamic
+fallback and all original application assertions. The merged producer claim
+owns this work; changes to shared SDK/effect-contract paths need expanded scope.
+
+Latest main has been normally composed locally, preserving its new Robot Lab
+library, both sides of the scope ledger and the 16-group browser matrix.
+This is a source composition, not new hosted acceptance. The published PR
+head and historical **147 translated / 36 partial / one malformed** corpus
+measurement remain unchanged. See the repair matrix before scheduling CI.
+
 ### Local integration follow-up
 
 The preserved Array/class, refusal-report, CLI fixture and SPIKE candidates now
@@ -38,7 +59,7 @@ failure. Exact current export arguments and the returned diagnostic identify
 an initialized `count` after `count = frames.length`, with `Opaque` and `Number`
 producer facts. Its actual resource context and all original assertions remain
 retained. The [next producer work](ARCADE-CI-REPAIR-STATUS.md#readiness-analysis-and-overlapping-power-work)
-needs its own merged implementation claim; it must preserve dynamic fallback,
+has a separate merged implementation claim; it must preserve dynamic fallback,
 fresh/shared identity, all writers, null and possible missing elements.
 
 Separately, captured lexical declaration readiness now passes all 23 controls

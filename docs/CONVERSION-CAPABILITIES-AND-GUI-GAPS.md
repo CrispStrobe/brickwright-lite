@@ -1,5 +1,24 @@
 # Conversion capabilities and GUI closure ledger
 
+## Nullable collection length — source qualification, GUI work open
+
+[Native Array length normal results](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md)
+pass the complete nine-module/31-test source cohort without skips. This does
+not make a null receiver an Array or turn a missing value into zero. Unknown
+calls, getter effects, aliases, writers and source changes retain their guards.
+
+Required visible journey: import and author a real frame collection, edit its
+length use in Code/pseudocode and connected Blocks, and verify normal results
+and null/missing-value errors through save/fresh reopen and MakeCode export.
+Add genuine graphics-editor frame insertion, removal and reordering, then
+verify the running game uses the edited collection and artwork. Preserve actual
+Undefined/uninitialized semantics wherever representation is required; report
+an unsupported representation instead of silently substituting a Scratch zero.
+
+The original edited-animation export still stops before later pixel operands
+are qualified. Source controls do not qualify rendered pixels, SDK execution,
+these editor journeys or any additional complete corpus application.
+
 ## Captured lexical declaration readiness — conversion controls only
 
 The [source capability](ARCADE-LEXICAL-DECLARATION-READINESS.md) passes all 23

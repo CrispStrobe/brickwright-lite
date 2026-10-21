@@ -11,12 +11,34 @@ corpus measurement have not advanced; the counts below remain the last hosted
 observation. Next: complete-app refusal facts, a properly scoped semantic fix,
 then one qualification of the complete integration candidate.
 
+### Nullable collection length: source controls qualified
+
+The [new producer slice](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md) passes all
+nine complete source modules: **31 tests, zero failures or skips**, including
+all preceding 23 readiness/domain controls. The earlier 29-pass/two-failure
+original is retained. The fix accepts the actual parser's null no-else child;
+the new helper tests now witness canonical helper selection before domain
+refusal, avoiding vacuous negatives. No product helper-name recognizer changed.
+
+This does not yet fix the complete edited-animation case. Static fresh-resource
+emission and exact image pixel producers remain open. The genuine SDK's
+logging invokes registered listeners, so do not exempt fallback logging as
+inert. Specialize only actual admitted constant resources, preserving every
+remaining dynamic fallback, then prove exact current image/index/operation
+results and effects before rerunning the original carrier. Null/missing values,
+unknown writers, method overrides and Opaque refusals remain meaningful.
+
+The local composition preserves latest main's Robot Lab additions and its
+16-group browser matrix. Old three-group results do not qualify that combined
+head. Complete affected hosted source/SDK/runtime and GUI checks are pending;
+this component success does not change the historical 36 partial applications.
+
 ### Remaining x86 consumer boundary
 
 The Arcade candidate selects `sb3-creator` at
-`d7c258910dd3837021a7a8c4b85d38a4e28e138a`. The two x86 GUI admission scripts
-still select `f4b1a789e0733d310109f056a08de4621092c0eb`; current main instead
-selects `7d3f8be7c13091a635d919c1af5c456230eed8fd` consistently with its own
+`d7c258910dd3837021a7a8c4b85d38a4e28e138a`. Before this correction, the two x86 GUI admission scripts
+selected `f4b1a789e0733d310109f056a08de4621092c0eb`; the main branch used for
+comparison selected `7d3f8be7c13091a635d919c1af5c456230eed8fd` consistently with its own
 supplier. Restoring main's literal would still be wrong for this candidate.
 The intervening supplier-maintenance commits updated these consumers before
 the later D7 adoption omitted them; this was not a merge-conflict reversion.
@@ -75,8 +97,10 @@ Close that gap in separate reviewed steps:
    writer negatives, and clean emitted-SDK/runtime/GUI qualification. Keep
    partial acceptance and the next failed operand visible between steps.
 
-The refusal-report lane does not own these behavior changes. Merge a new
-explicit implementation claim before changing the exporter or producer proofs.
+The refusal-report lane does not own these behavior changes. The separate
+[animation producer claim](../lanes/2026-10-21-arcade-animation-numeric-producers.md)
+has now merged; preserve its enumerated paths and expand ownership before
+editing shared SDK or effect-contract modules.
 
 The school delivery owner has taken over the narrow
 [SPIKE power adoption](../lanes/2026-10-21-school-spike-power-takeover.md).
