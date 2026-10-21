@@ -1,4 +1,5 @@
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
+import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {checkClassPrimitiveExport} from './class-primitive-export-proof.js';
 import {hasSdkFontValues,seedSdkFontValueType,sdkFontGraphType} from './sdk-font-export-types.js';
 import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
@@ -12,6 +13,11 @@ export function prepareObjectClassExport(emitter) {
     const definitions=new Map(),classes=new Map(),procedures=new Map(),graph=new ValueTypeGraph(),owners=new WeakMap();
     const literal=(target,block,name)=>{
         if(isArrayMenuSelector(block,name))return arrayMenuLiteral(target,block,name);
+        if(block.opcode==='arrays_specialValue'&&name==='KIND'){
+            const row=Object.hasOwn(block.fields||{},'KIND')?block.fields.KIND:null;
+            return Array.isArray(row)&&row.length===2&&row[1]===null&&['null','undefined'].includes(row[0])&&
+                block.mutation==null&&Object.keys(block.inputs||{}).length===0&&Object.keys(block.fields||{}).length===1?row[0]:null;
+        }
         const slot=block.inputs?.[name]?.[1],child=typeof slot==='string' && target.blocks[slot];
         return Array.isArray(slot)?String(slot[1]):child?.shadow?String(Object.values(child.fields||{})[0]?.[0]):null;
     };
@@ -112,13 +118,31 @@ export function prepareObjectClassExport(emitter) {
             for(const input of Object.values(block.inputs||{}))if(typeof input?.[1]==='string')mark(target.blocks[input[1]],owner,seen);
             mark(target.blocks[block.next],owner,seen);
         };
-        for(const block of Object.values(target.blocks||{}))if(block.topLevel) {
+        for(const [id,block]of Object.entries(target.blocks||{}))if(block.topLevel) {
             const proto=block.opcode==='procedures_definition' && child(target,block,'custom_block');
-            mark(block,proto?key(target,proto.mutation.proccode):`${target.name}:script:${block.id}`);
+            mark(block,proto?key(target,proto.mutation.proccode):`${target.name}:script:${id}`);
         }
     }
     const unknownMenuElement=Symbol('unproved Array selector element');
-    const variables=new Map(),cells=new WeakMap();
+    // Allocation origins are private declaration hints, separate from declared
+    // class/parameter tags and never returned as an input or body certificate.
+    const allocationOrigins=new Map([...classes].filter(([,cls])=>!cls.intrinsic).map(([name])=>[name,Symbol(name)]));
+    const originTags=new Set(allocationOrigins.values()),arithmetic=[],arithmeticSeen=new Set();
+    const shaped=(node,names)=>node.mutation==null&&Object.keys(node.fields||{}).length===0&&
+        Object.keys(node.inputs||{}).length===names.length&&names.every(name=>Object.hasOwn(node.inputs,name));
+    const fixedString=(target,node,name)=>{
+        const slot=node.inputs?.[name];if(!Array.isArray(slot)||slot.length!==2||slot[0]!==1)return null;
+        const value=slot[1];
+        if(Array.isArray(value))return value.length===2&&value[0]===10&&typeof value[1]==='string'?value[1]:null;
+        const leaf=typeof value==='string'&&Object.hasOwn(target.blocks,value)&&target.blocks[value],row=leaf?.fields?.TEXT;
+        return leaf?.opcode==='text'&&leaf.shadow===true&&Array.isArray(row)&&row.length===2&&row[1]===null&&typeof row[0]==='string'?row[0]:null;
+    };
+    const numericInputs={operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],
+        operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2'],operator_round:['NUM'],operator_random:['FROM','TO']};
+
+    const numericShape=node=>typeof node.opcode==='string'&&Object.hasOwn(numericInputs,node.opcode)&&shaped(node,numericInputs[node.opcode]);
+
+    const variables=new Map(),cells=new WeakMap(),producerInputs=new Map(),rawVariables=new Map();
     const cell=(target,block)=>{
         if(!block)return 'missing-block';
         const owner=owners.get(block);
@@ -131,26 +155,55 @@ export function prepareObjectClassExport(emitter) {
     const input=(target,block,name)=>{
         if(!inputCells.has(block))inputCells.set(block,new Map());
         const cache=inputCells.get(block);if(cache.has(name))return cache.get(name);
-        const node=child(target,block,name);if(node && !node.shadow)return cell(target,node);
+        const node=child(target,block,name);if(node && !node.shadow){const value=cell(target,node);producerInputs.set(node,{target,value});return value;}
         const slot=block.inputs?.[name]?.[1];
-        if(Array.isArray(slot) && [12,13].includes(slot[0]))return `var:${slot[2]||slot[1]}`;
-        const value=Symbol('literal');if(Array.isArray(slot))graph.add(value,[4,5,6,7,8].includes(slot[0])?'number':'string');
-        else if(node)graph.add(value,node.opcode==='math_number'?'number':'string');cache.set(name,value);return value;
+        if(Array.isArray(slot) && [12,13].includes(slot[0])){const value=`var:${slot[2]||slot[1]}`;rawVariables.set(value,slot[2]||slot[1]);return value;}
+        const value=Symbol('literal');
+        if(Array.isArray(slot)&&slot.length===2&&[4,5,6,7,8,9,10].includes(slot[0]))graph.add(value,[4,5,6,7,8].includes(slot[0])?'number':'string');
+        else if(node&&node.shadow&&['math_number','math_whole_number','math_integer','math_positive_number','text'].includes(node.opcode))graph.add(value,node.opcode==='text'?'string':'number');
+        else graph.add(value,'any');
+        cache.set(name,value);return value;
     };
     const args=(target,block)=>{const out=[];let current=child(target,block,'ARGS');while(current?.opcode==='arcade_functionArgument'){out.push(input(target,current,'VALUE'));current=child(target,current,'REST');}return out;};
     const bind=(target,code,values,offset=0)=>{
         const def=definitions.get(key(target,code));if(def)values.forEach((value,index)=>{if(index+offset<def.parameters.length)graph.merge(value,`${key(target,code)}:local:${def.parameters[index+offset]}`);});
     };
-    let revision;
+    const noFallthrough=(target,node,seen=new Set())=>{
+        if(!node||seen.has(node))return false;const next=new Set(seen);next.add(node);
+        if(node.opcode==='arcade_returnValue'||node.opcode==='arcade_throwValue')return true;
+        if(node.opcode==='control_if_else'&&noFallthrough(target,child(target,node,'SUBSTACK'),next)&&
+            noFallthrough(target,child(target,node,'SUBSTACK2'),next))return true;
+        return noFallthrough(target,target.blocks[node.next],next);
+    };
+    for(const [name,def]of definitions)if(!noFallthrough(def.target,def.target.blocks[def.block.next]))graph.add(`${name}:result`,'undefined');
+    let revision,closeEmpty=true;
     do {
         revision=graph.revision;
         for(const target of emitter.project.targets)for(const block of Object.values(target.blocks||{})) {
             const value=cell(target,block),owner=owners.get(block),op=block.opcode;
             if(['arcade_sourceTypeOf','arcade_inspectValue'].includes(op))graph.add(value,'string');
+            if(numericShape(block))graph.add(value,'number');
+            if(['operator_equals','operator_lt','operator_gt','operator_and','operator_or','operator_not'].includes(op))graph.add(value,'boolean');
+            if(op==='operator_join'&&shaped(block,['STRING1','STRING2']))graph.add(value,'string');
+            if(op==='arrays_specialValue'){
+                const kind=literal(target,block,'KIND');
+                if(['null','undefined'].includes(kind))graph.add(value,kind);
+                else if(['NaN','Infinity','-Infinity'].includes(kind))graph.add(value,'number');
+                else graph.add(value,'any');
+            }
+            const operation=sourceValueOperation(block);
+            if(operation?.result==='Number')graph.add(value,'number');
+            if(operation?.op==='+'&&!arithmeticSeen.has(block)){arithmeticSeen.add(block);arithmetic.push([value,input(target,block,'LEFT'),input(target,block,'RIGHT')]);}
             seedSdkFontValueType(block,value,addType);
-            if(op==='arcade_createObject'){const name=literal(target,block,'CLASS');if(classes.has(name)){addType(value,name);bind(target,classes.get(name).constructor,args(target,block),1);}}
-            if(op==='arcade_callFunction'){const code=literal(target,block,'NAME');graph.merge(value,`${key(target,code)}:result`);bind(target,code,args(target,block));}
+            if(op==='arcade_createObject'){const name=literal(target,block,'CLASS');if(classes.has(name)){
+                addType(value,name);
+                if(owners.has(block)&&shaped(block,['CLASS','ARGS'])&&fixedString(target,block,'CLASS')===name&&allocationOrigins.has(name))graph.add(value,allocationOrigins.get(name));
+                if(!shaped(block,['CLASS','ARGS']))graph.add(value,'any');
+                bind(target,classes.get(name).constructor,args(target,block),1);
+            }else graph.add(value,'any');}
+            if(op==='arcade_callFunction'){const code=literal(target,block,'NAME');graph.merge(value,`${key(target,code)}:result`);bind(target,code,args(target,block));if(!definitions.has(key(target,code)))graph.add(value,'any');}
             if(op==='arcade_returnValue')graph.merge(`${owner}:result`,input(target,block,'VALUE'));
+            if(op==='data_changevariableby'){const id=block.fields.VARIABLE[1]||block.fields.VARIABLE[0];variables.set(id,{target,name:block.fields.VARIABLE[0]});graph.add(`var:${id}`,'number');}
             if(op==='data_setvariableto'){const id=block.fields.VARIABLE[1]||block.fields.VARIABLE[0];variables.set(id,{target,name:block.fields.VARIABLE[0]});graph.merge(`var:${id}`,input(target,block,'VALUE'));}
             if(op==='arcade_setLocal')graph.merge(`${owner}:local:${literal(target,block,'NAME')}`,input(target,block,'VALUE'));
             if(['arcade_objectField','arcade_setObjectField','arcade_callObjectMethod'].includes(op))for(const name of graph.node(input(target,block,'OBJECT')).types) {
@@ -160,7 +213,33 @@ export function prepareObjectClassExport(emitter) {
                 if(op==='arcade_setObjectField'){const setter=accessorHalf(cls,field,'setter');if(setter)bind(target,setter.procedure,[input(target,block,'VALUE')],1);else graph.merge(`field:${name}:${field}`,input(target,block,'VALUE'));}
                 if(op==='arcade_callObjectMethod'){const method=resolveMember(cls,literal(target,block,'METHOD'),true);if(method){graph.merge(value,`${key(target,method.procedure)}:result`);bind(target,method.procedure,args(target,block),1);}}
             }
-            if(op==='arrays_createReference'){graph.add(value,'array');let item=child(target,block,'VALUES');while(item?.opcode==='arrays_referenceValues'){graph.merge(graph.element(value),input(target,item,'VALUE'));item=child(target,item,'REST');}}
+            if(op==='arrays_createReference'){
+                graph.add(value,'array');let item=child(target,block,'VALUES');
+                if(item?.opcode==='arrays_referenceValues'){
+                    const seen=new Set();let complete=false;
+                    while(item?.opcode==='arrays_referenceValues'&&!seen.has(item)){
+                        seen.add(item);graph.merge(graph.element(value),input(target,item,'VALUE'));
+                        if(fixedString(target,item,'REST')==='[]'){complete=true;break;}
+                        item=child(target,item,'REST');
+                    }
+                    if(!complete)graph.add(graph.element(value),'any');
+                }
+                else {
+                    const text=fixedString(target,block,'VALUES');let parsed;
+                    try{parsed=text===null?null:JSON.parse(text);}catch{parsed=null;}
+                    const addLiteral=(cell,value)=>{
+                        if(Array.isArray(value)){graph.add(cell,'array');for(const item of value)addLiteral(graph.element(cell),item);}
+                        else graph.add(cell,value===null?'null':['number','string','boolean'].includes(typeof value)?typeof value:'any');
+                    };
+                    if(Array.isArray(parsed))for(const item of parsed)addLiteral(graph.element(value),item);
+                    else graph.add(graph.element(value),'any');
+                }
+            }
+            if(op==='arrays_referenceSlice'||op==='arrays_referenceConcat'){
+                graph.add(value,shaped(block,op==='arrays_referenceSlice'?['ARRAY','START','END']:['ARRAY','OTHER'])?'array':'any');
+                graph.merge(graph.element(value),graph.element(input(target,block,'ARRAY')));
+                if(op==='arrays_referenceConcat')graph.merge(graph.element(value),graph.element(input(target,block,'OTHER')));
+            }
             if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(op))graph.merge(value,graph.element(input(target,block,'ARRAY')));
             if(isArrayMenuSelector(block,'OP')){
                 const operation=literal(target,block,'OP'),destination=graph.element(input(target,block,'ARRAY'));
@@ -168,14 +247,68 @@ export function prepareObjectClassExport(emitter) {
                 else if(op==='arrays_mutateReference'&&['push','unshift','insertAt','set'].includes(operation))graph.merge(destination,input(target,block,'VALUE'));
             }
         }
+        for(const [value,left,right]of arithmetic){
+            const l=[...graph.node(left).types].filter(type=>!originTags.has(type)),r=[...graph.node(right).types].filter(type=>!originTags.has(type));
+            if(!l.length||!r.length)continue;
+            if([...l,...r].some(type=>!['number','boolean','string','null','undefined'].includes(type)))graph.add(value,'any');
+            else {if(l.includes('string')||r.includes('string'))graph.add(value,'string');
+                if(l.some(type=>type!=='string')&&r.some(type=>type!=='string'))graph.add(value,'number');}
+        }
+        if(revision===graph.revision&&closeEmpty){
+            closeEmpty=false;
+            for(const target of emitter.project.targets)for(const node of Object.values(target.blocks||{}))if(node.opcode==='arcade_setCaptured'){
+                const name=literal(target,node,'NAME');
+                for(const value of graph.nodes.keys())if(typeof value==='string'&&value.includes(':local:')&&
+                    (name===null||value.endsWith(':local:'+name)))graph.add(value,'any');
+            }
+            for(const [value,id]of rawVariables)if(!emitter.project.targets.some(t=>Object.values(t.blocks||{}).some(n=>
+                ['data_setvariableto','data_changevariableby'].includes(n.opcode)&&(n.fields?.VARIABLE?.[1]||n.fields?.VARIABLE?.[0])===id)))graph.add(value,'any');
+            for(const [node,{target,value}]of producerInputs){
+                const op=node.opcode,flow=['data_variable','arcade_getLocal','argument_reporter_string_number','argument_reporter_boolean',
+                    'arcade_createObject','arcade_callFunction','arcade_objectField','arcade_callObjectMethod',
+                    'arrays_createReference','arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom',
+                    'arcade_sourceTypeOf','arcade_inspectValue'].includes(op);
+                const fixed=numericShape(node)||sourceValueOperation(node)||
+                    ['operator_equals','operator_lt','operator_gt','operator_and','operator_or','operator_not'].includes(op)||
+                    op==='operator_join'&&shaped(node,['STRING1','STRING2'])||op==='arrays_specialValue';
+                if(!flow&&!fixed)graph.add(value,'any');
+                if(op==='data_variable'){
+                    const id=node.fields?.VARIABLE?.[1];
+                    if(!emitter.project.targets.some(t=>Object.values(t.blocks||{}).some(n=>
+                        ['data_setvariableto','data_changevariableby'].includes(n.opcode)&&n.fields?.VARIABLE?.[1]===id)))graph.add(value,'any');
+                }
+                if(op==='arcade_getLocal'){
+                    const name=literal(target,node,'NAME'),owner=owners.get(node),definition=definitions.get(owner);
+                    if(!definition?.parameters.includes(name)&&!Object.values(target.blocks||{}).some(n=>
+                        owners.get(n)===owner&&n.opcode==='arcade_setLocal'&&literal(target,n,'NAME')===name))graph.add(value,'any');
+                }
+                if(!graph.node(value).types.size)graph.add(value,'any');
+            }
+        }
     }while(revision!==graph.revision);
     function typeOf(cell,seen=new Set()) {
-        const node=graph.node(cell);if(seen.has(node)||node.types.has(unknownMenuElement))return 'any';seen.add(node);
-        if(node.types.has('array'))return `${node.element?typeOf(node.element,seen):'any'}[]`;
-        const types=[...node.types].filter(type=>type!=='any' && type!=='void');return types.length===1?sdkClassPublicName(types[0]):'any';
+        const node=graph.node(cell);if(seen.has(node)||node.types.has(unknownMenuElement)||node.types.has('any'))return 'any';seen.add(node);
+        const types=[...node.types].filter(type=>!originTags.has(type)&&!['void','null','undefined'].includes(type));
+        if(node.types.has('array'))return types.some(type=>type!=='array')?'any':`${node.element?typeOf(node.element,seen):'any'}[]`;
+        return types.length===1?sdkClassPublicName(types[0]):'any';
     }
     const variableTypes=new Map([...variables].map(([id,{target,name}])=>[emitter.varName(target,name),typeOf(`var:${id}`)]));
     const localType=(key,name)=>typeOf(`${key}:local:${name}`);
+    const hasAllocation=(value,seen=new Set())=>{
+        const node=graph.node(value);if(seen.has(node))return false;seen.add(node);
+        return [...node.types].some(type=>originTags.has(type))||!!node.element&&hasAllocation(node.element,seen);
+    };
+    const declarationType=value=>hasAllocation(value)?typeOf(value):null;
+    const variableDeclarationTypes=new Map([...variables].flatMap(([id,{target,name}])=>{
+        const type=declarationType(`var:${id}`);return type===null?[]:[[emitter.varName(target,name),type]];
+    }));
+    const localDeclarationType=(key,name)=>declarationType(`${key}:local:${name}`);
+    // A direct caller's allocation is not a closed callable-ingress proof.
+    // Use a conservative syntax type, never Box/Box[] evidence, for ordinary
+    // formals/results touched by genuine allocation flow. Explicit primitive
+    // constraints are rendered separately and retain precedence.
+    const procedureParameterType=(key,name)=>hasAllocation(`${key}:local:${name}`)?'any':null;
+    const procedureResultType=key=>hasAllocation(`${key}:result`)?'any':null;
     function receiver(block,write=false,method=false) {
         const target=emitter.target,text=emitter.arrayValue(block,'OBJECT'),name=literal(target,block,method?'METHOD':'FIELD');
         const restricted=[...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),member=cls&&resolveMember(cls,name,method);return member && ((member.visibility && member.visibility!=='public' && emitter.currentClassName!==type) || write&&member.readonly);});
@@ -272,7 +405,8 @@ export function prepareObjectClassExport(emitter) {
         }
         Object.assign(emitter,saved);return out;
     }
-    const valueTypes=(target,block)=>new Set(graph.node(cell(target,block)).types);
+    const publicTypes=value=>new Set([...graph.node(value).types].filter(type=>!originTags.has(type)).map(type=>type===unknownMenuElement?'any':type));
+    const valueTypes=(target,block)=>publicTypes(cell(target,block));
     const classCallableProviders=new Map();
     const classCallableProvider=(target,{sdkImagePrototype=emitter.opts.sdkImagePrototype===true||emitter.callableExports?.get(target)?.sdkImageEnabled===true}={})=>{
         if(!classCallableProviders.has(target))classCallableProviders.set(target,new Map());
@@ -280,7 +414,7 @@ export function prepareObjectClassExport(emitter) {
         if(!modes.has(sdkImagePrototype))modes.set(sdkImagePrototype,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype,literalResource:emitter.sdkImageLiteralResources?.resource}));
         return modes.get(sdkImagePrototype);
     };
-    return {classes,procedures,variableTypes,valueTypes,inputTypes:(target,block,name)=>new Set(graph.node(input(target,block,name)).types),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
+    return {classes,procedures,variableTypes,variableDeclarationTypes,localDeclarationType,procedureParameterType,procedureResultType,valueTypes,inputTypes:(target,block,name)=>publicTypes(input(target,block,name)),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
         sdkVariable:name=>emitter.project.targets.some(target=>Object.entries(target.variables||{}).some(([id,value])=>emitter.varName(target,value[0])===name&&[...(emitter.callableExports||[])].some(([actual,entry])=>entry.sdkImageEnabled&&classCallableProvider(actual).sdkVariable(id)))),
         classCallableProvider,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
 }

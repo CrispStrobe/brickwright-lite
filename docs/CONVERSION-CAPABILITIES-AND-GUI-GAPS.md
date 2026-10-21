@@ -5536,3 +5536,86 @@ proper semantic control. A separate claimed workpackage must repair complete
 class/Array writer modeling and class-aware declaration types before changing
 that expectation. No successful MakeCode compilation or full export qualification
 is inferred from an empty diagnostic list. Historical project counts are unchanged.
+
+### Class Array writer and declaration repair candidate
+
+A separate SOURCE candidate retains actual numeric and opaque Array writers and
+uses class-aware local/global declarations. Mixed class and primitive writers
+must produce honest mixed types; an empty reporter fact cannot certify every
+element as a class. Actual allocation origins remain separate from annotations
+and never grant runtime inputs or Array bodies. The original append/read-at-zero
+example is retained with source/output checks, plus an actual consumed-slot
+String-to-Number-contract refusal. All sixteen affected modules and genuine
+original SDK compilation, native behavior, fresh SB3 and visible editing remain
+pending. Named SDK absence is a prerequisite gap, not a compilation result. The
+historical fifteen-pass/one-failure episode and project counts remain unchanged.
+
+The class/Array declaration candidate's first complete menu/overwrite/typing
+24-control attempt recorded **17 pass, 6 fail, 1 SDK_ABSENT**. This is preserved
+as failed development evidence. Existing source-reference global declarations
+remain uninitialized; some corrected class-local null prefixes are already
+covered by the legacy reset proof. Explicit raw-input refusal controls remain
+for prefixes requiring owned JSON. Class-aware effects across the remaining
+reimports and genuine original/emitted-file compilation are still pending.
+No complete affected-suite, native, visible authoring or corpus-count claim follows.
+
+A separate closed-class reset-effect candidate now examines actual constructor
+and own-field bodies, actual arguments and receiver allocation/writer origins
+only behind the owned project-JSON boundary. Inheritance, SDK/accessor paths,
+callbacks, escapes, unknown bodies and effectful receiver expressions refuse.
+The legacy reset/effect guards stay unchanged. The next development selection
+is four complete modules (32 controls); the full affected selection now contains
+17 modules. All native/compiler/getInfo/SPIKE/fresh-SB3/visible authoring gates
+remain separate and pending; no historical partial-count reduction is claimed.
+
+## Preserved development failure and source follow-up
+
+The complete four-module attempt recorded 24 passes, seven failures and one
+SDK_ABSENT control. Its final cumulative child-plus-observer CPU exceeded the
+25-second budget. It is preserved as both product and resource failure; no local
+repeat, filtering, sharding or budget increase qualifies it.
+
+The source follow-up checks every actual writer alternative independently,
+including primitive resets followed by class allocation. Canonical native
+null/undefined fields retain absence facts; malformed or conflicting selectors
+remain opaque. The new immutable-only overwrite theorem can bind an ancestor
+reset only through the same exact single-caller, zero-argument, straight-line
+ancestry. All legacy reset/effect bodies remain unchanged.
+
+Genuine allocation flow may replace stale declaration syntax, but ordinary
+parameter/result hints remain conservative `any`, with explicit primitive
+constraints first. These hints issue no operand, Array, receiver or body proof;
+annotations alone issue no hint. Source scalar Any declarations are neutral
+binding commands, not value evidence. A harmless pure constructor before an
+overwrite is a positive control, paired with constructor publication and callback
+refusals. Full failure captures now also cover the class-effect round trips.
+
+Next qualification is the complete hosted 32-control selection with its genuine
+SDK prerequisite. Compiler validity of mixed Array method access, the complete
+17 affected modules, native/current execution and GUI journeys remain pending.
+Historical project totals are unchanged.
+
+This source follow-up is unexecuted. Independent source review is not runtime,
+compiler, complete-suite or GUI qualification.
+
+### Class/Array writer follow-up: visible authoring acceptance pending
+
+The source follow-up has no GUI qualification. Require an asset-bearing project
+whose actual Number/Box writers produce honest `any[]`, `Box`, null and `any`
+declarations. Edit the actual graph after retaining the original snapshot, then
+check Blocks/Code, save/fresh SB3, MakeCode export and reimport: current operands,
+writer alternatives, values, execution trace and current assets must survive;
+an actual incompatible primitive constructor argument must remain refused.
+
+The existing native null/undefined dropdown is implemented. Its acceptance still
+needs selection, save/reopen and exact physical `KIND` field verification, with
+malformed, computed and conflicting field/input shapes refused. This is distinct
+from the remaining raw class-descriptor and argument-list editor gap; no new
+class graphics editor is claimed.
+
+Exercise constructor/reset ordering and visible refusal of publication,
+callbacks, effectful unused arguments, repeated entries and nonzero-argument
+entry paths. Compare the current count-only export completion feedback with the
+detailed Blocks-to-Code conversion report: actionable named reason, block,
+class and slot diagnostics remain an authoring acceptance requirement. Source
+proofs and count-only completion do not establish that user-facing result.

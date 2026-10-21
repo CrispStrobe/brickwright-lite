@@ -73,10 +73,13 @@ test('conditional cyclic escaped and competing entries retain global reset oblig
     rejectedSource(globalSource.replace('ordinary=[];','for(let i=0;i<1;i++){ordinary=[];}'));
 });
 
-test('class effects after the local overwrite do not exempt a constructor call before it',()=>{
+test('closed pure constructors before overwrite do not exempt constructor publication or callbacks',()=>{
     const base='class Box{constructor(public n:number){}}function build(){let kept:number[]=null;let gap=0;let fresh:number[]=[];kept=fresh;let box=new Box(1);let count=kept.length;}build();';
     const c=source(base);checks(c,true);assert.deepEqual(projectJsonToArcade(JSON.stringify(c.project)).unsupported,[]);
-    rejectedSource(base.replace('let gap=0;','let gap=0;let early=new Box(2);'));
+    const early=source(base.replace('let gap=0;','let gap=0;let early=new Box(2);'));
+    checks(early,true);checkProject(early.project,false);assert.deepEqual(projectJsonToArcade(JSON.stringify(early.project)).unsupported,[]);
+    rejectedSource(base.replace('class Box{constructor(public n:number){}}','let published=0;class Box{constructor(public n:number){published=n;}}').replace('let gap=0;','let gap=0;let early=new Box(2);'));
+    rejectedSource(base.replace('class Box{constructor(public n:number){}}','class Box{constructor(public n:number){game.onUpdate(function(){});}}').replace('let gap=0;','let gap=0;let early=new Box(2);'));
     refusals(localPrefix.replace('arcade set local unrelated to ((0 + 0))','arcade set local __proto__ to "foreign"'));
     const badURL=parse(localPrefix);badURL.project.extensionURLs.arrays='https://example.invalid/foreign-arrays.js';checks(badURL,false);
     const foreign=parse(localPrefix);foreign.project.extensions.push('foreign');checks(foreign,false);
@@ -139,8 +142,18 @@ test('real numeric and class Array exports retain all initializers through outer
         const c=source(text),before=JSON.stringify(c.project),first=projectToArcade(c.project);clean(first);
         const feedback=parse(c.decompile());clean(projectToArcade(feedback.project));
         const imported=arcadeToPseudocode(first.files);clean(imported);
-        const second=parse(imported.code);assert.ok(projectToArcade(second.project).unsupported.length,'unowned reset graph remains refused');
+        const second=parse(imported.code),raw=projectToArcade(second.project);
+        if(text.startsWith('class Box')){
+            assert.match(first.ts,/let __bwPxtValue\d+: Box\[\] = null/);
+            assert.match(first.ts,/^let boxes: Box\[\]$/m,'source-reference globals preserve their uninitialized declaration');
+            const all=second.project.targets.flatMap(target=>Object.values(target.blocks).map(node=>({target,node})));
+            const nullWrite=({target,node})=>target.blocks[node.inputs?.VALUE?.[1]]?.opcode==='arrays_specialValue'&&target.blocks[node.inputs.VALUE[1]].fields.KIND[0]==='null';
+            assert.ok(all.some(row=>row.node.opcode==='arcade_setLocal'&&nullWrite(row)),'real pure local reset remains');
+            assert.ok(!all.some(row=>row.node.opcode==='data_setvariableto'&&nullWrite(row)),'no global reset is invented for an uninitialized reference declaration');
+            clean(raw); // Existing deadReset admits this pure local prefix without the new theorem.
+        }else assert.ok(raw.unsupported.length,'unowned reset graph remains refused');
         clean(projectJsonToArcade(JSON.stringify(second.project)));
         assert.equal(JSON.stringify(c.project),before,'Code/export retain original physical program');
     }
+    const requiresOwned=source(globalSource);checkProject(requiresOwned.project,false);checks(requiresOwned,true);
 });

@@ -46,9 +46,15 @@ const exported = (creator,options={},diagnostic=null) => {
     }
     clean(out);assert.deepEqual(creator.project,before,'export retains original physical graph');return out;
 };
-const exportedOwned = (creator,diagnostic) => {
+const exportedOwned = (creator,diagnostic,rawResetMode) => {
     const json=JSON.stringify(creator.project),raw=projectToArcade(creator.project);
-    assert.ok(raw.unsupported.length,'direct mutable reimport graph retains its reset refusal');
+    if(rawResetMode==='legacy-local-class'){
+        const all=creator.project.targets.flatMap(target=>Object.values(target.blocks).map(node=>({target,node})));
+        const nullWrite=({target,node})=>target.blocks[node.inputs?.VALUE?.[1]]?.opcode==='arrays_specialValue'&&target.blocks[node.inputs.VALUE[1]].fields.KIND[0]==='null';
+        assert.ok(all.some(row=>row.node.opcode==='arcade_setLocal'&&nullWrite(row)),'actual class local null reset remains');
+        assert.ok(!all.some(row=>row.node.opcode==='data_setvariableto'&&nullWrite(row)),'uninitialized source-reference globals add no global null writer');
+        clean(raw); // The unchanged legacy deadReset proves this pure local prefix.
+    }else assert.ok(raw.unsupported.length,'direct mutable reimport graph retains its reset refusal');
     diagnostic.ownedJsonInput=json;diagnostic.directAstExport=raw;
     const out=projectJsonToArcade(json);diagnostic.exportOutput=out;
     if(['unsupported','warnings','errors','unparsed'].some(name=>Object.hasOwn(out,name)&&Array.isArray(out[name])&&out[name].length))retainFailure(diagnostic);
@@ -78,7 +84,7 @@ const retainFailure = diagnostic => {
         }
     }
 };
-const repeat = creator => {
+const repeat = (creator,{rawResetMode}={}) => {
     const diagnostic={stage:'initial-export',initial:null,imported:null,feedbackCode:null,reimportCode:null,exportOutput:null,
         projects:{original:creator.project,feedback:null,second:null,again:null}};
     try{
@@ -90,9 +96,9 @@ const repeat = creator => {
         diagnostic.stage='exact-files-import';
         const imported=arcadeToPseudocode(initial.files);diagnostic.imported=imported;clean(imported);
         diagnostic.reimportCode=imported.code;diagnostic.stage='exact-files-second-export';
-        const second=parse(imported.code);diagnostic.projects.second=second.project;exportedOwned(second,diagnostic);
+        const second=parse(imported.code);diagnostic.projects.second=second.project;exportedOwned(second,diagnostic,rawResetMode);
         diagnostic.stage='second-Code-feedback';
-        const again=parse(second.decompile());diagnostic.projects.again=again.project;exportedOwned(again,diagnostic);
+        const again=parse(second.decompile());diagnostic.projects.again=again.project;exportedOwned(again,diagnostic,rawResetMode);
         return initial;
     }catch(error){
         retainFailure(diagnostic);
@@ -236,7 +242,10 @@ test('named alias writer census sees canonical insertAt as well as push and pres
 
 test('object class and primitive-field readers census canonical Array element writers',()=>{
     const text='class Box{constructor(public n:number){}read():number{return this.n}}let boxes=[new Box(1)];let alias=boxes;alias.push(new Box(2));let observed=boxes[0].read();';
-    const c=source(text);canonical(c);repeat(c);
+    const c=source(text);canonical(c);repeat(c,{rawResetMode:'legacy-local-class'});
+    const requiresOwned=source('let ordinary:number[]=null;let alias:number[]=null;let result=0;function build(){ordinary=[];alias=ordinary;alias.push(1);result=alias.length;}build();');
+    assert.ok(projectToArcade(requiresOwned.project).unsupported.length,'actual global reset across an ordinary callee still refuses raw mutable input');
+    clean(projectJsonToArcade(JSON.stringify(requiresOwned.project)));
     const mixedSource=text.replace('alias.push(new Box(2))','alias.push(0 as any)');
     const mixedImport=arcadeToPseudocode(mixedSource);clean(mixedImport);
     const mixed=parse(mixedImport.code),importedProject=structuredClone(mixed.project);canonical(mixed);
@@ -254,14 +263,25 @@ test('object class and primitive-field readers census canonical Array element wr
             targetName:target.name,id,opcode:node.opcode,inputTypes:strings(classFacts.inputTypes(target,node,'OBJECT')),
             valueTypes:strings(classFacts.valueTypes(target,node))});
     }
-    if(!mixedOut.unsupported.length)retainFailure({stage:'mixed-class-writer-before-unchanged-refusal-assertion',sourceInput:mixedSource,
-        facts,initial:mixedOut,imported:mixedImport,feedbackCode:null,reimportCode:mixedImport.code,exportOutput:mixedOut,
+    if(mixedOut.unsupported.length||classFacts.variableTypes.get('boxes')!=='any[]'||!mixedOut.ts.includes('let boxes: any[] = null'))retainFailure({
+        stage:'mixed-class-writer-type-repair-positive',sourceInput:mixedSource,facts,initial:mixedOut,imported:mixedImport,
+        feedbackCode:null,reimportCode:mixedImport.code,exportOutput:mixedOut,
         projects:{imported:importedProject,original:mixed.project,feedback:null,second:null,again:null}});
-    assert.ok(mixedOut.unsupported.length,'a later non-class writer cannot borrow the original Box element');
-    const scalar=source('class Box{constructor(public n:number){}}let values=[1];let alias=values;alias.push(2);let box=new Box(values[0]);');
-    const [{target,node}]=canonical(scalar);exported(scalar);
+    clean(mixedOut);
+    assert.equal(classFacts.variableTypes.get('boxes'),'any[]','actual numeric writer prevents Box-only element facts');
+    assert.match(mixedOut.ts,/let boxes: any\[\] = null/);
+    assert.ok(mixedOut.ts.includes('alias.push((0 + 0))'),'original appended primitive remains');
+    assert.ok(mixedOut.ts.includes('boxes[0]'),'original unaffected consumed slot remains');
+    repeat(mixed);
+    const scalar=source('class Box{constructor(public n:number){}}let values=[1];let alias=values;alias.unshift(2);let box=new Box(values[0]);');
+    const scalarRows=canonical(scalar),aliasWrites=scalarRows.filter(({target,node})=>{
+        const raw=node.inputs.ARRAY?.[1];return node.opcode==='arrays_mutateReference'&&arrayMenuLiteral(target,node,'OP')==='unshift'&&
+            Array.isArray(raw)&&raw[0]===12&&raw[1]==='alias';
+    });
+    assert.equal(aliasWrites.length,1,'actual alias writer at the consumed index');
+    const [{target,node}]=aliasWrites;exported(scalar);
     node.inputs.VALUE=[1,[10,'not Number']];
-    assert.ok(projectToArcade(scalar.project).unsupported.some(message=>message.startsWith('Class primitive export:')),'actual pushed String must reach the Number constructor check');
+    assert.ok(projectToArcade(scalar.project).unsupported.some(message=>message.startsWith('Class primitive export:')),'actual String inserted at the consumed slot must reach the Number constructor check');
 });
 
 const animationID='12345678-1234-4234-8234-123456789abc';

@@ -1,4 +1,5 @@
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
+import {createArrayClassResetEffects} from './array-class-reset-effects.js';
 // A reaching-reset proof only. No value, Array, element or body fact is issued.
 // The caller supplies its already indexed actual cells/scopes and retains every
 // non-discounted writer in the independent producer/all-writer analysis.
@@ -179,6 +180,7 @@ export const createArrayDefiniteOverwrite = context => {
         const args={operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2']}[n.opcode];
         return !!args&&shape(n,scope,args)&&args.every(name=>primitive(input(n,name,scope.target),scope,next));
     };
+    const classEffects=createArrayClassResetEffects({...context,shape,literal,primitive,reads,safeName});
     const numeric=value=>value?.raw&&[4,5,6,7,8].includes(value.raw[0])&&value.raw.length===2&&
         ['string','number'].includes(typeof value.raw[1])&&Number.isFinite(Number(value.raw[1]));
     const identityCall=call=>{
@@ -208,9 +210,10 @@ export const createArrayDefiniteOverwrite = context => {
         if(n.opcode==='arrays_referenceLength')return shape(n,scope,['ARRAY'])&&at('ARRAY');
         if(n.opcode==='arcade_callFunction')return identityCall(calls.find(c=>c.node===n))&&
             calls.find(c=>c.node===n).args.every(a=>operand(a,scope,cell,next));
-        return false;
+        return classEffects.operand(value,scope,cell);
     };
     const declaration=(node,scope)=>{
+        if(classEffects.declaration(node,scope))return true;
         if(node.opcode!=='arcade_declareSourceReference'||!sourceScope(scope)||!shape(node,scope,['VARIABLE'],['TYPE'])||
             !['Sprite','Image','number[]','boolean[]','string[]','Sprite[]','Image[]'].includes(literal(node,'TYPE',scope.target)))return false;
         const raw=node.inputs.VARIABLE?.[1],prefix=line(scope,node);
@@ -251,15 +254,19 @@ export const createArrayDefiniteOverwrite = context => {
     };
     const point=(cell,writer,at)=>{
         const scope=owners.get(at),statement=statementOf(at);if(!scope||!statement)return false;
-        const entry=ancestry(scope);if(!entry)return false;
+        const entry=ancestry(scope);if(!entry||entry.path.some(call=>call.args.length))return false;
         if(!cell.global){
             if(scope!==writer.scope||!normalScope(scope)||scope.params.length||cell.formal)return false;
             const nodes=line(scope,statement);if(!nodes)return false;
             return scan(scope,nodes,cell,writer,false)?.overwritten===true;
         }
-        if(!ordinarySummaryGlobal(cell)||!closedEffects()||entry.root!==writer.scope||!sourceScope(writer.scope))return false;
-        let current=entry.root,seenReset=false;
-        for(const call of entry.path){
+        if(!ordinarySummaryGlobal(cell)||!closedEffects()&&!classEffects.closed)return false;
+        const ancestorScopes=[entry.root,...entry.path.map(call=>call.fn)],start=ancestorScopes.indexOf(writer.scope);
+        if(start<0)return false;
+        // The same unique, straight-line caller ancestry binds an ancestor's
+        // reset. No unrelated invocation or earlier sibling lends ordering.
+        let current=writer.scope,seenReset=false;
+        for(const call of entry.path.slice(start)){
             // Arguments run before the callee overwrite; no reset read can hide
             // in a call socket. Only exact zero-argument path calls are admitted.
             if(call.args.length)return false;

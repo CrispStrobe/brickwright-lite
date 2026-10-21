@@ -127,6 +127,7 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/array-definite-overwrite.test.mjs",
+      "test/arcade-class-array-writer-types.test.mjs",
       "test/animation-native-library-import.test.mjs",
       "test/animation-resource-native-helper-analysis.test.mjs",
       "test/arcade-animation-resource-carrier.test.mjs",
@@ -416,7 +417,8 @@
       "test/makecode-arcade-score-threshold-source.test.mjs",
       "test/makecode-project-json-snapshot.test.mjs",
       "test/makecode-arcade-sprite-flags-producer.test.mjs",
-      "test/makecode-project-palette-lookup.test.mjs"
+      "test/makecode-project-palette-lookup.test.mjs",
+      "test/arcade-class-reset-effects.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },

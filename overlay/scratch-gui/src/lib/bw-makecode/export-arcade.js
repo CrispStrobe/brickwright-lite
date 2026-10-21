@@ -3101,8 +3101,9 @@ class ArcadeEmitter {
     }
 
     localDeclaration (name, key) {
-        const type=this.localValueTypes.get(key)?.get(name) || 'any';
-        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+        const classType=this.objectClassExport?.localDeclarationType?.(key,name);
+        const type=classType??this.localValueTypes.get(key)?.get(name)??'any';
+        const initial=this.objectClassExport?.hasType?.(type)||type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -4084,7 +4085,7 @@ class ArcadeEmitter {
                     const fn = this.functionName(t,proto.mutation.proccode);
                     if(!fn)continue;
                     const types = imageParameterTypes.get(key) || [];
-                    const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || types[i] || 'any'}`);
+                    const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || this.objectClassExport.procedureParameterType?.(key,n) || types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.
                     if (this.tokened()) params.unshift('_t: number');
                     if (clonable) {
@@ -4104,7 +4105,7 @@ class ArcadeEmitter {
                     // what flows out of it; one that falls off its end returns undefined, as in PXT.
                     const returning = line => /^\s*return [^\s/]/.test(line);
                     const returns = script.some(returning);
-                    const returnType = returns ? `: ${this.arrayReturnTypes.get(key) || (this.imageReturnFunctions.has(key) ? 'Image' :
+                    const returnType = returns ? `: ${this.objectClassExport.procedureResultType?.(key) || this.arrayReturnTypes.get(key) || (this.imageReturnFunctions.has(key) ? 'Image' :
                         this.spriteReturnFunctions.has(key) ? 'Sprite' : this.valueReturnTypes.get(key) || 'any')}` : '';
                     const tail = returns && !returning(script.at(-1) || '') ? ['    return undefined'] : [];
                     // A stop/clone guard exits with a bare \`return\`; in a function that
@@ -4149,10 +4150,16 @@ class ArcadeEmitter {
                 out.push(`let ${n}: any = ${edited === undefined ? 'undefined' : JSON.stringify(edited)}`);
                 continue;
             }
-            if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
+            if(referenceCell){out.push(`let ${n}: ${this.objectClassExport?.variableDeclarationTypes?.get(n) ?? referenceCell.type}`);continue;}
             const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
             if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
             if(this.objectClassExport?.sdkVariable?.(n)){out.push(`let ${n}: Image`);continue;}
+            const actualClassType=this.objectClassExport?.variableDeclarationTypes?.get(n);
+            if(actualClassType){
+                const reference=actualClassType.endsWith('[]')||this.objectClassExport.hasType(actualClassType);
+                const initial=reference?'null':this.initialGlobals.has(n)?JSON.stringify(this.initialGlobals.get(n)):'0';
+                out.push(`let ${n}: ${actualClassType} = ${initial}`);continue;
+            }
             const objectType=this.objectClassExport?.variableTypes.get(n);
             if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
             if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}

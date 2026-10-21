@@ -1,4 +1,5 @@
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
+import {sourceValueOperation} from './source-value-operator-helpers.js';
 /** Directed scalar flow for export. Reference identity remains the responsibility
  * of the reference graph; copying a scalar does not alias its source cell. */
 export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
@@ -21,11 +22,11 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
         if(proto)definitions.set(owner,JSON.parse(proto.mutation.argumentnames || '[]'));
         const seen=new Set(),visit=node=>{if(!node || seen.has(node))return;seen.add(node);owners.set(node,owner);for(const value of Object.values(node.inputs || {}))if(typeof value?.[1]==='string')visit(target.blocks[value[1]]);visit(target.blocks[node.next]);};visit(block);
     }
-    const cache=new WeakMap();
+    const cache=new WeakMap(),consumed=new Set();
     const input=(target,block,name)=>{
         if(!cache.has(block))cache.set(block,new Map());const cells=cache.get(block);if(cells.has(name))return cells.get(name);
-        const node=child(target,block,name);if(node && !node.shadow)return cell(target,node);
-        const slot=block.inputs?.[name]?.[1];if(Array.isArray(slot) && [12,13].includes(slot[0]))return `variable:${slot[2] || slot[1]}`;
+        const node=child(target,block,name);if(node && !node.shadow){const value=cell(target,node);consumed.add(value);return value;}
+        const slot=block.inputs?.[name]?.[1];if(Array.isArray(slot) && [12,13].includes(slot[0])){const value=`variable:${slot[2] || slot[1]}`;consumed.add(value);return value;}
         const value=Symbol(name);if(Array.isArray(slot))add(value,[4,5,6,7,8].includes(slot[0])?'number':'string');else if(node)add(value,node.opcode==='math_number'?'number':'string');cells.set(name,value);return value;
     };
     const element=value=>{if(!elements.has(value))elements.set(value,Symbol('array element'));return elements.get(value);};
@@ -38,6 +39,10 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
         if(isBoolean(block))add(value,'boolean');
         if(['math_number','bw_numberLiteral','arrays_referenceLength','arrays_referenceIndex','arrays_referenceFind','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','planetemaths_min','planetemaths_max'].includes(op))add(value,'number');
         if(['text','bw_stringLiteral','operator_join','arcade_sourceTypeOf','arcade_inspectValue'].includes(op))add(value,'string');
+        const sourceOperation=sourceValueOperation(block);
+        if(sourceOperation?.result==='Number')add(value,'number');
+        if(sourceOperation?.op==='+')arithmetic.push([value,input(target,block,'LEFT'),input(target,block,'RIGHT')]);
+        if((op==='arcade_sourceValueBinary'||op==='arcade_sourceValueUnary')&&!sourceOperation)add(value,'unknown');
         if(op==='arrays_valueUnary'){const operation=literal(target,block,'OP');add(value,operation==='typeof'?'string':operation==='!'?'boolean':'number');}
         if(op==='arrays_valueBinary'){
             const operation=literal(target,block,'OP');
@@ -46,6 +51,7 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
         if(op==='arrays_specialValue'){
             const kind=literal(target,block,'KIND');if(['undefined','null'].includes(kind))add(value,kind);else if(['NaN','Infinity','-Infinity'].includes(kind))add(value,'number');
         }
+        if(op==='data_changevariableby'){const id=block.fields.VARIABLE[1]||block.fields.VARIABLE[0];variables.set(id,{target,name:block.fields.VARIABLE[0]});add(`variable:${id}`,'number');}
         if(op==='data_setvariableto'){
             const id=block.fields.VARIABLE[1] || block.fields.VARIABLE[0],destination=`variable:${id}`,source=input(target,block,'VALUE');
             variables.set(id,{target,name:block.fields.VARIABLE[0]});edge(source,destination);edge(element(source),element(destination));edge(element(destination),element(source));
@@ -75,17 +81,28 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
             if(!isKnownArrayMenuOperation(block,operation))add(destination,'unknown');
             else if(op==='arrays_mutateReference'&&['push','unshift','set','insertAt'].includes(operation))edge(input(target,block,'VALUE'),destination);
         }
-        if(!types.has(value) && !['data_variable','arcade_getLocal','arcade_callFunction','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_valueBinary','arrays_valueUnary','arrays_specialValue','argument_reporter_string_number','argument_reporter_boolean'].includes(op))add(value,'unknown');
+        if(!types.has(value) && !['data_variable','arcade_getLocal','arcade_callFunction','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_valueBinary','arrays_valueUnary','arcade_sourceValueBinary','arcade_sourceValueUnary','arrays_specialValue','argument_reporter_string_number','argument_reporter_boolean'].includes(op))add(value,'unknown');
     }
-    let changed;
+    let changed,closeEmpty=true;
     do {
         changed=false;
         for(const [from,to]of edges)for(const type of types.get(from) || [])changed=add(to,type)||changed;
         for(const [value,left,right]of arithmetic){
             const l=types.get(left),r=types.get(right);
             if(!l?.size || !r?.size)continue;
+            if([...l,...r].some(type=>!['number','boolean','string','undefined','null'].includes(type)))changed=add(value,'unknown')||changed;
             if(l.has('string') || r.has('string'))changed=add(value,'string')||changed;
-            if([...l,...r].every(type=>['number','boolean','undefined','null'].includes(type)))changed=add(value,'number')||changed;
+            if([...l].some(type=>['number','boolean','undefined','null'].includes(type))&&
+                [...r].some(type=>['number','boolean','undefined','null'].includes(type)))changed=add(value,'number')||changed;
+        }
+        if(!changed&&closeEmpty){
+            closeEmpty=false;
+            for(const target of project.targets)for(const block of Object.values(target.blocks||{}))if(block.opcode==='arcade_setCaptured'){
+                const name=literal(target,block,'NAME');
+                for(const value of types.keys())if(typeof value==='string'&&value.includes(':local:')&&
+                    (name===null||value.endsWith(':local:'+name)))changed=add(value,'unknown')||changed;
+            }
+            for(const value of consumed)if(!types.get(value)?.size)changed=add(value,'unknown')||changed;
         }
     }while(changed);
     const type=key=>{const values=[...(types.get(key) || [])].filter(value=>!['undefined','null'].includes(value));return values.length===1 && ['number','boolean','string'].includes(values[0])?values[0]:'any';};
