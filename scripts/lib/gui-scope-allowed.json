@@ -396,5 +396,17 @@
       "test/native-array-export-original-pxt.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
+  },
+  "core-js/fn/promise/finally.js": {
+    "tests": [
+      "test/compatibility-bootstrap.test.mjs"
+    ],
+    "why": "the owned compatibility bootstrap loads the GUI package's existing Promise.finally compatibility module before VM imports; measured by the unchanged GUI scope hook in the complete bootstrap controls"
+  },
+  "react-tooltip": {
+    "tests": [
+      "test/compatibility-bootstrap.test.mjs"
+    ],
+    "why": "the owned compatibility bootstrap initializes the existing GUI tooltip package before VM imports; the complete bootstrap controls measure this exact dependency and retain its API, cache identity and late-mutation behavior"
   }
 }
