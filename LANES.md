@@ -7925,3 +7925,13 @@ Production build passes. Raw source files remain byte-preserved. No independent
 edits to the four peer-owned physics/compiler/collider files; no peer worktree
 changes, hardware qualification or automatic merge. #1137 has now merged; this
 draft still requires reconciliation with current main and exact-head hosted CI.
+
+
+## Five-machine physics library intake — 2026-10-21
+
+IN PROGRESS — Codex, existing model-design lane and draft #1138, explicit owner
+request. Adapt Mean Machine, Stepworks, Stride Lab, Twinpoint and Butterfly;
+preserve raw input provenance, apply original-work CrispStrobe/BSD attribution,
+and test actual body motion, motor controls, instructions and EN/DE lessons.
+Supplied renders and analytical validation are references, not app qualification.
+Preserve peer worktrees and the four separately owned core/compiler files.
