@@ -32,3 +32,10 @@ Complete these steps in order:
 6. Admit the official run and ciphertext once, verify the receiver independently, and read every ordered report result privately. Reconcile completeness, original failures and diagnostics before replacing the historical count. Then prioritize remaining gaps by shared missing capability and qualify execution/export/reimport and GUI authoring separately.
 
 The proposed hosted converter envelope is 600 cumulative descendant CPU seconds, TERM at 900 wall seconds, KILL at 903 and terminal refusal at 905, with a 512 MiB Node heap, 16 GiB address space, 8 MiB per output leaf and 64 MiB aggregate owned output. These are an unqualified hosted proposal until the actual controller and complete controls establish them; they are not a measured fit or a change to local bounds. Credential collection, setup, sealing and receiver admission need their own finite bounds. Never reinterpret a resource failure as a complete census or split a failed full census into passing prefixes.
+
+The [Linux child-tree supervisor](ARCADE-PRIVATE-ASSESSMENT-SUPERVISOR.md)
+separately passes its complete seven groups using actual finite subprocesses,
+with saved-data review of all 12 launched operations. It does not provide
+namespace or credential isolation. Persistent bounded sandbox storage, actual
+isolation controls, normal provider admission and the manual workflow remain
+pending before the complete assessment.
