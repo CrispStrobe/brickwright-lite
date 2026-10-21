@@ -42,7 +42,7 @@ test('real VM repeated lifecycle registrations at one source site fire on every 
  await tap(' ');assert.equal(values(run).depth,1);assert.equal(values(run).pushEvents,2,'two distinct inline callbacks with the same token');await tap('z');assert.equal(values(run).depth,0);await tap(' ');assert.equal(values(run).depth,1);assert.equal(values(run).pushEvents,4,'both callbacks must fire again');run.vm.runtime.stopAll();
 });
 
-test('all manually dispatched registered hats explicitly bypass Scratch edge caches', {todo:"runtime mock lacks .on (Cannot read properties of undefined) \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},()=>{
+test('all manually dispatched registered hats explicitly bypass Scratch edge caches',()=>{
  const Arcade=loadExtensionClass('arcade');const hats=new Arcade(null).getInfo().blocks.filter(block=>/^whenRegistered/.test(block.opcode || ''));
  assert.ok(hats.length>=14);for(const hat of hats)assert.equal(hat.isEdgeActivated,false,hat.opcode);
 });
