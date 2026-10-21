@@ -1,0 +1,15 @@
+Scale Echo — original work, 2026
+
+The original assembly arrangement, original supporting source files identified
+as CC0-1.0 in LICENSE.md, and original documentation and presentation are
+dedicated to the public domain under CC0 1.0 Universal to the extent the
+author/contributor may waive rights in them.
+
+SPDX-License-Identifier: CC0-1.0
+Full legal code: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+Human-readable summary: https://creativecommons.org/publicdomain/zero/1.0/
+
+This notice does not change the licenses of reused BSD-3-Clause code,
+pre-existing catalog metadata, external LDraw part geometry, or external
+software dependencies. Their notices remain applicable as described in
+LICENSE.md. It does not grant trademark rights.

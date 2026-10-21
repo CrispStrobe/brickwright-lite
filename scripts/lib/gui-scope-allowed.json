@@ -107,6 +107,7 @@
       "test/bw-sim-rope.test.mjs",
       "test/bw-sim-s1-driving-base.test.mjs",
       "test/bw-sim-sarrus-lift.test.mjs",
+      "test/bw-sim-scaling-steering.test.mjs",
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-sensors.test.mjs",
       "test/bw-sim-session.test.mjs",

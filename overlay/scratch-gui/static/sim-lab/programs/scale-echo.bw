@@ -1,0 +1,197 @@
+# Scale Echo — mechanically enlarge a two-input path by 2:1
+# Adapted from supplied Quickstroke/Ellipse finite-program guard patterns.
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe).
+# SPDX-License-Identifier: BSD-3-Clause
+# Reset/reload the saved model before starting; both encoders must read zero.
+# A rotates the long input arm; B rides on that arm and drives the short link.
+# Eight sequential moves draw a closed loop of circular-arc segments.
+# Path moves use 8 degrees/s; the two final home approaches use 2 degrees/s.
+# The 2 degrees/s approach avoids the stock controller early-reference condition at 1.
+# The passive linkage, not coordinate commands, enforces the 2:1 scale.
+# Both ports are held and checked after every move and after settling.
+# Robot Lab simulation program; not downloadable physical-hub firmware.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 1: absolute A target -20 degrees
+  lab run motor A for (-20 - (lab motor A angle)) degrees at 8 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 2: absolute B target -30 degrees
+  lab run motor B for (-30 - (lab motor B angle)) degrees at 8 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 3: absolute A target 20 degrees
+  lab run motor A for (20 - (lab motor A angle)) degrees at 8 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 4: absolute B target 30 degrees
+  lab run motor B for (30 - (lab motor B angle)) degrees at 8 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 5: absolute A target -20 degrees
+  lab run motor A for (-20 - (lab motor A angle)) degrees at 8 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 6: absolute B target -30 degrees
+  lab run motor B for (-30 - (lab motor B angle)) degrees at 8 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 7: absolute A target 0 degrees
+  lab run motor A for (0 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (-30 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Phase 8: absolute B target 0 degrees
+  lab run motor B for (0 - (lab motor B angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  wait 1 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  lab stop motor A hold
+  lab stop motor B hold

@@ -2509,3 +2509,12 @@ adaptation, native program and bilingual lessons: Copyright (c) 2026
 CrispStrobe, BSD-3-Clause. The source fixture preserves the original CC0 grant
 and inherited BSD notice. All 169 authored LEGO placements are retained.
 Referenced official LDraw geometry keeps its separate authors and CC BY terms.
+
+### Scale Echo and Turnwise
+
+Original owner-supplied designs and native programs; application adaptations and
+bilingual lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Scale Echo's
+original assembly has a separate CC0 dedication retained in its source fixture.
+All 148 Scale Echo and 127 Turnwise placements are preserved. Referenced official
+LDraw part geometry keeps its separate authors and CC BY terms. Archive runtimes,
+generators and claimed validation reports are not included as application code.

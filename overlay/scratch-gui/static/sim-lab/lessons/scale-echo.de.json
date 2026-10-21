@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "scale-echo",
+  "language": "de",
+  "what": "Ein Pantograf aus 148 Teilen hat zwei Motoren: A dreht den langen Arm am festen Drehpunkt, B fährt auf diesem Arm mit. Ein echtes Parallelogramm kopiert die rote Markerbahn am blauen Marker in doppelter Größe. Die Kappen sind farbige Markierungen, keine Tintenstifte. Der Rahmen steht frei auf dem Boden. Zwei Antriebe und ein Parallelogramm kopieren eine Markerbahn mechanisch in doppelter Größe. Vergleiche beide Bahnen und Verschiebungsvektoren.",
+  "try": [
+    "Wähle Scale Echo unter Beispiele. Das abgesicherte native Programm wird automatisch in Blöcke geladen. Setze auf die gespeicherte Stellung zurück und starte die acht endlichen Bewegungen; beide Motoren müssen bei null beginnen.",
+    "Beobachte, wie Motor B mit dem langen Arm mitfährt. Zuerst bewegt sich A bei gehaltenem B, dann B bei gehaltenem A. Vergleiche Richtung und Strecke beider farbiger Kappen.",
+    "Nutze nach dem Zurücksetzen kleine manuelle Schritte an A oder B, um die zwei Freiheitsgrade zu vergleichen. Vor dem Programmlauf erneut zurücksetzen. Vermeide ein flach zusammengelegtes Gestänge; der geprüfte Relativwinkel liegt ungefähr bei 60–120 Grad."
+  ],
+  "why": "O sei der feste Drehpunkt, der gleiche Gelenkabstand sei L = 48 mm. Am langen Arm gilt A = Lu und B = 2Lu. Der kurze Eingangsarm ergibt C = L(u+v). Das Parallelogramm erzwingt H = L(2u+v); die gleich lange Verlängerung ergibt D = 2L(u+v). Somit gilt D−O = 2(C−O): Beide Koordinaten und jede Verschiebung verdoppeln sich. Zwei unabhängige Motorwinkel bestimmen u und v; passive Gelenke erzwingen die Skalierung.",
+  "matters": "Pantografen kopieren und vergrößern Formen durch ihre Geometrie. Das Programm gibt Gelenkwinkel vor, das Gestänge bestimmt den Ausgang. Motor B bewegt sich mit seinem Trägerarm. Numerische Genauigkeit in der Simulation beweist keine reale Reibung, Steifigkeit oder Kabelfreiheit.",
+  "question": "Wenn sich der rote Marker 10 mm nach rechts und 6 mm nach vorn bewegt, wie verschiebt sich der blaue Marker?",
+  "answer": "Der blaue Marker bewegt sich 20 mm nach rechts und 12 mm nach vorn. Beide Komponenten werden um den festen Drehpunkt verdoppelt. Nur die Weglänge zu verdoppeln und die Richtung zu ändern erfüllt die Pantografenbeziehung nicht.",
+  "further": [
+    "Vergleiche mit Ellipse Engine: Dort laufen zwei Schlitten auf rechtwinkligen Führungen, hier gibt es zwei unabhängige Drehantriebe.",
+    "Vergleiche gemessene rote und blaue Bahnen statt nur Motorwinkel. Ein realer Aufbau muss noch auf Spiel, Rahmenbiegung, Drehmoment und das Kabel zum mitfahrenden Motor B geprüft werden."
+  ],
+  "formula": "L = 48 mm; C = L(u+v), D = 2L(u+v); D−O = 2(C−O), ΔD = 2ΔC (top-view / Draufsicht).",
+  "related": [
+    "ellipse-engine.ldr",
+    "axis-plotter.ldr",
+    "twinpoint.ldr"
+  ]
+}

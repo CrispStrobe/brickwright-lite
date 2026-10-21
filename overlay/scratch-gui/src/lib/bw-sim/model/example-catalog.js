@@ -267,6 +267,34 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "scale-echo.ldr": {
+        "pieces": 148,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two inputs and a parallelogram mechanically copy a marker path at twice its size. Compare both actual paths and displacement vectors.",
+            "de": "Zwei Antriebe und ein Parallelogramm kopieren eine Markerbahn mechanisch in doppelter Größe. Vergleiche beide Bahnen und Verschiebungsvektoren."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "turnwise.ldr": {
+        "pieces": 127,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor steers two suspended wheels by different angles. Compare the inner and outer wheels and the approximation to Ackermann steering.",
+            "de": "Ein Motor lenkt zwei frei hängende Räder mit unterschiedlichen Winkeln. Vergleiche inneres und äußeres Rad und die Annäherung an die Ackermann-Lenkung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "ellipse-engine.ldr": {
         "pieces": 169,
         "motors": 1,

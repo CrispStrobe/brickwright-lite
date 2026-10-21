@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {scalingSteeringInteractions,scalingSteeringLesson} from './lib/sim-lab-scaling-steering-gate.mjs';
 import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
 import {magneticChessInteractions,magneticChessLesson} from './lib/sim-lab-magnetic-chess-gate.mjs';
 import {sarrusLiftInteractions,sarrusLiftLesson} from './lib/sim-lab-sarrus-lift-gate.mjs';
@@ -751,6 +752,15 @@ try {
             const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             fixed.on('pageerror',error=>errors.push(error.message));fixed.on('dialog',dialog=>dialog.accept());
             await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
+        }
+        for (const id of ['scale-echo','turnwise']) if (runExample(id+'.ldr')) {
+            const machine=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            machine.on('pageerror',error=>errors.push(error.message));machine.on('dialog',dialog=>dialog.accept());
+            const opts={id,openSimLab,shotsDir:resolve(artifacts,id),timeout:wallBudget(180000)};
+            await scalingSteeringInteractions(machine,opts);await machine.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await scalingSteeringLesson(german,opts,'de');await german.close();
         }
         if (runExample('ellipse-engine.ldr')) {
             const quick=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});

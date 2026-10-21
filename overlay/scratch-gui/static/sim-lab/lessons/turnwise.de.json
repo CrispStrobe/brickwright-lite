@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "turnwise",
+  "language": "de",
+  "what": "Dieser Lenkungsprüfstand aus 127 Teilen lenkt mit einem Motor und einer gesicherten Spurstange zwei frei hängende, frei drehbare Räder. Das kurveninnere Rad schlägt stärker ein als das äußere. Gezeigt wird Lenkgeometrie, kein Fahren, Reifenrubbeln oder eine echte Hinterachse. Ein Motor lenkt zwei frei hängende Räder mit unterschiedlichen Winkeln. Vergleiche inneres und äußeres Rad und die Annäherung an die Ackermann-Lenkung.",
+  "try": [
+    "Wähle Turnwise unter Beispiele, setze auf die gespeicherte Geradeausstellung zurück und starte das automatisch geladene Blockprogramm. Beobachte 10, 20 und 25 Grad am linken Innenrad und anschließend die gespiegelten Rechtskurven.",
+    "Vergleiche bei jeder Pause beide Radwinkel. Bei 25 Grad innen beträgt der äußere Winkel etwa 17,255 Grad. Bei einer Rechtskurve wird das angetriebene linke Rad zum äußeren Rad.",
+    "Nutze nach dem Zurücksetzen nur kleine manuelle Schritte an A und setze vor dem Programmlauf erneut zurück. Ersetze die asymmetrischen Ziele niemals durch einen symmetrischen Motorlauf von ±25 Grad: Eine Gestängeverzweigung nähert sich bei −19,93 Grad des linken Radwinkels einer Totlage."
+  ],
+  "why": "Die Lenkachsen stehen 80 mm auseinander. Jeder Lenkarm hat einen Spurstangenversatz von 16 mm nach innen und 32 mm nach hinten; die Spurstange ist 48 mm lang. Der passive Radwinkel ergibt sich aus einem Kreisschnitt mit festem Abstand, nicht aus einem Gleichwinkelgetriebe. Ideales Ackermann-Abrollen verlangt cot(außen)−cot(innen) = W/L. Hier sind W = 80 mm und die virtuelle Bezugslänge L = 80 mm. Das endliche Viergelenk erfüllt diese Beziehung nur näherungsweise: Bei 25 Grad innen sagt das Gestänge 17,255 Grad außen voraus, die ideale Ackermann-Beziehung etwa 17,641 Grad.",
+  "matters": "Unterschiedliche Lenkwinkel erklären, warum Räder in einer Kurve verschiedene Kreise benötigen. Der Prüfstand isoliert das Gestänge: Seine Räder hängen über dem Boden, die hintere Bezugslinie ist rein mathematisch. Geprüft werden Winkelbeziehungen, kein Reifenkontakt und kein Fahrverhalten.",
+  "question": "Warum verwendet das Rechtskurvenprogramm etwa +17,255 Grad an Motor A statt +25 Grad für die Spiegelung der größten Linkskurve?",
+  "answer": "Der Motor treibt immer das linke Rad an. Bei einer Rechtskurve ist es das äußere Rad und benötigt den kleineren Winkel, während das passive rechte Rad den größeren Innenwinkel erreicht. Gleiche positive und negative Motorziele ergäben keine gespiegelten Radpaare und könnten die Totlage überschreiten.",
+  "further": [
+    "Vergleiche das Lenktrapez mit der Fahrbasis: Dort lenken unterschiedliche Raddrehzahlen das Fahrzeug statt unterschiedlicher Radausrichtungen.",
+    "Berechne die ideale Ackermann-Beziehung bei 10, 20 und 25 Grad. Der Näherungsfehler ändert sich mit dem Einschlag; der Schnittpunkt der neutralen Lenkarme beweist keine exakte Lenkung."
+  ],
+  "formula": "W = 80 mm, k = 16 mm, d = 32 mm, Spurstange = 48 mm; ideales Ackermann: cot δaußen − cot δinnen = W/L. Innen 25° ⇒ Gestänge außen ≈ 17,255°; ideal außen ≈ 17,641°.",
+  "related": [
+    "driving-base.ldr",
+    "crank-rocker.ldr",
+    "parallel-lift.ldr"
+  ]
+}

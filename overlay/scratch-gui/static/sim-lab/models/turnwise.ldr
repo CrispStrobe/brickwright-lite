@@ -1,0 +1,260 @@
+0 Turnwise — unequal steering angles
+0 Name: turnwise.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/turnwise.txt
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID base_long_-140
+1 72 -140 310 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_long_-100
+1 72 -100 310 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_long_-60
+1 72 -60 310 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_long_100
+1 72 100 310 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_long_160
+1 72 160 310 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_long_280
+1 72 280 310 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_cross_main_-80
+1 72 0 330 -80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_main_pin_-140_-80
+1 0 -140 320 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_main_pin_-100_-80
+1 0 -100 320 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_main_pin_-60_-80
+1 0 -60 320 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_main_pin_100_-80
+1 0 100 320 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_main_180
+1 72 0 330 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_main_pin_-140_180
+1 0 -140 320 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_main_pin_-60_180
+1 0 -60 320 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_hub_-60
+1 72 200 330 -60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_hub_pin_-60
+1 0 100 320 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_hub_140
+1 72 200 330 140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_hub_pin_140
+1 0 100 320 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bearing_-1_110
+1 72 -100 110 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bearing_angle_-1_110_-100
+1 71 -100 130 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_-1_110_-100
+1 0 -100 120 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bearing_angle_-1_110_180
+1 71 -100 130 180 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_-1_110_180
+1 0 -100 120 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bearing_-1_150
+1 72 -100 150 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bearing_angle_-1_150_-100
+1 71 -100 170 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_-1_150_-100
+1 0 -100 160 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bearing_angle_-1_150_180
+1 71 -100 170 180 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_-1_150_180
+1 0 -100 160 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID frame_post_-1_-120
+1 72 -100 210 -120 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID frame_foot_-1_-120
+1 71 -100 290 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID frame_foot_pin_-1_-120
+1 0 -100 300 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID frame_post_-1_200
+1 72 -100 210 200 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID frame_foot_-1_200
+1 71 -100 290 180 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID frame_foot_pin_-1_200
+1 1 -100 310 180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID bearing_1_110
+1 72 100 110 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bearing_angle_1_110_-100
+1 71 100 130 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_1_110_-100
+1 0 100 120 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bearing_angle_1_110_180
+1 71 100 130 180 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_1_110_180
+1 0 100 120 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bearing_1_150
+1 72 100 150 40 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bearing_angle_1_150_-100
+1 71 100 170 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_1_150_-100
+1 0 100 160 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bearing_angle_1_150_180
+1 71 100 170 180 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bearing_angle_pin_1_150_180
+1 0 100 160 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID frame_post_1_-120
+1 72 100 210 -120 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID frame_foot_1_-120
+1 71 100 290 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID frame_foot_pin_1_-120
+1 0 100 300 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID frame_post_1_200
+1 72 100 210 200 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID frame_foot_1_200
+1 71 100 290 180 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID frame_foot_pin_1_200
+1 1 100 310 180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID upper_crossbrace_-80
+1 72 0 130 -80 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID upper_crossbrace_pin_-1_-80
+1 1 -100 130 -80 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID upper_crossbrace_pin_1_-80
+1 1 100 130 -80 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID upper_crossbrace_160
+1 72 0 130 160 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID upper_crossbrace_pin_-1_160
+1 1 -100 130 160 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID upper_crossbrace_pin_1_160
+1 1 100 130 160 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_side_-1
+1 72 -140 200 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_-1_-20
+1 0 -130 200 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_-1_20
+1 0 -130 200 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_-1_140
+1 0 -130 200 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_-1_-40
+1 72 -160 240 -40 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_pin_-1_-40
+1 0 -150 200 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_-1_-40
+1 71 -140 280 -40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_pad_-1_-40
+1 72 -140 295 -60 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_-1_-40
+1 1 -140 290 -40 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_-1_160
+1 72 -160 240 160 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_pin_-1_160
+1 0 -150 200 160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_-1_160
+1 71 -140 280 160 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_pad_-1_160
+1 72 -140 295 140 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_-1_160
+1 1 -140 290 160 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID motor_side_1
+1 72 -60 200 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_1_-20
+1 0 -70 200 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_1_20
+1 0 -70 200 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_1_140
+1 0 -70 200 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_post_1_-40
+1 72 -40 240 -40 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_pin_1_-40
+1 0 -50 200 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_1_-40
+1 71 -60 280 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_pad_1_-40
+1 72 -60 295 -60 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_1_-40
+1 1 -60 290 -40 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_1_160
+1 72 -40 240 160 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_pin_1_160
+1 0 -50 200 160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_1_160
+1 71 -60 280 160 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_pad_1_160
+1 72 -60 295 140 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_1_160
+1 1 -60 290 160 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID kingpin_left
+1 71 -100 0 0 0 1 0 1 0 0 0 0 -1 5713.dat
+0 !BW ID kingpin_knuckle_spacer_left
+1 71 -100 20 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID steering_arm_left
+1 4 -100 35 -80 1 0 0 0 1 0 0 0 1 32250.dat
+0 !BW ID kingpin_arm_retainer_left
+1 71 -100 45 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID kingpin_joiner_left
+1 71 -100 70 0 1 0 0 0 0 1 0 -1 0 6538a.dat
+0 !BW ID kingpin_axle_left
+1 0 -100 130 0 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID kingpin_upper_retainer_left
+1 71 -100 95 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID kingpin_bearing_spacer_left
+1 71 -100 130 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID kingpin_lower_retainer_left
+1 71 -100 165 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID wheel_axle_left
+1 0 -120 0 0 -1 0 0 0 1 0 0 0 -1 3705.dat
+0 !BW ID wheel_inner_retainer_left
+1 71 -85 0 0 0 0 -1 0 1 0 1 0 0 4265c.dat
+0 !BW ID wheel_spacer_left
+1 71 -120 0 0 0 0 -1 0 1 0 1 0 0 3713.dat
+0 !BW ID wheel_left
+1 15 -140 0 0 0 0 -1 0 1 0 1 0 0 39367p01.dat
+0 !BW ID wheel_outer_retainer_left
+1 71 -155 0 0 0 0 -1 0 1 0 1 0 0 4265c.dat
+0 !BW ID kingpin_right
+1 71 100 0 0 0 1 0 1 0 0 0 0 -1 5713.dat
+0 !BW ID kingpin_knuckle_spacer_right
+1 71 100 20 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID steering_arm_right
+1 25 100 35 -80 -1 0 0 0 -1 0 0 0 1 32250.dat
+0 !BW ID kingpin_arm_retainer_right
+1 71 100 45 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID kingpin_joiner_right
+1 71 100 70 0 1 0 0 0 0 1 0 -1 0 6538a.dat
+0 !BW ID kingpin_axle_right
+1 0 100 130 0 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID kingpin_upper_retainer_right
+1 71 100 95 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID kingpin_bearing_spacer_right
+1 71 100 130 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID kingpin_lower_retainer_right
+1 71 100 165 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID wheel_axle_right
+1 0 120 0 0 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheel_inner_retainer_right
+1 71 85 0 0 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID wheel_spacer_right
+1 71 120 0 0 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID wheel_right
+1 15 140 0 0 0 0 1 0 1 0 -1 0 0 39367p01.dat
+0 !BW ID wheel_outer_retainer_right
+1 71 155 0 0 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID tie_axle_left
+1 0 -60 50 -80 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID tie_axle_upper_cap_left
+1 71 -60 25 -80 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID tie_axle_spacer_left
+1 71 -60 45 -80 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID tie_axle_lower_cap_left
+1 71 -60 75 -80 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID tie_axle_right
+1 0 60 50 -80 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID tie_axle_upper_cap_right
+1 71 60 25 -80 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID tie_axle_spacer_right
+1 71 60 45 -80 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID tie_axle_lower_cap_right
+1 71 60 75 -80 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID tie_rod
+1 14 0 60 -80 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 -100 220 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID hub
+1 15 220 300 40 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_pin_160_-60
+1 1 160 310 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_160_140
+1 1 160 310 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_280_-60
+1 1 280 310 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_280_140
+1 1 280 310 140 0 1 0 1 0 0 0 0 -1 6558.dat
