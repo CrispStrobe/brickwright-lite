@@ -18,15 +18,16 @@ need qualification on the final composed candidate.
 
 Further work is scoped as follows:
 
-1. **Class values:** preserve refusal of edited procedure symbols, clone parser
-   metadata at its producer, and derive accessor/field values from actual source
-   constructors and writers. The latest seven-module candidate passes 16 of 19 tests; its valid
-   accessor export still refuses opaque member results. The saved diagnostic
-   identifies an obsolete initializer flowing through a definitely overwritten
-   temporary into an instance alias. A separate aggregate-escape refusal also
-   needs repair. Use actual occurrence and lexical identities to close these
-   cases; retain branch, callback and unknown-writer refusals. Do not accept annotations
-   as evidence or relax its positive assertion.
+1. **Class values:** the seven complete affected source modules now pass all
+   19 tests, including the valid accessor and edited-symbol refusals. Parser
+   metadata is cloned at its producer. Actual constructors, field writers,
+   getter/setter calls and aliases supply facts; declared types do not.
+   A narrowly proved later read uses the definite replacement of an uncaptured
+   local temporary, while branches, captures and other writes retain complete
+   conservative facts. Unknown aggregate and callback escapes still refuse.
+   After composition with latest main and the source operation work, eight
+   complete modules pass all 21 tests. Native/original execution and the visible
+   authoring journeys remain separate requirements.
 2. **Source Number results:** the composed candidate now passes all twelve
    complete native controls, without skips or TODOs. Actual Number parameters,
    `typeof`, export/reimport and the adversarial cases pass. Restore the Array
@@ -39,15 +40,20 @@ Further work is scoped as follows:
    costume picker's actual main button without weakening the GIF journey.
    The four-file candidate is committed. Both Python reader ASTs parse and their
    only executable delta is the expected supplier constant. Static comparison
-   confirms 402 prior dialect operations plus exactly one new reporter. The
+   confirms the 402 prior operations plus the binary and unary reporters in the
+   composed 404-operation table, including exact fixed selector spellings. The
    complete dialect module exceeded the local CPU limit; retain that failure
    and require hosted qualification. No filtered rerun or higher cap is used.
 4. **Browser initialization:** the official numeric artifact observes a changed
    `Function.prototype.toString` value. Investigate global tooltip/polyfill
    initialization before runtime capture. Keep intrinsic checks unchanged.
    The separate ownership claim in [#1153](https://github.com/CrispStrobe/brickwright-lite/pull/1153)
-   has merged after all four enabled checks passed; implementation and actual
-   browser qualification follow. Rotation, legacy layout and animation failures
+   has merged after all four enabled checks passed. Both GUI entries now order
+   the required compatibility dependencies before the VM graph. Three complete
+   Node controls pass using the genuine dependency modules, retaining Promise
+   completion, tooltip APIs/module reuse and refusal to repair later mutations.
+   That result covers the Node dependency entry; actual browser ES initialization,
+   native guards and browser journeys remain required. Rotation, legacy layout and animation failures
    need their own observed closure.
 5. **Measurements:** Supplier [#159](https://github.com/CrispStrobe/sb3-creator/pull/159)
    now explicitly adopts the canonical circuit repair and includes the freshly
@@ -55,12 +61,18 @@ Further work is scoped as follows:
    nine tests and failed only the stale provenance test. Independent comparison
    found all measured counts unchanged; the 31 replacements change revision
    strings only. The consolidated successor requires hosted checks, including
-   actual ARM execution. No stale pin restoration or unmeasured restamp.
+   actual ARM execution. Its WebGL checks passed, but the source import guard
+   misread import statements inside test fixture strings. Repair that guard by
+   parsing actual syntax, preserving real missing-import refusals. No stale pin
+   restoration or unmeasured restamp.
 6. **Initial payload:** the original browser build contains 4,486,993 initial
    JavaScript bytes, exceeding the existing limit by 10,641. Its ownership
-   report failed before runtime performance measurements. Identify a genuine
-   optional dependency boundary and preserve APIs, error handling and all size
-   and performance limits; qualify the emitted build and affected user journey.
+   report failed before runtime performance measurements. A separate documentation
+   claim, [#1154](https://github.com/CrispStrobe/brickwright-lite/pull/1154), scopes
+   optional micro:bit updater loading after device selection. Preserve chooser
+   activation, APIs, error handling and all size/performance limits. Merge the
+   claim before implementation; qualify the emitted build and affected journey.
+   Attributed source sizes are not measured emitted savings.
 7. **Application census:** after these repairs pass the composed gates, complete
    one ordered corpus run with import, execution and export/reimport diagnostics.
    The historical result remains 147 translated, 36 partial and one malformed;
