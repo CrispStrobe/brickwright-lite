@@ -8031,3 +8031,36 @@ constraint a meaningful negative control; ordinary end stops remain enabled.
 Twenty-eight rack/slider/universal-joint controls pass. The dependency is linked
 through the managed content-keyed worktree dependency store. Full model and
 browser requalification is still required before updating the qualified preview.
+
+### Chess guide collision investigation and next model intake
+
+IN PROGRESS — the actual native Chess controller stalls its first A move.
+A diagnostic excluding one entire jointed body pair permits the move; this
+is not qualification and whole-body exclusions will not be used as a repair.
+The scope extends to compile.js/collision-filter.js for registered, specific
+sliding-guide part pairs along physically continuous runs, preserving obstacles,
+gaps and all unrelated contacts. Other owners' checkouts remain untouched.
+Sarrus Lift and Orbit Mixer are queued after Chess. Their supplied manifests
+state 140 pieces / one motor and 161 pieces / two motors, respectively; these
+are intake counts, not yet independently qualified library entries.
+
+### Orbit Mixer qualified; Chess and Sarrus remain in development
+
+Orbit Mixer adds a 161-piece / two-motor BSD apparatus with automatic native
+program loading, two programs, EN/DE lessons, and 67 connected instruction pages.
+Both native programs pass physical-pose oracles, including a frozen-paddle
+negative control. The browser actual-worker planetary-law error is below 0.083°;
+manual A/B, both languages and the complete 161-piece BOM pass without page
+errors. The overly wide 60484 T-beam proxy arms now use 9 LDU half-widths;
+the unchanged official-mesh metadata contract passes all 21 checks. This
+removes false overlaps while preserving the real source model geometry.
+
+The Chess prototype now uses four explicitly double-sided adhesive gaskets
+between the glass and support tiles. Eight loose registration shims are removed
+because the bonded board no longer needs them. All parts remain simulated;
+no body is frozen to make transport pass. Knight and full capture programs
+complete through native feedback. Full catalogue/geometry admission, measured
+transfer/release oracles and app/browser packaging are still pending.
+Sarrus is not registered: native deck tilt exceeds screening limits even with
+more solver iterations. Preserve its failure and do not equate encoder completion
+with successful spatial linkage motion.

@@ -2076,6 +2076,50 @@
         "tempo-loop.ldr",
         "ratio-workbench.ldr"
       ]
+    },
+    "orbit-mixer": {
+      "en": {
+        "what": "Two motors control the carrier and sun of a planetary mechanism. The paddle travels around the sun while turning on its own axle. Three full carrier orbits compare held-sun forward spin, orientation compensation, and reverse spin, returning to the starting pose between cases.",
+        "try": [
+          "Choose Orbit Mixer in Examples; its program loads into Blocks automatically. Press Run. Reset and run orbit-mixer.bw. In each of the three cases, the carrier makes one complete +360° orbit and then reverses home. Follow the paddle's position and heading separately.",
+          "During the compensation phase, the sun advances +576° while the carrier advances +360°. Compare the paddle heading while moving and after settling. Matching final angles alone does not establish a constant heading during travel.",
+          "For the slower stepped experiment, load orbit-mixer-steps.bw, reset, and run. Six +15° carrier steps with +24° sun steps reach +90° and +144°, pausing between steps, then both inputs return home. Keep both motors driving or holding and retain the supplied speeds."
+        ],
+        "why": "The sun and planet mesh externally, so their rotations relative to the carrier have opposite signs. With a sun-to-planet tooth ratio of 5:3, 5(S − C) + 3(P − C) = 0, giving P = (8/3)C − (5/3)S. C, S, and P use one common positive world axis, not separate views into the motor faces. The same equation describes ideal angular velocities or angular changes from a common starting datum.",
+        "matters": "Planetary mechanisms combine orbital motion with local rotation. A second controlled input can change a tool's heading without removing its orbit. This model demonstrates those kinematics; it contains no free ingredients and does not measure material mixing.",
+        "question": "The carrier advances +360° and the sun advances +576° from the same starting datum. What is the ideal final change in paddle heading? Does this alone prove that its heading stayed fixed throughout the move?",
+        "answer": "The final change is 0°: (8/3) × 360 − (5/3) × 576 = 960 − 960 = 0. Endpoint targets alone do not prove a constant heading during travel. That requires the sun's angular velocity to remain 1.6 times the carrier's at every instant; independent motor controllers can depart from that ratio while accelerating or settling.",
+        "further": [
+          "Predict the three ideal paddle changes for the full +360° carrier orbit: sun 0° gives +960°; sun +576° gives 0°; sun +720° gives −240°. Compare predictions with measured, unwrapped native angles after settling.",
+          "Compare world rotation P with rotation relative to the carrier, P − C. In the ideal orientation-hold case P = 0, but the paddle still rotates by −C relative to the carrier.",
+          "Compare this mechanism with Mean Machine. Both combine two inputs, but their tooth ratios give different signed output equations."
+        ]
+      },
+      "de": {
+        "what": "Zwei Motoren steuern den Träger und das Sonnenrad eines Planetengetriebes. Der Rührarm umläuft das Sonnenrad und dreht sich zugleich um seine eigene Achse. Drei vollständige Trägerumläufe vergleichen Vorwärtsdrehung bei gehaltenem Sonnenrad, Orientierungsausgleich und Rückwärtsdrehung. Zwischen den Fällen kehrt das Modell in die Ausgangslage zurück.",
+        "try": [
+          "Wähle Orbit Mixer unter Beispiele; das Programm wird automatisch in Blöcke geladen. Drücke Start. Zurücksetzen und orbit-mixer.bw starten. In jedem der drei Fälle macht der Träger einen vollständigen Umlauf von +360° und kehrt anschließend rückwärts zurück. Beobachte Position und Orientierung des Rührarms getrennt.",
+          "Beim Orientierungsausgleich dreht sich das Sonnenrad um +576°, der Träger um +360°. Vergleiche die Rührarmorientierung während der Bewegung und nach dem Einregeln. Passende Endwinkel allein belegen keine konstante Orientierung auf dem Weg.",
+          "Für den langsameren Versuch mit Zwischenstopps orbit-mixer-steps.bw laden, zurücksetzen und starten. Sechs Trägerschritte von je +15° mit Sonnenradschritten von je +24° erreichen +90° und +144°. Nach jedem Schritt folgt eine Pause; anschließend kehren beide Eingänge zurück. Beide Motoren müssen angetrieben werden oder halten. Behalte die vorgegebenen Geschwindigkeiten bei."
+        ],
+        "why": "Sonnenrad und Planetenrad greifen außen ineinander. Ihre Drehungen relativ zum Träger haben deshalb entgegengesetzte Vorzeichen. Bei einem Zähnezahlverhältnis von 5:3 gilt 5(S − C) + 3(P − C) = 0 und damit P = (8/3)C − (5/3)S. C, S und P beziehen sich auf dieselbe positive Achse im Raum, nicht auf getrennte Ansichten der Motorfronten. Die Gleichung beschreibt ideale Winkelgeschwindigkeiten oder Winkeländerungen aus einer gemeinsamen Ausgangslage.",
+        "matters": "Planetengetriebe verbinden Umlauf und Eigendrehung. Ein zweiter gesteuerter Eingang kann die Orientierung eines Werkzeugs verändern, während dessen Umlauf bestehen bleibt. Dieses Modell zeigt diese Kinematik. Es enthält keine freien Zutaten und untersucht keine tatsächliche Durchmischung.",
+        "question": "Der Träger dreht sich aus der Ausgangslage um +360°, das Sonnenrad um +576°. Wie groß ist die ideale endgültige Orientierungsänderung des Rührarms? Beweist das allein, dass seine Orientierung während der gesamten Bewegung gleich blieb?",
+        "answer": "Die endgültige Änderung beträgt 0°: (8/3) × 360 − (5/3) × 576 = 960 − 960 = 0. Passende Endwinkel beweisen keine konstante Orientierung auf dem Weg. Dafür muss die Winkelgeschwindigkeit des Sonnenrads zu jedem Zeitpunkt das 1,6-Fache der Trägergeschwindigkeit betragen. Getrennte Motorregler können beim Beschleunigen oder Einregeln davon abweichen.",
+        "further": [
+          "Berechne die drei idealen Rührarmwinkel für den vollständigen Trägerumlauf von +360°: Sonnenrad 0° ergibt +960°; +576° ergibt 0°; +720° ergibt −240°. Vergleiche sie nach dem Einregeln mit den gemessenen, fortlaufend gezählten Winkeln der nativen Simulation.",
+          "Vergleiche die Drehung im Raum P mit der Drehung relativ zum Träger, P − C. Bei ideal gehaltener Orientierung gilt P = 0, relativ zum Träger dreht sich der Rührarm aber um −C.",
+          "Vergleiche das Getriebe mit Mean Machine. Beide kombinieren zwei Eingänge; unterschiedliche Zähnezahlen ergeben jedoch unterschiedliche vorzeichenbehaftete Ausgangsgleichungen."
+        ]
+      },
+      "formula": {
+        "en": "P = (8/3)C − (5/3)S; S = 0 ⇒ P = (8/3)C; S = (8/5)C ⇒ P = 0; S = 2C ⇒ P = −(2/3)C. All signs share one world axis; ideal ratios are not a claim of transient-free motor tracking.",
+        "de": "P = (8/3)C − (5/3)S; S = 0 ⇒ P = (8/3)C; S = (8/5)C ⇒ P = 0; S = 2C ⇒ P = −(2/3)C. Alle Vorzeichen beziehen sich auf dieselbe Raumachse; ideale Verhältnisse bedeuten keine fehlerfreie Nachführung während der Übergänge."
+      },
+      "related": [
+        "mean-machine.ldr",
+        "orbital-loom.ldr"
+      ]
     }
   }
 }

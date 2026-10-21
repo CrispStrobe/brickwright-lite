@@ -38,6 +38,7 @@ import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
 import { buildUniversalJoint } from './universal-joint.js';
 import { createRopes } from './rope.js';
+import {createMagnets} from './magnet.js';
 import { createAir } from './air.js';
 
 let joltPromise = null;
@@ -952,6 +953,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
     const ropeCouplings = [];
+    const magneticCouplings = [];
     /**
      * End stops through couplings: gears, chains, bands and racks tie WORLD rates, so with a joint they
      * drive at its end (a rack's slider limit, a boom hinge's) a motor still driving on is satisfied by
@@ -969,7 +971,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
-        if (g.kind === 'gear') {
+        if (g.kind === 'magneticField') {
+            magneticCouplings.push(g);
+        } else if (g.kind === 'gear') {
             hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'chain') {
@@ -1371,6 +1375,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem, allConstraints, dt: dtFixed })
         : null;
     if (ropes) stateRegistry.register('ropes', ropes.registrant);
+    const magnets = magneticCouplings.length ? createMagnets({J,couplings:magneticCouplings,bodyInterface,bodyIdOf:getBodyIDForId}) : null;
     // Pneumatics (kinds/pneumatic.js, physics/air.js): the air networks, valves, cylinders and pumps.
     const air = pneumaticCouplings.length || pumpCouplings.length
         ? createAir({ J, cylinders: pneumaticCouplings, pumps: pumpCouplings, hingeMap, sliderMap, bodyInterface, applySliderForce })
@@ -1536,6 +1541,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (screws) screws.beforeStep();
                 if (ropes) ropes.beforeStep();
                 if (air) air.beforeStep();
+                if (magnets) magnets.beforeStep();
                 if (dogClutches.length) applyDogClutches();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
@@ -1913,6 +1919,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (simShapeFilter) { J.destroy(simShapeFilter); simShapeFilter = null; }
             if (screws) screws.destroy();
             if (ropes) ropes.destroy();
+            if (magnets) magnets.destroy();
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },
     };

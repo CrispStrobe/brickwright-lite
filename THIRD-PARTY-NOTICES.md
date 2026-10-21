@@ -2474,3 +2474,11 @@ lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Per-model notices retain
 the full licence. Official LDraw geometry retains its separate authors and
 CC BY licences. Two physically required universal-joint crosses are inferred
 by the solver; the explicit-placement BOM counts 144 pieces, 146 with crosses.
+
+### Orbit Mixer
+
+Original 161-piece apparatus, two native programs and bilingual lessons:
+Copyright (c) 2026 Christian Ströbele (CrispStrobe), BSD-3-Clause.
+Full notice: `static/sim-lab/licenses/orbit-mixer.txt`. Referenced LDraw part
+geometry retains its separate authors and CC BY licences. The paddle's motion
+is solved from actual gears; predicted kinematics are not an animation input.

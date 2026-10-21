@@ -173,3 +173,13 @@ Owner-supplied `axis-plotter-bsd-source.zip`, original BSD-3-Clause work by
 Christian Ströbele (CrispStrobe). Raw model SHA-256: `2a67c5cddeed7b7480635cf4f593ff4ceea215a356e99a2064d576b8eb6dc934`.
 Raw model and README retained in `axis-plotter-source/`; the adapter checks
 the model hash. Supplied validation reports are reference data only.
+
+### Orbit Mixer
+
+Owner-supplied `orbit-mixer-bsd-source.zip`, original BSD-3-Clause work by
+Christian Ströbele (CrispStrobe). Raw model SHA-256:
+`80da92ca4ab4b8d84daa5d4ed9e50fd923f675c0dfe2ad6a9f9856efd20a8acb`.
+Original model, both native programs and licence are preserved in
+`orbit-mixer-source/`. The hash-gated adapter retains the placement geometry;
+coarse source steps are regenerated into connected instruction pages.
+Downloaded executable generators and validation scripts were not run.

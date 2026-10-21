@@ -234,7 +234,7 @@ const apart = (x, y) => x[1] <= y[0] + APART_M || y[1] <= x[0] + APART_M;
  * @returns {[string, string, [string, string][]][]} [bodyA, bodyB, part pairs [ofA, ofB]] for the pairs
  *   filtered locally, sorted; a noCollide pair not listed is filtered whole
  */
-export const localNoCollide = (bodies, joints, noCollide, coupled, edges, islands, nodes) => {
+export const localNoCollide = (bodies, joints, noCollide, coupled, edges, islands, nodes, slidingPairs = []) => {
     const byId = new Map(bodies.map(b => [b.id, b]));
     const keyOf = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
     const coupledKeys = new Set(coupled.map(([a, b]) => keyOf(a, b)));
@@ -275,6 +275,19 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
                 addLine(k, hingeLine ? {kind: 'hinge', point: lduToWorld(hingeLine.point), axis: dirToWorld(hingeLine.axis)} : {kind: 'other'});
             }
         }
+    }
+    // A groove can reach later segments of its continuous rail. Only those mating
+    // parts are seated for the whole travel; other parts of either body still collide.
+    const bodyOfPart = new Map();
+    for (const b of bodies) for (const part of b.parts) {
+        if (!bodyOfPart.has(part)) bodyOfPart.set(part, new Set());
+        bodyOfPart.get(part).add(b.id);
+    }
+    for (const [p, q] of slidingPairs) for (const a of bodyOfPart.get(p) || []) for (const b of bodyOfPart.get(q) || []) {
+        if (a === b) continue;
+        const k = keyOf(a, b);
+        if (!seated.has(k)) seated.set(k, new Set());
+        seated.get(k).add(a < b ? `${p}\n${q}` : `${q}\n${p}`);
     }
     // A pair joined by a joint moves as that joint lets it: the joint replaces what the groups said.
     const jointed = new Map();

@@ -92,6 +92,7 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'orbit-mixer.ldr', title: {en: 'Orbit Mixer — planetary heading control', de: 'Orbit Mixer — Planetengetriebe und Ausrichtung'}, example: 'orbit-mixer.bw', mat: 'plain'},
     {file: 'phase-bridge.ldr', title: {en: 'Phase Bridge — double-Cardan cancellation', de: 'Phase Bridge — Doppel-Kardan-Ausgleich'}, example: 'phase-bridge.bw', mat: 'plain'},
     {file: 'phase-bridge-misphased.ldr', title: {en: 'Phase Bridge — misphased comparison', de: 'Phase Bridge — falsch ausgerichteter Vergleich'}, example: 'phase-bridge.bw', mat: 'plain'},
     {file: 'axis-plotter.ldr', title: {en: 'Axis Plotter — Cartesian drawing', de: 'Axis Plotter — kartesisches Zeichnen'}, example: 'axis-plotter.bw', mat: 'plain'},

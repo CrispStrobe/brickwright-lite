@@ -44,6 +44,7 @@
 import {vecSub, vecDot, vecCross, vecScale, vecNormalize, SIN_1_DEG} from '../mech/vec.js';
 import {LDU_M, lduToWorld, dirToWorld} from '../contracts.js';
 import {gearHinges, TOL} from './gear-mesh.js';
+import {continuousStrips} from './continuous-strip.js';
 import {spurGears, toothConnectors, placedSpur, placedTooth} from './tooth-parts.js';
 
 const isUnit = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite) && Math.abs(Math.hypot(...v) - 1) < 1e-6;
@@ -75,7 +76,7 @@ export const RACK = {
         const diagnostics = [];
         const limits = [];
         const gears = spurGears(nodes, islands, ['spur', 'bevel']).filter(g => g.type === 'spur' || g.meshesAs.includes('spur'));
-        for (const rack of toothConnectors(nodes, islands, 'rack-teeth', ['normal'])) {
+        for (const rack of continuousStrips(toothConnectors(nodes, islands, 'rack-teeth', ['normal']))) {
             for (const gear of gears) {
                 if (gear.islandId === rack.islandId) continue;
                 const contact = rackContact(rack, gear);

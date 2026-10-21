@@ -267,6 +267,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "orbit-mixer.ldr": {
+        "pieces": 161,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Compare orbital travel and paddle heading: two inputs select forward spin, heading compensation or reverse spin.",
+            "de": "Vergleiche Umlauf und Paddelausrichtung: Zwei Eingänge wählen Vorwärtslauf, Ausrichtungsausgleich oder Rückwärtslauf."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "phase-bridge.ldr": {
         "pieces": 144,
         "motors": 1,

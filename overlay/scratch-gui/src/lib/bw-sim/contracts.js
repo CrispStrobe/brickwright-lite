@@ -367,6 +367,8 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
             if (!isVec(c?.position)) out.push(`${w}.position: not a Vec3`);
             checkUnit(c?.axis, `${w}.axis`, out);
             if (c?.length !== undefined && !(isNum(c.length) && c.length > 0)) out.push(`${w}.length: need a positive number`);
+            if (c?.data?.seatOffsetLdu !== undefined && !(c.type === 'stud' && isNum(c.data.seatOffsetLdu) &&
+                c.data.seatOffsetLdu >= 0 && c.data.seatOffsetLdu < c.length)) out.push(`${w}.data.seatOffsetLdu: a stud clutch plane must lie within its primitive length`);
             if (c?.friction !== undefined && typeof c.friction !== 'boolean') out.push(`${w}.friction: need a boolean`);
             if (c?.closedEnd !== undefined && !((c.closedEnd === 1 || c.closedEnd === -1) && (c.type === 'pinhole' || c.type === 'axlehole'))) {
                 out.push(`${w}.closedEnd: only a pinhole/axlehole may have one, and it is 1 or -1`);

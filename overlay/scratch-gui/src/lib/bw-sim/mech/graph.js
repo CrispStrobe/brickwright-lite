@@ -13,6 +13,7 @@ import {motorPhaseMeta} from '../model/motor-phase.js';
 import {mat3MulVec3, vecAdd, vecNormalize} from './vec.js';
 import {upgradePartMeta, partDrivenJoints, partMotor, portRefOf} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
+import {connectorSeatPosition,connectorSeatLength,connectorNormal} from '../kinds/connector-frame.js';
 import {PAIR_REACH_LDU, connectorBounds, createSpatialIndex, grow} from './spatial-index.js';
 
 // The v1 connector rules live in kinds/pin-axle.js (the connector kind registry's first
@@ -21,10 +22,11 @@ export {edgeKind, MIN_ENGAGE_LDU, shaftEngagement, isShaftTypeExport, isHoleType
 
 /** Transform a connector from part frame to LDraw model frame (LDU). */
 const transformConnector = (conn, pos, rot) => {
-    const p = vecAdd(mat3MulVec3(rot, conn.position), pos);
+    const p = vecAdd(mat3MulVec3(rot, connectorSeatPosition(conn)), pos);
     const aRaw = mat3MulVec3(rot, conn.axis);
     const a = vecNormalize(aRaw);
-    const out = {id: conn.id, type: conn.type, position: p, axis: a, length: conn.length, friction: conn.friction, _orig: conn};
+    const out = {id: conn.id, type: conn.type, position: p, axis: a, length: connectorSeatLength(conn), friction: conn.friction, _orig: conn};
+    if (conn.data?.normal) out.normal = connectorNormal(conn,rot);
     if (conn.closedEnd !== undefined) out.closedEnd = conn.closedEnd;
     return out;
 };
