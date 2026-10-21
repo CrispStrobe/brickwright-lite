@@ -57,7 +57,7 @@ const modelKey = m => m.id || m.file;
 
 const TEXT = {
     en: {
-        model: 'Model', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io) or LEGO Digital Designer (.lxf)', loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
+        model: 'Model', importHelp: 'Open a model: LDraw (.ldr, .mpd), BrickLink Studio (.io), LEGO Digital Designer (.lxf) or LeoCAD (.lcd)', loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
@@ -96,7 +96,9 @@ const TEXT = {
             'lxf-no-lxfml': 'this LEGO Digital Designer file holds no model (.LXFML).',
             'lxf-unreadable': 'this LEGO Digital Designer model could not be read.',
             'lxf-version': 'this LEGO Digital Designer file is from a version the Robot Lab cannot read (only LDD 4).',
-            'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io and .lxf files.'
+            'lcd-unreadable': 'this LeoCAD project could not be read.',
+            'lcd-version': 'this LeoCAD project is from a version the Robot Lab cannot read (LeoCAD 0.5 to 0.79 files only).',
+            'unsupported-format': 'the Robot Lab opens .ldr, .mpd, .io, .lxf and .lcd files.'
         },
         instructionsHelp: 'Step-by-step building instructions for this robot, to build it from real LEGO® parts',
         search: 'Search parts', searchHint: 'Search: name or number', clearSearch: 'Clear the search', recent: 'Recently used',
@@ -171,7 +173,7 @@ const TEXT = {
         }
     },
     de: {
-        model: 'Modell', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io) oder LEGO Digital Designer (.lxf)', loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
+        model: 'Modell', importHelp: 'Ein Modell öffnen: LDraw (.ldr, .mpd), BrickLink Studio (.io), LEGO Digital Designer (.lxf) oder LeoCAD (.lcd)', loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
@@ -210,7 +212,9 @@ const TEXT = {
             'lxf-no-lxfml': 'Diese LEGO-Digital-Designer-Datei enthält kein Modell (.LXFML).',
             'lxf-unreadable': 'Dieses LEGO-Digital-Designer-Modell konnte nicht gelesen werden.',
             'lxf-version': 'Diese LEGO-Digital-Designer-Datei stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur LDD 4).',
-            'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io- und .lxf-Dateien.'
+            'lcd-unreadable': 'Dieses LeoCAD-Projekt konnte nicht gelesen werden.',
+            'lcd-version': 'Dieses LeoCAD-Projekt stammt aus einer Version, die das Roboter-Labor nicht lesen kann (nur Dateien von LeoCAD 0.5 bis 0.79).',
+            'unsupported-format': 'Das Roboter-Labor öffnet .ldr-, .mpd-, .io-, .lxf- und .lcd-Dateien.'
         },
         instructionsHelp: 'Bauanleitung für diesen Roboter, Schritt für Schritt, zum Nachbauen mit echten LEGO®-Teilen',
         search: 'Teile suchen', searchHint: 'Suche: Name oder Nummer', clearSearch: 'Suche löschen', recent: 'Zuletzt benutzt',
@@ -312,7 +316,7 @@ const HIGHLIGHT_MS = 3000;
  * What "Open…" accepts (lib/bw-sim/model/model-file.js OPEN_ACCEPT, kept here so the first load does not
  * pull the model readers in; test/bw-sim-model-file.test.mjs holds the two equal) and what "Save as…" offers.
  */
-const OPEN_ACCEPT = '.ldr,.mpd,.io,.lxf';
+const OPEN_ACCEPT = '.ldr,.mpd,.io,.lxf,.lcd';
 const SAVE_FORMATS = ['ldr', 'mpd', 'io'];
 /** The `0 <title>` line every model the pane writes carries (it is not parsed back, so it must not vary). */
 const MODEL_TITLE = 'Robot Lab model';
@@ -1076,7 +1080,10 @@ class SimLabPane extends React.Component {
             const bytes = new Uint8Array(await f.arrayBuffer());
             const ldconfig = /\.lxf$/i.test(f.name) ?
                 (await this.lib.fetchLDrawClosure([], {withConfig: true})).read('ldconfig.ldr') || '' : '';
-            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE, catalog: this.lib.CATALOG});
+            // An LDD file names its parts by design number: those the catalogue lacks are derived first, so
+            // the import can place them by their connections (lib/bw-sim/model/ldd-snap.js).
+            const prepareCatalog = parts => this.lib.catalogFor(parts.map(p => `1 16 0 0 0 1 0 0 0 1 0 0 0 1 ${p}`).join('\n'));
+            opened = await this.lib.openModelFile(f.name, bytes, {ldconfig, title: MODEL_TITLE, catalog: this.lib.CATALOG, prepareCatalog});
         } catch (error) {
             const reason = (error && this.text.fileErrors[error.code]) || (error && error.message) || String(error);
             if (!this.disposed) this.setState({message: this.t('fileFailed', {name: f.name, error: reason})});

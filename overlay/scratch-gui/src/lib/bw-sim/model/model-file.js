@@ -9,6 +9,7 @@
 //   .mpd  LDraw multi-part document       open (sub-models flattened), save (one FILE)
 //   .io   BrickLink Studio                open (unencrypted only), save
 //   .lxf  LEGO Digital Designer           open
+//   .lcd  LeoCAD project (binary, 0.x)    open
 //
 // BRICKLINK STUDIO .io: a ZIP archive whose `model.ldr` is the model in plain
 // LDraw with LDraw colour codes (LDraw wiki "IO"; the open-source readers in
@@ -32,18 +33,25 @@
 //
 // LEGO DIGITAL DESIGNER .lxf: a ZIP with `IMAGE100.LXFML` (model/lxf-model.js)
 // and a thumbnail.
+//
+// LEOCAD .lcd: LeoCAD's own binary project file until LeoCAD 0.80 (model/lcd-model.js):
+// the pieces with their LDraw part numbers, colours (LeoCAD's table) and the poses of
+// the building instructions, step by step. It becomes a model from elsewhere (its
+// author is the project's), so its motors and sensors are plugged in as for an MPD.
 
 import JSZip from 'jszip';
 import {serializeModel} from './ldraw-model.js';
-import {LxfError, parseLxfml} from './lxf-model.js';
+import {LxfError, parseLxfml, lxfDesigns} from './lxf-model.js';
 import {lddColours} from './ldd-parts.js';
+import {LcdError, leoCadToLdraw} from './lcd-model.js';
 
 /** Formats by extension: what Open accepts and what Save as offers. */
 export const MODEL_FORMATS = Object.freeze({
     ldr: {open: true, save: true, mime: 'text/plain'},
     mpd: {open: true, save: true, mime: 'text/plain'},
     io: {open: true, save: true, mime: 'application/zip'},
-    lxf: {open: true, save: false, mime: 'application/zip'}
+    lxf: {open: true, save: false, mime: 'application/zip'},
+    lcd: {open: true, save: false, mime: 'application/octet-stream'}
 });
 /** The file input's `accept`. */
 export const OPEN_ACCEPT = Object.keys(MODEL_FORMATS).filter(k => MODEL_FORMATS[k].open).map(k => `.${k}`).join(',');
@@ -202,13 +210,15 @@ export const serializeMpd = (model, {name = 'model.ldr', title} = {}) => {
 /**
  * An LDD .lxf's model as LDraw text.
  * @param {Uint8Array} bytes
- * @param {{ldconfig: string, catalog?: Map<string, object>}} options ldconfig: LDConfig.ldr text (the LEGO colour
- *        numbers); catalog: the Robot Lab's parts (a design outside ldd-parts.js may then be placed with a
- *        derived frame: lxf-model.js)
+ * @param {{ldconfig: string, catalog?: Map<string, object>, prepareCatalog?: (parts: string[]) => Promise<*>}} options
+ *        ldconfig: LDConfig.ldr text (the LEGO colour numbers); catalog: the Robot Lab's parts (a design outside
+ *        ldd-parts.js may then be placed with a derived frame or by its connections: lxf-model.js);
+ *        prepareCatalog: loads the LDraw parts the designs may be into `catalog` first (the app derives the
+ *        ones it lacks from the LDraw library, sim-lab.js catalogFor)
  * @returns {Promise<{text: string, refusals: object[]}>}
  * @throws {ModelFileError} `not-a-zip`, `lxf-no-lxfml`, `lxf-unreadable`, `lxf-version`
  */
-export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', title}) => {
+export const readLxf = async (bytes, {ldconfig, catalog, prepareCatalog, name = 'model.lxf', title}) => {
     let xml;
     if (isZip(bytes)) {
         const {encrypted} = zipDirectory(bytes);
@@ -220,6 +230,12 @@ export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', tit
     } else {
         xml = new TextDecoder().decode(bytes); // a bare .lxfml
     }
+    if (prepareCatalog && catalog) {
+        const designs = lxfDesigns(xml).filter(d => /^[0-9A-Za-z]+$/.test(d));
+        try {
+            await prepareCatalog(designs.map(d => `${d.toLowerCase()}.dat`));
+        } catch (_) { /* offline: the designs the catalogue lacks are refused by name */ }
+    }
     let parsed;
     try {
         parsed = parseLxfml(xml, {colours: lddColours(ldconfig), catalog});
@@ -227,7 +243,25 @@ export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', tit
         if (error instanceof LxfError) throw new ModelFileError(error.code, error.message);
         throw error;
     }
-    return {text: serializeModel(parsed.model, {name: renameTo(name, 'ldr'), title}), refusals: parsed.refusals};
+    // A model from elsewhere, not ours: its motors and sensors are plugged in for it (sim-session.js prepareModel).
+    const text = serializeModel(parsed.model, {name: renameTo(name, 'ldr'), title})
+        .replace(/^0 Author: Brickwright(\r?)$/m, '0 Author: LEGO Digital Designer model (imported)$1');
+    return {text, refusals: parsed.refusals};
+};
+
+/**
+ * A LeoCAD .lcd project as LDraw text.
+ * @param {Uint8Array} bytes
+ * @returns {{text: string, refusals: object[]}}
+ * @throws {ModelFileError} `lcd-unreadable`, `lcd-version`
+ */
+export const readLeoCad = (bytes, {name = 'model.lcd'} = {}) => {
+    try {
+        return leoCadToLdraw(bytes, {name});
+    } catch (error) {
+        if (error instanceof LcdError) throw new ModelFileError(error.code, error.message);
+        throw error;
+    }
 };
 
 /**
@@ -239,11 +273,12 @@ export const readLxf = async (bytes, {ldconfig, catalog, name = 'model.lxf', tit
  * @returns {Promise<{text: string, name: string, refusals: object[]}>} name: the model's name from now on (.ldr for converted files)
  * @throws {ModelFileError}
  */
-export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog} = {}) => {
+export const openModelFile = async (name, bytes, {ldconfig = '', title, catalog, prepareCatalog} = {}) => {
     const format = formatOf(name);
     if (format === 'ldr' || format === 'mpd') return {text: new TextDecoder().decode(bytes), name, refusals: []};
     if (format === 'io') return {...await readStudioIo(bytes), name: renameTo(name, 'ldr')};
-    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, catalog, name, title}), name: renameTo(name, 'ldr')};
+    if (format === 'lxf') return {...await readLxf(bytes, {ldconfig, catalog, prepareCatalog, name, title}), name: renameTo(name, 'ldr')};
+    if (format === 'lcd') return {...readLeoCad(bytes, {name}), name: renameTo(name, 'ldr')};
     throw new ModelFileError('unsupported-format', `files ending in ${(/\.[^.]*$/.exec(String(name)) || [''])[0] || '(nothing)'} are not model files the Robot Lab opens`);
 };
 
