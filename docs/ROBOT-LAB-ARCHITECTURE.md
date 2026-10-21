@@ -137,7 +137,7 @@ custom constraint (§8 D1).
 | M13 | Sliding joints (fork carriage, plotter carriage, telescopic boom) | beams on axles, axle connectors sliding on axles (frictionless), 6538 sliding on 3L axles | Axle in a **round** hole today is a hinge; a part that slides **and** turns on an axle needs a hinge+slider = Jolt `SixDOF` with rotation-about-axis and translation-along-axis free (new joint kind `cylindrical`). Stock. Axial friction and end stops from the axle's length (both connectors' extents are already in `PartMeta`). |
 | M14 | Limit switch / touch sensor | RCX touch 879, NXT/EV3 touch, SPIKE force, Technic Control touch sensor | Contact-based, not a raycast: `ContactListenerJS` collects contact impulses on the plunger collider (a separate small body on a slider with a spring, so it really travels), pressed = plunger travel > threshold. Requires dynamic–dynamic collisions between plunger and robot parts (`GroupFilterTable`). Stock. |
 | M15 | Pen and paper (plotter) | plotter pen holder (any Technic pen clip; the 1990 set used a felt pen in a holder), paper sheet | Pen = `MarkerDevice` (a point on a body + a "down" condition: tip within 0.4 mm of the paper surface, or a pen-lift slider at its lower limit). Each physics step with the pen down appends the tip's position in the **paper's frame** to a polyline (`world/paper.js`): the paper is a world object (static sheet, or a body moved by feed rollers). Rendered as a texture; read by the acceptance test as vectors. Stock (no physics beyond poses). **Built 2026-10-20** (view/pen-layer.js): any part marked `pen` (properties "Draws on the floor"; `0 !BW PEN`) draws its track wherever the lowest point of its colliders is within 1.2 mm of the floor (a rolling ball's tip under its centre); the strokes are the Robot Lab API's `drawing()` (cm). The floor is the paper; a moving paper sheet is not built. |
-| M16 | Steering (Ackermann, towball links) | steering arms, towball 2736 + ball sockets (already have `ball`/`ballsocket`), rack | Rack-and-pinion (M4) + ball joints (exists) + hinges. Stock. |
+| M16 | Steering (Ackermann, towball links) | steering arms, towball 2736 + ball sockets (already have `ball`/`ballsocket`), rack | Rack-and-pinion (M4) + ball joints (exists) + hinges. Stock. **Built 2026-10-20 without the rack** (the Differential car, *Differential car as built* below): a motor on one kingpin, steering arms and a tie rod on frictionless pins, all hinges. |
 | M17 | Shock absorbers / springs | shock absorbers 6.5L and 9.5L | Slider with limit spring (stiffness + damping). Stock. **Built 2026-10-20** (kinds/shock.js): the 9L shock absorber's cylinder 2909 and rod 2910 ('shock-bore' / 'shock-rod' → a slider), the stroke 40 LDU as the slider's limits, and a spring (150 N/m, damped) as the slider's position motor towards full extension (jolt-core; `joint.spring`). Test: a weight sinks mg/k, a heavy one bottoms out. The spring's own formed part (u9409-f1/f2) is not drawn. |
 | M18 | Ratchet / one-way (crane pawl) | pawl on a gear | Hinge limit on a pawl body + contact; or a `oneWay` coupling flag on a hinge (motor locks one direction). Stock approx. |
 
@@ -201,7 +201,7 @@ does not slip (friction rollers are the risk; the XY-table variant is exact).
 
 **T6 Differential car** (classic Technic 8860-style chassis or SPIKE-sized): M7 diff, M16
 steering, M1, M17 suspension. Drives on the mats. Hard: the diff is the custom-constraint
-case.
+case. **Built 2026-10-20** (SPIKE-sized, no suspension): *Differential car as built* below.
 
 **T7 Pneumatic arm / press** (8868/8862 lineage): M12 pump-valve-cylinder, M1, manual pump
 or compressor motor. Hard: the pressure model's tuning against the real feel (time to raise
@@ -1868,3 +1868,36 @@ upstream. Everything but the gear constraints is bit-identical to 1.1.0 (the for
   Differential 611 → 427 (−30 %), Two-speed gearbox 468 → 568 (+21 %: 120 iterations instead of 30),
   Forklift 121 → 118; models without gears and the 2,054-part stress model unchanged within the
   noise (60–80 µs; 1855 → 1891).
+
+### Differential car as built (2026-10-20, `lane/robot-lab-diffcar-20261020`)
+
+T6 on main's mechanics, no new physics: `static/sim-lab/models/differential-car.ldr`, written by
+`scripts/gen-differential-car-model.mjs`; example `programs/differential-car.bw`; test
+`test/bw-sim-differential-car.test.mjs`; docs/SIM-LAB.md *The differential car, ready to run*.
+
+- **Drive (M7):** the Differential example's gear set, turned upside down: motor A lies over the rear
+  axle, its 12T pinion on the 28T casing from above; the 'relativeGear' couplings (Willis, relative to
+  the casing) carry it as they do on the bench. Measured in a steady turn: outer/inner = (R + t/2)/(R − t/2)
+  to 0.01 %, the casing at the mean of the wheels.
+- **Steering (M16) without a rack.** Main's rack and pinion is Jolt's `RackAndPinionConstraint`, which ties
+  the pinion's and the rack's WORLD rates (kinds/rack.js): exact only while the pinion's centre does not
+  move along the rack. On a car the front axle moves sideways in every curve (v·tan δ at the front: ~70 mm/s
+  for 20° at 0.2 m/s), so the rack would be pushed along its slider, and at its end the constraint would
+  turn the whole model (the Forklift's tipping). A rack that steers a moving car needs the rack constraint
+  relative to the frame (as the fork's `GearMeshConstraint` is for gears) — a jolt-core/fork change, left
+  for the owner. The car steers instead the way many Technic models do: motor B's output holds the left
+  kingpin (motor B is the steering servo), and a 5L tie rod on frictionless pins joins two steering arms
+  (32250, one hole in and four back: their lines meet at the rear axle's middle, the Ackermann trapezoid).
+  All joints are hinges, relative by construction. Measured: inner 20.00°, outer 17.38° (exact Ackermann
+  17.11°); the turn radius 0.4 % from the bicycle model.
+- **No trail:** knuckles 5713 (axle 3L with a perpendicular pin hole): the kingpin passes through the
+  wheel's axle. With the 6536 connector as knuckle (20 LDU trail) a parked car turned ~3° per 30° of
+  steering, because each wheel's contact point swings sideways round its kingpin.
+- **The end of the steering's travel** is where the inner front wheel meets the tie rod (29° / 34° at the
+  left wheel). Dynamic–dynamic contact stops it there; motor B pushing into that end at 15 % turned the
+  parked car 1.1° (contact, not the rack's world-rate twist). The program steers by position, at most 20°,
+  and never runs B open-ended. When lego-8f's end stops (`lane/robot-lab-flex4-20261020`) land, a motor
+  pushing into a hinge's limit stalls there as a real one does; the steering could then carry hinge limits.
+- **Floor:** main's floor is 2 m square; the program's circle (R ≈ 0.29 m) keeps every part within 0.63 m
+  of its middle.
+
