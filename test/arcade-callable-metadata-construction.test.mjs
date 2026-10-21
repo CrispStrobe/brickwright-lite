@@ -7,7 +7,7 @@ const require=createRequire(import.meta.url);
 const values=require('../overlay/scratch-vm/src/util/bw-values.js');
 const CallableValues=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/callable-values.js');
 
-test('Arcade metadata-only construction exposes its actual blocks without granting callable resources', {todo:"runtime mock lacks .on (Cannot read properties of undefined) \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},()=>{
+test('Arcade metadata-only construction exposes its actual blocks without granting callable resources',()=>{
     const Arcade=loadExtensionClass('arcade');
     const extension=new Arcade();
     const info=extension.getInfo();

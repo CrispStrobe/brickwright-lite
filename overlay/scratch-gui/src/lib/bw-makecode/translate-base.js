@@ -388,10 +388,12 @@ export class BaseTranslator {
             // Parenthesised, and not optionally: `maxSpeed * -cos(a)` written
             // as `maxSpeed * 0 - cos(a)` is `(maxSpeed*0) - cos(a)`, which
             // runs and is wrong.
-            if (node.op === '-') return `(0 - ${this.expr(node.argument)})`;
+            // The argument is grouped too: `-(a + b)` written as
+            // `(0 - a + b)` is (0 - a) + b.
+            if (node.op === '-') return `(0 - ${this.side(node.argument, '-', true)})`;
             if (node.op === '~') {
                 this.usesBitops = true;
-                return `(bitnot ${this.expr(node.argument)})`;
+                return `(bitnot ${this.bitwiseOperand(node.argument)})`;
             }
             return this.expr(node.argument);
         case 'Binary': {
@@ -428,7 +430,7 @@ export class BaseTranslator {
             if (BITWISE[op]) {
                 this.usesBitops = true;
                 if (op === '>>>') this.needsBitopsNote = true;
-                return `(${e(node.left)} ${BITWISE[op]} ${e(node.right)})`;
+                return `(${this.bitwiseOperand(node.left)} ${BITWISE[op]} ${this.bitwiseOperand(node.right)})`;
             }
             if (ARITH[op]) return `${this.side(node.left, op, false)} ${op} ${this.side(node.right, op, true)}`;
             return `${e(node.left)} ${op} ${e(node.right)}`;
@@ -610,6 +612,19 @@ export class BaseTranslator {
         const theirs = ARITH[parentOp];
         const wrap = mine < theirs || (isRight && mine === theirs && ['-', '/', '%'].includes(parentOp));
         return wrap && !wrapped(value) ? `(${value})` : value;
+    }
+
+    /**
+     * One operand of a bitwise word (`bitor`, `shiftleft`, `bitnot`). The
+     * dialect binds those words tighter than any arithmetic operator, and the
+     * parser has dropped TypeScript's parentheses, so a compound operand is
+     * grouped: `(v / 4) | 0` written as `(v / 4 bitor 0)` read back as
+     * v / (4 | 0).
+     */
+    bitwiseOperand (child) {
+        const value = this.expr(child);
+        if (child && ['Binary', 'Unary', 'Conditional'].includes(child.type) && !wrapped(value)) return `(${value})`;
+        return ofGuard(value);
     }
 
     /** A name nothing in the program uses yet, for a flag or counter we introduce. */

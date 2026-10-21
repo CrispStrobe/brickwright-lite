@@ -22,7 +22,7 @@
  *      makes, ~1 s each without blobs). Unset → that half is SKIPPED by name.
  *
  * Exempt BY ROLE, and why each class is history rather than a reference:
- *   - ledgers (LANES.md, HISTORY.md, ROADMAP.md, PLAN.md, BLOCKED.md,
+ *   - ledgers (LANES.md and lanes/*, CI-POINTERS.md, HISTORY.md, ROADMAP.md, PLAN.md, BLOCKED.md,
  *     HANDOFF.md): records of what happened; a sha there is dated.
  *   - docs prose (docs/**.md EXCEPT docs/generated/**): narrative cites the
  *     commit it discusses. docs/generated is the opposite — it is one of the
@@ -133,7 +133,7 @@ export const parsePreviousPins = (logText, currentShas = new Set(), allowedKeys 
 
 /** Role of a tracked file for this test: 'ledger' | 'receipt' | 'docs-prose' | 'skip' | 'code'. */
 export const roleOf = file => {
-    if (/^(LANES|HISTORY|ROADMAP|PLAN|BLOCKED|HANDOFF)\.md$/.test(file)) return 'ledger';
+    if (/^(LANES|HISTORY|ROADMAP|PLAN|BLOCKED|HANDOFF|CI-POINTERS)\.md$/.test(file) || /^lanes\/[^/]+\.(md|tsv)$/.test(file)) return 'ledger';
     if (/^docs\/generated\//.test(file)) return 'code';
     // A dated run receipt records the pin it was MEASURED at; moving that sha
     // on a pin bump would falsify the evidence. Its own role rather than
