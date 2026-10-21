@@ -2,9 +2,10 @@ DEVICE SPIKE
 
 # Robot Lab: drive a car with a differential and front steering.
 # Model: Differential car. Motor A turns the back wheels through a differential;
-# motor B turns the front wheels (it holds the left one's kingpin, a bar takes the right one along).
+# motor B turns a pinion on a gear rack, and two tie rods from the rack's ends turn the front wheels.
 # The car drives ahead, goes once round a circle and backs up to where it started.
-# Motor B steers by position, never further than 20 degrees: the steering stops near 30.
+# Motor B steers by position: 100 degrees move the rack 10 mm and turn the wheels about 19 degrees.
+# The rack's guide stops it 12 mm each way, at about 115 degrees of motor B.
 WHEN flag clicked:
   set motor stop action B hold
   set motor speed B 20
@@ -14,7 +15,7 @@ WHEN flag clicked:
   start motor A forward
   wait 2 seconds
   # Steer left and go round once: the yaw counts down to -180, jumps to 180 and comes back to 0.
-  run motor B to position -20
+  run motor B to position 100
   wait until (spike angle yaw) < -90
   wait until (spike angle yaw) > 90
   wait until (spike angle yaw) < 0
