@@ -1,3 +1,4 @@
+import {tool, toolAttribute} from './sim-lab-toolbar-gate.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -53,8 +54,7 @@ const portOf = (page, id) => page.evaluate(i => window.__bwSimLab.editor.model.p
 
 /** Waits until the pane's overlay toggle and the view agree that the overlay is on/off. */
 const setMotion = async (page, which, on) => {
-    const box = page.getByTestId('bw-sim-lab-show-motion');
-    if ((await box.isChecked()) !== on) await box.click();
+    if ((await toolAttribute(page,'show-motion','aria-checked')) !== String(on)) await tool(page,'show-motion');
     await page.waitForFunction(([w, want]) => {
         const pane = window.__bwSimLab._pane;
         const view = w === 'build' ? pane.editView : pane.view;
@@ -70,17 +70,17 @@ export const insightInteractions = async (page, {shotsDir}) => {
     await page.waitForFunction(() => window.__bwSimLab._pane.view?.overlayStats().ports === 2, null, {timeout: 15000});
     assert.equal(await badge(page, 'motorL').textContent(), 'A');
     assert.equal(await badge(page, 'motorR').textContent(), 'B');
-    assert.ok(await page.getByTestId('bw-sim-lab-show-ports').isChecked(), '"Show ports" is on in Simulate');
+    assert.ok((await toolAttribute(page,'show-ports','aria-checked')) === 'true', '"Show ports" is on in Simulate');
     // A cable from each plugged-in motor to the hub.
     await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().cables.length === 2, null, {timeout: 5000});
     assert.deepEqual((await overlay(page, 'simulate')).cables.slice().sort(), ['motorL', 'motorR'], 'a cable from each motor to the hub');
-    assert.equal(await page.getByTestId('bw-sim-lab-show-motion').isChecked(), false, '"Show how it moves" starts off');
+    assert.equal((await toolAttribute(page,'show-motion','aria-checked')) === 'true', false, '"Show how it moves" starts off');
     // "Show ports" off hides the badges, on brings them back.
-    await page.getByTestId('bw-sim-lab-show-ports').click();
+    await tool(page,'show-ports');
     await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().ports === 0, null, {timeout: 5000});
     assert.equal(await badge(page, 'motorL').isVisible(), false, 'no badge while "Show ports" is off');
     assert.deepEqual((await overlay(page, 'simulate')).cables, [], 'and no cable');
-    await page.getByTestId('bw-sim-lab-show-ports').click();
+    await tool(page,'show-ports');
     await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().ports === 2, null, {timeout: 5000});
     const simBefore = await redPixels(page, canvas);
     await setMotion(page, 'simulate', true);

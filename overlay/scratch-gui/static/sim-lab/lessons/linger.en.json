@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "linger",
+  "language": "en",
+  "what": "One motor turns a crank continuously. Two connected four-bar loops make the long output pointer linger near one end of its stroke while the crank keeps moving. The output still swings through about 69° during a full cycle. This is an approximate mechanical dwell produced by real links and hinges; the program controls only the input motor. One motor turns continuously through two coupled four-bar loops. The output swings about 69 degrees but barely moves during a quarter-turn of the input. Measure the approximate dwell, the tiny reversal within it, and the changing velocity ratio.",
+  "try": [
+    "Select this example and run it; Reset before running again after manual motion.",
+    "Watch the actual input angle from 186° to 276°. The crank turns through 90°, yet the ideal output angle changes by only about 0.131°. Check that the motor is still moving during this interval; a programmed pause would not demonstrate the linkage's near dwell. For the placed motor, physical θ=−encoder A; on the first forward pass, encoder A decreases from −186° to −276° through this window.",
+    "Keep watching through the rest of the cycle. The output must complete a useful swing of about 69°. A disconnected output that never moves would fail this experiment even though it appears perfectly still during the near-dwell interval."
+  ],
+  "why": "The first four-bar loop slows and reverses the intermediate rocker near one end of its motion. The second loop places its own output extremum close to that same intermediate angle. The output/input angular-speed ratio is the product of the two stage ratios, so two small factors produce a long interval of very slow output motion. At B the first coupler, intermediate rocker and second coupler share one retained shaft but remain three separate moving links.",
+  "matters": "A machine can reserve much of a continuous input cycle for an almost stationary output without a second motor or a timed software pause. This is useful when studying timing and motion shaping. Near dwell does not imply an exact lock, a load-holding capacity or a force rating. The output makes a tiny reversal inside its slow interval.",
+  "question": "Why is observing a nearly stationary output for a quarter turn of the crank insufficient by itself to prove that Linger works?",
+  "answer": "A disconnected, jammed or frozen output could also remain still. We must independently observe the moving crank through the fixed 90° window, measure the output's small range there, and verify a substantial output swing during the rest of the cycle. The real joints must remain closed and the return traversal must reproduce the same geometric relation.",
+  "further": [
+    "Compare the two stage ratios: dφ/dθ=(dφ/dβ)(dβ/dθ), where θ is the input angle, β the intermediate angle and φ the output angle. Identify where each factor becomes small.",
+    "Use the exact second-stage extremum in LDU: D=(100,0), B=(52,64), P=(88,16), E=(120,40). Check that DB=80, BP=60 and EP=40. DB and BP oppose along a 3:4:5 direction, while EP is perpendicular to it.",
+    "Inspect the shared B shaft. Two round-bore couplers rotate in different layers about the shaft keyed to the intermediate rocker. Rigidly keying all three links together would destroy the intended motion.",
+    "Find E, P and Q on the output 7L beam: they are holes h1, h3 and h6. The two-loop geometry uses EP=16 mm, while the visible tip is 40 mm from E. Thus Q=E+2.5(P−E); the longer pointer makes the output easy to follow without changing the linkage timing.",
+    "Count six rigid bodies including the chassis and seven hinges. The three-link joint at B contributes two independent hinges. The regular planar mobility is 3(6−1)−2×7=1, matching the single motor.",
+    "Compare crank-rocker.ldr for one four-bar stage, tempo-loop.ldr for variable angular speed, and quickstroke.ldr for unequal forward/return timing. Linger uses two passive loops to concentrate output motion into part of one continuous input cycle.",
+    "Read validation/RESULTS.md for the actual measured near-dwell range, full swing and joint errors. Analytical geometry, native simulation, browser integration and a physical build have separate validation status."
+  ],
+  "formula": "In mm: O=(0,0), D=(40,0), E=(48,16); OA=16, AB=48, DB=32, BP=24, EP=16. A=16(cosθ,sinθ). B is the selected intersection of circles(A,48) and(D,32); P is the selected intersection of circles(B,24) and(E,16). θ=atan2(Az−Oz,Ax−Ox), β=atan2(Bz−Dz,Bx−Dx), φ=atan2(Pz−Ez,Px−Ex). dφ/dθ=(dφ/dβ)(dβ/dθ). Ideal full output range≈69.04697°; ideal output range for θ=186…276°≈0.131275°, about 0.1901% of the full range. The interval lasts 9 s at exactly 10°/s actual input speed. This is approximate dwell with a tiny reversal, not an exact finite-angle stop. One LDU=0.4 mm. The physical output tip Q is 40 mm from E: Q=E+2.5(P−E). The actual native motor sign was measured: θ=−encoder A from the saved datum, with the observation window interpreted modulo 360°. The delivered encoder targets are −360°, −720° and 0°, producing physical input 0°→360°→720°→0°.",
+  "related": [
+    "crank-rocker.ldr",
+    "tempo-loop.ldr",
+    "quickstroke.ldr"
+  ]
+}

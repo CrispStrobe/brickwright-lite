@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "orbit-mixer",
+  "language": "en",
+  "what": "Two motors control the carrier and sun of a planetary mechanism. The paddle travels around the sun while turning on its own axle. Three full carrier orbits compare held-sun forward spin, orientation compensation, and reverse spin, returning to the starting pose between cases. Compare orbital travel and paddle heading: two inputs select forward spin, heading compensation or reverse spin.",
+  "try": [
+    "Choose Orbit Mixer in Examples; its program loads into Blocks automatically. Press Run. Reset and run orbit-mixer.bw. In each of the three cases, the carrier makes one complete +360° orbit and then reverses home. Follow the paddle's position and heading separately.",
+    "During the compensation phase, the sun advances +576° while the carrier advances +360°. Compare the paddle heading while moving and after settling. Matching final angles alone does not establish a constant heading during travel.",
+    "For the slower stepped experiment, load orbit-mixer-steps.bw, reset, and run. Six +15° carrier steps with +24° sun steps reach +90° and +144°, pausing between steps, then both inputs return home. Keep both motors driving or holding and retain the supplied speeds."
+  ],
+  "why": "The sun and planet mesh externally, so their rotations relative to the carrier have opposite signs. With a sun-to-planet tooth ratio of 5:3, 5(S − C) + 3(P − C) = 0, giving P = (8/3)C − (5/3)S. C, S, and P use one common positive world axis, not separate views into the motor faces. The same equation describes ideal angular velocities or angular changes from a common starting datum.",
+  "matters": "Planetary mechanisms combine orbital motion with local rotation. A second controlled input can change a tool's heading without removing its orbit. This model demonstrates those kinematics; it contains no free ingredients and does not measure material mixing.",
+  "question": "The carrier advances +360° and the sun advances +576° from the same starting datum. What is the ideal final change in paddle heading? Does this alone prove that its heading stayed fixed throughout the move?",
+  "answer": "The final change is 0°: (8/3) × 360 − (5/3) × 576 = 960 − 960 = 0. Endpoint targets alone do not prove a constant heading during travel. That requires the sun's angular velocity to remain 1.6 times the carrier's at every instant; independent motor controllers can depart from that ratio while accelerating or settling.",
+  "further": [
+    "Predict the three ideal paddle changes for the full +360° carrier orbit: sun 0° gives +960°; sun +576° gives 0°; sun +720° gives −240°. Compare predictions with measured, unwrapped native angles after settling.",
+    "Compare world rotation P with rotation relative to the carrier, P − C. In the ideal orientation-hold case P = 0, but the paddle still rotates by −C relative to the carrier.",
+    "Compare this mechanism with Mean Machine. Both combine two inputs, but their tooth ratios give different signed output equations."
+  ],
+  "formula": "P = (8/3)C − (5/3)S; S = 0 ⇒ P = (8/3)C; S = (8/5)C ⇒ P = 0; S = 2C ⇒ P = −(2/3)C. All signs share one world axis; ideal ratios are not a claim of transient-free motor tracking.",
+  "related": [
+    "mean-machine.ldr",
+    "orbital-loom.ldr"
+  ]
+}

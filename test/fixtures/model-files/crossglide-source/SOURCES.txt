@@ -1,0 +1,47 @@
+CROSSGLIDE — SOURCES AND ORIGINAL-WORK BOUNDARY
+
+Copyright (c) 2026 Christian Ströbele (CrispStrobe)
+SPDX-License-Identifier: BSD-3-Clause
+
+Original work
+The Technic arrangement, deterministic placements, program, independent
+equations, lessons, observations, validation and original analytical figures
+were authored for this model. Reusable author-owned runtime, generator and
+audit methods were adapted from earlier model add-ons with their notices
+preserved. No earlier model is repackaged as this new mechanism.
+
+Current brief and collection
+The user supplied BRICKWRIGHT_MODEL_BUILDER(3).md, SHA-256
+b741c90e72e66ae01ebf7dfc325699b8f686ef70545d29bd967f2cc9809a3bcc.
+The actual cumulative collection baseline is catalog.supplied-plus-turnwise.json,
+58 choices / 50 assemblies, SHA-256
+10ff213723f9df4171bc527d64e486ddb0297fda04a7f76b4911f14eea42fe08.
+The new catalog preserves every existing entry and appends only Crossglide.
+
+External engineering idea
+Oldham coupling: offset parallel shafts connected through perpendicular
+sliding interfaces. The closure equations in this package were independently
+derived from the declared dimensions and guide directions.
+
+Primary manufacturer reference, consulted 2026-10-21 for the general
+mechanical principle and terminology only:
+Ruland Manufacturing, Oldham couplings and installation instructions.
+https://www.ruland.com/oldham-style-coupling/
+https://www.ruland.com/mosc41-15-ss.html
+No manufacturer CAD, animation, photograph, diagram, code or prose is copied.
+No commercial product's load rating or tolerances are attributed to our model.
+DMG-Lib was not used for this machine. No NC or unlicensed mechanism content
+is incorporated in the add-on.
+
+External application and parts
+Brickwright Lite, unchanged commit
+df32b7ff33595406ce7356d249ec61baec1fecf6:
+https://github.com/CrispStrobe/brickwright-lite
+Registered compiler revision:
+7d3f8be7c13091a635d919c1af5c456230eed8fd
+These external dependencies retain their own notices and are not bundled.
+
+Standard LDraw part names are references to the external Parts Library.
+The source archive contains our model placements, not external part meshes.
+Any CAD-derived preview is a separate attributed illustration, not part of
+the original BSD-only source archive. See THIRD-PARTY-NOTICES.md.

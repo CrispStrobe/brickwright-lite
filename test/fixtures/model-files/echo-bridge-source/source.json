@@ -1,0 +1,8 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "echo-bridge-addon.zip",
+  "archiveSha256": "bf9ffad13352c239ef43d9d5101d7be3096d3b88f65235d6c6347c15919d99ba",
+  "modelSha256": "80a49a442dba7175cbec0040d9cb36a38b6e040bd076ae9c1744a431d59f6a4e",
+  "programSha256": "10b014401e1f52491dea92b3099970c6a741067ff87fc00b266d2ba62294f434"
+}

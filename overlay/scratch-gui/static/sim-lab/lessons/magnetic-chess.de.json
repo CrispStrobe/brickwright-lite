@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "magnetic-chess",
+  "language": "de",
+  "what": "Ein XY-Schlitten mit drei Motoren hebt einen Magneten unter einer Glasplatte. Seine Anziehung zieht eine unabhängige Schachfigur über die Oberfläche; beim Absenken endet diese Kraft. Der angepasste Aufbau enthält 1.203 LEGO-Teile, eine Glasplatte und vier verklebte Dichtungen: insgesamt 1.208 physische Teile mit 32 getrennten Figurenbaugruppen. Drei Motoren führen einen Magneten unter Glas. Bewege unabhängige Figuren und lasse sie los; vergleiche Abstand, Magnetkraft und Gleitreibung.",
+  "try": [
+    "Wähle Magnetic Chess unter Beispiele; das native Programm wird automatisch in Blöcke geladen. Drücke Start: Der weiße Springer fährt von g1 nach f3, danach parkt der Kopf. Vor der Wiederholung zurücksetzen.",
+    "Setze zurück und lade magnetic-chess-capture.bw für fünf Transporte: Springer g1–f3, e2–e4, d7–d5, schwarzer Bauer in ein Ablagefach und e4×d5. Die freien Wege sind vorab geplant; dies ist ein Transportmodell ohne Schach-KI oder automatische Figurenerkennung.",
+    "Vergleiche nach dem Zurücksetzen die Steuerung: A und B positionieren den Schlitten. C hebt den Magneten um 180° und senkt ihn wieder ab. Halte C zwischen 0 und 180° und behalte die vorgegebenen Geschwindigkeiten und Wege bei. Beobachte, wie ein größerer Abstand die Figur freigibt."
+  ],
+  "why": "An den Magnetflächen wirken gleich große, entgegengesetzte Kräfte. Das Anheben verkleinert den Abstand von etwa 34,8 mm auf 2,8 mm. Eine seitliche Kraftkomponente zieht eine versetzte Figur zum Kopf; Gleitreibung wirkt dagegen. Kein Gelenk und keine starre Verbindung bindet die Figur an den Schlitten. Ein zu schwaches oder entferntes Feld kann sie daher nicht mitnehmen.",
+  "matters": "Berührungsloser Transport verbindet Felder, Reibung, Gegenkräfte, Positionierung und Hindernisvermeidung. Die Glasplatte braucht eine stabile Auflage. Vier beidseitig klebende Dichtungen verbinden sie hier mit den Auflagefliesen; die früheren losen Ausgleichsstücke entfallen. Die Klebung wird als starr behandelt, ohne gemessene Tragfähigkeitsangabe.",
+  "question": "Warum muss der Magnet vor der Rückfahrt des Schlittens abgesenkt werden? Was geschieht bei Magnetkraft null?",
+  "answer": "Bei angehobenem Kopf wirkt die Anziehung weiter; die Figur würde dem zurückfahrenden Schlitten folgen. Durch Absenken wächst der Abstand über die festgelegte Feldreichweite, und die Figur wird freigegeben. Bei Magnetkraft null bewegen korrekte Motorwinkel nur den Schlitten: Die unabhängige Figur bleibt auf ihrem Feld.",
+  "further": [
+    "Das Kraftmodell ist eine ungemessene Näherung: 0,3 N bei 2,8 mm Referenzabstand, auf 1 N begrenzt, im Nahbereich geglättet und bis 14 mm stetig auf null reduziert. Das ist keine gemessene LEGO-Magnetspezifikation.",
+    "Die Felder sind 56 mm breit. Die Wege führen zwischen belegten Feldern hindurch und zu Ablagefächern außerhalb des Bretts. Drehgeber bestimmen die Kopfposition; sie erkennen keine verlorene Figur und ersetzen keinen realen Nullpunkt.",
+    "Das Modell ist in Simulation geprüft. Magnetkraft, Reibung, Glasauflage, Kabel und reale Motorkalibrierung müssen getrennt gemessen werden. Zurücksetzen stellt die Ausgangsaufstellung wieder her."
+  ],
+  "formula": "Zentrale Anziehung: gleich große Gegenkräfte an beiden Magnetflächen. Innerhalb der festgelegten Reichweite gilt F ∝ [(d_ref² + s²)/(d² + s²)]². Seitliche Bewegung braucht mehr Anziehung als Gleitreibung. Dies ist ein ungemessenes Modell.",
+  "related": [
+    "axis-plotter.ldr",
+    "stepworks.ldr",
+    "orbital-loom.ldr"
+  ]
+}

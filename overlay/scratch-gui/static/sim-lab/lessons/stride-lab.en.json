@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "stride-lab",
+  "language": "en",
+  "what": "A single motor turns a 16 mm crank. A 40 mm coupler, a 40 mm rocker and two fixed pivots 32 mm apart constrain an extended tip. The coupler continues 40 mm beyond its rocker joint. This Hoeken-type linkage gives the tip a nearly straight working stroke and an arched return. One crank drives a Hoeken-type coupler tip through a nearly straight working stroke and curved return.",
+  "try": [
+    "Reset, load stride-lab.bw and Run. Follow the highlighted tip through two slow forward turns and two reverse turns.",
+    "Compare the long, nearly straight working stroke with the curved return. Watch the crank keep turning while the tip changes direction.",
+    "Watch equal intervals of time along the working stroke. Is the tip speed constant? Compare forward and reverse travel."
+  ],
+  "why": "The tip follows the geometry of a closed four-bar loop. Equal 40 mm coupler and rocker lengths, a 16 mm crank, a 32 mm pivot spacing and an equal coupler extension make one half of the tip path almost straight. In ideal planar geometry, crank angles 90° to 270° give a 64 mm stroke whose vertical deviation from y = 64 mm is at most about 0.1561 mm. The motor drives the crank; it does not program the tip path.",
+  "matters": "Approximate straight-line linkages can generate useful repeated working and return strokes using revolute joints, as in walking and handling mechanisms. This model illustrates the kinematics; it is not a walking robot or a load-rated machine.",
+  "question": "Does a nearly straight tip path mean exact straightness or constant tip speed?",
+  "answer": "No. The ideal working stroke has a small geometric deviation, and the nonlinear linkage makes tip speed vary even when crank speed is steady. Reversing the drive retraces the same ideal path in the opposite direction.",
+  "further": [
+    "Compare the tip path with the crank circle and the rocker arc. All three belong to the same one-motor mechanism.",
+    "The 0.1561 mm deviation describes ideal rigid, planar geometry. It is not a prediction of real LEGO tolerances, joint play, flex or simulated tracking accuracy."
+  ],
+  "formula": "A = (0, 0), D = (32, 0); B = (16 cos θ, 16 sin θ); |C − B| = |C − D| = 40; P = 2C − B [mm]. Upper branch: θ = 90°…270° gives x = 64…0 mm, y ≈ 64 mm.",
+  "related": [
+    "crank-rocker.ldr",
+    "tidal-trio.ldr"
+  ]
+}

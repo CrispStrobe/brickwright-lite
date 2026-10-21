@@ -1,0 +1,9 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "scale-studio-addon.zip",
+  "modelSha256": "c5f6a2b7cde3168ce88586d2c1bbd20937b1efa3c293393dd5917b642164ea51",
+  "programSha256": "ab399b62b86dd5f4a2cd36acf90635b3786a60832f70573d10de9fa1155e8e2c",
+  "note": "Raw source retained as data; no bundled generators or runtimes are executed.",
+  "archiveSha256": "4ea9688c6e5caf1e7b12df26977397e58600eb5e114b4c40ecd51e83c2e7a4de"
+}

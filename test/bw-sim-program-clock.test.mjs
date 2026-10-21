@@ -87,7 +87,7 @@ if (!existsSync(missing)) {
         return () => { globalThis.setInterval = real; for (const id of made) clearInterval(id); };
     };
 
-    const run = async ({latencyMs, clocked}) => {
+    const run = async ({latencyMs, clocked, scale = 1}) => {
         const untrack = trackIntervals();
         const {hub, registration} = registerVirtualHub();
         const {worker, port} = slowWorker(latencyMs);
@@ -117,6 +117,7 @@ if (!existsSync(missing)) {
             const wall0 = performance.now();
             if (clocked) {
                 clock = new SimLabClock();
+                clock.timeScale = scale;
                 clock.install(vm.runtime, session);
                 // What the program reads at each step (_step emits ARCADE_FRAME right after it refreshes
                 // currentMSecs) against what the world has applied, both since the clock went in.
@@ -188,6 +189,17 @@ if (!existsSync(missing)) {
         assert.ok(fast.skews.length > 30, `the VM stepped: ${fast.skews.length}`);
         assert.ok(fast.skews.every(s => Math.abs(s) < SAME_MS), `program time left simulated time: ${JSON.stringify(fast.skews.filter(s => Math.abs(s) >= SAME_MS).slice(0, 5))}`);
         assert.equal(fast.stats.droppedMs, 0, 'no simulated time was dropped');
+    });
+
+    for (const scale of [2, 4]) test(`one clock at ${scale}×: faster VM steps preserve drive duration, distance and timer alignment`, async t => {
+        const accelerated = await run({latencyMs: 0, clocked: true, scale});
+        t.diagnostic(`${scale}×: ${describe(accelerated)}`);
+        assert.ok(accelerated.skews.length > 30 && accelerated.skews.every(s => Math.abs(s) < SAME_MS));
+        assert.ok(Math.abs(accelerated.spanMs - DRIVE_MS) <= accelerated.frameMs + 1e-6);
+        assert.ok(fast && Math.abs(accelerated.distance - fast.distance) <= 0.01 * fast.distance);
+        assert.equal(accelerated.stats.droppedMs, 0);
+        // RTF is reported, not gated: shared-host load and worker throughput
+        // limit achievable speed. The scheduler control below proves extra steps.
     });
 
     test(`one clock, a worker ${LATENCY_MS} ms away: the program slows down with the world, the drive is the same`, async t => {

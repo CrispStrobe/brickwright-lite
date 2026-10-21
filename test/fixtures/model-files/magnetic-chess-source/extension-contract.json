@@ -1,0 +1,750 @@
+{
+  "schema": "magnetic-chess-brickwright-integration/v1",
+  "status": "SPECIFICATION_ONLY_NOT_AN_INSTALLED_EXTENSION",
+  "source_commit": "2ccdde721e2209130d3b0ee14d05c9220c90b74e",
+  "unit_scale_m_per_ldu": 0.0004,
+  "world_vertical_axis": [
+    0,
+    -1,
+    0
+  ],
+  "planar_axes": {
+    "board_x": [
+      1,
+      0,
+      0
+    ],
+    "board_y": [
+      0,
+      0,
+      -1
+    ]
+  },
+  "initial_head_xz_ldu": [
+    0,
+    0
+  ],
+  "initial_lift_state": "released",
+  "motor_ports": {
+    "x": "A",
+    "y": "B",
+    "lift": "C"
+  },
+  "clockwise_signs": {
+    "x": -1,
+    "world_z": -1
+  },
+  "initial_internal_rotor_degrees": {
+    "motorA": 11.25,
+    "motorB": 0,
+    "motorC": 180.0
+  },
+  "nominal_app_drive_scale_degrees_per_ldu": 5.729577951308232,
+  "physical_drive_scale_status": "UNMEASURED: use independent measured scale, backlash and reversal checks",
+  "board": {
+    "part": "chess_custom_glass_632x552x2mm.dat",
+    "id": "custom_glass_insert",
+    "collider": {
+      "kind": "box",
+      "center_ldu": [
+        0,
+        2.5,
+        0
+      ],
+      "half_extents_ldu": [
+        790,
+        2.5,
+        690
+      ]
+    },
+    "fixed_to": "fixed",
+    "friction": "must be measured or declared as a simulator parameter",
+    "artwork_is_nonphysical": true
+  },
+  "board_registration_shims": [
+    {
+      "id": "board_registration_x_-1_-1",
+      "position_ldu": [
+        -795,
+        0,
+        -670
+      ],
+      "dimensions_mm": [
+        4.0,
+        2.0,
+        8.0
+      ]
+    },
+    {
+      "id": "board_registration_z_-1_-1",
+      "position_ldu": [
+        -760,
+        0,
+        -695
+      ],
+      "dimensions_mm": [
+        16.0,
+        2.0,
+        4.0
+      ]
+    },
+    {
+      "id": "board_registration_x_-1_1",
+      "position_ldu": [
+        -795,
+        0,
+        670
+      ],
+      "dimensions_mm": [
+        4.0,
+        2.0,
+        8.0
+      ]
+    },
+    {
+      "id": "board_registration_z_-1_1",
+      "position_ldu": [
+        -760,
+        0,
+        695
+      ],
+      "dimensions_mm": [
+        16.0,
+        2.0,
+        4.0
+      ]
+    },
+    {
+      "id": "board_registration_x_1_-1",
+      "position_ldu": [
+        795,
+        0,
+        -670
+      ],
+      "dimensions_mm": [
+        4.0,
+        2.0,
+        8.0
+      ]
+    },
+    {
+      "id": "board_registration_z_1_-1",
+      "position_ldu": [
+        760,
+        0,
+        -695
+      ],
+      "dimensions_mm": [
+        16.0,
+        2.0,
+        4.0
+      ]
+    },
+    {
+      "id": "board_registration_x_1_1",
+      "position_ldu": [
+        795,
+        0,
+        670
+      ],
+      "dimensions_mm": [
+        4.0,
+        2.0,
+        8.0
+      ]
+    },
+    {
+      "id": "board_registration_z_1_1",
+      "position_ldu": [
+        760,
+        0,
+        695
+      ],
+      "dimensions_mm": [
+        16.0,
+        2.0,
+        4.0
+      ]
+    }
+  ],
+  "xy_guides": [
+    {
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "fixed_group": "fixed",
+      "moving_group": "x_bridge",
+      "rail_origins": [
+        [
+          0,
+          314,
+          -730
+        ],
+        [
+          0,
+          314,
+          730
+        ]
+      ],
+      "extent": [
+        -960,
+        960
+      ],
+      "slider_origins": [
+        [
+          0,
+          306,
+          -710
+        ],
+        [
+          0,
+          306,
+          710
+        ]
+      ],
+      "work_limits": [
+        -700,
+        700
+      ]
+    },
+    {
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "fixed_group": "x_bridge",
+      "moving_group": "y_carriage",
+      "rail_origins": [
+        [
+          -110,
+          170,
+          0
+        ],
+        [
+          110,
+          170,
+          0
+        ]
+      ],
+      "extent": [
+        -800,
+        800
+      ],
+      "slider_origins": [
+        [
+          -90,
+          162,
+          10
+        ],
+        [
+          90,
+          162,
+          10
+        ]
+      ],
+      "work_limits": [
+        -560,
+        560
+      ]
+    }
+  ],
+  "rack_strips": [
+    {
+      "port": "A",
+      "part": "3743.dat",
+      "group": "fixed",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "origin": [
+        0,
+        378,
+        640
+      ],
+      "extent": [
+        -960,
+        960
+      ],
+      "pinion": [
+        70,
+        364,
+        640
+      ]
+    },
+    {
+      "port": "B",
+      "part": "3743.dat",
+      "group": "x_bridge",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "origin": [
+        150,
+        170,
+        0
+      ],
+      "extent": [
+        -800,
+        800
+      ],
+      "pinion": [
+        150,
+        156,
+        0
+      ]
+    }
+  ],
+  "z_joints": [
+    {
+      "kind": "rigid_to_xy_carriage",
+      "group": "y_carriage",
+      "via": "four stud-mounted3701 anchor bricks plus pinned L braces"
+    },
+    {
+      "kind": "revolute_motor",
+      "parent": "y_carriage",
+      "child": "z_crank",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "origin": [
+        -10,
+        220,
+        -72.0
+      ],
+      "port": "C"
+    },
+    {
+      "kind": "revolute",
+      "parent": "z_crank",
+      "child": "z_rod",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "origin_variable": "crank_tip"
+    },
+    {
+      "kind": "revolute",
+      "parent": "z_rod",
+      "child": "z_carrier",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "origin_variable": "rod_upper"
+    },
+    {
+      "kind": "slider",
+      "parent": "y_carriage",
+      "child": "z_carrier",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "travel_ldu": 80,
+      "metadata_required": true
+    }
+  ],
+  "pickup": {
+    "part": "2609dc01.dat",
+    "id": "pickup_magnet",
+    "group": "z_carrier",
+    "local_magnet_face_ldu": [
+      0,
+      -15,
+      0
+    ],
+    "engaged_face_y": 7,
+    "released_face_y": 87,
+    "force_curve": "UNMEASURED; do not infer attraction strength from CAD"
+  },
+  "pieces": [
+    {
+      "id": "w_rook_a1_base",
+      "piece_id": "w_rook_a1",
+      "group": "piece_w_rook_a1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_knight_b1_base",
+      "piece_id": "w_knight_b1",
+      "group": "piece_w_knight_b1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_bishop_c1_base",
+      "piece_id": "w_bishop_c1",
+      "group": "piece_w_bishop_c1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_queen_d1_base",
+      "piece_id": "w_queen_d1",
+      "group": "piece_w_queen_d1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_king_e1_base",
+      "piece_id": "w_king_e1",
+      "group": "piece_w_king_e1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_bishop_f1_base",
+      "piece_id": "w_bishop_f1",
+      "group": "piece_w_bishop_f1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_knight_g1_base",
+      "piece_id": "w_knight_g1",
+      "group": "piece_w_knight_g1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_rook_h1_base",
+      "piece_id": "w_rook_h1",
+      "group": "piece_w_rook_h1",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_a2_base",
+      "piece_id": "w_pawn_a2",
+      "group": "piece_w_pawn_a2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_b2_base",
+      "piece_id": "w_pawn_b2",
+      "group": "piece_w_pawn_b2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_c2_base",
+      "piece_id": "w_pawn_c2",
+      "group": "piece_w_pawn_c2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_d2_base",
+      "piece_id": "w_pawn_d2",
+      "group": "piece_w_pawn_d2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_e2_base",
+      "piece_id": "w_pawn_e2",
+      "group": "piece_w_pawn_e2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_f2_base",
+      "piece_id": "w_pawn_f2",
+      "group": "piece_w_pawn_f2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_g2_base",
+      "piece_id": "w_pawn_g2",
+      "group": "piece_w_pawn_g2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "w_pawn_h2_base",
+      "piece_id": "w_pawn_h2",
+      "group": "piece_w_pawn_h2",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_rook_a8_base",
+      "piece_id": "b_rook_a8",
+      "group": "piece_b_rook_a8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_knight_b8_base",
+      "piece_id": "b_knight_b8",
+      "group": "piece_b_knight_b8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_bishop_c8_base",
+      "piece_id": "b_bishop_c8",
+      "group": "piece_b_bishop_c8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_queen_d8_base",
+      "piece_id": "b_queen_d8",
+      "group": "piece_b_queen_d8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_king_e8_base",
+      "piece_id": "b_king_e8",
+      "group": "piece_b_king_e8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_bishop_f8_base",
+      "piece_id": "b_bishop_f8",
+      "group": "piece_b_bishop_f8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_knight_g8_base",
+      "piece_id": "b_knight_g8",
+      "group": "piece_b_knight_g8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_rook_h8_base",
+      "piece_id": "b_rook_h8",
+      "group": "piece_b_rook_h8",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_a7_base",
+      "piece_id": "b_pawn_a7",
+      "group": "piece_b_pawn_a7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_b7_base",
+      "piece_id": "b_pawn_b7",
+      "group": "piece_b_pawn_b7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_c7_base",
+      "piece_id": "b_pawn_c7",
+      "group": "piece_b_pawn_c7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_d7_base",
+      "piece_id": "b_pawn_d7",
+      "group": "piece_b_pawn_d7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_e7_base",
+      "piece_id": "b_pawn_e7",
+      "group": "piece_b_pawn_e7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_f7_base",
+      "piece_id": "b_pawn_f7",
+      "group": "piece_b_pawn_f7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_g7_base",
+      "piece_id": "b_pawn_g7",
+      "group": "piece_b_pawn_g7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    },
+    {
+      "id": "b_pawn_h7_base",
+      "piece_id": "b_pawn_h7",
+      "group": "piece_b_pawn_h7",
+      "original_part": "30159bc01.dat",
+      "local_magnet_face_ldu": [
+        0,
+        21.5,
+        0
+      ]
+    }
+  ],
+  "required_behaviors": [
+    "Preserve every chess piece as its own dynamic connected body; exclude from automatic loose-part rescue/welding.",
+    "Register real paired-rail prismatic joints and Z guide-bore slider metadata before mechanism compilation.",
+    "Use compound/concave-safe guide colliders that leave the physical rail groove open.",
+    "Union collinear contiguous co-rigid rack segments, checking normals, gap tolerance and finite strip endpoints.",
+    "Register custom board and gaskets with physical colliders; underside artwork has no collider.",
+    "Register posed official motor metadata/aliases with A internal rotor at 11.25 degrees and C at 180 degrees; never rotate the stator mounts to compensate.",
+    "Implement magnetic attraction/release explicitly; any idealized magnetic latch must be labelled and must not replace physical-force verification.",
+    "Await each motor move before updating occupancy; a failed or uncertain pickup must invalidate the predicted state.",
+    "Persist current head datum, lift state, piece identities, capture occupancy and state revision with the plan."
+  ],
+  "future_chess_boundary": {
+    "input": {
+      "source": "g1",
+      "destination": "f3",
+      "capture_square": null
+    },
+    "supplied_by": "human or future chess engine/server",
+    "transport_planner": "source/chess_routes.py",
+    "legality_engine_included": false,
+    "external_server_called": false
+  }
+}

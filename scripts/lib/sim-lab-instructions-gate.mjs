@@ -56,7 +56,7 @@ const onPage = (page, n) => page.waitForFunction(want => {
     return ins && ins.status === 'ready' && ins.page === want && (want >= ins.steps || (ins.stats && ins.stats.step === want));
 }, n, {timeout: 15000});
 
-export const instructionsInteractions = async (page, {shotsDir}) => {
+export const instructionsInteractions = async (page, {shotsDir, printFullPage = true}) => {
     await page.getByTestId('bw-sim-lab-3d-canvas').waitFor({timeout: 30000});
     const modelParts = await page.evaluate(() => window.__bwSimLab._pane.session.model.parts.length);
 
@@ -139,7 +139,9 @@ export const instructionsInteractions = async (page, {shotsDir}) => {
     assert.deepEqual(shots.map(s => s.step), Array.from({length: first.steps}, (_, i) => i + 1), 'one picture per step, in order');
     assert.ok(shots.every(s => s.w === 1200 && s.h === 800), `every step picture is drawn: ${JSON.stringify(shots)}`);
     await page.waitForFunction(() => window.__bwSimLabInstructions.printing === false, null, {timeout: 30000});
-    await printed.screenshot({path: resolve(shotsDir, 'sim-lab-instructions-print.png'), fullPage: true});
+    // Long manuals can exceed Chromium's full-page capture limits; decoded step images above
+    // remain the acceptance check even when the evidence picture shows only the viewport.
+    await printed.screenshot({path: resolve(shotsDir, 'sim-lab-instructions-print.png'), fullPage: printFullPage});
     await printed.close();
     console.log(`PASS Print / Save as PDF opens a page with one picture per step (${shots.length}) and the parts list`);
 

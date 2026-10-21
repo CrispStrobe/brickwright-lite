@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "ev3-wall-stopper",
+  "language": "en",
+  "what": "Distance feedback changes a moving robot’s commands near an obstacle. Ultrasonic distance feedback controls the stopping point.",
+  "try": [
+    "Use the example’s supplied mat and program, then Reset and run.",
+    "Compare the distance reading with the actual gap at the front of the robot.",
+    "Change the stopping threshold or speed and repeat from the same start."
+  ],
+  "why": "A range measurement comes from the sensor position and direction. The chassis still moves while commands and braking take effect. A safe threshold must allow for sensor mounting and motion.",
+  "matters": "Mobile robots need space to react before reaching a wall.",
+  "question": "Does a sensor reading of 5 cm mean every front part is 5 cm from the wall?",
+  "answer": "No. The sensor can sit behind the foremost part, and its ray measures along its own direction.",
+  "further": [
+    "Compare two speeds using one threshold.",
+    "For the maze, inspect why a turn changes the next ray direction."
+  ],
+  "formula": "reaction travel ≈ speed × response time",
+  "related": [
+    "survey-rover.ldr"
+  ]
+}

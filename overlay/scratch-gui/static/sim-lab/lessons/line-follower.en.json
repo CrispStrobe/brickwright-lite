@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "line-follower",
+  "language": "en",
+  "what": "A light sensor measures reflected brightness while the drive motors steer. Feedback control: use reflected light to steer along a line.",
+  "try": [
+    "Select the example with its line mat and run from Reset.",
+    "Watch the sensor reading as it crosses the line edge.",
+    "Change the threshold or steering correction in the program, then Reset and compare."
+  ],
+  "why": "The controller repeatedly measures, compares with a target and changes motor output. Excessive correction makes the robot zigzag; insufficient correction loses the edge.",
+  "matters": "Feedback compensates for a path that is not known in advance.",
+  "question": "Why does a faster correction not always improve tracking?",
+  "answer": "A large correction can overshoot the edge before the next measurement, making the next correction reverse it.",
+  "further": [
+    "Compare gentle and aggressive correction at the same speed.",
+    "Try distance feedback in the wall-stopper."
+  ],
+  "formula": "error = measured reflection − target reflection",
+  "related": [
+    "wall-stopper.ldr"
+  ]
+}

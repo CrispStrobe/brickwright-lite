@@ -1,0 +1,110 @@
+DEVICE SPIKE
+# BIT KEEPER - write either mechanical state, return the input to the same datum.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Import Bit Keeper first. Its output arm is always a passive free hinge.
+# A slow band-anchor sweep writes the state; motor A then holds near zero.
+# Fresh-encoder returns and bounded trims guard the native angle completion tolerance.
+WHEN flag clicked:
+  set complete to 0
+  set fault to 0
+  set phase to 0
+  set trimAttempts to 0
+  if (lab status) = "no-model" then:
+    say "Import Bit Keeper in Robot Lab first."
+    stop all
+  reset timer
+  broadcast "Bit Keeper watchdog"
+  lab reset
+  lab start
+  lab stop motor A coast
+  wait 5 seconds
+  if (abs of (lab motor A angle)) > 1 then:
+    set fault to 1
+    say "The input moved during coast startup. Reset and inspect the frame."
+    lab stop motor A hold
+    stop all
+  lab stop motor A hold
+  wait 0.5 seconds
+  set phase to 1
+  lab run motor A for (8 - (lab motor A angle)) degrees at 1 degrees per second
+  lab stop motor A hold
+  wait 2 seconds
+  if (abs of ((lab motor A angle) - 8)) > 1 then:
+    set fault to 1
+    say "The write sweep did not reach its guarded target. Reset before retrying."
+    lab stop motor A hold
+    stop all
+  set phase to 2
+  lab run motor A for (0 - (lab motor A angle)) degrees at 1 degrees per second
+  lab stop motor A hold
+  wait 0.15 seconds
+  set trimAttempts to 0
+  repeat until (abs of (lab motor A angle)) < 0.05 or trimAttempts > 30:
+    if (lab motor A angle) > 0 then:
+      lab run motor A at -1 degrees per second
+    else:
+      lab run motor A at 1 degrees per second
+    wait 0.02 seconds
+    change trimAttempts by 1
+  lab stop motor A hold
+  wait 0.25 seconds
+  if (abs of (lab motor A angle)) > 0.15 or trimAttempts > 30 then:
+    set fault to 1
+    say "Neutral return failed. Motor A must be within 0.15 degrees of zero."
+    lab stop motor A hold
+    stop all
+  set phase to 3
+  say "Input back at zero: watch the right state persist."
+  wait 6 seconds
+  if (abs of (lab motor A angle)) > 0.3 then:
+    set fault to 1
+    say "The held input drifted during observation. Reset before retrying."
+    lab stop motor A hold
+    stop all
+  set phase to 4
+  lab run motor A for (-8 - (lab motor A angle)) degrees at 1 degrees per second
+  lab stop motor A hold
+  wait 2 seconds
+  if (abs of ((lab motor A angle) - -8)) > 1 then:
+    set fault to 1
+    say "The write sweep did not reach its guarded target. Reset before retrying."
+    lab stop motor A hold
+    stop all
+  set phase to 5
+  lab run motor A for (0 - (lab motor A angle)) degrees at 1 degrees per second
+  lab stop motor A hold
+  wait 0.15 seconds
+  set trimAttempts to 0
+  repeat until (abs of (lab motor A angle)) < 0.05 or trimAttempts > 30:
+    if (lab motor A angle) > 0 then:
+      lab run motor A at -1 degrees per second
+    else:
+      lab run motor A at 1 degrees per second
+    wait 0.02 seconds
+    change trimAttempts by 1
+  lab stop motor A hold
+  wait 0.25 seconds
+  if (abs of (lab motor A angle)) > 0.15 or trimAttempts > 30 then:
+    set fault to 1
+    say "Neutral return failed. Motor A must be within 0.15 degrees of zero."
+    lab stop motor A hold
+    stop all
+  set phase to 6
+  say "Input back at zero: watch the left state persist."
+  wait 6 seconds
+  if (abs of (lab motor A angle)) > 0.3 then:
+    set fault to 1
+    say "The held input drifted during observation. Reset before retrying."
+    lab stop motor A hold
+    stop all
+  set complete to 1
+  say "Complete: the same input position retained two different output states."
+
+WHEN I receive "Bit Keeper watchdog":
+  repeat until complete = 1:
+    if timer > 75 then:
+      set fault to 1
+      lab stop motor A hold
+      say "75 second watchdog: stopped and holding. Reset before retrying."
+      stop all
+    wait 0.02 seconds

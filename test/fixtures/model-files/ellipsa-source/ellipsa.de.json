@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "ellipsa",
+  "language": "de",
+  "what": "Ein Motor fährt auf dem roten X-Schlitten mit und dreht einen starren blauen Stab. Ein zweiter, gelber Schlitten kann sich nur auf einer dazu senkrechten Z-Führung bewegen. Gemeinsam lassen sie die orange Markierung außerhalb der beiden Gelenke eine 32 × 96 mm große Ellipse beschreiben. Der gelbe Schlitten und der Ausgang folgen den echten Gelenken; das Programm steuert nur den Motor.",
+  "try": [
+    "Importiere ellipsa.ldr, lade die gespeicherte Ausgangslage neu und starte ellipsa.bw. Beobachte, wie das Motorgehäuse mitfährt, während sich der blaue Stab dreht. Beide Schlitten bleiben zu ihrer jeweiligen geraden Führung ausgerichtet.",
+    "Vergleiche die orange Markierung an den Haltepunkten mit dem Führungsschnittpunkt O. Bei einem gemessenen Stabwinkel von 45° lautet die Vorhersage Q=(−11,314;33,941) mm in X/Z. Bei 90° gilt Q=(0;48) mm. Vergleiche diese Lagen mit der tatsächlichen Bewegung und nicht nur mit dem Motorencoder.",
+    "Beobachte die Markierung während eines gleichmäßigen Abschnitts an den linken und rechten Enden der Ellipse und danach oben und unten. Sage voraus, wo sie am schnellsten ist, bevor du das Diagramm der gemessenen Geschwindigkeit ansiehst."
+  ],
+  "why": "Die beiden Gelenke A und B liegen auf einem starren Stab 32 mm auseinander. A ist auf die X-Achse und B auf die Z-Achse beschränkt. Für den Stabwinkel θ gilt A=(32 cosθ;0) und B=(0;32 sinθ) mm. Q liegt von A aus 48 mm entlang des Stabs, also über B hinaus. Daher ist Q=A+1,5(B−A)=(−16 cosθ;48 sinθ) mm. Die unterschiedlichen Koeffizienten von Kosinus und Sinus sind die Halbachsen der Ellipse. Die beiden geraden Führungen und der starre Stab erzwingen diesen Zusammenhang mechanisch.",
+  "matters": "Derselbe drehende Stab erzeugt mehrere verschiedene Bahnen: Seine beiden geführten Gelenke bewegen sich auf Geraden, sein Mittelpunkt beschreibt einen Kreis, und der orange Punkt außerhalb der Gelenke beschreibt eine Ellipse. Konstante Winkelgeschwindigkeit bedeutet keine konstante Bahngeschwindigkeit auf dieser Ellipse. Der Motor kann auf einem bewegten Schlitten sitzen; sein Gehäuse braucht trotzdem einen echten Kraftpfad in die Führungen.",
+  "question": "Wenn sich der Stab mit konstanter Winkelgeschwindigkeit dreht: Wo ist die orange Markierung am schnellsten, und wie groß ist das ideale Verhältnis zwischen ihrer größten und kleinsten Bahngeschwindigkeit?",
+  "answer": "Sie ist an den linken und rechten Enden am schnellsten, wo sie sich senkrecht bewegt, und an den oberen und unteren Enden am langsamsten, wo sie sich waagerecht bewegt. Das Verhältnis beträgt 48/16=3. Bei gleichmäßigen 10°/s liegen die idealen Geschwindigkeiten zwischen 2,793 und 8,378 mm/s. Eine Umkehr des Motors kehrt die Bewegung auf derselben Ellipse um.",
+  "further": [
+    "Leite die Bahn eines allgemeinen Stabpunkts P im Abstand s von A her: P=((32−s)cosθ;s sinθ) mm. Mit s=16 mm ergibt sich ein Kreis; s=0 oder s=32 mm ergibt eine der beiden geraden Führungen.",
+    "Untersuche die vertikalen Bauebenen. Der gelbe Schlitten und seine axial gesicherte Achse liegen oberhalb des blauen Stabs; Motor und roter Schlitten liegen darunter. Die Antriebsachse bei A endet unterhalb der gelben Querbalken. Deshalb können sich ihre projizierten Bahnen kreuzen, ohne dass feste Teile ineinander eindringen.",
+    "Prüfe die Führung an beiden Enden des Fahrwegs. Jede 16L-Achse hat zwei feste Endhalter, und jeder Schlitten nutzt zwei voneinander getrennte Führungsachsen. Das vollständige Führungsauge bleibt in der Endlage 20 LDU (8 mm) vom nächsten Halter entfernt.",
+    "Vergleiche axis-plotter.ldr: Dort folgen zwei gesteuerte Achsen allgemeinen Zeichenbahnen. Bei crossglide.ldr verbinden senkrechte Schieber versetzte rotierende Wellen. Bei amplify.ldr kopiert ein Pantograf eine Bahn im doppelten Maßstab. Ellipsa erzwingt mit einem drehenden Stab und zwei festen geraden Führungen eine bestimmte Ellipse.",
+    "Der orange Querbalken ist eine Markierung und kein Stift. Dieses Modell zeichnet keine SVGs und trägt keine Farbe auf eine Fläche auf. Native Bewegung, Konstruktionsprüfung, Browserintegration und physischer Aufbau haben in validation/RESULTS.md jeweils einen eigenen Prüfstatus."
+  ],
+  "formula": "Mit AB=32 mm und AQ=48 mm: A=(32 cosθ;0), B=(0;32 sinθ), Q=(−16 cosθ;48 sinθ) mm; (Qx/16)^2+(Qz/48)^2=1. Für Winkelgeschwindigkeit ω in rad/s gilt vQ=(16ω sinθ;48ω cosθ) mm/s und |vQ|=|ω|√(16²sin²θ+48²cos²θ). Verhältnis der größten zur kleinsten Geschwindigkeit: 3. Halbachsen 16 und 48 mm; ganze Ellipse 32 × 96 mm. Jeder Schlitten fährt insgesamt 64 mm zwischen seinen Endlagen. θ wird aus dem tatsächlichen Stabvektor gemessen: θ=atan2(Bz−Az;−(Bx−Ax)); 1 LDU=0,4 mm. Beim platzierten nativen Motor gilt ab der gespeicherten Ausgangslage θ=+Encoder A; dieses Vorzeichen wurde am echten Teileprototyp in der nativen Simulation gemessen.",
+  "related": [
+    "axis-plotter.ldr",
+    "crossglide.ldr",
+    "amplify.ldr"
+  ]
+}

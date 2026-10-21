@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "turnwise",
+  "language": "en",
+  "what": "This 127-piece steering bench uses one motor and a retained tie rod to steer two suspended, freely spinning wheels. The inner wheel turns farther than the outer wheel. It demonstrates steering geometry, not driving, tyre scrub or a real rear axle. One motor steers two suspended wheels by different angles. Compare the inner and outer wheels and the approximation to Ackermann steering.",
+  "try": [
+    "Select Turnwise in Examples, reset to the saved straight-ahead pose and run its automatically loaded Blocks program. Watch the 10, 20 and 25 degree left-inner locks, then their mirrored right turns.",
+    "Compare the two wheel headings at each pause. At a 25 degree inner lock the outer angle is about 17.255 degrees. The driven left wheel becomes the outer wheel during the mirrored right turn.",
+    "After resetting, make only small manual jogs on A and return to the saved pose before running again. Never replace the asymmetric targets with a symmetric ±25 degree motor sweep: one branch approaches a toggle near −19.93 degrees of left-wheel heading."
+  ],
+  "why": "The kingpins are 80 mm apart. Each steering arm has a 16 mm inward and 32 mm rearward tie offset; the tie rod is 48 mm long. The passive wheel angle follows the fixed-distance circle intersection, not an equal-angle gear. Ideal Ackermann rolling would require cot(outer)−cot(inner) = W/L. Here W = 80 mm and the virtual reference distance is L = 80 mm, but the finite four-bar only approximates this condition. At 25 degrees inner, the actual linkage prediction is 17.255 degrees outer, rather than the exact Ackermann value of about 17.641 degrees.",
+  "matters": "Different wheel angles help explain how a vehicle can turn without forcing both wheels onto the same circle. This bench isolates the linkage: its wheels hang above the floor and its rear reference line is mathematical. It establishes angle relationships, not a tyre-contact or vehicle-handling result.",
+  "question": "Why does the right-turn program use about +17.255 degrees at motor A instead of +25 degrees to mirror the largest left turn?",
+  "answer": "The motor always drives the left wheel. During a right turn that wheel is the outer one, so it needs the smaller heading while the passive right wheel reaches the larger inner angle. Equal positive and negative motor targets would not produce mirrored wheel pairs and could cross the toggle.",
+  "further": [
+    "Compare the steering trapezoid with the driving base, whose wheels steer the vehicle by different rotational speeds rather than different headings.",
+    "Try the ideal Ackermann equation at 10, 20 and 25 degrees. The approximation error changes with lock; do not treat the neutral arm-line intersection as proof of exact steering."
+  ],
+  "formula": "W = 80 mm, k = 16 mm, d = 32 mm, tie = 48 mm; ideal Ackermann: cot δouter − cot δinner = W/L. Inner 25° ⇒ linkage outer ≈ 17.255°; ideal outer ≈ 17.641°.",
+  "related": [
+    "driving-base.ldr",
+    "crank-rocker.ldr",
+    "parallel-lift.ldr"
+  ]
+}

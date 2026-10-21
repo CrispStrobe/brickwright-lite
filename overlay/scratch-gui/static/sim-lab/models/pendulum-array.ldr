@@ -1,0 +1,114 @@
+0 Pendulum array — motor excitation and unequal free periods
+0 Name: pendulum-array.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crank
+1 25 0 -60 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID crankPin1
+1 1 20 -60 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID crankPin2
+1 1 -20 -60 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub
+1 71 0 130 100 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hubPin-60
+1 0 -60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubPin60
+1 0 60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID wing-220
+1 25 -220 -80 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID wingPin-220_0
+1 0 -100 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID wingPin-220_40
+1 0 -140 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID wing220
+1 25 220 -80 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID wingPin220_0
+1 0 100 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID wingPin220_40
+1 0 140 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hanger0
+1 72 -340 -100 0 0 0 1 1 0 0 0 1 0 15100.dat
+0 !BW ID swingPin0
+1 71 -340 -100 10 0 0 -1 0 1 0 1 0 0 3673.dat
+0 !BW ID arm0
+1 4 -340 -40 20 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID hanger1
+1 72 340 -100 0 0 0 1 1 0 0 0 1 0 15100.dat
+0 !BW ID swingPin1
+1 71 340 -100 10 0 0 -1 0 1 0 1 0 0 3673.dat
+0 !BW ID arm1
+1 1 340 20 20 -1 0 0 0 0 1 0 1 0 41239.dat
+0 !BW ID foot-60
+1 72 -60 140 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID footPin-60_0
+1 0 -60 130 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footPin-60_200
+1 0 -60 130 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot60
+1 72 60 140 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID footPin60_0
+1 0 60 130 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footPin60_200
+1 0 60 130 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID cross-60
+1 72 0 160 -60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID crossPin-60_-60
+1 0 -60 150 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crossPin60_-60
+1 0 60 150 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID cross180
+1 72 0 160 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID crossPin-60_180
+1 0 -60 150 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crossPin60_180
+1 0 60 150 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID spokeInner-20
+1 72 -20 -80 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID spokeOuter-20
+1 72 -20 -100 -320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID spokeSplice-20_-200
+1 0 -20 -90 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID spokeSplice-20_-240
+1 0 -20 -90 -240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID spokeInner20
+1 72 20 -80 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID spokeOuter20
+1 72 20 -100 -320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID spokeSplice20_-200
+1 0 20 -90 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID spokeSplice20_-240
+1 0 20 -90 -240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID spokeBridge-440
+1 25 0 -120 -440 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID bridgePin-20_-440
+1 0 -20 -110 -440 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bridgePin20_-440
+1 0 20 -110 -440 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID spokeBridge-400
+1 25 0 -120 -400 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID bridgePin-20_-400
+1 0 -20 -110 -400 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bridgePin20_-400
+1 0 20 -110 -400 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pendulumSupport
+1 25 0 -140 -420 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID supportPin-440
+1 0 0 -130 -440 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID supportPin-400
+1 0 0 -130 -400 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hanger2
+1 72 0 -160 -560 0 1 0 1 0 0 0 0 -1 15100.dat
+0 !BW ID swingPin2
+1 71 10 -160 -560 1 0 0 0 1 0 0 0 1 3673.dat
+0 !BW ID arm2
+1 14 20 -60 -560 0 1 0 0 0 1 1 0 0 32525.dat

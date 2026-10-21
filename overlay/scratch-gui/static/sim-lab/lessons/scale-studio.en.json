@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "scale-studio",
+  "language": "en",
+  "what": "One motor turns the orange crank while a passive pantograph moves the red tip. Two long arms and two short links make the output displacement exactly twice the input displacement in ideal planar geometry. A 32 mm input circle becomes a 64 mm output circle without a second motor. Quarter-turn pauses reveal a passive 2:1 pantograph. Compare corresponding points on the 32 mm and 64 mm circles.",
+  "try": [
+    "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
+    "Use a top view. Compare each point with its own circle center: both complete one revolution per crank turn, although the blue arms rock through changing angles. Compare the two circle diameters.",
+    "At corresponding pauses, compare the two projected vectors from the fixed origin O. The red tip should lie on the same ray as D and twice as far from O. Use measured positions to judge the model; an encoder reaching its target alone does not prove this relationship."
+  ],
+  "why": "The pivot spacing makes a parallelogram. Write the two equal-length link vectors as u and v, each 32 mm long. Then A=u, B=2u, D=u+v, C=2u+v and P=2u+2v, measured from O. Therefore P=2D for every configuration on this assembly branch. The motor only moves the input crank; the links impose the scale factor. The 3D parts occupy different layers, so the scale equation refers to coordinates projected into the chassis plane.",
+  "matters": "Pantographs transfer and scale a path in copying and engraving mechanisms. A scale factor of two doubles displacement and ideal speed; it does not create extra mechanical work. For corresponding tangential input and output forces, an ideal lossless mechanism gives half the force at the output. This is a kinematic and virtual-work explanation, not a measured force rating.",
+  "question": "The input traces a circle 32 mm in diameter. Predict the output diameter, its circumference relative to the input circle, and the area enclosed by it. Does doubling the path size require two output revolutions?",
+  "answer": "The output diameter is 64 mm. Its circumference is twice the input circumference and its enclosed area is four times the input area. Both points complete one circle per crank revolution; the output travels twice as far in the same time. At constant crank speed between pauses, its ideal tip speed is therefore twice as large.",
+  "further": [
+    "Predict a local change before measuring: any 8 mm input displacement vector corresponds to a 16 mm output displacement vector in the same direction. Reversing the crank retraces the same ideal path.",
+    "Compare Twinpoint: its two motor inputs coordinate a five-bar mechanism. Scale Studio has one motor and a passive geometric scale relation. Compare Mean Machine: its differential combines two rotations, while this pantograph scales planar displacement.",
+    "The equations describe rigid links and ideal joints. Predict how joint play, friction, flex or a tool load could change the observed path; this demonstration does not measure a real tool’s force rating."
+  ],
+  "formula": "All coordinates are in mm in the chassis XZ plane; θ is geometric crank phase in radians. O=(0,0), M=(40,0); D=(40+16 cos θ, 16 sin θ); P=(80+32 cos θ, 32 sin θ). Thus P−O=2(D−O), ΔP=2ΔD and vP=2vD. Long-arm pivot spans OB=BP=64 mm; OA=AB=BC=CP=AD=DC=32 mm. Ideal corresponding tangential forces: FP=FD/2.",
+  "related": [
+    "twinpoint.ldr",
+    "mean-machine.ldr",
+    "parallel-lift.ldr"
+  ]
+}

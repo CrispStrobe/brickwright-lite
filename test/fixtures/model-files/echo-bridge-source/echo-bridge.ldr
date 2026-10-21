@@ -1,0 +1,241 @@
+0 ECHO BRIDGE - two free pendulums exchange motion through rubber bands
+0 Name: echo-bridge.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/echo-bridge.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // One hub, one motor A; passive pendulums and two physical 33 mm rubber bands.
+0 // Both band records are physical flexible parts, counted separately from rigid placements.
+0 // Saved crank points +X. The two equal preloads cancel each vertical pendulum's torque.
+0 // Real rear arch, perpendicular feet, three motor mounts and four hub mounts.
+0 // Standard geometry is external. No custom geometry or invisible joints.
+0 // Install 45610 hub battery for physical use; integral motor cable is routed behind the arch.
+0 !BW ID foot_left
+1 0 -240 390 -130 0 0 1 0 1 0 -1 0 0 3703.dat
+0 !BW ID foot_block_left
+1 72 -220 380 -140 0 0 -1 0 1 0 1 0 0 32557.dat
+0 !BW ID foot_pin_left_-150
+1 0 -230 400 -150 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_pin_left_-130
+1 0 -230 400 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_right
+1 0 240 390 -130 0 0 1 0 1 0 -1 0 0 3703.dat
+0 !BW ID foot_block_right
+1 72 220 380 -140 0 0 -1 0 1 0 1 0 0 32557.dat
+0 !BW ID foot_pin_right_-150
+1 0 230 400 -150 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_pin_right_-130
+1 0 230 400 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 STEP
+0 !BW ID column_lower_left
+1 0 -220 280 -160 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID column_upper_left
+1 0 -220 140 -140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID column_lap_left_200
+1 0 -220 200 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_left_220
+1 0 -220 220 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_left_260
+1 0 -220 260 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_left_280
+1 0 -220 280 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_left_360
+1 0 -220 360 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_left_380
+1 0 -220 380 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lower_right
+1 0 220 280 -160 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID column_upper_right
+1 0 220 140 -140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID column_lap_right_200
+1 0 220 200 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_right_220
+1 0 220 220 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_right_260
+1 0 220 260 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_right_280
+1 0 220 280 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_right_360
+1 0 220 360 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_right_380
+1 0 220 380 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID arch_top_left
+1 72 -160 0 -120 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID arch_top_right
+1 72 160 0 -120 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID arch_splice
+1 72 0 0 -140 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID arch_splice_pin_-60
+1 0 -60 0 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_splice_pin_-40
+1 0 -40 0 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_splice_pin_40
+1 0 40 0 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_splice_pin_60
+1 0 60 0 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID arch_brace_spacer_left
+1 72 -220 40 -120 -1 0 0 0 0 1 0 1 0 32523.dat
+0 !BW ID arch_brace_left
+1 72 -220 80 -100 -1 0 0 0 0 -1 0 -1 0 32526.dat
+0 !BW ID arch_corner_left_0
+1 1 -220 0 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_left_20
+1 1 -220 20 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_left_60
+1 1 -220 60 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_brace_tip_left_20
+1 0 -240 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_brace_tip_left_40
+1 0 -260 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_brace_spacer_right
+1 72 220 40 -120 -1 0 0 0 0 1 0 1 0 32523.dat
+0 !BW ID arch_brace_right
+1 72 220 80 -100 1 0 0 0 0 -1 0 1 0 32526.dat
+0 !BW ID arch_corner_right_0
+1 1 220 0 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_right_20
+1 1 220 20 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_right_60
+1 1 220 60 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_brace_tip_right_20
+1 0 240 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_brace_tip_right_40
+1 0 260 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID hub
+1 15 0 350 -260 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_cross_left_300
+1 72 -120 300 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_cross_right_300
+1 72 120 300 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_splice_300
+1 72 0 300 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID hub_cross_column_-220_300
+1 0 -220 300 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_cross_column_220_300
+1 0 220 300 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_mount_-40_300
+1 1 -40 300 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID hub_mount_40_300
+1 1 40 300 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID hub_cross_left_340
+1 72 -120 340 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_cross_right_340
+1 72 120 340 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_splice_340
+1 72 0 340 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID hub_cross_column_-220_340
+1 0 -220 340 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_cross_column_220_340
+1 0 220 340 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_mount_-40_340
+1 1 -40 340 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID hub_mount_40_340
+1 1 40 340 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 STEP
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 -160 0 -80 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID motor_front_-180
+1 0 -180 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_front_-140
+1 0 -140 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_rear_cross
+1 72 -180 140 -120 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID motor_rear_frame_pin
+1 0 -220 140 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_rear_mount
+1 0 -160 140 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID right_bearing_layer_100
+1 72 120 0 -100 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID right_bearing_pin_100_80
+1 0 80 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_pin_100_160
+1 0 160 0 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_layer_80
+1 72 120 0 -80 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID right_bearing_pin_80_100
+1 0 100 0 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_pin_80_140
+1 0 140 0 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_layer_60
+1 72 120 0 -60 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID right_bearing_pin_60_80
+1 0 80 0 -70 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_pin_60_160
+1 0 160 0 -70 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_layer_40
+1 72 120 0 -40 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID right_bearing_pin_40_100
+1 0 100 0 -50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_pin_40_140
+1 0 140 0 -50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_layer_20
+1 72 120 0 -20 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID right_bearing_pin_20_80
+1 0 80 0 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID right_bearing_pin_20_160
+1 0 160 0 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID carrier
+1 25 -160 0 -20 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID rotor_pin_-180
+1 0 -180 0 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID rotor_pin_-140
+1 0 -140 0 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID arm_left
+1 4 -120 120 0 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID pivot_left
+1 71 -120 0 -10 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID anchor_pin_upper_left
+1 0 -120 -20 10 0 1 0 0 0 1 1 0 0 43093.dat
+0 !BW ID anchor_upper_left
+1 4 -120 -20 20 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID anchor_pin_lower_left
+1 0 -120 20 10 0 1 0 0 0 1 1 0 0 43093.dat
+0 !BW ID anchor_lower_left
+1 4 -120 20 20 1 0 0 0 1 0 0 0 1 3713.dat
+0 STEP
+0 !BW ID bob_adapter_left
+1 4 -120 260 20 1 0 0 0 0 -1 0 1 0 60483.dat
+0 !BW ID bob_bracket_pin_left
+1 0 -120 240 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bob_axle_left
+1 71 -120 260 20 0 1 0 0 0 1 1 0 0 32073.dat
+0 !BW ID bob_wheel_left
+1 71 -120 260 50 1 0 0 0 1 0 0 0 1 39367p01.dat
+0 !BW ID bob_retainer_rear_left
+1 4 -120 260 -15 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID bob_retainer_front_left
+1 4 -120 260 65 1 0 0 0 1 0 0 0 1 4265c.dat
+0 STEP
+0 !BW ID arm_right
+1 1 120 120 0 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID pivot_right
+1 71 120 0 -10 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID anchor_pin_upper_right
+1 0 120 -20 10 0 1 0 0 0 1 1 0 0 43093.dat
+0 !BW ID anchor_upper_right
+1 1 120 -20 20 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID anchor_pin_lower_right
+1 0 120 20 10 0 1 0 0 0 1 1 0 0 43093.dat
+0 !BW ID anchor_lower_right
+1 1 120 20 20 1 0 0 0 1 0 0 0 1 3713.dat
+0 STEP
+0 !BW ID bob_adapter_right
+1 1 120 260 20 1 0 0 0 0 -1 0 1 0 60483.dat
+0 !BW ID bob_bracket_pin_right
+1 0 120 240 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bob_axle_right
+1 71 120 260 20 0 1 0 0 0 1 1 0 0 32073.dat
+0 !BW ID bob_wheel_right
+1 71 120 260 50 1 0 0 0 1 0 0 0 1 39367p01.dat
+0 !BW ID bob_retainer_rear_right
+1 1 120 260 -15 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID bob_retainer_front_right
+1 1 120 260 65 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW BELT band_upper 85546.dat anchor_upper_left anchor_upper_right
+0 !BW BELT band_lower 85546.dat anchor_lower_left anchor_lower_right

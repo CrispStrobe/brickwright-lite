@@ -7436,6 +7436,270 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 Robot Lab automatic example blocks": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab compact controls and responsive toolbar": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab fixed model exports": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab drawing, resolver and fixed bench camera": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw ellipse-engine": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink seven-machines": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink seven-linkages": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink arm-lift": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink straight-eight": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink2 seven-motion": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink2 seven-plotter": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink2 switchback-lift": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotlink2 expanded-machines,expanded-manual,mechanics-machines,mechanics-manual": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion magnetic-chess": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion sarrus-lift": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion quickstroke": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotbench oscillation-clutch": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotbench dynamics-machines": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotbench lessons": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotbench2 physics-workshops": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw scale-echo": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw turnwise": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw2 orbital-loom": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw2 loom-more": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw2 loom-instructions": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw3 tidal-trio": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw3 tidal-more": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw3 tidal-instructions": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion2 orbit-mixer": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion2 phase-bridge": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion2 survey-rover,forklift,pneumatic-press,timed-drive,sumo": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab pantograph-doubler complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab scale-studio complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab ripple-relay complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab crossglide complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab offset-orbit complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab ellipsa complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab momentum-twins complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab bloom-gate complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab amplify complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab echo-bridge complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab linger complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab crossline complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab bit-keeper complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

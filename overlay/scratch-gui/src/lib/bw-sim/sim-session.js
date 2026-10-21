@@ -36,7 +36,7 @@ import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, HubReplay, STEP_MS} from './hub-bridge.js';
 import {MirrorCore} from './sim-worker-protocol.js';
 import {hubRegistry, LAB_DIRECT_ID} from './hubs/index.js';
-import {upgradePartMeta, partHubProfile} from './contracts.js';
+import {upgradePartMeta, partHubProfile, partDrivenJoints} from './contracts.js';
 import {createMat} from './world/mats.js';
 import {placeOnStart, driveAnchor} from './world/place.js';
 import {LockstepRunner, isNonRewindable, L3_HUB_NEEDS_LOCKSTEP} from './routes/renode-lockstep/runner.js';
@@ -101,6 +101,79 @@ export const MODELS = Object.freeze([
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
+    {file: 'mean-machine.ldr', title: {en: 'Mean Machine — mechanical average', de: 'Mean Machine — mechanischer Mittelwert'}, example: 'mean-machine.bw', mat: 'plain'},
+    {file: 'stepworks.ldr', title: {en: 'Stepworks — walking-beam conveyor', de: 'Stepworks — Hubbalkenförderer'}, example: 'stepworks.bw', mat: 'plain'},
+    {file: 'stride-lab.ldr', title: {en: 'Stride Lab — nearly straight working stroke', de: 'Stride Lab — fast gerader Arbeitshub'}, example: 'stride-lab.bw', mat: 'plain'},
+    {file: 'twinpoint.ldr', title: {en: 'Twinpoint — parallel five-bar positioner', de: 'Twinpoint — paralleler Fünfgelenkarm'}, example: 'twinpoint.bw', mat: 'plain'},
+    {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
+    {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
+    {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'echo-bridge.ldr', title: {"en": "Echo Bridge — motion passed between pendulums", "de": "Echo Bridge — Bewegung wandert zwischen Pendeln"}, example: 'echo-bridge.bw', mat: 'plain'},
+    {file: 'linger.ldr', title: {"en": "Linger — six-bar dwell machine", "de": "Linger — sechsgliedriges Rastgetriebe"}, example: 'linger.bw', mat: 'plain'},
+    {file: 'crossline.ldr', title: {"en": "Crossline — geared straight-line pair", "de": "Crossline — Geradführung durch Gegenrotation"}, example: 'crossline.bw', mat: 'plain'},
+    {file: 'bit-keeper.ldr', title: {"en": "Bit Keeper — a mechanical memory", "de": "Bit Keeper — ein mechanisches Gedächtnis"}, example: 'bit-keeper.bw', mat: 'plain'},
+    {file: 'offset-orbit.ldr', title: {"en": "Offset Orbit — Oldham coupling", "de": "Offset Orbit — Oldham-Kupplung"}, example: 'offset-orbit.bw', mat: 'plain'},
+    {file: 'ellipsa.ldr', title: {"en": "Ellipsa — one-motor ellipsograph", "de": "Ellipsa — Ellipsenmechanik mit einem Motor"}, example: 'ellipsa.bw', mat: 'plain'},
+    {file: 'momentum-twins.ldr', title: {"en": "Momentum Twins — reaction wheels", "de": "Momentum Twins — Reaktionsräder"}, example: 'momentum-twins.bw', mat: 'plain'},
+    {file: 'bloom-gate.ldr', title: {"en": "Bloom Gate — a mechanical iris", "de": "Bloom Gate — eine mechanische Iris"}, example: 'bloom-gate.bw', mat: 'plain'},
+    {file: 'amplify.ldr', title: {"en": "Amplify — a path at twice the scale", "de": "Amplify — eine Bahn im doppelten Maßstab"}, example: 'amplify.bw', mat: 'plain'},
+    {file: 'pantograph-doubler.ldr', title: {en: "Pantograph Doubler", de: "Pantograf-Verdoppler"}, example: 'pantograph-doubler.bw', mat: 'plain'},
+    {file: 'scale-studio.ldr', title: {en: "Scale Studio", de: "Skalenstudio"}, example: 'scale-studio.bw', mat: 'plain'},
+    {file: 'ripple-relay.ldr', title: {en: "Ripple Relay", de: "Drehzahl-Ausgleich"}, example: 'ripple-relay.bw', mat: 'plain'},
+    {file: 'crossglide.ldr', title: {en: "Crossglide", de: "Kreuzschlittenkupplung"}, example: 'crossglide.bw', mat: 'plain'},
+    {file: 'scale-echo.ldr', title: {en: 'Scale Echo — two-to-one pantograph', de: 'Scale Echo — Pantograf mit Faktor zwei'}, example: 'scale-echo.bw', mat: 'plain'},
+    {file: 'turnwise.ldr', title: {en: 'Turnwise — unequal steering angles', de: 'Turnwise — unterschiedliche Lenkwinkel'}, example: 'turnwise.bw', mat: 'plain'},
+    {file: 'ellipse-engine.ldr', title: {en: 'Ellipse Engine — orthogonal trammel', de: 'Ellipse Engine — rechtwinkliger Ellipsenzirkel'}, example: 'ellipse-engine.bw', mat: 'plain'},
+    {file: 'quickstroke.ldr', title: {en: 'Quickstroke — quick-return linkage', de: 'Quickstroke — Schnellrücklauf'}, example: 'quickstroke.bw', mat: 'plain'},
+    {file: 'sarrus-lift.ldr', title: {en: 'Sarrus Lift — spatial straight-line linkage', de: 'Sarrus Lift — räumliche Geradführung'}, example: 'sarrus-lift.bw', mat: 'plain'},
+    {file: 'magnetic-chess.ldr', title: {en: 'Magnetic Chess — finite-force transport', de: 'Magnetic Chess — Transport mit Magnetkraft'}, example: 'magnetic-chess.bw', mat: 'plain'},
+    {file: 'orbit-mixer.ldr', title: {en: 'Orbit Mixer — planetary heading control', de: 'Orbit Mixer — Planetengetriebe und Ausrichtung'}, example: 'orbit-mixer.bw', mat: 'plain'},
+    {file: 'phase-bridge.ldr', title: {en: 'Phase Bridge — double-Cardan cancellation', de: 'Phase Bridge — Doppel-Kardan-Ausgleich'}, example: 'phase-bridge.bw', mat: 'plain'},
+    {file: 'phase-bridge-misphased.ldr', title: {en: 'Phase Bridge — misphased comparison', de: 'Phase Bridge — falsch ausgerichteter Vergleich'}, example: 'phase-bridge.bw', mat: 'plain'},
+    {file: 'axis-plotter.ldr', title: {en: 'Axis Plotter — Cartesian drawing', de: 'Axis Plotter — kartesisches Zeichnen'}, example: 'axis-plotter.bw', mat: 'plain'},
+    {file: 'atlas-arm.ldr', title: {en: 'Atlas Arm — worm drives and gripper', de: 'Atlas Arm — Schneckengetriebe und Greifer'}, example: 'atlas-arm.bw', mat: 'plain'},
+    {file: 'switchback-lift.ldr', title: {en: 'Switchback Lift — ball return machine', de: 'Switchback Lift — Kugel-Rücklaufmaschine'}, example: 'switchback-lift.bw', mat: 'plain'},
+    {file: 'straight-eight.ldr', title: {en: 'Straight Eight — straight-line linkage', de: 'Straight Eight — Geradführung'}, example: 'straight-eight.bw', mat: 'plain'},
+    {file: 'pendulum-array.ldr', title: {en: 'Motor-excited pendulum array', de: 'Motorangeregte Pendelreihe'}, example: 'pendulum-array.bw', mat: 'plain'},
+    {file: 'clutch-bench.ldr', title: {en: 'Clutch load bench', de: 'Rutschkupplungs-Prüfstand'}, example: 'clutch-bench.bw', mat: 'plain'},
+    {file: 'pulse-percussion.ldr', title: {en: 'Pulse Percussion', de: 'Puls-Schlagwerk'}, example: 'pulse-percussion.bw', mat: 'plain'},
+    {file: 'centrifugal-governor.ldr', title: {en: 'Centrifugal governor demonstrator', de: 'Fliehkraftregler-Modell'}, example: 'centrifugal-governor.bw', mat: 'plain'},
+    {file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Wave', de: 'Gezeiten-Trio: Welle'},
+        example: 'tidal-trio.bw', mat: 'plain'},
+    {id: 'tidal-trio-together', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Together', de: 'Gezeiten-Trio: Gleichlauf'},
+        example: 'tidal-trio-together.bw', mat: 'plain'},
+    {id: 'tidal-trio-alternating', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Alternating', de: 'Gezeiten-Trio: Abwechselnd'},
+        example: 'tidal-trio-alternating.bw', mat: 'plain'},
+    {id: 'tidal-trio-reverse', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Reverse wave', de: 'Gezeiten-Trio: Gegenwelle'},
+        example: 'tidal-trio-reverse.bw', mat: 'plain'},
+    {file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Fivefold', de: 'Orbit-Zeichner: Fünffach'},
+        example: 'orbital-loom.bw', mat: 'plain'},
+    {id: 'orbital-loom-sevenfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Sevenfold', de: 'Orbit-Zeichner: Siebenfach'},
+        example: 'orbital-loom-sevenfold.bw', mat: 'plain'},
+    {id: 'orbital-loom-elevenfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Elevenfold', de: 'Orbit-Zeichner: Elffach'},
+        example: 'orbital-loom-elevenfold.bw', mat: 'plain'},
+    {id: 'orbital-loom-eightfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Eightfold', de: 'Orbit-Zeichner: Achtfach'},
+        example: 'orbital-loom-eightfold.bw', mat: 'plain'},
+    {file: 'positioning-arm.ldr', title: {en: 'Two-joint positioning arm', de: 'Zweigelenk-Positionierarm'},
+        example: 'positioning-arm.bw', mat: 'plain'},
+    {file: 'ratio-workbench.ldr', title: {en: 'Three-drive ratio workbench', de: 'Getriebe-Vergleich mit drei Antrieben'},
+        example: 'ratio-workbench.bw', mat: 'plain'},
+    {file: 'rack-shuttle.ldr', title: {en: 'Rack shuttle table', de: 'Zahnstangen-Schiebetisch'},
+        example: 'rack-shuttle.bw', mat: 'plain'},
+    {file: 'crank-rocker.ldr', title: {en: 'Motorised crank-rocker', de: 'Motorisierte Kurbelschwinge'},
+        example: 'crank-rocker.bw', mat: 'plain'},
+    {file: 'parallel-lift.ldr', title: {en: 'Parallel-motion lift', de: 'Parallelogramm-Hebebühne'},
+        example: 'parallel-lift.bw', mat: 'plain'},
+    {file: 'screw-crane.ldr', title: {en: 'Screw crane with powered slew', de: 'Spindelkran mit Schwenkantrieb'},
+        example: 'screw-crane.bw', mat: 'plain'},
+    {file: 'pivot-rover.ldr', title: {en: 'Pivot-steered rover', de: 'Drehschemel-Rover'},
+        example: 'pivot-rover.bw', mat: 'plain'},
+    {file: 'chain-transmission.ldr', title: {en: 'Long chain transmission', de: 'Langes Kettengetriebe'},
+        example: 'chain-transmission.bw', mat: 'plain'},
+    {file: 'flywheel-differential.ldr', title: {en: 'Flywheel differential', de: 'Schwungrad-Differenzial'},
+        example: 'flywheel-differential.bw', mat: 'plain'},
+    {file: 'survey-rover.ldr', title: {en: 'Survey rover', de: 'Erkundungsrover'},
+        example: 'survey-rover.bw', mat: 'plain'},
     {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
         example: 'excavator.bw', mat: 'plain'},
     // A slewing crane (docs/ROBOT-LAB-ARCHITECTURE.md T1): the turntable on A, the boom luffed by a linear actuator on B.
@@ -154,7 +227,7 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
  *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
  */
 /** A file we wrote ourselves (serializeModel's header): its ports are as the builder left them, unplugged ones too. */
-const OWN_FILE = /^0 Author: Brickwright\s*$/m;
+const OWN_FILE = /^0 Author: (?:Brickwright|CrispStrobe)\s*$/m;
 
 export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text), breakLoops = true, freeHingeFrictionNm} = {}) => {
     const {model: parsedModel, refusals} = parseModel(text, {catalog});
@@ -193,12 +266,29 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
         issues.push({severity: 'info', code: 'ports-plugged', parts: plugged.map(p => p.part),
             message: `Plugged in: ${plugged.map(p => `${p.part} → ${p.hub ? `${p.hub}.` : ''}${p.port}`).join(', ')}`});
     }
+    for (const p of model.parts) if (p.rotorAngle !== undefined && partDrivenJoints(catalog instanceof Map ? catalog.get(p.part) : catalog[p.part]).length !== 1) {
+        issues.push({severity: 'warning', code: 'bad-rotor', parts: [p.id], message: 'ROTOR needs a part with one driven internal joint.'});
+    }
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
     const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(freeHingeFrictionNm !== undefined ? {freeHingeFrictionNm} : {}), ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
-    issues.push(...mechanismIssues(mechanism));
+    // An explicitly declared payload is free to roll or be carried by contact.
+    // Admit only wholly free payload islands: marking one structural member as
+    // LOAD must never hide an accidentally detached assembly.
+    const declaredLoads = new Set(model.parts.filter(p => p.load).map(p => p.id));
+    const freeLoads = new Set();
+    for (const b of mechanism.bodies) {
+        if (!b.parts?.length || !b.parts.every(id => declaredLoads.has(id))) continue;
+        if (mechanism.joints.some(j => j.body1 === b.id || j.body2 === b.id)) continue;
+        if (mechanism.hubs.some(h => h.body === b.id)) continue;
+        b.role = 'load';
+        b.parts.forEach(id => freeLoads.add(id));
+    }
+    for (const id of declaredLoads) if (!freeLoads.has(id)) issues.push({severity: 'warning', code: 'bad-load', parts: [id],
+        message: `Payload ${id} must be a free island containing only declared loads.`});
+    issues.push(...mechanismIssues(mechanism).filter(i => !(i.code === 'loose-part' && i.parts?.length && i.parts.every(id => freeLoads.has(id)))));
     return {model, runModel, mechanism, issues};
 };
 

@@ -1,0 +1,20 @@
+DEVICE SPIKE
+
+# A is the shoulder; B is the elbow. Reset before repeating.
+# 80 mm and 64 mm links: A=0/B=60 and A=53/B=-60 reach the same point.
+# The two elbow branches have different postures but nearly the same tip coordinates (nearest whole motor degree).
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor speed A 10
+  set motor speed B 10
+  run motor B clockwise 60 degrees
+  wait 1 seconds
+  run motor A to position 53
+  wait 1 seconds
+  run motor B counterclockwise 120 degrees
+  wait 1 seconds
+  run motor A counterclockwise 98 degrees
+  wait 1 seconds
+  run motor B clockwise 60 degrees
+  run motor A to position 0

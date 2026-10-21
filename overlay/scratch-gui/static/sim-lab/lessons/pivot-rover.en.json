@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "pivot-rover",
+  "language": "en",
+  "what": "Two rear drives propel the rover while a third motor turns its front bogie. A/B drive; C steers the front bogie within ±20°. Free front half-shafts allow different wheel speeds. Compare pivot steering with Ackermann geometry.",
+  "try": [
+    "Reset and run both programmed curves.",
+    "Watch the front axle angle separately from the rear wheel speeds.",
+    "Stop, use a small manual steering angle and then drive gently."
+  ],
+  "why": "The angled front bogie guides the chassis while the rear wheels provide traction. This is wagon-style steering rather than an ideal Ackermann linkage.",
+  "matters": "Mechanical steering and differential wheel-speed steering solve the same navigation task differently.",
+  "question": "If the steering angle changes sign, what should happen to the curve?",
+  "answer": "At the same forward drive direction, the curve changes side. Reversing travel also reverses the relation between heading change and displacement.",
+  "further": [
+    "Compare left and right turns from the same Reset pose.",
+    "Compare with the differential-steered driving base."
+  ],
+  "formula": "",
+  "related": [
+    "driving-base.ldr"
+  ]
+}

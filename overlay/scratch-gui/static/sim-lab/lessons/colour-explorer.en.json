@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "colour-explorer",
+  "language": "en",
+  "what": "The robot combines colour measurements with wheel motion to explore a marked surface. Use colour feedback and heading to reach a target on the floor.",
+  "try": [
+    "Run the supplied example on its colour-zone mat.",
+    "Observe where the colour sensor points when a decision changes the motion.",
+    "Reset and change one colour-dependent action in the code."
+  ],
+  "why": "A colour measurement describes the patch beneath the sensor, not the whole robot. A program turns that local observation into a navigation decision.",
+  "matters": "This is a simple form of event-driven autonomous navigation.",
+  "question": "Will a colour change happen as soon as a wheel reaches the patch?",
+  "answer": "Only when the sensor’s own footprint reaches it. Its offset from the wheels matters.",
+  "further": [
+    "Compare a sensor event with the drive-axle position.",
+    "Try reflected-light control along a line."
+  ],
+  "formula": "",
+  "related": [
+    "line-follower.ldr"
+  ]
+}

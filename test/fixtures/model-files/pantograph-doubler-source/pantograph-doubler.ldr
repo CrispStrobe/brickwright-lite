@@ -1,0 +1,193 @@
+0 PANTOGRAPH DOUBLER — passive 2:1 position scaling
+0 Name: pantograph-doubler.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/pantograph-doubler.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // Original stock-part pantograph; mounting layout adapted from corrected Quickstroke.
+0 // Horizontal experiment. One SPIKE Prime hub, one medium angular motor on port A.
+0 // O=(0,0), S=(160,-40), crank r=40 LDU; E=2C in the XZ plane.
+0 // No hidden constraints, prescribed trajectories, embedded drawing or custom part geometry.
+0 // Assembly step 1
+0 !BW ID base_rail_origin
+1 72 0 200 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_motor_left
+1 72 120 200 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_motor_right
+1 72 200 200 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_hub_left
+1 72 100 200 -360 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_hub_right
+1 72 220 200 -360 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_cross_rear
+1 72 160 220 -460 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_hub_front
+1 72 160 220 -260 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_bridge
+1 72 100 220 -220 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_front
+1 72 100 220 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID bridge_pin_0
+1 0 0 210 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bridge_pin_100
+1 0 100 210 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bridge_pin_220
+1 0 220 210 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID front_pin_0
+1 0 0 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID front_pin_120
+1 0 120 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID front_pin_200
+1 0 200 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // Assembly step 2
+0 !BW ID hub_mount_100_-460
+1 1 100 200 -460 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_mount_220_-460
+1 1 220 200 -460 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_mount_100_-260
+1 1 100 200 -260 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_mount_220_-260
+1 1 220 200 -260 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub
+1 15 160 190 -360 1 0 0 0 1 0 0 0 1 45601.dat
+0 STEP
+0 // Assembly step 3
+0 !BW ID motor_side_-1
+1 72 120 100 -120 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_-1_-180
+1 0 130 100 -180 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_-1_-60
+1 0 130 100 -60 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_post_-1
+1 1 120 100 -20 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID motor_post_-1_-220
+1 72 100 140 -220 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_top_-1
+1 0 110 100 -220 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_-1_-220
+1 72 120 180 -220 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_pin_-1_-220
+1 1 120 200 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_post_-1_-20
+1 72 100 140 -20 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_foot_-1_-20
+1 72 120 180 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_pin_-1_-20
+1 0 120 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_side_1
+1 72 200 100 -120 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_1_-180
+1 0 190 100 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_1_-60
+1 0 190 100 -60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_post_1
+1 1 200 100 -20 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID motor_post_1_-220
+1 72 220 140 -220 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_top_1
+1 0 210 100 -220 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_1_-220
+1 72 200 180 -220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_pin_1_-220
+1 1 200 200 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID motor_post_1_-20
+1 72 220 140 -20 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_foot_1_-20
+1 72 200 180 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_pin_1_-20
+1 0 200 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 160 80 -40 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 STEP
+0 // Assembly step 4
+0 !BW ID origin_plinth_20
+1 71 0 20 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_40
+1 71 0 40 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_60
+1 71 0 60 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_80
+1 71 0 80 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_100
+1 71 0 100 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_120
+1 71 0 120 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_140
+1 71 0 140 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_160
+1 71 0 160 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_plinth_180
+1 71 0 180 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID plinth_pin_20_-20
+1 0 0 30 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_20_20
+1 0 0 30 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_40_-40
+1 0 0 50 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_40_40
+1 0 0 50 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_60_-20
+1 0 0 70 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_60_20
+1 0 0 70 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_80_-40
+1 0 0 90 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_80_40
+1 0 0 90 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_100_-20
+1 0 0 110 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_100_20
+1 0 0 110 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_120_-40
+1 0 0 130 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_120_40
+1 0 0 130 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_140_-20
+1 0 0 150 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_140_20
+1 0 0 150 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_160_-40
+1 0 0 170 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_160_40
+1 0 0 170 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_180_-20
+1 0 0 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID plinth_pin_180_20
+1 0 0 190 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // Assembly step 5
+0 !BW ID arm_OB
+1 1 80 0 89.442719099992 0.7453559925 0 0.666666666667 0 1 0 -0.666666666667 0 0.7453559925 41239.dat
+0 !BW ID pivot_O
+1 71 0 10 0 0 1 0 1 0 0 0 0 -1 3673.dat
+0 STEP
+0 // Assembly step 6
+0 !BW ID arm_BE
+1 4 240 20 89.442719099992 -0.7453559925 0 0.666666666667 0 1 0 -0.666666666667 0 -0.7453559925 41239.dat
+0 !BW ID pivot_B
+1 71 160 10 178.885438199983 0 1 0 1 0 0 0 0 -1 3673.dat
+0 STEP
+0 // Assembly step 7
+0 !BW ID link_AC
+1 14 120 -20 44.721359549996 -0.7453559925 0 0.666666666667 0 1 0 -0.666666666667 0 -0.7453559925 32524.dat
+0 !BW ID link_CD
+1 14 200 0 44.721359549996 0.7453559925 0 0.666666666667 0 1 0 -0.666666666667 0 0.7453559925 32524.dat
+0 !BW ID pivot_A
+1 71 80 -10 89.442719099992 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID pivot_D
+1 71 240 10 89.442719099992 0 1 0 1 0 0 0 0 -1 3673.dat
+0 STEP
+0 // Assembly step 8
+0 !BW ID input_crank
+1 25 160 20 -40 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID rotor_mount_-60
+1 0 160 30 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID rotor_mount_-20
+1 0 160 30 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pivot_C
+1 19 160 0 0 0 1 0 1 0 0 0 0 -1 32556b.dat
+0 STEP
+0 // Assembly step 9
+0 !BW ID output_marker
+1 4 320 30 0 0 1 0 1 0 0 0 0 -1 2780.dat

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "twinpoint",
+  "language": "de",
+  "what": "Zwei fest montierte Motoren treiben einen Parallelarm aus fünf Gliedern an. Jeder Motor dreht eine 32 mm lange Kurbel; zwei passive Glieder von je 64 mm treffen sich an der Spitze. Zwei unterschiedliche Abstimmungen derselben Mechanik erzeugen in der idealen Geometrie einen Kreis mit 32 mm Radius oder eine senkrechte Gerade. Zwei feststehende Motoren koordinieren ein Fünfgelenk und zeichnen einen Kreis sowie eine begrenzte senkrechte Linie.",
+  "try": [
+    "Setze das Modell zurück, lade twinpoint.bw und starte. Die Spitze beschreibt einen Kreis, fährt zur Geraden, macht zwei Abwärts- und Aufwärtshübe und kehrt anschließend in die Ausgangslage zurück.",
+    "Vergleiche beim Kreis die Drehrichtungen beider Kurbeln aus derselben Ansicht. Bei der Geraden nimmt ein Kurbelwinkel zu, während der andere abnimmt. Weil die Motorgehäuse einander entgegengesetzt ausgerichtet sind, unterscheiden sich die Richtungsnamen im Programm von diesen Drehrichtungen in der gemeinsamen Ansicht.",
+    "Setze vor dem Laden von twinpoint-circle.bw oder twinpoint-line.bw zurück, um einen Versuch einzeln auszuführen. Vergleiche auf der Geraden den Spitzenweg in gleichen Zeitabschnitten: Eine gerade Bahn bedeutet keine konstante Geschwindigkeit."
+  ],
+  "why": "Die beiden äußeren Glieder halten die Spitze am Schnittpunkt zweier Kreise mit 64 mm Radius um die Kurbelenden. Bei gleichen Kurbelwinkeln verschieben sich beide Kurbelenden gemeinsam; die Spitze beschreibt dadurch einen Kreis mit 32 mm Radius. Ergänzen sich die Kurbelwinkel zu 180°, liegen die Kurbelenden spiegelbildlich zur Geraden x = 0. Der obere Schnittpunkt bleibt deshalb auf dieser senkrechten Geraden. Der vorgegebene Hub verwendet links 75° bis 120° und rechts 105° bis 60°; der ideale Spitzenweg beträgt etwa 27,801 mm.",
+  "matters": "Ein Parallelarm verteilt die Positionierung auf zwei Wege durch eine geschlossene Gliederkette. Beide Motoren bleiben am Gestell; die bewegten Glieder tragen keinen Motor. Dafür müssen beide Antriebe zusammenpassen: Jeder Motor beeinflusst beide Spitzenkoordinaten, und manche Winkelpaare lassen sich mit den gegebenen Gliedlängen nicht erreichen.",
+  "question": "Steuern die Motoren A und B unabhängig voneinander die waagerechte und die senkrechte Spitzenkoordinate?",
+  "answer": "Nein. Jeder Motor verschiebt ein Kurbelende, und die Spitze muss von beiden Kurbelenden jeweils 64 mm entfernt bleiben. Kreis und Gerade entstehen durch abgestimmte Winkelbeziehungen. Das Programm startet die Befehle paarweise; es misst und korrigiert die Spitzenbahn nicht. Nachführfehler der Motoren, Gelenkspiel und Verformung können deshalb Abweichungen vom idealen Ergebnis verursachen.",
+  "further": [
+    "Vergleiche Twinpoint mit dem seriellen Positionierarm. Hier sind beide Motoren fest montiert; beim seriellen Arm trägt das Schultergelenk das Ellbogengelenk und dessen Antrieb.",
+    "Für eine nicht gestreckte Lage der äußeren Glieder müssen die Kurbelenden weniger als 128 mm Abstand haben. Beim vorgegebenen Kreis beträgt ihr Abstand stets 80 mm, beim geraden Hub liegt er zwischen etwa 63,436 und 112 mm. Erweitere die Winkelbereiche nicht und drehe nicht einen Motor vollständig, während der andere festgehalten wird."
+  ],
+  "formula": "Millimeter, y nach oben: A = (-40, 0), D = (40, 0); B = A + 32(cos α, sin α); C = D + 32(cos β, sin β); |P-B| = |P-C| = 64, oberer Schnittpunkt. Kreis: α = β = θ ergibt P = (32 cos θ, 32 sin θ + √2496). Gerade: β = 180°-α, α = 75°…120°, ergibt xP = 0 und yP = 32 sin α + √[4096-(40-32 cos α)²].",
+  "related": [
+    "positioning-arm.ldr",
+    "parallel-lift.ldr"
+  ]
+}

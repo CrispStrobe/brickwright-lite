@@ -23,6 +23,8 @@
 // project load put there, so nothing is lost and nothing is pending.
 
 import React from 'react';
+import {connect} from 'react-redux';
+import {setProjectTitle} from '../../reducers/project-title';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 import SimLabPalette from './sim-lab-palette.jsx';
@@ -30,6 +32,8 @@ import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
+import SimLabExamples from './sim-lab-examples.jsx';
+import SimLabLesson from './sim-lab-lesson.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 import {EDITOR_TEXT} from './sim-lab-editor-text.js';
@@ -37,6 +41,7 @@ import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
 import SimLabCoach from './sim-lab-coach.jsx';
 import SimLabMotorMixer, {MIXER_OPEN_KEY} from './sim-lab-motor-mixer.jsx';
+import {setMixerMotorPower} from './sim-lab-motor-control.js';
 import PaneDivider from '../gui/pane-divider.jsx';
 import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
@@ -61,7 +66,7 @@ const TEXT = {
         failed: 'Could not load the model: {error}', physicsFailed: 'The physics stopped: {error}. Press Reset to start again.', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
-        example: 'Load example program', exampleOffer: 'This robot comes with an example program. Press Load example program to put it in the Code tab, then press Run.',
+        example: 'Load example program', exampleOffer: 'Choose an example to load its model and program, then press Run.',
         exampleLoaded: 'The example program is in the Code tab now. Press Run.',
         exampleGoal: {
             'line-follower.bw': 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
@@ -73,9 +78,9 @@ const TEXT = {
             'motor-bench.bw': 'The example program is in the Code tab now, in lab words: no hub, the Robot Lab turns the motor itself. Press Run. Challenge: make it turn back the other way.',
             'ev3-wall-stopper.bw': 'The example program is in the Code tab now, in EV3 words. Press Run: the program connects to the Lab\'s EV3 over Scratch Link and drives at the wall until its ultrasonic sensor sees it closer than 15 cm.',
             'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.',
-            'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. Press ⇦ To blocks, then Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
-            'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. Press ⇦ To blocks, then Run: the Move Hub drives ahead with its motors A and B, then spins on the spot. Challenge: make it spin the other way.',
-            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. Press ⇦ To blocks, then Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.',
+            'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. The blocks are loaded automatically. Press Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
+            'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. The blocks are loaded automatically. Press Run: the Move Hub drives ahead with its motors A and B, then spins on the spot. Challenge: make it spin the other way.',
+            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. The blocks are loaded automatically. Press Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.',
             'crane.bw': 'The example program is in the Code tab now. Press Run: the crane lifts its boom, swings the hook a quarter turn, lets it down and swings back. Challenge: make it swing the other way.',
             'drawing-robot.bw': 'The example program is in the Code tab now. Press Run and watch a drawing robot draw a square: each corner turns fast, then slowly to 90°. Challenge: draw a triangle.'
         },
@@ -85,7 +90,7 @@ const TEXT = {
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub', air: 'Air',
-        issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
+        drawingPreview: 'Live drawing', issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         parts: 'Parts', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: 'Could not open {name}: {error}',
@@ -178,7 +183,7 @@ const TEXT = {
         failed: 'Das Modell konnte nicht geladen werden: {error}', physicsFailed: 'Die Physik ist stehen geblieben: {error}. Mit Zurücksetzen geht es neu los.', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
-        example: 'Beispielprogramm laden', exampleOffer: 'Zu diesem Roboter gibt es ein Beispielprogramm. Drücke Beispielprogramm laden, dann steht es im Code-Tab, und drücke Start.',
+        example: 'Beispielprogramm laden', exampleOffer: 'Wähle ein Beispiel, um Modell und Programm zu laden. Drücke dann Start.',
         exampleLoaded: 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start.',
         exampleGoal: {
             'line-follower.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
@@ -190,9 +195,9 @@ const TEXT = {
             'motor-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in lab-Wörtern: ohne Hub dreht das Robot Lab den Motor selbst. Drücke Start. Aufgabe: Lass ihn wieder zurückdrehen.',
             'ev3-wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in EV3-Wörtern. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem EV3 des Labors und fährt auf die Wand zu, bis sein Ultraschallsensor sie näher als 15 cm sieht.',
             'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.',
-            'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Drücke ⇦ Zu Blöcken und dann Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
-            'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Drücke ⇦ Zu Blöcken und dann Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht sich dann auf der Stelle. Aufgabe: Lass ihn andersherum drehen.',
-            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Drücke ⇦ Zu Blöcken und dann Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.',
+            'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Die Blöcke werden automatisch geladen. Drücke Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
+            'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Die Blöcke werden automatisch geladen. Drücke Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht sich dann auf der Stelle. Aufgabe: Lass ihn andersherum drehen.',
+            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Die Blöcke werden automatisch geladen. Drücke Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.',
             'crane.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Kran hebt seinen Ausleger, schwenkt den Haken eine Vierteldrehung, lässt ihn ab und schwenkt zurück. Aufgabe: Lass ihn in die andere Richtung schwenken.',
             'drawing-robot.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und sieh zu, wie der Malroboter ein Quadrat malt: Jede Ecke dreht er erst schnell, dann langsam bis 90°. Aufgabe: Mal ein Dreieck.'
         },
@@ -202,7 +207,7 @@ const TEXT = {
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub', air: 'Luft',
-        issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
+        drawingPreview: 'Live-Zeichnung', issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         parts: 'Teile', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: '{name} konnte nicht geöffnet werden: {error}',
@@ -341,18 +346,13 @@ const MOUSE_PRESET_KEY = 'bw-sim-lab-mouse-preset';
 const COACH_KEY = 'bw-sim-lab-coach-done';
 
 /**
- * From this pane width the toolbar may take a second row and shows every action; narrower, it
- * keeps one row and what does not fit goes to its More menu (sim-lab-toolbar.jsx splitToolbar).
- */
-const WRAP_TOOLBAR_PX = 1000;
-/**
  * The GUI's show/hide-stage button (gui.jsx data-right-pane-toggle) floats over the editor's top
  * right corner; when the tab strip folds away (compact chrome) it sits on the toolbar's row, so the
  * toolbar keeps that corner free.
  */
 const RIGHT_PANE_TOGGLE_PX = 36;
 /** From this pane width the mode switch shows its words beside the icons. */
-const MODE_WORDS_PX = 760;
+const MODE_WORDS_PX = 1200;
 /** Never wider than this share of the pane, the parts panel (dragged by its divider). */
 const MAX_PANEL_SHARE = 0.45;
 
@@ -372,10 +372,11 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
+            controlsOpen: false, manualOverride: false, programLoading: false,
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
-            challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
+            examplesOpen: false, lessonKey: null, challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
@@ -449,6 +450,8 @@ class SimLabPane extends React.Component {
     }
 
     async componentDidMount () {
+        this.onProgramStart = () => { if (this.state.manualOverride) this.setManualOverride(false); };
+        this.props.vm?.runtime?.on('PROJECT_RUN_START', this.onProgramStart);
         window.__bwSimLab = {
             get status () { return this._pane.state.status; },
             get issues () { return this._pane.state.issues; },
@@ -665,6 +668,7 @@ class SimLabPane extends React.Component {
     }
 
     componentWillUnmount () {
+        this.props.vm?.runtime?.removeListener('PROJECT_RUN_START', this.onProgramStart);
         // Flush first: a Build-mode edit made just before handing the hub to the
         // arena must still be in the next save.
         this.onBundleCollect();
@@ -1011,6 +1015,8 @@ class SimLabPane extends React.Component {
 
     teardown () {
         this.stopClock();
+        if (this.unsubscribeDrawing) this.unsubscribeDrawing();
+        this.unsubscribeDrawing = null;
         if (this.view) { try { this.view.dispose(); } catch { /* a lost context may already be gone */ } }
         this.view = null;
         if (this.session) this.session.dispose();
@@ -1019,7 +1025,10 @@ class SimLabPane extends React.Component {
     }
 
     /** Opens a MODELS entry by its key (`id`, else its file): one model file may be listed twice, with different examples. */
-    async openShipped (key) {
+    async openShipped (key, {includeProgram = false, updateTitle = false} = {}) {
+        const request = this.shippedRequest = {};
+        this.programRequest = null;
+        if (includeProgram && this.session) this.pause();
         const entry = this.lib.MODELS.find(m => modelKey(m) === key);
         if (!entry) return;
         const file = entry.file;
@@ -1028,9 +1037,48 @@ class SimLabPane extends React.Component {
             this.setState({status: 'failed', message: this.t('failed', {error: `HTTP ${response.status}`})});
             return;
         }
-        await this.openText(await response.text(), file, key);
+        const text = await response.text();
+        if (this.disposed || this.shippedRequest !== request) return;
+        // A dropdown selection loads its program automatically, just like the
+        // gallery. Prepare its mat first, so importing Blocks cannot trigger a
+        // second model build and replace the worker after it appeared ready.
+        if (includeProgram && this.state.challenge) {
+            const challenge = this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+            if (challenge && challenge.mat !== (entry.mat || 'plain')) this.endChallenge();
+        }
+        if (includeProgram && entry.mat && this.state.mat !== entry.mat) {
+            await new Promise(resolve => this.setState({mat: entry.mat}, resolve));
+            if (this.disposed || this.shippedRequest !== request) return;
+        }
+        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example)});
+        if (this.disposed || this.shippedRequest !== request || this.state.status === 'failed') return;
+        if (includeProgram && entry.example) await this.loadExample();
+        if (this.disposed || this.shippedRequest !== request) return;
+        if (updateTitle) this.props.onSetProjectTitle?.(entry.title[this.locale] || entry.title.en);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
-        if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.withIntro(this.text.exampleOffer) : ''});
+        if (!this.disposed) this.setState({...(this.state.lessonKey ? {lessonKey: key} : {}),
+            ...(!includeProgram ? {info: this.shippedModel()?.example && !this.spikeLoaded() ? this.withIntro(this.text.exampleOffer) : ''} : {})});
+    }
+
+    /** The gallery uses the same model/program loaders as the dropdown and example button. */
+    async openGalleryExample (key, includeProgram) {
+        const entry = this.lib.MODELS.find(m => modelKey(m) === key);
+        if (!entry) throw new Error(this.text.failed);
+        if (this.state.status === 'running') this.pause();
+        if (this.editor) this.teardownEditor();
+        await new Promise(resolve => this.setState({mode: 'simulate', placing: null, selection: [],
+            mat: entry.mat || null, message: ''}, resolve));
+        await this.openShipped(key, {includeProgram, updateTitle: true});
+        if (!this.session || this.state.status === 'failed') throw new Error(this.state.message || this.text.failed);
+        await new Promise(resolve => this.setState({}, resolve));
+        if (this.state.message) throw new Error(this.state.message);
+        this.closeExamples();
+    }
+
+    closeExamples () {
+        this.setState({examplesOpen: false}, () => {
+            this.root.current?.querySelector('[data-testid="bw-sim-lab-examples"]')?.focus();
+        });
     }
 
     /** The MODELS entry of the model on show, or null for a built or imported one. */
@@ -1050,22 +1098,35 @@ class SimLabPane extends React.Component {
      * onto the mat the program is written for.
      */
     async loadExample () {
+        const request = this.programRequest = {};
         const entry = this.shippedModel();
         if (!entry?.example) return;
+        this.setState({programLoading: true});
         let code;
         try {
             const response = await fetch(`${this.lib.PROGRAMS_BASE}${entry.example}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             code = await response.text();
         } catch (error) {
-            this.setState({message: this.t('exampleFailed', {error: error.message})});
+            this.setState({programLoading: false, message: this.t('exampleFailed', {error: error.message})});
             return;
         }
-        if (this.disposed) return;
+        if (this.disposed || this.programRequest !== request || this.shippedModel() !== entry) return;
         if (this.state.status === 'running') this.pause();
         if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
         else if (entry.example.endsWith('.blocks.json')) await this.loadBlocksExample(code);
-        else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
+        else {
+            try {
+                await new Promise((resolve, reject) => window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {
+                    detail: {code, source: `sim-lab:${entry.file}`, onComplete: result => result.ok ? resolve() : reject(new Error(result.message))}
+                })));
+            } catch (error) {
+                if (!this.disposed) this.setState({programLoading: false, message: this.t('exampleFailed', {error: error.message})});
+                return;
+            }
+        }
+        if (this.disposed) return;
+        this.setState({programLoading: false});
         this.setState({info: this.text.exampleGoal[entry.example] || this.withIntro(this.text.exampleLoaded)});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
@@ -1101,12 +1162,12 @@ class SimLabPane extends React.Component {
         }
     }
 
-    async openText (text, name, shipped = null) {
+    async openText (text, name, shipped = null, {programLoading = false} = {}) {
         const token = this.loadToken = {};
         this.clearReplay();
         this.opened = {text, name};
         this.teardown();
-        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
+        this.setState({status: 'loading', manualOverride: false, programLoading, message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
         const {SimSession, fetchModelDrawing, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
@@ -1126,9 +1187,9 @@ class SimLabPane extends React.Component {
                 if (token !== this.loadToken) return;
                 // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
                 if (error.code === 'lockstep-unsupported') {
-                    this.setState({status: 'failed', route: 'scratch', firmwareUnsupported: true, message: this.text.routeUnavailable});
+                    this.setState({status: 'failed', programLoading: false, route: 'scratch', firmwareUnsupported: true, message: this.text.routeUnavailable});
                 } else {
-                    this.setState({status: 'failed', message: this.t('firmwareFailed', {error: error.message})});
+                    this.setState({status: 'failed', programLoading: false, message: this.t('firmwareFailed', {error: error.message})});
                 }
                 return;
             }
@@ -1142,7 +1203,7 @@ class SimLabPane extends React.Component {
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
             firmware?.driver.end().catch(() => {});
-            if (token === this.loadToken) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
+            if (token === this.loadToken) this.setState({status: 'failed', programLoading: false, message: this.t('failed', {error: error.message})});
             return;
         }
         if (!result.session) firmware?.driver.end().catch(() => {});
@@ -1153,7 +1214,7 @@ class SimLabPane extends React.Component {
         }
         const {session, issues, model, runModel} = result;
         if (!session) {
-            this.setState({status: 'failed', issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
+            this.setState({status: 'failed', programLoading: false, issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
                 message: this.t('failed', {error: issues.at(-1)?.message || ''})});
             return;
         }
@@ -1170,7 +1231,14 @@ class SimLabPane extends React.Component {
             // The parts, the decoration (a cable's segments) and the model's own embedded parts.
             const {read} = await fetchModelDrawing(runModel, {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
-            this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
+            this.view = createSimView3D({drawingLabel: this.text.drawingPreview,container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
+            if (runModel.drawings?.length || runModel.parts.some(part => part.pen)) {
+                this.unsubscribeDrawing = session.onAdvance(() => {
+                    if (this.session === session && this.view && this.state.replayAt === null) {
+                        this.view.sampleDrawing(session.snapshot());
+                    }
+                });
+            }
             this.view.setMousePreset(this.state.mousePreset);
             this.view.canvas.setAttribute('aria-label', this.t('canvasLabel'));
             this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));
@@ -1315,7 +1383,7 @@ class SimLabPane extends React.Component {
 
     /** Slow motion: simulated per real time, 1, 1/2 or 1/4 (also the Robot Lab API's setTimeScale). */
     setSpeed (scale) {
-        const s = Math.min(1, Math.max(0.05, Number(scale) || 1));
+        const s = Math.min(4, Math.max(0.05, Number(scale) || 1));
         this.timeScale = s;
         if (this.clock) this.clock.timeScale = s;
         if (this.state.timeScale !== s) this.setState({timeScale: s});
@@ -1444,7 +1512,7 @@ class SimLabPane extends React.Component {
                 {inMenu ? <span style={{flex: '1 1 auto'}}>{A.speed}</span> : null}
                 <select data-testid="bw-sim-lab-speed" aria-label={A.speed} value={this.state.timeScale} style={field}
                     onChange={e => this.setSpeed(Number(e.target.value))}>
-                    {[1, 0.5, 0.25].map(v => <option key={v} value={v}>{fillText(this.text.speedValue, {n: v === 1 ? '1' : v === 0.5 ? '½' : '¼'})}</option>)}
+                    {[0.25, 0.5, 1, 2, 4].map(v => <option key={v} value={v}>{fillText(this.text.speedValue, {n: v === 0.5 ? '½' : v === 0.25 ? '¼' : String(v)})}</option>)}
                 </select>
             </label>
         );
@@ -1590,7 +1658,8 @@ class SimLabPane extends React.Component {
 
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
     async run ({greenFlag = true} = {}) {
-        if (!this.session) return;
+        if (!this.session || this.state.programLoading) return;
+        if (this.state.manualOverride) this.setManualOverride(false);
         if (this.session.lockstep) { await this.runFirmware(); return; }
         if (this.rcxHub()) { this.runRcx(); return; }
         if (this.radioHub()) { await this.runRadioHub(this.radioHub(), {greenFlag}); return; }
@@ -1740,9 +1809,13 @@ class SimLabPane extends React.Component {
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
     drive (direction) {
         if (!this.session || !this.session.bridge || !this.spikeScene()) return;
+        const enablingOverride = direction !== 'stop' && !this.state.manualOverride;
+        if (enablingOverride) this.setManualOverride(true);
         const hub = this.hub;
         hub.setSimulationEnabled(true);
-        if (this.state.status !== 'running') {
+        // Enabling override pauses synchronously, while React's status update
+        // is deferred. Reinstall the clock even when state still says running.
+        if (enablingOverride || this.state.status !== 'running') {
             this.startClock();
             this.setState({status: 'running'});
         }
@@ -1792,7 +1865,13 @@ class SimLabPane extends React.Component {
         this.armChallenge();
     }
 
-    /** The motor mixer (sim-lab-motor-mixer.jsx): every motor of the model, through the Robot Lab API as the blocks use it. */
+    setManualOverride (enabled) {
+        if (enabled) this.pause();
+        for (const motor of this.api?.motors() || []) if (motor.direct) setMixerMotorPower(this.api, motor.id, 0);
+        this.setState({manualOverride: enabled, mixer: {session: this.session, power: {}}});
+    }
+
+    /** Manual commands are explicitly enabled; their sliders never pretend to be program telemetry. */
     renderMixer (button) {
         if (!this.api) return null;
         const s = this.session;
@@ -1805,18 +1884,26 @@ class SimLabPane extends React.Component {
                 angleDeg: enc && enc.ok ? enc.angleDeg : null};
         });
         const setPower = (id, pct) => {
-            const r = pct === 0 ? this.api.stopMotor(id, 'brake') : this.api.setMotor(id, {power: pct});
+            if (!this.state.manualOverride) return;
+            const r = setMixerMotorPower(this.api, id, pct);
             if (r && r.ok === false) return;
             this.setState(st => ({mixer: {session: s, power: {...(st.mixer.session === s ? st.mixer.power : {}), [id]: pct}}}));
         };
         return (
             <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
+                override={this.state.manualOverride} onOverride={enabled => this.setManualOverride(enabled)}
+                drive={this.session.bridge && this.spikeScene() ? this.renderDrive(button) : null}
+                onClose={() => { if (this.state.manualOverride) this.setManualOverride(false); if (this.driving) this.drive('stop'); this.setState({controlsOpen: false}); }}
                 onToggle={() => this.setState(st => {
                     try { localStorage.setItem(MIXER_OPEN_KEY, st.mixerOpen ? '0' : '1'); } catch { /* private window: this session only */ }
                     return {mixerOpen: !st.mixerOpen};
                 })}
                 onPower={setPower} onStop={id => setPower(id, 0)}
-                onStopAll={() => motors.filter(m => m.direct).forEach(m => setPower(m.id, 0))} />
+                onStopAll={() => {
+                    this.props.vm.stopAll();
+                    motors.filter(m => m.direct).forEach(m => setMixerMotorPower(this.api, m.id, 0));
+                    this.setState({mixer: {session: s, power: {}}});
+                }} />
         );
     }
 
@@ -1858,7 +1945,7 @@ class SimLabPane extends React.Component {
         return (
             <div data-testid="bw-sim-lab-drive" tabIndex={0} onKeyDown={e => this.onDriveKey(e, true)} onKeyUp={e => this.onDriveKey(e, false)}
                 role="group" aria-label={this.text.drive}
-                style={{display: 'flex', alignItems: 'center', flexWrap: compact ? 'nowrap' : 'wrap', gap: compact ? 4 : 6, fontSize: 12, outline: 'none', minWidth: 0}}>
+                style={{display: 'flex', alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0, gap: 4, fontSize: 12, outline: 'none', minWidth: 0}}>
                 {!compact && <span style={{fontWeight: 600}}>{this.text.drive}</span>}
                 <button type="button" style={arrow} data-testid="bw-sim-lab-drive-left" aria-label={this.text.left} {...hold('left')}>◀</button>
                 <button type="button" style={arrow} data-testid="bw-sim-lab-drive-forward" aria-label={this.text.forward} {...hold('forward')}>▲</button>
@@ -1871,7 +1958,7 @@ class SimLabPane extends React.Component {
                     {' '}{this.state.driveSpeed} %
                 </label>
                 <span data-testid="bw-sim-lab-readout" title={this.text.driveHelp}
-                    style={{color: '#475569', ...(compact ? {flex: '1 1 0', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'} : {})}}>
+                    style={{color: '#475569', maxWidth: 180, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
                     {this.text.readout}: {ports.map(p => `${p} ${Math.round(hub.motors['ABCDEF'.indexOf(p)].position)}°`).join(' · ')}
                     {sensorPorts.length ? ' · ' + sensorPorts.map(p => `${p} ${fmt(p, hub.sensors['ABCDEF'.indexOf(p)])}`).join(' · ') : ''}
                     {hub.imu ? ` · yaw ${Math.round(hub.imu.yaw)}°` : ''}
@@ -2264,14 +2351,14 @@ class SimLabPane extends React.Component {
     /** A note for the learner (the info box); compact, it is one line that opens on a click. */
     renderInfo () {
         const info = this.state.info;
-        if (!info || this.state.mode !== 'simulate') return null;
+        if (!info || this.state.mode !== 'simulate' || !this.state.infoOpen) return null;
         const box = {fontSize: 12, color: '#1e3a8a', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '6px 8px'};
         // One line at every width (owner request: no long text on screen); a click shows all of it.
         const open = this.state.infoOpen;
         return (
             <div role="status" data-testid="bw-sim-lab-info" style={{...box, padding: '4px 8px', minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 6}}>
                 {/* the toggle is its own small button: the note's words are not part of any button's name */}
-                <button type="button" data-testid="bw-sim-lab-info-toggle" aria-expanded={open} aria-label={this.text.infoToggle} title={this.text.infoToggle}
+                <button type="button" aria-expanded={open} aria-label={this.text.infoToggle} title={this.text.infoToggle}
                     onClick={() => this.setState(s => ({infoOpen: !s.infoOpen}))}
                     style={{flex: '0 0 auto', font: 'inherit', color: 'inherit', background: 'none', border: 'none', padding: 0, cursor: 'pointer'}}>
                     {open ? '▾' : '▸'}
@@ -2304,9 +2391,9 @@ class SimLabPane extends React.Component {
         const selection = this.state.selection;
         const nothing = !selection.length && !this.state.placing;
         const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
-        const busy = this.state.status === 'loading';
+        const busy = this.state.status === 'loading' || this.state.programLoading;
         const running = this.state.status === 'running';
-        const narrow = this.narrow();
+        const narrow = !this.modeWords();
         const cam = this.camera3d();
         const noCam = !cam || busy;
         const docked = this.dockProperties();
@@ -2361,7 +2448,7 @@ class SimLabPane extends React.Component {
                 run: () => this.setState(st => (docked ? {propsDocked: !st.propsDocked} : {propsOpen: !st.propsOpen}))},
             shortcuts: {id: 'shortcuts', label: A.shortcuts, title: this.etext.shortcutsHelp, run: () => this.setState({shortcuts: true, menu: null}), pri: 3},
             grid: {id: 'grid', label: A.grid, pri: 3, width: 96, render: inMenu => this.renderGrid(inMenu)},
-            speed: {id: 'speed', label: A.speed, pri: 2, width: 84, render: inMenu => this.renderSpeed(inMenu)},
+            speed: {id: 'speed', label: A.speed, pri: 1, pin: true, width: 84, render: inMenu => this.renderSpeed(inMenu)},
             'show-sensors': {id: 'show-sensors', label: A['show-sensors'], kind: 'switch', pressed: this.state.showSensors,
                 run: () => this.setOverlay({showSensors: !this.state.showSensors}), pri: 3},
             readings: {id: 'readings', label: A.readings, kind: 'switch', pressed: this.state.readings,
@@ -2425,7 +2512,7 @@ class SimLabPane extends React.Component {
     renderFile (inMenu) {
         const A = this.ttext.actions;
         const T = this.text;
-        const busy = this.state.status === 'loading';
+        const busy = this.state.status === 'loading' || this.state.programLoading;
         const model = this.editor ? this.editor.model : this.session?.model;
         const rows = [
             {id: 'open', label: A.open, title: T.importHelp, icon: 'open', disabled: busy || !this.lib, run: () => this.file.current.click()},
@@ -2491,7 +2578,7 @@ class SimLabPane extends React.Component {
     /** Simulate | Build | Instructions, as one segmented control. */
     renderModeSwitch () {
         const A = this.ttext.actions;
-        const busy = this.state.status === 'loading';
+        const busy = this.state.status === 'loading' || this.state.programLoading;
         const words = this.modeWords();
         const model = this.editor ? this.editor.model : this.session?.model;
         const s = toolStyles(this.state.coarse);
@@ -2521,7 +2608,7 @@ class SimLabPane extends React.Component {
 
     /** Whether the mode switch has room for its words. */
     modeWords () {
-        return !this.state.paneWidth || this.state.paneWidth >= MODE_WORDS_PX;
+        return this.state.paneWidth >= MODE_WORDS_PX;
     }
 
     /** The icon toolbar: the mode switch, the groups that fit, Help, and More for the rest. */
@@ -2529,24 +2616,46 @@ class SimLabPane extends React.Component {
         const coarse = this.state.coarse;
         const s = toolStyles(coarse);
         const groups = this.toolbarGroups();
-        const wrap = !this.state.paneWidth || this.state.paneWidth >= WRAP_TOOLBAR_PX;
+        const wrap = false;
         const modeWidth = this.modeWords() ? 330 : 3 * (s.size + 2) + 6;
+        const exampleWords = this.state.paneWidth >= 1200;
+        const examplesWidth = exampleWords ? 108 : s.size + 4;
         // The pane's padding, the mode switch and Help never leave the bar.
-        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16 - RIGHT_PANE_TOGGLE_PX, coarse, reserved: modeWidth + s.size + 8, wrap});
+        const {bar, more} = splitToolbar(groups, {width: this.state.paneWidth - 16 - RIGHT_PANE_TOGGLE_PX, coarse,
+            reserved: modeWidth + examplesWidth + s.size + (this.state.mode === 'simulate' ? 470 : 8), wrap});
         const TT = this.ttext;
         return (
             <div role="toolbar" aria-label={TT.toolbar} data-testid="bw-sim-lab-toolbar"
-                style={{display: 'flex', alignItems: 'center', gap: 2, flexWrap: wrap ? 'wrap' : 'nowrap', minWidth: 0, rowGap: 4,
+                style={{display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'nowrap', minWidth: 0, flexShrink: 0,
+                    overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'thin',
                     paddingRight: RIGHT_PANE_TOGGLE_PX}}>
                 {this.renderModeSwitch()}
+                <button type="button" data-testid="bw-sim-lab-examples" aria-label={TT.actions.examples} title={TT.actions.examples}
+                    disabled={!this.lib || this.state.status === 'loading' || this.state.programLoading} style={{...s.button, display: 'inline-flex', gap: 5, alignItems: 'center', flexShrink: 0}}
+                    onClick={() => { if (this.state.status === 'running') this.pause(); this.setState({examplesOpen: true, menu: null}); }}>
+                    <Icon name="build" />{exampleWords ? <span>{TT.actions.examples}</span> : null}
+                </button>
                 {bar.map(g => (
                     <React.Fragment key={g.id}>
                         <Separator coarse={coarse} />
-                        <div role="group" aria-label={g.label} data-testid={`bw-sim-lab-group-${g.id}`} style={{display: 'flex', alignItems: 'center', gap: 2}}>
+                        <div role="group" aria-label={g.label} data-testid={`bw-sim-lab-group-${g.id}`} style={{display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0}}>
                             {g.items.map(item => this.renderTool(item, false))}
                         </div>
                     </React.Fragment>
                 ))}
+                {this.state.mode === 'simulate' && this.renderSimulateRow()}
+                {this.state.mode === 'simulate' && this.state.info && <button type="button" style={s.button}
+                    data-testid="bw-sim-lab-info-toggle" aria-expanded={this.state.infoOpen} aria-label={this.text.infoToggle}
+                    title={this.text.infoToggle} onClick={() => this.setState(st => ({infoOpen: !st.infoOpen}))}><Icon name="help" /></button>}
+                {this.state.mode === 'simulate' && <button type="button" data-testid="bw-sim-lab-controls-toggle"
+                    disabled={this.state.status === 'loading' || this.state.programLoading}
+                    aria-expanded={this.state.controlsOpen} aria-label={this.locale === 'de' ? 'Manuelle Steuerung' : 'Manual controls'}
+                    title={this.locale === 'de' ? 'Manuelle Steuerung: Fahren und Motoren' : 'Manual controls: drive and motors'} style={s.button}
+                    onClick={() => {
+                        if (this.state.controlsOpen && this.state.manualOverride) this.setManualOverride(false);
+                        if (this.driving) this.drive('stop');
+                        this.setState(st => ({controlsOpen: !st.controlsOpen}));
+                    }}><Icon name="show-motion" /></button>}
                 <span style={{flex: '1 1 0', minWidth: 0}} />
                 {this.renderHelp()}
                 {more.length > 0 && (
@@ -2570,36 +2679,47 @@ class SimLabPane extends React.Component {
     }
 
     /** Below the toolbar in Simulate: the model, the mat, the program route, the example, and the status. */
+    renderLessonToggle () {
+        if (!this.shippedModel()) return null;
+        const label = this.locale === 'de' ? 'Modell-Lektion' : 'Model lesson';
+        return <button type="button" data-testid="bw-sim-lab-lesson" aria-label={label} title={label} aria-expanded={Boolean(this.state.lessonKey)}
+            style={{minHeight: this.state.coarse ? 40 : 28, border: '1px solid #94a3b8', borderRadius: 6, background: '#fff', color: '#0f172a', padding: '3px 8px', flexShrink: 0}}
+            onClick={() => this.setState({lessonKey: this.state.lessonKey ? null : this.state.shipped})}>
+            <Icon name="instructions" size={16} />
+        </button>;
+    }
+
     renderSimulateRow () {
         const {status, simMs, modelFile, shipped} = this.state;
-        const busy = status === 'loading';
+        const busy = status === 'loading' || this.state.programLoading;
         const compact = this.compact();
         const T = this.text;
         const running = status === 'running';
-        const field = {minWidth: 0, maxWidth: compact ? 'none' : 260, flex: compact ? '1 1 0' : '0 1 auto', ...(this.state.coarse ? {minHeight: 40} : {height: 28})};
+        const field = {minWidth: 0, width: compact ? 120 : 170, maxWidth: 170, ...(this.state.coarse ? {minHeight: 40} : {height: 28})};
         // The firmware route's emulator pace (always shown); the program clock's only when the world holds
         // the program back (sim-clock.js): on a machine that keeps up there is nothing to say.
         const programRtf = this.state.rtf !== null && this.state.rtf !== undefined && this.state.rtf < SHOW_RTF_BELOW ? this.state.rtf : null;
         const rtf = this.session?.lockstep ? this.session.realTimeFactor : programRtf;
-        const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
+        const statusText = `${busy ? '…' : T[status] || ''}${this.session ? ` · ${this.t('timeShort', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
             (rtf !== null && running ? ` · ${this.t('realTime', {f: this.decimal(rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2))})}` : '');
         // Desktop only (the web build has no managed Renode runtime): the program route.
         const firmwareReady = this.lib && this.desktop() &&
             this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
         const icon = name => <span style={{color: '#475569'}}><Icon name={name} size={16} /></span>;
-        const labelled = {display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, flex: compact ? '1 1 0' : '0 1 auto'};
+        const labelled = {display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0};
         const runtime = this.props.vm && this.props.vm.runtime;
         return (
-            <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0, fontSize: 12}}>
+            <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'nowrap', flexShrink: 0, fontSize: 12}}>
+                {this.renderLessonToggle()}
                 <label style={labelled} title={T.model}>{icon('build')}
                     <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''} aria-label={T.model} style={field}
-                        onChange={e => e.target.value && this.openShipped(e.target.value)}>
+                        onChange={e => e.target.value && this.openShipped(e.target.value, {includeProgram: true, updateTitle: true})}>
                         {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
                         {modelFile && !shipped && <option value="">{modelFile}</option>}
                     </select>
                 </label>
                 <label style={labelled} title={T.mat}>{icon('grid')}
-                    <select data-testid="bw-sim-lab-mat" disabled={busy || !this.session} value={this.state.mat || 'plain'} aria-label={T.mat} style={field}
+                    <select data-testid="bw-sim-lab-mat" disabled={busy || !this.session} value={this.state.mat || 'plain'} aria-label={T.mat} style={{...field, width: 100}}
                         onChange={e => this.setMat(e.target.value === 'plain' ? null : e.target.value)}>
                         {this.lib && this.lib.MATS.map(m => <option key={m.id} value={m.id}>{m.title[this.locale] || m.title.en}</option>)}
                     </select>
@@ -2623,14 +2743,8 @@ class SimLabPane extends React.Component {
                         </select>
                     </label>
                 )}
-                {this.shippedModel()?.example && (
-                    <button type="button" data-testid="bw-sim-lab-example" disabled={busy} onClick={() => this.loadExample()}
-                        style={{...toolStyles(this.state.coarse).button, border: '1px solid #94a3b8', background: '#fff'}}>
-                        <Icon name="example" size={16} /><span>{T.example}</span>
-                    </button>
-                )}
                 <span role="status" data-testid="bw-sim-lab-status"
-                    style={{marginLeft: 'auto', color: '#475569', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                    title={statusText} style={{color: '#475569', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums'}}>
                     {statusText}
                 </span>
             </div>
@@ -2658,6 +2772,7 @@ class SimLabPane extends React.Component {
         const selectionText = sel ? TT.selectedOne.replace('{name}', this.partName(sel.part)) : TT.selectedMany.replace('{n}', selection.length);
         return (
             <div data-testid="bw-sim-lab-context" style={{display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, minHeight: 26, fontSize: 12}}>
+                {this.renderLessonToggle()}
                 {selection.length > 0 && (
                     <span data-testid="bw-sim-lab-selection" title={sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
                         style={{...chip, background: '#dbeafe', color: '#1e3a8a', fontWeight: 600, maxWidth: '40%', overflow: 'hidden', textOverflow: 'ellipsis'}}>
@@ -2762,6 +2877,12 @@ class SimLabPane extends React.Component {
                 style={{position: 'relative', display: 'flex', flexDirection: 'column', gap: 6, padding: compact ? 6 : 8, height: '100%', width: '100%',
                     flex: '1 1 auto', boxSizing: 'border-box', minWidth: 0, minHeight: 0, background: '#f8fafc'}}>
                 {this.renderToolbar()}
+                {this.state.examplesOpen && this.lib && (
+                    <SimLabExamples models={this.lib.MODELS} locale={this.locale} selected={this.state.shipped}
+                        onChoose={(key, program) => this.openGalleryExample(key, program)}
+                        onLesson={key => this.setState({examplesOpen: false, lessonKey: key})}
+                        onClose={() => this.closeExamples()} />
+                )}
                 {this.state.instructions && (
                     <SimLabInstructions lib={this.lib} model={this.state.instructions} locale={this.locale}
                         title={this.editor ? null : this.shippedModel()?.title[this.locale] || this.state.modelFile}
@@ -2769,7 +2890,6 @@ class SimLabPane extends React.Component {
                 )}
                 <input ref={this.file} type="file" accept={OPEN_ACCEPT} style={{display: 'none'}} data-testid="bw-sim-lab-file"
                     onChange={e => this.openImported(e)} />
-                {simulate && this.renderSimulateRow()}
                 {build && this.editor && this.renderBuildRow()}
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
@@ -2799,9 +2919,16 @@ class SimLabPane extends React.Component {
                         )}
                     </div>
                     {this.renderDockedProperties(button)}
+                    {this.state.lessonKey && this.lib && (() => {
+                        const entry = this.lib.MODELS.find(m => modelKey(m) === this.state.lessonKey);
+                        return entry && <SimLabLesson key={this.state.lessonKey} entry={entry} models={this.lib.MODELS} locale={this.locale}
+                            overlay={this.state.paneWidth < 900} onLoad={(key, program) => this.openGalleryExample(key, program)}
+                            onRelated={key => this.setState({lessonKey: key})}
+                            onClose={() => this.setState({lessonKey: null}, () => (this.root.current?.querySelector('[data-testid="bw-sim-lab-lesson"]') || this.root.current?.querySelector('[data-testid="bw-sim-lab-examples"]'))?.focus())} />;
+                    })()}
+
                 </div>
-                {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
-                {simulate && this.session && !this.session.lockstep && this.renderMixer(button)}
+                {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button)}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}
@@ -2811,7 +2938,7 @@ class SimLabPane extends React.Component {
                     }} />
                 )}
                 {issues.length > 0 && (
-                    <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact}>
+                    <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact && issues.some(i => i.code !== 'locked-hinges')}>
                         <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : {cursor: 'pointer'}}>
                             {T.issues} ({issues.length})
                         </summary>
@@ -2823,4 +2950,4 @@ class SimLabPane extends React.Component {
     }
 }
 
-export default SimLabPane;
+export default connect(null, {onSetProjectTitle: setProjectTitle})(SimLabPane);

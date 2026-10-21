@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {buildGraph, MIN_ENGAGE_LDU} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
+import {buildGraph, MIN_ENGAGE_LDU, shaftEngagement} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {snapCandidates} from '../overlay/scratch-gui/src/lib/bw-sim/editor/snap.js';
 
@@ -28,14 +28,20 @@ const edgesBetween = (parts, a, b) => buildGraph({version: 1, parts}, CATALOG).e
     .filter(e => (e.a.part === a && e.b.part === b) || (e.a.part === b && e.b.part === a))
     .map(e => `${e.a.part}.${e.a.connector}<-${e.b.part}.${e.b.connector}:${e.kind}`);
 
-test('the rule\'s threshold sits between a face contact and the shortest real seat', () => {
-    // Shortest hole in the catalogue: a Technic plate's, through its 8 LDU (3.2 mm) thickness
-    // (the thin liftarm, half bush and bevel gear hub are 10). The part deriver
-    // (scripts/derive-part-meta.mjs selfCheck) admits no shallower hole.
+test('the rule keeps its 8 LDU threshold and requires full engagement of shorter actual holes', () => {
+    // The expanded catalogue includes the measured 4 LDU axle bore of round
+    // plate 4032a, and 6 LDU gearbox bores. The existing rule explicitly uses
+    // min(8, shaft length, hole length); catalogue growth does not lower 8.
     const shortest = Math.min(...[...CATALOG.values()].flatMap(m => m.connectors)
         .filter(c => c.type === 'pinhole' || c.type === 'axlehole').map(c => c.length));
-    assert.equal(shortest, 8);
-    assert.ok(MIN_ENGAGE_LDU > 0.5 && MIN_ENGAGE_LDU <= shortest);
+    assert.equal(MIN_ENGAGE_LDU, 8);
+    assert.ok(shortest > 0.5, 'a real bore is deeper than a face-contact tolerance');
+    const hole = CATALOG.get('4032a.dat').connectors.find(c => c.id === 'x0');
+    assert.equal(hole.length, 4);
+    const shaft = y => ({position: [0, y, 0], axis: [0, 1, 0], length: 20});
+    assert.equal(shaftEngagement(shaft(-6), hole), 4, 'the complete 0..4 LDU bore is engaged');
+    assert.equal(shaftEngagement(shaft(-8), hole), null, 'half of the short bore is insufficient');
+    assert.equal(shaftEngagement(shaft(-10), hole), null, 'a face contact is insufficient');
 });
 
 test('the towball 2736: its 17.5 LDU stub holds in a full 20 LDU axle hole, not when barely in', () => {

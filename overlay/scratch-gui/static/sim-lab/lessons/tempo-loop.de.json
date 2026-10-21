@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "tempo-loop",
+  "language": "de",
+  "what": "Ein Motor treibt eine Doppelkurbel aus vier Gliedern an. Die rote Antriebskurbel und die blaue Abtriebskurbel machen beide vollständige Umdrehungen in derselben Richtung. Über eine ganze Umdrehung beträgt das Verhältnis 1:1, doch innerhalb der Umdrehung wird die blaue Kurbel schneller und langsamer. Eine gelbe Koppel überträgt die Bewegung zwischen ihnen. Zwei umlaufende Kurbeln teilen eine Koppel: gleiche Umdrehungszahlen, wechselndes Winkelgeschwindigkeitsverhältnis.",
+  "try": [
+    "Setze zurück, lade tempo-loop.bw und starte. Zähle zwei vollständige Umdrehungen der roten und der blauen Kurbel. Beobachte anschließend, wie beide ihre Bewegung rückwärts durchlaufen.",
+    "Beobachte, wie die blaue Kurbel während einer Umdrehung aufholt und zurückbleibt. Bei ideal gleichmäßigem Antrieb liegt ihre momentane Winkelgeschwindigkeit etwa zwischen dem 0,560- und dem 2,014-Fachen der Antriebsgeschwindigkeit.",
+    "Pausiere den kontinuierlichen Lauf bei mehreren Eingangswinkeln. Vergleiche die roten und blauen Winkelzuwächse über gleiche Eingangssektoren. Setze vor einem neuen Durchlauf zurück."
+  ],
+  "why": "Die festen Drehpunkte liegen 16 mm auseinander. Die Antriebskurbel ist 32 mm lang; Koppel und Abtriebskurbel haben jeweils 40 mm Gelenkabstand. Mit diesen Längen können beide Kurbeln vollständig umlaufen. Während sich der Antriebszapfen auf seinem Kreis bewegt, muss die Koppel ihre Länge beibehalten. Gleiche Änderungen des Antriebswinkels ergeben deshalb nicht immer gleiche Änderungen des Abtriebswinkels. Die kontinuierlich durchlaufene Montagelage wiederholt sich nach jeder vollen Antriebsumdrehung; das mittlere Umdrehungsverhältnis ist 1:1.",
+  "matters": "Die Gliedgeometrie kann den zeitlichen Verlauf einer Drehbewegung ohne Zahnräder oder einen zweiten Motor verändern. Das Modell unterscheidet die Zahl vollständiger Umdrehungen von der Winkelgeschwindigkeit in einem bestimmten Augenblick. Die kinematischen Beziehungen setzen weder konstantes Motordrehmoment noch konstante Motorleistung voraus.",
+  "question": "Wenn beide Kurbeln in demselben Zyklus eine Umdrehung schaffen, müssen sie dann während des gesamten Zyklus gleich schnell drehen?",
+  "answer": "Nein. Ihre gesamten Winkeländerungen sind über den Zyklus gleich, ihre momentanen Winkelgeschwindigkeiten aber verschieden. Bei kontinuierlich drehendem Antrieb behält der Abtrieb dessen Drehrichtung bei: Es gibt einen langsameren und einen schnelleren Abschnitt, ohne einen durch die Geometrie erzwungenen Stillstand oder Richtungswechsel. Das Schrittprogramm macht die ungleichen Winkeländerungen gut vergleichbar.",
+  "further": [
+    "Vergleiche mit crank-rocker.ldr: Dort schwingt der Abtrieb hin und her; hier laufen beide Kurbeln vollständig um. Vergleiche mit ratio-workbench.ldr: Feste Zahnradübersetzungen erhalten ein konstantes Verhältnis der Winkelgeschwindigkeiten, während dieses Gestänge es innerhalb jeder Umdrehung verändert.",
+    "Die angegebenen Geschwindigkeiten und Winkelschritte stammen aus starrer ebener Geometrie. Motornachführung, Gelenkspiel, Reibung, Verformung und Kollisionen können den tatsächlichen Lauf beeinflussen. Die Dateien wurden hier weder in der Brickwright-Laufzeit ausgeführt noch als reales Modell gebaut."
+  ],
+  "formula": "Positionen in mm; α und β sind fortlaufende Winkel im Bogenmaß. A = (0, 0), D = (16, 0), B = (32 cos α, 32 sin α), q = |B-D|. β = α + atan2(16 sin α, 32-16 cos α) + acos(q/80). Ausgangslage: α = 0°, β ≈ 78,463041°. β(α+2π) = β(α)+2π; 0,559903… ≤ dβ/dα ≤ 2,013878….",
+  "related": [
+    "crank-rocker.ldr",
+    "ratio-workbench.ldr"
+  ]
+}

@@ -412,6 +412,7 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
             out.push(`${p}.mirrorOf.others: only on a part that is its own mirror image, a list of {m, t}`);
         }
     }
+    if (meta.ownedGeometry !== undefined && typeof meta.ownedGeometry !== 'boolean') out.push(`${p}.ownedGeometry: must be boolean`);
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);
     }
@@ -430,6 +431,8 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
             if (!isVec(c?.position)) out.push(`${w}.position: not a Vec3`);
             checkUnit(c?.axis, `${w}.axis`, out);
             if (c?.length !== undefined && !(isNum(c.length) && c.length > 0)) out.push(`${w}.length: need a positive number`);
+            if (c?.data?.seatOffsetLdu !== undefined && !(c.type === 'stud' && isNum(c.data.seatOffsetLdu) &&
+                c.data.seatOffsetLdu >= 0 && c.data.seatOffsetLdu < c.length)) out.push(`${w}.data.seatOffsetLdu: a stud clutch plane must lie within its primitive length`);
             if (c?.friction !== undefined && typeof c.friction !== 'boolean') out.push(`${w}.friction: need a boolean`);
             if (c?.closedEnd !== undefined && !((c.closedEnd === 1 || c.closedEnd === -1) && (c.type === 'pinhole' || c.type === 'axlehole'))) {
                 out.push(`${w}.closedEnd: only a pinhole/axlehole may have one, and it is 1 or -1`);
@@ -457,6 +460,12 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         checkUnit(meta.gear.axis, `${p}.gear.axis`, out);
         if (!isVec(meta.gear.center)) out.push(`${p}.gear.center: not a Vec3`);
         if (meta.gear.pitchRadiusLdu !== undefined && !(meta.gear.pitchRadiusLdu > 0)) out.push(`${p}.gear.pitchRadiusLdu: a positive number (LDU)`);
+        if (meta.gear.meshesAs !== undefined && (!Array.isArray(meta.gear.meshesAs) ||
+            !meta.gear.meshesAs.length || !meta.gear.meshesAs.every(t => GEAR_TYPES.includes(t)) ||
+            !meta.gear.meshesAs.includes(meta.gear.type))) out.push(`${p}.gear.meshesAs: supported profiles including the native type`);
+        if (meta.gear.faceWidthLdu !== undefined && !(isNum(meta.gear.faceWidthLdu) && meta.gear.faceWidthLdu > 0)) {
+            out.push(`${p}.gear.faceWidthLdu: a positive finite tooth-face width`);
+        }
     }
     if (meta.drawnOnly !== undefined && typeof meta.drawnOnly !== 'boolean') out.push(`${p}.drawnOnly: true or false`);
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
@@ -714,6 +723,15 @@ export const validatePlacedModel = (model, catalog) => {
     if (model.version !== 1 && model.version !== 2) out.push(`model.version: expected 1, got ${model.version}`);
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
+    if (model.drawings !== undefined) {
+        if (!Array.isArray(model.drawings)) out.push('model.drawings: not an array');
+        else for (const d of model.drawings) {
+            if (!model.parts.some(p => p.id === d?.surface) || !model.parts.some(p => p.id === d?.pen) || d.surface === d.pen ||
+                !isVec(d.tip) || !isVec(d.center) || !(isNum(d.radiusLdu) && d.radiusLdu > 0)) {
+                out.push('model.drawings: distinct existing surface/pen, finite local tip/centre and positive radius required');
+            }
+        }
+    }
     const has = catalog instanceof Map ? k => catalog.has(k) : k => catalog && Object.hasOwn(catalog, k);
     for (const pl of model.parts) {
         const w = `model.parts[${pl?.id}]`;
