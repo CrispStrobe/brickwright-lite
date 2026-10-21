@@ -308,8 +308,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> a13f92b8 (2026-10-15): STM32 C correct on silicon (clock tree, G0 IOPORT, pulls, ADC, tone, named refusals; sb3-creator #155) plus #153/#154 Code-tab declaration fixes; src/ change is sb3Creator.js only.
     // -> 7d3f8be7 (2026-10-16): the reviewed shared producer pin. Keep the
     // complete executable artifact and round-trip assertions below required.
+    // -> d7c25891 (2026-10-21): the "start motor at % power" words (SPIKE, EV3) and SPIKE 3 Python's
+    // set_duty_cycle read into them (sb3-creator #161), the runtime registry at CrispStrobe/extensions
+    // ce21395, plus the Arcade source-arithmetic word (#159). The SPIKE emitter gains one word; this program's
+    // artifact is unchanged, re-run at the new pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '7d3f8be7c13091a635d919c1af5c456230eed8fd');
+        'd7c258910dd3837021a7a8c4b85d38a4e28e138a');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
