@@ -38,7 +38,8 @@
  *     is an ancestor of the pin and that behindPinBy is the true count. On
  *     main today that field is 7b8d1404, the one non-pin sha outside prose and
  *     ledgers. Every other sha in that manifest must be the pin.
- *   - dated run receipts (docs/receipts/*.json) are their own role, and it
+ *   - run receipts (docs/receipts/*.json and original model-source READMEs)
+ *     are their own role, and it
  *     is NARROWER than a ledger. A receipt is evidence of what was measured
  *     at a named pin (the Doom browser receipt's boardPin is the bw-board pin
  *     it ran against, which a later bump replaced). Rewriting that sha on a
@@ -140,6 +141,10 @@ export const roleOf = file => {
     // 'ledger' because it is still judged: previous pins pass, a vendored
     // commit that was never a pin does not (see the header).
     if (/^docs\/receipts\/[^/]+\.json$/.test(file)) return 'receipt';
+    // Original model-source READMEs record checks at a fixed app snapshot.
+    // They keep that measured pin, with the same never-pinned-SHA rejection
+    // as run receipts. Executable/model/JSON siblings remain current inputs.
+    if (/^test\/fixtures\/model-files\/[^/]+-source\/README\.(txt|md)$/.test(file)) return 'receipt';
     if (/^docs\/.*\.md$/.test(file)) return 'docs-prose';
     // An example's prose cites where its circuit was generated and
     // bench-verified, e.g. "verified in bw-circuit-ui at revision <sha>". That
@@ -475,4 +480,36 @@ test('the pins file keeps the indentation its own history is diffed against', ()
         + 'it last uses a different shape, so the next pin bump will rewrite every line and '
         + 'put unchanged pins into the previous-pin map. Fix the WRITER '
         + '(scripts/lib-pin.mjs), not this file.');
+});
+
+
+test('an original model-source README retains its actual historical measurement pin', () => {
+    const file = 'test/fixtures/model-files/axis-plotter-source/README.txt';
+    const text = readFileSync(path.join(ROOT, file), 'utf8');
+    const measured = /app's pinned sb3-creator revision is:\s*([0-9a-f]{40})/.exec(text)?.[1];
+    assert.ok(measured, 'the original records its measured compiler pin');
+    assert.ok(previous.has(measured), 'the original measurement retains a previous shipped pin');
+    assert.equal(roleOf(file), 'receipt');
+    assert.deepEqual(judgeFile(file, text, known), []);
+    for (const sibling of ['original.ldr', 'setup.mjs', 'snapshot.json', 'nested/README.txt']) {
+        const active = `test/fixtures/model-files/axis-plotter-source/${sibling}`;
+        assert.equal(roleOf(active), 'code');
+        assert.equal(judgeFile(active, `measured at ${measured}`, known).length, 1,
+            'the historical pin must still fail in an active input');
+    }
+});
+
+test('original source README receipts still reject never-pinned supplier commits', () => {
+    const neverPin = 'f'.repeat(40);
+    const k = {...known, history: new Map([...known.history, [neverPin, 'sb3-creator']])};
+    assert.ok(!k.current.has(neverPin) && !k.previous.has(neverPin));
+    for (const extension of ['txt', 'md']) {
+        const file = `test/fixtures/model-files/archived-source/README.${extension}`;
+        const findings = judgeFile(file, `measured at ${neverPin}`, k);
+        assert.equal(roleOf(file), 'receipt');
+        assert.equal(findings.length, 1);
+        assert.match(findings[0].was, /never a pin/);
+    }
+    assert.equal(roleOf('test/fixtures/model-files/active/README.txt'), 'code');
+    assert.equal(roleOf('test/fixtures/README.txt'), 'code');
 });
