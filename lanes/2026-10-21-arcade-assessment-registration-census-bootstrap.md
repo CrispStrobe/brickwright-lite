@@ -4,8 +4,8 @@ Owner: Codex, Arcade assessment lane.
 Branch: `lane/arcade-registration-census-bootstrap-20261021`.
 Base: `6d3472a6fd9fdace87c19f14eb89d9dacd7180ef`.
 Status: claim merged in PR1204; bounded declaration adopted after independent
-original-result review. The complete unchanged source tests and final hosted
-registration checks remain pending.
+original-result review. All six unchanged source tests pass without skips.
+Final hosted registration checks and default-branch merge remain pending.
 
 ## Scope amendment
 
@@ -73,3 +73,10 @@ objects, 320 ordered runs and main provenance unchanged. Only the new declaratio
 and refresh metadata changed; the dated pointer records the unobserved state.
 The original missing-workflow test failure remains retained. No generator, test,
 browser budget, classifier, threshold or workflow condition changed.
+
+The complete unchanged six-test module now passes with no failures, skips or
+TODOs. Independent saved-result review verified the actual committed readings,
+all current workflow inputs and preserved original assertions. This is source
+qualification only; no manual workflow run, metadata probe, isolation, guest or
+live assessment is qualified. The original failure remains retained. The
+workflow-containing final head still needs all enabled hosted checks.
