@@ -16,7 +16,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     if(!guard.isCurrent())return {program,current:guard.isCurrent};
     const lexical=analyseCallableBindings(program),classes=new Map(),methods=new Map(),functions=new Map();
     const values=new Map(),parents=new WeakMap(),classForBinding=new Map(),methodForScope=new Map(),fields=new Map();
-    const unknown='Opaque',nodes=[],unsafe=new Set();let changed=false;
+    const unknown='Opaque',nodes=[],unsafe=new Set(),arrayRows=new WeakMap();let changed=false;
     const key=()=>Symbol();
     const add=(cell,type)=>{if(!values.has(cell))values.set(cell,new Set());const set=values.get(cell);if(!set.has(type)){set.add(type);changed=true;}};
     const get=cell=>values.get(cell)||new Set();
@@ -36,7 +36,21 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     };
     const variable=node=>read(node)||cell(node);
     const mark=row=>{if(row&&!unsafe.has(row)){unsafe.add(row);changed=true;}};
-    const poison=value=>{for(const type of get(value))if(type?.kind==='instance'||type?.kind==='class')mark(type.row);else if(type?.kind==='function')poisonAll();};
+    // Reachability follows only private owned field/Array cells. An escape
+    // poisons every contained instance, including cycles and values inserted
+    // in a later monotone pass; private storage itself is not publication.
+    const poison=(value,seen=new Set())=>{
+        for(const type of get(value)){
+            if(!type||typeof type!=='object'||seen.has(type))continue;seen.add(type);
+            if(type.kind==='instance'||type.kind==='class'){
+                mark(type.row);
+                for(const member of type.row.members.values())poison(member.field,seen);
+            }else if(type.kind==='aggregate'){
+                if(!type.unsafe){type.unsafe=true;changed=true;}
+                poison(type.elements,seen);
+            }else if(type.kind==='function'||type.kind==='aggregatePush')poisonAll();
+        }
+    };
     const poisonAll=()=>{for(const row of classes.values())mark(row);};
     const scan=(node,parent=null)=>{
         if(!node||typeof node!=='object')return;
@@ -145,7 +159,14 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(!types.size)return;
         for(const type of types){
             if(type==='Null'||type==='Undefined')continue;
-            if(type?.kind!=='instance'){add(result,unknown);continue;}
+            if(type?.kind==='aggregate'){
+                const parent=parents.get(node);
+                if(type.unsafe){add(result,unknown);continue;}
+                if(node.name==='length'){add(result,'Number');continue;}
+                if(node.name==='push'&&parent?.type==='Call'&&parent.callee===node&&!parent.isNew){add(result,type.push);continue;}
+                poison(receiver);poisonAll();add(result,unknown);continue;
+            }
+            if(type?.kind!=='instance'){poisonAll();add(result,unknown);continue;}
             const row=type.row,member=row.members.get(node.name);
             if(unsafe.has(row)||!member||dangerous.has(node.name)){add(result,unknown);continue;}
             if(member.method){
@@ -165,9 +186,12 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             const row=type.row,member=row.members.get(node.name);
             if(!member||member.method||dangerous.has(node.name)){mark(row);continue;}
             if(member.set)call(fnFor(member.set),[value],discard(node));
-            else if(member.declared)copy(value,member.field);
-            else mark(row);
-            poison(value);
+            else if(member.declared){
+                copy(value,member.field);
+                if(unsafe.has(row))poison(value);
+                // Function-valued fields remain outside this private slice.
+                if([...get(value)].some(type=>type?.kind==='function'||type?.kind==='aggregatePush'))poisonAll();
+            }else {mark(row);poison(value);}
         }
     };
     const evaluate=node=>{
@@ -186,7 +210,14 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         }
         if(node.type==='Class'){
             for(const field of node.fields||[]){
-                const pair=fields.get(field);if(field.init){const value=evaluate(field.init);if(pair&&value)copy(value,pair.member.field);}
+                const pair=fields.get(field);if(field.init){
+                    const value=evaluate(field.init);
+                    if(pair&&value){
+                        copy(value,pair.member.field);
+                        if(unsafe.has(pair.row))poison(value);
+                        if([...get(value)].some(type=>type?.kind==='function'||type?.kind==='aggregatePush'))poisonAll();
+                    }
+                }
             }
             if(node.ctor)evaluate(node.ctor.body);
             for(const method of node.methods||[])evaluate(method.body);
@@ -218,6 +249,34 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             else {poisonAll();poison(assigned);}
             copy(assigned,out);return out;
         }
+        if(node.type==='Array'){
+            if(!Array.isArray(node.items)||Object.keys(node).some(name=>!['type','items','parenthesized'].includes(name))){
+                for(const value of Object.values(node))if(value&&typeof value==='object')evaluate(value);
+                poisonAll();add(out,unknown);return out;
+            }
+            let row=arrayRows.get(node);
+            if(!row){row={kind:'aggregate',node,elements:key(),unsafe:false,push:null};row.push={kind:'aggregatePush',row};arrayRows.set(node,row);}
+            add(out,row);
+            for(const item of node.items){
+                const value=evaluate(item);if(value)copy(value,row.elements);
+                if(item?.type==='Spread'||[...get(value)].some(type=>type?.kind==='function'||type?.kind==='aggregatePush')){row.unsafe=true;poisonAll();}
+            }
+            if(row.unsafe)poison(row.elements);
+            return out;
+        }
+        if(node.type==='Index'){
+            const receiver=evaluate(node.object),index=evaluate(node.index),indices=get(index);
+            if(!indices.size)return out;
+            if([...indices].some(type=>type!=='Number')){poison(receiver);poisonAll();add(out,unknown);return out;}
+            for(const type of get(receiver)){
+                if(type==='Null'||type==='Undefined')continue;
+                if(type?.kind!=='aggregate'||type.unsafe){poison(receiver);poisonAll();add(out,unknown);continue;}
+                // Numeric indices can select any actual element or miss. No
+                // named/prototype property or input conversion is inferred.
+                copy(type.elements,out);add(out,'Undefined');
+            }
+            return out;
+        }
         if(node.type==='Member'){
             evaluate(node.object);memberRead(node,out);return out;
         }
@@ -232,7 +291,15 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                     add(out,row.instance);if(row.node.ctor)call(fnFor(row.node.ctor),args,discard(node));
                     else if(args.length){mark(row);add(out,unknown);}
                 }else if(!node.isNew&&type?.kind==='function')call(type,args,out);
-                else {add(out,unknown);poisonAll();for(const arg of args)poison(arg);}
+                else if(!node.isNew&&type?.kind==='aggregatePush'){
+                    const row=type.row;
+                    if(row.unsafe){add(out,unknown);poison(row.elements);continue;}
+                    for(const arg of args){copy(arg,row.elements);if([...get(arg)].some(value=>value?.kind==='function'||value?.kind==='aggregatePush'))poisonAll();}
+                    if(row.unsafe)poison(row.elements);
+                    // Actual native push returns its numeric length. The
+                    // receiver/method cannot escape this direct call branch.
+                    add(out,'Number');
+                }else {add(out,unknown);poisonAll();for(const arg of args)poison(arg);}
             }
             return out;
         }
@@ -263,7 +330,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             evaluate(node.test);copy(evaluate(node.consequent),out);copy(evaluate(node.alternate),out);return out;
         }
         if(node.type==='Parenthesized'){copy(evaluate(node.expression),out);return out;}
-        if(node.type==='Object'||node.type==='Array'||node.type==='Index'||node.type==='Spread'||node.type==='New'){
+        if(node.type==='Object'||node.type==='Spread'||node.type==='New'){
             // Property records/pairs and nested containers are not expressions.
             // Traverse their actual values recursively rather than dropping an
             // Array-of-records evaluate() result (which has no value cell).
@@ -290,7 +357,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         return out;
     };
     // Finite monotone domains: five primitives, Opaque, actual class/function
-    // identities. No iteration count guess or annotation seeds are used.
+    // identities and actual Array allocation identities. No iteration count guess or annotation seeds are used.
     do{changed=false;evaluate(program);}while(changed);
     if(!guard.isCurrent())return {program,current:guard.isCurrent};
     const selected=new Map();
@@ -302,6 +369,17 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             [...receiver].some(type=>type?.kind==='instance')&&
             [...receiver].every(type=>type==='Null'||type==='Undefined'||type?.kind==='instance'&&!unsafe.has(type.row)))selected.set(node,[...types]);
     }
+    // A primitive normal result may also come from an actual owned method
+    // call. Retain the complete original receiver/arguments/call as the test;
+    // no generic function, SDK ancestry, reference result or annotation enters.
+    for(const node of nodes)if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'){
+        const types=get(cell(node)),receiver=get(cell(node.callee.object)),callees=get(cell(node.callee));
+        if(!types.size||[...types].some(type=>!primitive.has(type))||!receiver.size||!callees.size||
+            ![...receiver].some(type=>type?.kind==='instance')||
+            [...receiver].some(type=>type!=='Null'&&type!=='Undefined'&&(type?.kind!=='instance'||unsafe.has(type.row)))||
+            [...callees].some(fn=>fn?.kind!=='function'||!fn.row||unsafe.has(fn.row)||fn.row.members.get(node.callee.name)?.method!==fn.node))continue;
+        selected.set(node,[...types]);
+    }
     if(!selected.size)return {program,current:guard.isCurrent};
     const literal=type=>({type,...(type==='Number'?{value:'0'}:type==='String'?{value:'""'}:type==='Boolean'?{value:'false'}:{})});
     const alternatives=types=>types.length===1?literal(types[0]):{type:'Conditional',test:{type:'Boolean',value:'false'},consequent:literal(types[0]),alternate:alternatives(types.slice(1))};
@@ -310,7 +388,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
         if(selected.has(node)){
             const types=selected.get(node);
-            // Keep the actual getter/receiver read once in the private census.
+            // Keep the actual getter or method call once in the private census.
             return {type:'Conditional',test:node,consequent:literal(types[0]),alternate:alternatives(types)};
         }
         return Object.fromEntries(Object.entries(node).map(([name,value])=>[name,metadata.has(name)?value:rewrite(value)]));

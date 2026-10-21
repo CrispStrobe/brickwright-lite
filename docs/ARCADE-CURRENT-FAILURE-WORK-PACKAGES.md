@@ -428,8 +428,11 @@ the separate operand-domain check. Keep their existing tests and emitted source:
   source set now passes all thirteen controls. Recheck the unchanged original
   example before claiming its failure resolved. Class instances also travel through
   Array literals/index aliases and self-referential fields. Model actual
-  allocation and field containment, all writers, reachable aliases and escapes;
-  preserve rejection when an unknown call or writer can change those values.
+  allocation and field containment, all writers, reachable aliases and escapes.
+  That source slice now passes all 21 controls in seven complete modules; the
+  unchanged object-heap example exports with empty diagnostics. Native/current
+  VM, original SDK and save/reimport acceptance remain pending. Preserve
+  rejection when an unknown call or writer can change those values.
 - `test/makecode-arcade-class-accessors.test.mjs`: a real class extends the
   selected SDK Sprite implementation, reads/writes inherited coordinates and
   returns through `sprites.allOfKind`. Prove the selected implementation's

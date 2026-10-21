@@ -722,3 +722,21 @@ and compound operations passes all seventeen controls, with zero skips; its
 measured dependency-scope policy passes unchanged. See [the API and remaining
 acceptance](ARCADE-PROJECT-JSON-EXPORT.md). Native/original execution and visible
 authoring still require final composed qualification.
+
+## Closed class containment and alias analysis — 2026-10-21
+
+The private source analysis now follows class instances through actual Array
+literals, indices, push operations, owned fields, self cycles and closed method
+returns. It preserves every original call and argument for effect analysis.
+Unknown getters, escaping aliases, opaque writers and method extraction remain
+refused; annotations provide no value facts. All 21 controls in seven complete
+affected modules pass. The integrated module closure and tests match those
+qualified bytes exactly.
+
+The unchanged object-heap example now imports, generates Code and exports with
+empty diagnostics; its source, Code, TypeScript and complete file map match the
+earlier failing case. The unchanged Sprite-accessor example still refuses SDK
+inheritance/coordinate facts. These are source/export observations, with no new
+VM, original-SDK or corpus-completion credit. The original six-pass/two-fail
+fixture run is retained; corrected boundaries use the real helper pipeline and
+keep the original call/currentness assertions.

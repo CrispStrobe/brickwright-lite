@@ -36,7 +36,7 @@ test('class annotations do not grant scalar facts and all actual later field wri
 test('unknown computed prototype extracted-method and callback escapes never become class certificates',()=>{
     const start=box+';let object=new Box(2);';
     for(const effect of [
-        'foreign(object)', 'let store={object:object}', 'let store=[object]',
+        'foreign(object)', 'let store={object:object}', 'let store=[object];foreign(store)',
         'let store={nested:{object:object}}', 'let store=[{nested:[object]}]',
         'let store={callback:function(value:any){object.n=value}}',
         'let store=[function(value:any){object.n=value}]',

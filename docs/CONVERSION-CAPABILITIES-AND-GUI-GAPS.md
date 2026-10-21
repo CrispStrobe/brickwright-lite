@@ -5417,3 +5417,18 @@ frozen records; per-costume palette indices remain explicit. See
 flags and actual CLI palette controls pass, with zero skips; the composed
 score/compound set passes all seventeen. Browser qualification, complete games
 and performance remain unobserved for this change.
+
+### Class instances inside Arrays and fields — source acceptance
+
+The converter analysis now preserves actual local class aliases through Array
+construction, indices, push, owned fields, self references and closed method
+returns. This adds no Number facts from type annotations and grants no flat-Array
+coercion permission for Arrays containing objects. The complete affected
+seven-module set passes all 21 controls. The unchanged object-heap source now
+exports cleanly; SDK Sprite inheritance remains a separate unsupported proof.
+
+No new visible authoring controls are qualified by that analysis. Verify users
+editing these aliases and class bodies in Code and connected Blocks, viewing
+current generated Code, saving/fresh reopening and exporting to the original
+SDK. Keep actual method bodies and arguments intact through edits. Native VM,
+original-SDK and visible editor acceptance remain pending.
