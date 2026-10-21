@@ -249,6 +249,9 @@ if (!existsSync(missing)) {
     });
 } else {
     const {runOnSimLab} = await import('./helpers/sim-lab-vm.mjs');
+    const {loadJolt, createPhysicsCore} = await import(path.join(SIM, 'physics/jolt-core.js'));
+    const {dcMotorCommand} = await import(path.join(SIM, 'physics/actuators.js'));
+    const {DEVICE_MODELS} = await import(path.join(SIM, 'devices/catalog.js'));
     const run = async (source, {modelText = MODEL_TEXT, timeLimitMs = 26000} = {}) =>
         ({...await runOnSimLab(source, {modelText, mat: ENTRY.mat, timeLimitMs}), modelText});
 
@@ -435,9 +438,8 @@ if (!existsSync(missing)) {
         const r = measure(result);
         const reached = Math.max(...result.track.map(f => Math.abs(f.joints[r.steer.id].angle))) * DEG;
         // The end of the travel: B pushed slowly each way, the rack against the guide's stops. The end is B's angle
-        // when the rack reaches its stop; the rack never passes it. (Pushed on, the pinion slips round on the
-        // stopped rack: the coupling is a velocity constraint re-based every step, physics/jolt-core.js. The
-        // program never pushes the rack into its stops.)
+        // when the rack reaches its stop; the rack never passes it, and B stalls there (physics/jolt-core.js end
+        // stops: the rack's slider limit, carried through the coupling to B's hinge; the next test pushes harder).
         const ends = [];
         const slides = [];
         let endYaw = 0;
@@ -455,6 +457,7 @@ if (!existsSync(missing)) {
         t.diagnostic(`program: B to ±${most}°, reached ${reached.toFixed(2)}°; the rack meets the guide's stops at B ${ends[0].toFixed(1)}° and ${ends[1].toFixed(1)}° ` +
             `(the guide: ±${travel} LDU of rack, ±${endWant.toFixed(1)}° of B), and goes at most ${slides.map(v => v.toFixed(2)).join(' and ')} LDU ` +
             `(B pushing on into an end turned the parked car ${endYaw.toFixed(2)}°)`);
+        assert.ok(endYaw < 0.2, `B pushing into the stops turned the parked car ${endYaw}°`);
         assert.ok(Math.abs(reached - most) < 1, `B holds the pinion at the position it was told (${reached}°)`);
         for (const s of slides) assert.ok(s < travel + 0.5, `the rack stops at the guide's end (${s} LDU)`);
         // The geometry's ±travel/r, and a few degrees more: pushing the parked wheels round, the pinion runs a little
@@ -540,6 +543,53 @@ if (!existsSync(missing)) {
         assert.ok(yawRate > 20, `the car turned (${yawRate}°/s)`);
         assert.ok(worstRack < 0.2, `the rack ran ${worstRack} LDU off its pinion while the car turned`);
         assert.ok(tipped < 2, `the chassis stays upright (${tipped}°)`);
+    });
+
+    test('motor B driven on into the rack\'s stops stalls there, by speed and at 50 % power, and the parked car does not turn', async t => {
+        const {model} = prepared();
+        const endWant = rackTravelLdu(model) / pitchRadiusLdu(model) * DEG;
+        const report = [];
+        // By speed, through the program and the hub: B run open-ended at 50 % speed each way for 3 s.
+        for (const way of ['forward', 'backward']) {
+            const push = await run(['DEVICE SPIKE', 'WHEN flag clicked:', '  set motor speed B 50', `  start motor B ${way}`, '  wait 3 seconds', ''].join('\n'),
+                {timeLimitMs: 3100});
+            const p = measure(push);
+            const most = Math.max(...push.track.map(f => Math.abs(f.joints[p.steer.id].angle))) * DEG;
+            const turned = Math.max(...push.track.map(f => Math.abs(p.yaw(f) - p.yaw(push.track[0])))) * DEG;
+            report.push(`speed ${way}: B at most ${most.toFixed(1)}°, the car turned ${turned.toFixed(3)}°`);
+            assert.ok(Math.abs(most - endWant) < 5, `by speed ${way}, B stalls at the stop: ${most}° (${endWant}°)`);
+            assert.ok(turned < 0.2, `by speed ${way}, the parked car turned ${turned}°`);
+        }
+        // At 50 % power: B's hinge driven by the motor's own DC model at half duty (physics/actuators.js), each way.
+        const J = await loadJolt();
+        const device = DEVICE_MODELS.find(d => d.id === 'spike-medium-angular');
+        const STEP = 1 / 200;
+        for (const sign of [1, -1]) {
+            const {mechanism: m} = prepared();
+            const core = createPhysicsCore(J, m, {stepHz: 200});
+            const chassis = bodyOf(m, 'hub');
+            const steer = jointBetween(m, 'hub', 'steerPinion');
+            const yaw = () => {
+                const fwd = qrot(core.bodyPose(chassis).rotation, [1, 0, 0]);
+                return Math.atan2(-fwd[2], fwd[0]);
+            };
+            for (let i = 0; i < 100; i++) core.step(STEP);
+            const yaw0 = yaw();
+            core.setMotor(steer.id, dcMotorCommand(device, 0.5 * sign, 'brake'));
+            let most = 0;
+            let turned = 0;
+            for (let i = 0; i < 600; i++) {
+                core.step(STEP);
+                most = Math.max(most, Math.abs(core.jointState(steer.id).angle) * DEG);
+                turned = Math.max(turned, Math.abs(yaw() - yaw0) * DEG);
+            }
+            const held = Math.abs(core.jointState(steer.id).angle) * DEG;
+            core.destroy();
+            report.push(`50 % power ${sign > 0 ? '+' : '-'}: B at most ${most.toFixed(1)}°, after 3 s ${held.toFixed(1)}°, the car turned ${turned.toFixed(3)}°`);
+            assert.ok(Math.abs(most - endWant) < 5 && Math.abs(held - endWant) < 5, `at 50 % power, B stalls at the stop: ${most}°, ${held}° (${endWant}°)`);
+            assert.ok(turned < 0.2, `at 50 % power, the parked car turned ${turned}°`);
+        }
+        t.diagnostic(`the stop at ±${endWant.toFixed(1)}° of B: ${report.join('; ')}`);
     });
 
     /**
