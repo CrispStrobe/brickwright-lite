@@ -1,6 +1,6 @@
-# Twelve motorized physics experiments
+# Thirteen motorized physics experiments
 
-Twelve original CrispStrobe/BSD-3-Clause machines extend the existing Robot Lab
+Thirteen original CrispStrobe/BSD-3-Clause machines extend the existing Robot Lab
 library. Each has a real hub and one or two SPIKE medium angular motors. All use
 ordinary LDraw parts, finite feedback programs and passive mechanical outputs.
 Selecting their gallery card loads the matching Code/Blocks program and title.
@@ -47,7 +47,7 @@ Raw model/program bytes, original notices and SHA-256 provenance live under
 unreviewed input hashes. It changes model identification/licence paths and
 removes coarse source STEP groups so the existing connected planner supplies
 small assembly steps. It preserves the original placement numbers, transforms,
-part IDs and motor bindings. Programs remain byte-identical except Scale Studio, Bloom Gate and Echo Bridge:
+part IDs and motor bindings. Programs remain byte-identical except Scale Studio, Bloom Gate, Echo Bridge and Bit Keeper:
 their redundant `lab reset` is removed because gallery selection already restores
 the saved pose. Its real starting-angle guard and every motor target, speed,
 dwell and watchdog remain. `physics-addon-program.mjs` validates raw hashes
@@ -188,3 +188,28 @@ parallel-axis theorem, matching the modeled mass distribution. Its 2% period
 and 90% retained-amplitude bounds are unchanged. All 187 affected belt,
 construction-instruction and native-validation controls pass; the measured
 pendulum period error is about 0.1%.
+
+The independent tipping benchmark uses the rounded box contact shape it actually
+simulates. Its 0.5 mm corner radius gives the static criterion
+`tan(theta) = (halfWidth - radius) / (centreHeight - radius)`, distinct from a
+sharp cuboid. The predicted rounded threshold is 6.98 degrees; the unchanged
+experiment tips at +7.31/-7.36 degrees within its original 0.5-degree bound. No
+physics setting, model placement or tolerance changes to make this comparison.
+
+## Bit Keeper: a passive mechanical memory
+
+Bit Keeper adds 133 rigid placements and one physical elastic loop (134 pieces),
+one hub and motor A. The motor shifts the band's anchor, then returns to neutral.
+The free rocker retains either of two positions through gravity and spring
+potential. Ordinary and strict native runs retain means near +24.63/-24.62 degrees
+with only 0.068 degrees between the two neutral motor medians. Removing only the
+band loses the retained states, and frozen output fails the same useful-motion
+judge. Explicit coast-only startup drifts by about 0.058 degrees over ten seconds.
+Four native controls and eight detailed geometry checks pass.
+
+The source gear on the rocker is keyed ballast, without a gear transmission.
+The exact `gear-not-on-hinge` note for `bob_gear` remains visible; other unexpected
+diagnostics are refused. Original motor targets, speeds, trims and watchdog are
+preserved; only the redundant gallery reset is removed. Manual study uses brief
+jogs within the source ±10-degree input range, and the lessons distinguish neutral
+input holding from indefinite unpowered memory. Browser integration is pending.
