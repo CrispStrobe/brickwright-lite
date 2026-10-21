@@ -68,12 +68,12 @@ pkg.dependencies['three'] = '0.186.1';                               // MIT — 
 // tarball (sha256 112f6281f8cddaa17927e63b2c9bae77f9f28c8b915ac8aeffac330d75df890c): upstream Jolt's GearConstraint passed
 // torque across a mesh 1:1 (an 8:24 train put 3× the load on its motor) and is angular-only (no axle
 // reaction: a gearbox on a free frame gained angular momentum). The fork fixes the ratio and adds
-// GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.3, branch brickwright/gear-mesh-master; bw.3 adds the CCD bounce fix and MaterialPairs).
+// GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.5, branch brickwright/part-pair-filter on brickwright/gear-mesh-master; bw.3 adds the CCD bounce fix and MaterialPairs, bw.4 RackMeshConstraint, bw.5 PartPairSimShapeFilter: the Robot Lab's part-pair collision filter in C++).
 // https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh-master/BRICKWRIGHT.md
 // The release URL names a tag, which can move; the bytes are what is trusted: npm checks the tarball
 // against the lockfile's integrity before it unpacks anything, and the lockfile must carry THIS value.
-const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.3/jolt-physics-1.1.0-bw.3.tgz';
-const JOLT_PHYSICS_INTEGRITY = 'sha512-xqXPa6PGTgd0I8j4BiAHmmTNQgrXqounlRkpQ7VeVre9/guWR/4SOyJcMynIOzXORE8aHqlw+M9bUhgQwhjjIQ==';
+const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.5/jolt-physics-1.1.0-bw.5.tgz';
+const JOLT_PHYSICS_INTEGRITY = 'sha512-M1SVZ80BdRK6mVnrXK/bg3XFIi0s1NO4BBtmGuAkVBS+3WcYcDOEY+1bRRgjlKA1b6SNLtDOF9QbT1hE83dLGg==';
 pkg.dependencies['jolt-physics'] = JOLT_PHYSICS_URL;
 {
     const lockPath = path.join(GUI, 'package-lock.json');

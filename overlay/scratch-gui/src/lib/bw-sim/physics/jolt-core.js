@@ -1561,7 +1561,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             const end = atEndOf(st.joint, st.limits);
             if (end === 0) continue;
             const h = st.hinge;
-            if (h.isMotor) {
+            if (h.isMotor && h.mode === 'torque') {
+                // A power drive (PWM: a torque through the hinge's spring, applyHingeTorque) pushing into the end: the
+                // spring's target is where the hinge is, so only its damping (the back-EMF) acts this step.
+                if (h.driveTorque !== 0 && Math.sign(st.k * h.driveTorque) === end) h.hinge.SetTargetAngle(normalizeAngle(h.hinge.GetCurrentAngle()));
+            } else if (h.isMotor) {
                 const drive = h.hinge.GetTargetAngularVelocity();
                 if (drive !== 0 && h.hinge.GetMotorState() === J.EMotorState_Velocity && Math.sign(st.k * drive) === end) h.hinge.SetTargetAngularVelocity(0);
             } else if (Math.sign(st.k * h.velocity) === end) {

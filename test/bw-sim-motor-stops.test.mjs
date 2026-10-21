@@ -25,14 +25,17 @@ const DEG = 180 / Math.PI;
 const tilt = ([x, , z]) => Math.acos(Math.max(-1, Math.min(1, 1 - 2 * (x * x + z * z)))) * DEG;
 
 /** Runs `port` at full speed (sign) for `seconds` after settling: the chassis' worst tilt, the motor's turn, the slider's end. */
-const runOn = async (file, port, sign, seconds = 3) => {
+const runOn = async (file, port, sign, seconds = 3, {power = false} = {}) => {
     const J = await loadJolt();
     const m = prepareModel(readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/models', file), 'latin1'), CATALOG).mechanism;
     const core = createPhysicsCore(J, m, {stepHz: HZ});
     const chassis = m.bodies.filter(b => b.id !== 'ground' && b.motion !== 'static').reduce((a, b) => (b.massKg > a.massKg ? b : a)).id;
     const motor = m.joints.find(j => j.motor && j.motor.port === port);
     for (let i = 0; i < 0.5 * HZ; i++) core.step(1 / HZ);
-    core.setMotor(motor.id, {mode: 'velocity', radPerSec: sign * motor.motor.maxSpeedRadPerSec});
+    // A speed drive, or (power) a PWM drive at full duty: the stall torque through the back-EMF damping that makes the
+    // no-load speed (physics/actuators.js dcMotorCommand).
+    if (power) core.setMotor(motor.id, {mode: 'torque', torqueNm: sign * motor.motor.maxTorqueNm, dampingNmsPerRad: motor.motor.maxTorqueNm / motor.motor.maxSpeedRadPerSec});
+    else core.setMotor(motor.id, {mode: 'velocity', radPerSec: sign * motor.motor.maxSpeedRadPerSec});
     let worst = 0;
     let lowest = Infinity;
     for (let i = 0; i < seconds * HZ; i++) {
@@ -51,6 +54,13 @@ test('the forklift\'s lift motor run on past the top stalls there; the forklift 
     t.diagnostic(`turned ${r.turned.toFixed(0)}°, tilt at most ${r.worst.toFixed(1)}°`);
     assert.ok(r.worst < 3, `level: ${r.worst}°`);
     // The rack is 66 mm long; the pinion's ~1000° lifts it there, and the motor stops (it ran on to 3300°).
+    assert.ok(r.turned > 800 && r.turned < 1100, `the motor stalls at the top: ${r.turned}°`);
+});
+
+test('the forklift\'s lift motor driven at full POWER past the top stalls there too (a PWM drive, not a speed)', async t => {
+    const r = await runOn('forklift.ldr', 'C', 1, 3, {power: true});
+    t.diagnostic(`turned ${r.turned.toFixed(0)}°, tilt at most ${r.worst.toFixed(1)}°`);
+    assert.ok(r.worst < 3, `level: ${r.worst}°`);
     assert.ok(r.turned > 800 && r.turned < 1100, `the motor stalls at the top: ${r.turned}°`);
 });
 
