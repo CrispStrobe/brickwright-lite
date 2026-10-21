@@ -5390,3 +5390,17 @@ The shared [Arcade dialect](../overlay/scratch-gui/src/lib/arcadeDialect.js) alr
 Qualify users constructing and editing those connected Blocks and Code forms, Number versus text inputs, aliases and typed helper parameters; preserve the changed values through current Code, save/fresh reopen and MakeCode export/import. Named and dimensional/range/slice/concat factories and decoder cache-miss aliases need their own real allocation/coercion evidence.
 
 Graphics export must use the current VM costume SVG/raster/palette and sound assets, as the production [pseudocode importer](../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx) does. Do not substitute an earlier Creator asset cache. Browser drawing, visible camera selection, controller use and the normal asset-bearing camera journey remain independent acceptance gates. Full roundtrip CLI integration and the complete 225-input current assessment are pending.
+
+### Score threshold callbacks — SOURCE candidate
+
+The candidate adds fixed-player score-threshold registration and callback
+blocks with matching Code words and current-graph export. It retains strict
+threshold replacement, upward/downward crossings, integer score storage,
+fractional thresholds and completion of a paused handler before the setter
+continues. Root/member writes, escaping owners and unproved threshold values
+remain diagnostics.
+
+Qualification is pending for the complete focused modules, original SDK,
+Code/Blocks edits, same/fresh SB3 and current export/reimport. Canonical CLI
+vocabulary adoption and visible browser authoring are also pending. This is
+not a completed tutorial, game or corpus result.

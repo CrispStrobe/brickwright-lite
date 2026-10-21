@@ -121,3 +121,39 @@ arguments and full effects retain separate checks. The measured module Undefined
 case has an exact direct-read proof without lending initialization or Array
 facts. First failures and the observer-only causal capture remain retained.
 Actual affected native/original-SDK and final combined checks remain pending.
+
+### Score callback composition and explicit supplier adoption — 2026-10-21
+
+
+SOURCE candidate under the existing Arcade importer/runtime/export lane. Add
+`info.onScore` and fixed `info.player1` through `info.player4` registrations,
+visible registration/handler blocks and their shared Code spellings. Threshold
+values require actual Number producers; no annotation or Array-body loan is
+a Number certificate. Fixed player-one `.impl.onScore` is admitted only through
+the same unshadowed, nonescaping, unwritten SDK root and a side-effect-free
+threshold read. Existing static callback specialization retains helper scalar
+argument evaluation before the forwarded receiver is acquired. Dynamic owners,
+extracted impl aliases and receiver-changing threshold calls remain refused.
+
+Reuse the retained MIT HUD registration/replacement algorithm. Native setters
+visit the original handler array length, reading each live row and current score
+after callbacks complete, including pauses. Score stores int32; fractional
+thresholds are not rounded. Generic and multiplayer score setters return the
+same pending callback work before caller continuation. Scene/player state and
+Stop/Load cancellation use the existing registered-callback lifecycle; native
+Number result owner checks and the generated HUD source remain unchanged.
+
+The complete pure module passes three controls. The native/original module
+remains SOURCE only. Root must qualify whole modules under unchanged limits, including exact SDK values, Code, same/fresh
+SB3 and current export/reimport; fixed-player/threshold/handler edits and owner
+refusals remain explicit. Canonical supplier vocabulary and CLI adoption,
+visible browser authoring and authentic dependency-bearing project execution
+remain separate gates. No historical partial or full-game count is promoted.
+
+The three complete source/export groups pass on the isolated candidate. The
+canonical words are now adopted through the unchanged normal sync and its strict
+check, including managed mirrors and generated inventory. Supplier PR160 and
+PR161 passed all enabled checks; their final merged composition also passes all
+463 affected Arcade controls. The explicit compiler pin advances to that merged
+composition; independent Array and Circuit Playground pins are unchanged.
+Combined source, fresh native/original-SDK and visible authoring remain pending.

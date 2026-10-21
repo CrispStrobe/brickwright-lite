@@ -26,6 +26,7 @@ module.exports = makeExt(`// Name: Arcade
   const exceptionOwners = new WeakMap();
   const procedureOwners = new WeakMap();
   const scoreNumberOwners = new WeakMap();
+  const scoreThresholdRegistrations = new WeakMap();
   const sceneClockOwners = new WeakMap(), sceneClockValues = new WeakMap();
   const nullSpriteOwners = new WeakMap();
   const nullSpriteFaults = new WeakMap();
@@ -49,6 +50,7 @@ module.exports = makeExt(`// Name: Arcade
         (child,args,util)=>spriteUpdateHosts.get(this)?.consumeChild(child,args,util));
       exceptionOwners.set(this,newExceptionOwner());
       managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
+      scoreThresholdRegistrations.set(this,new WeakMap());
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
       // A module-held owner ties the narrow score Number ingress to this actual
       // implementation, including its writers. It exposes no score/state value.
@@ -363,6 +365,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'getLife',blockType:Scratch.BlockType.REPORTER,text:'Arcade life player [PLAYER]',arguments:n('PLAYER',1)},
           {opcode:'registerLifeZeroHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register life zero player [PLAYER] as [TOKEN] capturing [CAPTURES]',arguments:{...n('PLAYER',1),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredLifeZero',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade life zero handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerScoreHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register score player [PLAYER] threshold [SCORE] as [TOKEN] capturing [CAPTURES]',arguments:{...n('PLAYER',1),...n('SCORE',10),...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredScore',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade score handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'pushScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade push scene'},
           {opcode:'setPalette',blockType:Scratch.BlockType.COMMAND,text:'Arcade set palette hex [DATA]',arguments:str('DATA','000000ffffffff2121ff93c4ff8135fff609249ca378dc52003fad87f2ff8e2ec4a4839f5c406ce5cdc491463d000000')},
           {opcode:'popScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade pop scene'},
@@ -1365,16 +1369,17 @@ module.exports = makeExt(`// Name: Arcade
       if(key===1)return this.getLife({PLAYER:player.index+1});
       return Scratch.BWValues.encode(this._customPlayerState(player,key).value);
     }
-    setPlayerState(args) {
+    setPlayerState(args,util) {return this._runTerrainGenerator(this._setPlayerStateSteps(args,util));}
+    *_setPlayerStateSteps(args,util) {
       const player=this._player(args.PLAYER);if(!player)return;
       const key=this._playerStateNumber(args.KEY),value=this._playerStateNumber(args.VALUE);
-      if(key===0)this.setPlayerScore({PLAYER:player.index+1,VALUE:value});
+      if(key===0){yield* this._setPlayerScoreSteps({PLAYER:player.index+1,VALUE:value},util);if(this._terrainStopped)return;}
       if(key===1)this.setLife({PLAYER:player.index+1,VALUE:value});
       this._customPlayerState(player,key).value=value;
     }
-    changePlayerState(args) {
+    changePlayerState(args,util) {
       if(!this._player(args.PLAYER))return;
-      this.setPlayerState({...args,VALUE:Scratch.BWValues.decode(this.getPlayerState(args))+this._playerStateNumber(args.VALUE)});
+      return this.setPlayerState({...args,VALUE:Scratch.BWValues.decode(this.getPlayerState(args))+this._playerStateNumber(args.VALUE)},util);
     }
     playerBySprite(args) {const sprite=Scratch.BWValues.decode(args.ID);return this._playerRef(this._players().find(player=>player.sprite===sprite));}
     playerProperty(args) {
@@ -1752,13 +1757,49 @@ module.exports = makeExt(`// Name: Arcade
       const state=this._infoState(),index=(Number(player)||1)-1;if(index<0 || index>3)return null;
       if(index>0){state.multiplayerInfo=true;this._hud().info._setInfoState(state.hudInfo);this._hud().info._initMultiHUD();}
       if(!state.players)state.players=[];
-      return state.players[index] || (state.players[index]={});
+      const PlayerState=this._hud().info.PlayerState;
+      return state.players[index] || (state.players[index]=new PlayerState());
     }
     hasLife(args) {const state=this._lifeState(args.PLAYER);return !!state && state.life!==undefined && state.life!==null;}
     getPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.showScore===undefined)state.showScore=true;if(state.showPlayer===undefined)state.showPlayer=true;if(state.score==null)state.score=0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;return state.score;}
     hasPlayerScore(args) {const state=this._lifeState(args.PLAYER);return !!state && state.score!==undefined;}
-    setPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(state){const hud=this._state().hudInfo,V=this._hud().info.Visibility;if(!(hud.visibilityFlag & V._ExplicitlySetScore))hud.visibilityFlag|=V.Score;if(state.showScore===undefined)state.showScore=true;if(state.showPlayer===undefined)state.showPlayer=true;state.score=Number(args.VALUE)|0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;this._changed();}}
-    changePlayerScore(args) {this.setPlayerScore({PLAYER:args.PLAYER,VALUE:this.getPlayerScore(args)+Number(args.VALUE)});}
+    setPlayerScore(args,util) {return this._runTerrainGenerator(this._setPlayerScoreSteps(args,util));}
+    *_setPlayerScoreSteps(args,util) {
+      const owner=this._infoState(),state=this._lifeState(args.PLAYER);if(!state)return;
+      const hud=owner.hudInfo,V=this._hud().info.Visibility;
+      if(!(hud.visibilityFlag & V._ExplicitlySetScore))hud.visibilityFlag|=V.Score;
+      // The same score() side effects and integer assignment as PlayerInfoImpl.
+      const oldScore=this.getPlayerScore(args) || 0;
+      state.score=Number(args.VALUE)|0;if((Number(args.PLAYER)||1)===1)owner.score=state.score;
+      this._changed();
+      // PXT uses forEach: capture its initial length, but read each live row and
+      // the current score AFTER every completed callback, including suspension.
+      const handlers=state.scoreReachedHandlers,length=handlers.length;
+      for(let index=0;index<length;index++)if(index in handlers){
+        const entry=handlers[index];
+        if((oldScore<entry.score && state.score>=entry.score) || (oldScore>entry.score && state.score<=entry.score)){
+          const registration=scoreThresholdRegistrations.get(this).get(entry.handler);
+          if(!registration)throw new Error('Arcade score handler has no current registration');
+          yield* this._registeredCallbackSteps([registration],'arcade_whenRegisteredScore',{},util);
+          if(this._terrainStopped)return;
+        }
+      }
+    }
+    changePlayerScore(args,util) {return this.setPlayerScore({PLAYER:args.PLAYER,VALUE:this.getPlayerScore(args)+Number(args.VALUE)},util);}
+    registerScoreHandler(args,util) {
+      const player=Number(Scratch.BWValues.decode(args.PLAYER));
+      if(!Number.isInteger(player)||player<1||player>4)throw new Error('Arcade score registration requires a fixed player from 1 to 4');
+      const score=Scratch.BWValues.decode(args.SCORE);
+      if(typeof score!=='number')throw new TypeError('Arcade score threshold requires a Number');
+      const state=this._lifeState(player);if(!state)return;
+      const registration=this._handlerRegistration(args,util);
+      const handler=()=>this._runTerrainGenerator(this._registeredCallbackSteps([registration],'arcade_whenRegisteredScore',{}));
+      scoreThresholdRegistrations.get(this).set(handler,registration);
+      const {info,players}=this._hud();info._setInfoState(this._state().hudInfo);
+      // Reuse the actual retained SDK registration/replacement algorithm.
+      players[player-1].onScore(score,handler);
+    }
+    whenRegisteredScore(args,util) {return this.whenRegisteredWall(args,util);}
     getLife(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.showLife===undefined)state.showLife=true;if(state.showPlayer===undefined)state.showPlayer=true;if(state.life===undefined)state.life=3;return state.life || 0;}
     setLife(args) {const state=this._lifeState(args.PLAYER);if(state){const hud=this._state().hudInfo,V=this._hud().info.Visibility;if(!(hud.visibilityFlag & V._ExplicitlySetLife))hud.visibilityFlag|=V.Life;if(state.showLife===undefined)state.showLife=true;if(state.showPlayer===undefined)state.showPlayer=true;state.life=Number(args.VALUE)|0;this._changed();}}
     changeLife(args) {this.setLife({PLAYER:args.PLAYER,VALUE:this.getLife(args)+Number(args.VALUE)});}
@@ -2715,8 +2756,8 @@ module.exports = makeExt(`// Name: Arcade
       const sprite = this._sprite(args.NAME); if (!sprite) return false;
       const bounds = this._bounds(); return sprite.x <= 0 || sprite.x >= bounds.x || sprite.y <= 0 || sprite.y >= bounds.y;
     }
-    setscore(args) {this.setPlayerScore({PLAYER:1,VALUE:args.N});}
-    changescore(args) {this.changePlayerScore({PLAYER:1,VALUE:args.N});}
+    setscore(args,util) {return this.setPlayerScore({PLAYER:1,VALUE:args.N},util);}
+    changescore(args,util) {return this.changePlayerScore({PLAYER:1,VALUE:args.N},util);}
     getscore() {return this.getPlayerScore({PLAYER:1});}
     showscore() { this._state().scoreVisible = true; this._changed(); }
     log(args) {

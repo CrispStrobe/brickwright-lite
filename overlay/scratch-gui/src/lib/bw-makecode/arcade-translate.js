@@ -411,6 +411,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.kindRuntimeProgram=containsAst(node,value=>value.type==='SpriteKindReset' || value.type==='Member' && this.path(value.object)==='SpriteKind' || value.type==='Call' && (this.path(value.callee)==='SpriteKind.create' || value.callee?.type==='Member' && ['kind','setKind'].includes(value.callee.name)));
         this.sceneStackProgram=this.kindRuntimeProgram || containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onControllerEvent|onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         this.nativeInfoProgram=this.sceneStackProgram || containsAst(node,value=>value.type==='Call' && isInfoRegistration(this.path(value.callee)));
+        this.scoreRegistrationProof=scoreRegistrationProof(node);
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
         this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
@@ -1689,6 +1690,7 @@ class ArcadeTranslator extends BaseTranslator {
             case 'forever':push(`arcade register forever ${suffix}`);break;
             case 'parallel':push(`arcade run parallel ${suffix}`);break;
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
+            case 'score':push(`arcade register score player (${SCORE_REGISTRATION_APIS.get(name)}) threshold (${this.expr(a[0])}) ${suffix}`);break;
             case 'countdown':push(`arcade register countdown ${suffix}`);break;
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
             case 'multiplayerConnection':push(`arcade register multiplayer connection event (${this.expr(a[0])}) ${suffix}`);break;
@@ -3783,7 +3785,47 @@ const containsAst = (node,predicate) => node && typeof node==='object' &&
     (predicate(node) || Object.values(node).some(value=>Array.isArray(value)?value.some(child=>containsAst(child,predicate)):containsAst(value,predicate)));
 const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval','game.onPaint','game.onShade'].includes(name);
 const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '');
-const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
+const SCORE_REGISTRATION_APIS = new Map([...['info','info.player1','info.player2','info.player3','info.player4'].map((root,index)=>[root+'.onScore',index || 1]),['info.player1.impl.onScore',1]]);
+// A known SDK spelling alone is not enough: close every actual info-root use,
+// reject aliases/property writers/shadows, and prove the threshold's Number
+// producer through the existing all-writer graph. The retained SDK's fixed
+// player-one impl receiver is admitted only with a side-effect-free threshold:
+// moving registration to the native command must not reorder receiver creation
+// across an authored side effect. No extracted/aliased impl object is admitted.
+const scoreRegistrationProof = program => {
+    const pathOf=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?pathOf(node.object)+'.'+node.name:null;
+    if(!containsAst(program,node=>node.type==='Call'&&SCORE_REGISTRATION_APIS.has(pathOf(node.callee))))return {has:()=>false};
+    const proof=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary);
+    if(!proof.isCurrent())return {has:()=>false};
+    const methods=['score','hasScore','setScore','changeScoreBy','life','hasLife','setLife','changeLifeBy','onLifeZero','onScore'];
+    const publicCalls=new Set(['info','info.player1','info.player2','info.player3','info.player4'].flatMap(root=>methods.map(method=>root+'.'+method)));
+    for(const method of ['startCountdown','stopCountdown','onCountdownEnd','showScore','showLife','showCountdown'])publicCalls.add('info.'+method);
+    publicCalls.add('info.player1.impl.onScore');
+    for(const node of proof.nodes){
+        if(node.type==='Unknown'||node.type==='Identifier'&&['globalThis','global','window','self','eval','Function','Reflect','arguments'].includes(node.name)||
+            node.type==='Member'&&node.name==='constructor'||node.type==='Template'&&typeof node.tag==='string'&&node.tag.split('.')[0]==='info')return {has:()=>false};
+    }
+    for(const node of proof.nodes)if(node.type==='Identifier'&&node.name==='info'&&proof.unbound(node)){
+        let top=node,parent=proof.parentOf(top);
+        while(parent?.type==='Member'&&parent.object===top){top=parent;parent=proof.parentOf(top);}
+        if(parent?.type!=='Call'||parent.callee!==top||parent.isNew||!publicCalls.has(pathOf(top)))return {has:()=>false};
+    }
+    const facts=analyseSourceValueProducers(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,ordinaryPrimitiveSdkNumbers:true});
+    const pureRead=node=>node?.type==='Number'||node?.type==='Identifier'&&facts.isInitializedAt(node)||
+        node?.type==='Parenthesized'&&pureRead(node.expression)||node?.type==='Unary'&&['+','-'].includes(node.op)&&pureRead(node.argument);
+    const selected=new Set();
+    for(const node of proof.nodes)if(node.type==='Call'&&SCORE_REGISTRATION_APIS.has(pathOf(node.callee))){
+        let root=node.callee;while(root?.type==='Member')root=root.object;
+        if(!node.args?.length)continue;
+        const types=facts.typesAt(node.args[0]);
+        const internal=pathOf(node.callee)==='info.player1.impl.onScore';
+        if(!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&!node.args.some(arg=>arg?.type==='Spread')&&
+            proof.unbound(root)&&types.size&&[...types].every(type=>type==='Number')&&(!internal||pureRead(node.args[0])))selected.add(node);
+    }
+    return {has:node=>proof.isCurrent()&&selected.has(node)};
+};
+const isInfoRegistration = name => SCORE_REGISTRATION_APIS.has(name)||/^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
 const isSpriteRegistration = name => ['sprites.onDestroyed','sprites.onOverlap'].includes(name);
 const isParallelLaunch = name => name==='control.runInParallel';
@@ -3799,6 +3841,7 @@ const sceneRegistrationSpec = name => {
         'control.runInParallel':{kind:'parallel',handlerIndex:0,arity:1,prefix:'__bwParallel',maxParams:0},
         'game.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
         'basic.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
+        ...Object.fromEntries([...SCORE_REGISTRATION_APIS.keys()].map(name=>[name,{kind:'score',handlerIndex:1,arity:2,prefix:'__bwScore',maxParams:0}])),
         'info.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.player1.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.onCountdownEnd':{kind:'countdown',handlerIndex:0,arity:1,prefix:'__bwCountdown',maxParams:0},
@@ -3840,7 +3883,7 @@ const discoverRuntimeRegistrations = (ast, translator) => {
         }
         const instance=node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='onDestroyed' && translator.spriteReferences.has(node.callee.object);
         const spec=instance?{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}:node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
-        if (spec) {
+        if (spec && (spec.kind!=='score'||translator.scoreRegistrationProof.has(node))) {
             const handler=node.args?.[spec.handlerIndex];
             const kind=node.args?.[0];
             const nativeScene=spec.maxParams!==undefined;
@@ -4311,7 +4354,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['controller.setRepeatDefault','controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
-        if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero|onScore)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Member' && ['repeatDelay','repeatInterval'].includes(node.name) && (t.path(node.object)||'').startsWith('controller.'))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
@@ -4448,7 +4491,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
         ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
-        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
+        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'info.onScore', 'console.log',
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;
@@ -4459,7 +4502,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (ordinaryAssignment(st) || ['If', 'For', 'While','Block'].includes(st.type) || ast.loweredSourceLoopControl && ['Switch','Enum','Interface'].includes(st.type) || requiresSpriteRuntime && st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type)) continue;
         const name = names[index];
         if (allowedCalls.has(name) || functionNames.has(name) ||
-            /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '') || /^info\.player[1-4]\.onLifeZero$/.test(name || '') ||
+            /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '') || /^info\.player[1-4]\.(?:onLifeZero|onScore)$/.test(name || '') ||
             // The runtime path keeps score and lives in native player state, which the HUD draws.
             /^info(?:\.player[1-4])?\.(setScore|changeScoreBy|setLife|changeLifeBy)$/.test(name || '') ||
             (name && /^[A-Za-z_]\w*\.onDestroyed$/.test(name)) ||

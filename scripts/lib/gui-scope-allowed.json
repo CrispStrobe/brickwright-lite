@@ -401,7 +401,8 @@
       "test/makecode-string-conversion-roundtrip.test.mjs",
       "test/makecode-translate.test.mjs",
       "test/native-array-export-original-pxt.test.mjs",
-      "test/conversion-journey.test.mjs"
+      "test/conversion-journey.test.mjs",
+      "test/makecode-arcade-score-threshold-source.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },

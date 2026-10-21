@@ -41,8 +41,11 @@ The new score callback syntax passes all 463 controls in three complete
 canonical modules. [Supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160)
 is merged after all four enabled checks passed; merge tree and parents agree
 with the reviewed composition. Lite source/export controls pass all three
-groups. Explicit pin adoption, fresh native/original-SDK execution and visible
-authoring remain pending. The proposed parser prefix optimization was rejected
+groups. The composed score/compound modules now pass all six controls.
+The normal supplier sync and strict check explicitly adopt the merged compiler
+composition containing PR160 and PR161; managed mirrors and the generated
+vocabulary match, and independent Array/Circuit Playground pins stay unchanged.
+Fresh native/original-SDK execution and visible score authoring remain pending. The proposed parser prefix optimization was rejected
 after a balanced actual-input episode found it slower; it is excluded from
 delivery. Historical 36 partials remain unchanged pending a complete replacement
 census.

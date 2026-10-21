@@ -185,12 +185,12 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredPaint:'paint', arcade_whenRegisteredShade:'shade',
     arcade_whenRegisteredKindDestroyed:'destroyed', arcade_whenRegisteredOverlap:'overlap',
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
-    arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
+    arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredScore:'score', arcade_whenRegisteredCountdown:'countdown'
 };
 const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
-    'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
+    'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerScoreHandler','arcade_registerCountdownHandler']);
 
 const KEY_BUTTON = {
     'left arrow': 'controller.left', 'right arrow': 'controller.right',
@@ -2532,11 +2532,12 @@ class ArcadeEmitter {
         case 'arcade_startParallelHandler':
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
+        case 'arcade_registerScoreHandler':
         case 'arcade_registerCountdownHandler': {
             const kinds={arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
                 arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
-                arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
+                arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerScoreHandler:'score',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
             const signatures={multiplayerConnection:`${callback.parameter}: mp.Player`,multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
@@ -2547,6 +2548,10 @@ class ArcadeEmitter {
             const args=[];let api=apis[kind];
             if(kind==='instanceDestroyed')api=`${this.arrayValue(b,'ID')}.onDestroyed`;
             if(kind==='lifeZero'){const playerApi=this.infoPlayerApi(b);if(!playerApi)return;api=playerApi+'.onLifeZero';}
+            if(kind==='score'){
+                if(!this.scoreThresholdExportOperands?.has(b)){this.note('Arcade score registration export requires an actual Number threshold producer');return;}
+                const playerApi=this.infoPlayerApi(b);if(!playerApi)return;api=playerApi+'.onScore';args.push(this.arrayValue(b,'SCORE'));
+            }
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));
             if(kind==='overlap')args.push(this.kindExpr(b,'OTHER_KIND'));
@@ -3134,7 +3139,7 @@ class ArcadeEmitter {
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
-        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),nativeBitwiseInputs=new Map(),sourceBitwiseInputs=new Map(),sourceBitwiseConstructorResults=new Set(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
+        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),scoreThresholdInputs=new Map(),nativeBitwiseInputs=new Map(),sourceBitwiseInputs=new Map(),sourceBitwiseConstructorResults=new Set(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
             if(Array.isArray(input) && input[0]===12) return {opcode:'data_variable',fields:{VARIABLE:[input[1],input[2]]}};
@@ -3373,6 +3378,7 @@ class ArcadeEmitter {
                     procedureInputs.push({block,obligation,value:ref(operand)});
                 }
                 if(block.opcode==='arcade_inspectValue')inspectionInputs.set(block,{value:ref(inputBlock(blocks,block,'VALUE')),limit:ref(inputBlock(blocks,block,'LIMIT'))});
+                if(block.opcode==='arcade_registerScoreHandler')scoreThresholdInputs.set(block,ref(inputBlock(blocks,block,'SCORE')));
                 if(block.opcode==='arrays_valueUnary'&&literal(blocks,block,'OP')==='~'||block.opcode==='arrays_valueBinary'&&['&','|','^','<<','>>','>>>'].includes(literal(blocks,block,'OP')))
                     nativeBitwiseInputs.set(block,(block.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,block,name))));
                 const sourceOperation=sourceValueOperation(block);
@@ -3574,6 +3580,8 @@ class ArcadeEmitter {
         // every actual directed writer/capture through the same closed graph.
         this.sourceBitwiseExportOperands=new Set();
         for(const [block,operands]of sourceBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['array','number','boolean','string','null','undefined'])))this.sourceBitwiseExportOperands.add(block);
+        this.scoreThresholdExportOperands=new Set();
+        for(const [block,value]of scoreThresholdInputs)if(inspectionTypes(value,['number']))this.scoreThresholdExportOperands.add(block);
         this.nativeBitwiseExportOperands=new Set();
         for(const [block,operands]of nativeBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'])))this.nativeBitwiseExportOperands.add(block);
         for(const expected of this.procedureConstraints?.allObligations||[]){
