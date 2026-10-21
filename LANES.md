@@ -35,6 +35,16 @@ candidate. All 64 existing native controls, 17 additional lifecycle/JSON/parser
 controls and both public Code/export/reimport cases pass, with independent
 saved-result checks. Final composed hosted and visible authoring qualification
 remain required; this does not establish complete games or corpus completion.
+
+## Robot Lab Technic machines: the Crane — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane, owner goal: Technic projects driven by the hubs).
+The differential and the shifting gearbox already ship (differential.ldr, gearbox.ldr, kinds/transmission.js,
+relativeGear): not rebuilt. New: the Crane (static/sim-lab/models/crane.ldr, scripts/gen-crane-model.mjs,
+programs/crane.bw): a SPIKE hub on the floor, the Excavator's 28T turntable slewed by an 8T on A at low speed,
+a 15L boom luffed by a small linear actuator on B, a hook hanging free on a frictionless pin. No winch (ropes,
+PR #1123, not on main). Tests: test/bw-sim-crane.test.mjs. No physics-core change.
+
 ## Arcade slice-result element presence — 2026-10-20
 
 CLAIM CANDIDATE — Codex Arcade Array/export lane. Merge before implementation.
@@ -178,6 +188,7 @@ lane/robot-lab-flex3-20261020 — Claude (Robot Lab lane). Cables from each plug
 hub (insight layer); the Studio/LDD mouse preset and right click puts down; first-time coach marks;
 Ctrl+drag glides a pin or axle along its hole. docs/ROBOT-LAB-UX.md §13, §14.
 
+
 ## Robot Lab rubber bands — 2026-10-20
 
 CLAIMED and folded into the flexible-parts PR #1116
@@ -199,6 +210,16 @@ lays a closed chain round the selected gears (or a 57518 tread round 57519 sproc
 drawnOnly, each sprocket a wheel of the tread's outer radius); view/chain-motion.js runs the links
 round; properties panel "Chain or tread round". Tests:
 test/bw-sim-chain.test.mjs; gate scripts/lib/sim-lab-chain-gate.mjs (--part=editor).
+
+## Robot Lab hub coverage matrix and test-only gaps — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (hub coverage lane). New
+`docs/ROBOT-LAB-HUB-COVERAGE.md` (hub x extension x route x code-flavour matrix from code and tests, gaps
+ordered by user impact) and two new test files that drive the REAL bundled extensions against the
+existing virtual hubs: `test/lab-hubs-coverage.test.mjs` (legoboostunified over Scratch Link BLE,
+legopoweredup on the Move Hub and the City Hub) and `test/bw-sim-rcx-legorcx.test.mjs` (legorcx blocks
+sent with its own block into the Lab RCX). No `overlay/scratch-gui/src/lib/bw-sim/**` change: the open
+Robot Lab PRs #1123/#1127/#1129/#1130 own that tree; gaps that need it wait for them to merge.
 
 ## Arcade stale PR integration — 2026-10-19
 
@@ -289,6 +310,13 @@ symbols for dc_motor, ntc, inductor, slide_switch, tilt_sensor, opamp, relay;
 f84ba60 -> fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7 (bw-board #659 light_sensor
 divider model; 393 commits, owner-approved, dependencies unchanged). Exact SHA
 swap across the same 16 pin surfaces; licence hashes unchanged.
+
+## Robot Lab: jolt-physics 1.1.0-bw.4, rack and pinion relative to its frames — 2026-10-20
+
+CLAIMED and done in one PR — Claude (Robot Lab lane; after #1134). jolt-physics 1.1.0-bw.3 -> 1.1.0-bw.4
+(JoltPhysics.js fork release `v1.1.0-bw.4`, tarball sha256 3342ec69...4b26e9, built from 034ab36 with the
+JoltPhysics fork at 1631b95: `RackMeshConstraint`, the rack and pinion relative to the frames carrying them).
+Owns the pin surfaces as for bw.3 and jolt-core.js's 'rackAndPinion'/'shiftFork' builder.
 
 ## Robot Lab physics 2: jolt-physics 1.1.0-bw.3, pair restitution, static rolling resistance — 2026-10-20
 

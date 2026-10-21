@@ -1044,6 +1044,12 @@ originals retain their historical readers and source bindings. Any new actual
 needs a freshly admitted complete source, request, workflow/event and artifact
 envelope, followed by the existing affected GUI/guest acceptance.
 
+After the bw-circuit-ui bump to `989f9541de610d2a742b36867c12df61d36b0c24`
+(Lite #1122, B27 part faces) both consumers' CUI declarations follow it, so the
+controls check again matches the canonical package, lock and vendor selection.
+Board is unchanged. This adoption also establishes no new runtime result; the
+pending qualification above still applies.
+
 The dependency-free focused check is:
 
 ```sh

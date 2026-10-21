@@ -154,6 +154,18 @@ Loads: a 50 g weight with a hook loop (world `load`, §5.5); collision hook–lo
 dynamic–dynamic contact (M14 prerequisite).
 Hard: rope over a moving boom tip (M10 approx), sway (the hook body on a rope swings: real,
 and it is the fun part), worm self-locking holding the load when the motor stops.
+*As built (2026-10-20, `crane.ldr`, `scripts/gen-crane-model.mjs`):* slewing and luffing, no hoist yet.
+A SPIKE hub on the floor carries the Excavator's 28T turntable (8T on motor A, run at 10 % speed: a
+direct 8:28 slew tips a loaded upper at full power) and posts; a 15L boom is luffed by a small linear
+actuator (motor B, 1:1:1 to the spindle; the screw self-locks, so the boom holds with B stopped: 0.01 mm
+of sag in 1 s); a hook (5L link + Technic brick 1 x 4) hangs on a frictionless pin at the tip. The
+winch waits for ropes (M10, PR #1123): a drum on the upper and a rope over the tip then replace the
+fixed link. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
+the build: the boom from about 4° to past 70°); past an end the actuator's own slip clutch (the screw
+coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). The
+end stops of lane/robot-lab-flex4 deliberately leave linear actuators out (they walk gears, chains, bands,
+racks and shift forks only), so they do not stop motor B here.
+`test/bw-sim-crane.test.mjs`.
 
 **T2 Shifting gearbox (Schaltgetriebe) — 2-speed then 4-speed, as on the 8448/8880 cars.**
 Mechanisms: M8 driving ring + clutch gears, M1 spur pairs, shift via changeover catch or a
@@ -1774,6 +1786,20 @@ motors: A/B wheels, C slew, D boom, E stick, F bucket.
 - Tests: `test/bw-sim-linear-actuator.test.mjs`, `test/bw-sim-turntable.test.mjs`,
   `test/bw-sim-excavator.test.mjs`; the model is in `test/bw-sim-models-solid.test.mjs` and the
   instructions tests like every MODELS entry.
+
+### The Jolt fork, 1.1.0-bw.4 (2026-10-20): a rack and pinion relative to its frames
+
+`jolt-physics` **1.1.0-bw.4** adds the fork's `RackMeshConstraint` (JoltPhysics `1631b95`, its `BRICKWRIGHT.md`
+section 4). Jolt's `RackAndPinionConstraint` ties the pinion's WORLD rotation rate to the rack's WORLD velocity, which is
+right only while the frame carrying both is at rest: on a turning or driving robot the frame's own motion drove the rack.
+The Forklift's lift motor driven past the carriage's end stop turned the whole machine (36.9° of tip in 6 s, measured),
+and a steering rack on a turning car slid 132 mm in a second and twisted the car. `RackMeshConstraint` holds the same
+equation relative to the frames, (ω_pinion − Ω_Fp)·a = r (v_rack − v_Fr − Ω_Fr × d)·b, with the frames from the pinion's
+hinge and the rack's slider; the core (`'rackAndPinion'` and `'shiftFork'` couplings) hands them over and re-bases the
+drift correction before every step, as for the gear meshes. Now: the Forklift tips 0.17° and stalls against the end; a
+rack on a chassis spinning at 3 rad/s stays put with its pinion held and travels r·θ (8.008 mm for 8.000) with it
+turned; the steering rack stays put and the car keeps its yaw rate (`test/bw-sim-rack-frame.test.mjs`, each with the
+world-rate constraint as the control). A Jolt build without the class falls back to `RackAndPinionConstraint`.
 
 ### The Jolt fork, 1.1.0-bw.3 (2026-10-20): a bounce across two bodies, restitution per material pair
 
