@@ -494,5 +494,7 @@ export const partsFromClipboard = (text, catalog) => {
         return null;
     }
     const parts = parsed.model.parts.filter(p => isProperRotation(p.rotation, 1e-3));
-    return {parts, refused: parsed.refusals.length + parsed.model.parts.length - parts.length};
+    // Decoration (a mirrored or stretched line) is not pasted either; an unknown part is decoration AND a refusal.
+    const decorOnly = (parsed.model.decor || []).length - parsed.refusals.filter(r => r.code === 'unknown-part').length;
+    return {parts, refused: parsed.refusals.length + Math.max(0, decorOnly) + parsed.model.parts.length - parts.length};
 };

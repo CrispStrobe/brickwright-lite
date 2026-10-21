@@ -101,10 +101,19 @@ game.onUpdate(function(){
 })
 `;
 
+// The controller.right case must stall on EVERY frame delta the scene loop can
+// produce (PXT cadence: delta = wall clock since the previous frame, 0..100 ms).
+// With minStep 4 / maxStep 2 a frame whose whole displacement already fits in
+// maxStep (2 px) is not split at all and simply moves. At vx 100 that is every
+// frame shorter than 22 ms, so a fast runner moved the sprite 2 px per short
+// frame before a long frame raised the diagnostic (CI saw x 24, not 20). At
+// vx/maxSpeed 5000 every delta of 2..100 ms halves into (2 px, 4 px] and stalls,
+// and a delta under 2 ms has zero displacement. Proven for all deltas in
+// test/makecode-arcade-physics-engine-stall.test.mjs.
 export const PHYSICS_ENGINE_CONTROLLER_SOURCE=`
 let view=game.currentScene()
 let savedEngine=view.physicsEngine as ArcadePhysicsEngine
-let replacementEngine=new ArcadePhysicsEngine(120,2,4)
+let replacementEngine=new ArcadePhysicsEngine(120,0.125,4)
 let yellow=image.create(6,6)
 yellow.fill(5)
 let blue=image.create(6,6)
@@ -124,6 +133,7 @@ controller.A.onEvent(ControllerButtonEvent.Pressed,function(){
     view.physicsEngine=savedEngine
     oldActor.setPosition(20,40)
     savedEngine.maxSpeed=40
+    savedEngine.minStep=0.125
     oldActor.vx=100
     capObserved=0
     phase=1
@@ -149,15 +159,15 @@ controller.up.onEvent(ControllerButtonEvent.Pressed,function(){
 })
 controller.right.onEvent(ControllerButtonEvent.Pressed,function(){
     view.physicsEngine=savedEngine
-    savedEngine.maxSpeed=500
+    savedEngine.maxSpeed=5000
     savedEngine.minStep=4
     savedEngine.maxStep=2
     oldActor.setPosition(20,40)
-    oldActor.vx=100
+    oldActor.vx=5000
     phase=4
 })
 controller.down.onEvent(ControllerButtonEvent.Pressed,function(){
-    savedEngine.minStep=2
+    savedEngine.minStep=0.125
     savedEngine.maxStep=4
     oldActor.vx=0
     oldActor.setPosition(20,40)

@@ -40,7 +40,7 @@ export const ROBOTLAB_EXTENSION = 'robotlab';
 const PORTS = 'A|B|C|D|E|F';
 /** The shipped models' ids (sim-session.js MODELS keys, test/robot-lab-dialect.test.mjs holds them equal). */
 export const ROBOTLAB_MODELS = Object.freeze(['driving-base', 'line-follower', 'wall-stopper', 'colour-explorer', 'sumo',
-    'forklift', 'maze-runner', 'gearbox', 'differential', 'differential-car', 'chain-drive', 'drawing-robot', 'excavator', 'crane', 'rcx-bumper-car', 'rcx-line-follower', 'ev3-wall-stopper',
+    'forklift', 'maze-runner', 'gearbox', 'differential', 'differential-car', 'chain-drive', 'pneumatic-press', 'drawing-robot', 'excavator', 'crane', 'rcx-bumper-car', 'rcx-line-follower', 'ev3-wall-stopper',
     'nxt-bumper-bot', 'motor-bench', 'technic-hub-bench', 'boost-rover', 'wedo-milo']);
 
 /**

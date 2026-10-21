@@ -135,8 +135,9 @@
  * @property {(port: string, command: object) => {ok: boolean, done?: Promise<string>, code?: string, message?: string}} [directCommand]
  *           OPTIONAL: a motor command from the Robot Lab API (api/robot-lab-api.js) — {power} |
  *           {speedDps} | {degrees, speedDps} | {position, speedDps} | {stop} — taken by the hub's
- *           own controller, so the port keeps one owner. A hub whose program runs ON the hub (an
- *           emulated firmware, a bytecode VM) has none, and the API refuses such a motor by name.
+ *           own controller, so the port keeps one owner. The NXT, EV3 and RCX take them as their own
+ *           direct commands do (Bluetooth / IR, beside a program running on the brick: the last one wins);
+ *           a hub whose firmware is emulated whole (lockstep) has none, and the API refuses its motors by name.
  * @property {(port: string) => object|null} [readPort]
  *           OPTIONAL: what a port reports now ({kind: 'motor', angleDeg, speedDps} or a sensor's reading)
  */

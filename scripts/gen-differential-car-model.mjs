@@ -12,16 +12,19 @@
 //     turned upside down: motor A lies flat above the rear axle with its output pointing down, the pinion
 //     above the casing. Two 7L posts on each side of the motor and a 3L rail under them hold the half
 //     axles; the wheels sit on the axles' outer ends.
-//   - The hub lies on top of motor A (two pins into the motor's top face) and on two 9L beams that reach
-//     forward under it to the front axle.
-//   - Front steering: each front wheel turns on a knuckle (axle-and-pin connector 6536) whose vertical axle
-//     is its kingpin. Motor B lies under the left front beam with its output pointing down: the left
-//     kingpin axle sits in motor B's output, so B turns the left wheel directly; the right kingpin turns in
-//     the right front beam. A steering arm (liftarm 3 x 5 bent 90, 32250) on each kingpin reaches 4 holes
-//     back and 1 hole in, and a 5L tie rod on frictionless pins joins the two arms' ends. The arms' lines
-//     meet at the middle of the rear axle (each reaches 20 in and 80 back; the kingpins are 60 out and
-//     240 ahead of the rear axle: 60/240 = 20/80), the classic Ackermann trapezoid: in a turn the inner
-//     wheel turns further than the outer one.
+//   - The hub lies on a thin beam over motor A (3/4 pins into the motor's top face) and carries two 11L
+//     beams with alternating holes that reach forward under it to the front axle.
+//   - Front steering, rack and pinion: each front wheel turns on a knuckle (axle 3L with a perpendicular pin
+//     hole, 5713) whose standing axle is its kingpin, carried up into the front beam. A steering arm (liftarm
+//     3 x 5 bent 90, 32250) on each knuckle reaches 4 holes back and 1 hole in: the arms' lines meet at the
+//     middle of the rear axle (each reaches 20 in and 80 back; the kingpins are 60 out and 240 ahead of the
+//     rear axle: 60/240 = 20/80), the Ackermann trapezoid. A gear rack (1 x 13, 64781) lies across behind
+//     the kingpins, teeth up; a 5L tie rod from each of its end holes turns an arm. Motor B stands upright in
+//     front of the hub, between the front beams, its output pointing back: a 3L axle carries a 12T pinion
+//     onto the rack. The rack slides in a guide: on each side a toggle joint (48496) on the rack's axle
+//     runs along an axle fixed to motor B, and the toggle's eyes meeting the axle's holder end the travel
+//     (30 LDU each way). In a turn the inner wheel turns further than the outer one, by less than the
+//     trapezoid alone would: the rack moves both tie rods' inner ends as one.
 // LDraw frame: x lateral (+x right), y down, z backwards (the car drives forward towards -z); the axles
 // are at y = 0, the floor at y = 70 (the 56 mm wheels' radius).
 import {readFileSync, writeFileSync} from 'node:fs';
@@ -42,7 +45,7 @@ const r5 = x => (Math.abs(x) < 1e-9 ? 0 : +x.toFixed(5));
 const lines = [];
 const head = ['0 Differential car (Brickwright Robot Lab reference model)', '0 Name: differential-car.ldr', '0 Author: Brickwright',
     '0 !LDRAW_ORG Unofficial_Model',
-    '0 // Rear-wheel drive through a differential (motor A) and front steering with an Ackermann tie rod (motor B).',
+    '0 // Rear-wheel drive through a differential (motor A) and rack-and-pinion front steering (motor B).',
     '0 // scripts/gen-differential-car-model.mjs writes this file.'];
 /** Place a part with its 3 x 3 rotation given row by row (LDraw order). */
 const place = (id, part, color, pos, m, port = null) => {
@@ -108,59 +111,93 @@ for (const s of [1, -1]) {
     place(`rail${k}`, '32523.dat', 71, [70 * s, 0, ZR], RAIL);
 }
 
-// ---- the hub, raised on two spacer beams over motor A, and the two front beams ---------------------------
-// The hub stands 30 LDU above motor A's top face (y -130) so that motor B, under the front beams, clears
-// the front wheels at any steering angle (its underside at y -74.5, the wheels' tops at -70). The spacer: a
-// 7L beam (y -160..-140) on two 2L pins from the hub's bottom holes (±60, z0 + 100), a 5L half beam under it
-// (-140..-130) on two 3/4 pins at x = ±40, and two 3/4 pins at x = ±20 from the half beam into motor A's
-// top face holes. The front beams hang on the hub's holes (±60, z0 - 60) and (±60, z0 - 100).
-const ZH = ZR - 100;
-const YH = -160;
+// ---- the hub, on a thin beam over motor A, and the two front beams ---------------------------------------
+// The hub lies 10 LDU above motor A's top face (y -130), on a 7L thin beam: two 3/4 pins from the hub's bottom
+// holes (±60, z0 + 60) into the beam and two from the beam into motor A's top face holes (±20). It sits 40 back
+// (its front at z = -50) so that motor B stands in front of it. The front beams (11L with alternating holes,
+// x = ±KX) hang on the hub's holes (±60, z0 - 60) and (±60, z0 - 100): every hole of theirs that a pin or the
+// kingpin needs standing stands (z ≡ 0 mod 40), the holes across (z ≡ 20 mod 40) take motor B's pins.
+const ZH = ZR - 60;
+const YH = -140;
 place('hub', '45601.dat', 71, [0, YH, ZH], I);
-place('spacer', '32524.dat', 72, [0, -150, ZR], CROSS);
-place('spacerThin', '32017.dat', 71, [0, -135, ZR], CROSS);
+place('spacer', '32065.dat', 72, [0, -135, ZR], CROSS);
 /** A pin 3/4 standing, filling y yTop..yTop + 30, its short (10 LDU) end down or up. */
-const pin34 = (id, x, yTop, shortDown) => place(id, '32002.dat', 0, [x, yTop + (shortDown ? 20 : 10), ZR],
+const pin34 = (id, x, yTop, shortDown, z = ZR) => place(id, '32002.dat', 0, [x, yTop + (shortDown ? 20 : 10), z],
     shortDown ? [0, 1, 0, 1, 0, 0, 0, 0, -1] : [0, -1, 0, -1, 0, 0, 0, 0, -1]);
 for (const s of [1, -1]) {
     const k = s > 0 ? 'R' : 'L';
-    place(`hubPin${k}`, '2780.dat', 0, [60 * s, YH, ZR], ALONG_Y);
-    pin34(`spacerPin${k}`, 40 * s, -160, true);
-    pin34(`motorPin${k}`, 20 * s, -140, false);
+    pin34(`hubPin${k}`, 60 * s, YH - 20, true);
+    pin34(`motorPin${k}`, 20 * s, YH, false);
 }
-// The front beams: 9L lying along z under the hub, holes standing, from z = ZR - 100 to ZR - 260.
+/** The front beams' middle (z): their standing holes at z ≡ 0 (mod 40), the holes across at z ≡ 20. */
+const ZB = ZK + 60;
 for (const s of [1, -1]) {
     const k = s > 0 ? 'R' : 'L';
-    place(`beamFront${k}`, '40490.dat', 72, [KX * s, YH + 10, ZR - 180], I);
+    place(`beamFront${k}`, '73507.dat', 72, [KX * s, YH + 10, ZB], I);
     for (const z of [ZH - 60, ZH - 100]) place(`beamPin${k}${ZH - z}`, '2780.dat', 0, [KX * s, YH, z], ALONG_Y);
 }
 
-// ---- steering ------------------------------------------------------------------------------------------
+// ---- steering: kingpins, arms and tie rods ------------------------------------------------------------------
 // The knuckles: a Technic axle 3L with a perpendicular pin hole (5713) on each side. The wheel's axle turns
 // in its pin hole and its axle, standing up, is the kingpin: the kingpin meets the wheel's axle (no trail),
-// so the wheel turns about the point where it stands. Motor B lies under the left front beam with its
-// output pointing down on the left kingpin (-KX, ZK) and its body reaching back: its top face holes
-// (-KX, ZK - 20) and (-KX, ZK + 140) take pins from the beam, and the left kingpin's top sits in its output,
-// so motor B turns the left wheel itself. The right kingpin is lengthened with an axle joiner and a 4L axle
-// that turns in the right front beam.
-place('steerMotor', '54696p01.dat', 71, [-KX, -110, ZK], [-1, 0, 0, 0, -1, 0, 0, 0, 1], 'B');
-for (const z of [ZK - 20, ZK + 140]) place(`steerPin${z - ZK}`, '2780.dat', 0, [-KX, -140, z], ALONG_Y);
+// so the wheel turns about the point where it stands. An axle joiner on the knuckle's axle and a 4L axle from
+// it up through the front beam's standing hole carry each kingpin; the steering arm (liftarm 3 x 5 bent 90,
+// 32250, thin, y -60..-50) sits on the knuckle's axle under the joiner: its end hole x1 on the kingpin, the
+// hole h3 20 in and 80 back. The arms' lines meet at the middle of the rear axle (each reaches 20 in and 80
+// back; the kingpins are 60 out and 240 ahead of the rear axle: 60/240 = 20/80), the Ackermann trapezoid.
+// A 5L tie rod on each side (y -80..-60) joins the arm's end (a 3/4 pin) to the rack's end hole (a pin).
+// (The rack between the tie rods takes some of the trapezoid's effect back; the arm's hole x2, 40 in, would
+// give more of it back, but its tie rod's inner end would swing against motor A's front face at z = -30.)
+const YA = -55;
+const ZT = ZK + 80;
 for (const s of [1, -1]) {
     const k = s > 0 ? 'R' : 'L';
     place(`knuckle${k}`, '5713.dat', 71, [KX * s, 0, ZK], [0, 1, 0, -1, 0, 0, 0, 0, 1]);
     place(`kingpinBush${k}`, '3713.dat', 71, [KX * s, -30, ZK], Z_ALONG_Y);
-    // The steering arm (thin, y -20..-10): its end hole x1 on the kingpin, the hole h3 20 in and 80 back.
-    place(`arm${k}`, '32250.dat', 72, [KX * s, -15, ZK + 80], s < 0 ? [1, 0, 0, 0, -1, 0, 0, 0, -1] : [-1, 0, 0, 0, 1, 0, 0, 0, -1]);
+    place(`arm${k}`, '32250.dat', 72, [KX * s, YA, ZT], s < 0 ? [1, 0, 0, 0, -1, 0, 0, 0, -1] : [-1, 0, 0, 0, 1, 0, 0, 0, -1]);
+    place(`kingpinJoiner${k}`, '6538a.dat', 71, [KX * s, -80, ZK], Z_ALONG_Y);
+    place(`kingpinTop${k}`, '3705.dat', 0, [KX * s, -110, ZK], ALONG_Y);
     place(`axleFront${k}`, '3705.dat', 4, [(KX + 30) * s, 0, ZK], ALONG_X);
     place(`bushFront${k}`, '3713.dat', 71, [(KX + 20) * s, 0, ZK], Z_ALONG_X);
     place(`wheelFront${k}`, '39367p01.dat', 15, [(KX + 61) * s, 0, ZK], Z_ALONG_X);
-    place(`tiePin${k}`, '3673.dat', 0, [(KX - 20) * s, -20, ZK + 80], ALONG_Y);
+    place(`tieRod${k}`, '32316.dat', 72, [(KX + 20) * s, YA - 15, ZT], CROSS);
+    pin34(`armPin${k}`, (KX - 20) * s, YA - 25, true, ZT);
+    place(`rackPin${k}`, '3673.dat', 0, [(KX + 60) * s, YA - 25, ZT], ALONG_Y);
 }
-place('kingpinBushL2', '3713.dat', 71, [-KX, -50, ZK], Z_ALONG_Y);
-place('kingpinJoinerR', '6538a.dat', 71, [KX, -79.75, ZK], Z_ALONG_Y);
-place('kingpinTopR', '3705.dat', 0, [KX, -119.75, ZK], ALONG_Y);
-// The tie rod: a 5L beam lying across above the arms' ends (y -40..-20), on frictionless pins.
-place('tieRod', '32316.dat', 72, [0, -30, ZK + 80], CROSS);
+
+// ---- the rack, its pinion and motor B -----------------------------------------------------------------------
+// The rack (gear rack 1 x 13 with holes, 64781) lies across behind the kingpins, teeth up, its end holes over the
+// tie rods' outer holes (x = ±120). A 12T gear on top of it, its axle along the car, is the pinion: motor B stands
+// in front of it, upright between the front beams, its output pointing back, and a 3L axle joins the two. Motor
+// B's side holes take two 3L pins on each side into the front beams' holes across.
+const YR = YA - 35;
+place('rack', '64781.dat', 71, [0, YR, ZT], I);
+place('steerPinion', '69778.dat', 72, [0, YR - 20, ZT], I);
+const AXLE_Z = [0, 0, -1, 0, 1, 0, 1, 0, 0];
+place('steerAxle', '4519.dat', 0, [0, YR - 20, ZT - 20], AXLE_Z);
+const ZM = ZT - 80;
+place('steerMotor', '54696p01.dat', 71, [0, YR - 20, ZM], [-1, 0, 0, 0, 0, -1, 0, -1, 0], 'B');
+for (const s of [1, -1]) {
+    const k = s > 0 ? 'R' : 'L';
+    for (const z of [ZM + 20, ZM - 20]) place(`steerPin${k}${ZM - z}`, '6558.dat', 0, [40 * s, YR - 40, z], s > 0 ? ALONG_X : [-1, 0, 0, 0, -1, 0, 0, 0, 1]);
+}
+
+// ---- the rack's guide ---------------------------------------------------------------------------------------
+// On each side a 2L axle in the rack's axle hole carries a 3L beam with an axle hole (7229) in front of the rack,
+// and a smooth toggle joint (48496) on the beam's two pin holes: its two eyes slide along a 6L axle across the
+// car. The axle is fixed to motor B: it sits in B's side hole and in a 1 x 4 thin liftarm's axle hole, the
+// liftarm held by the motor's lower 3L pin. The rack slides 30 each way: the eyes meet the liftarm going in,
+// and on the other side the far toggle's eyes meet its liftarm.
+const ZG = ZM + 20;
+const T_ROT = [0, 0, 1, 1, 0, 0, 0, 1, 0];
+for (const s of [1, -1]) {
+    const k = s > 0 ? 'R' : 'L';
+    place(`rackAxle${k}`, '32062.dat', 0, [100 * s, YR, ZT - 10], AXLE_Z);
+    place(`slideBeam${k}`, '7229.dat', 72, [100 * s, YR, ZT - 20], T_ROT);
+    place(`slide${k}`, '48496.dat', 72, [100 * s, YR, ZG + 30], T_ROT);
+    place(`guide${k}`, '3706.dat', 4, [70 * s, YR, ZG], ALONG_X);
+    place(`guideHolder${k}`, '32449.dat', 72, [35 * s, YR - 30, ZG], [0, 1, 0, 0, 0, -1, -1, 0, 0]);
+}
 
 writeFileSync(OUT, `${[...head, ...lines].join('\n')}\n`);
 process.stdout.write(`differential-car.ldr: ${lines.filter(l => l.startsWith('1 ')).length} parts, wheelbase (kingpins) ${ZR - ZK} LDU, ` +

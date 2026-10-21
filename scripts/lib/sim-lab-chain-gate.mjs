@@ -21,7 +21,10 @@
 //      it; Simulate drives the 24T by it (a 'band' coupling); "Take off rubber band" removes it, Ctrl+Z
 //      puts it back;
 //   6. a winch: a bush on an axle in a beam, a brick below; drum then hook selected, "Tie a rope" ties
-//      them taut and draws the rope; Simulate makes it a 'rope' on the drum's hinge.
+//      them taut and draws the rope; Simulate makes it a 'rope' on the drum's hinge;
+//   7. pneumatics: a valve with an axle in its lever and a 1 x 11 cylinder; "Connect a hose" twice
+//      hoses both valve outlets to the cylinder's two ports and draws them; Simulate makes it a
+//      'pneumatic' coupling on the valve's hinge.
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
@@ -200,5 +203,32 @@ const checks = async (page, {shotsDir}) => {
     assert.equal(ropeC.length, 1, JSON.stringify(ropeC));
     assert.ok(ropeC[0].drum, 'the rope winds on the drum\'s hinge');
     out.rope = true;
+
+    // 7. A valve hosed to a cylinder.
+    await page.getByTestId('bw-sim-lab-mode-build').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'build' && window.__bwSimLab.status === 'ready' && window.__bwSimLab.editView);
+    const air = await layOut(page, [
+        ['19474-f1.dat', [0, 0, 0], I], ['4519.dat', [0, 0, 0], I],
+        ['u9145c01.dat', [100, 0, 0], I], ['21828c01.dat', [100, -200, 0], I]]);
+    await lab(page, () => window.__bwSimLab.editView.frameModel());
+    await select(page, [air[0], air[2]]);
+    await openProperties(page);
+    for (let i = 0; i < 2; i++) {
+        await page.getByTestId('bw-sim-lab-prop-hose').click();
+        await page.waitForFunction(n => window.__bwSimLab.editor.model.hoses?.length === n, i + 1);
+    }
+    assert.match(await statusText(page), /A hose from the valve's outlet [AB] to the cylinder's (push-out|pull-in) port/);
+    const hoses = await lab(page, () => window.__bwSimLab.editor.model.hoses.map(h => [h.a.port, h.b.port].join('-')).sort());
+    assert.deepEqual(hoses.map(h => h.split('-')[0]).sort(), ['a', 'b'], `both valve outlets: ${hoses}`);
+    await page.waitForFunction(() => window.__bwSimLab.editView.debug.hoses() === 2);
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-hoses.png')});
+    await page.getByTestId('bw-sim-lab-mode-simulate').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session,
+        null, {timeout: 60000});
+    const airC = await lab(page, () => window.__bwSimLab._pane.session.mechanism.couplings.filter(c => c.kind === 'pneumatic')
+        .map(c => ({valve: c.valveJoint, slider: c.sliderJoint, extendFrom: c.extendFrom, retractFrom: c.retractFrom})));
+    assert.equal(airC.length, 1, JSON.stringify(airC));
+    assert.ok(airC[0].valve && airC[0].slider && airC[0].extendFrom && airC[0].retractFrom, JSON.stringify(airC));
+    out.hoses = hoses;
     return out;
 };

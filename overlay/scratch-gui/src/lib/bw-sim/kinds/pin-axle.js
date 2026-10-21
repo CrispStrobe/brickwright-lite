@@ -20,6 +20,13 @@
 import {COS_1_DEG, vecSub, vecDot, vecLen, vecScale, vecDist} from '../mech/vec.js';
 
 const TOL = 0.5 + 1e-9;
+/**
+ * How far off its hole's line a shaft may lie and still be in it (LDU). A shaft cannot really be off its line
+ * (its radius is the bore's), so a file that says so has an author's or a converter's error in it: real models
+ * from the LDraw library, MLCad's rounded matrices and LDCad's, are off by up to about 2 LDU. Holes are 10 LDU
+ * apart at the nearest (a half-stud offset), so this cannot find the wrong one.
+ */
+const SHAFT_TOL = 2.5 + 1e-9;
 const COS_1 = COS_1_DEG;
 
 const isShaftType = t => t === 'axle' || t === 'pin' || t === 'stud';
@@ -74,7 +81,7 @@ export const shaftEngagement = (shaft, hole) => {
     const delta = vecSub(hole.position, shaft.position);
     const axial = vecDot(delta, shaft.axis);
     const perp = vecSub(delta, vecScale(shaft.axis, axial));
-    if (vecLen(perp) > TOL) return null;
+    if (vecLen(perp) > SHAFT_TOL) return null;
     const Ls = shaft.length; const Lh = hole.length;
     if (Ls === undefined || Lh === undefined) return null;
     // Along the shaft's axis: shaft [-Ls/2, Ls/2], hole [axial - Lh/2, axial + Lh/2].

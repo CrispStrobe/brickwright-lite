@@ -142,19 +142,19 @@ export class PhysicsClient {
      * mirror hubs. Resolves to the poses and the hubs' readings at t = 0 (by hub id) and
      * the scene's id (batches name it).
      * @param {{mechanism: object, hubs: {id: string, profile: string, body: string}[], stepMs: number}} scene
-     * @returns {Promise<{scene: number, t: number, bodies: Float64Array, joints: Float64Array, readings: object}>}
+     * @returns {Promise<{scene: number, t: number, bodies: Float64Array, joints: Float64Array, air: object[], readings: object}>}
      */
     async simLoad({ mechanism, hubs = [], stepMs }) {
         const reply = await this._request({ type: 'sim-load', mechanism, hubs, stepMs });
         if (reply.type !== 'sim-loaded') throw new Error(reply.message ?? 'sim load failed');
-        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, readings: reply.readings ?? {} };
+        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, air: reply.air ?? [], readings: reply.readings ?? {} };
     }
 
     /**
      * Run one batch of fixed steps.
      * @param {{scene: number, steps?: number, ticks?: number[], hubs?: object, redo?: boolean}} batch
      *        hubs: each hub's exportState() by hub id
-     * @returns {Promise<{frames: object[], t: number, bodies: Float64Array, joints: Float64Array, workMs: number}>}
+     * @returns {Promise<{frames: object[], t: number, bodies: Float64Array, joints: Float64Array, air: object[], workMs: number}>}
      */
     async simBatch({ scene, steps = 0, ticks = [], hubs = {}, redo = false }) {
         const reply = await this._request({ type: 'sim-batch', scene, steps, ticks, hubs, redo });
