@@ -741,7 +741,7 @@ try {
             await ex.close();
         }
 
-        if (runExample('fixed-machines.ldr')) {
+        if (process.env.BW_SIMLAB_LIBRARY && runExample('fixed-machines.ldr')) {
             const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             fixed.on('pageerror',error=>errors.push(error.message));fixed.on('dialog',dialog=>dialog.accept());
             await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();

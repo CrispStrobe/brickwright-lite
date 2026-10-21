@@ -1202,7 +1202,7 @@ class SimLabPane extends React.Component {
             const {read} = await fetchModelDrawing(runModel, {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
             this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
-            if (runModel.drawings?.length) {
+            if (runModel.drawings?.length || runModel.parts.some(part => part.pen)) {
                 this.unsubscribeDrawing = session.onAdvance(() => {
                     if (this.session === session && this.view && this.state.replayAt === null) {
                         this.view.sampleDrawing(session.snapshot());
