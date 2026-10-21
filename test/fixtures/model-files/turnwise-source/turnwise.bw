@@ -1,0 +1,220 @@
+# Turnwise — unequal steering angles from one motor
+# Original control program. SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe)
+# Reload the supplied model to its saved straight-ahead pose before starting.
+# Positive motor A rotates the left kingpin negatively; the right wheel turns more.
+# Left inner-wheel targets are 10, 20, 25 degrees, then centre.
+# Mirrored right turns use smaller positive A targets, then return to centre.
+# Never substitute symmetric +/-25-degree motor commands: the negative-input
+# four-bar toggle is at left heading -19.930177680 degrees.
+# Eight finite position commands run at 2 degrees per second.
+# Each stage then has 40 bounded actual-encoder proportional velocity updates.
+# The 2-degree guard runs first; speed = 2 * error stays within +/-4 degrees/s.
+# Each update has a source wait of 0.05 s; native VM scheduling adds overhead.
+# Hold and 0.2-degree completion checks follow each fixed-count loop.
+# Successful execution: 8 position calls, 320 velocity calls, 41 static guards,
+# and 353 evaluated guards. A guard failure holds the motor and stops the script.
+# Wheel axle lines approximate a virtual rear axle 200 LDU behind the kingpins.
+# This is a steering bench; no physical rear axle, driving or tyre-slip claim.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  # left-turn-10: left 10 degrees, right 8.690066130336 degrees.
+  lab run motor A for (-10 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (-10 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (-10 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (-10 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (-10 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (-10 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (-10 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  # left-turn-20: left 20 degrees, right 15.000549633154 degrees.
+  lab run motor A for (-20 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (-20 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (-20 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (-20 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (-20 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  # left-turn-25: left 25 degrees, right 17.255153515384 degrees.
+  lab run motor A for (-25 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (-25 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (-25 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (-25 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (-25 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (-25 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (-25 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  # return-to-centre: left 0 degrees, right 0 degrees.
+  lab run motor A for (0 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (0 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (0 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  # right-turn-10: left -8.690066130336 degrees, right -10 degrees.
+  lab run motor A for (8.690066130336 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (8.690066130336 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (8.690066130336 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (8.690066130336 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (8.690066130336 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (8.690066130336 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (8.690066130336 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  # right-turn-20: left -15.000549633154 degrees, right -20 degrees.
+  lab run motor A for (15.000549633154 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (15.000549633154 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (15.000549633154 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (15.000549633154 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (15.000549633154 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (15.000549633154 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (15.000549633154 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  # right-turn-25: left -17.255153515384 degrees, right -25 degrees.
+  lab run motor A for (17.255153515384 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (17.255153515384 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (17.255153515384 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (17.255153515384 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (17.255153515384 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (17.255153515384 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (17.255153515384 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  # return-to-centre: left 0 degrees, right 0 degrees.
+  lab run motor A for (0 - (lab motor A angle)) degrees at 2 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.2 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  REPEAT 40:
+    IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+      lab stop motor A hold
+      stop all
+    lab run motor A at (2 * (0 - (lab motor A angle))) degrees per second
+    wait 0.05 seconds
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.75 seconds
+  IF (abs of (0 - (lab motor A angle))) > 0.2 THEN:
+    lab stop motor A hold
+    stop all
+  lab stop motor A hold

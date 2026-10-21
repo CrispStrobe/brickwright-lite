@@ -12,12 +12,13 @@ import {decide, loadContext, needlesOf, mentions, entriesOf, outputLines} from '
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ctx = loadContext(ROOT);
-const ALL = ['heavy', 'light', 'robotlab', 'fpga'];
+const ROBOT = ['robotlab', 'robotdraw', 'robotlink', 'robotmotion', 'robotbench', 'robotlink2', 'robotbench2', 'robotdraw2', 'robotdraw3', 'robotmotion2'];
+const ALL = ['heavy', 'light', ...ROBOT, 'fpga'];
 const run = files => decide(files, ctx).needed;
 
 test('the shards are the browser matrix plus fpga', () => {
     assert.deepEqual(ctx.shards, ALL);
-    assert.deepEqual(ctx.browserShards, ['heavy', 'light', 'robotlab']);
+    assert.deepEqual(ctx.browserShards, ['heavy', 'light', ...ROBOT]);
 });
 
 test('no browser shard: docs, tests, Tauri/Rust', () => {
@@ -29,8 +30,8 @@ test('no browser shard: docs, tests, Tauri/Rust', () => {
 });
 
 test('one shard: a path only Robot Lab exercises', () => {
-    assert.deepEqual(run(['overlay/scratch-gui/src/lib/bw-sim/physics/world.js']), ['robotlab']);
-    assert.deepEqual(run(['overlay/scratch-gui/static/sim-lab/models/a.json', 'test/bw-sim-hinge.test.mjs']), ['robotlab']);
+    assert.deepEqual(run(['overlay/scratch-gui/src/lib/bw-sim/physics/world.js']), ROBOT);
+    assert.deepEqual(run(['overlay/scratch-gui/static/sim-lab/models/a.json', 'test/bw-sim-hinge.test.mjs']), ROBOT);
 });
 
 test('every shard: shared inputs, the workflow, and anything unknown', () => {
@@ -50,12 +51,12 @@ test('a gate script maps to the shard whose step runs it', () => {
     const fpga = run(['scripts/verify-fpga-pinch.mjs']);
     assert.ok(fpga.includes('fpga') && !fpga.includes('robotlab'), fpga.join());
     const robot = run(['scripts/verify-sim-lab-browser.mjs']);
-    assert.deepEqual(robot, ['robotlab']);
+    assert.deepEqual(robot, ROBOT);
 });
 
 test('the pure decision, over a synthetic closure', () => {
     const synthetic = {
-        shards: ALL, browserShards: ALL.slice(0, 3),
+        shards: ALL, browserShards: ALL.filter(s => s !== 'fpga'),
         reach: new Map([['scripts/verify-a.mjs', new Set(['light'])], ['scripts/lib/h.mjs', new Set(['light'])], ['scripts/pre.mjs', new Set(['(prerequisite)'])]]),
         texts: new Map([['scripts/verify-a.mjs', "read(path.join(ROOT, 'test/fixtures/thing/x.bin'))"], ['scripts/pre.mjs', '']]),
     };
@@ -73,8 +74,8 @@ test('the pure decision, over a synthetic closure', () => {
     assert.ok(mentions("import x from '../test/helpers/h.mjs'", needlesOf('test/helpers/h.mjs')));
     assert.deepEqual([...entriesOf('npm run v -- --x && node scripts/b.mjs', {v: 'node scripts/a.mjs'})].sort(), ['scripts/a.mjs', 'scripts/b.mjs']);
     const out = outputLines(decide(['test/z.test.mjs'], synthetic), synthetic);
-    assert.deepEqual(out.slice(0, 6), ['heavy=false', 'light=false', 'robotlab=false', 'fpga=false', 'browser=false', 'any=false']);
-    assert.match(out[6], /^summary=1 file\(s\): test 1$/);
+    assert.deepEqual(out.slice(0, ALL.length+2), [...ALL.map(s=>s+'=false'), 'browser=false', 'any=false']);
+    assert.match(out[ALL.length+2], /^summary=1 file\(s\): test 1$/);
 });
 
 // A test file no gate names. (test/a.test.mjs is not one: test/gate-coverage.test.mjs,
@@ -84,7 +85,7 @@ test('the CLI prints GITHUB_OUTPUT lines, and build.yml wires them', () => {
     assert.ok(![...ctx.texts.values()].some(t => mentions(t, needlesOf(UNNAMED))), 'the sample must be named by no gate');
     const r = spawnSync(process.execPath, ['scripts/ci-browser-scope.mjs'], {cwd: ROOT, input: `${UNNAMED}\nLANES.md\n`, encoding: 'utf8'});
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.stdout, /^heavy=false\nlight=false\nrobotlab=false\nfpga=false\nbrowser=false\nany=false\nsummary=/);
+    assert.ok(r.stdout.startsWith(ALL.map(s => s+'=false\n').join('')+'browser=false\nany=false\nsummary='));
     const yml = readFileSync(path.join(ROOT, '.github/workflows/build.yml'), 'utf8');
     assert.match(yml, /node scripts\/ci-browser-scope\.mjs < \/tmp\/changed\.txt/);
     assert.match(yml, /no browser-relevant paths changed: \$SUMMARY/);

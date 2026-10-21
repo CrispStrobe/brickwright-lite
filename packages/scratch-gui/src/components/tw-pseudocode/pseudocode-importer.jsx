@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
+import {setProjectTitle} from '../../reducers/project-title';
 import {closeAlertWithId, showStandardAlert} from '../../reducers/alerts';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
@@ -1410,7 +1411,12 @@ class PseudocodeImporter extends React.Component {
             this._codeArtwork = null;
             this.setState({lang: 'pseudocode', output: null, status: '',
                 buffers: {...this.state.buffers, pseudocode: code}}, () => {
-                Promise.resolve(this.compile()).catch(e => this.setState({status: e.message}));
+                const complete = typeof event.detail.onComplete === 'function' ? event.detail.onComplete : () => {};
+                Promise.resolve(this.compile({strict: typeof event.detail.onComplete === 'function'}))
+                    .then(() => complete({ok: true}), error => {
+                        if (!this._unmounted) this.setState({status: error.message});
+                        complete({ok: false, message: error.message});
+                    });
             });
         };
         window.addEventListener('bw-load-pseudocode', this._onLoadPseudocode);
@@ -4992,14 +4998,33 @@ class PseudocodeImporter extends React.Component {
     }
 
     async loadExample (key) {
+        const request = {};
+        this._bundledExampleSelection = request;
         const loaded = key && (await this._loadBundledExamples());
         const src = loaded && loaded[key];
-        if (!src) return;
+        if (!src || this._unmounted || this._bundledExampleSelection !== request) return;
+        const exampleTitle = GROUPS.flatMap(group => group.items).find(([id]) => id === key)?.[1];
+        if (exampleTitle) this.props.dispatch(setProjectTitle(exampleTitle.replace(/^[^\p{L}\p{N}]+/u, '')));
         this._codeArtwork = null;
         this._animationImport = null;
         this._makeCodeRequest = null;
         this.setState({uploads: []});
         this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
+        // Selection is an explicit request to replace the program, as in Circuit's
+        // example browser. Compile only after React has committed the new buffer.
+        const apply = patch => new Promise(resolve => {
+            if (this._unmounted || this._bundledExampleSelection !== request) { resolve(); return; }
+            this.setState(patch, () => {
+                if (this._unmounted || this._bundledExampleSelection !== request) { resolve(); return; }
+                Promise.resolve(this.compile()).then(() => {
+                    if (patch.status && !this._unmounted && this._bundledExampleSelection === request) {
+                        this.setState(state => ({status: [patch.status, state.status].filter(Boolean).join(' · ')}));
+                    }
+                }).catch(error => {
+                    if (!this._unmounted) this.setState({status: this.L.stError(error.message)});
+                }).finally(resolve);
+            });
+        });
         const device = this.currentDevice();
         const exampleDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
         // Retarget hardware examples when the selected device differs.
@@ -5011,24 +5036,21 @@ class PseudocodeImporter extends React.Component {
             // are inert on the bench. Mirrors the setDevice guard.
             if (!(SB3Creator.RETARGET_POOLS && SB3Creator.RETARGET_POOLS[device])) {
                 const switched = src.replace(/^DEVICE\s+[\w-]+.*$/im, `DEVICE ${device.toUpperCase()}`);
-                this.setState({lang: 'pseudocode', output: null, status: '',
+                return apply({lang: 'pseudocode', output: null, status: '',
                     buffers: {pseudocode: switched, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
-                return;
             }
             const result = SB3Creator.retargetPseudocode(src, device);
             if (result.ok) {
-                this.setState({lang: 'pseudocode', output: null,
+                return apply({lang: 'pseudocode', output: null,
                     status: result.warnings.length ? result.warnings.join('; ') : '',
                     buffers: {pseudocode: result.pseudocode, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
-                return;
             }
             // Show what blocked the retarget — the example stays loaded in its original form.
-            this.setState({lang: 'pseudocode', output: null,
+            return apply({lang: 'pseudocode', output: null,
                 status: `Loaded for ${exampleDevice} (cannot retarget to ${device}: ${result.reasons.join('; ')})`,
                 buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
-            return;
         }
-        this.setState({lang: 'pseudocode', output: null, status: '',
+        return apply({lang: 'pseudocode', output: null, status: '',
             buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
     }
 

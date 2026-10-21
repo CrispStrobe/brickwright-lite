@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "switchback-lift",
+  "language": "de",
+  "what": "Drei Motoren heben eine freie Kugel, kippen sie auf eine Gefällestrecke und öffnen ein Tor zum erneuten Beladen. Die Kugel folgt Schwerkraft und Kontakten. Hebe eine freie Kugel um 64 mm, kippe sie auf eine schräge Bahn, halte ihren Rücklauf am Tor und lade die abgesenkte Wiege.",
+  "try": [
+    "Setze zurück und starte das Beispiel. Verfolge die Kugel statt nur die Motorwerte: Heben, Freigeben, Hinfahrt, Rücklauf, Warten am Tor und Beladen.",
+    "Vergleiche den Hub von 64 mm mit dem Motorbefehl von 611,155°. Das Ritzel mit zwölf Zähnen hat 6 mm Teilkreisradius.",
+    "Pausiere vor dem Öffnen des Tores. Sage vorher, ob sich die Kugel bei einem noch angehobenen Lift wieder laden ließe."
+  ],
+  "why": "Der Lift speichert Lageenergie in der Kugel. Auf den geneigten Bahnen wird daraus Verschiebungs- und Rotationsenergie; Kontakte und Stöße verursachen Verluste. Das Tor trennt den Kugelrücklauf vom Absenken der Wiege. Die Zeitsteuerung ist entscheidend: Ein erreichtes Motorziel verrät nicht den Ort der freien Kugel.",
+  "matters": "Kugelmaschinen verbinden Getriebe, Energieumwandlung und Ablaufsteuerung. Dieses Beispiel wartet feste Zeiten ohne Kugelsensor. Der Simulatortest prüft den tatsächlichen Kugelweg und das erneute Einfangen.",
+  "question": "Erzeugen 600° Motordrehung mit diesem Ritzel genau 64 mm Hub?",
+  "answer": "Nein. Weg ist Radius × Winkel im Bogenmaß: 6 × 600 × π/180 = 62,83 mm. Etwa 611,155° ergeben 64 mm.",
+  "further": [
+    "Vergleiche die Hubenergie mgh mit der Bewegungsenergie nach der Freigabe. Das Modell verwendet 1,5 g als Massenparameter, keinen gemessenen Hardwarewert.",
+    "Vergleiche die ideale Rollbeschleunigung einer Vollkugel mit der simulierten Fahrt. Hohle reale Kugeln, Reibung und Stöße verändern das Ergebnis."
+  ],
+  "formula": "h = rθ; E = mgh; ideale Vollkugel: a = (5/7)g sin(α)",
+  "related": [
+    "atlas-arm.ldr",
+    "forklift.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

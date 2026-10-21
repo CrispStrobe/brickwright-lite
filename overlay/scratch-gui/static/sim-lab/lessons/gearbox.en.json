@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "gearbox",
+  "language": "en",
+  "what": "A gear train changes output speed, direction and available torque. A sliding clutch selects a transmission ratio. Compare input and output turns.",
+  "try": [
+    "Reset and run the example. Identify the input and each physical output.",
+    "Count output motion while the input completes a known number of turns.",
+    "Compare the available transmissions; stop before changing a gearbox selection."
+  ],
+  "why": "A mesh relates angular speeds by the inverse tooth counts. Compound stages multiply their ratios; an intermediate idler changes the path and direction without adding a reduction by itself.",
+  "matters": "Transmissions trade speed for torque and choose useful operating ranges.",
+  "question": "Do five 1:3 reductions produce 1:15?",
+  "answer": "No. Their ratios multiply: (1/3)^5 = 1/243. Adding the ratios would describe the mechanism incorrectly.",
+  "further": [
+    "In the workbench compare +1, +1/15 and −1/243 outputs.",
+    "In the gearbox compare both selector positions."
+  ],
+  "formula": "ωout / ωin = (−1)^meshes × product(driver teeth / driven teeth)",
+  "related": [
+    "ratio-workbench.ldr",
+    "chain-transmission.ldr"
+  ]
+}

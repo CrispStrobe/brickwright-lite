@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "orbital-loom",
+  "language": "de",
+  "what": "Ein Motor dreht das Papier, ein zweiter die versetzte Stiftkurbel. Die Spur folgt tatsächlichen Simulationsposen. Fünffach-Muster: 1 Papierumdrehungen und 5 Stiftumdrehungen zeichnen eine Kurve auf rotierendem Papier. Zwei Motoren, 20:60-Getriebe und versetzte Kurbel.",
+  "try": [
+    "Setze zurück, um das Papier zu leeren, und starte das gewählte Muster.",
+    "Vergleiche den Stift im Raum mit seiner Spur auf dem Papier.",
+    "Vergleiche nach Zurücksetzen die Fünf-, Sieben-, Elf- und Achtfach-Beispiele."
+  ],
+  "why": "Die Stiftbahn muss relativ zum rotierenden Papier beschrieben werden. Rationale Umlaufverhältnisse erlauben gemeinsame Phasenrückkehr. Unabhängige Servos erzeugen kleine vorübergehende Phasenfehler.",
+  "matters": "Bezugssystemwechsel erklärt scheinbare Bewegungen rotierender Systeme und Roboterwerkzeuge.",
+  "question": "Entsteht dieselbe Zeichnung, wenn sich nur der Stift bewegt?",
+  "answer": "Nein. Das Papier verändert das Bezugssystem, in dem die Spur aufgezeichnet wird. Beide gemessenen Bewegungen sind erforderlich.",
+  "further": [
+    "Vergleiche die erwartete Schließung mit dem letzten tatsächlichen Tintenpunkt.",
+    "Virtuelles Papier modelliert weder Reibung noch Rutschen oder echten Stiftdruck."
+  ],
+  "formula": "Papierkoordinaten = R(−Papierwinkel) × (Achsversatz + R(Stiftwinkel) × Kurbelvektor)",
+  "related": [
+    "drawing-robot.ldr",
+    "tidal-trio.ldr"
+  ]
+}

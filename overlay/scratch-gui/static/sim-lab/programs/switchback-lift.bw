@@ -1,0 +1,26 @@
+DEVICE SPIKE
+
+# switchback-lift — CrispStrobe, BSD-3-Clause.
+# Reset to the model datum before running this bounded sequence.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor stop action D hold
+  set motor speed A 12
+  set motor speed B 5
+  set motor speed D 5
+  run motor A to position 0
+  run motor B to position 0
+  run motor D to position 0
+  wait 1 seconds
+  run motor A counterclockwise 611.155 degrees
+  wait 1 seconds
+  run motor B counterclockwise 40 degrees
+  wait 4 seconds
+  run motor B clockwise 40 degrees
+  run motor A clockwise 611.155 degrees
+  wait 1 seconds
+  run motor D counterclockwise 60 degrees
+  wait 4 seconds
+  run motor D clockwise 60 degrees
+  wait 2 seconds

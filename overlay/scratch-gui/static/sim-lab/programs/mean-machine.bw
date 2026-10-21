@@ -1,0 +1,73 @@
+DEVICE SPIKE
+
+# MEAN MACHINE — the differential computes (A+B)/2. CrispStrobe / BSD-3-Clause.
+# Motor faces oppose each other; directions use one shared pointer view.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor speed A 5
+  set motor speed B 5
+  broadcast "add" and wait
+  wait 1 seconds
+  broadcast "add return" and wait
+  wait 1 seconds
+  broadcast "cancel" and wait
+  wait 1 seconds
+  broadcast "cancel return" and wait
+  wait 1 seconds
+  broadcast "unequal" and wait
+  wait 1 seconds
+  broadcast "unequal return" and wait
+  wait 1 seconds
+  broadcast "negative" and wait
+  wait 1 seconds
+  broadcast "negative return" and wait
+  wait 1 seconds
+
+WHEN I receive "add":
+  run motor A clockwise 60 degrees
+
+WHEN I receive "add":
+  run motor B clockwise 60 degrees
+
+WHEN I receive "add return":
+  run motor A counterclockwise 60 degrees
+
+WHEN I receive "add return":
+  run motor B counterclockwise 60 degrees
+
+WHEN I receive "cancel":
+  run motor A clockwise 90 degrees
+
+WHEN I receive "cancel":
+  run motor B counterclockwise 90 degrees
+
+WHEN I receive "cancel return":
+  run motor A counterclockwise 90 degrees
+
+WHEN I receive "cancel return":
+  run motor B clockwise 90 degrees
+
+WHEN I receive "unequal":
+  run motor A clockwise 120 degrees
+
+WHEN I receive "unequal":
+  run motor B counterclockwise 30 degrees
+
+WHEN I receive "unequal return":
+  run motor A counterclockwise 120 degrees
+
+WHEN I receive "unequal return":
+  run motor B clockwise 30 degrees
+
+WHEN I receive "negative":
+  run motor A counterclockwise 60 degrees
+
+WHEN I receive "negative":
+  run motor B counterclockwise 60 degrees
+
+WHEN I receive "negative return":
+  run motor A clockwise 60 degrees
+
+WHEN I receive "negative return":
+  run motor B clockwise 60 degrees

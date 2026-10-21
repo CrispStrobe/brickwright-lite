@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "orbital-loom-sevenfold",
+  "language": "en",
+  "what": "One motor turns the paper and a second carries an offset pen crank. Ink follows actual simulated poses. Sevenfold pattern: 2 paper turns and 7 pen turns trace a live curve on rotating paper. Two motors, a 20:60 mesh and an offset crank.",
+  "try": [
+    "Reset to clear the paper, then run the selected pattern.",
+    "Watch the pen in the room frame and the trace in the paper frame.",
+    "Reset and compare the Fivefold, Sevenfold, Elevenfold and Eightfold examples."
+  ],
+  "why": "The pen path must be expressed relative to rotating paper. Rational turn ratios allow both axes to return to their starting phase together. Independent servos create small transient phase errors.",
+  "matters": "Changing reference frames explains apparent motion in rotating systems and robot tooling.",
+  "question": "Will moving only the pen reproduce the same drawing?",
+  "answer": "No. The rotating paper changes the coordinates in which the trace is recorded. Both measured motions are needed.",
+  "further": [
+    "Compare the predicted closure with the last point of actual ink.",
+    "Virtual paper and ink do not model friction, slip or real marker pressure."
+  ],
+  "formula": "paper coordinates = R(−paper angle) × (axis offset + R(pen angle) × crank vector)",
+  "related": [
+    "drawing-robot.ldr",
+    "tidal-trio.ldr"
+  ]
+}

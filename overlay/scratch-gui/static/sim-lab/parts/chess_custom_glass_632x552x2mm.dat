@@ -1,0 +1,25 @@
+0 // Owner-authored material geometry; original CC0 provenance retained in source fixture.
+0 CUSTOM glass insert 632 x 552 x 2 mm
+0 Name: chess_custom_glass_632x552x2mm.dat
+0 Author: CrispStrobe
+0 !LDRAW_ORG Unofficial_Part
+0 !LICENSE BSD-3-Clause : see LICENSE.txt
+0 BFC CERTIFY CCW
+0 // CUSTOM NON-LEGO COMPONENT. Unbroken topY0, undersideY5.
+4 16 -790 0 -690 790 0 -690 790 0 690 -790 0 690
+4 16 -790 5 690 790 5 690 790 5 -690 -790 5 -690
+4 16 -790 0 690 790 0 690 790 5 690 -790 5 690
+4 16 790 0 -690 -790 0 -690 -790 5 -690 790 5 -690
+4 16 -790 0 -690 -790 0 690 -790 5 690 -790 5 -690
+4 16 790 0 690 790 0 -690 790 5 -690 790 5 690
+2 24 -790 0 -690 790 0 -690
+2 24 790 0 -690 790 0 690
+2 24 790 0 690 -790 0 690
+2 24 -790 0 690 -790 0 -690
+2 24 -790 5 -690 790 5 -690
+2 24 790 5 -690 790 5 690
+2 24 790 5 690 -790 5 690
+2 24 -790 5 690 -790 5 -690
+
+0 // Underside printing belongs to the glass; it has no physical thickness.
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 chess_custom_board_underside_print.dat

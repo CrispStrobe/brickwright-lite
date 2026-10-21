@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+import {scalingSteeringInteractions,scalingSteeringLesson} from './lib/sim-lab-scaling-steering-gate.mjs';
+import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
+import {magneticChessInteractions,magneticChessLesson} from './lib/sim-lab-magnetic-chess-gate.mjs';
+import {sarrusLiftInteractions,sarrusLiftLesson} from './lib/sim-lab-sarrus-lift-gate.mjs';
+import {quickstrokeInteractions,quickstrokeLesson} from './lib/sim-lab-quickstroke-gate.mjs';
+import {openManualControls} from './lib/sim-lab-manual-controls.mjs';
+import {orbitMixerInteractions,orbitMixerLesson} from './lib/sim-lab-orbit-mixer-gate.mjs';
+import {phaseBridgeInteractions,phaseBridgeGermanLessons} from './lib/sim-lab-phase-bridge-gate.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -132,7 +140,7 @@
 // when a batch has reached the hub), not inside tick(), which only sends the batch.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
-import {chromium} from 'playwright';
+import {chromium, webkit} from 'playwright';
 import {createServer} from 'node:http';
 import {readFile, mkdir} from 'node:fs/promises';
 import {createRequire} from 'node:module';
@@ -161,6 +169,20 @@ import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS,
     DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET, UNDO_SHOT_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
+import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
+import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
+import {sevenMachinesInteractions,sevenGermanLessons,fixedMachinesInteractions} from './lib/sim-lab-seven-machines-gate.mjs';
+import {armLiftInteractions} from './lib/sim-lab-arm-lift-gate.mjs';
+import {straightEightInteractions} from './lib/sim-lab-straight-eight-gate.mjs';
+import {oscillationClutchInteractions} from './lib/sim-lab-oscillation-clutch-gate.mjs';
+import {dynamicsInteractions} from './lib/sim-lab-dynamics-gate.mjs';
+import {lessonInteractions, germanLessonInteractions} from './lib/sim-lab-lesson-gate.mjs';
+import {tidalInteractions, tidalInstructionsInteractions} from './lib/sim-lab-tidal-gate.mjs';
+import {loomInteractions,loomInstructionsInteractions} from './lib/sim-lab-loom-gate.mjs';
+import {LOOM_PRESETS} from './lib/sim-lab-loom-judge.mjs';
+import {TIDAL_PRESETS,judgeTidalRun} from './lib/sim-lab-tidal-judge.mjs';
+import {judgeExpandedRun} from './lib/sim-lab-expanded-judge.mjs';
+import {mechanicsInteractions, manualMechanicsInteractions} from './lib/sim-lab-mechanics-gate.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -253,7 +275,8 @@ const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-lat
  * the whole program slows down instead of running ahead of the world, and the wait has to allow it.
  */
 const wallBudget = simMs => 240000 + Math.ceil(simMs / (1000 / 30)) * (2 * WORKER_LATENCY + 20);
-/** `--examples=a,b` runs only those example robots in the examples part (drawing-robot, line-follower, wall-stopper, colour-explorer, forklift, sumo, timed-drive). */
+/** `--examples=a,b` filters the examples part; mechanics-machines runs all four mechanism programs,
+ * mechanics-manual operates their seven motor controls, and physics-workshops checks the example browser. */
 const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
 const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
 
@@ -339,11 +362,16 @@ const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').s
 const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 'api', 'hubs-ble', 'hubs-bt'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
+// A narrow replay of the loaded-motor stop regression; default UI coverage stays complete.
+const MIXER_ONLY = process.argv.includes('--ui-only=mixer');
 
 let browser;
 const errors = [];
 try {
-    browser = await chromium.launch({headless: true, args: ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader']});
+    const browserName = process.env.BW_SIMLAB_BROWSER || 'chromium';
+    assert.ok(['chromium', 'webkit'].includes(browserName), 'supported Robot Lab browser');
+    browser = browserName === 'webkit' ? await webkit.launch({headless: true}) :
+        await chromium.launch({headless: true, args: ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader']});
 
     if (want('core')) { // load, run hint, drive pad, mats, Build/CAD, palette, a program drives it, save and reopen
         const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
@@ -366,6 +394,7 @@ try {
         // 1. A typed program that was never loaded into blocks: Run says so, and nothing drives by itself.
         const idle = await reading(page);
         await page.getByTestId('bw-sim-lab-run').click();
+        await page.getByTestId('bw-sim-lab-info-toggle').click();
         await page.getByTestId('bw-sim-lab-info').waitFor({timeout: 10000});
         assert.match(await page.getByTestId('bw-sim-lab-info').textContent(), /To blocks/);
         await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1000, idle.time, {timeout: 60000});
@@ -374,14 +403,25 @@ try {
         console.log('PASS Run without a loaded program says how to load one, and the robot stays put');
 
         // 2. The drive pad moves it with no program at all: hold ▲.
-        const drivePad = await reading(page);
+        if (process.env.SIM_DEBUG) await page.evaluate(() => {
+            const p=window.__bwSimLab._pane, log=window.__bwDriveEvents=[];
+            for(const name of ['drive','pause','startClock','stopClock','setManualOverride']) {
+                const original=p[name];p[name]=function(...args){log.push({name,args,time:this.session.time,status:this.state.status});return original.apply(this,args);};
+            }
+            p.session.onAdvance(()=>{if(log.length<60)log.push({time:p.session.time,motors:p.hub.data.motors.slice(0,2).map(m=>({...m}))});});
+            for(const type of ['pointerdown','pointerup','pointercancel','lostpointercapture']) document.addEventListener(type,e=>log.push({type,id:e.target?.dataset?.testid}),true);
+        });
+        await openManualControls(page);
         const fwd = page.getByTestId('bw-sim-lab-drive-forward');
-        const fb = await fwd.boundingBox();
-        await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+        await fwd.hover();
+        // Measure the hold after opening the controls: Run keeps advancing
+        // while their layout settles, which is not time spent holding Drive.
+        const drivePad = await reading(page);
         await page.mouse.down();
         await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1500, drivePad.time, {timeout: 60000});
         await page.mouse.up();
         const driven = await reading(page);
+        if (process.env.SIM_DEBUG) console.log('Drive trace', JSON.stringify(await page.evaluate(()=>window.__bwDriveEvents)));
         assert.ok(driven.pos[2] < drivePad.pos[2] - 0.03, `holding ▲ drove forward: ${JSON.stringify({drivePad, driven})}`);
         assert.match(await page.getByTestId('bw-sim-lab-readout').textContent(), /A -?\d+°/);
         console.log(`PASS holding ▲ drives the robot ${((drivePad.pos[2] - driven.pos[2]) * 100).toFixed(1)} cm with no program`);
@@ -488,8 +528,14 @@ try {
         console.log('PASS Build: a pin snaps into a beam hole; undo and redo');
         await cadInteractions(page, beam.id, {shotsDir: artifacts});
         const builtInEditor = await count();
+        const editorSession = await page.evaluateHandle(() => window.__bwSimLab._pane.session);
         await page.getByTestId('bw-sim-lab-mode-simulate').click();
-        await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && ['ready', 'failed'].includes(window.__bwSimLab.status), null, {timeout: 60000});
+        await page.waitForFunction(previous => {
+            const lab=window.__bwSimLab;
+            return lab.mode === 'simulate' && ['ready','failed'].includes(lab.status) &&
+                lab._pane.session && lab._pane.session !== previous;
+        }, editorSession, {timeout: 60000});
+        await editorSession.dispose();
         const simulated = await page.evaluate(() => ({status: window.__bwSimLab.status, worker: window.__bwSimLab.worker, workerError: window.__bwSimLab.workerError,
             message: document.querySelector('[data-testid="bw-sim-lab-message"]')?.textContent || ''}));
         assert.equal(simulated.status, 'ready', `Simulate after Build: ${JSON.stringify(simulated)}`);
@@ -564,15 +610,14 @@ try {
         await lf.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'line-follower.ldr' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
         const offer = lf.getByTestId('bw-sim-lab-info');
-        await offer.waitFor({timeout: 10000});
-        assert.match(await offer.textContent(), /Load example program/, 'with no program loaded, the Line follower offers its example');
         await lf.getByTestId('bw-sim-lab-mat').selectOption('line-oval');
         await lf.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'line-oval', null, {timeout: 60000});
-        await lf.getByRole('button', {name: 'Load example program'}).click();
+
         await lf.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await lf.locator('.cm-content').first().textContent(), /IF spike color C is black THEN:/, 'the example is in the Code tab');
         assert.ok(await lf.evaluate(() => window.__bwSimLab._pane.spikeLoaded()), 'the example became SPIKE blocks');
+        await lf.getByTestId('bw-sim-lab-info-toggle').click();
         assert.match(await offer.textContent(), /follow the black line/);
         // Read-only instrument: after every simulated tick, judge where the drive-axle midpoint is
         // (the motor hinges' midpoint carried by the hub body's pose) against the oval's centre line.
@@ -645,9 +690,9 @@ try {
             await ex.waitForFunction(file => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === file &&
                 window.__bwSimLab._pane.session, example.file, {timeout: 60000});
             const info = ex.getByTestId('bw-sim-lab-info');
+            await ex.getByTestId('bw-sim-lab-info-toggle').click();
             await info.waitFor({timeout: 10000});
-            assert.match(await info.textContent(), /Load example program/, `with no program loaded, the ${example.name} offers its example`);
-            await ex.getByRole('button', {name: 'Load example program'}).click();
+
             await ex.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
                 null, {timeout: 60000});
             assert.match(await ex.locator('.cm-content').first().textContent(), example.code, `the ${example.name}'s example is in the Code tab`);
@@ -733,6 +778,238 @@ try {
             await ex.close();
         }
 
+        if (process.env.BW_SIMLAB_LIBRARY && runExample('fixed-machines.ldr')) {
+            const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            fixed.on('pageerror',error=>errors.push(error.message));fixed.on('dialog',dialog=>dialog.accept());
+            await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
+        }
+        for (const id of ['scale-echo','turnwise']) if (runExample(id+'.ldr')) {
+            const machine=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            machine.on('pageerror',error=>errors.push(error.message));machine.on('dialog',dialog=>dialog.accept());
+            const opts={id,openSimLab,shotsDir:resolve(artifacts,id),timeout:wallBudget(180000)};
+            await scalingSteeringInteractions(machine,opts);await machine.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await scalingSteeringLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('ellipse-engine.ldr')) {
+            const quick=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            quick.on('pageerror',error=>errors.push(error.message));quick.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'ellipse-engine'),timeout:wallBudget(150000)};
+            await ellipseEngineInteractions(quick,opts);await quick.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await ellipseEngineLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('quickstroke.ldr')) {
+            const quick=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            quick.on('pageerror',error=>errors.push(error.message));quick.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'quickstroke'),timeout:wallBudget(150000)};
+            await quickstrokeInteractions(quick,opts);await quick.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await quickstrokeLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('sarrus-lift.ldr')) {
+            const sarrus=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            sarrus.on('pageerror',error=>errors.push(error.message));sarrus.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'sarrus-lift'),timeout:wallBudget(150000)};
+            await sarrusLiftInteractions(sarrus,opts);await sarrus.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await sarrusLiftLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('magnetic-chess.ldr')) {
+            const chess=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            chess.on('pageerror',error=>errors.push(error.message));chess.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'magnetic-chess'),timeout:wallBudget(360000)};
+            await magneticChessInteractions(chess,opts);await chess.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await magneticChessLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('orbit-mixer.ldr')) {
+            const orbit=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            orbit.on('pageerror',error=>errors.push(error.message));orbit.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'orbit-mixer'),timeout:wallBudget(150000)};
+            await orbitMixerInteractions(orbit,opts);await orbit.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await orbitMixerLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('phase-bridge.ldr')) {
+            const phase=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            phase.on('pageerror',error=>errors.push(error.message));phase.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'phase-bridge'),timeout:wallBudget(90000)};
+            await phaseBridgeInteractions(phase,opts);await phase.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await phaseBridgeGermanLessons(german,opts);await german.close();
+        }
+        const runSeven = async (key, models) => {
+            const machines=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            machines.on('pageerror',error=>errors.push(error.stack || error.message));machines.on('dialog',dialog=>dialog.accept());
+            const opts={models,openSimLab,shotsDir:resolve(artifacts,key),timeout:wallBudget(90000)*2};
+            await sevenMachinesInteractions(machines,opts);await machines.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.stack || error.message));german.on('dialog',dialog=>dialog.accept());
+            await sevenGermanLessons(german,opts);await german.close();
+        };
+        if (runExample('seven-machines.ldr')) await runSeven('seven-machines',['mean-machine','stepworks']);
+        if (runExample('seven-linkages.ldr')) await runSeven('seven-linkages',['stride-lab','twinpoint']);
+        if (runExample('seven-motion.ldr')) await runSeven('seven-motion',['butterfly','tempo-loop']);
+        if (runExample('seven-plotter.ldr')) await runSeven('seven-plotter',['tilt-lab','axis-plotter']);
+        if (runExample('arm-lift.ldr')) {
+            const machines = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            machines.on('pageerror', error => errors.push(error.message)); machines.on('dialog', dialog => dialog.accept());
+            await armLiftInteractions(machines, {models:['atlas-arm'],openSimLab, shotsDir: resolve(artifacts, 'arm-lift'), timeout: wallBudget(30000) * 2});
+            await machines.close();
+        }
+        if (runExample('switchback-lift.ldr')) {
+            const lift=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            lift.on('pageerror',error=>errors.push(error.stack || error.message));lift.on('dialog',dialog=>dialog.accept());
+            await armLiftInteractions(lift,{models:['switchback-lift'],openSimLab,shotsDir:resolve(artifacts,'switchback-lift'),timeout:wallBudget(30000)*2});
+            await lift.close();
+        }
+        if (runExample('straight-eight.ldr')) {
+            const linkage = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            linkage.on('pageerror', error => errors.push(error.message)); linkage.on('dialog', dialog => dialog.accept());
+            await straightEightInteractions(linkage, {openSimLab, shotsDir: resolve(artifacts, 'straight-eight'), timeout: wallBudget(14000)});
+            await linkage.close();
+        }
+        if (runExample('oscillation-clutch.ldr')) {
+            const experiments = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            experiments.on('pageerror', error => errors.push(error.message)); experiments.on('dialog', dialog => dialog.accept());
+            await oscillationClutchInteractions(experiments, {openSimLab, shotsDir: resolve(artifacts, 'oscillation-clutch'), timeout: wallBudget(24000)});
+            await experiments.close();
+        }
+        if (runExample('dynamics-machines.ldr')) {
+            const dynamics = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            dynamics.on('pageerror', error => errors.push(error.message)); dynamics.on('dialog', dialog => dialog.accept());
+            await dynamicsInteractions(dynamics, {openSimLab, shotsDir: resolve(artifacts, 'dynamics-machines'), timeout: wallBudget(48000)});
+            await dynamics.close();
+        }
+        if (runExample('lessons.ldr')) {
+            const lesson = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            lesson.on('pageerror', error => errors.push(error.message)); lesson.on('dialog', dialog => dialog.accept());
+            await lessonInteractions(lesson, {openSimLab, shotsDir: resolve(artifacts, 'lessons')});
+            await lesson.close();
+            const german = await browser.newPage({viewport: {width: 1024, height: 900}, hasTouch: true, serviceWorkers: 'block', locale: 'de-DE'});
+            german.on('pageerror', error => errors.push(error.message)); german.on('dialog', dialog => dialog.accept());
+            await germanLessonInteractions(german, {openSimLab, shotsDir: resolve(artifacts, 'lessons')});
+            await german.close();
+        }
+
+        if (runExample('tidal-instructions.ldr')) {
+            const tidal = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            tidal.on('pageerror', error => errors.push(error.message));
+            tidal.on('dialog', dialog => dialog.accept());
+            await openSimLab(tidal, {program: null});
+            await tidal.getByTestId('bw-sim-lab-model').selectOption('tidal-trio.ldr');
+            await tidal.waitForFunction(() => window.__bwSimLab.status === 'ready' &&
+                window.__bwSimLab._pane.state.modelFile === 'tidal-trio.ldr');
+            await tidalInstructionsInteractions(tidal, {shotsDir: resolve(artifacts, 'tidal-trio')});
+            await tidal.close();
+        }
+
+        if (runExample('tidal-trio.ldr')) {
+            const tidal = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            tidal.on('pageerror', error => errors.push(error.message));
+            tidal.on('dialog', dialog => dialog.accept());
+            await tidalInteractions(tidal, {presets:ONLY_EXAMPLES.length?TIDAL_PRESETS.slice(0,2):TIDAL_PRESETS,instructions:false,openSimLab, shotsDir: resolve(artifacts, 'tidal-trio'), timeout: wallBudget(36000)});
+            await tidal.close();
+        }
+
+        if (runExample('orbital-loom.ldr')) {
+            const loom = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            loom.on('pageerror', error => errors.push(error.message));
+            loom.on('dialog', dialog => dialog.accept());
+            await loomInteractions(loom, {presets:ONLY_EXAMPLES.length?LOOM_PRESETS.slice(0,2):LOOM_PRESETS,instructions:false,openSimLab, shotsDir: resolve(artifacts, 'orbital-loom'), timeout: wallBudget(40000)});
+            await manualMechanicsInteractions(loom, {openSimLab, models: ['orbital-loom'], shotsDir: resolve(artifacts, 'orbital-loom')});
+            await loom.close();
+        }
+
+        if (ONLY_EXAMPLES.length && runExample('tidal-more.ldr')) {
+            const p=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            p.on('pageerror',e=>errors.push(e.stack||e.message));p.on('dialog',d=>d.accept());
+            await mechanicsInteractions(p,{openSimLab,shotsDir:resolve(artifacts,'tidal-more'),timeout:wallBudget(36000),
+                models:TIDAL_PRESETS.slice(2).map(m=>m.id),fileFor:()=> 'tidal-trio.ldr',
+                keyFor:id=>TIDAL_PRESETS.find(m=>m.id===id).key,programMarker:id=>`# Example: ${id}`,
+                judge:judgeTidalRun,simulatedMs:36000});await p.close();
+        }
+        if (ONLY_EXAMPLES.length && runExample('loom-more.ldr')) {
+            const p=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            p.on('pageerror',e=>errors.push(e.stack||e.message));p.on('dialog',d=>d.accept());
+            await loomInteractions(p,{openSimLab,shotsDir:resolve(artifacts,'loom-more'),timeout:wallBudget(40000),
+                presets:LOOM_PRESETS.slice(2),instructions:false});await p.close();
+        }
+        if (runExample('loom-instructions.ldr')) {
+            const p=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            p.on('pageerror',e=>errors.push(e.stack||e.message));p.on('dialog',d=>d.accept());
+            await openSimLab(p,{program:null});await p.getByTestId('bw-sim-lab-model').selectOption('orbital-loom.ldr');
+            await p.waitForFunction(()=>window.__bwSimLab._pane.state.modelFile==='orbital-loom.ldr'&&
+                window.__bwSimLab._pane.session?.worker&&!window.__bwSimLab._pane.state.programLoading);
+            await loomInstructionsInteractions(p,{shotsDir:resolve(artifacts,'loom-instructions')});await p.close();
+        }
+
+        if (runExample('expanded-machines.ldr')) {
+            const machines = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            machines.on('pageerror', error => errors.push(error.message));
+            machines.on('dialog', dialog => dialog.accept());
+            await mechanicsInteractions(machines, {openSimLab, models: ['positioning-arm', 'ratio-workbench', 'rack-shuttle'],
+                judge: judgeExpandedRun, simulatedMs: 24000, shotsDir: resolve(artifacts, 'expanded-machines'), timeout: wallBudget(24000)});
+            await machines.close();
+        }
+        if (runExample('expanded-manual.ldr')) {
+            const controls = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            controls.on('pageerror', error => errors.push(error.message));
+            await manualMechanicsInteractions(controls, {openSimLab, models: ['positioning-arm', 'ratio-workbench', 'rack-shuttle'],
+                shotsDir: resolve(artifacts, 'expanded-machines')});
+            await controls.close();
+        }
+
+        if (runExample('mechanics-manual.ldr')) {
+            const controls = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            controls.on('pageerror', error => errors.push(error.message));
+            await manualMechanicsInteractions(controls, {openSimLab, shotsDir: resolve(artifacts, 'mechanics-machines')});
+            await controls.close();
+        }
+
+        if (runExample('mechanics-machines.ldr')) {
+            const machines = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            machines.on('pageerror', error => errors.push(error.message));
+            machines.on('dialog', dialog => dialog.accept());
+            await mechanicsInteractions(machines, {openSimLab,
+                shotsDir: resolve(artifacts, 'mechanics-machines'), timeout: wallBudget(18000)});
+            await machines.close();
+        }
+
+        if (runExample('physics-workshops.ldr')) {
+            const workshops = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            workshops.on('pageerror', error => errors.push(error.message));
+            workshops.on('dialog', dialog => dialog.accept());
+            const result = await physicsExamplesInteractions(workshops, {openSimLab,
+                shotsDir: resolve(artifacts, 'physics-workshops'), timeout: wallBudget(14000)});
+            console.log(`PASS physics examples browser and chain program: ${JSON.stringify(result)}`);
+            await workshops.close();
+            const german = await browser.newPage({viewport: {width: 1024, height: 768}, hasTouch: true,
+                serviceWorkers: 'block', locale: 'de-DE'});
+            german.on('pageerror', error => errors.push(error.message));
+            await germanPhysicsExamplesInteractions(german, {openSimLab, shotsDir: resolve(artifacts, 'physics-workshops')});
+            console.log('PASS German physics examples browser at tablet size');
+            await german.close();
+        }
+
+        if (runExample('survey-rover.ldr')) {
+            const rover = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            rover.on('pageerror', error => errors.push(error.message));
+            rover.on('dialog', dialog => dialog.accept());
+            const result = await surveyRoverInteractions(rover, {openSimLab,
+                shotsDir: resolve(artifacts, 'survey-rover'), timeout: wallBudget(13000)});
+            console.log(`PASS Survey rover: ${JSON.stringify(result)}`);
+            await rover.close();
+        }
+
         if (runExample('forklift.ldr')) {
         // 8b. The Forklift (R4): choose it, "Load example program" (it puts the robot on the Warehouse
         // mat with its pallet), Run, and judge the pallet's height from its body's pose: up 40 mm, held,
@@ -744,7 +1021,7 @@ try {
         await fl.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
         await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'forklift.ldr' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
-        await fl.getByRole('button', {name: 'Load example program'}).click();
+
         await fl.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await fl.locator('.cm-content').first().textContent(), /run motor C clockwise 573 degrees/, 'the Forklift\'s example is in the Code tab');
@@ -786,10 +1063,11 @@ try {
         await pn.getByTestId('bw-sim-lab-model').selectOption('pneumatic-press.ldr');
         await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'pneumatic-press.ldr' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
-        await pn.getByRole('button', {name: 'Load example program'}).click();
+
         await pn.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await openManualControls(pn);
         await pn.evaluate(() => {
             const s = window.__bwSimLab._pane.session;
             const rod = s.mechanism.bodies.find(b => b.parts.includes('rod')).id;
@@ -879,7 +1157,7 @@ try {
         await su.getByTestId('bw-sim-lab-model').selectOption('sumo');
         await su.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === 'sumo' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
-        await su.getByRole('button', {name: 'Load example program'}).click();
+
         await su.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await su.locator('.cm-content').first().textContent(), /wait until spike color C is black/, 'the sumo example is in the Code tab');
@@ -924,7 +1202,16 @@ try {
         }
     }
 
-    if (want('ui')) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
+    if (want('ui') && MIXER_ONLY) {
+        const mixer = await browser.newPage({viewport: {width: 1400, height: 950}, serviceWorkers: 'block'});
+        mixer.on('pageerror', error => errors.push(error.message));
+        await openSimLab(mixer, {program: null});
+        const result = await mixerInteractions(mixer, {shotsDir: artifacts});
+        console.log(`PASS loaded-motor mixer, individual stop, Stop all and fold: ${JSON.stringify(result)}`);
+        await mixer.close();
+    }
+
+    if (want('ui') && !MIXER_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
         // 15. The Robot Lab tab: icon toolbar (names, tooltips with shortcuts, every action by click and key)
         //     and the movable 3D view (orbit, pan, zoom by mouse and keys; part drags move parts), in English…
         const bar = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
@@ -1163,6 +1450,20 @@ try {
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);
     console.log('PASS no page errors');
+} catch (error) {
+    if (process.env.SIM_DEBUG && browser) for (const context of browser.contexts()) for (const page of context.pages()) {
+        console.error('Robot Lab failure state', await page.evaluate(() => {
+            const p=window.__bwSimLab?._pane, i=window.__bwSimLabInstructions, vm=p?.props.vm;
+            return {url:location.href,model:p?.state.modelFile,status:p?.state.status,
+                programLoading:p?.state.programLoading,message:p?.state.message,info:p?.state.info,
+                gallery:p?.state.examplesOpen,lesson:p?.state.lessonKey,
+                codeStatus:document.querySelector('[data-testid="bw-code-status"]')?.textContent,
+                target:!!vm?.editingTarget,threads:vm?.runtime.threads.length,
+                instructions:i&&{status:i.status,page:i.page,steps:i.steps,stats:i.stats,error:i.error},
+                alerts:[...document.querySelectorAll('[role="alert"]')].map(e=>e.textContent)};
+        }).catch(e=>({diagnosticError:e.message})));
+    }
+    throw error;
 } finally {
     await browser?.close();
     server.close();

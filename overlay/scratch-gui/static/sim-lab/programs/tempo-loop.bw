@@ -1,0 +1,13 @@
+DEVICE SPIKE
+
+# Example: tempo-loop
+# TEMPO LOOP — original program, CrispStrobe, 2026. BSD-3-Clause.
+# Reset before running. The red input crank starts pointing right.
+# One input turn gives one blue output turn, with changing output speed.
+# Speed 5 is a native setting, not a stated RPM or degrees-per-second rate.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 5
+  run motor A clockwise 720 degrees
+  wait 2 seconds
+  run motor A counterclockwise 720 degrees

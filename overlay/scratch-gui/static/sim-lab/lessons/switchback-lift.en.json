@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "switchback-lift",
+  "language": "en",
+  "what": "Three motors lift a free ball, tip it onto a downhill track and open a gate to reload it. The ball moves by gravity and contact. Lift a free ball 64 mm, tip it onto a sloping track, catch its return at a gate, and reload the lowered cradle.",
+  "try": [
+    "Reset and run the example. Follow the ball rather than only the motor readouts: lift, release, outbound run, return, gated wait and reload.",
+    "Compare the 64 mm carriage lift with the 611.155° motor command. The 12-tooth pinion has a 6 mm pitch radius.",
+    "Pause before opening the gate. Predict whether opening it before the cradle has lowered would successfully reload the ball."
+  ],
+  "why": "The lift stores gravitational potential energy in the ball. On the sloped tracks, that energy becomes translation and rotation, with losses at contacts and impacts. The gate separates the ball’s return from the carriage’s descent. Its timing matters: a motor reaching its target does not tell the controller where the free ball is.",
+  "matters": "Ball machines combine transmissions, energy conversion and sequential control. This example uses timed waits without a ball sensor; the simulator test checks the ball’s actual path and recapture.",
+  "question": "Does a 600° turn produce exactly 64 mm of lift through this pinion?",
+  "answer": "No. Travel is radius × angle in radians: 6 × 600 × π/180 = 62.83 mm. About 611.155° gives 64 mm.",
+  "further": [
+    "Compare lift energy mgh with the ball’s kinetic energy after release. The model uses a 1.5 g mass parameter, not a measured hardware value.",
+    "Compare ideal solid-sphere rolling acceleration with the simulated trip. Real hollow balls, friction and impacts change the result."
+  ],
+  "formula": "h = rθ; E = mgh; ideal solid sphere: a = (5/7)g sin(α)",
+  "related": [
+    "atlas-arm.ldr",
+    "forklift.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

@@ -2422,3 +2422,100 @@ https://github.com/CrispStrobe/extensions/blob/0c4e3b4a0cee57d65474082938c352818
 and content hash. This scopes the adoption to Circuit Playground; it does not
 advance other extension sources. MPL-2.0 text:
 https://www.mozilla.org/en-US/MPL/2.0/. MIT text: https://opensource.org/licenses/MIT.
+
+## Original Robot Lab assemblies: ORBITAL LOOM and TIDAL TRIO
+
+Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+The owner confirmed these supplied designs are their own original work and specified this credit
+and licence. Their generated download README/header wording is superseded for these assemblies.
+The bundled notices identify simulator adaptations. Referenced LDraw geometry retains the separate
+authors and licences recorded above. No supplied predicted animation is presented as physics output.
+
+## Original Robot Lab assembly: PULSE PERCUSSION, governor and lesson content
+
+Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+Pulse Percussion is the owner's original design; their requested credit and licence
+supersede generated download header wording. Its bundled notice identifies the
+simulator adaptation. The centrifugal governor and bilingual Robot Lab lesson
+prose are original work under the same licence. Referenced LDraw geometry retains
+its own authors and licences above. No NC-licensed model or predicted animation
+is included as functioning simulation content.
+
+## Original Robot Lab assemblies: pendulum array and clutch load bench
+
+Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+The 54-piece motor-excited pendulum array and 26-piece clutch load bench, their
+native example programs and bilingual lessons are original assemblies/content.
+Referenced LDraw geometry retains its separate authors and licences above.
+
+## Original Robot Lab assemblies: Mean Machine, Stepworks, Stride Lab, Twinpoint, Butterfly and Tempo Loop
+
+Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+Owner-supplied original designs, native programs and bilingual lessons. The
+owner’s authorship/licence instruction supersedes initial generated archive
+wording; exact source fixtures preserve provenance. Per-model notices are
+packaged in `static/sim-lab/licenses/`. Referenced official LDraw geometry
+retains its separate authors and CC BY licences. No NC model, downloaded
+executable controller, or predicted animation is bundled as physics output.
+
+Tilt Lab, its native bounded example and bilingual lesson are also original
+CrispStrobe / BSD-3-Clause work supplied by the owner. Its independent ball
+and referenced LDraw parts retain their separately documented geometry credits.
+
+### Axis Plotter
+
+Original model, native control programs and lessons: Copyright (c) 2026
+CrispStrobe, BSD-3-Clause. Full notice: `static/sim-lab/licenses/axis-plotter.txt`.
+Official LDraw part geometry retains its separate attribution and licence.
+
+### Phase Bridge
+
+Original apparatus, in-phase/misphased variants, native programs and bilingual
+lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Per-model notices retain
+the full licence. Official LDraw geometry retains its separate authors and
+CC BY licences. Two physically required universal-joint crosses are inferred
+by the solver; the explicit-placement BOM counts 144 pieces, 146 with crosses.
+
+### Orbit Mixer
+
+Original 161-piece apparatus, two native programs and bilingual lessons:
+Copyright (c) 2026 Christian Ströbele (CrispStrobe), BSD-3-Clause.
+Full notice: `static/sim-lab/licenses/orbit-mixer.txt`. Referenced LDraw part
+geometry retains its separate authors and CC BY licences. The paddle's motion
+is solved from actual gears; predicted kinematics are not an animation input.
+
+### Brickwright authored material parts
+
+Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Custom glass, printed board and
+adhesive-gasket geometry are original owner-supplied work adapted for Magnetic
+Chess. They are shipped separately from the unmodified official LDraw subset,
+with their own hash lock and full BSD notice. Original supplied CC0 provenance
+is retained with the model fixture. No non-commercial geometry is included.
+
+### Magnetic Chess, Sarrus Lift and Quickstroke
+
+Original owner-supplied apparatus, adapted models, native control programs and
+bilingual lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Full notices
+ship in `static/sim-lab/licenses/`. Supplied Chess and Sarrus drafts also grant
+CC0; fixture provenance preserves those grants. Chess uses one glass sheet
+and four double-sided adhesive gaskets alongside 1,203 LEGO placements. Sarrus
+adds four LEGO clearance plates to its supplied 140-piece layout. Quickstroke
+preserves all 111 supplied placements. Official part geometry retains its
+separate CC BY notices; authored material geometry retains its BSD notice.
+
+### Ellipse Engine
+
+Owner-supplied arrangement originally dedicated under CC0; application
+adaptation, native program and bilingual lessons: Copyright (c) 2026
+CrispStrobe, BSD-3-Clause. The source fixture preserves the original CC0 grant
+and inherited BSD notice. All 169 authored LEGO placements are retained.
+Referenced official LDraw geometry keeps its separate authors and CC BY terms.
+
+### Scale Echo and Turnwise
+
+Original owner-supplied designs and native programs; application adaptations and
+bilingual lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Scale Echo's
+original assembly has a separate CC0 dedication retained in its source fixture.
+All 148 Scale Echo and 127 Turnwise placements are preserved. Referenced official
+LDraw part geometry keeps its separate authors and CC BY terms. Archive runtimes,
+generators and claimed validation reports are not included as application code.

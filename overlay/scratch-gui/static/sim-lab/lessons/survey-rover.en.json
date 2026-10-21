@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "survey-rover",
+  "language": "en",
+  "what": "Two wheel motors move the chassis; a third tilts its distance-sensor head. Gravity back-drives the sensor head unless the motor actively holds its position.",
+  "try": [
+    "Reset and run the short out-and-back survey.",
+    "Watch the sensor head when the motor changes between motion and holding.",
+    "Stop the program, change its head angle gently and compare the sensing direction."
+  ],
+  "why": "Gravity exerts a torque on the offset head. An active position hold can oppose it; merely braking a motor does not guarantee a fixed angle. Sensor direction changes with the head pose.",
+  "matters": "Robot sensors need stable mounting and a known viewing direction.",
+  "question": "Is a zero speed command always the same as holding a position?",
+  "answer": "No. Holding uses position feedback to provide a balancing torque. Passive braking can allow gravity-driven drift.",
+  "further": [
+    "Compare the head while driving and while stationary.",
+    "Relate the distance reading to the ray direction, not just the chassis heading."
+  ],
+  "formula": "gravity torque = mass × gravity × perpendicular lever arm",
+  "related": [
+    "wall-stopper.ldr",
+    "centrifugal-governor.ldr"
+  ]
+}

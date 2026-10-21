@@ -3,7 +3,7 @@
 //
 // Rack and pinion on a moving frame (physics/jolt-core.js 'rackAndPinion'): since jolt-physics 1.1.0-bw.4 the coupling
 // is the fork's RackMeshConstraint, v(slider) = ratio · ω(hinge) RELATIVE TO THE FRAMES that carry pinion and rack
-// (BRICKWRIGHT.md section 4). Jolt's RackAndPinionConstraint tied world rates: a turning or driving chassis's own
+// (BRICKWRIGHT.md section 4). SetConstraints initializes phase once; native setup follows the frames. Jolt's RackAndPinionConstraint tied world rates: a turning or driving chassis's own
 // motion drove the rack, and a motor driving a rack at its end stop turned the whole machine. Each test runs a
 // control with the world-rate constraint (the same core with the fork's class hidden) to show it tells them apart.
 import {test} from 'node:test';
@@ -124,4 +124,24 @@ test('the Forklift\'s lift motor driving the carriage past its end stalls there:
     assert.ok(relative.maxTilt < 1, `the Forklift tipped ${relative.maxTilt}°`);
     assert.ok(relative.slide >= relative.limits[0] - 0.001 && relative.slide <= relative.limits[1] + 0.001, 'the carriage stays within its travel');
     assert.ok(control.maxTilt > 10, `the control tipped only ${control.maxTilt}°: the bench does not tell them apart`);
+});
+
+test('a moving-frame rack keeps its absolute phase through reversal and checkpoint replay', () => {
+    const core = createPhysicsCore(J, benchMechanism({pinionAxis:[0,1,0], rackAxis:[1,0,0],
+        pinionAt:[0,.01,0], rackAt:[0,.016,0]}), {stepHz:HZ});
+    try {
+        const advance = speed => {
+            core.setMotor('jp', {mode:'velocity', radPerSec:speed});
+            for (let i=0; i<100; i++) {
+                core.step(1/HZ);
+                assert.ok(Math.abs(core.jointState('jr').position-R*core.jointState('jp').angle)<1e-5,
+                    'rack travel follows actual accumulated shaft angle');
+            }
+            const s=core.snapshot();
+            return [Array.from(s.bodies), Array.from(s.joints)];
+        };
+        advance(2); core.checkpoint();
+        const first=advance(-2); core.rollback();
+        assert.deepEqual(advance(-2),first,'native phase and all body/joint states replay exactly');
+    } finally {core.destroy();}
 });

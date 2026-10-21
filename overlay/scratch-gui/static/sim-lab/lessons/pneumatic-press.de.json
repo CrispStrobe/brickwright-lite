@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "pneumatic-press",
+  "language": "de",
+  "what": "Ein Motor verstellt ein Ventil, das Druckluft zu einem Kolben leitet. Druck bewegt einen Zylinder; das Ventil kehrt die Bewegung um.",
+  "try": [
+    "Setze zurück und starte die Ventilfolge. Beobachte den Richtungswechsel des Kolbens.",
+    "Vergleiche die Ventilbewegung des Motors mit dem Zylinderhub.",
+    "Stoppe und ändere den Ventilbefehl. Folgt der Kolben sofort?"
+  ],
+  "why": "Das Ventil wählt die Druckanschlüsse. Druck erzeugt über die Kolbenfläche eine Kraft. Das Verstellen des Ventils ist kein direkter Positionsbefehl für den Kolben.",
+  "matters": "Pneumatik trennt eine kleine Steuerbewegung von einem kraftvollen Antrieb.",
+  "question": "Ergibt der doppelte Ventilwinkel unbedingt den doppelten Hub?",
+  "answer": "Nein. Das Ventil verändert Luftwege. Druck, Last, Zeit und Endanschläge bestimmen die Bewegung.",
+  "further": [
+    "Vergleiche Ausfahren und Einfahren.",
+    "Vergleiche den Luftzylinder mit dem Spindelkran."
+  ],
+  "formula": "Kraft ≈ Druckdifferenz × Kolbenfläche",
+  "related": [
+    "screw-crane.ldr"
+  ]
+}

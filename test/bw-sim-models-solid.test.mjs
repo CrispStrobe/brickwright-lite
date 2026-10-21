@@ -31,6 +31,7 @@
 // triangle centroid of the part (centroids catch a face that crosses another
 // part between vertices), both ways round for each pair.
 
+import {phasedMotorRead} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/motor-phase.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync, existsSync} from 'node:fs';
@@ -48,8 +49,9 @@ const LIB = path.join(GUI, 'static/ldraw');
 const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(GUI, 'src/lib/bw-sim/part-meta/parts.json'), 'utf8')));
 const FIXTURES = path.join(ROOT, 'test/fixtures/bw-sim');
 const read = p => {
-    const f = path.join(LIB, p.toLowerCase());
-    return existsSync(f) ? readFileSync(f, 'latin1') : undefined;
+    const files = [path.join(LIB, p.toLowerCase()), path.join(GUI, 'static/sim-lab/parts', path.basename(p.toLowerCase()))];
+    const f = files.find(existsSync);
+    return f ? readFileSync(f, 'latin1') : undefined;
 };
 
 /** LDU. Deeper than this inside another part's mesh is interpenetration (0.2 mm). */
@@ -77,9 +79,10 @@ const models = () => {
 
 const meshCache = new Map();
 /** Triangles as a flat Float64Array (9 per triangle), the points to test, and the bounds. */
-const meshOf = part => {
-    if (meshCache.has(part)) return meshCache.get(part);
-    const f = flattenPart(part, read);
+const meshOf = (part, rotorAngle = 0) => {
+    const key = `${part}@${rotorAngle}`;
+    if (meshCache.has(key)) return meshCache.get(key);
+    const f = flattenPart(part, phasedMotorRead(part, read, CATALOG.get(part), rotorAngle));
     assert.deepEqual(f.missing, [], `${part} resolves`);
     const tris = [];
     for (const p of f.polys) {
@@ -107,7 +110,7 @@ const meshOf = part => {
         }
     }
     const m = {T, TB, points, box: bounds(f.polys)};
-    meshCache.set(part, m);
+    meshCache.set(key, m);
     return m;
 };
 
@@ -123,7 +126,7 @@ const toLocal = (pl, w) => {
 };
 
 const worldBox = pl => {
-    const {box} = meshOf(pl.part);
+    const {box} = meshOf(pl.part, pl.rotorAngle);
     const lo = [Infinity, Infinity, Infinity];
     const hi = [-Infinity, -Infinity, -Infinity];
     for (let c = 0; c < 8; c++) {
@@ -208,14 +211,14 @@ const insideCache = new Map();
 const pointsInside = (a, b) => {
     const rel = [...[0, 1, 2].flatMap(i => toLocal(b, toWorld(a, [i === 0 ? 1 : 0, i === 1 ? 1 : 0, i === 2 ? 1 : 0]))),
         ...toLocal(b, a.position)].map(v => v.toFixed(3)).join(',');
-    const key = `${a.part}|${b.part}|${rel}`;
+    const key = `${a.part}@${a.rotorAngle || 0}|${b.part}@${b.rotorAngle || 0}|${rel}`;
     if (!insideCache.has(key)) insideCache.set(key, pointsInsideLocal(a, b));
     return insideCache.get(key).map(({point, depth}) => ({point: toWorld(b, point), depth}));
 };
 /** The same, with the points in `b`'s frame. */
 const pointsInsideLocal = (a, b) => {
-    const A = meshOf(a.part);
-    const B = meshOf(b.part);
+    const A = meshOf(a.part, a.rotorAngle);
+    const B = meshOf(b.part, b.rotorAngle);
     const lo = B.box.min.map(v => v + SKIN);
     const hi = B.box.max.map(v => v - SKIN);
     const out = [];
@@ -384,4 +387,14 @@ test('no two pins or axles fill the same hole', () => {
     const found = [];
     for (const [label, model] of MODEL_LIST) for (const s of sharedHoles(model)) found.push(`${label}: ${s}`);
     assert.deepEqual(found, []);
+});
+
+
+test('a phased motor socket accepts its aligned axle, rejects wrong clocking and still detects over-insertion', () => {
+    const motor = {id: 'motor', part: '54696p01.dat', position: [0, 0, 0], rotation: [1,0,0,0,1,0,0,0,1], rotorAngle: 45};
+    const c = Math.SQRT1_2;
+    const axle = {id: 'shaft', part: '3707.dat', position: [0,-110,0], rotation: [0,c,-c,1,0,0,0,-c,-c]};
+    assert.deepEqual(pointsInside(axle, motor), []);
+    assert.ok(pointsInside(axle, {...motor, rotorAngle: 0}).length > 0, 'the static zero-angle socket really intersects a 45-degree axle');
+    assert.ok(pointsInside({...axle, position: [0,-70,0]}, motor).length > 0, 'phase never excuses reaching past the socket into the housing');
 });

@@ -1,0 +1,542 @@
+0 Axis Plotter — native Cartesian rack stages
+0 Name: axis-plotter.ldr
+0 Author: Christian Ströbele (CrispStrobe)
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Redistributable under the BSD-3-Clause license; see LICENSE.
+0 Assembly stage 1: Base, hub, and upper base crossbars
+0 !BW ID x_front_cross
+1 72 -40 -100 -70 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID x_rear_cross
+1 72 -40 -100 -290 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID base_front_post_-180
+1 72 -180 -40 -90 1 0 0 0 0 -1 0 1 0 32524.dat
+0 !BW ID base_front_top_pin_-180
+1 0 -180 -100 -80 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID base_front_bottom_pin_-180
+1 0 -180 20 -80 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID base_front_foot_-180
+1 0 -160 20 -50 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_front_foot_pin_-180
+1 0 -160 30 -50 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_front_post_100
+1 72 100 -40 -90 1 0 0 0 0 -1 0 1 0 32524.dat
+0 !BW ID base_front_top_pin_100
+1 1 100 -100 -70 0 -1 0 0 0 -1 1 0 0 6558.dat
+0 !BW ID base_front_bottom_pin_100
+1 0 100 20 -80 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID base_front_foot_100
+1 0 80 20 -50 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_front_foot_pin_100
+1 0 80 30 -50 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_front_cross
+1 72 -40 20 -70 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID base_front_diagonal
+1 14 20 -40 -50 0.6 0 -0.8 0.8 0 0.6 0 -1 0 32525.dat
+0 !BW ID base_front_diagonal_lower_pin
+1 0 -60 20 -60 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID hub_front_foot_-140
+1 0 -140 20 -50 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID hub_front_foot_pin_-140
+1 0 -140 30 -50 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_front_foot_60
+1 0 60 20 -50 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID hub_front_foot_pin_60
+1 0 60 30 -50 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rear_post_-180
+1 72 -180 -40 -310 1 0 0 0 0 -1 0 1 0 32524.dat
+0 !BW ID base_rear_top_pin_-180
+1 0 -180 -100 -300 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID base_rear_bottom_pin_-180
+1 0 -180 20 -300 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID base_rear_foot_-180
+1 0 -160 20 -270 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_rear_foot_pin_-180
+1 0 -160 30 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rear_post_100
+1 72 100 -40 -310 1 0 0 0 0 -1 0 1 0 32524.dat
+0 !BW ID base_rear_top_pin_100
+1 1 100 -100 -290 0 -1 0 0 0 -1 1 0 0 6558.dat
+0 !BW ID base_rear_bottom_pin_100
+1 0 100 20 -300 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID base_rear_foot_100
+1 0 80 20 -270 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_rear_foot_pin_100
+1 0 80 30 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rear_cross
+1 72 -40 20 -290 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID base_rear_diagonal
+1 14 20 -40 -270 0.6 0 -0.8 0.8 0 0.6 0 -1 0 32525.dat
+0 !BW ID base_rear_diagonal_lower_pin
+1 0 -60 20 -280 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID hub_rear_foot_-140
+1 0 -140 20 -270 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID hub_rear_foot_pin_-140
+1 0 -140 30 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_rear_foot_60
+1 0 60 20 -270 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID hub_rear_foot_pin_60
+1 0 60 30 -270 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_foot_rail_-160
+1 72 -160 40 -170 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_foot_rail_80
+1 72 80 40 -170 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_rail_-140
+1 72 -140 40 -170 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID hub_rail_60
+1 72 60 40 -170 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID hub
+1 71 -40 30 -170 0 0 1 0 1 0 -1 0 0 45601.dat
+0 !BW ID hub_pin_-140_-230
+1 0 -140 30 -230 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_-140_-110
+1 0 -140 30 -110 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_60_-230
+1 0 60 30 -230 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_pin_60_-110
+1 0 60 30 -110 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 Assembly stage 2: A motor and fixed guide supports
+0 !BW ID x_motor
+0 !BW PORT A
+1 71 60 -140 -250 0 1 0 -1 0 0 0 0 1 54696p01.dat
+0 !BW ID x_motor_mount
+1 71 60 -100 -90 1 0 0 0 0 -1 0 1 0 32524.dat
+0 !BW ID x_motor_pin_120
+1 1 60 -120 -90 0 -1 0 0 0 -1 1 0 0 6558.dat
+0 !BW ID x_motor_pin_160
+1 0 60 -160 -100 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID x_pinion_axle
+1 4 10 -140 -250 1 0 0 0 1 0 0 0 1 32062.dat
+0 !BW ID x_pinion
+1 0 0 -140 -250 0 0 1 -1 0 0 0 -1 0 3647.dat
+0 !BW ID x_front_tee_0
+1 71 -80 -155 -70 0 -1 0 -1 0 0 0 0 -1 32039.dat
+0 !BW ID x_front_stub_0
+1 4 -80 -140 -50 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID x_front_thin_0
+1 71 -80 -115 -50 0 0 1 0 -1 0 1 0 0 6632.dat
+0 !BW ID x_front_thin_pin_0
+1 1 -60 -100 -50 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_front_anchor_0
+1 0 -60 -100 -50 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID x_rear_tee_0
+1 71 -80 -155 -290 0 1 0 -1 0 0 0 0 1 32039.dat
+0 !BW ID x_rear_stub_0
+1 4 -80 -140 -310 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID x_rear_thin_0
+1 71 -80 -115 -310 0 0 1 0 -1 0 1 0 0 6632.dat
+0 !BW ID x_rear_thin_pin_0
+1 1 -60 -100 -310 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_rear_anchor_0
+1 0 -60 -100 -310 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID x_frame_rail_0
+1 72 -60 -80 -170 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID x_front_tee_1
+1 71 -160 -155 -70 0 -1 0 -1 0 0 0 0 -1 32039.dat
+0 !BW ID x_front_stub_1
+1 4 -160 -140 -50 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID x_front_thin_1
+1 71 -160 -115 -50 0 0 1 0 -1 0 1 0 0 6632.dat
+0 !BW ID x_front_thin_pin_1
+1 1 -140 -100 -50 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_front_anchor_1
+1 0 -140 -100 -50 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID x_rear_tee_1
+1 71 -160 -155 -290 0 1 0 -1 0 0 0 0 1 32039.dat
+0 !BW ID x_rear_stub_1
+1 4 -160 -140 -310 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID x_rear_thin_1
+1 71 -160 -115 -310 0 0 1 0 -1 0 1 0 0 6632.dat
+0 !BW ID x_rear_thin_pin_1
+1 1 -140 -100 -310 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_rear_anchor_1
+1 0 -140 -100 -310 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID x_frame_rail_1
+1 72 -140 -80 -170 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID x_motor_mount_pin
+1 0 60 -100 -80 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID x_motor_strut
+1 72 -40 -120 -70 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID x_frame_short_upright
+1 72 -20 -100 -50 1 0 0 0 0 -1 0 1 0 32523.dat
+0 !BW ID x_frame_corner_100
+1 0 -20 -100 -60 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID x_frame_corner_120
+1 0 -20 -120 -60 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 STEP
+0 Assembly stage 3: A guide axles, sliding carriage, and rack
+0 !BW ID x_rack
+1 4 0 -155 -200 0 0 1 0 -1 0 1 0 0 64781.dat
+0 !BW ID x_carriage_axle
+1 4 -20 -155 -100 1 0 0 0 1 0 0 0 1 4519.dat
+0 !BW ID x_carriage_axle_left
+1 4 -110 -155 -100 1 0 0 0 1 0 0 0 1 32062.dat
+0 !BW ID x_carriage_0
+1 72 -40 -155 -100 0 -1 0 -1 0 0 0 0 -1 32140.dat
+0 !BW ID x_slide_0
+1 72 -50 -155 -140 0 1 0 -1 0 0 0 0 1 48496.dat
+0 !BW ID x_guide_0
+1 4 -80 -155 -180 0 -1 0 0 0 -1 1 0 0 3708.dat
+0 !BW ID x_carriage_1
+1 72 -120 -155 -100 0 -1 0 -1 0 0 0 0 -1 32140.dat
+0 !BW ID x_slide_1
+1 72 -130 -155 -140 0 1 0 -1 0 0 0 0 1 48496.dat
+0 !BW ID x_guide_1
+1 4 -160 -155 -180 0 -1 0 0 0 -1 1 0 0 3708.dat
+0 STEP
+0 Assembly stage 4: A raised payload platform and B mounting anchors
+0 !BW ID x_payload_rail_0
+1 72 -20 -155 -140 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID x_payload_rail_pin_0
+1 0 -30 -155 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID x_payload_rail_1
+1 72 -100 -155 -140 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID x_payload_rail_pin_1
+1 0 -110 -155 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID x_payload_rear_anchor_0
+1 0 -40 -155 -220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID x_payload_rear_pin_0
+1 1 -40 -175 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_payload_rear_spacer_0
+1 72 -40 -175 -220 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID x_payload_rear_anchor_1
+1 0 -120 -155 -220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID x_payload_rear_pin_1
+1 1 -120 -175 -220 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_payload_rear_spacer_1
+1 72 -120 -175 -220 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID x_payload_cross_rear
+1 72 -80 -195 -220 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID x_payload_front_anchor_0
+1 0 -40 -155 -60 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID x_payload_front_pin_0
+1 1 -40 -175 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_payload_front_spacer_0
+1 72 -40 -175 -60 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID x_payload_front_anchor_1
+1 0 -120 -155 -60 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID x_payload_front_pin_1
+1 1 -120 -175 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_payload_front_spacer_1
+1 72 -120 -175 -60 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID x_payload_cross_front
+1 72 -80 -195 -60 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID x_payload_side_0
+1 72 -100 -215 -140 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID x_payload_corner_0_rear
+1 0 -100 -205 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID x_payload_corner_0_front
+1 1 -100 -215 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID x_payload_side_1
+1 72 -60 -215 -140 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID x_payload_corner_1_rear
+1 0 -60 -205 -220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID x_payload_corner_1_front
+1 0 -60 -205 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID x_child_anchor_140
+1 0 -100 -235 -140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID x_child_pin_140
+1 0 -100 -225 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID x_child_anchor_60
+1 0 -100 -235 -60 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 STEP
+0 Assembly stage 5: B motor and fixed guide supports
+0 !BW ID y_motor
+0 !BW PORT B
+1 71 -300 -275 -120 0 0 1 -1 0 0 0 -1 0 54696p01.dat
+0 !BW ID y_motor_mount
+1 71 -140 -235 -120 0 1 0 0 0 -1 -1 0 0 32524.dat
+0 !BW ID y_motor_pin_120
+1 1 -140 -255 -120 1 0 0 0 0 -1 0 1 0 6558.dat
+0 !BW ID y_motor_pin_160
+1 0 -150 -295 -120 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID y_pinion_axle
+1 4 -300 -275 -70 0 0 1 0 1 0 -1 0 0 32062.dat
+0 !BW ID y_pinion
+1 0 -300 -275 -60 0 -1 0 -1 0 0 0 0 -1 3647.dat
+0 !BW ID y_front_tee_0
+1 71 -120 -290 20 0 0 -1 -1 0 0 0 1 0 32039.dat
+0 !BW ID y_front_stub_0
+1 4 -100 -275 20 0 0 -1 1 0 0 0 -1 0 4519.dat
+0 !BW ID y_front_thin_0
+1 71 -100 -250 20 1 0 0 0 -1 0 0 0 -1 6632.dat
+0 !BW ID y_front_thin_pin_0
+1 1 -100 -235 0 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_front_anchor_0
+1 0 -100 -235 0 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID y_rear_tee_0
+1 71 -340 -290 20 0 0 1 -1 0 0 0 -1 0 32039.dat
+0 !BW ID y_rear_stub_0
+1 4 -360 -275 20 0 0 -1 1 0 0 0 -1 0 4519.dat
+0 !BW ID y_rear_thin_0
+1 71 -360 -250 20 1 0 0 0 -1 0 0 0 -1 6632.dat
+0 !BW ID y_rear_thin_pin_0
+1 1 -360 -235 0 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_rear_anchor_0
+1 0 -360 -235 0 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID y_frame_rail_0
+1 72 -220 -215 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID y_front_tee_1
+1 71 -120 -290 100 0 0 -1 -1 0 0 0 1 0 32039.dat
+0 !BW ID y_front_stub_1
+1 4 -100 -275 100 0 0 -1 1 0 0 0 -1 0 4519.dat
+0 !BW ID y_front_thin_1
+1 71 -100 -250 100 1 0 0 0 -1 0 0 0 -1 6632.dat
+0 !BW ID y_front_thin_pin_1
+1 1 -100 -235 80 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_front_anchor_1
+1 0 -100 -235 80 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID y_rear_tee_1
+1 71 -340 -290 100 0 0 1 -1 0 0 0 -1 0 32039.dat
+0 !BW ID y_rear_stub_1
+1 4 -360 -275 100 0 0 -1 1 0 0 0 -1 0 4519.dat
+0 !BW ID y_rear_thin_1
+1 71 -360 -250 100 1 0 0 0 -1 0 0 0 -1 6632.dat
+0 !BW ID y_rear_thin_pin_1
+1 1 -360 -235 80 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_rear_anchor_1
+1 0 -360 -235 80 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID y_frame_rail_1
+1 72 -220 -215 80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID y_front_cross
+1 72 -120 -235 -20 0 1 0 1 0 0 0 0 -1 32278.dat
+0 !BW ID y_rear_cross
+1 72 -340 -235 -20 0 1 0 1 0 0 0 0 -1 32278.dat
+0 !BW ID y_motor_mount_pin
+1 0 -130 -235 -120 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID y_motor_strut
+1 72 -120 -255 -20 0 1 0 1 0 0 0 0 -1 32525.dat
+0 !BW ID y_frame_short_upright
+1 72 -100 -235 -40 0 1 0 0 0 -1 -1 0 0 32523.dat
+0 !BW ID y_frame_corner_100
+1 0 -110 -235 -40 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID y_frame_corner_120
+1 0 -110 -255 -40 1 0 0 0 0 -1 0 1 0 2780.dat
+0 STEP
+0 Assembly stage 6: B guide axles, sliding carriage, and rack
+0 !BW ID y_rack
+1 1 -250 -290 -60 1 0 0 0 -1 0 0 0 -1 64781.dat
+0 !BW ID y_carriage_axle
+1 4 -150 -290 -40 0 0 1 0 1 0 -1 0 0 4519.dat
+0 !BW ID y_carriage_axle_left
+1 4 -150 -290 50 0 0 1 0 1 0 -1 0 0 32062.dat
+0 !BW ID y_carriage_0
+1 72 -150 -290 -20 0 0 -1 -1 0 0 0 1 0 32140.dat
+0 !BW ID y_slide_0
+1 72 -190 -290 -10 0 0 1 -1 0 0 0 -1 0 48496.dat
+0 !BW ID y_guide_0
+1 4 -230 -290 20 1 0 0 0 0 -1 0 1 0 3708.dat
+0 !BW ID y_carriage_1
+1 72 -150 -290 60 0 0 -1 -1 0 0 0 1 0 32140.dat
+0 !BW ID y_slide_1
+1 72 -190 -290 70 0 0 1 -1 0 0 0 -1 0 48496.dat
+0 !BW ID y_guide_1
+1 4 -230 -290 100 1 0 0 0 0 -1 0 1 0 3708.dat
+0 STEP
+0 Assembly stage 7: B extended payload platform and C mounting pins
+0 !BW ID y_payload_rail_0
+1 72 -190 -290 -40 0 0 1 -1 0 0 0 -1 0 32525.dat
+0 !BW ID y_payload_rail_pin_0
+1 0 -190 -290 -30 0 0 1 0 1 0 -1 0 0 2780.dat
+0 !BW ID y_payload_rail_1
+1 72 -190 -290 40 0 0 1 -1 0 0 0 -1 0 32525.dat
+0 !BW ID y_payload_rail_pin_1
+1 0 -190 -290 50 0 0 1 0 1 0 -1 0 0 2780.dat
+0 !BW ID y_payload_rear_anchor_0
+1 0 -270 -290 -20 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID y_payload_rear_pin_0
+1 1 -270 -310 -20 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_payload_rear_spacer_0
+1 72 -270 -310 -20 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID y_payload_rear_anchor_1
+1 0 -270 -290 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID y_payload_rear_pin_1
+1 1 -270 -310 60 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_payload_rear_spacer_1
+1 72 -270 -310 60 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID y_payload_cross_rear
+1 72 -270 -330 20 -1 0 0 0 1 0 0 0 -1 32316.dat
+0 !BW ID y_payload_front_anchor_0
+1 0 -110 -290 -20 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID y_payload_front_pin_0
+1 1 -110 -310 -20 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_payload_front_spacer_0
+1 72 -110 -310 -20 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID y_payload_front_anchor_1
+1 0 -110 -290 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID y_payload_front_pin_1
+1 1 -110 -310 60 0 0 -1 1 0 0 0 -1 0 6558.dat
+0 !BW ID y_payload_front_spacer_1
+1 72 -110 -310 60 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID y_payload_cross_front
+1 72 -110 -330 20 -1 0 0 0 1 0 0 0 -1 32316.dat
+0 !BW ID y_payload_side_0
+1 72 -150 -350 40 0 0 1 0 1 0 -1 0 0 41239.dat
+0 !BW ID y_payload_corner_0_rear
+1 0 -270 -340 40 0 0 -1 1 0 0 0 -1 0 2780.dat
+0 !BW ID y_payload_corner_0_front
+1 0 -110 -340 40 0 0 -1 1 0 0 0 -1 0 2780.dat
+0 !BW ID y_payload_side_1
+1 72 -150 -350 0 0 0 1 0 1 0 -1 0 0 41239.dat
+0 !BW ID y_payload_corner_1_rear
+1 0 -270 -340 0 0 0 -1 1 0 0 0 -1 0 2780.dat
+0 !BW ID y_payload_corner_1_front
+1 0 -110 -340 0 0 0 -1 1 0 0 0 -1 0 2780.dat
+0 !BW ID y_child_pin_100
+1 0 -30 -360 40 0 0 -1 1 0 0 0 -1 0 2780.dat
+0 !BW ID y_child_pin_60
+1 0 -30 -360 0 0 0 -1 1 0 0 0 -1 0 2780.dat
+0 STEP
+0 Assembly stage 8: C motor and fixed guide supports
+0 !BW ID z_motor
+0 !BW PORT C
+1 71 10 -550 -140 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID z_motor_mount
+1 71 -30 -390 -140 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID z_motor_pin_120
+1 1 -10 -390 -140 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID z_motor_pin_160
+1 0 30 -400 -140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID z_pinion_axle
+1 4 10 -550 -90 0 -1 0 0 0 1 -1 0 0 32062.dat
+0 !BW ID z_pinion
+1 0 10 -550 -80 1 0 0 0 -1 0 0 0 -1 3647.dat
+0 !BW ID z_front_tee_0
+1 71 25 -370 0 1 0 0 0 0 -1 0 1 0 32039.dat
+0 !BW ID z_front_stub_0
+1 4 10 -350 0 -1 0 0 0 0 -1 0 -1 0 4519.dat
+0 !BW ID z_front_thin_0
+1 71 -15 -350 0 0 1 0 1 0 0 0 0 -1 6632.dat
+0 !BW ID z_front_thin_pin_0
+1 1 -30 -350 -20 -1 0 0 0 0 -1 0 -1 0 6558.dat
+0 !BW ID z_front_anchor_0
+1 0 -30 -350 -20 0 -1 0 -1 0 0 0 0 -1 15100.dat
+0 !BW ID z_rear_tee_0
+1 71 25 -590 0 1 0 0 0 0 1 0 -1 0 32039.dat
+0 !BW ID z_rear_stub_0
+1 4 10 -610 0 -1 0 0 0 0 -1 0 -1 0 4519.dat
+0 !BW ID z_rear_thin_0
+1 71 -15 -610 0 0 1 0 1 0 0 0 0 -1 6632.dat
+0 !BW ID z_rear_thin_pin_0
+1 1 -30 -610 -20 -1 0 0 0 0 -1 0 -1 0 6558.dat
+0 !BW ID z_rear_anchor_0
+1 0 -30 -610 -20 0 -1 0 1 0 0 0 0 1 15100.dat
+0 !BW ID z_frame_rail_0
+1 72 -50 -470 -20 0 -1 0 0 0 1 -1 0 0 32278.dat
+0 !BW ID z_front_tee_1
+1 71 25 -370 80 1 0 0 0 0 -1 0 1 0 32039.dat
+0 !BW ID z_front_stub_1
+1 4 10 -350 80 -1 0 0 0 0 -1 0 -1 0 4519.dat
+0 !BW ID z_front_thin_1
+1 71 -15 -350 80 0 1 0 1 0 0 0 0 -1 6632.dat
+0 !BW ID z_front_thin_pin_1
+1 1 -30 -350 60 -1 0 0 0 0 -1 0 -1 0 6558.dat
+0 !BW ID z_front_anchor_1
+1 0 -30 -350 60 0 -1 0 -1 0 0 0 0 -1 15100.dat
+0 !BW ID z_rear_tee_1
+1 71 25 -590 80 1 0 0 0 0 1 0 -1 0 32039.dat
+0 !BW ID z_rear_stub_1
+1 4 10 -610 80 -1 0 0 0 0 -1 0 -1 0 4519.dat
+0 !BW ID z_rear_thin_1
+1 71 -15 -610 80 0 1 0 1 0 0 0 0 -1 6632.dat
+0 !BW ID z_rear_thin_pin_1
+1 1 -30 -610 60 -1 0 0 0 0 -1 0 -1 0 6558.dat
+0 !BW ID z_rear_anchor_1
+1 0 -30 -610 60 0 -1 0 1 0 0 0 0 1 15100.dat
+0 !BW ID z_frame_rail_1
+1 72 -50 -470 60 0 -1 0 0 0 1 -1 0 0 32278.dat
+0 !BW ID z_front_cross
+1 72 -30 -370 -40 -1 0 0 0 1 0 0 0 -1 32278.dat
+0 !BW ID z_rear_cross
+1 72 -30 -590 -40 -1 0 0 0 1 0 0 0 -1 32278.dat
+0 !BW ID z_motor_mount_pin
+1 0 -30 -380 -140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID z_motor_strut
+1 72 -10 -370 -40 -1 0 0 0 1 0 0 0 -1 32525.dat
+0 !BW ID z_frame_short_upright
+1 72 -30 -350 -60 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID z_frame_corner_100
+1 0 -30 -360 -60 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID z_frame_corner_120
+1 0 -10 -360 -60 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 Assembly stage 9: C guide axles, sliding carriage, rack, and pen crossbars
+0 !BW ID z_rack
+1 1 25 -500 -80 0 1 0 1 0 0 0 0 -1 64781.dat
+0 !BW ID z_carriage_axle
+1 4 25 -400 -60 0 -1 0 0 0 1 -1 0 0 4519.dat
+0 !BW ID z_carriage_axle_left
+1 4 25 -400 30 0 -1 0 0 0 1 -1 0 0 32062.dat
+0 !BW ID z_carriage_0
+1 72 25 -400 -40 1 0 0 0 0 -1 0 1 0 32140.dat
+0 !BW ID z_slide_0
+1 72 25 -440 -30 1 0 0 0 0 1 0 -1 0 48496.dat
+0 !BW ID z_guide_0
+1 4 25 -480 0 0 0 1 1 0 0 0 1 0 3708.dat
+0 !BW ID z_carriage_1
+1 72 25 -400 40 1 0 0 0 0 -1 0 1 0 32140.dat
+0 !BW ID z_slide_1
+1 72 25 -440 50 1 0 0 0 0 1 0 -1 0 48496.dat
+0 !BW ID z_guide_1
+1 4 25 -480 80 0 0 1 1 0 0 0 1 0 3708.dat
+0 !BW ID z_payload_rail_0
+1 72 25 -400 -60 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID z_payload_rail_pin_0
+1 0 25 -440 -50 0 -1 0 0 0 1 -1 0 0 2780.dat
+0 !BW ID z_payload_rail_1
+1 72 25 -400 20 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID z_payload_rail_pin_1
+1 0 25 -440 30 0 -1 0 0 0 1 -1 0 0 2780.dat
+0 !BW ID z_payload_rear_anchor_0
+1 0 25 -500 -40 0 -1 0 0 0 1 -1 0 0 15100.dat
+0 !BW ID z_payload_rear_pin_0
+1 0 35 -500 -40 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_payload_rear_anchor_1
+1 0 25 -500 40 0 -1 0 0 0 1 -1 0 0 15100.dat
+0 !BW ID z_payload_rear_pin_1
+1 0 35 -500 40 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_payload_cross_rear
+1 72 45 -500 0 0 -1 0 -1 0 0 0 0 -1 32316.dat
+0 !BW ID z_payload_front_anchor_0
+1 0 25 -260 -40 0 -1 0 0 0 1 -1 0 0 15100.dat
+0 !BW ID z_payload_front_pin_0
+1 0 35 -260 -40 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_payload_front_anchor_1
+1 0 25 -260 40 0 -1 0 0 0 1 -1 0 0 15100.dat
+0 !BW ID z_payload_front_pin_1
+1 0 35 -260 40 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_payload_cross_front
+1 72 45 -260 80 0 -1 0 -1 0 0 0 0 -1 41239.dat
+0 STEP
+0 Assembly stage 10: Pen channel and two clamp stations
+0 !BW ID z_pen_cheek_0
+1 14 25 -200 180 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID z_pen_cheek_1
+1 14 25 -200 140 1 0 0 0 0 1 0 -1 0 32278.dat
+0 !BW ID z_pen_anchor_40_0
+1 0 25 -260 200 0 -1 0 0 0 1 -1 0 0 15100.dat
+0 !BW ID z_pen_anchor_pin_40_0
+1 0 35 -260 200 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_pen_anchor_40_1
+1 0 25 -260 120 0 -1 0 0 0 -1 1 0 0 15100.dat
+0 !BW ID z_pen_anchor_pin_40_1
+1 0 35 -260 120 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_pen_anchor_200_0
+1 0 25 -100 200 0 -1 0 0 0 1 -1 0 0 15100.dat
+0 !BW ID z_pen_anchor_pin_200_0
+1 0 35 -100 200 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_pen_anchor_200_1
+1 0 25 -100 120 0 -1 0 0 0 -1 1 0 0 15100.dat
+0 !BW ID z_pen_anchor_pin_200_1
+1 0 35 -100 120 -1 0 0 0 0 -1 0 -1 0 2780.dat
+0 !BW ID z_pen_back_cross_200
+1 14 45 -100 160 0 -1 0 -1 0 0 0 0 -1 32316.dat
+0 STEP
+0 Assembly stage 11: Removable native simulation pen cartridge
+0 !BW ID z_proxy_cartridge_tee_80
+1 71 25 -200 160 0 -1 0 0 0 1 -1 0 0 32039.dat
+0 !BW ID z_proxy_cartridge_axle_pin_80
+1 1 25 -220 170 0 -1 0 0 0 1 -1 0 0 43093.dat
+0 !BW ID z_pen_proxy
+0 !BW PEN
+1 0 25 -84 160 0 0 1 1 0 0 0 1 0 3708.dat

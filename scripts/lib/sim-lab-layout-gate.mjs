@@ -75,6 +75,9 @@ const byId = id => `[data-testid="${id}"]`;
 
 /** A control a child can press: on screen, enabled, not covered. */
 const assertPressable = async (page, id, where) => {
+    // The owner-requested action row scrolls horizontally; bring each real
+    // control into view before retaining the clipping and hit-target checks.
+    await page.getByTestId(id).scrollIntoViewIfNeeded();
     const p = await probe(page, byId(id));
     assert.ok(!p.missing, `${where}: ${id} is not there`);
     assert.ok(p.inside, `${where}: ${id} is not wholly on screen: ${JSON.stringify(p.rect)} within ${JSON.stringify(p.clip)}`);
@@ -167,7 +170,7 @@ export const layoutInteractions = async (browser, {open, shotsDir, errors}) => {
 
         // ---- Simulate ----
         const sim = await assertView(page, 'bw-sim-lab-3d-canvas', `${at} Simulate`);
-        for (const id of ['bw-sim-lab-run', 'bw-sim-lab-reset', 'bw-sim-lab-mode-build', 'bw-sim-lab-drive-forward', 'bw-sim-lab-help']) {
+        for (const id of ['bw-sim-lab-run', 'bw-sim-lab-reset', 'bw-sim-lab-mode-build', 'bw-sim-lab-controls-toggle', 'bw-sim-lab-help']) {
             await assertPressable(page, id, `${at} Simulate`);
         }
         await page.screenshot({path: resolve(shotsDir, `sim-lab-layout-${tag}-simulate.png`)});
@@ -206,12 +209,13 @@ export const layoutInteractions = async (browser, {open, shotsDir, errors}) => {
         await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n + 1, before, {timeout: 10000});
         await press(page, 'bw-sim-lab-undo', `${at} Build`);
         await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n, before, {timeout: 10000});
-        // The toolbar never scrolls: what does not fit is one tap away, in a menu that opens on screen.
+        // The toolbar remains one row, with horizontal scrolling when needed.
         const toolbar = await page.evaluate(() => {
             const bar = document.querySelector('[data-testid="bw-sim-lab-toolbar"]');
-            return {sideways: bar.scrollWidth - bar.clientWidth, height: bar.getBoundingClientRect().height};
+            return {overflow: getComputedStyle(bar).overflowX, height: bar.getBoundingClientRect().height};
         });
-        assert.ok(toolbar.sideways <= 1, `${at}: the toolbar is ${toolbar.sideways} px too wide`);
+        assert.equal(toolbar.overflow, 'auto');
+        assert.ok(toolbar.height <= 56, `${at}: the action bar wraps (${toolbar.height} px)`);
         const more = await page.getByTestId('bw-sim-lab-more').count();
         if (build.pane[0] < 1000) assert.equal(more, 1, `${at}: a ${build.pane[0]} px toolbar keeps one row and offers More`);
         if (more) {

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "sarrus-lift",
+  "language": "en",
+  "what": "One motor and a 24:1 worm drive lift a platform through a spatial six-hinge linkage. Two chains have parallel hinge axes within each chain; the chains are perpendicular to each other. Their common platform moves vertically while remaining level. The adapted 144-piece design adds four clearance plates beneath the deck. Two orthogonal hinge chains constrain a platform to vertical translation. Compare measured height with the sine law and the 24:1 worm drive.",
+  "try": [
+    "Choose Sarrus Lift in Examples; the program loads into Blocks automatically. Press Run after resetting to the saved 45° pose. The linkage moves to 20°, returns to 45°, moves to 70°, then returns home.",
+    "Compare motor A angles −600°, 0° and +600° with the platform height. The worm needs 24 input turns for one output turn. The input has no artificial angle wrap.",
+    "Use manual override only for small jogs around the saved position. Keep the linkage between 20° and 70°; reset before running the experiment again."
+  ],
+  "why": "Each pair of 120 LDU links contributes the vertical projection of its length. With 0.4 mm per LDU, h = 96 sin φ mm. Relative to the saved 45° pose, Δh = 96[sin(45° + A/24) − sin 45°] mm. The perpendicular hinge chains cancel the lateral motion that a single planar chain would allow.",
+  "matters": "This is spatial straight-line guidance without a physical sliding rail. The solver uses an unpowered equivalent platform constraint and relaxes one redundant elbow constraint; body positions still come from gravity, contacts and finite motor torque. This stabilizes a closed constraint loop without prescribing its motion.",
+  "question": "Does turning motor A by +600° raise the platform by the same distance that −600° lowers it from the 45° pose?",
+  "answer": "No. The linkage angles are 70° and 20°. The ideal changes are about +22.33 mm and −35.06 mm. Equal angular changes produce unequal vertical travel because the sine function is nonlinear.",
+  "further": [
+    "Compare this lift with Parallel Lift: one has spatial vertical guidance; the other follows a curved planar path.",
+    "The worm resists back-driving in this simulator. Compare that modeled behavior with active motor holding; it does not establish real friction, strength or lifting capacity.",
+    "Observe the platform angle as well as the motor encoder. A turning motor alone cannot establish that a closed linkage works."
+  ],
+  "formula": "Δh = 96[sin(45° + A/24) − sin 45°] mm; 20° ≤ φ ≤ 70°. Four added clearance plates; 144 physical pieces.",
+  "related": [
+    "parallel-lift.ldr",
+    "switchback-lift.ldr"
+  ]
+}

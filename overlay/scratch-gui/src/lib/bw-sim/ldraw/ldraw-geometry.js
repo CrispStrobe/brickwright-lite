@@ -106,7 +106,7 @@ export const parseLDraw = text => {
         }
         first = false;
         const n = tok.slice(2).map(Number);
-        const parsedColour = parseInt(tok[1], 10);
+        const parsedColour = Number(tok[1]); // decimal palette code or LDraw 0x2RRGGBB
         const colour = Number.isFinite(parsedColour) ? parsedColour : 16;
         if (type === '1' && tok.length >= 15) {
             refs.push({

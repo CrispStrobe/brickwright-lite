@@ -44,6 +44,7 @@
 import {vecSub, vecDot, vecCross, vecScale, vecNormalize, SIN_1_DEG} from '../mech/vec.js';
 import {LDU_M, lduToWorld, dirToWorld} from '../contracts.js';
 import {gearHinges, TOL} from './gear-mesh.js';
+import {continuousStrips} from './continuous-strip.js';
 import {spurGears, toothConnectors, placedSpur, placedTooth} from './tooth-parts.js';
 
 const isUnit = v => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite) && Math.abs(Math.hypot(...v) - 1) < 1e-6;
@@ -74,8 +75,8 @@ export const RACK = {
         const welds = [];
         const diagnostics = [];
         const limits = [];
-        const gears = spurGears(nodes, islands);
-        for (const rack of toothConnectors(nodes, islands, 'rack-teeth', ['normal'])) {
+        const gears = spurGears(nodes, islands, ['spur', 'bevel']).filter(g => g.type === 'spur' || g.meshesAs.includes('spur'));
+        for (const rack of continuousStrips(toothConnectors(nodes, islands, 'rack-teeth', ['normal']))) {
             for (const gear of gears) {
                 if (gear.islandId === rack.islandId) continue;
                 const contact = rackContact(rack, gear);
@@ -119,7 +120,7 @@ export const RACK = {
     /** The editor's overlap rule: a rack and a spur gear meshing where they stand share volume (their teeth interleave). */
     placedMesh (a, metaA, b, metaB) {
         for (const [p, mp, q, mq] of [[a, metaA, b, metaB], [b, metaB, a, metaA]]) {
-            const gear = placedSpur(q, mq);
+            const gear = (mq.gear?.type === 'spur' || mq.gear?.meshesAs?.includes('spur')) ? placedSpur(q, mq, ['spur', 'bevel']) : null;
             if (!gear) continue;
             if (placedTooth(p, mp, 'rack-teeth', ['normal']).some(r => rackContact(r, gear))) return true;
         }

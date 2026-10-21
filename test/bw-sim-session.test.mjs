@@ -101,3 +101,16 @@ test('a mat with a start pose puts the drive axle on it, facing along the line',
     assert.notDeepEqual(runModel.parts[0].position, model.parts[0].position, 'the run model moved');
     assert.deepEqual(prepareModel(text, CATALOG).model, model, 'the authored model is untouched (what Build edits and the project saves)');
 });
+
+
+test('cold Axis Plotter closure resolves every primitive directly without speculative 404s', async () => {
+    const asked = [], failures = [];
+    const fetch = async url => { asked.push(url); const r = await fetchImpl(url); if (!r.ok) failures.push(url); return r; };
+    const text = readFileSync(path.join(STATIC, 'static/sim-lab/models/axis-plotter.ldr'), 'utf8');
+    const model = prepareModel(text, CATALOG).model;
+    const closure = await fetchLDrawClosure(model.parts.map(p => p.part), {fetchImpl: fetch, withConfig: true, fallback: null});
+    assert.deepEqual(closure.missing, []);
+    assert.deepEqual(failures, [], 'the shipped lock resolves parts/ versus p/ without failed probes');
+    assert.ok(asked.includes('static/ldraw/ldraw-lock.json'));
+    for (const part of model.parts) assert.ok(flattenPart(part.part, closure.read).files.length);
+});

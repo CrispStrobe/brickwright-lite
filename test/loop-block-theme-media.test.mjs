@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {defineStaticExtensionBlocks} from '../overlay/scratch-gui/src/lib/extension-block-definitions.js';
 import {injectLoopBlockMedia} from '../overlay/scratch-gui/src/lib/themes/loopBlockMedia.js';
 
 // Exact final row emitted by Runtime._convertBlockForScratchBlocks for LOOP.
@@ -129,16 +130,19 @@ const container = fs.readFileSync(new URL('../overlay/scratch-gui/src/containers
 const start = container.indexOf('    handleExtensionAdded (categoryInfo) {');
 const end = container.indexOf('    handleBlocksInfoUpdate (categoryInfo) {', start);
 assert.ok(start > 0 && end > start);
-const method = new Function('injectExtensionBlockTheme', 'defineDynamicBlock',
+const method = new Function('injectExtensionBlockTheme', 'defineDynamicBlock', 'defineStaticExtensionBlocks',
     `return ({${container.slice(start, end)}}).handleExtensionAdded;`);
 
 test('actual registration method rereads current workspace media and theme at each rebuild', () => {
     const registered = [], original = freeze(loop());
     const target = {props: {theme: 'default'}, workspace: {options: {pathToMedia: '/base/default/'}},
-        ScratchBlocks: {defineBlocksWithJsonArray: rows => registered.push(...rows)},
+        ScratchBlocks: {Blocks: {}, defineBlocksWithJsonArray (rows) {
+            registered.push(...rows);
+            for (const row of rows) this.Blocks[row.type] = {init () {}};
+        }},
         getToolboxXML: () => null};
     const category = {customFieldTypes: {}, menus: [], blocks: [{info, json: original}]};
-    const register = method(injectExtensionBlockTheme, () => {throw Error('unexpected dynamic factory');});
+    const register = method(injectExtensionBlockTheme, () => {throw Error('unexpected dynamic factory');}, defineStaticExtensionBlocks);
     for (const [theme, media] of [['default', '/base/default/'], ['high-contrast', '/base/high/'],
         ['dark', '/base/default/'], ['default', '/other/default/']]) {
         target.props.theme = theme;
@@ -157,7 +161,7 @@ test('actual registration keeps dynamic factories separate and does not add loop
         ScratchBlocks: {Blocks: {}, defineBlocksWithJsonArray: items => rows.push(...items)},
         getToolboxXML: () => null};
     const factory = {dynamicFactory: true};
-    method(injectExtensionBlockTheme, (...args) => {calls.push(args); return factory;}).call(target,
+    method(injectExtensionBlockTheme, (...args) => {calls.push(args); return factory;}, defineStaticExtensionBlocks).call(target,
         {id: 'arcade', customFieldTypes: {}, menus: [], blocks: [dynamicInfo]});
     assert.equal(calls.length, 1);
     assert.equal(calls[0][2], dynamicInfo);

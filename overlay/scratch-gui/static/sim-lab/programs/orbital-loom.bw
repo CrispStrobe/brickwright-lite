@@ -1,0 +1,15 @@
+DEVICE SPIKE
+
+# ORBITAL LOOM, CrispStrobe, 2026; BSD-3-Clause.
+# Fivefold: 1 paper turns, 5 pen turns. Reset before drawing again.
+# Paper and pen both turn clockwise viewed from above; motor outputs face opposite ways.
+# Integer speed ratios preserve the nominal curve; independent servos have transient tracking error.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 3
+  run motor A counterclockwise 1080 degrees
+
+WHEN flag clicked:
+  set motor stop action B hold
+  set motor speed B 5
+  run motor B counterclockwise 1800 degrees

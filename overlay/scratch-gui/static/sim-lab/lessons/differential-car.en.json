@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "differential-car",
+  "language": "en",
+  "what": "Motor A drives the rear wheels through a differential. Motor B drives a pinion and a guided rack; tie rods steer the front wheels. During a turn the outer rear wheel can rotate faster than the inner one. This model joins differential transmission, rack motion and steering in one freely moving car. A differential lets the rear wheels turn at different speeds while a rack steers the front wheels. Compare straight travel and a full turn.",
+  "try": [
+    "Choose Differential car in Examples and run its automatically loaded program on the plain mat. Watch it travel straight, turn once and reverse along its approach.",
+    "Compare the rear wheel speeds while the front wheels are steered. The differential allows different output speeds without requiring independent drive motors.",
+    "Reset and compare the position of the steering rack at motor B angles zero and 100 degrees. Stop and reset before another full run."
+  ],
+  "why": "The differential carrier transmits the drive while its internal gears allow opposite changes at the two outputs. In the ideal symmetric gear set, the average output speed equals the carrier speed. The steering pinion converts rotation into rack translation, which moves both tie rods. Actual front-wheel angles and tyre forces determine the measured turn: the rack geometry is not an exact bicycle or ideal Ackermann model.",
+  "matters": "A differential permits different wheel distances around a curve while transmitting a common drive. A separate steering motor sets the path. This simulation separates drive, steering and contact effects; it does not establish real tyre friction or calibrated vehicle performance.",
+  "question": "If one differential output slows while the carrier keeps the same speed, what must happen to the other output?",
+  "answer": "The other output speeds up by the same amount in the ideal symmetric differential. Their average remains the carrier speed. This describes the differential outputs, and any additional wheel gearing must also be accounted for.",
+  "further": [
+    "Compare with the stationary Differential and Flywheel Differential examples to isolate transmission and inertia.",
+    "Compare with Turnwise: it isolates unequal steering angles without tyre-ground contact or a driven rear axle."
+  ],
+  "formula": "Symmetric differential / symmetrisches Differenzial: (ω₁ + ω₂)/2 = ωcarrier. Pinion/rack / Ritzel-Zahnstange: x = rφ (φ in radians / im Bogenmaß).",
+  "related": [
+    "differential.ldr",
+    "flywheel-differential.ldr",
+    "turnwise.ldr"
+  ]
+}

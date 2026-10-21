@@ -261,7 +261,7 @@ export const compile = (model, catalog, opts = {}) => {
     let jointsResult;
     let gearResult;
     let gearDiagnostics;
-    let detected = {couplings: [], diagnostics: [], limits: [], wheels: [], springs: []};
+    let detected = {couplings: [], diagnostics: [], limits: [], wheels: [], springs: [], joints: [], replacements: []};
     // Every weld merges two islands, so this settles in at most one pass per node.
     for (let pass = 0; pass <= nodes.size + 1; pass++) {
         islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
@@ -290,7 +290,7 @@ export const compile = (model, catalog, opts = {}) => {
             opts.rescueLoose ? {slack: {deg: 2, ldu: 1.5, hingeLdu: 3.5}} : {});
         if (gearResult.lockedPairs.length === 0) {
             // Registered coupling detectors (kinds/worm.js, kinds/rack.js): their welds re-run the fixpoint too.
-            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel});
+            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel, gearCouplings: [...gearResult.gears,...(gearResult.relative||[])]});
             if (detected.welds.length === 0) break;
             // A lock a detector found (a worm or a rack fixed to its partner's frame) is said once, here.
             for (const d of detected.diagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
@@ -311,7 +311,8 @@ export const compile = (model, catalog, opts = {}) => {
     }
     diagnostics.push(...detected.diagnostics);
 
-    const joints = jointsResult.joints;
+    const replacements = new Map((detected.replacements || []).map(j=>[j.id,j]));
+    const joints = [...jointsResult.joints.map(j=>replacements.get(j.id)||j), ...(detected.joints || []).map((j,i)=>({...j,id:'loop'+i}))];
     // A coupling detector may bound a joint's travel (kinds/rack.js: the pinion stays on the
     // rack's teeth): the joint keeps the narrower of its own limits and the coupling's.
     for (const {joint, limits} of detected.limits) {
@@ -535,8 +536,8 @@ export const compile = (model, catalog, opts = {}) => {
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
         couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
-    // Part by part only for our own files (a model from elsewhere filters its pairs whole, below).
-    const local = opts.rescueLoose ? [] : localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
+    const slidingPairs = kinds.couplings.detectors().flatMap(module => module.collisionPairs?.({nodes, islands}) || []);
+    const local = opts.rescueLoose ? [] : localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes, slidingPairs);
     if (local.length) mechanismV2.noCollideParts = local;
     // A model from elsewhere: its light links solve with more iterations (FOREIGN_LIGHT_LINKS, physics/jolt-core.js);
     // every body pair a joint or a coupling relates, and every pair whose parts overlap as built (mech/collision-filter.js
@@ -573,15 +574,17 @@ const seatedBodyPairs = (edges, islands) => {
 
 /** Every registered coupling detector, in registration order (registry/kinds.js CouplingKindRegistry). */
 const detectCouplings = (kinds, ctx) => {
-    const out = {couplings: [], welds: [], diagnostics: [], limits: [], wheels: [], springs: []};
+    const out = {couplings: [], welds: [], diagnostics: [], limits: [], wheels: [], springs: [], joints: [], replacements: []};
     for (const module of kinds.couplings.detectors()) {
-        const r = module.detect(ctx) || {};
+        const r = module.detect({...ctx,couplings:out.couplings}) || {};
         for (const c of r.couplings || []) out.couplings.push({...c, kind: module.kind});
         out.welds.push(...(r.welds || []));
         out.diagnostics.push(...(r.diagnostics || []));
         out.limits.push(...(r.limits || []));
         out.wheels.push(...(r.wheels || []));
         out.springs.push(...(r.springs || []));
+        out.joints.push(...(r.joints || []));
+        out.replacements.push(...(r.replacements || []));
     }
     return out;
 };

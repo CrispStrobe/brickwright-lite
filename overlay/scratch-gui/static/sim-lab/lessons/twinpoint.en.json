@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "twinpoint",
+  "language": "en",
+  "what": "Two stationary motors drive a five-bar parallel arm. Each motor turns a 32 mm crank; two passive 64 mm links meet at the tip. Coordinating the same hardware in two ways gives a 32 mm radius circle or a vertical line in ideal geometry. Two base-mounted motors coordinate a five-bar loop to draw a circle and a bounded vertical line.",
+  "try": [
+    "Reset, load twinpoint.bw and Run. Watch the tip trace one circle, enter the line experiment, make two down-and-up strokes, then return to its starting pose.",
+    "During the circle, compare both crank directions in the same view. During the line, watch one crank angle increase while the other decreases. The opposite-facing motor bodies make their named program directions differ from these world-view directions.",
+    "Reset before loading twinpoint-circle.bw or twinpoint-line.bw for a separate experiment. Along the line, compare the tip's travel over equal time intervals: a straight path does not imply constant speed."
+  ],
+  "why": "The two distal links constrain the tip to the intersection of two circles of radius 64 mm, centered at the crank elbows. Equal crank angles translate both elbows together, so the tip traces a circle of radius 32 mm. Crank angles that add to 180° make the elbows mirror images across x = 0, so the upper intersection stays on that vertical line. The supplied line sweep uses left angles 75° to 120° and right angles 105° to 60°; its ideal travel is about 27.801 mm.",
+  "matters": "A parallel arm shares the positioning task between two paths through a closed loop. Both motors stay on the base, so the links do not carry a motor. The benefit comes with a coordination problem: each motor affects both tip coordinates, and some angle pairs cannot close the linkage.",
+  "question": "Are motors A and B independent controls for the tip's horizontal and vertical coordinates?",
+  "answer": "No. Each motor moves an elbow, and the tip must remain 64 mm from both elbows. The circle and line come from coordinated angle relationships. The program starts paired commands together; it does not measure or correct the tip path, so motor tracking errors, joint play and flex can disturb the ideal result.",
+  "further": [
+    "Compare Twinpoint with the serial positioning arm. Here both motors are fixed; in a serial arm the shoulder carries the elbow joint and its drive.",
+    "The two elbow centers must stay less than 128 mm apart for a non-straight distal-link posture. In the supplied circle they remain 80 mm apart, and in the line sweep their separation ranges from about 63.436 to 112 mm. Do not extend the angle ranges or rotate one motor a full turn while holding the other."
+  ],
+  "formula": "Millimetres, y upward: A = (-40, 0), D = (40, 0); B = A + 32(cos α, sin α); C = D + 32(cos β, sin β); |P-B| = |P-C| = 64, upper branch. Circle: α = β = θ gives P = (32 cos θ, 32 sin θ + √2496). Line: β = 180°-α, α = 75°…120°, gives xP = 0 and yP = 32 sin α + √[4096-(40-32 cos α)²].",
+  "related": [
+    "positioning-arm.ldr",
+    "parallel-lift.ldr"
+  ]
+}

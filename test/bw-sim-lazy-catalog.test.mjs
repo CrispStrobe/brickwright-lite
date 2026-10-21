@@ -68,7 +68,8 @@ const lazy = ({fail = 0} = {}) => {
 // The RCX bumper car (hubs/rcx/) stands its castor on derived System and Technic bricks and holds its
 // light sensor with a derived pin/bush connector; the EV3 wall stopper and the NXT bumper bot carry their free front
 // wheels on derived axles. The radio-hub examples (hubs/lwp3, hubs/wedo2) are pinned and stacked on derived beams, bricks and axles.
-const NEEDS_REST = ['differential.ldr', 'differential-car.ldr', 'gearbox.ldr', 'excavator.ldr', 'crane.ldr', 'rcx-bumper-car.ldr', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
+// The governor's perpendicular axle/pin connectors (15100) are derived parts.
+const NEEDS_REST = ['scale-echo.ldr', 'turnwise.ldr', 'ellipse-engine.ldr', 'quickstroke.ldr', 'sarrus-lift.ldr', 'magnetic-chess.ldr', 'orbit-mixer.ldr', 'phase-bridge.ldr', 'phase-bridge-misphased.ldr', 'axis-plotter.ldr', 'tilt-lab.ldr', 'mean-machine.ldr', 'stepworks.ldr', 'stride-lab.ldr', 'twinpoint.ldr', 'butterfly.ldr', 'tempo-loop.ldr', 'atlas-arm.ldr', 'switchback-lift.ldr', 'straight-eight.ldr', 'pendulum-array.ldr', 'clutch-bench.ldr', 'centrifugal-governor.ldr', 'pulse-percussion.ldr', 'tidal-trio.ldr', 'orbital-loom.ldr', 'flywheel-differential.ldr', 'screw-crane.ldr', 'differential.ldr', 'differential-car.ldr', 'gearbox.ldr', 'excavator.ldr', 'crane.ldr', 'rcx-bumper-car.ldr', 'ev3-wall-stopper.ldr', 'nxt-bumper-bot.ldr',
     'technic-hub-bench.ldr', 'boost-rover.ldr', 'wedo-milo.ldr'];
 
 test('the gear-mechanics examples and the Excavator load the rest once and parse with nothing refused', async () => {

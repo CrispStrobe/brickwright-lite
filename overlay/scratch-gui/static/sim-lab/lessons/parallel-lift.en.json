@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "parallel-lift",
+  "language": "en",
+  "what": "A parallelogram linkage carries a tray while keeping its orientation nearly constant. Equal side links keep the tray level while its path curves. Physical stops limit the lifting sweep.",
+  "try": [
+    "Reset and run the lift cycle.",
+    "Watch the tray edge as it rises and moves sideways.",
+    "Compare the motion of a point on the tray with the links rotating below it."
+  ],
+  "why": "Equal opposite sides preserve the tray’s orientation. Its position still follows an arc: keeping an object level does not make its path vertical.",
+  "matters": "Parallel linkages guide trays, lamps and handling mechanisms.",
+  "question": "Must a level tray move straight up?",
+  "answer": "No. Orientation and path are different constraints. Here the tray stays level while its support links sweep arcs.",
+  "further": [
+    "Sketch the tray’s curved path.",
+    "Compare this lift with the straight rack shuttle."
+  ],
+  "formula": "",
+  "related": [
+    "rack-shuttle.ldr",
+    "crank-rocker.ldr"
+  ]
+}

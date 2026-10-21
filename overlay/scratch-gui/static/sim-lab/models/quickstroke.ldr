@@ -1,0 +1,228 @@
+0 Quickstroke — offset slider-crank
+0 Name: quickstroke.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/quickstroke.txt
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID hub_base_-200
+1 72 -200 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_base_-80
+1 72 -80 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID motor_base_-40
+1 72 -40 220 -60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID motor_base_40
+1 72 40 220 -60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_base_100
+1 72 100 220 120 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_base_260
+1 72 260 220 120 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_cross_hub_rear
+1 72 -100 240 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_hub_rear_-40
+1 0 -40 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_hub_rear_40
+1 0 40 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_hub_front
+1 72 -100 240 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_motor_rear
+1 72 0 240 -160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_motor_rear_-40
+1 0 -40 230 -160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_motor_rear_40
+1 0 40 230 -160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_bridge
+1 72 100 240 60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_bridge_-40
+1 0 -40 230 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_bridge_40
+1 0 40 230 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_bridge_100
+1 0 100 230 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_guide_front
+1 72 160 240 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_guide_front_40
+1 0 40 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_guide_front_100
+1 0 100 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_guide_front_260
+1 0 260 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_guide_rear
+1 72 160 240 240 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_pin_guide_rear_100
+1 0 100 230 240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_pin_guide_rear_260
+1 0 260 230 240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_side_-1
+1 72 -40 110 -80 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_-1_-140
+1 0 -30 110 -140 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_-1_-20
+1 0 -30 110 -20 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID motor_mount_-1_20
+1 1 -40 110 20 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID motor_post_-1_-180
+1 72 -60 150 -180 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_pin_-1_-180
+1 0 -50 110 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_-1_-180
+1 72 -40 190 -180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_pad_-1_-180
+1 72 -40 205 -200 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_-1_-180
+1 1 -40 200 -180 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_-1_20
+1 72 -60 150 20 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_foot_-1_20
+1 72 -40 190 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motor_foot_pad_-1_20
+1 72 -40 205 0 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_-1_20
+1 1 -40 200 20 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID motor_side_1
+1 72 40 110 -80 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID motor_mount_1_-140
+1 0 30 110 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_1_-20
+1 0 30 110 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_mount_1_20
+1 1 40 110 20 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID motor_post_1_-180
+1 72 60 150 -180 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_post_pin_1_-180
+1 0 50 110 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID motor_foot_1_-180
+1 72 40 190 -180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_pad_1_-180
+1 72 40 205 -200 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_1_-180
+1 1 40 200 -180 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_1_20
+1 72 60 150 20 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID motor_foot_1_20
+1 72 40 190 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_foot_pad_1_20
+1 72 40 205 0 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID motor_foot_pin_1_20
+1 1 40 200 20 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID support_rail_60
+1 72 160 120 60 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID holder_pin_20_60
+1 0 20 120 70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID holder_pin_300_60
+1 0 300 120 70 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID support_rail_180
+1 72 160 120 180 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID holder_pin_20_180
+1 0 20 120 170 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID holder_pin_300_180
+1 0 300 120 170 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_post_100_40
+1 72 100 160 40 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID guide_post_pin_100_40
+1 0 100 120 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_100_40
+1 72 100 200 20 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID guide_foot_pin_100_40
+1 0 100 210 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_post_100_200
+1 72 100 160 200 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID guide_post_pin_100_200
+1 0 100 120 190 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_100_200
+1 72 100 200 220 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID guide_foot_pin_100_200
+1 0 100 210 220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_post_260_40
+1 72 260 160 40 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID guide_post_pin_260_40
+1 0 260 120 50 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_260_40
+1 72 260 200 20 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID guide_foot_pin_260_40
+1 0 260 210 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_post_260_200
+1 72 260 160 200 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID guide_post_pin_260_200
+1 0 260 120 190 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID guide_foot_260_200
+1 72 260 200 220 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID guide_foot_pin_260_200
+1 0 260 210 220 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_near
+1 4 160 100 80 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID toggle_near
+1 72 220 70 80 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID slider_long_near
+1 25 220 60 80 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID slider_cross_pin_near
+1 0 220 50 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_holder_near_20
+1 71 20 100 80 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_holder_near_300
+1 71 300 100 80 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_end_near_5
+1 71 5 100 80 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_end_near_315
+1 71 315 100 80 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_far
+1 4 160 100 160 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID toggle_far
+1 72 220 70 160 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID slider_long_far
+1 25 220 60 160 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID slider_cross_pin_far
+1 0 220 50 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID guide_holder_far_20
+1 71 20 100 160 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_holder_far_300
+1 71 300 100 160 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID guide_end_far_5
+1 71 5 100 160 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_end_far_315
+1 71 315 100 160 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID slider_cross
+1 25 220 40 120 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID slider_keyed
+1 25 220 20 120 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID slider_keyed_pin_100
+1 0 220 30 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID slider_keyed_pin_140
+1 0 220 30 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID drive_axle
+1 4 0 30 0 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID drive_bush_upper
+1 71 0 5 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID drive_bush_lower
+1 71 0 25 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID crank
+1 14 30 15 0 0 0 1 0 1 0 -1 0 0 32449.dat
+0 !BW ID crank_pin_axle
+1 4 60 -5 0 0 1 0 1 0 0 0 0 -1 3705.dat
+0 !BW ID crank_pin_bush_upper
+1 71 60 -35 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID crank_pin_bush_middle
+1 71 60 0 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID crank_pin_bush_lower
+1 71 60 25 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID connecting_rod
+1 1 140 -20 60 0.6 0 0.8 0 1 0 -0.8 0 0.6 32525.dat
+0 !BW ID slider_pivot_axle
+1 4 220 10 120 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID slider_bush_-40
+1 71 220 -40 120 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID slider_bush_0
+1 71 220 0 120 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID slider_bush_60
+1 71 220 60 120 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 0 90 0 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 !BW ID hub
+1 15 -140 210 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_pin_-200_-100
+1 1 -200 220 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-200_100
+1 1 -200 220 100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-80_-100
+1 1 -80 220 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-80_100
+1 1 -80 220 100 0 1 0 1 0 0 0 0 -1 6558.dat

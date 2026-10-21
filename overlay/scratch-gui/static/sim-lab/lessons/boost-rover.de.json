@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "boost-rover",
+  "language": "de",
+  "what": "Zwei angetriebene Räder tragen dasselbe Fahrgestell. Ihre Drehzahldifferenz verändert den Weg. Zwei eingebaute Radmotoren erzeugen Geradeausfahrt und Drehung.",
+  "try": [
+    "Zurücksetzen, Beispielprogramm laden und starten. Beobachte den Weg, nicht nur die Encoderwerte.",
+    "Stoppe das Programm. Wähle gleiche Motorwerte und mache dann ein Rad langsamer.",
+    "Setze zurück und kehre beide Räder um. Sage die Kurve vorher."
+  ],
+  "why": "Jedes Rad legt seinen eigenen Weg zurück. Gleiche Raddrehzahlen verschieben das Fahrgestell; unterschiedliche drehen es. Entgegengesetzte Drehzahlen erlauben fast eine Drehung auf der Stelle.",
+  "matters": "So lenken mobile Roboter und Kettenfahrzeuge.",
+  "question": "Was geschieht, wenn ein Rad mehr Weg zurücklegt?",
+  "answer": "Das Fahrgestell fährt zur langsameren Seite. Gleiche Beträge in entgegengesetzter Richtung heben die Verschiebung weitgehend auf.",
+  "further": [
+    "Vergleiche eine weite und eine enge Kurve.",
+    "Vergleiche den Rover mit mechanischer Vorderachslenkung."
+  ],
+  "formula": "v = (vR + vL) / 2;  Gierrate = (vR − vL) / Spurweite",
+  "related": [
+    "pivot-rover.ldr"
+  ]
+}
