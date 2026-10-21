@@ -157,3 +157,10 @@ PR161 passed all enabled checks; their final merged composition also passes all
 463 affected Arcade controls. The explicit compiler pin advances to that merged
 composition; independent Array and Circuit Playground pins are unchanged.
 Combined source, fresh native/original-SDK and visible authoring remain pending.
+
+The generated-helper binding repair distinguishes actual lexical img/hex tags
+and declared self cells from unrelated names and ambient browser references.
+Four complete helper modules pass all 29 controls. The original two exported
+case captures now have current helper closures; their later operand-domain
+refusal remains open. No structural/default/shared/currentness or actual
+shadow/reflection assertion was removed, and no type or input fact is granted.

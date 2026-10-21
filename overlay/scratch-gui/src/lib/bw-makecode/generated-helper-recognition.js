@@ -145,7 +145,7 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
         if(Array.isArray(node)){node.forEach(n=>walk(n,parent));return;}
         nodes.push(node);parents.set(node,parent);
         if(['Unknown','Try','TryCatch','CatchClause','With'].includes(node.type))valid=false;
-        if(node.type==='Identifier'&&['eval','Function','Reflect','globalThis','window','self','arguments'].includes(node.name)||
+        if(node.type==='Identifier'&&['eval','Function','Reflect','globalThis','window','arguments'].includes(node.name)||
             node.type==='Member'&&node.name==='constructor')valid=false;
         for(const [key,value]of Object.entries(node))if(!metadata.has(key))walk(value,node);
     };
@@ -165,8 +165,7 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
     }
     // Tagged callees are scalar AST spellings, not Identifier references.
     // Only the actual unshadowed literal tags have a closed effect here.
-    for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex'].includes(n.tag)||counts.has(n.tag)||
-        nodes.some(other=>other.type==='Identifier'&&other.name===n.tag)))valid=false;
+    for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex'].includes(n.tag)))valid=false;
     // Default initializers are executable in these actual parser profiles.
     // Join retained metadata to the complete actual body prologue before a
     // lexical normalizer can hide it. Pure/nonliteral defaults remain valid;
@@ -183,6 +182,21 @@ function buildGeneratedHelperBindings(program,profile,fastAmbient){
         if(!sameGeneratedData(n.body.slice(0,expected.length),expected)){valid=false;break;}
     }
     const lexical=valid?analyseCallableBindings(program):null;
+    // A declared cell named self is not the ambient global receiver. Resolve
+    // its actual owner; this spelling never supplies a value/type fact.
+    if(valid)for(const n of nodes)if(n.type==='Identifier'&&n.name==='self'){
+        const own=lexical.references.get(n);
+        if(!own||!['global','local','parameter'].includes(own.kind))valid=false;
+    }
+    // Literal tags are scalar AST spellings rather than Identifier nodes.
+    // Reject an actual lexical shadow or any ambient tag reference/escape,
+    // while unrelated method/formal names cannot shadow a root literal.
+    if(valid)for(const n of nodes)if(n.type==='Template'){
+        let shadow=false;
+        for(let owner=lexical.scopes.get(n);owner;owner=owner.parent)
+            if(owner.names.has(n.tag)){shadow=true;break;}
+        if(shadow||nodes.some(other=>other.type==='Identifier'&&other.name===n.tag&&!lexical.references.get(other)))valid=false;
+    }
     const rootBinding=fn=>fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&counts.get(fn.name)===1&&
         lexical.global.names.get(fn.name)?.node===fn&&!lexical.global.names.get(fn.name).written;
     const root=fn=>current()&&rootBinding(fn);

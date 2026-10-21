@@ -37,6 +37,15 @@ initialization, Number input or Array permission. Complete affected
 native/original modules remain required. On the composed source, all eleven
 controls in the four complete affected domain modules also pass, without skips.
 
+The complete-helper repair now resolves actual lexical owners. A constructor
+parameter named `img` no longer invalidates an unrelated root image literal;
+a declared variable or parameter named `self` is distinguished from ambient
+browser `self`. Real tag shadowing/writes, reflection, constructor access,
+shared executable nodes and source mutations remain refused. All 29 controls
+in four complete helper modules pass. Both captured original cases now prove
+current helper closures, but still fail the separate operand-domain check;
+those original failures and complete generated graphs remain retained.
+
 The new score callback syntax passes all 463 controls in three complete
 canonical modules. [Supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160)
 is merged after all four enabled checks passed; merge tree and parents agree
