@@ -30,6 +30,8 @@ const {clearVirtualClassicPeripheralsForTest} = await import(path.join(LIB, 'vir
 const {installVirtualSerial} = await import(path.join(SIM, 'transports', 'virtual-serial.js'));
 const {installVirtualBridge, registerVirtualBridge, clearVirtualBridgesForTest} =
     await import(path.join(SIM, 'transports', 'virtual-bridge.js'));
+const {installVirtualFetch, registerVirtualHttp, clearVirtualHttpForTest} =
+    await import(path.join(SIM, 'transports', 'virtual-http.js'));
 const Timer = createRequire(import.meta.url)(path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'util', 'timer.js'));
 
 export const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta', 'parts.json'), 'utf8')));
@@ -72,9 +74,12 @@ NothingListening.dialled = [];
  * @param {number} options.timeLimitMs
  * @param {function} [options.stopWhen]
  * @param {(hub) => object} [options.peripheralOf] override the brick's peripheral record (controls)
+ * @param {{port: number, host?: string, handlerOf: (getHub) => Function}} [options.http] route 'http': the
+ *   endpoint the extension fetches, answered by handlerOf(getHub) (e.g. virtual-ev3dev.js)
+ * @param {string} [options.extensionDir] the bundled directory when it is not the extension id (ev3dev)
  */
 export async function runOverVirtualTransport (program, {modelText, mat = null, profile, extensionId, route, bridge = null,
-    grantedPort = false, connect, timeLimitMs, stopWhen = null, peripheralOf = null}) {
+    grantedPort = false, connect, timeLimitMs, stopWhen = null, peripheralOf = null, http = null, extensionDir = null}) {
     if (!globalThis.self) globalThis.self = globalThis;
     const clock = new FakeClock(1.7e12);
     clock.install();
@@ -84,6 +89,11 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
     const savedWebSocket = globalThis.WebSocket;
     globalThis.WebSocket = NothingListening;
     const restoreBridge = installVirtualBridge({host: globalThis});
+    clearVirtualHttpForTest();
+    const savedFetch = globalThis.fetch;
+    // Nothing on the network answers in these runs, except the virtual endpoint.
+    globalThis.fetch = async url => { throw new TypeError(`fetch failed: nothing at ${url}`); };
+    const restoreFetch = installVirtualFetch({host: globalThis});
     // Node 20 has no navigator; Node 21+ has one without `serial`. Either way the double is the only serial.
     const hadNavigator = Object.prototype.hasOwnProperty.call(globalThis, 'navigator');
     if (!globalThis.navigator) Object.defineProperty(globalThis, 'navigator', {value: {}, configurable: true, writable: true});
@@ -105,7 +115,14 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
             const inner = base.open({send: bytes => { traffic.bytesOut += bytes.length; link.send(bytes); }, close: link.close});
             return {receive: bytes => { traffic.bytesIn += bytes.length; inner.receive(bytes); }, close: () => inner.close && inner.close()};
         }};
-        if (route === 'serial') {
+        if (route === 'http') {
+            const handle = http.handlerOf(() => hub);
+            registerVirtualHttp({host: http.host, port: http.port, handle: request => {
+                traffic.opens = 1;
+                traffic.bytesIn += (request.body || '').length + request.path.length;
+                return handle(request);
+            }});
+        } else if (route === 'serial') {
             restoreSerial = installVirtualSerial({host: globalThis.navigator, peripherals: () => [counted], granted: grantedPort});
         } else if (route === 'bridge') {
             registerVirtualBridge({port: bridge.port, framing: bridge.framing, peripheral: counted});
@@ -117,7 +134,7 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
         const original = manager.loadExtensionURL.bind(manager);
         const bundled = bundledExtensionIds();
         manager.loadExtensionURL = id => {
-            const dir = bundled.get(String(id));
+            const dir = bundled.get(String(id)) || (String(id) === extensionId ? extensionDir : null);
             if (!dir) return original(id);
             const Cls = loadExtensionClass(dir);
             const instance = new Cls(vm.runtime);
@@ -171,6 +188,9 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
         restoreSerial();
         clearVirtualBridgesForTest();
         restoreBridge();
+        clearVirtualHttpForTest();
+        restoreFetch();
+        globalThis.fetch = savedFetch;
         globalThis.WebSocket = savedWebSocket;
         if (!hadNavigator) delete globalThis.navigator;
         clock.uninstall();
