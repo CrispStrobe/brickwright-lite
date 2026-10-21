@@ -3,7 +3,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Box3, BoxGeometry, Group, Mesh, MeshBasicMaterial, Scene} from 'three';
-import {modelMeshBounds} from '../overlay/scratch-gui/src/lib/bw-sim/view/model-bounds.js';
+import {modelMeshBounds, cameraFollowBody} from '../overlay/scratch-gui/src/lib/bw-sim/view/model-bounds.js';
 
 const near = (a, b) => a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) < 1e-7, `${a} ≈ ${b}`));
 const make = () => {
@@ -38,4 +38,26 @@ test('bounds follow a newly moved and rotated body and include the separate moto
     near(box.min.toArray(), [-2.1, 0.9, -0.1]);
     near(box.max.toArray(), [-0.8, 3.2, 4.3]);
     for (const mesh of [b.part, hub, floor]) { mesh.geometry.dispose(); mesh.material.dispose(); }
+});
+
+
+test('camera follows frame translation while rotating arms only change framing bounds', () => {
+    const b = make();
+    const arm = new Group(); b.scene.add(arm);
+    const tip = new Mesh(new BoxGeometry(.1, .1, .1), new MeshBasicMaterial());
+    tip.position.x = 4; arm.add(tip); b.partMeshes.set('tip', tip);
+    const mechanism = {bodies: [{id: 'ground', parts: []}, {id: 'arm', parts: ['tip']}, {id: 'frame', parts: ['boom', 'hub']}]};
+    const id = cameraFollowBody(mechanism);
+    assert.equal(id, 'frame');
+    const groups = new Map([['frame', b.body], ['arm', arm]]);
+    const anchor = groups.get(id).position.clone();
+    const before = modelMeshBounds(b).getCenter(anchor.clone());
+    arm.rotation.y = Math.PI / 2;
+    const after = modelMeshBounds(b).getCenter(anchor.clone());
+    assert.ok(before.distanceTo(after) > 1, 'old follow target visibly wobbles with an eccentric arm');
+    near(groups.get(id).position.toArray(), anchor.toArray());
+    b.body.position.x += .3;
+    assert.ok(Math.abs(groups.get(id).position.x - anchor.x - .3) < 1e-9, 'a travelling robot still carries its camera');
+    assert.equal(cameraFollowBody({bodies: [{id: 'ground', parts: []}]}), null);
+    for (const mesh of [b.part, tip]) { mesh.geometry.dispose(); mesh.material.dispose(); }
 });

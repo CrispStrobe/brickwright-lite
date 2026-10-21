@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import {test} from 'node:test';
+import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {catalogFrom,prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
@@ -78,4 +79,14 @@ for(const preset of ['original-curves','original-pixel-costume'])test(`Axis Plot
  const name=preset==='original-curves'?'axis-plotter-curves':'axis-plotter-pixel-costume';
  const r=await runRobotLabProgram(read(`overlay/scratch-gui/static/sim-lab/programs/${name}.bw`),{modelText:read('overlay/scratch-gui/static/sim-lab/models/axis-plotter.ldr'),timeLimitMs:preset==='original-curves'?150000:400000});
  assert.ok(r.finishedAt,'all native scripts complete');t.diagnostic(JSON.stringify(judgeSevenMachinesRun('axis-plotter',{...r,preset})));
+});
+
+
+test('Axis Plotter automatic calibration program has a compact, warning-free native block graph', () => {
+ const creator=new Creator();creator.parse(read('overlay/scratch-gui/static/sim-lab/programs/axis-plotter.bw'));
+ assert.deepEqual(creator.warnings,[]);
+ const blocks=creator.project.targets.flatMap(t=>Object.values(t.blocks));
+ assert.ok(blocks.length<250, `example loads ${blocks.length} blocks instead of 6153 expanded blocks`);
+ assert.ok(blocks.some(b=>b.opcode==='control_repeat'));
+ assert.equal(blocks.filter(b=>b.opcode==='event_whenbroadcastreceived').length,3);
 });

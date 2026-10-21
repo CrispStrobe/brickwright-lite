@@ -16,6 +16,11 @@
 export const INSIGHT_TEXT = {
     en: {
         issues: {
+            'bad-slide': '{parts}: the sliding-hole instruction does not name a supported round hole. Check its connector name.',
+            'bad-rotor': '{parts}: the saved motor angle is not valid. Use a finite angle for a supported motor.',
+            'bad-drawing': 'The drawing surface instruction is incomplete or invalid. Check its surface, pen and dimensions.',
+            'uj-not-square': '{parts}: the two fork pivots are not perpendicular. Rotate one fork by a quarter turn to fit the cross.',
+            'uj-too-bent': '{parts}: this universal joint is bent too far for its forks to turn freely. Reduce the shaft angle.',
             'motor-without-port': '{parts} is not plugged into the hub yet: click here, then choose a port (A–F) on its label.',
             'sensor-without-port': '{parts} is not plugged into the hub yet: click here, then choose a port (A–F) on its label.',
             'motor-without-device': '{parts} is a motor the Robot Lab has no numbers for yet, so it cannot drive it.',
@@ -29,7 +34,7 @@ export const INSIGHT_TEXT = {
             'gear-frames-differ': '{parts} touch, but their axles sit in different parts, so they do not turn each other here. Hold both axles in the same beam.',
             'gear-not-on-hinge': '{parts} is not on an axle that can turn, so it cannot turn other gears.',
             'unsupported-gear': '{parts} do not work together in the Robot Lab yet (only round gears and bevel gears do).',
-            'locked-hinges': '{parts}: these joints hold the parts in two different directions, so they cannot turn. They move as one piece.',
+            'locked-hinges': '{parts}: connections in different directions make this assembly rigid. These parts move together; other joints can still turn.',
             'unknown-part': 'The Robot Lab does not know a part on line {line} yet: it is drawn, but it does not move or hold anything.',
             'ports-plugged': '{parts}: the file did not say which port they go in, so they are plugged into the hub\'s free ports.',
             'invalid-model': 'Something in the model is not right, so part of it is left out: {parts}',
@@ -81,6 +86,11 @@ export const INSIGHT_TEXT = {
     },
     de: {
         issues: {
+            'bad-slide': '{parts}: Die Gleitbohrungsangabe nennt kein unterstütztes rundes Loch. Prüfe den Anschlussnamen.',
+            'bad-rotor': '{parts}: Der gespeicherte Motorwinkel ist ungültig. Verwende einen endlichen Winkel für einen unterstützten Motor.',
+            'bad-drawing': 'Die Zeichenflächenangabe ist unvollständig oder ungültig. Prüfe Fläche, Stift und Abmessungen.',
+            'uj-not-square': '{parts}: Die Gabelzapfen stehen nicht senkrecht aufeinander. Drehe eine Gabel um eine Vierteldrehung, damit das Kreuz passt.',
+            'uj-too-bent': '{parts}: Dieses Kardangelenk ist zu stark geknickt, um frei zu drehen. Verringere den Winkel zwischen den Wellen.',
             'motor-without-port': '{parts} steckt noch nicht im Hub: hier klicken, dann an seinem Schild einen Port (A–F) wählen.',
             'sensor-without-port': '{parts} steckt noch nicht im Hub: hier klicken, dann an seinem Schild einen Port (A–F) wählen.',
             'motor-without-device': '{parts} ist ein Motor, für den das Roboter-Labor noch keine Werte kennt, darum kann es ihn nicht antreiben.',
@@ -94,7 +104,7 @@ export const INSIGHT_TEXT = {
             'gear-frames-differ': '{parts} berühren sich, aber ihre Achsen stecken in verschiedenen Teilen, darum drehen sie sich hier nicht gegenseitig. Halte beide Achsen im selben Balken.',
             'gear-not-on-hinge': '{parts} sitzt nicht auf einer Achse, die sich drehen kann, darum dreht es keine anderen Zahnräder.',
             'unsupported-gear': '{parts} funktionieren im Roboter-Labor noch nicht zusammen (nur runde Zahnräder und Kegelzahnräder).',
-            'locked-hinges': '{parts}: Diese Gelenke halten die Teile in zwei verschiedene Richtungen, darum können sie sich nicht drehen. Sie bewegen sich als ein Stück.',
+            'locked-hinges': '{parts}: Verbindungen in verschiedenen Richtungen machen diese Baugruppe starr. Diese Teile bewegen sich gemeinsam; andere Gelenke können sich weiter drehen.',
             'unknown-part': 'Das Roboter-Labor kennt ein Teil in Zeile {line} noch nicht: Es wird gezeichnet, bewegt sich aber nicht und hält nichts.',
             'ports-plugged': '{parts}: Die Datei sagt nicht, in welchen Port sie gehören, darum stecken sie in den freien Ports des Hubs.',
             'invalid-model': 'Etwas im Modell stimmt nicht, darum wird ein Teil weggelassen: {parts}',
@@ -155,7 +165,12 @@ const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => Stri
  * @param {(id: string) => string} nameOf a part id → its name in this language ("the SPIKE hub")
  */
 export const issueSentence = (text, issue, nameOf) => {
-    const names = (issue.parts || []).map(id => nameOf(id));
+    const counts = new Map();
+    for (const id of issue.parts || []) {
+        const name = nameOf(id);
+        counts.set(name, (counts.get(name) || 0) + 1);
+    }
+    const names = [...counts].map(([name, count]) => count > 1 ? `${count} × ${name}` : name);
     const parts = names.length <= 1 ? (names[0] || '') : `${names.slice(0, -1).join(', ')} ${text.and} ${names[names.length - 1]}`;
     const template = text.issues[issue.code] || text.fallbackIssue;
     const sentence = fill(template, {parts, line: issue.line ?? '', design: issue.design ?? ''});

@@ -7981,3 +7981,26 @@ worktrees and existing core fixes when composing it. Chess requires explicit
 rail/rack metadata, custom board materials and a declared magnetic force model;
 CAD route animation is not physics qualification. Keep pieces independent,
 validate measured transport and release, and preserve original source bytes.
+
+
+## Robot Lab loading, drawing and camera repairs — 2026-10-21
+
+IMPLEMENTED / locally qualified — Codex, explicit owner reports on the existing model-design draft
+#1138. Resolve vendored primitives through the shipped file index, keep the
+Axis calibration program compact while retaining automatic Blocks conversion
+and physical pen feedback, and make its measured ink visible in a collapsible
+preview. Follow the main frame instead of the moving bounds; explicit part
+following remains available. Clarify rigid assembly notes and group repeated
+part names. Refresh static extension definitions only when changed; preserve
+theme/language/menu callback updates and restore a factory after a failed update.
+Scope includes the Blocks container and canonical mirror, pure definition helper,
+Robot Lab view/pane/text/program/lessons, tests and exact-build browser checks.
+
+Production build and 67 focused controls pass. Cold Chromium/WebKit checks show
+no post-display blanking, no failed DAT requests and no duplicate-definition
+warnings. The compact default compiles to 152 authored blocks (248 including
+GUI-installed support blocks), down from 6,153. Both browsers record 257/53 ink
+points in the two measured strokes; square/diagonal errors stay below 0.05 mm.
+Governor camera movement stays below 0.02 mm during the browser run. Loom's
+rigid assembly notes retain their diagnostics and clarify that other joints turn.
+Current-main composition and exact-head hosted CI remain pending for draft #1138.

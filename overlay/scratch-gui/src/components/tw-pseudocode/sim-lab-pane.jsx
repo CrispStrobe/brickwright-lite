@@ -88,7 +88,7 @@ const TEXT = {
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub', air: 'Air',
-        issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
+        drawingPreview: 'Live drawing', issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         parts: 'Parts', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: 'Could not open {name}: {error}',
@@ -201,7 +201,7 @@ const TEXT = {
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub', air: 'Luft',
-        issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
+        drawingPreview: 'Live-Zeichnung', issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         parts: 'Teile', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
         fileFailed: '{name} konnte nicht geöffnet werden: {error}',
@@ -1201,7 +1201,7 @@ class SimLabPane extends React.Component {
             // The parts, the decoration (a cable's segments) and the model's own embedded parts.
             const {read} = await fetchModelDrawing(runModel, {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
-            this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
+            this.view = createSimView3D({drawingLabel: this.text.drawingPreview,container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
             if (runModel.drawings?.length || runModel.parts.some(part => part.pen)) {
                 this.unsubscribeDrawing = session.onAdvance(() => {
                     if (this.session === session && this.view && this.state.replayAt === null) {

@@ -12,3 +12,7 @@ export const modelMeshBounds = ({scene, partMeshes, hubMeshes}) => {
     for (const mesh of [...partMeshes.values(), ...hubMeshes.values()]) box.expandByObject(mesh);
     return box;
 };
+
+/** Follow the main frame's translation, never a bounding box changed by moving arms. */
+export const cameraFollowBody = mechanism => mechanism.bodies.reduce((main, body) =>
+    (body.parts?.length || 0) > (main?.parts?.length || 0) ? body : main, null)?.id || null;

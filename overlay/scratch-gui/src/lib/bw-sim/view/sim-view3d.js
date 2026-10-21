@@ -21,7 +21,8 @@ import {createSimHoses} from './hose-layer.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
-import {modelMeshBounds} from './model-bounds.js';
+import {modelMeshBounds, cameraFollowBody} from './model-bounds.js';
+import {createDrawingPreview} from './drawing-preview.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -72,7 +73,7 @@ export const frameModel = (box, aspect, fovDeg = 40) => {
  * @param {function} [options.onContextLost]
  * @returns {{canvas, render(snapshot), resize(), resetCamera(), dispose()}}
  */
-export const createSimView3D = ({container, model, mechanism, read, catalog = null, onContextLost = null}) => {
+export const createSimView3D = ({container, model, mechanism, read, catalog = null, onContextLost = null, drawingLabel = 'Drawing'}) => {
     if (!webglAvailable()) throw new WebGLUnavailableError('this browser gives a canvas no WebGL 2 context');
     const config = read('ldconfig.ldr');
     if (!config) throw new Error('LDConfig.ldr (the LDraw colour table) is missing');
@@ -98,6 +99,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const simBelts = createSimBelts({model, mechanism, catalog, built});
     // Pens draw on the floor (model parts marked `pen`; view/pen-layer.js).
     const pens = createPenLayer({model, mechanism, built, colors: ldColors});
+    const drawingPreview = pens && model.parts.some(p => p.pen) ?
+        createDrawingPreview({container, pens, label: drawingLabel}) : null;
     // Ropes from their bodies' points (view/rope-layer.js).
     const simRopes = createSimRopes({mechanism, built});
     // Pneumatic hoses between their parts' nozzles, following the bodies (view/hose-layer.js).
@@ -196,8 +199,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         }
     };
 
-    // Follow: the camera and its orbit target move with the model's centre, so
-    // the robot stays in view while the learner can still orbit around it.
+    // Follow the chassis translation: moving arms must not move the camera.
+    // Explicit API part following still tracks the requested part.
+    const followFrame = built.bodyGroups.get(cameraFollowBody(mechanism));
     let followed = null;
     /** A part the camera follows instead of the model's centre (the Robot Lab API's camera({follow})), or null. */
     let followPartId = null;
@@ -364,10 +368,11 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         if (snapshot && chainMotion) chainMotion.update();
         if (snapshot && simBelts) simBelts.update();
         if (snapshot && pens) pens.update();
+        if (drawingPreview) drawingPreview.update();
         if (snapshot && simRopes) simRopes.update();
         if (snapshot && simHoses) simHoses.update();
-        const centre = (followPartId && partCentre(followPartId)()) || modelBox().getCenter(new Vector3());
-        if (followed) {
+        const centre = (followPartId && partCentre(followPartId)()) || followFrame?.position.clone();
+        if (followed && centre) {
             const delta = centre.clone().sub(followed);
             delta.y = 0;
             camera.position.add(delta);
@@ -387,6 +392,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const dispose = () => {
         insight.dispose();
         if (simBelts) simBelts.dispose();
+        if (drawingPreview) drawingPreview.dispose();
         if (pens) pens.dispose();
         if (simRopes) simRopes.dispose();
         if (simHoses) simHoses.dispose();

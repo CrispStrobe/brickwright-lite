@@ -12,7 +12,7 @@
 // part-meta/catalog-parts.js) resolves through the fallback (setLDrawFallback):
 // the whole library, read file by file from the ldraw-stl mirror (ldraw-catalog.js).
 // The vendored file list (ldraw-lock.json) then says which files are here, so a
-// catalogue part's files are not first asked for here, 404 after 404.
+// files are resolved directly, including primitives, without speculative 404s.
 
 import {parseLDraw, refKey, SEARCH_DIRS} from './ldraw-geometry.js';
 
@@ -32,7 +32,7 @@ export const setLDrawFallback = fallback => {
 export const vendoredFiles = async ({fetchImpl = globalThis.fetch, base = LDRAW_BASE} = {}) => {
     const response = await fetchImpl(`${base}ldraw-lock.json`);
     if (!response.ok) return null;
-    return new Set(Object.keys((await response.json()).files).map(f => f.toLowerCase()));
+    return new Set(Object.keys(JSON.parse(await response.text()).files).map(f => f.toLowerCase()));
 };
 
 /**
@@ -52,7 +52,7 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
     const missing = [];
     const tried = new Set();
     const fromCatalogue = [];
-    const local = fallback?.local ? await fallback.local.catch(() => null) : null;
+    const local = await (fallback?.local || vendoredFiles({fetchImpl, base})).catch(() => null);
     let library;
     const catalogue = () => {
         if (library === undefined) library = fallback ? fallback.library.catch(() => null) : Promise.resolve(null);

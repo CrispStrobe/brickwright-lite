@@ -4,7 +4,7 @@
   "language": "en",
   "what": "Three motors make a Cartesian plotter. A and B move two perpendicular rack stages; C raises and lowers the marker. A saved SVG becomes a sequence of measured motor moves. Robot Lab records the moving marker's actual contact trace, so the drawing depends on the mechanism and its controllers. Two rack stages coordinate XY drawing while a third lifts the marker. Compare motor feedback, travel, diagonals and pen-up moves.",
   "try": [
-    "Load axis-plotter.ldr on the plain mat and Reset. In Code, use the three-dot menu → Open to open calibration.bw, click To blocks, and click the green flag. Watch a square and a separate diagonal appear. The marker should rise during the move between them.",
+    "Select Axis Plotter in Examples. Its calibration program loads into Code and Blocks automatically. Press Run to draw a square and a separate diagonal. The marker rises between them. Reset before another plot.",
     "Reset and try original-curves.bw. Look at the rounded rectangle, circular arc and cubic curve. These are made from short coordinated moves whose endpoints follow the imported SVG.",
     "Save any pending pixel edits with the pixel editor's Save, then use Save file in Costumes to export your SVG. Open it in plotter.html, review the planned path, download the .bw program, then Reset the model and run the program as blocks. Start with the default 36 mm box and 3 mm/s drawing speed.",
     "Try original-pixel-costume.bw after a Reset. The app's actual pixel editor export describes the original pixels as rectangles, so the plotter follows their outlines and lifts between subpaths. A one-pen plot does not reproduce solid fills or source colors."
