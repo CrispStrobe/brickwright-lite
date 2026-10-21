@@ -212,4 +212,9 @@ The exact `gear-not-on-hinge` note for `bob_gear` remains visible; other unexpec
 diagnostics are refused. Original motor targets, speeds, trims and watchdog are
 preserved; only the redundant gallery reset is removed. Manual study uses brief
 jogs within the source ±10-degree input range, and the lessons distinguish neutral
-input holding from indefinite unpowered memory. Browser integration is pending.
+input holding from indefinite unpowered memory. The production build and complete WebKit worker program, bounded manual A jog, English/German lessons and 50-page connected rigid assembly manual pass without page errors. Source integration and native release remain separate hosted gates.
+
+Two actual Bit Keeper LDR/MPD imports also pass automatic Blocks/title loading,
+the 133 rigid placements, the physical loop and the exact ballast note, with no
+missing DAT requests, duplicate definitions or page errors. The complete export
+now contains 70 assemblies, 78 example choices and 156 offline EN/DE lessons.

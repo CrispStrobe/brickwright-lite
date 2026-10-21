@@ -511,15 +511,19 @@ the grid levels. Model placements and physics remain unchanged. A native-motion
 scene regression fails on the raised plane and passes on the repaired floor;
 twelve affected scene, Sarrus motion/rollback and frame-queue controls pass.
 
-## Nine follow-on physics machines — 2026-10-21
+## Thirteen follow-on physics machines — 2026-10-21
 
-IN PROGRESS — original CrispStrobe/BSD-3-Clause additions in the existing model
+DONE locally — original CrispStrobe/BSD-3-Clause additions in the existing model
 lane: Pantograph Doubler (83), Scale Studio (101), Ripple Relay (191 explicit,
 193 including inferred crosses), Crossglide (216), Momentum Twins (125),
-Bloom Gate (170), Amplify (155), Offset Orbit (141) and Ellipsa (187).
+Bloom Gate (170), Amplify (155), Offset Orbit (141), Ellipsa (187), Echo Bridge
+(108 rigid + two bands), Linger (158), Crossline (147) and Bit Keeper
+(133 rigid + one band).
 Source placements, hashes and notices are retained. Native programs, ordinary
 and strict preparation, independent useful-output measurements and frozen-output
 negative controls pass. Detailed geometry is checked separately. Ellipsa also
-passes an unpowered cold start. The additive source totals 66 assemblies,
-74 choices and 148 bilingual lessons. Browser and full hosted qualification
-remain pending; these additions are separate from the 57-assembly release.
+passes an unpowered cold start. The additive source totals 70 assemblies,
+78 choices and 156 bilingual lessons. Full native programs, manual controls,
+English/German lessons and connected instructions pass in WebKit for all thirteen.
+The first nine also pass their complete hosted browser gates; the new batch and
+global regression repairs still require exact-head full hosted qualification; these additions are separate from the 57-assembly release.
