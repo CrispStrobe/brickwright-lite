@@ -7971,3 +7971,13 @@ rerun successfully. Forty-four affected mechanism controls and twenty lesson/
 notice controls pass. LDraw lock, adapter reproduction, asset equality and scope
 checks pass. The 46-pair/54-choice export and local preview are delivered. Current
 main composition and hosted exact-head CI remain pending for draft #1138.
+
+## Phase Bridge and Magnetic Chess intake — 2026-10-21
+
+IN PROGRESS — Codex, owner-requested continuation of draft #1138. Adapt the
+144-part double-Cardan transmission and the 1,206-LEGO-part chess transporter.
+Reuse the published universal-joint implementation from #1126; preserve peer
+worktrees and existing core fixes when composing it. Chess requires explicit
+rail/rack metadata, custom board materials and a declared magnetic force model;
+CAD route animation is not physics qualification. Keep pieces independent,
+validate measured transport and release, and preserve original source bytes.
