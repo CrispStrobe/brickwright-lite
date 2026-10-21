@@ -36,6 +36,7 @@ import { validateCompiledMechanism, upgradeMechanismV1, colliderVolume } from '.
 import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
+import { buildUniversalJoint } from './universal-joint.js';
 import { createRopes } from './rope.js';
 import { createAir } from './air.js';
 
@@ -256,7 +257,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // inside the frame's hole: noCollide). It stays a layer of its own so the
     // ground and obstacles (LAYER_STATIC, no parts) remain distinguishable.
     const LAYER_FRAME = 2;
-    const NUM_OBJECT_LAYERS = 3;
+    const LAYER_GHOST = 3;
+    const NUM_OBJECT_LAYERS = 4;
 
     const joltSettings = new J.JoltSettings();
     const maxBodies = Math.max(32, mechanism.bodies.length + 16);
@@ -289,6 +291,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_DYNAMIC, new J.BroadPhaseLayer(0));
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_STATIC, new J.BroadPhaseLayer(1));
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_FRAME, new J.BroadPhaseLayer(1));
+    bpInterface.MapObjectToBroadPhaseLayer(LAYER_GHOST, new J.BroadPhaseLayer(0));
 
     const ovbFilter = new J.ObjectVsBroadPhaseLayerFilterTable(bpInterface, 2, objectLayerPairFilter, NUM_OBJECT_LAYERS);
 
@@ -1070,6 +1073,15 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // rotation by physics/screw.js, once the joint states are known (below).
             screwCouplings.push(g);
             gearInfos.push({ type: 'screw', id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
+        } else if (g.kind === 'universalJoint') {
+            // kinds/universal-joint.js: a cross on two hinges between the two ends (physics/universal-joint.js).
+            const uj = buildUniversalJoint({ J, c: g, bodyInterface, physicsSystem, bodyOf: getBodyForId, layer: LAYER_GHOST });
+            allBodyIDs.push(uj.bodyID);
+            allConstraints.push(...uj.constraints);
+            // The ends' shafts get a gear's inertia floor: a bare axle (~1e-8 kg·m²) on each side of the cross let a
+            // load on the output stall the drive by turns (the solver's chain end → cross → end did not converge).
+            for (const bid of [g.body1, g.body2]) floorInertia(bid);
+            gearInfos.push({ type: 'universalJoint', id: g.id, body1: g.body1, body2: g.body2 });
         } else if (g.kind === 'turntable') {
             // kinds/turntable.js emits none; a hand-built mechanism naming the kind has nothing to build.
         } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);

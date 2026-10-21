@@ -28762,6 +28762,27 @@
       1
      ],
      "length": 20
+    },
+    {
+     "id": "u",
+     "type": "uj-fork",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "shaft": [
+       0,
+       0,
+       1
+      ]
+     }
     }
    ],
    "colliders": [
@@ -28847,6 +28868,27 @@
       1
      ],
      "length": 20
+    },
+    {
+     "id": "u",
+     "type": "uj-fork",
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "shaft": [
+       0,
+       0,
+       1
+      ]
+     }
     }
    ],
    "colliders": [
@@ -28932,6 +28974,27 @@
       1
      ],
      "length": 20
+    },
+    {
+     "id": "u",
+     "type": "uj-fork",
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "data": {
+      "shaft": [
+       0,
+       0,
+       1
+      ]
+     }
     }
    ],
    "colliders": [
