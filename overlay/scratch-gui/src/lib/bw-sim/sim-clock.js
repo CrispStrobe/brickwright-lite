@@ -87,10 +87,12 @@ export class SimLabClock {
      * @param {object} [options]
      * @param {function(function): void} [options.defer] schedules a macrotask (default setTimeout 0)
      * @param {function(): number} [options.wallNow] wall ms for the real-time factor
+     * @param {boolean} [options.paceNominal] let browser deadlines pace exactly 1×
      */
-    constructor ({defer = macrotask, wallNow: now = wallNow} = {}) {
+    constructor ({defer = macrotask, wallNow: now = wallNow, paceNominal = false} = {}) {
         this.defer = defer;
         this.wallNow = now;
+        this.paceNominal = paceNominal;
         this.steps = new VmStepClock({beforeStep: () => this._beforeStep(), afterStep: ms => this._afterStep(ms)});
         this.runtime = null;
         this.session = null;
@@ -221,10 +223,12 @@ export class SimLabClock {
         session.tick(ms);
         // Pace slow motion and fast forward against elapsed wall time. The VM still
         // buys one unchanged physics interval per step, so waits and motors agree.
-        // At 1 (always, unless asked) the order of operations is exactly as it was.
-        if (this.timeScale > 0 && this.timeScale !== 1) {
+        // Other callers retain their native-interval contract at 1×; the browser
+        // pane opts into the same deadlines to avoid quantized-interval drift.
+        if (this.timeScale > 0 && (this.timeScale !== 1 || this.paceNominal)) {
             const until = this.programMs + ms;
             session.idle().then(() => {
+                if (generation !== this._generation) return null;
                 const wait = slowMotionWait(this._pace, {scale: this.timeScale, simMs: until, nowMs: this.wallNow()});
                 this._pace = wait.pace;
                 return wait.ms > 0 ? new Promise(resolve => setTimeout(resolve, wait.ms)) : null;
@@ -235,18 +239,22 @@ export class SimLabClock {
         session.idle().then(applied, applied);
     }
 
+    _selfPaced () {
+        return this.timeScale > 1 || (this.paceNominal && this.timeScale === 1);
+    }
+
     _applied (ms) {
         this.owedMs = Math.max(0, this.owedMs - ms);
         this.programMs += ms;
         this._sample();
         this._runTimers();
-        if (this.deferred || this.timeScale > 1) {
-            // Fast forward requests the next VM step after physics and timer
-            // continuations finish, rather than waiting for the normal 30 Hz tick.
+        if (this.deferred || this._selfPaced()) {
+            // Deadline-paced runs request the next VM step after physics and
+            // timer continuations finish, without waiting for a rounded VM tick.
             const generation = this._generation;
             // A macrotask, so the timers' continuations (a resolved wait, a rate-limited send) come first.
             this.defer(() => {
-                if (generation !== this._generation || (!this.deferred && this.timeScale <= 1) || this.owedMs > 0) return;
+                if (generation !== this._generation || (!this.deferred && !this._selfPaced()) || this.owedMs > 0) return;
                 this.runtime._step();
             });
         }
