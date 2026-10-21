@@ -29,6 +29,17 @@ const MODELS = ['driving-base.ldr', 'driving-base-steps.ldr'];
 
 const rejects = (promise, code) => assert.rejects(promise, e => e instanceof ModelFileError && e.code === code, `expected ${code}`);
 
+test('an imported model saved as .ldr, .mpd or .io keeps its author; ours stay Brickwright', async () => {
+    const model = parseModel(text(MODELS[0])).model;
+    const author = 'LEGO Digital Designer model (imported)';
+    const authorOf = t => /^0 Author: (.*?)\r?$/m.exec(t)[1];
+    assert.equal(authorOf((await saveModelFile(model, 'ldr', {title: 'T'})).data), 'Brickwright');
+    assert.equal(authorOf((await saveModelFile(model, 'ldr', {title: 'T', author})).data), author);
+    assert.equal(authorOf((await saveModelFile(model, 'mpd', {title: 'T', author})).data), author);
+    const io = await saveModelFile(model, 'io', {title: 'T', author});
+    assert.equal(authorOf(await (await JSZip.loadAsync(io.data)).file('model.ldr').async('string')), author);
+});
+
 test('ldr → io → ldr is byte-stable, and the .io is a plain ZIP whose model.ldr is the .ldr save', async () => {
     for (const file of MODELS) {
         const model = parseModel(text(file)).model;
