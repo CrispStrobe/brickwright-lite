@@ -2,8 +2,9 @@
 
 Owner: Codex, Arcade compatibility lane. Isolated branch
 `lane/arcade-closed-local-lineage-claim-20261021`, based on `c1a7c52f9`.
-Status: claim only; implementation follows the merged claim. This extends the
-existing closed class containment work with local inheritance.
+Status: source implementation complete; complete affected pure controls 27 pass,
+zero skips. Current native/original-SDK and GUI qualification remains pending.
+The merged claim extends closed class containment with local inheritance.
 
 ## Owned scope
 
@@ -37,3 +38,10 @@ current native and original-SDK Code/export/reimport/fresh-SB3 routes and visibl
 authoring before claiming application acceptance. A changed operand frontier is
 source evidence only; no focused result changes the historical corpus count.
 Use applicable docs/source checks for this claim, without a new `ci:full` label.
+
+## Source result
+
+Concrete receiver dispatch, local parent bindings, inherited all-writer field
+cells, independent accessor halves and construction-time Undefined are modeled.
+See [the work package](../docs/ARCADE-CLASS-LINEAGE.md) for remaining default,
+SDK and visible authoring limits. Historical corpus counts are unchanged.

@@ -44,10 +44,11 @@ test('complete aggregate writers, unknown getters and alias publication invalida
  // The aggregate may be private, but its value is not a primitive/helper
  // operand or a body loan merely because its elements are known instances.
  bad(prefix+'let n=__bwBinaryAdd(alias,"!");');
- // An unrelated unsupported class is not an effect on the proved Box. Its
- // own value remains unsupported, and a real constructor write still counts.
+ // Local inheritance retains actual parent constructor values. An unresolved
+ // parent and a real constructor write still refuse the additional facts.
  good(prefix+'class Child extends Box {}let other=new Child(2);let n=__bwBinaryAdd(object.value,1);');
- bad(prefix+'class Child extends Box {}let other=new Child(2);let n=__bwBinaryAdd(other.value,1);');
+ good(prefix+'class Child extends Box {}let other=new Child(2);let n=__bwBinaryAdd(other.value,1);');
+ bad(prefix+'class Child extends Missing {}let other=new Child(2);let n=__bwBinaryAdd(other.value,1);');
  bad(prefix+'class Child extends Box {constructor(){super(2);object.n={}}}let other=new Child();let n=__bwBinaryAdd(object.value,1);');
 });
 

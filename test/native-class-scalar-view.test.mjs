@@ -47,7 +47,8 @@ test('unknown computed prototype extracted-method and callback escapes never bec
         'Box=foreign', 'let next=new Foreign()', 'object.unknown=3',
         'foreignTag`x`', 'assets.image`named`', 'img`1`'
     ])bad(start+effect+';let n=__bwBinaryAdd(object.value,1)');
-    bad('class Base {n=2}class Child extends Base {get value():any{return this.n}};let object=new Child();let n=__bwBinaryAdd(object.value,1)');
+    good('class Base {n=2}class Child extends Base {get value():any{return this.n}};let object=new Child();let n=__bwBinaryAdd(object.value,1)');
+    bad('class Child extends Missing {get value():any{return this.n}};let object=new Child();let n=__bwBinaryAdd(object.value,1)');
     bad('class Replace {n=2;constructor(){return {} as any}get value():any{return this.n}};let object=new Replace();let n=__bwBinaryAdd(object.value,1)');
     const overwritten='let object:any;';
     for(const body of [

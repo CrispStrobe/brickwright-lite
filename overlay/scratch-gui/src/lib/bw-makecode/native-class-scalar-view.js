@@ -1,4 +1,5 @@
 import {analyseCallableBindings} from './callable-bindings.js';
+import {prepareObjectClassStructure} from './object-class-source-structure.js';
 import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 
 const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
@@ -14,6 +15,11 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     if(!(program.body||[]).some(node=>node?.type==='Class'))return {program,current:()=>true};
     const guard=inspectGeneratedHelperBindings(program,profile);
     if(!guard.isCurrent())return {program,current:guard.isCurrent};
+    // Structural rejection only: this helper never supplies value domains.
+    // Its accessor-half, conflict, visibility and super-call rules are the
+    // actual selected source language, rather than generic JS inheritance.
+    if((program.body||[]).some(node=>node.type==='Class'&&node.base)&&
+        prepareObjectClassStructure(program).unsupported.length)return {program,current:guard.isCurrent};
     const lexical=analyseCallableBindings(program),classes=new Map(),methods=new Map(),functions=new Map();
     const values=new Map(),parents=new WeakMap(),classForBinding=new Map(),methodForScope=new Map(),fields=new Map();
     const unknown='Opaque',nodes=[],unsafe=new Set(),arrayRows=new WeakMap();let changed=false;
@@ -48,7 +54,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             }else if(type.kind==='aggregate'){
                 if(!type.unsafe){type.unsafe=true;changed=true;}
                 poison(type.elements,seen);
-            }else if(type.kind==='function'||type.kind==='aggregatePush')poisonAll();
+            }else if(type.kind==='function'||type.kind==='boundFunction'||type.kind==='aggregatePush')poisonAll();
         }
     };
     const poisonAll=()=>{for(const row of classes.values())mark(row);};
@@ -63,11 +69,11 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     const complete=body=>(body||[]).some(node=>node.type==='Return'||node.type==='ThrowStatement'||node.type==='Block'&&complete(node.body)||node.type==='If'&&complete(node.consequent)&&complete(node.alternate));
     for(const node of nodes)if(node.type==='Class'){
         const binding=lexical.scopes.get(node)?.names.get(node.name);
-        const row={node,binding,instance:{kind:'instance'},constructorValue:{kind:'class'},members:new Map()};
+        const row={node,binding,instance:{kind:'instance'},constructorValue:{kind:'class'},members:new Map(),ownMembers:null,parent:null,lineage:null};
         row.instance.row=row;row.constructorValue.row=row;
         if(!binding||binding.kind!=='class'||binding.node!==node||binding.scope!==lexical.global||classes.has(binding))mark(row);
         classes.set(binding||node,row);classForBinding.set(binding,row);
-        if(node.base||node.typeParameters?.length||node.unsupported?.length||binding?.written)mark(row);
+        if(node.typeParameters?.length||node.unsupported?.length||binding?.written)mark(row);
         const property=(name,kind,value)=>{
             if(typeof name!=='string'||dangerous.has(name)||['toString','valueOf'].includes(name)){mark(row);return;}
             if(!row.members.has(name))row.members.set(name,{field:key(),get:null,set:null,method:null,declared:false});
@@ -90,15 +96,52 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         }
 
         for(const method of node.methods||[]){if(method.isStatic||method.typeParameters?.length||method.kind==='get'&&method.params.length!==0||method.kind==='set'&&method.params.length!==1)mark(row);property(method.name,method.kind==='get'?'get':method.kind==='set'?'set':'method',method);}
+        row.ownMembers=row.members;
         add(binding,row.constructorValue);
     }
+    // Resolve only an actual unique global class binding, declared before the
+    // child. Namespace/SDK spellings, aliases, reassignment and cycles cannot
+    // enter this local lineage. Each concrete row owns its field cells.
+    const resolveLineage=(row,seen=new Set())=>{
+        if(row.lineage)return row.lineage;
+        if(seen.has(row)){mark(row);return null;}seen.add(row);
+        const name=row.node.base;
+        if(name){
+            const binding=lexical.global.names.get(name),parent=classForBinding.get(binding);
+            if(!parent||binding.written||parent===row||program.body.indexOf(parent.node)>=program.body.indexOf(row.node)){
+                mark(row);return null;
+            }
+            row.parent=parent;
+            const chain=resolveLineage(parent,seen);if(!chain){mark(row);return null;}
+            row.lineage=[row,...chain];
+        }else row.lineage=[row];
+        row.members=new Map();
+        for(const owner of [...row.lineage].reverse())for(const [name,own]of owner.ownMembers){
+            const inherited=row.members.get(name);
+            // Structural validation already rejects field/method collisions.
+            // Accessor get/set halves inherit independently in this dialect.
+            row.members.set(name,{...own,field:key(),get:own.get||inherited?.get||null,
+                set:own.set||inherited?.set||null,method:own.method||inherited?.method||null});
+        }
+        for(const owner of row.lineage)for(const field of owner.node.fields||[]){
+            const original=fields.get(field),member=row.members.get(field.name);
+            if(original&&member){copy(original.member.field,member.field);
+                // An ancestor constructor can call a child override before
+                // the child's initialized fields exist. Never seed only the
+                // later initializer on that concrete receiver.
+                if(owner.node.base&&row.lineage.some(base=>base!==owner&&owner.lineage?.includes(base)&&base.node.ctor))add(member.field,'Undefined');
+            }
+        }
+        return row.lineage;
+    };
+    for(const row of classes.values())resolveLineage(row);
     for(const scope of lexical.functions){
         const row=[...classes.values()].find(row=>row.node.ctor===scope.node||(row.node.methods||[]).includes(scope.node));
         const fn={kind:'function',node:scope.node,scope,result:key(),row};functions.set(scope.node,fn);
         // Fallthrough/missing actual arguments contribute Undefined; complete
         // returns and supplied actual arguments never borrow their annotations.
         if(!complete(scope.node.body))add(fn.result,'Undefined');
-        if(row){methodForScope.set(scope,fn);if(scope.names.has('this'))add(scope.names.get('this'),row.instance);}
+        if(row)methodForScope.set(scope,fn);
         if(scope.node.type==='FunctionDeclaration'){
             const binding=scope.parent?.names.get(scope.node.name);
             if(!binding||binding.node!==scope.node||binding.written)poisonAll();else add(binding,fn);
@@ -142,10 +185,15 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     }
     const fnFor=node=>functions.get(node);
     const receivers=value=>[...get(value)].filter(type=>type?.kind==='instance');
-    const call=(fn,args,result)=>{
+    const call=(fn,args,result,receiver=null)=>{
         if(!fn){add(result,unknown);poisonAll();return;}
+        if(receiver&&fn.scope.names.has('this'))add(fn.scope.names.get('this'),receiver.instance);
         const params=fn.node.params||[];
-        for(let index=0;index<params.length;index++)if(args[index])copy(args[index],fn.scope.names.get(params[index]));else add(fn.scope.names.get(params[index]),'Undefined');
+        for(let index=0;index<params.length;index++){
+            const destination=fn.scope.names.get(params[index]),fallback=fn.node.parameterDefaults?.find(value=>value.name===params[index])?.value;
+            if(args[index])copy(args[index],destination);else if(fallback)copy(evaluate(fallback),destination);else add(destination,'Undefined');
+            if(args[index]&&get(args[index]).has('Undefined')&&fallback)copy(evaluate(fallback),destination);
+        }
         copy(fn.result,result);
     };
     const scalarResult=(node,operands,kind)=>{
@@ -154,6 +202,16 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(all.some(set=>[...set].some(type=>!primitive.has(type)))){add(cell(node),unknown);return;}
         add(cell(node),kind==='add'&&all.some(set=>set.has('String'))?'String':kind==='compare'?'Boolean':kind==='truth'?'Boolean':kind==='typeof'?'String':'Number');
     };
+    const boundMethods=new Map();
+    const bound=(fn,row)=>{
+        if(!fn)return null;
+        if(!boundMethods.has(fn))boundMethods.set(fn,new Map());
+        const rows=boundMethods.get(fn);
+        if(!rows.has(row))rows.set(row,{kind:'boundFunction',fn,row});
+        return rows.get(row);
+    };
+    const activeMethod=node=>lexical.scopes.get(node)?.functionOwner;
+    const superOwner=node=>methodForScope.get(activeMethod(node))?.row?.parent;
     const memberRead=(node,result)=>{
         const receiver=cell(node.object),types=get(receiver);
         if(!types.size)return;
@@ -167,13 +225,13 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                 poison(receiver);poisonAll();add(result,unknown);continue;
             }
             if(type?.kind!=='instance'){poisonAll();add(result,unknown);continue;}
-            const row=type.row,member=row.members.get(node.name);
-            if(unsafe.has(row)||!member||dangerous.has(node.name)){add(result,unknown);continue;}
+            const row=type.row,lookup=node.object?.type==='Identifier'&&node.object.name==='super'?superOwner(node):row,member=lookup?.members.get(node.name);
+            if(unsafe.has(row)||!member||dangerous.has(node.name)||node.object?.name==='super'&&(member.get||member.set)){add(result,unknown);continue;}
             if(member.method){
                 const parent=parents.get(node);
-                if(parent?.type!=='Call'||parent.callee!==node){mark(row);add(result,unknown);}else add(result,fnFor(member.method));
-            }else if(member.get)copy(fnFor(member.get)?.result,result);
-            else if(member.declared)copy(member.field,result);
+                if(parent?.type!=='Call'||parent.callee!==node){mark(row);add(result,unknown);}else add(result,bound(fnFor(member.method),row));
+            }else if(member.get)call(fnFor(member.get),[],result,row);
+            else if(member.declared)copy(row.members.get(node.name).field,result);
             else add(result,'Undefined');
         }
     };
@@ -183,16 +241,29 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         for(const type of types){
             if(type==='Null'||type==='Undefined')continue;
             if(type?.kind!=='instance'){poisonAll();continue;}
-            const row=type.row,member=row.members.get(node.name);
-            if(!member||member.method||dangerous.has(node.name)){mark(row);continue;}
-            if(member.set)call(fnFor(member.set),[value],discard(node));
+            const row=type.row,isSuper=node.object?.type==='Identifier'&&node.object.name==='super',lookup=isSuper?superOwner(node):row;
+            const selected=lookup?.members.get(node.name),member=row.members.get(node.name);
+            if(!selected||!member||selected.method||dangerous.has(node.name)||isSuper&&(selected.get||selected.set)){mark(row);poison(value);continue;}
+            if(member.set)call(fnFor(member.set),[value],discard(node),row);
             else if(member.declared){
                 copy(value,member.field);
                 if(unsafe.has(row))poison(value);
                 // Function-valued fields remain outside this private slice.
-                if([...get(value)].some(type=>type?.kind==='function'||type?.kind==='aggregatePush'))poisonAll();
+                if([...get(value)].some(type=>type?.kind==='function'||type?.kind==='boundFunction'||type?.kind==='aggregatePush'))poisonAll();
             }else {mark(row);poison(value);}
         }
+    };
+    const construct=(owner,args,receiver,result)=>{
+        if(unsafe.has(owner)||!owner.lineage){mark(receiver);add(result,unknown);return;}
+        // Every actual inherited writer remains in the census, including an
+        // uncalled method. Its this is the concrete possible receiver, never
+        // a newly invented standalone declaring-class instance.
+        for(const base of receiver.lineage)for(const method of base.node.methods||[]){
+            const fn=fnFor(method);if(fn?.scope.names.has('this'))add(fn.scope.names.get('this'),receiver.instance);
+        }
+        if(owner.node.ctor)call(fnFor(owner.node.ctor),args,result,receiver);
+        else if(owner.parent)construct(owner.parent,args,receiver,result);
+        else if(args.length){mark(receiver);add(result,unknown);}
     };
     const evaluate=node=>{
         if(!node||typeof node!=='object')return null;
@@ -200,6 +271,12 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         const out=cell(node);
         if(primitive.has(node.type))return singleton(out,node.type);
         if(node.type==='Identifier'){
+            if(node.name==='super'){
+                const scope=activeMethod(node),fn=methodForScope.get(scope);
+                if(fn?.row?.parent&&scope.names.has('this'))copy(scope.names.get('this'),out);
+                else {add(out,unknown);poisonAll();}
+                return out;
+            }
             const binding=read(node);
             if(!binding)add(out,unknown);else copy(overwrittenReads.has(node)?cell(overwrittenReads.get(node)):binding,out);
             if(classForBinding.has(binding)){
@@ -209,13 +286,15 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             return out;
         }
         if(node.type==='Class'){
+            for(const row of classes.values())if(row.lineage?.some(base=>unsafe.has(base)))mark(row);
             for(const field of node.fields||[]){
                 const pair=fields.get(field);if(field.init){
                     const value=evaluate(field.init);
                     if(pair&&value){
                         copy(value,pair.member.field);
+                        for(const concrete of classes.values())if(concrete.lineage?.includes(pair.row))copy(value,concrete.members.get(field.name).field);
                         if(unsafe.has(pair.row))poison(value);
-                        if([...get(value)].some(type=>type?.kind==='function'||type?.kind==='aggregatePush'))poisonAll();
+                        if([...get(value)].some(type=>type?.kind==='function'||type?.kind==='boundFunction'||type?.kind==='aggregatePush'))poisonAll();
                     }
                 }
             }
@@ -259,7 +338,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             add(out,row);
             for(const item of node.items){
                 const value=evaluate(item);if(value)copy(value,row.elements);
-                if(item?.type==='Spread'||[...get(value)].some(type=>type?.kind==='function'||type?.kind==='aggregatePush')){row.unsafe=true;poisonAll();}
+                if(item?.type==='Spread'||[...get(value)].some(type=>type?.kind==='function'||type?.kind==='boundFunction'||type?.kind==='aggregatePush')){row.unsafe=true;poisonAll();}
             }
             if(row.unsafe)poison(row.elements);
             return out;
@@ -281,6 +360,13 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             evaluate(node.object);memberRead(node,out);return out;
         }
         if(node.type==='Call'){
+            if(node.callee?.type==='Identifier'&&node.callee.name==='super'){
+                const scope=activeMethod(node),fn=methodForScope.get(scope),parent=fn?.row?.parent;
+                const args=(node.args||[]).map(evaluate);
+                if(node.isNew||node.typeArguments?.length||!parent||fn.node!==fn.row.node.ctor||node.args?.some(arg=>arg?.type==='Spread')){add(out,unknown);poisonAll();return out;}
+                for(const receiver of receivers(scope.names.get('this')))construct(parent,args,receiver.row,discard(node));
+                add(out,'Undefined');return out;
+            }
             const callee=evaluate(node.callee),args=(node.args||[]).map(evaluate);
             if(node.typeArguments?.length||node.args?.some(arg=>arg?.type==='Spread')){add(out,unknown);poisonAll();return out;}
             const types=get(callee);
@@ -288,13 +374,13 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             for(const type of types){
                 if(node.isNew&&type?.kind==='class'){
                     const row=type.row;if(unsafe.has(row)){add(out,unknown);continue;}
-                    add(out,row.instance);if(row.node.ctor)call(fnFor(row.node.ctor),args,discard(node));
-                    else if(args.length){mark(row);add(out,unknown);}
+                    add(out,row.instance);construct(row,args,row,discard(node));
                 }else if(!node.isNew&&type?.kind==='function')call(type,args,out);
+                else if(!node.isNew&&type?.kind==='boundFunction')call(type.fn,args,out,type.row);
                 else if(!node.isNew&&type?.kind==='aggregatePush'){
                     const row=type.row;
                     if(row.unsafe){add(out,unknown);poison(row.elements);continue;}
-                    for(const arg of args){copy(arg,row.elements);if([...get(arg)].some(value=>value?.kind==='function'||value?.kind==='aggregatePush'))poisonAll();}
+                    for(const arg of args){copy(arg,row.elements);if([...get(arg)].some(value=>value?.kind==='function'||value?.kind==='boundFunction'||value?.kind==='aggregatePush'))poisonAll();}
                     if(row.unsafe)poison(row.elements);
                     // Actual native push returns its numeric length. The
                     // receiver/method cannot escape this direct call branch.
@@ -377,7 +463,8 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(!types.size||[...types].some(type=>!primitive.has(type))||!receiver.size||!callees.size||
             ![...receiver].some(type=>type?.kind==='instance')||
             [...receiver].some(type=>type!=='Null'&&type!=='Undefined'&&(type?.kind!=='instance'||unsafe.has(type.row)))||
-            [...callees].some(fn=>fn?.kind!=='function'||!fn.row||unsafe.has(fn.row)||fn.row.members.get(node.callee.name)?.method!==fn.node))continue;
+            [...callees].some(bound=>bound?.kind!=='boundFunction'||unsafe.has(bound.row)||
+                bound.row.members.get(node.callee.name)?.method!==bound.fn.node))continue;
         selected.set(node,[...types]);
     }
     if(!selected.size)return {program,current:guard.isCurrent};
