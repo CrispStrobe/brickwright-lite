@@ -47,8 +47,13 @@ review verified the entire selection and actual source, interpreter, dependency
 and scope identities. The original writer review finding and its correction
 are retained. Default filename journal controls are unchanged.
 
-Actual CLI integration, complete affected CLI and report-admission modules,
-VM/original-SDK regressions and hosted checks remain pending. The optional
+A distinct seven-invocation static CLI cohort also passes, including both
+output modes, complete mixed-catalogue graphs, actual parse-failure exit and
+all three output conflicts. Independent saved-output review checks the full
+retained payloads and actual source/dependency/exit identities. This does not
+replace the complete affected public CLI module with real SB3/VM prerequisites.
+That module, report admission, VM/original-SDK regressions and hosted checks
+remain pending. The optional
 transport has not yet qualified real read-only process isolation, hosted
 resource bounds or a complete private corpus assessment. Historical corpus
 counts remain unchanged.

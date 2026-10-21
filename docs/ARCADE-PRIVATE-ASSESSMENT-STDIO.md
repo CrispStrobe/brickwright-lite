@@ -20,6 +20,18 @@ deflate consumption, checksums, framing and bounds. This source/unit result does
 not include the actual CLI integration cases, VM or original-SDK controls,
 report admission, read-only process isolation or the private corpus.
 
+A separate end-to-end static CLI cohort also passes seven actual invocations:
+file and stdout modes with two catalogue subjects sharing an ID across kinds;
+both modes with an additional genuinely malformed TypeScript input; and all
+three conflicting file options. Successful inputs exit 0, the malformed input
+exits 1, and conflicts exit 1 without output acquisition. Full graphs and all
+payload bytes are retained; independent saved-output review checks actual exits,
+provenance, framing, journals, reports and Markdown. Random Creator identifiers
+are excluded only from cross-invocation diagnostic comparisons, without changing
+either original graph. This synthetic cohort does not replace the complete
+public CLI module, whose SB3 controls require the real VM, or the existing
+report-admission and default-no-progress controls.
+
 The flag conflicts with `--out`, `--markdown` and `--progress-jsonl`; conflicts
 are rejected before output acquisition. There are no CLI flags for another FD
 or larger limits. Only the deliberate summary moves to stderr. Other stdout
@@ -115,9 +127,10 @@ storage, inode, RAM or CPU bounds.
 
 ## Remaining work
 
-1. Qualify complete writer, decoder, progress, CLI and admission modules. Include
-   independent malformed framing and gzip fixtures, real partial writes,
-   failure identity, output limits, and public synthetic catalogue CLI runs.
+1. Finish the complete affected CLI and report-admission modules, including
+   their actual VM prerequisites and default-no-progress controls. The whole
+   writer, decoder and progress modules and the distinct seven-invocation static
+   CLI cohort are qualified; preserve their complete original outputs.
 2. Bind the actual source, normal dependency closure and interpreter. Qualify
    real read-only process behavior, forbidden filesystem writes, output FDs,
    cleanup, resource enforcement and negative marker controls.
