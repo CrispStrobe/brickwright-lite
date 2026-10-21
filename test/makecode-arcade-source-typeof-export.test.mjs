@@ -62,7 +62,7 @@ test('BW class field annotations cannot supply opaque member typeof export autho
     const exported=projectToArcade(project);assert.ok(exported.unsupported.some(message=>/source typeof export requires/.test(message)));
 });
 
-test('mixed local Array receivers keep array dispatch without changing an independently typed local', {todo:"Array export authority cannot yet prove the Array receiver \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},()=>{
+test('mixed local Array receivers keep array dispatch without changing an independently typed local',()=>{
     const creator=new Creator();creator.parse(`DEVICE ARCADE
 SPRITE Mixed:
 WHEN flag clicked:
@@ -78,4 +78,17 @@ WHEN flag clicked:
     assert.match(exported.ts,/let value: any = 0/);
     assert.match(exported.ts,/__bwArrayAccess\(value\)\.push\(\(0 \+ 1\)\)/);
     assert.match(exported.ts,/value\.push\(\(0 \+ 2\)\)/);
+});
+
+test('an inert literal is discounted only when the next statement definitely overwrites the local',()=>{
+    const refused=body=>{const creator=new Creator();creator.parse(`DEVICE ARCADE
+SPRITE Mixed:
+WHEN flag clicked:
+${body}`);assert.deepEqual(creator.warnings,[]);return projectToArcade(creator.project).unsupported.some(message=>/Array reference arrays_mutateReference ARRAY/.test(message));};
+    const set='  arcade set local value to (0 + (0))',array='  arcade set local value to (new array reference from "[]")',push='  mutate array reference (arcade local value) op "push" index 0 value (0 + (1))';
+    assert.equal(refused([set,array,push].join('\n')),false);
+    assert.equal(refused([set,push,array].join('\n')),true,'read before the overwrite');
+    assert.equal(refused([set,'  say (arcade local value)',array,push].join('\n')),true,'a statement between literal and overwrite');
+    assert.equal(refused([set,'  arcade set local value to (arcade local value)',push].join('\n')),true,'overwrite reads the literal');
+    assert.equal(refused(['  arcade set local value to (0 + (arcade local value))',array,push].join('\n')),true,'a writer that reads a cell is not inert');
 });
