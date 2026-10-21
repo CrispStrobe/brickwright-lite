@@ -55,6 +55,27 @@ and the returned refusal were captured without changing the original test
 assertions. Investigate the genuine frame-factory and collection producer path;
 this evidence does not establish that the lexical-readiness change fixes it.
 
+Close that gap in separate reviewed steps:
+
+1. Trace collection provenance through the actual generated frame factory,
+   its fallback, temporary initialization and all writers. Keep the actual
+   encoded animation-resource context when inspecting native addition.
+2. If specializing static fresh-resource emission, admit it through
+   `createAnimationFrameArrayProducers().resolve`, matching the same current
+   encoded resource. Preserve fresh allocations, shared identity, dynamic
+   input evaluation, unknown-resource fallback, warnings and companion files.
+   This is a source-generation improvement, not proof that length now works.
+3. Prove numeric collection length and image pixel reads from genuine producer
+   and operation identities. Preserve null, missing-element, opaque-writer,
+   receiver-override and escape refusals. Type annotations and helper names
+   cannot supply authority.
+4. Run the complete original animation-carrier module, affected producer and
+   writer negatives, and clean emitted-SDK/runtime/GUI qualification. Keep
+   partial acceptance and the next failed operand visible between steps.
+
+The refusal-report lane does not own these behavior changes. Merge a new
+explicit implementation claim before changing the exporter or producer proofs.
+
 The school delivery owner has taken over the narrow
 [SPIKE power adoption](../lanes/2026-10-21-school-spike-power-takeover.md).
 Preserve the earlier candidate and its original results; reconcile its source
