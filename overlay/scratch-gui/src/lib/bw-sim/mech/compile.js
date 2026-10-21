@@ -26,7 +26,7 @@ import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
 import {sharedAxisBodyPairs, localNoCollide, asBuiltOverlaps} from './collision-filter.js';
 import {freePinWelds} from './free-pins.js';
-import {rescueLoose, weldByContact} from './loose-rescue.js';
+import {rescueLoose, weldByContact, nearBallJoints} from './loose-rescue.js';
 import {breakHingeLoops} from './loops.js';
 
 /**
@@ -209,9 +209,12 @@ export const compile = (model, catalog, opts = {}) => {
     // A model from elsewhere: groups that connect to nothing are joined by their nearest near-miss (mech/loose-rescue.js).
     let graphEdges = builtEdges;
     if (opts.rescueLoose) {
-        const rescued = rescueLoose(nodes, builtEdges);
+        // Towballs a file places a hair off their sockets first: they join what would otherwise look loose.
+        const balls = nearBallJoints(nodes, builtEdges);
+        if (balls.length) graphEdges = [...builtEdges, ...balls];
+        const rescued = rescueLoose(nodes, graphEdges);
         if (rescued.edges.length) {
-            graphEdges = [...builtEdges, ...rescued.edges];
+            graphEdges = [...graphEdges, ...rescued.edges];
             diagnostics.push({severity: 'warning', code: 'seated-loosely', parts: rescued.groups.flat(),
                 message: `Joined where their pins or axles almost fit: ${rescued.groups.map(g => g.length).join(', ')} parts`});
         }

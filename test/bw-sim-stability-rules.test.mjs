@@ -67,3 +67,19 @@ test('derivation finds a towball socket: an 8 LDU bore (the ball\'s radius) insi
     assert.deepEqual(link.map(c => c.position.map(v => Math.round(v))).sort((a, b) => a[2] - b[2]), [[0, 0, 0], [0, 0, 100]]);
     assert.equal(sockets('zz-bore.dat').length, 0, 'a 6 LDU bore is a pin hole, not a socket');
 });
+
+test('a towball 1 LDU off its socket is a ball joint in a model from elsewhere (near-miss), not in our own files', () => {
+    const meta = id => CATALOG.get(id);
+    const socket = meta('39370.dat').connectors.find(c => c.type === 'ballsocket').position;
+    const ball = meta('6628.dat').connectors.find(c => c.type === 'ball').position;
+    const at = socket.map((v, i) => v - ball[i] + (i === 0 ? 1 : 0));
+    const model = {version: 1, parts: [
+        {id: 'h', part: '39370.dat', position: [0, 0, 0], rotation: I3},
+        {id: 'tb', part: '6628.dat', position: at, rotation: I3},
+    ]};
+    const balls = m => m.joints.filter(j => j.type === 'ball').length;
+    assert.equal(balls(compile(model, CATALOG, {ground: false, version: 2})), 0, 'our own file: 1 LDU is not seated (0.5 LDU rule)');
+    const foreign = compile(model, CATALOG, {ground: false, version: 2, rescueLoose: true});
+    assert.equal(validateCompiledMechanism(foreign).length, 0);
+    assert.equal(balls(foreign), 1, 'from elsewhere: joined where it almost fits');
+});
