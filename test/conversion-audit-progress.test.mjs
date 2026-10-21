@@ -96,8 +96,8 @@ test('actual two RAW conversions retain full returned graphs while opt-in scalar
     assert.match(source,/progressFile === null \? null : \(await import\('\.\/lib\/conversion-progress\.mjs'\)\)/);
     assert.match(source,/onObservation: event => progress\.onObservation\(event, progressSubject\)/);
     assert.equal((source.match(/else observed = await auditConversionSubject\(\{/g)||[]).length,2);
-    assert.match(source,/const observed = progress \? await observeConversion\(subject\) : await auditConversionSubject\(subject\)/);
-    assert.match(source,/else row = await applyOptionalGates\(row, observed\.import\.value\)/);
+    assert.match(source,/const observed = progress \? await observeConversion\(subject\) : await auditConversionSubject\(subject, conversionOptions\(\)\)/);
+    assert.match(source,/else row = await applyOptionalGates\(row, observed\.import\.value, null, observed\)/);
     assert.equal((source.match(/if \(progress\) progress\.throwIfFailed\(\);/g)||[]).length,2);
 }));
 test('actual dependency product rejection retains original code channels and unattempted Creator with progress enabled', async () => fixture(async f => {

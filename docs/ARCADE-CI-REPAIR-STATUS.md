@@ -12,13 +12,36 @@ confirms exactly 31 provenance-only changes. No pin, workflow, producer or
 measurement threshold changes are involved. The remaining hosted unit/browser
 checks are still required; avoid superseding them merely for this docs repair.
 
+All four unit shards at this head have finished: **180 ordinary failures**,
+with 39 failing TODO cases recorded separately. Their first observed causes are
+156 native-addition domain refusals, eight complete-helper refusals, eleven
+bitwise failures, two stale CLI readers, one reference-tag failure, one gate
+shape finding and one reader missing side-effect imports. These are failing
+test leaves, not application counts. Original failing logs remain retained.
+
+The compound bitwise repair indexes actual Assignment operands before later
+Binary emission; it adds no synthetic-node authority. Its complete three-group
+module passes all six operators, captures, RHS mutation and opaque-input
+refusals. Native/original execution remains pending. The updated CLI policy
+passes all six controls. The complete progress, gate-shape and workspace modules
+pass all 22 controls. The side-effect import reader correction still needs its
+complete freshly integrated gate.
+
+The private native-addition analysis is being repaired to reuse existing closed
+SDK Number producers without granting input or Array authority. Its first
+complete two-group run retains an Undefined-coercion failure; the successor must
+preserve that positive and reject reads before initialization, including hoisted
+function calls. Complete affected native/original modules remain required.
+
 The new score callback syntax passes all 463 controls in three complete
-canonical modules in [supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160).
-Lite source/export controls pass all three groups. Canonical hosted checks,
-explicit adoption, fresh native/original-SDK execution and visible authoring
-remain pending. The proposed parser prefix optimization was rejected after a
-balanced actual-input episode found it slower; it is excluded from delivery.
-Historical 36 partials remain unchanged pending a complete replacement census.
+canonical modules. [Supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160)
+is merged after all four enabled checks passed; merge tree and parents agree
+with the reviewed composition. Lite source/export controls pass all three
+groups. Explicit pin adoption, fresh native/original-SDK execution and visible
+authoring remain pending. The proposed parser prefix optimization was rejected
+after a balanced actual-input episode found it slower; it is excluded from
+delivery. Historical 36 partials remain unchanged pending a complete replacement
+census.
 
 ## Latest hosted failure and corrected candidate — 2026-10-21
 

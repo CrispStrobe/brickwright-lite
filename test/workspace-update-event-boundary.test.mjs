@@ -10,6 +10,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // Use the genuine tracked queue/filter/disable implementation, not a replacement
 // Events model. Closure namespace and workspace/DOM boundaries below are explicit
 // fixtures; this does not mount React or claim a browser/VM execution result.
+// Git reads the exact tracked source in this repository at HEAD;
+// gate-shapes-allow: no external package checkout or executable-under-test is selected.
 const eventSource = execFileSync('git', ['-C', root, 'show', 'HEAD:packages/scratch-blocks/core/events.js'], {encoding: 'utf8'});
 const componentSource = readFileSync(new URL('../overlay/scratch-gui/src/containers/blocks.jsx', import.meta.url), 'utf8');
 const start = componentSource.indexOf('    onWorkspaceUpdate (data) {');

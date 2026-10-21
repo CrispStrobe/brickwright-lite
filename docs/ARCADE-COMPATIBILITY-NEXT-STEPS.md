@@ -45,6 +45,29 @@ Publish replacement counts only from a complete report at its exact source and
 input boundary. Keep raw/context results, original compiler validity, conversion,
 runtime smoke, behavior and GUI acceptance distinct.
 
+## Immediate repair order — 2026-10-21
+
+1. Finish the native operand-domain and complete-helper repairs. Use actual
+   producer bindings, initialization order, arguments, effects and all writers;
+   annotations and SDK names alone cannot authorize a value. Preserve opaque
+   coercion and hoisted-before-initialization refusals. Keep original failing
+   cases and qualify complete affected modules after composition.
+2. Finish compound operands and Sprite flags. Compound import has three passing
+   source controls; flags export needs an actual receiver and complete writer
+   model. A flags value can be a primitive without being a Number. Unknown
+   receivers, dynamic property writers, escaped sprites and self-dependent
+   writer cycles need explicit treatment, never an unconditional flags type.
+3. Adopt the qualified canonical score vocabulary explicitly, regenerate its
+   mirrors and inventory, and create a fresh normal installation of the final
+   composition. Qualify actual HUD thresholds, replacement handlers, yielded
+   callbacks, players and scene/Stop ownership against the original simulator.
+   Then test connected Blocks, Code edits, art, controller use and save/reopen.
+4. Close the reference-tag and source-reader failures and observe the existing
+   hosted browser jobs. Batch the corrected final source into one push; no new
+   full-CI label or unchanged retry. The lesson corpus is not the MakeCode corpus.
+5. Complete the ordered application acceptance above before publishing a lower
+   partial count. A passing component or an incomplete prefix earns no count.
+
 ## Current integration and repair queue — 2026-10-20
 
 This section supersedes the dated integration status below. The previous

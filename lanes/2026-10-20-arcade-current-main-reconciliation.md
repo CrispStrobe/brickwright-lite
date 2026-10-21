@@ -101,3 +101,16 @@ independent comparison verifies all 3,750 files and exactly 31 provenance-only
 changes. Measured values/assertions, pins, producer scripts, programs and
 circuits remain unchanged. The current hosted source gates continue before
 publishing this docs repair, avoiding unnecessary superseded browser runs.
+
+### Remaining source proofs and complete failure census — 2026-10-21
+
+The current four-shard campaign has 180 ordinary failing leaves and 39 failing
+TODO cases, separately retained. The original compound-operand census repair
+passes all three focused groups; the corrected CLI policy passes six controls,
+and complete progress/gate/workspace modules pass all 22 controls. Original
+native/original-SDK, fresh installation and current browser gates remain required.
+Native SDK producer and closed Sprite flags writer follow-ups are independently
+scoped in the repair guide; no annotation-based or unconditional type grant.
+Canonical score vocabulary PR160 is qualified and merged; explicit Lite adoption
+and native/original/visible authoring acceptance are pending. Historical 36
+partials remain unchanged. No new full-CI request or relaxed baseline is used.
