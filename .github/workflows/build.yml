@@ -1578,13 +1578,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [heavy, light, robotlab]
+        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench]
         # Path-aware PR runs (scripts/ci-browser-scope.mjs): a shard the changed
         # files do not reach is left out. Non-PR events set every shard true.
         exclude:
           - shard: ${{ needs.scope.outputs.heavy != 'true' && 'heavy' || 'none' }}
           - shard: ${{ needs.scope.outputs.light != 'true' && 'light' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotlab' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotdraw' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotlink' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotmotion' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotbench' || 'none' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -1786,7 +1790,88 @@ jobs:
       - name: Browser gate — Robot Lab examples run their programs (line follower, wall stopper, colour explorer)
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
-        run: npm run verify:sim-lab -- --part=examples
+        run: npm run verify:sim-lab -- --part=examples --examples=line-follower,drawing-robot,wall-stopper,colour-explorer
+
+
+      - name: Browser gate — Robot Lab robotdraw examples 1
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=scale-echo,turnwise
+
+      - name: Browser gate — Robot Lab robotdraw examples 2
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=orbital-loom,tidal-trio,tidal-instructions
+
+      - name: Browser gate — Robot Lab robotdraw examples 3
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=ellipse-engine
+
+      - name: Browser gate — Robot Lab robotlink examples 1
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=seven-machines
+
+      - name: Browser gate — Robot Lab robotlink examples 2
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=arm-lift,straight-eight
+
+      - name: Browser gate — Robot Lab robotlink examples 3
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=expanded-machines,expanded-manual,mechanics-machines,mechanics-manual
+
+      - name: Browser gate — Robot Lab robotmotion examples 1
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=magnetic-chess,sarrus-lift
+
+      - name: Browser gate — Robot Lab robotmotion examples 2
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=quickstroke,orbit-mixer,phase-bridge
+
+      - name: Browser gate — Robot Lab robotmotion examples 3
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=survey-rover,forklift,pneumatic-press,timed-drive,sumo
+
+      - name: Browser gate — Robot Lab robotbench examples 1
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=oscillation-clutch,dynamics-machines
+
+      - name: Browser gate — Robot Lab robotbench examples 2
+        timeout-minutes: 8  # bounded groups retain the original per-step limit
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=lessons,physics-workshops
+
+      - name: Browser gate — Robot Lab automatic example blocks
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: |
+          PROOF_URL=http://localhost:8617/ node scripts/verify-example-auto-blocks.mjs
+
+      - name: Browser gate — Robot Lab compact controls and responsive toolbar
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: |
+          PROOF_URL=http://localhost:8617/ node scripts/verify-robot-lab-compact.mjs
+
+      - name: Browser gate — Robot Lab fixed model exports
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: |
+          node scripts/export-robot-lab-library.mjs artifacts/atlas-switchback/fixed-library artifacts/atlas-switchback/fixed-library.zip
+          PROOF_URL=http://localhost:8617/ node scripts/verify-robot-lab-model-exports.mjs
+
+      - name: Browser gate — Robot Lab drawing, resolver and fixed bench camera
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: |
+          BW_PREVIEW_URL=http://localhost:8617/ BW_PREVIEW_ENGINES=chromium node scripts/verify-sim-lab-preview-repairs.mjs
 
       - name: Browser gate — Robot Lab model insight, instructions and the no-WebGL fallback
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)

@@ -59,7 +59,7 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const EPS = 1e-6;
 
 /** Every toolbar control now on screen (and in the open menu): test id, name, tooltip, shortcut. */
-const controlsOf = page => page.evaluate(() => [...document.querySelectorAll('[data-testid="bw-sim-lab-toolbar"] button, [data-testid="bw-sim-lab-toolbar"] select')]
+const controlsOf = page => page.evaluate(() => [...document.querySelectorAll('[data-testid="bw-sim-lab-toolbar"] button, [data-testid="bw-sim-lab-toolbar"] select, [data-testid="bw-sim-lab-more-menu"] button, [data-testid="bw-sim-lab-more-menu"] select')]
     .filter(el => el.offsetParent !== null)
     .map(el => ({id: el.dataset.testid || null, label: el.getAttribute('aria-label'), title: el.getAttribute('title') || el.closest('[title]')?.getAttribute('title'),
         keys: el.getAttribute('aria-keyshortcuts'), role: el.getAttribute('role'), checked: el.getAttribute('aria-checked')})));
@@ -227,7 +227,14 @@ const partDragKeepsCamera = async page => {
 
 const partsOf = page => page.evaluate(() => window.__bwSimLab.editor.model.parts.length);
 const selectedOf = page => page.evaluate(() => window.__bwSimLab.editView.selection.length);
-const pressedOf = (page, id) => page.getByTestId(`bw-sim-lab-${id}`).getAttribute('aria-pressed');
+const pressedOf = async (page, id) => {
+    const button=page.getByTestId(`bw-sim-lab-${id}`);
+    const inMore=!(await button.isVisible());
+    if(inMore) await page.getByTestId('bw-sim-lab-more').click();
+    const pressed=await button.getAttribute('aria-pressed');
+    if(inMore) await page.getByTestId('bw-sim-lab-more').click();
+    return pressed;
+};
 
 /** Build: every action by a click, and the shortcuts by key, each with its effect. */
 const buildActions = async page => {
@@ -401,7 +408,7 @@ export const toolbarInteractions = async (page, {shotsDir, labels, full = true})
     const sim = await assertNamed(page, 'Simulate');
     for (const [id, name] of Object.entries(labels.simulate)) {
         const c = sim.find(x => x.id === `bw-sim-lab-${id}`);
-        assert.ok(c, `Simulate: ${id} is on the toolbar`);
+        assert.ok(c, `Simulate: ${id} is on the toolbar or in More`);
         assert.equal(c.label, name, `Simulate: ${id} is called "${name}"`);
     }
     // The File menu offers Open and the three Save formats.

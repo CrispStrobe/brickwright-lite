@@ -197,7 +197,7 @@ export const decide = (files, ctx) => {
     const verdicts = list.map(file => {
         const reached = ctx.reach.get(file);
         if (ROBOTLAB_ONLY.some(r => r.test(file))) {
-            const labels = new Set(['robotlab', ...(reached || [])]);
+            const labels = new Set([...ctx.browserShards.filter(s => s.startsWith('robot')), ...(reached || [])]);
             return {file, shards: expand(labels), why: 'robotlab source'};
         }
         if (SHARED.some(r => r.test(file))) return {file, shards: all(), why: 'shared input'};

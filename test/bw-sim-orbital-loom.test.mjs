@@ -21,7 +21,7 @@ const prepared = () => prepareModel(text, C, {
   mat: 'plain'
 });
 const read = p => {
-  const path = new URL('static/ldraw/' + p.toLowerCase(), GUI);
+  const path = new URL('static/ldraw/' + (p.toLowerCase() === 'ldconfig.ldr' ? 'LDConfig.ldr' : p.toLowerCase()), GUI);
   return existsSync(path) ? readFileSync(path, 'latin1') : undefined;
 };
 test('loom: 202 connected LEGO pieces, supported 20:60 drive, complete instructions and owner attribution', () => {

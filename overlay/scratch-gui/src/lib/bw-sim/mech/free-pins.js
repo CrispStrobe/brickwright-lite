@@ -56,7 +56,9 @@ export const freePinWelds = (nodes, islands, joints, {dangling = false} = {}) =>
         if (mine.some(j => j.type !== 'hinge' || j.motor || j.frictionNm || j.limits)) continue;
         // dangling (a model from elsewhere): a pin on ONE hinge, holding nothing (odin's 0.25 g 3673 at the end of a
         // linkage spun up to 500 rad/s and took the model to NaN), is welded to the part it hangs on.
-        if (mine.length === 1 && dangling) {
+        // After a pin folds into a beam, that whole beam is no longer a
+        // dangling pin. Only pure shafts can use the one-hinge reduction.
+        if (mine.length === 1 && dangling && metas.every(m => solidColliders(m).length === 0)) {
             out.push([body.id, mine[0].body1 === body.id ? mine[0].body2 : mine[0].body1]);
             continue;
         }

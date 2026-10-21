@@ -398,15 +398,25 @@ try {
         console.log('PASS Run without a loaded program says how to load one, and the robot stays put');
 
         // 2. The drive pad moves it with no program at all: hold ▲.
-        const drivePad = await reading(page);
+        if (process.env.SIM_DEBUG) await page.evaluate(() => {
+            const p=window.__bwSimLab._pane, log=window.__bwDriveEvents=[];
+            for(const name of ['drive','pause','startClock','stopClock','setManualOverride']) {
+                const original=p[name];p[name]=function(...args){log.push({name,args,time:this.session.time,status:this.state.status});return original.apply(this,args);};
+            }
+            p.session.onAdvance(()=>{if(log.length<60)log.push({time:p.session.time,motors:p.hub.data.motors.slice(0,2).map(m=>({...m}))});});
+            for(const type of ['pointerdown','pointerup','pointercancel','lostpointercapture']) document.addEventListener(type,e=>log.push({type,id:e.target?.dataset?.testid}),true);
+        });
         await openManualControls(page);
         const fwd = page.getByTestId('bw-sim-lab-drive-forward');
-        const fb = await fwd.boundingBox();
-        await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+        await fwd.hover();
+        // Measure the hold after opening the controls: Run keeps advancing
+        // while their layout settles, which is not time spent holding Drive.
+        const drivePad = await reading(page);
         await page.mouse.down();
         await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1500, drivePad.time, {timeout: 60000});
         await page.mouse.up();
         const driven = await reading(page);
+        if (process.env.SIM_DEBUG) console.log('Drive trace', JSON.stringify(await page.evaluate(()=>window.__bwDriveEvents)));
         assert.ok(driven.pos[2] < drivePad.pos[2] - 0.03, `holding ▲ drove forward: ${JSON.stringify({drivePad, driven})}`);
         assert.match(await page.getByTestId('bw-sim-lab-readout').textContent(), /A -?\d+°/);
         console.log(`PASS holding ▲ drives the robot ${((drivePad.pos[2] - driven.pos[2]) * 100).toFixed(1)} cm with no program`);
@@ -513,8 +523,14 @@ try {
         console.log('PASS Build: a pin snaps into a beam hole; undo and redo');
         await cadInteractions(page, beam.id, {shotsDir: artifacts});
         const builtInEditor = await count();
+        const editorSession = await page.evaluateHandle(() => window.__bwSimLab._pane.session);
         await page.getByTestId('bw-sim-lab-mode-simulate').click();
-        await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && ['ready', 'failed'].includes(window.__bwSimLab.status), null, {timeout: 60000});
+        await page.waitForFunction(previous => {
+            const lab=window.__bwSimLab;
+            return lab.mode === 'simulate' && ['ready','failed'].includes(lab.status) &&
+                lab._pane.session && lab._pane.session !== previous;
+        }, editorSession, {timeout: 60000});
+        await editorSession.dispose();
         const simulated = await page.evaluate(() => ({status: window.__bwSimLab.status, worker: window.__bwSimLab.worker, workerError: window.__bwSimLab.workerError,
             message: document.querySelector('[data-testid="bw-sim-lab-message"]')?.textContent || ''}));
         assert.equal(simulated.status, 'ready', `Simulate after Build: ${JSON.stringify(simulated)}`);

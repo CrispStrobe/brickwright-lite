@@ -1,3 +1,4 @@
+import {tool} from './sim-lab-toolbar-gate.mjs';
 import {openManualControls} from './sim-lab-manual-controls.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
@@ -207,7 +208,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
     const n0 = await countOf(page);
     await page.touchscreen.tap(narrowSpot[0], narrowSpot[1]);
     await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n + 1, n0, {timeout: 10000});
-    await page.getByTestId('bw-sim-lab-undo').tap();
+    await tool(page, 'undo', {tap: true});
     await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n, n0, {timeout: 10000});
     await settled(page);
     console.log('PASS touch, not full screen: the parts drawer, a tapped tile and a tap on the floor place a part; Undo takes it away');
@@ -217,6 +218,9 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab"]')?.dataset.layout === 'wide', null, {timeout: 10000});
     await page.getByTestId('bw-sim-lab-editor-canvas').waitFor({timeout: 60000});
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab.editor, null, {timeout: 60000});
+    // Actions which do not fit live in the same real More drawer used
+    // by the editor gate. Opening it keeps those touch targets reachable.
+    if (!(await page.getByTestId('bw-sim-lab-turn-back').isVisible())) await page.getByTestId('bw-sim-lab-more').tap();
     if (coarse) {
         // Every build-bar button is a finger-sized target.
         for (const id of ['mode-move', 'turn', 'turn-back', 'tip', 'duplicate', 'delete', 'copy', 'paste', 'select-all', 'cancel', 'undo', 'redo', 'view-fit']) {
@@ -226,6 +230,8 @@ export const touchInteractions = async (page, {shotsDir}) => {
     }
     // Every keyboard-only action has a button.
     for (const id of ['copy', 'paste', 'select-all', 'cancel', 'turn-back', 'view-fit']) await page.getByTestId(`bw-sim-lab-${id}`).waitFor();
+    const moreMenu = page.getByTestId('bw-sim-lab-more');
+    if (await moreMenu.getAttribute('aria-expanded') === 'true') await moreMenu.tap();
     const grid = await page.evaluate(() => window.__bwSimLab.editView.grid);
 
     // Tap a palette tile (it arms), then tap open floor: the part lands under the finger and is selected.
@@ -303,7 +309,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
     console.log('PASS touch: a long press on a part adds it to the selection, another removes it');
 
     // Long press on open floor, then drag: a box selects both beams.
-    await page.getByTestId('bw-sim-lab-cancel').tap();
+    await tool(page, 'cancel', {tap: true});
     await effect(page, () => window.__bwSimLab.editView.selection.length === 0);
     assert.deepEqual(await selectionOf(page), [], 'Cancel (Esc) clears the selection');
     const c1 = await screenOf(page, beam.id), c2 = await screenOf(page, beam2.id);
@@ -320,7 +326,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
 
     // The gizmo's X arrow by finger: drag diagonally between the X and Z arrows' screen directions;
     // the arrow keeps the move on x (a part drag would follow the finger in z too).
-    await page.getByTestId('bw-sim-lab-cancel').tap();
+    await tool(page, 'cancel', {tap: true});
     await page.touchscreen.tap(b1[0], b1[1]);
     await page.waitForFunction(id => window.__bwSimLab.editView.selection.join() === id, beam.id, {timeout: 5000});
     const g = await page.evaluate(() => {
@@ -350,35 +356,35 @@ export const touchInteractions = async (page, {shotsDir}) => {
 
     // The keyboard's actions on the build bar: Select all, Copy, Paste, Turn ↺, Undo.
     await countSelectAll(page);
-    await page.getByTestId('bw-sim-lab-select-all').tap();
+    await tool(page, 'select-all', {tap: true});
     await effect(page, () => window.__bwSimLab.editView.selection.length === window.__bwSimLab.editor.model.parts.length, undefined,
         {tapped: 'bw-sim-lab-select-all'});
     assert.equal((await selectionOf(page)).length, await countOf(page), 'Select all selects every part');
-    await page.getByTestId('bw-sim-lab-cancel').tap();
+    await tool(page, 'cancel', {tap: true});
     await effect(page, () => window.__bwSimLab.editView.selection.length === 0);
     assert.deepEqual(await selectionOf(page), []);
     const b1now = await screenOf(page, beam.id, ON_BEAM);
     await page.touchscreen.tap(b1now[0], b1now[1]);
     await page.waitForFunction(id => window.__bwSimLab.editView.selection.join() === id, beam.id, {timeout: 5000});
-    await page.getByTestId('bw-sim-lab-copy').tap();
+    await tool(page, 'copy', {tap: true});
     const n3 = await countOf(page);
-    await page.getByTestId('bw-sim-lab-paste').tap();
+    await tool(page, 'paste', {tap: true});
     // Paste may read the system clipboard first (asynchronous): wait for it, then check.
     await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length >= n + 1, n3, {timeout: 5000});
     assert.equal(await countOf(page), n3 + 1, 'Paste adds the copied part');
-    await page.getByTestId('bw-sim-lab-undo').tap();
+    await tool(page, 'undo', {tap: true});
     await effect(page, n => window.__bwSimLab.editor.model.parts.length === n, n3);
     assert.equal(await countOf(page), n3, 'Undo takes the copy away');
     await settled(page);
     if ((await selectionOf(page)).length) {
-        await page.getByTestId('bw-sim-lab-cancel').tap();
+        await tool(page, 'cancel', {tap: true});
         await effect(page, () => window.__bwSimLab.editView.selection.length === 0);
     }
     const b1turn = await screenOf(page, beam.id, ON_BEAM);
     await page.touchscreen.tap(b1turn[0], b1turn[1]);
     await page.waitForFunction(id => window.__bwSimLab.editView.selection.join() === id, beam.id, {timeout: 5000});
     const r0 = (await pose(page, beam.id)).rotation;
-    await page.getByTestId('bw-sim-lab-turn-back').tap();
+    await tool(page, 'turn-back', {tap: true});
     await effect(page, ([id, r]) => JSON.stringify(window.__bwSimLab.editor.model.parts.find(p => p.id === id).rotation) !== JSON.stringify(r), [beam.id, r0]);
     const r1 = (await pose(page, beam.id)).rotation;
     assert.notDeepEqual(r1, r0, `Turn ↺ turns the selection (${await page.getByTestId('bw-sim-lab-build-status').textContent()})`);
@@ -386,7 +392,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-turn').tap();
     await effect(page, ([id, r]) => JSON.stringify(window.__bwSimLab.editor.model.parts.find(p => p.id === id).rotation) === JSON.stringify(r), [beam.id, r0]);
     assert.deepEqual((await pose(page, beam.id)).rotation, r0, 'Turn ↻ after Turn ↺ is back where it started');
-    await page.getByTestId('bw-sim-lab-undo').tap();
+    await tool(page, 'undo', {tap: true});
     await effect(page, ([id, r]) => JSON.stringify(window.__bwSimLab.editor.model.parts.find(p => p.id === id).rotation) === JSON.stringify(r), [beam.id, r1]);
     assert.deepEqual((await pose(page, beam.id)).rotation, r1, 'Undo takes back the last turn');
     console.log('PASS touch: Select all, Copy, Paste, Turn ↺ and Undo work from the build bar');

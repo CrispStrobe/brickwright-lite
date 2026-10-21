@@ -10,7 +10,9 @@ import {openRobotLabTab} from './lib/sim-lab-toolbar-gate.mjs';
 import {judgeAxisPlotter} from './lib/sim-lab-axis-plotter-judge.mjs';
 const url=process.env.BW_PREVIEW_URL||'http://127.0.0.1:8767/';
 const dir=resolve('artifacts/preview-repairs');mkdirSync(dir,{recursive:true});
-for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
+const engines = process.env.BW_PREVIEW_ENGINES?.split(',') || ['chromium','webkit'];
+assert.ok(engines.length && engines.every(e=>['chromium','webkit'].includes(e)));
+for(const [name,type] of [['chromium',chromium],['webkit',webkit]].filter(([name])=>engines.includes(name))){
  const browser=await type.launch({headless:true,...(name==='chromium'?{args:['--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader']}: {})});
  try{
   const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});

@@ -1798,10 +1798,13 @@ class SimLabPane extends React.Component {
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
     drive (direction) {
         if (!this.session || !this.session.bridge || !this.spikeScene()) return;
-        if (direction !== 'stop' && !this.state.manualOverride) this.setManualOverride(true);
+        const enablingOverride = direction !== 'stop' && !this.state.manualOverride;
+        if (enablingOverride) this.setManualOverride(true);
         const hub = this.hub;
         hub.setSimulationEnabled(true);
-        if (this.state.status !== 'running') {
+        // Enabling override pauses synchronously, while React's status update
+        // is deferred. Reinstall the clock even when state still says running.
+        if (enablingOverride || this.state.status !== 'running') {
             this.startClock();
             this.setState({status: 'running'});
         }
@@ -2635,7 +2638,7 @@ class SimLabPane extends React.Component {
                     title={this.text.infoToggle} onClick={() => this.setState(st => ({infoOpen: !st.infoOpen}))}><Icon name="help" /></button>}
                 {this.state.mode === 'simulate' && <button type="button" data-testid="bw-sim-lab-controls-toggle"
                     aria-expanded={this.state.controlsOpen} aria-label={this.locale === 'de' ? 'Manuelle Steuerung' : 'Manual controls'}
-                    title={this.locale === 'de' ? 'Fahren und Motoren' : 'Drive and motors'} style={s.button}
+                    title={this.locale === 'de' ? 'Manuelle Steuerung: Fahren und Motoren' : 'Manual controls: drive and motors'} style={s.button}
                     onClick={() => {
                         if (this.state.controlsOpen && this.state.manualOverride) this.setManualOverride(false);
                         if (this.driving) this.drive('stop');
