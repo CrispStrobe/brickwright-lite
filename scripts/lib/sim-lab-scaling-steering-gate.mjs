@@ -20,5 +20,10 @@ export async function scalingSteeringLesson(page,opts,language){
   await opts.openSimLab(page,{program:null});await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');await gallery.getByRole('searchbox').fill(id);await gallery.locator(`[data-model="${id}.ldr"]`).getByRole('button',{name:/Modell/}).click();await gallery.waitFor({state:'hidden'});
  }
  await page.getByTestId('bw-sim-lab-lesson').click();const lesson=page.getByTestId('bw-sim-lesson');await page.waitForFunction(id=>document.querySelector('[data-testid="bw-sim-lesson"]')?.dataset.lesson===id,id);
- await lesson.getByRole('button',{name:language==='de'?'Erklärung zeigen':'Show explanation',exact:true}).click();assert.ok((await lesson.getByTestId('bw-sim-lesson-answer').textContent()).length>100);await lesson.screenshot({path:resolve(opts.shotsDir,id+'-lesson-'+language+'.png')});await lesson.getByRole('button',{name:language==='de'?'Lektion schließen':'Close lesson',exact:true}).click();
+ await lesson.getByRole('button',{name:language==='de'?'Erklärung zeigen':'Show explanation',exact:true}).click();assert.ok((await lesson.getByTestId('bw-sim-lesson-answer').textContent()).length>100);await lesson.screenshot({path:resolve(opts.shotsDir,id+'-lesson-'+language+'.png')});if(process.env.SIM_DEBUG) await page.evaluate(label=>{
+  const element=document.querySelector(`[aria-label="${label}"]`),trace=window.__bwLessonButtonTrace=[];
+  const sample=()=>{if(!element?.isConnected)return;const r=element.getBoundingClientRect();trace.push({t:performance.now(),rect:[r.x,r.y,r.width,r.height],hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.getAttribute('aria-label'),visibility:document.visibilityState,focused:document.hasFocus()});if(trace.length>120)trace.shift();requestAnimationFrame(sample);};sample();
+ },language==='de'?'Lektion schließen':'Close lesson');
+ try {await lesson.getByRole('button',{name:language==='de'?'Lektion schließen':'Close lesson',exact:true}).click();}
+ catch(error){if(process.env.SIM_DEBUG)console.log('Lesson close trace',id,language,JSON.stringify(await page.evaluate(()=>window.__bwLessonButtonTrace)));throw error;}
 }

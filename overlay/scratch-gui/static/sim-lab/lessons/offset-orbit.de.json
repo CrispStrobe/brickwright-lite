@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "offset-orbit",
+  "language": "de",
+  "what": "Offset Orbit überträgt eine Drehung zwischen zwei parallelen Wellen, deren Achsen 16 mm auseinanderliegen. Ein Motor treibt den Eingang an. Ein frei bewegliches Kreuz verbindet zwei rechtwinklige Schiebeführungen und dreht den passiven Ausgang um denselben Winkel. Die orangefarbene Mittelmarkierung zeigt eine zweite, überraschende Bewegung: Ihr Mittelpunkt durchläuft pro Wellenumdrehung zweimal einen Kreis mit 16 mm Durchmesser. Ein Motor treibt über zwei senkrecht zueinander stehende Schiebeführungen eine parallel versetzte Welle mit gleicher Drehbewegung an. Das schwimmende Kreuz dreht sich einmal, während sein Mittelpunkt pro Eingangsumdrehung zweimal umläuft.",
+  "try": [
+    "Wähle dieses Beispiel und starte es. Beobachte die angetriebenen und passiven Teile. Setze vor einem neuen Lauf zurück.",
+    "Zähle die Umläufe der orangefarbenen Mittelmarkierung während der zwei Vorwärtsumdrehungen. Sage vorher, ob es zwei oder vier werden, und vergleiche danach mit der aufgezeichneten Bahn. Bei der Rückfahrt kehren sich Wellen- und Umlaufbewegung um.",
+    "Verfolge die Ausrichtungen von Eingang, Mittelkreuz und Ausgang und beobachte gleichzeitig beide Schiebeführungen. Alle drei Körper drehen sich um denselben Winkel, während die beiden Verschiebungen um eine Viertelperiode versetzt ablaufen. Nach jeder halben Wellenumdrehung erreicht die Mittelmarkierung erneut ihre Anfangsposition."
+  ],
+  "why": "Jedes Paar paralleler Führungsachsen erlaubt eine Verschiebung und hält die verbundenen Körper zueinander ausgerichtet. Die beiden Führungsrichtungen stehen senkrecht aufeinander. Deshalb schneiden sich ihre in die Mechanismusebene projizierten Mittellinien immer in einem Punkt C. Sind A und B die Wellenachsen und u der Einheitsvektor der Eingangsführung, gilt C = A + u[u·(B − A)]. Während sich u einmal dreht, läuft dieser Punkt zweimal um einen Kreis mit Mittelpunkt zwischen A und B. Gleichzeitig halten die Schiebeführungen Eingang und Ausgang im Winkelverhältnis 1:1.",
+  "matters": "Eine Oldham-Kupplung gleicht parallelen Wellenversatz durch Gleiten aus. Ihr Ausgang bleibt mit dem Eingang synchron, während das Mittelstück fortwährend seine Position ändert. Dieses Experiment macht die zusätzliche Verschiebung sichtbar. Jede Schiebeführung besitzt zwei parallele Achsen gegen unerwünschtes Verrollen; ein starres Mittelkreuz verbindet die beiden axial getrennten Führungsebenen.",
+  "question": "Nach einer halben Eingangsumdrehung liegt die orangefarbene Mittelmarkierung wieder an ihrer Anfangsposition. Ist der gesamte Mechanismus damit in seiner Ausgangslage?",
+  "answer": "Die Mittelpunktposition hat sich wiederholt, aber Eingang, Mittelkreuz und Ausgang haben sich jeweils um 180° gedreht. Auch die Vorzeichen der Schiebepositionen sind vertauscht. Eine Markierung am Körper unterscheidet diese Ausrichtungen, selbst wenn sein Mittelpunkt denselben Ort erreicht. Die vollständige Ausrichtung wiederholt sich nach einer Wellenumdrehung; der Mittelpunkt durchläuft dabei zwei Kreise.",
+  "further": [
+    "Der Wellenversatz von 16 mm bestimmt einen Bahnradius von 8 mm. Eine volle Wellenumdrehung ergibt zwei Kreisumläufe. Ein größerer Versatz würde bei einem getrennt geprüften Umbau den Kreis und den erforderlichen Hub beider Führungen vergrößern.",
+    "Vergleiche Ellipse Engine: Auch dort wirken zwei rechtwinklige Schiebeführungen, jedoch sind andere Glieder der Kette festgehalten. Phase Bridge überträgt die Drehung über Kreuzgelenke zwischen gegeneinander geneigten Wellen."
+  ],
+  "formula": "Mechanismusebene: e = |B − A| = 16 mm; M = (A + B)/2; C = A + u[u·(B − A)]; |C − M| = e/2 = 8 mm. Mit einer gemeinsamen positiven Wellenachse: Δθ_Ausgang = Δθ_Eingang und Δβ_Mittelpunkt = 2Δθ_Eingang. Eingang +720° → Ausgang +720° und Mittelpunktumlauf +1440°; die Rückfahrt kehrt alle Richtungen um. Das Mittelstück selbst dreht sich mit der Wellendrehzahl.",
+  "related": [
+    "ellipse-engine.ldr",
+    "phase-bridge.ldr",
+    "pantograph-doubler.ldr"
+  ]
+}

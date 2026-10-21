@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "ripple-relay",
+  "language": "en",
+  "what": "One motor turns three shafts joined by two universal joints. The middle shaft speeds up and slows down twice per turn, while the correctly phased output recovers uniform rotation. Two equally bent, correctly phased universal joints cancel the intermediate shaft’s speed ripple. Compare all three shafts.",
+  "try": [
+    "Select Ripple Relay, reset and run. Compare the yellow input, red middle and blue output pointers during the three forward turns and return.",
+    "Pause after the slow approach home. Compare each pointer with its own saved orientation; the motor finishes holding at zero.",
+    "Compare Phase Bridge and its misphased variant. Predict which output should retain a speed ripple before running."
+  ],
+  "why": "A single Cardan joint at a fixed bend transmits angle nonlinearly. With a 36.87° bend, cos β=0.8, so the instantaneous middle/input speed ratio varies from 0.8 to 1.25. The second equally bent, correctly phased joint applies the inverse angular mapping. It cancels the angle distortion at the output while the middle shaft still ripples.",
+  "matters": "Drive shafts use phasing and equal bend angles to reduce output-speed variation. This model demonstrates kinematics; it does not measure a real torque rating, bearing friction, cable routing or physical build tolerances.",
+  "question": "Does a constant-speed output mean the middle shaft also turns at constant speed?",
+  "answer": "No. The middle shaft still has two accelerations and decelerations per input turn. The second joint cancels that distortion at the output. At 45°/s input the ideal middle speed spans 36–56.25°/s.",
+  "further": [
+    "Compare the 6.39° middle-shaft phase lead with the nearly zero output phase difference.",
+    "Try the separately modelled misphased Phase Bridge. Equal bend angles alone are insufficient: fork orientation matters."
+  ],
+  "formula": "cos β = 0.8; φ = atan2(sin θ, 0.8 cos θ), unwrapped; correct second joint: ψ = θ; dφ/dθ = 0.8/(0.64 cos²θ + sin²θ).",
+  "related": [
+    "phase-bridge.ldr",
+    "phase-bridge-misphased.ldr",
+    "crossglide.ldr"
+  ]
+}

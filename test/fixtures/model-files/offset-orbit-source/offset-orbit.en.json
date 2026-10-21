@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "offset-orbit",
+  "language": "en",
+  "what": "Offset Orbit sends rotation between two parallel shafts whose axes are 16 mm apart. One motor drives the input; a floating cross connects two perpendicular sliding guides and turns the passive output through the same angle. The orange middle marker has a second, surprising motion: its centre makes two circuits of a 16 mm-diameter circle for every one shaft turn.",
+  "try": [
+    "Reset to the saved pose and run the finite example. Motor A turns forward twice at 60°/s, pauses, returns to its starting encoder angle and finishes in hold. Watch the passive output separately from the motor.",
+    "Count the orange centre marker's circuits during the two forward shaft turns. Predict whether there will be two or four, then compare with the recorded path. The return stage reverses the shaft and the orbital motion.",
+    "Follow the input, middle cross and output orientations while watching both sliding interfaces. All three bodies turn through the same angle, while the guide displacements alternate in quadrature. At each half-turn of the shaft, the centre marker reaches its starting position again."
+  ],
+  "why": "Each pair of parallel rails permits sliding and keeps the connected bodies aligned. The two guide directions are perpendicular, so their projected centre lines always intersect at one point C. If A and B are the shaft axes and u is the input guide's unit direction, then C = A + u[u·(B − A)]. As u rotates once, this point goes twice around a circle centered halfway between A and B. The sliding constraints also keep input and output at a 1:1 angular relationship.",
+  "matters": "An Oldham coupling accommodates parallel shaft offset using sliding motion. Its output remains synchronized with the input even while the middle member continually changes position. This experiment makes the extra translation visible. The source geometry uses two rails per sliding interface to restrain unwanted roll, and a rigid middle cross connects the two separated guide layers.",
+  "question": "After half an input turn, the orange centre marker is back at its starting position. Has the whole mechanism returned to its starting configuration?",
+  "answer": "The centre position has repeated, but the input, middle cross and output have each turned 180°. The sliding positions have also exchanged their signs. A marked body distinguishes these orientations even when its centre follows the same point. The full orientation repeats after one shaft turn; the centre completes two circles during that turn.",
+  "further": [
+    "The 16 mm shaft offset fixes an 8 mm orbit radius. A full shaft turn produces two orbital circuits. Increasing offset in a separate qualified rebuild would enlarge that circle and increase each slider's required travel.",
+    "Compare Ellipse Engine: it also uses two perpendicular sliding constraints, but fixes different members of the chain. Compare Phase Bridge, which transfers rotation across angled shafts through universal joints.",
+    "Cornell's Reuleaux collection identifies the historical mechanism as Model Z5, Oldham's Coupling: https://digital.library.cornell.edu/catalog/ss%3A29272036. This model uses original stock-part geometry and an independent derivation; no Cornell media is copied.",
+    "The frozen 141-part model passed all 44 predeclared native checks in ordinary preparation: 720.198167° of measured forward input produced 720.198171° of passive output and 1440.363716° of centre winding. Across 791 poses, maximum output phase error was 0.003845° and maximum marker-path error was 0.044469 mm. The source-defined path was not fitted to observations. See ../validation/evidence/ordinary/offset-orbit-acceptance.json.",
+    "Ordinary preparation replaces the redundant passive output hinge with a ball joint; both real two-rail sliding constraints remain. Their orientation chain still restrains the output, and actual output-axis alignment, output phase and physical joint closure were checked independently. No prescribed output motion or runtime modification was used.",
+    "Construction geometry and native motion are separate evidence. Browser operation and a physical LEGO build remain UNTESTED. Real guide friction, clearance, axle flexibility and the flexible cable route are not certified by the native pass. The initial unsupported 138-part candidate failed its startup guard; the preserved development record explains the corrected floor support and unchanged numerical gates."
+  ],
+  "formula": "Mechanism plane: e = |B − A| = 16 mm; M = (A + B)/2; C = A + u[u·(B − A)]; |C − M| = e/2 = 8 mm. With one common positive shaft axis: Δθ_output = Δθ_input and Δβ_centre = 2Δθ_input. Input +720° → output +720° and centre orbit +1440°; return reverses all three. The middle body itself turns at the shaft rate.",
+  "related": [
+    "ellipse-engine.ldr",
+    "phase-bridge.ldr",
+    "pantograph-doubler.ldr"
+  ]
+}

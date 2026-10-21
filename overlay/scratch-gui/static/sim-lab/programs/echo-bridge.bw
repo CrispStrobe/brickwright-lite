@@ -1,0 +1,74 @@
+DEVICE SPIKE
+# ECHO BRIDGE - one brief support pulse, then two genuinely free pendulums.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Import Echo Bridge in Robot Lab first. Reset restores the level-pivot datum.
+# A timed speed pulse is intentional: no unreachable large-angle target is claimed.
+# Each return uses target minus the freshly read unwrapped motor encoder.
+# A bounded low-speed encoder trim puts the supports level before observation.
+WHEN flag clicked:
+  set complete to 0
+  set fault to 0
+  set phase to 0
+  if (lab status) = "no-model" then:
+    say "Import Echo Bridge in Robot Lab first."
+    stop all
+  reset timer
+  broadcast "Echo Bridge watchdog"
+  lab start
+  lab stop motor A coast
+  wait 5 seconds
+  if (abs of (lab motor A angle)) > 1 then:
+    set fault to 1
+    say "Coast startup moved the carrier too far. Reset and inspect the support."
+    lab stop motor A hold
+    stop all
+  set phase to 1
+  lab stop motor A hold
+  wait 0.5 seconds
+  lab run motor A at 300 degrees per second
+  wait 0.25 seconds
+  lab stop motor A hold
+  wait 0.1 seconds
+  set excursion to (lab motor A angle)
+  if excursion < 30 or excursion > 90 then:
+    set fault to 1
+    say "Pulse excursion outside 30 to 90 degrees. Reset before retrying."
+    lab stop motor A hold
+    stop all
+  lab run motor A for (0 - (lab motor A angle)) degrees at 180 degrees per second
+  lab stop motor A hold
+  wait 0.15 seconds
+  set trimAttempts to 0
+  repeat until (abs of (lab motor A angle)) < 0.15 or trimAttempts > 30:
+    if (lab motor A angle) > 0 then:
+      lab run motor A at -2 degrees per second
+    else:
+      lab run motor A at 2 degrees per second
+    wait 0.02 seconds
+    change trimAttempts by 1
+  lab stop motor A hold
+  wait 0.25 seconds
+  if (abs of (lab motor A angle)) > 0.3 or trimAttempts > 30 then:
+    set fault to 1
+    say "Level-pivot return failed. The motor must be within 0.3 degrees of zero."
+    lab stop motor A hold
+    stop all
+  set phase to 2
+  say "Motor held at zero. Watch the two free pendulums exchange motion."
+  wait 20 seconds
+  if (abs of (lab motor A angle)) > 0.3 then:
+    set fault to 1
+    say "The support drifted during observation. Reset before retrying."
+    lab stop motor A hold
+    stop all
+  set complete to 1
+  say "Complete: compare the changing left and right amplitudes."
+
+WHEN I receive "Echo Bridge watchdog":
+  repeat until complete = 1:
+    if timer > 36 then:
+      set fault to 1
+      lab stop motor A hold
+      say "36 second watchdog: stopped and holding. Reset before retrying."
+      stop all
+    wait 0.02 seconds

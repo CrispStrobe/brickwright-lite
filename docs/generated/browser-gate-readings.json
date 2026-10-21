@@ -7622,6 +7622,84 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 Robot Lab pantograph-doubler complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab scale-studio complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab ripple-relay complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab crossglide complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab offset-orbit complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab ellipsa complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab momentum-twins complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab bloom-gate complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab amplify complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab echo-bridge complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab linger complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab crossline complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab bit-keeper complete example": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

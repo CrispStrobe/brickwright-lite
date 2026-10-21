@@ -2464,6 +2464,605 @@
         "sarrus-lift.ldr",
         "parallel-lift.ldr"
       ]
+    },
+    "pantograph-doubler": {
+      "en": {
+        "what": "Pantograph Doubler uses one motor to move input point C around a small circle. Four passive bars carry the free endpoint E around a circle with twice the diameter. Viewed from above, at every position the planar vector from the fixed pivot O to E is twice the vector from O to C. The moving points demonstrate a trajectory; the model does not claim physical pen or ink contact.",
+        "try": [
+          "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
+          "Watch the input joint C and the free endpoint E through a quarter-turn. Compare their directions and distances from the fixed pivot O: in the top view O, C and E stay on one line, with E twice as far from O.",
+          "Compare the two complete paths. Predict their diameters before measuring: the input circle is 32 mm across and the output circle is 64 mm across. Check that both points return to their own starting positions."
+        ],
+        "why": "The long bars OB and BE each span 96 mm between their end holes. A and D are their midpoints, while the short bars AC and CD each span 48 mm. These lengths form the parallelogram A–B–D–C. If u is the vector OA and v is the vector AC, then C = u + v and E = 2u + 2v. In the XZ projection, the endpoint therefore follows E − O = 2(C − O), without a separate output guide.",
+        "matters": "Pantographs transfer a two-dimensional motion at a chosen scale. This geometry is useful in drawing enlargers and motion-copying mechanisms. Here the output has twice the input speed at corresponding instants and travels twice as far. That motion gain is a geometric relation; this experiment does not measure available force or performance under a tool load.",
+        "question": "If the output circle has twice the input diameter, does it enclose twice the area?",
+        "answer": "It encloses four times the area. Both planar coordinates are multiplied by two, so lengths and corresponding speeds double while area is multiplied by 2 × 2 = 4. The circle centre also moves twice as far from O: the output is a dilation about O, not just a larger circle about the motor axis.",
+        "further": [
+          "At the saved starting pose, C is 64 mm from O along +X and E is 128 mm from O. After a quarter-turn in the positive geometric direction, C = (80, −16) mm and E = (160, −32) mm in the XZ plane.",
+          "Compare Parallel Lift, which preserves the orientation of a platform, with this pantograph, which scales the position of a point. Compare Straight Eight, whose Peaucellier linkage maps its permitted input arc to a straight line.",
+          "Find the historical pantograph in Henry T. Brown’s 507 Mechanical Movements, movement 246: https://507movements.com/mm_246.html. The current model uses ordinary pinned beams to demonstrate the same scaling principle."
+        ]
+      },
+      "de": {
+        "what": "Im Modell Pantograf — Bewegungsverdoppler bewegt ein Motor den Eingangspunkt C auf einem kleinen Kreis. Vier passive Stäbe führen den freien Endpunkt E auf einem Kreis mit doppeltem Durchmesser. In der Draufsicht ist der Vektor vom festen Drehpunkt O zu E in jeder Stellung doppelt so groß wie der Vektor von O zu C. Die beweglichen Punkte zeigen eine Bahn; ein tatsächlicher Kontakt zwischen Stift und Zeichenfläche wird nicht vorausgesetzt.",
+        "try": [
+          "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
+          "Beobachte das Eingangsgelenk C und den freien Endpunkt E während einer Vierteldrehung. Vergleiche in der Draufsicht ihre Richtungen und Abstände vom festen Drehpunkt O: O, C und E liegen auf einer Geraden, und E ist doppelt so weit von O entfernt.",
+          "Vergleiche die beiden vollständigen Bahnen. Sage ihre Durchmesser vor dem Messen voraus: Der Eingangskreis hat 32 mm, der Ausgangskreis 64 mm Durchmesser. Prüfe, ob beide Punkte zu ihrer jeweiligen Ausgangslage zurückkehren."
+        ],
+        "why": "Die langen Stäbe OB und BE haben jeweils 96 mm Abstand zwischen ihren äußeren Löchern. A und D sind ihre Mittelpunkte; die kurzen Stäbe AC und CD haben jeweils 48 mm Lochabstand. Dadurch entsteht das Parallelogramm A–B–D–C. Bezeichnet u den Vektor OA und v den Vektor AC, gilt C = u + v und E = 2u + 2v. In der XZ-Projektion folgt der Endpunkt daher E − O = 2(C − O), ohne eine zusätzliche Führung am Ausgang.",
+        "matters": "Pantografen übertragen eine Bewegung in zwei Dimensionen in einem gewählten Maßstab. Diese Geometrie lässt sich zum Vergrößern von Zeichnungen und zum Kopieren von Bewegungsbahnen nutzen. Hier ist der Ausgangspunkt zu jedem Zeitpunkt doppelt so schnell wie der Eingangspunkt und legt den doppelten Weg zurück. Diese Bewegungsverstärkung ist eine geometrische Beziehung; das Experiment misst weder die verfügbare Kraft noch das Verhalten unter einer Werkzeuglast.",
+        "question": "Wenn der Ausgangskreis den doppelten Durchmesser hat, ist seine eingeschlossene Fläche ebenfalls doppelt so groß?",
+        "answer": "Die Fläche ist viermal so groß. Beide Koordinaten in der Ebene werden mit zwei multipliziert. Dadurch verdoppeln sich Längen und entsprechende Geschwindigkeiten, während sich die Fläche mit 2 × 2 = 4 vervielfacht. Auch der Kreismittelpunkt ist doppelt so weit von O entfernt: Die Bahn entsteht durch eine zentrische Streckung um O, nicht nur durch einen größeren Kreis um die Motorachse.",
+        "further": [
+          "In der gespeicherten Ausgangslage liegt C in +X-Richtung 64 mm von O entfernt, E liegt 128 mm entfernt. Nach einer Vierteldrehung in positiver geometrischer Richtung gilt in der XZ-Ebene C = (80, −16) mm und E = (160, −32) mm.",
+          "Vergleiche Parallel Lift, das die Ausrichtung einer Plattform beibehält, mit diesem Pantografen, der die Position eines Punktes maßstäblich überträgt. Vergleiche auch Straight Eight: Dessen Peaucellier-Getriebe bildet den zulässigen Eingangsbogen auf eine Gerade ab.",
+          "Den historischen Pantografen findest du in Henry T. Browns 507 Mechanical Movements unter Bewegung 246: https://507movements.com/mm_246.html. Das aktuelle Modell zeigt dasselbe Skalierungsprinzip mit gewöhnlichen, durch Pins verbundenen Stäben."
+        ]
+      },
+      "formula": {
+        "en": "XZ plane, lengths in mm; q = 0 at crank +Z. O = (0, 0); S = (64, −16); C(q) = (64 + 16 sin q, −16 + 16 cos q); E − O = 2(C − O). Input radius = 16 mm; output radius = 32 mm; diameter 32 → 64 mm; area ×4.",
+        "de": "XZ-Ebene, Längen in mm; q = 0 bei Kurbelstellung +Z. O = (0, 0); S = (64, −16); C(q) = (64 + 16 sin q, −16 + 16 cos q); E − O = 2(C − O). Eingangsradius = 16 mm; Ausgangsradius = 32 mm; Durchmesser 32 → 64 mm; Fläche ×4."
+      },
+      "related": [
+        "parallel-lift.ldr",
+        "straight-eight.ldr",
+        "axis-plotter.ldr"
+      ]
+    },
+    "scale-studio": {
+      "en": {
+        "what": "One motor turns the orange crank while a passive pantograph moves the red tip. Two long arms and two short links make the output displacement exactly twice the input displacement in ideal planar geometry. A 32 mm input circle becomes a 64 mm output circle without a second motor.",
+        "try": [
+          "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
+          "Use a top view. Compare each point with its own circle center: both complete one revolution per crank turn, although the blue arms rock through changing angles. Compare the two circle diameters.",
+          "At corresponding pauses, compare the two projected vectors from the fixed origin O. The red tip should lie on the same ray as D and twice as far from O. Use measured positions to judge the model; an encoder reaching its target alone does not prove this relationship."
+        ],
+        "why": "The pivot spacing makes a parallelogram. Write the two equal-length link vectors as u and v, each 32 mm long. Then A=u, B=2u, D=u+v, C=2u+v and P=2u+2v, measured from O. Therefore P=2D for every configuration on this assembly branch. The motor only moves the input crank; the links impose the scale factor. The 3D parts occupy different layers, so the scale equation refers to coordinates projected into the chassis plane.",
+        "matters": "Pantographs transfer and scale a path in copying and engraving mechanisms. A scale factor of two doubles displacement and ideal speed; it does not create extra mechanical work. For corresponding tangential input and output forces, an ideal lossless mechanism gives half the force at the output. This is a kinematic and virtual-work explanation, not a measured force rating.",
+        "question": "The input traces a circle 32 mm in diameter. Predict the output diameter, its circumference relative to the input circle, and the area enclosed by it. Does doubling the path size require two output revolutions?",
+        "answer": "The output diameter is 64 mm. Its circumference is twice the input circumference and its enclosed area is four times the input area. Both points complete one circle per crank revolution; the output travels twice as far in the same time. At constant crank speed between pauses, its ideal tip speed is therefore twice as large.",
+        "further": [
+          "Predict a local change before measuring: any 8 mm input displacement vector corresponds to a 16 mm output displacement vector in the same direction. Reversing the crank retraces the same ideal path.",
+          "Compare Twinpoint: its two motor inputs coordinate a five-bar mechanism. Scale Studio has one motor and a passive geometric scale relation. Compare Mean Machine: its differential combines two rotations, while this pantograph scales planar displacement.",
+          "The equations describe rigid links and ideal joints. Predict how joint play, friction, flex or a tool load could change the observed path; this demonstration does not measure a real tool’s force rating."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht die orange Kurbel; ein passiver Pantograph bewegt die rote Spitze. Zwei lange Arme und zwei kurze Koppelglieder verdoppeln in der idealen ebenen Geometrie jede Verschiebung des Eingangspunkts. Aus einem Eingangskreis mit 32 mm Durchmesser wird ohne zweiten Motor ein Ausgangskreis mit 64 mm Durchmesser.",
+        "try": [
+          "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
+          "Nutze die Draufsicht. Vergleiche jeden Punkt mit seinem eigenen Kreismittelpunkt: Beide durchlaufen pro Kurbelumdrehung genau einen Kreis, während die blauen Arme mit veränderlichem Winkel schwingen. Vergleiche die beiden Kreisdurchmesser.",
+          "Vergleiche bei entsprechenden Pausen die beiden in die Ebene projizierten Vektoren vom festen Ursprung O aus. Die rote Spitze sollte auf demselben Strahl wie D und doppelt so weit von O entfernt liegen. Beurteile dies anhand gemessener Positionen; ein erreichter Motorzielwinkel allein beweist diese Beziehung nicht."
+        ],
+        "why": "Die Gelenkabstände bilden ein Parallelogramm. Bezeichne die beiden gleich langen Gliedvektoren mit u und v; beide sind 32 mm lang. Vom Ursprung O aus gilt dann A=u, B=2u, D=u+v, C=2u+v und P=2u+2v. Somit gilt P=2D für jede Stellung dieses Montagezweigs. Der Motor bewegt nur die Eingangskurbel; die Glieder bestimmen den Maßstab. Die dreidimensionalen Teile liegen in verschiedenen Schichten. Die Maßstabsgleichung bezieht sich deshalb auf ihre in die Chassisebene projizierten Koordinaten.",
+        "matters": "Pantographen übertragen und vergrößern Bahnen in Kopier- und Graviermechanismen. Der Maßstab zwei verdoppelt Weg und ideale Geschwindigkeit; dadurch entsteht keine zusätzliche mechanische Arbeit. Bei entsprechenden tangentialen Eingangs- und Ausgangskräften liefert ein ideales verlustfreies Gestänge am Ausgang die halbe Kraft. Dies erklärt Kinematik und virtuelle Arbeit und ist keine gemessene Kraftangabe.",
+        "question": "Der Eingang zeichnet einen Kreis mit 32 mm Durchmesser. Sage den Ausgangsdurchmesser, das Verhältnis der Kreisumfänge und das Verhältnis der eingeschlossenen Flächen voraus. Muss der Ausgang für die doppelte Bahngröße zwei Umläufe machen?",
+        "answer": "Der Ausgangsdurchmesser beträgt 64 mm. Sein Umfang ist doppelt so groß und seine eingeschlossene Fläche viermal so groß wie beim Eingangskreis. Beide Punkte durchlaufen pro Kurbelumdrehung einen Kreis; der Ausgang legt in derselben Zeit den doppelten Weg zurück. Bei konstanter Kurbelgeschwindigkeit zwischen den Pausen ist seine ideale Spitzengeschwindigkeit deshalb doppelt so groß.",
+        "further": [
+          "Sage vor dem Messen eine lokale Änderung voraus: Zu jedem Verschiebungsvektor von 8 mm am Eingang gehört ein Ausgangsvektor von 16 mm in derselben Richtung. Eine Umkehr der Kurbel durchläuft dieselbe ideale Bahn rückwärts.",
+          "Vergleiche Twinpoint: Dort koordinieren zwei Motoreingänge einen Fünfgelenkmechanismus. Scale Studio hat einen Motor und ein passives geometrisches Maßstabsverhältnis. Vergleiche Mean Machine: Dessen Differential kombiniert zwei Drehungen, während dieser Pantograph Verschiebungen in einer Ebene vergrößert.",
+          "Die Gleichungen beschreiben starre Glieder und ideale Gelenke. Überlege, wie Spiel, Reibung, Verformung oder Werkzeuglast die beobachtete Bahn verändern könnten; das Beispiel misst keine reale Werkzeugkraft."
+        ]
+      },
+      "formula": {
+        "en": "All coordinates are in mm in the chassis XZ plane; θ is geometric crank phase in radians. O=(0,0), M=(40,0); D=(40+16 cos θ, 16 sin θ); P=(80+32 cos θ, 32 sin θ). Thus P−O=2(D−O), ΔP=2ΔD and vP=2vD. Long-arm pivot spans OB=BP=64 mm; OA=AB=BC=CP=AD=DC=32 mm. Ideal corresponding tangential forces: FP=FD/2.",
+        "de": "Alle Koordinaten in mm in der XZ-Chassisebene; θ ist die geometrische Kurbelphase im Bogenmaß. O=(0,0), M=(40,0); D=(40+16 cos θ, 16 sin θ); P=(80+32 cos θ, 32 sin θ). Also P−O=2(D−O), ΔP=2ΔD und vP=2vD. Gelenkabstände der langen Arme: OB=BP=64 mm; OA=AB=BC=CP=AD=DC=32 mm. Ideale entsprechende Tangentialkräfte: FP=FD/2."
+      },
+      "related": [
+        "twinpoint.ldr",
+        "mean-machine.ldr",
+        "parallel-lift.ldr"
+      ]
+    },
+    "crossglide": {
+      "en": {
+        "what": "One motor turns the red input rotor and the blue output rotor about parallel axes 16 mm apart. Two perpendicular sliding interfaces let the yellow intermediate carriage move sideways while transmitting the same angle to the output. Watch its centre carefully: it travels around an 8 mm radius circle twice during each full shaft turn, although the yellow body's own orientation turns only once.",
+        "try": [
+          "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
+          "Compare the red and blue rotor orientations at each pause. Then track the centre hole of the middle yellow crossbar. Positive motor angles turn opposite to positive geometric XZ angles: the first +45° motor target predicts the centre at (8, −8) mm in X/Z. How often does that point return before a shaft completes one revolution?",
+          "Watch the two pairs of guide axles. At a quarter-turn, one sliding interface is centred while the other is at its largest displacement. At a half-turn the middle point returns, but the yellow body's orientation is reversed."
+        ],
+        "why": "Each real sliding interface prevents relative rotation because it has two separated parallel rails. The lower rails belong to the input rotor; the upper perpendicular rails belong to the intermediate carriage. Their two slider constraints preserve the input, intermediate and output orientations. The intermediate centre lies both on a rotating line through the input axis and on a perpendicular rotating line through the output axis. Intersecting these lines gives a circle with half the shaft offset as its radius and twice the shaft angle as its orbital phase.",
+        "matters": "An Oldham coupling shows how parallel shafts can remain laterally offset while turning at the same angular speed. The intermediate member must slide internally to make that possible. Equal input and output speeds do not mean every part follows the same path, and a body's rotation is different from the orbit of its centre. Native motion here demonstrates geometry; sliding friction, wear and real torque or speed capacity are not measured hardware ratings.",
+        "question": "If the shafts are 16 mm apart and each turns once, what radius does the middle centre trace, how many orbits does it complete, and how far does each slider move from one extreme to the other?",
+        "answer": "The centre follows an 8 mm radius circle twice. Each slider has a centred amplitude of 16 mm, so its complete extreme-to-extreme stroke is 32 mm. The input, yellow body and output each rotate once. The twice-per-turn result describes the centre's orbit, not a 2:1 output transmission.",
+        "further": [
+          "Derive the two sliding coordinates from perpendicular rotating lines. Their sinusoidal 32 mm strokes occur a quarter-turn apart.",
+          "Compare Orbit Mixer: both distinguish body rotation from the orbit of its centre. Crossglide uses two physical sliding pairs, each restrained by two parallel guide axles.",
+          "Compare Quickstroke: it produces nonuniform reciprocation, while this coupling preserves equal input and output angular speed."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht den roten Antrieb und den blauen Abtrieb um parallele Achsen mit 16 mm Abstand. Zwei rechtwinklige Gleitführungen lassen den gelben Zwischenrahmen seitlich wandern und übertragen dabei denselben Winkel auf den Abtrieb. Beobachte seine Mitte genau: Sie durchläuft je voller Wellenumdrehung zweimal einen Kreis mit 8 mm Radius, obwohl sich die Orientierung des gelben Körpers nur einmal dreht.",
+        "try": [
+          "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
+          "Vergleiche bei jedem Halt die Ausrichtung des roten und des blauen Rahmens. Verfolge dann das mittlere Loch der gelben Querstrebe. Positive Motorwinkel laufen entgegengesetzt zu positiven geometrischen XZ-Winkeln: Das erste Motorziel +45° ergibt den Mittelpunkt (8, −8) mm in X/Z. Wie oft kehrt er vor einer vollen Wellenumdrehung zurück?",
+          "Beobachte die beiden Paare von Führungsachsen. Nach einer Vierteldrehung ist eine Gleitführung mittig, während die andere ihren größten Versatz erreicht. Nach einer halben Drehung kehrt der Mittelpunkt zurück, doch der gelbe Rahmen ist um 180° gedreht."
+        ],
+        "why": "Jede echte Gleitführung verhindert eine Relativdrehung, weil sie zwei voneinander entfernte parallele Führungsachsen besitzt. Die unteren Achsen gehören zum Antrieb; die oberen, senkrecht dazu stehenden Achsen gehören zum Zwischenrahmen. Beide Gleitpaare erhalten daher die Orientierung zwischen Antrieb, Zwischenkörper und Abtrieb. Der Mittelpunkt liegt zugleich auf einer rotierenden Geraden durch die Antriebsachse und auf einer dazu senkrechten rotierenden Geraden durch die Abtriebsachse. Ihr Schnittpunkt beschreibt einen Kreis mit dem halben Achsabstand als Radius und dem doppelten Wellenwinkel als Umlaufphase.",
+        "matters": "Eine Oldham-Kupplung zeigt, wie parallele Wellen trotz seitlichem Versatz mit derselben Winkelgeschwindigkeit laufen können. Dafür muss ihr Zwischenstück im Inneren gleiten. Gleiche Drehzahlen bedeuten nicht, dass alle Teile dieselbe Bahn beschreiben; die Drehung eines Körpers unterscheidet sich vom Umlauf seines Mittelpunkts. Die native Bewegung demonstriert hier Geometrie. Gleitreibung, Verschleiß sowie reale Drehmoment- und Drehzahlgrenzen sind keine gemessenen Hardwarewerte dieses Modells.",
+        "question": "Die Wellen liegen 16 mm auseinander und drehen sich jeweils einmal. Welchen Radius beschreibt der Mittelpunkt, wie viele Umläufe vollendet er, und welchen Weg legt jede Gleitführung zwischen ihren beiden Extremlagen zurück?",
+        "answer": "Der Mittelpunkt durchläuft zweimal einen Kreis mit 8 mm Radius. Die mittige Auslenkung jeder Gleitführung beträgt bis zu 16 mm; ihr vollständiger Hub zwischen beiden Extremen ist somit 32 mm. Antrieb, gelber Körper und Abtrieb drehen sich jeweils einmal. Die doppelte Umlaufzahl betrifft die Bahn des Mittelpunkts und bedeutet keine Übersetzung von 2:1 am Abtrieb.",
+        "further": [
+          "Leite beide Schlittenwege aus senkrechten rotierenden Geraden ab. Ihre sinusförmigen 32-mm-Hübe sind um eine Vierteldrehung versetzt.",
+          "Vergleiche Orbit Mixer: Beide Beispiele unterscheiden Körperdrehung und Umlauf seines Mittelpunkts. Crossglide nutzt zwei Gleitpaare mit jeweils zwei parallelen Führungsachsen.",
+          "Vergleiche Quickstroke: Es erzeugt ungleichförmigen Hin- und Rückhub; diese Kupplung erhält gleiche Ein- und Ausgangsdrehzahlen."
+        ]
+      },
+      "formula": {
+        "en": "In the XZ plane let O=(0,0), Q=(e,0), u=(cosθ,sinθ), v=(−sinθ,cosθ), with e=40 LDU=16 mm. Then C=O+e cosθ·u=Q+e sinθ·v=(e/2+(e/2)cos2θ,(e/2)sin2θ). The output relative to its upper rails is (Q−C)·v=−e sinθ. Native geometric θ=−A for motor angle A. θ_output=θ_input; orbit radius=e/2=8 mm; orbit phase=2θ. At constant ω, |dC/dt|=e|ω|. 1 LDU=0.4 mm.",
+        "de": "In der XZ-Ebene seien O=(0,0), Q=(e,0), u=(cosθ,sinθ), v=(−sinθ,cosθ), mit e=40 LDU=16 mm. Dann gilt C=O+e cosθ·u=Q+e sinθ·v=(e/2+(e/2)cos2θ,(e/2)sin2θ). Die Lage des Abtriebs relativ zu seinen oberen Führungen ist (Q−C)·v=−e sinθ. Nativ gilt der geometrische Winkel θ=−A für Motorwinkel A. θ_Abtrieb=θ_Antrieb; Umlaufradius=e/2=8 mm; Umlaufphase=2θ. Bei konstantem ω gilt |dC/dt|=e|ω|. 1 LDU=0,4 mm."
+      },
+      "related": [
+        "quickstroke.ldr",
+        "orbit-mixer.ldr",
+        "turnwise.ldr"
+      ]
+    },
+    "ripple-relay": {
+      "en": {
+        "what": "One motor turns three shafts joined by two universal joints. The middle shaft speeds up and slows down twice per turn, while the correctly phased output recovers uniform rotation.",
+        "try": [
+          "Select Ripple Relay, reset and run. Compare the yellow input, red middle and blue output pointers during the three forward turns and return.",
+          "Pause after the slow approach home. Compare each pointer with its own saved orientation; the motor finishes holding at zero.",
+          "Compare Phase Bridge and its misphased variant. Predict which output should retain a speed ripple before running."
+        ],
+        "why": "A single Cardan joint at a fixed bend transmits angle nonlinearly. With a 36.87° bend, cos β=0.8, so the instantaneous middle/input speed ratio varies from 0.8 to 1.25. The second equally bent, correctly phased joint applies the inverse angular mapping. It cancels the angle distortion at the output while the middle shaft still ripples.",
+        "matters": "Drive shafts use phasing and equal bend angles to reduce output-speed variation. This model demonstrates kinematics; it does not measure a real torque rating, bearing friction, cable routing or physical build tolerances.",
+        "question": "Does a constant-speed output mean the middle shaft also turns at constant speed?",
+        "answer": "No. The middle shaft still has two accelerations and decelerations per input turn. The second joint cancels that distortion at the output. At 45°/s input the ideal middle speed spans 36–56.25°/s.",
+        "further": [
+          "Compare the 6.39° middle-shaft phase lead with the nearly zero output phase difference.",
+          "Try the separately modelled misphased Phase Bridge. Equal bend angles alone are insufficient: fork orientation matters."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht drei Wellen mit zwei Kardangelenken. Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer; der richtig ausgerichtete Ausgang dreht wieder gleichmäßig.",
+        "try": [
+          "Wähle Ripple Relay, setze zurück und starte. Vergleiche gelben Eingang, rote Zwischenwelle und blauen Ausgang während drei Vorwärtsdrehungen und Rückkehr.",
+          "Vergleiche nach der langsamen Rückkehr jeden Zeiger mit seiner eigenen Startlage. Der Motor hält bei null.",
+          "Vergleiche Phase Bridge und die falsch ausgerichtete Variante. Sage vorher, welcher Ausgang eine Drehzahlschwankung zeigt."
+        ],
+        "why": "Ein einzelnes Kardangelenk überträgt Winkel bei fester Abwinkelung nichtlinear. Bei 36,87° ist cos β=0,8; das momentane Drehzahlverhältnis der Zwischenwelle zum Eingang liegt zwischen 0,8 und 1,25. Das zweite gleich abgewinkelte, richtig ausgerichtete Gelenk wendet die umgekehrte Winkelabbildung an. So gleicht es die Verzerrung am Ausgang aus, während die Zwischenwelle weiterhin schwankt.",
+        "matters": "Bei Antriebswellen begrenzen gleiche Beugewinkel und richtige Gabelstellung Drehzahlschwankungen. Das Modell zeigt Kinematik; reale Drehmomentgrenzen, Lagerreibung, Kabel und Bautoleranzen werden damit nicht gemessen.",
+        "question": "Bedeutet eine gleichmäßige Ausgangsdrehzahl, dass auch die Zwischenwelle gleichmäßig dreht?",
+        "answer": "Nein. Die Zwischenwelle beschleunigt und verzögert weiterhin zweimal je Eingangsdrehung. Erst das zweite Gelenk gleicht die Verzerrung aus. Bei 45°/s am Eingang liegt die ideale Zwischendrehzahl bei 36–56,25°/s.",
+        "further": [
+          "Vergleiche den Winkelvorlauf von etwa 6,39° in der Mitte mit der nahezu fehlenden Ausgangsdifferenz.",
+          "Probiere die separat modellierte falsch ausgerichtete Phase Bridge. Gleiche Beugewinkel allein reichen nicht; die Gabelstellung zählt."
+        ]
+      },
+      "formula": "cos β = 0.8; φ = atan2(sin θ, 0.8 cos θ), unwrapped; correct second joint: ψ = θ; dφ/dθ = 0.8/(0.64 cos²θ + sin²θ).",
+      "related": [
+        "phase-bridge.ldr",
+        "phase-bridge-misphased.ldr",
+        "crossglide.ldr"
+      ]
+    },
+    "momentum-twins": {
+      "en": {
+        "what": "Momentum Twins carries a hub and two weighted rotors on a platform that can turn freely about a vertical bearing. Run both rotors in the same direction and the platform turns the other way. Run the matched rotors in opposite directions and their reactions nearly cancel, even though both rotors are moving. The free bearing has no geared drive: the platform responds to the motors' internal reaction torque.",
+        "try": [
+          "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the finite experiment and its observation pauses.",
+          "Watch the hub and orange platform beams against the lower gray support. During the first two stages, compare the direction of platform motion with the rotors' motion relative to the platform. During the last two stages, check that both rotors really turn while the platform moves much less.",
+          "Use the measured wheel angles and platform heading to compare the two experiments. A wheel encoder measures rotation relative to its motor housing; the platform heading is a separate world-frame measurement. Returning both encoder readings to their starting values does not by itself prove that the platform has returned to the same world heading."
+        ],
+        "why": "A motor applies torque to its rotor and an equal opposing torque to its housing. Both housings are part of the movable platform. With little external torque about the bearing, total angular momentum of the upper assembly stays approximately constant. Same-direction wheel motion adds the two reactions. Equal opposite wheel motion cancels them. The amount of platform rotation depends on the complete rotor inertias and the inertia of the whole upper assembly, including the hub, motor housings and the rotors' offsets from the central bearing.",
+        "matters": "Spacecraft use reaction wheels to change attitude by exchanging angular momentum internally. This tabletop model isolates one axis and makes the response visible. Accelerating or braking the wheels exchanges momentum with the platform; constant wheel speed is not a continuing source of torque. A platform that has acquired angular velocity can keep turning while that velocity persists.",
+        "question": "If the two rotors spin in opposite directions and the platform hardly turns, are the motors doing nothing?",
+        "answer": "Both motors are moving their loads. The rotors carry approximately equal and opposite angular momentum, so their combined effect about the platform's yaw axis is small. Unequal masses, different mass radii or mismatched wheel motions would leave a residual response. Cancellation describes the combined angular momentum; it does not mean that the wheels are stationary or that no energy is used.",
+        "further": [
+          "Predict the platform direction before each stage. Compare its largest same-spin excursion with the opposite-spin excursion, while checking that both wheels are moving.",
+          "For a balanced rebuild, move both equal weights on each rotor farther from its axis. Their radial contribution to inertia grows with the square of the distance. Include the resulting change to the whole platform inertia before predicting an angle.",
+          "Keep both motor leads aboard the moving platform and clear of the rotors. Bearing friction, cable contact and unequal rotor loads can leave a residual turn. Compare with Flywheel Differential, where inertia acts through a geared transmission."
+        ]
+      },
+      "de": {
+        "what": "Momentum Twins trägt einen Hub und zwei Rotoren mit Gewichten auf einer Plattform, die sich frei um ein senkrechtes Drehlager drehen kann. Drehen beide Rotoren gleichsinnig, bewegt sich die Plattform in die Gegenrichtung. Bei gleich großen, gegensinnigen Rotorbewegungen heben sich die Reaktionen nahezu auf, obwohl beide Rotoren laufen. Das Drehlager besitzt keinen Zahnradantrieb: Die Plattform reagiert auf das innere Gegenmoment der Motoren.",
+        "try": [
+          "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte das begrenzte Experiment und die Pausen.",
+          "Beobachte den Hub und die orangefarbenen Plattformträger gegenüber dem unteren grauen Gestell. Vergleiche in den ersten beiden Phasen die Plattformrichtung mit der Rotorbewegung relativ zur Plattform. Prüfe in den letzten beiden Phasen, dass beide Rotoren tatsächlich laufen, während sich die Plattform deutlich weniger bewegt.",
+          "Vergleiche die gemessenen Rotorwinkel mit der Ausrichtung der Plattform. Ein Motorgeber misst die Drehung relativ zum Motorgehäuse; die Plattformausrichtung wird unabhängig im Raum gemessen. Gleiche Anfangs- und Endwerte beider Motorgeber beweisen allein noch nicht, dass die Plattform wieder dieselbe Ausrichtung im Raum erreicht hat."
+        ],
+        "why": "Ein Motor übt ein Drehmoment auf seinen Rotor und ein gleich großes Gegenmoment auf sein Gehäuse aus. Beide Gehäuse gehören zur beweglichen Plattform. Wirkt um das Drehlager nur ein kleines äußeres Drehmoment, bleibt der gesamte Drehimpuls des oberen Aufbaus annähernd erhalten. Gleichsinnige Rotorbewegungen addieren die Reaktionen. Gleich große gegensinnige Bewegungen gleichen sie aus. Der Plattformwinkel hängt von den vollständigen Rotorträgheiten und der Trägheit des gesamten oberen Aufbaus ab, einschließlich Hub, Motorgehäusen und Abstand der Rotorachsen vom zentralen Lager.",
+        "matters": "Raumfahrzeuge nutzen Reaktionsräder, um ihre Lage durch inneren Drehimpulsaustausch zu verändern. Dieses Tischmodell zeigt eine einzelne Drehachse. Beim Beschleunigen oder Bremsen der Rotoren wird Drehimpuls mit der Plattform ausgetauscht; eine konstante Rotordrehzahl liefert nicht fortwährend ein Drehmoment. Eine bereits drehende Plattform kann sich mit ihrer vorhandenen Winkelgeschwindigkeit weiterbewegen.",
+        "question": "Tun die Motoren nichts, wenn die Rotoren gegensinnig laufen und sich die Plattform kaum dreht?",
+        "answer": "Beide Motoren bewegen ihre Lasten. Die Rotoren besitzen dabei annähernd gleich große, entgegengesetzte Drehimpulse. Ihre gemeinsame Wirkung um die senkrechte Plattformachse ist deshalb klein. Unterschiedliche Massen, Radien oder Rotorbewegungen würden eine Restbewegung erzeugen. Die Aufhebung betrifft den gemeinsamen Drehimpuls; sie bedeutet weder stillstehende Rotoren noch einen Betrieb ohne Energieverbrauch.",
+        "further": [
+          "Sage vor jeder Phase die Plattformrichtung voraus. Vergleiche die größte Auslenkung bei gleichsinniger und gegensinniger Drehung. Prüfe dabei, dass beide Räder tatsächlich laufen.",
+          "Verschiebe bei einem ausgewuchteten Umbau beide gleichen Gewichte jedes Rotors weiter nach außen. Ihr radialer Trägheitsanteil wächst mit dem Quadrat des Abstands. Berücksichtige vor einer Winkelvorhersage auch die veränderte Trägheit des gesamten oberen Aufbaus.",
+          "Beide Motorkabel bleiben auf der beweglichen Plattform und außerhalb der Rotorbahnen. Lagerreibung, Kabelkontakt und ungleiche Rotorlasten können eine Restdrehung erzeugen. Vergleiche Flywheel Differential: Dort wirkt Trägheit über ein Zahnradgetriebe."
+        ]
+      },
+      "formula": {
+        "en": "From initial rest with negligible external yaw torque: J_locked Δθ + I_A Δα_A + I_B Δα_B ≈ 0. θ is platform yaw in the world frame; α_A and α_B are wheel angles relative to the platform, with one common positive axis. J_locked is the yaw inertia of the complete upper assembly with both rotor spins locked. Equal rotors: same spin gives Δθ ≈ −2I Δα/J_locked; equal opposite spins give Δθ ≈ 0.",
+        "de": "Aus der Ruhe bei vernachlässigbarem äußerem Drehmoment: J_locked Δθ + I_A Δα_A + I_B Δα_B ≈ 0. θ ist der Plattformwinkel im Raum; α_A und α_B sind Rotorwinkel relativ zur Plattform, mit derselben positiven Achsrichtung. J_locked ist die Drehträgheit des gesamten oberen Aufbaus bei relativ zur Plattform festgehaltenen Rotoren. Gleiche Rotoren: gleichsinnig Δθ ≈ −2I Δα/J_locked; gleich groß und gegensinnig Δθ ≈ 0."
+      },
+      "related": [
+        "flywheel-differential.ldr",
+        "mean-machine.ldr"
+      ]
+    },
+    "bloom-gate": {
+      "en": {
+        "what": "One motor opens four colored leaves around a clear center. Eight gears around the perimeter keep the leaves in phase, while separate heights let them overlap. The square aperture grows from closed to an ideal clear width of 26.51 mm during a 45° motor move.",
+        "try": [
+          "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the finite experiment and its observation pauses.",
+          "Look straight through the center, perpendicular to the leaves. Follow one corner gear and the neighboring smaller gear: they turn in opposite directions, while all four leaves turn together. Compare the opening at the same motor angle in the two speed stages.",
+          "Predict the opening halfway through the motor move from 0° to −45° before checking the answer below. Compare actual blade edges and the clear opening; reaching an encoder target alone does not establish the aperture size. Keep manual exploration between −45° and 0° on motor A."
+        ],
+        "why": "Motor A directly turns the northeast 40-tooth corner gear. A 24-tooth idler connects each pair of neighboring 40-tooth corner gears. Two external meshes reverse direction twice and give a net 1:1 ratio, so all four leaves turn together. The smaller idlers turn in the opposite direction at 5/3 of the corner speed. With the delivered mounting and encoder convention, −45° on motor A gives a +45° leaf-opening angle. Each leaf's straight inner edge moves around its fixed corner pivot. The aperture remains square in the ideal projected geometry, but its width depends on both sine and cosine of the leaf angle, so equal motor-angle steps do not give equal changes in width or area.",
+        "matters": "Coordinated leaves vary an opening without putting a drive shaft through its center. A motor-position command can select an opening, but the geometry determines the required command. The two-speed experiment separates that geometric relation from acceleration, settling and gear play.",
+        "question": "At half the full motor travel, −22.5° from the closed datum, is the opening half as wide? Is its area half the maximum? What should change when the same motion runs at twice the motor speed?",
+        "answer": "The leaves have turned 22.5°. The ideal clear width is 19.62 mm, about 74.0% of the maximum 26.51 mm. The opening area is 384.95 mm², about 54.8% of the maximum 702.76 mm². Faster motion changes the timing; the ideal opening at a given angle stays the same. Acceleration and settling can change the measured transient behavior.",
+        "further": [
+          "Compare equal motor-angle steps near closed and near fully open. The width changes rapidly near closed and slowly near the 45° leaf limit. The area starts from zero and depends on the square of the width.",
+          "Compare the slow and fast runs by motor angle as well as by elapsed time. Look for the same opening curve and any differences during acceleration, reversal or settling. Compare your observations with the geometric prediction.",
+          "Compare Ratio Workbench for fixed gear ratios, Tempo Loop for changing output speed, and Scale Studio for geometric scaling. Here the gears supply a fixed angle ratio and the leaf geometry creates the nonlinear aperture."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor öffnet vier farbige Blätter um eine freie Mitte. Acht Zahnräder am Rand halten die Blätter im Gleichlauf; unterschiedliche Höhen erlauben ihre Überlappung. Bei einer Motordrehung von 45° wächst die quadratische Öffnung von geschlossen auf eine ideale freie Breite von 26,51 mm.",
+        "try": [
+          "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte das begrenzte Experiment und die Pausen.",
+          "Blicke senkrecht zu den Blättern durch die Mitte. Verfolge ein Eckzahnrad und das benachbarte kleinere Zahnrad: Sie drehen sich entgegengesetzt, während alle vier Blätter gleichsinnig laufen. Vergleiche die Öffnung bei gleichem Motorwinkel in den beiden Geschwindigkeitsstufen.",
+          "Sage die Öffnung bei der Hälfte der Motorbewegung von 0° auf −45° voraus, bevor du die Antwort unten prüfst. Vergleiche die tatsächlichen Blattkanten und die freie Öffnung; ein erreichter Encoder-Zielwinkel allein belegt die Öffnungsgröße nicht. Bleibe beim manuellen Erkunden zwischen −45° und 0° an Motor A."
+        ],
+        "why": "Motor A dreht direkt das nordöstliche Eckzahnrad mit 40 Zähnen. Je ein Zwischenrad mit 24 Zähnen verbindet zwei benachbarte Eckzahnräder mit 40 Zähnen. Zwei äußere Zahneingriffe kehren die Drehrichtung zweimal um und ergeben insgesamt das Verhältnis 1:1. Deshalb drehen sich alle vier Blätter gleichsinnig. Die kleineren Zwischenräder drehen sich entgegengesetzt mit dem 5/3-Fachen der Eckdrehzahl. Mit der gelieferten Montage und Encoder-Konvention ergeben −45° an Motor A einen Blattöffnungswinkel von +45°. Die gerade Innenkante jedes Blatts bewegt sich um dessen festen Eckdrehpunkt. In der idealen Projektion bleibt die Öffnung quadratisch, ihre Breite hängt jedoch von Sinus und Kosinus des Blattwinkels ab. Gleiche Motorwinkelschritte ändern Breite und Fläche deshalb unterschiedlich stark.",
+        "matters": "Gekoppelte Blätter verändern eine Öffnung, während ihre Mitte frei von einer Antriebswelle bleibt. Ein Motorzielwinkel kann eine Öffnungsgröße wählen; die Geometrie bestimmt den dafür nötigen Winkel. Der Versuch mit zwei Geschwindigkeiten trennt diesen geometrischen Zusammenhang von Beschleunigung, Einschwingen und Zahnflankenspiel.",
+        "question": "Ist die Öffnung bei der halben vollen Motorbewegung, −22,5° ab der geschlossenen Ausgangsstellung, halb so breit? Hat sie die halbe maximale Fläche? Was sollte sich ändern, wenn dieselbe Bewegung mit doppelter Motorgeschwindigkeit abläuft?",
+        "answer": "Die Blätter haben sich um 22,5° gedreht. Die ideale freie Breite beträgt 19,62 mm, also etwa 74,0 % der maximalen 26,51 mm. Die Öffnungsfläche beträgt 384,95 mm², etwa 54,8 % der maximalen 702,76 mm². Schnelleres Bewegen verändert den zeitlichen Ablauf; die ideale Öffnung bei einem bestimmten Winkel bleibt gleich. Beschleunigung und Einschwingen können das gemessene Übergangsverhalten verändern.",
+        "further": [
+          "Vergleiche gleich große Motorwinkelschritte nahe der geschlossenen und der vollständig offenen Stellung. Nahe geschlossen ändert sich die Breite schnell, nahe dem Blattwinkel von 45° langsam. Die Fläche beginnt bei null und hängt vom Quadrat der Breite ab.",
+          "Vergleiche langsamen und schnellen Lauf sowohl anhand des Motorwinkels als auch anhand der vergangenen Zeit. Achte auf dieselbe Öffnungskurve und auf Unterschiede beim Beschleunigen, Umkehren oder Einschwingen. Trenne mithilfe der Messergebnisse des Pakets Vorhersagen von beobachteten Ergebnissen.",
+          "Vergleiche Ratio Workbench für feste Zahnradübersetzungen, Tempo Loop für veränderliche Abtriebsgeschwindigkeit und Scale Studio für geometrische Skalierung. Hier liefern die Zahnräder ein festes Winkelverhältnis; die Blattgeometrie erzeugt die nichtlineare Öffnung."
+        ]
+      },
+      "formula": {
+        "en": "Let φ be motor A's native angle from the closed datum and θ the geometric leaf-opening angle, positive toward open: θ=−φ; −45°≤φ≤0°, 0°≤θ≤45°. The four corner gears have a 1:1 angle ratio; each 24-tooth idler turns oppositely at 5/3 of their speed. Use θ in radians inside sin and cos. In the chassis plane, aperture half-width r=32(cos θ+sin θ−1) mm; clear square width d=2r=64(cos θ+sin θ−1) mm; aperture area S=d²=4096(cos θ+sin θ−1)² mm². The largest centered circle that fits through the square has diameter d.",
+        "de": "φ ist der native Winkel von Motor A ab der geschlossenen Ausgangsstellung, θ der geometrische Blattöffnungswinkel, positiv zur offenen Stellung hin: θ=−φ; −45°≤φ≤0°, 0°≤θ≤45°. Die vier Eckzahnräder haben das Winkelverhältnis 1:1; jedes Zwischenrad mit 24 Zähnen dreht sich entgegengesetzt mit dem 5/3-Fachen ihrer Drehzahl. Für sin und cos wird θ im Bogenmaß eingesetzt. In der Chassisebene gilt: halbe Öffnungsbreite r=32(cos θ+sin θ−1) mm; freie Quadratbreite d=2r=64(cos θ+sin θ−1) mm; Öffnungsfläche S=d²=4096(cos θ+sin θ−1)² mm². Der größte mittige Kreis, der durch das Quadrat passt, hat den Durchmesser d."
+      },
+      "related": [
+        "ratio-workbench.ldr",
+        "tempo-loop.ldr",
+        "scale-studio.ldr"
+      ]
+    },
+    "amplify": {
+      "en": {
+        "what": "One motor moves the yellow input marker D around a 16 mm radius circle. A real parallelogram with extended arms makes the orange output marker Q follow a 32 mm radius circle. Q copies every planar displacement of D at twice its size. Both points complete one orbit together; the output travels farther during that same time.",
+        "try": [
+          "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the finite experiment and its observation pauses.",
+          "Track the yellow marker D and the orange marker Q relative to the fixed origin O. At the first +45° motor target, the predicted X/Z coordinates are D=(59.314,43.314) mm and Q=(118.627,86.627) mm. Compare both coordinates, rather than only the circle diameters.",
+          "Watch the four sides of the parallelogram and the midpoints on the two long arms. Then compare the two marker speeds during a steady segment. Does the larger circle require more time, more speed, or more revolutions?"
+        ],
+        "why": "The long red arm places A halfway between O and B. The long blue arm places C halfway between B and Q. The equal 48 mm sides of A–B–C–D preserve a parallelogram on the selected open branch. Writing A=u and D=u+v gives B=2u and Q=2u+2v=2D. The size ratio follows from the actual link lengths and midpoints. The motor chooses the input path; it does not calculate or assign the output position.",
+        "matters": "A pantograph copies a planar path at a chosen scale. This model separates displacement scale from rotational frequency: twice the radius gives twice the linear speed, while both markers keep the same orbital phase. The ideal enclosed area scales by four. Greater displacement does not create energy; neglecting friction and inertia, the corresponding output force is half the force applied at the input point. Real load capacity and physical construction have not been measured here.",
+        "question": "If D makes one 16 mm radius circle in 36 seconds, what radius does Q trace, how long does its orbit take, and what happens to linear speed and enclosed area?",
+        "answer": "Q traces a 32 mm radius circle in the same 36 seconds. Its linear speed is twice D's, and its enclosed area is four times larger. Both complete one orbit. The 2:1 ratio describes coordinates, displacement and linear speed, not two output revolutions per input revolution.",
+        "further": [
+          "Derive Q−O=2(D−O) from the two midpoint relations. Check that doubling the input circle also doubles its centre’s displacement from O.",
+          "Compare the distance travelled by both markers between two pauses. Use the same time interval to compare their speeds, and check that both complete the same number of orbits.",
+          "Inspect the layers at joint D. One retained axle belongs to the green crank; both short arms turn independently on its round bores. The drive shaft starts below both arms so they can cross above it.",
+          "Compare Straight Eight, which generates a straight line, and Crossglide, whose middle point orbits twice per shaft turn. Amplify doubles path size while preserving orbital frequency."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor bewegt die gelbe Eingangsmarkierung D auf einem Kreis mit 16 mm Radius. Ein echtes Parallelogramm mit verlängerten Armen lässt die orange Ausgangsmarkierung Q einen Kreis mit 32 mm Radius beschreiben. Q kopiert jede ebene Verschiebung von D im doppelten Maßstab. Beide Punkte vollenden ihren Umlauf gemeinsam; der Ausgang legt in derselben Zeit einen längeren Weg zurück.",
+        "try": [
+          "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte das begrenzte Experiment und die Pausen.",
+          "Verfolge die gelbe Markierung D und die orange Markierung Q relativ zum festen Ursprung O. Beim ersten Motorziel +45° lauten die vorhergesagten X/Z-Koordinaten D=(59,314;43,314) mm und Q=(118,627;86,627) mm. Vergleiche beide Koordinaten statt nur die Kreisdurchmesser.",
+          "Beobachte die vier Seiten des Parallelogramms und die Mittelpunkte auf den beiden langen Armen. Vergleiche dann die Markierungsgeschwindigkeiten während eines gleichmäßigen Abschnitts. Braucht der größere Kreis mehr Zeit, eine höhere Geschwindigkeit oder mehr Umläufe?"
+        ],
+        "why": "Der lange rote Arm hält A genau in der Mitte zwischen O und B. Der lange blaue Arm hält C in der Mitte zwischen B und Q. Die gleich langen 48-mm-Seiten von A–B–C–D erhalten auf dem gewählten offenen Bewegungszweig ein Parallelogramm. Mit A=u und D=u+v gilt B=2u sowie Q=2u+2v=2D. Das Größenverhältnis folgt aus den tatsächlichen Stablängen und Mittelpunkten. Der Motor wählt die Eingangsbahn; er berechnet oder setzt die Ausgangsposition nicht.",
+        "matters": "Ein Pantograf kopiert eine ebene Bahn in einem festgelegten Maßstab. Das Modell trennt den Wegmaßstab von der Umlauffrequenz: Doppelter Radius bedeutet doppelte Bahngeschwindigkeit, während beide Markierungen dieselbe Umlaufphase behalten. Die ideal eingeschlossene Fläche vervierfacht sich. Größere Wege erzeugen keine zusätzliche Energie; ohne Reibung und Trägheit beträgt die entsprechende Ausgangskraft die Hälfte der am Eingangspunkt wirkenden Kraft. Reale Belastbarkeit und physischer Aufbau wurden hier nicht gemessen.",
+        "question": "D durchläuft einen Kreis mit 16 mm Radius einmal in 36 Sekunden. Welchen Radius beschreibt Q, wie lange dauert sein Umlauf, und wie ändern sich Bahngeschwindigkeit und eingeschlossene Fläche?",
+        "answer": "Q beschreibt einen Kreis mit 32 mm Radius in denselben 36 Sekunden. Seine Bahngeschwindigkeit ist doppelt so groß, und die eingeschlossene Fläche ist viermal so groß. Beide Punkte vollenden einen Umlauf. Das Verhältnis 2:1 beschreibt Koordinaten, Verschiebungen und Bahngeschwindigkeiten, nicht zwei Ausgangsumläufe je Eingangsumlauf.",
+        "further": [
+          "Leite Q−O=2(D−O) aus den beiden Mittelpunktbeziehungen ab. Prüfe, dass die Verdopplung des Eingangskreises auch den Abstand seines Mittelpunkts von O verdoppelt.",
+          "Vergleiche die Wege beider Markierungen zwischen zwei Pausen. Nutze dasselbe Zeitintervall für den Geschwindigkeitsvergleich und prüfe, dass beide gleich viele Umläufe vollenden.",
+          "Untersuche die Bauebenen am Gelenk D. Eine gesicherte Achse gehört zur grünen Kurbel; beide kurzen Arme drehen sich unabhängig in ihren Rundlöchern. Die Antriebsachse beginnt unterhalb beider Arme, damit sie darüber hinwegschwenken können.",
+          "Vergleiche Straight Eight, das eine Gerade erzeugt, und Crossglide, dessen Zwischenpunkt zweimal je Wellenumdrehung umläuft. Amplify verdoppelt die Bahngröße bei gleicher Umlauffrequenz."
+        ]
+      },
+      "formula": {
+        "en": "In the projected XZ plane, OA=AB=BC=CQ=AD=DC=120 LDU=48 mm. On the open parallelogram branch, Q−O=2(D−O). With O=(0,0), F=(120,80) LDU and crank radius 40 LDU, D(α)=(120−40 sinα,80+40 cosα) and Q(α)=2D(α). The placed native motor gives α=−A for encoder angle A. Input radius 16 mm, output radius 32 mm; vQ=2vD; equal orbital phase. At 10°/s the ideal steady speeds are 2.793 and 5.585 mm/s. 1 LDU=0.4 mm.",
+        "de": "In der projizierten XZ-Ebene gilt OA=AB=BC=CQ=AD=DC=120 LDU=48 mm. Auf dem offenen Parallelogrammzweig gilt Q−O=2(D−O). Mit O=(0,0), F=(120,80) LDU und Kurbelradius 40 LDU folgt D(α)=(120−40 sinα,80+40 cosα) und Q(α)=2D(α). Beim platzierten nativen Motor ist α=−A für den Encoderwinkel A. Eingangsradius 16 mm, Ausgangsradius 32 mm; vQ=2vD; gleiche Umlaufphase. Bei 10°/s betragen die idealen gleichmäßigen Geschwindigkeiten 2,793 und 5,585 mm/s. 1 LDU=0,4 mm."
+      },
+      "related": [
+        "straight-eight.ldr",
+        "crossglide.ldr",
+        "twinpoint.ldr"
+      ]
+    },
+    "offset-orbit": {
+      "en": {
+        "what": "Offset Orbit sends rotation between two parallel shafts whose axes are 16 mm apart. One motor drives the input; a floating cross connects two perpendicular sliding guides and turns the passive output through the same angle. The orange middle marker has a second, surprising motion: its centre makes two circuits of a 16 mm-diameter circle for every one shaft turn.",
+        "try": [
+          "Select this example and run it. Watch the driven and passive members, then Reset before another run.",
+          "Count the orange centre marker's circuits during the two forward shaft turns. Predict whether there will be two or four, then compare with the recorded path. The return stage reverses the shaft and the orbital motion.",
+          "Follow the input, middle cross and output orientations while watching both sliding interfaces. All three bodies turn through the same angle, while the guide displacements alternate in quadrature. At each half-turn of the shaft, the centre marker reaches its starting position again."
+        ],
+        "why": "Each pair of parallel rails permits sliding and keeps the connected bodies aligned. The two guide directions are perpendicular, so their projected centre lines always intersect at one point C. If A and B are the shaft axes and u is the input guide's unit direction, then C = A + u[u·(B − A)]. As u rotates once, this point goes twice around a circle centered halfway between A and B. The sliding constraints also keep input and output at a 1:1 angular relationship.",
+        "matters": "An Oldham coupling accommodates parallel shaft offset using sliding motion. Its output remains synchronized with the input even while the middle member continually changes position. This experiment makes the extra translation visible. The source geometry uses two rails per sliding interface to restrain unwanted roll, and a rigid middle cross connects the two separated guide layers.",
+        "question": "After half an input turn, the orange centre marker is back at its starting position. Has the whole mechanism returned to its starting configuration?",
+        "answer": "The centre position has repeated, but the input, middle cross and output have each turned 180°. The sliding positions have also exchanged their signs. A marked body distinguishes these orientations even when its centre follows the same point. The full orientation repeats after one shaft turn; the centre completes two circles during that turn.",
+        "further": [
+          "The 16 mm shaft offset fixes an 8 mm orbit radius. A full shaft turn produces two orbital circuits. Increasing offset in a separate qualified rebuild would enlarge that circle and increase each slider's required travel.",
+          "Compare Ellipse Engine: it also uses two perpendicular sliding constraints, but fixes different members of the chain. Compare Phase Bridge, which transfers rotation across angled shafts through universal joints."
+        ]
+      },
+      "formula": {
+        "en": "Mechanism plane: e = |B − A| = 16 mm; M = (A + B)/2; C = A + u[u·(B − A)]; |C − M| = e/2 = 8 mm. With one common positive shaft axis: Δθ_output = Δθ_input and Δβ_centre = 2Δθ_input. Input +720° → output +720° and centre orbit +1440°; return reverses all three. The middle body itself turns at the shaft rate.",
+        "de": "Mechanismusebene: e = |B − A| = 16 mm; M = (A + B)/2; C = A + u[u·(B − A)]; |C − M| = e/2 = 8 mm. Mit einer gemeinsamen positiven Wellenachse: Δθ_Ausgang = Δθ_Eingang und Δβ_Mittelpunkt = 2Δθ_Eingang. Eingang +720° → Ausgang +720° und Mittelpunktumlauf +1440°; die Rückfahrt kehrt alle Richtungen um. Das Mittelstück selbst dreht sich mit der Wellendrehzahl."
+      },
+      "de": {
+        "what": "Offset Orbit überträgt eine Drehung zwischen zwei parallelen Wellen, deren Achsen 16 mm auseinanderliegen. Ein Motor treibt den Eingang an. Ein frei bewegliches Kreuz verbindet zwei rechtwinklige Schiebeführungen und dreht den passiven Ausgang um denselben Winkel. Die orangefarbene Mittelmarkierung zeigt eine zweite, überraschende Bewegung: Ihr Mittelpunkt durchläuft pro Wellenumdrehung zweimal einen Kreis mit 16 mm Durchmesser.",
+        "try": [
+          "Wähle dieses Beispiel und starte es. Beobachte die angetriebenen und passiven Teile. Setze vor einem neuen Lauf zurück.",
+          "Zähle die Umläufe der orangefarbenen Mittelmarkierung während der zwei Vorwärtsumdrehungen. Sage vorher, ob es zwei oder vier werden, und vergleiche danach mit der aufgezeichneten Bahn. Bei der Rückfahrt kehren sich Wellen- und Umlaufbewegung um.",
+          "Verfolge die Ausrichtungen von Eingang, Mittelkreuz und Ausgang und beobachte gleichzeitig beide Schiebeführungen. Alle drei Körper drehen sich um denselben Winkel, während die beiden Verschiebungen um eine Viertelperiode versetzt ablaufen. Nach jeder halben Wellenumdrehung erreicht die Mittelmarkierung erneut ihre Anfangsposition."
+        ],
+        "why": "Jedes Paar paralleler Führungsachsen erlaubt eine Verschiebung und hält die verbundenen Körper zueinander ausgerichtet. Die beiden Führungsrichtungen stehen senkrecht aufeinander. Deshalb schneiden sich ihre in die Mechanismusebene projizierten Mittellinien immer in einem Punkt C. Sind A und B die Wellenachsen und u der Einheitsvektor der Eingangsführung, gilt C = A + u[u·(B − A)]. Während sich u einmal dreht, läuft dieser Punkt zweimal um einen Kreis mit Mittelpunkt zwischen A und B. Gleichzeitig halten die Schiebeführungen Eingang und Ausgang im Winkelverhältnis 1:1.",
+        "matters": "Eine Oldham-Kupplung gleicht parallelen Wellenversatz durch Gleiten aus. Ihr Ausgang bleibt mit dem Eingang synchron, während das Mittelstück fortwährend seine Position ändert. Dieses Experiment macht die zusätzliche Verschiebung sichtbar. Jede Schiebeführung besitzt zwei parallele Achsen gegen unerwünschtes Verrollen; ein starres Mittelkreuz verbindet die beiden axial getrennten Führungsebenen.",
+        "question": "Nach einer halben Eingangsumdrehung liegt die orangefarbene Mittelmarkierung wieder an ihrer Anfangsposition. Ist der gesamte Mechanismus damit in seiner Ausgangslage?",
+        "answer": "Die Mittelpunktposition hat sich wiederholt, aber Eingang, Mittelkreuz und Ausgang haben sich jeweils um 180° gedreht. Auch die Vorzeichen der Schiebepositionen sind vertauscht. Eine Markierung am Körper unterscheidet diese Ausrichtungen, selbst wenn sein Mittelpunkt denselben Ort erreicht. Die vollständige Ausrichtung wiederholt sich nach einer Wellenumdrehung; der Mittelpunkt durchläuft dabei zwei Kreise.",
+        "further": [
+          "Der Wellenversatz von 16 mm bestimmt einen Bahnradius von 8 mm. Eine volle Wellenumdrehung ergibt zwei Kreisumläufe. Ein größerer Versatz würde bei einem getrennt geprüften Umbau den Kreis und den erforderlichen Hub beider Führungen vergrößern.",
+          "Vergleiche Ellipse Engine: Auch dort wirken zwei rechtwinklige Schiebeführungen, jedoch sind andere Glieder der Kette festgehalten. Phase Bridge überträgt die Drehung über Kreuzgelenke zwischen gegeneinander geneigten Wellen."
+        ]
+      },
+      "related": [
+        "ellipse-engine.ldr",
+        "phase-bridge.ldr",
+        "pantograph-doubler.ldr"
+      ]
+    },
+    "ellipsa": {
+      "en": {
+        "what": "One motor rides on the red X carriage and turns a rigid blue bar. A second, yellow carriage can move only along a perpendicular Z guide. Together they make the orange marker beyond the two pivots trace a 32 × 96 mm ellipse. The yellow carriage and output follow the real joints; the program controls only the motor.",
+        "try": [
+          "Select this example and run it. Watch the driven and passive members, then Reset before another run.",
+          "Use the held positions to compare the orange marker with the guide intersection O. At a measured bar angle of 45°, the prediction is Q=(−11.314,33.941) mm in X/Z. At 90°, Q=(0,48) mm. Compare these positions with the actual motion, not only the motor encoder.",
+          "During a steady section, compare the marker near the left/right and top/bottom ends. Predict where it is fastest."
+        ],
+        "why": "The two pivots A and B are 32 mm apart on one rigid bar. A is constrained to the X axis and B to the Z axis. For bar angle θ, A=(32 cosθ,0) and B=(0,32 sinθ) mm. Q is 48 mm along the bar from A, beyond B. Therefore Q=A+1.5(B−A)=(−16 cosθ,48 sinθ) mm. Those unequal cosine and sine coefficients are the ellipse semiaxes. The two straight guides and the rigid bar enforce this relation mechanically.",
+        "matters": "The same rotating bar produces several different paths: its two guided pivots move in straight lines, its midpoint traces a circle, and the orange point outside the pivots traces an ellipse. Constant angular speed does not mean constant speed along that ellipse. The motor can sit on a moving carriage; its housing still needs a real reaction path into the guides.",
+        "question": "If the bar turns at a constant angular speed, where is the orange marker fastest, and what is the ideal ratio between its maximum and minimum speeds?",
+        "answer": "It is fastest at the left and right endpoints, where it travels vertically, and slowest at the top and bottom endpoints, where it travels horizontally. The ratio is 48/16=3. At a steady 10°/s, the ideal speeds range from 2.793 to 8.378 mm/s. Reversing the motor reverses travel around the same ellipse.",
+        "further": [
+          "Derive the path of a general bar point P at distance s from A: P=((32−s)cosθ,s sinθ) mm. Setting s=16 mm gives a circle; s=0 or s=32 mm gives one of the two straight guide lines.",
+          "Inspect the vertical layers. The yellow carriage and its retained shaft are above the blue bar; the motor and red carriage are below. The A drive shaft stops below the yellow crossbars, so their projected paths can cross without solid parts intersecting."
+        ]
+      },
+      "formula": {
+        "en": "With AB=32 mm and AQ=48 mm: A=(32 cosθ,0), B=(0,32 sinθ), Q=(−16 cosθ,48 sinθ) mm; (Qx/16)^2+(Qz/48)^2=1. For angular speed ω in rad/s, vQ=(16ω sinθ,48ω cosθ) mm/s and |vQ|=|ω|√(16²sin²θ+48²cos²θ). Maximum/minimum speed ratio 3. Semiaxes 16 and 48 mm; full ellipse 32 × 96 mm. Each carriage travels 64 mm peak to peak. θ is measured from the actual bar vector, θ=atan2(Bz−Az,−(Bx−Ax)); 1 LDU=0.4 mm. The placed native motor has θ=+encoder A from the saved datum; this sign was measured in the actual real-part prototype.",
+        "de": "Mit AB=32 mm und AQ=48 mm: A=(32 cosθ;0), B=(0;32 sinθ), Q=(−16 cosθ;48 sinθ) mm; (Qx/16)^2+(Qz/48)^2=1. Für Winkelgeschwindigkeit ω in rad/s gilt vQ=(16ω sinθ;48ω cosθ) mm/s und |vQ|=|ω|√(16²sin²θ+48²cos²θ). Verhältnis der größten zur kleinsten Geschwindigkeit: 3. Halbachsen 16 und 48 mm; ganze Ellipse 32 × 96 mm. Jeder Schlitten fährt insgesamt 64 mm zwischen seinen Endlagen. θ wird aus dem tatsächlichen Stabvektor gemessen: θ=atan2(Bz−Az;−(Bx−Ax)); 1 LDU=0,4 mm. Beim platzierten nativen Motor gilt ab der gespeicherten Ausgangslage θ=+Encoder A; dieses Vorzeichen wurde am echten Teileprototyp in der nativen Simulation gemessen."
+      },
+      "de": {
+        "what": "Ein Motor fährt auf dem roten X-Schlitten mit und dreht einen starren blauen Stab. Ein zweiter, gelber Schlitten kann sich nur auf einer dazu senkrechten Z-Führung bewegen. Gemeinsam lassen sie die orange Markierung außerhalb der beiden Gelenke eine 32 × 96 mm große Ellipse beschreiben. Der gelbe Schlitten und der Ausgang folgen den echten Gelenken; das Programm steuert nur den Motor.",
+        "try": [
+          "Wähle dieses Beispiel und starte es. Beobachte die angetriebenen und passiven Teile. Setze vor einem neuen Lauf zurück.",
+          "Vergleiche die orange Markierung an den Haltepunkten mit dem Führungsschnittpunkt O. Bei einem gemessenen Stabwinkel von 45° lautet die Vorhersage Q=(−11,314;33,941) mm in X/Z. Bei 90° gilt Q=(0;48) mm. Vergleiche diese Lagen mit der tatsächlichen Bewegung und nicht nur mit dem Motorencoder.",
+          "Vergleiche in einem gleichmäßigen Abschnitt die Markierung links/rechts und oben/unten. Sage voraus, wo sie am schnellsten ist."
+        ],
+        "why": "Die beiden Gelenke A und B liegen auf einem starren Stab 32 mm auseinander. A ist auf die X-Achse und B auf die Z-Achse beschränkt. Für den Stabwinkel θ gilt A=(32 cosθ;0) und B=(0;32 sinθ) mm. Q liegt von A aus 48 mm entlang des Stabs, also über B hinaus. Daher ist Q=A+1,5(B−A)=(−16 cosθ;48 sinθ) mm. Die unterschiedlichen Koeffizienten von Kosinus und Sinus sind die Halbachsen der Ellipse. Die beiden geraden Führungen und der starre Stab erzwingen diesen Zusammenhang mechanisch.",
+        "matters": "Derselbe drehende Stab erzeugt mehrere verschiedene Bahnen: Seine beiden geführten Gelenke bewegen sich auf Geraden, sein Mittelpunkt beschreibt einen Kreis, und der orange Punkt außerhalb der Gelenke beschreibt eine Ellipse. Konstante Winkelgeschwindigkeit bedeutet keine konstante Bahngeschwindigkeit auf dieser Ellipse. Der Motor kann auf einem bewegten Schlitten sitzen; sein Gehäuse braucht trotzdem einen echten Kraftpfad in die Führungen.",
+        "question": "Wenn sich der Stab mit konstanter Winkelgeschwindigkeit dreht: Wo ist die orange Markierung am schnellsten, und wie groß ist das ideale Verhältnis zwischen ihrer größten und kleinsten Bahngeschwindigkeit?",
+        "answer": "Sie ist an den linken und rechten Enden am schnellsten, wo sie sich senkrecht bewegt, und an den oberen und unteren Enden am langsamsten, wo sie sich waagerecht bewegt. Das Verhältnis beträgt 48/16=3. Bei gleichmäßigen 10°/s liegen die idealen Geschwindigkeiten zwischen 2,793 und 8,378 mm/s. Eine Umkehr des Motors kehrt die Bewegung auf derselben Ellipse um.",
+        "further": [
+          "Leite die Bahn eines allgemeinen Stabpunkts P im Abstand s von A her: P=((32−s)cosθ;s sinθ) mm. Mit s=16 mm ergibt sich ein Kreis; s=0 oder s=32 mm ergibt eine der beiden geraden Führungen.",
+          "Untersuche die vertikalen Bauebenen. Der gelbe Schlitten und seine axial gesicherte Achse liegen oberhalb des blauen Stabs; Motor und roter Schlitten liegen darunter. Die Antriebsachse bei A endet unterhalb der gelben Querbalken. Deshalb können sich ihre projizierten Bahnen kreuzen, ohne dass feste Teile ineinander eindringen."
+        ]
+      },
+      "related": [
+        "axis-plotter.ldr",
+        "crossglide.ldr",
+        "amplify.ldr"
+      ]
+    },
+    "echo-bridge": {
+      "en": {
+        "what": "Two equal pendulums hang from free pins. Two rubber bands join small anchors above and below the pivots. Motor A briefly moves only the left support, returns that support to its starting height, and holds it. The pendulum arms remain free: their swinging amplitudes rise and fall as the elastic links transfer motion between them.",
+        "try": [
+          "Select this example and run it; Reset before running again after manual motion.",
+          "Watch the red left arm and the blue right arm. Identify intervals when each side swings more strongly. The motor is holding the support during this observation, so the right arm's changing motion must be measured independently of the motor encoder.",
+          "Compare the included no-band control. It uses the same model, motor pulse and import profile, with only the two flexible BELT records removed. The wheel bobs keep the native passive hinge-friction policy the same in both runs."
+        ],
+        "why": "The two bands are equally stretched in the vertical saved pose. Their attachment points lie 8 mm above and below each pivot, so their static turning effects cancel. When the two pendulums lean differently, one band stretches more and the other less. Together they exert a restoring coupling torque. At small angles and fixed level supports, equal pendulums have an in-phase mode and an opposite-phase mode. These modes have different frequencies; their superposition makes the visible amplitudes exchange dominance. The driven support gives the initial excitation, and the bands mediate the subsequent coupled motion.",
+        "matters": "This is a model of coupled oscillation: an initially quiet part can acquire a substantial response through an elastic connection. Measuring both outputs reveals behavior that a motor encoder cannot show. A no-band comparison also helps distinguish elastic transfer from motion transmitted through the common frame.",
+        "question": "Why use two bands on opposite sides of each pivot? Once the motor holds at zero, must the pendulum that is moving most strongly remain the stronger one? Does a larger share of squared angle prove the same share of mechanical energy?",
+        "answer": "The symmetric bands cancel the static torque that a single stretched band would apply to a vertical arm. Their incremental coupling torques add when the pendulum angles differ. After the launch, the two normal modes can interfere so that the stronger visible motion alternates between sides. The comparison subtracts each one-second window’s mean angle before taking its RMS. Squared RMS shares compare amplitudes, not complete energy: kinetic energy depends on angular speed, and the coupling bands store energy too. Damping, unequal excitation and real material behavior can prevent complete transfer.",
+        "further": [
+          "Use the measured chart to mark left-dominant and right-dominant intervals after the motor has returned. Compare an entire oscillation window; a single frame near a turning point can be misleading.",
+          "Compare the coupled and no-band receiver travel. Keep the frame, bob masses, pivot pins, program and measurement method unchanged. The delivered negative control removes only the two band directives and checks that the inferred hinge-friction entries stay equal.",
+          "Compare Pendulum Array, which investigates unequal free-pendulum periods, with Echo Bridge, which couples equal pendulums elastically. Changes to bob mass, band size or anchor distance form new experiments and require new clearance, startup and runtime checks."
+        ]
+      },
+      "de": {
+        "what": "Zwei gleiche Pendel hängen an leichtgängigen Pins. Zwei Gummibänder verbinden kleine Befestigungen oberhalb und unterhalb der Drehpunkte. Motor A bewegt kurz nur die linke Aufhängung, bringt sie auf ihre Ausgangshöhe zurück und hält sie fest. Die Pendelarme bleiben frei: Ihre Schwingungsamplituden nehmen abwechselnd zu und ab, während die elastischen Verbindungen Bewegung übertragen.",
+        "try": [
+          "Wähle dieses Beispiel und starte es; setze es nach manueller Bewegung vor dem nächsten Lauf zurück.",
+          "Beobachte den roten linken und den blauen rechten Arm. Finde Zeitabschnitte, in denen jeweils eine Seite stärker schwingt. Während dieser Beobachtung hält der Motor die Aufhängung fest. Die wechselnde Bewegung des rechten Arms muss deshalb unabhängig vom Motorencoder gemessen werden.",
+          "Vergleiche den mitgelieferten Kontrollversuch ohne Bänder. Modell, Motorimpuls und Importprofil bleiben gleich; nur die beiden flexiblen BELT-Einträge fehlen. Die Radgewichte sorgen dafür, dass die native Regel für zusätzliche Reibung an freien Gelenken in beiden Läufen gleich bleibt."
+        ],
+        "why": "In der senkrechten gespeicherten Ausgangslage sind beide Bänder gleich stark gedehnt. Ihre Befestigungen liegen jeweils 8 mm oberhalb und unterhalb des Drehpunkts, sodass sich ihre statischen Drehmomente aufheben. Bei unterschiedlichen Pendelwinkeln wird ein Band stärker und das andere schwächer gedehnt. Gemeinsam erzeugen sie ein rückstellendes Kopplungsmoment. Bei kleinen Winkeln und festen Aufhängungen auf gleicher Höhe besitzen gleiche Pendel eine gleichphasige und eine gegenphasige Eigenschwingung. Diese haben unterschiedliche Frequenzen. Ihre Überlagerung lässt die sichtbaren Amplituden abwechselnd überwiegen. Die bewegte Aufhängung liefert die anfängliche Anregung; anschließend vermitteln die Bänder die gekoppelte Bewegung.",
+        "matters": "Das Modell zeigt gekoppelte Schwingungen: Ein anfangs nahezu ruhendes Bauteil kann durch eine elastische Verbindung deutlich in Bewegung geraten. Erst die Messung beider Ausgänge macht dieses Verhalten sichtbar; der Motorencoder allein reicht nicht aus. Der Versuch ohne Bänder hilft außerdem, elastische Übertragung von Bewegung über den gemeinsamen Rahmen zu unterscheiden.",
+        "question": "Warum sitzen zwei Bänder auf gegenüberliegenden Seiten jedes Drehpunkts? Muss nach dem Halt des Motors bei null stets dasselbe Pendel stärker schwingen? Beweist ein größerer Anteil des quadrierten Winkels denselben Anteil an der mechanischen Energie?",
+        "answer": "Die symmetrischen Bänder heben das statische Drehmoment auf, das ein einzelnes gespanntes Band auf einen senkrechten Arm ausüben würde. Bei unterschiedlichen Pendelwinkeln addieren sich ihre zusätzlichen Kopplungsmomente. Nach dem Anregen können sich die beiden Eigenschwingungen so überlagern, dass die stärkere sichtbare Bewegung zwischen den Seiten wechselt. Für den Vergleich wird in jedem Ein-Sekunden-Fenster der jeweilige mittlere Winkel vor der RMS-Berechnung abgezogen. Anteile der quadrierten RMS-Werte vergleichen Amplituden, nicht die vollständige Energie: Die Bewegungsenergie hängt von der Winkelgeschwindigkeit ab, und auch die Bänder speichern Energie. Dämpfung, ungleiche Anregung und reale Materialeigenschaften können eine vollständige Übertragung verhindern.",
+        "further": [
+          "Markiere im Messdiagramm Zeitabschnitte mit stärkerem linken beziehungsweise rechten Pendel, nachdem der Motor zurückgekehrt ist. Vergleiche jeweils ein ganzes Schwingungsfenster; ein einzelnes Bild nahe einem Umkehrpunkt kann täuschen.",
+          "Vergleiche den Weg des rechten Pendels mit und ohne Bänder. Rahmen, Gewichte, Drehpunkt-Pins, Programm und Messverfahren bleiben gleich. Der mitgelieferte Kontrollversuch entfernt nur die beiden Bandanweisungen und prüft, dass die ermittelten Gelenkreibungswerte übereinstimmen.",
+          "Vergleiche Pendulum Array, das die Perioden unterschiedlich langer freier Pendel untersucht, mit Echo Bridge, das gleiche Pendel elastisch koppelt. Andere Gewichte, Bandgrößen oder Befestigungsabstände ergeben neue Versuche und erfordern neue Prüfungen von Freiraum, Ausgangslage und Laufverhalten."
+        ]
+      },
+      "formula": {
+        "en": "Let θL and θR be small pendulum angles in radians, J each complete moving arm's inertia about its pivot, G=gΣmjℓj its gravitational torque coefficient, a=0.008 m the anchor offset, and K the effective center-to-center stiffness of each band. For fixed level pivots and negligible damping: JθL''+GθL+2Ka²(θL−θR)=0, with the symmetric equation for the right arm. Therefore ωin²=G/J and ωopposite²=(G+4Ka²)/J. The pinned native model uses K=100×15/33≈45.4545 N/m for each 33 mm band; this is a simulator approximation, not a measured property of real rubber. The wheel centers lie 0.104 m below the pivots, but J and G include the complete arms, anchors, brackets and bobs. The program's moving-pivot launch is outside the fixed-pivot modal approximation.",
+        "de": "θL und θR sind kleine Pendelwinkel im Bogenmaß, J ist das Trägheitsmoment jedes vollständigen beweglichen Arms um seinen Drehpunkt, G=gΣmjℓj der Koeffizient seines Gravitationsmoments, a=0,008 m der Befestigungsabstand und K die wirksame Steifigkeit jedes Bands zwischen den Befestigungsmitten. Bei festen Aufhängungen auf gleicher Höhe und vernachlässigbarer Dämpfung gilt: JθL''+GθL+2Ka²(θL−θR)=0; für rechts gilt die symmetrische Gleichung. Daraus folgen ωgleich²=G/J und ωgegen²=(G+4Ka²)/J. Das festgelegte native Modell verwendet für jedes 33-mm-Band K=100×15/33≈45,4545 N/m. Das ist eine Simulatornäherung und keine Messung an echtem Gummi. Die Radmitten liegen 0,104 m unter den Drehpunkten; J und G berücksichtigen jedoch die vollständigen Arme, Befestigungen, Halter und Gewichte. Die Anregung mit bewegter Aufhängung liegt außerhalb der Näherung für feste Drehpunkte."
+      },
+      "related": [
+        "pendulum-array.ldr",
+        "scale-studio.ldr",
+        "bloom-gate.ldr"
+      ]
+    },
+    "linger": {
+      "en": {
+        "what": "One motor turns a crank continuously. Two connected four-bar loops make the long output pointer linger near one end of its stroke while the crank keeps moving. The output still swings through about 69° during a full cycle. This is an approximate mechanical dwell produced by real links and hinges; the program controls only the input motor.",
+        "try": [
+          "Select this example and run it; Reset before running again after manual motion.",
+          "Watch the actual input angle from 186° to 276°. The crank turns through 90°, yet the ideal output angle changes by only about 0.131°. Check that the motor is still moving during this interval; a programmed pause would not demonstrate the linkage's near dwell. For the placed motor, physical θ=−encoder A; on the first forward pass, encoder A decreases from −186° to −276° through this window.",
+          "Keep watching through the rest of the cycle. The output must complete a useful swing of about 69°. A disconnected output that never moves would fail this experiment even though it appears perfectly still during the near-dwell interval."
+        ],
+        "why": "The first four-bar loop slows and reverses the intermediate rocker near one end of its motion. The second loop places its own output extremum close to that same intermediate angle. The output/input angular-speed ratio is the product of the two stage ratios, so two small factors produce a long interval of very slow output motion. At B the first coupler, intermediate rocker and second coupler share one retained shaft but remain three separate moving links.",
+        "matters": "A machine can reserve much of a continuous input cycle for an almost stationary output without a second motor or a timed software pause. This is useful when studying timing and motion shaping. Near dwell does not imply an exact lock, a load-holding capacity or a force rating. The output makes a tiny reversal inside its slow interval.",
+        "question": "Why is observing a nearly stationary output for a quarter turn of the crank insufficient by itself to prove that Linger works?",
+        "answer": "A disconnected, jammed or frozen output could also remain still. We must independently observe the moving crank through the fixed 90° window, measure the output's small range there, and verify a substantial output swing during the rest of the cycle. The real joints must remain closed and the return traversal must reproduce the same geometric relation.",
+        "further": [
+          "Compare the two stage ratios: dφ/dθ=(dφ/dβ)(dβ/dθ), where θ is the input angle, β the intermediate angle and φ the output angle. Identify where each factor becomes small.",
+          "Use the exact second-stage extremum in LDU: D=(100,0), B=(52,64), P=(88,16), E=(120,40). Check that DB=80, BP=60 and EP=40. DB and BP oppose along a 3:4:5 direction, while EP is perpendicular to it.",
+          "Inspect the shared B shaft. Two round-bore couplers rotate in different layers about the shaft keyed to the intermediate rocker. Rigidly keying all three links together would destroy the intended motion.",
+          "Find E, P and Q on the output 7L beam: they are holes h1, h3 and h6. The two-loop geometry uses EP=16 mm, while the visible tip is 40 mm from E. Thus Q=E+2.5(P−E); the longer pointer makes the output easy to follow without changing the linkage timing.",
+          "Count six rigid bodies including the chassis and seven hinges. The three-link joint at B contributes two independent hinges. The regular planar mobility is 3(6−1)−2×7=1, matching the single motor.",
+          "Compare crank-rocker.ldr for one four-bar stage, tempo-loop.ldr for variable angular speed, and quickstroke.ldr for unequal forward/return timing. Linger uses two passive loops to concentrate output motion into part of one continuous input cycle.",
+          "Read validation/RESULTS.md for the actual measured near-dwell range, full swing and joint errors. Analytical geometry, native simulation, browser integration and a physical build have separate validation status."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht eine Kurbel kontinuierlich. Zwei gekoppelte Viergelenke lassen den langen Abtriebszeiger nahe einem Ende seines Schwenkwegs verweilen, während die Kurbel weiterläuft. Während eines vollständigen Zyklus schwenkt der Abtrieb trotzdem um etwa 69°. Diese angenäherte mechanische Rast entsteht durch echte Glieder und Gelenke; das Programm steuert nur den Antriebsmotor.",
+        "try": [
+          "Wähle dieses Beispiel und starte es; setze es nach manueller Bewegung vor dem nächsten Lauf zurück.",
+          "Beobachte den tatsächlichen Antriebswinkel von 186° bis 276°. Die Kurbel dreht sich um 90°, doch der ideale Abtriebswinkel ändert sich nur um etwa 0,131°. Prüfe, dass der Motor während dieses Intervalls weiterläuft; eine programmierte Pause würde die angenäherte mechanische Rast nicht zeigen. Beim platzierten Motor gilt θ=−Encoder A. Im ersten Vorwärtslauf sinkt Encoder A in diesem Fenster von −186° auf −276°.",
+          "Beobachte auch den restlichen Zyklus. Der Abtrieb muss einen nutzbaren Schwenkweg von etwa 69° durchlaufen. Ein abgetrennter Abtrieb, der sich nie bewegt, würde diesen Versuch nicht bestehen, obwohl er im Rastintervall vollkommen stillzustehen scheint."
+        ],
+        "why": "Das erste Viergelenk verlangsamt die Zwischenschwinge und kehrt ihre Bewegung nahe einer Endlage um. Das zweite Viergelenk legt seine eigene Abtriebsendlage nahe an denselben Winkel der Zwischenschwinge. Das Verhältnis von Abtriebs- zu Antriebswinkelgeschwindigkeit ist das Produkt der beiden Stufenverhältnisse. Zwei kleine Faktoren ergeben deshalb ein langes Intervall mit sehr langsamer Abtriebsbewegung. Bei B teilen sich erste Koppel, Zwischenschwinge und zweite Koppel eine axial gesicherte Achse, bleiben aber drei getrennte bewegliche Glieder.",
+        "matters": "Eine Maschine kann einen großen Teil eines kontinuierlichen Antriebszyklus für einen fast ruhenden Abtrieb nutzen, ohne zweiten Motor und ohne zeitgesteuerte Softwarepause. Damit lassen sich Bewegungsabläufe und zeitliche Aufteilungen untersuchen. Eine angenäherte Rast bedeutet weder eine exakte Verriegelung noch eine nachgewiesene Haltekraft oder Belastbarkeit. Im langsamen Intervall kehrt der Abtrieb seine Bewegung kurz und sehr geringfügig um.",
+        "question": "Warum genügt es allein noch nicht als Funktionsnachweis, wenn der Abtrieb während einer Vierteldrehung der Kurbel fast stillsteht?",
+        "answer": "Auch ein abgetrennter, verklemmter oder eingefrorener Abtrieb könnte stillstehen. Wir müssen die tatsächliche Kurbelbewegung über das festgelegte 90°-Intervall unabhängig beobachten, dort den kleinen Abtriebswinkelbereich messen und im übrigen Zyklus einen deutlichen Schwenkweg nachweisen. Die echten Gelenke müssen geschlossen bleiben, und beim Rücklauf muss derselbe geometrische Zusammenhang wieder auftreten.",
+        "further": [
+          "Vergleiche die beiden Stufenverhältnisse: dφ/dθ=(dφ/dβ)(dβ/dθ). Dabei ist θ der Antriebswinkel, β der Winkel der Zwischenschwinge und φ der Abtriebswinkel. Bestimme, wo die einzelnen Faktoren klein werden.",
+          "Nutze die exakte Extremstellung der zweiten Stufe in LDU: D=(100;0), B=(52;64), P=(88;16), E=(120;40). Prüfe DB=80, BP=60 und EP=40. DB und BP verlaufen entgegengesetzt entlang einer 3:4:5-Richtung; EP steht dazu senkrecht.",
+          "Untersuche die gemeinsame Achse bei B. Zwei Koppeln mit runden Bohrungen drehen sich in unterschiedlichen Bauebenen um die mit der Zwischenschwinge drehfest verbundene Achse. Alle drei Glieder drehfest miteinander zu verbinden würde die gewünschte Bewegung verhindern.",
+          "Finde E, P und Q am 7L-Abtriebsbalken: Es sind die Bohrungen h1, h3 und h6. Die Geometrie der beiden Schleifen nutzt EP=16 mm; die sichtbare Spitze liegt 40 mm von E entfernt. Also gilt Q=E+2,5(P−E). Der längere Zeiger macht den Abtrieb gut sichtbar, ohne die zeitliche Bewegungsaufteilung zu verändern.",
+          "Zähle sechs starre Körper einschließlich Rahmen und sieben Drehgelenke. Das Dreigliedgelenk bei B zählt als zwei unabhängige Gelenke. Die reguläre ebene Beweglichkeit ist 3(6−1)−2×7=1 und passt damit zum einzelnen Motor.",
+          "Vergleiche crank-rocker.ldr mit nur einer Viergelenkstufe, tempo-loop.ldr mit veränderlicher Winkelgeschwindigkeit und quickstroke.ldr mit unterschiedlichen Zeiten für Hin- und Rückhub. Linger konzentriert durch zwei passive Schleifen die Abtriebsbewegung auf einen Teil eines kontinuierlichen Antriebszyklus.",
+          "In validation/RESULTS.md stehen der tatsächlich gemessene Rastwinkelbereich, der gesamte Schwenkweg und die Gelenkfehler. Analytische Geometrie, native Simulation, Browserintegration und physischer Aufbau haben jeweils einen eigenen Prüfstatus."
+        ]
+      },
+      "formula": {
+        "en": "In mm: O=(0,0), D=(40,0), E=(48,16); OA=16, AB=48, DB=32, BP=24, EP=16. A=16(cosθ,sinθ). B is the selected intersection of circles(A,48) and(D,32); P is the selected intersection of circles(B,24) and(E,16). θ=atan2(Az−Oz,Ax−Ox), β=atan2(Bz−Dz,Bx−Dx), φ=atan2(Pz−Ez,Px−Ex). dφ/dθ=(dφ/dβ)(dβ/dθ). Ideal full output range≈69.04697°; ideal output range for θ=186…276°≈0.131275°, about 0.1901% of the full range. The interval lasts 9 s at exactly 10°/s actual input speed. This is approximate dwell with a tiny reversal, not an exact finite-angle stop. One LDU=0.4 mm. The physical output tip Q is 40 mm from E: Q=E+2.5(P−E). The actual native motor sign was measured: θ=−encoder A from the saved datum, with the observation window interpreted modulo 360°. The delivered encoder targets are −360°, −720° and 0°, producing physical input 0°→360°→720°→0°.",
+        "de": "In mm: O=(0;0), D=(40;0), E=(48;16); OA=16, AB=48, DB=32, BP=24, EP=16. A=16(cosθ;sinθ). B ist der gewählte Schnittpunkt der Kreise(A;48) und(D;32), P der gewählte Schnittpunkt der Kreise(B;24) und(E;16). θ=atan2(Az−Oz;Ax−Ox), β=atan2(Bz−Dz;Bx−Dx), φ=atan2(Pz−Ez;Px−Ex). dφ/dθ=(dφ/dβ)(dβ/dθ). Idealer gesamter Abtriebswinkelbereich≈69,04697°; idealer Bereich für θ=186…276°≈0,131275°, etwa 0,1901% des gesamten Schwenkwegs. Bei genau 10°/s tatsächlicher Antriebsgeschwindigkeit dauert das Intervall 9 s. Es ist eine angenäherte Rast mit winziger Bewegungsumkehr, kein exakter Stillstand über einen endlichen Antriebswinkel. Ein LDU=0,4 mm. Die physische Abtriebsspitze Q liegt 40 mm von E entfernt: Q=E+2,5(P−E). Das Vorzeichen des tatsächlich platzierten nativen Motors wurde gemessen: θ=−Encoder A ab der gespeicherten Ausgangslage; das Beobachtungsfenster gilt modulo 360°. Die gelieferten Encoderziele sind −360°, −720° und 0°; daraus folgt die physische Antriebsbewegung 0°→360°→720°→0°."
+      },
+      "related": [
+        "crank-rocker.ldr",
+        "tempo-loop.ldr",
+        "quickstroke.ldr"
+      ]
+    },
+    "crossline": {
+      "en": {
+        "what": "Crossline turns one continuous rotation into two perpendicular straight-line motions. A rotating carrier takes an outer shaft around a 20 mm-radius circle. Three external spur gears make a marker arm counter-rotate. Two opposite physical markers, each 20 mm from the outer shaft, then sweep 80 mm from end to end. Both outputs are passive: there are no linear guides at the markers.",
+        "try": [
+          "Select this example and run it; Reset before running again after manual motion.",
+          "Follow one coloured marker through a complete carrier revolution. It reaches each end of its 80 mm line once, crossing the centre twice. Follow the other marker: its line is perpendicular, and it crosses the centre whenever the first reaches an end.",
+          "Reset to the saved pose and run the finite example. Motor A moves to +1008° at 84°/s, driving two carrier turns at a nominal 60°/s. It pauses, returns to its starting encoder angle and finishes in hold. Count two complete back-and-forth cycles on each line during the outward leg, then two during the return.",
+          "Compare the visible arm with its marker points. The arm turns continuously in the opposite direction to the carrier while the markers reverse along their lines. A point trajectory and its supporting body's orientation describe different motions."
+        ],
+        "why": "With the sun held fixed, two external meshes give N_out*(omega_out-omega_carrier) = N_sun*(0-omega_carrier). Here N_sun/N_out = 16/8 = 2, so the outer arm turns at minus the carrier speed in the fixed frame. The output centre contributes one rotating radius R, and each marker contributes an equal radius rotating in the opposite direction. Their sum cancels one coordinate; their difference cancels the other. The result is a pair of perpendicular straight lines.",
+        "matters": "The construction demonstrates how circular motion can produce an exact straight-line path through geometric cancellation. Its gears set the angular relationship, and its two equal physical radii set the line shape. It needs no slider at the traced point. The same mathematical motion is known from a circle rolling inside a circle twice its diameter, but this model realizes it with external spur gears and a supported rotating carrier.",
+        "question": "The carrier-to-output distance is 20 mm. Would placing the positive marker only 16 mm from the outer shaft still produce a straight line?",
+        "answer": "It would trace an ellipse. Along the source-defined principal axes its semi-axis lengths would be R+r = 36 mm and |R-r| = 4 mm, so the complete ellipse would measure 72 mm by 8 mm. With r=R=20 mm, the minor semi-axis becomes zero and the full straight stroke becomes 4R=80 mm. This is a mathematical prediction for a separately rebuilt and checked marker mount.",
+        "further": [
+          "The two physical marker points stay 40 mm apart on one rigid arm even though each traces an 80 mm stroke. Their midpoint is the outer shaft centre, which travels around the 20 mm-radius carrier circle.",
+          "In a common shaft-axis convention, the 16/8/8 train gives outer angular speed −1 times carrier speed and idler speed +3 times carrier speed. Relative to the carrier, those speeds are −2 and +2. Always name the reference frame when describing a planetary train.",
+          "The small idler does not change the final 2:1 sun/output tooth-count relation, but its size determines the required shaft positions. Here the pitch-centre separations are 30 LDU and 20 LDU, giving the required total of 50 LDU. One LDU is 0.4 mm.",
+          "The saved carrier begins at +6.428571° and the positive marker radius at −6.428571°, because the input pinion and carrier teeth require a valid mesh phase. Their average is zero, so the two lines remain aligned with the source core X and Y axes. The orange marker starts close to its endpoint and the green marker slightly beyond the centre; neither position is silently reset for the path prediction.",
+          "The keyed assembly may begin at a phase that rotates both line directions. If the source carrier radius points at angle alpha and the positive marker radius at beta, the line directions are (alpha+beta)/2 and ninety degrees from it. The paths and phases used for validation come from those source placements, not from a fitted line through recorded motion.",
+          "Compare Ellipse Engine, which uses perpendicular sliding guides, and Straight Eight, which uses a closed pin-jointed linkage. Crossline constrains the two angular motions with spur gears while both marker points remain free of guides.",
+          "Historical counterparts: Cornell Reuleaux Model S16, Hypocycloid Straight-line Mechanism (https://digital.library.cornell.edu/catalog/ss%3A29272012), and Brown movement 329 (https://507movements.com/mm_329.html). They use a fixed internal ring. The external-gearing family is illustrated by KevinKarney's own-work Goodman Tusi Couple (https://commons.wikimedia.org/wiki/File:Goodman_Tusi_Couple.webm). This package copies no source media or CAD.",
+          "The frozen 147-part source passed all 60 predeclared native checks with 791 recorded poses; the finite program completed in 25.30 seconds. Forward carrier +720.284257° produced passive arm −720.284034°. Measured forward strokes were 79.989346 mm and 79.989372 mm; maximum full 3D source-path errors were 0.000241 mm and 0.000287 mm. Four deliberately corrupted copies of measurement channels were rejected. See ../validation/evidence/ordinary/crossline-acceptance.json.",
+          "Ordinary preparation retained five dynamic LEGO bodies, four physical hinges and all three external gear couplings, matching strict preparation. Both source-defined marker positions and body angles were observed independently; no output trajectory was prescribed. These precision numbers qualify the nominal native model. Browser operation and a physical LEGO build remain UNTESTED, including real backlash, friction, axle flexibility and flexible cable routing."
+        ]
+      },
+      "de": {
+        "what": "Crossline verwandelt eine stetige Drehung in zwei rechtwinklige geradlinige Bewegungen. Ein umlaufender Träger führt eine äußere Welle auf einem Kreis mit 20 mm Radius. Drei außenverzahnte Stirnräder lassen einen Markierungsarm entgegengesetzt drehen. Zwei gegenüberliegende Messpunkte im Abstand von jeweils 20 mm zur äußeren Welle durchlaufen dadurch je einen geraden Hub von 80 mm. Beide Ausgänge sind passiv; an den Messpunkten gibt es keine Schiebeführungen.",
+        "try": [
+          "Wähle dieses Beispiel und starte es; setze es nach manueller Bewegung vor dem nächsten Lauf zurück.",
+          "Verfolge einen farbigen Messpunkt während einer vollen Trägerumdrehung. Er erreicht jedes Ende seiner 80-mm-Bahn einmal und passiert die Mitte zweimal. Die Bahn des anderen Messpunkts steht dazu senkrecht. Er passiert die Mitte, wenn der erste ein Ende erreicht.",
+          "Setze das Modell auf die gespeicherte Ausgangslage zurück und starte das endliche Beispiel. Motor A fährt mit 84°/s auf +1008° und bewegt den Träger damit zwei Umdrehungen mit nominell 60°/s. Danach pausiert er, kehrt zu seinem Anfangswinkel zurück und endet im Haltemodus. Zähle für jeden Messpunkt zwei vollständige Hin-und-her-Bewegungen bei der Hinfahrt und zwei weitere bei der Rückfahrt.",
+          "Vergleiche den Arm mit seinen Messpunkten. Der Arm dreht sich stetig entgegen dem Träger, während die Messpunkte auf ihren Geraden umkehren. Die Bahn eines Punktes und die Orientierung seines tragenden Körpers beschreiben unterschiedliche Bewegungen."
+        ],
+        "why": "Bei feststehendem Sonnenrad ergeben die beiden äußeren Zahneingriffe N_außen*(omega_außen−omega_Träger) = N_Sonne*(0−omega_Träger). Hier ist N_Sonne/N_außen = 16/8 = 2. Der äußere Arm dreht sich daher gegenüber dem Gestell mit der negativen Trägergeschwindigkeit. Der Wellenmittelpunkt liefert einen umlaufenden Radius R; jeder Messpunkt ergänzt einen gleich langen, entgegengesetzt umlaufenden Radius. Bei ihrer Summe verschwindet eine Koordinate, bei ihrer Differenz die andere. So entstehen zwei rechtwinklige Geraden.",
+        "matters": "Der Aufbau zeigt, wie eine geometrische Aufhebung aus Kreisbewegungen eine exakte Gerade erzeugt. Die Zahnräder bestimmen das Winkelverhältnis, und zwei gleich lange reale Radien bestimmen die Bahnform. Am gezeichneten Punkt ist keine Schiebeführung nötig. Dieselbe mathematische Bewegung entsteht, wenn ein Kreis innen in einem Kreis mit doppeltem Durchmesser abrollt. Dieses Modell verwirklicht sie mit außenverzahnten Stirnrädern und einem gelagerten Träger.",
+        "question": "Der Abstand zwischen Trägerachse und äußerer Welle beträgt 20 mm. Entsteht weiterhin eine Gerade, wenn der positive Messpunkt nur 16 mm von der äußeren Welle entfernt sitzt?",
+        "answer": "Dann entsteht eine Ellipse. Ihre Halbachsen in den aus dem Aufbau bestimmten Richtungen wären R+r = 36 mm und |R−r| = 4 mm. Die vollständige Ellipse wäre also 72 mm lang und 8 mm breit. Bei r=R=20 mm wird die kleine Halbachse null, und der vollständige gerade Hub beträgt 4R=80 mm. Dies ist eine mathematische Vorhersage für eine separat umgebaute und geprüfte Markierung.",
+        "further": [
+          "Die beiden realen Messpunkte bleiben auf dem starren Arm stets 40 mm voneinander entfernt, obwohl jeder einen Hub von 80 mm durchläuft. Ihr Mittelpunkt ist die äußere Wellenachse, die auf dem Trägerkreis mit 20 mm Radius umläuft.",
+          "Bei einheitlicher positiver Wellenrichtung hat der 16/8/8-Zug gegenüber dem Gestell die äußere Winkelgeschwindigkeit −1 und die Zwischenradgeschwindigkeit +3, jeweils bezogen auf die Trägergeschwindigkeit. Gegenüber dem Träger betragen diese Verhältnisse −2 und +2. Bei einem Umlaufgetriebe muss deshalb der Bezugsrahmen genannt werden.",
+          "Die Zähnezahl des Zwischenrads kürzt sich aus dem endgültigen Übersetzungsverhältnis heraus. Seine Größe bestimmt aber die Wellenabstände. Hier betragen die beiden Teilkreisabstände 30 LDU und 20 LDU, zusammen die erforderlichen 50 LDU. Ein LDU entspricht 0,4 mm.",
+          "Der Träger beginnt bei +6,428571° und der positive Markierungsradius bei −6,428571°, damit die Zähne von Antriebsritzel und Träger korrekt ineinandergreifen. Ihr Mittelwert ist null, deshalb bleiben die Geraden an den ursprünglichen X- und Y-Achsen ausgerichtet. Der orange Punkt startet nahe seinem Endpunkt und der grüne etwas hinter der Mitte. Diese Anfangslage bleibt in der Bahnvorhersage erhalten.",
+          "Die Kreuzachsen können eine Anfangsphase vorgeben, die beide Geraden dreht. Zeigen der Trägerradius anfangs in Richtung alpha und der positive Markierungsradius in Richtung beta, liegen die Geraden bei (alpha+beta)/2 und im rechten Winkel dazu. Die Prüfgeraden und Phasen stammen aus den ursprünglichen Bauteilpositionen; sie werden nicht nachträglich an die Messdaten angepasst.",
+          "Vergleiche Ellipse Engine mit seinen rechtwinkligen Schiebeführungen und Straight Eight mit seinem geschlossenen Gelenkmechanismus. Crossline koppelt die beiden Winkelbewegungen mit Stirnrädern, während beide Messpunkte ohne Führung laufen.",
+          "Historische Gegenstücke sind Cornell Reuleaux Modell S16, Hypocycloid Straight-line Mechanism (https://digital.library.cornell.edu/catalog/ss%3A29272012), und Browns Bewegung 329 (https://507movements.com/mm_329.html). Beide verwenden einen festen Innenzahnkranz. Die Familie mit Außenverzahnung zeigt KevinKarneys eigene Darstellung Goodman Tusi Couple (https://commons.wikimedia.org/wiki/File:Goodman_Tusi_Couple.webm). Dieses Paket übernimmt keine fremden Medien oder CAD-Geometrien.",
+          "Der eingefrorene Aufbau mit 147 Teilen bestand alle 60 vorab festgelegten nativen Prüfungen mit 791 protokollierten Posen; das endliche Programm dauerte 25,30 Sekunden. Ein Trägerweg von +720,284257° ergab −720,284034° am passiven Arm. Die gemessenen Hübe der Hinfahrt betrugen 79,989346 mm und 79,989372 mm; die maximalen räumlichen Bahnfehler 0,000241 mm und 0,000287 mm. Vier absichtlich verfälschte Kopien der Messkanäle wurden erkannt. Siehe ../validation/evidence/ordinary/crossline-acceptance.json.",
+          "Die gewöhnliche Vorbereitung behielt fünf dynamische LEGO-Körper, vier reale Drehgelenke und alle drei äußeren Zahnkopplungen bei, genauso wie die strenge Vorbereitung. Beide ursprünglichen Messpunkte und die Körperwinkel wurden unabhängig beobachtet; keine Ausgangsbahn wurde vorgegeben. Diese Genauigkeitswerte qualifizieren das nominale native Modell. Browserbetrieb und ein realer LEGO-Aufbau einschließlich Zahnspiel, Reibung, Achsbiegung und flexiblem Kabel bleiben UNGETESTET."
+        ]
+      },
+      "formula": {
+        "en": "R = 50 LDU = 20 mm; N_sun/N_out = 16/8 = 2; omega_out = −omega_carrier. In aligned source phase: P_plus = O + (2R cos(q), 0), P_minus = O + (0, 2R sin(q)). Each full stroke is 4R = 80 mm. In general source phase, gamma = (alpha+beta)/2 and delta = (alpha−beta)/2; rotate the coordinate axes by gamma and replace q with q+delta. A +720° carrier leg gives −720° of outer-arm rotation and two full reciprocations on each line. For this motor placement, Delta_q_carrier = (5/7)*Delta_a_encoder: A+1008° gives carrier+720°; the return target is A0°.",
+        "de": "R = 50 LDU = 20 mm; N_Sonne/N_außen = 16/8 = 2; omega_außen = −omega_Träger. Bei ausgerichteter Anfangsphase: P_plus = O + (2R cos(q), 0), P_minus = O + (0, 2R sin(q)). Jeder vollständige Hub beträgt 4R = 80 mm. Allgemein gilt gamma = (alpha+beta)/2 und delta = (alpha−beta)/2; drehe die Koordinatenachsen um gamma und ersetze q durch q+delta. Ein Trägerweg von +720° ergibt −720° Armdrehung und zwei vollständige Hin-und-her-Bewegungen auf jeder Geraden. Bei dieser Motorlage gilt Delta_q_Träger = (5/7)*Delta_a_Encoder: A+1008° ergibt Träger+720°; das Rückfahrziel ist A0°."
+      },
+      "related": [
+        "ellipse-engine.ldr",
+        "straight-eight.ldr",
+        "offset-orbit.ldr"
+      ]
+    },
+    "bit-keeper": {
+      "en": {
+        "what": "A freely hinged, weighted arm can remember which way it was selected. Motor A moves the upper anchor of a rubber band a little to one side, then returns it to the center. The lower arm can remain leaning right or left at the same held motor position. Gravity and elastic tension create the two resting states; the output has no motor and no contact stop.",
+        "try": [
+          "Select this example and Run. Reset before another experiment after manual motion. The program writes and reads both states; watch the passive red rocker.",
+          "During the two observations, compare the input and output separately. Motor A should be close to zero in both. Read a left angle at or below −8° as state 0 and a right angle at or above +8° as state 1; the region between them is a transition. Watch the entire interval so that a swinging arm passing through a state is not mistaken for a retained state.",
+          "Compare the included no-band control. It keeps the rigid parts, initial pose, program and ordinary import settings and removes only the flexible band record. The output can swing under gravity, but the input carrier has no elastic connection with which to select its side. The validation checks that the passive-hinge friction policy matches between the two runs."
+        ],
+        "why": "Near vertical, a sideways lean lets the stretched band shorten, which lowers its elastic energy. The same lean lifts the weighted arm and increases gravitational energy. With this geometry and mass, their sum has two stable minima and an unstable position between them. Moving the upper anchor biases this potential. A sufficiently large slow bias removes one local minimum, so the arm moves to the other side. Returning the anchor to center restores the two minima while the arm stays in the selected one. Inertia causes a snap and some oscillation; damping helps it settle.",
+        "matters": "The motor encoder alone does not identify the output state. A mechanism can have different outputs at the same input because its history selected a different equilibrium. This provides a mechanical example of memory and hysteresis. The experiment stores the output while the input is held near zero; it does not establish unlimited retention after all power is removed.",
+        "question": "After a right selection and a left selection, the motor returns close to the same zero. Must the output also return to the same angle? Would a stationary output or a slowly decaying pendulum, by itself, prove memory?",
+        "answer": "No. Two stable output equilibria can exist at the same centered input. The ideal native spring model predicts them near −24.63° and +24.63°. The experiment must select both states, return the input to matching near-zero values and retain opposite output signs throughout the observation windows. An output that never moves fails the two-state test. A gravity-only pendulum may swing through both sides without retaining either selected state, which is why the no-band comparison and full observation windows matter. The memory comes from the combined elastic and gravitational potential; internal hysteresis of real rubber is not required by the model.",
+        "further": [
+          "Plot the observed arm angle against the observed motor angle, keeping the outward and return portions in time order. Mark the two windows near motor zero. Use measured body poses for the arm, rather than substituting the predicted equilibrium angles.",
+          "Predict the effect of adding ballast farther below the hinge. It increases the gravitational coefficient Γ and can eventually restore a single vertical minimum. A changed ballast or band is a new experiment and needs fresh startup, clearance and native checks; keep manual input within the documented ±10° envelope.",
+          "Compare Echo Bridge, where elastic links exchange oscillation between two free arms, and Clutch Bench, where friction permits slip. Here an ideal single-valued spring law and gravity already produce two stable states. The stated band stiffness is a simulator approximation, not a measured property of real rubber."
+        ]
+      },
+      "de": {
+        "what": "Ein frei gelagerter, beschwerter Arm kann sich merken, zu welcher Seite er geschaltet wurde. Motor A bewegt den oberen Haltepunkt eines Gummibands etwas zur Seite und anschließend wieder in die Mitte. Der untere Arm kann bei derselben gehaltenen Motorposition rechts oder links geneigt bleiben. Gewichtskraft und elastische Spannung erzeugen die beiden Ruhelagen; der Ausgang hat weder einen eigenen Motor noch einen Anschlag.",
+        "try": [
+          "Wähle dieses Beispiel und starte es. Setze es nach manueller Bewegung vor einem weiteren Versuch zurück. Das Programm schreibt und liest beide Zustände; beobachte den freien roten Hebel.",
+          "Vergleiche während der beiden Beobachtungen Eingang und Ausgang getrennt. Motor A sollte beide Male nahe null stehen. Lies einen linken Winkel von höchstens −8° als Zustand 0 und einen rechten Winkel von mindestens +8° als Zustand 1; dazwischen liegt der Übergangsbereich. Beobachte jeweils den ganzen Zeitraum, damit ein durchschwingender Arm nicht mit einem gehaltenen Zustand verwechselt wird.",
+          "Vergleiche den mitgelieferten Versuch ohne Gummiband. Er behält die starren Teile, die Ausgangslage, das Programm und die normalen Importeinstellungen bei und entfernt nur den Eintrag des flexiblen Bands. Der Ausgang kann unter dem Einfluss der Schwerkraft schwingen, aber dem Eingang fehlt die elastische Verbindung, um seine Seite auszuwählen. Die Validierung prüft, dass die Regel für die passive Gelenkreibung in beiden Läufen übereinstimmt."
+        ],
+        "why": "Nahe der Senkrechten kann sich das gespannte Band durch eine seitliche Neigung verkürzen; seine elastische Energie sinkt. Gleichzeitig hebt die Neigung den beschwerten Arm an und erhöht seine potenzielle Energie im Schwerefeld. Bei dieser Geometrie und Masse besitzt die Summe zwei stabile Minima und eine instabile Lage dazwischen. Das Verschieben des oberen Haltepunkts verändert dieses Potenzial. Eine ausreichend große langsame Auslenkung lässt eines der lokalen Minima verschwinden, sodass der Arm auf die andere Seite wechselt. Die Rückkehr des Haltepunkts zur Mitte stellt die beiden Minima wieder her, während der Arm im ausgewählten bleibt. Die Trägheit führt zu einem Umschnappen und etwas Nachschwingen; Dämpfung hilft beim Beruhigen.",
+        "matters": "Der Motorencoder allein verrät den Ausgangszustand nicht. Ein Mechanismus kann beim gleichen Eingang unterschiedliche Ausgänge haben, weil sein Verlauf eine andere Gleichgewichtslage ausgewählt hat. Das ist ein mechanisches Beispiel für Speicherverhalten und Hysterese. Der Versuch speichert den Ausgang, während der Eingang nahe null gehalten wird; er weist keine unbegrenzte Speicherung nach vollständigem Abschalten nach.",
+        "question": "Nach einer Rechtswahl und einer Linkswahl kehrt der Motor nahe an dieselbe Nullposition zurück. Muss auch der Ausgang zum gleichen Winkel zurückkehren? Würden ein unbewegter Ausgang oder ein langsam ausschwingendes Pendel für sich allein Speicherverhalten beweisen?",
+        "answer": "Nein. Beim gleichen mittigen Eingang können zwei stabile Ausgangslagen existieren. Das ideale native Federmodell sagt sie bei ungefähr −24,63° und +24,63° voraus. Der Versuch muss beide Zustände auswählen, den Eingang zu übereinstimmenden Werten nahe null zurückführen und während der ganzen Beobachtungsfenster entgegengesetzte Ausgangsvorzeichen erhalten. Ein Ausgang, der sich niemals bewegt, besteht diesen Zweizustandstest nicht. Ein Pendel unter alleiniger Schwerkraft kann beide Seiten durchlaufen, ohne einen ausgewählten Zustand zu behalten. Deshalb sind der Vergleich ohne Band und die vollständigen Beobachtungsfenster nötig. Der Speicher entsteht aus dem gemeinsamen elastischen und gravitativen Potenzial; eine innere Hysterese des echten Gummis wird vom Modell nicht vorausgesetzt.",
+        "further": [
+          "Trage den beobachteten Armwinkel gegen den beobachteten Motorwinkel auf und behalte für Hin- und Rückweg die zeitliche Reihenfolge bei. Markiere die beiden Fenster nahe Motorwinkel null. Nutze gemessene Körperlagen für den Arm, statt die vorhergesagten Gleichgewichtswinkel einzusetzen.",
+          "Sage voraus, was zusätzliches Gewicht weiter unterhalb des Gelenks bewirkt. Es erhöht den Gravitationskoeffizienten Γ und kann schließlich ein einzelnes senkrechtes Minimum wiederherstellen. Ein geändertes Gewicht oder Band ist ein neuer Versuch und erfordert neue Prüfungen von Start, Freiraum und nativem Verhalten; bleibe bei manueller Bedienung innerhalb des dokumentierten Eingangsbereichs von ±10°.",
+          "Vergleiche Echo Bridge, wo elastische Verbindungen Schwingung zwischen zwei freien Armen übertragen, und Clutch Bench, wo Reibung Schlupf ermöglicht. Hier erzeugen bereits ein ideales eindeutiges Federgesetz und die Schwerkraft zwei stabile Zustände. Die angegebene Bandsteifigkeit ist eine Näherung des Simulators und keine gemessene Eigenschaft echten Gummis."
+        ]
+      },
+      "formula": {
+        "en": "At centered input, d(θ)=√(H²+a²+2Ha cosθ) and V(θ)=Γ(1−cosθ)+(K/2)[max(0,d−d₀)]², with angles in radians. Here a=0.016 m, H=0.032 m, Γ=gΣmjℓj≈0.001969848 N·m from the complete compiled moving mass, d₀=π(0.033−2×0.0028)/2≈0.043039819 m, and K=100×15/33≈45.454545 N/m in the pinned native model. Vertical is unstable when 0<Γ<KHa[1−d₀/(H+a)]. The stable pair satisfies d*=d₀/[1−Γ/(KHa)] and cosθ*=(d*²−H²−a²)/(2Ha), giving θ*≈±24.628°. For the 0.016 m input crank, the quasistatic ideal bias fold is near ±5.100°; a finite-speed observed switch need not occur at that exact angle.",
+        "de": "Beim mittigen Eingang gilt d(θ)=√(H²+a²+2Ha cosθ) und V(θ)=Γ(1−cosθ)+(K/2)[max(0,d−d₀)]²; Winkel stehen im Bogenmaß. Dabei sind a=0,016 m, H=0,032 m, Γ=gΣmjℓj≈0,001969848 N·m aus der vollständigen kompilierten bewegten Masse, d₀=π(0,033−2×0,0028)/2≈0,043039819 m und K=100×15/33≈45,454545 N/m im festgelegten nativen Modell. Die Senkrechte ist instabil, wenn 0<Γ<KHa[1−d₀/(H+a)]. Für das stabile Paar gilt d*=d₀/[1−Γ/(KHa)] und cosθ*=(d*²−H²−a²)/(2Ha), also θ*≈±24,628°. Für die Eingangskurbel mit 0,016 m Radius liegt der quasistatische ideale Faltpunkt nahe ±5,100°; ein beobachteter Wechsel bei endlicher Geschwindigkeit muss nicht genau dort erfolgen."
+      },
+      "related": [
+        "echo-bridge.ldr",
+        "clutch-bench.ldr",
+        "pendulum-array.ldr"
+      ]
     }
   }
 }
