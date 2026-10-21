@@ -1,6 +1,40 @@
 # Arcade integration repairs and qualification order
 
-## Latest composed campaign — 2026-10-21
+## Current published slice and first hosted repair — 2026-10-21
+
+PR #1128 now contains the coherent Sprite receiver, assessment transport and
+actual generated-menu slice at `61df3607d`. The separately held canonical Array
+menu and constructor-effect candidates are outside that published source.
+The complete actual generator produces 614 opcode rows, and its real CLI
+`--check` passes. The handoff describes the focused source checks and remaining
+native, SDK, VM and browser gates.
+
+The first hosted build and all four unit shards stop at the same source-suite
+fence: the SPIKE artifact fixture expects supplier `f4b1a789`, while the already
+adopted pin is `d7c25891`. Each retained source-suite report has 177 passes and
+that one failure; the regular unit shards have not qualified. Their missing
+unit-artifact uploads are secondary failures after the early stop.
+
+The repair retains a fixed, reviewed D7 expectation and every original program
+and artifact assertion. The complete genuine SPIKE compiler artifact/round-trip
+module passes locally, without skips. Supplier #161 changes SPIKE motor-power
+and PWM compiler/registry behavior: this fixture does not exercise that new
+operation, and gives no separate firmware, motor-power or guest qualification.
+No dependency pin or production SPIKE code changes in this repair.
+
+Preserve the running browser results, then batch the corrective head for normal
+hosted qualification. Do not rerun the old source failures or weaken their
+required assertions. The old 180-failure census below belongs to its recorded
+older head; it is not a new measurement of this candidate or of applications.
+
+The separate constructor candidate's expanded 32-test observation has 24 passes,
+seven failures and one named missing-compiler skip; it also failed its declared
+local resource bound. Keep the complete failing graphs and use proper hosted
+qualification for its corrected full group. A missing SDK is an unqualified
+prerequisite. Historical application totals remain 147 translated / 36 partial /
+one malformed until a complete replacement census exists.
+
+## Historical composed campaign at 8fabbfbd9 — 2026-10-21
 
 At `8fabbfbd9`, build and focused controls pass. The vendor job now passes the
 Creator synchronization step and reports 31 stale example `EXPECTED.md` files.

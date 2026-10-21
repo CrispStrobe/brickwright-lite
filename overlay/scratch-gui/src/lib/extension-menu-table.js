@@ -87,6 +87,8 @@ export default {
     "arcade_showLongText": {"LAYOUT":"dialogLayouts"},
     "arcade_soundEffect": {"WAVE":"waveShapes","EFFECT":"soundEffects","CURVE":"soundCurves"},
     "arcade_soundMelody": {"SOUND":"sounds"},
+    "arcade_sourceValueBinary": {"OP":"sourceBinaryOperations"},
+    "arcade_sourceValueUnary": {"OP":"sourceUnaryOperations"},
     "arcade_spriteDataRead": {"TYPE":"spriteDataReadTypes"},
     "arcade_spriteDataSet": {"TYPE":"spriteDataTypes"},
     "arcade_spriteProperty": {"PROPERTY":"readableSpriteProperties"},
