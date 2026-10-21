@@ -509,6 +509,20 @@ class DebugPanel extends React.Component {
      * build behaves as it always did.
      */
     _onAsmRomReady (e) {
+        // THE SAME PROGRAM, DELIVERED TWICE — the media-load guard in
+        // _bootFromMedia, for the ASM hand-off. circuit-tab re-dispatches the
+        // stashed detail a frame later (machineBooted / re-entering Circuit),
+        // and every route below wraps it in a FRESH detail, so that guard never
+        // matched: each assembled Run booted twice, the first runner torn down
+        // mid-attach. Its late `ready` then landed over the second runner's
+        // `running` ("not running — assembled image on the Searle map") — the
+        // intermittent verify-debug-run-to-inspection timeout. A new Run sends
+        // a new detail object, so identity is the right key here as well. Only
+        // while the runner it booted lives: a repeat after something else tore
+        // that runner down (an edit, a device change) still boots it again.
+        if (e.detail && e.detail === this._lastAsmDetail &&
+            (this._runnerPromise || this.state.runner)) return false;
+        this._lastAsmDetail = e.detail || null;
         const {rom, target, slotId, profile, chips} = e.detail || {};
         // A local RV32IM build is a loadable {entry, segments} image, not a flat
         // ROM — boot it on the RISC-V bench through _onMediaLoad's riscvImage
