@@ -27,6 +27,7 @@ import art from './sb3-creator-vector-art.js';
 import spikeRuntimeOps from './spike-runtime-ops.js';
 import {LEGACY_IDS as SPIKE_LEGACY_IDS} from './spike-legacy-migration.js';
 import {withRobotLab, ROBOTLAB_RUNTIME} from './robot-lab-pseudocode.js';
+import {withMenuShapes} from './extension-menu-args.js';
 
 // Returns the entry count; ignored here, asserted by the tests (246 as of 2026-08-30).
 SB3Creator.registerVectorArt(art);
@@ -64,8 +65,16 @@ const WithRobotLab = withRobotLab(SB3Creator);
 // made with BW_ENABLE_PEERS=1 (a DefinePlugin literal; in node, process.env holds strings, so
 // `=== true` keeps this off). They are not upstreamed to sb3-creator because no build that
 // lacks the gate may parse them. test/peers-gate.test.mjs holds the gate.
-const Creator = process.env.BW_ENABLE_PEERS === true ?
+const Layered = process.env.BW_ENABLE_PEERS === true ?
     require('./peer-pseudocode.js').default(WithRobotLab) : // eslint-disable-line global-require
     WithRobotLab;
+
+// EXTENSION MENU SHAPES (lib/extension-menu-args.js): every project the compiler builds
+// stores each extension menu argument as its extension declares it (an acceptReporters
+// menu as a shadow input, any other as a field), and every reader sees each menu value
+// in both shapes. Until 2026-10-21 the compiler wrote SPIKE ports, micro:bit+ pins and
+// more as fields: Blockly dropped them, the editor showed empty dropdowns, and the SPIKE
+// motor blocks threw when they ran. Outermost, so it sees every dialect's blocks.
+const Creator = withMenuShapes(Layered);
 
 export default Creator;

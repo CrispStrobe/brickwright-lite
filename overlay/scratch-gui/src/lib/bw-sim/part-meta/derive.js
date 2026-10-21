@@ -57,6 +57,8 @@ export const ABS_DENSITY_G_PER_CM3 = 1.05;
 const LDU_CM = 0.04;
 
 const BORE_R = 6;
+/** A towball's radius (LDU): its socket's bore. */
+const BALL_R = 8;
 const LINE_EPS = 0.5;
 const COS_1 = Math.cos(Math.PI / 180);
 /** A pin is 6 LDU across its shaft, 8 at a collar (test/bw-sim-part-meta.test.mjs SHAFT_R). */
@@ -492,6 +494,21 @@ export const deriveConnectors = (flat, {header = {}, read, system = false} = {})
         const away = sub(b, rest);
         connectors.push({id: `b${i}`, type: 'ball', position: b, axis: len(away) > 1e-6 ? snapAxis(unit(away)) : [0, -1, 0]});
     });
+
+    // Ball sockets: a towball's socket is an 8 LDU bore (the ball's radius; a pin hole's is 6), 6 to 16 deep, inside a
+    // wider wall on the same axis (the socket's rim): a steering link's ends (2739a, 32005). The ball's centre is the
+    // middle of the bore. Without them every steering link from the library was decoration, its towballs welded.
+    const features = circularFeatures(prims.filter(p => !viaStud(p))).filter(c => /cyli\.dat$/.test(base(c.file)));
+    const sockets = [];
+    for (const f of features) {
+        if (Math.abs(f.radius - BALL_R) > 0.5 || f.height < 6 || f.height > 16) continue;
+        const mid = add(f.center, scale(f.axis, f.height / 2));
+        const rim = features.some(g => g !== f && g.radius > BALL_R + 0.5 && g.radius < BALL_R + 6 && Math.abs(dot(g.axis, f.axis)) > COS_1 &&
+            len(perp(sub(g.center, f.center), f.axis)) < LINE_EPS);
+        if (!rim || balls.some(b => len(sub(b, mid)) < 1) || sockets.some(q => len(sub(q.position, mid)) < 1)) continue;
+        sockets.push({position: mid, axis: snapAxis(f.axis)});
+    }
+    sockets.forEach((q, i) => connectors.push({id: `bs${i}`, type: 'ballsocket', position: q.position, axis: q.axis}));
 
     // Studs.
     const studs = prims.filter(p => TOP_STUD.test(base(p.file)) && !p.via.some(f => IN_A_STUD.test(base(f))))
