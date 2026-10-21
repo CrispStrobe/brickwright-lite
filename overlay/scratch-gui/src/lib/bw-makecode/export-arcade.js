@@ -4039,6 +4039,10 @@ class ArcadeEmitter {
                         continue;
                     }
                     if(this.objectClassExport.procedures.has(key))continue;
+                    // A refused prototype has no actual owned export symbol.
+                    // Retain its diagnostic instead of emitting a null function.
+                    const fn = this.functionName(t,proto.mutation.proccode);
+                    if(!fn)continue;
                     const types = imageParameterTypes.get(key) || [];
                     const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.
@@ -4056,7 +4060,6 @@ class ArcadeEmitter {
                     script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])], [], !this.managedValueProcedures.has(key));
                     const locals = [...this.currentLocalNames].filter(name => !names.includes(name));
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
-                    const fn = this.functionName(t,proto.mutation.proccode);
                     // A procedure that returns a value (arcade_returnValue) is typed by
                     // what flows out of it; one that falls off its end returns undefined, as in PXT.
                     const returning = line => /^\s*return [^\s/]/.test(line);

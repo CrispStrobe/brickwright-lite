@@ -8460,3 +8460,43 @@ Closed unary normal returns and primitive captured variables are source-result
 facts only, with actual operand effects and complete writer facts retained.
 Final supplier adoption, visible authoring and hosted exact-head acceptance are
 pending; no whole application corpus or hardware completion is claimed.
+## Arcade refused accessor procedure emission — 2026-10-20
+
+SOURCE candidate within the merged class export and actual ordinary-symbol
+ownership envelopes. A malformed edited accessor prototype retains its existing
+ownership diagnostics and emits no procedure without an actual export symbol.
+No fallback name, class admission or parser-error waiver is introduced. Seven
+complete source and Creator modules now pass all 19 controls, with no failures,
+skips or TODOs. This includes the original valid accessor seed, edited-formal
+refusals, parser metadata identity, captured scalar facts and class writer/escape
+controls. Final source composition, original VM/SDK class roundtrips and native
+and browser qualification remain pending; VM ownership and dependency inputs
+are unchanged.
+
+The parser also gives each synthetic constructor-property field its own copy of
+the exact primitive modifiers. Constructor parameter provenance, defaults and
+body remain unchanged; the helper consumer still refuses shared executable
+nodes and observes all retained metadata for source currentness.
+
+A separate private native-add operand rule accepts an actual single variable
+binding only when its complete writer facts and occurrence facts are nonempty
+and exclusively primitive, including Undefined. It grants no initialization
+claim or Array authority; Array operands retain every original check. Unknown,
+object, Sprite, future Array and local uninitialized opaque facts still refuse.
+
+A private native-add class view follows actual plain-class constructor arguments,
+field initialization and writers, aliases, setter arguments and getter/method
+returns. Annotations do not seed facts. Only primitive normal-return member
+reads are modeled, with the original read retained for effects; output source
+is unchanged. Unknown/escaped/computed/prototype/implicit-coercion class effects
+decline these added facts. Inheritance and SDK object profiles remain separate.
+
+The private class view retains complete field writers across constructor calls,
+setters, methods and instance aliases. Unknown value producers and callback tags,
+nested container escapes and unindexed function scopes decline its added facts.
+Only an uncaptured function-local variable with one definite constructor
+overwrite and later direct alias copies can use that actual RHS at those reads;
+its initializer, complete binding writer facts and initialization status remain
+unchanged. Branches, captures, extra writes and other uses retain the conservative
+path. No generated name or declared type selects this refinement. All original
+Array allocation, flatness, effect and currentness requirements remain in force.

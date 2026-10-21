@@ -2,6 +2,7 @@ import {analyseSourceValueProducers} from './source-value-producers.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
+import {nativeClassScalarView} from './native-class-scalar-view.js';
 
 const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
@@ -61,8 +62,9 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     // than independently recognizing a JSON or named registry helper family.
     const named=lowerNamedArrayItemHelpers(prepare(program),{profile});
     if(named.unsupported.length)return {helpers:new Map(),current:syntax.current,reason:'native addition named-helper source proof refused: '+named.unsupported.join('; ')};
-    const bindings=inspectGeneratedHelperBindings(named.program,profile);
-    const current=()=>syntax.current()&&unaryProof.isCurrent()&&bindings.isCurrent();
+    const classView=nativeClassScalarView(named.program,profile);
+    const bindings=inspectGeneratedHelperBindings(classView.program,profile);
+    const current=()=>syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent();
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set();
     for(const node of bindings.nodes)if(tokens.has(node.nativeArrayDomainCall)){
@@ -100,7 +102,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         arrayValues:true,arrayEffectSites:true,parenthesized:true,unboundIsOpaque:true,
         uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true
     });
-    let model=rewrite(named.program),graph=analyse(model);
+    let model=rewrite(classView.program),graph=analyse(model);
     const nodes=[],parents=new WeakMap();
     const visit=(node,parent=null)=>{
         if(!node||typeof node!=='object')return;
@@ -143,7 +145,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         parsedValues.add(node);
     }
     if(unsupportedView)return {helpers:new Map(),current,reason:'native addition has no private shape model for this named mutator'};
-    if(parsedValues.size){replacements=new WeakMap();model=rewrite(named.program);graph=analyse(model);nodes.length=0;visit(model);}
+    if(parsedValues.size){replacements=new WeakMap();model=rewrite(classView.program);graph=analyse(model);nodes.length=0;visit(model);}
 
     const allTokens=new Set(),arrayHelpers=new Set();
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){

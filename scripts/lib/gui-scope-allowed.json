@@ -138,6 +138,7 @@
       "test/makecode-arcade-animation-interchange-project.test.mjs",
       "test/makecode-arcade-animation-resources-export.test.mjs",
       "test/makecode-arcade-animation.test.mjs",
+      "test/makecode-accessor-export-refusal.test.mjs",
       "test/makecode-arcade-array-callbacks.test.mjs",
       "test/makecode-arcade-array-coercion.test.mjs",
       "test/makecode-arcade-array-copies.test.mjs",

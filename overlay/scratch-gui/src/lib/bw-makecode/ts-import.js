@@ -717,7 +717,7 @@ class Parser {
                     // Parameter properties initialize instance fields before the constructor body.
                     // Retain their modifiers/types for later lowering and explicit diagnostics.
                     const properties = params.parameterProperties;
-                    for (const property of properties) node.fields.push({...property, init: null, isStatic: false, parameterProperty: true});
+                    for (const property of properties) node.fields.push({...property, modifiers:[...property.modifiers], init: null, isStatic: false, parameterProperty: true});
                     const assignments = properties.map(({name}) => ({type: 'ExpressionStatement', expr: {
                         type: 'Assignment', op: '=', left: {type: 'Member', object: {type: 'Identifier', name: 'this'}, name},
                         right: {type: 'Identifier', name}
