@@ -68,17 +68,21 @@ test('a claim-only PR is docs-only, like a LANES.md-only PR was', () => {
     assert.equal(isDocsOnly(['lanes/sub/x.mjs'], entries), false, 'only files directly in lanes/ are claims');
 });
 
+// A clean environment: a runner or hook may export GIT_DIR / GIT_INDEX_FILE etc.,
+// which would point the scratch repo at the real checkout.
+const GIT_ENV = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
 const git = (cwd, ...args) => {
     // gate-shapes-allow: the subject is git's own merge of two claim files in a scratch repo; a missing git fails red.
     const r = spawnSync('git', [  // gate-shapes-allow'-c', 'gc.auto=0', '-c', 'user.name=t', '-c', 'user.email=t@example.invalid',
-        '-c', 'init.defaultBranch=main', '-c', 'commit.gpgsign=false', ...args], {cwd, encoding: 'utf8'});
+        '-c', 'init.defaultBranch=main', '-c', 'commit.gpgsign=false', ...args], {cwd, encoding: 'utf8', env: GIT_ENV});
     return r;
 };
 
 test('two claims added in parallel, in different files, merge without a conflict', () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'bw-lanes-'));
     try {
-        assert.equal(git(repo, 'init', '-q').status, 0);
+        const init = git(repo, 'init', '-q');
+        assert.equal(init.status, 0, `git init: ${init.stderr}`);
         writeFileSync(path.join(repo, 'LANES.md'), readFileSync(path.join(ROOT, 'LANES.md')));
         mkdirSync(path.join(repo, 'lanes'));
         writeFileSync(path.join(repo, 'lanes/2026-10-19-older.md'), '## Older — 2026-10-19\n\nDONE.\n');
