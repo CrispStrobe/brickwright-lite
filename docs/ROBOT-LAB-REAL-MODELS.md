@@ -221,6 +221,18 @@ Eight models stop going NaN (42042, 42043 Flatbed Trailer, 42055, 42070, 42109, 
 newly do: 42080, 42113 and 42131. In each, a light linkage spins free once the machine moves (42080's arm at 16 rad/s
 against its neighbours). The 5 m/s cap does not catch them. They are open.
 
+**Pin friction on free hinges.** A hinge in a model from elsewhere that nothing drives, limits or couples now turns
+with 0.02 N·m of friction (`FOREIGN_FREE_HINGE_NM`). A friction pin holds a 10 g liftarm level 6 cm out, which is
+0.006 N·m, so 0.02 is that order. Frictionless, 42080's arm was hit by its neighbours and spun up to 16 rad/s. Exempt:
+- hinges on a wheel's body (it rolls);
+- hinges on a motor's body (a train motor's idler axles are its own free joints; with friction, the 7760 shunter
+  stopped);
+- hinges on a body a coupling moves (a CV joint drives the hub through it).
+
+On 19 models: NaN 13 with no friction, 9 at 0.005, 7 at 0.02, 6 at 0.05. On all 96: NaN 12 → 11, driving 25 → 30
+(42080, 42131, 42043, 8868 and brickhub-9 hold together; 42055, 42066, 42129 and 75253 now fail late in the 2 s).
+Small changes reshuffle which models fail, so the totals are the measure.
+
 ## Old motors and the LeoCAD and LDD files (2026-10-21)
 
 **Old motors are motor parts now** (`parts.json`, `devices/catalog.js`):

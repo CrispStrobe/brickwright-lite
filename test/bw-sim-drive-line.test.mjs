@@ -70,3 +70,20 @@ test('a model from elsewhere caps every body\'s speed (FOREIGN_MAX_SPEED_M_S); o
     const own = speedAfterPush({});
     assert.ok(own.v > 19, `our own file: ${own.v} m/s`);
 });
+
+test('a free hinge in a model from elsewhere turns with a pin\'s friction (FOREIGN_FREE_HINGE_NM); ours stays frictionless', async () => {
+    const {FOREIGN_FREE_HINGE_NM} = await import('../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js');
+    // Two 7L beams stacked, one pin through their middle holes: a hinge nothing drives, limits or couples.
+    const model = {version: 1, parts: [
+        {id: 'b1', part: '32524.dat', position: [0, 0, 0], rotation: I3},
+        {id: 'b2', part: '32524.dat', position: [0, 20, 0], rotation: I3},
+        {id: 'pin', part: '3673.dat', position: [0, 10, 0], rotation: AXLE_Y}
+    ]};
+    const hinges = m => m.joints.filter(j => j.type === 'hinge');
+    const own = compile(model, CATALOG, {ground: false, version: 2});
+    const foreign = compile(model, CATALOG, {ground: false, version: 2, rescueLoose: true});
+    assert.equal(validateCompiledMechanism(foreign).length, 0);
+    assert.ok(hinges(own).length >= 1 && hinges(own).every(j => j.frictionNm === undefined), JSON.stringify(hinges(own)));
+    assert.ok(hinges(foreign).length >= 1 && hinges(foreign).every(j => j.frictionNm === FOREIGN_FREE_HINGE_NM), JSON.stringify(hinges(foreign)));
+    assert.ok(FOREIGN_FREE_HINGE_NM > 0);
+});

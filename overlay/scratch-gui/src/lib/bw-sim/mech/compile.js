@@ -40,6 +40,12 @@ export const FOREIGN_LIGHT_LINKS = Object.freeze({massKg: 0.01, ratio: 20, veloc
  * 42066 went to NaN in the bench with every motor at 60 %, and held together with the limit).
  */
 export const FOREIGN_MAX_SPEED_M_S = 5;
+/**
+ * A model from elsewhere: the friction (N·m) of a hinge nothing drives, limits or couples, as a Technic pin's. A
+ * friction pin holds a 10 g liftarm level 6 cm out (0.006 N·m); 0.02 is that order. Bench (19 models, every motor at
+ * 60 %, 2 s): NaN 13 with none, 9 at 0.005, 7 at 0.02, 6 at 0.05; the plain drivers' distances unchanged.
+ */
+export const FOREIGN_FREE_HINGE_NM = 0.02;
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -333,6 +339,23 @@ export const compile = (model, catalog, opts = {}) => {
         const broken = breakHingeLoops(joints, {keep, massOf});
         joints.splice(0, joints.length, ...broken.joints);
         loopBalls = broken.balls;
+    }
+    // A model from elsewhere: a hinge nothing drives, limits or couples turns with a pin's friction
+    // (FOREIGN_FREE_HINGE_NM). Frictionless, a light arm hit by its neighbours spun up until the solver flung it.
+    // Not a wheel's (it rolls), not one on a motor (a train motor's idler axles are its own free joints), and not one on
+    // a body a coupling moves (a CV joint's hub is driven through it).
+    const freeNm = opts.rescueLoose ? (opts.freeHingeFrictionNm ?? FOREIGN_FREE_HINGE_NM) : 0;
+    if (freeNm > 0) {
+        const named = JSON.stringify([gearResult.gears, gearResult.relative || [], detected.couplings]);
+        const partOf = new Map(model.parts.map(p => [p.id, p.part]));
+        const rolls = meta => meta && (meta.category === 'wheel' || meta.category === 'motor' || Boolean(meta.device));
+        const wheels = new Set(islands.bodies.filter(b => b.parts.some(id => rolls(catalogMap.get(partOf.get(id))))).map(b => b.id));
+        const driven = j => named.includes(`"${j.id}"`) || named.includes(`"${j.body1}"`) || named.includes(`"${j.body2}"`);
+        for (const j of joints) {
+            if (j.type !== 'hinge' || j.motor || j.limits || j.spring || j.frictionNm !== undefined) continue;
+            if (driven(j) || wheels.has(j.body1) || wheels.has(j.body2)) continue;
+            j.frictionNm = freeNm;
+        }
     }
 
     // Loose parts: bodies that no joint links, directly or through other bodies, to the

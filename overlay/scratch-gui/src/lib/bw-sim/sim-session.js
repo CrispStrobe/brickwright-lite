@@ -156,7 +156,7 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
 /** A file we wrote ourselves (serializeModel's header): its ports are as the builder left them, unplugged ones too. */
 const OWN_FILE = /^0 Author: Brickwright\s*$/m;
 
-export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text), breakLoops = true} = {}) => {
+export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text), breakLoops = true, freeHingeFrictionNm} = {}) => {
     const {model: parsedModel, refusals} = parseModel(text, {catalog});
     // One issue per unknown file, however often it is placed: a real model's cables and hoses are thousands of
     // segment lines (6,424 on one set), and the Lab lists every issue.
@@ -196,7 +196,7 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
-    const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
+    const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, breakLoops, ...(freeHingeFrictionNm !== undefined ? {freeHingeFrictionNm} : {}), ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
     issues.push(...mechanismIssues(mechanism));
     return {model, runModel, mechanism, issues};
