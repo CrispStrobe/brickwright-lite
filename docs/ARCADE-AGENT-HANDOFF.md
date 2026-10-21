@@ -33,12 +33,28 @@ Creator supplies its default Stage asset during save, not in its asset map.
 The diagnostic now uses the genuine package rather than a substitute image or
 a weakened assertion. This example did not reproduce a native-addition refusal.
 
-Next, capture the actual edited-animation export that failed in hosted CI,
-retaining all three controls and their original assertions. Use observed
-operand facts to attribute a semantic fix. Keep lexical declaration execution
-separate from value initialization and primitive writer facts; a type annotation
-or a default-zero rewrite is not a proof. Full SDK, native, browser and corpus
-acceptance remain separate gates. No fresh corpus count is available.
+The complete original edited-animation case now has two passes and one export
+failure. Exact current export arguments and the returned diagnostic identify
+an initialized `count` after `count = frames.length`, with `Opaque` and `Number`
+producer facts. Its actual resource context and all original assertions remain
+retained. The [next producer work](ARCADE-CI-REPAIR-STATUS.md#readiness-analysis-and-overlapping-power-work)
+needs its own merged implementation claim; it must preserve dynamic fallback,
+fresh/shared identity, all writers, null and possible missing elements.
+
+Separately, captured lexical declaration readiness now passes all 23 controls
+across eight complete source modules. It distinguishes declaration execution
+from value initialization and proves complete closed function entries. Real
+parser defaults, retained optional signatures, escapes, reflection and opaque
+writers cannot acquire authority. The earlier failing originals are preserved.
+See [the contract and remaining gates](ARCADE-LEXICAL-DECLARATION-READINESS.md).
+This is source-analysis qualification; full SDK, native, browser and corpus
+acceptance remain separate. No fresh corpus count is available.
+
+The operator-authorized x86 supplier-consumer claim has merged in PR #1193;
+its two fixed D7 identities are a local candidate with actual execution disabled
+and fresh affected GUI/guest acceptance pending. The school owner has separately
+taken over the narrow SPIKE power repair. Preserve our candidate and receipts,
+and reconcile with that owner's landed result rather than duplicating it.
 
 This section supersedes older pending-run descriptions below. PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
 at `125dacab7e183ca15d08224524b576894480d8b1` has finished all enabled

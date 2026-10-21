@@ -38,13 +38,15 @@ guest qualification remains pending.
 
 ### Readiness analysis and overlapping power work
 
-The complete eight-module readiness group has 18 passes and five failures;
-all earlier 15 controls pass. The new failures expose incorrect assumptions
-about the parser's string and Boolean literal representation and two tests
-that conflate missing proof authority with an explicit refusal result. Correct
-the analysis against the actual parser schema, preserve the original controls,
-and qualify the complete group again. No corpus count changes follow from
-these focused tests.
+The corrected complete eight-module readiness group now passes 23/23 without
+skips, independently checked from saved originals. Earlier observations of
+18/23 and 21/23 remain retained. The corrections use actual parser string and
+Boolean representations, refuse escaped computed keys, and reject default and
+optional-signature provenance even after parameter-array metadata is lost in a
+private rewrite. No parser or default prologue was weakened. See
+[the capability contract](ARCADE-LEXICAL-DECLARATION-READINESS.md).
+Original/emitted SDK, affected native/GUI and integration gates remain pending;
+these focused tests do not change the corpus counts.
 
 The complete three-test animation carrier case reproduced one export failure;
 the other two tests passed. Current artwork survives import, editing and fresh

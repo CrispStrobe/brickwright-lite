@@ -1,5 +1,22 @@
 # Conversion capabilities and GUI closure ledger
 
+## Captured lexical declaration readiness — conversion controls only
+
+The [source capability](ARCADE-LEXICAL-DECLARATION-READINESS.md) passes all 23
+controls across eight complete modules. It proves an executed declaration at a
+closure allocation or every closed hoisted entry, retaining actual Undefined
+and all primitive writers. It supplies no default zero, annotation authority,
+Array admission or blanket default-parameter support.
+
+GUI acceptance remains open: import a genuine captured lexical value, inspect
+the actual Code and connected Blocks representation, edit declaration/call
+order, and preserve semantics through Code/pseudocode, save/fresh reopen and
+MakeCode export/reimport. Record any representation that cannot preserve an
+uninitialized declaration or Undefined explicitly; a Scratch zero variable is
+not a substitute. Unsafe early/default/unknown entries must retain an owned,
+readable conversion diagnostic. No new authoring control or visible journey
+is qualified by the source tests alone.
+
 ## Source operators: GUI acceptance pending — 2026-10-21
 
 `arcade_sourceValueBinary` exposes fixed selectors `+ - * / % ** & | ^ << >> >>>`;
