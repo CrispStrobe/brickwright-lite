@@ -69,7 +69,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     if(named.unsupported.length)return {helpers:new Map(),current:syntax.current,reason:'native addition named-helper source proof refused: '+named.unsupported.join('; ')};
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
-    const current=()=>syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent();
+    const current=()=>syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
     for(const node of bindings.nodes)if(tokens.has(node.nativeArrayDomainCall)){
@@ -176,6 +176,9 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         const at=owner.body.indexOf(statement);
         return at>=0&&owner.body.slice(0,at).every(inertStatement);
     };
+    // A separate actual declaration-executed frontier may discharge lexical
+    // readiness only AFTER the same nonempty primitive occurrence/all-writer
+    // gate. It supplies no value, initialized binding or Array certificate.
     const capturedScalarIdentifier=node=>{
         if(node?.type!=='Identifier')return false;
         const value=actual(node),kinds=graph.bindingKindsAt(value);
@@ -183,7 +186,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         const occurrence=types(node),writers=graph.bindingTypesAt(value);
         return occurrence.size>0&&writers.size>0&&
             [...occurrence,...writers].every(type=>primitive.has(type))&&
-            (initialized(node)||capturedDeclarationReady(node));
+            (initialized(node)||capturedDeclarationReady(node)||graph.isCapturedLexicalDeclarationReadyAt(value));
     };
     // This graph leaves an unassigned module binding's writer set empty, but
     // records Undefined at its actual read. Require precisely that occurrence
