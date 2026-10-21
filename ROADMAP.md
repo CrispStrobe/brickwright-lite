@@ -1960,6 +1960,26 @@ drives with 8 levels, device readings → raw ADC values, the VM's state in expo
 worker's mirror redoes a batch) imports it; a virtual `rcxDownload` target "Robot Lab RCX" puts
 NQC programs into it. docs/ROBOT-LAB-RCX.md "The hub" says what runs and what is missing.
 
+### 4.11 Robot Lab virtual transports — BUILT 2026-10-21, NOT YET WIRED INTO THE PANE
+
+The hub-coverage gaps that needed a transport, not a brick (docs/ROBOT-LAB-HUB-COVERAGE.md):
+EV3 and NXT over Web Serial and over their WebSocket bridges, ev3dev over HTTP, the Powered Up /
+BOOST HTTP bridge and the SPIKE 2.x bridge. Each adapter speaks exactly what the vendored extension
+sends, and routes it to the brick's EXISTING session or GATT peripheral. The files are
+`lib/bw-sim/transports/`: `virtual-serial.js` (a `navigator.serial` double), `virtual-bridge.js`
+(a WebSocket relay double: binary, base64 or text framing), `virtual-http.js` (a `fetch` double),
+`virtual-ev3dev.js` (the ev3dev bridge's requests), `virtual-ble-bridge.js` (the LWP3 HTTP bridge)
+and `virtual-spike-stream.js` (the 2.x REPL double as a byte stream). The end-to-end tests drive
+the real extensions through them into the Lab physics: `bw-sim-virtual-transports-ev3`,
+`bw-sim-virtual-ev3dev`, `lab-hubs-bridge`, `bw-sim-virtual-transports-nxt`, `bw-sim-spike-bridge`.
+
+They are in KNOWN_DEAD (`test/no-dead-overlay-modules.test.mjs`) with this section as their owner,
+and for the same reason as §4.10 before it: the consumer is the Robot Lab pane, which installs
+the scene's peripherals (`components/tw-pseudocode/sim-lab-pane.jsx`, through `bw-sim/sim-lab.js`).
+Open Robot Lab PRs edit both files, so the pane wiring is a separate change made after they land.
+That change offers the scene's bricks on these routes while a Lab program connects. It does not
+take over a real serial port or a real bridge on the user's machine.
+
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 
 A gate that needs two checkouts side by side runs on a developer machine and **skips in CI**, where
