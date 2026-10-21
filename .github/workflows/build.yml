@@ -1938,6 +1938,16 @@ jobs:
         run: npm run verify:sim-lab -- --part=examples --examples=physics-workshops
 
 
+      - name: Browser gate — Robot Lab counterturn complete example
+        timeout-minutes: 8  # PROVISIONAL — new model, same existing per-example budget
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=counterturn
+
+      - name: Browser gate — Robot Lab snapgate complete example
+        timeout-minutes: 8  # PROVISIONAL — new model, same existing per-example budget
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=snapgate
+
       - name: Browser gate — Robot Lab echo-bridge complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}

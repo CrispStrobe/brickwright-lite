@@ -67,6 +67,7 @@ import {vecAdd, vecSub, vecDot, vecLen, vecScale, vecNormalize, vecCross, mat3Mu
 import {pitchRadiusLdu, gearPitchRadius, dirToWorld, lduToWorld, LDU_M} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {TOL, parallelAxes, meshRatio, gearHinges} from '../kinds/gear-mesh.js';
+import {partBounds} from './spatial-index.js';
 
 // The hinges a gear turns on (gearHinges) moved to kinds/gear-mesh.js unchanged, so the coupling
 // kinds that are connectors (kinds/worm.js, kinds/rack.js) share the frame rules without importing
@@ -168,6 +169,33 @@ const squaredUp = (g1, g2, slack) => {
 
 export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [], jointEntries = null, kinds = BUILTIN_KINDS, {slack = null} = {}) => {
     const {nodeToBody} = islands;
+    const warningBounds = new Map();
+    const boundsOf = g => {
+        if (!warningBounds.has(g.nodeId)) {
+            const n = nodes.get(g.nodeId);
+            warningBounds.set(g.nodeId, partBounds(n.placed, n.meta));
+        }
+        return warningBounds.get(g.nodeId);
+    };
+    const warningEnvelopesSeparated = (a, b) => {
+        const ba = boundsOf(a), bb = boundsOf(b);
+        if (!ba || !bb) return false;
+        if ([0, 1, 2].some(i => ba.max[i] < bb.min[i] - 1e-9 || bb.max[i] < ba.min[i] - 1e-9)) return true;
+        const insideToothRoot = (ring, box) => {
+            if (ring.type !== 'spur' || ring.r <= 5) return false;
+            const n = nodes.get(ring.nodeId);
+            const centre = vecAdd(mat3MulVec3(n.placed.rotation, n.meta.gear.center), n.placed.position);
+            const axis = vecNormalize(mat3MulVec3(n.placed.rotation, n.meta.gear.axis));
+            // A whole conservative envelope inside an external gear's root circle
+            // cannot meet its teeth. Keep five LDU clear of the pitch circle.
+            for (const x of [box.min[0], box.max[0]]) for (const y of [box.min[1], box.max[1]]) for (const z of [box.min[2], box.max[2]]) {
+                const d = vecSub([x, y, z], centre);
+                if (vecLen(vecSub(d, vecScale(axis, vecDot(d, axis)))) >= ring.r - 5) return false;
+            }
+            return true;
+        };
+        return insideToothRoot(a, bb) || insideToothRoot(b, ba);
+    };
 
     // Every placed gear part with its centre/axis in the model frame (LDU).
     const gearInfos = [];
@@ -256,6 +284,7 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             // circles within a module of touching (a spur and a bevel gear across a model are not a pair).
             if (!module && Math.hypot(...[0, 1, 2].map(i => g1.centerLdu[i] - g2.centerLdu[i])) > g1.r + g2.r + 2.5) continue;
             if (!module) {
+                if (warningEnvelopesSeparated(g1, g2)) continue;
                 // Internal side/planet gears occupy a casing with its own external flange.
                 // The seat kind explicitly permits that placement; its outer tooth profile
                 // does not engage the internal gears. Keep all actual gear-pair checks.

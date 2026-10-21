@@ -543,3 +543,26 @@ Bit Keeper. The unchanged seven catalog controls pass after reproducing the
 omission. A separate claimed Arcade test repair observes the actual program
 polling clock instead of assuming a scene frame delivers held-input completion;
 its full modules and catalog controls pass with a missing-input negative.
+
+## Counterturn and Snapgate — 2026-10-22
+
+IMPLEMENTED / native and geometry qualified; browser and hosted qualification
+pending. Continue the original owner-requested model intake with Counterturn
+(120 placements, A) and Snapgate (205 CAD placements / 204 stock items, A).
+Exact source hashes, raw CAD, original finite programs and BSD/CrispStrobe
+notices are retained. Counterturn's real 12:20 bevel pair drives a vertical
+flywheel on a passive carrier; native inertia predicts the measured counterturn.
+The separate hollow-turntable claim covers the measured collider repair.
+Two 0.8 mm retainer clearances keep the original rigid arrangement connected.
+Snapgate's shock-eye plane has 1 mm axial clearance; a 12L anchor axle and a
+retained 5L rod-eye axle remove solid and fastener overlaps. Its bearing pin is
+seated at the beam face. The passive spring rocker retains opposite states at
+matching inputs, with four 75–80 ms switches in two cycles. Fixed source motion,
+closure, inertia, momentum, startup and repeatability bounds are preserved.
+
+Seven ordinary/strict native controls pass, including an actual real-part
+Counterturn locking brace and independently rejected frozen-output records.
+The two revised models pass all eight detailed mesh/fastener checks, zero editor
+overlaps and connected automatic instructions. Browser snapshots, manual controls,
+EN/DE lessons, LDR/MPD imports and the 72-assembly / 80-choice / 160-lesson library
+remain final candidate gates. These are separate from release 0.1.26.

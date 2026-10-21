@@ -1,0 +1,85 @@
+# Snapgate — CrispStrobe, BSD-3-Clause.
+# Reset the model to its saved source pose before running.
+# Source input alpha=1.875 degrees; alpha=1.875-(motor A encoder)/24.
+# The real motor first centres the input, then repeats both memory states twice.
+# The passive rocker and shock are never commanded.
+DEVICE SPIKE
+GLOBAL stage = 0
+GLOBAL cycle = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set cycle to 0
+  set completed to 0
+  set failed to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    say "Reset Snapgate to its saved input datum before running."
+    stop all
+  broadcast "watchdog"
+  lab run motor A for (45 - (lab motor A angle)) degrees at 144 degrees per second
+  lab stop motor A hold
+  IF (abs of (45 - (lab motor A angle))) > 1.5 THEN:
+    set failed to 1
+    say "The input did not reach its central position. Inspect and reset."
+    stop all
+  wait 1 seconds
+  REPEAT 2:
+    set cycle to (cycle + 1)
+    set stage to 1
+    lab run motor A for (477 - (lab motor A angle)) degrees at 144 degrees per second
+    lab stop motor A hold
+    IF (abs of (477 - (lab motor A angle))) > 1.5 THEN:
+      set failed to 1
+      say "The negative input sweep stopped early. Inspect and reset."
+      stop all
+    wait 0.5 seconds
+    set stage to 2
+    lab run motor A for (45 - (lab motor A angle)) degrees at 144 degrees per second
+    lab stop motor A hold
+    IF (abs of (45 - (lab motor A angle))) > 1.5 THEN:
+      set failed to 1
+      say "The first memory hold was not reached. Inspect and reset."
+      stop all
+    wait 1 seconds
+    set stage to 3
+    lab run motor A for (-387 - (lab motor A angle)) degrees at 144 degrees per second
+    lab stop motor A hold
+    IF (abs of (-387 - (lab motor A angle))) > 1.5 THEN:
+      set failed to 1
+      say "The positive input sweep stopped early. Inspect and reset."
+      stop all
+    wait 0.5 seconds
+    set stage to 4
+    lab run motor A for (45 - (lab motor A angle)) degrees at 144 degrees per second
+    lab stop motor A hold
+    IF (abs of (45 - (lab motor A angle))) > 1.5 THEN:
+      set failed to 1
+      say "The second memory hold was not reached. Inspect and reset."
+      stop all
+    wait 1 seconds
+  set stage to 5
+  lab run motor A for (0 - (lab motor A angle)) degrees at 144 degrees per second
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 1.5 THEN:
+    set failed to 1
+    say "Snapgate did not return to the saved input datum. Inspect and reset."
+    stop all
+  wait 0.5 seconds
+  lab stop motor A hold
+  set stage to 6
+  set completed to 1
+
+WHEN I receive "watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 59 THEN:
+      lab stop motor A hold
+      set failed to 1
+      say "The snap experiment timed out. Inspect the model and reset."
+      stop all
+    wait 0.1 seconds
