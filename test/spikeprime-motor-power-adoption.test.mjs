@@ -104,3 +104,16 @@ test('shipping power block emits both firmware dialects into the actual virtual 
   await instance.motorStartPower({PORT:'A',POWER:0});assert.equal(h.backend._controllers[0].action,'coast');
  }
 });
+
+test('power Stop All follows the configured stop action after an earlier coast',()=>{
+ const hub=new SpikeVirtualHub();hub.plug([{port:'A',class:'motor',ids:{lpf2:48}}]);
+ const b=hub.hubState.backend;let time=0;
+ try{
+  for(const action of ['brake','coast']){
+   b.stop('A','coast');hub.advanceTo(time+=5);
+   b.setStopAction('A',action);b.runAtPower('A',40);hub.advanceTo(time+=5);
+   b.stopAll();hub.advanceTo(time+=5);
+   assert.deepEqual(hub.readDrives(),[{port:'A',mode:'pwm',duty:0,decay:action}]);
+  }
+ }finally{hub.dispose();}
+});

@@ -38,3 +38,8 @@ The complete independent suite subsequently passed all 242 controls in the
 prepared composed worktree. The existing Robot Lab direct-command percent-speed
 API is preserved; only the explicit SPIKE duty command selects open-loop power.
 Thirty-three affected motor/hub/physical controls pass after that scope check.
+
+Final Stop All review reproduced a stale passive state after a previous coast.
+Power mode now remembers the configured default stop action, as regulated mode
+already does. The new regression checks both brake and coast through actual hub
+drives; 40 affected controls and all 242 independent SPIKE controls pass.
