@@ -235,9 +235,11 @@ if (!existsSync(missing)) {
      * MOTORON | BRAKE and regulation IDLE (BDK Appendix 2). Judged from the brick's own output state each frame:
      * the port runs open (no regulation) at a duty of power/100, and the robot drives.
      */
-    test('EV3 "start motor BC at 40 % power" and the NXT block at 40 % power drive the motors open loop, at that duty', async t => {
+    test('EV3 "start motor BC at 40 % power" and "nxt start motor B at 40 % power" drive the motors open loop, at that duty', async t => {
         const ev3 = entry('ev3-wall-stopper.ldr');
         const nxt = entry('nxt-bumper-bot.ldr');
+        // The NXT's blocks as `nxt start motor B at 40 % power` makes them (lib/legoHubsDialect.js; this harness
+        // parses with the pinned compiler alone, without the robot-lab door the nxt words come through).
         const b = blocksBuilder();
         const port = p => ['legonxt_menu_MOTOR_PORT', 'MOTOR_PORT', p];
         b.stack(b.block('event_whenflagclicked', {top: true}),

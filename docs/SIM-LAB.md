@@ -353,13 +353,13 @@ so it does all of that for the same reasons a real motor does.
 | Technic Hub, City Hub, SPIKE Essential | **start motor [A] at [50] % power** (`legopoweredup_motorStartPower`) | `pup start motor A at 50 % power` | LWP3 StartPower(Power) as WriteDirectModeData mode 0 | LWP3 §3.27.1 "adjustable PWM output … no speed regulation", §6.1 |
 | BOOST Move Hub | **start motor [A] at [50] % power** (`legoboostunified_motorStartPower`) | `boost start motor AB at 50 % power` | LWP3 StartPower, each motor of the block | LWP3 §3.27.1, §6.1 |
 | EV3 | **start motor [B] at [50] % power** (`ev3comprehensive_motorStartPower`) | `start motor BC at 50 % power` (DEVICE EV3) | opOUTPUT_POWER + opOUTPUT_START | EV3 Firmware Developer Kit: OUTPUT_POWER, against OUTPUT_SPEED's speed regulation |
-| NXT | **start motor [B] at [50] % power** (`legonxt_motorStartPower`) | — (blocks; the `nxt …` words are their own lane) | SETOUTPUTSTATE: MOTORON + BRAKE, regulation IDLE | NXT Bluetooth Developer Kit, Appendix 2 |
+| NXT | **start motor [B] at [50] % power** (`legonxt_motorStartPower`) | `nxt start motor B at 50 % power` | SETOUTPUTSTATE: MOTORON + BRAKE, regulation IDLE | NXT Bluetooth Developer Kit, Appendix 2 |
 | WeDo 2.0 | **set motor power to [N] %** + **turn motor on** (already) | `wedo set motor A power to 50 %`, `wedo turn motor A on` | the Output Command's power: a duty | the WeDo 2.0 motor has no encoder, so the hub has nothing to regulate |
 | RCX | NQC `SetPower` / `OnFwd` (already) | — | power levels 0–7, drive/float PWM | the RCX motors have no encoders |
 | The Lab's own hub (no hub in the model) | **set motor [A] power to [50] %** (Robot Lab, already) | `lab set motor A power to 50 %` | an open-loop duty | — |
 
-Names to tell apart: **set motor power to … %** on the Powered Up and BOOST blocks, and **run motor … at … %** on
-EV3, are speeds the hub regulates (StartSpeed, OUTPUT_SPEED) — LEGO's own Scratch blocks call that number
+Names to tell apart: **set motor power to … %** on the Powered Up and BOOST blocks, **run motor … at … %** on
+EV3 and **motor … power …** on NXT are speeds the hub regulates (StartSpeed, OUTPUT_SPEED, MOTOR_SPEED) — LEGO's own Scratch blocks call that number
 "power" too. Only WeDo 2.0 (no encoder) and the RCX have no regulated speed at all.
 
 What the Lab does with it (tests): SPIKE, `test/bw-sim-spike-power.test.mjs` — at 50 % power the medium

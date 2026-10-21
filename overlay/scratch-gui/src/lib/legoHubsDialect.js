@@ -122,6 +122,9 @@ const NXT_WORDS = [
     nxt('motorRunDegrees', 'command', `motor ${NXT_MOTOR} power {POWER} for {DEGREES} degrees`),
     nxt('motorRunRotations', 'command', `motor ${NXT_MOTOR} power {POWER} for {ROTATIONS} rotations`),
     nxt('motorOn', 'command', `motor ${NXT_MOTOR} power {POWER}`),
+    // SETOUTPUTSTATE unregulated (MOTORON | BRAKE, regulation IDLE): a duty cycle. `motor … power …` above is
+    // REGULATION_MODE_MOTOR_SPEED, a speed the brick holds under load.
+    nxt('motorStartPower', 'command', `start motor ${NXT_MOTOR} at {POWER} % power`),
     nxt('motorStop', 'command', `stop motor ${NXT_MOTOR} {ACTION:brake|coast}`),
     nxt('resetMotorPosition', 'command', `reset motor ${NXT_MOTOR} position`),
     nxt('setupTouchSensorNXT', 'command', `setup touch sensor ${NXT_SENSOR}`),
