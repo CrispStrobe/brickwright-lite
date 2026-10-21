@@ -534,3 +534,12 @@ passes an unpowered cold start. The additive source totals 70 assemblies,
 English/German lessons and connected instructions pass in WebKit for all thirteen.
 The first nine also pass their complete hosted browser gates; the new batch and
 global regression repairs still require exact-head full hosted qualification; these additions are separate from the 57-assembly release.
+
+The later hosted run found that the four newest models were absent from the
+test's explicit extended-catalog list. Their actual core-only parse refusals
+identify derived bricks/connectors; normal application loading already resolves
+them before parsing. The list now includes Echo Bridge, Linger, Crossline and
+Bit Keeper. The unchanged seven catalog controls pass after reproducing the
+omission. A separate claimed Arcade test repair observes the actual program
+polling clock instead of assuming a scene frame delivers held-input completion;
+its full modules and catalog controls pass with a missing-input negative.
