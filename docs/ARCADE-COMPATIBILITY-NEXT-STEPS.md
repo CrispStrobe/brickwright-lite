@@ -9,12 +9,12 @@ that result neither reduces the corpus count nor qualifies the later canonical
 supplier adoption or every current application. See the
 [current source and supplier boundary](ARCADE-CI-REPAIR-STATUS.md#canonical-supplier-and-current-native-qualification--2026-10-21).
 
-The missing work is a complete application-journey driver.
-`scripts/compat-audit.mjs` and its shared conversion core currently audit import
-and Creator output. Optional `--execute` adds only a 24-frame runtime smoke
-check and retains at most ten errors; it does not export or reimport. Preserve
-that existing assessment and add the missing stages explicitly before calling a
-report an import/run/export/reimport result.
+The opt-in `--journey` driver now implements actual import, three VM runs,
+Code, current export and fresh reimport. Its complete twelve focused controls
+pass. Read [the CLI, result fields and remaining acceptance](ARCADE-CONVERSION-JOURNEY.md).
+Legacy `--execute` retains its separate 24-frame smoke assessment; diagnostic
+messages and error lists are now retained in full.
+A complete current application census remains pending.
 
 1. Freeze the final source, normal installation, dependencies and original input
    catalogue. Run all 225 subjects in their original order: 184 raw inputs and

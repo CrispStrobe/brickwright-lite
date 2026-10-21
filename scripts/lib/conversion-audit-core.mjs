@@ -171,9 +171,9 @@ export function legacyConversionLabel (imported, creator, creatorError = false) 
  * onObservation is awaited outside product catches so a bounded consumer can
  * retain each full return/error before classification or later operations.
  */
-export async function auditConversionSubject (subject, {onObservation = async () => {}} = {}) {
+export async function auditConversionSubject (subject, {onObservation = async () => {}, animationResources = false, onCreator = null} = {}) {
     const files = subject.files;
-    const options = {target: subject.target, name: subject.name};
+    const options = {target: subject.target, name: subject.name, ...(animationResources ? {animationResources: true} : {})};
     let imported;
     let dependencyCallback;
     let resolverCalls = 0;
@@ -251,6 +251,7 @@ export async function auditConversionSubject (subject, {onObservation = async ()
     });
     const observed = {project: creator.project, assets: creator.assets, channels: providedConversionChannels(creator), ownFields,
         otherPrivateValues: 'unobserved'};
+    if (onCreator) await onCreator(creator);
     await onObservation({phase: 'creator', status: 'return', value: observed});
     return {...result, ...finishLegacyLabel(imported, creator, false, legacyUnsupported), creator: {status: 'return', ...observed}};
 }
