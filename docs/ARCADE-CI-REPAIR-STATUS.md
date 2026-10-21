@@ -1,5 +1,16 @@
 # Arcade integration repairs and qualification order
 
+## Local follow-up, awaiting hosted qualification
+
+The preserved fixes now have one clean local composition. Source review checked
+merge ownership, the scope-ledger union, the importer mirror and scoped SPIKE
+identity. Complete refusal-report controls pass 15/15 without skips, and the
+genuine metadata generator produced the adopted 615-row table. The earlier
+installer resource failure remains a failure. The published PR and complete
+corpus measurement have not advanced; the counts below remain the last hosted
+observation. Next: complete-app refusal facts, a properly scoped semantic fix,
+then one qualification of the complete integration candidate.
+
 ## Latest complete hosted observation — 2026-10-21
 
 PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128), exact head

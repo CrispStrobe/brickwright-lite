@@ -2,6 +2,34 @@
 
 ## Latest observed state and next work — 2026-10-21
 
+### Local integration follow-up
+
+The preserved Array/class, refusal-report, CLI fixture and SPIKE candidates now
+have a clean local composition with the current main and the inert assessment
+workflow registration. A source review verified merge ownership, the combined
+scope ledger and the tracked importer mirror. This composition has not received
+hosted qualification and is not the published PR head described below.
+
+The complete refusal-report cohort passes **15 tests, zero failures or skips**.
+Its earlier two fixture failures are retained; their correction did not relax
+the product proof. The report provides observed operand facts and the analyzed
+draft, while deferred UI updates retain request, revision and VM ownership.
+An observed refusal remains a refusal, not a successful application conversion.
+
+The complete genuine metadata generator now returns **615 menu rows**, with
+only the SPIKE motor-power row added to the previous 614-row table. Its source
+output was adopted whole. The preceding fresh installer exceeded its resource
+limit; only its independently checked immutable outputs were admitted for this
+subsequent metadata run. Do not call the installer successful or repeat it.
+The actual menu CLI check, motor controls and affected guest remain pending.
+
+Next, retain all stages of one complete existing Arcade application's import,
+real Creator artwork ingress and export. Use its actual refusal details to
+scope a semantic fix. Keep lexical declaration execution separate from value
+initialization and primitive writer facts; a type annotation or a default-zero
+rewrite is not a proof. Full SDK, native, browser and corpus acceptance remain
+separate gates. No fresh corpus count is available.
+
 This section supersedes older pending-run descriptions below. PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
 at `125dacab7e183ca15d08224524b576894480d8b1` has finished all enabled
 checks. All three browser groups passed; build and all four unit shards failed.
@@ -35,7 +63,7 @@ execution, SDK, editor or application acceptance:
    checked: only SPIKE's carrier and pin row changed; the other 29 bundles and
    global supplier pin are unchanged. The matching virtual motor models use
    torque, damping and inertia for power control. Full motor tests, affected
-   guest qualification, complete fresh metadata generation and the existing
+   guest qualification and the existing
    opcode/menu gate remain mandatory. Generated bundle identity alone is not
    motor qualification.
 4. **Public CLI and word table:** the CLI test must place ordinary outputs

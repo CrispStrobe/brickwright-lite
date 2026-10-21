@@ -2,6 +2,16 @@
 
 ## Next batch and closure rules — 2026-10-21
 
+The candidates are now composed locally. The complete refusal-report cohort
+passes 15 tests; genuine metadata generation produced the complete 615-row
+table. Neither result reduces the historical partial-app count. Qualification
+still needs the corrected complete 32-test SDK cohort, public CLI module,
+word-table module, motor/guest controls and integrated browser journey.
+The next semantic decision must use the complete app diagnostic's original
+source, actual project, artwork and observed refusal facts. Scope a separate
+lexical-readiness proof if those facts require it; preserve initialization,
+writer, TDZ and unknown-entry negatives rather than weakening the operand guard.
+
 Read [the latest handoff](ARCADE-AGENT-HANDOFF.md#latest-observed-state-and-next-work--2026-10-21)
 and [complete hosted failure census](ARCADE-CI-REPAIR-STATUS.md#latest-complete-hosted-observation--2026-10-21)
 first. The published candidate is red. Do not conflate 175 ordinary test
