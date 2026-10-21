@@ -87,6 +87,9 @@ export const MODELS = Object.freeze([
         example: 'drawing-robot.bw', mat: 'plain'},
     {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
         example: 'excavator.bw', mat: 'plain'},
+    // A slewing crane (docs/ROBOT-LAB-ARCHITECTURE.md T1): the turntable on A, the boom luffed by a linear actuator on B.
+    {file: 'crane.ldr', title: {en: 'Crane', de: 'Kran'},
+        example: 'crane.bw', mat: 'plain'},
     // The LEGO MINDSTORMS RCX (hubs/rcx/, docs/ROBOT-LAB-RCX.md): its examples are NQC (`.nqc`), compiled
     // by nqc-wasm and downloaded to the Lab's RCX, where the clean-room bytecode VM runs them.
     {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car', de: 'RCX-Rempelauto'},
