@@ -200,6 +200,7 @@ export class SpikeVirtualHub {
                 this._setStalled(index, st, false);
                 st.duty = c.duty;
                 st.decay = 'brake';
+                st.passive = c.defaultStopAction;
                 continue;
             }
             if (c.mode === 'stop') st.passive = c.action;
