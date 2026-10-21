@@ -22,8 +22,7 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {execFileSync} from 'node:child_process';
+import {readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 import {importSource, importGuiDependency, REPO} from './helpers/bw-integrated.mjs';
 import {quietConsole} from './helpers/quiet-console.mjs';
@@ -104,7 +103,11 @@ WHEN flag clicked:
 `;
 
 const corpus = () => {
-    const files = execFileSync('git', ['ls-files', '*.bw'], {cwd: REPO, encoding: 'utf8'}).trim().split('\n');
+    // Every shipped .bw program, found by walking the directories that hold them (a node walk, not
+    // `git ls-files`: the verdict must not depend on a tool found on PATH).
+    const files = ['overlay/scratch-gui/examples', 'overlay/scratch-gui/static', 'scripts/spike', 'test/fixtures']
+        .flatMap(dir => readdirSync(path.join(REPO, dir), {recursive: true}).map(f => path.join(dir, String(f))))
+        .filter(f => f.endsWith('.bw')).sort();
     return [...files.map(f => [f, readFileSync(path.join(REPO, f), 'utf8')]),
         ['OWNER_PROGRAM', OWNER_PROGRAM], ['SPIKE_WORDS', SPIKE_WORDS]];
 };
