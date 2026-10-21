@@ -417,3 +417,39 @@ The shared [Arcade dialect](../overlay/scratch-gui/src/lib/arcadeDialect.js) alr
 Qualify users constructing and editing those connected Blocks and Code forms, Number versus text inputs, aliases and typed helper parameters; preserve the changed values through current Code, save/fresh reopen and MakeCode export/import. Named and dimensional/range/slice/concat factories and decoder cache-miss aliases need their own real allocation/coercion evidence.
 
 Graphics export must use the current VM costume SVG/raster/palette and sound assets, as the production [pseudocode importer](../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx) does. Do not substitute an earlier Creator asset cache. Browser drawing, visible camera selection, controller use and the normal asset-bearing camera journey remain independent acceptance gates. Full roundtrip CLI integration and the complete 225-input current assessment are pending.
+
+## Observed class operand gaps — 2026-10-21
+
+Two complete exported examples now pass generated-helper recognition and reach
+the separate operand-domain check. Keep their existing tests and emitted source:
+
+- `test/makecode-arcade-object-heap.test.mjs`: nested generated additions need
+  primitive captured-result composition. Class instances also travel through
+  Array literals/index aliases and self-referential fields. Model actual
+  allocation and field containment, all writers, reachable aliases and escapes;
+  preserve rejection when an unknown call or writer can change those values.
+- `test/makecode-arcade-class-accessors.test.mjs`: a real class extends the
+  selected SDK Sprite implementation, reads/writes inherited coordinates and
+  returns through `sprites.allOfKind`. Prove the selected implementation's
+  receiver lineage, getters, overriding methods and every relevant writer.
+  An annotation or SDK member name alone is insufficient.
+
+Implement these as separate changes with complete focused controls, then run
+the unchanged original examples through current execution and export/reimport.
+A focused source proof passing is not a completed application or corpus count.
+
+### Project JSON export and ordinary variable monitors
+
+The current direct-object export proof refuses monitors because caller objects
+may be mutable or Proxies. Ordinary Creator projects contain read-only variable
+monitors, so simply removing them from fixtures would miss real user projects.
+The pending replacement constructs a fresh, fully frozen project from primitive
+JSON text before exposing any asset callback. A private origin query admits only
+that immutable tree; the direct-object API retains conservative behavior.
+
+Require real read-only variable bindings, reject sliders/cloud/foreign bindings,
+and never infer types from cached monitor values. Wire the serialized VM, SB3
+and CLI routes. Preserve callback errors, old callback receiver/arity and
+per-target/per-costume palette identity, including duplicate asset IDs and
+removed asset-library targets. Qualify mutation/Proxy negatives and ordinary
+asset-bearing exports before claiming sprite flags or GUI parity.

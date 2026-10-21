@@ -68,6 +68,15 @@ message; the whole light job remains failed. Preserve that original and diagnose
 its actual program/target readiness before changing a test wait or product code.
 These results do not qualify the later score or numeric proof candidates.
 
+The same campaign's heavy job also failed. Its original log identifies missing
+Run controls in both labwired availability cases, a missing labwired picker tier
+in the available-engine case, and a missing Run control after editing the
+offline lesson. The Carnival check reports its separately declared known-open
+import failure. Earlier browser download DNS errors recovered; they are not
+evidence that these later assertions passed. Preserve each failing assertion
+and investigate actual program/target publication and debugger ownership.
+Do not increase waits or relax the engine choices to hide the failure.
+
 ## Earlier prerequisite failure and corrected candidate — 2026-10-21
 
 The later `470228d6e` campaign did not reach the actual unit shards: each shard
