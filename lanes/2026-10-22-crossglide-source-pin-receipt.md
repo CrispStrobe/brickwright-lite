@@ -1,4 +1,4 @@
-# Crossglide captured-source pin receipt — CLAIMED
+# Crossglide captured-source pin receipt — DONE (source candidate)
 
 Owner: Codex school-circuit integration, isolated
 `docs/archived-crossglide-receipt-20261022`, based on `d41b38431`.
@@ -19,3 +19,9 @@ No supplier, runtime, workflow, numeric limit or assertion removal is scoped.
 Merge this claim before implementation. Retain the original failing check,
 run complete pin-chain controls with real supplier history, and compose the
 repair into the school PR before final exact-head hosted qualification.
+
+The exact document now uses the existing receipt policy. Its original Git blob
+is unchanged. Actual historical-pin, never-pinned-commit and active-sibling
+controls pass; all 44 composed pin-chain, fetch-pinning, school-project and
+loading controls pass with real supplier history and no skips. Final hosted
+qualification remains required for the composed school source.

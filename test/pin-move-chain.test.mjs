@@ -145,6 +145,8 @@ export const roleOf = file => {
     // They keep that measured pin, with the same never-pinned-SHA rejection
     // as run receipts. Executable/model/JSON siblings remain current inputs.
     if (/^test\/fixtures\/model-files\/[^/]+-source\/README\.(txt|md)$/.test(file)) return 'receipt';
+    // This imported source archive also records its capture's compiler pin.
+    if (file === 'test/fixtures/model-files/crossglide-source/SOURCES.txt') return 'receipt';
     if (/^docs\/.*\.md$/.test(file)) return 'docs-prose';
     // An example's prose cites where its circuit was generated and
     // bench-verified, e.g. "verified in bw-circuit-ui at revision <sha>". That
@@ -512,4 +514,33 @@ test('original source README receipts still reject never-pinned supplier commits
     }
     assert.equal(roleOf('test/fixtures/model-files/active/README.txt'), 'code');
     assert.equal(roleOf('test/fixtures/README.txt'), 'code');
+});
+
+test('the captured Crossglide provenance keeps its actual historical compiler pin', () => {
+    const file = 'test/fixtures/model-files/crossglide-source/SOURCES.txt';
+    const text = readFileSync(path.join(ROOT, file), 'utf8');
+    const measured = /Registered compiler revision:\s*([0-9a-f]{40})/.exec(text)?.[1];
+    assert.ok(measured, 'the captured document records its compiler revision');
+    assert.ok(previous.has(measured), 'the capture records a previously shipped pin');
+    assert.equal(roleOf(file), 'receipt');
+    assert.deepEqual(judgeFile(file, text, known), []);
+    for (const active of [
+        'test/fixtures/model-files/crossglide-source/active.json',
+        'test/fixtures/model-files/crossglide-source/SOURCES.md',
+        'test/fixtures/model-files/crossglide-source/nested/SOURCES.txt',
+        'test/fixtures/model-files/other-source/SOURCES.txt'
+    ]) {
+        assert.equal(roleOf(active), 'code');
+        assert.equal(judgeFile(active, text, known).length, 1);
+    }
+});
+
+test('the captured Crossglide provenance still rejects a never-pinned supplier commit', () => {
+    const file = 'test/fixtures/model-files/crossglide-source/SOURCES.txt';
+    const neverPin = 'f'.repeat(40);
+    const k = {...known, history: new Map([...known.history, [neverPin, 'sb3-creator']])};
+    assert.ok(!k.current.has(neverPin) && !k.previous.has(neverPin));
+    const findings = judgeFile(file, `Registered compiler revision:\n${neverPin}`, k);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].was, /never a pin/);
 });
