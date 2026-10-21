@@ -11,6 +11,29 @@ corpus measurement have not advanced; the counts below remain the last hosted
 observation. Next: complete-app refusal facts, a properly scoped semantic fix,
 then one qualification of the complete integration candidate.
 
+### Remaining x86 consumer boundary
+
+The Arcade candidate selects `sb3-creator` at
+`d7c258910dd3837021a7a8c4b85d38a4e28e138a`. The two x86 GUI admission scripts
+still select `f4b1a789e0733d310109f056a08de4621092c0eb`; current main instead
+selects `7d3f8be7c13091a635d919c1af5c456230eed8fd` consistently with its own
+supplier. Restoring main's literal would still be wrong for this candidate.
+The intervening supplier-maintenance commits updated these consumers before
+the later D7 adoption omitted them; this was not a merge-conflict reversion.
+
+Coordinate with the existing
+[x86 acceptance lane](../lanes/2026-10-16-386-gui-hdd-and-forward-debug-hosted-acceptance.md)
+before changing its shared scripts. A serialized source-maintenance candidate
+would update only the fixed expectations in
+[the runner](../scripts/run-i80386-hdd-gui-actual.py) and
+[the independent reader](../scripts/read-i80386-hdd-gui-originals.py), preserve
+disabled actual execution and every admission join, and run the complete
+[67-control source module](../test/i80386-hdd-gui-actual.test.mjs).
+That source consistency is not guest qualification. Fresh affected D7
+GUI/guest admission, including the unresolved tool-provenance boundary,
+remains mandatory; old requests, originals and source-bound receipts are not
+restamped or replayed. No owner handoff or guest closure is inferred here.
+
 ## Latest complete hosted observation — 2026-10-21
 
 PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128), exact head
