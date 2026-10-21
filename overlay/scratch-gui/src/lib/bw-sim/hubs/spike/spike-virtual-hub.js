@@ -298,9 +298,10 @@ export class SpikeVirtualHub {
      * A direct command from the Robot Lab API (api/robot-lab-api.js) to a motor on this hub:
      * it goes through the hub's own controller, exactly as a SPIKE block's command does (the
      * spikeprime extension calls the same `hubState.motors`), so the motor keeps ONE owner and
-     * the last command wins, as between two blocks of one program. `power` is the
-     * unregulated duty command; `speedDps` remains regulated speed. Same shape
-     * as LabDirectHub.directCommand.
+     * the last command wins, as between two blocks of one program. The existing
+     * Robot Lab API's `power` retains its regulated percent-speed semantics.
+     * The SPIKE duty block calls motors.runAtPower separately through the
+     * hub command parser. Same shape as LabDirectHub.directCommand.
      */
     directCommand (port, command = {}) {
         if (!this.motorPorts.has(port)) return {ok: false, code: 'no-motor', message: `there is no motor on port ${port}`};
@@ -315,7 +316,7 @@ export class SpikeVirtualHub {
             }
             if (c.power !== undefined) {
                 if (!finite(c.power)) return {ok: false, code: 'bad-command', message: 'power is a number from -100 to 100'};
-                motors.runAtPower(port, c.power);
+                motors.runAtSpeed(port, motors.percentToDps(port, c.power));
                 return {ok: true};
             }
             const speed = c.speedDps === undefined ? motors.percentToDps(port, 50) : c.speedDps;

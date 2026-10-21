@@ -33,3 +33,8 @@ independent run passed 234 controls but one module lacked this isolated worktree
 React registry; rerun the entire suite in the canonically prepared composed
 school worktree. Final hosted qualification is still required. The explicit
 scoped SPIKE pin also needs the existing pin-policy census counterpart.
+
+The complete independent suite subsequently passed all 242 controls in the
+prepared composed worktree. The existing Robot Lab direct-command percent-speed
+API is preserved; only the explicit SPIKE duty command selects open-loop power.
+Thirty-three affected motor/hub/physical controls pass after that scope check.

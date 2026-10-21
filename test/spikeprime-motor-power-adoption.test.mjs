@@ -58,8 +58,9 @@ test('Robot Lab PWM uses fixed duty under encoder load, then resumes regulated s
  near(hub.dc.get(0).integral,0);
  b.runAtSpeed('A',300);hub.advanceTo(505);assert.notEqual(hub.readDrives()[0].duty,-.4);
  b.runAtPower('A',0);hub.advanceTo(510);assert.deepEqual(hub.readDrives(),[{port:'A',mode:'pwm',duty:0,decay:'coast'}]);
- assert.deepEqual(hub.directCommand('A',{power:25}),{ok:true});hub.advanceTo(515);near(hub.readDrives()[0].duty,.25);
- b.stopAll();hub.advanceTo(520);near(hub.readDrives()[0].duty,0);
+ assert.deepEqual(hub.directCommand('A',{power:25}),{ok:true});assert.equal(b._controllers[0].mode,'speed');hub.advanceTo(515);
+ b.runAtPower('A',25);hub.advanceTo(520);near(hub.readDrives()[0].duty,.25);
+ b.stopAll();hub.advanceTo(525);near(hub.readDrives()[0].duty,0);
  hub.dispose();
 });
 
