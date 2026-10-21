@@ -1,5 +1,50 @@
 # Arcade compatibility: integration and next steps
 
+## Next acceptance: the complete application journey — 2026-10-21
+
+The historical result remains **147 translated / 36 partial / one malformed**.
+Five ordered 225-input attempts ended without complete reports. The twelve
+native source-operation controls now pass on the tested `45d495832` composition;
+that result neither reduces the corpus count nor qualifies the later canonical
+supplier adoption or every current application. See the
+[current source and supplier boundary](ARCADE-CI-REPAIR-STATUS.md#canonical-supplier-and-current-native-qualification--2026-10-21).
+
+The missing work is a complete application-journey driver.
+`scripts/compat-audit.mjs` and its shared conversion core currently audit import
+and Creator output. Optional `--execute` adds only a 24-frame runtime smoke
+check and retains at most ten errors; it does not export or reimport. Preserve
+that existing assessment and add the missing stages explicitly before calling a
+report an import/run/export/reimport result.
+
+1. Freeze the final source, normal installation, dependencies and original input
+   catalogue. Run all 225 subjects in their original order: 184 raw inputs and
+   41 retained project contexts. Keep kind and identity together, including ids
+   present in both groups. Retain all original compiler outcomes separately;
+   do not exclude failed originals or replace a raw input with enriched context.
+2. Observe each actual import, Creator, runtime, current export, exact exported
+   files and fresh reimport/runtime stage. Resolve the exported roots afresh
+   when required; an original dependency identity does not qualify a changed
+   file map. Retain complete supplied values, assets, diagnostics, errors and
+   cleanup results. Every subject needs a terminal row, with failed or
+   unattempted stages explicit; no filtering, truncated channels or prefix credit.
+3. Establish a reviewed credential and private input/output transport before
+   dispatching this corpus through public CI. No such route is currently
+   available. Keep private inputs and raw evidence out of public source, logs
+   and artifacts. The existing lesson-corpus workflow is a different assessment.
+4. Review the complete driver, input parity, output retention and resource fit
+   before one execution. Preserve the existing assertions and execution bounds;
+   moving to hosted CI does not demonstrate fit. Retain incomplete originals,
+   and do not retry an unchanged workload or split its census to hide a failure.
+5. Qualify visible authoring separately for each repaired family: palette and
+   connected Blocks, Code edits and return, selectors and inputs, editable
+   artwork/animation, actual controller behavior, SB3 save/fresh reopen and
+   export/reimport with original assets. Native smoke or serialization alone
+   does not qualify those GUI interactions or complete-game behavior.
+
+Publish replacement counts only from a complete report at its exact source and
+input boundary. Keep raw/context results, original compiler validity, conversion,
+runtime smoke, behavior and GUI acceptance distinct.
+
 ## Current integration and repair queue — 2026-10-20
 
 This section supersedes the dated integration status below. The previous

@@ -15,6 +15,12 @@ a gap closed. Local operational paths and raw receipts belong in private ignored
 handoff notes, never in this document.
 
 
+Next, read [the complete application-journey acceptance work](ARCADE-COMPATIBILITY-NEXT-STEPS.md#next-acceptance-the-complete-application-journey--2026-10-21).
+The existing corpus CLI does not implement export/reimport, and its optional
+runtime smoke is not a complete application result. The missing driver, private
+transport prerequisites and visible authoring gates are explicit there.
+
+
 ## Current integration checkpoint — 2026-10-20
 
 The bounded nested-slice candidate passes its complete 50-test pure authority

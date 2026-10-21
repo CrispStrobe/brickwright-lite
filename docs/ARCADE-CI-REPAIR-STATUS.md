@@ -565,3 +565,20 @@ prototype/setter cases. Source, Node and package identities were checked before
 and after execution. This qualifies those controls, not whole games or GUI
 initialization. The historical 36 partial applications remain unchanged until
 a complete replacement report exists.
+
+## Optional device updater qualification — 2026-10-21
+
+The real micro:bit update implementation now loads after the synchronous USB
+chooser returns a selected device. Modal and child-action ownership prevent
+retired chooser or chunk completions from starting an update; current progress,
+errors and original in-flight cleanup are retained. All ten complete boundary
+controls pass, including the genuine production ES package APIs and unchanged
+prototype assertions. Transport is explicitly mocked; no hardware is flashed.
+
+The original package-main UMD control remains a failure: its separately bundled
+polyfill changes Function.prototype.toString. Qualification now uses the exact
+production ES files in the host process, without rewriting them or requiring
+experimental Node flags. This does not qualify webpack's emitted module choice,
+the real browser chooser/modal journey or the startup budget. Use the final
+composed hosted build and browser checks for those remaining observations; keep
+their existing thresholds and original failures.
