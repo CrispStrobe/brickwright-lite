@@ -1,3 +1,4 @@
+import {lexicalDeclarationReadiness} from './lexical-declaration-readiness.js';
 import {constraints} from './ordinary-procedure-constraint-metadata.js';
 import {CAMERA_PROPERTIES} from './camera-property-constants.js';
 import {declarationIdentityInput} from './declaration-identity-input.js';
@@ -98,6 +99,7 @@ function deadLocalResets(program) {
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
 function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
+    const lexicalSource=initializationEntries?lexicalDeclarationReadiness(program):null;
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -332,6 +334,18 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
     const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
+    // Construct this independent execution frontier only on demand. It cannot
+    // add initialization/type facts or be selected by public source options.
+    let lexicalReadiness;
+    const lexical=()=>lexicalReadiness ||= lexicalSource?lexicalSource.analyse({bindingOf:knownBinding,
+        declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,immutableFunctionAt:immutableFunction,
+        isClosedArrayIndex:node=>{
+            if(!owners.has(node)||!owners.has(node.object)||!owners.has(node.index))return false;
+            const receiver=currentTypes(cell(node.object)),index=currentTypes(cell(node.index));
+            return receiver.size>0&&[...receiver].every(value=>value?.kind==='Array')&&
+                index.size===1&&index.has('Number')&&[...receiver].every(value=>!unsafeArrayMethods.has(value));
+        }}):
+        Object.freeze({current:()=>true,isDeclarationExecutedAt:()=>false,isCapturedReadyAt:()=>false});
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
@@ -341,6 +355,9 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         bindingOf:knownBinding,
         bindingKindsAt:(node,name=node?.name)=>new Set([...(declarations.get(knownBinding(node,name))||[])].map(declaration=>
             typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
+        isLexicalDeclarationExecutedAt:(node,binding)=>lexical().isDeclarationExecutedAt(node,binding),
+        isCapturedLexicalDeclarationReadyAt:node=>lexical().isCapturedReadyAt(node),
+        lexicalDeclarationReadinessCurrent:()=>!lexicalSource||lexicalSource.current(),
         isInitializedAt:node=>initializedReads.has(node),
         isBindingInitializedAt:(node,binding)=>initializationAt.get(node)?.has(binding)===true,
         localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),
