@@ -178,3 +178,13 @@ phased-motor checks also pass all three assemblies. The independent observer
 uses real body poses in the normalized chassis frame; analytical predictions
 never write poses. The source-only Linger geometry equations are retained with
 their BSD notice. The production build and real WebKit worker programs, manual A controls, both lesson languages, automatic Blocks/title loading and connected manuals pass all three. Echo/Linger/Crossline have 47/71/67 connected rigid assembly pages. Six actual LDR/MPD imports preserve the counts and Echo's two flexible loops, with no missing DAT requests, duplicate block definitions or page errors. The candidate contains 69 assemblies, 77 choices and 154 offline lessons. Source integration and native release remain separate hosted gates.
+
+Full-suite qualification also checks the changed collider representation against
+existing features. Rounded beam end caps must not become circular rubber-band
+pulleys. A wheel may mount on the real cross-axle end of an axle-pin such as
+18651; its generic part category is still `pin`. The pendulum's independent
+period calculation now sums all compound primitives by volume and the
+parallel-axis theorem, matching the modeled mass distribution. Its 2% period
+and 90% retained-amplitude bounds are unchanged. All 187 affected belt,
+construction-instruction and native-validation controls pass; the measured
+pendulum period error is about 0.1%.

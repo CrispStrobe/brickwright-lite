@@ -175,7 +175,9 @@ for (const {name, text} of MODELS_UNDER_TEST) {
         assert.ok(checked >= (fasteners >= 4 ? 4 : 1), `${name}: ${checked} of ${fasteners} pins and axles checked`);
         // Each wheel goes on with the axle it sits on, or right after it (the axle first, sticking out).
         for (const wheel of model.parts.filter(p => category(model, p.id) === 'wheel')) {
-            const axles = [...adj.get(wheel.id)].filter(id => category(model, id) === 'axle');
+            const axles = [...adj.get(wheel.id)].filter(id => category(model, id) === 'axle' ||
+                (category(model, id) === 'pin' && CATALOG.get(model.parts.find(p => p.id === id).part).connectors.some(c => c.type === 'axle')));
+            // An axle-pin's genuine cross axle supports a wheel too (18651).
             // A wheel straight on a motor's output stub (the RCX bumper car's mini-motors) needs no axle
             // of its own: it sits on one motor, and may go on in a later step.
             const motors = [...adj.get(wheel.id)].filter(id => category(model, id) === 'motor');
