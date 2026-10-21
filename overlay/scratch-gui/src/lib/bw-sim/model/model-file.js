@@ -193,7 +193,10 @@ export const writeStudioIo = async ldraw => {
  */
 export const serializeMpd = (model, {name = 'model.ldr', title} = {}) => {
     const section = renameTo(name, 'ldr');
-    return `0 FILE ${section}\r\n${serializeModel(model, {name: section, title})}0 NOFILE\r\n`;
+    const text = serializeModel(model, {name: section, title});
+    // A model that ships parts of its own is written as an MPD already (its FILE sections).
+    if (/^0 FILE /.test(text)) return text;
+    return `0 FILE ${section}\r\n${text}0 NOFILE\r\n`;
 };
 
 /**

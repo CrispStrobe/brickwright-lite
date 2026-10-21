@@ -14,6 +14,10 @@
 import React from 'react';
 import {INSTRUCTIONS_TEXT} from './sim-lab-instructions-text.js';
 
+/** A page that looks from another corner than the page before (instructions/steps.js stepCorner), in the same assembly. */
+const turnedFrom = (step, before) => Boolean(before && step.view && before.view && step.subassembly === before.subassembly &&
+    (step.view[0] !== before.view[0] || step.view[1] !== before.view[1]));
+
 const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
 /** Size of a printed step picture (px). */
 const PRINT_W = 1200;
@@ -49,14 +53,15 @@ class SimLabInstructions extends React.Component {
         window.addEventListener('resize', this.onResize);
         this.dialog.current?.focus();
         const {lib, model} = this.props;
-        const {buildSteps, fetchLDrawClosure, parseLDConfig, createInstructionsView, createPartThumbnails, CATALOG, DEFAULT_COLOR} = lib;
+        const {buildSteps, fetchModelDrawing, parseLDConfig, createInstructionsView, createPartThumbnails, CATALOG, DEFAULT_COLOR} = lib;
         this.plan = buildSteps(model, CATALOG);
         if (!this.plan.steps.length) {
             this.setState({status: 'empty'});
             return;
         }
         try {
-            const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
+            // The parts, the decoration (a cable's segments) and the model's own embedded parts.
+            const {read} = await fetchModelDrawing(model, {withConfig: true});
             if (this.disposed) return;
             const colors = parseLDConfig(read('ldconfig.ldr'));
             this.view = createInstructionsView({container: this.box.current, model, plan: this.plan, read, colors});
@@ -138,11 +143,14 @@ class SimLabInstructions extends React.Component {
             image: this.view.image(i, PRINT_W, PRINT_H),
             parts: this.rows(step.parts).map(cell),
             attach: step.attach.map(id => this.groupName(id)),
-            subassembly: step.subassembly ? this.groupName(step.subassembly) : null
+            subassembly: step.subassembly ? this.groupName(step.subassembly) : null,
+            pins: Boolean(step.pins),
+            turned: turnedFrom(step, this.plan.steps[i - 1])
         }));
         const html = lib.instructionsPrintHtml({lang: locale === 'de' ? 'de' : 'en',
             title: fill(T.documentTitle, {name: this.props.title || T.title}),
-            text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly},
+            text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly, pins: T.pins,
+                turned: T.turned},
             steps, bom: this.rows(this.props.model.parts.map(p => p.id)).map(cell)});
         win.document.open();
         win.document.write(html);
@@ -177,16 +185,18 @@ class SimLabInstructions extends React.Component {
         );
     }
 
-    renderStepAside (step) {
+    renderStepAside (step, before) {
         const T = this.text;
         const notes = [
+            ...(turnedFrom(step, before) ? [T.turned] : []),
             ...(step.subassembly ? [fill(T.subassembly, {name: this.groupName(step.subassembly)})] : []),
             ...step.attach.map(id => fill(T.attach, {name: this.groupName(id)})),
-            ...(step.loose ? [T.loose] : [])
+            ...(step.loose ? [T.loose] : []),
+            ...(step.pins ? [T.pins] : [])
         ];
         return (
             <div style={{display: 'flex', flexDirection: 'column', gap: 8, width: 200, flex: 'none'}}>
-                {notes.map(note => <div key={note} style={{fontSize: 13, fontWeight: 600, color: '#1e3a8a'}}>{note}</div>)}
+                {notes.map(note => <div key={note} data-testid="bw-sim-instructions-note" style={{fontSize: 13, fontWeight: 600, color: '#1e3a8a'}}>{note}</div>)}
                 {step.parts.length > 0 && (
                     <div data-testid="bw-sim-instructions-callout"
                         style={{background: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: 8, padding: 8,
@@ -238,7 +248,7 @@ class SimLabInstructions extends React.Component {
                     {status === 'loading' && <div role="status" style={{fontSize: 13}}>{T.loading}</div>}
                     {status === 'empty' && <div role="status" style={{fontSize: 13}}>{T.empty}</div>}
                     <div style={{display: 'flex', gap: 12, flex: '1 1 auto', minHeight: 0}}>
-                        {onStep && this.renderStepAside(steps[page])}
+                        {onStep && this.renderStepAside(steps[page], steps[page - 1])}
                         <div ref={this.box} data-testid="bw-sim-instructions-view"
                             style={{flex: '1 1 auto', minHeight: 0, minWidth: 0, display: onList || status === 'empty' ? 'none' : 'block'}} />
                         {onList && this.renderPartsList()}

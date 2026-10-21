@@ -28,6 +28,7 @@
 // runner.js), one physics step per exchange; `lockstep` says so, and
 // `realTimeFactor` how fast the emulator lets simulated time go.
 
+import {autoPorts} from './hubs/auto-ports.js';
 import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
 import {mechanismIssues} from './mech/insight.js';
@@ -94,6 +95,9 @@ export const MODELS = Object.freeze([
     // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
     {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
         example: 'chain-drive.bw'},
+    // Pneumatics v1 (docs/ROBOT-LAB-UX.md §16): motor A turns a valve's lever; hoses feed a cylinder.
+    {file: 'pneumatic-press.ldr', title: {en: 'Pneumatic cylinder', de: 'Pneumatikzylinder'},
+        example: 'pneumatic-press.bw'},
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
@@ -141,25 +145,58 @@ export const PROGRAMS_BASE = 'static/sim-lab/programs/';
 /**
  * @param {string} text LDraw
  * @param {Map} catalog
- * @param {{mat?: string}} [options] a mat id (bw-sim/world/mats.js): the floor shows it, the colour
+ * @param {{mat?: string, autoPorts?: boolean}} [options] autoPorts (default: a file from elsewhere, one without our
+ *        `0 Author: Brickwright`): unplugged motors and sensors go into free ports (hubs/auto-ports.js), in the model
+ *        itself, so Build shows them and a port the builder takes out later stays out; mat: a mat id (bw-sim/world/mats.js): the floor shows it, the colour
  *        sensor reads it, a mat with a start pose gets the model placed on that pose, and a mat's
  *        obstacles (a wall) become static bodies the robot and the distance sensor meet
  * @returns {{model, runModel, mechanism, issues}} `model` is the model as authored (what Build edits
  *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
  */
-export const prepareModel = (text, catalog, {mat = null} = {}) => {
-    const {model, refusals} = parseModel(text, {catalog});
-    const issues = refusals.map(r => ({severity: 'warning', ...r}));
-    if (model.parts.length === 0) {
+/** A file we wrote ourselves (serializeModel's header): its ports are as the builder left them, unplugged ones too. */
+const OWN_FILE = /^0 Author: Brickwright\s*$/m;
+
+export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OWN_FILE.test(text)} = {}) => {
+    const {model: parsedModel, refusals} = parseModel(text, {catalog});
+    // One issue per unknown file, however often it is placed: a real model's cables and hoses are thousands of
+    // segment lines (6,424 on one set), and the Lab lists every issue.
+    const unknownOf = new Map();
+    const issues = [];
+    for (const r of refusals) {
+        const file = r.code === 'unknown-part' ? /'(.+)'/.exec(r.message)?.[1] : null;
+        if (file && unknownOf.has(file)) {
+            const first = unknownOf.get(file);
+            first.count += 1;
+            if (first.lines.length < 20) first.lines.push(r.line);
+            continue;
+        }
+        const issue = {severity: 'warning', ...r};
+        if (file) {
+            Object.assign(issue, {count: 1, lines: [r.line]});
+            unknownOf.set(file, issue);
+        }
+        issues.push(issue);
+    }
+    for (const issue of unknownOf.values()) {
+        if (issue.count > 1) issue.message = `${issue.message} (and ${issue.count - 1} more)`;
+    }
+    if (parsedModel.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
-        return {model, runModel: model, mechanism: null, issues};
+        return {model: parsedModel, runModel: parsedModel, mechanism: null, issues};
     }
     const matDef = mat ? createMat(mat) : null;
     const start = matDef ? matDef.startPose : null;
-    const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
+    // Motors and sensors the file left unplugged go into the hub's free ports (hubs/auto-ports.js).
+    const {model: wired, plugged} = plugIn ? autoPorts(parsedModel, catalog, hubRegistry) : {model: parsedModel, plugged: []};
+    const model = wired;
+    if (plugged.length) {
+        issues.push({severity: 'info', code: 'ports-plugged', parts: plugged.map(p => p.part),
+            message: `Plugged in: ${plugged.map(p => `${p.part} → ${p.hub ? `${p.hub}.` : ''}${p.port}`).join(', ')}`});
+    }
+    const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
-    const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
+    const mechanism = compile(runModel, catalog, {version: 2, rescueLoose: plugIn, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
     issues.push(...mechanismIssues(mechanism));
     return {model, runModel, mechanism, issues};

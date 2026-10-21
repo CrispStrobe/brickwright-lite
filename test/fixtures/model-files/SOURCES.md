@@ -9,11 +9,13 @@ Real files written by other people with other programs, used by
 | `42022-1.mpd` | 42022-1 Hot Rod | Faramond Florent [Makou] | `0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt` (CC BY 2.0) | probably MLCad (`0 ROTATION CENTER … "Custom"`, `0 ROTATION CONFIG`); rotations written with 3 decimals | 26,777 B | `27483bd39081f2e5ee3a30af9e154f528e3f85c5d5fc598337f8f5d9ee0df25b` |
 | `42032-1.mpd` | 42032-1 Compact Tracked Loader | Philippe Hurbain [Philo] | same line (CC BY 2.0) | LDCad 1.4 (`0 !LDCAD GENERATED [generator=LDCad 1.4]`, a generated chain); embeds the unofficial part `42032 - 33299b.dat` (author Santeri Piippo [arezey]) | 29,470 B | `83e4493b00058fee922d9fbb80f13ef346654a231c4dc673418b2615887ff848` |
 | `42034-1.mpd` | 42034-1 Quad Bike | Philippe Hurbain [Philo] | same line (CC BY 2.0) | not named | 10,130 B | `5d32ac6f59fbf87e7334b6e6e6008e9462592fdc8f3ae115b24dd605de8e6089` |
+| `8527-1.mpd` | 8527-1 MINDSTORMS NXT, Tri-bot | Cameron Brick [LegoManIAm94] (two cable sub-files: LDCad) | same line, all 31 sections (CC BY 2.0) | LDCad 1.7 Alpha 1 (`0 !LDCAD GENERATED`: its NXT cables, stretched segments; embeds `8527 - ldcNxtWireSeg.dat` and `8527 - ldcConRing-2-4.dat`) | 207,430 B | `1821c669e3663ef602d5d11d75acee17cf1b5eff0d60c15aac999cd54e4ac170` |
 
 **Where from:** the LDraw Official Model Repository (OMR), https://library.ldraw.org/omr —
 the files themselves at `https://library.ldraw.org/library/omr/42022-1.mpd`,
 `https://library.ldraw.org/library/omr/42032-1.mpd` and
-`https://library.ldraw.org/library/omr/42034-1.mpd` (the set pages' "Download" links 404 for
+`https://library.ldraw.org/library/omr/42034-1.mpd`, and the Tri-bot (added 2026-10-20) at
+`https://library.ldraw.org/media/omr_models/1775/8527-1_Tri-bot.mpd`, saved as `8527-1.mpd` (the set pages' "Download" links 404 for
 some sets; these direct links work). The OMR may update a file; the sha256 above is the
 version kept here.
 

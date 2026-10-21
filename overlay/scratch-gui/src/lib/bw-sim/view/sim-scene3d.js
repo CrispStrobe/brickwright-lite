@@ -161,6 +161,40 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
         }
     }
 
+    // Decoration (model.decor: a cable's stretched segments, a mirrored part, a part not in the catalogue):
+    // drawn with its file's full matrix, riding on the body of the part nearest to it (a cable goes where
+    // what it is plugged into goes). Never in the physics.
+    const decorMeshes = [];
+    for (const d of model.decor || []) {
+        let visual;
+        try { visual = partVisual(d.part, read, colors); } catch { continue; }
+        let near = null;
+        let best = Infinity;
+        for (const pl of model.parts) {
+            const dd = (pl.position[0] - d.position[0]) ** 2 + (pl.position[1] - d.position[1]) ** 2 + (pl.position[2] - d.position[2]) ** 2;
+            if (dd < best) { best = dd; near = pl; }
+        }
+        const body = near && (bodiesOf.get(near.id) || [])[0];
+        const group = (body && bodyGroups.get(body.id)) || scene;
+        const colInfo = colors.get(d.color ?? 16) || colors.get(16);
+        const material = [
+            new MeshStandardMaterial({color: colInfo ? colInfo.value : '#ffffff', ...PART_SURFACE}),
+            new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE, vertexColors: true})
+        ];
+        for (const m of material) createdMaterials.add(m);
+        const mesh = new Mesh(visual.faces, material);
+        mesh.name = `decor:${d.part}`;
+        const f = worldMatFlipped(d.matrix);
+        const p = lduToWorld(d.position);
+        partWorld.set(f[0], f[1], f[2], p[0], f[3], f[4], f[5], p[1], f[6], f[7], f[8], p[2], 0, 0, 0, 1);
+        group.updateMatrix();
+        mesh.matrixAutoUpdate = false;
+        mesh.matrix.copy(group === scene ? partWorld : bodyInverse.copy(group.matrix).invert().multiply(partWorld));
+        addEdgeLines(mesh, visual, linesFor(d.color ?? 16));
+        group.add(mesh);
+        decorMeshes.push(mesh);
+    }
+
     if (instanced) {
         scene.updateMatrixWorld(true);
         instanced.build();
@@ -172,7 +206,8 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
     // Ground plane at ground body's top
     const groundBody = mechanism.bodies.find(b => b.motion === 'static' && b.id === 'ground');
     if (groundBody) {
-        const geo = new BoxGeometry(2, 0.02, 2);
+        const he = (groundBody.colliders[0] && groundBody.colliders[0].halfExtents) || [1, 0.01, 1];
+        const geo = new BoxGeometry(he[0] * 2, he[1] * 2, he[2] * 2);
         const mat = new MeshStandardMaterial({color: '#c0c0c0', roughness: 0.9});
         createdGeometries.add(geo);
         createdMaterials.add(mat);
@@ -306,7 +341,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
         scene.clear();
     };
 
-    return {scene, bodyGroups, partMeshes, hubMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes, loadMeshes, instanced};
+    return {scene, bodyGroups, partMeshes, hubMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes, loadMeshes, instanced, decorMeshes};
 };
 
 /**
