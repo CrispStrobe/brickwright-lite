@@ -35,6 +35,50 @@ candidate. All 64 existing native controls, 17 additional lifecycle/JSON/parser
 controls and both public Code/export/reimport cases pass, with independent
 saved-result checks. Final composed hosted and visible authoring qualification
 remain required; this does not establish complete games or corpus completion.
+## Optional micro:bit update loading and unchanged P17 budget — 2026-10-21
+
+CLAIM CANDIDATE — Codex GUI integration. Merge this docs-only claim before
+implementation. The existing optional Scratch micro:bit update path statically
+imports DAP and universal-HEX libraries. Review a selected-device loading boundary
+without changing the update API or treating source-attributed bytes as emitted
+savings. Existing CSV/GIF upload ownership does not cover this device-update path.
+
+Envelope: `overlay/scratch-gui/src/lib/microbit-update.js`, a narrowly required
+private update-implementation module, their managed package mirrors, focused
+owned boundary controls and this ledger. Include only necessary connection-modal
+update-action ownership/error integration and its affected controls; preserve the
+rest of the connection modal and all other devices. Add the overlay needed for
+the selected source candidate rather than editing a generated copy alone.
+
+Keep the synchronous capability predicate and the existing native
+`navigator.usb.requestDevice` invocation in the eager shell. Do not await a
+chunk before opening the chooser. Acquire the real update implementation only
+after the chooser returns the selected device, preserving the existing async
+return contract. Cancellation or chooser rejection must not acquire or run the
+updater. Each action retains its actual selected device and progress callback;
+late completion cannot deliver through a different or cancelled action.
+
+Retain the genuine DAP and universal-HEX implementations, transport receivers,
+HEX validation and byte delivery, connect/flash ordering, progress events and
+existing disconnect/finally behavior. Preserve original error identities and
+cleanup precedence. Failed chunk acquisition must have an observable owning
+error and allow a later action to retry. Inspect initialization effects before
+deferring these packages; no late intrinsic recapture, guard relaxation or
+replacement protocol/firmware implementation is authorized. Dependency versions,
+firmware inputs and device support policy remain unchanged. No hardware flashing
+or new device action is part of source qualification.
+
+Acceptance requires complete affected boundary and connection-modal controls:
+synchronous chooser activation, cancellation, dependency failure/retry,
+concurrent selected-device ownership, exact callback/error delivery and cleanup.
+Use genuine offline package code and explicitly scoped fake transports where
+needed; do not turn those controls into hardware or firmware accuracy claims.
+Retain all existing assertions, original failures, resource bounds and browser
+budgets. Qualify the actual chooser/modal journeys and the existing exact-head
+hosted production build, boot guards and emitted webpack ownership report.
+Source import changes or attributed package sizes alone do not establish P17
+fit or faster startup. No baseline, threshold, workflow, dependency pin, VM guard,
+renderer, generic upload or unrelated device change is in scope.
 
 ## Arcade PR #888 TODO tests, group I discarded map — 2026-10-20
 
@@ -71,6 +115,14 @@ relativeGear): not rebuilt. New: the Crane (static/sim-lab/models/crane.ldr, scr
 programs/crane.bw): a SPIKE hub on the floor, the Excavator's 28T turntable slewed by an 8T on A at low speed,
 a 15L boom luffed by a small linear actuator on B, a hook hanging free on a frictionless pin. No winch (ropes,
 PR #1123, not on main). Tests: test/bw-sim-crane.test.mjs. No physics-core change.
+
+## micro:bit importer: comparisons assigned to variables, regression tests — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (owner-approved follow-up to #1139). The suspected
+bug, `w = (a & b) == 0` importing as `set w to 0`, does not reproduce: the import writes
+IF <comparison> THEN set w to 1 ELSE set w to 0, and a probe that read only the last
+`set w to` line saw the ELSE branch. Tests only: test/makecode-arithmetic-roundtrip.test.mjs runs
+the original and exported programs for ==, !=, <, <=, >, >= with bitwise and arithmetic operands.
 
 ## Arcade slice-result element presence — 2026-10-20
 
@@ -210,6 +262,17 @@ Math.idiv. Bitwise words and unary minus/bitnot now group compound operands: `(v
 longer comes back as `v / (4 | 0)`, nor `-(a + b)` as `(0 - a) + b`. Files: bw-makecode
 translate-base.js, microbit-translate.js, export.js. Tests:
 test/makecode-arithmetic-roundtrip.test.mjs (both sides evaluated), updated idiv assertions.
+
+## Robot Lab hub coverage, batch 2: SPIKE routes, SPIKE 3 Python, Code-tab hub calls — 2026-10-21
+
+CLAIMED and done in one PR to main — Claude (hub coverage lane). New tests drive the real spikeprime
+extension in the Lab physics over each SPIKE route: legacy spikeprimeble / spikeprimeBTC projects
+(migrated), Scratch Link BT Classic and Scratch Link BLE (`test/bw-sim-spike-routes.test.mjs`, helper
+`test/helpers/spike-lab-routes.mjs`). SPIKE 3 Python goes through the importer into the Lab
+(`test/bw-sim-spike3-python-lab.test.mjs`). The Code-tab Python/JS hub-call gap is pinned as todo
+(`test/hub-runtime-calls-to-blocks.test.mjs`). Two fixes to the virtual SPIKE 2.x RFCOMM double
+(`lib/virtual-hub/spike-classic-scratch-link.js`, `spike-hub-state.js`): the port report streams, and
+the distance is in cm. Matrix rows in `docs/ROBOT-LAB-HUB-COVERAGE.md`. Nothing under `bw-sim/`.
 
 ## Robot Lab: cables, Studio mouse, coach marks, Ctrl-glide — 2026-10-20
 
