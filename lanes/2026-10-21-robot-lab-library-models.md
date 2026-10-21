@@ -511,6 +511,13 @@ the grid levels. Model placements and physics remain unchanged. A native-motion
 scene regression fails on the raised plane and passes on the repaired floor;
 twelve affected scene, Sarrus motion/rollback and frame-queue controls pass.
 
+Hosted qualification caught the new Sarrus scene regression's missing explicit
+Three.js dependency declaration. The native motion/clearance tests passed; the
+dependency boundary correctly rejected the undeclared importer. Its measured
+import is now registered alongside the existing scene tests. The same observed
+log fails before this one-entry correction and passes afterward; all three
+Sarrus tests and eleven dependency-boundary controls pass locally.
+
 ## Thirteen follow-on physics machines — 2026-10-21
 
 DONE locally — original CrispStrobe/BSD-3-Clause additions in the existing model
