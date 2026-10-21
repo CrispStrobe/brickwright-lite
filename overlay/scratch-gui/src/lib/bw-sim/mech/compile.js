@@ -13,7 +13,7 @@
 // mechanism plus hubs, actuators bound to {hub, port}, couplings, devices,
 // body roles and the no-collide pairs; the default is the v1 mechanism.
 
-import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld,
+import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, GROUND_RESTITUTION, GROUND_MATERIAL, MATERIALS, LDU_M, lduToWorld, dirToWorld,
     partHubProfile, partSensor, portRefOf, withBodyRoles, noCollidePairs, couplingBodyPairs, V1_COUPLING_KINDS} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {mat3MulVec3, vecAdd, quatNormalize} from './vec.js';
@@ -29,11 +29,10 @@ import {freePinWelds} from './free-pins.js';
 import {rescueLoose, weldByContact} from './loose-rescue.js';
 
 /**
- * The lightest body the solver weighs in a model from elsewhere (kg). A real set's linkages are single liftarms of
- * 1–3 g hinged to frames of hundreds of grams; Jolt's solver loses such chains (NaN, parts flung). Measured on seven
- * unstable sets, 2026-10-20: 5 g held four of them.
+ * Solver iterations for the joints of a model from elsewhere that hold a light body (below massKg) against one ratio
+ * times heavier (physics/jolt-core.js lightLinks). Bodies keep their parts' masses.
  */
-export const FOREIGN_MASS_FLOOR_KG = 0.005;
+export const FOREIGN_LIGHT_LINKS = Object.freeze({massKg: 0.01, ratio: 20, velocity: 30, position: 10});
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -101,6 +100,8 @@ const makeGround = (bodies, opts = {}) => {
         colliders: [{shape: 'box', halfExtents: [FLOOR_HALF_M, halfThick, FLOOR_HALF_M]}],
         parts: [],
         friction: GROUND_FRICTION,
+        restitution: GROUND_RESTITUTION,
+        material: GROUND_MATERIAL,
         color: opts.groundColor !== undefined ? opts.groundColor : 10,
         ...(opts.mat ? {mat: opts.mat} : {}),
     };
@@ -333,6 +334,10 @@ export const compile = (model, catalog, opts = {}) => {
         body.colliders.push({shape: 'cylinder', radius: w.radiusLdu * LDU_M, halfHeight: Math.max(w.halfWidthLdu, 1) * LDU_M,
             position: c, rotation: q, part: w.part, massKg: TREAD_WHEEL_MASS_KG});
         body.friction = Math.max(body.friction ?? 0, w.friction);
+        // A tread's links meet the floor: they bounce and roll like a tread (contracts.js MATERIALS.tread).
+        body.material = 'tread';
+        body.restitution = MATERIALS.tread.restitution;
+        body.rollingResistance = MATERIALS.tread.rollingResistance;
     }
 
     // Bodies final list: islands.bodies plus ground
@@ -393,6 +398,7 @@ export const compile = (model, catalog, opts = {}) => {
                 massKg: 0,
                 colliders: [{shape: 'box', halfExtents: [size[0] / 2, size[1] / 2, size[2] / 2]}],
                 parts: [],
+                material: GROUND_MATERIAL, // a wall of the arena: rigid, as the floor
             };
             if (obs.color !== undefined) body.color = obs.color;
             bodies.push(body);
@@ -483,32 +489,23 @@ export const compile = (model, catalog, opts = {}) => {
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
         couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
-    const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
+    // Part by part only for our own files (a model from elsewhere filters its pairs whole, below).
+    const local = opts.rescueLoose ? [] : localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
     if (local.length) mechanismV2.noCollideParts = local;
-    // A model from elsewhere: the solver weighs no body below FOREIGN_MASS_FLOOR_KG (physics/jolt-core.js), and parts
-    // that overlap as built never collide (mech/collision-filter.js asBuiltOverlaps).
-    if (opts.rescueLoose && opts.massFloor !== false) mechanismV2.solver = {massFloorKg: FOREIGN_MASS_FLOOR_KG};
+    // A model from elsewhere: its light links solve with more iterations (FOREIGN_LIGHT_LINKS, physics/jolt-core.js);
+    // every body pair a joint or a coupling relates, and every pair whose parts overlap as built (mech/collision-filter.js
+    // asBuiltOverlaps), never collides — whole, not part by part. Our colliders are boxes: a beam's holes are solid,
+    // so an axle swinging through them as the set means it to hits solid collider and is shot out (the 4x4 Off-Roader
+    // went to NaN within 2 s with its motors coasting; 42131 and 42055 at 0.5–2 s a step). A real set is built so its
+    // jointed parts do not collide; filtered whole, they do not, and no shape filter runs at all (3x faster steps).
     if (opts.rescueLoose) {
-        const nested = asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, mechanismV2.noCollideParts);
-        if (nested.length) {
-            const pairs = new Set(mechanismV2.noCollide.map(([a, b]) => `${a}|${b}`));
-            const byKey = new Map((mechanismV2.noCollideParts || []).map(e => [`${e[0]}|${e[1]}`, e]));
-            for (const [a, b, parts] of nested) {
-                const k = `${a}|${b}`;
-                const e = byKey.get(k);
-                if (e && e[3] === 'collide') {
-                    // An inverted entry lists the pairs that collide: these no longer do.
-                    const drop = new Set(parts.map(([x, y]) => `${x}\n${y}`));
-                    e[2] = e[2].filter(([x, y]) => !drop.has(`${x}\n${y}`));
-                } else if (e) e[2].push(...parts);
-                else {
-                    if (!pairs.has(k)) { mechanismV2.noCollide.push([a, b]); pairs.add(k); }
-                    byKey.set(k, [a, b, parts]);
-                }
-            }
-            mechanismV2.noCollide.sort((x, y) => (x[0] + '|' + x[1] < y[0] + '|' + y[1] ? -1 : 1));
-            mechanismV2.noCollideParts = [...byKey.values()];
+        mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}};
+        const pairs = new Set(mechanismV2.noCollide.map(([a, b]) => `${a}|${b}`));
+        for (const [a, b] of asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, [])) {
+            if (!pairs.has(`${a}|${b}`)) { mechanismV2.noCollide.push([a, b]); pairs.add(`${a}|${b}`); }
         }
+        mechanismV2.noCollide.sort((x, y) => (x[0] + '|' + x[1] < y[0] + '|' + y[1] ? -1 : 1));
+        delete mechanismV2.noCollideParts;
     }
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {

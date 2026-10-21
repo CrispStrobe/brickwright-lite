@@ -24,18 +24,34 @@
 //     without a limit the target follows the count, so the next limited move starts from there;
 //   - the power is stored as sent and the drive limited to ±100.
 //
-// The firmware's control loops themselves are not modelled; the rest is OUR MODEL
-// (docs/ROBOT-LAB-EV3-NXT.md "NXT motor model"):
+// MOTOR_SYNC, as the firmware's output driver runs it (docs/NXT-PROTOCOL-FACTS.md §Sync; docs/ROBOT-LAB-EV3-NXT.md):
+//   - two ports with MOTORON, REGULATED and regulation MOTOR_SYNC pair up, the lower letter first
+//     (A+B, else A+C, else B+C); a port synchronised alone runs unregulated;
+//   - the pair runs on power (PWM), not on the speed loop: every 100 ms the error — the first's block
+//     tacho count minus the second's, plus a turn term that grows by 2·(turn ratio · power / 100)
+//     counts per period (the turn ratio itself before either has moved), limited to ±500 — goes
+//     through a PID (P 3, I 1 on the sum limited to ±900, D 1; the sum over 4) whose correction slows
+//     the first and speeds the second; with a turn ratio each is capped at its own power;
+//   - turning on synchronisation clears the error state; with a tacho limit and a turn ratio the move
+//     ends for both when the motor the ratio's sign and the power's direction select reaches its
+//     limit, without a turn ratio when either does.
+//
+// The firmware's other control loops are not modelled; the rest is OUR MODEL
+// (docs/ROBOT-LAB-EV3-NXT.md "Motor control (both bricks): our model"):
 //   - MOTORON off, or run state IDLE: the port is off — braked with the BRAKE bit, else floating;
 //   - unregulated: duty = power / 100, the off phase braked (BRAKE) or floating;
 //   - MOTOR_SPEED: a regulated speed, power % of the motor's no-load speed (FULL_SCALE_DPS), by
-//     the Lab's speed loop (hubs/mindstorms-output.js); MOTOR_SYNC: the same, the second of two
-//     synchronised ports scaled by the turn ratio;
+//     the Lab's speed loop (hubs/mindstorms-output.js); MOTOR_SYNC: above;
 //   - a tacho limit: the move ends when the port has turned that far since the command; a
 //     regulated move decelerates onto it (ACCEL_DPS2) and ends on the encoder within
 //     END_TOLERANCE_DEG, an unregulated one at the count. Then the run state is IDLE and the motor
 //     brakes (BRAKE) or floats — a regulated move with BRAKE holds the count it ended on (the speed
 //     loop keeps the shaft there) until the next command.
+//
+// BUTTONS: the brick's four (0 exit, the dark grey one; 1 right; 2 left; 3 enter, the orange one),
+// pressed and released from outside (pressButton: the Lab's UI and API). As the firmware's button
+// module counts them: a release after more than 2 s is a long release, else a short one; ReadButton
+// reports the button held and the releases (short + long, a byte), optionally clearing them.
 //
 // INPUTS: SETINPUTMODE's type and mode; GETINPUTVALUES's raw / normalized / scaled values from
 // devices/nxt-sensors.js; the ultrasonic sensor as an I2C device (LSWRITE / LSGETSTATUS / LSREAD).
@@ -70,6 +86,18 @@ export const END_HOLD_DEG = 4;
 export const STALL_MS = 1000;
 const EVENT_LOG = 50;
 
+/** The output driver's regulation period, ms (firmware: 100 one-millisecond ticks). */
+export const SYNC_PERIOD_MS = 100;
+/** The sync PID's gains (the firmware's defaults 96, 32, 32 over its divisor 32) and limits. */
+export const SYNC_GAINS = Object.freeze({p: 3, i: 1, d: 1, divisor: 4, errorMax: 500, sumMax: 900});
+/** A button held longer than this (ms) is a long press (firmware: 1000 counts of its 2 ms button tick). */
+export const BUTTON_LONG_MS = 2000;
+/** The brick's buttons, as ReadButton numbers them. */
+export const NXT_BUTTON = Object.freeze({exit: 0, right: 1, left: 2, enter: 3});
+
+const freshSync = () => ({turnSum: 0, errorSum: 0, lastError: 0, correction: 0, clockMs: 0});
+const freshButton = () => ({down: false, downMs: 0, shortReleases: 0, longReleases: 0});
+
 const NXT_DEVICES = Object.freeze({'nxt-touch': 'touch', 'nxt-light': 'light', 'nxt-sound': 'sound', 'nxt-ultrasonic': 'ultrasonic'});
 
 const freshPort = () => ({
@@ -101,6 +129,8 @@ export class NxtVirtualHub {
             inputs: NXT_INPUTS.map(freshInput),
             toneEndMs: 0, keepAliveMs: 0,
             queues: Array.from({length: MESSAGE_QUEUES}, () => []),
+            sync: freshSync(),
+            buttons: Array.from({length: 4}, freshButton),
             ...files.freshFiles(),
             program: null, lastProgram: null
         };
@@ -157,18 +187,94 @@ export class NxtVirtualHub {
             this.vm.advanceTo(tMs, this._programIo());
             if (this.vm.status !== 'running') this._programEnded(this.vm.s.ending);
         }
+        this._syncLevels = this._syncStep(dtMs);
         this.s.outputs.forEach((port, i) => {
             if (port.device) this._drive(i, port, dtMs);
         });
     }
 
-    _sync (i) {
-        // MOTOR_SYNC pairs two ports: the turn ratio slows the second (our model of "turn ratio":
-        // 0 equal, 50 the second stopped, 100 it turns back at the same speed).
-        const synced = this.s.outputs.map((p, k) => (p.regulation === REGULATION.MOTOR_SYNC && (p.mode & MODE.MOTORON) ? k : -1)).filter(k => k >= 0);
-        if (synced.length !== 2 || synced[1] !== i) return 1;
-        const t = this.s.outputs[synced[0]].turnRatio;
-        return clamp(1 - Math.abs(t) / 50, -1, 1);
+    // ---- MOTOR_SYNC (the firmware's output driver; see the header) -------------------------------
+
+    _synced (k) {
+        const p = this.s.outputs[k];
+        return Boolean(p.device) && (p.mode & MODE.MOTORON) && (p.mode & MODE.REGULATED) && p.regulation === REGULATION.MOTOR_SYNC
+            && p.runState !== RUN_STATE.IDLE;
+    }
+
+    /** The synchronised pair [first, second], or null: A+B, else A+C, else B+C. */
+    syncPair () {
+        if (this._synced(0)) {
+            if (this._synced(1)) return [0, 1];
+            if (this._synced(2)) return [0, 2];
+            return null;
+        }
+        return this._synced(1) && this._synced(2) ? [1, 2] : null;
+    }
+
+    /** Turning synchronisation on clears the controller (firmware: on every mode update that enables it). */
+    _syncEnabled (state) {
+        if ((state.mode & MODE.MOTORON) && (state.mode & MODE.REGULATED) && state.regulation === REGULATION.MOTOR_SYNC) {
+            this.s.sync = {...freshSync(), clockMs: this.s.sync ? this.s.sync.clockMs : 0};
+        }
+    }
+
+    /** One regulation period of the pair: the new correction. */
+    _syncRegulate ([a, b]) {
+        const one = this.s.outputs[a];
+        const two = this.s.outputs[b];
+        const sync = this.s.sync;
+        const g = SYNC_GAINS;
+        const block = p => Math.trunc(p.angleDeg - p.blockZero);
+        let turn = 0;
+        if (one.turnRatio !== 0) {
+            if (block(one) !== 0 || block(two) !== 0) {
+                // The ratio scaled by the power; which port's pair of numbers depends on the ratio's sign and the direction.
+                const [p, sign] = one.power >= 0 ? (one.turnRatio > 0 ? [two, 1] : [one, 1]) : (one.turnRatio > 0 ? [one, -1] : [two, -1]);
+                turn = Math.trunc(p.turnRatio * sign * p.power / 100);
+            } else turn = one.turnRatio;
+        }
+        sync.turnSum += turn * 2;
+        const error = clamp(block(one) - block(two) + sync.turnSum, -g.errorMax, g.errorMax);
+        const derivative = error - sync.lastError;
+        sync.lastError = error;
+        sync.errorSum = clamp(sync.errorSum + error, -g.sumMax, g.sumMax);
+        sync.correction = Math.trunc((g.p * error + g.i * sync.errorSum + g.d * derivative) / g.divisor);
+    }
+
+    /** The step's synchronised levels (port → power), with the pair's tacho limit; null without a pair. */
+    _syncStep (dtMs) {
+        if (!this.s.sync) this.s.sync = freshSync();
+        const pair = this.syncPair();
+        if (!pair) { this.s.sync.clockMs = 0; return null; }
+        const sync = this.s.sync;
+        sync.clockMs += dtMs;
+        while (sync.clockMs >= SYNC_PERIOD_MS) {
+            sync.clockMs -= SYNC_PERIOD_MS;
+            this._syncRegulate(pair);
+        }
+        const [one, two] = pair.map(k => this.s.outputs[k]);
+        if (this._syncLimitReached(one, two)) {
+            this._endMove(one);
+            this._endMove(two);
+            return null;
+        }
+        const level = (p, delta) => {
+            const v = clamp(p.power, -100, 100);
+            const out = clamp(v + delta, -100, 100);
+            return one.turnRatio !== 0 ? clamp(out, -Math.abs(v), Math.abs(v)) : out;
+        };
+        return new Map([[pair[0], level(one, -sync.correction)], [pair[1], level(two, sync.correction)]]);
+    }
+
+    _syncLimitReached (one, two) {
+        const reached = p => {
+            if (!(p.tachoLimit > 0)) return false;
+            const dir = Math.sign(p.power) || 1;
+            return (p.angleDeg - p.moveStartDeg) * dir >= p.tachoLimit;
+        };
+        if (one.turnRatio === 0) return reached(one) || reached(two);
+        const forward = one.turnRatio > 0 ? two.power >= 0 : one.power >= 0;
+        return reached(one.turnRatio > 0 === forward ? two : one);
     }
 
     _drive (i, port, dtMs) {
@@ -176,9 +282,14 @@ export class NxtVirtualHub {
         const off = () => drivePassive(port, port.mode & MODE.BRAKE ? 'brake' : 'coast');
         if (!on && port.holdDeg !== null) { driveHold(port, port.holdDeg, this.specs.get(i), dtMs); return; }
         if (!on) { off(); return; }
-        const regulated = (port.mode & MODE.REGULATED) && port.regulation !== REGULATION.IDLE;
+        if (this._syncLevels && this._syncLevels.has(i)) {
+            driveOpen(port, this._syncLevels.get(i), port.mode & MODE.BRAKE ? 'brake' : 'coast');
+            return;
+        }
+        // A port synchronised without a partner runs unregulated (firmware).
+        const regulated = (port.mode & MODE.REGULATED) && port.regulation === REGULATION.MOTOR_SPEED;
         const spec = this.specs.get(i);
-        const level = clamp(port.power, -100, 100) * (regulated ? this._sync(i) : 1);
+        const level = clamp(port.power, -100, 100);
         const limit = port.tachoLimit;
         // Running without a limit: the firmware's target follows the count.
         if (!(limit > 0) && port.power !== 0) port.targetDeg = port.angleDeg;
@@ -353,6 +464,7 @@ export class NxtVirtualHub {
     setOutputState (i, {power, mode, regulation, turnRatio, runState, tachoLimit}) {
         const p = this.s.outputs[i];
         Object.assign(p, {power, mode, regulation, turnRatio, runState, tachoLimit});
+        this._syncEnabled(p);
         p.holdDeg = null;
         p.zeroHoldDeg = null;
         if (tachoLimit > 0) {
@@ -542,7 +654,8 @@ export class NxtVirtualHub {
             lsRead: i => this.lsRead(i),
             messageWrite: (q, bytes) => this.messageWrite(q, bytes),
             messageRead: (q, remove) => this.messageRead(q, remove),
-            keepAlive: () => this.keepAlive()
+            keepAlive: () => this.keepAlive(),
+            readButton: (index, reset) => this.readButton(index, reset)
         };
         return this._io;
     }
@@ -567,6 +680,7 @@ export class NxtVirtualHub {
         else {
             Object.assign(p, {power: state.power, mode: state.mode, regulation: state.regulation, turnRatio: state.turnRatio,
                 runState: state.runState});
+            if (flags & UPDATE.MODE) this._syncEnabled(p);
             p.holdDeg = null;
             p.zeroHoldDeg = null;
             this._changed();
@@ -618,6 +732,33 @@ export class NxtVirtualHub {
         const box = this.s.queues[queue];
         if (!box.length) return {status: STATUS.MAILBOX_EMPTY};
         return {status: STATUS.SUCCESS, message: remove ? box.shift() : box[0]};
+    }
+
+    // ---- buttons (see the header) ---------------------------------------------------------------------
+
+    /** Presses (down) or releases a button at the brick's time; false for a button the brick has not. */
+    pressButton (index, down) {
+        if (!this.s.buttons) this.s.buttons = Array.from({length: 4}, freshButton);
+        const b = this.s.buttons[index];
+        if (!b) return false;
+        if (down && !b.down) Object.assign(b, {down: true, downMs: this.s.timeMs});
+        else if (!down && b.down) {
+            b.down = false;
+            if (this.s.timeMs - b.downMs > BUTTON_LONG_MS) b.longReleases = (b.longReleases + 1) & 0xff;
+            else b.shortReleases = (b.shortReleases + 1) & 0xff;
+        }
+        this.event('button', {index, down: Boolean(down)});
+        this._changed();
+        return true;
+    }
+
+    /** ReadButton: {pressed, count} (count: short + long releases, a byte), clearing the counts with `reset`. */
+    readButton (index, reset = false) {
+        const b = this.s.buttons && this.s.buttons[index];
+        if (!b) return null;
+        const out = {pressed: b.down, count: (b.shortReleases + b.longReleases) & 0xff};
+        if (reset) b.shortReleases = b.longReleases = 0;
+        return out;
     }
 
     /** Six AA cells, full (estimated, devices/catalog.js HUB_SUPPLY_VOLTS.nxt). */

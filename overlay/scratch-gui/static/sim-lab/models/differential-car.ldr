@@ -1,0 +1,180 @@
+0 Differential car (Brickwright Robot Lab reference model)
+0 Name: differential-car.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Rear-wheel drive through a differential (motor A) and rack-and-pinion front steering (motor B).
+0 // scripts/gen-differential-car-model.mjs writes this file.
+0 !BW ID driveMotor
+0 !BW PORT A
+1 71 0 -100 120 1 0 0 0 -1 0 0 0 -1 54696p01.dat
+0 !BW ID pinionAxle
+1 4 0 -50 120 0 1 0 -1 0 0 0 0 1 3704.dat
+0 !BW ID pinion
+1 19 0 -35 120 1 0 0 0 0 -1 0 1 0 6589.dat
+0 !BW ID casing
+1 72 -23 0 120 0 0 1 0 -1 0 1 0 0 65414.dat
+0 !BW ID cover
+1 4 17 0 120 0 0 1 0 -1 0 1 0 0 65413.dat
+0 !BW ID sideR
+1 19 14 0 120 0 0 -1 0 -1 0 -1 0 0 6589.dat
+0 !BW ID sideL
+1 19 -20 0 120 0 0 1 0 -1 0 1 0 0 6589.dat
+0 !BW ID planet1
+1 19 -3 17 120 -0.25882 0.96593 0 0 0 -1 -0.96593 -0.25882 0 6589.dat
+0 !BW ID planet2
+1 19 -3 -8.5 134.7224 -0.25882 0.96593 0 0.83652 0.22414 0.5 0.48296 0.12941 -0.86603 6589.dat
+0 !BW ID planet3
+1 19 -3 -8.5 105.2776 -0.25882 0.96593 0 -0.83652 -0.22414 0.5 0.48296 0.12941 0.86603 6589.dat
+0 !BW ID postRF
+1 72 50 -60 100 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID postPinRF80
+1 0 40 -80 100 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID postPinRF120
+1 0 40 -120 100 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID railPinRF
+1 0 60 0 100 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID postRB
+1 72 50 -60 140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID postPinRB80
+1 0 40 -80 140 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID postPinRB120
+1 0 40 -120 140 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID railPinRB
+1 0 60 0 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID wheelRearR
+1 15 120 0 120 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID axleRearR
+1 4 69 0 120 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID bushRearR
+1 71 90 0 120 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID railR
+1 71 70 0 120 0 1 0 -1 0 0 0 0 1 32523.dat
+0 !BW ID postLF
+1 72 -50 -60 100 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID postPinLF80
+1 0 -40 -80 100 -1 0 0 0 -1 0 0 0 1 6558.dat
+0 !BW ID postPinLF120
+1 0 -40 -120 100 -1 0 0 0 -1 0 0 0 1 6558.dat
+0 !BW ID railPinLF
+1 0 -60 0 100 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID postLB
+1 72 -50 -60 140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID postPinLB80
+1 0 -40 -80 140 -1 0 0 0 -1 0 0 0 1 6558.dat
+0 !BW ID postPinLB120
+1 0 -40 -120 140 -1 0 0 0 -1 0 0 0 1 6558.dat
+0 !BW ID railPinLB
+1 0 -60 0 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID wheelRearL
+1 15 -126 0 120 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID axleRearL
+1 4 -75 0 120 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID bushRearL
+1 71 -90 0 120 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID railL
+1 71 -70 0 120 0 1 0 -1 0 0 0 0 1 32523.dat
+0 !BW ID hub
+1 71 0 -140 60 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID spacer
+1 72 0 -135 120 0 0 1 0 1 0 -1 0 0 32065.dat
+0 !BW ID hubPinR
+1 0 60 -140 120 0 1 0 1 0 0 0 0 -1 32002.dat
+0 !BW ID motorPinR
+1 0 20 -130 120 0 -1 0 -1 0 0 0 0 -1 32002.dat
+0 !BW ID hubPinL
+1 0 -60 -140 120 0 1 0 1 0 0 0 0 -1 32002.dat
+0 !BW ID motorPinL
+1 0 -20 -130 120 0 -1 0 -1 0 0 0 0 -1 32002.dat
+0 !BW ID beamFrontR
+1 72 60 -130 -60 1 0 0 0 1 0 0 0 1 73507.dat
+0 !BW ID beamPinR60
+1 0 60 -140 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID beamPinR100
+1 0 60 -140 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID beamFrontL
+1 72 -60 -130 -60 1 0 0 0 1 0 0 0 1 73507.dat
+0 !BW ID beamPinL60
+1 0 -60 -140 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID beamPinL100
+1 0 -60 -140 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID knuckleR
+1 71 60 0 -120 0 1 0 -1 0 0 0 0 1 5713.dat
+0 !BW ID kingpinBushR
+1 71 60 -30 -120 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID armR
+1 72 60 -55 -40 -1 0 0 0 1 0 0 0 -1 32250.dat
+0 !BW ID kingpinJoinerR
+1 71 60 -80 -120 1 0 0 0 0 1 0 -1 0 6538a.dat
+0 !BW ID kingpinTopR
+1 0 60 -110 -120 0 1 0 1 0 0 0 0 -1 3705.dat
+0 !BW ID axleFrontR
+1 4 90 0 -120 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID bushFrontR
+1 71 80 0 -120 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID wheelFrontR
+1 15 121 0 -120 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID tieRodR
+1 72 80 -70 -40 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID armPinR
+1 0 40 -60 -40 0 1 0 1 0 0 0 0 -1 32002.dat
+0 !BW ID rackPinR
+1 0 120 -80 -40 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID knuckleL
+1 71 -60 0 -120 0 1 0 -1 0 0 0 0 1 5713.dat
+0 !BW ID kingpinBushL
+1 71 -60 -30 -120 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID armL
+1 72 -60 -55 -40 1 0 0 0 -1 0 0 0 -1 32250.dat
+0 !BW ID kingpinJoinerL
+1 71 -60 -80 -120 1 0 0 0 0 1 0 -1 0 6538a.dat
+0 !BW ID kingpinTopL
+1 0 -60 -110 -120 0 1 0 1 0 0 0 0 -1 3705.dat
+0 !BW ID axleFrontL
+1 4 -90 0 -120 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID bushFrontL
+1 71 -80 0 -120 0 0 1 0 -1 0 1 0 0 3713.dat
+0 !BW ID wheelFrontL
+1 15 -121 0 -120 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID tieRodL
+1 72 -80 -70 -40 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID armPinL
+1 0 -40 -60 -40 0 1 0 1 0 0 0 0 -1 32002.dat
+0 !BW ID rackPinL
+1 0 -120 -80 -40 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID rack
+1 71 0 -90 -40 1 0 0 0 1 0 0 0 1 64781.dat
+0 !BW ID steerPinion
+1 72 0 -110 -40 1 0 0 0 1 0 0 0 1 69778.dat
+0 !BW ID steerAxle
+1 0 0 -110 -60 0 0 -1 0 1 0 1 0 0 4519.dat
+0 !BW ID steerMotor
+0 !BW PORT B
+1 71 0 -110 -120 -1 0 0 0 0 -1 0 -1 0 54696p01.dat
+0 !BW ID steerPinR-20
+1 0 40 -130 -100 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID steerPinR20
+1 0 40 -130 -140 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID steerPinL-20
+1 0 -40 -130 -100 -1 0 0 0 -1 0 0 0 1 6558.dat
+0 !BW ID steerPinL20
+1 0 -40 -130 -140 -1 0 0 0 -1 0 0 0 1 6558.dat
+0 !BW ID rackAxleR
+1 0 100 -90 -50 0 0 -1 0 1 0 1 0 0 32062.dat
+0 !BW ID slideBeamR
+1 72 100 -90 -60 0 0 1 1 0 0 0 1 0 7229.dat
+0 !BW ID slideR
+1 72 100 -90 -70 0 0 1 1 0 0 0 1 0 48496.dat
+0 !BW ID guideR
+1 4 70 -90 -100 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID guideHolderR
+1 72 35 -120 -100 0 1 0 0 0 -1 -1 0 0 32449.dat
+0 !BW ID rackAxleL
+1 0 -100 -90 -50 0 0 -1 0 1 0 1 0 0 32062.dat
+0 !BW ID slideBeamL
+1 72 -100 -90 -60 0 0 1 1 0 0 0 1 0 7229.dat
+0 !BW ID slideL
+1 72 -100 -90 -70 0 0 1 1 0 0 0 1 0 48496.dat
+0 !BW ID guideL
+1 4 -70 -90 -100 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID guideHolderL
+1 72 -35 -120 -100 0 1 0 0 0 -1 -1 0 0 32449.dat

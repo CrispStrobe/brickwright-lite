@@ -108,6 +108,11 @@ try {
     await panel.locator('[data-debug-record]:not([disabled])').waitFor({timeout: 30000});
 
     const pause = panel.getByRole('button', {name: /Pause/});
+    // Record is enabled by the runner's capabilities, Pause only by the phase.
+    // Wait for the panel's own phase attribute to read running (the state the
+    // Pause click requires), not for an arbitrary moment after Record enables.
+    await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
+        ?.getAttribute('data-debug-phase') === 'running', null, {timeout: 30000});
     await pause.click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-record]')?.disabled,
         null, {timeout: 15000});

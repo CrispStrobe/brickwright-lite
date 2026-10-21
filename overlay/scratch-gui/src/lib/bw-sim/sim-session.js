@@ -76,6 +76,22 @@ export const MODELS = Object.freeze([
         example: 'gearbox.bw'},
     {file: 'differential.ldr', title: {en: 'Differential', de: 'Differenzialgetriebe'},
         example: 'differential.bw'},
+    // The differential on wheels (docs/ROBOT-LAB-ARCHITECTURE.md T6): motor A drives the rear axle through it,
+    // motor B steers the front wheels (an Ackermann tie rod). The `intro` is the pane's one-paragraph story.
+    {file: 'differential-car.ldr', title: {en: 'Differential car', de: 'Differenzial-Auto'},
+        example: 'differential-car.bw', mat: 'plain',
+        intro: {
+            en: 'A car that steers like a real one. Motor A turns the back wheels through a differential, ' +
+                'so in a curve the outer wheel can roll faster than the inner one. Motor B steers with a rack and ' +
+                'pinion: its gear slides a toothed bar, and rods from the bar\'s ends turn the front wheels, the ' +
+                'inner one a little more. Run it: the car drives ahead, goes once round a circle and backs up to ' +
+                'where it started.',
+            de: 'Ein Auto, das lenkt wie ein echtes. Motor A dreht die Hinterräder über ein Differenzial, ' +
+                'so kann in der Kurve das äußere Rad schneller rollen als das innere. Motor B lenkt mit einer ' +
+                'Zahnstange: Sein Zahnrad schiebt die Stange, und Spurstangen an ihren Enden drehen die ' +
+                'Vorderräder, das innere etwas stärker. Starte es: Das Auto fährt geradeaus, einmal im Kreis ' +
+                'und rückwärts zurück zum Start.'
+        }},
     // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
     {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
         example: 'chain-drive.bw'},
@@ -87,6 +103,9 @@ export const MODELS = Object.freeze([
         example: 'drawing-robot.bw', mat: 'plain'},
     {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
         example: 'excavator.bw', mat: 'plain'},
+    // A slewing crane (docs/ROBOT-LAB-ARCHITECTURE.md T1): the turntable on A, the boom luffed by a linear actuator on B.
+    {file: 'crane.ldr', title: {en: 'Crane', de: 'Kran'},
+        example: 'crane.bw', mat: 'plain'},
     // The LEGO MINDSTORMS RCX (hubs/rcx/, docs/ROBOT-LAB-RCX.md): its examples are NQC (`.nqc`), compiled
     // by nqc-wasm and downloaded to the Lab's RCX, where the clean-room bytecode VM runs them.
     {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car', de: 'RCX-Rempelauto'},

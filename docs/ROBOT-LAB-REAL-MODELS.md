@@ -143,6 +143,51 @@ flung, all three motors turn, and it runs at 13 ms per 5 ms step (headless, CPU)
 - **Loading a big set takes 10–26 s** in the app: the library's parts are fetched and derived in the browser on first
   use. That is next.
 
+## Real masses, more iterations for light links (2026-10-20)
+
+Bodies weigh what their parts weigh (each part's LDraw-derived mass, shared out over its colliders; Jolt computes
+centre of mass and inertia from those). A 5 g solver mass floor for models from elsewhere was tried and replaced. Jolt's
+iterative solver loses linkages that hang a 1–3 g liftarm between frames of hundreds of grams; the remedy kept is more
+solver iterations (30 velocity, 10 position) for the joints that hold a body under 10 g against one more than 20 times
+heavier (`mechanism.solver.lightLinks`, models from elsewhere only). Flung bodies over 1 s, every motor at 60 %:
+
+| Model | real masses | real + iterations | 5 g floor |
+|---|---|---|---|
+| 42109 | 24 | 24 | 0 |
+| 42095 | 0 | 0 | 0 |
+| 8275 Bulldozer | 5 (blade jammed) | 5 | 57 |
+| brickhub-322 | 13 | 0 | 0 |
+| odin | 0 | 0 | 10 |
+
+42109 is still open. The part-pair collision filter moves to C++ in the Jolt fork (`PartPairSimShapeFilter`,
+jolt-physics 1.1.0-bw.5); the core uses it when the loaded Jolt has it and the JS filter otherwise.
+
+## Jointed pairs filtered whole for models from elsewhere (2026-10-21)
+
+In the app, every idle motor coasts (the hub's PWM 0), and coasting the 4x4 Off-Roader went to NaN within 2 s, though
+the bare core with untouched motors stayed put. The free steering and suspension linkages swing, and our colliders are
+boxes, so a beam's holes are solid: an axle swinging through them hits solid collider and is shot out. The part-level
+filter only exempts the pairs that touch in the start pose. For a model from elsewhere, every body pair a joint or a
+coupling relates, and every pair whose parts overlap as built, now never collides. Real sets are built so their jointed
+parts do not collide. Our own files keep part-by-part filtering. Bench, every motor at 60 %, CPU time per 5 ms step:
+
+| Model | part by part | whole |
+|---|---|---|
+| 42099 4x4 Off-Roader | 6.1 ms, steering motor stuck | 1.6 ms, all three motors turn |
+| 42131 | 510 ms, NaN | 14 ms |
+| 42055 | 1,960 ms, NaN | 19 ms |
+| 8275 Bulldozer | 9.3 ms, blade motors stuck | 4.5 ms, all four turn |
+| 17101 Vernie | 3.2 ms, motors stuck | 1.8 ms |
+
+Compile is faster too (42131: 5 s → 0.5 s), since no part pairs are computed. Still open: 42109 (one NaN body), and
+bodies coming apart on 42131 (57), 42055 (18) and the Tower Crane (16).
+
+The part-pair filter is also C++ now (Jolt fork `PartPairSimShapeFilter`, jolt-physics 1.1.0-bw.5, tested in this lane;
+our own models use it when the package has it). It gives the same results as the JS filter at the same speed in one
+thread, and it runs on Jolt's worker threads. With it, the multithreaded build works in a cross-origin isolated page:
+1.1–1.25× on the biggest sets, nothing on the 4x4. Shipping that needs the multithreaded file served unbundled, and
+COOP/COEP from the host.
+
 ## Old motors and the LeoCAD and LDD files (2026-10-21)
 
 **Old motors are motor parts now** (`parts.json`, `devices/catalog.js`):

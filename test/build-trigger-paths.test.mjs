@@ -54,7 +54,7 @@ const assertHistoryOnlySkipped = paths => {
 test('the push trigger is a paths filter: everything first, then negations, then the docs put back', () => {
     assert.equal(hasPathsIgnore, false, 'paths and paths-ignore cannot coexist on one trigger; GitHub rejects the workflow');
     assert.equal(entries[0], '**', 'the first entry must include everything, or every later negation is meaningless');
-    for (const root of ['BLOCKED.md', 'BUILD.md', 'CLAUDE.md', 'HANDOFF.md', 'HISTORY.md', 'LANES.md', 'MBIT-BUILD.md', 'PLAN.md', 'README.md', 'ROADMAP.md']) {
+    for (const root of ['BLOCKED.md', 'BUILD.md', 'CI-POINTERS.md', 'CLAUDE.md', 'HANDOFF.md', 'HISTORY.md', 'LANES.md', 'MBIT-BUILD.md', 'PLAN.md', 'README.md', 'ROADMAP.md']) {
         assert.ok(entries.includes(`!${root}`), `${root} is root prose nothing reads and must stay negated`);
     }
     const cut = entries.indexOf('!docs/*.md');

@@ -23,7 +23,7 @@ import {readFileSync, writeFileSync, readdirSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {parsePointers, judgeSkips} from './lib/skip-pointers.mjs';
+import {parsePointers, judgeSkips, POINTERS_FILE} from './lib/skip-pointers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const READINGS = path.join(ROOT, 'docs', 'generated', 'ci-skip-census.json');
@@ -171,7 +171,7 @@ if (isMain) {
         console.log(`ci-skip-census: ${tests.length} skipped test(s) over ${runs.length} green runs — class a ${tests.filter(t => t.class === 'a').length}, b ${tests.filter(t => t.class === 'b').length}, c ${tests.filter(t => t.class === 'c').length}; written to ${path.relative(ROOT, READINGS)}`);
     }
     const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
-    const pointers = parsePointers(readFileSync(path.join(ROOT, 'LANES.md'), 'utf8'));
+    const pointers = parsePointers(readFileSync(path.join(ROOT, POINTERS_FILE), 'utf8'));
     // Readings are history: a reason the file's source no longer carries was retired since, and the
     // live check (check-test-run, on the run's own census) judges its successor. Reported, not judged.
     const retired = readings.tests.filter(t => !t.reasonLive);

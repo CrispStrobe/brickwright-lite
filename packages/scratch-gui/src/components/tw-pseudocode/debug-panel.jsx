@@ -13,6 +13,7 @@ import DebugDivergenceBisection from './debug-divergence-bisection.jsx';
 import DebugCorrelatedTargets from './debug-correlated-targets.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
+import {createRunnerOwnership} from '../../lib/bw-debug/runner-ownership.js';
 import {ps2ButtonBit, ps2Delta} from '../../lib/bw-machines/ps2-pointer.js';
 import {promptAsync} from '../../lib/native-dialog.js';
 import {createRawHddDownload} from '../../lib/bw-machines/raw-hdd-download.js';
@@ -202,6 +203,9 @@ class DebugPanel extends React.Component {
             firmwareName: null,
             recordingStatus: null, reverseStatus: null, timelineStatus: null,
             sessionTransferStatus: null, hddDownloadStatus: null, hddDownloadBusy: false};
+        // Only the runner the panel currently owns may publish into it; see
+        // lib/bw-debug/runner-ownership.js for the replaced-runner race.
+        this._runnerOwnership = createRunnerOwnership();
         this._hddDownloadMounted = false;
         this._hddDownloadToken = {};
         this._hddDownloadRunner = null;
@@ -862,6 +866,7 @@ class DebugPanel extends React.Component {
         }
         const p = this._runnerPromise;
         this._runnerPromise = null;
+        this._runnerOwnership.release();
         if (p) {
             p.then(r => { if (r) r.destroy(); }).catch(() => {});
         } else if (this.state.runner) {
@@ -871,11 +876,11 @@ class DebugPanel extends React.Component {
 
     async runner () {
         if (this._runnerPromise) return this._runnerPromise;
-        this._runnerPromise = this._createRunner();
+        this._runnerPromise = this._createRunner(this._runnerOwnership.claim());
         return this._runnerPromise;
     }
 
-    async _createRunner () {
+    async _createRunner (claim) {
         const {createDebugRunner} = await import(
             /* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/debug-runner.js');
         const runner = createDebugRunner({
@@ -884,7 +889,10 @@ class DebugPanel extends React.Component {
             machineConfig: this.state.machineConfig,
             bootMedia: this._bootMedia,
             labwiredChip: this.state.kind === 'labwired' ? (this.state.labwiredChip || null) : null,
-            onChange: (ui) => {
+            // A replaced runner still inside its attach await publishes
+            // attaching/ready when that await resolves; dropped, not applied
+            // over its replacement's phase.
+            onChange: this._runnerOwnership.guard(claim, (ui) => {
                 this._updateHddDownloadSession(runner, ui);
                 // Runner notifications arrive from rAF/target callbacks, outside
                 // React 16's event batching. The local panel and its CircuitTab
@@ -899,11 +907,14 @@ class DebugPanel extends React.Component {
                     // nothing drives. See circuit-tab.jsx.
                     if (this.props.onRunnerChange) this.props.onRunnerChange(runner, ui);
                 });
-            }
+            })
         });
         if (this._userFirmware && typeof runner.setFirmware === 'function') {
             runner.setFirmware(this._userFirmware);
         }
+        // Torn down while the chunk import was pending: the teardown destroys
+        // this instance, so it must not become the panel's runner either.
+        if (!this._runnerOwnership.isCurrent(claim)) return runner;
         if (this.props.onRunnerChange) this.props.onRunnerChange(runner, this.state.ui);
         // setState is async, so hand the instance back directly rather than
         // reading it out of state on the very next line.
