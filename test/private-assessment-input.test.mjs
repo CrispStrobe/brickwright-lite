@@ -116,7 +116,7 @@ test('literal path, prefix, count, size, duplicate identity and complete orderin
     refuses(manifest => {manifest.files[0].bytes = 8 * 1024 ** 2 + 1;}, 'FILE_IDENTITY');
     refuses(manifest => {for (let index = 0; index < 9; index++) manifest.files[index].bytes = 8 * 1024 ** 2;}, 'INPUT_BOUND');
     refuses(manifest => {manifest.logicalSubjects.pop();}, 'SUBJECT_COUNT');
-    refuses(manifest => {manifest.logicalSubjects[184].id = manifest.logicalSubjects[0].id;}, 'SUBJECT_ID');
+    refuses(manifest => {manifest.logicalSubjects[1].id = manifest.logicalSubjects[0].id;}, 'SUBJECT_ID');
     refuses(manifest => {manifest.logicalSubjects[0].kind = 'context';}, 'SUBJECT_ORDER');
     refuses(manifest => {manifest.audit.rawInputs.reverse();}, 'SUBJECT_ORDER');
     refuses(manifest => {manifest.logicalSubjects[184].id = 'different-context';}, 'CONTEXT_SUBJECT');
@@ -195,11 +195,16 @@ test('a pinned manifest is bounded regular data; parser uncertainty and Git erro
 
 test('catalogue-only actual Git admission preserves all 225 original rows with no positional inputs', () => {
     const originalCatalogue = {schema: catalogue.schema, blobs: structuredClone(catalogue.blobs), subjects: [
-        ...rawInputs.map((input, index) => ({...structuredClone(catalogue.subjects[0]), id: `raw-${index}`,
+        ...rawInputs.map((input, index) => ({...structuredClone(catalogue.subjects[0]), id: index < 41 ? catalogue.subjects[index].id : `raw-${index}`,
             kind: 'RAW_BASELINE', name: `original-raw-${index}`,
             rawLineage: {input, originalMetadata: {ordinal: index, preserved: true}}})),
         ...catalogue.subjects.map(subject => ({...structuredClone(subject), kind: 'RETAINED_CONTEXT'}))
     ]};
+    assert.equal(new Set(originalCatalogue.subjects.map(subject => subject.id)).size, 184);
+    assert.equal(new Set(originalCatalogue.subjects.map(subject => JSON.stringify([subject.kind, subject.id]))).size, 225);
+    for (let index = 0; index < 41; index++) {
+        assert.equal(originalCatalogue.subjects[index].id, originalCatalogue.subjects[184 + index].id);
+    }
     const cataloguePath = 'corpus/all-catalogue.json';
     const publish = value => {
         const bytes = Buffer.from(JSON.stringify(value));
@@ -248,6 +253,8 @@ test('catalogue-only actual Git admission preserves all 225 original rows with n
         [manifest => {manifest.audit.rawInputs = rawInputs;}, 'RAW_INPUTS'],
         [manifest => {manifest.audit.inputMode = 'unknown';}, 'INPUT_MODE'],
         [manifest => {manifest.logicalSubjects[0].kind = 'raw';}, 'SUBJECT_ORDER'],
+        [manifest => {manifest.logicalSubjects[1].id = manifest.logicalSubjects[0].id;}, 'SUBJECT_ID'],
+        [manifest => {manifest.logicalSubjects[185].id = manifest.logicalSubjects[184].id;}, 'SUBJECT_ID'],
         [manifest => {manifest.logicalSubjects[0].input = rawInputs[0];}, 'SCHEMA']
     ]) {
         const manifest = structuredClone(positive.manifest); change(manifest);
@@ -256,7 +263,12 @@ test('catalogue-only actual Git admission preserves all 225 original rows with n
     // The original pinned commit is still usable in either default or explicit
     // positional-context mode; no earlier input/metadata view is discarded.
     const positional = structuredClone(base); positional.audit.inputMode = 'positional-context';
+    // Legacy mode also distinguishes raw/context identities without changing
+    // its pinned catalogue's IDs or any input bytes.
+    for (let index = 0; index < 41; index++) positional.logicalSubjects[index].id = catalogue.subjects[index].id;
     const old = invoke(positional);
+    assert.deepEqual(old.proof.logicalSubjects, positional.logicalSubjects);
+    assert.equal(new Set(old.proof.logicalSubjects.map(subject => subject.id)).size, 184);
     assert.equal(old.proof.rawInputCount, 184);
     assert.equal(old.proof.catalogueSubjectCount, 41);
     assert.equal(old.proof.inputMode, 'positional-context');

@@ -39,14 +39,14 @@ export function admitReportData(options) {
         expected.rawFiles.every(name => typeof name === 'string' && name.length > 0 && name.length <= 4096) &&
         new Set(expected.rawFiles).size === positionalCount && Array.isArray(expected.contextSubjects) &&
         expected.contextSubjects.length === catalogueCount, 'EXPECTED_SUBJECTS');
-    const ids = new Set(expected.rawFiles);
+    const ids = new Set(expected.rawFiles.map(id => JSON.stringify(['POSITIONAL_INPUT', id])));
     for (const [index, subject] of expected.contextSubjects.entries()) {
         fields(subject, ['id', 'kind', 'target', 'name']);
         requireFact(typeof subject.id === 'string' && subject.id.length > 0 && subject.id.length <= 4096 &&
-            !ids.has(subject.id) && ['RAW_BASELINE', 'RETAINED_CONTEXT'].includes(subject.kind) &&
+            !ids.has(JSON.stringify([subject.kind, subject.id])) && ['RAW_BASELINE', 'RETAINED_CONTEXT'].includes(subject.kind) &&
             subject.target === 'arcade' && typeof subject.name === 'string', 'EXPECTED_SUBJECTS');
         requireFact(subject.kind === (expected.inputMode === 'catalogue' && index < 184 ? 'RAW_BASELINE' : 'RETAINED_CONTEXT'), 'EXPECTED_SUBJECTS');
-        ids.add(subject.id);
+        ids.add(JSON.stringify([subject.kind, subject.id]));
     }
     const report = json(reportJson, TOTAL, true);
     requireFact(object(report) && report.schema === 'brickwright/compat-audit/v1' && report.count === 225 &&
@@ -75,7 +75,7 @@ export function admitReportData(options) {
     requireFact(object(report.compilerPolicy) && report.compilerPolicy.extensionFetching === 'offline' &&
         report.compilerPolicy.preparedInputs === 'not-requested' && !Object.hasOwn(report, 'journeyPolicy') &&
         object(report.preparedTally) && Object.keys(report.preparedTally).length === 0, 'STATIC_SCOPE');
-    const tally = Object.create(null);
+    const tally = Object.create(null), baselineTally = Object.create(null), retainedContextTally = Object.create(null);
     const subjects = expected.rawFiles.map((id, ordinal) => ({ordinal, id, kind: 'POSITIONAL_INPUT', target: 'arcade'}))
         .concat(expected.contextSubjects.map((row, index) => ({ordinal: positionalCount + index, id: row.id, kind: row.kind, target: row.target})));
     for (let index = 0; index < report.rows.length; index++) {
@@ -108,6 +108,8 @@ export function admitReportData(options) {
                 Object.hasOwn(row, 'observationFailure') && object(row.observationFailure), 'ROW_CONTEXT');
         }
         tally[row.stage] = (tally[row.stage] || 0) + 1;
+        const group = index < 184 ? baselineTally : retainedContextTally;
+        group[row.stage] = (group[row.stage] || 0) + 1;
     }
     requireFact(Object.keys(report.tally).length === Object.keys(tally).length && Object.keys(tally).every(stage =>
         Number.isSafeInteger(report.tally[stage]) && report.tally[stage] === tally[stage]), 'TALLY');
@@ -138,6 +140,7 @@ export function admitReportData(options) {
     }
     requireFact(next === 225 && !active, 'PROGRESS_COMPLETENESS');
     return {report, summary: {count: 225, baselineCount: 184, retainedContextCount: 41,
-        positionalInputCount: positionalCount, catalogueSubjectCount: catalogueCount, tally: {...tally},
+        positionalInputCount: positionalCount, catalogueSubjectCount: catalogueCount,
+        uniqueCatalogueIds: new Set(expected.contextSubjects.map(subject => subject.id)).size, tally: {...tally}, baselineTally: {...baselineTally}, retainedContextTally: {...retainedContextTally},
         boundary: 'Complete static report DATA only; no independently authenticated run, execution, SDK or GUI equivalence.'}};
 }

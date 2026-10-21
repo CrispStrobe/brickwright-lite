@@ -116,9 +116,10 @@ export function admitInputRepository ({repositoryPath, commit, manifestPath,
         const ids = new Set();
         manifest.logicalSubjects.forEach((subject, index) => {
             keys(subject, !catalogueOnly && index < 184 ? ['id', 'kind', 'input'] : ['id', 'kind']);
+            const identity = JSON.stringify([subject.kind, subject.id]);
             requireFact(typeof subject.id === 'string' && subject.id.length > 0 && subject.id.length <= 256 &&
-                !/[\x00-\x1f\x7f]/.test(subject.id) && !ids.has(subject.id), 'SUBJECT_ID');
-            ids.add(subject.id);
+                !/[\x00-\x1f\x7f]/.test(subject.id) && !ids.has(identity), 'SUBJECT_ID');
+            ids.add(identity);
             requireFact(subject.kind === (catalogueOnly ? (index < 184 ? 'RAW_BASELINE' : 'RETAINED_CONTEXT') :
                 (index < 184 ? 'raw' : 'context')) &&
                 (catalogueOnly || index >= 184 || subject.input === audit.rawInputs[index]), 'SUBJECT_ORDER');

@@ -53,6 +53,8 @@ test('complete 184+41 report retains failures, diagnostics and original compiler
     const value = fixture(), input = options(value), accepted = admitReportData(input);
     assert.deepEqual(accepted.report, value.report);
     assert.deepEqual(accepted.summary.tally, value.report.tally);
+    assert.deepEqual(accepted.summary.baselineTally, {'parse-failed': 1, partial: 1, translated: 182});
+    assert.deepEqual(accepted.summary.retainedContextTally, {translated: 41});
     assert.equal(accepted.summary.count, 225); assert.equal(accepted.summary.baselineCount, 184); assert.equal(accepted.summary.retainedContextCount, 41);
     assert.equal(accepted.report.rows[184].context.originalCompile.success, false);
     assert.match(accepted.report.rows[0].reason, /malformed original/);
@@ -141,7 +143,7 @@ test('duplicate JSON keys, altered expectations, extra options and fixed input b
 test('original all225 catalogue mode preserves raw-baseline provenance and every retained context in order', () => {
     const value = fixture();
     const catalogue = {...expected, inputMode: 'catalogue', rawFiles: [],
-        contextSubjects: value.report.rows.map((row, index) => ({id: index < 184 ? 'baseline-' + index : row.file,
+        contextSubjects: value.report.rows.map((row, index) => ({id: index < 41 ? expected.contextSubjects[index].id : index < 184 ? 'baseline-' + index : row.file,
             kind: index < 184 ? 'RAW_BASELINE' : 'RETAINED_CONTEXT', target: 'arcade', name: 'Original ' + index}))};
     for (const [index, row] of value.report.rows.entries()) {
         const subject = catalogue.contextSubjects[index];
@@ -161,14 +163,21 @@ test('original all225 catalogue mode preserves raw-baseline provenance and every
     assert.deepEqual(accepted.report, value.report);
     assert.equal(accepted.summary.positionalInputCount, 0);
     assert.equal(accepted.summary.catalogueSubjectCount, 225);
+    assert.equal(accepted.summary.uniqueCatalogueIds, 184);
+    assert.deepEqual(accepted.summary.baselineTally, {'parse-failed': 1, partial: 1, translated: 182});
+    assert.deepEqual(accepted.summary.retainedContextTally, {translated: 41});
+    assert.equal(accepted.report.rows[0].file, accepted.report.rows[184].file, 'same application ID is retained in two genuine kinds');
+    assert.notEqual(accepted.report.rows[0].context.kind, accepted.report.rows[184].context.kind);
     assert.equal(accepted.summary.baselineCount, 184); assert.equal(accepted.summary.retainedContextCount, 41);
     assert.equal(accepted.report.rows[0].context.provenance.acceptedOriginalLineageSHA256, 'e'.repeat(64));
     const wrongKind = structuredClone(catalogue); wrongKind.contextSubjects[0].kind = 'RETAINED_CONTEXT';
     assert.throws(() => admitReportData({...input, expectationJson: JSON.stringify(wrongKind)}), /EXPECTED_SUBJECTS/);
     const truncated = {...catalogue, contextSubjects: catalogue.contextSubjects.slice(184)};
     assert.throws(() => admitReportData({...input, expectationJson: JSON.stringify(truncated)}), /EXPECTED_SUBJECTS/);
-    const duplicate = structuredClone(value); duplicate.report.rows[184].file = duplicate.report.rows[0].file;
+    const duplicate = structuredClone(value); duplicate.report.rows[185].file = duplicate.report.rows[184].file;
     assert.throws(() => admitReportData(options(duplicate, catalogue)), /ROW_IDENTITY/);
+    const duplicateExpected = structuredClone(catalogue); duplicateExpected.contextSubjects[185].id = duplicateExpected.contextSubjects[184].id;
+    assert.throws(() => admitReportData({...input, expectationJson: JSON.stringify(duplicateExpected)}), /EXPECTED_SUBJECTS/);
     const wrongCount = structuredClone(value); wrongCount.report.provenance.corpus.fileCount = 185;
     assert.throws(() => admitReportData(options(wrongCount, catalogue)), /INPUT_IDENTITY/);
 });

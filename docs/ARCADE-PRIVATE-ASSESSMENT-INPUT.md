@@ -23,7 +23,7 @@ Use the exact schema `brickwright/private-assessment-input/v1`:
   `gitBlobOid`. Every path is below `scope`; there is no pathspec or glob syntax.
   No absolute paths, empty components, dot components, backslashes or control
   characters are accepted. Paths are never interpreted as revision expressions.
-- `logicalSubjects`: exactly 225 distinct ordered IDs, with the mode-specific
+- `logicalSubjects`: exactly 225 ordered `(kind, id)` identities, with the mode-specific
   kinds and bindings described below.
 - `audit`: `rawTarget`, `rawInputs`, `contextCatalogue`, `contextRoots` and
   optional `inputMode`. Its only accepted modes are `catalogue` and
@@ -57,7 +57,10 @@ fields are preserved verbatim.
 Set `audit.inputMode` to `catalogue` and `rawInputs` to an empty array. The
 catalogue must contain exactly 225 subjects: 184 `RAW_BASELINE` rows followed
 by 41 `RETAINED_CONTEXT` rows. Every manifest logical subject has exactly
-`{id, kind}`, matching the actual catalogue's ID, kind and order. No positional
+`{id, kind}`, matching the actual catalogue's ID, kind and order. IDs may intentionally
+repeat across kinds: 41 retained contexts may reuse raw-baseline IDs. Only a
+duplicate `(kind, id)` pair is refused; no row is renamed, deduplicated or
+dropped. No positional
 input may be mixed into this mode. Physical source files referenced by the
 catalogue remain admitted through the full file/blob/root joins. All 184 raw
 lineage records, original metadata and 41 retained outcome records stay in the
@@ -172,3 +175,8 @@ original outcomes, zero positional arguments, explicit physical/semantic proof
 counts, and refusal of wrong order, kind, count, mode or mixed positional input.
 Only the root qualification executes this synthetic Git setup; no real corpus
 read or conversion is needed to author these controls.
+
+Subject uniqueness is composite in both modes. Default `raw` and `context`
+rows may share an ID; duplicates within either kind still refuse. The complete
+catalogue control retains 225 rows with 184 distinct IDs and 225 distinct
+`(kind, id)` pairs, including all 41 intentional cross-kind overlaps.
