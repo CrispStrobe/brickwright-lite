@@ -102,7 +102,8 @@ export default class VirtualSpikeHubState {
     }
     _applySensor (index, kind, value) {
         this.data.sensors[index] = kind === 'none' ? null : {kind, ...value};
-        if (kind === 'distance') this.data.classicPorts[index] = [62, [value.distance ?? -1]];
+        // The 2.x port report carries the distance sensor in whole centimetres (-1: nothing seen); hub state is mm.
+        if (kind === 'distance') this.data.classicPorts[index] = [62, [value.distance == null || value.distance < 0 ? -1 : Math.round(value.distance / 10)]];
         else if (kind === 'color') this.data.classicPorts[index] = [61, [value.color ?? -1, value.reflection ?? 0,
             value.ambient ?? 0, value.red ?? 0, value.green ?? 0, value.blue ?? 0]];
         else if (kind === 'force') this.data.classicPorts[index] = [63, [value.force ?? 0, value.pressed ? 1 : 0]];

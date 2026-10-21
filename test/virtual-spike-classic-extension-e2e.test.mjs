@@ -94,7 +94,8 @@ test('bundled Classic extension uses corrected base64 RFCOMM end to end', async 
     assert.equal(hubState.data.motors[2].speed, 55);
     await extension.setPixel({X: 2, Y: 3, BRIGHTNESS: 100});
     assert.equal(hubState.data.display[11], 9);
-    hubState.setPort('B', 'distance', {distance: 222});
+    // Hub state holds millimetres; the 2.x port report carries whole centimetres, as a 2.x hub sends them.
+    hubState.setPort('B', 'distance', {distance: 2220});
     adapter.socket.emitCurrentState();
     assert.equal(extension.getDistance({PORT: 'B'}), 222);
     extension._peripheral.disconnect();
