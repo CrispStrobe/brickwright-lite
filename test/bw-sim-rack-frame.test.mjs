@@ -94,14 +94,16 @@ test('a steering rack on a driving, turning car does not twist it: the car keeps
 
 test('the Forklift\'s lift motor driving the carriage past its end stalls there: the machine does not tip', t => {
     // The shipped Forklift (lift motor on port C turns the 8T on the rack). Run the lift up for 6 s, far past the top
-    // of the carriage's travel: the motor stalls against the end (the slider's limit) and the machine stands.
+    // of the carriage's travel: the motor stalls against the end (the slider's limit) and the machine stands. The
+    // core's end stops (jolt-core.js applyEndStops: a motor pushing a coupled joint into its limit stalls) are off here,
+    // so the bench compares the two rack constraints alone; with them, the world-rate control stands too.
     const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(GUI, 'src/lib/bw-sim/part-meta/parts.json'), 'utf8')));
     const entry = MODELS.find(m => m.file === 'forklift.ldr');
     const text = readFileSync(path.join(GUI, MODELS_BASE, entry.file), 'utf8');
     const tiltDeg = q => Math.acos(Math.max(-1, Math.min(1, 1 - 2 * (q[0] * q[0] + q[2] * q[2])))) * 180 / Math.PI;
     const run = Jx => {
         const {mechanism} = prepareModel(text, CATALOG, {mat: entry.mat});
-        const core = createPhysicsCore(Jx, mechanism, {stepHz: HZ});
+        const core = createPhysicsCore(Jx, mechanism, {stepHz: HZ, experiments: {noEndStops: true}});
         const hub = mechanism.bodies.find(b => b.parts.includes('hub')).id;
         const lift = mechanism.actuators.find(a => a.port === 'C').joint;
         const slider = mechanism.joints.find(j => j.type === 'slider');

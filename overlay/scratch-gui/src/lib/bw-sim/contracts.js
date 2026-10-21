@@ -245,8 +245,18 @@ export const restitutionOf = (a, b) => {
  *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
  *   groups?: {id: string, name: string, parts: string[]}[],
  *   belts?: {id: string, band: string, around: string[]}[],
- *   ropes?: {id: string, lengthLdu: number, around: string[]}[]
+ *   ropes?: {id: string, lengthLdu: number, around: string[]}[],
+ *   hoses?: {id: string, a: {part: string, port: string}, b: {part: string, port: string}}[],
+ *   decor?: {part: string, color: number, position: number[], matrix: number[]}[],
+ *   files?: {[name: string]: string}
  * }} PlacedModel
+ *
+ * `decor` is what a file has that is drawn but not simulated: a flexible element's stretched segments
+ * (a cable, a hose, a string), a mirrored part, a part not in the catalogue; `files` are the parts
+ * an MPD ships itself (model/ldraw-model.js).
+ *
+ * `hoses` are pneumatic tubes from one part's air port to another's (docs/ROBOT-LAB-UX.md §16):
+ * `0 !BW HOSE <id> <part> <port> <part> <port>` in LDraw text.
  *
  * `ropes` are strings from a winch drum over sheaves to a hook (docs/ROBOT-LAB-UX.md §15):
  * `around` [drum, sheave…, hook], `lengthLdu` the string's length. In LDraw text each is a
@@ -719,6 +729,32 @@ export const validatePlacedModel = (model, catalog) => {
             }
         }
     }
+    // Decoration (model/ldraw-model.js): drawn as the file has it, never simulated; its parts need not be catalogued.
+    if (model.decor !== undefined) {
+        if (!Array.isArray(model.decor)) out.push('model.decor: not an array');
+        else {
+            model.decor.forEach((d, i) => {
+                if (typeof d?.part !== 'string' || !isVec(d?.position) || !isVec(d?.matrix, 9)) {
+                    out.push(`model.decor[${i}]: {part, color, position: Vec3, matrix: 9 numbers}`);
+                }
+            });
+        }
+    }
+    if (model.files !== undefined && (typeof model.files !== 'object' || model.files === null ||
+        Object.values(model.files).some(t => typeof t !== 'string'))) out.push('model.files: {name: LDraw text}');
+    if (model.hoses !== undefined) {
+        if (!Array.isArray(model.hoses)) out.push('model.hoses: not an array');
+        else {
+            uniqueIds(model.hoses, 'model.hoses', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            for (const h of model.hoses) {
+                for (const k of ['a', 'b']) {
+                    const e = h?.[k];
+                    if (!e || !partIds.has(e.part) || typeof e.port !== 'string') out.push(`model.hoses[${h?.id}].${k}: {part, port} of a part of the model`);
+                }
+            }
+        }
+    }
     if (model.ropes !== undefined) {
         if (!Array.isArray(model.ropes)) out.push('model.ropes: not an array');
         else {
@@ -932,7 +968,12 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *   noCollideParts? [[bodyA, bodyB, [[partA, partB], …]]] a noCollide pair filtered PART BY PART
  *               (mech/collision-filter.js localNoCollide): only those part pairs (partA's colliders
  *               on bodyA, partB's on bodyB: colliders carry `part`) are kept apart, the others
- *               collide. A noCollide pair not listed is filtered whole.
+ *               collide. A noCollide pair not listed is filtered whole. With a fourth element 'collide'
+ *               the list is inverted: only those part pairs collide (the shorter of the two lists is
+ *               written: two frames of 1,000 and 600 parts kept 1.19 million pairs apart, 2026-10-20).
+ *   solver?     {lightLinks: {massKg, ratio, velocity, position}} more solver iterations for joints
+ *               holding a body below massKg against one ratio times heavier (mech/compile.js
+ *               FOREIGN_LIGHT_LINKS, models from elsewhere only); bodies keep their own massKg.
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)
@@ -1168,7 +1209,8 @@ const validateMechanismV2 = (m, kinds, out) => {
         if (!Array.isArray(m.noCollideParts)) out.push('mechanism.noCollideParts: not an array');
         else {
             m.noCollideParts.forEach((entry, i) => {
-                const ok = Array.isArray(entry) && entry.length === 3 && pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
+                const ok = Array.isArray(entry) && (entry.length === 3 || (entry.length === 4 && entry[3] === 'collide')) &&
+                    pairs.has(`${entry[0]}|${entry[1]}`) && Array.isArray(entry[2]) &&
                     entry[2].every(pp => Array.isArray(pp) && pp.length === 2 && typeof pp[0] === 'string' && typeof pp[1] === 'string');
                 if (!ok) out.push(`noCollideParts[${i}]: need [bodyA, bodyB, [[partA, partB], …]] of a noCollide pair`);
             });

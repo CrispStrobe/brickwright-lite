@@ -108,9 +108,11 @@ test('each refusal code', () => {
     ({refusals} = parseModel('2 16 0 0 0 1 0 0 1 0 0'));
     assert.ok(refusals.some(r => r.code === 'loose-geometry'));
 
-    // bad-matrix (det 0, scaled)
-    ({refusals} = parseModel('1 16 0 0 0 2 0 0 0 2 0 0 0 2 good.dat'));
+    // bad-matrix (det 0: flat); a scaled one is decoration (a flexible element's segment)
+    ({refusals} = parseModel('1 16 0 0 0 0 0 0 0 1 0 0 0 1 good.dat'));
     assert.ok(refusals.some(r => r.code === 'bad-matrix'));
+    const scaled = parseModel('1 16 0 0 0 2 0 0 0 2 0 0 0 2 good.dat', {catalog});
+    assert.deepEqual([scaled.refusals, scaled.model.parts.length, scaled.model.decor.length], [[], 0, 1]);
 
     // bad-port
     ({refusals} = parseModel('0 !BW PORT Z\n1 16 0 0 0 1 0 0 0 1 0 0 0 1 good.dat'));

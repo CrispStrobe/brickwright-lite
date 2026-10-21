@@ -46,6 +46,23 @@ export const vendoredFiles = async ({fetchImpl = globalThis.fetch, base = LDRAW_
  *          read() takes library-relative paths ('parts/3001.dat', 'p/4-4cyli.dat');
  *          missing lists references found in no search directory; fromCatalogue the paths the fallback supplied
  */
+/**
+ * A vendored file's text (null when it is not there), fetched once per fetch function: a big model's parts share their
+ * primitives (the stud, the pin hole's rings), and each part's closure asked for them again (the 4x4 Off-Roader:
+ * 2,266 requests). A failed request is forgotten, so it may be tried again.
+ */
+const fetched = new WeakMap();
+const fetchText = (fetchImpl, url) => {
+    if (!fetched.has(fetchImpl)) fetched.set(fetchImpl, new Map());
+    const cache = fetched.get(fetchImpl);
+    if (!cache.has(url)) {
+        const p = Promise.resolve(fetchImpl(url)).then(r => (r.ok ? r.text() : null));
+        p.catch(() => cache.delete(url));
+        cache.set(url, p);
+    }
+    return cache.get(url);
+};
+
 export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, base = LDRAW_BASE, withConfig = false,
     fallback = defaultFallback} = {}) => {
     const files = new Map();
@@ -66,9 +83,9 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
             if (files.has(path)) return path;
             if (!dir) continue;
             if (local && !local.has(path)) continue; // not vendored: no request that can only 404
-            const response = await fetchImpl(`${base}${path}`);
-            if (response.ok) {
-                files.set(path, await response.text());
+            const text = await fetchText(fetchImpl, `${base}${path}`);
+            if (text !== null) {
+                files.set(path, text);
                 return path;
             }
         }
@@ -105,4 +122,25 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
         else missing.push('LDConfig.ldr');
     }
     return {read: p => files.get(p.toLowerCase()), files, missing, fromCatalogue};
+};
+
+/**
+ * Everything a model's pictures need: its parts', its decoration's (model.decor: a cable's segments,
+ * a part not in the catalogue) and the library files its own parts use (model.files: an MPD's
+ * embedded parts) — and a read() that serves those own parts first, by name, under any search dir.
+ * @param {{parts: {part: string}[], decor?: {part: string}[], files?: object}} model
+ * @param {object} [options] as fetchLDrawClosure's
+ */
+export const fetchModelDrawing = async (model, options = {}) => {
+    const own = new Map(Object.entries(model.files || {}).map(([name, text]) => [refKey(name), text]));
+    const names = new Set([...model.parts.map(p => p.part), ...(model.decor || []).map(d => d.part)]);
+    for (const text of own.values()) {
+        for (const line of text.split(/\r?\n/)) {
+            const m = /^\s*1\s+(?:\S+\s+){13}(.+?)\s*$/.exec(line);
+            if (m) names.add(m[1]);
+        }
+    }
+    const closure = await fetchLDrawClosure([...names].filter(n => !own.has(refKey(n))), options);
+    const ownOf = path => own.get(refKey(path).replace(/^(?:parts\/|p\/)/, ''));
+    return {...closure, read: path => ownOf(path) ?? closure.read(path)};
 };

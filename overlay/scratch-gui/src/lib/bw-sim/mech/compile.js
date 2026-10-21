@@ -24,10 +24,20 @@ import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
-import {sharedAxisBodyPairs, localNoCollide} from './collision-filter.js';
+import {sharedAxisBodyPairs, localNoCollide, asBuiltOverlaps} from './collision-filter.js';
 import {freePinWelds} from './free-pins.js';
+import {rescueLoose, weldByContact} from './loose-rescue.js';
+
+/**
+ * Solver iterations for the joints of a model from elsewhere that hold a light body (below massKg) against one ratio
+ * times heavier (physics/jolt-core.js lightLinks). Bodies keep their parts' masses.
+ */
+export const FOREIGN_LIGHT_LINKS = Object.freeze({massKg: 0.01, ratio: 20, velocity: 30, position: 10});
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
+
+/** Half the floor's side (m): the floor is 20 m square. */
+export const FLOOR_HALF_M = 10;
 
 /** Rotate Vec3 v by unit quat q (xyzw) */
 const quatRotateVec = (q, v) => {
@@ -79,13 +89,15 @@ const makeGround = (bodies, opts = {}) => {
 
     const halfThick = 0.01;
     const centerY = lowest - halfThick;
+    // The floor reaches FLOOR_HALF_M every way: a robot driven about (the drive pad, the motor mixer, a
+    // program) stays on it for minutes; the 2 m floor it had ended in a drop within seconds.
     return {
         id: 'ground',
         motion: 'static',
         position: [0, centerY, 0],
         rotation: [0, 0, 0, 1],
         massKg: 0,
-        colliders: [{shape: 'box', halfExtents: [1, halfThick, 1]}],
+        colliders: [{shape: 'box', halfExtents: [FLOOR_HALF_M, halfThick, FLOOR_HALF_M]}],
         parts: [],
         friction: GROUND_FRICTION,
         restitution: GROUND_RESTITUTION,
@@ -177,6 +189,12 @@ export const compile = (model, catalog, opts = {}) => {
         const belts = model.belts.filter(b => b.around.every(id => known.has(id)));
         if (belts.length) filteredModel.belts = belts;
     }
+    // Hoses between known parts (kinds/pneumatic.js).
+    if (model.hoses) {
+        const known = new Set(knownParts.map(p => p.id));
+        const hoses = model.hoses.filter(h => known.has(h.a.part) && known.has(h.b.part));
+        if (hoses.length) filteredModel.hoses = hoses;
+    }
     // Ropes likewise (kinds/rope.js).
     if (model.ropes) {
         const known = new Set(knownParts.map(p => p.id));
@@ -186,7 +204,17 @@ export const compile = (model, catalog, opts = {}) => {
 
     // If filtered model has no valid parts, we still need to produce a mechanism with maybe ground only plus diagnostics
     // Build graph (even if empty)
-    const {nodes, edges: graphEdges} = buildGraph(filteredModel, catalogMap, diagnostics, kinds);
+    const {nodes, edges: builtEdges} = buildGraph(filteredModel, catalogMap, diagnostics, kinds);
+    // A model from elsewhere: groups that connect to nothing are joined by their nearest near-miss (mech/loose-rescue.js).
+    let graphEdges = builtEdges;
+    if (opts.rescueLoose) {
+        const rescued = rescueLoose(nodes, builtEdges);
+        if (rescued.edges.length) {
+            graphEdges = [...builtEdges, ...rescued.edges];
+            diagnostics.push({severity: 'warning', code: 'seated-loosely', parts: rescued.groups.flat(),
+                message: `Joined where their pins or axles almost fit: ${rescued.groups.map(g => g.length).join(', ')} parts`});
+        }
+    }
 
     // Topology fixpoint. Islands come from rigid edges; two things can then
     // weld islands together and force a rebuild: hinges between one island pair
@@ -195,6 +223,15 @@ export const compile = (model, catalog, opts = {}) => {
     // joints and gears from the graph plus the welds found so far; the gear pass's
     // other diagnostics are kept from the final pass only.
     const extraRigidPairs = [];
+    // ...and a group still connected to nothing is welded to what it touches most (mech/loose-rescue.js weldByContact).
+    if (opts.rescueLoose) {
+        const welded = weldByContact(nodes, graphEdges);
+        if (welded.pairs.length) {
+            extraRigidPairs.push(...welded.pairs);
+            diagnostics.push({severity: 'warning', code: 'seated-loosely', parts: welded.groups.flat(),
+                message: `Held where they touch the rest: ${welded.groups.map(g => g.length).join(', ')} parts`});
+        }
+    }
     const firstNodeOf = (islandsNow, bodyId) => {
         for (const [nid, bid] of islandsNow.nodeToBody.entries()) if (bid === bodyId) return nid;
         return null;
@@ -452,8 +489,24 @@ export const compile = (model, catalog, opts = {}) => {
     const mechanismV2 = {...mechanism, version: 2, bodies: withBodyRoles(mechanism.bodies), hubs: v2.hubs, actuators: v2.actuators,
         couplings, devices: v2.devices, noCollide: noCollidePairs(joints, couplings, kinds,
             [...seatedBodyPairs(graphEdges, islands), ...sharedAxisBodyPairs(graphEdges, islands)])};
-    const local = localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
+    // Part by part only for our own files (a model from elsewhere filters its pairs whole, below).
+    const local = opts.rescueLoose ? [] : localNoCollide(mechanismV2.bodies, joints, mechanismV2.noCollide, couplingBodyPairs(joints, couplings, kinds), graphEdges, islands, nodes);
     if (local.length) mechanismV2.noCollideParts = local;
+    // A model from elsewhere: its light links solve with more iterations (FOREIGN_LIGHT_LINKS, physics/jolt-core.js);
+    // every body pair a joint or a coupling relates, and every pair whose parts overlap as built (mech/collision-filter.js
+    // asBuiltOverlaps), never collides — whole, not part by part. Our colliders are boxes: a beam's holes are solid,
+    // so an axle swinging through them as the set means it to hits solid collider and is shot out (the 4x4 Off-Roader
+    // went to NaN within 2 s with its motors coasting; 42131 and 42055 at 0.5–2 s a step). A real set is built so its
+    // jointed parts do not collide; filtered whole, they do not, and no shape filter runs at all (3x faster steps).
+    if (opts.rescueLoose) {
+        mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}};
+        const pairs = new Set(mechanismV2.noCollide.map(([a, b]) => `${a}|${b}`));
+        for (const [a, b] of asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, [])) {
+            if (!pairs.has(`${a}|${b}`)) { mechanismV2.noCollide.push([a, b]); pairs.add(`${a}|${b}`); }
+        }
+        mechanismV2.noCollide.sort((x, y) => (x[0] + '|' + x[1] < y[0] + '|' + y[1] ? -1 : 1));
+        delete mechanismV2.noCollideParts;
+    }
     const problemsV2 = validateCompiledMechanism(mechanismV2, {kinds});
     if (problemsV2.length > 0) {
         throw new Error(`compile produced invalid mechanism v2: ${problemsV2.join('; ')}`);

@@ -27,7 +27,7 @@ import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
 import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/chain.js';
 import {placedSpur, placedTooth} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/tooth-parts.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
-import {buildSteps, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {buildSteps, stepCorner, VIEWS, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(ROOT, 'overlay/scratch-gui');
@@ -94,6 +94,15 @@ const assertBuildable = (label, model, plan) => {
     });
 };
 
+/**
+ * Pins first (instructions/steps.js pinsFirst): a pin or axle goes on with the later of the parts it
+ * joins, or before it on a step of pins only (`pins`), so the page shows it before it is covered.
+ */
+const beforeOrWith = (plan, pin, part, label) => {
+    if (pin === part) return;
+    assert.ok(pin < part && plan.steps[pin].pins && part - pin <= 3, `${label}: step ${pin + 1} (pins: ${plan.steps[pin].pins}) before step ${part + 1}`);
+};
+
 /** Step index of every part (sub-assembly parts in their own step). */
 const stepIndex = plan => {
     const at = new Map();
@@ -118,9 +127,12 @@ for (const {name, text} of MODELS_UNDER_TEST) {
         assert.ok(plan.steps[0].parts.includes(first), `${name}: the ${first} is in step 1`);
         // Steps like a manual's: a few parts each.
         for (const s of plan.steps) assert.ok(s.parts.length <= STEP_MAX, `${name}: step of ${s.parts.length} parts`);
+        // (With pins first, a build step of three or four parts comes with a step of its pins; a bench of
+        // a few parts is a part a step.)
         const mean = model.parts.length / plan.steps.length;
-        assert.ok(mean >= 3 && mean <= STEP_MAX, `${name}: ${mean} parts per step`);
-        // A pin or axle goes on with the later of the two parts it joins; one joining one part, with it.
+        assert.ok(mean >= (model.parts.length >= 12 ? 1.5 : 1) && mean <= STEP_MAX, `${name}: ${mean} parts per step`);
+        for (const s of plan.steps) if (s.pins) assert.ok(s.parts.every(id => ['pin', 'axle'].includes(category(model, id))), `${name}: a pins step holds pins and axles only`);
+        // A pin or axle goes on with the later of the two parts it joins, or just before it (pins first); one joining one part, with it.
         const adj = touching(model);
         let checked = 0;
         let fasteners = 0;
@@ -130,13 +142,13 @@ for (const {name, text} of MODELS_UNDER_TEST) {
             const joins = [...adj.get(p.id)];
             assert.ok(joins.length >= 1, `${name}: ${p.id} holds something`);
             if (joins.length > 2) continue;
-            assert.equal(at.get(p.id), Math.max(...joins.map(id => at.get(id))), `${name}: ${p.id} joins ${joins.join(', ')}`);
+            beforeOrWith(plan, at.get(p.id), Math.max(...joins.map(id => at.get(id))), `${name}: ${p.id} joins ${joins.join(', ')}`);
             checked++;
         }
         // Four at least where a model has them; the RCX bumper car is a studded build whose three pins
         // are all it has (two join three parts), and the hubless motor bench has a single axle.
         assert.ok(checked >= (fasteners >= 4 ? 4 : 1), `${name}: ${checked} of ${fasteners} pins and axles checked`);
-        // Each wheel shares its step with the axle it sits on.
+        // Each wheel goes on with the axle it sits on, or right after it (the axle first, sticking out).
         for (const wheel of model.parts.filter(p => category(model, p.id) === 'wheel')) {
             const axles = [...adj.get(wheel.id)].filter(id => category(model, id) === 'axle');
             // A wheel straight on a motor's output stub (the RCX bumper car's mini-motors) needs no axle
@@ -144,7 +156,7 @@ for (const {name, text} of MODELS_UNDER_TEST) {
             const motors = [...adj.get(wheel.id)].filter(id => category(model, id) === 'motor');
             if (axles.length === 0 && motors.length === 1) continue;
             assert.equal(axles.length, 1, `${name}: ${wheel.id} sits on one axle`);
-            assert.equal(at.get(axles[0]), at.get(wheel.id), `${name}: ${wheel.id} with ${axles[0]}`);
+            beforeOrWith(plan, at.get(axles[0]), at.get(wheel.id), `${name}: ${wheel.id} with ${axles[0]}`);
         }
     });
 
@@ -207,11 +219,11 @@ for (const {name, text} of DRIVING_BASES) {
                 .find(r => r.part === model.parts.find(p => p.id === a).part);
             assert.ok(row.count >= 2, `${name}: ${a}'s callout says ${row.count}x`);
         }
-        // And what holds them: each wheel's axle and each motor's pin in that same step.
-        assert.equal(at.get('axleL'), at.get('wheelL'));
-        assert.equal(at.get('axleR'), at.get('wheelR'));
-        assert.equal(at.get('pinL'), at.get('motorL'));
-        assert.equal(at.get('pinR'), at.get('motorR'));
+        // And what holds them: each wheel's axle and each motor's pin in that step or the pins step before it, both together.
+        beforeOrWith(plan, at.get('axleL'), at.get('wheelL'), `${name}: axleL`);
+        beforeOrWith(plan, at.get('pinL'), at.get('motorL'), `${name}: pinL`);
+        assert.equal(at.get('axleL'), at.get('axleR'));
+        assert.equal(at.get('pinL'), at.get('pinR'));
     });
 }
 
@@ -343,4 +355,50 @@ test('the print page has one picture per step, in order, then the parts list; na
     assert.ok(html.indexOf('data-bom') > html.lastIndexOf('class="shot"'), 'the parts list comes after the steps');
     assert.match(html, /14 Teile/);
     assert.match(html, /Technic-Achse 4/);
+});
+
+test('pins first, and which way each new part slides in: the driving base step by step', () => {
+    const model = load(read('overlay/scratch-gui/static/sim-lab/models/driving-base.ldr'));
+    const plan = buildSteps(model, CATALOG);
+    // The hub alone; its pins, sticking out; the motors onto them; and so on, as a LEGO manual goes.
+    assert.deepEqual(plan.steps.map(s => [s.pins, s.parts.slice().sort()]), [
+        [false, ['hub']], [true, ['pinL', 'pinR']], [false, ['motorL', 'motorR']],
+        [true, ['frontPin1', 'frontPin2']], [false, ['castor', 'frontBeam']],
+        [true, ['axleL', 'axleR']], [false, ['ball', 'wheelL', 'wheelR']]]);
+    const move = (n, id) => plan.steps[n].moves[id];
+    // Each slides along what seats it, away from the model: the side pins and motors and wheels
+    // outward (±x), the front pins and beam forward (−z), the castor's ball from below (+y is down).
+    assert.deepEqual(move(1, 'pinR'), [1, 0, 0]);
+    assert.deepEqual(move(1, 'pinL'), [-1, 0, 0]);
+    assert.deepEqual(move(2, 'motorR'), [1, 0, 0]);
+    assert.deepEqual(move(4, 'frontBeam'), [0, 0, -1]);
+    assert.deepEqual(move(6, 'wheelL'), [-1, 0, 0]);
+    assert.deepEqual(move(6, 'ball'), [0, 1, 0]);
+    assert.deepEqual(plan.steps[0].moves, {}, 'the first part goes on nothing');
+});
+
+test('studded bricks: the first part alone, then a brick set onto studs comes from above (the RCX bumper car)', () => {
+    const model = load(read('overlay/scratch-gui/static/sim-lab/models/rcx-bumper-car.ldr'));
+    const plan = buildSteps(model, CATALOG);
+    assert.deepEqual(plan.steps[0].parts, ['hub'], 'the RCX alone on page 1');
+    const at = stepIndex(plan);
+    // The bumper brick sits on the RCX's studs: it comes down onto them (LDraw −y is up).
+    assert.deepEqual(plan.steps[at.get('bumper')].moves.bumper, [0, -1, 0]);
+    // The motors and the plate under the RCX slide on from below.
+    for (const id of ['motorA', 'motorC', 'frontPlate']) assert.deepEqual(plan.steps[at.get(id)].moves[id], [0, 1, 0], id);
+});
+
+test('a page turns the model only when the new parts come from another side, and stays turned', () => {
+    const [frontRight, frontLeft, backRight] = VIEWS;
+    assert.deepEqual(stepCorner([]), frontRight, 'nothing to show: the usual corner');
+    assert.deepEqual(stepCorner([[1, 0, 0], [-1, 0, 0]]), frontRight, 'a mirrored pair: the usual corner');
+    assert.deepEqual(stepCorner([[-1, 0, 0], [-1, 0, 0]]), frontLeft, 'two parts from the left: look from the left');
+    assert.deepEqual(stepCorner([[0, 0, 1], [0, 0, 1]]), backRight, 'two from the back: look from behind');
+    assert.deepEqual(stepCorner([[0, 0, -1]], frontLeft), frontLeft, 'a part from the front, which the corner before shows as well: stay');
+    assert.deepEqual(stepCorner([[1, 0, 0]], frontLeft), frontRight, 'one from the right, which it does not: turn back');
+    // The colour explorer's pins at the back of the hub: the page turns there, once, and the steps after stay.
+    const plan = buildSteps(load(read('overlay/scratch-gui/static/sim-lab/models/colour-explorer.ldr')), CATALOG);
+    const turns = plan.steps.filter((st, i) => i > 0 && st.view.join() !== plan.steps[i - 1].view.join());
+    assert.equal(turns.length, 1);
+    assert.ok(turns[0].pins && turns[0].view.join() === backRight.join(), JSON.stringify(turns[0]));
 });

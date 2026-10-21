@@ -27,7 +27,7 @@
  *   4. `# tests` is at least the file count (each file carries ≥1 test);
  *   5. (T13, 2026-09-07) every test the run SKIPPED points at the one place it
  *      does execute — a dated box run or a workflow — under "Skips that
- *      execute elsewhere" in LANES.md, keyed by file and the VERBATIM reason;
+ *      execute elsewhere" in CI-POINTERS.md, keyed by file and the VERBATIM reason;
  *      a skip with no pointer is "a gate nobody runs" and the step is red by
  *      name. The census carries the file for each skip (the TAP does not);
  *      the TAP's `# SKIP` count must equal the census's, so the census cannot
@@ -43,7 +43,7 @@ import {existsSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {listTests} from './list-tests.mjs';
 import {tapOutcomes} from './lib/tap-outcomes.mjs';
-import {parsePointers, judgeSkips, skipsFromCensus, tapSkips, HEADING} from './lib/skip-pointers.mjs';
+import {parsePointers, judgeSkips, skipsFromCensus, tapSkips, HEADING, POINTERS_FILE} from './lib/skip-pointers.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => a.startsWith('--') ? [a.slice(2), all[i + 1]] : null).filter(Boolean));
 const set = args.set || 'fast';
@@ -135,7 +135,7 @@ if (!args.census) {
         const inTap = tapSkips(tap);
         check('the census records every skip the TAP printed', skips.length === inTap.length,
             `TAP # SKIP lines ${inTap.length}, census skips ${skips.length}` + (skips.length !== inTap.length ? ' — the reporter lost skips, or the TAP and the census are from different runs' : ''));
-        const lanesPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'LANES.md');
+        const lanesPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', POINTERS_FILE);
         const pointers = existsSync(lanesPath) ? parsePointers(readFileSync(lanesPath, 'utf8')) : [];
         const verdict = judgeSkips(skips, pointers, {root: path.join(path.dirname(new URL(import.meta.url).pathname), '..')});
         const problems = [...verdict.unpointed, ...verdict.moved, ...verdict.undated, ...verdict.deadWorkflow];

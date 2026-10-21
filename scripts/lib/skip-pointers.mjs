@@ -9,7 +9,7 @@
  * ever having run. A skip with a reason is honest about THIS run; it says
  * nothing about whether the gate runs at all. The pointer does.
  *
- * The pointer lives in LANES.md under the heading "## Skips that execute
+ * The pointer lives in CI-POINTERS.md (LANES.md until 2026-10-20) under the heading "## Skips that execute
  * elsewhere", one line per (file, reason):
  *
  *   - test/<file>.test.mjs :: <the skip reason, VERBATIM> :: <where> <YYYY-MM-DD> <who>
@@ -32,6 +32,8 @@ import {existsSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 
 export const HEADING = '## Skips that execute elsewhere';
+/** The file the pointers live in (they moved out of LANES.md on 2026-10-20). */
+export const POINTERS_FILE = 'CI-POINTERS.md';
 const POINTER = /^- (test\/\S+\.test\.mjs) :: (.+?) :: (.+)$/;
 const DATE = /\b(20\d\d-\d\d-\d\d)\b/;
 const WORKFLOW = /workflow (\.github\/workflows\/[\w.-]+\.ya?ml)/;
@@ -60,19 +62,19 @@ export const parsePointers = text => {
 export const judgeSkips = (skips, pointers, {root = null} = {}) => {
     const unpointed = [], moved = [], undated = [], deadWorkflow = [], orphan = [], stale = [];
     for (const p of pointers) {
-        if (!p.date) undated.push(`LANES.md:${p.line} ${p.file} — a pointer without a date is a claim nobody can check`);
+        if (!p.date) undated.push(`${POINTERS_FILE}:${p.line} ${p.file} — a pointer without a date is a claim nobody can check`);
         // A pointer is only ever validated against a skip that HAPPENED, so a pointer
         // for a test that no longer exists is unreachable by every check below: it
         // resolves, its workflow still names the step, and the census stays green over
         // a voucher for nothing (found 2026-09-12 when two vendor gates were retired
         // and their rows stayed). Ask the filesystem, not the skip list.
-        if (root && !existsSync(path.join(root, p.file))) orphan.push(`LANES.md:${p.line} ${p.file} does not exist — a pointer for a test that is gone vouches for nothing; delete the row`);
+        if (root && !existsSync(path.join(root, p.file))) orphan.push(`${POINTERS_FILE}:${p.line} ${p.file} does not exist — a pointer for a test that is gone vouches for nothing; delete the row`);
         if (p.workflow && root) {
             const wf = path.join(root, p.workflow);
-            if (!existsSync(wf)) deadWorkflow.push(`LANES.md:${p.line} ${p.file} → ${p.workflow} does not exist`);
+            if (!existsSync(wf)) deadWorkflow.push(`${POINTERS_FILE}:${p.line} ${p.file} → ${p.workflow} does not exist`);
             else {
                 const text = readFileSync(wf, 'utf8');
-                if (!text.includes(path.basename(p.file)) && !(p.step && text.includes(`name: ${p.step}`))) deadWorkflow.push(`LANES.md:${p.line} ${p.file} → ${p.workflow} never names ${path.basename(p.file)}${p.step ? ` nor a step '${p.step}'` : ''}`);
+                if (!text.includes(path.basename(p.file)) && !(p.step && text.includes(`name: ${p.step}`))) deadWorkflow.push(`${POINTERS_FILE}:${p.line} ${p.file} → ${p.workflow} never names ${path.basename(p.file)}${p.step ? ` nor a step '${p.step}'` : ''}`);
             }
         }
     }
@@ -87,8 +89,8 @@ export const judgeSkips = (skips, pointers, {root = null} = {}) => {
         if (root && !existsSync(path.join(root, file))) { stale.push(`${file}: "${s.name}" is in the readings but the file is gone — regenerate docs/generated/ci-skip-census.json`); continue; }
         const same = pointers.filter(p => path.basename(p.file) === base);
         if (same.some(p => p.reason === s.reason)) continue;
-        if (same.length) moved.push(`${base}: "${s.name}" skips with "${s.reason}" but the pointer(s) at LANES.md:${same.map(p => p.line).join(',')} vouch for "${same[0].reason}" — the reason moved; re-verify where it executes and move the pointer`);
-        else unpointed.push(`${base}: "${s.name}" skipped ("${s.reason}") and nothing says where it executes — a gate nobody runs; add a pointer under "${HEADING}" in LANES.md`);
+        if (same.length) moved.push(`${base}: "${s.name}" skips with "${s.reason}" but the pointer(s) at ${POINTERS_FILE}:${same.map(p => p.line).join(',')} vouch for "${same[0].reason}" — the reason moved; re-verify where it executes and move the pointer`);
+        else unpointed.push(`${base}: "${s.name}" skipped ("${s.reason}") and nothing says where it executes — a gate nobody runs; add a pointer under "${HEADING}" in ${POINTERS_FILE}`);
     }
     return {unpointed, moved, undated, deadWorkflow, orphan, stale};
 };
@@ -111,9 +113,9 @@ export const expiredTemporary = (pointers, tests) => pointers
     .flatMap(p => {
         const base = path.basename(p.file);
         const same = tests.filter(t => path.basename(t.file) === base && t.reason === p.reason);
-        if (!same.length) return [`LANES.md:${p.line} ${base}: TEMPORARY pointer but the readings show no such skip any more — remove the line`];
+        if (!same.length) return [`${POINTERS_FILE}:${p.line} ${base}: TEMPORARY pointer but the readings show no such skip any more — remove the line`];
         const ran = same.filter(t => t.executed > 0);
-        return ran.length ? [`LANES.md:${p.line} ${base}: TEMPORARY pointer but "${ran[0].name}" executed in CI in ${ran[0].executed} of ${ran[0].existed} run(s) — remove the line`] : [];
+        return ran.length ? [`${POINTERS_FILE}:${p.line} ${base}: TEMPORARY pointer but "${ran[0].name}" executed in CI in ${ran[0].executed} of ${ran[0].existed} run(s) — remove the line`] : [];
     });
 
 // ---- steps (plan T14): the same rule one level up ------------------------------------------
@@ -146,7 +148,7 @@ export const parseStepPointers = text => {
  */
 export const judgeSteps = (readings, pointers) => {
     const out = [];
-    for (const p of pointers) if (!p.date) out.push(`LANES.md:${p.line} ${p.workflow} :: ${p.name} — a pointer without a date is a claim nobody can check`);
+    for (const p of pointers) if (!p.date) out.push(`${POINTERS_FILE}:${p.line} ${p.workflow} :: ${p.name} — a pointer without a date is a claim nobody can check`);
     const pointed = (wf, name) => pointers.some(p => p.workflow === wf && p.name === name);
     for (const wf of readings.workflowsInTree || []) {
         const w = readings.workflows[wf];

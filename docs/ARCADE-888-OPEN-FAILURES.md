@@ -159,6 +159,54 @@ Not marked known-open. When it fails, rerun only the failed job. Failures seen:
 | #1085 | `scripts/lib/sim-lab-cad-gate.mjs` `focusOn` | expected `['p16']`, got `[]` |
 | #1097 | scale gate | 120 s screenshot timeout |
 
+### browser (heavy): debug history and Arcade physics engine, INTERMITTENT, FIXED
+
+Both failed on #1085 (and debug history also on main) and passed on a rerun.
+
+- **Debug history** (`verify:debug-history`): `locator.click` timed out on a disabled
+  Pause. Root cause, a product race: picking the Z80 bench starts a runner that boots
+  BBC BASIC and waits for its fetch. The gate's assembled ROM then replaces that runner.
+  When the old runner's fetch resolved after the new runner had started, the old runner
+  still published `attaching`/`ready` through its `onChange`. That overwrote the new
+  runner's `running`, so Pause stayed disabled for good. Record still looked live, because
+  its state comes from the new runner. Fix: `lib/bw-debug/runner-ownership.js`. The panel
+  claims each runner and applies notifications or adopts the runner only while its claim
+  is current. A destroyed runner also publishes nothing (`emit`/`emitLive` in
+  `debug-runner.js`). The gate now waits for `data-debug-phase="running"` before clicking
+  Pause, because Record being enabled does not mean the runner is running. Test:
+  `test/debug-panel-runner-ownership.test.mjs`.
+- **Arcade physics engine** (`verify-arcade-physics-engine-browser.mjs:99`, `24 !== 20`):
+  a timing-dependent count. `controller.right` sets minStep 4 / maxStep 2 at vx 100. The
+  scene loop's frame delta is wall-clock time (PXT cadence, capped at 100 ms). A frame
+  shorter than 22 ms moves at most 2 px, so its displacement is never split, and the
+  sprite moves. Only longer frames stall. So x 24 (two short frames before a stalled one)
+  was the correct PXT result for that fixture on a fast runner. Fix: the fixture uses
+  vx/maxSpeed 5000. For every delta from 2 to 100 ms, halving then ends in (2 px, 4 px]
+  and stalls. Under 2 ms the displacement is 0. The assertion is unchanged. Test:
+  `test/makecode-arcade-physics-engine-stall.test.mjs`. It covers every delta from 0 to
+  100 ms in 0.25 ms steps, and also proves the old fixture's 2 px moves.
+  The same cause produced `oldX 22 !== 20` at line 99 on main (one short frame before
+  the stall).
+- **Arcade physics engine** (`verify-arcade-physics-engine-browser.mjs`, `waitValue`
+  timeouts, for example at line 85): a second timing-dependent count, again faithful to
+  PXT. Pinned pxt-arcade 4.2.1 `physics.ts` gives each frame
+  `MAX_STEP_COUNT = toInt(maxSpeed / minStep * dtMs / 1000)` movement steps, rounded.
+  The fixture's saved engine was maxSpeed 40 / minStep 2, so 20 steps per second, and
+  every frame shorter than 25 ms got 0 steps: the sprite kept vx 40 but never moved. The
+  replacement engine (120, 2, 4) got 0 steps under about 8.3 ms. The scene loop runs at
+  about 20 ms per frame here (`game.onUpdate` with `pause(20)`), so whether the sprite
+  moved depended on how slow the runner's frames were. Phases that wait for the sprite's
+  own position (cap, restore, or the next cycle that depends on them) then timed out. A
+  node replay of the gate's press sequence with 21 ms frames reproduces it: old actor
+  stuck at x 20 with vx 40, `restoredObserved` never true. The product is unchanged; it
+  matches the original. Fix: the fixture uses minStep 0.125 for the saved engine (set
+  on A and down) and the replacement engine. That gives at least one step for every
+  frame that has any displacement (2 ms or more). The cap of 40, the positions and every
+  assertion are unchanged; no timeout was raised. Test:
+  `test/makecode-arcade-physics-engine-step-count.test.mjs`, which also proves the old
+  minStep 2 takes zero steps under 25 ms. A press shorter than a frame was checked
+  in the same node replay and is delivered, so dropped input is not the cause.
+
 ## Already-TODO items owned by other work
 
 These were already `# TODO` before this landing and are not part of this list:

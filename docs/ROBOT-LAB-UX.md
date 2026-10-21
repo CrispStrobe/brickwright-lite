@@ -464,3 +464,45 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Tests: `test/bw-sim-rope.test.mjs` (tied taut, LDraw, undo; in the real core a held drum holds the
   hook, ±6 rad/s winds it up or down by r·Δθ, a free drum pays out under the weight); gate step 6 of
   `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+
+## 16. Pneumatics v1 (2026-10-20)
+
+- Parts: the 1 x 11 cylinder (body u9145c01 with its rod 21828c01, a 120 LDU stroke) and the valve
+  with axle hole (19474-f1). The valve's lever turns on an axle put through its pivot; its angle
+  from where the model has it is the valve's state: past +15° air goes to outlet A, past −15° to B,
+  in between the valve is shut.
+- **Connect a hose** in the properties panel (two parts selected): a hose from the nearest free valve
+  outlet to the nearest free cylinder port (`lib/bw-sim/editor/hose-path.js`), in one undo step;
+  **Remove hose** takes off the selection's hoses. It is the model's `hoses` record
+  (`0 !BW HOSE <id> <part> <port> <part> <port>` in LDraw: LDraw's tubes are fixed shapes), drawn
+  as a blue tube that sags between the nozzles and follows them in Simulate (`view/hose-layer.js`),
+  and it goes with either of its parts.
+- Simulate (`kinds/pneumatic.js`, `physics/jolt-core.js` `pneumaticDrives`, architecture M12's v1):
+  the cylinder is a slider narrowed to its stroke. Before each step the valve's hinge angle picks
+  the way: towards the port the open outlet feeds the rod moves at 6 cm/s with at most p·A
+  (150 kPa on a 10 mm bore, about 12 N); a shut valve holds it. A program cannot drive the cylinder
+  itself; it turns the valve's lever with a motor, as a real motorised valve does.
+- Air (v2, `physics/air.js`): the ports a valve's supply reaches through hoses, T-pieces (4697b, drawn
+  only, riding on the part their first hose goes to) and air tanks (75974, 37 cm³) are one network with
+  an amount of air n = p·V; a tank starts pumped up to 150 kPa. A cylinder fed from it pushes with the
+  network's p·A, not the ideal supply's, and each stroke takes (p + p_atm)·A·L of air, so the tank empties
+  stroke by stroke (150 → 126 → 105 kPa … for the 1 x 11 cylinder on one tank) until the rod stops.
+  A valve whose supply has no hose is still fed ideally (v1).
+- A pump (2943bc01 body, 2944c02 piston: a sprung slider, 16 mm stroke, 8 mm bore) hosed into a network
+  puts the air it sweeps into it each time it is pushed in (+2.1 kPa a stroke into one tank, up to 250 kPa),
+  and the network's pressure pushes back on the piston. A motor works it with a crank or a cam, gravity
+  with a weight.
+- Simulate's readout shows each network's pressure ("Air 126 kPa").
+- Left out, and said so: the air in a cylinder does not compress (a shut valve holds the rod rigidly,
+  up to 40 N), the outlet the valve does not feed vents freely, and the lever is drawn where the model
+  has it.
+- Example: **Pneumatic cylinder** (`static/sim-lab/models/pneumatic-press.ldr`, `programs/pneumatic-press.bw`):
+  motor A's axle turns the lever of a valve on a beam on top of it; the valve takes its air from a tank on
+  the base, two hoses feed a cylinder pinned to the motor's side; the program turns the lever 40° one way
+  (the rod comes out), 80° back (in), twice, and the readout's air falls from 150 to about 67 kPa.
+- Tests: `test/bw-sim-pneumatic.test.mjs` (hoses through LDraw and undo, the stroke and p·A, the
+  hose tool's port choice; in the real core one way out by 48 mm, the other way back, shut holds;
+  a network of tank, T-piece and supply; a tank emptying as n·exp(−A·L/V) per stroke until the rod stops;
+  a pump stroke adding p_atm·A·L);
+  `test/bw-sim-gearbox-program.test.mjs` runs the example (out 48 mm, back to 0); browser: editor
+  gate step 7 (`--part=editor`), and the example run from the pane (`--part=examples`, 8d).
