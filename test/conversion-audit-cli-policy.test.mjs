@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 const cli = fs.readFileSync(new URL('../scripts/compat-audit.mjs', import.meta.url), 'utf8');
 
 test('default compat CLI imports shared actual core and reader with no eager SDK acquisition', () => {
@@ -30,10 +31,38 @@ test('context-only CLI uses explicit catalogue roots and current shared operatio
     assert.match(cli, /!inputs.length && !contextCatalogue/);
     assert.match(cli, /openConversionCatalogue\(contextCatalogue, \{roots: contextRoots\}\)/);
     assert.match(cli, /contexts.loadSubject\(index\)/);
-    assert.match(cli, /await auditConversionSubject\(subject\)/);
+    assert.match(cli, /progress \? await observeConversion\(subject\) : await auditConversionSubject\(subject, conversionOptions\(\)\)/);
     assert.match(cli, /--target differs from context target/);
     assert.match(cli, /originalCompile: subject.originalCompile/);
     assert.match(cli, /row = await applyOptionalGates\(row, observed.import.value\)/);
+});
+test('actual conversion options add only selected observers and artwork without acquiring compiler capabilities', () => {
+    const start = cli.indexOf('function conversionOptions () {');
+    const end = cli.indexOf('\nasync function observeConversion (subject)', start);
+    assert.ok(start >= 0 && end > start);
+    const declaration = cli.slice(start, end);
+    for (const selectedProgress of [false, true]) for (const journey of [false, true]) {
+        const events = [], subject = {kind: 'RAW_BASELINE'}, creator = {project: {}}, event = {phase: 'actual'};
+        const sentinel = {};
+        const scope = {progress: selectedProgress ? {onObservation: (...args) => events.push(args)} : false,
+            progressSubject: subject, journey, journeyCreator: sentinel};
+        const options = vm.runInNewContext(`${declaration}\nconversionOptions()`, scope);
+        assert.deepEqual(Object.keys(options).sort(), [
+            ...(selectedProgress ? ['onObservation'] : []),
+            ...(journey ? ['animationResources', 'onCreator'] : [])
+        ].sort());
+        if (selectedProgress) {
+            options.onObservation(event);
+            assert.equal(events.length, 1);
+            assert.equal(events[0][0], event);
+            assert.equal(events[0][1], subject);
+        }
+        if (journey) {
+            assert.equal(options.animationResources, true);
+            options.onCreator(creator);
+            assert.equal(scope.journeyCreator, creator);
+        } else assert.equal(scope.journeyCreator, sentinel);
+    }
 });
 test('whole census entry remains the shared pure operation while roundtrip integration is explicitly separate', () => {
     const core = fs.readFileSync(new URL('../scripts/lib/conversion-audit-core.mjs', import.meta.url), 'utf8');
