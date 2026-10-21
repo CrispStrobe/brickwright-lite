@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {mkdirSync} from 'node:fs';
 import {chromium} from 'playwright';
+import {hiddenStageBubble} from './lib/hidden-stage-bubble-gate.mjs';
 
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1600, height: 1050}});
@@ -20,6 +21,7 @@ try {
     // its not-yet-mounted lazy importer.
     await page.getByRole('tab', {name: /^(Robots|Robot Lab)$/}).click();
     await page.waitForFunction(() => window.__bwSimLab?.status === 'ready', null, {timeout: 90000});
+    await hiddenStageBubble(page);
     assert.equal(await page.getByTestId('bw-code-status').count(), 0, 'Code has not mounted');
     let previousScripts = [];
     for (const id of ['pendulum-array', 'clutch-bench']) {
