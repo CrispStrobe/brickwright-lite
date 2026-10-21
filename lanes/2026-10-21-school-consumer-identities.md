@@ -17,7 +17,7 @@ checks and GUI lock drift checks. Merge this claim before controller/reader
 changes, then requalify the corrected school delivery head normally.
 
 The GUI lock counterparts derive from the canonical worktree-deps install
-output, preserving unrelated dependency versions (npm also normalizes the existing optional fsevents dev classification). Both independent x86 consumers
+output, preserving unrelated dependency versions. Resolve its metadata with CI’s exact npm 10.9.9; npm 11 classifies the existing optional fsevents entry differently. Both independent x86 consumers
 name the same qualified Board/CUI/compiler revisions. Actual execution remains
 disabled; historical originals and all workflow gates are unchanged. Run the
 67 existing source/manufactured-original controls on this corrected candidate.
@@ -27,3 +27,8 @@ negative mutations unchanged. The Linux-specific manufactured-original suite
 remains a hosted requirement; this macOS host lacks its procfs/O_PATH contracts.
 The prior build refusal correctly detected the stale tracked GUI lock after
 npm resolution; the complete canonical install lock is now recorded.
+
+The remaining Linux build drift is reproduced by npm version alone: local
+Node 22 had picked up npm 11.17, while CI uses npm 10.9.9. An isolated verified
+npm 10.9.9 resolution restores only fsevents dev:true; versions, URLs and
+integrities stay unchanged. Preserve the strict clean-source manifest guard.
