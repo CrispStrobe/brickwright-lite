@@ -32,6 +32,7 @@
 // part between vertices), both ways round for each pair.
 
 import {phasedMotorRead} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/motor-phase.js';
+import {windingNumber as winding} from './helpers/model-geometry-math.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync, existsSync} from 'node:fs';
@@ -136,21 +137,6 @@ const worldBox = pl => {
     return {min: lo, max: hi};
 };
 const boxesMeet = (a, b) => [0, 1, 2].every(i => a.min[i] < b.max[i] - SKIN && b.min[i] < a.max[i] - SKIN);
-
-/** Generalised winding number of the mesh at p (part frame). */
-const winding = (T, p) => {
-    let sum = 0;
-    for (let i = 0; i < T.length; i += 9) {
-        const ax = T[i] - p[0], ay = T[i + 1] - p[1], az = T[i + 2] - p[2];
-        const bx = T[i + 3] - p[0], by = T[i + 4] - p[1], bz = T[i + 5] - p[2];
-        const cx = T[i + 6] - p[0], cy = T[i + 7] - p[1], cz = T[i + 8] - p[2];
-        const la = Math.hypot(ax, ay, az), lb = Math.hypot(bx, by, bz), lc = Math.hypot(cx, cy, cz);
-        const det = ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx);
-        const den = la * lb * lc + (ax * bx + ay * by + az * bz) * lc + (bx * cx + by * cy + bz * cz) * la + (cx * ax + cy * ay + cz * az) * lb;
-        sum += 2 * Math.atan2(det, den);
-    }
-    return sum / (4 * Math.PI);
-};
 
 /**
  * Distance from p to the closest triangle of the mesh (Ericson, Real-Time Collision Detection 5.1.5).
