@@ -7,7 +7,7 @@ import { LOOM_PRESETS, judgeLoomRun } from './sim-lab-loom-judge.mjs';
 export const loomInteractions = async (page, {
   openSimLab,
   shotsDir,
-  timeout
+  timeout, presets = LOOM_PRESETS, instructions = true
 }) => {
   mkdirSync(shotsDir, {
     recursive: true
@@ -16,7 +16,7 @@ export const loomInteractions = async (page, {
     program: null
   });
   const results = {};
-  for (const preset of LOOM_PRESETS) {
+  for (const preset of presets) {
     await page.getByTestId('bw-sim-lab-examples').click();
     const gallery = page.getByTestId('bw-sim-examples');
     await gallery.getByRole('searchbox').fill('orbital-loom');
@@ -84,6 +84,13 @@ export const loomInteractions = async (page, {
       inkPoints: ink[0].length
     })}`);
   }
+  writeFileSync(resolve(shotsDir, 'measurements.json'), JSON.stringify(results, null, 2) + '\n');
+  if(instructions)await loomInstructionsInteractions(page,{shotsDir});
+  return results;
+};
+
+export const loomInstructionsInteractions = async(page,{shotsDir})=>{
+  mkdirSync(shotsDir,{recursive:true});
   await page.getByTestId('bw-sim-lab-instructions').click();
   const dialog = page.getByTestId('bw-sim-instructions');
   await dialog.waitFor();
@@ -105,6 +112,4 @@ export const loomInteractions = async (page, {
   await dialog.screenshot({path: resolve(shotsDir, 'loom-instructions-bom.png')});
   await page.keyboard.press('Escape'); await dialog.waitFor({state: 'hidden'});
   console.log(`PASS orbital loom instructions: ${steps} connected pages and ${pieces}-piece bill of materials`);
-  writeFileSync(resolve(shotsDir, 'measurements.json'), JSON.stringify(results, null, 2) + '\n');
-  return results;
 };

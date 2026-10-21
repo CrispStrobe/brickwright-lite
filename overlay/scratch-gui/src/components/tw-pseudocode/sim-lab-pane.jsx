@@ -1039,7 +1039,14 @@ class SimLabPane extends React.Component {
         }
         const text = await response.text();
         if (this.disposed || this.shippedRequest !== request) return;
-        await this.openText(text, file, key);
+        // A dropdown selection loads its program automatically, just like the
+        // gallery. Prepare its mat first, so importing Blocks cannot trigger a
+        // second model build and replace the worker after it appeared ready.
+        if (includeProgram && entry.mat && this.state.mat !== entry.mat) {
+            await new Promise(resolve => this.setState({mat: entry.mat}, resolve));
+            if (this.disposed || this.shippedRequest !== request) return;
+        }
+        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example)});
         if (this.disposed || this.shippedRequest !== request || this.state.status === 'failed') return;
         if (includeProgram && entry.example) await this.loadExample();
         if (this.disposed || this.shippedRequest !== request) return;
@@ -1151,12 +1158,12 @@ class SimLabPane extends React.Component {
         }
     }
 
-    async openText (text, name, shipped = null) {
+    async openText (text, name, shipped = null, {programLoading = false} = {}) {
         const token = this.loadToken = {};
         this.clearReplay();
         this.opened = {text, name};
         this.teardown();
-        this.setState({status: 'loading', manualOverride: false, programLoading: false, message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
+        this.setState({status: 'loading', manualOverride: false, programLoading, message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
         const {SimSession, fetchModelDrawing, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
@@ -1176,9 +1183,9 @@ class SimLabPane extends React.Component {
                 if (token !== this.loadToken) return;
                 // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
                 if (error.code === 'lockstep-unsupported') {
-                    this.setState({status: 'failed', route: 'scratch', firmwareUnsupported: true, message: this.text.routeUnavailable});
+                    this.setState({status: 'failed', programLoading: false, route: 'scratch', firmwareUnsupported: true, message: this.text.routeUnavailable});
                 } else {
-                    this.setState({status: 'failed', message: this.t('firmwareFailed', {error: error.message})});
+                    this.setState({status: 'failed', programLoading: false, message: this.t('firmwareFailed', {error: error.message})});
                 }
                 return;
             }
@@ -1192,7 +1199,7 @@ class SimLabPane extends React.Component {
                 worker: this.physicsClient(), ...(firmware ? {createHub: firmware.createHub} : {})});
         } catch (error) {
             firmware?.driver.end().catch(() => {});
-            if (token === this.loadToken) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
+            if (token === this.loadToken) this.setState({status: 'failed', programLoading: false, message: this.t('failed', {error: error.message})});
             return;
         }
         if (!result.session) firmware?.driver.end().catch(() => {});
@@ -1203,7 +1210,7 @@ class SimLabPane extends React.Component {
         }
         const {session, issues, model, runModel} = result;
         if (!session) {
-            this.setState({status: 'failed', issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
+            this.setState({status: 'failed', programLoading: false, issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
                 message: this.t('failed', {error: issues.at(-1)?.message || ''})});
             return;
         }
@@ -2637,6 +2644,7 @@ class SimLabPane extends React.Component {
                     data-testid="bw-sim-lab-info-toggle" aria-expanded={this.state.infoOpen} aria-label={this.text.infoToggle}
                     title={this.text.infoToggle} onClick={() => this.setState(st => ({infoOpen: !st.infoOpen}))}><Icon name="help" /></button>}
                 {this.state.mode === 'simulate' && <button type="button" data-testid="bw-sim-lab-controls-toggle"
+                    disabled={this.state.status === 'loading' || this.state.programLoading}
                     aria-expanded={this.state.controlsOpen} aria-label={this.locale === 'de' ? 'Manuelle Steuerung' : 'Manual controls'}
                     title={this.locale === 'de' ? 'Manuelle Steuerung: Fahren und Motoren' : 'Manual controls: drive and motors'} style={s.button}
                     onClick={() => {
@@ -2916,7 +2924,7 @@ class SimLabPane extends React.Component {
                     })()}
 
                 </div>
-                {simulate && this.state.controlsOpen && this.session && !this.session.lockstep && this.renderMixer(button)}
+                {simulate && this.state.controlsOpen && !this.state.programLoading && this.session && !this.session.lockstep && this.renderMixer(button)}
                 {build && this.state.shortcuts && (
                     <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
                         mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}

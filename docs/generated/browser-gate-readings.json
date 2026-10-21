@@ -7461,30 +7461,6 @@
    "max": null,
    "readings": []
   },
-  "Browser gate \u2014 Robot Lab robotdraw scale-echo,turnwise": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
-  },
-  "Browser gate \u2014 Robot Lab robotdraw orbital-loom": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
-  },
-  "Browser gate \u2014 Robot Lab robotdraw tidal-trio": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
-  },
-  "Browser gate \u2014 Robot Lab robotdraw tidal-instructions": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
-  },
   "Browser gate \u2014 Robot Lab robotdraw ellipse-engine": {
    "n": 0,
    "p95": null,
@@ -7557,24 +7533,6 @@
    "max": null,
    "readings": []
   },
-  "Browser gate \u2014 Robot Lab robotmotion orbit-mixer": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
-  },
-  "Browser gate \u2014 Robot Lab robotmotion phase-bridge": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
-  },
-  "Browser gate \u2014 Robot Lab robotmotion survey-rover,forklift,pneumatic-press,timed-drive,sumo": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
-  },
   "Browser gate \u2014 Robot Lab robotbench oscillation-clutch": {
    "n": 0,
    "p95": null,
@@ -7594,6 +7552,72 @@
    "readings": []
   },
   "Browser gate \u2014 Robot Lab robotbench2 physics-workshops": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw scale-echo": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw turnwise": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw2 orbital-loom": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw2 loom-more": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw2 loom-instructions": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw3 tidal-trio": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw3 tidal-more": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotdraw3 tidal-instructions": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion2 orbit-mixer": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion2 phase-bridge": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Robot Lab robotmotion2 survey-rover,forklift,pneumatic-press,timed-drive,sumo": {
    "n": 0,
    "p95": null,
    "max": null,

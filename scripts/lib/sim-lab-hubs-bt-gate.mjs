@@ -33,7 +33,7 @@ export const NXT_RUN_LIMIT_MS = 15000;
 const openModel = async (page, file) => {
     await page.getByTestId('bw-sim-lab-model').selectOption(file);
     await page.waitForFunction(f => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === f &&
-        window.__bwSimLab._pane.session, file, {timeout: 60000});
+        window.__bwSimLab._pane.session?.worker, file, {timeout: 60000});
     // Example selection also replaces the Scratch project asynchronously.
     // Wait for that project before constructing or inspecting its blocks.
     await page.waitForFunction(file => {
@@ -120,7 +120,7 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
         page.on('dialog', dialog => dialog.accept());
         await openSimLab(page, {program: null});
         await openModel(page, 'nxt-bumper-bot.ldr');
-        assert.equal(await page.evaluate(() => window.__bwSimLab.worker), true, 'the physics runs in the Web Worker');
+        assert.equal(await page.evaluate(() => window.__bwSimLab._pane.session.worker), true, 'the physics runs in the Web Worker');
 
         await page.waitForFunction(() => window.__bwSimLab._pane.props.vm.extensionManager.isExtensionLoaded('legonxt') &&
             Object.values(window.__bwSimLab._pane.props.vm.editingTarget.blocks._blocks).some(b => b.opcode === 'legonxt_motorRunDegrees'),

@@ -178,7 +178,9 @@ import {oscillationClutchInteractions} from './lib/sim-lab-oscillation-clutch-ga
 import {dynamicsInteractions} from './lib/sim-lab-dynamics-gate.mjs';
 import {lessonInteractions, germanLessonInteractions} from './lib/sim-lab-lesson-gate.mjs';
 import {tidalInteractions, tidalInstructionsInteractions} from './lib/sim-lab-tidal-gate.mjs';
-import {loomInteractions} from './lib/sim-lab-loom-gate.mjs';
+import {loomInteractions,loomInstructionsInteractions} from './lib/sim-lab-loom-gate.mjs';
+import {LOOM_PRESETS} from './lib/sim-lab-loom-judge.mjs';
+import {TIDAL_PRESETS,judgeTidalRun} from './lib/sim-lab-tidal-judge.mjs';
 import {judgeExpandedRun} from './lib/sim-lab-expanded-judge.mjs';
 import {mechanicsInteractions, manualMechanicsInteractions} from './lib/sim-lab-mechanics-gate.mjs';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
@@ -898,7 +900,7 @@ try {
             await german.close();
         }
 
-        if (ONLY_EXAMPLES.length && runExample('tidal-instructions.ldr')) {
+        if (runExample('tidal-instructions.ldr')) {
             const tidal = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             tidal.on('pageerror', error => errors.push(error.message));
             tidal.on('dialog', dialog => dialog.accept());
@@ -914,7 +916,7 @@ try {
             const tidal = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             tidal.on('pageerror', error => errors.push(error.message));
             tidal.on('dialog', dialog => dialog.accept());
-            await tidalInteractions(tidal, {openSimLab, shotsDir: resolve(artifacts, 'tidal-trio'), timeout: wallBudget(36000)});
+            await tidalInteractions(tidal, {presets:ONLY_EXAMPLES.length?TIDAL_PRESETS.slice(0,2):TIDAL_PRESETS,instructions:false,openSimLab, shotsDir: resolve(artifacts, 'tidal-trio'), timeout: wallBudget(36000)});
             await tidal.close();
         }
 
@@ -922,9 +924,32 @@ try {
             const loom = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             loom.on('pageerror', error => errors.push(error.message));
             loom.on('dialog', dialog => dialog.accept());
-            await loomInteractions(loom, {openSimLab, shotsDir: resolve(artifacts, 'orbital-loom'), timeout: wallBudget(40000)});
+            await loomInteractions(loom, {presets:ONLY_EXAMPLES.length?LOOM_PRESETS.slice(0,2):LOOM_PRESETS,instructions:false,openSimLab, shotsDir: resolve(artifacts, 'orbital-loom'), timeout: wallBudget(40000)});
             await manualMechanicsInteractions(loom, {openSimLab, models: ['orbital-loom'], shotsDir: resolve(artifacts, 'orbital-loom')});
             await loom.close();
+        }
+
+        if (ONLY_EXAMPLES.length && runExample('tidal-more.ldr')) {
+            const p=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            p.on('pageerror',e=>errors.push(e.stack||e.message));p.on('dialog',d=>d.accept());
+            await mechanicsInteractions(p,{openSimLab,shotsDir:resolve(artifacts,'tidal-more'),timeout:wallBudget(36000),
+                models:TIDAL_PRESETS.slice(2).map(m=>m.id),fileFor:()=> 'tidal-trio.ldr',
+                keyFor:id=>TIDAL_PRESETS.find(m=>m.id===id).key,programMarker:id=>`# Example: ${id}`,
+                judge:judgeTidalRun,simulatedMs:36000});await p.close();
+        }
+        if (ONLY_EXAMPLES.length && runExample('loom-more.ldr')) {
+            const p=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            p.on('pageerror',e=>errors.push(e.stack||e.message));p.on('dialog',d=>d.accept());
+            await loomInteractions(p,{openSimLab,shotsDir:resolve(artifacts,'loom-more'),timeout:wallBudget(40000),
+                presets:LOOM_PRESETS.slice(2),instructions:false});await p.close();
+        }
+        if (runExample('loom-instructions.ldr')) {
+            const p=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            p.on('pageerror',e=>errors.push(e.stack||e.message));p.on('dialog',d=>d.accept());
+            await openSimLab(p,{program:null});await p.getByTestId('bw-sim-lab-model').selectOption('orbital-loom.ldr');
+            await p.waitForFunction(()=>window.__bwSimLab._pane.state.modelFile==='orbital-loom.ldr'&&
+                window.__bwSimLab._pane.session?.worker&&!window.__bwSimLab._pane.state.programLoading);
+            await loomInstructionsInteractions(p,{shotsDir:resolve(artifacts,'loom-instructions')});await p.close();
         }
 
         if (runExample('expanded-machines.ldr')) {
@@ -1425,6 +1450,20 @@ try {
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);
     console.log('PASS no page errors');
+} catch (error) {
+    if (process.env.SIM_DEBUG && browser) for (const context of browser.contexts()) for (const page of context.pages()) {
+        console.error('Robot Lab failure state', await page.evaluate(() => {
+            const p=window.__bwSimLab?._pane, i=window.__bwSimLabInstructions, vm=p?.props.vm;
+            return {url:location.href,model:p?.state.modelFile,status:p?.state.status,
+                programLoading:p?.state.programLoading,message:p?.state.message,info:p?.state.info,
+                gallery:p?.state.examplesOpen,lesson:p?.state.lessonKey,
+                codeStatus:document.querySelector('[data-testid="bw-code-status"]')?.textContent,
+                target:!!vm?.editingTarget,threads:vm?.runtime.threads.length,
+                instructions:i&&{status:i.status,page:i.page,steps:i.steps,stats:i.stats,error:i.error},
+                alerts:[...document.querySelectorAll('[role="alert"]')].map(e=>e.textContent)};
+        }).catch(e=>({diagnosticError:e.message})));
+    }
+    throw error;
 } finally {
     await browser?.close();
     server.close();
