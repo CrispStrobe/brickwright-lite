@@ -175,6 +175,9 @@ const KNOWN_DEAD = new Map([
     ['lib/bw-sim/transports/virtual-ble-bridge.js', {roadmap: '4.11',
         reason: 'The virtual LWP3 HTTP bridge (legopoweredup / legoboostunified BridgeAdapter). test/lab-hubs-bridge drives ' +
             'both extensions through it; the pane wiring waits for the open Robot Lab PRs on sim-lab.js.'}],
+    ['lib/bw-sim/transports/virtual-spike-stream.js', {roadmap: '4.11',
+        reason: 'The SPIKE 2.x REPL double as a byte stream for the virtual bridge. test/bw-sim-spike-bridge drives spikeprime ' +
+            'over its bridge through it; the pane wiring waits for the open Robot Lab PRs on sim-lab.js.'}],
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;
