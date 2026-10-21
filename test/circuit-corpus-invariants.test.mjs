@@ -227,7 +227,9 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 34 new benches (33 analog examples on the ATtiny85, whose ADC pins became
     // reachable, and chip-thermometer's ATtiny88), 13 removed (servo/motor on the
     // ATtinys, and disp-rgb-light's NeoPixel off every non-8051 board).
-    assert.equal(files.length, 1509, 'the gate must cover the complete vendored corpus');
+    // Three analog school circuits extend the cohort; every endpoint above remains checked.
+    for (const id of ["school-intercom-101455", "school-led-people-dog", "school-miniorgan-107056"]) assert.ok(files.includes(id + '/circuit.json'), id);
+    assert.equal(files.length, 1512, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
