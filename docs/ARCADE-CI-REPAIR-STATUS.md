@@ -1,5 +1,25 @@
 # Arcade integration repairs and qualification order
 
+## Latest composed campaign — 2026-10-21
+
+At `8fabbfbd9`, build and focused controls pass. The vendor job now passes the
+Creator synchronization step and reports 31 stale example `EXPECTED.md` files.
+All changes are supplier engine-provenance revisions already present at the
+existing canonical pin; quantities, assertions, programs and circuits are
+unchanged. The normal full example sync and its separate check pass locally.
+Independent inspection verifies all 3,750 files against the pinned source and
+confirms exactly 31 provenance-only changes. No pin, workflow, producer or
+measurement threshold changes are involved. The remaining hosted unit/browser
+checks are still required; avoid superseding them merely for this docs repair.
+
+The new score callback syntax passes all 463 controls in three complete
+canonical modules in [supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160).
+Lite source/export controls pass all three groups. Canonical hosted checks,
+explicit adoption, fresh native/original-SDK execution and visible authoring
+remain pending. The proposed parser prefix optimization was rejected after a
+balanced actual-input episode found it slower; it is excluded from delivery.
+Historical 36 partials remain unchanged pending a complete replacement census.
+
 ## Latest hosted failure and corrected candidate — 2026-10-21
 
 The later `470228d6e` campaign did not reach the actual unit shards: each shard

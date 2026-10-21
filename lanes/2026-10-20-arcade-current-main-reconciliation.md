@@ -92,3 +92,12 @@ Current main and the per-file claim migration are composed; complete nine
 lane/TODO controls pass. These remain source/finite-runtime results pending
 fresh combined hosted and visible authoring qualification. Historical 36 partials
 and incomplete current census outcomes remain unchanged.
+
+### Pinned gallery provenance synchronization — 2026-10-21
+
+The composed vendor check reaches 31 stale example provenance pages at the
+existing supplier pin. The unchanged normal sync and its separate check pass;
+independent comparison verifies all 3,750 files and exactly 31 provenance-only
+changes. Measured values/assertions, pins, producer scripts, programs and
+circuits remain unchanged. The current hosted source gates continue before
+publishing this docs repair, avoiding unnecessary superseded browser runs.
