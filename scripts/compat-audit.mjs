@@ -8,7 +8,7 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -125,11 +125,16 @@ let journeyCreator = null;
 let limit = Infinity;
 let contextCatalogue = null;
 let progressFile = null;
+let stdioTranscript = false;
 const contextRoots = Object.create(null);
 const inputs = [];
 for (let i = 0; i < args.length; i++) {
     const a = args[i];
-    if (a === '--progress-jsonl') {
+    if (a === '--stdio-transcript') {
+        if (stdioTranscript) throw new Error('--stdio-transcript must appear once');
+        stdioTranscript = true;
+    }
+    else if (a === '--progress-jsonl') {
         if (progressFile !== null || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('--progress-jsonl requires one fresh file');
         progressFile = args[++i];
     }
@@ -152,15 +157,23 @@ for (let i = 0; i < args.length; i++) {
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else inputs.push(a);
 }
+if (stdioTranscript && ['--out', '--markdown', '--progress-jsonl'].some(option => args.includes(option))) {
+    throw new Error('--stdio-transcript cannot be combined with --out, --markdown or --progress-jsonl');
+}
 if (journey) {
     if (execute) throw new Error('--journey and legacy --execute are separate runtime policies');
     if (args.includes('--target') && target !== 'arcade') throw new Error('--journey is Arcade-only');
     if (!args.includes('--target')) target = 'arcade';
 }
 // No progress module/file/callback is acquired on the default path.
-const progress = progressFile === null ? null : (await import('./lib/conversion-progress.mjs')).createAuditProgress(progressFile,
+const stdioTransport = stdioTranscript ?
+    (await import('./lib/audit-stdio-transport.mjs')).createAuditStdioTransport() : null;
+const fileProgress = progressFile === null ? null : (await import('./lib/conversion-progress.mjs')).createAuditProgress(progressFile,
     {protectedPaths: [...inputs, contextCatalogue, ...Object.values(contextRoots),
         ...(contextCatalogue ? [path.dirname(path.resolve(contextCatalogue))] : []), out, markdown]});
+const progress = stdioTransport ? (await import('./lib/conversion-progress.mjs')).createAuditProgressSink({
+    writeLine: stdioTransport.writeProgressLine, close: stdioTransport.closeProgress
+}) : fileProgress;
 let progressSubject = null;
 const mark = phase => {if (progress) progress.mark(phase, progressSubject);};
 mark('CLI_PROGRESS_BEGIN');
@@ -172,7 +185,7 @@ invocationIdentity = snapshotIdentity();
 mark('PROVENANCE_END');
 if ((!inputs.length && !contextCatalogue) || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--prepare-extensions] [--fetch-extensions] [--execute] [--journey] [--context-catalogue FILE] [--context-root ID=directory] [--progress-jsonl FILE | --stdio-transcript] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -472,7 +485,7 @@ for (let index = 0; index < selectedContexts.length; index++) {
 }
 progressSubject = null;
 if (contexts) provenance.contextCatalogue.consumedInputBytes = contexts.consumedInputBytes();
-const report = {schema: 'brickwright/compat-audit/v1', outputEncoding: out?.endsWith('.json.gz') ? 'gzip-json' : 'utf8-json', generatedAt: new Date().toISOString(),
+const report = {schema: 'brickwright/compat-audit/v1', outputEncoding: stdioTransport || out?.endsWith('.json.gz') ? 'gzip-json' : 'utf8-json', generatedAt: new Date().toISOString(),
     provenance: observedFinalProvenance(provenance),
     compilerPolicy: {extensionFetching: fetchExtensions ? 'explicitly-enabled' : 'offline',
         preparedInputs: prepareExtensions ? 'separately-audited' : 'not-requested'},
@@ -490,19 +503,23 @@ const report = {schema: 'brickwright/compat-audit/v1', outputEncoding: out?.ends
         ...(row.missingOpcodes || []).map(x => `scratch: ${x.opcode}`),
         ...(['parse-failed', 'read-failed'].includes(row.stage) ? [row.stage] : [])
     ]), count: rows.length, tally, rows};
-if (out) {
+if (out || stdioTransport) {
     mark('REPORT_JSON_BEGIN');
     const json = `${JSON.stringify(report, null, 2)}\n`;
     mark('REPORT_JSON_END');
     // Explicit output name opts into full lossless compression, never row/field omission.
-    if (out.endsWith('.json.gz')) {
+    if (stdioTransport) {
+        mark('REPORT_GZIP_WRITE_BEGIN');
+        stdioTransport.writeReportJson(json);
+        mark('REPORT_GZIP_WRITE_END');
+    } else if (out.endsWith('.json.gz')) {
         const {gzipSync} = await import('node:zlib');
         mark('REPORT_GZIP_WRITE_BEGIN');
         fs.writeFileSync(out, gzipSync(Buffer.from(json, 'utf8')));
         mark('REPORT_GZIP_WRITE_END');
     } else {mark('REPORT_WRITE_BEGIN'); fs.writeFileSync(out, json); mark('REPORT_WRITE_END');}
 }
-if (markdown) {
+if (markdown || stdioTransport) {
     mark('MARKDOWN_BEGIN');
     const counts = values => {
         const map = new Map();
@@ -537,12 +554,16 @@ if (markdown) {
             r.compile?.status || r.execution?.status ||
             [r.execution?.status, r.execution?.errors?.[0]].filter(Boolean).join(': '))} |`),
         ...(failed.length ? [] : ['| none | none |']), ''];
-    fs.writeFileSync(markdown, lines.join('\n'));
+    if (stdioTransport) stdioTransport.writeMarkdown(lines.join('\n'));
+    else fs.writeFileSync(markdown, lines.join('\n'));
     mark('MARKDOWN_END');
 }
-console.log(JSON.stringify({count: report.count, tally, preparedTally:report.preparedTally, report: out}, null, 2));
+const summary = JSON.stringify({count: report.count, tally, preparedTally:report.preparedTally, report: out}, null, 2);
+if (stdioTransport) console.error(summary);
+else console.log(summary);
 process.exitCode = rows.some(r => ['read-failed', 'parse-failed', 'missing-assets', 'unsupported-blocks'].includes(r.stage) ||
     ['preparation-failed','parse-failed'].includes(r.preparedTranslation?.stage) || (journey && (r.journeyStatus !== 'completed' || r.journeyCompatibility !== 'no-reported-diagnostics'))) ? 1 : 0;
 
 mark('CLI_REPORTS_FINISHED');
 if (progress) progress.close();
+if (stdioTransport) stdioTransport.finish(process.exitCode);
