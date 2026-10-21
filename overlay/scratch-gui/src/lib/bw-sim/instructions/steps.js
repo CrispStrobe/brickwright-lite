@@ -201,6 +201,13 @@ const pinsFirst = (steps, adjacency, meta, groups) => {
             const covers = new Set([...rest.filter(id => !isFastener(meta(id))), ...attached]);
             // Pins in the model so far that a part of this step goes onto.
             const first = covers.size ? fasteners.filter(f => touches(f, built) && touches(f, covers)) : [];
+            // A fastener on one of them (a bush on its axle) is one cluster with it: it goes in with it.
+            for (let grew = first.length > 0; grew;) {
+                grew = false;
+                for (const f of fasteners) {
+                    if (!first.includes(f) && [...(adjacency.get(f) || [])].some(n => first.includes(n))) { first.push(f); grew = true; }
+                }
+            }
             if (first.length) {
                 pieces.push({parts: first, pins: true});
                 for (const id of first) built.add(id);
