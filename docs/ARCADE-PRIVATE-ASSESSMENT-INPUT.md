@@ -23,11 +23,12 @@ Use the exact schema `brickwright/private-assessment-input/v1`:
   `gitBlobOid`. Every path is below `scope`; there is no pathspec or glob syntax.
   No absolute paths, empty components, dot components, backslashes or control
   characters are accepted. Paths are never interpreted as revision expressions.
-- `logicalSubjects`: exactly 225 distinct ordered IDs. The first 184 records
-  have `{id, kind: 'raw', input}`; the last 41 have `{id, kind: 'context'}`.
-- `audit`: exactly `rawTarget`, `rawInputs`, `contextCatalogue` and
-  `contextRoots`. `rawInputs` contains the same 184 distinct declared paths in
-  subject order. `contextCatalogue` names a declared regular file.
+- `logicalSubjects`: exactly 225 distinct ordered IDs, with the mode-specific
+  kinds and bindings described below.
+- `audit`: `rawTarget`, `rawInputs`, `contextCatalogue`, `contextRoots` and
+  optional `inputMode`. Its only accepted modes are `catalogue` and
+  `positional-context`; omission preserves the original `positional-context`
+  default. `contextCatalogue` names a declared regular file.
   `contextRoots` maps literal root IDs to declared subdirectories with admitted
   descendant files; each ID contains letters, digits, underscores or hyphens
   and begins with a letter. The existing reader's default `catalogue` root is
@@ -47,10 +48,32 @@ The admission module uses its own generic duplicate-key-safe JSON parser,
 without importing a converter dependency. The converter is a separate pinned
 source selection; this controller does not assume it has landed on main.
 
-The context catalogue must retain the existing
-`brickwright/conversion-context-catalogue/v1` format with exactly 41 subjects.
-Their IDs and order must match the context rows. Targets and original fields
-are preserved verbatim. Each declared catalogue blob must join a declared Git
+Both modes retain the existing
+`brickwright/conversion-context-catalogue/v1` format. Targets and all original
+fields are preserved verbatim.
+
+### Complete catalogue mode
+
+Set `audit.inputMode` to `catalogue` and `rawInputs` to an empty array. The
+catalogue must contain exactly 225 subjects: 184 `RAW_BASELINE` rows followed
+by 41 `RETAINED_CONTEXT` rows. Every manifest logical subject has exactly
+`{id, kind}`, matching the actual catalogue's ID, kind and order. No positional
+input may be mixed into this mode. Physical source files referenced by the
+catalogue remain admitted through the full file/blob/root joins. All 184 raw
+lineage records, original metadata and 41 retained outcome records stay in the
+original catalogue; admission does not project or rewrite it. This is the
+preferred mode for an existing complete 225-subject catalogue.
+
+### Positional/context mode
+
+The default or explicit `positional-context` mode preserves the existing
+contract: the first 184 logical records have `{id, kind: 'raw', input}` matching
+184 distinct declared `rawInputs` paths in order. The remaining 41 records have
+`{id, kind: 'context'}` and match the 41-subject context catalogue's IDs in order.
+Existing admitted context kinds remain unchanged. The original seven controls
+remain intact; this mode is an optional separate input layout.
+
+In both modes, each declared catalogue blob must join a declared Git
 file through its actual root, relative path, length and SHA256; gzip decoded
 bounds must be declared. Admission proves original blob bytes, not semantic
 validity of every JSON pointer, gzip payload or retained compiler claim. The
@@ -101,7 +124,18 @@ guards; reusing it for fresh admission also refuses.
 
 The returned arguments use the current `scripts/compat-audit.mjs` options:
 `--target`, `--corpus-commit`, `--context-catalogue`, sorted explicit
-`--context-root ID=directory` pairs, then all 184 exact positional input paths.
+`--context-root ID=directory` pairs. Only `positional-context` then appends all
+184 exact positional input paths; `catalogue` appends none. The proof records
+`inputMode`, physical `rawInputCount` and `catalogueSubjectCount`. Catalogue mode
+also records the actual catalogue's 184/41 semantic kind counts, distinct from
+its zero physical positional inputs. In either mode, semantic raw-baseline count
+is physical positional raw inputs plus actual catalogue `RAW_BASELINE` rows;
+retained-context count includes only actual `RETAINED_CONTEXT` rows. A legacy
+41-row catalogue containing raw-baseline rows remains accepted, but those rows
+are not relabeled retained contexts. For example, 184 positional inputs plus
+41 raw-baseline catalogue rows reports 225/0, not 184/41. An exact 184/41
+assessment receiver must separately require those actual semantic counts.
+Admission metadata alone does not establish conversion outcomes or corpus credit.
 The parent supplies the normal source/import hook, output and progress paths.
 No limit, filter, journey, compile, execute, preparation or fetch flag is added.
 The CLI's declarative `commitVerified` field remains unchanged; this separate
@@ -113,9 +147,10 @@ all catalogue targets to match. Admission therefore rejects
 micro:bit default, or drop subjects. The frozen original Arcade invocation used
 `--target arcade` and all contextual targets were Arcade. A genuinely mixed
 catalogue with a distinct raw target needs a separately scoped CLI capability.
-The old all-225 catalogue is not a 41-context catalogue: explicitly preserve and
-pin a legitimate context-only catalogue plus the 184 originals for this input
-contract, without reclassifying their metadata or original outcomes.
+The complete original catalogue should use explicit `catalogue` mode, preserving
+its 225 rows. A separately admitted 41-context catalogue plus 184 positional
+originals remains supported through the unchanged default mode; it is not a
+required projection of the original catalogue.
 
 ## Complete controls
 
@@ -130,3 +165,10 @@ with bounded original reads. Git setup is batched; no real private corpus is use
 module under the assessment controller's existing local resource limits.
 Synthetic controls do not establish current-corpus fit, original-SDK behavior,
 converter results, network/container isolation or encrypted-output acceptance.
+
+The eighth complete group creates a separate actual Git catalogue containing all
+225 subjects. It verifies exact preservation of 184 raw lineage records and 41
+original outcomes, zero positional arguments, explicit physical/semantic proof
+counts, and refusal of wrong order, kind, count, mode or mixed positional input.
+Only the root qualification executes this synthetic Git setup; no real corpus
+read or conversion is needed to author these controls.

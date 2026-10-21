@@ -94,11 +94,14 @@ export function admitInputRepository ({repositoryPath, commit, manifestPath,
             total += file.bytes; requireFact(total <= TOTAL, 'INPUT_BOUND');
             declared.set(file.path, file);
         }
-        keys(manifest.audit, ['rawTarget', 'rawInputs', 'contextCatalogue', 'contextRoots']);
+        keys(manifest.audit, ['rawTarget', 'rawInputs', 'contextCatalogue', 'contextRoots'], ['inputMode']);
         const audit = manifest.audit;
+        const inputMode = own(audit, 'inputMode') ? audit.inputMode : 'positional-context';
+        requireFact(['positional-context', 'catalogue'].includes(inputMode), 'INPUT_MODE');
+        const catalogueOnly = inputMode === 'catalogue';
         requireFact(['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(audit.rawTarget), 'RAW_TARGET');
-        requireFact(Array.isArray(audit.rawInputs) && audit.rawInputs.length === 184 &&
-            new Set(audit.rawInputs).size === 184 && audit.rawInputs.every(name =>
+        requireFact(Array.isArray(audit.rawInputs) && audit.rawInputs.length === (catalogueOnly ? 0 : 184) &&
+            new Set(audit.rawInputs).size === audit.rawInputs.length && audit.rawInputs.every(name =>
                 typeof name === 'string' && declared.has(name) &&
                 ['.ts', '.hex', '.uf2', '.elf', '.sb3', '.mkcd', '.pxt', '.png'].includes(path.posix.extname(name).toLowerCase())), 'RAW_INPUTS');
         requireFact(typeof audit.contextCatalogue === 'string' && declared.has(audit.contextCatalogue) &&
@@ -112,12 +115,13 @@ export function admitInputRepository ({repositoryPath, commit, manifestPath,
         requireFact(Array.isArray(manifest.logicalSubjects) && manifest.logicalSubjects.length === 225, 'SUBJECT_COUNT');
         const ids = new Set();
         manifest.logicalSubjects.forEach((subject, index) => {
-            keys(subject, index < 184 ? ['id', 'kind', 'input'] : ['id', 'kind']);
+            keys(subject, !catalogueOnly && index < 184 ? ['id', 'kind', 'input'] : ['id', 'kind']);
             requireFact(typeof subject.id === 'string' && subject.id.length > 0 && subject.id.length <= 256 &&
                 !/[\x00-\x1f\x7f]/.test(subject.id) && !ids.has(subject.id), 'SUBJECT_ID');
             ids.add(subject.id);
-            requireFact(subject.kind === (index < 184 ? 'raw' : 'context') &&
-                (index >= 184 || subject.input === audit.rawInputs[index]), 'SUBJECT_ORDER');
+            requireFact(subject.kind === (catalogueOnly ? (index < 184 ? 'RAW_BASELINE' : 'RETAINED_CONTEXT') :
+                (index < 184 ? 'raw' : 'context')) &&
+                (catalogueOnly || index >= 184 || subject.input === audit.rawInputs[index]), 'SUBJECT_ORDER');
         });
         // Only fixed Git operations, never a revision:path expression or a caller pathspec.
         // These commands do not invoke hooks, filters, textconv, a shell or a remote.
@@ -169,10 +173,11 @@ export function admitInputRepository ({repositoryPath, commit, manifestPath,
         requireFact(at === batch.length, 'GIT_BATCH');
         const catalogue = parsePrivateJSON(text(bodies.get(audit.contextCatalogue)));
         requireFact(record(catalogue) && catalogue.schema === 'brickwright/conversion-context-catalogue/v1' &&
-            Array.isArray(catalogue.subjects) && catalogue.subjects.length === 41 && record(catalogue.blobs), 'CATALOGUE');
+            Array.isArray(catalogue.subjects) && catalogue.subjects.length === (catalogueOnly ? 225 : 41) && record(catalogue.blobs), 'CATALOGUE');
         catalogue.subjects.forEach((subject, index) => {
-            requireFact(record(subject) && subject.id === manifest.logicalSubjects[184 + index].id &&
-                ['RAW_BASELINE', 'RETAINED_CONTEXT'].includes(subject.kind) &&
+            const logical = manifest.logicalSubjects[(catalogueOnly ? 0 : 184) + index];
+            requireFact(record(subject) && subject.id === logical.id &&
+                (catalogueOnly ? subject.kind === logical.kind : ['RAW_BASELINE', 'RETAINED_CONTEXT'].includes(subject.kind)) &&
                 ['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(subject.target), 'CONTEXT_SUBJECT');
             // Current CLI's explicit --target checks every contextual target too.
             requireFact(subject.target === audit.rawTarget, 'CURRENT_CLI_TARGET_CONFLICT');
@@ -235,7 +240,11 @@ export function admitInputRepository ({repositoryPath, commit, manifestPath,
             boundary: 'Pinned Git bytes verified and private regular files staged; no compiler or original outcome authentication.',
             repositoryPath, commit, expectedManifestSHA256, scope, stageRoot,
             files: manifest.files.map(file => ({...file, gitMode: entries.get(file.path).mode, stagedPath: staged(file.path)})),
-            logicalSubjects: manifest.logicalSubjects.map(subject => ({...subject})), fileCount: declared.size, inputBytes: total, manifestBytes: manifestBytes.length,
+            logicalSubjects: manifest.logicalSubjects.map(subject => ({...subject})),
+            inputMode, rawInputCount: audit.rawInputs.length, catalogueSubjectCount: catalogue.subjects.length,
+            semanticRawBaselineCount: audit.rawInputs.length + catalogue.subjects.filter(subject => subject.kind === 'RAW_BASELINE').length,
+            semanticRetainedContextCount: catalogue.subjects.filter(subject => subject.kind === 'RETAINED_CONTEXT').length,
+            fileCount: declared.size, inputBytes: total, manifestBytes: manifestBytes.length,
             stagedBytes: total - manifestBytes.length,
             catalogueTargets: catalogue.subjects.map(subject => subject.target),
             cliCommitVerifiedField: 'unchanged; external proof is separate',

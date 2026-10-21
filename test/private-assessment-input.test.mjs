@@ -192,3 +192,74 @@ test('a pinned manifest is bounded regular data; parser uncertainty and Git erro
         error.message === 'Private input admission: GIT_REFUSED' && !String(error.stack).includes('PRIVATE_REPOSITORY_SENTINEL') &&
         !own(error, 'stdout') && !own(error, 'stderr') && !own(error, 'cause'));
 });
+
+test('catalogue-only actual Git admission preserves all 225 original rows with no positional inputs', () => {
+    const originalCatalogue = {schema: catalogue.schema, blobs: structuredClone(catalogue.blobs), subjects: [
+        ...rawInputs.map((input, index) => ({...structuredClone(catalogue.subjects[0]), id: `raw-${index}`,
+            kind: 'RAW_BASELINE', name: `original-raw-${index}`,
+            rawLineage: {input, originalMetadata: {ordinal: index, preserved: true}}})),
+        ...catalogue.subjects.map(subject => ({...structuredClone(subject), kind: 'RETAINED_CONTEXT'}))
+    ]};
+    const cataloguePath = 'corpus/all-catalogue.json';
+    const publish = value => {
+        const bytes = Buffer.from(JSON.stringify(value));
+        fs.writeFileSync(path.join(repository, cataloguePath), bytes);
+        git(repository, ['add', '--', cataloguePath]);
+        git(repository, ['commit', '--quiet', '-m', 'Synthetic complete original catalogue control']);
+        const pinnedCommit = git(repository, ['rev-parse', 'HEAD']);
+        const manifest = structuredClone(base);
+        manifest.files.push({path: cataloguePath, bytes: bytes.length, sha256: sha(bytes), gitBlobOid: blobOid(bytes)});
+        manifest.logicalSubjects = originalCatalogue.subjects.map(({id, kind}) => ({id, kind}));
+        manifest.audit = {...manifest.audit, inputMode: 'catalogue', rawInputs: [], contextCatalogue: cataloguePath,
+            contextRoots: {...manifest.audit.contextRoots, catalogue: 'corpus'}};
+        return {manifest, pinnedCommit};
+    };
+    const positive = publish(originalCatalogue);
+    const result = invoke(positive.manifest, {commit: positive.pinnedCommit});
+    assert.equal(result.proof.inputMode, 'catalogue');
+    assert.equal(result.proof.rawInputCount, 0);
+    assert.equal(result.proof.catalogueSubjectCount, 225);
+    assert.equal(result.proof.semanticRawBaselineCount, 184);
+    assert.equal(result.proof.semanticRetainedContextCount, 41);
+    assert.deepEqual(result.proof.logicalSubjects, positive.manifest.logicalSubjects);
+    assert.deepEqual(result.auditArgs, ['--target', 'arcade', '--corpus-commit', positive.pinnedCommit,
+        '--context-catalogue', path.join(result.proof.stageRoot, cataloguePath),
+        '--context-root', `catalogue=${path.join(result.proof.stageRoot, 'corpus')}`,
+        '--context-root', `data=${path.join(result.proof.stageRoot, 'corpus/context')}`]);
+    const stagedCatalogue = JSON.parse(fs.readFileSync(path.join(result.proof.stageRoot, cataloguePath), 'utf8'));
+    assert.deepEqual(stagedCatalogue, originalCatalogue);
+    for (let index = 0; index < 184; index++) {
+        assert.deepEqual(stagedCatalogue.subjects[index].rawLineage, originalCatalogue.subjects[index].rawLineage);
+    }
+    for (const subject of stagedCatalogue.subjects.slice(184)) {
+        const spec = stagedCatalogue.blobs[subject.originalCompile.blob];
+        assert.equal(fs.readFileSync(path.join(result.proof.stageRoot, positive.manifest.audit.contextRoots[spec.root], spec.path), 'utf8'), originalOutcome);
+    }
+    for (const [change, code] of [
+        [value => { [value.subjects[0], value.subjects[1]] = [value.subjects[1], value.subjects[0]]; }, 'CONTEXT_SUBJECT'],
+        [value => {value.subjects[0].kind = 'RETAINED_CONTEXT';}, 'CONTEXT_SUBJECT'],
+        [value => {value.subjects.pop();}, 'CATALOGUE']
+    ]) {
+        const value = structuredClone(originalCatalogue); change(value);
+        const negative = publish(value);
+        assert.throws(() => invoke(negative.manifest, {commit: negative.pinnedCommit}), error => error.code === code);
+    }
+    for (const [change, code] of [
+        [manifest => {manifest.audit.rawInputs = rawInputs;}, 'RAW_INPUTS'],
+        [manifest => {manifest.audit.inputMode = 'unknown';}, 'INPUT_MODE'],
+        [manifest => {manifest.logicalSubjects[0].kind = 'raw';}, 'SUBJECT_ORDER'],
+        [manifest => {manifest.logicalSubjects[0].input = rawInputs[0];}, 'SCHEMA']
+    ]) {
+        const manifest = structuredClone(positive.manifest); change(manifest);
+        assert.throws(() => invoke(manifest, {commit: positive.pinnedCommit}), error => error.code === code);
+    }
+    // The original pinned commit is still usable in either default or explicit
+    // positional-context mode; no earlier input/metadata view is discarded.
+    const positional = structuredClone(base); positional.audit.inputMode = 'positional-context';
+    const old = invoke(positional);
+    assert.equal(old.proof.rawInputCount, 184);
+    assert.equal(old.proof.catalogueSubjectCount, 41);
+    assert.equal(old.proof.inputMode, 'positional-context');
+    assert.equal(old.proof.semanticRawBaselineCount, 225);
+    assert.equal(old.proof.semanticRetainedContextCount, 0);
+});
