@@ -1,0 +1,65 @@
+name: Public assessment isolation qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Public tool metadata or the complete fixed-nine synthetic cohort; LIVE is unavailable
+        required: true
+        default: metadata-probe
+        type: choice
+        options: [metadata-probe, qualify-public]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-assessment-isolation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  public-only:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'CrispStrobe/brickwright-lite'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PUBLIC_MODE: ${{ inputs.mode }}
+      PUBLIC_BASE: ${{ runner.temp }}/brickwright-public-isolation-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Fixed public operation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 0711 -- "$PUBLIC_BASE"
+          case "$PUBLIC_MODE" in
+            metadata-probe)
+              env -i PATH=/usr/bin:/bin LANG=C GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted \
+                ImageOS="${ImageOS:-}" ImageVersion="${ImageVersion:-}" \
+                GITHUB_SHA="$GITHUB_SHA" GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+                /usr/bin/python3 -I -S -B scripts/private-assessment/hosted-public-outer.py metadata-probe \
+                --output "$PUBLIC_BASE/tool-metadata.json"
+              ;;
+            qualify-public)
+              sudo -n env -i PATH=/usr/bin:/bin LANG=C GITHUB_ACTIONS=true RUNNER_ENVIRONMENT=github-hosted \
+                ImageOS="${ImageOS:-}" ImageVersion="${ImageVersion:-}" \
+                GITHUB_SHA="$GITHUB_SHA" GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+                /usr/bin/python3 -I -S -B scripts/private-assessment/hosted-public-outer.py qualify-public \
+                --work-root "$PUBLIC_BASE/volatile" --output "$PUBLIC_BASE/originals"
+              ;;
+            *) exit 2 ;;
+          esac
+      - name: Retain public metadata and regular original copies
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: public-assessment-isolation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.PUBLIC_BASE }}/tool-metadata.json
+            ${{ env.PUBLIC_BASE }}/tool-metadata.refusal.json
+            ${{ env.PUBLIC_BASE }}/originals
+          if-no-files-found: error
+          retention-days: 14

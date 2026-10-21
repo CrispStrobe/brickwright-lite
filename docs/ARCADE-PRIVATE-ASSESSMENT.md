@@ -1,5 +1,10 @@
 # Complete private-input Arcade assessment
 
+The separate [public hosted qualification](ARCADE-PRIVATE-ASSESSMENT-HOSTED.md)
+candidate tests real isolation and resource boundaries with fixed synthetic
+inputs only. Its source is unqualified until the complete hosted cohort passes;
+it does not enable private inputs or a live assessment.
+
 Status: claim merged in [PR1167](https://github.com/CrispStrobe/brickwright-lite/pull/1167); controller implementation and qualification in progress. No credential setup, dispatch or complete-corpus result.
 
 Honor actual configured environment policies; this proposal introduces no mandatory human reviewer or confirmation gate. Scope a manual, reviewed Actions workflow and bounded input-admission, isolated-converter and ciphertext-only upload controllers. Use a repository-specific read-only deploy key, remove credential access before conversion, and admit every original raw and contextual subject without filtering. Use the already selected private input repository; a separate minimal input repository is an optional alternative, not a prerequisite.
@@ -39,3 +44,9 @@ with saved-data review of all 12 launched operations. It does not provide
 namespace or credential isolation. Persistent bounded sandbox storage, actual
 isolation controls, normal provider admission and the manual workflow remain
 pending before the complete assessment.
+
+The [public hosted isolation candidate](ARCADE-PRIVATE-ASSESSMENT-HOSTED.md)
+adds a manual metadata-only operation and a fixed-nine public kernel
+qualification route. Its initial tool policy admits no image; actual kernel,
+resource, cleanup and official artifact qualification remain pending. It has
+no LIVE, credential, private-input or converter endpoint.
