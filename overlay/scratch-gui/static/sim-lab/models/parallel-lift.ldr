@@ -1,0 +1,51 @@
+0 parallel-lift — Brickwright motorised mechanics
+0 Name: parallel-lift.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID frame
+1 72 0 0 -40 0 0 1 -1 0 0 0 -1 0 32525.dat
+0 !BW ID framePin1
+1 0 20 0 -30 0 1 0 0 0 -1 -1 0 0 2780.dat
+0 !BW ID framePin2
+1 0 -20 0 -30 0 1 0 0 0 -1 -1 0 0 2780.dat
+0 !BW ID crank
+1 4 0 0 60 -1 0 0 0 0 -1 0 -1 0 40490.dat
+0 !BW ID crankPin1
+1 0 0 -20 50 0 1 0 0 0 -1 -1 0 0 2780.dat
+0 !BW ID crankPin2
+1 0 0 20 50 0 1 0 0 0 -1 -1 0 0 2780.dat
+0 !BW ID pinB
+1 71 0 -80 70 0 1 0 0 0 -1 -1 0 0 3673.dat
+0 !BW ID coupler
+1 14 60 -80 80 0 0 1 -1 0 0 0 -1 0 32524.dat
+0 !BW ID pinC
+1 71 100 -80 90 0 1 0 0 0 -1 -1 0 0 3673.dat
+0 !BW ID rocker
+1 1 100 0 100 -1 0 0 0 0 -1 0 -1 0 40490.dat
+0 !BW ID axleD
+1 4 100 0 30 0 1 0 0 0 -1 -1 0 0 3707.dat
+0 !BW ID hub
+1 71 0 100 -130 1 0 0 0 0 1 0 -1 0 45601.dat
+0 !BW ID hubPin-60
+1 0 -60 0 -50 0 1 0 0 0 -1 -1 0 0 2780.dat
+0 !BW ID hubPin60
+1 0 60 0 -50 0 1 0 0 0 -1 -1 0 0 2780.dat
+0 !BW ID travelStop-1
+1 72 -60 -20 0 0 1 0 1 0 0 0 0 -1 32524.dat
+0 !BW ID stopSpacer-1
+1 72 -40 -20 0 0 1 0 1 0 0 0 0 -1 32523.dat
+0 !BW ID stopPin-1_-20
+1 0 -40 -20 20 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID stopPin-1_20
+1 0 -40 -20 -20 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID travelStop1
+1 72 60 -20 0 0 1 0 1 0 0 0 0 -1 32524.dat
+0 !BW ID stopSpacer1
+1 72 40 -20 0 0 1 0 1 0 0 0 0 -1 32523.dat
+0 !BW ID stopPin1_-20
+1 0 40 -20 20 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID stopPin1_20
+1 0 40 -20 -20 1 0 0 0 0 1 0 -1 0 6558.dat

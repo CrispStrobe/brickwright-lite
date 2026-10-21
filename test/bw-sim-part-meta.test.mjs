@@ -36,6 +36,7 @@ import {flattenPart, circularFeatures, bounds, parseLDraw, compose, apply, colum
 import {validatePartMeta, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {check as checkVendored} from '../scripts/sync-ldraw-parts.mjs';
 import {solidColliders} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
+import {connectorSeatPosition,connectorSeatLength} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/connector-frame.js';
 import {BUILTIN_KINDS} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/index.js';
 import {PALETTE_CATEGORIES} from '../overlay/scratch-gui/src/lib/bw-sim/editor/palette.js';
 
@@ -44,7 +45,9 @@ const LIB = path.join(ROOT, 'overlay/scratch-gui/static/ldraw');
 const META = JSON.parse(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8'));
 const read = p => {
     const f = path.join(LIB, p.toLowerCase());
-    return existsSync(f) ? readFileSync(f, 'latin1') : undefined;
+    if (existsSync(f)) return readFileSync(f, 'latin1');
+    const own = path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/parts', p.replace(/^parts\//, ''));
+    return existsSync(own) ? readFileSync(own, 'latin1') : undefined;
 };
 
 /** Technic bore radius in LDU (4.8 mm). */
@@ -317,9 +320,19 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
     for (const p of META.parts.filter(q => q.gear && q.gear.type !== 'sprocket')) {
         const {teeth, axis, center} = p.gear;
         let tip = 0;
-        for (const poly of flat.get(p.part).polys) {
+        // The 6573 has separate moulded 16T and 24T flanges. Read the
+        // actual 16 tooth primitives, rather than measuring its other flange.
+        let toothPolys = flat.get(p.part).polys;
+        if (p.part === '6573.dat') {
+            const refs = parseLDraw(read('parts/6573.dat')).refs;
+            const selected = refs.map((r,i) => r.file === 'tooth16.dat' ? i : -1).filter(i => i >= 0);
+            assert.equal(selected.length, teeth, 'all sixteen moulded teeth');
+            toothPolys = flattenPart(p.part, read, {topOwn:false, topRef:i=>selected.includes(i)}).polys;
+        }
+        for (const poly of toothPolys) {
             for (const v of poly) {
                 const d = sub(v, center);
+
                 tip = Math.max(tip, len(d.map((x, i) => x - dot(d, axis) * axis[i])));
             }
         }
@@ -349,6 +362,8 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
             if (groups.length > 1 && groups[0] + 360 - groups[groups.length - 1] < 360 / teeth / 2) groups.pop();
             assert.equal(groups.length, teeth, `${p.part}: ${groups.length} tooth crests on the mesh, the description says ${teeth}`);
             continue;
+        } else if (p.part === '6573.dat') {
+            assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 1.0, '6573: official 16T tooth tips are shortened like 94925');
         } else if (p.part === '94925.dat') {
         } else if (['94925.dat', '18946.dat', '76019.dat'].includes(p.part)) {
             // 18946 (16T clutch, 21.79) and 76019 (24T slip clutch, 31.70): LDraw draws their tips
@@ -446,7 +461,12 @@ test('a rack\'s teeth: tips one module beyond the pitch line, along the toothed 
     for (const [p, c] of racks) {
         const n = c.data.normal;
         const w = [c.axis[1] * n[2] - c.axis[2] * n[1], c.axis[2] * n[0] - c.axis[0] * n[2], c.axis[0] * n[1] - c.axis[1] * n[0]];
-        const vs = flat.get(p.part).polys.flat().map(v => sub(v, c.position));
+        // Measure the actual tooth primitives, rather than a rack's unrelated
+        // retaining lip (18942 has a lip 1.5 LDU above its tooth tips).
+        const teeth = flat.get(p.part).primitives.filter(q => /\/toothr\.dat$/.test(q.file));
+        const toothMesh = teeth.length ? flattenPart('toothr.dat', read).polys.flat() : null;
+        const vs = toothMesh ? teeth.flatMap(q => toothMesh.map(v => sub(apply(q.x, v), c.position))) :
+            flat.get(p.part).polys.flat().map(v => sub(v, c.position));
         // Over the toothed length nothing rises above the tips, and the tips are one module (2.5 LDU) out.
         const over = vs.filter(v => Math.abs(dot(v, c.axis)) <= c.length / 2 - 1);
         const tip = Math.max(...over.map(v => dot(v, n)));
@@ -658,7 +678,7 @@ test('shaft regions are shafts, and no shaft runs through a solid collider', () 
     for (const p of META.parts) {
         const solid = new Set(solidColliders(p));
         const shafts = p.connectors.filter(k => k.type === 'pin' || k.type === 'axle');
-        const studs = p.connectors.filter(k => k.type === 'stud');
+        const studs = p.connectors.filter(k => k.type === 'stud').map(c => ({...c,position:connectorSeatPosition(c),length:connectorSeatLength(c)}));
         p.colliders.forEach((col, i) => {
             if (solid.has(i) || !col.region) return;
             if (col.region === 'stud') {

@@ -35,6 +35,7 @@ import {validateHubProfile} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/hub
 import {SpikeVirtualHub} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-virtual-hub.js';
 import {SPIKE_MEDIUM_ANGULAR} from '../overlay/scratch-gui/src/lib/bw-sim/devices/dc-motors.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
+import {setMixerMotorPower} from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-motor-control.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8')));
@@ -55,6 +56,26 @@ const run = async (session, maxMs, until = () => false) => {
         await null;
     }
 };
+
+test('position hold stops a loaded rack lift after a prolonged manual drive', async () => {
+    const {session, issues} = await SimSession.fromText(modelText('forklift.ldr'),
+        {hubState: new VirtualSpikeHubState(), catalog: CATALOG});
+    const api = createRobotLabApi(hostFor(session));
+    try {
+        assert.deepEqual(issues, []);
+        await run(session, 200);
+        assert.equal(setMixerMotorPower(api, 'C', 60).ok, true);
+        await run(session, 2000);
+        const target = api.encoder('C').angleDeg;
+        assert.equal(setMixerMotorPower(api, 'C', 0).ok, true);
+        // Decelerate and recover the held angle before measuring long-term gravity creep.
+        await run(session, 1000);
+        const stopped = api.encoder('C').angleDeg;
+        assert.ok(Math.abs(stopped - target) < 0.5, 'the hold loop recovers the stopped angle');
+        await run(session, 1000);
+        assert.ok(Math.abs(api.encoder('C').angleDeg - stopped) < 1, 'a stopped lift retains its position under gravity');
+    } finally { session.dispose(); }
+});
 
 test('lab-direct: its profile validates, and a model without a hub gets it with every motor', async () => {
     assert.deepEqual(validateHubProfile(LAB_DIRECT_PROFILE), []);
@@ -223,7 +244,12 @@ test('an RCX takes the Lab\'s motor commands as its IR direct commands do: power
     assert.equal(api.setMotor('A', {power: 80}).ok, true);
     await run(session, 400);
     assert.ok(Math.abs(api.motorAngle('A')) > 30, `A turns: ${api.motorAngle('A')}`);
-    assert.equal(api.stopMotor('A').ok, true);
+    assert.equal(api.stopMotor('A', 'hold').code, 'refused', 'RCX has no encoder hold');
+    assert.equal(setMixerMotorPower(api, 'A', 0).ok, true, 'mixer falls back to the RCX brake');
+    await run(session, 1000);
+    const stopped = api.motorAngle('A');
+    await run(session, 400);
+    assert.ok(Math.abs(api.motorAngle('A') - stopped) < 3, 'RCX mixer stop brakes the shaft');
     const degrees = api.setMotor('C', {degrees: 90});
     assert.equal(degrees.ok, false);
     assert.match(degrees.message || degrees.code, /encoder|refused/);
@@ -277,7 +303,8 @@ test('with no model, every call says so and the block methods answer neutral val
     const models = createRobotLabApi({getSession: () => null, listModels: () => [{id: 'driving-base'}], loadModel: async id => ({ok: true, id})});
     assert.equal((await models.loadModel('nope')).code, 'bad-model');
     assert.deepEqual(await models.loadModel('driving-base.ldr'), {ok: true, id: 'driving-base'});
-    assert.equal(models.setTimeScale(5).scale, 1);
+    assert.equal(models.setTimeScale(5).scale, 4);
+    assert.equal(models.setTimeScale(2).scale, 2);
     assert.equal(models.setTimeScale(0.01).scale, 0.1);
     assert.equal(models.camera('sideways').ok, false);
 });

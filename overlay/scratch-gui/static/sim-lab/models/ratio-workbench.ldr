@@ -1,0 +1,139 @@
+0 Three-drive ratio workbench — idlers versus compound gearing
+0 Name: ratio-workbench.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID lane0_motor
+0 !BW PORT A
+1 71 0 0 -200 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID lane0_frame
+1 72 100 40 -200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID lane0_framePin1
+1 0 20 30 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lane0_framePin2
+1 0 -20 30 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lane0_axleIn
+1 4 0 -60 -200 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID lane0_gIn
+1 16 0 -60 -200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane0_axleIdler
+1 4 60 -10 -200 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID lane0_gIdler
+1 16 60 -60 -200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane0_axleOut
+1 4 120 -10 -200 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID lane0_gOut
+1 16 120 -60 -200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane1_motor
+0 !BW PORT B
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID lane1_frame
+1 72 100 40 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID lane1_framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lane1_framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lane1_axleIn
+1 4 0 -60 0 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID lane1_gIn
+1 16 0 -60 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID lane1_axleMid
+1 4 40 -10 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID lane1_gMid24
+1 16 40 -60 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane1_gMid8
+1 16 40 -80 0 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID lane1_axleOut
+1 4 100 -30 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID lane1_gOut
+1 16 100 -80 0 1 0 0 0 0 1 0 -1 0 3649.dat
+0 !BW ID lane2_motor
+0 !BW PORT C
+1 71 0 0 200 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID lane2_frame
+1 72 100 40 200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID lane2_framePin1
+1 0 20 30 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lane2_framePin2
+1 0 -20 30 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID lane2_axle0
+1 4 0 -60 200 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID lane2_axle1
+1 4 40 -30 200 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID lane2_axle2
+1 4 80 -30 200 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID lane2_axle3
+1 4 120 -50 200 0 1 0 1 0 0 0 0 -1 3737.dat
+0 !BW ID lane2_axle4
+1 4 160 -50 200 0 1 0 1 0 0 0 0 -1 3737.dat
+0 !BW ID lane2_axle5
+1 4 200 -50 200 0 1 0 1 0 0 0 0 -1 3737.dat
+0 !BW ID lane2_g0in8
+1 16 0 -60 200 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID lane2_g1out24
+1 16 40 -60 200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane2_g1in8
+1 16 40 -80 200 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID lane2_g2out24
+1 16 80 -80 200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane2_g2in8
+1 16 80 -100 200 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID lane2_g3out24
+1 16 120 -100 200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane2_g3in8
+1 16 120 -120 200 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID lane2_g4out24
+1 16 160 -120 200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID lane2_g4in8
+1 16 160 -140 200 1 0 0 0 0 1 0 -1 0 3647.dat
+0 !BW ID lane2_gOut
+1 16 200 -140 200 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID bed-40_-1
+1 25 -40 60 -160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bedOuterPin-40_-1
+1 0 -40 50 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin-40_-1_40
+1 0 -40 70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin-40_-1_80
+1 0 -40 70 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bed-40_1
+1 25 -40 60 160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bedOuterPin-40_1
+1 0 -40 50 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin-40_1_40
+1 0 -40 70 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin-40_1_80
+1 0 -40 70 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bedSplice-40
+1 25 -40 80 0 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID bedSpacer-40
+1 25 -40 60 0 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID bedCentrePin-40
+1 0 -40 60 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID bed220_-1
+1 25 220 60 -160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bedOuterPin220_-1
+1 0 220 50 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin220_-1_40
+1 0 220 70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin220_-1_80
+1 0 220 70 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bed220_1
+1 25 220 60 160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID bedOuterPin220_1
+1 0 220 50 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin220_1_40
+1 0 220 70 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID splicePin220_1_80
+1 0 220 70 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID bedSplice220
+1 25 220 80 0 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID bedSpacer220
+1 25 220 60 0 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID bedCentrePin220
+1 0 220 60 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub
+1 71 60 170 0 0 0 1 0 1 0 -1 0 0 45601.dat
+0 !BW ID hubPin-60
+1 0 -40 90 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubPin60
+1 0 -40 90 60 0 1 0 1 0 0 0 0 -1 2780.dat

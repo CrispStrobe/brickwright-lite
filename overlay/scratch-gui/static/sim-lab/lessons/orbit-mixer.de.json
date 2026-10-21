@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "orbit-mixer",
+  "language": "de",
+  "what": "Zwei Motoren steuern den Träger und das Sonnenrad eines Planetengetriebes. Der Rührarm umläuft das Sonnenrad und dreht sich zugleich um seine eigene Achse. Drei vollständige Trägerumläufe vergleichen Vorwärtsdrehung bei gehaltenem Sonnenrad, Orientierungsausgleich und Rückwärtsdrehung. Zwischen den Fällen kehrt das Modell in die Ausgangslage zurück. Vergleiche Umlauf und Paddelausrichtung: Zwei Eingänge wählen Vorwärtslauf, Ausrichtungsausgleich oder Rückwärtslauf.",
+  "try": [
+    "Wähle Orbit Mixer unter Beispiele; das Programm wird automatisch in Blöcke geladen. Drücke Start. Zurücksetzen und orbit-mixer.bw starten. In jedem der drei Fälle macht der Träger einen vollständigen Umlauf von +360° und kehrt anschließend rückwärts zurück. Beobachte Position und Orientierung des Rührarms getrennt.",
+    "Beim Orientierungsausgleich dreht sich das Sonnenrad um +576°, der Träger um +360°. Vergleiche die Rührarmorientierung während der Bewegung und nach dem Einregeln. Passende Endwinkel allein belegen keine konstante Orientierung auf dem Weg.",
+    "Für den langsameren Versuch mit Zwischenstopps orbit-mixer-steps.bw laden, zurücksetzen und starten. Sechs Trägerschritte von je +15° mit Sonnenradschritten von je +24° erreichen +90° und +144°. Nach jedem Schritt folgt eine Pause; anschließend kehren beide Eingänge zurück. Beide Motoren müssen angetrieben werden oder halten. Behalte die vorgegebenen Geschwindigkeiten bei."
+  ],
+  "why": "Sonnenrad und Planetenrad greifen außen ineinander. Ihre Drehungen relativ zum Träger haben deshalb entgegengesetzte Vorzeichen. Bei einem Zähnezahlverhältnis von 5:3 gilt 5(S − C) + 3(P − C) = 0 und damit P = (8/3)C − (5/3)S. C, S und P beziehen sich auf dieselbe positive Achse im Raum, nicht auf getrennte Ansichten der Motorfronten. Die Gleichung beschreibt ideale Winkelgeschwindigkeiten oder Winkeländerungen aus einer gemeinsamen Ausgangslage.",
+  "matters": "Planetengetriebe verbinden Umlauf und Eigendrehung. Ein zweiter gesteuerter Eingang kann die Orientierung eines Werkzeugs verändern, während dessen Umlauf bestehen bleibt. Dieses Modell zeigt diese Kinematik. Es enthält keine freien Zutaten und untersucht keine tatsächliche Durchmischung.",
+  "question": "Der Träger dreht sich aus der Ausgangslage um +360°, das Sonnenrad um +576°. Wie groß ist die ideale endgültige Orientierungsänderung des Rührarms? Beweist das allein, dass seine Orientierung während der gesamten Bewegung gleich blieb?",
+  "answer": "Die endgültige Änderung beträgt 0°: (8/3) × 360 − (5/3) × 576 = 960 − 960 = 0. Passende Endwinkel beweisen keine konstante Orientierung auf dem Weg. Dafür muss die Winkelgeschwindigkeit des Sonnenrads zu jedem Zeitpunkt das 1,6-Fache der Trägergeschwindigkeit betragen. Getrennte Motorregler können beim Beschleunigen oder Einregeln davon abweichen.",
+  "further": [
+    "Berechne die drei idealen Rührarmwinkel für den vollständigen Trägerumlauf von +360°: Sonnenrad 0° ergibt +960°; +576° ergibt 0°; +720° ergibt −240°. Vergleiche sie nach dem Einregeln mit den gemessenen, fortlaufend gezählten Winkeln der nativen Simulation.",
+    "Vergleiche die Drehung im Raum P mit der Drehung relativ zum Träger, P − C. Bei ideal gehaltener Orientierung gilt P = 0, relativ zum Träger dreht sich der Rührarm aber um −C.",
+    "Vergleiche das Getriebe mit Mean Machine. Beide kombinieren zwei Eingänge; unterschiedliche Zähnezahlen ergeben jedoch unterschiedliche vorzeichenbehaftete Ausgangsgleichungen."
+  ],
+  "formula": "P = (8/3)C − (5/3)S; S = 0 ⇒ P = (8/3)C; S = (8/5)C ⇒ P = 0; S = 2C ⇒ P = −(2/3)C. Alle Vorzeichen beziehen sich auf dieselbe Raumachse; ideale Verhältnisse bedeuten keine fehlerfreie Nachführung während der Übergänge.",
+  "related": [
+    "mean-machine.ldr",
+    "orbital-loom.ldr"
+  ]
+}

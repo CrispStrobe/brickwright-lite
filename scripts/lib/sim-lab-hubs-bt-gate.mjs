@@ -33,7 +33,16 @@ export const NXT_RUN_LIMIT_MS = 15000;
 const openModel = async (page, file) => {
     await page.getByTestId('bw-sim-lab-model').selectOption(file);
     await page.waitForFunction(f => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === f &&
-        window.__bwSimLab._pane.session, file, {timeout: 60000});
+        window.__bwSimLab._pane.session?.worker, file, {timeout: 60000});
+    // Example selection also replaces the Scratch project asynchronously.
+    // Wait for that project before constructing or inspecting its blocks.
+    await page.waitForFunction(file => {
+        const pane = window.__bwSimLab._pane;
+        const target = pane.props.vm.editingTarget;
+        const opcode = file === 'nxt-bumper-bot.ldr' ? 'legonxt_motorRunDegrees' : 'ev3comprehensive_motorRun';
+        return !pane.state.programLoading && target &&
+            Object.values(target.blocks._blocks).some(b => b.opcode === opcode);
+    }, file, {timeout: 60000});
 };
 
 /** Read-only instrument: per advance, the brick's motors, its first input, the robot's x. */
@@ -111,8 +120,8 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
         page.on('dialog', dialog => dialog.accept());
         await openSimLab(page, {program: null});
         await openModel(page, 'nxt-bumper-bot.ldr');
-        assert.equal(await page.evaluate(() => window.__bwSimLab.worker), true, 'the physics runs in the Web Worker');
-        await page.getByRole('button', {name: 'Load example program'}).click();
+        assert.equal(await page.evaluate(() => window.__bwSimLab._pane.session.worker), true, 'the physics runs in the Web Worker');
+
         await page.waitForFunction(() => window.__bwSimLab._pane.props.vm.extensionManager.isExtensionLoaded('legonxt') &&
             Object.values(window.__bwSimLab._pane.props.vm.editingTarget.blocks._blocks).some(b => b.opcode === 'legonxt_motorRunDegrees'),
         null, {timeout: 60000});
@@ -185,7 +194,7 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
         page.on('dialog', dialog => dialog.accept());
         await openSimLab(page, {program: null});
         await openModel(page, 'ev3-wall-stopper.ldr');
-        await page.getByRole('button', {name: 'Load example program'}).click();
+
         await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await page.locator('.cm-content').first().textContent(), /wait until \(ev3 distance 4 cm\) < 15/);

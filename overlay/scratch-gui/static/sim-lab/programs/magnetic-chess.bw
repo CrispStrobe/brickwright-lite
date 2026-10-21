@@ -1,0 +1,68 @@
+# Magnetic Chess — CrispStrobe, BSD-3-Clause.
+# Reset first; native encoder feedback and finite, unmeasured magnetic attraction.
+# C raises the pickup; retracting it releases the independent piece.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL targetC = 0
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  wait 1 seconds
+  set targetA to targetA - 2005.35228296
+  broadcast "chess A" and wait
+  set targetB to targetB - 2807.49319614
+  broadcast "chess B" and wait
+  set targetC to targetC + 180.00000000
+  broadcast "chess C" and wait
+  wait 1 seconds
+  set targetA to targetA + 401.07045659
+  broadcast "chess A" and wait
+  set targetB to targetB + 1604.28182637
+  broadcast "chess B" and wait
+  set targetA to targetA + 401.07045659
+  broadcast "chess A" and wait
+  wait 1 seconds
+  set targetC to targetC - 180.00000000
+  broadcast "chess C" and wait
+  wait 1 seconds
+  set targetA to targetA + 1203.21136977
+  broadcast "chess A" and wait
+  set targetB to targetB + 1203.21136977
+  broadcast "chess B" and wait
+
+WHEN I receive "chess A":
+  IF targetC > 90 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 90 degrees per second
+  ELSE:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 240 degrees per second
+  lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    lab stop motor C hold
+    stop all
+
+WHEN I receive "chess B":
+  IF targetC > 90 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at 90 degrees per second
+  ELSE:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at 240 degrees per second
+  lab stop motor B hold
+  IF (abs of (targetB - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    lab stop motor C hold
+    stop all
+
+WHEN I receive "chess C":
+  lab run motor C for (targetC - (lab motor C angle)) degrees at 90 degrees per second
+  lab stop motor C hold
+  IF (abs of (targetC - (lab motor C angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    lab stop motor C hold
+    stop all

@@ -64,7 +64,7 @@ class SimLabInstructions extends React.Component {
             const {read} = await fetchModelDrawing(model, {withConfig: true});
             if (this.disposed) return;
             const colors = parseLDConfig(read('ldconfig.ldr'));
-            this.view = createInstructionsView({container: this.box.current, model, plan: this.plan, read, colors});
+            this.view = createInstructionsView({container: this.box.current, model, plan: this.plan, read, colors, catalog: CATALOG});
             // Callout pictures: null without WebGL (the callout then shows names).
             this.thumbs = createPartThumbnails({read, colors, color: DEFAULT_COLOR});
         } catch (error) {
@@ -104,11 +104,11 @@ class SimLabInstructions extends React.Component {
 
     onKey (event) {
         const turn = {ArrowRight: 1, ArrowLeft: -1}[event.key];
-        if (event.key !== 'Escape' && !turn) return;
+        if (event.key !== 'Escape' && event.key !== 'Home' && event.key !== 'End' && !turn) return;
         event.preventDefault();
         event.stopPropagation();
         if (event.key === 'Escape') this.props.onClose();
-        else if (this.state.status === 'ready') this.showPage(this.state.page + turn);
+        else if (this.state.status === 'ready') this.showPage(event.key === 'Home' ? 0 : event.key === 'End' ? this.pageCount() - 1 : this.state.page + turn);
     }
 
     onResize () {
@@ -191,7 +191,7 @@ class SimLabInstructions extends React.Component {
             ...(turnedFrom(step, before) ? [T.turned] : []),
             ...(step.subassembly ? [fill(T.subassembly, {name: this.groupName(step.subassembly)})] : []),
             ...step.attach.map(id => fill(T.attach, {name: this.groupName(id)})),
-            ...(step.loose ? [T.loose] : []),
+            ...(step.loose ? [step.parts.every(id => this.props.model.parts.find(p => p.id === id)?.load) ? T.payload : T.loose] : []),
             ...(step.pins ? [T.pins] : [])
         ];
         return (

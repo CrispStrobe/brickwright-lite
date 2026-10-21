@@ -15,7 +15,11 @@ export const spurContact = (g1, g2) => {
     const axial = vecDot(delta, g1.axisLdu);
     const perpVec = vecSub(delta, vecScale(g1.axisLdu, axial));
     if (Math.abs(vecLen(perpVec) - (g1.r + g2.r)) > TOL + 1e-9) return null;
-    if (Math.abs(axial) > 4 + 1e-9) return null;
+    // Wide tooth faces (a double-bevel driving a large turntable) can overlap despite
+    // offset centre planes. Both widths must be explicitly known; legacy alignment stays 4 LDU.
+    const axialLimit = g1.faceWidthLdu && g2.faceWidthLdu ?
+        Math.max(0, (g1.faceWidthLdu + g2.faceWidthLdu) / 2 - 2) : 4;
+    if (Math.abs(axial) > axialLimit + 1e-9) return null;
     const u = vecNormalize(perpVec);
     if (vecLen(u) < 1e-9) return null;
     return {P: vecAdd(g1.centerLdu, vecScale(u, g1.r))};

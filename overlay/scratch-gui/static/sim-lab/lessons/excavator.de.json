@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "excavator",
+  "language": "de",
+  "what": "Ein Hebemechanismus verbindet drehende Glieder mit einem spindelgetriebenen Linearantrieb. Drehgestell und drei Spindelantriebe: Hebelwirkung, Selbsthemmung und Rutschkupplungen am Hubende.",
+  "try": [
+    "Setze zurück und starte die Beispielsequenz.",
+    "Trenne Drehtellerbewegung und Hubbewegung des Aktuators.",
+    "Vergleiche die Aktuatorlänge mit der Höhe der Auslegerspitze."
+  ],
+  "why": "Eine Spindel macht aus Drehung einen kleinen linearen Weg. Das Auslegergetriebe wandelt ihn in Winkel und Spitzenhöhe um. Die Hebelwirkung verändert sich mit der Pose; gleiche Motorschritte liefern daher nicht immer gleiche Höhenzuwächse.",
+  "matters": "Krane und Bagger verbinden Übersetzung und Gelenkgeometrie für Lastbewegungen.",
+  "question": "Ergibt doppeltes Ausfahren immer die doppelte Spitzenhöhe?",
+  "answer": "Nein. Der Aktuator gehört zu einem veränderlichen Dreieck. Winkel und mechanischer Vorteil ändern sich mit der Pose.",
+  "further": [
+    "Vergleiche Anfang und Ende eines Hubes.",
+    "Erkunde die einfachere Teilkreisbeziehung beim Zahnstangenheber."
+  ],
+  "formula": "Spindelweg = Umdrehungen × Gewindesteigung;  Auslegerhöhe hängt auch von der Gelenkstellung ab",
+  "related": [
+    "forklift.ldr",
+    "parallel-lift.ldr"
+  ]
+}

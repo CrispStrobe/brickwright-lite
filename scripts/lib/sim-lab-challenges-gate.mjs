@@ -41,7 +41,7 @@ const checks = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-model').selectOption('wall-stopper.ldr');
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'wall-stopper.ldr' &&
         window.__bwSimLab._pane.session, null, {timeout: 60000});
-    await page.getByRole('button', {name: 'Load example program'}).click();
+
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'), null, {timeout: 60000});
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'wall', null, {timeout: 60000});
 
@@ -96,7 +96,7 @@ const checks = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-model').selectOption('drawing-robot.ldr');
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'drawing-robot.ldr' &&
         window.__bwSimLab._pane.session, null, {timeout: 60000});
-    await page.getByRole('button', {name: 'Load example program'}).click();
+
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'), null, {timeout: 60000});
     await tool(page, 'challenges');
     await panel.waitFor();

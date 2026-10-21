@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "tilt-lab",
+  "language": "en",
+  "what": "Motor A tilts an outer gimbal. Motor B rides on it and tilts the maze tray about a perpendicular local axis. A separate free ball responds to gravity and the walls. Two nested motor axes tilt a maze tray beneath a free ball. Explore slope, gravity, inertia and wall contacts; use ±6° on A and ±10° on B.",
+  "try": [
+    "Reset at the saved level pose and run the bounded demonstration. Follow both the tray and the ball.",
+    "Pause at a single-axis tilt and compare the direction of the ball motion with the low side of the tray.",
+    "Use only short slow manual jogs. Keep A within ±6° and B within ±10°, and return level before repeating. The program is a tilt demonstration, not an automatic maze solver."
+  ],
+  "why": "The downhill gravity component grows with sin(tilt). The ball accelerates, rolls or slips, and exchanges momentum with the walls; changing slope does not instantly set its position or speed. The inner motor axis moves with the outer gimbal, so combined tilts are nested rotations rather than two independent fixed world axes.",
+  "matters": "The same separation between platform orientation and payload motion appears in gimbal stages, balance games and handling equipment. This maze has no ball-position sensor or feedback controller.",
+  "question": "If the tray returns level, does the ball immediately stop and return to the start?",
+  "answer": "No. Level removes the downhill component of gravity but does not remove existing momentum. Contact friction and wall impacts can slow the ball. Returning to the start needs deliberate steering or a reset.",
+  "further": [
+    "Compare a 5° tilt with 10°; the ideal downhill gravity components have ratio sin(10°)/sin(5°), about 1.99.",
+    "Try to guide the ball through the alternating openings using bounded tilts. Reverse a tilt early to brake before the next wall.",
+    "Physical startup stops bound the outer gimbal; the example uses ±6° on A and ±10° on B. Keep edits within these operating ranges."
+  ],
+  "formula": "downhill gravity = g sin(tilt); tray orientation R = Rx(A) Rz(B); |A| ≤ 6°, |B| ≤ 10°",
+  "related": [
+    "switchback-lift.ldr",
+    "atlas-arm.ldr"
+  ]
+}

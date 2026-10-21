@@ -1,0 +1,59 @@
+0 Clutch load bench — torque limiting under a controllable load
+0 Name: clutch-bench.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 40 40 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 1 -20 40 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub
+1 71 40 130 100 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID loadMotor
+0 !BW PORT B
+1 71 80 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID loadMotorPin60
+1 0 60 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID loadMotorPin100
+1 1 100 40 0 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID inputAxle
+1 4 0 -90 0 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID inputPointer
+1 4 0 -140 0 0 0 1 0 1 0 -1 0 0 6632.dat
+0 !BW ID outputAxle
+1 4 80 -90 0 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID outputPointer
+1 1 80 -140 0 0 0 1 0 1 0 -1 0 0 6632.dat
+0 !BW ID clutch
+1 15 0 -70 0 1 0 0 0 0 1 0 -1 0 76019.dat
+0 !BW ID outputGear
+1 1 80 -70 0 1 0 0 0 0 1 0 -1 0 3649.dat
+0 !BW ID foot-20
+1 72 -20 140 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID footPin-20_0
+1 0 -20 130 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footPin-20_200
+1 0 -20 130 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot100
+1 72 100 140 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID footPin100_0
+1 0 100 130 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footPin100_200
+1 0 100 130 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID cross-60
+1 72 40 160 -60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID crossPin-20_-60
+1 0 -20 150 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crossPin100_-60
+1 0 100 150 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID cross180
+1 72 40 160 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID crossPin-20_180
+1 0 -20 150 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID crossPin100_180
+1 0 100 150 180 0 1 0 1 0 0 0 0 -1 2780.dat

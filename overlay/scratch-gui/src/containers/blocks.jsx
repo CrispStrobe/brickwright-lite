@@ -18,6 +18,7 @@ import {BLOCKS_DEFAULT_SCALE, STAGE_DISPLAY_SIZES} from '../lib/layout-constants
 import DropAreaHOC from '../lib/drop-area-hoc.jsx';
 import DragConstants from '../lib/drag-constants';
 import defineDynamicBlock from '../lib/define-dynamic-block';
+import {defineStaticExtensionBlocks} from '../lib/extension-block-definitions.js';
 import {DEFAULT_THEME, getColorsForTheme, themeMap} from '../lib/themes';
 import {injectExtensionBlockTheme, injectExtensionCategoryTheme} from '../lib/themes/blockHelpers';
 
@@ -549,7 +550,7 @@ class Blocks extends React.Component {
                     // otherwise it's a non-block entry such as '---'
                 });
 
-                this.ScratchBlocks.defineBlocksWithJsonArray(staticBlocksJson);
+                defineStaticExtensionBlocks(this.ScratchBlocks, staticBlocksJson);
                 dynamicBlocksInfo.forEach(blockInfo => {
                     // This is creating the block factory / constructor -- NOT a specific instance of the block.
                     // The factory should only know static info about the block: the category info and the opcode.
@@ -577,7 +578,7 @@ class Blocks extends React.Component {
         }
     }
     handleBlocksInfoUpdate (categoryInfo) {
-        // @todo Later we should replace this to avoid all the warnings from redefining blocks.
+        // Static factories are retained until their definition actually changes.
         this.handleExtensionAdded(categoryInfo);
     }
     handleCategorySelected (categoryId) {

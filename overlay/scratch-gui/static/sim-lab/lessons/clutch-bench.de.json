@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "clutch-bench",
+  "language": "de",
+  "what": "Motor A dreht eine Welle in einer Rutschkupplung mit 24 Zähnen. Deren Außenring treibt einen Abtrieb mit 40 Zähnen an Motor B. Wellenzeiger und Kupplungsring können sich getrennt bewegen. A treibt eine 24-Zähne-Rutschkupplung mit 40-Zähne-Abtrieb. B fährt den Abtrieb auf null, hält ihn und gibt ihn wieder frei.",
+  "try": [
+    "Setze zurück, lade das Programm und starte. Der unbelastete Abtrieb dreht entgegengesetzt zum Antrieb.",
+    "B fährt den Abtrieb auf null und hält ihn. A dreht weiter, während Kupplungsring und Abtrieb zum Stillstand kommen.",
+    "B gibt den Abtrieb frei, dann kehrt A um. Prüfe, ob die Bewegung zurückkehrt und das freie Drehzahlverhältnis ungefähr −0,6 beträgt."
+  ],
+  "why": "Die Kupplung überträgt Drehmoment durch begrenzte Reibung. Bei kleiner Last folgt der Ring seiner Welle. Überschreitet die Haltelast die Reibgrenze, rutscht die Welle im Ring. Das Modell verwendet einen Nennwert von 0,0375 N·m und sagt nicht das verschleißabhängige Drehmoment eines einzelnen echten Teils voraus.",
+  "matters": "Drehmomentbegrenzer können Mechanismen bei blockiertem Abtrieb schützen. Schlupf verliert die Winkelzuordnung. Echte Kupplungen setzen dabei Arbeit in Wärme um; dieses Beispiel besitzt kein Temperaturmodell.",
+  "question": "Muss die Antriebswelle immer stehen bleiben, wenn der Abtrieb festgehalten wird?",
+  "answer": "Nein. Oberhalb der Reibgrenze dreht sich die Antriebswelle relativ zum stehenden Zahnring weiter. Nach Freigabe wird wieder Bewegung übertragen, doch der beim Rutschen verlorene Winkel wird nicht zurückgewonnen.",
+  "further": [
+    "Vergleiche mit beiden Motorreglern bei kleinen Drehzahlen unterstützende und entgegenwirkende Antriebe. Alle stoppen hält beide Wellen.",
+    "Vergleiche mit einem starren Getriebe: Zwischen Außenring und Abtrieb gilt das Zähnezahlverhältnis auch dann, wenn die Antriebswelle rutscht."
+  ],
+  "formula": "Freie Übertragung: ωB / ωA ≈ −24 / 40 = −0,6; Nenn-Rutschmoment = 0,0375 N·m",
+  "related": [
+    "gearbox.ldr",
+    "ratio-workbench.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

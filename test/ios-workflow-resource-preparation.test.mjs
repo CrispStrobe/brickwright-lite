@@ -74,7 +74,7 @@ case "$command_name" in
   node) if [[ "$1" == scripts/prepare-ios-device-build.mjs && "$FAIL_PREPARATION" == 1 ]]; then exit 37; fi ;;
   base64)
     consumed=0
-    while IFS= read -r -N 4096 chunk || [[ -n "$chunk" ]]; do
+    while IFS= read -r -d '' -n 4096 chunk || [[ -n "$chunk" ]]; do
       consumed=$((consumed + \${#chunk}))
     done
     printf 'base64-input|%s\\n' "$consumed" >> "$TRACE"
@@ -164,7 +164,8 @@ test('changed selection or unreviewed shell refuses before command execution', (
 
 // The fixture must consume the real pipe, just as base64 --decode does.
 // Exact consumption makes this detect an early-exit shim without relying on
-// scheduling or on a particular platform's pipe capacity.
+// scheduling or on a particular platform's pipe capacity. Bash 3.2 on macOS
+// supports -n with a NUL delimiter; -N is only available in newer Bash.
 test('signed workflow fixtures consume the complete provisioning input before returning authored bytes', () => {
     const profile = 'A'.repeat(96 * 1024);
     for (const job of ['ios-signed', 'ios-device']) {

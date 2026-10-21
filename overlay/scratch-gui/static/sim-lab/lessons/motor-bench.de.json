@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "motor-bench",
+  "language": "de",
+  "what": "Dieser Hub- oder Motorprüfstand macht den Zusammenhang zwischen Anschluss und Bewegung sichtbar. Ein Motor beschleunigt Achse und Zahnrad; vergleiche Antrieb und Bremsung.",
+  "try": [
+    "Setze zurück und lade das vorhandene Beispiel.",
+    "Stoppe das Programm und bewege einen Motorregler mit kleinem Wert.",
+    "Vergleiche Richtung, Drehzahl und Verhalten nach Stop."
+  ],
+  "why": "Ein Motorbefehl wirkt über den unterstützten Anschluss und Mechanismus. Motorfamilien unterscheiden sich in ihrer Rückmeldung: Encoder liefern Winkel und erlauben Positionshalten. Ein Motor ohne Encoder erhält diese Messung nicht allein durch ein Programm.",
+  "matters": "So lassen sich LEGO-Hubgenerationen sachlich vergleichen.",
+  "question": "Macht Software allein aus einem encoderlosen Motor einen gemessenen Positionsservo?",
+  "answer": "Nein. Ein Positionsregelkreis benötigt eine Positionsmessung oder eine andere geeignete Rückmeldung.",
+  "further": [
+    "Bestimme Motor und Hub dieses Modells.",
+    "Vergleiche seine Bedienung mit dem SPIKE-Erkundungsrover."
+  ],
+  "formula": "",
+  "related": [
+    "survey-rover.ldr"
+  ]
+}

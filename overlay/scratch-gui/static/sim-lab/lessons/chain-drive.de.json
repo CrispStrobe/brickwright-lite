@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "chain-drive",
+  "language": "de",
+  "what": "Eine geschlossene Kette überträgt die Drehung zwischen getrennten Wellen. Eine Kette koppelt getrennte Wellen gleichsinnig mit dem Zähnezahlverhältnis.",
+  "try": [
+    "Setze zurück und starte. Verfolge ein Glied um beide Kettenräder.",
+    "Vergleiche Eingangs- und Abtriebsumdrehungen während der Hin- und Rückbewegung.",
+    "Sage vor einer Designänderung die Wirkung eines größeren Abtriebsrads vorher."
+  ],
+  "why": "An beiden Teilkreisen läuft dieselbe Kettengeschwindigkeit vorbei. Das größere Kettenrad braucht für diesen Weg weniger Umdrehungen. Eine ungekreuzte Kette erhält die Drehrichtung.",
+  "matters": "Ketten übertragen Bewegung über Abstände, die ein direkter Zahneingriff nicht überbrückt.",
+  "question": "Kehrt eine ungekreuzte Kette die Richtung wie ein einzelner äußerer Zahneingriff um?",
+  "answer": "Nein. Beide Kettenräder drehen gleichsinnig. Das Drehzahlverhältnis folgt aus ihren Zähnezahlen.",
+  "further": [
+    "Vergleiche die lange 16:24-Kette mit dem kleinen 8:24-Beispiel.",
+    "Warum müssen Kettenlänge und Wellenabstand zusammenpassen?"
+  ],
+  "formula": "ωAus / ωEin = Zähne des Antriebsritzels / Zähne des Abtriebsritzels",
+  "related": [
+    "chain-transmission.ldr",
+    "ratio-workbench.ldr"
+  ]
+}

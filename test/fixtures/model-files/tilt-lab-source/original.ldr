@@ -1,0 +1,307 @@
+0 TILT LAB - two-axis powered marble maze
+0 Name: tilt-lab.ldr
+0 Author: Designed with ChatGPT for the user
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE CC0 : original assembly arrangement only; referenced parts retain their licenses.
+0 // One SPIKE Prime hub; medium angular motors A and B.
+0 // Home: level tray. Software operating range +/-12 degrees on each axis.
+0 // Free ball is a payload. Motor cables are not geometrically routed.
+0 // 01_base
+0 !BW ID base_frame_-100
+1 72 -100 280 0 1 0 0 0 1 0 0 0 1 39790.dat
+0 !BW ID base_frame_120
+1 72 120 280 0 1 0 0 0 1 0 0 0 1 39790.dat
+0 !BW ID base_join_-80
+1 0 10 280 -80 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_join_80
+1 0 10 280 80 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_rail_-200
+1 0 -200 260 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID rail_base_-200_-140
+1 0 -200 270 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID rail_base_-200_140
+1 0 -200 270 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_rail_-160
+1 0 -160 260 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID rail_base_-160_-140
+1 0 -160 270 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID rail_base_-160_140
+1 0 -160 270 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_rail_140
+1 0 140 260 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID rail_base_140_-140
+1 0 140 270 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID rail_base_140_140
+1 0 140 270 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 STEP
+0 // 02_roll_motor_stand
+0 !BW ID A_upright_-200_-40
+1 0 -200 100 -40 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID A_stator_pin_-200_-40_-20
+1 0 -200 -20 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_stator_pin_-200_-40_20
+1 0 -200 20 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_foot_-200_-40
+1 72 -200 240 -60 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID A_foot_pin_-200_-40
+1 1 -200 260 -60 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID A_upright_-200_40
+1 0 -200 100 40 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID A_stator_pin_-200_40_-20
+1 0 -200 -20 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_stator_pin_-200_40_20
+1 0 -200 20 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_foot_-200_40
+1 72 -200 240 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID A_foot_pin_-200_40
+1 1 -200 260 60 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID A_upright_-160_-40
+1 0 -160 100 -40 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID A_stator_pin_-160_-40_-20
+1 0 -160 -20 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_stator_pin_-160_-40_20
+1 0 -160 20 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_foot_-160_-40
+1 72 -160 240 -60 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID A_foot_pin_-160_-40
+1 0 -160 250 -60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID A_upright_-160_40
+1 0 -160 100 40 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID A_stator_pin_-160_40_-20
+1 0 -160 -20 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_stator_pin_-160_40_20
+1 0 -160 20 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID A_foot_-160_40
+1 72 -160 240 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID A_foot_pin_-160_40
+1 0 -160 250 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID motorA
+0 !BW PORT A
+1 15 -180 0 0 0 -1 0 0 0 1 -1 0 0 54696p01.dat
+0 STEP
+0 // 03_roll_bearing_stand
+0 !BW ID R_upright_-40
+1 0 160 120 -40 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID R_upright_40
+1 0 160 120 40 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID R_cross_0
+1 72 180 0 0 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID R_corner_0_-40
+1 0 170 0 -40 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID R_corner_0_40
+1 0 170 0 40 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID R_cross_240
+1 72 180 240 0 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID R_corner_240_40
+1 0 170 240 40 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID R_L_brace
+1 14 200 160 -40 0 1 0 0 0 1 1 0 0 32526.dat
+0 !BW ID R_brace_spacer_160
+1 72 180 160 -40 0 1 0 -1 0 0 0 0 1 18654.dat
+0 !BW ID R_brace_pin_160
+1 1 180 160 -40 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID R_brace_spacer_200
+1 72 180 200 -40 0 1 0 -1 0 0 0 0 1 18654.dat
+0 !BW ID R_brace_pin_200
+1 1 180 200 -40 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID R_brace_corner_pin
+1 1 180 240 -40 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID R_brace_short_pin
+1 0 190 240 0 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID R_foot_-40
+1 72 140 220 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID R_foot_spacer_-40
+1 72 140 240 -40 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID R_foot_pin_-40
+1 1 140 240 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID R_foot_40
+1 72 140 220 40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID R_foot_spacer_40
+1 72 140 240 40 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID R_foot_pin_40
+1 1 140 240 40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID roll_passive_axle
+1 0 150 0 0 1 0 0 0 0 1 0 -1 0 3706.dat
+0 !BW ID roll_inner_retainer
+1 71 164.5 0 0 0 0 1 0 1 0 -1 0 0 32123a.dat
+0 !BW ID roll_outer_retainer
+1 71 195.5 0 0 0 0 1 0 1 0 -1 0 0 32123a.dat
+0 STEP
+0 // 04_outer_gimbal
+0 !BW ID outer_ring
+1 14 0 0 0 1 0 0 0 1 0 0 0 1 39790.dat
+0 !BW ID roll_drive_bridge
+1 14 -120 0 0 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID roll_rotor_pin_-20
+1 0 -130 0 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID roll_rotor_pin_20
+1 0 -130 0 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID roll_frame_pin_-40
+1 0 -110 0 -40 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID roll_frame_pin_40
+1 0 -110 0 40 1 0 0 0 0 1 0 -1 0 2780.dat
+0 STEP
+0 // 05_pitch_motor
+0 !BW ID motorB
+0 !BW PORT B
+1 15 0 0 -220 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID B_rail_-40_-20
+1 0 -40 -20 -200 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID B_stator_pin_-40_-20_-200
+1 0 -30 -20 -200 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_stator_pin_-40_-20_-240
+1 0 -30 -20 -240 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_ring_foot_-40_-20
+1 72 -60 -20 -140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_rail_-40_20
+1 0 -40 20 -200 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID B_stator_pin_-40_20_-200
+1 0 -30 20 -200 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_stator_pin_-40_20_-240
+1 0 -30 20 -240 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_ring_foot_-40_20
+1 72 -60 20 -140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_shared_ring_pin_-40
+1 1 -60 0 -140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID B_rail_40_-20
+1 0 40 -20 -200 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID B_stator_pin_40_-20_-200
+1 0 30 -20 -200 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_stator_pin_40_-20_-240
+1 0 30 -20 -240 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_ring_foot_40_-20
+1 72 60 -20 -140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_rail_40_20
+1 0 40 20 -200 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BW ID B_stator_pin_40_20_-200
+1 0 30 20 -200 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_stator_pin_40_20_-240
+1 0 30 20 -240 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID B_ring_foot_40_20
+1 72 60 20 -140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_shared_ring_pin_40
+1 1 60 0 -140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID pitch_passive_axle
+1 0 0 0 130 0 1 0 0 0 1 1 0 0 32073.dat
+0 !BW ID pitch_passive_inner_retainer
+1 71 0 0 85 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID pitch_passive_outer_retainer
+1 71 0 0 155.5 1 0 0 0 1 0 0 0 1 32123a.dat
+0 STEP
+0 // 06_tray_drive
+0 !BW ID pitch_drive_axle
+1 0 0 0 -140 0 1 0 0 0 1 1 0 0 32073.dat
+0 !BW ID pitch_drive_retainer
+1 71 0 0 -155.5 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID pitch_keyed_bridge
+1 4 0 0 -119.5 0 0 1 1 0 0 0 1 0 7229.dat
+0 !BW ID tray_anchor_-99.5
+1 72 0 -10 -99.5 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID tray_anchor_100.5
+1 72 0 -10 100.5 1 0 0 0 1 0 0 0 1 3701.dat
+0 !BW ID pitch_tray_pin_-20
+1 0 -20 0 -109.5 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID pitch_tray_pin_20
+1 0 20 0 -109.5 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID tray_jumper_-30_-89.5
+1 72 -30 -18 -89.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 !BW ID tray_jumper_-30_90.5
+1 72 -30 -18 90.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 !BW ID tray_jumper_-10_-89.5
+1 72 -10 -18 -89.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 !BW ID tray_jumper_-10_90.5
+1 72 -10 -18 90.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 !BW ID tray_jumper_10_-89.5
+1 72 10 -18 -89.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 !BW ID tray_jumper_10_90.5
+1 72 10 -18 90.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 !BW ID tray_jumper_30_-89.5
+1 72 30 -18 -89.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 !BW ID tray_jumper_30_90.5
+1 72 30 -18 90.5 0 0 1 0 1 0 -1 0 0 3794b.dat
+0 STEP
+0 // 07_maze_tray
+0 !BW ID tray_plate_left
+1 72 -40 -26 0.5 0 0 1 0 1 0 -1 0 0 3029.dat
+0 !BW ID tray_plate_right
+1 72 40 -26 0.5 0 0 1 0 1 0 -1 0 0 3029.dat
+0 !BW ID tray_wall_left_lower
+1 1 -70 -50 0.5 0 0 1 0 1 0 -1 0 0 6112.dat
+0 !BW ID tray_wall_left_upper
+1 1 -70 -74 0.5 0 0 1 0 1 0 -1 0 0 6111.dat
+0 !BW ID tray_wall_right_lower
+1 1 70 -50 0.5 0 0 1 0 1 0 -1 0 0 6112.dat
+0 !BW ID tray_wall_right_upper
+1 1 70 -74 0.5 0 0 1 0 1 0 -1 0 0 6111.dat
+0 !BW ID tray_wall_back_lower
+1 1 0 -50 -109.5 1 0 0 0 1 0 0 0 1 3009.dat
+0 !BW ID tray_wall_back_upper
+1 1 0 -74 -109.5 1 0 0 0 1 0 0 0 1 3008.dat
+0 !BW ID tray_wall_front_lower
+1 1 0 -50 110.5 1 0 0 0 1 0 0 0 1 3009.dat
+0 !BW ID tray_wall_front_upper
+1 1 0 -74 110.5 1 0 0 0 1 0 0 0 1 3008.dat
+0 !BW ID tray_baffle_first_lower
+1 1 -20 -50 -29.5 1 0 0 0 1 0 0 0 1 3010.dat
+0 !BW ID tray_baffle_first_upper
+1 1 -20 -74 -29.5 1 0 0 0 1 0 0 0 1 3010.dat
+0 !BW ID tray_baffle_second_lower
+1 1 20 -50 30.5 1 0 0 0 1 0 0 0 1 3010.dat
+0 !BW ID tray_baffle_second_upper
+1 1 20 -74 30.5 1 0 0 0 1 0 0 0 1 3010.dat
+0 !BW ID tray_start_green
+1 2 -40 -34 -79.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_finish_red
+1 4 40 -34 80.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_03
+1 71 0 -34 -79.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_04
+1 71 40 -34 -79.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_05
+1 71 -40 -34 -49.5 1 0 0 0 1 0 0 0 1 3069b.dat
+0 !BW ID tray_floor_06
+1 71 0 -34 -49.5 1 0 0 0 1 0 0 0 1 3069b.dat
+0 !BW ID tray_floor_07
+1 71 40 -34 -39.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_08
+1 71 -40 -34 0.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_09
+1 71 0 -34 0.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_10
+1 71 40 -34 0.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_11
+1 71 -40 -34 40.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_12
+1 71 0 -34 60.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_13
+1 71 40 -34 50.5 1 0 0 0 1 0 0 0 1 3069b.dat
+0 !BW ID tray_floor_14
+1 71 -40 -34 80.5 1 0 0 0 1 0 0 0 1 3068b.dat
+0 !BW ID tray_floor_15
+1 71 0 -34 90.5 1 0 0 0 1 0 0 0 1 3069b.dat
+0 STEP
+0 // 08_hub
+0 !BW ID hub
+1 15 170 180 -260 0 -1 0 1 0 0 0 0 1 45601.dat
+0 !BW ID hub_rail_180
+1 72 180 260 -220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_rail_base_180
+1 0 180 270 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_pin_180_-180
+1 0 180 250 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_pin_180_-340
+1 0 180 250 -340 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_rail_220
+1 72 220 260 -220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_rail_base_220
+1 0 220 270 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_pin_220_-180
+1 0 220 250 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_pin_220_-340
+1 0 220 250 -340 0 -1 0 1 0 0 0 0 1 2780.dat
+0 STEP
+0 // 09_free_ball
+0 !BW ID maze_ball
+0 !BW LOAD
+1 15 -40 -52 -79.5 1 0 0 0 0 1 0 -1 0 72824p01.dat
+0 STEP

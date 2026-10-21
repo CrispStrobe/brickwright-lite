@@ -1578,13 +1578,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [heavy, light, robotlab]
+        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2]
         # Path-aware PR runs (scripts/ci-browser-scope.mjs): a shard the changed
         # files do not reach is left out. Non-PR events set every shard true.
         exclude:
           - shard: ${{ needs.scope.outputs.heavy != 'true' && 'heavy' || 'none' }}
           - shard: ${{ needs.scope.outputs.light != 'true' && 'light' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotlab' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotdraw' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotlink' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotmotion' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotbench' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotlink2' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotbench2' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotdraw2' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotdraw3' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotmotion2' || 'none' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -1786,7 +1795,168 @@ jobs:
       - name: Browser gate — Robot Lab examples run their programs (line follower, wall stopper, colour explorer)
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
-        run: npm run verify:sim-lab -- --part=examples
+        run: npm run verify:sim-lab -- --part=examples --examples=line-follower,drawing-robot,wall-stopper,colour-explorer
+
+
+      - name: Browser gate — Robot Lab robotdraw scale-echo
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=scale-echo
+
+      - name: Browser gate — Robot Lab robotdraw turnwise
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=turnwise
+
+      - name: Browser gate — Robot Lab robotdraw ellipse-engine
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=ellipse-engine
+
+      - name: Browser gate — Robot Lab robotdraw2 orbital-loom
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=orbital-loom
+
+      - name: Browser gate — Robot Lab robotdraw2 loom-more
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=loom-more
+
+      - name: Browser gate — Robot Lab robotdraw2 loom-instructions
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=loom-instructions
+
+      - name: Browser gate — Robot Lab robotdraw3 tidal-trio
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw3' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=tidal-trio
+
+      - name: Browser gate — Robot Lab robotdraw3 tidal-more
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw3' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=tidal-more
+
+      - name: Browser gate — Robot Lab robotdraw3 tidal-instructions
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw3' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=tidal-instructions
+
+      - name: Browser gate — Robot Lab robotlink seven-machines
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=seven-machines
+
+      - name: Browser gate — Robot Lab robotlink seven-linkages
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=seven-linkages
+
+      - name: Browser gate — Robot Lab robotlink arm-lift
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=arm-lift
+
+      - name: Browser gate — Robot Lab robotlink straight-eight
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=straight-eight
+
+      - name: Browser gate — Robot Lab robotlink2 seven-motion
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=seven-motion
+
+      - name: Browser gate — Robot Lab robotlink2 seven-plotter
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=seven-plotter
+
+      - name: Browser gate — Robot Lab robotlink2 switchback-lift
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=switchback-lift
+
+      - name: Browser gate — Robot Lab robotlink2 expanded-machines,expanded-manual,mechanics-machines,mechanics-manual
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=expanded-machines,expanded-manual,mechanics-machines,mechanics-manual
+
+      - name: Browser gate — Robot Lab robotmotion magnetic-chess
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=magnetic-chess
+
+      - name: Browser gate — Robot Lab robotmotion sarrus-lift
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=sarrus-lift
+
+      - name: Browser gate — Robot Lab robotmotion quickstroke
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=quickstroke
+
+      - name: Browser gate — Robot Lab robotmotion2 orbit-mixer
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=orbit-mixer
+
+      - name: Browser gate — Robot Lab robotmotion2 phase-bridge
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=phase-bridge
+
+      - name: Browser gate — Robot Lab robotmotion2 survey-rover,forklift,pneumatic-press,timed-drive,sumo
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=survey-rover,forklift,pneumatic-press,timed-drive,sumo
+
+      - name: Browser gate — Robot Lab robotbench oscillation-clutch
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=oscillation-clutch
+
+      - name: Browser gate — Robot Lab robotbench dynamics-machines
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=dynamics-machines
+
+      - name: Browser gate — Robot Lab robotbench lessons
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=lessons
+
+      - name: Browser gate — Robot Lab robotbench2 physics-workshops
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=physics-workshops
+
+      - name: Browser gate — Robot Lab automatic example blocks
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
+        run: |
+          PROOF_URL=http://localhost:8617/ node scripts/verify-example-auto-blocks.mjs
+
+      - name: Browser gate — Robot Lab compact controls and responsive toolbar
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
+        run: |
+          PROOF_URL=http://localhost:8617/ node scripts/verify-robot-lab-compact.mjs
+
+      - name: Browser gate — Robot Lab fixed model exports
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
+        run: |
+          node scripts/export-robot-lab-library.mjs artifacts/atlas-switchback/fixed-library artifacts/atlas-switchback/fixed-library.zip
+          PROOF_URL=http://localhost:8617/ node scripts/verify-robot-lab-model-exports.mjs
+
+      - name: Browser gate — Robot Lab drawing, resolver and fixed bench camera
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
+        run: |
+          BW_PREVIEW_URL=http://localhost:8617/ BW_PREVIEW_ENGINES=chromium node scripts/verify-sim-lab-preview-repairs.mjs
 
       - name: Browser gate — Robot Lab model insight, instructions and the no-WebGL fallback
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)

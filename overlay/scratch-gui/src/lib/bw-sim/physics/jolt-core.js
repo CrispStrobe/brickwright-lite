@@ -36,9 +36,10 @@ import { validateCompiledMechanism, upgradeMechanismV1, colliderVolume } from '.
 import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
-import { createRopes } from './rope.js';
-import { createAir } from './air.js';
 import { buildUniversalJoint } from './universal-joint.js';
+import { createRopes } from './rope.js';
+import {createMagnets} from './magnet.js';
+import { createAir } from './air.js';
 import { createRollingResistance } from './rolling.js';
 import { installMaterialPairs, MATERIAL_INDEX } from './materials.js';
 
@@ -751,6 +752,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             J.destroy(hs);
         } else if (j.type === 'slider') {
             const ss = new J.SliderConstraintSettings();
+            if (j.closureOf) {
+                ss.mNumVelocityStepsOverride = 64;
+                ss.mNumPositionStepsOverride = 96;
+            }
             ss.mSpace = J.EConstraintSpace_WorldSpace;
             ss.mPoint1 = new J.RVec3(...j.point);
             ss.mPoint2 = new J.RVec3(...j.point);
@@ -913,7 +918,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
      */
     /** Meshes with their hinges: {constraint, hinge1, hinge2} (re-based before every step: rebaseMeshes). */
     const meshes = [];
-    const meshGear = ({b1, b2, a1, a2, c1, c2, ratio, contact, hinge1, hinge2, velocitySteps = MESH_VELOCITY_STEPS}) => {
+    const meshGear = ({b1, b2, a1, a2, c1, c2, ratio, contact, hinge1, hinge2, preservePhase = false, velocitySteps = MESH_VELOCITY_STEPS}) => {
         const ms = new J.GearMeshConstraintSettings();
         ms.mSpace = J.EConstraintSpace_WorldSpace;
         const tmp = [new J.RVec3(...c1), new J.Vec3(...a1), new J.RVec3(...c2), new J.Vec3(...a2)];
@@ -929,7 +934,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         allConstraints.push(constraint);
         if (hinge1 && hinge2) {
             constraint.SetConstraints(hinge1, hinge2);
-            meshes.push({ constraint, hinge1, hinge2 });
+            if (!preservePhase) meshes.push({ constraint, hinge1, hinge2 });
         }
         for (const bid of [b1, b2]) { floorInertia(bid); floorMass(bid); }
         return constraint;
@@ -979,7 +984,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             }
             if (!contact) contact = crossedPitchPoint(j1.point, a1, j2.point, a2, ratio);
         }
-        return meshGear({ b1: s1.body, b2: s2.body, a1, a2, c1: j1.point, c2: j2.point, ratio, contact,
+        // A spatial six-R loop needs its worm's absolute phase to locate the
+        // platform. Rebasing it each step loses the accumulated ratio under
+        // gravity. This detected, stabilized loop keeps the native phase;
+        // ordinary meshes retain their existing impact/slip handling.
+        const preservePhase = worm && mechanism.joints.some(j => j.closureOf?.includes(j1.id) || j.closureOf?.includes(j2.id));
+        return meshGear({ preservePhase, b1: s1.body, b2: s2.body, a1, a2, c1: j1.point, c2: j2.point, ratio, contact,
             hinge1: hingeMap.get(j1.id).hinge, hinge2: hingeMap.get(j2.id).hinge, velocitySteps });
     };
     /** A chain drive (kinds/chain.js): ω(joint2) = ratio · ω(joint1), each the hinge's own rate. */
@@ -1039,12 +1049,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     };
     /** Self-locking worms (built below): {wormJoint, wheel (hinge entry), holdNm, driver (hinge entry|null), held}. */
     const worms = [];
-    /** Racks relative to their frames (RackMeshConstraint, jolt-physics 1.1.0-bw.4): re-based before every step. */
-    const racks = [];
     /** Linear actuators' screw couplings (physics/screw.js drives them). */
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
     const ropeCouplings = [];
+    const magneticCouplings = [];
     /**
      * End stops through couplings: gears, chains, bands and racks tie WORLD rates, so with a joint they
      * drive at its end (a rack's slider limit, a boom hinge's) a motor still driving on is satisfied by
@@ -1062,7 +1071,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     /** Driving rings and their clutch gears (kinds/transmission.js): {gear (hinge entry), ring (slider entry), engage, holdNm, engaged}. */
     const dogClutches = [];
     for (const g of mechanism.couplings) {
-        if (g.kind === 'gear') {
+        if (g.kind === 'magneticField') {
+            magneticCouplings.push(g);
+        } else if (g.kind === 'gear') {
             hingeMesh(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.kind === 'chain') {
@@ -1138,8 +1149,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // and the ratio's sign goes into the slider axis b. Measured in test/bw-sim-sliders.test.mjs
             // (both signs). Since jolt-physics 1.1.0-bw.4 it is the fork's RackMeshConstraint (BRICKWRIGHT.md
             // section 4): the same equation RELATIVE TO THE FRAMES that carry the pinion and the rack (the hinge's
-            // and the slider's other bodies, handed over by SetConstraints and re-based before every step, as the
-            // gear meshes are). The world-rate RackAndPinionConstraint read a turning or driving chassis's own motion
+            // and the slider's other bodies, handed over once by SetConstraints; native setup follows their motion). The
+            // world-rate RackAndPinionConstraint read a turning or driving chassis's own motion
             // as pinion rotation: a forklift's carriage ran to its end stop as the robot turned, and a steering
             // rack twisted the car. A Jolt build without it falls back to RackAndPinionConstraint.
             const jh = jointMap.get(g.hingeJoint);
@@ -1172,7 +1183,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 const hinge = hingeMap.get(jh.id).hinge;
                 const slider = sliderMap.get(js.id).slider;
                 rackMesh.SetConstraints(hinge, slider);
-                racks.push({ constraint: rackMesh, hinge, slider });
+                // SetConstraints captures the phase origin. Native setup already follows
+                // the moving frames; rebasing every step discards accumulated rack drift.
             }
             gearInfos.push({ type: g.kind, id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
         } else if (g.kind === 'screw') {
@@ -1466,6 +1478,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem, allConstraints, dt: dtFixed })
         : null;
     if (ropes) stateRegistry.register('ropes', ropes.registrant);
+    const magnets = magneticCouplings.length ? createMagnets({J,couplings:magneticCouplings,bodyInterface,bodyIdOf:getBodyIDForId}) : null;
     // Pneumatics (kinds/pneumatic.js, physics/air.js): the air networks, valves, cylinders and pumps.
     const air = pneumaticCouplings.length || pumpCouplings.length
         ? createAir({ J, cylinders: pneumaticCouplings, pumps: pumpCouplings, hingeMap, sliderMap, bodyInterface, applySliderForce })
@@ -1637,11 +1650,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (screws) screws.beforeStep();
                 if (ropes) ropes.beforeStep();
                 if (air) air.beforeStep();
+                if (magnets) magnets.beforeStep();
                 if (dogClutches.length) applyDogClutches();
                 if (rolling) rolling.apply();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
-                for (const r of racks) r.constraint.SetConstraints(r.hinge, r.slider);
                 joltInterface.Step(dtFixed, experiments.collisionSteps || 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -2025,6 +2038,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (simShapeFilter) { J.destroy(simShapeFilter); simShapeFilter = null; }
             if (screws) screws.destroy();
             if (ropes) ropes.destroy();
+            if (magnets) magnets.destroy();
             if (rolling) rolling.destroy();
             bodyMap.clear(); hingeMap.clear(); sliderMap.clear(); ballMap.clear(); jointMap.clear();
         },

@@ -76,6 +76,11 @@ export {gearHinges};
 /** A readable name for a gear: "the 8-tooth gear (g8)". */
 const gearName = g => `the ${g.teeth}-tooth gear (${g.partId})`;
 
+// A double-bevel tooth form can engage a parallel spur/ring as well as a bevel pair.
+// Keep its native type for old files and choose among explicitly declared profiles by geometry.
+const meshModules = (a, b, kinds) => [...new Set((a.meshesAs || [a.type]).flatMap(t1 =>
+    (b.meshesAs || [b.type]).map(t2 => kinds.couplings.meshFor(t1, t2))).filter(Boolean))];
+
 /**
  * The part of the frame that holds a gear's hinge (the beam its axle turns
  * in), for messages. Falls back to the frame body id.
@@ -124,15 +129,15 @@ export const placedGearsMesh = (a, metaA, b, metaB, kinds = BUILTIN_KINDS) => {
     for (const m of kinds.connectors.list()) {
         if (typeof m.placedShare === 'function' && (m.placedShare(a, metaA, b, metaB) || m.placedShare(b, metaB, a, metaA))) return true;
     }
-    if (!metaA?.gear || !metaB?.gear || metaA.gear.type !== metaB.gear.type) return false;
-    const module = kinds.couplings.meshFor(metaA.gear.type, metaB.gear.type);
-    if (!module) return false;
+    if (!metaA?.gear || !metaB?.gear) return false;
     const info = (p, meta) => ({
         type: meta.gear.type, teeth: meta.gear.teeth, r: pitchRadiusLdu(meta.gear.teeth),
+        meshesAs: meta.gear.meshesAs, faceWidthLdu: meta.gear.faceWidthLdu,
         centerLdu: vecAdd(mat3MulVec3(p.rotation, meta.gear.center), p.position),
         axisLdu: vecNormalize(mat3MulVec3(p.rotation, meta.gear.axis))
     });
-    return Boolean(module.mesh.contact(info(a, metaA), info(b, metaB)));
+    const ga = info(a, metaA); const gb = info(b, metaB);
+    return meshModules(ga, gb, kinds).some(module => Boolean(module.mesh.contact(ga, gb)));
 };
 
 /**
@@ -181,6 +186,8 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             nodeId,
             islandId,
             type: meta.gear.type,
+            meshesAs: meta.gear.meshesAs,
+            faceWidthLdu: meta.gear.faceWidthLdu,
             teeth: meta.gear.teeth,
             r: gearPitchRadius(meta.gear),
             centerLdu: vecAdd(mat3MulVec3(rot, meta.gear.center), node.placed.position),
@@ -243,11 +250,19 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             const t1 = asSpur ? 'spur' : g1.type;
             const t2 = asSpur ? 'spur' : g2.type;
             // The coupling registry's tooth meshes (kinds/spur.js, kinds/bevel.js, …) say which pairs mesh.
-            const module = kinds.couplings.meshFor(t1, t2);
+            const modules = meshModules(g1, g2, kinds);
+            let module = modules[0];
             // Gears of kinds that cannot mesh are only worth a warning where their teeth meet: pitch
             // circles within a module of touching (a spur and a bevel gear across a model are not a pair).
             if (!module && Math.hypot(...[0, 1, 2].map(i => g1.centerLdu[i] - g2.centerLdu[i])) > g1.r + g2.r + 2.5) continue;
             if (!module) {
+                // Internal side/planet gears occupy a casing with its own external flange.
+                // The seat kind explicitly permits that placement; its outer tooth profile
+                // does not engage the internal gears. Keep all actual gear-pair checks.
+                const n1 = nodes.get(g1.nodeId), n2 = nodes.get(g2.nodeId);
+                const seatKind = kinds.connectors.list().find(k => k.kind === 'gear-seat');
+                if (seatKind?.placedShare && (seatKind.placedShare(n1.placed, n1.meta, n2.placed, n2.meta) ||
+                    seatKind.placedShare(n2.placed, n2.meta, n1.placed, n1.meta))) continue;
                 // Only gears near enough to touch (centres within the two tip radii) are a pair to warn about.
                 if (vecLen(vecSub(g1.centerLdu, g2.centerLdu)) > g1.r + g2.r + 5 + 1e-9) continue;
                 let message = `Gear pair ${g1.partId}(${t1})–${g2.partId}(${t2}) unsupported`;
@@ -256,7 +271,11 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
                 diagnostics.push({severity: 'warning', code: 'unsupported-gear', message, parts: [g1.partId, g2.partId]});
                 continue;
             }
-            const contact = module.mesh.contact(g1, slack ? squaredUp(g1, g2, slack) : g2);
+            let contact = null;
+            for (const candidate of modules) {
+                contact = candidate.mesh.contact(g1, slack ? squaredUp(g1, g2, slack) : g2);
+                if (contact) { module = candidate; break; }
+            }
             if (!contact) continue;
 
             // Gear-on-frame: one gear is rigidly part of the frame the other turns in.

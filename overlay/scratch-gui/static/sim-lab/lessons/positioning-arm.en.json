@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "positioning-arm",
+  "language": "en",
+  "what": "Two independently driven joints position the end of an 80 mm / 64 mm serial arm. Two independently driven joints position the tip. Compare measured coordinates with the 80 mm / 64 mm serial-arm equations.",
+  "try": [
+    "Reset and run the sequence.",
+    "Compare the two elbow postures near the same tip position.",
+    "Stop and change one joint slightly; watch how both tip coordinates change."
+  ],
+  "why": "The elbow is carried by the shoulder. Its angle adds to the shoulder angle when calculating the forearm direction. Two different joint configurations can reach nearly the same point.",
+  "matters": "Robot arms must solve geometry as well as control motor angles.",
+  "question": "Do shoulder and elbow angles act in the same fixed frame?",
+  "answer": "No. The elbow’s reference frame rotates with the shoulder, so the forearm uses the sum of the two angles.",
+  "further": [
+    "Predict what happens near a fully extended posture.",
+    "Compare position with orientation: this arm does not independently set a tool angle."
+  ],
+  "formula": "x = 80 cos(A) + 64 cos(A+B)\ny = 80 sin(A) + 64 sin(A+B)  [mm]",
+  "related": [
+    "tidal-trio.ldr"
+  ]
+}

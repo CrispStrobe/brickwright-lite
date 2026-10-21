@@ -1,0 +1,75 @@
+DEVICE SPIKE
+
+# Example: twinpoint
+# TWINPOINT — original program, CrispStrobe, 2026. BSD-3-Clause.
+# Reset before running: both cranks must point to the right.
+# The motor bodies face opposite ways. Equal world angles therefore use
+# A clockwise with B counterclockwise. World angles summing to 180 use
+# the same named motor direction. Paired receivers move both motors.
+# Each phase ends before the next begins. Speed 1 is a native setting.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor speed A 1
+  set motor speed B 1
+  broadcast "circle" and wait
+  wait 1 seconds
+  broadcast "line midpoint" and wait
+  wait 1 seconds
+  broadcast "line start" and wait
+  wait 1 seconds
+  REPEAT 2:
+    broadcast "line down" and wait
+    wait 1 seconds
+    broadcast "line up" and wait
+    wait 1 seconds
+  broadcast "line midpoint return" and wait
+  wait 1 seconds
+  broadcast "park" and wait
+
+# One complete circle: world angles (0, 0) -> (360, 360).
+WHEN I receive "circle":
+  run motor A counterclockwise 360 degrees
+
+WHEN I receive "circle":
+  run motor B clockwise 360 degrees
+
+# With the completed turn understood modulo 360, move to (90, 90).
+WHEN I receive "line midpoint":
+  run motor A clockwise 90 degrees
+
+WHEN I receive "line midpoint":
+  run motor B counterclockwise 90 degrees
+
+# Enter the upper end of the line: world angles (75, 105).
+WHEN I receive "line start":
+  run motor A counterclockwise 15 degrees
+
+WHEN I receive "line start":
+  run motor B counterclockwise 15 degrees
+
+# Angles summing to 180 preserve x = 0: (75, 105) -> (120, 60).
+WHEN I receive "line down":
+  run motor A clockwise 45 degrees
+
+WHEN I receive "line down":
+  run motor B clockwise 45 degrees
+
+WHEN I receive "line up":
+  run motor A counterclockwise 45 degrees
+
+WHEN I receive "line up":
+  run motor B counterclockwise 45 degrees
+
+# Return through (90, 90), then to the original right-pointing pose.
+WHEN I receive "line midpoint return":
+  run motor A clockwise 15 degrees
+
+WHEN I receive "line midpoint return":
+  run motor B clockwise 15 degrees
+
+WHEN I receive "park":
+  run motor A counterclockwise 90 degrees
+
+WHEN I receive "park":
+  run motor B clockwise 90 degrees

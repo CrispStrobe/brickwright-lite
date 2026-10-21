@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "crane",
+  "language": "de",
+  "what": "Ein Kran mit zwei Motoren hebt seinen Ausleger mit einem kleinen Spindelaktuator und schwenkt ihn über einen Getriebedrehkranz. Motor A treibt mit einem 8-Zahn-Ritzel den 28-Zahn-Drehkranz an. Motor B dreht die Aktuatorspindel. Der Haken hängt an der Auslegerspitze; eine aktive Winde ist nicht enthalten. Ein Linearaktuator hebt den Ausleger, ein Getriebedrehkranz schwenkt ihn. Vergleiche Spindelweg, Hakenhöhe und Untersetzung.",
+  "try": [
+    "Wähle Kran unter Beispiele. Das Programm wird automatisch geladen. Starte die gespeicherte Stellung: Der Ausleger hebt sich, schwenkt um eine Vierteldrehung, senkt sich und schwenkt zurück.",
+    "Vergleiche die Drehung von Motor A und Drehkranz. 315 Grad am Antrieb ergeben nominal 90 Grad am Drehkranz.",
+    "Beobachte den kleinen Aktuatorhub und den viel größeren Hakenweg. Vor einem weiteren Lauf zurücksetzen; vergleiche mit Spindelkran und Sarrus Lift."
+  ],
+  "why": "Das 8-Zahn-Ritzel am 28-Zahn-Drehkranz untersetzt den Winkel mit 8/28 und erhöht das ideale Drehmoment vor Reibungsverlusten um den Kehrwert. Die Spindel wandelt Umdrehungen in Hub um, bei diesem Aktuator nominal 1,2 mm pro Umdrehung. Der Ausleger dreht sich um sein Gelenk; Winkel und Hakenhöhe hängen deshalb von den Befestigungspunkten des Aktuators ab. Der Hakenweg ist nicht einfach gleich dem Spindelhub.",
+  "matters": "Kräne verbinden Untersetzung, Spindelumsetzung und Hebelwirkung. Das Beispiel isoliert Auslegerhub und Schwenkung. Es belegt keine reale Tragfähigkeit, Seilwinde oder Überlastsicherung echter Hardware.",
+  "question": "Wie viele Grad an Motor A ergeben nominal eine Vierteldrehung des Drehkranzes mit 28 Zähnen?",
+  "answer": "315 Grad: 90 Grad werden mit 28/8 multipliziert. Das Ritzel muss sich weiter drehen als der Drehkranz, weil es weniger Zähne hat. Das ideale Drehmoment ändert sich um den Kehrwert des Winkelverhältnisses, vor Reibung und Verlusten.",
+  "further": [
+    "Vergleiche während des gesamten Hubs Spindelweg und tatsächliche Hakenhöhe statt ein konstantes Verhältnis anzunehmen.",
+    "Vergleiche mit dem Spindelkran für eine andere Aktuatorgeometrie und mit Sarrus Lift für eine senkrecht geführte Plattform."
+  ],
+  "formula": "Drehkranz: φaus = φA × 8/28; 315° → 90°. Aktuator: Δl ≈ 1,2 mm × UmdrehungenB.",
+  "related": [
+    "screw-crane.ldr",
+    "sarrus-lift.ldr",
+    "parallel-lift.ldr"
+  ]
+}
