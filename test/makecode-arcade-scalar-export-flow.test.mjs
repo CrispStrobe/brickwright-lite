@@ -42,3 +42,18 @@ WHEN arcade source starts:
  assert.equal(flow.type(`Game:script:${hats[1][0]}:local:carry`),'string');
  assert.equal(flow.primitive('variable:'+id('mixed')),false);
 });
+
+test('stock procedure call arguments flow into the formal, including a supplied Undefined',()=>{
+ const types=code=>{const c=new Creator();c.parse(code);assert.deepEqual(c.warnings,[]);return [...(scalarExportFlow(c.project,boolean).types.get('Game:count %s:local:times')||[])].sort();};
+ const program=argument=>`DEVICE ARCADE
+SPRITE Game:
+WHEN arcade source starts:
+  CALL: (count ${argument})
+  CALL: (count ((0 + (5))))
+
+DEFINE count (times):
+  arcade set local times to ((0 + (3)))`;
+ assert.deepEqual(types(program('(undefined value)')),['number','undefined']);
+ assert.deepEqual(types(program('((0 + (2)))')),['number']);
+ assert.deepEqual(types(program('("x")')),['number','string']);
+});
