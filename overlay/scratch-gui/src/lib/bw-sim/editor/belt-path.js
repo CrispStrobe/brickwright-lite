@@ -50,6 +50,8 @@ const SHAFTS = ['axle', 'pin'];
 export const partCircle = meta => {
     if (!meta) return null;
     if (meta.pulley) return {center: meta.pulley.center, axis: norm(meta.pulley.axis), r: meta.pulley.radiusLdu};
+    // Rounded beam ends are collision caps, not a circular path around the beam.
+    if (meta.category === 'beam') return null;
     for (const col of meta.colliders || []) {
         if (col.shape !== 'cylinder') continue;
         const axis = norm(col.rotation ? rotate(col.rotation, [0, 1, 0]) : [0, 1, 0]);

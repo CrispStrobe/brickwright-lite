@@ -281,6 +281,188 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "echo-bridge.ldr": {
+        "pieces": 110,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor briefly moves the left support and returns home. Two free pendulums then exchange motion through balanced elastic links; compare their changing amplitudes with a no-band control.",
+            "de": "Ein Motor bewegt kurz die linke Aufhängung und kehrt zurück. Danach tauschen zwei freie Pendel über symmetrische Gummibänder Bewegung aus; vergleiche ihre wechselnden Amplituden mit dem Versuch ohne Bänder."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "linger.ldr": {
+        "pieces": 158,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns continuously through two coupled four-bar loops. The output swings about 69 degrees but barely moves during a quarter-turn of the input. Measure the approximate dwell, the tiny reversal within it, and the changing velocity ratio.",
+            "de": "Ein Motor dreht gleichmäßig durch zwei gekoppelte Viergelenke. Der Abtrieb schwenkt um etwa 69 Grad, bewegt sich während einer Vierteldrehung des Antriebs aber kaum. Miss die angenäherte Rast, die winzige Umkehr darin und das veränderliche Geschwindigkeitsverhältnis."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "crossline.ldr": {
+        "pieces": 147,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor drives a carrier while an external 16:8:8 gear train turns the marker arm the opposite way. Two opposite markers trace perpendicular 80 mm straight strokes using only rotary joints.",
+            "de": "Ein Motor treibt den Träger an, während ein äußeres 16:8:8-Zahnradgetriebe den Markerarm entgegengesetzt dreht. Zwei gegenüberliegende Marker beschreiben rechtwinklige gerade Hübe von je 80 mm – ausschließlich mit Drehgelenken."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "bit-keeper.ldr": {
+        "pieces": 134,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Motor A briefly shifts the top of an elastic band. Gravity and spring tension let a free rocker retain either of two positions when the motor returns to the same neutral angle. Write both states and compare the no-band control.",
+            "de": "Motor A verschiebt kurz den oberen Anker eines Gummibands. Schwerkraft und Bandspannung halten einen freien Hebel in zwei möglichen Stellungen, während der Motor zum gleichen Neutralwinkel zurückkehrt. Schreibe beide Zustände und vergleiche den Versuch ohne Band."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "offset-orbit.ldr": {
+        "pieces": 141,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor drives a parallel offset shaft at the same angular motion through two perpendicular sliders. The floating middle cross rotates once while its centre orbits twice per input turn.",
+            "de": "Ein Motor treibt über zwei senkrecht zueinander stehende Schiebeführungen eine parallel versetzte Welle mit gleicher Drehbewegung an. Das schwimmende Kreuz dreht sich einmal, während sein Mittelpunkt pro Eingangsumdrehung zweimal umläuft."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "ellipsa.ldr": {
+        "pieces": 187,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor rides an X carriage and turns a rigid arm joined to a perpendicular Z carriage. Its extended tip traces a 3:1 ellipse. Compare the two slider motions and the changing tip speed, then reverse and return.",
+            "de": "Ein Motor fährt auf einem X-Schlitten und dreht einen starren Arm, der mit einem senkrechten Z-Schlitten verbunden ist. Seine verlängerte Spitze beschreibt eine 3:1-Ellipse. Vergleiche die Schlittenbewegungen und das wechselnde Spitzentempo; kehre danach um und fahre zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "momentum-twins.ldr": {
+        "pieces": 125,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Two balanced motor rotors exchange angular momentum with a freely turning platform. Compare matching and opposing spins.",
+            "de": "Zwei ausgewuchtete Motorrotoren tauschen Drehimpuls mit einer frei drehbaren Plattform aus. Vergleiche gleichsinnige und gegensinnige Drehungen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "bloom-gate.ldr": {
+        "pieces": 170,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Four overlapping leaves form a square opening. Compare the nonlinear change in width and area at two motor speeds.",
+            "de": "Vier überlappende Blätter bilden eine quadratische Öffnung. Vergleiche die nichtlineare Änderung von Weite und Fläche bei zwei Motordrehzahlen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "amplify.ldr": {
+        "pieces": 155,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor drives a passive output at twice the input radius and speed. Eight teaching pauses reveal the 2:1 point geometry.",
+            "de": "Ein Motor bewegt den passiven Ausgang mit doppeltem Radius und doppelter Bahngeschwindigkeit. Acht Pausen zeigen die Punktgeometrie im Verhältnis 2:1."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "pantograph-doubler.ldr": {
+        "pieces": 83,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A single motor drives a passive pantograph: a 32 mm input circle becomes a 64 mm output circle. Compare displacement, speed and enclosed area.",
+            "de": "Ein Motor treibt einen passiven Pantografen: Aus einem 32-mm-Eingangskreis wird ein 64-mm-Ausgangskreis. Vergleiche Weg, Geschwindigkeit und Fläche."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "scale-studio.ldr": {
+        "pieces": 101,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Quarter-turn pauses reveal a passive 2:1 pantograph. Compare corresponding points on the 32 mm and 64 mm circles.",
+            "de": "Vierteldrehungs-Pausen zeigen einen passiven 2:1-Pantografen. Vergleiche entsprechende Punkte der 32-mm- und 64-mm-Kreise."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "ripple-relay.ldr": {
+        "pieces": 191,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two equally bent, correctly phased universal joints cancel the intermediate shaft’s speed ripple. Compare all three shafts.",
+            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke gleichen die Drehzahlschwankung der Zwischenwelle aus. Vergleiche alle drei Wellen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "crossglide.ldr": {
+        "pieces": 216,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "An Oldham coupling joins offset shafts at equal speed. Its middle carriage slides in two directions and orbits twice per shaft turn.",
+            "de": "Eine Oldham-Kupplung verbindet versetzte Wellen mit gleicher Drehzahl. Ihr Mittelschlitten gleitet in zwei Richtungen und umläuft zweimal pro Wellendrehung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "scale-echo.ldr": {
         "pieces": 148,
         "motors": 2,

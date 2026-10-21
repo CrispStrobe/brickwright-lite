@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "crossglide",
+  "language": "en",
+  "what": "One motor turns the red input rotor and the blue output rotor about parallel axes 16 mm apart. Two perpendicular sliding interfaces let the yellow intermediate carriage move sideways while transmitting the same angle to the output. Watch its centre carefully: it travels around an 8 mm radius circle twice during each full shaft turn, although the yellow body's own orientation turns only once. An Oldham coupling joins offset shafts at equal speed. Its middle carriage slides in two directions and orbits twice per shaft turn.",
+  "try": [
+    "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
+    "Compare the red and blue rotor orientations at each pause. Then track the centre hole of the middle yellow crossbar. Positive motor angles turn opposite to positive geometric XZ angles: the first +45° motor target predicts the centre at (8, −8) mm in X/Z. How often does that point return before a shaft completes one revolution?",
+    "Watch the two pairs of guide axles. At a quarter-turn, one sliding interface is centred while the other is at its largest displacement. At a half-turn the middle point returns, but the yellow body's orientation is reversed."
+  ],
+  "why": "Each real sliding interface prevents relative rotation because it has two separated parallel rails. The lower rails belong to the input rotor; the upper perpendicular rails belong to the intermediate carriage. Their two slider constraints preserve the input, intermediate and output orientations. The intermediate centre lies both on a rotating line through the input axis and on a perpendicular rotating line through the output axis. Intersecting these lines gives a circle with half the shaft offset as its radius and twice the shaft angle as its orbital phase.",
+  "matters": "An Oldham coupling shows how parallel shafts can remain laterally offset while turning at the same angular speed. The intermediate member must slide internally to make that possible. Equal input and output speeds do not mean every part follows the same path, and a body's rotation is different from the orbit of its centre. Native motion here demonstrates geometry; sliding friction, wear and real torque or speed capacity are not measured hardware ratings.",
+  "question": "If the shafts are 16 mm apart and each turns once, what radius does the middle centre trace, how many orbits does it complete, and how far does each slider move from one extreme to the other?",
+  "answer": "The centre follows an 8 mm radius circle twice. Each slider has a centred amplitude of 16 mm, so its complete extreme-to-extreme stroke is 32 mm. The input, yellow body and output each rotate once. The twice-per-turn result describes the centre's orbit, not a 2:1 output transmission.",
+  "further": [
+    "Derive the two sliding coordinates from perpendicular rotating lines. Their sinusoidal 32 mm strokes occur a quarter-turn apart.",
+    "Compare Orbit Mixer: both distinguish body rotation from the orbit of its centre. Crossglide uses two physical sliding pairs, each restrained by two parallel guide axles.",
+    "Compare Quickstroke: it produces nonuniform reciprocation, while this coupling preserves equal input and output angular speed."
+  ],
+  "formula": "In the XZ plane let O=(0,0), Q=(e,0), u=(cosθ,sinθ), v=(−sinθ,cosθ), with e=40 LDU=16 mm. Then C=O+e cosθ·u=Q+e sinθ·v=(e/2+(e/2)cos2θ,(e/2)sin2θ). The output relative to its upper rails is (Q−C)·v=−e sinθ. Native geometric θ=−A for motor angle A. θ_output=θ_input; orbit radius=e/2=8 mm; orbit phase=2θ. At constant ω, |dC/dt|=e|ω|. 1 LDU=0.4 mm.",
+  "related": [
+    "quickstroke.ldr",
+    "orbit-mixer.ldr",
+    "turnwise.ldr"
+  ]
+}

@@ -517,3 +517,29 @@ dependency boundary correctly rejected the undeclared importer. Its measured
 import is now registered alongside the existing scene tests. The same observed
 log fails before this one-entry correction and passes afterward; all three
 Sarrus tests and eleven dependency-boundary controls pass locally.
+
+## Thirteen follow-on physics machines — 2026-10-21
+
+DONE locally — original CrispStrobe/BSD-3-Clause additions in the existing model
+lane: Pantograph Doubler (83), Scale Studio (101), Ripple Relay (191 explicit,
+193 including inferred crosses), Crossglide (216), Momentum Twins (125),
+Bloom Gate (170), Amplify (155), Offset Orbit (141), Ellipsa (187), Echo Bridge
+(108 rigid + two bands), Linger (158), Crossline (147) and Bit Keeper
+(133 rigid + one band).
+Source placements, hashes and notices are retained. Native programs, ordinary
+and strict preparation, independent useful-output measurements and frozen-output
+negative controls pass. Detailed geometry is checked separately. Ellipsa also
+passes an unpowered cold start. The additive source totals 70 assemblies,
+78 choices and 156 bilingual lessons. Full native programs, manual controls,
+English/German lessons and connected instructions pass in WebKit for all thirteen.
+The first nine also pass their complete hosted browser gates; the new batch and
+global regression repairs still require exact-head full hosted qualification; these additions are separate from the 57-assembly release.
+
+The later hosted run found that the four newest models were absent from the
+test's explicit extended-catalog list. Their actual core-only parse refusals
+identify derived bricks/connectors; normal application loading already resolves
+them before parsing. The list now includes Echo Bridge, Linger, Crossline and
+Bit Keeper. The unchanged seven catalog controls pass after reproducing the
+omission. A separate claimed Arcade test repair observes the actual program
+polling clock instead of assuming a scene frame delivers held-input completion;
+its full modules and catalog controls pass with a missing-input negative.

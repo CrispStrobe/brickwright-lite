@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "ellipsa",
+  "language": "en",
+  "what": "One motor rides on the red X carriage and turns a rigid blue bar. A second, yellow carriage can move only along a perpendicular Z guide. Together they make the orange marker beyond the two pivots trace a 32 × 96 mm ellipse. The yellow carriage and output follow the real joints; the program controls only the motor.",
+  "try": [
+    "Import ellipsa.ldr, reload the saved pose, and run ellipsa.bw. Watch the motor housing translate while the blue bar rotates. Both carriages stay aligned with their own straight guides.",
+    "Use the held positions to compare the orange marker with the guide intersection O. At a measured bar angle of 45°, the prediction is Q=(−11.314,33.941) mm in X/Z. At 90°, Q=(0,48) mm. Compare these positions with the actual motion, not only the motor encoder.",
+    "During a steady section, watch the marker near the left and right ends of the ellipse, then near the top and bottom. Predict where it is fastest before looking at the measured speed plot."
+  ],
+  "why": "The two pivots A and B are 32 mm apart on one rigid bar. A is constrained to the X axis and B to the Z axis. For bar angle θ, A=(32 cosθ,0) and B=(0,32 sinθ) mm. Q is 48 mm along the bar from A, beyond B. Therefore Q=A+1.5(B−A)=(−16 cosθ,48 sinθ) mm. Those unequal cosine and sine coefficients are the ellipse semiaxes. The two straight guides and the rigid bar enforce this relation mechanically.",
+  "matters": "The same rotating bar produces several different paths: its two guided pivots move in straight lines, its midpoint traces a circle, and the orange point outside the pivots traces an ellipse. Constant angular speed does not mean constant speed along that ellipse. The motor can sit on a moving carriage; its housing still needs a real reaction path into the guides.",
+  "question": "If the bar turns at a constant angular speed, where is the orange marker fastest, and what is the ideal ratio between its maximum and minimum speeds?",
+  "answer": "It is fastest at the left and right endpoints, where it travels vertically, and slowest at the top and bottom endpoints, where it travels horizontally. The ratio is 48/16=3. At a steady 10°/s, the ideal speeds range from 2.793 to 8.378 mm/s. Reversing the motor reverses travel around the same ellipse.",
+  "further": [
+    "Derive the path of a general bar point P at distance s from A: P=((32−s)cosθ,s sinθ) mm. Setting s=16 mm gives a circle; s=0 or s=32 mm gives one of the two straight guide lines.",
+    "Inspect the vertical layers. The yellow carriage and its retained shaft are above the blue bar; the motor and red carriage are below. The A drive shaft stops below the yellow crossbars, so their projected paths can cross without solid parts intersecting.",
+    "Check guide engagement at both travel extremes. Each 16L axle has two fixed end holders, and each carriage uses two separated guide axles. The full toggle eye remains 20 LDU (8 mm) short of the nearest holder at its extreme.",
+    "Compare axis-plotter.ldr, where two controlled axes can follow general drawing paths; crossglide.ldr, where perpendicular slides connect offset rotating shafts; and amplify.ldr, where a pantograph copies a path at twice the scale. Ellipsa uses one rotating bar and two fixed straight guides to impose one ellipse.",
+    "The orange crossbar is a marker, not a pen. This model does not draw SVGs or place ink on a surface. Native motion, construction checks, browser integration and a physical build have separate validation status in validation/RESULTS.md."
+  ],
+  "formula": "With AB=32 mm and AQ=48 mm: A=(32 cosθ,0), B=(0,32 sinθ), Q=(−16 cosθ,48 sinθ) mm; (Qx/16)^2+(Qz/48)^2=1. For angular speed ω in rad/s, vQ=(16ω sinθ,48ω cosθ) mm/s and |vQ|=|ω|√(16²sin²θ+48²cos²θ). Maximum/minimum speed ratio 3. Semiaxes 16 and 48 mm; full ellipse 32 × 96 mm. Each carriage travels 64 mm peak to peak. θ is measured from the actual bar vector, θ=atan2(Bz−Az,−(Bx−Ax)); 1 LDU=0.4 mm. The placed native motor has θ=+encoder A from the saved datum; this sign was measured in the actual real-part prototype.",
+  "related": [
+    "axis-plotter.ldr",
+    "crossglide.ldr",
+    "amplify.ldr"
+  ]
+}
