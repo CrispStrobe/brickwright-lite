@@ -118,11 +118,15 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (402 opcodes)', () => {
-    // Canonical compiler adoption 0a63e8db7 adds exactly these three operations
-    // to the previously qualified 399; retain exact spelling checks as well.
-    assert.equal(ARCADE_DIALECT_OPS.length, 402);
+test('the pinned parser has the qualified Arcade word table (406 opcodes)', () => {
+    // The adopted compiler adds score-handler registration and source-value
+    // binary/unary operations to the previous 402. Keep exact spelling checks.
+    assert.equal(ARCADE_DIALECT_OPS.length, 406);
     const qualifiedWords = [
+        {"op":"arcade_whenRegisteredScore","kind":"hat","words":"when arcade score handler {TOKEN} runs"},
+        {"op":"arcade_registerScoreHandler","kind":"command","words":"arcade register score player {PLAYER} threshold {SCORE} as {TOKEN} capturing {CAPTURES}"},
+        {"op":"arcade_sourceValueBinary","kind":"reporter","words":"arcade source value {LEFT} op {OP:\"+\"|\"-\"|\"*\"|\"/\"|\"%\"|\"**\"|\"&\"|\"|\"|\"^\"|\"<<\"|\">>\"|\">>>\"} with {RIGHT}"},
+        {"op":"arcade_sourceValueUnary","kind":"reporter","words":"arcade source unary {OP:\"~\"} of {VALUE}"},
         {op: 'arcade_declareParameterConstraint', kind: 'command', words: 'declare arcade procedure {PROCEDURE:literal-field} parameter {PARAMETER:literal-field} as {TYPE:Number|Boolean|String|Any}'},
         {op: 'arcade_throwValue', kind: 'command', words: 'arcade throw {VALUE}'},
         {op: 'arcade_createOwnedImageSprite', kind: 'reporter', words: 'arcade create owned image {IMAGE} template {TEMPLATE} kind {KIND}'},

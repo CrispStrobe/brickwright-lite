@@ -22,7 +22,7 @@ const measureRaw = async examples => (await execFileP(process.execPath,
     {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout;
 const measure = async examples => JSON.parse(await measureRaw(examples));
 
-test('the exact 304-program post-production print census is disjoint and exhaustive',
+test('the exact 307-program post-production print census is disjoint and exhaustive',
     {timeout: 120000}, async () => {
         const absolute = join(root, 'overlay/scratch-gui/examples');
         const absoluteBytes = await measureRaw(absolute);
@@ -58,11 +58,12 @@ test('the exact 304-program post-production print census is disjoint and exhaust
         // its output is notReached. tone + print is allowed on the 8051 again,
         // so arduino-02-tone-pitch-follower parses and stops at its adc+tone
         // choke (refused, no longer notReached).
-        assert.equal(report.programs, 304);
+        // Three school analog-only projects add no output opcodes and are retarget refused.
+        assert.equal(report.programs, 307);
         assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 120, total: 120});
         assert.deepEqual(report.source.values, {literalText: 48, numericLiteral: 0, computed: 72});
         assert.deepEqual(report.source.programCounts,
-            {literalText: 6, numericLiteral: 0, computed: 34, mixed: 16, none: 248});
+            {literalText: 6, numericLiteral: 0, computed: 34, mixed: 16, none: 251});
         // Until B11 every output-bearing program parsed on the 8086, so the
         // opcode inventory equalled the source one. 7 computed prints do not
         // reach an opcode: those of the five PART programs (parseFailed, 6) and
@@ -75,7 +76,7 @@ test('the exact 304-program post-production print census is disjoint and exhaust
         assert.equal(report.invariants.sourceLiteralTextPrograms, 22);
         assert.equal(report.invariants.sourceNumericOrComputedPrograms, 50);
         assert.equal(report.invariants.sourceOutputPrograms, 56);
-        assert.equal(report.invariants.sourceProgramCount, 304);
+        assert.equal(report.invariants.sourceProgramCount, 307);
         // 151 -> 150 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row's
         // `light only led step on leds` names a LEDBANK8, which i8086 does not
         // have, so the line was DROPPED with a warning and the program counted
@@ -105,11 +106,11 @@ test('the exact 304-program post-production print census is disjoint and exhaust
         assert.deepEqual(report.currentOutput.counts,
             {notReached: 6, hostC: 0, refused: 38, emitted: 12, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
-            retargetRefused: 132, parseFailed: 8, noOutputOpcode: 114, hostC: 0,
+            retargetRefused: 135, parseFailed: 8, noOutputOpcode: 114, hostC: 0,
             printRefused: 15, remainingChoke: 22, waitRefused: 1, int16Refused: 0,
             longLeaked: 0, emitted: 12, commentOnly: 0
         });
-        assert.equal(report.invariants.terminalCount, 304);
+        assert.equal(report.invariants.terminalCount, 307);
         assert.equal(report.invariants.terminalExhaustive, true);
         assert.deepEqual(report.chokeCombinationCounts, {
             adc: 17, none: 28, 'adc + tone': 1,

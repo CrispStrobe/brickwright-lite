@@ -125,8 +125,23 @@ test('the GUI snapshot module is exactly what the generator renders from the JSO
 test('explain() shows the tier and each oracle\'s census status, so the GUI and the doc read the same truth (T8)', () => {
     const en = explain('c', 'stc12c5a60s2', 'en');
     assert.match(en, /tier 2a \(emu8051: standing in bw-board CI\)/, en);
-    const asm = explain('asm', 'i8086', 'en');
-    assert.match(asm, /simulator: i8086 · tier 2a \(8086-vectors: standing in bw-board CI, elks-image: recorded once\)/, asm);
+    // Presence is a host observation, not a stable property of the source pin.
+    // Exercise both explicit input states; never manufacture an installed oracle.
+    const elks = CENSUS_ROWS.find(row => row.id === 'elks-image');
+    assert.ok(elks);
+    const originalPresence = elks.present;
+    try {
+        for (const [present, status, label] of [
+            [false, 'absent', 'oracle absent'], [true, 'recorded', 'recorded once']
+        ]) {
+            elks.present = present;
+            assert.equal(oracleStatus('elks-image'), status);
+            const asm = explain('asm', 'i8086', 'en');
+            assert.ok(asm.includes(`simulator: i8086 · tier 2a (8086-vectors: standing in bw-board CI, elks-image: ${label})`), asm);
+        }
+    } finally {
+        elks.present = originalPresence;
+    }
     assert.equal(oracleStatus('avr-compile-service'), 'reachability', 'a service row is reachability, never present');
     assert.equal(oracleStatus('no-such-oracle'), 'unknown');
     const de = explain('c', 'stc12c5a60s2', 'de');

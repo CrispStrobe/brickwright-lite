@@ -1,4 +1,4 @@
-# School integration contract counterparts — CLAIMED
+# School integration contract counterparts — DONE (source candidate)
 
 Owner: Codex school-circuit delivery. Isolated branch
 `docs/school-integration-counterparts-20261021`, base `93bb70a6d`.
@@ -29,3 +29,8 @@ Merge this claim before these additional counterparts. Then rerun the full
 existing IC/model/CLI/scope controls, complete circuit endpoint coverage,
 8086 reach and negative mutations, bundled identity checks and school tests.
 No gate, allowance, solver tolerance or execution budget is relaxed.
+
+Canonical controller-only refresh and all enumerated test counterparts are
+implemented. The complete affected control run passed 62 tests, zero failures
+and one existing optional supplier skip. Numerical limits and mutation controls
+are unchanged. Final hosted qualification remains part of the school PR.

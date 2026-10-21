@@ -1,4 +1,4 @@
-# Preserve loaded circuit supply — CLAIMED
+# Preserve loaded circuit supply — DONE (source candidate)
 
 Owner: Codex school-circuit delivery. Branch
 `docs/school-loaded-supply-20261021`, base `ecdd6c1ad`.
@@ -28,3 +28,12 @@ Arcade word-table census (supplier adds a declared reporter), and the canonical
 8086 BIOS/demo ROM provenance. Own only those corpus counts/explicit new
 identities and normal ROM provenance producers, preserving executable ROM bytes,
 all original opcode spelling assertions and exhaustive/mutation controls.
+
+The supplier repair passed all three enabled exact-head checks and merged
+normally as 603c0bd413a9512334353efd43bc72e55470d433, with the same tested tree.
+Adopted source 5b26de2fbbd2f019285b5acd72885f79663be2f6 retains supply through
+Designer load and voltage-only undo/redo; all 83 affected supplier controls pass.
+The hidden host callback preserves 4.5/9 V electrically and live model identity.
+Both canonical package locks select this source using CI npm 10.9.9, preserving
+unrelated resolutions. Final installed-package provenance, host scope/audio and
+complete composed candidate qualification remain required before landing.

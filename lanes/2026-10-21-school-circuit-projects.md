@@ -1,4 +1,4 @@
-# School circuit projects — CLAIMED
+# School circuit projects — DONE (source candidate)
 
 Owner: Codex circuit-projects session, isolated lane/circuit-projects-20261021.
 Base: c91fbbece (remote main at claim preparation).
@@ -18,3 +18,15 @@ failure rather than replacing transistor circuits with artificial oscillators.
 Supplier repairs and audio support must land in their owning repositories
 before any separately reviewed immutable package adoption here.
 Merge this claim before product implementation.
+
+Source candidate composes normally landed suppliers: bw-board b5650092,
+bw-circuit-ui 9f2d24d1 and sb3-creator 37bfe287. Installed root and GUI
+packages match pinned npm-pack content and resolve one Board engine.
+Eight school integration controls pass, including actual organ startup/key/
+release, AA shared-arm KCL and open leads. Existing SPIKE artifact assertions
+pass at the canonical compiler pin. Census controls pass for both resource
+presence states; generated evidence, mirrors and gate-shape controls pass.
+Upstream matched ngspice transistor/organ/amplifier comparisons and native
+scope waveform, spectrum, WebAudio replay and WAV checks pass. Full installed
+GUI gallery/scope acceptance and the candidate's hosted qualification remain
+required before landing; no physical acoustic measurement is claimed.
