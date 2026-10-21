@@ -125,7 +125,7 @@ Virtual hub: `G/bw-sim/hubs/nxt/` (direct + system commands, files); VM `G/bw-si
 |---|---|---|---|---|
 | legonxt | SL-BT | blocks | GREEN | `bw-sim-bt-hubs-program` "NXT bumper bot: legonxt turns B and C 360 ± 2° ...", "NXT motor reporters ..." |
 | legonxt | SL-BT upload | `.rxe` on-brick | GREEN | `bw-sim-nxt-rxe-legonxt` "legonxt uploads touch-bumper.rxe ... stops at the wall" (#1115 merged); `bw-sim-nxt-rxe-brick` |
-| legonxt | SL-BT | `nxt` DEVICE words | PENDING #1129 | |
+| legonxt | SL-BT | `nxt` DEVICE words | GREEN (#1129) | `lego-hubs-dialect` checks the NXT script written in `nxt` words equals the blocks file the Lab runs |
 | legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PARTIAL (#1130 merged) | `bw-sim-mindstorms-model-limits` drives the virtual NXT's sync controller, buttons and ultrasonic event capture directly (and the .rxe VM's ReadButton); no test yet sends them from the legonxt extension |
 | legonxt | hosted NXC -> `.rxe` | NXC source | PARTIAL | fixtures are precompiled (`test/fixtures/nxt-rxe/`); no NXC-compile-then-run test |
 | legonxt | Web Serial ("direct"), bridge | blocks | GREEN | `bw-sim-virtual-transports-nxt` "legonxt over Web Serial (\"direct\", 9600 baud): the bumper bot drives until the bumper meets the wall and stops", "legonxt over its WebSocket bridge (base64 telegrams): …" (+ a no-stop control on both). Connected by its own `set connection mode` / `connect` blocks with no Scratch Link; `G/bw-sim/transports/virtual-serial.js` and `virtual-bridge.js` (ws://localhost:8765, one base64 text message per length-prefixed telegram) -> the Virtual NXT session. Needed CrispStrobe/extensions#58: both backends called methods they do not have, so neither could connect, and the bridge resolved numbers its callers parse as telegrams |
@@ -151,9 +151,9 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 | Powered Up City / Technic | 5 | 0 | 0 | 1 |
 | WeDo 2.0 | 3 | 1 | 0 | 1 |
 | SPIKE Essential | 0 | 0 | 0 | 2 |
-| NXT | 3 | 2 | 1 | 0 |
+| NXT | 4 | 2 | 0 | 0 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **30** | **4** | **1** | **8** |
+| **Total** | **31** | **4** | **0** | **8** |
 
 ## Gaps, by user impact
 
@@ -180,7 +180,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
     but part 67351.dat has no `part-meta/parts.json` entry, so no model can place the hub (a `bw-sim/` change;
     waits for the open Robot Lab PRs).
 17. NXT, NXC compile-then-run: needs the hosted compiler. (~~Web Serial / bridge~~: closed by `bw-sim-virtual-transports-nxt`, with extension fixes CrispStrobe/extensions#58.)
-    #1129 (open) covers the words; #1130 (merged) added sync, buttons and ultrasonic listening to the
+    #1129 (merged) covers the words; #1130 (merged) added sync, buttons and ultrasonic listening to the
     virtual NXT, proven at the model level only.
 18. ~~RCX, legorcx blocks into the Lab RCX~~: closed by `bw-sim-rcx-legorcx`.
 
