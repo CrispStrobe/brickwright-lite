@@ -239,9 +239,11 @@ test('rack and pinion (the Forklift\'s mast on the bench): travel = pitch radius
 
 // ---- 4. physical pendulum -----------------------------------------------------------------------
 /**
- * The pendulum's closed form. The swinging beam 7 carries its catalog mass (2.3 g) uniformly
- * over its catalog collider, a box 18 × 20 × 138 LDU (holes along its 20); it turns about a hole
- * axis, so in the swing plane it is an 18 × 138 rectangle: I_cm = m(18² + 138²)/12. Its centre is
+ * The pendulum's closed form uses the catalog's complete compound collision shape.
+ * Jolt distributes the part mass by collider volume, including overlapping
+ * primitives. Sum each primitive's independent inertia and parallel-axis term.
+ * The rounded beam has a central box and two circular end caps; using only
+ * its first box omits the mass and inertia of both ends.
  * d = 60 LDU from the pivot hole: I = I_cm + m·d². (The pin turns on its own about the same axis
  * and adds nothing.) Small-amplitude ω0 = √(m·g·d/I); at amplitude A the exact period is
  * T(A) = 4·K(sin(A/2))/ω0 (complete elliptic integral of the first kind, by the AGM).
@@ -249,9 +251,20 @@ test('rack and pinion (the Forklift\'s mast on the bench): travel = pitch radius
 const PENDULUM = (() => {
     const beam = meta('32524.dat');
     const m = beam.massGrams / 1000;
-    const [hx, , hz] = beam.colliders[0].halfExtents.map(v => v * LDU_M);
+    const primitives = beam.colliders.map(c => {
+        assert.equal(c.rotation, undefined, 'this analytical fixture has Y-aligned primitives');
+        const [x,,z] = (c.position || [0,0,0]).map(v => v * LDU_M);
+        if (c.shape === 'box') {
+            const [hx,hy,hz] = c.halfExtents.map(v => v * LDU_M);
+            return {volume: 8*hx*hy*hz, inertiaPerMass: ((2*hx)**2+(2*hz)**2)/12+x*x+z*z};
+        }
+        assert.equal(c.shape, 'cylinder');
+        const radius = c.radius * LDU_M, height = 2 * c.halfHeight * LDU_M;
+        return {volume: Math.PI*radius*radius*height, inertiaPerMass: radius*radius/2+x*x+z*z};
+    });
+    const volume = primitives.reduce((sum,p) => sum+p.volume,0);
     const d = 60 * LDU_M;
-    const I = m * ((2 * hx) ** 2 + (2 * hz) ** 2) / 12 + m * d * d;
+    const I = m * primitives.reduce((sum,p) => sum+p.volume/volume*p.inertiaPerMass,0) + m*d*d;
     const w0 = Math.sqrt(m * G * d / I);
     const K = k => {
         let a = 1;

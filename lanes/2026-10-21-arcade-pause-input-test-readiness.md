@@ -1,6 +1,8 @@
 # Claim: actual frame completion in the Arcade pauseUntil input test
 
-CLAIMED — owner: Robot Lab delivery lane. Base: `93bb70a6d`.
+DONE locally — owner: Robot Lab delivery lane. Claim merged in
+[PR1191](https://github.com/CrispStrobe/brickwright-lite/pull/1191); hosted source
+qualification remains part of the addon candidate.
 
 Scope: only the `native pauseUntil consumes actual held controller input after
 readiness` test in `test/arcade-import-truth-values.test.mjs`, its focused
@@ -20,3 +22,14 @@ completes, including the case where the initialization frame already finished
 before input is posted. Run the complete affected test module. If investigation
 instead identifies a runtime defect, stop at this boundary and claim it
 separately. Merge this claim before changing the test.
+
+Investigation found that scene-frame completion is not the condition-polling
+boundary: source `pauseUntil` uses its independent program timer. The test now
+uses the existing discrete-timer platform, starts an actual fresh VM generation,
+finishes initialization and observes its false initial poll before posting real
+keyboard input. Completion remains false at 49 ms and becomes true at the actual
+50 ms poll. No source state or primitive result is supplied by the clock.
+Removing keyboard delivery fails the final assertion. The original 15-second
+timeout remains. Both complete affected Arcade modules and the catalog module
+pass: 35 tests, zero failures, three pre-existing skips. Runtime, importer,
+exporter and shared helpers are unchanged.

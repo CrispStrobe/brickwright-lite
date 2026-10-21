@@ -48,8 +48,9 @@ for(const file of new Set(MODELS.map(m=>m.file))){
  const a=parseModel(original,{catalog:C}),flat=parseModel(ldr,{catalog:C}),b=parseModel(mpd,{catalog:C});
  assert.deepEqual(a.refusals,[],file);assert.deepEqual(flat.refusals,[],file);assert.deepEqual(b.refusals,[],file);
  assert.deepEqual(flat.model.parts,a.model.parts,file+' flat placements/ports/payloads/rotor angles');assert.deepEqual(b.model.parts,a.model.parts,file+' MPD placements/ports/payloads/rotor angles');
+ assert.deepEqual(flat.model.belts,a.model.belts,file+' flat physical bands');assert.deepEqual(b.model.belts,a.model.belts,file+' MPD physical bands');
  put('models/'+file,ldr);put('models/'+file.replace(/\.ldr$/,'.mpd'),mpd);
- manifest.push({file,pieces:a.model.parts.length,sourceSha256:hash(original),ldrSha256:hash(ldr),mpdSha256:hash(mpd)});
+ manifest.push({file,pieces:a.model.parts.length+(a.model.belts||[]).length,...(a.model.belts?.length?{rigidPlacements:a.model.parts.length,flexibleBands:a.model.belts.length}:{}),sourceSha256:hash(original),ldrSha256:hash(ldr),mpdSha256:hash(mpd)});
 }
 for(const name of ['CAreadme.txt','CAlicense.txt','CAlicense4.txt'])put('licenses/'+name,readFileSync(new URL('overlay/scratch-gui/static/ldraw/'+name,root)));
 for(const program of new Set(MODELS.map(m=>m.example).filter(Boolean)))put('programs/'+program,readFileSync(new URL('programs/'+program,base)));

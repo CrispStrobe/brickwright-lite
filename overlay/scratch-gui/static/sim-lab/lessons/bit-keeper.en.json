@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "bit-keeper",
+  "language": "en",
+  "what": "A freely hinged, weighted arm can remember which way it was selected. Motor A moves the upper anchor of a rubber band a little to one side, then returns it to the center. The lower arm can remain leaning right or left at the same held motor position. Gravity and elastic tension create the two resting states; the output has no motor and no contact stop. Motor A briefly shifts the top of an elastic band. Gravity and spring tension let a free rocker retain either of two positions when the motor returns to the same neutral angle. Write both states and compare the no-band control.",
+  "try": [
+    "Select this example and Run. Reset before another experiment after manual motion. The program writes and reads both states; watch the passive red rocker.",
+    "During the two observations, compare the input and output separately. Motor A should be close to zero in both. Read a left angle at or below −8° as state 0 and a right angle at or above +8° as state 1; the region between them is a transition. Watch the entire interval so that a swinging arm passing through a state is not mistaken for a retained state.",
+    "Compare the included no-band control. It keeps the rigid parts, initial pose, program and ordinary import settings and removes only the flexible band record. The output can swing under gravity, but the input carrier has no elastic connection with which to select its side. The validation checks that the passive-hinge friction policy matches between the two runs."
+  ],
+  "why": "Near vertical, a sideways lean lets the stretched band shorten, which lowers its elastic energy. The same lean lifts the weighted arm and increases gravitational energy. With this geometry and mass, their sum has two stable minima and an unstable position between them. Moving the upper anchor biases this potential. A sufficiently large slow bias removes one local minimum, so the arm moves to the other side. Returning the anchor to center restores the two minima while the arm stays in the selected one. Inertia causes a snap and some oscillation; damping helps it settle.",
+  "matters": "The motor encoder alone does not identify the output state. A mechanism can have different outputs at the same input because its history selected a different equilibrium. This provides a mechanical example of memory and hysteresis. The experiment stores the output while the input is held near zero; it does not establish unlimited retention after all power is removed.",
+  "question": "After a right selection and a left selection, the motor returns close to the same zero. Must the output also return to the same angle? Would a stationary output or a slowly decaying pendulum, by itself, prove memory?",
+  "answer": "No. Two stable output equilibria can exist at the same centered input. The ideal native spring model predicts them near −24.63° and +24.63°. The experiment must select both states, return the input to matching near-zero values and retain opposite output signs throughout the observation windows. An output that never moves fails the two-state test. A gravity-only pendulum may swing through both sides without retaining either selected state, which is why the no-band comparison and full observation windows matter. The memory comes from the combined elastic and gravitational potential; internal hysteresis of real rubber is not required by the model.",
+  "further": [
+    "Plot the observed arm angle against the observed motor angle, keeping the outward and return portions in time order. Mark the two windows near motor zero. Use measured body poses for the arm, rather than substituting the predicted equilibrium angles.",
+    "Predict the effect of adding ballast farther below the hinge. It increases the gravitational coefficient Γ and can eventually restore a single vertical minimum. A changed ballast or band is a new experiment and needs fresh startup, clearance and native checks; keep manual input within the documented ±10° envelope.",
+    "Compare Echo Bridge, where elastic links exchange oscillation between two free arms, and Clutch Bench, where friction permits slip. Here an ideal single-valued spring law and gravity already produce two stable states. The stated band stiffness is a simulator approximation, not a measured property of real rubber."
+  ],
+  "formula": "At centered input, d(θ)=√(H²+a²+2Ha cosθ) and V(θ)=Γ(1−cosθ)+(K/2)[max(0,d−d₀)]², with angles in radians. Here a=0.016 m, H=0.032 m, Γ=gΣmjℓj≈0.001969848 N·m from the complete compiled moving mass, d₀=π(0.033−2×0.0028)/2≈0.043039819 m, and K=100×15/33≈45.454545 N/m in the pinned native model. Vertical is unstable when 0<Γ<KHa[1−d₀/(H+a)]. The stable pair satisfies d*=d₀/[1−Γ/(KHa)] and cosθ*=(d*²−H²−a²)/(2Ha), giving θ*≈±24.628°. For the 0.016 m input crank, the quasistatic ideal bias fold is near ±5.100°; a finite-speed observed switch need not occur at that exact angle.",
+  "related": [
+    "echo-bridge.ldr",
+    "clutch-bench.ldr",
+    "pendulum-array.ldr"
+  ]
+}

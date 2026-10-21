@@ -1,0 +1,9 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "ripple-relay-complete.zip",
+  "modelSha256": "0a39a2fc4ba72900da845ff25a0b79fc12bfdcd2c727fc7aca87cebeec227f23",
+  "programSha256": "f79758aba0befd929c744d9382f40ff0d1f71bcd28f64c64caa49b1dc5021389",
+  "note": "Raw source retained as data; no bundled generators or runtimes are executed. Physical CAD contains two explicit crosses in Ripple Relay; the app infers them from the native fork placements.",
+  "archiveSha256": "e1e316dbe1fcffc9d92aa5d2e0acc46ac39abbbd29573ae42e490d5bc2a572cc"
+}

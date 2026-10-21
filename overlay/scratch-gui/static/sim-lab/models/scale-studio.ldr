@@ -1,0 +1,214 @@
+0 Scale Studio — circles at twice the size
+0 Name: scale-studio.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/scale-studio.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // Ground origin O=(0,0); crank center M=(100,0), radius40 LDU in XZ.
+0 // Long links160 LDU with midpoint hinges; short links80 LDU.
+0 // The red output is passive: (P-O)_XZ = 2*(D-O)_XZ.
+0 // Stock rotor phase; encoder zero is the +X crank datum.
+0 // Standard LDraw geometry external. No custom geometry or hidden joints.
+0 // Supported hub shortcut omits the separate rechargeable battery. See BOM.
+0 !BW ID base_cross_z-120
+1 72 0 80 -120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_z-80
+1 72 0 80 -80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_z-40
+1 72 0 80 -40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_z80
+1 72 0 80 80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_z120
+1 72 0 80 120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_z160
+1 72 0 80 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_rail_x-140
+1 0 -140 60 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID grid_pin_-140_-120
+1 0 -140 70 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-140_-80
+1 0 -140 70 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-140_-40
+1 0 -140 70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-140_80
+1 0 -140 70 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-140_120
+1 0 -140 70 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-140_160
+1 0 -140 70 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rail_x-20
+1 0 -20 60 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID grid_pin_-20_-120
+1 0 -20 70 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-20_-80
+1 0 -20 70 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-20_-40
+1 0 -20 70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-20_80
+1 0 -20 70 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-20_120
+1 0 -20 70 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_-20_160
+1 0 -20 70 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rail_x0
+1 0 0 60 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID grid_pin_0_-120
+1 0 0 70 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_0_-80
+1 0 0 70 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_0_-40
+1 0 0 70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_0_80
+1 0 0 70 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_0_120
+1 0 0 70 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_0_160
+1 0 0 70 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rail_x60
+1 0 60 60 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID grid_pin_60_-120
+1 0 60 70 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_60_-80
+1 0 60 70 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_60_-40
+1 0 60 70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_60_80
+1 0 60 70 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_60_120
+1 0 60 70 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_60_160
+1 0 60 70 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rail_x140
+1 0 140 60 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID grid_pin_140_-120
+1 0 140 70 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_140_-80
+1 0 140 70 -80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_140_-40
+1 0 140 70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_140_80
+1 0 140 70 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_140_120
+1 0 140 70 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID grid_pin_140_160
+1 0 140 70 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID rigid_foot_frame_-80
+1 72 -80 100 20 1 0 0 0 1 0 0 0 1 64179.dat
+0 !BW ID foot_pin_-120_-40
+1 0 -120 90 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot_pin_-120_80
+1 0 -120 90 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot_pin_-40_-40
+1 0 -40 90 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot_pin_-40_80
+1 0 -40 90 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID rigid_foot_frame_80
+1 72 80 100 20 1 0 0 0 1 0 0 0 1 64179.dat
+0 !BW ID foot_pin_40_-40
+1 0 40 90 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot_pin_40_80
+1 0 40 90 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot_pin_120_-40
+1 0 120 90 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID foot_pin_120_80
+1 0 120 90 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID origin_pier_y-80
+1 72 0 -80 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_pier_y-60
+1 72 0 -60 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_pier_y-40
+1 72 0 -40 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_pier_y-20
+1 72 0 -20 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_pier_y0
+1 72 0 0 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_pier_y20
+1 72 0 20 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_pier_y40
+1 72 0 40 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID pier_cap_-20
+1 0 0 -70 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pier_cap_20
+1 0 0 -70 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pier_top_-40
+1 1 0 -40 -40 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID pier_top_40
+1 1 0 -40 40 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID pier_middle_-20
+1 1 0 0 -20 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID pier_middle_20
+1 1 0 0 20 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID pier_lower_-40
+1 0 0 30 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pier_lower_40
+1 0 0 30 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pier_base_-20
+1 0 0 50 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pier_base_20
+1 0 0 50 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_front_crossbar
+1 72 100 40 0 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID motor_rear_crossbar
+1 72 100 40 140 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID motor_chassis_60_0
+1 0 60 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_chassis_60_140
+1 0 60 50 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_chassis_140_0
+1 0 140 50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_chassis_140_140
+1 0 140 50 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_front_seat_80
+1 0 80 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_front_seat_120
+1 0 120 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_rear_seat
+1 0 100 30 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 100 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID hub
+1 15 -80 50 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_mount_-140_-100
+1 0 -140 50 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_-140_100
+1 0 -140 50 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_-20_-100
+1 0 -20 50 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_mount_-20_100
+1 0 -20 50 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID drive_crank
+1 25 100 -60 0 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID rotor_pin_80
+1 0 80 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID rotor_pin_120
+1 0 120 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID arm_OB
+1 1 70 -100 38.729833462 0.484122918 0 0.875 0 1 0 -0.875 0 0.484122918 40490.dat
+0 !BW ID pivot_O
+1 71 0 -90 0 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID arm_BP
+1 1 210 -120 38.729833462 -0.484122918 0 0.875 0 1 0 -0.875 0 -0.484122918 40490.dat
+0 !BW ID link_AD
+1 14 105 -120 19.364916731 -0.484122918 0 0.875 0 1 0 -0.875 0 -0.484122918 32316.dat
+0 !BW ID link_DC
+1 3 175 -100 19.364916731 0.484122918 0 0.875 0 1 0 -0.875 0 0.484122918 32316.dat
+0 !BW ID pivot_A
+1 71 70 -110 38.729833462 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID pivot_B
+1 71 140 -110 77.459666924 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID pivot_C
+1 71 210 -110 38.729833462 0 1 0 1 0 0 0 0 -1 3673.dat
+0 !BW ID pivot_D_axle
+1 71 140 -90 0 0 1 0 1 0 0 0 0 -1 32073.dat
+0 !BW ID pivot_D_bush_bottom
+1 71 140 -135 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID pivot_D_bush_spacer
+1 71 140 -80 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID pivot_D_bush_top
+1 71 140 -45 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID red_output_flag
+1 4 262.5 -140 9.682458366 -0.484122918 0 0.875 0 1 0 -0.875 0 -0.484122918 32523.dat
+0 !BW ID flag_pin_inner
+1 0 245 -130 19.364916731 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID flag_pin_tip
+1 0 280 -130 0 0 1 0 1 0 0 0 0 -1 2780.dat

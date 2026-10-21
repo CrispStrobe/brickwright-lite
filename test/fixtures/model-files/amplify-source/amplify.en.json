@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "amplify",
+  "language": "en",
+  "what": "One motor moves the yellow input marker D around a 16 mm radius circle. A real parallelogram with extended arms makes the orange output marker Q follow a 32 mm radius circle. Q copies every planar displacement of D at twice its size. Both points complete one orbit together; the output travels farther during that same time.",
+  "try": [
+    "Import amplify.ldr, reload its saved pose, and run amplify.bw. Eight 45° pauses make the first crank turn, followed by a continuous second turn and two turns back to the starting pose.",
+    "Track the yellow marker D and the orange marker Q relative to the fixed origin O. At the first +45° motor target, the predicted X/Z coordinates are D=(59.314,43.314) mm and Q=(118.627,86.627) mm. Compare both coordinates, rather than only the circle diameters.",
+    "Watch the four sides of the parallelogram and the midpoints on the two long arms. Then compare the two marker speeds during a steady segment. Does the larger circle require more time, more speed, or more revolutions?"
+  ],
+  "why": "The long red arm places A halfway between O and B. The long blue arm places C halfway between B and Q. The equal 48 mm sides of A–B–C–D preserve a parallelogram on the selected open branch. Writing A=u and D=u+v gives B=2u and Q=2u+2v=2D. The size ratio follows from the actual link lengths and midpoints. The motor chooses the input path; it does not calculate or assign the output position.",
+  "matters": "A pantograph copies a planar path at a chosen scale. This model separates displacement scale from rotational frequency: twice the radius gives twice the linear speed, while both markers keep the same orbital phase. The ideal enclosed area scales by four. Greater displacement does not create energy; neglecting friction and inertia, the corresponding output force is half the force applied at the input point. Real load capacity and physical construction have not been measured here.",
+  "question": "If D makes one 16 mm radius circle in 36 seconds, what radius does Q trace, how long does its orbit take, and what happens to linear speed and enclosed area?",
+  "answer": "Q traces a 32 mm radius circle in the same 36 seconds. Its linear speed is twice D's, and its enclosed area is four times larger. Both complete one orbit. The 2:1 ratio describes coordinates, displacement and linear speed, not two output revolutions per input revolution.",
+  "further": [
+    "Use analysis/KINEMATICS.md to derive Q−O=2(D−O) directly from the two midpoint relations. Check that doubling the input circle also doubles its centre's displacement from O.",
+    "Compare the actual measured D and Q paths in validation/RESULTS.md. The verifier reads the real input and output connector positions independently, checks their complete forward and reverse motion, and rejects an analysis-only frozen output.",
+    "Inspect the physical layers at the common D joint. A single retained axle is keyed to the green crank; the two short arms turn independently on its round bores. The drive shaft starts below both short arms because they cross its fixed axis in projection during a turn.",
+    "Compare straight-eight.ldr, which uses a different hinge linkage to generate an exact straight line. Compare crossglide.ldr, where an intermediate point orbits twice while the shafts turn once. Amplify doubles path size while preserving the markers' orbital frequency.",
+    "This model is a kinematics demonstrator with a fixed circular input. It has no pen, SVG parser, drawing surface or automatic drawing workflow. Browser integration and physical construction remain untested."
+  ],
+  "formula": "In the projected XZ plane, OA=AB=BC=CQ=AD=DC=120 LDU=48 mm. On the open parallelogram branch, Q−O=2(D−O). With O=(0,0), F=(120,80) LDU and crank radius 40 LDU, D(α)=(120−40 sinα,80+40 cosα) and Q(α)=2D(α). The placed native motor gives α=−A for encoder angle A. Input radius 16 mm, output radius 32 mm; vQ=2vD; equal orbital phase. At 10°/s the ideal steady speeds are 2.793 and 5.585 mm/s. 1 LDU=0.4 mm.",
+  "related": [
+    "straight-eight.ldr",
+    "crossglide.ldr",
+    "twinpoint.ldr"
+  ]
+}
