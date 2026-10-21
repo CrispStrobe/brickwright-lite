@@ -80,7 +80,7 @@ Virtual hub: `G/bw-sim/hubs/lwp3/` (profile `boost-move-hub`), peripheral `G/vir
 | legoboostunified | SL-BLE | `boost` words | GREEN | `lab-hubs-coverage` "legoboostunified drives the BOOST Move Hub rover ahead over Scratch Link BLE" |
 | legopoweredup | WB | `pup` words on the Move Hub | GREEN | `lab-hubs-coverage` "legopoweredup also drives the BOOST Move Hub ..." (SL-BLE is the same extension path, proven on the Technic and City hubs) |
 | legoboostunified / legopoweredup | any | Python/JS calls | GAP | |
-| any | bridge | blocks | GAP | no virtual bridge |
+| legoboostunified / legopoweredup | HTTP bridge | `boost` / `pup` words | GREEN | `lab-hubs-bridge` "legoboostunified over its HTTP bridge drives the BOOST Move Hub rover ahead (the shipped example)", "legopoweredup over the bridge also drives the BOOST Move Hub: motor A one full turn". The real extension is set up by its own `set connection type` (bridge) and `set bridge URL` (http://localhost:8080) blocks; its BridgeAdapter's `Scratch.fetch` requests (POST `/scan`, `/connect`, `/write` `{deviceId, characteristic, data}`, GET `/notifications` polled every 100 ms) are answered by `G/bw-sim/transports/virtual-ble-bridge.js` over `virtual-http.js`, which writes to and notifies from the hub's GATT peripheral (`G/virtual-hub/lab-ble-peripherals.js`). No Web Bluetooth or Scratch Link takes part |
 
 ## Powered Up City / Technic hubs
 
@@ -93,7 +93,7 @@ Virtual hub: `G/bw-sim/hubs/lwp3/` (profiles `pup-city-hub`, `technic-hub`); pro
 | legopoweredup | WB / SL-BLE | City Hub | GREEN | `lab-hubs-coverage` "legopoweredup turns a motor on the Powered Up City Hub's port A one full turn (over ble / scratchlink)", judged against the same free motor on a Technic Hub |
 | legopoweredup | WB | stop actions (brake/coast/hold) | GREEN (#1127) | `lab-hubs-extensions` "legopoweredup \"turn motor A off\" with stop action …: the Technic Hub's motor ends in …" |
 | legopoweredup | any | Python/JS `_legopoweredup.*` calls | GAP | The Code tab's Python/JS readers (`lib/robot-lab-pseudocode.js` `readPython` / `readJavaScript`, on the Translator in `sb3-creator-python.js`) lift only `scratch.*`, `_stc12.*`, `_arrays.*` and `_robotlab.*`. Every `_legopoweredup.*` call is dropped ("dropped expression statement"). Pinned as todo in `hub-runtime-calls-to-blocks`. Fix: a lift in `installRobotLabReaders` driven by `SB3Creator.RUNTIME_EXTENSIONS`, after #1129, which edits the same file |
-| any | bridge | blocks | GAP | |
+| legopoweredup | HTTP bridge | `pup` words, Technic Hub | GREEN | `lab-hubs-bridge` "legopoweredup over its HTTP bridge turns the Technic Hub's large motor on port A by 360 ± 2°" (+ a 180° control the judge rejects). The real extension is set up by its own `set connection type` (bridge) and `set bridge URL` (http://localhost:8080) blocks; its BridgeAdapter's `Scratch.fetch` requests (POST `/scan`, `/connect`, `/write` `{deviceId, characteristic, data}`, GET `/notifications` polled every 100 ms) are answered by `G/bw-sim/transports/virtual-ble-bridge.js` over `virtual-http.js`, which writes to and notifies from the hub's GATT peripheral (`G/virtual-hub/lab-ble-peripherals.js`). No Web Bluetooth or Scratch Link takes part |
 
 ## WeDo 2.0
 
@@ -147,13 +147,13 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 |---|---|---|---|---|
 | SPIKE Prime / Robot Inventor | 5 | 1 | 0 | 3 |
 | EV3 | 6 | 0 | 0 | 1 |
-| BOOST Move Hub | 4 | 0 | 0 | 2 |
-| Powered Up City / Technic | 4 | 0 | 0 | 2 |
+| BOOST Move Hub | 5 | 0 | 0 | 1 |
+| Powered Up City / Technic | 5 | 0 | 0 | 1 |
 | WeDo 2.0 | 3 | 1 | 0 | 1 |
 | SPIKE Essential | 0 | 0 | 0 | 2 |
 | NXT | 2 | 2 | 1 | 1 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **26** | **4** | **1** | **12** |
+| **Total** | **28** | **4** | **1** | **10** |
 
 ## Gaps, by user impact
 
@@ -174,7 +174,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 11. ~~BOOST, legopoweredup on the Move Hub~~: closed by `lab-hubs-coverage`.
 12. ~~Powered Up City Hub, legopoweredup~~: closed by `lab-hubs-coverage` (an in-test City Hub bench).
 13. BOOST / Powered Up, Python/JS `_legopoweredup.*`: confirmed gap, same missing lift as 4.
-14. BOOST / Powered Up, bridge: virtual support missing.
+14. ~~BOOST / Powered Up, bridge~~: closed by `lab-hubs-bridge` (virtual HTTP BLE bridge, `G/bw-sim/transports/virtual-ble-bridge.js`).
 15. WeDo 2.0, tilt / lights / tones through the Lab hub: test-only (protocol exists in `hubs/wedo2`).
 16. SPIKE Essential, legopoweredup over WB and SL-BLE: needs virtual support. The profile is registered,
     but part 67351.dat has no `part-meta/parts.json` entry, so no model can place the hub (a `bw-sim/` change;
