@@ -45,7 +45,8 @@ const ROMS = 'overlay/scratch-gui/static/roms';
 const SCOPED_BUNDLES = {
     'arrays-values': 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js',
     circuitplayground: 'overlay/scratch-vm/src/extensions/crispstrobe/circuitplayground/index.js',
-    wedo2unified: 'overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js'
+    wedo2unified: 'overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js',
+    spikeprime: 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js'
 };
 
 /** Licence id from a LICENSE text or package.json `license` string. */
@@ -133,9 +134,10 @@ export const vendoredTrees = (root, owner) => {
             // This source declares its author in a By header, not a copyright
             // notice. Retain that attribution without changing holderOf or
             // turning it into an own-code exemption.
-            const author = name === 'wedo2unified' ?
+            const namedAuthor = name === 'wedo2unified' || name === 'spikeprime';
+            const author = namedAuthor ?
                 header.match(/^[ \t]*\/\/[ \t]*By:[ \t]*([^<\n]+)/m)?.[1].trim() : null;
-            if (name === 'wedo2unified' && !author) throw new Error(`Scoped pin ${name} has no readable source author: ${evidence}`);
+            if (namedAuthor && !author) throw new Error(`Scoped pin ${name} has no readable source author: ${evidence}`);
             out.push({kind:'vendored-tree', name, licence, holder:holderOf(header), author, evidence, pinned:true});
             continue;
         }

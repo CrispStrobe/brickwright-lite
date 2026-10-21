@@ -2,7 +2,7 @@
 
 Owner: Codex, Arcade integration repair. Isolated branch:
 `lane/spike-power-adoption-claim-20261021`, based on `bf59ed7e5`.
-Status: claim only; implementation waits for this claim to merge.
+Status: merged claim; source candidate preserved, qualification pending.
 
 ## Observed gap and intended repair
 
@@ -67,3 +67,32 @@ Final normal landing still requires all enabled exact-head checks and a verified
 merge composition. Use existing qualification; do not add an unnecessary
 `ci:full` label or duplicate dispatch. Private receipts and local paths remain
 outside public Markdown.
+
+## Motor-model source candidate
+
+The four claimed model paths now distinguish signed open-loop duty from
+regulated speed. The arena uses the existing DC torque/back-EMF command with
+only the catalogue rotor inertia and its normalized resistance input; it is
+explicitly an unloaded rotor approximation, not Robot Lab's coupled mechanism
+or a physical-hardware result. Robot Lab delivers duty directly to its existing
+DC actuator, retaining the measured encoder and bypassing the speed PI loop.
+
+The new complete eight-control module covers protocol units, clamping/refusal,
+regulated-speed separation, model load response, replacement/Stop/waits, actual
+Lab drive ownership and genuine Jolt load/block behavior. The only GUI dependency
+ledger addition is `test/spikeprime-motor-power-adoption.test.mjs` under the
+existing `jolt-physics/wasm-compat` specifier in
+`scripts/lib/gui-scope-allowed.json`; all previous consumers remain unchanged.
+The source has not been executed. Complete affected source, virtual/guest and
+hosted qualification, supplier integration and menu regeneration remain pending.
+
+## Genuine targeted vendor result
+
+The canonical targeted producer generated the scoped SPIKE bundle from the
+reviewed supplier. Independent saved-output checks confirm that the carrier
+decodes byte-for-byte to the supplier source; only the SPIKE bundle and its
+metadata row changed. The global supplier pin and other 29 bundles are unchanged.
+The exact movement-wait methods already match upstream. This is vendor identity
+acceptance, not extension execution, motor, guest or editor qualification.
+Fresh complete metadata generation and the entire eight-control motor module
+remain pending alongside the existing independent gate and affected guest.

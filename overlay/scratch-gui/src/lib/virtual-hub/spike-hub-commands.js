@@ -82,11 +82,13 @@ const UNHANDLED = Symbol('unhandled');
 
 const STATEMENTS = [
     // ---- one motor, SPIKE 2 style: hub.port.A.motor.<verb>(...) --------------
-    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:pwm|start_at_power|run_at_speed|start)\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
+    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:run_at_speed|start)\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
         const value = num(m[2]);
         if (value === 0) { h.motors.stop(m[1], 'coast'); return; }
         h.motors.runAtSpeed(m[1], h.motors.percentToDps(m[1], clampPercent(value)));
     }],
+    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:pwm|start_at_power)\\(\\s*${NUM}\\s*\\)$`), (h, m) =>
+        h.motors.runAtPower(m[1], clampPercent(num(m[2])))],
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(brake|float|hold|stop)\\(\\s*\\)$`), (h, m) =>
         h.motors.stop(m[1], {float: 'coast'}[m[2]] || (m[2] === 'stop' ? undefined : m[2]))],
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.run_for_degrees\\(\\s*${NUM}\\s*,\\s*(?:speed\\s*=\\s*)?${NUM}\\s*\\)$`), (h, m) =>
@@ -100,7 +102,10 @@ const STATEMENTS = [
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.set_stop_action\\(\\s*['"](coast|brake|hold)['"]\\s*\\)$`), (h, m) =>
         h.backend.setStopAction(m[1], m[2])],
     // ---- one motor, SPIKE 3 style: motor.run(port.A, velocity) ---------------
-    // velocity in deg/s; the emulator has always read it as tenths of percent.
+    // motor.run velocity is degrees/second; set_duty_cycle has separate units.
+    // SPIKE 3 duty is signed hundredths of percent, not motor.run velocity.
+    [new RegExp(`^motor\\.set_duty_cycle\\(\\s*port\\.${PORT}\\s*,\\s*${NUM}\\s*\\)$`), (h, m) =>
+        h.motors.runAtPower(m[1], clampPercent(num(m[2]) / 100))],
     [new RegExp(`^motor\\.run\\(\\s*port\\.${PORT}\\s*,\\s*${NUM}\\s*\\)$`), (h, m) =>
         h.motors.runAtSpeed(m[1], num(m[2]))],
     [new RegExp(`^motor\\.stop\\(\\s*port\\.${PORT}\\s*\\)$`), (h, m) => h.motors.stop(m[1])],
