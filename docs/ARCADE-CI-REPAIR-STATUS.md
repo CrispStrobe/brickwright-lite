@@ -1,5 +1,32 @@
 # Arcade integration repairs and qualification order
 
+## Latest hosted failure and corrected candidate — 2026-10-21
+
+The later `470228d6e` campaign did not reach the actual unit shards: each shard
+and build stopped at a shared prerequisite with 177 passes and one stale
+ExtensionManager mirror failure. The focused job likewise stopped at that mirror
+case. This is a different boundary from the older 246-failure census below.
+Vendor checks found a stale generated Arcade vocabulary inventory. Both mirrors
+and the inventory are now synchronized with their current canonical sources;
+the complete mirror control passes. No assertion or supplier pin was relaxed.
+
+The heavy and Robot Lab browser checks pass at that hosted head. The light check
+fails during legacy tile editing: delayed Blockly projection delete/create
+events replace live VM block identities after source declarations are bound.
+Projection now disables event generation during synchronous clear/load and
+restores it and the VM listener in finally. All six complete workspace/scalar
+controls pass, including original unsafe-event reproduction and queued user edits.
+The unchanged actual browser journey still needs the next hosted verdict.
+Numeric authoring was skipped because build failed; it has no passing result.
+
+The full conversion journey now has twelve passing focused controls and an
+independent saved-result review. See [the CLI and remaining acceptance](ARCADE-CONVERSION-JOURNEY.md).
+Current main has been normally composed, preserving its per-file lane migration
+and all Arcade claim text. Nine complete lane/TODO-accounting controls pass.
+Fresh combined hosted results remain required before merging the delivery PR.
+Historical 36 partials remain unchanged; the lesson-corpus check is separate.
+
+
 ## Current complete CI failure census — 2026-10-21
 
 All four unit shards have now finished at `340f9eb0e`: 246 ordinary failing

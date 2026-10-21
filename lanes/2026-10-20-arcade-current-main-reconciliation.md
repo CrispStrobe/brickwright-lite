@@ -81,3 +81,14 @@ actual representative cost evidence and complete unchanged-budget qualification
 are required before selection; no speed or fit is established by SOURCE review.
 
 
+
+### Complete conversion-journey candidate — 2026-10-21
+
+The opt-in CLI now performs three actual VM runs around Code return, current
+export and fresh exact-file import. Complete core/journey twelve controls pass,
+with saved-result review of current animation/ordinary artwork and cleanup.
+The legacy Blockly projection repair passes all six workspace/scalar controls.
+Current main and the per-file claim migration are composed; complete nine
+lane/TODO controls pass. These remain source/finite-runtime results pending
+fresh combined hosted and visible authoring qualification. Historical 36 partials
+and incomplete current census outcomes remain unchanged.
