@@ -1,6 +1,6 @@
 ## Current D7 x86 GUI supplier-consumer source maintenance — 2026-10-21
 
-CLAIM ONLY / IMPLEMENTATION AND QUALIFICATION PENDING — Arcade integration owner,
+SOURCE CANDIDATE / QUALIFICATION AND ACTUAL GUI/GUEST PENDING — Arcade integration owner,
 with explicit operator authorization to take over the remaining x86 GUI
 supplier-consumer work. Base: `ecdd6c1ad5433b62fc6ce20cd2760e4bea6170c6`.
 Preserve the earlier lane and its source-qualified, actual-pending records.
@@ -55,3 +55,14 @@ activation, repeated event, acquisition or guest run by itself.
 Mark this candidate source-qualified and guest-pending separately. Affected
 clean GUI/guest qualification remains mandatory for landing; this claim does
 not waive that requirement. No physical timing, full-OS or release claim.
+
+### Source candidate status — 2026-10-21
+
+Merged claim authorizes the two fixed D7 identity substitutions only. The
+controller and current-source reader now select the same D7 commit; both
+`ACTUAL_ENABLED` values remain false and all other script bytes are unchanged.
+The GUI guide has an additive current-source status paragraph. No dependency
+pin, test, workflow, resource limit, event or original has changed. The complete
+unchanged source-control module and final exact-head checks have not run for this
+candidate. Historical failures/readers remain retained; fresh affected clean
+GUI/guest qualification and its external admission are still pending.

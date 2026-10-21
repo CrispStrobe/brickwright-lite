@@ -311,6 +311,17 @@ full-OS, broad DOSBox, physical-timing, RTx or release claim.
 
 ## Next finite GUI composition and hosted acceptance
 
+Current D7 supplier-consumer maintenance is a SOURCE candidate: the fixed SB3
+selection in `scripts/run-i80386-hdd-gui-actual.py` and
+`scripts/read-i80386-hdd-gui-originals.py` is
+`d7c258910dd3837021a7a8c4b85d38a4e28e138a`. Both actual gates remain disabled;
+all other script bytes, dependency declarations and historical readers stay held.
+The complete unchanged source-control module and exact-head checks are pending.
+Fresh affected GUI/guest qualification still needs its own admitted D7 source,
+installed supplier/browser and tool graph, finite resources, external request and
+event, and independent original reader. No earlier source result or consumed
+event qualifies this candidate; no guest attempt is authorized here.
+
 A separate source-only exact-entry chain slice is being reviewed on top of
 PR1013's `79afc8bc` checkpoint. It adds `font-chain-guard` and `font-chain`
 controller modes plus independent `--font-chain` observation validation, all
