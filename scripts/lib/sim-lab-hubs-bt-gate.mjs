@@ -34,6 +34,15 @@ const openModel = async (page, file) => {
     await page.getByTestId('bw-sim-lab-model').selectOption(file);
     await page.waitForFunction(f => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === f &&
         window.__bwSimLab._pane.session, file, {timeout: 60000});
+    // Example selection also replaces the Scratch project asynchronously.
+    // Wait for that project before constructing or inspecting its blocks.
+    await page.waitForFunction(file => {
+        const pane = window.__bwSimLab._pane;
+        const target = pane.props.vm.editingTarget;
+        const opcode = file === 'nxt-bumper-bot.ldr' ? 'legonxt_motorRunDegrees' : 'ev3comprehensive_motorRun';
+        return !pane.state.programLoading && target &&
+            Object.values(target.blocks._blocks).some(b => b.opcode === opcode);
+    }, file, {timeout: 60000});
 };
 
 /** Read-only instrument: per advance, the brick's motors, its first input, the robot's x. */

@@ -227,14 +227,15 @@ const partDragKeepsCamera = async page => {
 
 const partsOf = page => page.evaluate(() => window.__bwSimLab.editor.model.parts.length);
 const selectedOf = page => page.evaluate(() => window.__bwSimLab.editView.selection.length);
-const pressedOf = async (page, id) => {
+export const toolAttribute = async (page, id, attribute) => {
     const button=page.getByTestId(`bw-sim-lab-${id}`);
     const inMore=!(await button.isVisible());
     if(inMore) await page.getByTestId('bw-sim-lab-more').click();
-    const pressed=await button.getAttribute('aria-pressed');
+    const pressed=await button.getAttribute(attribute);
     if(inMore) await page.getByTestId('bw-sim-lab-more').click();
     return pressed;
 };
+const pressedOf = (page,id) => toolAttribute(page,id,'aria-pressed');
 
 /** Build: every action by a click, and the shortcuts by key, each with its effect. */
 const buildActions = async page => {
@@ -364,9 +365,9 @@ const buildActions = async page => {
     await page.waitForFunction(was => Boolean(document.querySelector('[data-testid="bw-sim-lab-properties-panel"]')) === was, props, {timeout: 5000});
     // The overlay switches.
     for (const sw of ['show-ports', 'show-motion']) {
-        const was = await page.getByTestId(`bw-sim-lab-${sw}`).getAttribute('aria-checked');
+        const was = await toolAttribute(page, sw, 'aria-checked');
         await tool(page, sw);
-        assert.notEqual(await page.getByTestId(`bw-sim-lab-${sw}`).getAttribute('aria-checked'), was, `${sw} switches`);
+        assert.notEqual(await toolAttribute(page, sw, 'aria-checked'), was, `${sw} switches`);
         await tool(page, sw);
     }
     // The grid step.
@@ -412,10 +413,13 @@ export const toolbarInteractions = async (page, {shotsDir, labels, full = true})
         assert.equal(c.label, name, `Simulate: ${id} is called "${name}"`);
     }
     // The File menu offers Open and the three Save formats.
-    await page.getByTestId('bw-sim-lab-file-menu').click();
+    const fileMenu=page.getByTestId('bw-sim-lab-file-menu');
+    if(await fileMenu.isVisible()) await fileMenu.click();
+    else await page.getByTestId('bw-sim-lab-more').click();
     for (const id of ['open', 'save-ldr', 'save-mpd', 'save-io']) await page.getByTestId(`bw-sim-lab-${id}`).waitFor();
     await page.keyboard.press('Escape');
     await page.getByTestId('bw-sim-lab-file-list').waitFor({state: 'detached', timeout: 5000});
+    await page.getByTestId('bw-sim-lab-more-menu').waitFor({state: 'detached', timeout: 5000});
     await page.screenshot({path: resolve(shotsDir, 'robot-lab-tab-simulate.png')});
     if (full) result.simulateCamera = await cameraInteractions(page, {build: false});
 
