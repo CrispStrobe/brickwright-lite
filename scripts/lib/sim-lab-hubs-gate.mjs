@@ -34,7 +34,10 @@ const prepare = async (page, {file, extension, mat = null}) => {
     if (mat) {
         await page.waitForFunction(m => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === m, mat, {timeout: 60000});
     }
-    const loaded = await page.evaluate(id => window.__bwSimLab._pane.hubExtension() === id, extension);
+    // The status may still read the previous model's "Blocks loaded." while this example compiles: wait for the
+    // blocks themselves.
+    const loaded = await page.waitForFunction(id => window.__bwSimLab._pane.hubExtension() === id, extension, {timeout: 60000})
+        .then(() => true, () => false);
     assert.ok(loaded, `the example's words became ${extension} blocks`);
     // Read-only instrument: the hub's ports and the hub body's floor position after every advance.
     await page.evaluate(() => {

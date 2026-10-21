@@ -237,10 +237,11 @@ export const createRobotLabApi = (host) => {
             const name = hub && hub.profile && hub.profile.name ? hub.profile.name[lang()] || hub.profile.name.en : '?';
             return refuse('hub-program', {port: motor.port, hub: name});
         }
+        // A motor told to turn makes the world run, as holding the drive pad's arrow does: first, so that
+        // starting the world (the hub's simulation switched on) does not drop the command it was started for.
+        if (host.ensureRunning && command.stop === undefined) host.ensureRunning();
         const result = hub.directCommand(motor.port, command);
         if (!result.ok) return result.code === 'bad-command' ? refuse('bad-command', {why: result.message}) : result;
-        // A motor told to turn makes the world run, as holding the drive pad's arrow does.
-        if (host.ensureRunning) host.ensureRunning();
         if (result.done) return {ok: true, done: Promise.race([result.done, untilGone().then(() => 'interrupted')])};
         return {ok: true};
     };

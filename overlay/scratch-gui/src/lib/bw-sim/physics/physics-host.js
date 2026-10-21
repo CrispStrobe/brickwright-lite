@@ -8,8 +8,9 @@
 //
 // The Sim Lab's messages (ROADMAP §4.9; the protocol is ../sim-worker-protocol.js,
 // generic over hubs per docs/ROBOT-LAB-ARCHITECTURE.md §6.5):
-//   sim-load  {mechanism, hubs: [{id, profile, body}], stepMs} -> sim-loaded {t, bodies, joints, readings}
-//   sim-batch {scene, steps | ticks, hubs: {id: state}, redo}  -> sim-frames {frames, t, bodies, joints, workMs}
+//   sim-load  {mechanism, hubs: [{id, profile, body}], stepMs} -> sim-loaded {t, bodies, joints, air, readings}
+//   sim-batch {scene, steps | ticks, hubs: {id: state}, redo}  -> sim-frames {frames, t, bodies, joints, air, workMs}
+//   (air: each air network's pressure, physics/air.js)
 //   sim-dispose {scene}                    -> disposed
 // (a batch and a dispose name their scene: the id of the sim-load that made it)
 // They need {createSimRunner} as well, injected: this module carries hub states and
@@ -132,8 +133,8 @@ export const createPhysicsHost = ({ loadJolt, createPhysicsCore, createSimRunner
                         const jolt = await ensureJolt();
                         sim = createSimRunner({ J: jolt, createPhysicsCore, mechanism, hubs: hubs || [], stepMs });
                         simScene = id;
-                        const { t, bodies, joints } = sim.poses();
-                        post({ type: 'sim-loaded', id, t, bodies, joints, readings: sim.readings() }, [bodies.buffer, joints.buffer]);
+                        const { t, bodies, joints, air } = sim.poses();
+                        post({ type: 'sim-loaded', id, t, bodies, joints, air, readings: sim.readings() }, [bodies.buffer, joints.buffer]);
                     } catch (err) {
                         post({ type: 'error', id, message: err.message ?? String(err) });
                     }
@@ -151,8 +152,8 @@ export const createPhysicsHost = ({ loadJolt, createPhysicsCore, createSimRunner
                     }
                     try {
                         const start = now();
-                        const { frames, t, bodies, joints } = sim.run(msg);
-                        post({ type: 'sim-frames', id, frames, t, bodies, joints, workMs: now() - start }, [bodies.buffer, joints.buffer]);
+                        const { frames, t, bodies, joints, air } = sim.run(msg);
+                        post({ type: 'sim-frames', id, frames, t, bodies, joints, air, workMs: now() - start }, [bodies.buffer, joints.buffer]);
                     } catch (err) {
                         post({ type: 'error', id, message: err.message ?? String(err) });
                     }

@@ -213,6 +213,14 @@ const SimLabProperties = ({T, lib, editor, view, selectionIds, palette, colourNa
                         <button type="button" style={small} data-testid="bw-sim-lab-prop-rope-off"
                             onClick={run(() => view?.removeRopesOfSelection())}>{T.ropeOff}</button>
                     )}
+                    {parts.length === 2 && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hose" title={T.hoseConnectHelp}
+                            onClick={run(() => view?.hoseSelection())}>{T.hoseConnect}</button>
+                    )}
+                    {(editor.model.hoses || []).some(h => parts.some(p => p.id === h.a.part || p.id === h.b.part)) && (
+                        <button type="button" style={small} data-testid="bw-sim-lab-prop-hose-off"
+                            onClick={run(() => view?.removeHosesOfSelection())}>{T.hoseOff}</button>
+                    )}
                     {(editor.model.belts || []).some(b => b.around.some(id => parts.some(p => p.id === id))) && (
                         <button type="button" style={small} data-testid="bw-sim-lab-prop-band-off"
                             onClick={run(() => view?.removeBeltsOfSelection())}>{T.bandOff}</button>

@@ -105,6 +105,31 @@ test('chain drive: the 24T sprocket turns the motor\'s way at 16:24, forward and
     }
 });
 
+test('pneumatic cylinder: motor A turns the valve\'s lever; the rod comes out its stroke and goes back, twice, on the tank\'s air', async t => {
+    const {modelText, program} = shipped('pneumatic-press.ldr');
+    const {track, issues, mechanism: m} = await runOnSimLab(program, {modelText, timeLimitMs: 13000});
+    assert.deepEqual(issues, [], 'a reference model without notes');
+    const air = m.couplings.filter(c => c.kind === 'pneumatic');
+    assert.equal(air.length, 1, 'one cylinder fed by the valve');
+    assert.equal(air[0].valveJoint, m.joints.find(j => j.motor && j.motor.port === 'A').id, 'motor A turns the valve\'s lever');
+    assert.ok(air[0].network && air[0].network.startKpa === 150, 'the valve takes its air from the tank, pumped up');
+    const rod = bodyOf(m, 'rod');
+    const frames = track.filter(f => f.bodies[rod]);
+    const y0 = frames[0].bodies[rod].position[1];
+    const mm = frames.map(f => (f.bodies[rod].position[1] - y0) * 1000);
+    // Strokes: the rod's turns between near the top and near the bottom.
+    let strokes = 0;
+    let at = 'in';
+    for (const v of mm) {
+        if (at === 'in' && v > 46) { strokes++; at = 'out'; } else if (at === 'out' && v < 2) at = 'in';
+    }
+    const pressures = frames.filter(f => f.air && f.air.length).map(f => f.air[0].kPa);
+    t.diagnostic(`${strokes} strokes up to ${Math.max(...mm).toFixed(1)} mm, ending ${mm.at(-1).toFixed(1)} mm; the tank ${pressures[0]?.toFixed(0)} → ${pressures.at(-1)?.toFixed(0)} kPa`);
+    assert.equal(strokes, 2, 'out and back twice');
+    assert.ok(Math.max(...mm) < 49 && Math.abs(mm.at(-1)) < 2, 'the full stroke, and back in at the end');
+    assert.ok(pressures.length && pressures[0] > 145 && pressures.at(-1) > 50 && pressures.at(-1) < 80, `four strokes take about half the tank's air: ${pressures[0]} → ${pressures.at(-1)}`);
+});
+
 test('drawing robot: its castor ball is a pen, and the program drives it round a 20 cm square', async t => {
     const {modelText, program} = shipped('drawing-robot.ldr');
     assert.match(modelText, /0 !BW ID ball\r?\n0 !BW PEN\r?\n/, 'the castor ball draws');

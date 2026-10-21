@@ -167,10 +167,12 @@ for (const [file, mat, port, kind] of [['wall-stopper.ldr', 'wall', null, 'dista
                 readings.add(JSON.stringify(p.hubThere.data.sensors[index]));
             }
             assert.equal(p.hubThere.data.sensors[index].kind, kind);
-            // At least three readings: the Colour explorer crosses white, the black zone and white, then leaves the
-            // mat (no colour). Until the motorised hinges got their own solver iterations (jolt-core.js
-            // MOTOR_VELOCITY_STEPS) its chassis rocked and the white reflection jittered 48–50, which made more.
-            assert.ok(readings.size >= 3, `the ${kind} reading changed as the robot drove: ${[...readings].slice(0, 5).join(' ')}`);
+            // The Colour explorer crosses white, the black zone and white, then leaves the mat onto the plain floor,
+            // which reads white too: two readings at least. (On the 2 m floor it once had, it then fell off the edge,
+            // a third "no colour"; the floor is 20 m now, mech/compile.js FLOOR_HALF_M. Until the motorised hinges got
+            // their own solver iterations, jolt-core.js MOTOR_VELOCITY_STEPS, the white reflection jittered 48–50.)
+            // The wall stopper's distance changes on every frame as it drives at the wall.
+            assert.ok(readings.size >= 2, `the ${kind} reading changed as the robot drove: ${[...readings].slice(0, 5).join(' ')}`);
         } finally { await p.close(); }
     });
 }

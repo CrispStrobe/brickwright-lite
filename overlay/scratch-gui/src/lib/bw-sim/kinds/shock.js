@@ -35,7 +35,8 @@ const innerEnds = (rod, bore) => {
     // the bore's inner (closed) end: the one further from the rod's outer end
     const rodOut = rodEnds[1];
     const boreIn = boreEnds.sort((p, q) => d(q, rodOut) - d(p, rodOut))[0];
-    return {rodIn, boreIn, inward: vecNormalize(vecSub(boreIn, rodIn))};
+    // In: from the rod's outer end towards the bore's inner end (never zero, even fully in).
+    return {rodIn, boreIn, inward: vecNormalize(vecSub(boreIn, rodOut))};
 };
 
 export const SHOCK = {

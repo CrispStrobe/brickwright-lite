@@ -116,6 +116,9 @@ const MESSAGES_PER_QUEUE = 5;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+/** The speed (°/s) a direct command's speedDps takes as power 100 (an NXT motor's regulated top speed). */
+const NXT_FULL_SCALE_DPS = 900;
+
 export class NxtVirtualHub {
     constructor ({id = 'hub', vm: vmOptions = {}} = {}) {
         this.id = id;
@@ -419,6 +422,40 @@ export class NxtVirtualHub {
     }
 
     motorPortIds () { return NXT_OUTPUTS.filter((p, i) => this.s.outputs[i].device); }
+
+    /**
+     * A motor command from the Robot Lab API (hubs/hub-profile.js directCommand): as a Bluetooth direct
+     * command does it on the brick, through SETOUTPUTSTATE (regulated speed, braking when off), so the port
+     * keeps one owner and a program running on the brick and the Lab take turns on it, the last one winning.
+     * {power} | {speedDps} | {degrees, power|speedDps} (a tacho-limited move, `done` when it ends) |
+     * {position, …} (degrees from where it is) | {stop: 'brake'|'coast'|'hold'}.
+     */
+    directCommand (port, c = {}) {
+        const i = NXT_OUTPUTS.indexOf(port);
+        if (i < 0 || !this.s.outputs[i].device) return {ok: false, code: 'no-motor', message: `no motor on output ${port}`};
+        const finite = v => typeof v === 'number' && Number.isFinite(v);
+        const on = MODE.MOTORON | MODE.BRAKE | MODE.REGULATED;
+        const set = (power, tachoLimit = 0) => this.setOutputState(i, {power, mode: on, regulation: REGULATION.MOTOR_SPEED,
+            turnRatio: 0, runState: RUN_STATE.RUNNING, tachoLimit});
+        if (c.stop !== undefined) {
+            if (!['brake', 'coast', 'hold'].includes(c.stop)) return {ok: false, code: 'bad-command', message: 'stop takes brake, coast, hold'};
+            if (c.stop === 'coast') {
+                this.setOutputState(i, {power: 0, mode: 0, regulation: REGULATION.IDLE, turnRatio: 0, runState: RUN_STATE.IDLE, tachoLimit: 0});
+            } else set(0);
+            return {ok: true};
+        }
+        let power = finite(c.power) ? c.power : finite(c.speedDps) ? c.speedDps / NXT_FULL_SCALE_DPS * 100 : null;
+        const degrees = finite(c.degrees) ? c.degrees : finite(c.position) ? c.position - this.s.outputs[i].angleDeg : null;
+        if (power === null && degrees !== null) power = 75;
+        if (power === null) return {ok: false, code: 'bad-command', message: 'the NXT takes power, speedDps, degrees, position or stop'};
+        power = Math.max(-100, Math.min(100, Math.round(power)));
+        if (degrees === null) { set(power); return {ok: true}; }
+        if (Math.round(Math.abs(degrees)) === 0) return {ok: true, done: Promise.resolve('done')};
+        set(Math.sign(degrees) * Math.abs(power), Math.round(Math.abs(degrees)));
+        return {ok: true, done: new Promise(resolve => {
+            const off = this.onChange(() => { if (this.s.outputs[i].runState === RUN_STATE.IDLE) { off(); resolve('done'); } });
+        })};
+    }
 
     // ---- the BRICK: what the telegrams call (nxt-direct-commands.js) ------------------------------
 
