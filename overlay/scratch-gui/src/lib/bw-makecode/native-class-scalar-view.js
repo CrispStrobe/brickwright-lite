@@ -1,3 +1,4 @@
+import {nativeSdkSpriteSource} from './native-sdk-sprite-source.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {prepareObjectClassStructure} from './object-class-source-structure.js';
 import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
@@ -65,6 +66,16 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         for(const [name,value]of Object.entries(node))if(!metadata.has(name))scan(value,node);
     };
     scan(program);
+    const sdk=nativeSdkSpriteSource(program,lexical,nodes,parents),sdkParents=new Map();
+    const sdkParent=name=>{
+        const descriptor=sdk.base(name);if(!descriptor)return null;
+        if(!sdkParents.has(descriptor)){
+            const member={field:key(),get:null,set:null,method:null,declared:true,sdkSlot:'x'};
+            const row={node:descriptor,sdk:true,instance:{kind:'instance'},members:new Map([['x',member]]),parent:null};
+            row.instance.row=row;row.lineage=[row];row.ownMembers=row.members;sdkParents.set(descriptor,row);
+        }
+        return sdkParents.get(descriptor);
+    };
     const containsThis=node=>node&&typeof node==='object'&&(node.type==='Identifier'&&node.name==='this'||Object.entries(node).some(([name,value])=>!metadata.has(name)&&(Array.isArray(value)?value.some(containsThis):containsThis(value))));
     const complete=body=>(body||[]).some(node=>node.type==='Return'||node.type==='ThrowStatement'||node.type==='Block'&&complete(node.body)||node.type==='If'&&complete(node.consequent)&&complete(node.alternate));
     for(const node of nodes)if(node.type==='Class'){
@@ -107,14 +118,16 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(seen.has(row)){mark(row);return null;}seen.add(row);
         const name=row.node.base;
         if(name){
-            const binding=lexical.global.names.get(name),parent=classForBinding.get(binding);
-            if(!parent||binding.written||parent===row||program.body.indexOf(parent.node)>=program.body.indexOf(row.node)){
+            const binding=lexical.global.names.get(name),parent=classForBinding.get(binding)||(!binding&&sdkParent(name));
+            if(!parent||binding?.written||parent===row||!parent.sdk&&program.body.indexOf(parent.node)>=program.body.indexOf(row.node)){
                 mark(row);return null;
             }
             row.parent=parent;
-            const chain=resolveLineage(parent,seen);if(!chain){mark(row);return null;}
+            const chain=parent.sdk?parent.lineage:resolveLineage(parent,seen);if(!chain){mark(row);return null;}
             row.lineage=[row,...chain];
         }else row.lineage=[row];
+        if(row.lineage.some(base=>base.sdk)&&row.lineage.some(base=>!base.sdk&&(base.ownMembers.has('x')||
+            (base.node.methods||[]).some(method=>['setImage','setKind','update','draw','__draw','setHitbox','setDimensions'].includes(method.name)))))mark(row);
         row.members=new Map();
         for(const owner of [...row.lineage].reverse())for(const [name,own]of owner.ownMembers){
             const inherited=row.members.get(name);
@@ -210,6 +223,9 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(!rows.has(row))rows.set(row,{kind:'boundFunction',fn,row});
         return rows.get(row);
     };
+    const cloneMethods=new WeakMap(),sdkClone=image=>{
+        if(!cloneMethods.has(image))cloneMethods.set(image,{kind:'sdkClone',image});return cloneMethods.get(image);
+    };
     const activeMethod=node=>lexical.scopes.get(node)?.functionOwner;
     const superOwner=node=>methodForScope.get(activeMethod(node))?.row?.parent;
     const memberRead=(node,result)=>{
@@ -224,6 +240,11 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                 if(node.name==='push'&&parent?.type==='Call'&&parent.callee===node&&!parent.isNew){add(result,type.push);continue;}
                 poison(receiver);poisonAll();add(result,unknown);continue;
             }
+            if(type?.kind==='sdkImage'){
+                const parent=parents.get(node);
+                if(node.name==='clone'&&parent?.type==='Call'&&parent.callee===node&&!parent.isNew)add(result,sdkClone(type));
+                else {poisonAll();add(result,unknown);}continue;
+            }
             if(type?.kind!=='instance'){poisonAll();add(result,unknown);continue;}
             const row=type.row,lookup=node.object?.type==='Identifier'&&node.object.name==='super'?superOwner(node):row,member=lookup?.members.get(node.name);
             if(unsafe.has(row)||!member||dangerous.has(node.name)||node.object?.name==='super'&&(member.get||member.set)){add(result,unknown);continue;}
@@ -231,6 +252,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                 const parent=parents.get(node);
                 if(parent?.type!=='Call'||parent.callee!==node){mark(row);add(result,unknown);}else add(result,bound(fnFor(member.method),row));
             }else if(member.get)call(fnFor(member.get),[],result,row);
+            else if(member.sdkSlot)add(result,'Number');
             else if(member.declared)copy(row.members.get(node.name).field,result);
             else add(result,'Undefined');
         }
@@ -244,6 +266,9 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             const row=type.row,isSuper=node.object?.type==='Identifier'&&node.object.name==='super',lookup=isSuper?superOwner(node):row;
             const selected=lookup?.members.get(node.name),member=row.members.get(node.name);
             if(!selected||!member||selected.method||dangerous.has(node.name)||isSuper&&(selected.get||selected.set)){mark(row);poison(value);continue;}
+            if(member.sdkSlot){
+                const inputs=get(value);if(inputs.size&&[...inputs].some(type=>!primitive.has(type))){mark(row);poisonAll();}continue;
+            }
             if(member.set)call(fnFor(member.set),[value],discard(node),row);
             else if(member.declared){
                 copy(value,member.field);
@@ -253,7 +278,41 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             }else {mark(row);poison(value);}
         }
     };
+    const sdkConstructions=new Map(),allocationInputs=new Map(),sourceCallInputs=new Map();
+    const sdkRows=()=>[...classes.values()].filter(row=>row.lineage?.some(base=>base.sdk));
+    const actualSdkInputsClosed=(args,row)=>{
+        const constructor=row.lineage.find(base=>base.node.ctor)?.node.ctor;
+        if((constructor?.params||[]).some((name,index)=>!args[index]&&
+            !constructor.parameterDefaults?.some(parameter=>parameter.name===name)))return false;
+        return args.every(arg=>{
+            const types=get(arg);
+            return types.size&&[...types].every(type=>!['Opaque','Null','Undefined'].includes(type));
+        });
+    };
+    const closedSdkConstruction=({owner,args})=>{
+        const image=args[0]&&get(args[0]),kind=args[1]&&get(args[1]);
+        return image?.size&&[...image].some(type=>type?.kind==='sdkImage')&&
+            [...image].every(type=>type==='Null'||type==='Undefined'||type?.kind==='sdkImage')&&
+            (owner.node.name==='Sprite'||kind?.size&&[...kind].every(type=>type==='Number'))&&
+            args.length<=(owner.node.name==='Sprite'?1:2);
+    };
     const construct=(owner,args,receiver,result)=>{
+        if(owner.sdk){
+            // Record every actual allocation/super edge, including edges whose
+            // inputs are still empty during this monotone pass. Empty is not
+            // Image/kind authority. Resolve these obligations only after the
+            // ordinary value propagation has reached its fixed point.
+            if(!sdkConstructions.has(result))sdkConstructions.set(result,new Map());
+            sdkConstructions.get(result).set(receiver,{owner,args,receiver});
+            const image=args[0]&&get(args[0]),kind=args[1]&&get(args[1]);
+            if(!image?.size||owner.node.name==='__bwSDK_ExtendableSprite'&&!kind?.size)return;
+            if([...image].some(type=>type!=='Null'&&type!=='Undefined'&&type?.kind!=='sdkImage')||
+                ![...image].some(type=>type?.kind==='sdkImage')||
+                owner.node.name==='__bwSDK_ExtendableSprite'&&[...kind].some(type=>type!=='Number')||args.length>(owner.node.name==='Sprite'?1:2)){
+                mark(receiver);add(result,unknown);return;
+            }
+            add(result,'Undefined');return;
+        }
         if(unsafe.has(owner)||!owner.lineage){mark(receiver);add(result,unknown);return;}
         // Every actual inherited writer remains in the census, including an
         // uncalled method. Its this is the concrete possible receiver, never
@@ -284,6 +343,10 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                 if(parent?.type!=='Call'||parent.callee!==node||!parent.isNew)mark(classForBinding.get(binding));
             }
             return out;
+        }
+        if(node.type==='Template'){
+            const image=sdk.literal(node,lexical.scopes.get(node));
+            if(image)add(out,image);else {add(out,unknown);poisonAll();}return out;
         }
         if(node.type==='Class'){
             for(const row of classes.values())if(row.lineage?.some(base=>unsafe.has(base)))mark(row);
@@ -349,7 +412,17 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             if([...indices].some(type=>type!=='Number')){poison(receiver);poisonAll();add(out,unknown);return out;}
             for(const type of get(receiver)){
                 if(type==='Null'||type==='Undefined')continue;
+                if(type==='sdkRegistryCollection'){
+                    for(const row of classes.values())if(row.lineage?.some(base=>base.sdk))add(out,row.instance);
+                    add(out,'Undefined');continue;
+                }
                 if(type?.kind!=='aggregate'||type.unsafe){poison(receiver);poisonAll();add(out,unknown);continue;}
+                // Image construction additionally requires an exact actual
+                // in-bounds literal-frame index. Number is not a bounds proof.
+                if([...get(type.elements)].some(value=>value?.kind==='sdkImage')){
+                    const index=sdk.index(node.index);
+                    if(!Number.isSafeInteger(index)||index<0||index>=type.node.items.length){add(out,unknown);poisonAll();continue;}
+                }
                 // Numeric indices can select any actual element or miss. No
                 // named/prototype property or input conversion is inferred.
                 copy(type.elements,out);add(out,'Undefined');
@@ -357,6 +430,8 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             return out;
         }
         if(node.type==='Member'){
+            const role=sdk.role(node);
+            if(role){add(out,role==='kind'?'Number':role==='round'?'sdkRound':'sdkRegistry');return out;}
             evaluate(node.object);memberRead(node,out);return out;
         }
         if(node.type==='Call'){
@@ -373,11 +448,26 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             if(!types.size)return out;
             for(const type of types){
                 if(node.isNew&&type?.kind==='class'){
-                    const row=type.row;if(unsafe.has(row)){add(out,unknown);continue;}
+                    const row=type.row;
+                    // Keep the actual allocation's inputs before call() joins
+                    // constructor formals from other allocation sites.
+                    if(!allocationInputs.has(node))allocationInputs.set(node,new Map());
+                    allocationInputs.get(node).set(row,args);
+                    if(unsafe.has(row)){add(out,unknown);continue;}
                     add(out,row.instance);construct(row,args,row,discard(node));
-                }else if(!node.isNew&&type?.kind==='function')call(type,args,out);
-                else if(!node.isNew&&type?.kind==='boundFunction')call(type.fn,args,out,type.row);
-                else if(!node.isNew&&type?.kind==='aggregatePush'){
+                }else if(!node.isNew&&type==='sdkRound'){
+                    if(args.length===1){const input=get(args[0]);if(input.size){if([...input].every(value=>primitive.has(value)))add(out,'Number');else {add(out,unknown);poisonAll();}}}
+                    else {add(out,unknown);poisonAll();}
+                }else if(!node.isNew&&type==='sdkRegistry'){
+                    if(args.length===1&&get(args[0]).size&&[...get(args[0])].every(value=>value==='Number'))add(out,'sdkRegistryCollection');
+                    else if(args.length!==1||get(args[0])?.size){add(out,unknown);poisonAll();}
+                }else if(!node.isNew&&type?.kind==='sdkClone'){
+                    const image=sdk.clone(node,[type.image]);if(image)add(out,image);else {add(out,unknown);poisonAll();}
+                }else if(!node.isNew&&type?.kind==='function'){
+                    sourceCallInputs.set(node,args);call(type,args,out);
+                }else if(!node.isNew&&type?.kind==='boundFunction'){
+                    sourceCallInputs.set(node,args);call(type.fn,args,out,type.row);
+                }else if(!node.isNew&&type?.kind==='aggregatePush'){
                     const row=type.row;
                     if(row.unsafe){add(out,unknown);poison(row.elements);continue;}
                     for(const arg of args){copy(arg,row.elements);if([...get(arg)].some(value=>value?.kind==='function'||value?.kind==='boundFunction'||value?.kind==='aggregatePush'))poisonAll();}
@@ -444,8 +534,29 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     };
     // Finite monotone domains: five primitives, Opaque, actual class/function
     // identities and actual Array allocation identities. No iteration count guess or annotation seeds are used.
-    do{changed=false;evaluate(program);}while(changed);
-    if(!guard.isCurrent())return {program,current:guard.isCurrent};
+    do{
+        do{changed=false;evaluate(program);}while(changed);
+        // A pending edge may never receive an input (unbound source, omitted
+        // argument or uncalled forwarding path). Revoke the concrete receiver
+        // after convergence, then propagate that refusal through every actual
+        // getter/method/alias/writer before publishing any normal-result view.
+        for(const entries of sdkConstructions.values())for(const entry of entries.values())
+            if(!closedSdkConstruction(entry))mark(entry.receiver);
+        const selectedSdkRows=sdkRows();
+        for(const entries of allocationInputs.values())for(const [row,args]of entries){
+            if(row.lineage?.some(base=>base.sdk)&&!actualSdkInputsClosed(args,row))mark(row);
+            // A dormant ordinary constructor/call can forward an empty input
+            // into a shared field/formal already populated by a valid site.
+            // This initial closed-world SDK slice conservatively declines its
+            // additional facts rather than treating that missing edge as a
+            // proved value. Ordinary B1 rows acquire no new refusal or grant.
+            if(args.some(arg=>!get(arg).size))for(const sdkRow of selectedSdkRows)mark(sdkRow);
+        }
+        for(const args of sourceCallInputs.values())if(args.some(arg=>!get(arg).size))
+            for(const row of selectedSdkRows)mark(row);
+    }while(changed);
+    const current=()=>guard.isCurrent()&&sdk.current();
+    if(!current())return {program,current};
     const selected=new Map();
     for(const node of nodes)if(node.type==='Member'){
         const parent=parents.get(node);
@@ -467,7 +578,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                 bound.row.members.get(node.callee.name)?.method!==bound.fn.node))continue;
         selected.set(node,[...types]);
     }
-    if(!selected.size)return {program,current:guard.isCurrent};
+    if(!selected.size)return {program,current};
     const literal=type=>({type,...(type==='Number'?{value:'0'}:type==='String'?{value:'""'}:type==='Boolean'?{value:'false'}:{})});
     const alternatives=types=>types.length===1?literal(types[0]):{type:'Conditional',test:{type:'Boolean',value:'false'},consequent:literal(types[0]),alternate:alternatives(types.slice(1))};
     const rewrite=node=>{
@@ -480,5 +591,5 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         }
         return Object.fromEntries(Object.entries(node).map(([name,value])=>[name,metadata.has(name)?value:rewrite(value)]));
     };
-    return {program:rewrite(program),current:guard.isCurrent};
+    return {program:rewrite(program),current};
 }
