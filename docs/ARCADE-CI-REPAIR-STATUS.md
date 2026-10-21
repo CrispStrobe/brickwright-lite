@@ -20,8 +20,12 @@ Further work is scoped as follows:
 
 1. **Class values:** preserve refusal of edited procedure symbols, clone parser
    metadata at its producer, and derive accessor/field values from actual source
-   constructors and writers. The current 15-test candidate passes 14; its valid
-   accessor export still refuses opaque member results. Do not accept annotations
+   constructors and writers. The latest seven-module candidate passes 16 of 19 tests; its valid
+   accessor export still refuses opaque member results. The saved diagnostic
+   identifies an obsolete initializer flowing through a definitely overwritten
+   temporary into an instance alias. A separate aggregate-escape refusal also
+   needs repair. Use actual occurrence and lexical identities to close these
+   cases; retain branch, callback and unknown-writer refusals. Do not accept annotations
    as evidence or relax its positive assertion.
 2. **Source Number results:** the composed candidate now passes all twelve
    complete native controls, without skips or TODOs. Actual Number parameters,
@@ -45,10 +49,19 @@ Further work is scoped as follows:
    has merged after all four enabled checks passed; implementation and actual
    browser qualification follow. Rotation, legacy layout and animation failures
    need their own observed closure.
-5. **Measurements:** adopt the canonical circuit repair explicitly, remeasure
-   actual quantities and then update provenance. Qualify ARM guest execution
-   through hosted checks. No stale pin restoration or provenance-only restamp.
-6. **Application census:** after these repairs pass the composed gates, complete
+5. **Measurements:** Supplier [#159](https://github.com/CrispStrobe/sb3-creator/pull/159)
+   now explicitly adopts the canonical circuit repair and includes the freshly
+   measured provenance updates. The complete ten-test measurement run passed
+   nine tests and failed only the stale provenance test. Independent comparison
+   found all measured counts unchanged; the 31 replacements change revision
+   strings only. The consolidated successor requires hosted checks, including
+   actual ARM execution. No stale pin restoration or unmeasured restamp.
+6. **Initial payload:** the original browser build contains 4,486,993 initial
+   JavaScript bytes, exceeding the existing limit by 10,641. Its ownership
+   report failed before runtime performance measurements. Identify a genuine
+   optional dependency boundary and preserve APIs, error handling and all size
+   and performance limits; qualify the emitted build and affected user journey.
+7. **Application census:** after these repairs pass the composed gates, complete
    one ordered corpus run with import, execution and export/reimport diagnostics.
    The historical result remains 147 translated, 36 partial and one malformed;
    incomplete newer runs provide no replacement completion count.
@@ -90,8 +103,9 @@ The circuit fixed-point repair in
 [Circuit UI #101](https://github.com/CrispStrobe/bw-circuit-ui/pull/101)
 has merged at `f65e6cc0027397dea42528db9225a135b1c8e8c5` after all three enabled
 checks passed. Its 42 affected tests pass, while the exact original loader fails
-six of the same controls. Explicit supplier adoption and new quantity
-measurements remain pending. Do not restamp provenance in place of those results.
+six of the same controls. The successor supplier explicitly adopts this merge and includes independently
+checked fresh quantity provenance. Its final hosted execution and build checks
+remain pending. Do not substitute provenance stamps for those results.
 
 ## Supplier adoption guard follow-up — 2026-10-20
 
@@ -511,3 +525,13 @@ vocabulary and tracked mirrors follow that exact selection. Both the supplier's
 remaining hosted qualification/normal merge and the consumer's complete final-head
 qualification are required before merging the consumer. This is a reviewed
 candidate adoption, not a completed release or a supplier-check waiver.
+
+## Current-main integration
+
+The integration successor includes the latest main through the compatibility
+initialization claim. It preserves the independently merged procedure argument
+flow, nullable formal typing, animation facts and console constraint fixes.
+Earlier native qualification does not qualify this new composition; rerun the
+affected complete controls on the final source and use every enabled final-head
+hosted check before merging. No new full-CI request or unchanged-job retry is
+needed merely to inspect existing failures.
