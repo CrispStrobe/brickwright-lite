@@ -40,7 +40,8 @@ source identity maintenance establishes no unchanged-behavior or guest result.
 ### Acceptance and completion
 
 Run the complete unchanged `test/i80386-hdd-gui-actual.test.mjs` module (67
-source controls), existing pin-move/source-policy checks and every enabled
+source controls in the earlier scope note; current discovery is 12 Node groups
+plus 138 embedded Python controls), existing pin-move/source-policy checks and every enabled
 exact-head check for the composed candidate. Preserve original failures and
 all assertions. Source controls alone do not qualify the affected GUI or guest.
 
