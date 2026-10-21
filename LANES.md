@@ -37,8 +37,8 @@ saved-result checks. Final composed hosted and visible authoring qualification
 remain required; this does not establish complete games or corpus completion.
 ## Optional micro:bit update loading and unchanged P17 budget — 2026-10-21
 
-CLAIM CANDIDATE — Codex GUI integration. Merge this docs-only claim before
-implementation. The existing optional Scratch micro:bit update path statically
+CLAIM MERGED in #1154 / SOURCE CANDIDATE — Codex GUI integration.
+Qualification is pending. The existing optional Scratch micro:bit update path statically
 imports DAP and universal-HEX libraries. Review a selected-device loading boundary
 without changing the update API or treating source-attributed bytes as emitted
 savings. Existing CSV/GIF upload ownership does not cover this device-update path.
@@ -79,6 +79,29 @@ hosted production build, boot guards and emitted webpack ownership report.
 Source import changes or attributed package sizes alone do not establish P17
 fit or faster startup. No baseline, threshold, workflow, dependency pin, VM guard,
 renderer, generic upload or unrelated device change is in scope.
+
+SOURCE candidate: the lightweight support and chooser shell remains eager;
+the unchanged genuine update implementation is acquired after device selection.
+No failed module promise is cached by the shell. Each call keeps its selected
+device and progress callback. A modal-owned intent retires on close, disposal,
+replacement or extension change; chooser/chunk completion checks that intent
+before starting a transport. The update child forwards its own current predicate
+to the modal, so phase-driven child unmount also retires pending acquisition.
+Retired UI progress/results are not delivered.
+Once the real update has started, its original connect/flash/disconnect cleanup
+runs unchanged; this does not add an interruptible firmware-update protocol.
+
+The moved implementation body and existing dependency versions are unchanged.
+Selected exact DAP/universal-HEX ES sources have no identified global polyfill
+initialization; this static inspection is not emitted-code or browser evidence.
+Focused controls use explicitly mocked transports and genuine unchanged ES
+package APIs in the host process through a focused test loader requiring no
+custom Node flags. A distinct package-main UMD control exposed
+its bundled global polyfill writer and is retained as a failure; it is not the
+production module entry. All ten complete corrected controls pass, including the genuine ES API and
+prototype assertions. Emitted ES/browser initialization, actual chooser/modal
+journeys and unchanged hosted P17/boot qualification remain pending. No hardware
+or emitted-size result follows from this SOURCE candidate.
 
 ## Arcade PR #888 TODO tests, group I discarded map — 2026-10-20
 
