@@ -38,6 +38,13 @@
 // positionSettled hook), as a real motor's does; a blocked shaft is reported
 // stalled to the generator (its load input) and ends as 'stalled'.
 //
+// "Start motor at % power" (backend.startPower: SPIKE 3's
+// motor.set_duty_cycle, the 2.x hub module's pwm) is NOT a reference: the
+// duty goes to the DC model as it is, with no feedback and no stall
+// detection, so the motor slows under load and stalls at a hard stop (the
+// physics' end stops), as an unregulated motor does. The encoder still
+// reports the measured angle and speed.
+//
 // The ideal servo (drive: 'servo', the pre-D5 behaviour: the controller's
 // commanded °/s as a velocity target) stays as a test fixture.
 //
@@ -191,6 +198,19 @@ export class SpikeVirtualHub {
             const refDps = Number(m.degPerSec) || 0;
             m.position = st.measuredDeg;
             if (c.mode === 'stop') st.passive = c.action;
+            if (c.mode === 'power') {
+                // Open loop: the commanded duty, as it is. The reference follows the shaft, and
+                // the speed the hub reports is the measured one (no generator speed to report).
+                st.active = false;
+                st.integral = 0;
+                st.refDeg = st.measuredDeg;
+                m.degPerSec = Number(m.measuredDegPerSec) || 0;
+                this._setStalled(index, st, false);
+                st.passive = c.defaultStopAction;
+                st.duty = c.duty;
+                st.decay = 'brake';
+                continue;
+            }
             if (!ACTIVE.has(c.mode)) {
                 // Stopped: the H-bridge's passive state, no feedback.
                 st.active = false;

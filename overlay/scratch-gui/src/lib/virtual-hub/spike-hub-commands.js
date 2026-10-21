@@ -82,7 +82,12 @@ const UNHANDLED = Symbol('unhandled');
 
 const STATEMENTS = [
     // ---- one motor, SPIKE 2 style: hub.port.A.motor.<verb>(...) --------------
-    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:pwm|start_at_power|run_at_speed|start)\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
+    // pwm / start_at_power: a duty cycle, -100..100, unregulated (the hub module's
+    // `pwm(duty_cycle)`, SPIKE 2's `start_at_power`; the "start motor at % power" block).
+    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:pwm|start_at_power)\\(\\s*${NUM}\\s*\\)$`), (h, m) =>
+        h.motors.startPower(m[1], clampPercent(num(m[2])))],
+    // run_at_speed / start: a speed the hub regulates, percent of the motor's top speed.
+    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:run_at_speed|start)\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
         const value = num(m[2]);
         if (value === 0) { h.motors.stop(m[1], 'coast'); return; }
         h.motors.runAtSpeed(m[1], h.motors.percentToDps(m[1], clampPercent(value)));
@@ -104,6 +109,9 @@ const STATEMENTS = [
     [new RegExp(`^motor\\.run\\(\\s*port\\.${PORT}\\s*,\\s*${NUM}\\s*\\)$`), (h, m) =>
         h.motors.runAtSpeed(m[1], num(m[2]))],
     [new RegExp(`^motor\\.stop\\(\\s*port\\.${PORT}\\s*\\)$`), (h, m) => h.motors.stop(m[1])],
+    // motor.set_duty_cycle(port, pwm): -10000..10000, unregulated (SPIKE 3 Python).
+    [new RegExp(`^motor\\.set_duty_cycle\\(\\s*port\\.${PORT}\\s*,\\s*${NUM}\\s*\\)$`), (h, m) =>
+        h.motors.startPower(m[1], clampPercent(num(m[2]) / 100))],
     // ---- the movement pair, SPIKE 2 MotorPair style: motors.<verb>(...) -------
     [/^(?:\w+\s*=\s*)?MotorPair\(\s*['"]([A-F])['"]\s*,\s*['"]([A-F])['"]\s*\)$/, (h, m) => {
         h.movementPair = [m[1], m[2]];

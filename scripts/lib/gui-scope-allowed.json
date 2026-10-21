@@ -51,6 +51,7 @@
       "test/bw-sim-crane.test.mjs",
       "test/bw-sim-colour-explorer-program.test.mjs",
       "test/bw-sim-dc-motor.test.mjs",
+      "test/bw-sim-spike-power.test.mjs",
       "test/bw-sim-differential-car.test.mjs",
       "test/bw-sim-ev3-rbf-brick.test.mjs",
       "test/bw-sim-ev3-rbf-ev3comprehensive.test.mjs",

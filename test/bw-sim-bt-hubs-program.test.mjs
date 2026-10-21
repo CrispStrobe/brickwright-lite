@@ -227,4 +227,50 @@ if (!existsSync(missing)) {
         assert.ok(travelled > 0.2, `it drove at the wall (${travelled.toFixed(3)} m)`);
         assert.ok(cm > 2 && cm < 15, `stopped before the wall: ${cm} cm`);
     });
+
+    /**
+     * "start motor at % power" (CrispStrobe/extensions#60) on the two bricks: an unregulated duty, where every
+     * other motor block of these extensions asks for a speed the brick regulates. EV3: the DEVICE EV3 word, which
+     * is opOUTPUT_POWER + opOUTPUT_START (EV3 Firmware Developer Kit); NXT: the legonxt block, SETOUTPUTSTATE with
+     * MOTORON | BRAKE and regulation IDLE (BDK Appendix 2). Judged from the brick's own output state each frame:
+     * the port runs open (no regulation) at a duty of power/100, and the robot drives.
+     */
+    test('EV3 "start motor BC at 40 % power" and the NXT block at 40 % power drive the motors open loop, at that duty', async t => {
+        const ev3 = entry('ev3-wall-stopper.ldr');
+        const nxt = entry('nxt-bumper-bot.ldr');
+        const b = blocksBuilder();
+        const port = p => ['legonxt_menu_MOTOR_PORT', 'MOTOR_PORT', p];
+        b.stack(b.block('event_whenflagclicked', {top: true}),
+            ...['B', 'C'].map(p => b.block('legonxt_motorStartPower', {menus: {PORT: port(p)}, values: {POWER: 40}})),
+            b.block('control_wait', {values: {DURATION: {value: 2, op: 'math_positive_number'}}}));
+        const runs = [
+            ['EV3', {bw: 'DEVICE EV3\n\nWHEN flag clicked:\n  start motor BC at 40 % power\n  wait 2 seconds\n'},
+                {modelText: text(ev3.file), mat: null, profile: 'ev3', extensionId: 'ev3comprehensive'}],
+            ['NXT', {project: projectOfBlocks({extensions: ['legonxt'], blocks: b.blocks})},
+                {modelText: text(nxt.file), mat: null, profile: 'nxt', extensionId: 'legonxt'}]
+        ];
+        for (const [name, source, options] of runs) {
+            const seen = [];
+            const {track, connectError} = await runOnBtHub(source, {...options, timeLimitMs: 1500,
+                stopWhen: (point, all, hub) => {
+                    seen.push(['B', 'C'].map(p => {
+                        const o = hub.s.outputs['ABCD'.indexOf(p)];
+                        return {regulating: o.regulating, duty: o.duty};
+                    }));
+                    return false;
+                }});
+            assert.equal(connectError, null, `${name}: connected`);
+            const driven = seen.filter(ports => ports.every(o => o.duty !== 0));
+            const travelled = Math.hypot(track.at(-1).position[0] - track[0].position[0], track.at(-1).position[2] - track[0].position[2]);
+            t.diagnostic(`${name}: ${driven.length} of ${seen.length} frames driven, duties ${JSON.stringify(driven.at(-1))}; drove ${(travelled * 100).toFixed(1)} cm`);
+            assert.ok(driven.length > seen.length / 2, `${name}: the motors were driven`);
+            for (const ports of driven) {
+                for (const o of ports) {
+                    assert.equal(o.regulating, false, `${name}: no speed regulation`);
+                    assert.ok(Math.abs(Math.abs(o.duty) - 0.4) < 1e-9, `${name}: the duty is power/100 (${o.duty})`);
+                }
+            }
+            assert.ok(travelled > 0.05, `${name}: the robot drove (${travelled} m)`);
+        }
+    });
 }

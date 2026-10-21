@@ -24,7 +24,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import path from 'node:path';
-import {INTEGRATED} from './helpers/bw-integrated.mjs';
+import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
 
 const missing = path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'index.js');
 if (!existsSync(missing)) {
@@ -220,6 +220,32 @@ if (!existsSync(missing)) {
             }
         });
     }
+
+    // "start motor at % power" (CrispStrobe/extensions#60): LWP3 StartPower (§3.27.1, as WriteDirectModeData mode 0,
+    // §6.1), a duty with no speed regulation, against "set power" + "turn on", StartSpeed (§3.27.5), a speed the
+    // hub holds. The Technic large motor on the bench turns freely: at 50 % power it runs near half its no-load speed.
+    test('legopoweredup "start motor A at 50 % power" is StartPower: the Technic Hub drives a duty, not a speed', async t => {
+        const samples = [];
+        const r = await runLabHubProgram('WHEN flag clicked:\n  pup start motor A at 50 % power\n  wait 1.5 seconds\n  pup turn motor A off\n',
+            {modelText: modelText('technic-hub-bench.ldr'), timeLimitMs: 2000, onFrame: ({hub, t}) => samples.push({t, ...hub.readPort('A')})});
+        try {
+            assert.deepEqual(errorsBack(r.received), [], 'the hub took every message');
+            const sent = r.written.filter(b => b[2] === 0x81 && b[5] === 0x51 && b[6] === 0x00 && b[7] === 50);
+            assert.equal(sent.length, 1, 'one StartPower(50) on port A');
+            const powered = samples.filter(p => p.mode === 'power');
+            assert.ok(powered.length > 30, `the port ran in its power mode (${powered.length} frames)`);
+            assert.ok(!samples.some(p => p.mode === 'speed'), 'never a speed');
+            const last = powered.at(-1).speedDps;
+            // The DC line at the hub's supply (devices/catalog.js): unloaded, duty 0.5 runs it at about 0.5·ω0(V).
+            const {DEVICE_MODELS, dcLineAt, HUB_SUPPLY_VOLTS} = await import(path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-sim', 'devices', 'catalog.js'));
+            const motor = DEVICE_MODELS.find(d => d.id === 'technic-large-motor').motor;
+            const half = 0.5 * dcLineAt(motor, HUB_SUPPLY_VOLTS['powered-up'].volts).noLoadRadPerSec * 180 / Math.PI;
+            t.diagnostic(`at 50 % power, after ${(powered.at(-1).t - powered[0].t).toFixed(0)} ms: ${last.toFixed(1)} °/s (0.5·ω0 ${half.toFixed(1)} °/s)`);
+            assert.ok(Math.abs(last - half) < 0.1 * half, `near half the no-load speed: ${last} °/s vs ${half}`);
+        } finally {
+            r.session.dispose();
+        }
+    });
 
     test('legopoweredup names the hub it is connected to by its LWP3 System Type (the Technic Hub, 0x80)', async () => {
         const r = await runLabHubProgram('WHEN flag clicked:\n  pup set motor A power to 10 %\n', {

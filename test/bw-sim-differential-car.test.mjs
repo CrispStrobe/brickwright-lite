@@ -594,4 +594,38 @@ if (!existsSync(missing)) {
         assert.ok(Math.sign(locked.slipL) !== Math.sign(locked.slipR), 'one spins, the other drags');
         assert.ok(locked.R >= open.R * 0.99, `and the car does not turn tighter (${locked.R} vs ${open.R})`);
     });
+
+    test('a program drives motor B at 50 % power into the rack\'s stops: B stalls there, and the parked car does not turn', async t => {
+        // "start motor B at 50 % power" is the spikeprime block motorStartPower: on the virtual SPIKE 3 hub
+        // motor.set_duty_cycle(port.B, 5000), a duty of 0.5 into the medium motor's DC model with no speed loop
+        // (hubs/spike/spike-virtual-hub.js). Pushed on, the pinion meets the rack at the guide's end: the end stop
+        // (physics/jolt-core.js) zeroes the drive pushing into it, so B stalls at ±travel/r and stays there.
+        const {model} = prepared();
+        const endWant = rackTravelLdu(model) / pitchRadiusLdu(model) * DEG;
+        const report = [];
+        for (const power of [50, -50]) {
+            const push = await run(['DEVICE SPIKE', 'WHEN flag clicked:', `  start motor B at ${power} % power`, '  wait 3 seconds', ''].join('\n'),
+                {timeLimitMs: 3100});
+            const p = measure(push);
+            const angle = f => f.joints[p.steer.id].angle * DEG;
+            const most = Math.max(...push.track.map(f => Math.abs(angle(f))));
+            const held = push.track.at(-1);
+            const turned = Math.max(...push.track.map(f => Math.abs(p.yaw(f) - p.yaw(push.track[0])))) * DEG;
+            // The last second: B pushing (the hub is driving it) and standing still at the stop.
+            const last = push.track.filter(f => f.t > held.t - 1000);
+            const rate = Math.max(...last.slice(1).map((f, i) => Math.abs(angle(f) - angle(last[i])) / ((f.t - last[i].t) / 1000)));
+            report.push(`${power} %: B at most ${most.toFixed(1)}°, after 3 s ${angle(held).toFixed(1)}° (at most ${rate.toFixed(2)} °/s ` +
+                `in the last second), the car turned ${turned.toFixed(3)}°`);
+            assert.ok(Math.sign(angle(held)) === Math.sign(power) || Math.abs(angle(held)) < 1e-9, `B turned the way its power says (${angle(held)}°)`);
+            // It meets the stop at about half the motor's no-load speed, and the pinion runs on a few degrees into
+            // the parked wheels' give before the stop's push back brings it to the end (a speed drive does the same,
+            // a degree more); then it rests on the stop, pushing.
+            assert.ok(most > endWant - 1 && most < endWant + 7, `${power} %: B reaches the stop and no further: at most ${most}° (${endWant}°)`);
+            assert.ok(Math.abs(Math.abs(angle(held)) - endWant) < 1, `${power} %: B rests on the stop after 3 s: ${angle(held)}° (${endWant}°)`);
+            assert.ok(last.every(f => f.busy.B), 'the hub drives B the whole time (a running command, not a stop)');
+            assert.ok(rate < 5, `${power} %: B stands still at the stop (${rate} °/s)`);
+            assert.ok(turned < 0.2, `${power} %: the parked car turned ${turned}°`);
+        }
+        t.diagnostic(`the stop at ±${endWant.toFixed(1)}° of B: ${report.join('; ')}`);
+    });
 }

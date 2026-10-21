@@ -149,6 +149,24 @@ export default class IndependentSpikeBackend {
         });
     }
 
+    /**
+     * Unregulated: the motor at `percent` duty cycle (-100..100), as SPIKE's
+     * "start motor at % power" (motor.set_duty_cycle / hub.port.X.motor.pwm).
+     * Nothing holds a speed: where the hub drives a DC model (the Robot Lab,
+     * hubs/spike/spike-virtual-hub.js) the duty goes straight to the motor, so
+     * it slows under load and stalls at a stop. Kinematic (the arena) has no
+     * load to slow it, so it runs at the duty's share of the top speed: the
+     * DC line's no-load speed at that duty. Power 0 lets the motor coast.
+     */
+    startPower(port, percent) {
+        const i = this._port(port);
+        const duty = clamp(finite(percent), -100, 100) / 100;
+        if (duty === 0) return this.stop(i, 'coast');
+        this._start(i, 'power', {
+            duty, requested: duty * this.maxSpeed(i)
+        });
+    }
+
     _position(i, target, dps) {
         this._assertClock();
         const speed = Math.abs(this._effectiveSpeed(i, dps));
@@ -263,7 +281,7 @@ export default class IndependentSpikeBackend {
     busy(port) {
         const i = this._port(port);
         const c = this._controllers[i];
-        return ['speed', 'position', 'time'].includes(c.mode);
+        return ['speed', 'position', 'time', 'power'].includes(c.mode);
     }
 
     done(port) {
@@ -272,7 +290,7 @@ export default class IndependentSpikeBackend {
         const m = this.data.motors[i];
         if (c.mode === 'hold') return Math.abs(m.position - c.target) <= 0.5 && Math.abs(m.degPerSec || 0) <= 1;
         if (['position', 'time', 'stop'].includes(c.mode)) return false;
-        if (c.mode === 'speed') return Math.abs((m.degPerSec || 0) - c.requested * (1 - Math.max(c.load, c.arenaLoad))) <= 1;
+        if (c.mode === 'speed' || c.mode === 'power') return Math.abs((m.degPerSec || 0) - c.requested * (1 - Math.max(c.load, c.arenaLoad))) <= 1;
         return true;
     }
 
@@ -308,7 +326,7 @@ export default class IndependentSpikeBackend {
     /** Unloaded requested direction lets the arena release contact when reversing. */
     demandSpeed(port) {
         const i = this._port(port), c = this._controllers[i];
-        if (c.mode === 'speed' || c.mode === 'time') return c.requested;
+        if (c.mode === 'speed' || c.mode === 'time' || c.mode === 'power') return c.requested;
         if (c.mode === 'position' || c.mode === 'hold') return Math.sign(c.target - this.data.motors[i].position) * c.requested;
         return 0;
     }
@@ -342,7 +360,7 @@ export default class IndependentSpikeBackend {
             let desired = 0;
             let rate = cfg.deceleration;
             const positionMode = c.mode === 'position' || c.mode === 'hold';
-            if (c.mode === 'speed') desired = c.requested * (1 - Math.max(c.load, c.arenaLoad));
+            if (c.mode === 'speed' || c.mode === 'power') desired = c.requested * (1 - Math.max(c.load, c.arenaLoad));
             // Reserve the final portion of timed motion for deceleration.
             if (c.mode === 'time') {
                 c.remaining = Math.max(0, c.remaining - 1);
@@ -373,7 +391,7 @@ export default class IndependentSpikeBackend {
             const previous = m.position;
             m.position += (v + next) / 2000;
             m.degPerSec = next;
-            m.stalled = Math.max(c.load, c.arenaLoad) === 1 && ['position', 'speed', 'time'].includes(c.mode) && c.requested !== 0;
+            m.stalled = Math.max(c.load, c.arenaLoad) === 1 && ['position', 'speed', 'time', 'power'].includes(c.mode) && c.requested !== 0;
             if (c.mode === 'position' && m.stalled && Math.abs(next) <= cfg.stallSpeed) {
                 c.stallElapsed++;
                 if (c.stallElapsed >= cfg.stallMs) this._complete(c, RESULT.STALLED);

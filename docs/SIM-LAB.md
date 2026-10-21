@@ -302,7 +302,7 @@ Owner (2026-10-18): *"all must be steerable also by pseudocode and blocks and ot
 
 **Which motors a program may turn directly.**
 - A model **with no hub** (the *Motor bench* model) runs on the Lab's own `lab-direct` hub (`bw-sim/hubs/lab-direct/`), which owns every motor of the model. Its controller is the SPIKE hub's (trajectory generator + PI/damping loop into the DC model, `hubs/spike/spike-motor-controller.js`): power is an open-loop duty; speed and degrees are regulated; *run for degrees* ends when the **encoder** is within 1° of the target and slower than 10 °/s, then brakes (or holds) — never on a clock. Measured: 360 ± 2° (the bound is derived in `test/bw-sim-robot-lab-api.test.mjs`).
-- A motor on a **SPIKE hub port** run from Scratch blocks: the command goes to that hub's own controller, exactly as a SPIKE block's does (one owner per port; the last command wins, as between two blocks). SPIKE regulates every motor, so *power* there is SPIKE's "start motor at N %".
+- A motor on a **SPIKE hub port** run from Scratch blocks: the command goes to that hub's own controller, exactly as a SPIKE block's does (one owner per port; the last command wins, as between two blocks). The API's `{power}` there is a speed (N % of the motor's top speed, as `start motor A forward` at speed N); a program's **start motor at % power** block is the unregulated duty (*Motor power* below).
 - A motor on a hub that **runs its own program** (the SPIKE firmware route; the RCX VM when it lands here) is **refused** by name: *"Motor A belongs to the SPIKE Prime hub, whose own program drives it."* Two programs fighting over one port is not something a child can debug, and the hub program is the one the learner chose to run there. (Chosen over "allowed while the hub program is idle": an idle firmware still owns its ports and may start any moment.)
 - Every command crosses the VirtualHub boundary as port data and reaches the motor on the next 5 ms step. With the physics in the worker, a command made while a batch is in flight redoes that batch from the worker's checkpoint, as SPIKE commands always have: part poses are bit-identical to the main-thread run (tested).
 
@@ -337,6 +337,45 @@ coverage and every source).
   and they addressed the Move Hub's pre-1.0.00.0224 port map. Now "AB" reaches both — B 50 ms after A (a queue),
   which turns a rover a little at the start, as on a real hub — and the Lab's Move Hub runs the current firmware
   (1.0.00.0224) or, as an option, the legacy one (1.0.00.0223); docs/LWP3-VIRTUAL-HUB-NOTES.md "Findings".
+
+## Motor power: a duty cycle, on every hub that has one
+
+Most motor blocks ask for a **speed**, and the hub keeps it: under load it raises the power until the
+speed is back (a regulated motor). **Start motor at % power** asks for a **duty cycle** instead (the
+share of the time the motor gets the battery's voltage, "PWM"): nothing holds a speed, so the motor
+slows down when it has to push and stops — stalls — at a hard stop, pushing with that share of its
+stall torque. In the Lab the duty goes straight into the motor's DC model (`physics/actuators.js`),
+so it does all of that for the same reasons a real motor does.
+
+| Hub | Block (extension) | Word | What the hub is sent | Source |
+|---|---|---|---|---|
+| SPIKE Prime / Robot Inventor | **[A] start motor at [100] % power** (`spikeprime_motorStartPower`) | `start motor B at 50 % power` (DEVICE SPIKE) | SPIKE 3: `motor.set_duty_cycle(port.B, 5000)` (−10000…10000); 2.x: `hub.port.B.motor.pwm(50)` (−100…100) | the SPIKE app's *More Motors* extension, "start motor at % power"; SPIKE 3 Python `motor.set_duty_cycle(port, pwm)`; the 2.x hub module's `pwm(duty_cycle)` |
+| Technic Hub, City Hub, SPIKE Essential | **start motor [A] at [50] % power** (`legopoweredup_motorStartPower`) | `pup start motor A at 50 % power` | LWP3 StartPower(Power) as WriteDirectModeData mode 0 | LWP3 §3.27.1 "adjustable PWM output … no speed regulation", §6.1 |
+| BOOST Move Hub | **start motor [A] at [50] % power** (`legoboostunified_motorStartPower`) | `boost start motor AB at 50 % power` | LWP3 StartPower, each motor of the block | LWP3 §3.27.1, §6.1 |
+| EV3 | **start motor [B] at [50] % power** (`ev3comprehensive_motorStartPower`) | `start motor BC at 50 % power` (DEVICE EV3) | opOUTPUT_POWER + opOUTPUT_START | EV3 Firmware Developer Kit: OUTPUT_POWER, against OUTPUT_SPEED's speed regulation |
+| NXT | **start motor [B] at [50] % power** (`legonxt_motorStartPower`) | — (blocks; the `nxt …` words are their own lane) | SETOUTPUTSTATE: MOTORON + BRAKE, regulation IDLE | NXT Bluetooth Developer Kit, Appendix 2 |
+| WeDo 2.0 | **set motor power to [N] %** + **turn motor on** (already) | `wedo set motor A power to 50 %`, `wedo turn motor A on` | the Output Command's power: a duty | the WeDo 2.0 motor has no encoder, so the hub has nothing to regulate |
+| RCX | NQC `SetPower` / `OnFwd` (already) | — | power levels 0–7, drive/float PWM | the RCX motors have no encoders |
+| The Lab's own hub (no hub in the model) | **set motor [A] power to [50] %** (Robot Lab, already) | `lab set motor A power to 50 %` | an open-loop duty | — |
+
+Names to tell apart: **set motor power to … %** on the Powered Up and BOOST blocks, and **run motor … at … %** on
+EV3, are speeds the hub regulates (StartSpeed, OUTPUT_SPEED) — LEGO's own Scratch blocks call that number
+"power" too. Only WeDo 2.0 (no encoder) and the RCX have no regulated speed at all.
+
+What the Lab does with it (tests): SPIKE, `test/bw-sim-spike-power.test.mjs` — at 50 % power the medium
+motor runs at 527.5 °/s free (u·ω0 = 529.0), and under 30 % of its stall torque it slows to 206.9 °/s and
+stays there (the line says 207.4; the hub's speed loop holds the same load at its set speed); at 50 % it
+holds an arm 3 % lighter than half its stall torque and lets one 3 % heavier sink.
+`test/bw-sim-differential-car.test.mjs` — the Differential car's program `start motor B at 50 % power`
+pushes the rack into the guide's stop: B rests at 114.4° (the geometry says ±114.6°) and the parked car
+turns 0.014° (−50 %: −114.3°, 0.045°). Powered Up, `test/lab-hubs-extensions.test.mjs` — `pup start
+motor A at 50 % power` sends one StartPower(50) and the Technic large motor runs at 942 °/s (0.5·ω0 at
+the hub's supply: 945). EV3 and NXT, `test/bw-sim-bt-hubs-program.test.mjs` — the bricks drive both
+motors open loop at a duty of 0.4.
+
+Not there: a **motor power** reporter (SPIKE's *More Motors* has one, `motor.get_duty_cycle` in SPIKE 3
+Python): the spikeprime extension has no block for it yet, so `motor.get_duty_cycle` stays refused by the
+SPIKE 3 Python reader.
 
 ## Seeing the model
 
