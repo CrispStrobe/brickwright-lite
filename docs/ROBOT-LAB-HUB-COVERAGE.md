@@ -64,7 +64,7 @@ Virtual hub: `G/bw-sim/hubs/ev3/ev3-virtual-hub.js`, `ev3-peripheral.js`, `ev3-d
 | ev3comprehensive | SL-BT | `DEVICE EV3` pseudocode / blocks | GREEN | `bw-sim-bt-hubs-program` "EV3 wall stopper: the DEVICE EV3 example through ev3comprehensive" (no longer `{todo}`; vendored ev3comprehensive has the `msgCounter`/`readBuffer` fix from upstream PR #53). Byte-level breadth (tank, sensors, sound/screen): `bw-sim-ev3-extension-bytes` |
 | ev3comprehensive | upload + run | `.rbf` on-brick | GREEN (#1127) | `bw-sim-ev3-rbf-brick` "Robot Lab: the EV3 wall stopper runs wall-stopper.rbf — drives at the wall, stops before it" (clean-room VM, `routes/ev3-vm/`), plus the CDK download/start/stop system commands in the same file |
 | ev3comprehensive | HTTP / `Scratch.fetch` | blocks | GREEN (#1127) | `bw-sim-ev3-rbf-ev3comprehensive` "ev3comprehensive: transpile → Scratch.fetch to the LMS compiler (stubbed) → the .rbf runs on the Virtual EV3". The real extension transpiles and posts. Only the hosted LMS compiler's reply is a recorded fixture, because that service is outside the repo. |
-| ev3comprehensive | Web Serial, bridge | blocks | GAP | virtual peripheral only on SL-BT |
+| ev3comprehensive | Web Serial, bridge | `DEVICE EV3` pseudocode | GREEN | `bw-sim-virtual-transports-ev3` "ev3comprehensive over Web Serial (115200 baud) stops the EV3 wall stopper …", "… in auto mode finds an already-authorised virtual serial port first", "… over its WebSocket bridge stops the EV3 wall stopper …" (+ two controls). The real extension connects with its own `set connection mode` / `connect` blocks, with no Scratch Link present; `G/bw-sim/transports/virtual-serial.js` (a `navigator.serial` double) and `virtual-bridge.js` (ws://localhost:8080, binary frames) carry the same EV3 command frames to the Virtual EV3 session |
 | ev3dev | HTTP / SSH | blocks | GAP | no virtual ev3dev brick |
 | ev3comprehensive | any | Python/JS calls | GAP | The Code tab's Python/JS readers (`lib/robot-lab-pseudocode.js` `readPython` / `readJavaScript`, on the Translator in `sb3-creator-python.js`) lift only `scratch.*`, `_stc12.*`, `_arrays.*` and `_robotlab.*`. Every `_ev3comprehensive.*` call is dropped ("dropped expression statement"). Pinned as todo in `hub-runtime-calls-to-blocks`. Fix: a lift in `installRobotLabReaders` driven by `SB3Creator.RUNTIME_EXTENSIONS`, after #1129, which edits the same file |
 | MakeCode EV3 | — | — | n/a | separate MakeCode simulator, not the Lab |
@@ -146,14 +146,14 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 | Hub | GREEN | PARTIAL | PENDING | GAP |
 |---|---|---|---|---|
 | SPIKE Prime / Robot Inventor | 5 | 1 | 0 | 3 |
-| EV3 | 4 | 0 | 0 | 3 |
+| EV3 | 5 | 0 | 0 | 2 |
 | BOOST Move Hub | 4 | 0 | 0 | 2 |
 | Powered Up City / Technic | 4 | 0 | 0 | 2 |
 | WeDo 2.0 | 3 | 1 | 0 | 1 |
 | SPIKE Essential | 0 | 0 | 0 | 2 |
 | NXT | 2 | 2 | 1 | 1 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **24** | **4** | **1** | **14** |
+| **Total** | **25** | **4** | **1** | **13** |
 
 ## Gaps, by user impact
 
@@ -167,7 +167,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
     `robot-lab-pseudocode.js` after #1129.
 5. SPIKE Prime, real Renode lockstep and MicroPython on the hub: virtual support (needs Renode in CI).
 6. SPIKE Prime, bridge route: virtual bridge support missing.
-7. EV3, Web Serial / bridge: virtual support missing (peripheral only on SL-BT).
+7. ~~EV3, Web Serial / bridge~~: closed by `bw-sim-virtual-transports-ev3` (virtual Web Serial port and WebSocket bridge, `G/bw-sim/transports/`).
 8. EV3, ev3dev: virtual ev3dev brick missing.
 9. EV3, Python/JS calls: confirmed gap, same missing lift as 4.
 10. ~~BOOST, legoboostunified over SL-BLE~~: closed by `lab-hubs-coverage`.
