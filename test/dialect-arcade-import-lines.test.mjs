@@ -118,11 +118,12 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (402 opcodes)', () => {
-    // Canonical compiler adoption 0a63e8db7 adds exactly these three operations
-    // to the previously qualified 399; retain exact spelling checks as well.
-    assert.equal(ARCADE_DIALECT_OPS.length, 402);
+test('the pinned parser has the qualified Arcade word table (403 opcodes)', () => {
+    // The source arithmetic reporter adds one operation to the qualified 402.
+    // Retain the prior vocabulary and exact canonical selector spelling.
+    assert.equal(ARCADE_DIALECT_OPS.length, 403);
     const qualifiedWords = [
+        {op: 'arcade_sourceValueBinary', kind: 'reporter', words: 'arcade source value {LEFT} op {OP:"+"|"-"|"*"|"/"|"%"|"**"} with {RIGHT}'},
         {op: 'arcade_declareParameterConstraint', kind: 'command', words: 'declare arcade procedure {PROCEDURE:literal-field} parameter {PARAMETER:literal-field} as {TYPE:Number|Boolean|String|Any}'},
         {op: 'arcade_throwValue', kind: 'command', words: 'arcade throw {VALUE}'},
         {op: 'arcade_createOwnedImageSprite', kind: 'reporter', words: 'arcade create owned image {IMAGE} template {TEMPLATE} kind {KIND}'},

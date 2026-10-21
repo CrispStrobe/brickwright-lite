@@ -421,7 +421,9 @@ try {
                 const attempt = {label: name, transitions: []};
                 evidence.attempts.push(attempt); evidence.current = attempt; evidence.observe();
             }, label);
-            await gifPage.getByRole('button', {name: 'Choose a Costume', exact: true}).hover({timeout: 10000});
+            // Main and expanded library buttons share this accessible name.
+            // Hover the actual main action to open its Upload Costume menu.
+            await gifPage.locator('button[aria-label="Choose a Costume"][class*="action-menu_main-button_"]').hover({timeout: 10000});
             const chooser = gifPage.waitForEvent('filechooser', {timeout: 10000});
             await gifPage.getByRole('button', {name: 'Upload Costume', exact: true}).click({timeout: 10000});
             await (await chooser).setFiles(file);
