@@ -7,6 +7,8 @@ const root = new URL('../', import.meta.url);
 const catalog = catalogFrom(JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', root))));
 // The topic and challenge describe an observable physical effect, not just the model's shape.
 const lessons = {
+    'pendulum-array': ['inertia', 'Spin and stop the support; three free arms compare length-dependent periods and phase drift.', 'Drehe und stoppe die Aufhängung: Drei freie Arme vergleichen längenabhängige Perioden und Phasendrift.'],
+    'clutch-bench': ['forces', 'A drives a 24-tooth slipping clutch and 40-tooth output; B returns the output to zero and holds it, then releases it.', 'A treibt eine 24-Zähne-Rutschkupplung mit 40-Zähne-Abtrieb. B fährt den Abtrieb auf null, hält ihn und gibt ihn wieder frei.'],
     'pulse-percussion': ['forces', 'One camshaft lifts and releases three gravity beaters. Compare shaft phase, falling motion and tempo.', 'Eine Nockenwelle hebt drei Schwerkraftschlägel und gibt sie frei. Vergleiche Wellenphase, Fallbewegung und Tempo.'],
     'centrifugal-governor': ['forces', 'Free arms swing outward as the rotor speeds up. Compare angular speed squared with gravity; reverse and compare again.', 'Freie Arme schwingen bei höherer Drehzahl nach außen. Vergleiche das Quadrat der Winkelgeschwindigkeit mit der Schwerkraft und kehre die Drehrichtung um.'],
     'tidal-trio': ['linkages', 'Wave: three 16/48/32/48 mm four-bar linkages compare crank phase and nonlinear rocker motion. Offsets [0, 120, 240] degrees.', 'Welle: Drei Viergelenke mit 16/48/32/48 mm vergleichen Kurbelphase und nichtlineare Schwingbewegung. Versatz [0, 120, 240] Grad.'],

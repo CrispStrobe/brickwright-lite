@@ -2439,3 +2439,10 @@ simulator adaptation. The centrifugal governor and bilingual Robot Lab lesson
 prose are original work under the same licence. Referenced LDraw geometry retains
 its own authors and licences above. No NC-licensed model or predicted animation
 is included as functioning simulation content.
+
+## Original Robot Lab assemblies: pendulum array and clutch load bench
+
+Copyright (c) 2026 CrispStrobe. BSD-3-Clause.
+The 54-piece motor-excited pendulum array and 26-piece clutch load bench, their
+native example programs and bilingual lessons are original assemblies/content.
+Referenced LDraw geometry retains its separate authors and licences above.

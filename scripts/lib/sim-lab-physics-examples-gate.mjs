@@ -12,7 +12,7 @@ export const physicsExamplesInteractions = async (page, {openSimLab, shotsDir, t
     const gallery = page.getByTestId('bw-sim-examples');
     await open.click();
     await gallery.getByRole('combobox', {name: 'Model size', exact: true}).selectOption('large');
-    assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 13);
+    assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 14);
     await gallery.getByRole('combobox', {name: 'Physics topic', exact: true}).selectOption('chains');
     assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 1);
     assert.match(await gallery.textContent(), /59 pieces/);

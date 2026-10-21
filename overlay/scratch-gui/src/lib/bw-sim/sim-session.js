@@ -85,6 +85,8 @@ export const MODELS = Object.freeze([
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
+    {file: 'pendulum-array.ldr', title: {en: 'Motor-excited pendulum array', de: 'Motorangeregte Pendelreihe'}, example: 'pendulum-array.bw', mat: 'plain'},
+    {file: 'clutch-bench.ldr', title: {en: 'Clutch load bench', de: 'Rutschkupplungs-Prüfstand'}, example: 'clutch-bench.bw', mat: 'plain'},
     {file: 'pulse-percussion.ldr', title: {en: 'Pulse Percussion', de: 'Puls-Schlagwerk'}, example: 'pulse-percussion.bw', mat: 'plain'},
     {file: 'centrifugal-governor.ldr', title: {en: 'Centrifugal governor demonstrator', de: 'Fliehkraftregler-Modell'}, example: 'centrifugal-governor.bw', mat: 'plain'},
     {file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Wave', de: 'Gezeiten-Trio: Welle'},

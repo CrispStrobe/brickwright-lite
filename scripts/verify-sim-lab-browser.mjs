@@ -163,6 +163,7 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
+import {oscillationClutchInteractions} from './lib/sim-lab-oscillation-clutch-gate.mjs';
 import {dynamicsInteractions} from './lib/sim-lab-dynamics-gate.mjs';
 import {lessonInteractions, germanLessonInteractions} from './lib/sim-lab-lesson-gate.mjs';
 import {tidalInteractions, tidalInstructionsInteractions} from './lib/sim-lab-tidal-gate.mjs';
@@ -735,6 +736,12 @@ try {
             await ex.close();
         }
 
+        if (runExample('oscillation-clutch.ldr')) {
+            const experiments = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            experiments.on('pageerror', error => errors.push(error.message)); experiments.on('dialog', dialog => dialog.accept());
+            await oscillationClutchInteractions(experiments, {openSimLab, shotsDir: resolve(artifacts, 'oscillation-clutch'), timeout: wallBudget(24000)});
+            await experiments.close();
+        }
         if (runExample('dynamics-machines.ldr')) {
             const dynamics = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             dynamics.on('pageerror', error => errors.push(error.message)); dynamics.on('dialog', dialog => dialog.accept());

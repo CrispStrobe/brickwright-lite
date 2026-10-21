@@ -169,6 +169,34 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "pendulum-array.ldr": {
+        "pieces": 54,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Spin and stop the support; three free arms compare length-dependent periods and phase drift.",
+            "de": "Drehe und stoppe die Aufhängung: Drei freie Arme vergleichen längenabhängige Perioden und Phasendrift."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "clutch-bench.ldr": {
+        "pieces": 26,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A drives a 24-tooth slipping clutch and 40-tooth output; B returns the output to zero and holds it, then releases it.",
+            "de": "A treibt eine 24-Zähne-Rutschkupplung mit 40-Zähne-Abtrieb. B fährt den Abtrieb auf null, hält ihn und gibt ihn wieder frei."
+        },
+        "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
     "pulse-percussion.ldr": {
         "pieces": 130,
         "motors": 1,
