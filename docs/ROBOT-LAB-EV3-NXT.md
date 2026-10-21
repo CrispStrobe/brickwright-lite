@@ -184,21 +184,16 @@ six AA cells.
   looking ahead. Example: `ev3-wall-stopper.bw` (DEVICE EV3: run BC at 40 % until `ev3 distance 4 cm` < 15,
   brake) — see *Known open*. The stock Scratch EV3 blocks drive it (test and gate).
 - **NXT bumper bot** (`nxt-bumper-bot.ldr`, Wall mat): the same layout on the NXT and its motors, the touch
-  sensor's button as the bumper on input 1. Example: `nxt-bumper-bot.blocks.json` — legonxt blocks (the NXT
-  has no DEVICE words yet): set up the touch sensor, B and C 360° at power 75, wait 2 s, B and C on at 60,
+  sensor's button as the bumper on input 1. Example: `nxt-bumper-bot.blocks.json` — legonxt blocks (the same
+  script in `nxt …` words is in test/lego-hubs-dialect.test.mjs): set up the touch sensor, B and C 360° at power 75, wait 2 s, B and C on at 60,
   wait until touched, stop both. *Load example program* adds the script to the editing sprite.
 
 ## Known open
 
-- **ev3comprehensive sends nothing over Scratch Link** (and nothing reaches its replies on any transport).
-  Its `EV3Peripheral.isConnected()` reads `backend.connected`, which its `ScratchLinkBackend` never sets (it
-  keeps `_connected`); `sendDirect` uses `this.msgCounter` and `_onMessage` `this.readBuffer`, both never
-  initialised (the constructor sets `messageCounter`). The fix is upstream (CrispStrobe/extensions,
-  `ev3_universal.js`): initialise `msgCounter = 0` and `readBuffer = new Uint8Array(0)`, and read
-  `backend.connected || backend.isConnected?.()`. This lane does not edit extension sources (the rule), so the
-  DEVICE EV3 wall-stop scenario is `{todo}` in `test/bw-sim-bt-hubs-program.test.mjs`; the bytes the
-  extension would send are executed and checked in `test/bw-sim-ev3-extension-bytes.test.mjs`, and the stock
-  `ev3` extension drives the same robot.
+- ~~ev3comprehensive sends nothing over Scratch Link~~ — closed by CrispStrobe/extensions #53 (`ea3e08e`):
+  `EV3Peripheral` initialises `msgCounter` and `readBuffer` and reads `backend.connected ||
+  backend.isConnected?.()`. The DEVICE EV3 wall-stop scenario in `test/bw-sim-bt-hubs-program.test.mjs`
+  runs through ev3comprehensive for real (no `{todo}`).
 - **L2, programs on the brick**: the **NXT runs `.rxe` programs** (docs/NXT-RXE-VM.md): a clean-room VM of
   LEGO's NXT firmware 1.29 interpreter (facts read from its open-source release), files downloaded with the
   system commands (OPEN WRITE / WRITE / CLOSE / DELETE / FIND), STARTPROGRAM / STOPPROGRAM /
@@ -209,7 +204,13 @@ six AA cells.
   strings; the input/output instructions are the direct commands' own), files downloaded with the system
   commands, started with opFILE LOAD_IMAGE + opPROGRAM_START; an lmsasm-assembled wall stopper stops the EV3
   wall stopper before the wall.
-- **NXT words** (DEVICE NXT pseudocode) are not written; the NXT example is blocks.
+- **NXT words**: written as the `nxt …` words (lib/legoHubsDialect.js, beside `pup`/`boost`/`wedo`):
+  motors (power, for degrees/rotations, stop brake/coast, position), sensor setup and readings, the touch
+  sensor as a condition (`wait until nxt touch sensor S1 pressed`), tone and note, screen text, start/stop
+  program. The pinned compiler has no `DEVICE NXT` target, so (as for the radio hubs) the words apply under
+  any DEVICE line. Open: the colour sensor's "all colors" mode has no spelling (a menu value with a space),
+  and the Lab's NXT example is still the blocks file (`test/lego-hubs-dialect.test.mjs` checks the same
+  script in words equals it).
 - The NXT's MOTOR_SYNC, its buttons and both ultrasonic listen modes are modelled (see *NXT motor sync,
   buttons and listening*). Still open: EV3 sync turn ratios are a simple scaling (our model), the EV3's
   buttons are never pressed in the Lab (WAIT_FOR_PRESS waits), and no Lab UI or `runtime.robotLab` call

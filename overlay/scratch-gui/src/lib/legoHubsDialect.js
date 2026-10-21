@@ -1,6 +1,6 @@
 /**
- * The BrickWright pseudocode <-> LEGO Powered Up / BOOST / WeDo 2.0 block map: the `pup …`,
- * `boost …` and `wedo …` words (docs/ROBOT-LAB-HUBS-PLAN.md P3, item "DEVICE words").
+ * The BrickWright pseudocode <-> LEGO Powered Up / BOOST / WeDo 2.0 / NXT block map: the `pup …`,
+ * `boost …`, `wedo …` and `nxt …` words (docs/ROBOT-LAB-HUBS-PLAN.md P3, item "DEVICE words").
  *
  * Each word is one block of a bundled LEGO extension, UNCHANGED (scratch-vm
  * extensions/crispstrobe/legopoweredup, legoboostunified, wedo2unified): the table is the
@@ -25,7 +25,7 @@
  *
  * THE SLICE IS COUNTED: every opcode of the three extensions is a word here or in one
  * exclusion class below (test/lego-hubs-dialect.test.mjs requires the union to be the
- * extensions' getInfo()). Hats and Boolean blocks are not words yet ('learner-gap').
+ * extensions' getInfo()). Hats are not words yet ('learner-gap'); of the Booleans, NXT's touch sensor is.
  *
  * Table order is precedence: `… on for {DEGREES} degrees` before `… on for {TIME} seconds`
  * before `… on`.
@@ -103,10 +103,48 @@ const WEDO2_WORDS = [
     wedo('getBatteryLevel', 'reporter', 'battery level')
 ];
 
-export const LEGO_HUB_WORDS = Object.freeze([...POWEREDUP_WORDS, ...BOOST_WORDS, ...WEDO2_WORDS]);
+// ---- legonxt: LEGO MINDSTORMS NXT (the stock firmware, direct commands) ---------------------
+// The NXT has no DEVICE target in the pinned compiler either (as the hubs above): the `nxt`
+// words apply under any DEVICE line, and Scratch's own `wait … seconds` / `wait until <…>`
+// carry the waits (`wait until nxt touch sensor S1 pressed`).
+// The colour sensor's full-colour mode ("all colors", a menu value with a space) has no
+// spelling: the word grammar splits a slot at whitespace; the single-light modes do.
+const nxt = ext('legonxt', 'nxt');
+const NXT_MOTOR = '{PORT:menu:MOTOR_PORT:A|B|C}';
+const NXT_SENSOR = '{PORT:menu:SENSOR_PORT:S1|S2|S3|S4}';
+const NXT_NOTES = 'C4|C#4|D4|D#4|E4|F4|F#4|G4|G#4|A4|A#4|B4|C5|C#5|D5|D#5|E5|F5|F#5|G5|G#5|A5|A#5|B5';
+const NXT_WORDS = [
+    nxt('connect', 'command', 'connect to NXT {PARAM}'),
+    nxt('motorRunDegrees', 'command', `motor ${NXT_MOTOR} power {POWER} for {DEGREES} degrees`),
+    nxt('motorRunRotations', 'command', `motor ${NXT_MOTOR} power {POWER} for {ROTATIONS} rotations`),
+    nxt('motorOn', 'command', `motor ${NXT_MOTOR} power {POWER}`),
+    nxt('motorStop', 'command', `stop motor ${NXT_MOTOR} {ACTION:brake|coast}`),
+    nxt('resetMotorPosition', 'command', `reset motor ${NXT_MOTOR} position`),
+    nxt('setupTouchSensorNXT', 'command', `setup touch sensor ${NXT_SENSOR}`),
+    nxt('setupLightSensor', 'command', `setup light sensor ${NXT_SENSOR} LED {STATE:on|off}`),
+    nxt('setupColorSensor', 'command', `setup color sensor ${NXT_SENSOR} mode {MODE:red|green|blue|none}`),
+    nxt('setupSoundSensor', 'command', `setup sound sensor ${NXT_SENSOR} mode {MODE:dBA|dB}`),
+    nxt('setupUltrasonicSensor', 'command', `setup ultrasonic sensor ${NXT_SENSOR}`),
+    nxt('playTone', 'command', 'play tone {FREQ} Hz for {MS} ms'),
+    nxt('playNote', 'command', `play note {NOTE:${NXT_NOTES}} for {BEATS} beats`),
+    nxt('clearScreen', 'command', 'clear screen'),
+    nxt('drawText', 'command', 'draw text {TEXT} at x {X} y {Y}'),
+    nxt('startProgram', 'command', 'start program {FILENAME}'),
+    nxt('stopProgram', 'command', 'stop program'),
+    nxt('getMotorPosition', 'reporter', `motor ${NXT_MOTOR} position`),
+    nxt('getMotorPower', 'reporter', `motor ${NXT_MOTOR} power`),
+    nxt('getLightLevel', 'reporter', `light level ${NXT_SENSOR}`),
+    nxt('getColor', 'reporter', `color ${NXT_SENSOR}`),
+    nxt('getSoundLevel', 'reporter', `sound level ${NXT_SENSOR}`),
+    nxt('getDistance', 'reporter', `distance ${NXT_SENSOR} cm`),
+    nxt('getBattery', 'reporter', 'battery level mV'),
+    nxt('isTouchPressed', 'boolean', `touch sensor ${NXT_SENSOR} pressed`)
+];
+
+export const LEGO_HUB_WORDS = Object.freeze([...POWEREDUP_WORDS, ...BOOST_WORDS, ...WEDO2_WORDS, ...NXT_WORDS]);
 
 /** The extensions the table speaks, with the prefix of their words. */
-export const LEGO_HUB_EXTENSIONS = Object.freeze({legopoweredup: 'pup', legoboostunified: 'boost', wedo2unified: 'wedo'});
+export const LEGO_HUB_EXTENSIONS = Object.freeze({legopoweredup: 'pup', legoboostunified: 'boost', wedo2unified: 'wedo', legonxt: 'nxt'});
 
 /**
  * Every opcode of the three extensions that is NOT a word, by reason. The union with the
@@ -116,11 +154,17 @@ export const LEGO_HUB_EXCLUSIONS = Object.freeze({
     // Which transport reaches the hub is a property of the SESSION (as EV3's 'transport-control').
     'transport-control': Object.freeze(['legopoweredup_setConnectionType', 'legopoweredup_setBridgeURL',
         'legopoweredup_disconnect', 'legoboostunified_setConnectionType', 'legoboostunified_setBridgeURL',
-        'legoboostunified_disconnect', 'wedo2unified_setConnectionType', 'wedo2unified_disconnect']),
+        'legoboostunified_disconnect', 'wedo2unified_setConnectionType', 'wedo2unified_disconnect',
+        'legonxt_setConnectionMode', 'legonxt_getConnectionMode', 'legonxt_disconnect', 'legonxt_keepAlive']),
     // Debug logging of the extension, not a program statement.
     'host-control': Object.freeze(['legopoweredup_setDebugLevel', 'legopoweredup_enableDebug',
         'legoboostunified_setDebugLevel', 'legoboostunified_enableDebug', 'wedo2unified_setDebugLevel',
         'legopoweredup_shutdown', 'legoboostunified_shutdown']),
+    // legonxt's NXC build chain and file tools (transpile, compile, upload, download): host actions on
+    // the whole project, not statements of a program (docs/NXT-RXE-VM.md runs their result).
+    'build-control': Object.freeze(['legonxt_transpileProject', 'legonxt_showNXCCode', 'legonxt_downloadNXC',
+        'legonxt_compileToRXE', 'legonxt_setRxeFilename', 'legonxt_uploadToNXT', 'legonxt_fullWorkflow',
+        'legonxt_captureScreen']),
     // Hats and Boolean blocks: the layer reads commands and reporters only so far.
     'learner-gap': Object.freeze(['legopoweredup_isConnected', 'legopoweredup_getConnectedDevices', 'legopoweredup_getDeviceOnPort',
         'legopoweredup_whenColor', 'legopoweredup_seeingColor', 'legopoweredup_whenForceSensorPressed',
@@ -134,7 +178,18 @@ export const LEGO_HUB_EXCLUSIONS = Object.freeze({
         'legoboostunified_getFirmwareVersion', 'legoboostunified_getRSSI', 'legoboostunified_whenBatteryLow',
         'legoboostunified_whenMotorOverloaded',
         'wedo2unified_isConnected', 'wedo2unified_whenTilted', 'wedo2unified_isTilted', 'wedo2unified_setLightBrightness',
-        'wedo2unified_whenButtonPressed', 'wedo2unified_isButtonPressed'])
+        'wedo2unified_whenButtonPressed', 'wedo2unified_isButtonPressed',
+        'legonxt_isConnected', 'legonxt_getMotorMode', 'legonxt_getMotorRegulationMode', 'legonxt_getMotorTurnRatio',
+        'legonxt_getMotorRunState', 'legonxt_getMotorTachoLimit', 'legonxt_getMotorTachoCount',
+        'legonxt_getMotorBlockTachoCount', 'legonxt_getMotorRotationCount', 'legonxt_getSensorPort',
+        'legonxt_getSensorValid', 'legonxt_getSensorCalibrated', 'legonxt_getSensorType', 'legonxt_getSensorMode',
+        'legonxt_getSensorRawValue', 'legonxt_getSensorNormalizedValue', 'legonxt_getSensorScaledValue',
+        'legonxt_getSensorCalibratedValue', 'legonxt_getRawSensorValue', 'legonxt_updateDisplay', 'legonxt_drawPixel',
+        'legonxt_drawLine', 'legonxt_drawRect', 'legonxt_drawCircle', 'legonxt_drawPattern', 'legonxt_spriteGetX',
+        'legonxt_spriteGetY', 'legonxt_spriteGetSize', 'legonxt_spriteGetVisible', 'legonxt_spriteSetPosition',
+        'legonxt_spriteSetSize', 'legonxt_spriteSetVisible', 'legonxt_getDeviceName', 'legonxt_getBluetoothAddress',
+        'legonxt_getFreeFlash', 'legonxt_getSignalStrength', 'legonxt_sendMessage', 'legonxt_receiveMessage',
+        'legonxt_getLowSpeedStatus', 'legonxt_getCurrentProgram'])
 });
 
 const byOpcode = new Map(LEGO_HUB_WORDS.map(e => [e.op, e]));
@@ -150,4 +205,4 @@ export function legoHubWordsOf (kinds) {
 }
 
 /** Whether a line or reporter begins with one of the words' prefixes. */
-export const isLegoHubText = text => /^(?:pup|boost|wedo)\s/i.test(String(text).trim());
+export const isLegoHubText = text => /^(?:pup|boost|wedo|nxt)\s/i.test(String(text).trim());
