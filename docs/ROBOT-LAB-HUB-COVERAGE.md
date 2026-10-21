@@ -50,7 +50,7 @@ Virtual hub: `G/bw-sim/hubs/spike/spike-virtual-hub.js` + `G/virtual-hub/spike-p
 | spikeprimeble (direct BLE) | WB | blocks | GREEN | `bw-sim-spike-routes` "(a) a spikeprimeble project (SPIKE 3 direct BLE) migrates to spikeprime and stops the Wall stopper by its reading, in the Lab over Web Bluetooth". Legacy ids migrate to spikeprime on load (`lib/spike-project-migration.js`), and the test checks that only real spikeprimeble opcodes were in the file |
 | spikeprimeBTC / spikeprime | SL-BT (RFCOMM double, 2.x firmware) | blocks | GREEN | `bw-sim-spike-routes` "(b) … motor A turns 360 degrees in the physics" and "(b) spikeprime over Scratch Link BT Classic stops the Wall stopper by its reading". The second needed two fixes to the double: the port report now streams on every hub change, and its distance is in whole cm, as a 2.x hub sends it (it was mm read as cm). |
 | spikeprime | SL-BLE | blocks | GREEN | `bw-sim-spike-routes` "(c) spikeprime over Scratch Link BLE (the BLE double, SPIKE 3 GATT) stops the Wall stopper by its reading" (+ a judge-can-fail control) |
-| spikeprimeBridge / legospikeprimeBLE | bridge | blocks | GAP | legacy ids migrated (`spike-legacy-migration`); no virtual bridge |
+| spikeprime (absorbed spikeprimeBridge) | bridge (WebSocket relay, 2.x REPL) | `DEVICE SPIKE` pseudocode | GREEN | `bw-sim-spike-bridge` "spikeprime over its WebSocket bridge (firmware 2.x REPL) stops the Wall stopper by its reading" (+ a judge-can-fail control). The real extension's own `connect to bridge at [URL]` (ws://localhost:8081) -> `G/bw-sim/transports/virtual-bridge.js` (text both ways) -> `virtual-spike-stream.js`, which unwraps the same 2.x REPL double Scratch Link BT reaches. Needed CrispStrobe/extensions#58: BridgeLink sent the relay base64 while reading the hub's text as text. Legacy spikeprimeBridge / legospikeprimeBLE projects migrate to spikeprime (`spike-legacy-migration`) |
 | Renode firmware (lockstep) | firmware route | blocks / pseudocode compiled for the firmware | PARTIAL | `bw-sim-renode-lockstep`, `bw-sim-renode-lockstep-program` against the in-process fake (`bw-sim-renode-lockstep-fake.mjs`); `-native` checks only the desktop contract |
 | Renode firmware | firmware route | MicroPython on the hub | GAP | MicroPython exercised in the arena pane only (`spike-arena-pane-units`) |
 
@@ -128,7 +128,7 @@ Virtual hub: `G/bw-sim/hubs/nxt/` (direct + system commands, files); VM `G/bw-si
 | legonxt | SL-BT | `nxt` DEVICE words | PENDING #1129 | |
 | legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PARTIAL (#1130 merged) | `bw-sim-mindstorms-model-limits` drives the virtual NXT's sync controller, buttons and ultrasonic event capture directly (and the .rxe VM's ReadButton); no test yet sends them from the legonxt extension |
 | legonxt | hosted NXC -> `.rxe` | NXC source | PARTIAL | fixtures are precompiled (`test/fixtures/nxt-rxe/`); no NXC-compile-then-run test |
-| legonxt | Web Serial, bridge | blocks | GAP | |
+| legonxt | Web Serial ("direct"), bridge | blocks | GREEN | `bw-sim-virtual-transports-nxt` "legonxt over Web Serial (\"direct\", 9600 baud): the bumper bot drives until the bumper meets the wall and stops", "legonxt over its WebSocket bridge (base64 telegrams): …" (+ a no-stop control on both). Connected by its own `set connection mode` / `connect` blocks with no Scratch Link; `G/bw-sim/transports/virtual-serial.js` and `virtual-bridge.js` (ws://localhost:8765, one base64 text message per length-prefixed telegram) -> the Virtual NXT session. Needed CrispStrobe/extensions#58: both backends called methods they do not have, so neither could connect, and the bridge resolved numbers its callers parse as telegrams |
 
 ## RCX
 
@@ -145,15 +145,15 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 
 | Hub | GREEN | PARTIAL | PENDING | GAP |
 |---|---|---|---|---|
-| SPIKE Prime / Robot Inventor | 5 | 1 | 0 | 3 |
+| SPIKE Prime / Robot Inventor | 6 | 1 | 0 | 2 |
 | EV3 | 6 | 0 | 0 | 1 |
 | BOOST Move Hub | 5 | 0 | 0 | 1 |
 | Powered Up City / Technic | 5 | 0 | 0 | 1 |
 | WeDo 2.0 | 3 | 1 | 0 | 1 |
 | SPIKE Essential | 0 | 0 | 0 | 2 |
-| NXT | 2 | 2 | 1 | 1 |
+| NXT | 3 | 2 | 1 | 0 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **28** | **4** | **1** | **10** |
+| **Total** | **30** | **4** | **1** | **8** |
 
 ## Gaps, by user impact
 
@@ -166,7 +166,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 4. SPIKE Prime, Python/JS `_spikeprime` calls: confirmed gap. No Code-tab reader lifts them (see the row); this needs the lift in
     `robot-lab-pseudocode.js` after #1129.
 5. SPIKE Prime, real Renode lockstep and MicroPython on the hub: virtual support (needs Renode in CI).
-6. SPIKE Prime, bridge route: virtual bridge support missing.
+6. ~~SPIKE Prime, bridge route~~: closed by `bw-sim-spike-bridge` (virtual WebSocket relay + 2.x REPL stream; extension fix CrispStrobe/extensions#58).
 7. ~~EV3, Web Serial / bridge~~: closed by `bw-sim-virtual-transports-ev3` (virtual Web Serial port and WebSocket bridge, `G/bw-sim/transports/`).
 8. ~~EV3, ev3dev~~: closed by `bw-sim-virtual-ev3dev` (virtual ev3dev brick over HTTP, `G/bw-sim/transports/virtual-ev3dev.js`).
 9. EV3, Python/JS calls: confirmed gap, same missing lift as 4.
@@ -179,7 +179,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 16. SPIKE Essential, legopoweredup over WB and SL-BLE: needs virtual support. The profile is registered,
     but part 67351.dat has no `part-meta/parts.json` entry, so no model can place the hub (a `bw-sim/` change;
     waits for the open Robot Lab PRs).
-17. NXT, NXC compile-then-run: needs the hosted compiler; Web Serial / bridge: virtual support missing.
+17. NXT, NXC compile-then-run: needs the hosted compiler. (~~Web Serial / bridge~~: closed by `bw-sim-virtual-transports-nxt`, with extension fixes CrispStrobe/extensions#58.)
     #1129 (open) covers the words; #1130 (merged) added sync, buttons and ultrasonic listening to the
     virtual NXT, proven at the model level only.
 18. ~~RCX, legorcx blocks into the Lab RCX~~: closed by `bw-sim-rcx-legorcx`.
