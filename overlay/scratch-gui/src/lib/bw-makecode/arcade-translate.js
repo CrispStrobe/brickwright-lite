@@ -361,13 +361,19 @@ class ArcadeTranslator extends BaseTranslator {
         // A real no-initializer scalar starts Undefined; inferImageReferences'
         // conservative annotation graph intentionally remains unchanged.
         this.sourceBitwiseOperands=new WeakSet();this.primitiveBitwiseOperands=new WeakSet();this.possibleBitwiseArrays=new WeakSet();
-        const bitwise=value=>value?.type==='Binary'&&['&','|','^','<<','>>','>>>'].includes(value.op)||value?.type==='Unary'&&value.op==='~';
+        // Compound emitters construct a Binary expression later, but its two
+        // operands are these original Assignment nodes. Index their actual
+        // identities now; a synthetic expression is never a proof producer.
+        const bitwiseOperands=value=>value?.type==='Binary'&&['&','|','^','<<','>>','>>>'].includes(value.op)?[value.left,value.right]:
+            value?.type==='Unary'&&value.op==='~'?[value.argument]:
+            value?.type==='Assignment'&&['&=','|=','^=','<<=','>>=','>>>='].includes(value.op)?[value.left,value.right]:null;
+        const bitwise=value=>bitwiseOperands(value)!==null;
         if(containsAst(node,bitwise)){
             const facts=analyseSourceValueProducers(node,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
                 declaredLocalUndefined:true,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true});
             const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
             containsAst(node,value=>{
-                if(bitwise(value))for(const operand of value.type==='Binary'?[value.left,value.right]:[value.argument]){
+                if(bitwise(value))for(const operand of bitwiseOperands(value)){
                     const types=facts.typesAt(operand),array=type=>type?.kind==='Array';
                     if([...types].some(array)||references.arrays.has(operand))this.possibleBitwiseArrays.add(operand);
                     if(types.size&&[...types].every(type=>primitive.has(type)||array(type)))this.sourceBitwiseOperands.add(operand);
