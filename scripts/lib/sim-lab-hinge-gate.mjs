@@ -15,7 +15,9 @@
 //   3. N again: the other hinge (p2's line: the arm turns the beam); N once more: the first;
 //   4. the properties panel's +15° turns the same three;
 //   5. a beam beside the arm: the turn is refused (in the way), nothing moves; a loose beam
-//      has no hinge, and says so.
+//      has no hinge, and says so;
+//   6. Ctrl+drag on an axle standing in the beam's hole glides it up along the hole (one undo
+//      step, still in the hole); Ctrl+drag on the beam itself says only pins and axles glide.
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
@@ -149,5 +151,39 @@ const checks = async (page, {shotsDir}) => {
     assert.equal(await statusKind(page), 'refused');
     assert.equal(await hinge(page), null);
     out.hinges = first.of;
+
+    // 6. Ctrl-glide: an axle 3 standing in the beam's middle hole.
+    const [b6, ax6] = await layOut(page, [['32524.dat', [0, 0, 0], I], ['4519.dat', [0, -20, 0], UP]]);
+    await lab(page, () => window.__bwSimLab.editView.frameModel());
+    const screenAt = ldu => lab(page, p => window.__bwSimLab.editView.toScreen([p[0] * 0.0004, -p[1] * 0.0004, -p[2] * 0.0004]), ldu);
+    const grip = await screenAt([0, -40, 0]); // on the axle, above the beam
+    // Along the axle as the screen shows it: towards where a point 20 LDU higher up it is drawn.
+    const up = await screenAt([0, -60, 0]);
+    const n = Math.hypot(up[0] - grip[0], up[1] - grip[1]);
+    const to = [grip[0] + (up[0] - grip[0]) / n * 25, grip[1] + (up[1] - grip[1]) / n * 25];
+    const y0 = (await poses(page))[ax6].position[1];
+    await page.mouse.move(grip[0], grip[1]);
+    await page.keyboard.down('Control');
+    await page.mouse.down();
+    await page.mouse.move(to[0], to[1], {steps: 10});
+    await page.mouse.up();
+    await page.keyboard.up('Control');
+    const y1 = (await poses(page))[ax6].position[1];
+    assert.ok(y1 < y0 - 3, `the axle glided up its hole: y ${y0} → ${y1} (status "${await statusText(page)}", from ${grip} to ${to}, glide ${JSON.stringify(await lab(page, () => window.__bwSimLab.editView.debug.glide()))})`);
+    const paired = await lab(page, ([id]) => window.__bwSimLab._pane.lib.pairedParts(window.__bwSimLab.editor.model, window.__bwSimLab._pane.lib.CATALOG, id), [ax6]);
+    assert.deepEqual(paired, [b6], 'still in the beam\'s hole');
+    out.glideLdu = Math.round((y0 - y1) * 10) / 10;
+    await canvas.focus();
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(([id, y]) => window.__bwSimLab.editor.model.parts.find(p => p.id === id).position[1] === y, [ax6, y0]);
+    // The beam is no pin or axle: Ctrl+drag on it says what glides.
+    const onBeam = await screenAt([0, -10, 40]);
+    await page.mouse.move(onBeam[0], onBeam[1]);
+    await page.keyboard.down('Control');
+    await page.mouse.down();
+    await page.mouse.move(onBeam[0] + 30, onBeam[1], {steps: 6});
+    await page.mouse.up();
+    await page.keyboard.up('Control');
+    assert.match(await statusText(page), /Ctrl\+drag slides a pin or an axle/);
     return out;
 };

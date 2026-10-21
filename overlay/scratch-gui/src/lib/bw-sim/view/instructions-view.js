@@ -11,10 +11,17 @@
 // them. The order comes from instructions/steps.js; the callouts and buttons
 // are the pane's (components/tw-pseudocode/sim-lab-instructions.jsx).
 //
+// Where a new part goes: each one that slides on (the step's `moves`) flies in along that
+// direction from EXPLODE_LDU away, a few times over, then rests in place; on the printed page
+// and for a reader who asked for reduced motion it is drawn pulled out, with an orange arrow to
+// where it goes. A new part hidden inside others (a pin in a hole) keeps its outline drawn
+// faintly through them (X-ray), so the page shows which hole it went into.
+//
 // Reached only through bw-sim/sim-lab.js (the "bw-sim-lab" chunk), like every
 // three.js view of the Robot Lab.
 
-import {Box3, Color, LineBasicMaterial, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, Vector2, Vector3, WebGLRenderer} from 'three';
+import {Box3, BufferGeometry, Color, ConeGeometry, Group, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera,
+    Quaternion, Scene, Vector2, Vector3, WebGLRenderer} from 'three';
 import {partGeometry, partVisual} from './part-geometry.js';
 import {PART_SURFACE, addEdgeLines, addPartLights, conditionalEdgeMaterial, edgeMaterials} from './part-style.js';
 import {WebGLUnavailableError, webglAvailable} from './sim-view3d.js';
@@ -38,6 +45,15 @@ const FRESH_GLOW = 0.1;
 const CONTEXT = 0.5;
 /** The page's background. */
 const PAGE = '#f4f8fc';
+/** How far a new part starts (or is drawn pulled out) from where it goes, along its way in (LDU: three studs). */
+export const EXPLODE_LDU = 60;
+/** One fly-in: the slide (ms), then the rest in place before the next; how many before it stays. */
+const FLY_MS = 700;
+const FLY_PERIOD_MS = 2000;
+const FLY_TIMES = 3;
+/** How strongly a hidden new part's outline shows through what covers it, and up to which size (box diagonal, m): pins and axles, not a motor. */
+const XRAY_OPACITY = 0.4;
+const XRAY_MAX_M = 0.035;
 
 /** A placed pose (LDraw, -y up) as the world matrix of a mesh (metres, y up). */
 const placeMesh = (mesh, placed) => {
@@ -73,7 +89,7 @@ export const stepBounds = (fresh, all, {context = CONTEXT, min = 0.06} = {}) => 
  * @returns {{canvas: HTMLCanvasElement, show: (n: number) => void, image: (n: number, width: number, height: number) => string,
  *            stats: () => object, resize: () => void, dispose: () => void}}
  */
-export const createInstructionsView = ({container, model, plan, read, colors}) => {
+export const createInstructionsView = ({container, model, plan, read, colors, reducedMotion = null}) => {
     if (!webglAvailable()) throw new WebGLUnavailableError('this browser gives a canvas no WebGL 2 context');
     let renderer;
     try {
@@ -95,6 +111,33 @@ export const createInstructionsView = ({container, model, plan, read, colors}) =
         edges: [new LineBasicMaterial({color: HIGHLIGHT}), new LineBasicMaterial({color: HIGHLIGHT})],
         conditional: [conditionalEdgeMaterial(HIGHLIGHT), conditionalEdgeMaterial(HIGHLIGHT)]
     };
+    // A new part's outline through what covers it: drawn last, over everything, faint.
+    const xrayMaterial = new LineBasicMaterial({color: HIGHLIGHT, depthTest: false, depthWrite: false, transparent: true, opacity: XRAY_OPACITY});
+    const xrayOf = entry => {
+        if (!entry.xray) {
+            const edges = entry.mesh.children.find(c => c.userData.edgeLines === 'edges');
+            if (!edges) return null;
+            entry.xray = edges.clone();
+            entry.xray.userData = {xray: true};
+            entry.xray.material = xrayMaterial;
+            entry.xray.renderOrder = 10;
+            entry.mesh.add(entry.xray);
+        }
+        return entry.xray;
+    };
+    // The arrows of a pulled-out page: a line from the part to where it goes and a cone at that end.
+    const arrows = new Group();
+    scene.add(arrows);
+    const arrowLine = new LineBasicMaterial({color: HIGHLIGHT});
+    const arrowHead = new MeshBasicMaterial({color: HIGHLIGHT});
+    const clearArrows = () => {
+        for (const child of [...arrows.children]) {
+            arrows.remove(child);
+            child.geometry.dispose();
+        }
+    };
+    const prefersReducedMotion = () => (reducedMotion !== null ? reducedMotion :
+        typeof window !== 'undefined' && Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches));
     const lineSets = new Map();
     const linesFor = code => {
         if (!lineSets.has(code)) lineSets.set(code, edgeMaterials(code, colors));
@@ -123,12 +166,67 @@ export const createInstructionsView = ({container, model, plan, read, colors}) =
         addEdgeLines(mesh, partVisual(placed.part, read, colors), lines);
         mesh.visible = false;
         scene.add(mesh);
-        parts.set(placed.id, {mesh, faces, base, lines});
+        geometry.computeBoundingBox();
+        parts.set(placed.id, {mesh, faces, base, lines, placed, xray: null, size: geometry.boundingBox.getSize(new Vector3()).length()});
+    }
+    // Decoration (a cable's segments): each piece with the part nearest it, shown from that part's step on.
+    const decorOf = new Map();
+    for (const d of model.decor || []) {
+        let geometry;
+        try { geometry = partGeometry(d.part, read, colors); } catch { continue; }
+        let near = null;
+        let best = Infinity;
+        for (const pl of model.parts) {
+            const dd = (pl.position[0] - d.position[0]) ** 2 + (pl.position[1] - d.position[1]) ** 2 + (pl.position[2] - d.position[2]) ** 2;
+            if (dd < best) { best = dd; near = pl.id; }
+        }
+        if (near === null) continue;
+        const info = colors.get(d.color ?? 16) || colors.get(16);
+        const face = new MeshStandardMaterial({color: new Color(info ? info.value : '#333333').lerp(GREY, GREY_MIX), ...PART_SURFACE});
+        const mesh = new Mesh(geometry, [face, face]);
+        placeMesh(mesh, {position: d.position, rotation: d.matrix});
+        mesh.visible = false;
+        scene.add(mesh);
+        if (!decorOf.has(near)) decorOf.set(near, []);
+        decorOf.get(near).push(mesh);
     }
     scene.updateMatrixWorld(true);
 
     let current = -1;
-    let shown = {built: 0, fresh: 0};
+    let shown = {built: 0, fresh: 0, moved: 0, exploded: false};
+    /** The new parts that slide in on the page: [{entry, offset (world metres)}]. */
+    let flying = [];
+    let flight = null;
+    /** Draws the flying parts `k` of the way home (0: pulled out, 1: in place). */
+    const flyTo = k => {
+        for (const {entry, offset} of flying) {
+            placeMesh(entry.mesh, entry.placed);
+            entry.mesh.matrix.elements[12] += offset[0] * (1 - k);
+            entry.mesh.matrix.elements[13] += offset[1] * (1 - k);
+            entry.mesh.matrix.elements[14] += offset[2] * (1 - k);
+            entry.mesh.matrixWorldNeedsUpdate = true;
+        }
+    };
+    const stopFlight = () => {
+        if (flight !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(flight);
+        flight = null;
+    };
+    /** The fly-in: FLY_TIMES slides (ease out), each followed by a rest in place; then the page stays put. */
+    const fly = () => {
+        stopFlight();
+        if (!flying.length || typeof requestAnimationFrame !== 'function') return;
+        const start = performance.now();
+        const frame = now => {
+            const t = now - start;
+            const done = t >= FLY_PERIOD_MS * FLY_TIMES;
+            const phase = done ? FLY_MS : t % FLY_PERIOD_MS;
+            const k = Math.min(1, phase / FLY_MS);
+            flyTo(1 - (1 - k) ** 3);
+            renderer.render(scene, camera);
+            flight = done ? null : requestAnimationFrame(frame);
+        };
+        flight = requestAnimationFrame(frame);
+    };
     const boxOf = ids => {
         const box = new Box3();
         for (const id of ids) {
@@ -138,9 +236,14 @@ export const createInstructionsView = ({container, model, plan, read, colors}) =
         return box;
     };
 
-    /** Puts step `n` on the page: built greyed, new highlighted, the rest hidden; frames the camera. */
-    const show = n => {
+    /**
+     * Puts step `n` on the page: built greyed, new highlighted, the rest hidden; frames the camera.
+     * `exploded`: the new parts drawn pulled out with arrows (the printed page, reduced motion); else they fly in.
+     */
+    const show = (n, {exploded = prefersReducedMotion(), animate = true} = {}) => {
+        stopFlight();
         const {built, fresh} = stepView(plan, n);
+        const moves = (plan.steps[n] && plan.steps[n].moves) || {};
         const builtSet = new Set(built);
         const freshSet = new Set(fresh);
         for (const [id, entry] of parts) {
@@ -156,14 +259,33 @@ export const createInstructionsView = ({container, model, plan, read, colors}) =
                 const kind = child.userData.edgeLines;
                 if (kind) child.material = (isFresh ? highlightEdges : entry.lines)[kind];
             }
+            placeMesh(entry.mesh, entry.placed);
+            for (const mesh of decorOf.get(id) || []) mesh.visible = entry.mesh.visible;
+            const small = isFresh && entry.size < XRAY_MAX_M;
+            const xray = small ? xrayOf(entry) : entry.xray;
+            if (xray) xray.visible = small;
         }
+        // The new parts' way in (LDU frame → world: x, −y, −z), EXPLODE_LDU long.
+        flying = fresh.filter(id => parts.has(id) && moves[id]).map(id => ({
+            entry: parts.get(id), offset: lduToWorld(moves[id].map(v => v * EXPLODE_LDU))
+        }));
+        scene.updateMatrixWorld(true);
         const freshBox = boxOf(fresh);
-        const allBox = boxOf([...built, ...fresh]);
+        // The frame holds the new parts where they go and where they start.
+        if (flying.length) {
+            flyTo(0);
+            scene.updateMatrixWorld(true);
+            freshBox.union(boxOf(flying.map(f => f.entry.mesh.name)));
+        }
+        const allBox = boxOf([...built, ...fresh]).union(freshBox);
         if (!freshBox.isEmpty()) {
             const size = renderer.getSize(new Vector2());
             const aspect = size.x / Math.max(1, size.y);
+            // The step's corner (instructions/steps.js stepCorner, LDU frame [sx, sz]) as a world direction: x, up, −z.
+            const corner = (plan.steps[n] && plan.steps[n].view) || [1, -1];
+            const direction = [VIEW_DIRECTION[0] * corner[0], VIEW_DIRECTION[1], -VIEW_DIRECTION[2] * corner[1]];
             const view = thumbnailCamera(stepBounds({min: freshBox.min.toArray(), max: freshBox.max.toArray()},
-                {min: allBox.min.toArray(), max: allBox.max.toArray()}), {fov: camera.fov, aspect, direction: VIEW_DIRECTION, margin: 1.15});
+                {min: allBox.min.toArray(), max: allBox.max.toArray()}), {fov: camera.fov, aspect, direction, margin: 1.15});
             camera.position.fromArray(view.position);
             camera.up.fromArray(view.up);
             camera.lookAt(...view.target);
@@ -173,8 +295,37 @@ export const createInstructionsView = ({container, model, plan, read, colors}) =
             camera.updateProjectionMatrix();
         }
         current = n;
-        shown = {built: built.filter(id => parts.has(id)).length, fresh: fresh.filter(id => parts.has(id)).length};
+        shown = {built: built.filter(id => parts.has(id)).length, fresh: fresh.filter(id => parts.has(id)).length,
+            moved: flying.length, exploded: Boolean(exploded && flying.length)};
+        clearArrows();
+        if (exploded) {
+            // Pulled out, each with its arrow home: from the face of its box that leads the way to where that face goes.
+            flyTo(0);
+            scene.updateMatrixWorld(true);
+            for (const {entry, offset} of flying) {
+                const box = new Box3().setFromObject(entry.mesh);
+                const way = new Vector3(...offset).negate();
+                const half = box.getSize(new Vector3()).multiplyScalar(0.5);
+                const lead = way.clone().normalize();
+                const from = box.getCenter(new Vector3()).addScaledVector(lead,
+                    Math.abs(lead.x) * half.x + Math.abs(lead.y) * half.y + Math.abs(lead.z) * half.z);
+                const to = from.clone().add(way);
+                const length = way.length();
+                const tip = Math.min(0.006, length * 0.3);
+                const dir = way.clone().normalize();
+                const end = to.clone().addScaledVector(dir, -tip);
+                arrows.add(new Line(new BufferGeometry().setFromPoints([from, end]), arrowLine));
+                const head = new Mesh(new ConeGeometry(tip * 0.45, tip, 12), arrowHead);
+                head.position.copy(end).addScaledVector(dir, tip / 2);
+                head.quaternion.copy(new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir));
+                arrows.add(head);
+            }
+        } else {
+            flyTo(1);
+        }
+        scene.updateMatrixWorld(true);
         renderer.render(scene, camera);
+        if (!exploded && animate) fly();
     };
 
     const resize = () => {
@@ -184,7 +335,7 @@ export const createInstructionsView = ({container, model, plan, read, colors}) =
         const size = renderer.getSize(new Vector2());
         if (size.x !== width || size.y !== height) {
             renderer.setSize(width, height, false);
-            if (current >= 0) show(current);
+            if (current >= 0) show(current, {animate: false});
         }
     };
 
@@ -195,15 +346,19 @@ export const createInstructionsView = ({container, model, plan, read, colors}) =
         const ratio = renderer.getPixelRatio();
         renderer.setPixelRatio(1);
         renderer.setSize(width, height, false);
-        show(n);
+        show(n, {exploded: true, animate: false});
         const url = canvas.toDataURL('image/png');
         renderer.setPixelRatio(ratio);
         renderer.setSize(size.x, size.y, false);
-        if (before >= 0) show(before);
+        if (before >= 0) show(before, {animate: false});
         return url;
     };
 
     const dispose = () => {
+        stopFlight();
+        clearArrows();
+        for (const m of [xrayMaterial, arrowLine, arrowHead]) m.dispose();
+        for (const list of decorOf.values()) for (const mesh of list) mesh.material[0].dispose();
         for (const entry of parts.values()) for (const m of entry.faces) m.dispose();
         for (const set of [highlightEdges, ...lineSets.values()]) for (const m of [...set.edges, ...set.conditional]) m.dispose();
         renderer.dispose();

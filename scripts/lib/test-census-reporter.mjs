@@ -19,7 +19,7 @@
  * recorded as "(no reason)"). The TAP shows `# SKIP why` with no file; this is
  * the only place a skip is tied to the file that owns it, and
  * scripts/check-test-run.mjs holds every skip in CI to a pointer at the one
- * place the test does execute (LANES.md, "Skips that execute elsewhere").
+ * place the test does execute (CI-POINTERS.md, "Skips that execute elsewhere").
  *
  * stdoutBytes (2026-09-07): bytes a file's child wrote RAW to fd 1 — console
  * output from the test or from code it loaded. Under node --test that fd is

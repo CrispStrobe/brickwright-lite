@@ -16,7 +16,9 @@ test('dashboard inputs update the shared neutral state', () => {
     applyVirtualPortInput(state, 'C', 'force', '42');
     state.stepMotors(1000);
     assert.equal(state.data.motors[0].speed, 75);
-    assert.equal(state.data.classicPorts[1][1][0], 240);
+    // The hub state holds millimetres; the SPIKE 2.x port report carries whole centimetres.
+    assert.equal(state.data.sensors[1].distance, 240);
+    assert.equal(state.data.classicPorts[1][1][0], 24);
     assert.equal(state.data.sensors[2].pressed, true);
     state.setFirmwareTarget('legacy-v2');
     assert.equal(state.data.firmwareTarget, 'legacy-v2');

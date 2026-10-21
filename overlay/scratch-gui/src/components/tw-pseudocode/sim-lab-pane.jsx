@@ -35,6 +35,8 @@ import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 import {EDITOR_TEXT} from './sim-lab-editor-text.js';
 import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
+import SimLabCoach from './sim-lab-coach.jsx';
+import SimLabMotorMixer, {MIXER_OPEN_KEY} from './sim-lab-motor-mixer.jsx';
 import PaneDivider from '../gui/pane-divider.jsx';
 import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
@@ -73,14 +75,15 @@ const TEXT = {
             'nxt-bumper-bot.blocks.json': 'The NXT blocks are on the sprite now. Press Run: the program connects to the Lab\'s NXT over Scratch Link, turns both wheels once, then drives until the bumper touches the wall.',
             'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. Press ⇦ To blocks, then Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
             'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. Press ⇦ To blocks, then Run: the Move Hub drives ahead with its motors A and B, then spins on the spot. Challenge: make it spin the other way.',
-            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. Press ⇦ To blocks, then Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.'
+            'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. Press ⇦ To blocks, then Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.',
+            'crane.bw': 'The example program is in the Code tab now. Press Run: the crane lifts its boom, swings the hook a quarter turn, lets it down and swings back. Challenge: make it swing the other way.'
         },
         noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
         noProgramBt: 'No {brick} program is loaded yet, so nothing tells the motors to turn. Add the {brick} blocks (Add Extension) or load the example program, then press Run.',
         noProgramHub: 'No program for this hub is loaded yet. Add its blocks ({extensions}) or write pup, boost or wedo words in the Code tab, press ⇦ To blocks, then press Run.',
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
-        driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
+        driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub', air: 'Air',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         parts: 'Parts', saveHelp: 'Save the model as a file', port: 'Port', none: 'none',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw multi-part (.mpd)', io: 'BrickLink Studio (.io)'},
@@ -105,7 +108,7 @@ const TEXT = {
         challengesTitle: 'Challenges', challengeStart: 'Start', challengeRestart: 'Start again', challengeAgain: 'Try again',
         challengeOthers: 'All challenges', challengeReady: 'Press Run to begin.', challengeTime: '{s} s',
         challengeStars: '{n} of 3 stars', challengeBest: 'Best: {n} of 3 stars, {text}',
-        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge'},
+        challengeMeasure: {time: '{v} s', gap: '{v} cm to the wall', overshoot: '{v} cm past the edge', shape: '{v} % off a square'},
         challengeWhy: {offTrack: 'The robot left the line.', touched: 'The robot touched the wall.',
             leftRing: 'The robot left the ring.', timeUp: 'Time is up.'},
         challenges: {
@@ -113,7 +116,8 @@ const TEXT = {
             'wall-stop': {title: 'Stop at the wall', goal: 'Drive at the wall and stop close to it without touching it.'},
             'sumo-stay': {title: 'Stay in the ring', goal: 'Keep the robot inside the ring for 30 seconds.'},
             'maze-goal': {title: 'Through the maze', goal: 'Find the way to the green square.'},
-            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'}
+            'zones-tour': {title: 'Four corners', goal: 'Drive into all four coloured corners, in any order.'},
+            'draw-square': {title: 'Draw a square', goal: 'Mark a part "Draws on the floor" and drive a square: the squarer, the more stars.'}
         },
         kinds: {distance: 'Distance', color: 'Colour', force: 'Force', touch: 'Touch', light: 'Light', rotation: 'Rotation', tilt: 'Tilt', motion: 'Motion'},
         replay: 'Replay', replayHelp: 'Look back at the last seconds. Run goes on from now.', replayNow: 'now', speedValue: '{n}×',
@@ -185,14 +189,15 @@ const TEXT = {
             'nxt-bumper-bot.blocks.json': 'Die NXT-Blöcke sind jetzt bei der Figur. Drücke Start: Das Programm verbindet sich über Scratch Link mit dem NXT des Labors, dreht beide Räder einmal und fährt dann, bis der Stoßfänger die Wand berührt.',
             'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Drücke ⇦ Zu Blöcken und dann Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
             'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Drücke ⇦ Zu Blöcken und dann Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht sich dann auf der Stelle. Aufgabe: Lass ihn andersherum drehen.',
-            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Drücke ⇦ Zu Blöcken und dann Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.'
+            'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Drücke ⇦ Zu Blöcken und dann Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.',
+            'crane.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Kran hebt seinen Ausleger, schwenkt den Haken eine Vierteldrehung, lässt ihn ab und schwenkt zurück. Aufgabe: Lass ihn in die andere Richtung schwenken.'
         },
         noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         noProgramBt: 'Es ist noch kein {brick}-Programm geladen, darum dreht sich kein Motor. Füge die {brick}-Blöcke hinzu (Erweiterung hinzufügen) oder lade das Beispielprogramm, dann drücke Start.',
         noProgramHub: 'Für diesen Hub ist noch kein Programm geladen. Füge seine Blöcke hinzu ({extensions}) oder schreibe pup-, boost- oder wedo-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
-        driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
+        driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub', air: 'Luft',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         parts: 'Teile', saveHelp: 'Das Modell als Datei speichern', port: 'Port', none: 'keiner',
         saveFormats: {ldr: 'LDraw (.ldr)', mpd: 'LDraw mehrteilig (.mpd)', io: 'BrickLink Studio (.io)'},
@@ -217,7 +222,7 @@ const TEXT = {
         challengesTitle: 'Aufgaben', challengeStart: 'Starten', challengeRestart: 'Neu starten', challengeAgain: 'Nochmal',
         challengeOthers: 'Alle Aufgaben', challengeReady: 'Drücke Start, um zu beginnen.', challengeTime: '{s} s',
         challengeStars: '{n} von 3 Sternen', challengeBest: 'Bestes: {n} von 3 Sternen, {text}',
-        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand'},
+        challengeMeasure: {time: '{v} s', gap: '{v} cm bis zur Wand', overshoot: '{v} cm über den Rand', shape: '{v} % neben einem Quadrat'},
         challengeWhy: {offTrack: 'Der Roboter hat die Linie verlassen.', touched: 'Der Roboter hat die Wand berührt.',
             leftRing: 'Der Roboter hat den Ring verlassen.', timeUp: 'Die Zeit ist um.'},
         challenges: {
@@ -225,7 +230,8 @@ const TEXT = {
             'wall-stop': {title: 'Halt an der Wand', goal: 'Fahre auf die Wand zu und halte dicht davor, ohne sie zu berühren.'},
             'sumo-stay': {title: 'Im Ring bleiben', goal: 'Halte den Roboter 30 Sekunden lang im Ring.'},
             'maze-goal': {title: 'Durchs Labyrinth', goal: 'Finde den Weg zum grünen Feld.'},
-            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'}
+            'zones-tour': {title: 'Vier Ecken', goal: 'Fahre in alle vier farbigen Ecken, in beliebiger Reihenfolge.'},
+            'draw-square': {title: 'Zeichne ein Quadrat', goal: 'Markiere ein Teil „Malt auf den Boden“ und fahre ein Quadrat: Je quadratischer, desto mehr Sterne.'}
         },
         kinds: {distance: 'Abstand', color: 'Farbe', force: 'Kraft', touch: 'Berührung', light: 'Licht', rotation: 'Drehung', tilt: 'Neigung', motion: 'Bewegung'},
         replay: 'Wiederholung', replayHelp: 'Auf die letzten Sekunden zurückschauen. Start geht ab jetzt weiter.', replayNow: 'jetzt', speedValue: '{n}×',
@@ -324,6 +330,9 @@ const DOCK_PROPERTIES_PX = 1280;
 const HIDDEN_STORAGE_KEY = 'bw-sim-lab-hidden';
 /** How Build's 3D view reads a scroll (camera-nav.js wheelIntent), kept in this browser. */
 const WHEEL_STORAGE_KEY = 'bw-sim-lab-wheel-mode';
+const MOUSE_PRESET_KEY = 'bw-sim-lab-mouse-preset';
+/** Set once the coach marks were put away on this device (sim-lab-coach.jsx). */
+const COACH_KEY = 'bw-sim-lab-coach-done';
 
 /**
  * From this pane width the toolbar may take a second row and shows every action; narrower, it
@@ -357,13 +366,14 @@ class SimLabPane extends React.Component {
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
+            mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
             challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
             hidden: [], editGroup: null, pick: null, measurement: null, placeColor: null, propsOpen: false, shortcuts: false,
-            hold: null, announce: '', wheelMode: this.storedWheelMode()};
+            hold: null, announce: '', wheelMode: this.storedWheelMode(), mousePreset: this.storedMousePreset(), coach: null};
         this.root = React.createRef();
         this.viewWrap = React.createRef();
         this.box = React.createRef();
@@ -510,6 +520,7 @@ class SimLabPane extends React.Component {
             ensureRunning: () => this.apiEnsureRunning(),
             setTimeScale: scale => this.setSpeed(scale),
             camera: view => this.apiCamera(view),
+            drawing: () => (this.view && this.view.penStrokes ? this.view.penStrokes() : []),
             locale: () => this.locale
         });
         const runtime = this.props.vm && this.props.vm.runtime;
@@ -698,7 +709,7 @@ class SimLabPane extends React.Component {
 
     /** Build mode: the current model (or an empty one) in the editor. */
     async enterBuild () {
-        const {createEditor, createEditorView3D, createPartThumbnails, fetchLDrawClosure, parseLDConfig, CATALOG, DEFAULT_COLOR} = this.lib;
+        const {createEditor, createEditorView3D, createPartThumbnails, fetchLDrawClosure, fetchModelDrawing, parseLDConfig, CATALOG, DEFAULT_COLOR} = this.lib;
         const model = this.session ? this.session.model : {version: 1, parts: []};
         this.pause();
         this.teardown();
@@ -715,7 +726,14 @@ class SimLabPane extends React.Component {
         if (this.disposed) return;
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
-        const {read} = this.catalogFiles;
+        let {read} = this.catalogFiles;
+        // A model with decoration (a cable's segments) or parts of its own: those files too, its own first.
+        if (model.decor || model.files) {
+            const drawing = await fetchModelDrawing({parts: [], decor: model.decor, files: model.files});
+            if (this.disposed) return;
+            const catalogRead = read;
+            read = path => drawing.read(path) ?? catalogRead(path);
+        }
         this.editor = createEditor({model, catalog: CATALOG});
         const colors = parseLDConfig(read('ldconfig.ldr'));
         try {
@@ -741,6 +759,7 @@ class SimLabPane extends React.Component {
                 viewCubeLabels: this.etext.connect.cube});
             this.editView.setGrid(this.state.grid);
             this.editView.setWheelMode(this.state.wheelMode);
+            this.editView.setMousePreset(this.state.mousePreset);
             this.colors = colors;
             const palette = this.lib.colorPalette(colors);
             this.palette = {...palette, byCode: new Map([...palette.common, ...palette.more].map(c => [c.code, c]))};
@@ -756,6 +775,29 @@ class SimLabPane extends React.Component {
             return;
         }
         this.setState({status: 'ready'});
+        if (this.coachDue()) this.setState({coach: 0});
+    }
+
+    /**
+     * Whether the coach marks show now: the first time Build opens on this device. An automated browser
+     * (navigator.webdriver: the browser gates) gets them only when its URL asks (?bwCoach=1), so the
+     * card never covers what another gate clicks.
+     */
+    coachDue () {
+        try {
+            const automated = typeof navigator !== 'undefined' && navigator.webdriver;
+            if (automated && !/[?&]bwCoach=1\b/.test(window.location.search)) return false;
+            return localStorage.getItem(COACH_KEY) !== '1';
+        } catch {
+            return true; // no storage (a private window): show them, they cannot be remembered
+        }
+    }
+
+    /** The coach marks are put away for good on this device. */
+    coachDone () {
+        this.setState({coach: null});
+        try { localStorage.setItem(COACH_KEY, '1'); } catch { /* private window: this session only */ }
+        this.editView?.canvas.focus();
     }
 
     /** Hidden parts (ids) kept for this browser session. */
@@ -980,12 +1022,18 @@ class SimLabPane extends React.Component {
         }
         await this.openText(await response.text(), file, key);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
-        if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
+        if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.withIntro(this.text.exampleOffer) : ''});
     }
 
     /** The MODELS entry of the model on show, or null for a built or imported one. */
     shippedModel () {
         return this.lib?.MODELS.find(m => modelKey(m) === this.state.shipped) || null;
+    }
+
+    /** A shipped model's own short story (MODELS `intro`, EN/DE) before `text`, when it has one. */
+    withIntro (text) {
+        const intro = this.shippedModel()?.intro;
+        return intro ? `${intro[this.locale] || intro.en} ${text}` : text;
     }
 
     /**
@@ -1010,7 +1058,7 @@ class SimLabPane extends React.Component {
         if (entry.example.endsWith('.nqc')) await this.loadRcxExample(code);
         else if (entry.example.endsWith('.blocks.json')) await this.loadBlocksExample(code);
         else window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
-        this.setState({info: this.text.exampleGoal[entry.example] || this.text.exampleLoaded});
+        this.setState({info: this.text.exampleGoal[entry.example] || this.withIntro(this.text.exampleLoaded)});
         if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
 
@@ -1048,7 +1096,7 @@ class SimLabPane extends React.Component {
         this.opened = {text, name};
         this.teardown();
         this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
-        const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
+        const {SimSession, fetchModelDrawing, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
         let firmware = null;
@@ -1108,9 +1156,11 @@ class SimLabPane extends React.Component {
         if (session.workerError && this.physics && !session.lockstep) { this.physics.terminate(); this.physics = false; }
         let view3d = 'webgl';
         try {
-            const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
+            // The parts, the decoration (a cable's segments) and the model's own embedded parts.
+            const {read} = await fetchModelDrawing(runModel, {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
             this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
+            this.view.setMousePreset(this.state.mousePreset);
             this.view.canvas.setAttribute('aria-label', this.t('canvasLabel'));
             this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));
             this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
@@ -1624,7 +1674,9 @@ class SimLabPane extends React.Component {
         for (const o of this.lib.createMat(this.state.mat || 'plain').obstacles) {
             touching[o.id] = parts.some(p => api.touching(p.id, o.id));
         }
-        return {tS, points, touching};
+        // What the pens have drawn (view/pen-layer.js), for "Draw a square".
+        const drawing = this.view && this.view.penStrokes ? this.view.penStrokes() : [];
+        return {tS, points, touching, drawing};
     }
 
     judgeChallenge () {
@@ -1729,6 +1781,34 @@ class SimLabPane extends React.Component {
         this.armChallenge();
     }
 
+    /** The motor mixer (sim-lab-motor-mixer.jsx): every motor of the model, through the Robot Lab API as the blocks use it. */
+    renderMixer (button) {
+        if (!this.api) return null;
+        const s = this.session;
+        const power = this.state.mixer.session === s ? this.state.mixer.power : {};
+        const lang = this.locale === 'de' ? 'de' : 'en';
+        const motors = this.api.motors().map(m => {
+            const enc = this.api.encoder(m.id);
+            return {id: m.id, port: m.port, hub: m.hub, direct: m.direct,
+                hubName: (m.profile && m.profile.name && (m.profile.name[lang] || m.profile.name.en)) || m.hub || '',
+                angleDeg: enc && enc.ok ? enc.angleDeg : null};
+        });
+        const setPower = (id, pct) => {
+            const r = pct === 0 ? this.api.stopMotor(id, 'brake') : this.api.setMotor(id, {power: pct});
+            if (r && r.ok === false) return;
+            this.setState(st => ({mixer: {session: s, power: {...(st.mixer.session === s ? st.mixer.power : {}), [id]: pct}}}));
+        };
+        return (
+            <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
+                onToggle={() => this.setState(st => {
+                    try { localStorage.setItem(MIXER_OPEN_KEY, st.mixerOpen ? '0' : '1'); } catch { /* private window: this session only */ }
+                    return {mixerOpen: !st.mixerOpen};
+                })}
+                onPower={setPower} onStop={id => setPower(id, 0)}
+                onStopAll={() => motors.filter(m => m.direct).forEach(m => setPower(m.id, 0))} />
+        );
+    }
+
     renderDrive (button) {
         // The arrow follows the finger (or button) that pressed it: captured, so sliding off does not
         // let go, and it stops when THAT finger lifts or the browser takes it away (another finger on
@@ -1755,6 +1835,8 @@ class SimLabPane extends React.Component {
         const hub = this.hub.data;
         const ports = [...new Set(this.session.mechanism.joints.filter(j => j.motor).map(j => j.motor.port))].sort();
         const sensorPorts = (this.session.mechanism.sensors || []).map(s => s.port).sort();
+        // Each air network's pressure (physics/air.js): a tank that empties as its cylinders move.
+        const air = this.session.core && this.session.core.airState ? this.session.core.airState() : [];
         const fmt = (port, s) => {
             if (!s) return '–';
             if (s.kind === 'distance') return s.distance < 0 ? '–' : `${s.distance} mm`;
@@ -1782,6 +1864,7 @@ class SimLabPane extends React.Component {
                     {this.text.readout}: {ports.map(p => `${p} ${Math.round(hub.motors['ABCDEF'.indexOf(p)].position)}°`).join(' · ')}
                     {sensorPorts.length ? ' · ' + sensorPorts.map(p => `${p} ${fmt(p, hub.sensors['ABCDEF'.indexOf(p)])}`).join(' · ') : ''}
                     {hub.imu ? ` · yaw ${Math.round(hub.imu.yaw)}°` : ''}
+                    {air.length ? ` · ${this.text.air} ${air.map(n => `${Math.round(n.kPa)} kPa`).join(' / ')}` : ''}
                 </span>
             </div>
         );
@@ -1931,6 +2014,22 @@ class SimLabPane extends React.Component {
         }
     }
 
+    storedMousePreset () {
+        try {
+            return localStorage.getItem(MOUSE_PRESET_KEY) === 'studio' ? 'studio' : 'brickwright';
+        } catch {
+            return 'brickwright';
+        }
+    }
+
+    /** The mouse preset for both views (camera-nav.js MOUSE_PRESETS), kept on this device. */
+    setMousePreset (mousePreset) {
+        this.setState({mousePreset});
+        this.editView?.setMousePreset(mousePreset);
+        this.view?.setMousePreset(mousePreset);
+        try { localStorage.setItem(MOUSE_PRESET_KEY, mousePreset); } catch { /* private window: this session only */ }
+    }
+
     setWheelMode (wheelMode) {
         this.setState({wheelMode});
         this.editView?.setWheelMode(wheelMode);
@@ -2042,6 +2141,9 @@ class SimLabPane extends React.Component {
         case 'hinged': case 'hingeShown': return fill(E[st.kind], {n: st.count, deg: st.degrees, i: st.index + 1, of: st.of});
         case 'chained': return fill(st.tread ? E.treaded : E.chained, {n: st.count, g: st.gears});
         case 'banded': return fill(E.banded, {mm: st.mm, stretch: this.decimal(st.stretch)});
+        case 'gliding': return fill(E.gliding, {ldu: this.decimal(st.ldu)});
+        case 'roped': return fill(E.roped, {cm: this.decimal(st.cm)});
+        case 'hosed': return fill(E.hosed, {from: E.hosePort[st.from] || st.from, to: E.hosePort[st.to] || st.to});
         case 'idle': return ''; // nothing to report; the (i) beside the status explains how to build
         default:
             if (E[st.kind]) return fill(E[st.kind], {n: st.count});
@@ -2674,6 +2776,10 @@ class SimLabPane extends React.Component {
                         {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
                         {simulate && this.renderReplay()}
                         {this.renderPortPicker(button)}
+                        {build && this.state.coach !== null && this.state.status === 'ready' && (
+                            <SimLabCoach T={this.etext} step={this.state.coach} onNext={() => this.setState(s => ({coach: s.coach + 1}))}
+                                onDone={() => this.coachDone()} />
+                        )}
                         {build && !this.dockProperties() && this.state.propsOpen && (
                             <div data-testid="bw-sim-lab-properties-drawer" style={{position: 'absolute', right: 0, top: 0, bottom: 0, zIndex: 6, maxWidth: 'calc(100% - 48px)',
                                 display: 'flex', boxShadow: '-4px 0 14px rgba(15, 23, 42, 0.25)', borderRadius: '8px 0 0 8px'}}>
@@ -2684,8 +2790,11 @@ class SimLabPane extends React.Component {
                     {this.renderDockedProperties(button)}
                 </div>
                 {simulate && this.session && this.session.bridge && !this.session.lockstep && this.spikeScene() && this.renderDrive(button)}
+                {simulate && this.session && !this.session.lockstep && this.renderMixer(button)}
                 {build && this.state.shortcuts && (
-                    <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)} onClose={() => {
+                    <SimLabShortcuts T={this.etext} wheelMode={this.state.wheelMode} onWheelMode={mode => this.setWheelMode(mode)}
+                        mousePreset={this.state.mousePreset} onMousePreset={preset => this.setMousePreset(preset)}
+                        onCoach={() => this.setState({shortcuts: false, coach: 0})} onClose={() => {
                         this.setState({shortcuts: false});
                         this.editView?.canvas.focus();
                     }} />

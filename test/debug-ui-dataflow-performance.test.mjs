@@ -57,7 +57,7 @@ test('phase notification state resets across runner teardown and restart', () =>
 test('one React 16 batch publishes a runner snapshot to both UI consumers', () => {
     assert.match(panelSource, /import ReactDOM from 'react-dom';/,
         'the installed React 16.14 renderer owns the supported batching boundary');
-    const callback = /onChange: \(ui\) => \{([\s\S]*?)\n\s{12}\}\n\s{8}\}\);/.exec(panelSource)?.[1] || '';
+    const callback = /onChange: this\._runnerOwnership\.guard\(claim, \(ui\) => \{([\s\S]*?)\n\s{12}\}\)\n\s{8}\}\);/.exec(panelSource)?.[1] || '';
     assert.ok(callback.length > 300, 'runner onChange callback capture is empty or truncated');
     const batch = /ReactDOM\.unstable_batchedUpdates\(\(\) => \{([\s\S]*?)\n\s{16}\}\);/.exec(callback)?.[1] || '';
     assert.match(batch, /this\.setState\(\{ui\}\)/,

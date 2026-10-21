@@ -279,9 +279,10 @@ test('the session: frames split across sends, replies in order, OUTPUT_READY wai
     assert.deepEqual(sent.map(r => r[2]), [0x02, 0x03], 'replies to commands 2 and 3, in order');
     assert.equal(sent[0][4], 0x02);
     assert.ok(hub.s.outputs[0].angleDeg >= 90);
-    // A system command (here 0x01 BEGIN_DOWNLOAD) is not a direct command: SYSTEM_REPLY_ERROR, UNKNOWN_SYSTEM_COMMAND.
-    session.receive(hex('0600 0900 01 92 0000'));
-    assert.deepEqual(sent.at(-1), [0x05, 0x00, 0x09, 0x00, 0x05, 0x92, 0x0a]);
+    // A system command goes to the brick's file system (test/bw-sim-ev3-rbf-brick.test.mjs); one it lacks
+    // (here 0x9F BLUETOOTHPIN, "only by USB") is answered SYSTEM_REPLY_ERROR, UNKNOWN_ERROR.
+    session.receive(hex('0600 0900 01 9F 0000'));
+    assert.deepEqual(sent.at(-1), [0x05, 0x00, 0x09, 0x00, 0x05, 0x9f, 0x0a]);
 });
 
 test('the hub\'s state round-trips through the worker mirror and steps identically', () => {

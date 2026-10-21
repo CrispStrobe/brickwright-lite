@@ -42,11 +42,16 @@ const deepFreeze = v => {
 const frozenPart = fields => deepFreeze(copyValue(fields));
 
 /** A frozen model from parts (already frozen), and groups / steps / rubber bands (frozen or not). */
-const makeModel = (version, parts, groups, steps, belts = null) => {
+const makeModel = (version, parts, groups, steps, belts = null, ropes = null, hoses = null, carried = null) => {
     const out = {version, parts: Object.freeze(parts)};
+    // What the editor does not edit but a save must keep: decoration (a cable's segments) and the parts a file ships.
+    if (carried && carried.decor && carried.decor.length) out.decor = carried.decor;
+    if (carried && carried.files) out.files = carried.files;
     if (groups) out.groups = deepFreeze(groups);
     if (steps) out.steps = deepFreeze(steps);
     if (belts && belts.length) out.belts = deepFreeze(belts);
+    if (ropes && ropes.length) out.ropes = deepFreeze(ropes);
+    if (hoses && hoses.length) out.hoses = deepFreeze(hoses);
     return Object.freeze(out);
 };
 /** The editor's own frozen copy of a model given to it (the caller's model is never kept or changed). */
@@ -55,7 +60,11 @@ const importModel = model => {
     // Building steps from `0 STEP` lines ride along; parts deleted since are skipped where they are read.
     const steps = model.steps ? model.steps.map(ids => ids.slice()) : null;
     const belts = model.belts ? model.belts.map(b => ({id: b.id, band: b.band, around: b.around.slice()})) : null;
-    return makeModel(model.version, model.parts.map(frozenPart), groups, steps, belts);
+    const ropes = model.ropes ? model.ropes.map(r => ({id: r.id, lengthLdu: r.lengthLdu, around: r.around.slice()})) : null;
+    const hoses = model.hoses ? model.hoses.map(h => ({id: h.id, a: {...h.a}, b: {...h.b}})) : null;
+    const carried = {decor: model.decor ? deepFreeze(model.decor.map(d => ({...d, position: d.position.slice(), matrix: d.matrix.slice()}))) : null,
+        files: model.files ? Object.freeze({...model.files}) : null};
+    return makeModel(model.version, model.parts.map(frozenPart), groups, steps, belts, ropes, hoses, carried);
 };
 
 /** The next free part id, as snap.js placePart picks it (`p<n+1>`, then counting up). */
@@ -214,15 +223,13 @@ export const createEditor = ({model, catalog}) => {
     const hasPart = id => current.parts.some(p => p.id === id);
     /**
      * A new model: `parts` (frozen parts, unchanged ones shared) and the current groups and steps unless
-     * given. A rubber band goes with the parts it is round: one round a part that is gone goes too.
+     * given. A rubber band or a rope goes with the parts it is round: one round a part that is gone goes too.
      */
-    const derive = (parts, groups = current.groups || null, belts = current.belts || null) => {
-        let kept = belts;
-        if (kept && kept.length && parts !== current.parts) {
-            const ids = new Set(parts.map(p => p.id));
-            kept = kept.filter(b => b.around.every(id => ids.has(id)));
-        }
-        return makeModel(current.version, parts, groups, current.steps || null, kept);
+    const derive = (parts, groups = current.groups || null, belts = current.belts || null, ropes = current.ropes || null, hoses = current.hoses || null) => {
+        const ids = parts !== current.parts && ((belts && belts.length) || (ropes && ropes.length) || (hoses && hoses.length)) ? new Set(parts.map(p => p.id)) : null;
+        const keep = list => (list && ids ? list.filter(b => b.around.every(id => ids.has(id))) : list);
+        const keptHoses = hoses && ids ? hoses.filter(h => ids.has(h.a.part) && ids.has(h.b.part)) : hoses;
+        return makeModel(current.version, parts, groups, current.steps || null, keep(belts), keep(ropes), keptHoses, current);
     };
     /** `parts` with the part at `idx` replaced by a frozen copy carrying `changes` (a field set to undefined is removed). */
     const withPart = (parts, idx, changes) => {
@@ -319,6 +326,12 @@ export const createEditor = ({model, catalog}) => {
                 const gid = nextGroupId({groups});
                 groups.push({id: gid, name: name || `Group ${gid}`, parts: [...toMerge]});
                 next = derive(current.parts, groups);
+            } else if (cmd.type === 'setPen') {
+                // A part that draws on the floor in Simulate (view/pen-layer.js): `pen: true`, or gone.
+                const {id, pen} = cmd;
+                const idx = indexOf(id);
+                if (idx === -1) throw new Error(`unknown id '${id}'`);
+                next = derive(withPart(current.parts, idx, {pen: pen ? true : undefined}));
             } else if (cmd.type === 'addBelt') {
                 // A rubber band round two or more parts (editor/belt-path.js lays it, kinds/belt.js simulates it).
                 const {around, band} = cmd;
@@ -328,11 +341,41 @@ export const createEditor = ({model, catalog}) => {
                 const ids = new Set((current.belts || []).map(b => b.id));
                 let n = 1;
                 while (ids.has(`b${n}`)) n++;
-                next = derive(current.parts, current.groups || null, [...(current.belts || []), {id: `b${n}`, band, around: around.slice()}]);
+                next = derive(current.parts, current.groups || null, [...(current.belts || []), {id: `b${n}`, band, around: around.slice()}], current.ropes || null);
             } else if (cmd.type === 'removeBelt') {
                 const {id} = cmd;
                 if (!current.belts || !current.belts.some(b => b.id === id)) throw new Error(`unknown rubber band '${id}'`);
-                next = derive(current.parts, current.groups || null, current.belts.filter(b => b.id !== id));
+                next = derive(current.parts, current.groups || null, current.belts.filter(b => b.id !== id), current.ropes || null);
+            } else if (cmd.type === 'addRope') {
+                // A rope from a drum over sheaves to a hook (editor/rope-path.js lays it, kinds/rope.js simulates it).
+                const {around, lengthLdu} = cmd;
+                if (!Array.isArray(around) || around.length < 2 || new Set(around).size !== around.length) throw new Error('a rope runs from a drum to a hook');
+                for (const pid of around) if (!hasPart(pid)) throw new Error(`unknown id '${pid}'`);
+                if (!(typeof lengthLdu === 'number' && lengthLdu > 0)) throw new Error('bad rope length');
+                const ids = new Set((current.ropes || []).map(r => r.id));
+                let n = 1;
+                while (ids.has(`r${n}`)) n++;
+                next = derive(current.parts, current.groups || null, current.belts || null, [...(current.ropes || []), {id: `r${n}`, lengthLdu, around: around.slice()}]);
+            } else if (cmd.type === 'removeRope') {
+                const {id} = cmd;
+                if (!current.ropes || !current.ropes.some(r => r.id === id)) throw new Error(`unknown rope '${id}'`);
+                next = derive(current.parts, current.groups || null, current.belts || null, current.ropes.filter(r => r.id !== id));
+            } else if (cmd.type === 'addHose') {
+                // A pneumatic hose from one part's air port to another's (kinds/pneumatic.js reads them).
+                const {a, b} = cmd;
+                for (const end of [a, b]) {
+                    if (!end || !hasPart(end.part) || typeof end.port !== 'string') throw new Error('a hose joins two parts\' ports');
+                }
+                if (a.part === b.part) throw new Error('a hose joins two parts');
+                const ids = new Set((current.hoses || []).map(h => h.id));
+                let n = 1;
+                while (ids.has(`h${n}`)) n++;
+                next = derive(current.parts, current.groups || null, current.belts || null, current.ropes || null,
+                    [...(current.hoses || []), {id: `h${n}`, a: {part: a.part, port: a.port}, b: {part: b.part, port: b.port}}]);
+            } else if (cmd.type === 'removeHose') {
+                const {id} = cmd;
+                if (!current.hoses || !current.hoses.some(h => h.id === id)) throw new Error(`unknown hose '${id}'`);
+                next = derive(current.parts, current.groups || null, current.belts || null, current.ropes || null, current.hoses.filter(h => h.id !== id));
             } else if (cmd.type === 'ungroup') {
                 const {id} = cmd;
                 if (!current.groups || !current.groups.some(g => g.id === id)) throw new Error(`unknown group '${id}'`);

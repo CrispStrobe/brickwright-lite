@@ -36,10 +36,13 @@ export const placeOnStart = (model, start, anchorLdu) => {
     };
     const a = mul(anchorLdu);
     const t = [start.x / LDU_M - a[0], 0, (0 - start.z) / LDU_M - a[2]];
-    return {
+    const moved = {
         ...model,
         parts: model.parts.map(p => ({...p, position: mul(p.position).map((v, i) => v + t[i]), rotation: matMul(p.rotation)}))
     };
+    // Decoration (a cable's segments) goes with the parts it lies along.
+    if (model.decor) moved.decor = model.decor.map(d => ({...d, position: mul(d.position).map((v, i) => v + t[i]), matrix: matMul(d.matrix)}));
+    return moved;
 };
 
 /**
