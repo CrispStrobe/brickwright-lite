@@ -59,7 +59,7 @@ const allowed = new Set([
     '  || { echo "::error::IOS_PROFILE_ADHOC_BASE64 has no ProvisionedDevices — that is an App Store profile, not an ad-hoc one."; exit 1; }'
 ]);
 
-function execute(script, failPreparation = false) {
+function execute(script, failPreparation = false, mobileProvision = 'AUTHORED_PROFILE') {
     for (const line of script.split('\n')) {
         if (!line.trim() || line.trimStart().startsWith('#')) continue;
         assert.ok(allowed.has(line), `unreviewed executable shell: ${line}`);
@@ -72,7 +72,14 @@ command_name=\${0##*/}
 printf '%s|%s\\n' "$command_name" "$*" >> "$TRACE"
 case "$command_name" in
   node) if [[ "$1" == scripts/prepare-ios-device-build.mjs && "$FAIL_PREPARATION" == 1 ]]; then exit 37; fi ;;
-  base64) printf 'AUTHORED_PROFILE' ;;
+  base64)
+    consumed=0
+    while IFS= read -r -N 4096 chunk || [[ -n "$chunk" ]]; do
+      consumed=$((consumed + \${#chunk}))
+    done
+    printf 'base64-input|%s\\n' "$consumed" >> "$TRACE"
+    printf 'AUTHORED_PROFILE'
+    ;;
   security) printf 'AUTHORED_PLIST' ;;
   plutil) case "$2" in UUID) printf 'AUTHORED_UUID';; Name) printf 'AUTHORED_NAME';; ProvisionedDevices) printf '<array/>';; *) exit 38;; esac ;;
   npx|mkdir|cp) ;;
@@ -87,7 +94,7 @@ esac
             cwd: dir, encoding: 'utf8', timeout: 5000,
             env: {...process.env, PATH: bin, TRACE: trace, RUNNER_TEMP: dir,
                 IOS_CERTIFICATE: 'AUTHORED_CERTIFICATE', IOS_CERTIFICATE_PASSWORD: 'AUTHORED_PASSWORD',
-                IOS_MOBILE_PROVISION: 'AUTHORED_PROFILE', APPLE_DEVELOPMENT_TEAM: 'AUTHORED_TEAM',
+                IOS_MOBILE_PROVISION: mobileProvision, APPLE_DEVELOPMENT_TEAM: 'AUTHORED_TEAM',
                 FAIL_PREPARATION: failPreparation ? '1' : '0', BASH_ENV: '/dev/null', ENV: '/dev/null'}
         });
         assert.ifError(result.error);
@@ -152,4 +159,18 @@ test('changed selection or unreviewed shell refuses before command execution', (
     assert.throws(() => buildBlock(source.replace(/^  ios:$/m, '  renamed:'), 'ios'));
     assert.throws(() => buildBlock(source.replaceAll('working-directory: apps/tauri', 'working-directory: elsewhere'), 'ios'));
     assert.throws(() => execute(`${buildBlock(source, 'ios')}\nunreviewed-command\n`), /unreviewed executable shell/);
+});
+
+
+// The fixture must consume the real pipe, just as base64 --decode does.
+// Exact consumption makes this detect an early-exit shim without relying on
+// scheduling or on a particular platform's pipe capacity.
+test('signed workflow fixtures consume the complete provisioning input before returning authored bytes', () => {
+    const profile = 'A'.repeat(96 * 1024);
+    for (const job of ['ios-signed', 'ios-device']) {
+        const result = execute(buildBlock(source, job), false, profile);
+        assertOrder(result, job);
+        assert.deepEqual(result.trace.filter(line => line.startsWith('base64-input|')),
+            [`base64-input|${profile.length + 1}`], 'consume the complete authored profile and echo newline');
+    }
 });
