@@ -5400,7 +5400,20 @@ fractional thresholds and completion of a paused handler before the setter
 continues. Root/member writes, escaping owners and unproved threshold values
 remain diagnostics.
 
-Qualification is pending for the complete focused modules, original SDK,
-Code/Blocks edits, same/fresh SB3 and current export/reimport. Canonical CLI
-vocabulary adoption and visible browser authoring are also pending. This is
+The three focused source controls and canonical CLI vocabulary adoption pass.
+Original SDK execution, Code/Blocks edits, same/fresh SB3, current export/reimport
+and visible browser authoring remain pending. This is
 not a completed tutorial, game or corpus result.
+
+### Immutable serialized Arcade export (source candidate)
+
+The current VM/CLI/roundtrip export routes use `projectJsonToArcade` to construct a
+fresh deeply frozen project from actual serialized JSON before asset callbacks.
+This permits a bounded read-only variable-watcher proof for native Sprite flags
+without enrolling mutable caller ASTs or using watcher display values as types.
+Direct AST exports remain conservative for monitor records. Asset callbacks read
+frozen records; per-costume palette indices remain explicit. See
+[the API boundary](ARCADE-PROJECT-JSON-EXPORT.md). All eleven complete snapshot,
+flags and actual CLI palette controls pass, with zero skips; the composed
+score/compound set passes all seventeen. Browser qualification, complete games
+and performance remain unobserved for this change.

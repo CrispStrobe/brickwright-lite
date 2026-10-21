@@ -4,7 +4,7 @@
  */
 import {conversionException, providedConversionChannels} from './conversion-audit-core.mjs';
 import {importProjectFiles} from '../../overlay/scratch-gui/src/lib/bw-makecode/index.js';
-import {projectToArcade} from '../../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {projectJsonToArcade} from '../../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {assetLibraryRecords, withoutAssetLibraries} from '../../overlay/scratch-gui/src/lib/bw-asset-library.js';
 import {captureCodeArtwork} from '../../overlay/scratch-gui/src/lib/bw-code-artwork.js';
 import {getCostumeDocument} from '../../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
@@ -114,7 +114,7 @@ export async function auditConversionJourney (initial, {creator, frames = 24,
                     if (document?.animation?.resource) animationDocuments.push(document);
                 }
             }
-            const value = projectToArcade(project, {name: 'compatibility-journey', animationDocuments,
+            const value = projectJsonToArcade(JSON.stringify(project), {name: 'compatibility-journey', animationDocuments,
                 costumeSvg: (_target, costume) => svgs.get(costume.assetId) || null,
                 costumePalette: (_target, costume) => palettes.get(costume.assetId) || null,
                 soundData: (_target, sound) => sounds.get(sound.assetId) || null});

@@ -1,3 +1,4 @@
+import {createProjectJsonSnapshot} from './project-json-snapshot.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
 import {inspectNativeArrayBinaryDomains} from './native-array-binary-domain.js';
@@ -225,7 +226,8 @@ class ArcadeEmitter {
         }
         return `controller.player${player}.${button}`;
     }
-    constructor (project, opts) {
+    constructor (project, opts, snapshotCallbacks = false) {
+        this.snapshotCallbacks = snapshotCallbacks;
         this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
         this.opts = opts;
         // Capture once before any artwork callback. Resource emission and Array
@@ -361,7 +363,8 @@ class ArcadeEmitter {
         this.analyse();
         const palettes = this.project.targets.map(target => {
             const costume = target.costumes[target.currentCostume || 0];
-            const palette = costume && opts.costumePalette?.(target, costume);
+            const palette = costume && (snapshotCallbacks ?
+                opts.costumePalette?.(target,costume,snapshotAssetContext(project,target,costume)) : opts.costumePalette?.(target,costume));
             const svg = costume && opts.costumeSvg?.(target, costume);
             const indexed = svg && svgToPixels(svg, isPalette(palette) ? palette : ARCADE_PALETTE);
             return indexed?.palette || (isPalette(palette) ? palette : ARCADE_PALETTE);
@@ -3138,7 +3141,7 @@ class ArcadeEmitter {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
-        const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
+        const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],spriteFlagResults=new Map(),spriteFlagWriterInputs=new Map(),inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
         const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),scoreThresholdInputs=new Map(),nativeBitwiseInputs=new Map(),sourceBitwiseInputs=new Map(),sourceBitwiseConstructorResults=new Set(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
@@ -3303,6 +3306,11 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_tileLocation'){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
+                if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='flags'){
+                    const id=Symbol('closed Sprite flags primitive'),writers=this.arrayReceiverAuthority.spriteFlagWriters(target,value);
+                    if(writers){spriteFlagResults.set(id,{target,node:value,writers});return id;}
+                    inspectionOpaqueCells.add(id);return id;
+                }
                 if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='data'){
                     const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
                 }
@@ -3377,6 +3385,7 @@ class ArcadeEmitter {
                     const operand=actual?.opcode==='text'&&actual.shadow&&!Object.keys(actual.inputs||{}).length&&typeof actual.fields?.TEXT?.[0]==='string'?{opcode:'bw_stringLiteral',value:actual.fields.TEXT[0]}:actual;
                     procedureInputs.push({block,obligation,value:ref(operand)});
                 }
+                if(['arcade_setSpriteProperty','arcade_setSpriteFlag','arcade_setSpriteStayInScreen','arcade_setSpriteAutoDestroy','arcade_setSpriteBounceOnWall','arcade_setSpriteGhostThroughSprites'].includes(block.opcode))spriteFlagWriterInputs.set(block,ref(inputBlock(blocks,block,block.opcode==='arcade_setSpriteProperty'?'VALUE':'ON')));
                 if(block.opcode==='arcade_inspectValue')inspectionInputs.set(block,{value:ref(inputBlock(blocks,block,'VALUE')),limit:ref(inputBlock(blocks,block,'LIMIT'))});
                 if(block.opcode==='arcade_registerScoreHandler')scoreThresholdInputs.set(block,ref(inputBlock(blocks,block,'SCORE')));
                 if(block.opcode==='arrays_valueUnary'&&literal(blocks,block,'OP')==='~'||block.opcode==='arrays_valueBinary'&&['&','|','^','<<','>>','>>>'].includes(literal(blocks,block,'OP')))
@@ -3537,8 +3546,15 @@ class ArcadeEmitter {
         let inspectionChanged;do{inspectionChanged=false;for(const [result,inputs]of inspectionOperators)if(inputs.some(value=>!value||inspectionOpaqueNodes.has(graph.node(value))||!graph.node(value).types.size||[...graph.node(value).types].some(type=>!['number','boolean','string','null','undefined'].includes(type)))){const node=graph.node(result);if(!inspectionOpaqueNodes.has(node)){inspectionOpaqueNodes.add(node);inspectionChanged=true;}}}while(inspectionChanged);
         this.inspectionExportOperands=new Set();
         const inspectionUndefinedCells=new Set([...this.sourceScalarCells.values()].filter(cell=>cell.type==='Any').map(cell=>`variable:${cell.id}`));
-        const inspectionTypes=(value,allowed,seen=new Set(),origins=null)=>{
+        const admittedSpriteFlags=new Set();
+        const inspectionTypes=(value,allowed,seen=new Set(),origins=null,allowSpriteFlags=false)=>{
             if(!value)return false;
+            // Flags never lend a Number-only fact. Actual closed writers must
+            // first qualify below; only a complete primitive domain can use it.
+            if(allowSpriteFlags&&admittedSpriteFlags.has(value)&&['number','boolean','string','null','undefined'].every(type=>allowed.includes(type))){
+                const entry=spriteFlagResults.get(value),current=this.arrayReceiverAuthority.spriteFlagWriters(entry.target,entry.node);
+                return !!current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input);
+            }
             // Only the source-bitwise allowed domain contains BOTH alternatives.
             // Primitive-only/native and Array-only consumers gain no fact here.
             if(sourceBitwiseConstructorResults.has(value)&&allowed.includes('array')&&allowed.includes('string'))return true;
@@ -3548,13 +3564,13 @@ class ArcadeEmitter {
                 if(!output.length||!output.every(type=>allowed.includes(type)))return false;
                 if(seen.has(value))return true;const next=new Set([...seen,value]);
                 const evidence=operation.requirePlayer?new Set():origins;
-                return operation.operands.every(operand=>inspectionTypes(operand,operation.domain||(operation.numeric?['number','undefined']:['number','boolean','string','null','undefined']),next,evidence))&&(!operation.requirePlayer||evidence.size>0);
+                return operation.operands.every(operand=>inspectionTypes(operand,operation.domain||(operation.numeric?['number','undefined']:['number','boolean','string','null','undefined']),next,evidence,allowSpriteFlags))&&(!operation.requirePlayer||evidence.size>0);
             }
             const node=graph.node(value);
             if(allowed.includes('Player')){
                 const producers=inspectionProducers.get(value);
                 if(inspectionOpaqueNodes.has(node)||seen.has(value)||!producers?.size)return false;
-                const next=new Set([...seen,value]);return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+                const next=new Set([...seen,value]);return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins,allowSpriteFlags));
             }
             if(inspectionOpaqueNodes.has(node))return false;
             if(!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type))){
@@ -3564,7 +3580,7 @@ class ArcadeEmitter {
                 const producers=inspectionProducers.get(value);
                 if(anys.has(value)||seen.has(value)||!producers?.size)return false;
                 const next=new Set([...seen,value]);
-                return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+                return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins,allowSpriteFlags));
             }
             if(!node.types.has('any'))return true;
             // An Any declaration resets a real scalar cell to Undefined. It
@@ -3574,16 +3590,23 @@ class ArcadeEmitter {
             const producers=inspectionProducers.get(value);
             if(!producers?.size)return inspectionUndefinedCells.has(value)&&allowed.includes('undefined');
             if(seen.has(value))return true;const next=new Set([...seen,value]);
-            return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+            return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins,allowSpriteFlags));
         };
+        // Start from independently primitive actual writers. Self-dependent
+        // flags cycles remain refused in this narrow slice, not assumed closed.
+        for(const [value,entry]of spriteFlagResults){
+            if(!entry.writers.every(row=>inspectionTypes(spriteFlagWriterInputs.get(row.node),['number','boolean','string','null','undefined'])))continue;
+            const current=this.arrayReceiverAuthority.spriteFlagWriters(entry.target,entry.node);
+            if(current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input))admittedSpriteFlags.add(value);
+        }
         // Source result signatures above never prove their operands. Follow
         // every actual directed writer/capture through the same closed graph.
         this.sourceBitwiseExportOperands=new Set();
-        for(const [block,operands]of sourceBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['array','number','boolean','string','null','undefined'])))this.sourceBitwiseExportOperands.add(block);
+        for(const [block,operands]of sourceBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['array','number','boolean','string','null','undefined'],new Set(),null,true)))this.sourceBitwiseExportOperands.add(block);
         this.scoreThresholdExportOperands=new Set();
         for(const [block,value]of scoreThresholdInputs)if(inspectionTypes(value,['number']))this.scoreThresholdExportOperands.add(block);
         this.nativeBitwiseExportOperands=new Set();
-        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'])))this.nativeBitwiseExportOperands.add(block);
+        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true)))this.nativeBitwiseExportOperands.add(block);
         for(const expected of this.procedureConstraints?.allObligations||[]){
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
             if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);
@@ -3629,7 +3652,8 @@ class ArcadeEmitter {
     /** A costume as palette pixels: exact for pixel art, palette-matched otherwise. */
     image (target, costume = target.costumes[target.currentCostume || 0], index = target.currentCostume || 0) {
         const svg = costume && this.opts.costumeSvg ? this.opts.costumeSvg(target, costume) : null;
-        const candidate = costume && this.opts.costumePalette?.(target, costume);
+        const candidate = costume && (this.snapshotCallbacks ?
+            this.opts.costumePalette?.(target,costume,snapshotAssetContext(this.project,target,costume)) : this.opts.costumePalette?.(target,costume));
         const sourcePalette = isPalette(candidate) ? candidate : ARCADE_PALETTE;
         if (svg) {
             const px = svgToPixels(svg, sourcePalette);
@@ -4312,8 +4336,8 @@ class ArcadeEmitter {
  * @param {(stage) => object|null} [opts.stageBackground] a 160x120 palette image for the backdrop
  * @returns {{ts: string, files: object, unsupported: string[], warnings: string[]}}
  */
-export function projectToArcade (project, opts = {}) {
-    const e = new ArcadeEmitter(project, opts);
+function emitProjectToArcade (project, opts, snapshotCallbacks) {
+    const e = new ArcadeEmitter(project, opts, snapshotCallbacks);
     const projectTs = e.emit();
     e.prepareAuthoredAnimations();
     const songNamespace = e.animationSymbol('__bwSongAssets');
@@ -4404,3 +4428,21 @@ export function projectToArcade (project, opts = {}) {
 
 /** Re-exported for callers that build a background from pixels. */
 export {imageToSvg};
+
+/** Direct AST entry keeps its original callback receiver and two arguments. */
+export function projectToArcade(project,opts={}){return emitProjectToArcade(project,opts,false);}
+
+const freezeSnapshotContext=Object.freeze,snapshotIndexOf=Array.prototype.indexOf,snapshotApply=Reflect.apply;
+const snapshotAssetContext=(project,target,costume)=>freezeSnapshotContext({
+    targetIndex:snapshotApply(snapshotIndexOf,project.targets,[target]),
+    costumeIndex:snapshotApply(snapshotIndexOf,target.costumes,[costume])
+});
+
+/**
+ * Export an owned deeply frozen snapshot of actual serialized project JSON.
+ * Asset callbacks receive frozen records. costumePalette additionally receives
+ * a read-only {targetIndex,costumeIndex}; direct AST callback arity is unchanged.
+ */
+export function projectJsonToArcade(json,opts={}){
+    return emitProjectToArcade(createProjectJsonSnapshot(json),opts,true);
+}

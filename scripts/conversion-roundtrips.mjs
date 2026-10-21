@@ -11,7 +11,7 @@ import JSZip from 'jszip';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import {exportToMakeCode} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
-import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
 
@@ -223,7 +223,7 @@ async function inspect (file) {
         // MakeCode -> BW -> MakeCode -> BW. This checks the reverse translator
         // and identifies code that MakeCode itself rejects after re-export.
         row.paths.push(stage('makecode -> bw -> makecode -> bw', () => {
-            const exported = target === 'arcade' ? projectToArcade(project, {name: 'roundtrip',
+            const exported = target === 'arcade' ? projectJsonToArcade(JSON.stringify(project), {name: 'roundtrip',
                 costumeSvg: (sprite, costume) => {
                     const asset = projectCreator.assets.get(costume.assetId);
                     return asset?.type === 'svg' ? asset.data : null;

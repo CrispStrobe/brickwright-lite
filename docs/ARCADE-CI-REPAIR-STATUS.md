@@ -700,3 +700,16 @@ experimental Node flags. This does not qualify webpack's emitted module choice,
 the real browser chooser/modal journey or the startup budget. Use the final
 composed hosted build and browser checks for those remaining observations; keep
 their existing thresholds and original failures.
+
+## Immutable JSON export composition — 2026-10-21
+
+The production VM, CLI and conversion drivers now construct immutable JSON
+snapshots before Arcade export. Ordinary read-only variable monitors can be
+proved without accepting mutable caller objects; slider, cloud and foreign
+watchers remain refused. The old API keeps its callback receiver and arity.
+All eleven snapshot/flags/real CLI palette controls pass, including duplicate
+assets after library removal. The final five-module composition with score
+and compound operations passes all seventeen controls, with zero skips; its
+measured dependency-scope policy passes unchanged. See [the API and remaining
+acceptance](ARCADE-PROJECT-JSON-EXPORT.md). Native/original execution and visible
+authoring still require final composed qualification.

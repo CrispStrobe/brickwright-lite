@@ -2497,9 +2497,9 @@ class PseudocodeImporter extends React.Component {
                 if (artwork?.animation?.resource) animationDocuments.push(artwork);
             }
         }
-        const {projectToArcade} = await import(
+        const {projectJsonToArcade} = await import(
             /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/export-arcade.js');
-        return projectToArcade(project, {
+        return projectJsonToArcade(JSON.stringify(project), {
             name: 'brickwright-game',
             animationDocuments,
             costumeSvg: (t, c) => svgs.get(c.assetId) || null,

@@ -1,3 +1,5 @@
+import {isProjectJsonSnapshot} from './project-json-snapshot.js';
+const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create;
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
@@ -980,6 +982,100 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(w.scope!==scope||!onceNode(w.node)||!scope.executedBefore?.get(statementOf(node))?.has(w.node))return null;
         return {value:input(w.node,'VALUE',w.target),node:w.node};
     };
+    // This query supplies actual public writer nodes, never a Number, Array or
+    // runtime certificate. A caller must independently prove every returned
+    // input primitive. It is intentionally narrower than general Sprite typing.
+    let spriteFlagsExpired=false;
+    const flagsReadOnlyMonitors=()=>{
+        // Preserve the old arbitrary-AST empty-monitor path without ever
+        // iterating unowned watcher records, even if a Proxy lies about length.
+        if(!isProjectJsonSnapshot(project))return !(project.monitors||[]).length;
+        const own=(value,key)=>value&&typeof value==='object'?watcherOwnDescriptor(value,key)?.value:undefined;
+        const monitors=own(project,'monitors');
+        if(!watcherIsArray(monitors)||own(project,'targets')!==targets||!watcherIsArray(targets))return false;
+        const seen=watcherCreate(null),allowed=['id','mode','opcode','params','spriteName','value','width','height','x','y','visible','sliderMin','sliderMax','isDiscrete'];
+        // Every traversed edge is an OWN edge of the native parsed frozen
+        // tree. Neither a prototype property nor an Array iterator can supply
+        // an unowned record after construction.
+        for(let i=0;i<own(monitors,'length');i++){
+            const monitor=own(monitors,i+'');
+            if(!monitor||typeof monitor!=='object')return false;
+            const keys=watcherOwnKeys(monitor);if(keys.length!==allowed.length)return false;
+            for(let k=0;k<keys.length;k++){
+                let known=false;for(let a=0;a<allowed.length;a++)if(allowed[a]===keys[k])known=true;
+                if(!known)return false;
+            }
+            const id=own(monitor,'id'),params=own(monitor,'params'),name=own(params,'VARIABLE');
+            if(typeof id!=='string'||seen[id]||own(monitor,'opcode')!=='data_variable'||own(monitor,'mode')!=='default'||
+                own(monitor,'spriteName')!==null||typeof own(monitor,'visible')!=='boolean'||typeof own(monitor,'isDiscrete')!=='boolean'||
+                !params||typeof params!=='object'||watcherOwnKeys(params).length!==1||typeof name!=='string')return false;
+            const numeric=['x','y','width','height','sliderMin','sliderMax'];
+            for(let k=0;k<numeric.length;k++){const value=own(monitor,numeric[k]);if(typeof value!=='number'||!watcherFinite(value))return false;}
+            let owner=null,count=0;
+            for(let t=0;t<own(targets,'length');t++){
+                const target=own(targets,t+''),variables=own(target,'variables'),declaration=own(variables,id);
+                if(declaration!==undefined){
+                    if(owner||own(target,'isStage')!==true||!watcherIsArray(declaration)||own(declaration,'length')!==2||own(declaration,'0')!==name)return false;
+                    owner=target;const variableKeys=watcherOwnKeys(variables);
+                    for(let v=0;v<variableKeys.length;v++)if(own(own(variables,variableKeys[v]),'0')===name)count++;
+                }
+            }
+            if(!owner||count!==1)return false;
+            seen[id]=true;
+        }
+        return true;
+    };
+    // live() may observe metadata itself when an existing reset proof was
+    // used. Every such callback precedes this final source/identity-only check.
+    const spriteFlagsPhysicalCurrent=()=>project.targets===targets&&snapshot()===original&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const spriteFlagsCurrent=()=>{if(spriteFlagsExpired)return false;try{if(summaryExpired||effectMetadata()!==originalEffects||!live()||!spriteFlagsPhysicalCurrent())spriteFlagsExpired=true;}catch(error){spriteFlagsExpired=true;throw error;}return !spriteFlagsExpired;};
+    const spriteFlagWriters=(target,node)=>{try{
+        if(!spriteFlagsCurrent()||invalidGlobalBinding||!nodes.has(target)||invalid.has(node)||!owners.has(node)||
+            !exactKeys(node,['ID'],['PROPERTY'])||node.mutation!=null||literal(node,'PROPERTY',target)!=='flags')return null;
+        // These external sources can replace a binding outside this writer
+        // inventory. Only owned read-only watchers are inert; cloud and external writers refuse.
+        if(targets.some(t=>Object.values(t.variables||{}).some(v=>v.length!==2))||!flagsReadOnlyMonitors())return null;
+        if(!Array.isArray(project.extensions)||project.extensions.some(id=>!['arcade','arrays'].includes(id))||
+            project.extensionURLs&&Object.entries(project.extensionURLs).some(([id,url])=>id!=='arrays'||url!=='https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js'))return null;
+        const receiver=idCell(target,node),creation=liveCreation(receiver,node);
+        if(!creation||!onceNode(creation)||!exactKeys(creation,creation.opcode==='arcade_createSprite'?['TEMPLATE','KIND','WIDTH','HEIGHT']:['IMAGE','TEMPLATE','KIND'])||creation.mutation!=null)return null;
+        const writerInputs=[];
+        const properties=new Set(['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags']);
+        const flags=new Set(['AutoDestroy','StayInScreen','BounceOnWall','DestroyOnWall','Invisible','Ghost','GhostThroughSprites','GhostThroughWalls','GhostThroughTiles','RelativeToCamera','ShowPhysics']);
+        const flagBooleanWriters=new Set(['arcade_setSpriteFlag','arcade_setSpriteStayInScreen','arcade_setSpriteAutoDestroy','arcade_setSpriteBounceOnWall','arcade_setSpriteGhostThroughSprites']);
+        for(const r of records){
+            const n=r.node;
+            if(flagBooleanWriters.has(n.opcode)){
+                const fixed=n.opcode==='arcade_setSpriteFlag';
+                if(!exactKeys(n,['ID','ON'],fixed?['FLAG']:[])||n.mutation!=null||fixed&&!flags.has(literal(n,'FLAG',r.target)))return null;
+                const made=liveCreation(idCell(r.target,n),n);if(!made)return null;
+                if(made===creation)writerInputs.push({target:r.target,node:n,input:'ON'});
+            }
+            if(n.opcode==='arcade_setSpriteProperty'){
+                const property=literal(n,'PROPERTY',r.target);
+                if(!properties.has(property)||!exactKeys(n,['ID','VALUE'],['PROPERTY'])||n.mutation!=null)return null;
+                if(property==='flags'){
+                    const made=liveCreation(idCell(r.target,n),n);if(!made)return null;
+                    if(made===creation)writerInputs.push({target:r.target,node:n,input:'VALUE'});
+                }
+            }
+            for(const name of Object.keys(n.inputs||{})){
+                const value=input(n,name,r.target),c=value.cell||(value.node&&binding(r.target,value.node));
+                if(!c||liveCreation(c,n)!==creation)continue;
+                if(invalid.has(n)||r.scope.invalid)return null;
+                // Plain aliases stay in the same complete cell/writer index.
+                if(name==='VALUE'&&['data_setvariableto','arcade_setLocal','arcade_setCaptured'].includes(n.opcode))continue;
+                if(name==='ID'&&n.opcode==='arcade_spriteProperty'&&exactKeys(n,['ID'],['PROPERTY'])&&properties.has(literal(n,'PROPERTY',r.target))&&n.mutation==null)continue;
+                if(name==='ID'&&n.opcode==='arcade_setSpriteProperty')continue;
+                if(name==='ID'&&flagBooleanWriters.has(n.opcode))continue;
+                // Object/Array publication, unknown calls, unproved formal
+                // forwarding and other receiver operations are not this slice.
+                return null;
+            }
+        }
+        if(!spriteFlagsCurrent())return null;
+        return Object.freeze(writerInputs.map(row=>Object.freeze(row)));
+    }catch(error){spriteFlagsExpired=true;throw error;}};
     // An Array settings read is the value of the one same-type write of that
     // literal key that ran once, earlier in the reading scope. Every other
     // write/remove of that key and every clear must be in the same once-only
@@ -1217,7 +1313,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
     }):null;
     const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
-    return Object.freeze({validateInput(target,node,name='ARRAY'){
+    return Object.freeze({spriteFlagWriters,validateInput(target,node,name='ARRAY'){
         // Observe retained occurrence facts before *any* diagnostic early exit.
         // A false/throw observation cannot revive after physical restoration.
         const protectedReceiver=protectedInput(target,node,name);
