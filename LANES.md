@@ -79,6 +79,14 @@ programs/crane.bw): a SPIKE hub on the floor, the Excavator's 28T turntable slew
 a 15L boom luffed by a small linear actuator on B, a hook hanging free on a frictionless pin. No winch (ropes,
 PR #1123, not on main). Tests: test/bw-sim-crane.test.mjs. No physics-core change.
 
+## micro:bit importer: comparisons assigned to variables, regression tests — 2026-10-20
+
+CLAIMED and done in one PR to main — Claude (owner-approved follow-up to #1139). The suspected
+bug, `w = (a & b) == 0` importing as `set w to 0`, does not reproduce: the import writes
+IF <comparison> THEN set w to 1 ELSE set w to 0, and a probe that read only the last
+`set w to` line saw the ELSE branch. Tests only: test/makecode-arithmetic-roundtrip.test.mjs runs
+the original and exported programs for ==, !=, <, <=, >, >= with bitwise and arithmetic operands.
+
 ## Arcade slice-result element presence — 2026-10-20
 
 CLAIM CANDIDATE — Codex Arcade Array/export lane. Merge before implementation.
