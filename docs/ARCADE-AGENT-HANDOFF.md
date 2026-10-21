@@ -2,6 +2,33 @@
 
 ## Start here — 2026-10-21
 
+### Current composition and next acceptance
+
+The closed local-class lineage candidate passes its complete eight-module,
+27-control source cohort. That establishes the selected constructor, inherited
+member and writer analysis; current SDK execution, original MakeCode execution,
+export/reimport and visible authoring remain separate pending gates. SDK Sprite
+inheritance is the next work package: an actual `x` slot contract, genuine Image
+clone ingress, and possible receiver sets from `sprites.allOfKind`. Preserve
+Undefined, exceptions, every possible writer and scene/callback effects; type
+annotations alone supply no runtime proof.
+
+Current main also adds generated extension menu normalization. Before publishing
+the composed Arcade candidate, regenerate `extension-menu-table.js` from actual
+normal-installation `getInfo()` using `scripts/gen-extension-menu-args.mjs`, then
+run its `--check` path. The candidate adds `arcade_sourceValueBinary` and
+`arcade_sourceValueUnary` operation menus missing from the main-only table. Do
+not supply hand-written rows or a fake provider to make that check pass.
+
+Qualify the real outer creator/editor menu wrappers as well as the bare
+converter: literal menu shadows must survive import, Blocks/Code changes,
+export/reimport and saved-project reopening. Check Array mutation/sort and
+animation resource menus too. The complete extension-menu test module includes
+real SPIKE VM controls; it is not a pure metadata-only module and must not be
+filtered into a misleading qualification claim. See the GUI ledger's current
+menu-composition work package below.
+
+
 Read [CI repair status](ARCADE-CI-REPAIR-STATUS.md) before continuing the current
 Arcade/Array lane in `LANES.md`. It records the complete four-shard failure census,
 the tested animation export repair and independently scoped class-value, native

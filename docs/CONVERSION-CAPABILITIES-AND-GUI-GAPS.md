@@ -5432,3 +5432,25 @@ editing these aliases and class bodies in Code and connected Blocks, viewing
 current generated Code, saving/fresh reopening and exporting to the original
 SDK. Keep actual method bodies and arguments intact through edits. Native VM,
 original-SDK and visible editor acceptance remain pending.
+
+
+## Current menu composition work package — 2026-10-21
+
+The latest main supplies generated menu normalization at the outer creator and
+code-editor boundary. The Arcade source-value candidate adds binary and unary
+operation menus absent from the main-only generated table. Regenerate from the
+actual composed extensions, retaining the normal dependency identities; verify
+with the generator's `--check` command. This is pending, not GUI acceptance.
+
+| Surface | Required evidence |
+| --- | --- |
+| Blocks | Create both numeric reporters from the palette, change their operation menus, connect controller-driven values, run, and retain the visible selections. |
+| Code / pseudocode | Use actual wrapped creator/editor entry points; verify literal menu shadows and fields agree through both directions, including Array mutate/take/sort and animation resource menus. Preserve refusals for computed or malformed menu inputs. |
+| Saved projects and export | Save and reopen the actual edited project; export to MakeCode Arcade, compile/run, then import into a fresh project and verify operations and assets. |
+| Graphics | Keep referenced animation frames editable with readable identities; changing a frame must affect actual drawing after reopening and export/reimport. |
+
+Bare converter controls do not exercise the outer menu wrappers. The complete
+menu module also contains actual SPIKE VM tests, so its results require normal
+current runtime dependencies and cannot be called pure conversion evidence.
+Historical corpus counts remain unchanged until the complete original ordered
+assessment and the applicable application journey finish.
