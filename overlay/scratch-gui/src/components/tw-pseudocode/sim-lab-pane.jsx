@@ -1042,6 +1042,10 @@ class SimLabPane extends React.Component {
         // A dropdown selection loads its program automatically, just like the
         // gallery. Prepare its mat first, so importing Blocks cannot trigger a
         // second model build and replace the worker after it appeared ready.
+        if (includeProgram && this.state.challenge) {
+            const challenge = this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
+            if (challenge && challenge.mat !== (entry.mat || 'plain')) this.endChallenge();
+        }
         if (includeProgram && entry.mat && this.state.mat !== entry.mat) {
             await new Promise(resolve => this.setState({mat: entry.mat}, resolve));
             if (this.disposed || this.shippedRequest !== request) return;

@@ -493,3 +493,12 @@ so slow readback cannot drive the forks into their upper limit first.
 Long preset groups are partitioned with every variant and instruction retained;
 eight-minute steps and thirty-minute jobs remain unchanged. Full hosted CI is
 still required before release.
+
+The qualified mat-before-program path also ends a challenge tied to the prior
+mat, preserving the earlier mat-switch behavior. A regression reproduces the
+stale sumo selection before this repair. Hosted tablet traces showed a completed
+touch down/up on More after box selection without any compatibility click. Popup
+triggers now activate completed touch taps directly and consume the optional
+following click once. Fresh mouse input and keyboard activation remain available;
+scrolls, cancellations and unmatched pointers do not activate. No timeout, forced
+click or retry substitutes for the missing input event.
