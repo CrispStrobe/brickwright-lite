@@ -39,6 +39,7 @@ import { createScrewDrives } from './screw.js';
 import { createRopes } from './rope.js';
 import { buildUniversalJoint } from './universal-joint.js';
 import { createRollingResistance } from './rolling.js';
+import { installMaterialPairs, MATERIAL_INDEX } from './materials.js';
 
 let joltPromise = null;
 
@@ -171,6 +172,17 @@ const MOTOR_POSITION_PER_EPS = 0.33;
  * every mesh has MESH_VELOCITY_STEPS, the same number.)
  */
 const WORM_VELOCITY_STEPS = 120;
+
+/**
+ * Solver velocity iterations for an island holding a LIGHT BODY BETWEEN JOINTS: a dynamic body with two or more
+ * joints whose mass is under LIGHT_BODY_RATIO of the lightest dynamic body it is jointed to (round 1's bug 2). An
+ * impact on such a body (a cart's 4.8 g bumper beam hinged to two 25 g wheel sets) is passed on to its partners
+ * only through the joints, and Jolt's iterations converge slowly along that light link: the colliding carts of
+ * test/bw-sim-validation-2.test.mjs bounced apart with e 0.097 at Jolt's default 10, 0.011 with 60, 0.000 with
+ * 100 or more (measured), though nothing in them is elastic. Islands without such a body keep their counts.
+ */
+const LIGHT_BODY_VELOCITY_STEPS = 120;
+const LIGHT_BODY_RATIO = 0.25;
 
 /**
  * Principal moments and axes of a symmetric 3×3 inertia tensor (cyclic Jacobi).
@@ -316,6 +328,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         J.destroy(ps);
     }
 
+    // Restitution per material pair (physics/materials.js), where the Jolt build has the fork's table.
+    const materialPairs = installMaterialPairs(J, physicsSystem);
+
     const gravVec = new J.Vec3(...mechanism.gravity);
     physicsSystem.SetGravity(gravVec);
     J.destroy(gravVec);
@@ -422,6 +437,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         return [0, 1, 2].map(r => [0, 1, 2].map(k => 0.5 * (inv[r][k] + inv[k][r])));
     };
 
+    // Light bodies between joints (LIGHT_BODY_VELOCITY_STEPS).
+    const lightBetweenJoints = new Set();
+    {
+        const massOf = new Map(mechanism.bodies.filter(b => b.motion === 'dynamic').map(b => [b.id, b.massKg]));
+        for (const [id, m] of massOf) {
+            const partners = mechanism.joints.filter(j => j.body1 === id || j.body2 === id).map(j => (j.body1 === id ? j.body2 : j.body1));
+            const heavier = partners.map(p => massOf.get(p)).filter(x => x !== undefined);
+            if (partners.length >= 2 && heavier.length && m < LIGHT_BODY_RATIO * Math.min(...heavier)) lightBetweenJoints.add(id);
+        }
+    }
     for (const b of mechanism.bodies) {
         let shape = null;
         let releaseAfterBody = [];
@@ -497,6 +522,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         }
         if (typeof b.friction === 'number') bcs.mFriction = b.friction;
         if (typeof b.restitution === 'number') bcs.mRestitution = b.restitution;
+        if (materialPairs && b.material && MATERIAL_INDEX.has(b.material)) bcs.mUserData = MATERIAL_INDEX.get(b.material);
+        if (lightBetweenJoints.has(b.id)) bcs.mNumVelocityStepsOverride = LIGHT_BODY_VELOCITY_STEPS;
         if (typeof b.linearDamping === 'number') bcs.mLinearDamping = b.linearDamping;
         if (typeof b.angularDamping === 'number') bcs.mAngularDamping = b.angularDamping;
 
@@ -934,6 +961,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     };
     /** Self-locking worms (built below): {wormJoint, wheel (hinge entry), holdNm, driver (hinge entry|null), held}. */
     const worms = [];
+    /** Racks relative to their frames (RackMeshConstraint, jolt-physics 1.1.0-bw.4): re-based before every step. */
+    const racks = [];
     /** Linear actuators' screw couplings (physics/screw.js drives them). */
     const screwCouplings = [];
     /** Ropes (kinds/rope.js): built after the couplings, from the drum's hinge (physics/rope.js). */
@@ -1008,9 +1037,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             // not shared with the slider) and the rack body (the slider's other side),
             // signed the way the gear's axes are. Contract: v(slider) = ratio·ω(hinge),
             // m/s per rad/s; Jolt's part is ω1·a = r·v2·b (rad/s per m/s), so r = 1/|ratio|
-            // and the ratio's sign goes into the slider axis b. Like a gear it couples
-            // WORLD rates: exact while the frame holding both does not turn about the
-            // pinion axis. Measured in test/bw-sim-sliders.test.mjs (both signs).
+            // and the ratio's sign goes into the slider axis b. Measured in test/bw-sim-sliders.test.mjs
+            // (both signs). Since jolt-physics 1.1.0-bw.4 it is the fork's RackMeshConstraint (BRICKWRIGHT.md
+            // section 4): the same equation RELATIVE TO THE FRAMES that carry the pinion and the rack (the hinge's
+            // and the slider's other bodies, handed over by SetConstraints and re-based before every step, as the
+            // gear meshes are). The world-rate RackAndPinionConstraint read a turning or driving chassis's own motion
+            // as pinion rotation: a forklift's carriage ran to its end stop as the robot turned, and a steering
+            // rack twisted the car. A Jolt build without it falls back to RackAndPinionConstraint.
             const jh = jointMap.get(g.hingeJoint);
             const js = jointMap.get(g.sliderJoint);
             if (!jh || !js) throw new Error(`${g.kind} ${g.id} joint not found`);
@@ -1022,10 +1055,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             };
             const pinion = sideOf(jh);
             const rack = sideOf(js);
-            const rs = new J.RackAndPinionConstraintSettings();
+            const relative = typeof J.RackMeshConstraintSettings === 'function';
+            const rs = relative ? new J.RackMeshConstraintSettings() : new J.RackAndPinionConstraintSettings();
             rs.mSpace = J.EConstraintSpace_WorldSpace;
-            rs.mHingeAxis = new J.Vec3(...jh.axis.map(v => v * pinion.sign));
-            rs.mSliderAxis = new J.Vec3(...js.axis.map(v => v * rack.sign * Math.sign(g.ratio)));
+            const tmp = [new J.Vec3(...jh.axis.map(v => v * pinion.sign)), new J.Vec3(...js.axis.map(v => v * rack.sign * Math.sign(g.ratio)))];
+            [rs.mHingeAxis, rs.mSliderAxis] = tmp;
             rs.mRatio = 1 / Math.abs(g.ratio);
             rs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
             rs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
@@ -1034,6 +1068,14 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
             J.destroy(rs);
+            for (const o of tmp) J.destroy(o);
+            if (relative) {
+                const rackMesh = J.castObject(constraint, J.RackMeshConstraint);
+                const hinge = hingeMap.get(jh.id).hinge;
+                const slider = sliderMap.get(js.id).slider;
+                rackMesh.SetConstraints(hinge, slider);
+                racks.push({ constraint: rackMesh, hinge, slider });
+            }
             gearInfos.push({ type: g.kind, id: g.id, hingeJoint: g.hingeJoint, sliderJoint: g.sliderJoint, ratio: g.ratio });
         } else if (g.kind === 'screw') {
             // A linear actuator (kinds/screw.js): the slider is driven from the spindle's relative
@@ -1286,12 +1328,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     });
     stateRegistry.register('hinges', {
         save: () => [...hingeMap.values()].map(e => [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping,
-            e.hinge.GetMaxFrictionTorque(), e.rotorInertia]),
+            e.hinge.GetMaxFrictionTorque(), e.rotorInertia, e.coastFrictionNm]),
         restore: saved => {
             let i = 0;
             for (const [id, e] of hingeMap) {
                 let friction, rotorInertia;
-                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction, rotorInertia] = saved[i++];
+                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction, rotorInertia, e.coastFrictionNm] = saved[i++];
                 // Motor settings are not part of Jolt's saved state: put back the checkpoint's.
                 if (e.isMotor) {
                     setMotorSettings(e, e.mode === 'torque' ? {limit: 1e6, damping: e.damping} : {limit: e.maxTorque});
@@ -1409,6 +1451,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 if (rolling) rolling.apply();
                 // Re-base every mesh's phase on its hinges' angles now (see the gears' header comment).
                 for (const m of meshes) m.constraint.SetConstraints(m.hinge1, m.hinge2);
+                for (const r of racks) r.constraint.SetConstraints(r.hinge, r.slider);
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -1458,6 +1501,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     // the joint's own bearing friction, frictionNm).
                     const friction = typeof cmd.frictionNm === 'number' && Number.isFinite(cmd.frictionNm) ? Math.max(0, cmd.frictionNm) : entry.frictionNm;
                     entry.mode = 'coast'; entry.hinge.SetMotorState(J.EMotorState_Off);
+                    entry.coastFrictionNm = friction; // physics/rolling.js adds a tyre's rolling resistance on top
                     entry.hinge.SetMaxFrictionTorque(friction); break;
                 }
                 case 'torque': {
@@ -1567,6 +1611,17 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             if (!e) throw new Error(`unknown body ${bodyId}`);
             const v = bodyInterface.GetLinearVelocity(e.bodyID);
             return [v.GetX(), v.GetY(), v.GetZ()];
+        },
+        /** Set a dynamic body's linear (m/s) and angular (rad/s) velocity, world frame: a test bench's starting push. */
+        setBodyVelocity(bodyId, linear, angular) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            const v = new J.Vec3(...linear);
+            const w = new J.Vec3(...angular);
+            bodyInterface.SetLinearAndAngularVelocity(e.bodyID, v, w);
+            J.destroy(v);
+            J.destroy(w);
         },
         bodyAngularVelocity(bodyId) {
             ensureAlive();

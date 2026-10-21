@@ -193,7 +193,12 @@ export class VirtualSpikeClassicSocket {
             return;
         }
         this.state.lastCommand = command;
-        if (command.m === 'trigger_current_state') this.emitCurrentState();
+        if (command.m === 'trigger_current_state') {
+            this.emitCurrentState();
+            // A 2.x hub keeps streaming its port report once asked, as the BLE peripheral notifies on
+            // every hub change (spike-prime-peripheral.js): report again whenever the hub state changes.
+            this._unsubscribe ||= this.hubState.subscribe(() => { if (this.readyState === 1) this.emitCurrentState(); });
+        }
         if (command.m === 'motor' && command.p) {
             const port = Number(command.p.port);
             if (Number.isInteger(port) && port >= 0 && port < 6) {
@@ -234,6 +239,7 @@ export class VirtualSpikeClassicSocket {
         if (this.readyState === 3) return;
         this.readyState = 3;
         if (this._unregisterTransport) { this._unregisterTransport(); this._unregisterTransport = null; }
+        if (this._unsubscribe) { this._unsubscribe(); this._unsubscribe = null; }
         this.state.connected = false;
         if (stop) this.hubState.stopAll();
         this._emit('close', {code: 1000, wasClean: true});

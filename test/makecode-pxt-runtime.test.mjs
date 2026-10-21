@@ -229,7 +229,7 @@ test('every lite micro:bit example compiles, through the MakeCode export, to rea
     assert.deepEqual(failed, []);
 });
 
-test('census batch 1: a program using every call comes back from lite and MakeCode compiles it', {todo:"Math.idiv source/PXT path \u2014 see docs/ARCADE-888-OPEN-FAILURES.md",skip}, async () => {
+test('census batch 1: a program using every call comes back from lite and MakeCode compiles it', {skip}, async () => {
     // MakeCode's led/game/Math calls the census found refused or silently lost
     // (2026-09-25). The loop is the census's own: import -> pseudocode ->
     // blocks -> export -> pxt. MakeCode compiling the ORIGINAL is the control:
