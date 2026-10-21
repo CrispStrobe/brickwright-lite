@@ -1915,8 +1915,9 @@ T6 on main's mechanics, no new physics: `static/sim-lab/models/differential-car.
 - **The end of the steering's travel** is the guide's: the stop is the rack slider's `limits` (±30 LDU), and since
   #1137's end stops (jolt-physics 1.1.0-bw.5) the core carries it through the rack-and-pinion coupling to motor B's
   hinge, so B stalls there as a real motor does. Driven on open-ended at 15 % speed the rack stops at 30.1 LDU with
-  B at 115.7° (the geometry's 114.6°); at 50 % speed B stops at 119.4°, at 50 % power (the motor's DC model at half
-  duty) at 112.8–114.5°, and the parked car turns at most 0.08° (`test/bw-sim-differential-car.test.mjs`). Until
+  B at 115.7° (the geometry's 114.6°); at 50 % speed B stops at 119.4°; a program's `start motor B at 50 % power`
+  (the hub's duty cycle into the DC model, no speed loop; docs/SIM-LAB.md "Motor power") reaches at most 119.5° and
+  rests on the stop at 114.4° (−50 %: −114.3°), and the parked car turns at most 0.08° (`test/bw-sim-differential-car.test.mjs`). Until
   then the pinion slipped round on the stopped rack (B past 370°) and the parked car turned 2.3°. The program steers
   by position and never runs B open-ended.
 - **Floor:** main's floor is 2 m square; the program's circle (R ≈ 0.30 m) keeps every part within 0.66 m
