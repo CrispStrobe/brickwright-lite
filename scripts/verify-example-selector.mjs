@@ -112,8 +112,25 @@ try {
     await games.selectOption('sky_skim');
     await page.waitForFunction(() => /Skyline Swoop/.test(document.querySelector('.cm-content')?.textContent || ''),
         null, {timeout: 10000});
-    const source = await page.locator('.cm-content').textContent();
+    const source = (await page.locator('.cm-content .cm-line').allTextContents()).join('\n');
     check('a game loads as editable pseudocode', /Skyline Swoop/.test(source || '') && /WHEN flag clicked/.test(source || ''));
+
+    await page.waitForFunction(() => {
+        const targets = window.__vm?.runtime?.targets || [];
+        return targets.some(t => !t.isStage && t.blocks.getScripts().length > 0) &&
+            document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.');
+    }, null, {timeout: 60000});
+    const expectedSprites = [...source.matchAll(/^\s*SPRITE\s+([^\s:]+)/gm)].map(m => m[1]);
+    const loadedSprites = await page.evaluate(() => window.__vm.runtime.targets
+        .filter(t => !t.isStage).map(t => ({name: t.getName(), scripts: t.blocks.getScripts().length})));
+    check('selecting an example automatically loads its blocks without To blocks',
+        expectedSprites.length > 0 && expectedSprites.every(name =>
+            loadedSprites.some(t => t.name === name && t.scripts > 0)), JSON.stringify(loadedSprites));
+    if (process.argv.includes('--auto-blocks-only')) {
+        await page.screenshot({path: 'artifacts/atlas-switchback/automatic-example-blocks.png'});
+        await browser.close();
+        process.exit(failures.length ? 1 : 0);
+    }
 
     await device.selectOption('arduino-uno');
     // The device select sits OUTSIDE the menu, and re-rendering the menu's

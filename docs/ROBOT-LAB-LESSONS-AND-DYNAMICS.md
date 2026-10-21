@@ -8,7 +8,8 @@ and asks a prediction question with a revealable answer. Related examples let
 learners compare mechanisms. Presets include their own operating description.
 
 Reading a lesson leaves the current model running. **Open model + program** loads
-the registered example without automatically starting it. The reader sits beside
+the registered example and converts its program into blocks automatically, even
+if Code has not been opened yet. Press **Run** to start it. The reader sits beside
 the view on larger screens and becomes a closable drawer on narrow screens. It
 also opens in Build mode. Content loads only when requested, from local bundled
 JSON; no lesson service or remote content is needed. Failed loads offer a retry.

@@ -1,3 +1,4 @@
+import {openManualControls} from './sim-lab-manual-controls.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import assert from 'node:assert/strict';
@@ -48,11 +49,12 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
             simulatedMs, {timeout});
         const r = await page.evaluate(() => window.__bwMechanics);
         results[id] = judge(id, r);
+        await openManualControls(page, {motors: true});
         const mixer = page.getByTestId('bw-sim-lab-mixer-toggle');
         if (await mixer.getAttribute('aria-expanded') !== 'true') await mixer.click();
         assert.deepEqual(await page.getByTestId('bw-sim-lab-mixer-slider').evaluateAll(es => es.map(e => e.dataset.port).sort()),
             r.mechanism.actuators.map(a => a.port).sort());
-        for (const slider of await page.getByTestId('bw-sim-lab-mixer-slider').all()) assert.ok(await slider.isEnabled());
+        for (const slider of await page.getByTestId('bw-sim-lab-mixer-slider').all()) assert.ok(await slider.isDisabled(), 'program control keeps manual sliders off');
         await page.screenshot({path: resolve(shotsDir, `${id}-finished.png`)});
         await mixer.click();
         console.log(`PASS motorised mechanics ${id}: ${JSON.stringify(results[id])}`);
@@ -72,6 +74,7 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
         const framing = await page.evaluate(() => window.__bwSimLab._pane.view.framingStats());
         assert.ok(framing.corners.every(p => p.every(Number.isFinite) && Math.abs(p[0]) <= 1 && Math.abs(p[1]) <= 1 && Math.abs(p[2]) <= 1),
             `${id}: initial camera includes the whole model: ${JSON.stringify(framing)}`);
+        await openManualControls(page, {override: true});
         const toggle = page.getByTestId('bw-sim-lab-mixer-toggle');
         if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
         await page.getByTestId('bw-sim-lab-mixer-stop-all').click();

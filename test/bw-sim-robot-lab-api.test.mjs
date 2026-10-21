@@ -303,7 +303,8 @@ test('with no model, every call says so and the block methods answer neutral val
     const models = createRobotLabApi({getSession: () => null, listModels: () => [{id: 'driving-base'}], loadModel: async id => ({ok: true, id})});
     assert.equal((await models.loadModel('nope')).code, 'bad-model');
     assert.deepEqual(await models.loadModel('driving-base.ldr'), {ok: true, id: 'driving-base'});
-    assert.equal(models.setTimeScale(5).scale, 1);
+    assert.equal(models.setTimeScale(5).scale, 4);
+    assert.equal(models.setTimeScale(2).scale, 2);
     assert.equal(models.setTimeScale(0.01).scale, 0.1);
     assert.equal(models.camera('sideways').ok, false);
 });

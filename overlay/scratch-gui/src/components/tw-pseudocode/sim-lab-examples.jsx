@@ -10,12 +10,12 @@ export const EXAMPLES_TEXT = {
         size: 'Model size', anySize: 'Any piece count', large: 'More than 50 pieces', small: 'Up to 50 pieces',
         close: 'Close examples', open: 'Open model', program: 'Open model + program', pieces: 'pieces', motors: 'motors',
         lesson: 'Read lesson', count: '{n} models', empty: 'No models match these filters.', loading: 'Opening…',
-        hint: 'Choose a mechanism to explore. Opening a model replaces the current build; opening its program also replaces the code.'},
+        hint: 'Open an example to replace the model and code. Press Run to start.'},
     de: {title: 'Beispiele im Roboter-Labor', search: 'Modelle und Physik suchen', topics: 'Physikthema', all: 'Alle Themen',
         size: 'Modellgröße', anySize: 'Beliebige Teilezahl', large: 'Mehr als 50 Teile', small: 'Bis zu 50 Teile',
         close: 'Beispiele schließen', open: 'Modell öffnen', program: 'Modell + Programm öffnen', pieces: 'Teile', motors: 'Motoren',
         lesson: 'Lektion lesen', count: '{n} Modelle', empty: 'Keine Modelle passen zu diesen Filtern.', loading: 'Wird geöffnet…',
-        hint: 'Wähle einen Mechanismus zum Erkunden. Ein Modell ersetzt den aktuellen Bau; sein Programm ersetzt auch den Code.'}
+        hint: 'Ein Beispiel ersetzt Modell und Code. Mit Start geht es los.'}
 };
 const button = {minHeight: 40, border: '1px solid #94a3b8', borderRadius: 6, padding: '6px 10px', background: '#fff', color: '#0f172a', cursor: 'pointer'};
 
@@ -91,11 +91,11 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
                                     <small style={{color: '#475569', marginBottom: 10}}>{d.author} · {d.license}</small>
                                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
                                         <button type="button" style={button} disabled={Boolean(pending)} onClick={() => onLesson(key)} aria-label={`${T.lesson}: ${title}`}>{T.lesson}</button>
-                                        <button type="button" style={button} disabled={Boolean(pending)} onClick={() => choose(key, false)} aria-label={`${T.open}: ${title}`}>
+                                        {!entry.example && <button type="button" style={button} disabled={Boolean(pending)} onClick={() => choose(key, false)} aria-label={`${T.open}: ${title}`}>
                                             {pending === key ? T.loading : T.open}
-                                        </button>
+                                        </button>}
                                         {entry.example && <button type="button" style={{...button, background: '#ede9fe'}} disabled={Boolean(pending)}
-                                            onClick={() => choose(key, true)} aria-label={`${T.program}: ${title}`}>{T.program}</button>}
+                                            onClick={() => choose(key, true)} aria-label={`${T.program}: ${title}`}>{pending === key ? T.loading : (lang === 'de' ? 'Öffnen' : 'Open')}</button>}
                                     </div>
                                 </article>
                             );

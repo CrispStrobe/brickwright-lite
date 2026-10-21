@@ -1,3 +1,4 @@
+import {openManualControls} from './sim-lab-manual-controls.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -26,6 +27,7 @@ export const mixerInteractions = async (page, {shotsDir}) => {
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'forklift.ldr' &&
         window.__bwSimLab._pane.session, null, {timeout: 60000});
     // 1. Unfold.
+    await openManualControls(page, {override: true});
     const toggle = page.getByTestId('bw-sim-lab-mixer-toggle');
     if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
     const sliders = page.getByTestId('bw-sim-lab-mixer-slider');

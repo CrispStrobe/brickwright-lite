@@ -112,7 +112,7 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
         await openSimLab(page, {program: null});
         await openModel(page, 'nxt-bumper-bot.ldr');
         assert.equal(await page.evaluate(() => window.__bwSimLab.worker), true, 'the physics runs in the Web Worker');
-        await page.getByRole('button', {name: 'Load example program'}).click();
+
         await page.waitForFunction(() => window.__bwSimLab._pane.props.vm.extensionManager.isExtensionLoaded('legonxt') &&
             Object.values(window.__bwSimLab._pane.props.vm.editingTarget.blocks._blocks).some(b => b.opcode === 'legonxt_motorRunDegrees'),
         null, {timeout: 60000});
@@ -185,7 +185,7 @@ export const hubsBtInteractions = async ({browser, errors, openSimLab, wallBudge
         page.on('dialog', dialog => dialog.accept());
         await openSimLab(page, {program: null});
         await openModel(page, 'ev3-wall-stopper.ldr');
-        await page.getByRole('button', {name: 'Load example program'}).click();
+
         await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await page.locator('.cm-content').first().textContent(), /wait until \(ev3 distance 4 cm\) < 15/);

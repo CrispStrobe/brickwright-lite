@@ -1,3 +1,39 @@
+## Compact Robot Lab controls — 2026-10-21
+
+IMPLEMENTED / locally qualified — Codex, explicit owner request. One scrolling action/context row with
+responsive icon labels; compact example dialog and automatic program/title
+selection; collapsible Drive/Motors row; manual sliders visibly disabled until
+override is enabled; faster simulation with the program/world clock kept aligned.
+Scope: Robot Lab pane, mixer, toolbar/dialog, clock/API and focused controls.
+Preserve peer-owned physics/compiler files and worktrees.
+
+Production build and 40 focused lifecycle/API/pacing/real-worker clock controls
+pass. EN/DE browser checks pass at 1600, 1024 and 768 px: one action row,
+responsive icons, scrolling/pop-ups, delayed-program Run guard, visible project
+titles, physical motor movement from explicit override, collapse, return to the
+program and 4× clock selection. Fast-step scheduling preserves physical step
+size and program/physics alignment; actual throughput is hardware-dependent.
+The complete Code example-selector and device-retargeting journey passes.
+
+## Automatic blocks when loading examples — 2026-10-21
+
+IMPLEMENTED / locally qualified — Codex, explicit owner request during model intake. Make the Code
+built-in example picker compile into the VM automatically, including retargeted
+examples. Preserve lazy initial loading and existing Circuit/Robot Lab automatic
+conversion. Include the lazy Code host so a Robot Lab selection made before
+visiting Code retains and compiles its program. Remove stale example hints asking for a separate To blocks click.
+Prove the actual VM changes immediately after selection, without that button.
+
+## Atlas Arm and Switchback Lift intake — 2026-10-21
+
+CLAIMED — Codex, existing model-design lane / draft PR #1138, after completing
+pendulum/clutch examples. Adapt the supplied three-motor arm and ball-return
+lift from exact source CAD, apply the owner’s CrispStrobe / BSD-3-Clause credit,
+repair geometry/mechanism gaps, and add native programs and EN/DE lessons.
+Qualify actual physical poses, ball transport, controls and connected manuals.
+Downloaded generators/controllers and predicted animation are reference data,
+not executed or presented as simulation results. Preserve peer worktrees.
+
 ## Motor-excited pendulums and clutch load bench — 2026-10-21
 
 IMPLEMENTED / locally qualified — Codex, existing model-design lane / draft PR #1138. Add two original

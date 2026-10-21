@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {openManualControls} from './lib/sim-lab-manual-controls.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -369,6 +370,7 @@ try {
         // 1. A typed program that was never loaded into blocks: Run says so, and nothing drives by itself.
         const idle = await reading(page);
         await page.getByTestId('bw-sim-lab-run').click();
+        await page.getByTestId('bw-sim-lab-info-toggle').click();
         await page.getByTestId('bw-sim-lab-info').waitFor({timeout: 10000});
         assert.match(await page.getByTestId('bw-sim-lab-info').textContent(), /To blocks/);
         await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1000, idle.time, {timeout: 60000});
@@ -378,6 +380,7 @@ try {
 
         // 2. The drive pad moves it with no program at all: hold ▲.
         const drivePad = await reading(page);
+        await openManualControls(page);
         const fwd = page.getByTestId('bw-sim-lab-drive-forward');
         const fb = await fwd.boundingBox();
         await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
@@ -567,15 +570,14 @@ try {
         await lf.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'line-follower.ldr' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
         const offer = lf.getByTestId('bw-sim-lab-info');
-        await offer.waitFor({timeout: 10000});
-        assert.match(await offer.textContent(), /Load example program/, 'with no program loaded, the Line follower offers its example');
         await lf.getByTestId('bw-sim-lab-mat').selectOption('line-oval');
         await lf.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'line-oval', null, {timeout: 60000});
-        await lf.getByRole('button', {name: 'Load example program'}).click();
+
         await lf.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await lf.locator('.cm-content').first().textContent(), /IF spike color C is black THEN:/, 'the example is in the Code tab');
         assert.ok(await lf.evaluate(() => window.__bwSimLab._pane.spikeLoaded()), 'the example became SPIKE blocks');
+        await lf.getByTestId('bw-sim-lab-info-toggle').click();
         assert.match(await offer.textContent(), /follow the black line/);
         // Read-only instrument: after every simulated tick, judge where the drive-axle midpoint is
         // (the motor hinges' midpoint carried by the hub body's pose) against the oval's centre line.
@@ -648,9 +650,9 @@ try {
             await ex.waitForFunction(file => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === file &&
                 window.__bwSimLab._pane.session, example.file, {timeout: 60000});
             const info = ex.getByTestId('bw-sim-lab-info');
+            await ex.getByTestId('bw-sim-lab-info-toggle').click();
             await info.waitFor({timeout: 10000});
-            assert.match(await info.textContent(), /Load example program/, `with no program loaded, the ${example.name} offers its example`);
-            await ex.getByRole('button', {name: 'Load example program'}).click();
+
             await ex.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
                 null, {timeout: 60000});
             assert.match(await ex.locator('.cm-content').first().textContent(), example.code, `the ${example.name}'s example is in the Code tab`);
@@ -857,7 +859,7 @@ try {
         await fl.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
         await fl.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'forklift.ldr' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
-        await fl.getByRole('button', {name: 'Load example program'}).click();
+
         await fl.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await fl.locator('.cm-content').first().textContent(), /run motor C clockwise 573 degrees/, 'the Forklift\'s example is in the Code tab');
@@ -899,7 +901,7 @@ try {
         await pn.getByTestId('bw-sim-lab-model').selectOption('pneumatic-press.ldr');
         await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'pneumatic-press.ldr' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
-        await pn.getByRole('button', {name: 'Load example program'}).click();
+
         await pn.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 60000});
@@ -992,7 +994,7 @@ try {
         await su.getByTestId('bw-sim-lab-model').selectOption('sumo');
         await su.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === 'sumo' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
-        await su.getByRole('button', {name: 'Load example program'}).click();
+
         await su.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await su.locator('.cm-content').first().textContent(), /wait until spike color C is black/, 'the sumo example is in the Code tab');

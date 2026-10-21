@@ -1,3 +1,4 @@
+import {openManualControls} from './sim-lab-manual-controls.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 // Choose the shipped rover, load its example, and run it through the real GUI and worker.
@@ -14,7 +15,7 @@ export const surveyRoverInteractions = async (page, {openSimLab, shotsDir, timeo
     await page.getByTestId('bw-sim-lab-model').selectOption('survey-rover.ldr');
     await page.waitForFunction(() => window.__bwSimLab?.status === 'ready' &&
         window.__bwSimLab._pane.state.modelFile === 'survey-rover.ldr', null, {timeout: 60000});
-    await page.getByRole('button', {name: 'Load example program'}).click();
+
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
         null, {timeout: 60000});
     assert.match(await page.locator('.cm-content').first().textContent(), /set motor stop action C hold/);
@@ -47,6 +48,7 @@ export const surveyRoverInteractions = async (page, {openSimLab, shotsDir, timeo
     assert.ok(r.returned < 0.015, JSON.stringify(r));
     assert.ok(r.low < -25 && r.high > 25 && r.low > -35 && r.high < 35, JSON.stringify(r));
     assert.ok(Math.abs(r.end) < 3 && r.upright > 0.98, JSON.stringify(r));
+    await openManualControls(page, {override: true});
     const toggle = page.getByTestId('bw-sim-lab-mixer-toggle');
     if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
     const sliders = page.getByTestId('bw-sim-lab-mixer-slider');

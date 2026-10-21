@@ -1,3 +1,4 @@
+import {openManualControls} from './sim-lab-manual-controls.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -178,6 +179,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
         const i = s.snapshot().bodyIds.indexOf(s.bridge.hubBody);
         return {z: s.snapshot().bodies[i * 7 + 2], speeds: pane.hub.data.motors.slice(0, 2).map(m => m.speed), time: s.time};
     });
+    await openManualControls(page);
     const up = await page.getByTestId('bw-sim-lab-drive-forward').boundingBox();
     const h0 = await hubOf();
     await finger.start([[up.x + up.width / 2, up.y + up.height / 2]]);
@@ -424,6 +426,7 @@ export const touchInteractions = async (page, {shotsDir}) => {
         const m = pane.hub.data.motors;
         return {pos: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], speeds: [m[0].speed, m[1].speed], time: s.time};
     });
+    await openManualControls(page);
     const fwd = await page.getByTestId('bw-sim-lab-drive-forward').boundingBox();
     const press = [fwd.x + fwd.width / 2, fwd.y + fwd.height / 2];
     const d0 = await reading();
