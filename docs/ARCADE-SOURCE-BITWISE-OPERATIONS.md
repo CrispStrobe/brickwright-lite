@@ -116,3 +116,53 @@ object, including a Proxy, cannot issue that identity. A legitimate refresh
 may update only its already-issued category's fresh native blocks array.
 Potentially trapping entry/metadata checks precede the final original native
 container descriptors, memberships and closed revocation flags.
+
+### Native fixture acquisition boundary
+
+The headless bundled-extension loader resolves the metadata-factory utility
+through the existing installed-byte-equality and singleton support path. Only
+the console domain helper's exact lazy Runtime import resolves to the actual
+installed Runtime class; there is no general engine or relative-import fallback.
+The setter control retains its original installation/count/privacy/refusal
+assertions and records forwarding lookup observations before a failed boundary
+assertion. Its observed callback failure needs a causal runtime observation;
+source review alone does not establish that the injection ran.
+
+The numeric-setter fixture restores the saved Array prototype length descriptor
+as well as the indexed property: defining an Array index changes length even
+when that property is later deleted. Exact cleanup assertions and the existing
+refusal error's own scalar intrinsic metadata distinguish fixture residue from
+a runtime defect. This source correction awaits whole-module qualification;
+all original operation, privacy, refusal and continuation assertions remain.
+
+The native composition control also records its complete project, imported Code
+and exporter result before the existing export assertions. The cached-function
+attack reports installation and post-load identities, actual cached function
+comparisons and typed scalar transport before its original nonvacuity assertion.
+These are observations for a causal fixture diagnosis, not a new grant or an
+accepted replacement for the original assertions.
+
+The primitive-table replacement is installed after project loading refreshes
+extension dispatch, using that actual post-load registered function as its
+restoration target. Installation, execution and cached-function observations
+remain separate; the original firing assertion still requires an actual VM
+invocation, and no negative is credited merely because a replacement was set.
+
+
+## Complete native Number result qualification — 2026-10-21
+
+The composed candidate passes all twelve native controls, without skips or TODOs.
+Actual source bitwise/unary results execute through ordinary Number formals and
+`typeof`, then export and reimport successfully. Metadata redirection, changed
+delegates, cached primitive replacement, category/table changes and intrinsic
+mutation retain their refusal and unrelated-thread continuation assertions.
+
+Two fixture repairs preserve those assertions: restore the Array prototype's
+length descriptor as well as its indexed property, and install the primitive
+replacement after project loading has installed its actual dispatch functions.
+The loader shares the installed factory singleton and genuine Runtime class.
+The export analysis derives primitive captured-cell facts from complete actual
+occurrence and writer sets; no Number or Array-input permission follows from a
+source result. This finite native result is not hosted browser, full application
+corpus, hardware or final-main qualification. Supplier adoption and the final
+composed enabled checks remain mandatory.

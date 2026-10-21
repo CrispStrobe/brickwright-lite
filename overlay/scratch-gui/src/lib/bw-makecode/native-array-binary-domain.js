@@ -17,13 +17,32 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
     const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||
+    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
+    // A complete unary conversion body returns Number whenever it returns.
+    // This is a result fact, not an initialized/primitive fact about its input.
+    // Keep the input expression in the private model so its actual calls,
+    // writes and Array escapes still participate in the ordinary census.
+    const unaryProof=inspectGeneratedHelperBindings(program,profile),unaryDeclarations=new Set(),unaryCalls=new Map();
+    const inside=(node,fn)=>{for(let current=node;current;current=unaryProof.parentOf(current))if(current===fn)return true;return false;};
+    for(const fn of program.body||[]){
+        if(fn?.type!=='FunctionDeclaration'||fn.params?.length!==1)continue;
+        const parameter=fn.params[0];
+        if(typeof parameter!=='string'||!/^[A-Za-z_$][\w$]*$/.test(parameter)||parameter===fn.name)continue;
+        const names=new Map([[fn.name,'__bwNativeUnaryNumber']]);
+        // Function-name substitution deliberately does not rename formal
+        // metadata. Match the actual formal spelling everywhere instead.
+        if(!unaryProof.root(fn)||![`+${parameter}`,`-1 * ${parameter}`].some(expression=>
+            unaryProof.matches(fn,`function __bwNativeUnaryNumber(${parameter}: any): number { return ${expression} }`,names)))continue;
+        const calls=unaryProof.calls(fn,[1],new Set([fn]));
+        if(!calls?.length||!unaryProof.nodes.every(node=>node.type!=='Identifier'||!inside(node,fn)||inside(unaryProof.declarationAt(node),fn)))continue;
+        unaryDeclarations.add(fn);for(const call of calls)unaryCalls.set(call,fn);
+    }
     // Only the already-proved helper bodies/calls enter this private view.
     // A fresh per-call scalar identity survives the existing normalizer's
     // ordinary cloning; no caller-supplied spelling or metadata can select it.
-    const selected=new Set([...helpers.values()].map(helper=>helper.declaration)),originalCalls=new Map(),tokens=new Map();
+    const selected=new Set([...helpers.values()].map(helper=>helper.declaration).concat([...unaryDeclarations])),originalCalls=new Map(),tokens=new Map(),unaryTokens=new Set();
     for(const helper of helpers.values())for(const call of helper.calls)originalCalls.set(call,helper);
     const prepare=node=>{
         if(!node||typeof node!=='object')return node;
@@ -32,6 +51,10 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             const token=Symbol();tokens.set(token,{helper:originalCalls.get(node),originalCall:node});
             return {type:'Binary',op:'+',left:prepare(node.args[0]),right:prepare(node.args[1]),nativeArrayDomainCall:token};
         }
+        if(unaryCalls.has(node)){
+            const token=Symbol();unaryTokens.add(token);
+            return {type:'Conditional',test:prepare(node.args[0]),consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},nativeArrayDomainNormalCall:token};
+        }
         return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:prepare(value)]));
     };
     // Reuse the existing complete body/binding/registry/ambient proof rather
@@ -39,7 +62,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const named=lowerNamedArrayItemHelpers(prepare(program),{profile});
     if(named.unsupported.length)return {helpers:new Map(),current:syntax.current,reason:'native addition named-helper source proof refused: '+named.unsupported.join('; ')};
     const bindings=inspectGeneratedHelperBindings(named.program,profile);
-    const current=()=>syntax.current()&&bindings.isCurrent();
+    const current=()=>syntax.current()&&unaryProof.isCurrent()&&bindings.isCurrent();
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set();
     for(const node of bindings.nodes)if(tokens.has(node.nativeArrayDomainCall)){
@@ -91,10 +114,23 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const initialized=node=>{
         if(!node||typeof node!=='object')return true;
         if(Array.isArray(node))return node.every(initialized);
+        if(unaryTokens.has(node.nativeArrayDomainNormalCall))return true;
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
     };
     const primitiveValue=node=>{const found=types(node);return found.size>0&&[...found].every(type=>primitive.has(type))&&initialized(node);};
+    // A captured scalar cell may be read before its first assignment. Its
+    // actual Undefined value is still a primitive operand; this does not
+    // establish initialization, an Array producer or an input certificate.
+    // Both occurrence and complete binding writer facts must be primitive.
+    const capturedScalarIdentifier=node=>{
+        if(node?.type!=='Identifier')return false;
+        const value=actual(node),kinds=graph.bindingKindsAt(value);
+        if(graph.declarationCountAt(value)!==1||kinds.size!==1||!kinds.has('variable'))return false;
+        const occurrence=types(node),writers=graph.bindingTypesAt(value);
+        return occurrence.size>0&&writers.size>0&&
+            [...occurrence,...writers].every(type=>primitive.has(type));
+    };
     // Canonical parse NORMAL returns on non-String primitive input are
     // primitive. Its unary+/isNaN/JSON effects and possible errors remain in
     // the actual source; this is only an overapproximation of Array contents.
@@ -113,12 +149,23 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){
         const arg=call.args[position];
         const found=types(arg);
-        if(!found.size||!initialized(arg)||[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'))
+        if(!found.size||!initialized(arg)&&!capturedScalarIdentifier(arg)||[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'))
             return {helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
         for(const allocation of allocations(arg)){
             if(!(position===0?helper.leftArray:helper.rightArray))return {helpers:new Map(),current,reason:'native helper does not join this actual Array operand position'};
             allTokens.add(allocation);arrayHelpers.add(helper.declaration.name);
         }
+    }
+    // Unary conversion can invoke an object's ToPrimitive hooks. The private
+    // result model does not execute or remove those effects from actual source.
+    // When a native Array join is selected, require primitive-only conversion
+    // inputs so no implicit opaque callback can mutate its body/prototype.
+    // Undefined is a legitimate input and returns NaN; initialization is not
+    // needed to establish this conversion's normal-return result.
+    if(allTokens.size)for(const node of bindings.nodes)if(unaryTokens.has(node.nativeArrayDomainNormalCall)){
+        const found=types(node.test);
+        if(!found.size||[...found].some(type=>!primitive.has(type)))
+            return {helpers:new Map(),current,reason:'native addition cannot prove unary conversion has no opaque coercion effects'};
     }
     if(graph.diagnostics.length&&allTokens.size)return {helpers:new Map(),current,reason:'native addition source graph contains unresolved producer constraints'};
     const affected=node=>allocations(node).some(site=>allTokens.has(site));

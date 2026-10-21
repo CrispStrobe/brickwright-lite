@@ -253,7 +253,7 @@ test('actual reporter inputs execute once in order and unary has no synthesized 
 });
 
 
-test('actual source bitwise and unary Number results compose with typeof and ordinary Number formals through export and reimport',async()=>{
+test('actual source bitwise and unary Number results compose with typeof and ordinary Number formals through export and reimport',async t=>{
  const input='let rows=[5];let seenBinary=99;let seenUnary=99;let typeBinary="";let typeUnary="";let entered=0;function receiveBinary(value:number){entered+=1;seenBinary=value;}function receiveUnary(value:number){entered+=1;seenUnary=value;}receiveBinary(rows&1);receiveUnary(~rows);typeBinary=typeof(rows|1);typeUnary=typeof(~rows);';
  const imported=importProjectFiles({'main.ts':input},{target:'arcade'});
  assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
@@ -273,7 +273,9 @@ test('actual source bitwise and unary Number results compose with typeof and ord
    assert.equal(blocks.filter(block=>block.opcode==='arcade_sourceTypeOf').length,2,route);
    assert.equal(blocks.filter(block=>block.opcode==='arcade_declareParameterConstraint'&&block.fields.TYPE[0]==='Number').length,2,route);
    if(route==='authored'){
-    const exported=projectToArcade(project);assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
+    const exported=projectToArcade(project);
+    t.diagnostic(JSON.stringify({stage:'Number-result authored export before assertions',input,importedCode:imported.code,project,exported}));
+    assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
     next=importProjectFiles(exported.files,{target:'arcade'});assert.deepEqual(next.unsupported,[]);assert.deepEqual(next.warnings,[]);
    }
   }finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
@@ -281,14 +283,17 @@ test('actual source bitwise and unary Number results compose with typeof and ord
 });
 
 
-test('owner-callback numeric setters cannot receive private source-operation rows before intrinsic refusal',async()=>{
+test('owner-callback numeric setters cannot receive private source-operation rows before intrinsic refusal',async t=>{
  for(const unary of [false,true]){
-  const key=unary?'0':'1',descriptor=Object.getOwnPropertyDescriptor(Array.prototype,key),define=Object.defineProperty,ownDescriptor=Object.getOwnPropertyDescriptor;
+  const key=unary?'0':'1',descriptor=Object.getOwnPropertyDescriptor(Array.prototype,key),lengthDescriptor=Object.getOwnPropertyDescriptor(Array.prototype,'length'),define=Object.defineProperty,ownDescriptor=Object.getOwnPropertyDescriptor;
   let changed=false,ownerReads=0,privateRowEscaped=false,restore=()=>{};
+  const callbacks=[];const appendObservation=value=>define(callbacks,String(callbacks.length),{value,writable:true,enumerable:true,configurable:true});
   const run=await fixture({unary,op:unary?'~':'|',arrayRight:!unary,number:5,before:({runtime})=>{
    const own=ownDescriptor(runtime,'getOpcodeFunction'),original=runtime.getOpcodeFunction;
    runtime.getOpcodeFunction=function(opcode){const value=original.call(this,opcode);
-    const trace=opcode==='arrays_createReference'?new Error().stack:'';
+    const observedOpcode=opcode==='arrays_createReference'||opcode===(unary?'arcade_sourceValueUnary':'arcade_sourceValueBinary');
+    const trace=observedOpcode?new Error().stack:'';
+    if(observedOpcode)appendObservation({opcode,trace});
     if(opcode==='arrays_createReference'&&/\bat ownerCurrent\b/.test(trace)&&/\bat operand\b/.test(trace)&&++ownerReads===(unary?1:2)){
      changed=true;define(Array.prototype,key,{configurable:true,set(value){
       if(value&&typeof value==='object'&&ownDescriptor(value,'body')&&ownDescriptor(value,'saved')&&ownDescriptor(value,'identity'))privateRowEscaped=true;
@@ -298,14 +303,31 @@ test('owner-callback numeric setters cannot receive private source-operation row
     }return value;
    };
    restore=()=>{if(descriptor)define(Array.prototype,key,descriptor);else delete Array.prototype[key];
+    // Array.prototype is itself an Array: installing index 1 grows length.
+    // Deleting that index does not undo the Array length side effect.
+    define(Array.prototype,'length',lengthDescriptor);
     if(own)define(runtime,'getOpcodeFunction',own);else delete runtime.getOpcodeFunction;};
   },after:()=>restore()});
   try{
+   const intrinsicSummary=error=>{
+    const object=value=>value!==null&&(typeof value==='object'||typeof value==='function');
+    const direct=object(error)?ownDescriptor(error,'bwArrayIntrinsicMismatch'):null,cause=object(error)?ownDescriptor(error,'cause'):null;
+    const source=direct?.value??(object(cause?.value)?ownDescriptor(cause.value,'bwArrayIntrinsicMismatch')?.value:null);
+    if(!object(source))return null;
+    const copy={};
+    for(const field of ['rootIndex','rootLabel','keyKind','key','symbolPosition','comparison','changedField','actualType','savedType','actualFlag','savedFlag']){
+     const entry=ownDescriptor(source,field);
+     if(!entry||!Object.hasOwn(entry,'value')||(entry.value!==null&&!['string','number','boolean'].includes(typeof entry.value)))return null;
+     define(copy,field,{value:entry.value,enumerable:true});
+    }return copy;
+   };
+   t.diagnostic(JSON.stringify({unary,changed,ownerReads,savedArrayPrototypeLength:lengthDescriptor,restoredArrayPrototypeLength:ownDescriptor(Array.prototype,'length'),errors:run.errors.map(error=>({type:typeof error,message:ownDescriptor(error,'message')?.value,intrinsic:intrinsicSummary(error)}))}));
+   if(!changed||ownerReads!==(unary?1:2))t.diagnostic(JSON.stringify({unary,changed,ownerReads,callbacks}));
    assert.equal(changed,true,'actual last-operand ownerCurrent callback installs the setter after initial intrinsic admission');
    assert.equal(ownerReads,unary?1:2,'the last actual Array operand is the injection boundary');
    assert.equal(privateRowEscaped,false);refused(run);
    assert.match(String(run.errors[0]),/operand or operation changed during validation/);
-  }finally{restore();run.close();assert.deepEqual(ownDescriptor(Array.prototype,key),descriptor);}
+  }finally{restore();run.close();assert.deepEqual(ownDescriptor(Array.prototype,key),descriptor);assert.deepEqual(ownDescriptor(Array.prototype,'length'),lengthDescriptor);}
  }
 });
 
@@ -344,10 +366,7 @@ async function resultEvidenceFixture(sourceText,{mode}={}){
    manager._prepareBlockInfo=function(service,info){if(info.opcode==='sourceValueBinary'){facts.fired=true;info.func='metadataString';}return Reflect.apply(prepare,this,[service,info]);};
   }
   for(const [id,extension]of [['arrays',arrays],['arcade',arcade]]){const service=manager._registerInternalExtension(extension);manager._loadedExtensions.set(id,service);}
-  if(mode==='primitive ABA'){
-   const original=runtime._primitives.arcade_sourceValueBinary;
-   runtime._primitives.arcade_sourceValueBinary=function(){facts.fired=true;facts.redirectCalls++;runtime._primitives.arcade_sourceValueBinary=original;return 'foreign cached String';};
-  }
+  let originalPrimitive,replacementPrimitive;
   if(mode==='delegate ABA'){
    const original=arcade.sourceValueBinary;
    arcade.sourceValueBinary=function(){facts.fired=true;facts.redirectCalls++;arcade.sourceValueBinary=original;return 'restored after String';};
@@ -358,9 +377,36 @@ async function resultEvidenceFixture(sourceText,{mode}={}){
   stage.blocks.result_other_forever={opcode:'control_forever',parent:'result_other_hat',next:null,inputs:{SUBSTACK:[2,'result_other_tick']},fields:{},topLevel:false,shadow:false};
   stage.blocks.result_other_tick={opcode:'data_changevariableby',parent:'result_other_forever',next:null,inputs:{VALUE:[1,[4,'1']]},fields:{VARIABLE:['resultOtherTicks',id]},topLevel:false,shadow:false};
   const buffer=Buffer.from(await(await seed.creator.generateSB3()).arrayBuffer());
-  await vm.loadProject(buffer);if(project.stc)runtime.stc=project.stc;runtime.currentStepTime=1000/30;vm.greenFlag();await stepFrames(vm,10);
+  await vm.loadProject(buffer);if(project.stc)runtime.stc=project.stc;runtime.currentStepTime=1000/30;
+  if(mode==='primitive ABA'){
+   // loadProject refreshes extension dispatch. Attack the actual post-load
+   // registered function, not an earlier wrapper that loading discards.
+   originalPrimitive=runtime._primitives.arcade_sourceValueBinary;
+   assert.equal(typeof originalPrimitive,'function','actual post-load registered source primitive');
+   replacementPrimitive=function(){facts.fired=true;facts.redirectCalls++;runtime._primitives.arcade_sourceValueBinary=originalPrimitive;return 'foreign cached String';};
+   runtime._primitives.arcade_sourceValueBinary=replacementPrimitive;
+   facts.installedReplacement=runtime._primitives.arcade_sourceValueBinary===replacementPrimitive;
+   facts.installedAfterLoad=true;
+   facts.afterLoadReplacement=runtime._primitives.arcade_sourceValueBinary===replacementPrimitive;
+   facts.afterLoadOriginal=runtime._primitives.arcade_sourceValueBinary===originalPrimitive;
+  }
+  vm.greenFlag();await stepFrames(vm,10);
   const observed=Object.fromEntries(runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name,BW.decode(variable.value)]));
-  return {vm,errors,facts,observed,marker,close(){
+  let diagnostic;
+  if(mode==='primitive ABA'){
+   const scalar=value=>({type:typeof value,value:value===null||['string','number','boolean'].includes(typeof value)?value:null,nonScalarUnobserved:value!==null&&!['undefined','string','number','boolean'].includes(typeof value)});
+   const caches=[];
+   for(const target of runtime.targets)for(const block of Object.values(target.blocks._blocks))if(block.opcode==='arcade_sourceValueBinary'){
+    const cache=target.blocks._cache?._executeCached?.[block.id];
+    caches.push({blockId:block.id,cached:!!cache,cachedOriginal:cache?._blockFunction===originalPrimitive,cachedReplacement:cache?._blockFunction===replacementPrimitive,
+     args:cache?Object.fromEntries(Object.entries(cache._argValues).map(([key,value])=>[key,scalar(value)])):null,
+     parentResult:cache?scalar(cache._parentValues?.[cache._parentKey]):null});
+   }
+   diagnostic={stage:'primitive ABA after actual frames before assertions',installedAfterLoad:facts.installedAfterLoad,installedReplacement:facts.installedReplacement,afterLoadReplacement:facts.afterLoadReplacement,afterLoadOriginal:facts.afterLoadOriginal,
+    afterFramesReplacement:runtime._primitives.arcade_sourceValueBinary===replacementPrimitive,afterFramesOriginal:runtime._primitives.arcade_sourceValueBinary===originalPrimitive,
+    fired:facts.fired,redirectCalls:facts.redirectCalls,observed:Object.fromEntries(Object.entries(observed).map(([key,value])=>[key,scalar(value)])),errors,caches};
+  }
+  return {vm,errors,facts,observed,marker,diagnostic,close(){
    if(facts.row)facts.category.blocks.splice(facts.index,0,facts.row);
    if(facts.originalTable)runtime._primitives=facts.originalTable;
    if(ownPrepare)Object.defineProperty(manager,'_prepareBlockInfo',ownPrepare);else delete manager._prepareBlockInfo;
@@ -370,7 +416,7 @@ async function resultEvidenceFixture(sourceText,{mode}={}){
  }catch(error){if(vm){vm.stopAll();vm.quit();}throw error;}finally{if(seed){seed.vm.stopAll();seed.vm.quit();}clearStrayTimers();}
 }
 
-test('source Number result evidence refuses changed implementation, arithmetic plus and unknown selectors without lending Array input authority',async()=>{
+test('source Number result evidence refuses changed implementation, arithmetic plus and unknown selectors without lending Array input authority',async t=>{
  // Pure producer anchor/idempotence controls do not execute a VM or bless a
  // caller table; the real VM cases below require the installed actual hook.
  const producer=readFileSync(new URL('../scripts/apply-vm-overlay.mjs',import.meta.url),'utf8');
@@ -423,6 +469,7 @@ test('source Number result evidence refuses changed implementation, arithmetic p
  for(const mode of ['redirect metadata','delegate ABA','primitive ABA','proxy table capture','late duplicate','late row removal']){
   const run=await resultEvidenceFixture(input,{mode});
   try{
+   if(run.diagnostic)t.diagnostic(JSON.stringify(run.diagnostic));
    assert.equal(run.facts.fired,true,mode);if(['redirect metadata','delegate ABA','primitive ABA'].includes(mode))assert.equal(run.facts.redirectCalls,1,mode);
    if(mode==='proxy table capture')assert.notEqual(run.facts.trapFired,true,'replaced table is refused before its descriptor trap can run');
    assert.equal(run.observed.entered,0,mode);assert.equal(run.observed.seen,99,mode);assert.ok(run.observed.resultOtherTicks>0,mode);
