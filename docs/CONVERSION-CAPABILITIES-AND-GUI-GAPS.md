@@ -1,5 +1,35 @@
 # Conversion capabilities and GUI closure ledger
 
+## Source operators: GUI acceptance pending — 2026-10-21
+
+`arcade_sourceValueBinary` exposes fixed selectors `+ - * / % ** & | ^ << >> >>>`;
+`arcade_sourceValueUnary` exposes only `~`, with one `VALUE` and no `RIGHT`.
+Both menus reject reporter selectors. The existing Code words are:
+
+```text
+arcade source value (a) op "&" with (b)
+arcade source unary "~" of (a)
+```
+
+The complete twelve native controls pass on `45d495832`, including genuine
+bitwise/unary Number results through typeof and ordinary Number formals,
+export/reimport, currentness and hostile callbacks. Source `+` is not blanket
+Number evidence. This supersedes earlier failed native counts for that tested
+composition only; retain their originals. It does not qualify later heads,
+visible editing or a reduction in the historical 36 partial applications.
+
+Required editor acceptance: create both reporters from the palette; edit every
+binary selector and unary `~`; connect actual Array aliases and primitive
+operands; check Number/text results and both binary operand orders. Exercise
+typed helpers and typeof, once-only operand effects and single-input unary
+execution. An invalid operand must block its dependent work, report the owned
+error once and leave an unrelated fiber running.
+
+Then edit Code and return to connected Blocks, save/fresh reopen, and export
+and reimport the current project with its actual assets. Preserve results,
+aliases, input connections, errors and asset bytes throughout. Dropdowns and
+pseudocode already exist; these visible journeys remain unqualified.
+
 ## Current live authoring failures — 2026-10-20
 
 This section supersedes older GUI readiness claims below. Historical counts
