@@ -26,18 +26,33 @@ missing path is a separate source coverage issue, not the observed failure cause
 - `scripts/spike/bundled-upstream.mjs` (SPIKE-specific supplier pin and the
   precisely reconciled SPIKE divergence; other extensions stay at their pins).
 - `vendor-pins.json` (explicit reviewed SPIKE supplier identity).
+- `scripts/lib/notices-census.mjs` and its normal generated notice evidence,
+  if required to retain the scoped supplier identity and attribution.
 - Generated `overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js`
   and `overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json`.
 - Generated `overlay/scratch-gui/src/lib/extension-menu-table.js` and its normal
   integrated mirror, using actual complete extension metadata generation.
-- New `test/spikeprime-motor-power-adoption.test.mjs` and the directly affected
+- `overlay/scratch-gui/src/lib/virtual-hub/spike-hub-commands.js`,
+  `overlay/scratch-gui/src/lib/spike-sim/independent-backend.js`,
+  `overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-motor-controller.js` and
+  `overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-virtual-hub.js`: adopt a
+  distinct open-loop duty mode at the existing command/model/physics boundary.
+  Reuse the existing motor physics; preserve regulated speed, replacement, Stop,
+  interruption and encoder completion. Modeled no-load behavior must be explicit;
+  a speed alias is not a duty implementation. Other hub/controller/UI paths are
+  excluded. This is the narrow motor-power continuation of the old arena lane,
+  not a takeover of its lifecycle or editor work.
+- New `test/spikeprime-motor-power-adoption.test.mjs`,
+  `test/spikeprime-independent-gate-manifest.test.mjs` and the directly affected
   existing SPIKE Python opcode/menu conformance controls, retaining assertions.
 - `docs/ARCADE-CI-REPAIR-STATUS.md`, `docs/ARCADE-AGENT-HANDOFF.md`,
   `docs/CONVERSION-CAPABILITIES-AND-GUI-GAPS.md` and this claim.
 
-No firmware, virtual-hub, physics, connection transport, producer compiler or
-other extension source changes are authorized by this claim. If a required
-behavior is missing there, coordinate a separate scope rather than bypass it.
+No firmware, connection transport, shared physics engine, producer compiler or
+other extension source changes are authorized by this claim. The four enumerated
+SPIKE virtual command/model/controller paths are the only model boundary in
+scope. If required behavior is missing elsewhere, coordinate a separate scope
+rather than bypass it.
 
 ## Acceptance
 
