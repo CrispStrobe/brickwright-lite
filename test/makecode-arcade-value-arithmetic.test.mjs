@@ -109,7 +109,7 @@ info.onLifeZero(function(){hits+=1;info.setLife(1)})`,async run=>{
     });
 });
 
-test('selected Arcade defaults distinguish omission from supplied Undefined and preserve operand order', {todo:"procedure constraint producer not yet proven \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('selected Arcade defaults distinguish omission from supplied Undefined and preserve operand order',async()=>{
     await roundtrip(`let calls=0
 function count(times?:number){if(!times){times=3};calls+=times}
 function choose(value:any=7){return value}

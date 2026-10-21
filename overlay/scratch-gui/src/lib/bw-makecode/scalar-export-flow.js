@@ -59,6 +59,12 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
             edge(`${called}:result`,value);edge(element(`${called}:result`),element(value));
             if(params)argumentCells(target,block).forEach((argument,index)=>{if(index<params.length){edge(argument,`${called}:local:${params[index]}`);edge(element(argument),element(`${called}:local:${params[index]}`));}});
         }
+        if(op==='procedures_call'){
+            // A stock call's inputs are keyed by argument ID, in prototype order.
+            const called=key(target,block.mutation?.proccode),params=definitions.get(called);let ids=[];
+            try{ids=JSON.parse(block.mutation?.argumentids||'[]');}catch{ids=[];}
+            if(params&&Array.isArray(ids)&&ids.length===params.length)ids.forEach((id,index)=>{if(!block.inputs?.[id])return;const argument=input(target,block,id);edge(argument,`${called}:local:${params[index]}`);edge(element(argument),element(`${called}:local:${params[index]}`));});
+        }
         if(op==='arrays_createReference'){
             add(value,'array');let item=child(target,block,'VALUES');while(item?.opcode==='arrays_referenceValues'){edge(input(target,item,'VALUE'),element(value));item=child(target,item,'REST');}
         }
