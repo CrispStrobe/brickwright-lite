@@ -23,12 +23,22 @@ limit; only its independently checked immutable outputs were admitted for this
 subsequent metadata run. Do not call the installer successful or repeat it.
 The actual menu CLI check, motor controls and affected guest remain pending.
 
-Next, retain all stages of one complete existing Arcade application's import,
-real Creator artwork ingress and export. Use its actual refusal details to
-scope a semantic fix. Keep lexical declaration execution separate from value
-initialization and primitive writer facts; a type annotation or a default-zero
-rewrite is not a proof. Full SDK, native, browser and corpus acceptance remain
-separate gates. No fresh corpus count is available.
+One complete existing event-game example now passes import, genuine Creator
+artwork ingress, actual SB3 save, reopened project/artwork and immutable JSON
+export with **zero unsupported elements**. All three SVG references join the
+actual saved archive. This is source/save/artwork acceptance; original/emitted
+MakeCode compilation, native game execution and browser authoring remain
+unqualified for this diagnostic. The earlier observer failure is preserved:
+Creator supplies its default Stage asset during save, not in its asset map.
+The diagnostic now uses the genuine package rather than a substitute image or
+a weakened assertion. This example did not reproduce a native-addition refusal.
+
+Next, capture the actual edited-animation export that failed in hosted CI,
+retaining all three controls and their original assertions. Use observed
+operand facts to attribute a semantic fix. Keep lexical declaration execution
+separate from value initialization and primitive writer facts; a type annotation
+or a default-zero rewrite is not a proof. Full SDK, native, browser and corpus
+acceptance remain separate gates. No fresh corpus count is available.
 
 This section supersedes older pending-run descriptions below. PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
 at `125dacab7e183ca15d08224524b576894480d8b1` has finished all enabled
