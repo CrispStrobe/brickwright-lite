@@ -158,6 +158,27 @@ Both failed on #1085 (and debug history also on main) and passed on a rerun.
   and stalls. Under 2 ms the displacement is 0. The assertion is unchanged. Test:
   `test/makecode-arcade-physics-engine-stall.test.mjs`. It covers every delta from 0 to
   100 ms in 0.25 ms steps, and also proves the old fixture's 2 px moves.
+  The same cause produced `oldX 22 !== 20` at line 99 on main (one short frame before
+  the stall).
+- **Arcade physics engine** (`verify-arcade-physics-engine-browser.mjs`, `waitValue`
+  timeouts, for example at line 85): a second timing-dependent count, again faithful to
+  PXT. Pinned pxt-arcade 4.2.1 `physics.ts` gives each frame
+  `MAX_STEP_COUNT = toInt(maxSpeed / minStep * dtMs / 1000)` movement steps, rounded.
+  The fixture's saved engine was maxSpeed 40 / minStep 2, so 20 steps per second, and
+  every frame shorter than 25 ms got 0 steps: the sprite kept vx 40 but never moved. The
+  replacement engine (120, 2, 4) got 0 steps under about 8.3 ms. The scene loop runs at
+  about 20 ms per frame here (`game.onUpdate` with `pause(20)`), so whether the sprite
+  moved depended on how slow the runner's frames were. Phases that wait for the sprite's
+  own position (cap, restore, or the next cycle that depends on them) then timed out. A
+  node replay of the gate's press sequence with 21 ms frames reproduces it: old actor
+  stuck at x 20 with vx 40, `restoredObserved` never true. The product is unchanged; it
+  matches the original. Fix: the fixture uses minStep 0.125 for the saved engine (set
+  on A and down) and the replacement engine. That gives at least one step for every
+  frame that has any displacement (2 ms or more). The cap of 40, the positions and every
+  assertion are unchanged; no timeout was raised. Test:
+  `test/makecode-arcade-physics-engine-step-count.test.mjs`, which also proves the old
+  minStep 2 takes zero steps under 25 ms. A press shorter than a frame was checked
+  in the same node replay and is delivered, so dropped input is not the cause.
 
 ## Already-TODO items owned by other work
 

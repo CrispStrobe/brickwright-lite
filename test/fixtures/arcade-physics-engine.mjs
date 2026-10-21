@@ -113,7 +113,7 @@ game.onUpdate(function(){
 export const PHYSICS_ENGINE_CONTROLLER_SOURCE=`
 let view=game.currentScene()
 let savedEngine=view.physicsEngine as ArcadePhysicsEngine
-let replacementEngine=new ArcadePhysicsEngine(120,2,4)
+let replacementEngine=new ArcadePhysicsEngine(120,0.125,4)
 let yellow=image.create(6,6)
 yellow.fill(5)
 let blue=image.create(6,6)
@@ -133,6 +133,7 @@ controller.A.onEvent(ControllerButtonEvent.Pressed,function(){
     view.physicsEngine=savedEngine
     oldActor.setPosition(20,40)
     savedEngine.maxSpeed=40
+    savedEngine.minStep=0.125
     oldActor.vx=100
     capObserved=0
     phase=1
@@ -166,7 +167,7 @@ controller.right.onEvent(ControllerButtonEvent.Pressed,function(){
     phase=4
 })
 controller.down.onEvent(ControllerButtonEvent.Pressed,function(){
-    savedEngine.minStep=2
+    savedEngine.minStep=0.125
     savedEngine.maxStep=4
     oldActor.vx=0
     oldActor.setPosition(20,40)
