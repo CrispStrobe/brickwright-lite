@@ -103,8 +103,12 @@ export const rescueLoose = (nodes, edges) => {
     return {edges: added, groups};
 };
 
-/** Parts a coupling holds, not the connector graph (kinds/chain.js: chain and tread links): never welded, nor welded to. */
-const COUPLED = new Set(['chain-link']);
+/**
+ * Parts a coupling holds, not the connector graph: chain and tread links (kinds/chain.js), a CV joint's ends and a
+ * universal joint's forks (kinds/cv-joint.js, kinds/universal-joint.js): never welded, nor welded to. A drive axle's CV
+ * end welded into the knuckle it turns in tied the wheel to the knuckle (the 4x4 Off-Roader's wheels could not turn).
+ */
+const COUPLED = new Set(['chain-link', 'cv-ball', 'cv-socket', 'uj-fork']);
 const coupled = n => n.connectors.some(c => COUPLED.has(c.type));
 
 /** How far apart two parts' boxes may be and still touch (LDU): half a plate's rounding. */

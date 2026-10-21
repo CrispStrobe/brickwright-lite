@@ -34,6 +34,12 @@ import {breakHingeLoops} from './loops.js';
  * times heavier (physics/jolt-core.js lightLinks). Bodies keep their parts' masses.
  */
 export const FOREIGN_LIGHT_LINKS = Object.freeze({massKg: 0.01, ratio: 20, velocity: 30, position: 10});
+/**
+ * A model from elsewhere: no body moves faster than this (Jolt's own limit is 500 m/s). A LEGO model's fastest part
+ * is well under it; a part the solver flings is caught before it reaches a non-finite pose (42109, 42052, 75253 and
+ * 42066 went to NaN in the bench with every motor at 60 %, and held together with the limit).
+ */
+export const FOREIGN_MAX_SPEED_M_S = 5;
 import {validateLoad, loadBody} from '../world/objects.js';
 import {quatMul, quatConj} from './vec.js';
 
@@ -273,7 +279,9 @@ export const compile = (model, catalog, opts = {}) => {
             continue;
         }
         gearDiagnostics = [];
-        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds);
+        // A model from elsewhere: gears a hair off square or parallel still mesh (mech/gears.js squaredUp).
+        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds,
+            opts.rescueLoose ? {slack: {deg: 2, ldu: 1.5, hingeLdu: 3.5}} : {});
         if (gearResult.lockedPairs.length === 0) {
             // Registered coupling detectors (kinds/worm.js, kinds/rack.js): their welds re-run the fixpoint too.
             detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel});
@@ -514,7 +522,7 @@ export const compile = (model, catalog, opts = {}) => {
     // went to NaN within 2 s with its motors coasting; 42131 and 42055 at 0.5–2 s a step). A real set is built so its
     // jointed parts do not collide; filtered whole, they do not, and no shape filter runs at all (3x faster steps).
     if (opts.rescueLoose) {
-        mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}, ...(loopBalls.length ? {loopBalls} : {})};
+        mechanismV2.solver = {lightLinks: {...FOREIGN_LIGHT_LINKS}, maxLinearVelocity: FOREIGN_MAX_SPEED_M_S, ...(loopBalls.length ? {loopBalls} : {})};
         const pairs = new Set(mechanismV2.noCollide.map(([a, b]) => `${a}|${b}`));
         for (const [a, b] of asBuiltOverlaps(mechanismV2.bodies, mechanismV2.noCollide, [])) {
             if (!pairs.has(`${a}|${b}`)) { mechanismV2.noCollide.push([a, b]); pairs.add(`${a}|${b}`); }
