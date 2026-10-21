@@ -126,6 +126,8 @@
   },
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
+      "test/arcade-native-addition-refusal-details.test.mjs",
+      "test/arcade-export-refusal-report.test.mjs",
       "test/array-definite-overwrite.test.mjs",
       "test/arcade-class-array-writer-types.test.mjs",
       "test/animation-native-library-import.test.mjs",

@@ -1326,6 +1326,7 @@ class PseudocodeImporter extends React.Component {
         let consumedParkedSource = false;
         if (vm && vm.runtime) {
             this._onProjectChanged = () => {
+                this.invalidateArcadeReport();
                 const src = vm.runtime.bwPseudocodeSource;
                 if (src) {
                     if (src !== this.state.buffers.pseudocode) {
@@ -1549,6 +1550,8 @@ class PseudocodeImporter extends React.Component {
     }
 
     componentDidUpdate (prevProps, prevState) {
+        if (prevProps.vm !== this.props.vm || prevState.lang !== this.state.lang ||
+            prevState.buffers[this.state.lang] !== this.state.buffers[this.state.lang]) this.invalidateArcadeReport();
         if (this.props.isVisible && !this.state.revealed) this._reveal();
         // Tools may have opened while a hardware device was selected. If the
         // user then chooses "none" without closing it, onToggle does not fire
@@ -2521,14 +2524,54 @@ class PseudocodeImporter extends React.Component {
         } catch (error) { this.setState({status: error.message}); }
     }
 
-    async runAsArcade () {
-        this.setState({busy: true, status: this.L.mcRunCompiling('Arcade')});
+    invalidateArcadeReport () {
+        this._arcadeReportRevision = (this._arcadeReportRevision || 0) + 1;
+        this._arcadeReportRequest = null;
+        const revision = this._arcadeReportRevision;
+        if (this.state.conversionReport?.operation) {
+            try {
+                this.setState(state => this._arcadeReportRevision === revision && this._arcadeReportRequest === null &&
+                    state.conversionReport?.operation ? {conversionReport: null} : null);
+            } catch { /* Clearing a report must not prevent the original edit/project handoff. */ }
+        }
+    }
+
+    beginArcadeReport () {
+        const request = {vm: this.props.vm, revision: this._arcadeReportRevision || 0};
+        this._arcadeReportRequest = request;
+        return request;
+    }
+
+    publishArcadeReport (request, out, operation, outcome) {
+        // Report ownership only. This does not alter download, compilation,
+        // player publication, asset collection or their original errors.
+        if (this._unmounted || this._arcadeReportRequest !== request || request.vm !== this.props.vm ||
+            request.revision !== (this._arcadeReportRevision || 0)) return;
         try {
-            const out = await this.arcadeFromStage();
+            this.setState(() => {
+                if (this._unmounted || this._arcadeReportRequest !== request || request.vm !== this.props.vm ||
+                    request.revision !== (this._arcadeReportRevision || 0)) return null;
+                try {
+                    return {conversionReport: {direction: operation === 'export' ? 'Blocks → Arcade export' : 'Blocks → Arcade run',
+                        operation, outcome, preserved: false, changed: [], unsupported: [...out.unsupported],
+                        details: out.unsupportedDetails || []}, reportExpanded: Boolean(out.unsupported.length)};
+                } catch { return null; }
+            });
+        } catch { /* Reporting must not replace the original export/run outcome. */ }
+    }
+
+    async runAsArcade () {
+        const request = this.beginArcadeReport();
+        this.setState({busy: true, status: this.L.mcRunCompiling('Arcade'), conversionReport: null});
+        let out;
+        try {
+            out = await this.arcadeFromStage();
+            this.publishArcadeReport(request, out, 'run', 'Arcade source prepared; compiler result pending.');
             const {compileMakeCode} = await import(
                 /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
             const built = await compileMakeCode({target: 'arcade', files: out.files});
             if (!built.success) {
+                this.publishArcadeReport(request, out, 'run', 'The compiler rejected the generated Arcade source.');
                 const d = built.diagnostics[0] || {};
                 this.setState({busy: false, status: this.L.mcCompileErrors(built.diagnostics.length, `${d.file}:${(d.line || 0) + 1} ${d.message || ''}`)});
                 return;
@@ -2541,14 +2584,17 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'makecode'}}));
             window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
+            this.publishArcadeReport(request, out, 'run', 'Arcade source compiled and sent to the player; behavior is not verified.');
             this.setState({busy: false, status: this.L.arcStarted(out.unsupported.length, out.warnings.length)});
         } catch (err) {
+            if (out) this.publishArcadeReport(request, out, 'run', 'Arcade run failed; the original error is shown in the status.');
             this.setState({busy: false, status: this.makeCodeFailure(err, 'arcade')});
         }
     }
 
     async exportArcade () {
-        this.setState({busy: true});
+        const request = this.beginArcadeReport();
+        this.setState({busy: true, conversionReport: null});
         try {
             const original = this.makeCodeOriginalStatus();
             const out = original.status === 'current' && original.target === 'arcade' ?
@@ -2559,6 +2605,9 @@ class PseudocodeImporter extends React.Component {
             const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.mkcd`;
             const projectFile = makeCodeProjectFile(out.files, {name, target: 'arcade'});
             await downloadBlob(filename, new Blob([projectFile], {type: 'application/octet-stream'}));
+            this.publishArcadeReport(request, out, 'export', original.status === 'current' && original.target === 'arcade' ?
+                'Recovered original Arcade source saved; later behavior is not verified.' :
+                'Arcade source saved, including all reported unsupported operations; it has not been compiled or run.');
             this.setState({busy: false, status: this.L.arcDone(filename, out.unsupported.length, out.warnings.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode Arcade', (err && err.message) || String(err))});
@@ -2672,7 +2721,8 @@ class PseudocodeImporter extends React.Component {
         return this.state.buffers[this.state.lang] ?? '';
     }
     setActiveCode (text) {
-        if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
+        if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return;
+        this.invalidateArcadeReport();
         this.setState(s => ({buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [s.lang]: text}}));
     }
 
@@ -6335,10 +6385,10 @@ class PseudocodeImporter extends React.Component {
                                     {de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}
                                     {!exp && (
                                         <span style={{marginLeft: 'auto', display: 'flex', gap: 6, fontSize: 11}}>
-                                            {report.preserved ? null : <span style={{color: '#991b1b'}}>❌</span>}
+                                            {report.operation || report.preserved ? null : <span style={{color: '#991b1b'}}>❌</span>}
                                             {report.changed.length > 0 && <span style={{color: '#0284c7'}}>{report.changed.length} {de ? 'geändert' : 'changed'}</span>}
                                             {report.unsupported.length > 0 && <span style={{color: '#92400e'}}>{report.unsupported.length} {de ? 'nicht unterstützt' : 'unsupported'}</span>}
-                                            {report.preserved && report.changed.length === 0 && report.unsupported.length === 0 && <span style={{color: '#166534'}}>✓ OK</span>}
+                                            {!report.operation && report.preserved && report.changed.length === 0 && report.unsupported.length === 0 && <span style={{color: '#166534'}}>✓ OK</span>}
                                         </span>
                                     )}
                                     <button type="button" data-testid="bw-dismiss-conversion-report"
@@ -6350,9 +6400,9 @@ class PseudocodeImporter extends React.Component {
                                 {exp && (
                                     <div style={{padding: '0 10px 7px 26px'}}>
                                         <div data-testid="bw-conversion-preserved" style={{color: report.preserved ? '#166534' : '#991b1b'}}>
-                                            {de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
+                                            {report.operation ? report.outcome : <>{de ? 'Bewahrt' : 'Preserved'}: {report.preserved ?
                                                 (de ? 'Projektstruktur erzeugt und geladen' : 'project structure generated and loaded') :
-                                                (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}
+                                                (de ? 'nein — Umwandlung fehlgeschlagen' : 'no — conversion failed')}</>}
                                         </div>
                                         <div data-testid="bw-conversion-changed">
                                             {de ? 'Geändert' : 'Changed'}: {report.changed.length ? report.changed.join(' · ') :
@@ -6363,6 +6413,8 @@ class PseudocodeImporter extends React.Component {
                                             {de ? 'Nicht unterstützt' : 'Unsupported'}: {report.unsupported.length ?
                                                 report.unsupported.join(' · ') : (de ? 'nichts gemeldet' : 'nothing reported')}
                                         </div>
+                                        {report.details?.length > 0 && <pre data-testid="bw-conversion-refusal-details"
+                                            style={{whiteSpace: 'pre-wrap', fontSize: 11}}>{JSON.stringify(report.details, null, 2)}</pre>}
                                     </div>
                                 )}
                             </div>

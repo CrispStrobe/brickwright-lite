@@ -276,6 +276,48 @@ try {
     await original(embedded.files, finalOptions, false); await original(embedded.files, finalOptions, true);
     await openFile(exportedPath); await apply(); await cycle('actual-export-reimport', finalOptions, embedded.files);
     await Promise.all(bodyChecks); assert.deepEqual(report.bundleFailures || [], []); assert.ok(report.bundleObservations.length); assert.deepEqual(report.pageErrors, []);
+    // Refusal reporting acceptance follows every original numeric journey.
+    // No compiler success is inferred from a downloaded partial project.
+    await codeTab();await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => /DEVICE ARCADE/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
+    const cleanAuthoringCode = await readCode();assert.match(cleanAuthoringCode, /DEVICE ARCADE/);
+    const partialCode = cleanAuthoringCode.replace('DEVICE ARCADE', 'DEVICE ARCADE\nGLOBAL refusalDiagnosticResult') +
+        '\nSPRITE RefusalDiagnostics:\nWHEN flag clicked:\n  set refusalDiagnosticResult to (calculate value (arcade new image width 1 height 1) op "+" with (1))\n';
+    const authorCode = async text => {
+        await codeTab();await editor().click();await page.keyboard.press('Control+a');await page.keyboard.insertText(text);
+        assert.equal(await readCode(), text);await apply();await codeTab();
+    };
+    const currentAssets = () => page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .filter(target => target.isOriginal).map(target => ({name: target.getName(),
+            costumes: target.sprite.costumes.map(costume => ({assetId: costume.assetId, bytes: Array.from(costume.asset.data)})),
+            sounds: target.sprite.sounds.map(sound => ({assetId: sound.assetId, bytes: Array.from(sound.asset.data)}))})));
+    await authorCode(partialCode);const assetsBeforeRefusal = await currentAssets();
+    await openCodeActions(page);
+    const [partialDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
+    const partialPath = path.join(out, 'numeric-authoring-refusal.mkcd');await partialDownload.saveAs(partialPath);await page.keyboard.press('Escape');
+    const panel = page.getByTestId('bw-conversion-report');await panel.waitFor({state: 'visible'});
+    const unsupported = page.getByTestId('bw-conversion-unsupported');await unsupported.waitFor({state: 'visible'});
+    assert.match(await unsupported.innerText(), /native addition requires initialized primitive or proved flat Array operands/);
+    const detailsText = await page.getByTestId('bw-conversion-refusal-details').innerText();
+    const details = JSON.parse(detailsText);assert.ok(details.length);assert.equal(details[0].physicalOrigin, 'UNAVAILABLE');
+    assert.ok(details[0].emissionCandidates.length);assert.equal(details[0].refusal.operand, 'LEFT');
+    assert.match(await page.getByTestId('bw-conversion-preserved').innerText(), /not been compiled or run/);
+    await panel.locator('div').first().click();assert.equal(await unsupported.isVisible(), false);
+    await panel.locator('div').first().click();assert.equal(await unsupported.isVisible(), true);
+    assert.deepEqual(await currentAssets(), assetsBeforeRefusal, 'export reporting retains current asset bytes');
+    report.refusalReporting = {details, unsupported: await unsupported.innerText(), assets: assetsBeforeRefusal};
+    await page.getByTestId('bw-dismiss-conversion-report').click();assert.equal(await panel.count(), 0);
+    await authorCode(cleanAuthoringCode);const assetsBeforeClean = await currentAssets();
+    assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0, 'editing cannot display a previous export result');
+    await openCodeActions(page);
+    const [cleanDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
+    await cleanDownload.saveAs(path.join(out, 'numeric-authoring-clean-after-refusal.mkcd'));await page.keyboard.press('Escape');
+    await page.getByTestId('bw-conversion-report').waitFor({state: 'visible'});
+    assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0);
+    await page.getByTestId('bw-conversion-report').locator('div').first().click();
+    assert.match(await page.getByTestId('bw-conversion-unsupported').innerText(), /nothing reported/);
+    assert.deepEqual(await currentAssets(), assetsBeforeClean, 'later clean export also retains actual assets');
+    await Promise.all(bodyChecks);assert.deepEqual(report.bundleFailures || [], []);assert.deepEqual(report.pageErrors, []);
     await page.screenshot({path: path.join(out, 'numeric-authoring.png')}); report.status = 'passed';
 } catch (error) {
     report.status = 'failed'; report.failure = String(error.stack || error);

@@ -75,3 +75,21 @@ test('actual Code compile catch displays a real VM serialized validation rejecti
         assert.equal(context.state.busy, false);
     } finally {vm.quit();}
 });
+
+
+test('Arcade reporting is isolated from existing Blocks/Code reports and observer errors', async () => {
+    const source = await fs.readFile(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
+    const extract = signature => balancedFrom(source, source.indexOf(signature) + signature.length, '{', '}', signature).slice(1, -1);
+    const invalidate = new Function(extract('invalidateArcadeReport ()'));
+    const publish = new Function('request', 'out', 'operation', 'outcome', extract('publishArcadeReport (request, out, operation, outcome)'));
+    const prior = {direction: 'Code → Blocks', preserved: true, changed: [], unsupported: []};
+    const c = {props: {vm: {}}, state: {conversionReport: prior}, setState (patch) {Object.assign(this.state, patch);}};
+    invalidate.call(c);assert.strictEqual(c.state.conversionReport, prior, 'ordinary conversion report remains owned by its original journey');
+    const request = {vm: c.props.vm, revision: c._arcadeReportRevision};c._arcadeReportRequest = request;
+    const original = new Error('report delivery failed');c.setState = () => {throw original;};
+    assert.doesNotThrow(() => publish.call(c, request, {unsupported: ['original refusal']}, 'export', 'source saved'));
+    assert.strictEqual(c.state.conversionReport, prior, 'a report transport failure does not invent a new result');
+    const exportBody = extract('async exportArcade ()');
+    assert.match(exportBody, /await downloadBlob/);assert.match(exportBody, /this\.L\.mcFailed\('MakeCode Arcade'/);
+    assert.match(source, /if \(this\._unmounted \|\| this\._arcadeReportRequest !== request/);
+});

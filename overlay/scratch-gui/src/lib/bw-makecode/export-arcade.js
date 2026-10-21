@@ -1,5 +1,5 @@
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
-import {createProjectJsonSnapshot} from './project-json-snapshot.js';
+import {createProjectJsonSnapshot,isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
 import {inspectNativeArrayBinaryDomains} from './native-array-binary-domain.js';
@@ -29,6 +29,7 @@ import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
+const provenanceDescriptor=Object.getOwnPropertyDescriptor,provenanceOwn=Object.hasOwn,provenanceKeys=Reflect.ownKeys,provenanceArray=Array.isArray;
 // Serialized current-graph eligibility only, never a runtime completion receipt.
 // Expression emission and formal/caller inference must use the same exact proof.
 function currentSceneClockNumber(blocks,block) {
@@ -329,6 +330,9 @@ class ArcadeEmitter {
         this.soundCache = new Map();
         this.songAssets = new Map();
         this.valueOperationHelpers = new Map();
+        this.nativeAdditionSites = [];
+        this.unsupportedDetails = [];
+        this.refusalEvidence = null;
         this.namedArrays = new Map();
         this.legacyValueHelpers = new Map();
         this.templateNames = new Set();
@@ -489,6 +493,30 @@ class ArcadeEmitter {
     na () {
         this.usedNa = true;
         return '_na';
+    }
+
+    nativeAdditionSite (block, helper) {
+        const own=(object,key)=>{
+            if(!object||typeof object!=='object')return undefined;
+            const descriptor=provenanceDescriptor(object,key);
+            return descriptor&&provenanceOwn(descriptor,'value')?descriptor.value:undefined;
+        };
+        const targets=own(this.project,'targets');
+        if(!provenanceArray(targets))return null;
+        let target;
+        for(let i=0;i<own(targets,'length');i++)if(own(targets,String(i))===this.target){target=this.target;break;}
+        if(!target)return null;
+        const blocks=own(target,'blocks');if(!blocks||blocks!==this.blocks)return null;
+        const blockId=provenanceKeys(blocks).find(id=>typeof id==='string'&&own(blocks,id)===block);
+        if(blockId===undefined)return null;
+        const inputs=own(block,'inputs'),link=name=>{
+            const slot=own(inputs,name),id=provenanceArray(slot)?own(slot,'1'):null;
+            return typeof id==='string'?id:'UNAVAILABLE';
+        };
+        const targetName=own(target,'name'),opcode=own(block,'opcode');
+        return {helper,target:typeof targetName==='string'?targetName:'UNAVAILABLE',blockId,
+            opcode:typeof opcode==='string'?opcode:'UNAVAILABLE',operands:['LEFT','RIGHT'],
+            operandBlocks:{LEFT:link('LEFT'),RIGHT:link('RIGHT')}};
     }
 
     note (what) {
@@ -1458,6 +1486,15 @@ class ArcadeEmitter {
                 this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op==='-'?'-1 * value':op==='~'?'~value':'+value'} }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
             }
             const helper=this.valueOperationHelpers.get(key).name;
+            if(key==='BinaryAdd'&&this.snapshotCallbacks&&isProjectJsonSnapshot(this.project)){
+                // Raw caller objects receive no additional provenance reads.
+                // Only own descendant edges of the actual parsed/frozen JSON
+                // root can supply these diagnostic emission candidates.
+                try {
+                    const site=this.nativeAdditionSite(b,helper);
+                    if(site)this.nativeAdditionSites.push(site);
+                }catch { /* Collection cannot replace the original export outcome. */ }
+            }
             return unary?`${helper}(${this.arrayValue(b,'VALUE')})`:`${helper}(${this.arrayValue(b,'LEFT')}, ${this.arrayValue(b,'RIGHT')})`;
         }
         case 'arrays_valueTruthy':return `!!(${this.arrayValue(b,'VALUE')})`;
@@ -4332,7 +4369,17 @@ class ArcadeEmitter {
             const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
             const proof=inspectNativeArrayBinaryDomains(nativeAdditionAnimationView(
                 parseMakeCodeTs(draft,GENERATED_HELPER_PROFILES.ordinary),this.authoredAnimationArrays.values()));
-            if(proof.reason)this.note(proof.reason);
+            if(proof.reason){
+                this.note(proof.reason);
+                try {
+                    this.unsupportedDetails.push({reason:proof.reason,
+                        refusal:proof.refusal||{schema:'native-addition-refusal-v1',helper:addition.name,
+                            operand:'UNAVAILABLE',foundTypes:'UNAVAILABLE',initialization:'UNAVAILABLE',
+                            capturedScalar:'UNAVAILABLE',sourceCallOrdinal:'UNAVAILABLE'},
+                        physicalOrigin:'UNAVAILABLE',emissionCandidates:this.nativeAdditionSites.map(site=>({...site,operands:[...site.operands]}))});
+                    this.refusalEvidence={nativeAdditionDraft:draft};
+                }catch { /* Diagnostic failure must preserve the original reason. */ }
+            }
             else if(!proof.helpers.has(addition.name))this.note('native addition requires its complete current helper body and actual caller proof');
             else if(proof.current()&&proof.arrayHelpers?.has(addition.name))
                 return assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
@@ -4438,7 +4485,9 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
     // Host artwork callbacks can run after the last Array operand. Never
     // publish a clean export against a later document revision.
     if (!e.animationFrameProducers.isCurrent()) e.note('Animation resource documents changed during current export');
-    return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
+    const result={ts, files, unsupported: e.unsupported, warnings: e.warnings};
+    if(e.unsupportedDetails.length){result.unsupportedDetails=e.unsupportedDetails;result.refusalEvidence=e.refusalEvidence;}
+    return result;
 }
 
 /** Re-exported for callers that build a background from pixels. */

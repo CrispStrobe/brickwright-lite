@@ -5619,3 +5619,49 @@ entry paths. Compare the current count-only export completion feedback with the
 detailed Blocks-to-Code conversion report: actionable named reason, block,
 class and slot diagnostics remain an authoring acceptance requirement. Source
 proofs and count-only completion do not establish that user-facing result.
+
+
+### Native-addition refusal details: source candidate
+
+The source candidate records the actual rejected helper call and operand, its
+observed type kinds, and the initialization/captured-scalar checks that were
+actually reached. `NOT_EVALUATED` identifies original short circuits;
+`UNAVAILABLE` identifies context the original analysis did not retain. A common
+reason does not establish a common cause or prove that earlier class fixes
+resolve a refused project.
+
+An optional structured refusal record accompanies the unchanged unsupported
+strings. The actual analyzed emitted draft is retained with failure evidence.
+Physical emitter sites are explicitly candidates: they are not silently joined
+to a rejected source-call ordinal after procedure assembly. Exact block, source
+range and class/slot associations remain unavailable where no genuine join
+exists. Successful exporter return fields and all proof/refusal rules remain
+unchanged; diagnostic details issue no operand, Array or class authority.
+
+The existing conversion report gains an export/run outcome and available
+context. Saving source does not mean it was compiled, loaded or behaviorally
+preserved. Current-original export keeps its exact source path. Report-only
+request/revision fences suppress stale results after edits, project changes,
+VM replacement, disposal or a newer export. Download/compiler/player and asset
+operations retain their existing behavior and errors.
+
+The complete new domain and report modules and existing conversion-failure
+module pass all 15 controls with no skips or TODOs, through genuine normal
+dependencies. The numeric authoring browser verifier remains pending.
+The browser addition follows all earlier journeys and requires a genuine visible
+refusal, expanded details, collapse/dismiss, a later clean export and exact
+current asset bytes. Existing native/domain/export suites, original/emitted SDK
+compilation and hosted checks remain mandatory. No visible GUI or application pass, resolved official failure or partial-count
+reduction is claimed. The 15-control episode met its own local resource limits;
+that result does not qualify the separate 32-control cohort. The earlier complete 32-control product/resource failure remains
+preserved; this work does not authorize an unchanged local replay.
+
+Physical emission candidates are collected only through the actual owned JSON
+root and its own descendant graph edges. Direct caller-object exports retain
+unavailable physical provenance and gain no new getter/Proxy observations from
+the collector. Collection failures cannot replace the original export outcome.
+
+Unassigned scalar native-helper operands remain conservatively refused. A new
+entry/default-initialization proof must preserve TDZ, unknown-writer and early
+callback negatives; the passing initialized-scalar control does not establish
+that broader capability.

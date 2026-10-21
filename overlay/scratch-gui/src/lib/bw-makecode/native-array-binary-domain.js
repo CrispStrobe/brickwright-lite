@@ -46,12 +46,15 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     // A fresh per-call scalar identity survives the existing normalizer's
     // ordinary cloning; no caller-supplied spelling or metadata can select it.
     const selected=new Set([...helpers.values()].map(helper=>helper.declaration).concat([...unaryDeclarations])),originalCalls=new Map(),tokens=new Map(),unaryTokens=new Set();
-    for(const helper of helpers.values())for(const call of helper.calls)originalCalls.set(call,helper);
+    for(const helper of helpers.values())for(const call of helper.calls)originalCalls.set(call,{helper,ordinal:originalCalls.size});
     const prepare=node=>{
         if(!node||typeof node!=='object')return node;
         if(Array.isArray(node)){const next=mapGeneratedSourceArray(node,prepare);return node.some(value=>selected.has(value))?next.filter((value,index)=>!selected.has(node[index])):next;}
         if(originalCalls.has(node)){
-            const token=Symbol();tokens.set(token,{helper:originalCalls.get(node),originalCall:node});
+            let owner=unaryProof.parentOf(node);
+            while(owner&&owner!==program&&!['FunctionDeclaration','FunctionExpression','Class'].includes(owner.type))owner=unaryProof.parentOf(owner);
+            const owningProcedure=owner?.type==='Class'?'UNAVAILABLE':owner===program?'TOP_LEVEL':typeof owner?.name==='string'?owner.name:'ANONYMOUS_OR_UNAVAILABLE';
+            const token=Symbol();tokens.set(token,{...originalCalls.get(node),originalCall:node,owningProcedure});
             return {type:'Binary',op:'+',left:prepare(node.args[0]),right:prepare(node.args[1]),nativeArrayDomainCall:token};
         }
         if(unaryCalls.has(node)){
@@ -72,7 +75,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     for(const node of bindings.nodes)if(tokens.has(node.nativeArrayDomainCall)){
         const token=node.nativeArrayDomainCall,entry=tokens.get(token);
         if(observed.has(token)||node.type!=='Binary'||node.op!=='+')return {helpers:new Map(),current,reason:'native addition private call identity is ambiguous'};
-        observed.add(token);provedHelperResults.add(node);domainHelpers.find(helper=>helper.declaration===entry.helper.declaration).calls.push({args:[node.left,node.right]});
+        observed.add(token);provedHelperResults.add(node);domainHelpers.find(helper=>helper.declaration===entry.helper.declaration).calls.push({args:[node.left,node.right],original:entry});
     }
     if(observed.size!==tokens.size)return {helpers:new Map(),current,reason:'native addition private call identity was not preserved'};
     const parsedValues=new Set();
@@ -229,8 +232,30 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         // captured Array initialization is inferred through this edge.
         if(provedHelperResults.has(arg))continue;
         const found=types(arg);
-        if(!found.size||!initialized(arg)&&!capturedScalarIdentifier(arg)||[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'))
-            return {helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
+        // Preserve the original short circuit exactly. These locals record
+        // ONLY predicates that this invocation actually evaluated.
+        let initialization='NOT_EVALUATED',capture='NOT_EVALUATED',domain='NOT_EVALUATED';
+        const refused=!found.size||!(initialization=initialized(arg))&&!(capture=capturedScalarIdentifier(arg))||
+            (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'));
+        if(refused){
+            const result={helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
+            // Diagnostics must never replace the original refusal, including
+            // when a malformed diagnostic observation itself throws.
+            try {
+                result.refusal={schema:'native-addition-refusal-v1',helper:helper.declaration.name,
+                    sourceCallOrdinal:call.original.ordinal,sourceCallOrder:'CLOSED_HELPER_CALL_ORDER',
+                    operand:position===0?'LEFT':'RIGHT',operandIndex:position,
+                    operandNodeType:typeof arg.type==='string'?arg.type:'UNAVAILABLE',
+                    foundTypes:[...found].map(type=>{
+                        if(typeof type==='string')return type;
+                        const kind=Object.getOwnPropertyDescriptor(type,'kind');
+                        return kind&&Object.hasOwn(kind,'value')&&typeof kind.value==='string'?kind.value:'UNAVAILABLE';
+                    }),
+                    initialization,capturedScalar:capture,invalidDomain:domain,
+                    sourceRange:'UNAVAILABLE',owningProcedure:call.original.owningProcedure,block:'UNAVAILABLE',classSlot:'UNAVAILABLE'};
+            }catch { /* Retain the original refusal with no invented details. */ }
+            return result;
+        }
         for(const allocation of allocations(arg)){
             if(!(position===0?helper.leftArray:helper.rightArray))return {helpers:new Map(),current,reason:'native helper does not join this actual Array operand position'};
             allTokens.add(allocation);arrayHelpers.add(helper.declaration.name);
