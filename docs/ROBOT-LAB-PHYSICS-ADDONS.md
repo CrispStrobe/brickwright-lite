@@ -218,3 +218,15 @@ Two actual Bit Keeper LDR/MPD imports also pass automatic Blocks/title loading,
 the 133 rigid placements, the physical loop and the exact ballast note, with no
 missing DAT requests, duplicate definitions or page errors. The complete export
 now contains 70 assemblies, 78 example choices and 156 offline EN/DE lessons.
+
+The subsequent complete hosted run passes all sixteen browser groups, including
+every addon. Its unit failures exposed two test-registration omissions and an
+independent input-test timing assumption: Sarrus's scene test needs its explicit
+Three.js declaration; the four newest models belong in the derived-catalog
+list; source `pauseUntil` resumes on its program poll, not scene-frame completion.
+The first two now have exact registrations. The last uses the existing controlled
+timer platform to observe false at 49 ms and completion at the actual 50 ms poll;
+removing keyboard delivery fails. Thirty-five affected tests pass locally, with
+three pre-existing skips. Runtime behavior, model geometry and all original
+tolerances are unchanged. Fresh hosted qualification of these corrections is
+still required before integration.
