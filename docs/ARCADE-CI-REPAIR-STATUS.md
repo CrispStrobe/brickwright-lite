@@ -30,6 +30,11 @@ Further work is scoped as follows:
 3. **CI readers:** account for the one genuinely added dialect word, align the
    two disabled x86 readers with the existing supplier pin, and select the
    costume picker's actual main button without weakening the GIF journey.
+   The four-file candidate is committed. Both Python reader ASTs parse and their
+   only executable delta is the expected supplier constant. Static comparison
+   confirms 402 prior dialect operations plus exactly one new reporter. The
+   complete dialect module exceeded the local CPU limit; retain that failure
+   and require hosted qualification. No filtered rerun or higher cap is used.
 4. **Browser initialization:** the official numeric artifact observes a changed
    `Function.prototype.toString` value. Investigate global tooltip/polyfill
    initialization before runtime capture. Keep intrinsic checks unchanged;
