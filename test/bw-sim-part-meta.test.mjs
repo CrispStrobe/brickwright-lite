@@ -36,6 +36,7 @@ import {flattenPart, circularFeatures, bounds, parseLDraw, compose, apply, colum
 import {validatePartMeta, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {check as checkVendored} from '../scripts/sync-ldraw-parts.mjs';
 import {solidColliders} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
+import {connectorSeatPosition,connectorSeatLength} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/connector-frame.js';
 import {BUILTIN_KINDS} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/index.js';
 import {PALETTE_CATEGORIES} from '../overlay/scratch-gui/src/lib/bw-sim/editor/palette.js';
 
@@ -44,7 +45,9 @@ const LIB = path.join(ROOT, 'overlay/scratch-gui/static/ldraw');
 const META = JSON.parse(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8'));
 const read = p => {
     const f = path.join(LIB, p.toLowerCase());
-    return existsSync(f) ? readFileSync(f, 'latin1') : undefined;
+    if (existsSync(f)) return readFileSync(f, 'latin1');
+    const own = path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/parts', p.replace(/^parts\//, ''));
+    return existsSync(own) ? readFileSync(own, 'latin1') : undefined;
 };
 
 /** Technic bore radius in LDU (4.8 mm). */
@@ -657,7 +660,7 @@ test('shaft regions are shafts, and no shaft runs through a solid collider', () 
     for (const p of META.parts) {
         const solid = new Set(solidColliders(p));
         const shafts = p.connectors.filter(k => k.type === 'pin' || k.type === 'axle');
-        const studs = p.connectors.filter(k => k.type === 'stud');
+        const studs = p.connectors.filter(k => k.type === 'stud').map(c => ({...c,position:connectorSeatPosition(c),length:connectorSeatLength(c)}));
         p.colliders.forEach((col, i) => {
             if (solid.has(i) || !col.region) return;
             if (col.region === 'stud') {

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "sourceArchive": "magnetic-chess-complete.zip",
+  "sourceSha256": "cee4c27347e2adcea8ee9e9dbb7ccda2003d810a8f09e265a2174055c804e850",
+  "files": {
+    "chess_custom_board_gasket_00.dat": "f29ecae360f637af1c29472776eac57da76daa5f5854111987b3464e84942ec7",
+    "chess_custom_board_gasket_01.dat": "87e7b5af0e84693f30740129db401e19feb7436b630941c8bfd05b3a2305d0d6",
+    "chess_custom_board_gasket_02.dat": "7622eaced8c32181f82b69ad2997436a7951ca0963a591aa93461bb4b56d71f6",
+    "chess_custom_board_gasket_03.dat": "edb00edbe832fc8e47c7e123a64a848ec3fcf77af84084976b9781618a5073d6",
+    "chess_custom_board_underside_print.dat": "1805672a3af1d9b64eee5d1f1b9e4e061946f5a469065f5a0a1df9d8e89c5810",
+    "chess_custom_glass_632x552x2mm.dat": "d87a3f698da6fa7f8177346575c12b609b53d01a6d7c72056f862d6d783d79bd"
+  },
+  "licenseSha256": "83b7bdeb9750ec95a69bd1929431c8bb4944caeed207c60297a0bed592ed9c36"
+}

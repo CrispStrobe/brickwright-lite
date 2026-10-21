@@ -14,6 +14,7 @@
 // The vendored file list (ldraw-lock.json) then says which files are here, so a
 // files are resolved directly, including primitives, without speculative 404s.
 
+import {OWNED_PART_FILES} from './owned-parts.js';
 import {parseLDraw, refKey, SEARCH_DIRS} from './ldraw-geometry.js';
 
 export const LDRAW_BASE = 'static/ldraw/';
@@ -61,6 +62,15 @@ export const fetchLDrawClosure = async (parts, {fetchImpl = globalThis.fetch, ba
     // One reference resolves to the first search directory that has it.
     const resolveOne = async ref => {
         const key = refKey(ref);
+        if (base === LDRAW_BASE && OWNED_PART_FILES.includes(key)) {
+            const path = 'parts/' + key;
+            if (!files.has(path)) {
+                const response = await fetchImpl('static/sim-lab/parts/' + key);
+                if (!response.ok) {missing.push(ref);return null;}
+                files.set(path, await response.text());
+            }
+            return path;
+        }
         for (const dir of SEARCH_DIRS) {
             const path = dir + key;
             if (files.has(path)) return path;

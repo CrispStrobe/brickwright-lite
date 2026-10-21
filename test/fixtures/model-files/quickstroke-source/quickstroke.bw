@@ -1,0 +1,41 @@
+# Quickstroke — slow working stroke, quick return, then reverse
+# Original control program. SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Reset/reload the supplied model to its saved pose before starting.
+# Motor A is the only input. Its direct-drive geometric crank angle is -A.
+# These are absolute, unwrapped encoder targets with fresh measured feedback.
+# Speeds are degrees per second. A target error over 2 degrees holds and stops.
+# Three continuous turns each way expose full strokes away from motor ramps.
+# Do not insert pauses at the carriage extrema: that changes the time experiment.
+# First run: geometric rotation positive; slow inward and fast outward.
+# Reverse run: geometric rotation negative; slow outward and fast inward.
+# The carriage is passive. Its measured position is independent of the prediction.
+# 2 finite native motor-move blocks; 5 initial/completion/settling guards.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (-1080 - (lab motor A angle)) degrees at 30 degrees per second
+  lab stop motor A hold
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1.5 seconds
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (0 - (lab motor A angle)) degrees at 30 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab stop motor A hold

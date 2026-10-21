@@ -217,7 +217,7 @@ export const compile = (model, catalog, opts = {}) => {
     let jointsResult;
     let gearResult;
     let gearDiagnostics;
-    let detected = {couplings: [], diagnostics: [], limits: [], wheels: [], springs: []};
+    let detected = {couplings: [], diagnostics: [], limits: [], wheels: [], springs: [], joints: [], replacements: []};
     // Every weld merges two islands, so this settles in at most one pass per node.
     for (let pass = 0; pass <= nodes.size + 1; pass++) {
         islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
@@ -244,7 +244,7 @@ export const compile = (model, catalog, opts = {}) => {
         gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries, kinds);
         if (gearResult.lockedPairs.length === 0) {
             // Registered coupling detectors (kinds/worm.js, kinds/rack.js): their welds re-run the fixpoint too.
-            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel});
+            detected = detectCouplings(kinds, {nodes, islands, joints: jointsResult.joints, jointEntries: jointsResult.jointEntries, catalog: catalogMap, model: filteredModel, gearCouplings: [...gearResult.gears,...(gearResult.relative||[])]});
             if (detected.welds.length === 0) break;
             // A lock a detector found (a worm or a rack fixed to its partner's frame) is said once, here.
             for (const d of detected.diagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
@@ -265,7 +265,8 @@ export const compile = (model, catalog, opts = {}) => {
     }
     diagnostics.push(...detected.diagnostics);
 
-    const joints = jointsResult.joints;
+    const replacements = new Map((detected.replacements || []).map(j=>[j.id,j]));
+    const joints = [...jointsResult.joints.map(j=>replacements.get(j.id)||j), ...(detected.joints || []).map((j,i)=>({...j,id:'loop'+i}))];
     // A coupling detector may bound a joint's travel (kinds/rack.js: the pinion stays on the
     // rack's teeth): the joint keeps the narrower of its own limits and the coupling's.
     for (const {joint, limits} of detected.limits) {
@@ -479,15 +480,17 @@ const seatedBodyPairs = (edges, islands) => {
 
 /** Every registered coupling detector, in registration order (registry/kinds.js CouplingKindRegistry). */
 const detectCouplings = (kinds, ctx) => {
-    const out = {couplings: [], welds: [], diagnostics: [], limits: [], wheels: [], springs: []};
+    const out = {couplings: [], welds: [], diagnostics: [], limits: [], wheels: [], springs: [], joints: [], replacements: []};
     for (const module of kinds.couplings.detectors()) {
-        const r = module.detect(ctx) || {};
+        const r = module.detect({...ctx,couplings:out.couplings}) || {};
         for (const c of r.couplings || []) out.couplings.push({...c, kind: module.kind});
         out.welds.push(...(r.welds || []));
         out.diagnostics.push(...(r.diagnostics || []));
         out.limits.push(...(r.limits || []));
         out.wheels.push(...(r.wheels || []));
         out.springs.push(...(r.springs || []));
+        out.joints.push(...(r.joints || []));
+        out.replacements.push(...(r.replacements || []));
     }
     return out;
 };

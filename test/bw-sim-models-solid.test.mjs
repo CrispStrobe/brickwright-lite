@@ -49,8 +49,9 @@ const LIB = path.join(GUI, 'static/ldraw');
 const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(GUI, 'src/lib/bw-sim/part-meta/parts.json'), 'utf8')));
 const FIXTURES = path.join(ROOT, 'test/fixtures/bw-sim');
 const read = p => {
-    const f = path.join(LIB, p.toLowerCase());
-    return existsSync(f) ? readFileSync(f, 'latin1') : undefined;
+    const files = [path.join(LIB, p.toLowerCase()), path.join(GUI, 'static/sim-lab/parts', path.basename(p.toLowerCase()))];
+    const f = files.find(existsSync);
+    return f ? readFileSync(f, 'latin1') : undefined;
 };
 
 /** LDU. Deeper than this inside another part's mesh is interpenetration (0.2 mm). */

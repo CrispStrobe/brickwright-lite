@@ -267,6 +267,48 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "quickstroke.ldr": {
+        "pieces": 111,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One steady crank produces unequal stroke times. Measure the quick-return ratio, then reverse the motor.",
+            "de": "Eine gleichmäßig umlaufende Kurbel erzeugt ungleiche Hubzeiten. Miss das Schnellrücklaufverhältnis und kehre dann die Drehrichtung um."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "sarrus-lift.ldr": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two orthogonal hinge chains constrain a platform to vertical translation. Compare measured height with the sine law and the 24:1 worm drive.",
+            "de": "Zwei rechtwinklige Gelenkketten führen eine Plattform senkrecht. Vergleiche die Höhe mit dem Sinusgesetz und dem 24:1-Schneckenantrieb."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "magnetic-chess.ldr": {
+        "pieces": 1208,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Three motors move a magnet beneath glass. Transport and release independent pieces; compare gap, magnetic attraction and sliding friction.",
+            "de": "Drei Motoren führen einen Magneten unter Glas. Bewege unabhängige Figuren und lasse sie los; vergleiche Abstand, Magnetkraft und Gleitreibung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "orbit-mixer.ldr": {
         "pieces": 161,
         "motors": 2,

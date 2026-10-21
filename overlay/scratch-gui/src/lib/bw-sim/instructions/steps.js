@@ -360,13 +360,57 @@ export const mirrorPairs = (model, catalog, adjacency) => {
     const sameSet = (a, b) => a.length === b.length && a.length > 0 &&
         a.every(v => b.some(w => Math.hypot(v[0] - w[0], v[1] - w[1], v[2] - w[2]) <= MIRROR_EPS)) &&
         b.every(v => a.some(w => Math.hypot(v[0] - w[0], v[1] - w[1], v[2] - w[2]) <= MIRROR_EPS));
+    // Equal connector sets have equal bounds (within MIRROR_EPS), even with
+    // repeated points. Index their lower corner; the exact sameSet test below
+    // still decides the match. Keep input order to preserve Array.find ties.
+    const cell = 2 * MIRROR_EPS;
+    const boxes = new Map(), buckets = new Map(), ordinal = new Map();
+    const kindBuckets = new Map();
+    model.parts.forEach((p, i) => {
+        ordinal.set(p.id, i);
+        const pts = points.get(p.id);
+        if (!pts.length) return;
+        const lo = [0,1,2].map(k => pts.reduce((v,p) => Math.min(v,p[k]), Infinity));
+        const hi = [0,1,2].map(k => pts.reduce((v,p) => Math.max(v,p[k]), -Infinity));
+        boxes.set(p.id, {lo, hi});
+        const kind = key(p);
+        if (!buckets.has(kind)) buckets.set(kind, new Map());
+        const root = buckets.get(kind);
+        kindBuckets.set(p.id, root);
+        const [x,y,z] = lo.map(v => Math.floor(v / cell));
+        if (!root.has(x)) root.set(x, new Map());
+        const ys = root.get(x);
+        if (!ys.has(y)) ys.set(y, new Map());
+        const zs = ys.get(y);
+        if (!zs.has(z)) zs.set(z, []);
+        zs.get(z).push(p);
+    });
+    const nearby = (p, k, c) => {
+        const box = boxes.get(p.id);
+        if (!box) return [];
+        const xyz = box.lo.map((v,i) => Math.floor((i === k ? 2*c-box.hi[i] : v) / cell));
+        const found = [], root = kindBuckets.get(p.id);
+        for (let x=-1; x<=1; x++) {
+            const ys = root.get(xyz[0]+x);
+            if (!ys) continue;
+            for (let y=-1; y<=1; y++) {
+                const zs = ys.get(xyz[1]+y);
+                if (!zs) continue;
+                for (let z=-1; z<=1; z++) {
+                    const matches = zs.get(xyz[2]+z);
+                    if (matches) found.push(...matches);
+                }
+            }
+        }
+        return found.sort((a,b) => ordinal.get(a.id)-ordinal.get(b.id));
+    };
     /** Mirror map for plane (k, c): id → image id (self allowed). */
     const mapFor = (k, c) => {
         const m = new Map();
         for (const p of model.parts) {
             if (m.has(p.id)) continue;
             const img = imageOf(k, c, p.id);
-            const q = model.parts.find(o => key(o) === key(p) && (o.id === p.id || !m.has(o.id)) && sameSet(img, points.get(o.id)));
+            const q = nearby(p,k,c).find(o => (o.id === p.id || !m.has(o.id)) && sameSet(img, points.get(o.id)));
             if (q) { m.set(p.id, q.id); m.set(q.id, p.id); }
         }
         return m;

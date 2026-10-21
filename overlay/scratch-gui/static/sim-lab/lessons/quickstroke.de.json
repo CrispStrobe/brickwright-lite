@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "quickstroke",
+  "language": "de",
+  "what": "Ein Motor dreht eine Kurbel mit gleichmäßig vorgegebener Geschwindigkeit. Eine Koppel bewegt den orangefarbenen Schlitten auf zwei Führungsachsen. Die Führungslinie ist gegenüber der Kurbelachse versetzt. Deshalb dauern die beiden gleich langen Hübe unterschiedlich lange. Die Drehrichtungsumkehr vertauscht langsamen und schnellen Hub. Eine gleichmäßig umlaufende Kurbel erzeugt ungleiche Hubzeiten. Miss das Schnellrücklaufverhältnis und kehre dann die Drehrichtung um.",
+  "try": [
+    "Wähle Quickstroke unter Beispiele; das Programm wird automatisch in Blöcke geladen. Drücke Start. Die Kurbel dreht sich je dreimal in beide Richtungen mit 30 Grad pro Sekunde. Beobachte vollständige mittlere Hübe fern vom Anfahren und Abbremsen.",
+    "Beim ersten Lauf bewegt sich der Schlitten langsamer zum Motor hin und schneller von ihm weg. Nach der Haltepause kehrt der Motor seine Drehrichtung um; dadurch wechseln die beiden Rollen. Vergleiche die Zeiten zwischen tatsächlichen Schlittenumkehrpunkten.",
+    "Verfolge die zwei roten Führungsachsen und beide Augen jedes glatten Kippgelenks. Gemeinsam verhindern sie eine Verdrehung des Schlittens, während die blaue Koppel schwenkt. Der Schlitten besitzt keinen eigenen Motor."
+  ],
+  "why": "Bei Kurbelradius r, Koppellänge l und Führungsversatz e hält die Koppel die Bedingung (x − r cos θ)² + (e − r sin θ)² = l² ein. Diese Anordnung nutzt den rechten Lösungszweig x = r cos θ + sqrt(l² − (e − r sin θ)²). Die beiden Totlagen liegen in ungleichen Kurbelwinkelabständen von etwa 211,511° und 148,489°. Bei konstanter Kurbelgeschwindigkeit ergeben sich daraus unterschiedliche Hubzeiten.",
+  "matters": "Ein Mechanismus kann Bewegung zeitlich unterschiedlich verteilen, obwohl der Antrieb gleichmäßig läuft. Der gleiche Weg von 63,416 mm dauert bei 30 Grad pro Sekunde ideal 7,050 Sekunden in der einen und 4,950 Sekunden in der anderen Richtung. Der langsamere Hub könnte in einer Maschine der Arbeitshub sein; dieses Modell zeigt die Kinematik ohne Arbeitslast.",
+  "question": "Was geschieht mit den beiden Hubzeiten und ihrem Verhältnis, wenn sich die konstante Motorgeschwindigkeit verdoppelt? Was ändert eine Drehrichtungsumkehr?",
+  "answer": "Beide idealen Hubzeiten halbieren sich. Das Zeitverhältnis langsam/schnell bleibt ungefähr 1,4244. Eine Drehrichtungsumkehr vertauscht die langsame und die schnelle Bewegungsrichtung. Tlangsam/Tschnell entspricht der mittleren Geschwindigkeit des schnellen Hubs geteilt durch die des langsamen Hubs; die momentane Schlittengeschwindigkeit ändert sich weiterhin und ist an beiden Enden null.",
+  "further": [
+    "Setze zum rechnerischen Vergleich e = 0. Beide Winkelabstände werden 180° und das ideale Zeitverhältnis wird eins. Eine Änderung des tatsächlichen Versatzes erfordert eine neu montierte und geprüfte Geometrie.",
+    "Vergleiche Quickstroke mit Tempo Loop. Beide zeigen eine veränderliche Abtriebsgeschwindigkeit bei gleichmäßigem Antrieb. Hier bewegt sich der Abtrieb geradlinig, dort dreht er sich.",
+    "Miss die tatsächlichen Umkehrzeiten und vergleiche sie dann mit der idealen Gleichung. Motorrückmeldung und physische Schlittenposition werden unabhängig geprüft."
+  ],
+  "formula": "r=60, l=200, e=120 LDU; 1 LDU=0,4 mm. α=asin(e/(l+r)), β=asin(e/(l−r)); Tlangsam/Tschnell=(π+β−α)/(π−β+α)=1,4244196373. θ wird von LDraw +X nach LDraw +Z gemessen; beim direkten Antrieb gilt für den Encoder θ=−A.",
+  "related": [
+    "tempo-loop.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

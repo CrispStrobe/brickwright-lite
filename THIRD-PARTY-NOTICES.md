@@ -2482,3 +2482,22 @@ Copyright (c) 2026 Christian Ströbele (CrispStrobe), BSD-3-Clause.
 Full notice: `static/sim-lab/licenses/orbit-mixer.txt`. Referenced LDraw part
 geometry retains its separate authors and CC BY licences. The paddle's motion
 is solved from actual gears; predicted kinematics are not an animation input.
+
+### Brickwright authored material parts
+
+Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Custom glass, printed board and
+adhesive-gasket geometry are original owner-supplied work adapted for Magnetic
+Chess. They are shipped separately from the unmodified official LDraw subset,
+with their own hash lock and full BSD notice. Original supplied CC0 provenance
+is retained with the model fixture. No non-commercial geometry is included.
+
+### Magnetic Chess, Sarrus Lift and Quickstroke
+
+Original owner-supplied apparatus, adapted models, native control programs and
+bilingual lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Full notices
+ship in `static/sim-lab/licenses/`. Supplied Chess and Sarrus drafts also grant
+CC0; fixture provenance preserves those grants. Chess uses one glass sheet
+and four double-sided adhesive gaskets alongside 1,203 LEGO placements. Sarrus
+adds four LEGO clearance plates to its supplied 140-piece layout. Quickstroke
+preserves all 111 supplied placements. Official part geometry retains its
+separate CC BY notices; authored material geometry retains its BSD notice.

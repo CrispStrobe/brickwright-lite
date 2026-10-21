@@ -8064,3 +8064,54 @@ transfer/release oracles and app/browser packaging are still pending.
 Sarrus is not registered: native deck tilt exceeds screening limits even with
 more solver iterations. Preserve its failure and do not equate encoder completion
 with successful spatial linkage motion.
+
+### Spatial six-hinge loop stabilization investigation
+
+IN PROGRESS — Sarrus' two three-hinge chains constrain the deck to one free
+translation: each chain permits rotation only about its own parallel hinge
+axes; the two perpendicular axis families rule out relative deck rotation.
+Their two preserved axial translations leave the common perpendicular as the
+translation axis. Investigate a redundant passive Jolt slider derived only when
+this exact six-joint topology and geometry is present. Keep every original
+hinge, gravity, contact and motor; no target deck pose, velocity or animation.
+The baseline failure and iteration-only/whole-pair diagnostic failures remain
+retained. Require physical deck travel/tilt/pivot checks and near-miss detector
+negatives before library admission. Quickstroke is queued after these models.
+
+### Large instruction symmetry planning
+
+IN PROGRESS — the 1,208-piece Chess instruction gate spends minutes in the
+symmetry planner's repeated whole-model searches. Extend this lane to
+instructions/steps.js and focused parity controls: index parts by connector-set
+bounds and type/colour, keep the exact geometric comparison and original
+candidate order. No symmetry, connection, page-size or BOM check is skipped.
+
+### Three further mechanisms: current simulation qualification
+
+The library candidate now contains Magnetic Chess (1,208 physical pieces,
+three motors), Sarrus Lift (144 LEGO pieces, one motor) and Quickstroke
+(111 LEGO pieces, one motor), with native programs and complete EN/DE lessons.
+Sarrus adds four deck-clearance plates. Its closed spatial linkage is stabilized
+by an unpowered equivalent platform slider and the published ball relaxation
+of one redundant, uncoupled elbow. The other five hinges remain. Its worm
+retains absolute gear phase; ordinary worm meshes retain their impact handling.
+Measured body motion, pivot closure and all six physical axes are checked,
+including a frozen-platform negative. No platform trajectory is prescribed.
+Quickstroke's actual stroke timing is measured in both directions, independently
+of its position equation; a frozen carriage cannot pass.
+
+The affected native model regression passes 43 controls, including Chess's
+five-transfer capture sequence and zero-field negative. Engine/guide/material
+controls pass 35; the metadata and official/authored geometry locks pass.
+Quickstroke and Sarrus also pass native-worker browser motion, manual controls,
+complete 54/49-page instructions and bilingual lessons. Chess browser and the
+full real-mesh sweep remain qualification work at this checkpoint. Do not
+infer a merged release or physical hardware qualification.
+
+The instruction symmetry lookup uses numeric spatial buckets while retaining
+its exact point comparison and input-order ties. It matches the original
+exhaustive planner on all 51 other assemblies; its boundary/tie controls and
+existing instruction suite pass 127 tests. The original Chess instruction
+BOM remains complete (357 pages, 1,208 pieces). Direct hexadecimal LDraw print
+colours now pass through the geometry reader and renderer, with 13 drawing,
+MPD and instancing controls. This fixes the previously grey chessboard print.

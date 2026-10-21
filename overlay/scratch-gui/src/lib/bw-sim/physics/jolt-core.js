@@ -664,6 +664,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             J.destroy(hs);
         } else if (j.type === 'slider') {
             const ss = new J.SliderConstraintSettings();
+            if (j.closureOf) {
+                ss.mNumVelocityStepsOverride = 64;
+                ss.mNumPositionStepsOverride = 96;
+            }
             ss.mSpace = J.EConstraintSpace_WorldSpace;
             ss.mPoint1 = new J.RVec3(...j.point);
             ss.mPoint2 = new J.RVec3(...j.point);
@@ -822,7 +826,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
      */
     /** Meshes with their hinges: {constraint, hinge1, hinge2} (re-based before every step: rebaseMeshes). */
     const meshes = [];
-    const meshGear = ({b1, b2, a1, a2, c1, c2, ratio, contact, hinge1, hinge2, velocitySteps = MESH_VELOCITY_STEPS}) => {
+    const meshGear = ({b1, b2, a1, a2, c1, c2, ratio, contact, hinge1, hinge2, preservePhase = false, velocitySteps = MESH_VELOCITY_STEPS}) => {
         const ms = new J.GearMeshConstraintSettings();
         ms.mSpace = J.EConstraintSpace_WorldSpace;
         const tmp = [new J.RVec3(...c1), new J.Vec3(...a1), new J.RVec3(...c2), new J.Vec3(...a2)];
@@ -838,7 +842,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         allConstraints.push(constraint);
         if (hinge1 && hinge2) {
             constraint.SetConstraints(hinge1, hinge2);
-            meshes.push({ constraint, hinge1, hinge2 });
+            if (!preservePhase) meshes.push({ constraint, hinge1, hinge2 });
         }
         for (const bid of [b1, b2]) { floorInertia(bid); floorMass(bid); }
         return constraint;
@@ -888,7 +892,12 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             }
             if (!contact) contact = crossedPitchPoint(j1.point, a1, j2.point, a2, ratio);
         }
-        return meshGear({ b1: s1.body, b2: s2.body, a1, a2, c1: j1.point, c2: j2.point, ratio, contact,
+        // A spatial six-R loop needs its worm's absolute phase to locate the
+        // platform. Rebasing it each step loses the accumulated ratio under
+        // gravity. This detected, stabilized loop keeps the native phase;
+        // ordinary meshes retain their existing impact/slip handling.
+        const preservePhase = worm && mechanism.joints.some(j => j.closureOf?.includes(j1.id) || j.closureOf?.includes(j2.id));
+        return meshGear({ preservePhase, b1: s1.body, b2: s2.body, a1, a2, c1: j1.point, c2: j2.point, ratio, contact,
             hinge1: hingeMap.get(j1.id).hinge, hinge2: hingeMap.get(j2.id).hinge, velocitySteps });
     };
     /** A chain drive (kinds/chain.js): ω(joint2) = ratio · ω(joint1), each the hinge's own rate. */

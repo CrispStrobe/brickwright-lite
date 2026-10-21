@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import {magneticChessInteractions,magneticChessLesson} from './lib/sim-lab-magnetic-chess-gate.mjs';
+import {sarrusLiftInteractions,sarrusLiftLesson} from './lib/sim-lab-sarrus-lift-gate.mjs';
+import {quickstrokeInteractions,quickstrokeLesson} from './lib/sim-lab-quickstroke-gate.mjs';
 import {openManualControls} from './lib/sim-lab-manual-controls.mjs';
 import {orbitMixerInteractions,orbitMixerLesson} from './lib/sim-lab-orbit-mixer-gate.mjs';
 import {phaseBridgeInteractions,phaseBridgeGermanLessons} from './lib/sim-lab-phase-bridge-gate.mjs';
@@ -747,6 +750,33 @@ try {
             const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             fixed.on('pageerror',error=>errors.push(error.message));fixed.on('dialog',dialog=>dialog.accept());
             await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
+        }
+        if (runExample('quickstroke.ldr')) {
+            const quick=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            quick.on('pageerror',error=>errors.push(error.message));quick.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'quickstroke'),timeout:wallBudget(150000)};
+            await quickstrokeInteractions(quick,opts);await quick.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await quickstrokeLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('sarrus-lift.ldr')) {
+            const sarrus=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            sarrus.on('pageerror',error=>errors.push(error.message));sarrus.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'sarrus-lift'),timeout:wallBudget(150000)};
+            await sarrusLiftInteractions(sarrus,opts);await sarrus.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await sarrusLiftLesson(german,opts,'de');await german.close();
+        }
+        if (runExample('magnetic-chess.ldr')) {
+            const chess=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            chess.on('pageerror',error=>errors.push(error.message));chess.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'magnetic-chess'),timeout:wallBudget(360000)};
+            await magneticChessInteractions(chess,opts);await chess.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await magneticChessLesson(german,opts,'de');await german.close();
         }
         if (runExample('orbit-mixer.ldr')) {
             const orbit=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});

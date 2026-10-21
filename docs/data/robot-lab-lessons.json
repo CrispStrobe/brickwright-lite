@@ -2120,6 +2120,139 @@
         "mean-machine.ldr",
         "orbital-loom.ldr"
       ]
+    },
+    "magnetic-chess": {
+      "en": {
+        "what": "A three-motor XY carriage raises a magnet beneath a glass board. Magnetic attraction pulls an independent chess piece across the surface; lowering the head removes that force. The adapted apparatus contains 1,203 LEGO placements, one glass sheet and four bonded gaskets: 1,208 physical pieces, including 32 separate chess-piece assemblies.",
+        "try": [
+          "Choose Magnetic Chess in Examples; its native program loads into Blocks automatically. Press Run to move the white knight from g1 to f3 and park the head. Reset before repeating.",
+          "Reset and load magnetic-chess-capture.bw for five transfers: knight g1–f3, e2–e4, d7–d5, the black pawn to a capture bay, and e4×d5. These are precomputed clear routes; this example is a transporter, without chess AI or automatic piece recognition.",
+          "Compare the controls after resetting: A and B position the carriage, while C raises the pickup through 180° and retracts it. Keep C within 0–180° and retain the supplied speeds and routes. Observe how a larger gap releases the piece."
+        ],
+        "why": "Attraction acts at the two magnet faces with equal and opposite forces. Raising the head closes the gap from about 34.8 mm to 2.8 mm. The lateral component pulls a displaced piece towards the head; sliding friction opposes it. No hinge or rigid bond joins a chess piece to the carriage, so a weak or distant field cannot carry it.",
+        "matters": "Contactless transport combines fields, friction, reaction forces, positioning and obstacle avoidance. The glass needs stable support. Here four double-sided adhesive gaskets bond it to its support tiles; the former loose registration shims are unnecessary. The adhesive is treated as a rigid bond, without a measured strength rating.",
+        "question": "Why must the pickup retract before the carriage returns home? What would happen if the magnetic force were zero?",
+        "answer": "With the head raised, the piece continues to feel attraction and would tend to follow the returning carriage. Retraction increases the face gap beyond the declared field range, releasing the piece. With zero magnetic force, correct motor angles alone move only the carriage: the independent piece stays on its square.",
+        "further": [
+          "The declared force model is an unmeasured approximation: 0.3 N at a 2.8 mm reference gap, capped at 1 N, softened at short distance and smoothly reduced to zero by 14 mm. It is not a measured LEGO magnet specification.",
+          "The board uses 56 mm squares. Routes pass between occupied squares and use capture bays outside the board. Motor encoders locate the head; they do not sense a lost piece or establish a physical homing datum.",
+          "The model is qualified in simulation. Real magnet strength, friction, glass support, cables and physical motor calibration need separate measurements. Reset restores the starting arrangement."
+        ]
+      },
+      "de": {
+        "what": "Ein XY-Schlitten mit drei Motoren hebt einen Magneten unter einer Glasplatte. Seine Anziehung zieht eine unabhängige Schachfigur über die Oberfläche; beim Absenken endet diese Kraft. Der angepasste Aufbau enthält 1.203 LEGO-Teile, eine Glasplatte und vier verklebte Dichtungen: insgesamt 1.208 physische Teile mit 32 getrennten Figurenbaugruppen.",
+        "try": [
+          "Wähle Magnetic Chess unter Beispiele; das native Programm wird automatisch in Blöcke geladen. Drücke Start: Der weiße Springer fährt von g1 nach f3, danach parkt der Kopf. Vor der Wiederholung zurücksetzen.",
+          "Setze zurück und lade magnetic-chess-capture.bw für fünf Transporte: Springer g1–f3, e2–e4, d7–d5, schwarzer Bauer in ein Ablagefach und e4×d5. Die freien Wege sind vorab geplant; dies ist ein Transportmodell ohne Schach-KI oder automatische Figurenerkennung.",
+          "Vergleiche nach dem Zurücksetzen die Steuerung: A und B positionieren den Schlitten. C hebt den Magneten um 180° und senkt ihn wieder ab. Halte C zwischen 0 und 180° und behalte die vorgegebenen Geschwindigkeiten und Wege bei. Beobachte, wie ein größerer Abstand die Figur freigibt."
+        ],
+        "why": "An den Magnetflächen wirken gleich große, entgegengesetzte Kräfte. Das Anheben verkleinert den Abstand von etwa 34,8 mm auf 2,8 mm. Eine seitliche Kraftkomponente zieht eine versetzte Figur zum Kopf; Gleitreibung wirkt dagegen. Kein Gelenk und keine starre Verbindung bindet die Figur an den Schlitten. Ein zu schwaches oder entferntes Feld kann sie daher nicht mitnehmen.",
+        "matters": "Berührungsloser Transport verbindet Felder, Reibung, Gegenkräfte, Positionierung und Hindernisvermeidung. Die Glasplatte braucht eine stabile Auflage. Vier beidseitig klebende Dichtungen verbinden sie hier mit den Auflagefliesen; die früheren losen Ausgleichsstücke entfallen. Die Klebung wird als starr behandelt, ohne gemessene Tragfähigkeitsangabe.",
+        "question": "Warum muss der Magnet vor der Rückfahrt des Schlittens abgesenkt werden? Was geschieht bei Magnetkraft null?",
+        "answer": "Bei angehobenem Kopf wirkt die Anziehung weiter; die Figur würde dem zurückfahrenden Schlitten folgen. Durch Absenken wächst der Abstand über die festgelegte Feldreichweite, und die Figur wird freigegeben. Bei Magnetkraft null bewegen korrekte Motorwinkel nur den Schlitten: Die unabhängige Figur bleibt auf ihrem Feld.",
+        "further": [
+          "Das Kraftmodell ist eine ungemessene Näherung: 0,3 N bei 2,8 mm Referenzabstand, auf 1 N begrenzt, im Nahbereich geglättet und bis 14 mm stetig auf null reduziert. Das ist keine gemessene LEGO-Magnetspezifikation.",
+          "Die Felder sind 56 mm breit. Die Wege führen zwischen belegten Feldern hindurch und zu Ablagefächern außerhalb des Bretts. Drehgeber bestimmen die Kopfposition; sie erkennen keine verlorene Figur und ersetzen keinen realen Nullpunkt.",
+          "Das Modell ist in Simulation geprüft. Magnetkraft, Reibung, Glasauflage, Kabel und reale Motorkalibrierung müssen getrennt gemessen werden. Zurücksetzen stellt die Ausgangsaufstellung wieder her."
+        ]
+      },
+      "formula": {
+        "en": "Central attraction: equal and opposite forces at the two faces. F ∝ [(d_ref² + s²)/(d² + s²)]² within the declared range; lateral motion occurs only when attraction overcomes sliding friction. This is an unmeasured model.",
+        "de": "Zentrale Anziehung: gleich große Gegenkräfte an beiden Magnetflächen. Innerhalb der festgelegten Reichweite gilt F ∝ [(d_ref² + s²)/(d² + s²)]². Seitliche Bewegung braucht mehr Anziehung als Gleitreibung. Dies ist ein ungemessenes Modell."
+      },
+      "related": [
+        "axis-plotter.ldr",
+        "stepworks.ldr",
+        "orbital-loom.ldr"
+      ]
+    },
+    "quickstroke": {
+      "en": {
+        "what": "One motor turns a crank at a steady requested speed. A connecting rod drives an orange carriage on two guide axles. Because the guide line is offset from the crank center, the two equal-distance strokes take different times. Reversing the motor exchanges the slow and fast directions.",
+        "try": [
+          "Choose Quickstroke in Examples; its program loads into Blocks automatically. Press Run. The crank makes three uninterrupted turns each way at 30 degrees per second. Observe complete middle strokes away from startup and stopping.",
+          "During the first run, the carriage moves toward the motor more slowly and away from it more quickly. After the held pause, the motor reverses and these roles swap. Compare the times between actual carriage reversals, not equal time slices.",
+          "Follow the two red guide axles and both eyes of each smooth toggle. They prevent the carriage from rolling while the blue rod swings. The slider has no motor of its own."
+        ],
+        "why": "With crank radius r, rod length l, and guide offset e, the rod keeps (x − r cos θ)² + (e − r sin θ)² = l². This assembly uses the right-hand branch x = r cos θ + sqrt(l² − (e − r sin θ)²). Its two dead centers occur at unequal crank-angle intervals: about 211.511° and 148.489°. At constant crank speed, those intervals determine the different stroke times.",
+        "matters": "A mechanism can redistribute motion in time without changing the input speed. Here the same 63.416 mm travel takes ideally 7.050 seconds one way and 4.950 seconds the other at 30 degrees per second. The slower stroke could correspond to a working stroke in a machine, but this model is an unloaded kinematics demonstrator.",
+        "question": "If the motor speed doubles while remaining constant through each complete stroke, what happens to the two stroke times and to their ratio? What changes if its direction reverses?",
+        "answer": "Both ideal stroke times halve, while the slow/fast time ratio remains about 1.4244. Reversing the motor exchanges the slow and fast travel directions. Tslow/Tfast equals the fast-stroke average speed divided by the slow-stroke average speed; instantaneous carriage speed still changes and reaches zero at both ends.",
+        "further": [
+          "Set e = 0 in the equation as a mathematical comparison. Both dead-center intervals become 180° and the ideal time ratio becomes one. Changing the physical offset would require a newly assembled and checked geometry.",
+          "Compare Quickstroke with Tempo Loop. Both show a varying output speed from one steady input, but one output translates and the other rotates.",
+          "Measure actual reversal times before comparing them with the ideal equation. Native motor feedback and physical carriage positions are checked independently."
+        ]
+      },
+      "formula": {
+        "en": "r=60, l=200, e=120 LDU; 1 LDU=0.4 mm. α=asin(e/(l+r)), β=asin(e/(l−r)); Tslow/Tfast=(π+β−α)/(π−β+α)=1.4244196373. θ is measured from LDraw +X toward LDraw +Z; the direct-drive encoder relationship is θ=−A.",
+        "de": "r=60, l=200, e=120 LDU; 1 LDU=0,4 mm. α=asin(e/(l+r)), β=asin(e/(l−r)); Tlangsam/Tschnell=(π+β−α)/(π−β+α)=1,4244196373. θ wird von LDraw +X nach LDraw +Z gemessen; beim direkten Antrieb gilt für den Encoder θ=−A."
+      },
+      "de": {
+        "what": "Ein Motor dreht eine Kurbel mit gleichmäßig vorgegebener Geschwindigkeit. Eine Koppel bewegt den orangefarbenen Schlitten auf zwei Führungsachsen. Die Führungslinie ist gegenüber der Kurbelachse versetzt. Deshalb dauern die beiden gleich langen Hübe unterschiedlich lange. Die Drehrichtungsumkehr vertauscht langsamen und schnellen Hub.",
+        "try": [
+          "Wähle Quickstroke unter Beispiele; das Programm wird automatisch in Blöcke geladen. Drücke Start. Die Kurbel dreht sich je dreimal in beide Richtungen mit 30 Grad pro Sekunde. Beobachte vollständige mittlere Hübe fern vom Anfahren und Abbremsen.",
+          "Beim ersten Lauf bewegt sich der Schlitten langsamer zum Motor hin und schneller von ihm weg. Nach der Haltepause kehrt der Motor seine Drehrichtung um; dadurch wechseln die beiden Rollen. Vergleiche die Zeiten zwischen tatsächlichen Schlittenumkehrpunkten.",
+          "Verfolge die zwei roten Führungsachsen und beide Augen jedes glatten Kippgelenks. Gemeinsam verhindern sie eine Verdrehung des Schlittens, während die blaue Koppel schwenkt. Der Schlitten besitzt keinen eigenen Motor."
+        ],
+        "why": "Bei Kurbelradius r, Koppellänge l und Führungsversatz e hält die Koppel die Bedingung (x − r cos θ)² + (e − r sin θ)² = l² ein. Diese Anordnung nutzt den rechten Lösungszweig x = r cos θ + sqrt(l² − (e − r sin θ)²). Die beiden Totlagen liegen in ungleichen Kurbelwinkelabständen von etwa 211,511° und 148,489°. Bei konstanter Kurbelgeschwindigkeit ergeben sich daraus unterschiedliche Hubzeiten.",
+        "matters": "Ein Mechanismus kann Bewegung zeitlich unterschiedlich verteilen, obwohl der Antrieb gleichmäßig läuft. Der gleiche Weg von 63,416 mm dauert bei 30 Grad pro Sekunde ideal 7,050 Sekunden in der einen und 4,950 Sekunden in der anderen Richtung. Der langsamere Hub könnte in einer Maschine der Arbeitshub sein; dieses Modell zeigt die Kinematik ohne Arbeitslast.",
+        "question": "Was geschieht mit den beiden Hubzeiten und ihrem Verhältnis, wenn sich die konstante Motorgeschwindigkeit verdoppelt? Was ändert eine Drehrichtungsumkehr?",
+        "answer": "Beide idealen Hubzeiten halbieren sich. Das Zeitverhältnis langsam/schnell bleibt ungefähr 1,4244. Eine Drehrichtungsumkehr vertauscht die langsame und die schnelle Bewegungsrichtung. Tlangsam/Tschnell entspricht der mittleren Geschwindigkeit des schnellen Hubs geteilt durch die des langsamen Hubs; die momentane Schlittengeschwindigkeit ändert sich weiterhin und ist an beiden Enden null.",
+        "further": [
+          "Setze zum rechnerischen Vergleich e = 0. Beide Winkelabstände werden 180° und das ideale Zeitverhältnis wird eins. Eine Änderung des tatsächlichen Versatzes erfordert eine neu montierte und geprüfte Geometrie.",
+          "Vergleiche Quickstroke mit Tempo Loop. Beide zeigen eine veränderliche Abtriebsgeschwindigkeit bei gleichmäßigem Antrieb. Hier bewegt sich der Abtrieb geradlinig, dort dreht er sich.",
+          "Miss die tatsächlichen Umkehrzeiten und vergleiche sie dann mit der idealen Gleichung. Motorrückmeldung und physische Schlittenposition werden unabhängig geprüft."
+        ]
+      },
+      "related": [
+        "tempo-loop.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "sarrus-lift": {
+      "en": {
+        "what": "One motor and a 24:1 worm drive lift a platform through a spatial six-hinge linkage. Two chains have parallel hinge axes within each chain; the chains are perpendicular to each other. Their common platform moves vertically while remaining level. The adapted 144-piece design adds four clearance plates beneath the deck.",
+        "try": [
+          "Choose Sarrus Lift in Examples; the program loads into Blocks automatically. Press Run after resetting to the saved 45° pose. The linkage moves to 20°, returns to 45°, moves to 70°, then returns home.",
+          "Compare motor A angles −600°, 0° and +600° with the platform height. The worm needs 24 input turns for one output turn. The input has no artificial angle wrap.",
+          "Use manual override only for small jogs around the saved position. Keep the linkage between 20° and 70°; reset before running the experiment again."
+        ],
+        "why": "Each pair of 120 LDU links contributes the vertical projection of its length. With 0.4 mm per LDU, h = 96 sin φ mm. Relative to the saved 45° pose, Δh = 96[sin(45° + A/24) − sin 45°] mm. The perpendicular hinge chains cancel the lateral motion that a single planar chain would allow.",
+        "matters": "This is spatial straight-line guidance without a physical sliding rail. The solver uses an unpowered equivalent platform constraint and relaxes one redundant elbow constraint; body positions still come from gravity, contacts and finite motor torque. This stabilizes a closed constraint loop without prescribing its motion.",
+        "question": "Does turning motor A by +600° raise the platform by the same distance that −600° lowers it from the 45° pose?",
+        "answer": "No. The linkage angles are 70° and 20°. The ideal changes are about +22.33 mm and −35.06 mm. Equal angular changes produce unequal vertical travel because the sine function is nonlinear.",
+        "further": [
+          "Compare this lift with Parallel Lift: one has spatial vertical guidance; the other follows a curved planar path.",
+          "The worm resists back-driving in this simulator. Compare that modeled behavior with active motor holding; it does not establish real friction, strength or lifting capacity.",
+          "Observe the platform angle as well as the motor encoder. A turning motor alone cannot establish that a closed linkage works."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor und ein 24:1-Schneckengetriebe heben eine Plattform über sechs räumliche Drehgelenke. Innerhalb jeder der beiden Ketten sind die Achsen parallel; die Ketten stehen rechtwinklig zueinander. Die gemeinsame Plattform bewegt sich senkrecht und bleibt waagerecht. Vier zusätzliche Distanzplatten geben den oberen Gliedern im Modell mit 144 Teilen Platz.",
+        "try": [
+          "Wähle Sarrus Lift unter Beispiele; das Programm wird automatisch in Blöcke geladen. Setze auf die gespeicherte 45°-Stellung zurück und drücke Start. Die Gelenke fahren auf 20°, zurück auf 45°, auf 70° und wieder nach Hause.",
+          "Vergleiche die Motorwinkel A = −600°, 0° und +600° mit der Plattformhöhe. Für eine Abtriebsumdrehung braucht die Schnecke 24 Antriebsumdrehungen.",
+          "Nutze die manuelle Übersteuerung nur für kleine Schritte nahe der Ausgangslage. Halte den Gelenkwinkel zwischen 20° und 70°; setze vor einem neuen Versuch zurück."
+        ],
+        "why": "Die vertikalen Projektionen zweier Glieder mit je 120 LDU ergeben bei 0,4 mm je LDU h = 96 sin φ mm. Aus der gespeicherten 45°-Stellung gilt Δh = 96[sin(45° + A/24) − sin 45°] mm. Die rechtwinkligen Ketten verhindern die seitliche Bewegung, die eine einzelne ebene Kette erlauben würde.",
+        "matters": "Die räumliche Geradführung kommt ohne echte Gleitschiene aus. Der Löser stabilisiert den geschlossenen Gelenkring durch eine äquivalente passive Plattformbedingung und lockert eine redundante Ellenbogenbedingung. Schwerkraft, Kontakte und endliches Motordrehmoment bestimmen weiterhin die Körperbewegung.",
+        "question": "Hebt +600° an Motor A die Plattform genauso weit, wie −600° sie aus der 45°-Stellung absenkt?",
+        "answer": "Nein. Die Gelenkwinkel betragen 70° und 20°. Ideal sind die Höhenänderungen etwa +22,33 mm und −35,06 mm. Wegen der nichtlinearen Sinusfunktion ergeben gleiche Winkeländerungen unterschiedliche Wege.",
+        "further": [
+          "Vergleiche mit Parallel Lift: räumliche senkrechte Führung und gekrümmte ebene Bahn.",
+          "Die Schnecke hemmt im Simulator den Rücktrieb. Vergleiche das mit aktivem Halten; daraus folgen keine gemessenen realen Reibungswerte oder Traglasten.",
+          "Beobachte neben dem Motorencoder auch den Plattformwinkel. Ein drehender Motor allein beweist keine funktionierende Gelenkschleife."
+        ]
+      },
+      "formula": {
+        "en": "Δh = 96[sin(45° + A/24) − sin 45°] mm; 20° ≤ φ ≤ 70°. Four added clearance plates; 144 physical pieces.",
+        "de": "Δh = 96[sin(45° + A/24) − sin 45°] mm; 20° ≤ φ ≤ 70°. Vier zusätzliche Distanzplatten; 144 physische Teile."
+      },
+      "related": [
+        "parallel-lift.ldr",
+        "switchback-lift.ldr"
+      ]
     }
   }
 }

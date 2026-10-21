@@ -352,6 +352,7 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
             out.push(`${p}.mirrorOf.others: only on a part that is its own mirror image, a list of {m, t}`);
         }
     }
+    if (meta.ownedGeometry !== undefined && typeof meta.ownedGeometry !== 'boolean') out.push(`${p}.ownedGeometry: must be boolean`);
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);
     }
