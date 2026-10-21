@@ -12,7 +12,7 @@ const baseYaw=(o,f)=>{const v=worldVector(o.base,f,[1,0,0]);return deg(Math.atan
 function finite(r){assert.ok(r.finishedAt,'finite program completes');assert.deepEqual(r.unsupported,[]);assert.equal(r.mechanism.actuators.length,1);assert.equal(r.mechanism.actuators[0].port,'A');for(const f of r.track)for(const p of Object.values(f.bodies))assert.ok([...p.position,...p.rotation].every(Number.isFinite));}
 export function measureCounterturn(r){
  const o=observeAddon(r,'yaw_base'),motor=r.mechanism.joints.find(j=>j.motor),yaw=unwrap(r.track.map(f=>o.angle(f,'yaw_platform',[0,1,0],[1,0,0]))).map(deg),rotor=unwrap(r.track.map(f=>o.angle(f,'g20',[0,1,0],[1,0,0]))).map(deg);
- return r.track.map((f,i)=>({t:f.t,encoder:deg(f.joints[motor.id].angle),speed:deg(f.joints[motor.id].velocity),yaw:yaw[i]-yaw[0],beta:rotor[i]-rotor[0]-yaw[i]+yaw[0],gapMm:o.gap(f),tiltDeg:o.tilt(f),baseMm:norm(sub(f.bodies[o.base.id].position,r.track[0].bodies[o.base.id].position))*1000,shaftTiltDeg:deg(Math.asin(Math.min(1,Math.abs(o.vector(f,'g12',motor.axis)[1])))),baseYaw:baseYaw(o,f)}));
+ return r.track.map((f,i)=>({t:f.t,encoder:deg(f.joints[motor.id].angle),speed:deg(f.joints[motor.id].velocity),yaw:yaw[i]-yaw[0],beta:rotor[i]-rotor[0]-yaw[i]+yaw[0],gapMm:o.gap(f),tiltDeg:o.tilt(f),baseMm:norm(sub(f.bodies[o.base.id].position,r.track[0].bodies[o.base.id].position))*1000,shaftTiltDeg:deg(Math.asin(Math.min(1,Math.abs(worldVector(o.body('g12'),f,motor.axis)[1])))),baseYaw:baseYaw(o,f)}));
 }
 export function judgeCounterturn(id,r,{gain,locked=false}={}){
  finite(r);assert.equal(r.issues.length,8);assert.ok(r.issues.every(i=>i.code==='gear-not-on-hinge'&&i.parts.length===1&&/^ballast_[xz]_[+-]?1_[01]$/.test(i.parts[0])));
