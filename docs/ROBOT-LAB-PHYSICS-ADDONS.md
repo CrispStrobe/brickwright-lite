@@ -1,6 +1,6 @@
-# Nine motorized physics experiments
+# Twelve motorized physics experiments
 
-Nine original CrispStrobe/BSD-3-Clause machines extend the existing Robot Lab
+Twelve original CrispStrobe/BSD-3-Clause machines extend the existing Robot Lab
 library. Each has a real hub and one or two SPIKE medium angular motors. All use
 ordinary LDraw parts, finite feedback programs and passive mechanical outputs.
 Selecting their gallery card loads the matching Code/Blocks program and title.
@@ -47,7 +47,7 @@ Raw model/program bytes, original notices and SHA-256 provenance live under
 unreviewed input hashes. It changes model identification/licence paths and
 removes coarse source STEP groups so the existing connected planner supplies
 small assembly steps. It preserves the original placement numbers, transforms,
-part IDs and motor bindings. Programs remain byte-identical except Scale Studio and Bloom Gate:
+part IDs and motor bindings. Programs remain byte-identical except Scale Studio, Bloom Gate and Echo Bridge:
 their redundant `lab reset` is removed because gallery selection already restores
 the saved pose. Its real starting-angle guard and every motor target, speed,
 dwell and watchdog remain. `physics-addon-program.mjs` validates raw hashes
@@ -177,4 +177,4 @@ controls pass. The actual-mesh winding, retained-fastener, shared-bore and
 phased-motor checks also pass all three assemblies. The independent observer
 uses real body poses in the normalized chassis frame; analytical predictions
 never write poses. The source-only Linger geometry equations are retained with
-their BSD notice. Browser integration and this batch's delivery are pending.
+their BSD notice. The production build and real WebKit worker programs, manual A controls, both lesson languages, automatic Blocks/title loading and connected manuals pass all three. Echo/Linger/Crossline have 47/71/67 connected rigid assembly pages. Six actual LDR/MPD imports preserve the counts and Echo's two flexible loops, with no missing DAT requests, duplicate block definitions or page errors. The candidate contains 69 assemblies, 77 choices and 154 offline lessons. Source integration and native release remain separate hosted gates.
