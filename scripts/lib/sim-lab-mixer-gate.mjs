@@ -28,8 +28,12 @@ export const mixerInteractions = async (page, {shotsDir}) => {
         window.__bwSimLab._pane.session, null, {timeout: 60000});
     // From the start pose: an earlier section may have left the Forklift loaded with its lift run up (the select
     // does not reload a model already chosen), and a pinion stalled at the top only slips on.
-    await page.evaluate(() => window.__bwSimLab.api.reset());
-    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 60000});
+    const previous = await page.evaluateHandle(() => window.__bwSimLab._pane.session);
+    await page.getByTestId('bw-sim-lab-reset').click();
+    await page.waitForFunction(previous => window.__bwSimLab.status === 'ready' &&
+        window.__bwSimLab._pane.session && window.__bwSimLab._pane.session !== previous,
+    previous, {timeout: 60000});
+    await previous.dispose();
     // 1. Unfold.
     await openManualControls(page, {override: true});
     const toggle = page.getByTestId('bw-sim-lab-mixer-toggle');
@@ -51,7 +55,6 @@ export const mixerInteractions = async (page, {shotsDir}) => {
     await advance(page, 300); // half way up: the forks reach the top (~950°) after about 0.5 s
     const c1 = await angleOf(page, 'C');
     assert.ok(Math.abs(c1 - c0) > 60, `the lift motor turned from its slider: ${c0.toFixed(0)}° → ${c1.toFixed(0)}°`);
-    await page.screenshot({path: resolve(shotsDir, 'sim-lab-mixer.png')});
     await page.locator('[data-testid="bw-sim-lab-mixer-stop"][data-port="C"]').click();
     assert.equal(await sliderC.inputValue(), '0');
     // A position hold must first decelerate and recover its captured angle. Judge a bounded
@@ -71,6 +74,9 @@ export const mixerInteractions = async (page, {shotsDir}) => {
     await advance(page, 400);
     const c3 = await angleOf(page, 'C');
     assert.ok(Math.abs(c3 - c2) < 3, `■ stops it: ${c2.toFixed(1)}° → ${c3.toFixed(1)}°`);
+    // Capture after the hold check: software-GPU readback must not keep the
+    // commanded lift running into its upper stop before we press Stop.
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-mixer.png')});
     // 3. Stop all, and the fold is remembered.
     await sliderC.focus();
     for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowLeft');

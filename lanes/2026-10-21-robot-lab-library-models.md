@@ -474,6 +474,26 @@ bilingual lessons. Full hosted qualification is pending. The separately packaged
 and submitted to Beta App Review; external review is pending. Release 0.1.26 and
 its Android/Windows binaries are owned in the separate release claim.
 
+### Release qualification repairs
+
+The dropdown now prepares an example's mat before its single model build and
+keeps controls busy through automatic program import. This avoids replacing an
+apparently ready worker after Blocks load. Baseline-failing method controls cover
+the load order and preservation of a model-only caller's mat.
+
+Simulate reuses Build's one-frame GPU fence pattern: a busy renderer keeps the
+latest pose pending rather than accumulating obsolete frames. Physical stepping
+and independent ink sampling remain separate. Queue, context-loss, forced-frame
+and drawing controls pass. Magnetic Chess now completes native-worker movement,
+all three manual motors and its 357-page/1,208-component manual in Chromium;
+Phase Bridge variants, example filtering/chain motion, tablet gestures and the
+loaded Forklift stop test pass. The stop test takes its screenshot after stopping
+so slow readback cannot drive the forks into their upper limit first.
+
+Long preset groups are partitioned with every variant and instruction retained;
+eight-minute steps and thirty-minute jobs remain unchanged. Full hosted CI is
+still required before release.
+
 ## Nine follow-on physics machines — 2026-10-21
 
 IN PROGRESS — original CrispStrobe/BSD-3-Clause additions in the existing model

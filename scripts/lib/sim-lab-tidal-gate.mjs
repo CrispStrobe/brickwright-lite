@@ -5,12 +5,13 @@ import {resolve} from 'node:path';
 import {mechanicsInteractions, manualMechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
 import {TIDAL_PRESETS, judgeTidalRun} from './sim-lab-tidal-judge.mjs';
 export const tidalInteractions = async (page, opts) => {
+    const presets=opts.presets||TIDAL_PRESETS;
     const results = await mechanicsInteractions(page, {...opts,
-        models: TIDAL_PRESETS.map(p => p.id), fileFor: () => 'tidal-trio.ldr',
+        models: presets.map(p => p.id), fileFor: () => 'tidal-trio.ldr',
         keyFor: id => TIDAL_PRESETS.find(p => p.id === id).key,
         programMarker: id => `# Example: ${id}`, judge: judgeTidalRun, simulatedMs: 36000});
     await manualMechanicsInteractions(page, {...opts, models: ['tidal-trio']});
-    await tidalInstructionsInteractions(page, opts);
+    if(opts.instructions!==false)await tidalInstructionsInteractions(page, opts);
     return results;
 };
 
@@ -21,7 +22,15 @@ export const tidalInstructionsInteractions = async (page, opts) => {
     const dialog = page.getByTestId('bw-sim-instructions');
     await dialog.waitFor();
     await page.waitForFunction(() => window.__bwSimLabInstructions?.status === 'ready' &&
-        window.__bwSimLabInstructions.stats?.step === 0, null, {timeout: 30000});
+        window.__bwSimLabInstructions.stats?.step === 0, null, {timeout: 30000}).catch(async error => {
+        console.error('Instruction readiness failure', await page.evaluate(() => {
+            const i=window.__bwSimLabInstructions, p=window.__bwSimLab?._pane;
+            return {instructions:i&&{status:i.status,page:i.page,steps:i.steps,stats:i.stats,error:i.error},
+                model:p?.state.modelFile,status:p?.state.status,programLoading:p?.state.programLoading,
+                alerts:[...document.querySelectorAll('[role="alert"]')].map(e=>e.textContent)};
+        }));
+        throw error;
+    });
     const steps = await page.evaluate(() => window.__bwSimLabInstructions.steps);
     assert.ok(steps > (opts.minSteps ?? 30) && steps < piecesExpected);
     await dialog.screenshot({path: resolve(opts.shotsDir, `${prefix}-instructions-first.png`)});

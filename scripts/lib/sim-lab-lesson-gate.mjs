@@ -23,7 +23,10 @@ export const lessonInteractions=async(page,{openSimLab,shotsDir})=>{
  assert.match(await lesson.getByTestId('bw-sim-lesson-answer').textContent(),/angular spacing|angle|spacing/);
  await lesson.screenshot({path:resolve(shotsDir,'pulse-lesson.png')});
  await lesson.getByRole('button',{name:'Open model + program',exact:true}).click();
- await page.waitForFunction(()=>window.__bwSimLab.status==='ready'&&window.__bwSimLab._pane.state.modelFile==='pulse-percussion.ldr');
+ await page.waitForFunction(()=>window.__bwSimLab.status==='ready'&&window.__bwSimLab._pane.state.modelFile==='pulse-percussion.ldr').catch(async error=>{
+  console.error('Lesson model readiness failure',await page.evaluate(()=>{const p=window.__bwSimLab._pane;return{model:p.state.modelFile,status:p.state.status,programLoading:p.state.programLoading,message:p.state.message,info:p.state.info,target:!!p.props.vm.editingTarget,threads:p.props.vm.runtime.threads.length};}));
+  throw error;
+ });
  await page.getByTestId('bw-sim-lab-run').click();
  await page.waitForFunction(()=>window.__bwSimLab._pane.session.time>2500);
  assert.equal(await lesson.isVisible(),true,'lesson stays readable while the actual worker runs');

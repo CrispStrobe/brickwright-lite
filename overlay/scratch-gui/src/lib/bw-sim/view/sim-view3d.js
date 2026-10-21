@@ -23,6 +23,7 @@ import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js'
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
 import {modelMeshBounds, cameraFollowBody} from './model-bounds.js';
 import {createDrawingPreview} from './drawing-preview.js';
+import {createGpuFrameQueue} from './gpu-frame-queue.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -362,9 +363,11 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
      * @param {object} [snapshot] the physics snapshot
      * @param {{force?: boolean}} [options] force: draw even when nothing changed (frame timing)
      */
+    const gpuFrames = createGpuFrameQueue(renderer.getContext());
     const render = (snapshot, {force = false} = {}) => {
         resize();
         if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
+        if (!force && gpuFrames.busy()) { dirty = true; return; }
         dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
         if (snapshot && chainMotion) chainMotion.update();
@@ -389,9 +392,11 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         const size = renderer.getSize(new Vector2());
         insight.update(camera, size.x, size.y);
         renderer.render(built.scene, camera);
+        gpuFrames.submitted();
     };
 
     const dispose = () => {
+        gpuFrames.dispose();
         insight.dispose();
         if (simBelts) simBelts.dispose();
         if (drawingPreview) drawingPreview.dispose();

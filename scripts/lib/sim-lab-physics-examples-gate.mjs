@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import {mkdirSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {MODELS} from '../../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {MODEL_LESSONS} from '../../overlay/scratch-gui/src/lib/bw-sim/model/example-catalog.js';
 
 // All changes go through visible controls. Internal hooks only observe worker results.
 export const physicsExamplesInteractions = async (page, {openSimLab, shotsDir, timeout}) => {
@@ -12,7 +14,8 @@ export const physicsExamplesInteractions = async (page, {openSimLab, shotsDir, t
     const gallery = page.getByTestId('bw-sim-examples');
     await open.click();
     await gallery.getByRole('combobox', {name: 'Model size', exact: true}).selectOption('large');
-    assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 14);
+    const expectedLarge=MODELS.map(m=>m.id||m.file).filter(key=>MODEL_LESSONS[key].pieces>50).sort();
+    assert.deepEqual(await gallery.getByTestId('bw-sim-example-card').evaluateAll(es=>es.map(e=>e.dataset.model).sort()), expectedLarge);
     await gallery.getByRole('combobox', {name: 'Physics topic', exact: true}).selectOption('chains');
     assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 1);
     assert.match(await gallery.textContent(), /59 pieces/);

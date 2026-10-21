@@ -42,7 +42,14 @@ export const tool = async (page, id, {tap = false} = {}) => {
     if (!(await button.isVisible())) {
         const more = page.getByTestId('bw-sim-lab-more');
         if (tap) await more.tap(); else await more.click();
-        await button.waitFor({state: 'visible', timeout: 5000});
+        await button.waitFor({state: 'visible', timeout: 5000}).catch(async error => {
+            console.error('Toolbar action unavailable after opening More', id, await page.evaluate(() => ({
+                menu:window.__bwSimLab?._pane.state.menu,mode:window.__bwSimLab?._pane.state.mode,
+                events:window.__bwTapLog?.slice(-16),
+                more:document.querySelector('[data-testid="bw-sim-lab-more"]')?.getAttribute('aria-expanded')
+            })));
+            throw error;
+        });
     }
     if (tap) await button.tap(); else await button.click();
 };
