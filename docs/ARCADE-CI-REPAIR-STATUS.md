@@ -21,18 +21,37 @@ supplier. Restoring main's literal would still be wrong for this candidate.
 The intervening supplier-maintenance commits updated these consumers before
 the later D7 adoption omitted them; this was not a merge-conflict reversion.
 
-Coordinate with the existing
-[x86 acceptance lane](../lanes/2026-10-16-386-gui-hdd-and-forward-debug-hosted-acceptance.md)
-before changing its shared scripts. A serialized source-maintenance candidate
-would update only the fixed expectations in
+The operator authorized taking over this narrow maintenance. The
+[new claim](../lanes/2026-10-21-x86-d7-gui-consumer-source-maintenance.md)
+landed in PR [#1193](https://github.com/CrispStrobe/brickwright-lite/pull/1193),
+preserving the earlier acceptance lane and receipts. The source candidate
+updates only the fixed expectations in
 [the runner](../scripts/run-i80386-hdd-gui-actual.py) and
-[the independent reader](../scripts/read-i80386-hdd-gui-originals.py), preserve
-disabled actual execution and every admission join, and run the complete
-[67-control source module](../test/i80386-hdd-gui-actual.test.mjs).
+[the independent reader](../scripts/read-i80386-hdd-gui-originals.py), preserves
+disabled actual execution and every admission join, and requires the complete
+[unchanged source-control module](../test/i80386-hdd-gui-actual.test.mjs).
 That source consistency is not guest qualification. Fresh affected D7
 GUI/guest admission, including the unresolved tool-provenance boundary,
 remains mandatory; old requests, originals and source-bound receipts are not
-restamped or replayed. No owner handoff or guest closure is inferred here.
+restamped or replayed. The ownership handoff authorizes source work; affected
+guest qualification remains pending.
+
+### Readiness analysis and overlapping power work
+
+The complete eight-module readiness group has 18 passes and five failures;
+all earlier 15 controls pass. The new failures expose incorrect assumptions
+about the parser's string and Boolean literal representation and two tests
+that conflate missing proof authority with an explicit refusal result. Correct
+the analysis against the actual parser schema, preserve the original controls,
+and qualify the complete group again. No corpus count changes follow from
+these focused tests.
+
+The school delivery owner has taken over the narrow
+[SPIKE power adoption](../lanes/2026-10-21-school-spike-power-takeover.md).
+Preserve the earlier candidate and its original results; reconcile its source
+with that owner's landed implementation before publishing this integration.
+The complete eight-group virtual motor test still needs qualification against
+the declared Jolt provider. An older installed provider cannot substitute for it.
 
 ## Latest complete hosted observation — 2026-10-21
 
