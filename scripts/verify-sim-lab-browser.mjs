@@ -114,10 +114,15 @@
 //      N shows its hinge and ] turns it 15° with the arm hanging off it (one undo step); N steps to
 //      the other hinge and back; the properties panel's +15°; a turn into a part is refused; a loose
 //      part has no hinge.
+//  27. pen and paper (scripts/lib/sim-lab-pen-gate.mjs, --part=ui): the driving base's castor ball marked as a
+//      pen draws its track on the floor as the robot drives; Reset cleans the floor.
+//  26. the coach marks (scripts/lib/sim-lab-coach-gate.mjs, --part=editor): the first Build shows the tips card,
+//      Next steps through, the last puts it away for good; "Show the tips again" in the shortcut sheet.
 //  25. chains and treads (scripts/lib/sim-lab-chain-gate.mjs, --part=editor): an 8T and a 24T selected,
 //      the properties panel's button lays a closed chain of links in one undo step; Simulate couples
 //      the gears by it; two gears too close for a chain are refused; round two sprockets it lays a
-//      tread, and each sprocket becomes a wheel of the tread's outer radius.
+//      tread, and each sprocket becomes a wheel of the tread's outer radius; then rubber bands,
+//      a rope on a winch, and hoses from a pneumatic valve to a cylinder (steps 5-7).
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -137,6 +142,7 @@ import assert from 'node:assert/strict';
 import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
 import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
+import {mixerInteractions} from './lib/sim-lab-mixer-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
@@ -146,6 +152,8 @@ import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
 import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
 import {hingeInteractions} from './lib/sim-lab-hinge-gate.mjs';
 import {chainInteractions} from './lib/sim-lab-chain-gate.mjs';
+import {coachInteractions} from './lib/sim-lab-coach-gate.mjs';
+import {penInteractions} from './lib/sim-lab-pen-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
@@ -245,7 +253,7 @@ const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.
  * `via: 'arena'` takes the SPIKE arena's "Open in Robot Lab" (the arena in the right pane). `stage`
  * keeps the right pane (stage, arena) open beside the editor, so the Lab gets only part of the width.
  */
-const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM, via = 'tab', stage = via === 'arena'} = {}) => {
+const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM, via = 'tab', stage = via === 'arena', query = ''} = {}) => {
     if (CPU_THROTTLE > 1) {
         const cdp = await page.context().newCDPSession(page);
         await cdp.send('Emulation.setCPUThrottlingRate', {rate: CPU_THROTTLE});
@@ -266,7 +274,7 @@ const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGR
     // Camera moves the program makes ease over 300 ms (docs/ROBOT-LAB-UX.md §3.7); these checks read the camera
     // right after a view button, so they run with reduced motion (a jump). The connect checks test the easing.
     await page.emulateMedia({reducedMotion: 'reduce'});
-    await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+    await page.goto(query ? `${url}${url.includes('?') ? '&' : '?'}${query}` : url, {waitUntil: 'domcontentloaded', timeout: 90000});
     // The Code tab ("Skripte" on a German page).
     await page.getByRole('tab', {name: /^(Code|Skripte)$/}).click();
     await page.getByTestId('bw-device-select').waitFor({timeout: 60000});
@@ -757,6 +765,51 @@ try {
         await fl.close();
         }
 
+        if (runExample('pneumatic-press.ldr')) {
+        // 8d. The Pneumatic cylinder (docs/ROBOT-LAB-UX.md §16): choose it, load its example and Run.
+        // Motor A turns the valve's lever one way (the rod comes out its 48 mm stroke), the other way
+        // (back in), twice; the three hoses are drawn and follow the cylinder; the tank's air falls
+        // in the readout (physics/air.js, through the worker).
+        const pn = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+        pn.on('pageerror', error => errors.push(error.message));
+        pn.on('dialog', dialog => dialog.accept());
+        await openSimLab(pn, {program: null});
+        await pn.getByTestId('bw-sim-lab-model').selectOption('pneumatic-press.ldr');
+        await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'pneumatic-press.ldr' &&
+            window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await pn.getByRole('button', {name: 'Load example program'}).click();
+        await pn.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+            null, {timeout: 60000});
+        await pn.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session, null, {timeout: 60000});
+        await pn.evaluate(() => {
+            const s = window.__bwSimLab._pane.session;
+            const rod = s.mechanism.bodies.find(b => b.parts.includes('rod')).id;
+            const rec = window.__bwPneu = {start: s.time, y0: s.core.bodyPose(rod).position[1], max: 0, last: 0, worker: s.worker,
+                couplings: s.mechanism.couplings.filter(c => c.kind === 'pneumatic').length};
+            s.onAdvance(() => {
+                const dy = s.core.bodyPose(rod).position[1] - rec.y0;
+                rec.max = Math.max(rec.max, dy);
+                rec.last = dy;
+            });
+        });
+        await pn.getByTestId('bw-sim-lab-run').click();
+        await pn.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwPneu.start > 2500, null, {timeout: wallBudget(2500)});
+        await pn.screenshot({path: resolve(artifacts, 'sim-lab-pneumatic.png'), fullPage: true});
+        await pn.waitForFunction(() => window.__bwSimLab._pane.session.time - window.__bwPneu.start > 12500, null, {timeout: wallBudget(12500)});
+        const air = await pn.evaluate(() => ({...window.__bwPneu, hoses: window.__bwSimLab._pane.view.hoseCount(),
+            readout: document.querySelector('[data-testid="bw-sim-lab-readout"]').textContent}));
+        const kpa = Number((/Air (\d+) kPa/.exec(air.readout) || [])[1]);
+        assert.equal(air.worker, true, 'the cylinder ran its physics in the worker');
+        assert.equal(air.couplings, 1, `the valve feeds the cylinder: ${JSON.stringify(air)}`);
+        assert.equal(air.hoses, 3, `the three hoses are drawn: ${JSON.stringify(air)}`);
+        assert.ok(kpa > 50 && kpa < 80, `the readout shows the tank half empty after four strokes: ${air.readout}`);
+        assert.ok(Math.abs(air.max - 0.048) <= 0.002, `the rod rose ${air.max} m, not 48 mm: ${JSON.stringify(air)}`);
+        assert.ok(Math.abs(air.last) <= 0.002, `the rod ended ${air.last} m out: ${JSON.stringify(air)}`);
+        console.log(`PASS the Pneumatic cylinder's example program turns the valve's lever: the rod comes out ${(air.max * 1000).toFixed(1)} mm ` +
+            `and goes back in (${(air.last * 1000).toFixed(1)} mm), twice; ${air.hoses} hoses drawn; the readout says "Air ${kpa} kPa" (from 150)`);
+        await pn.close();
+        }
+
         if (runExample('timed-drive.ldr')) {
         // 8c. Program time IS simulated time (one clock, docs/SIM-LAB-PLAN.md §4.9): `wait 5 seconds`,
         // `start moving`, `wait 2 seconds`, `stop movement` on the driving base. The drive must last
@@ -909,6 +962,15 @@ try {
         await instructionsInteractions(manual, {shotsDir: artifacts});
         await manual.close();
 
+        // 10b. The motor mixer: every motor by hand, not only the drive pair (scripts/lib/sim-lab-mixer-gate.mjs).
+        const mixer = await browser.newPage({viewport: {width: 1400, height: 950}, serviceWorkers: 'block'});
+        mixer.on('pageerror', error => errors.push(error.message));
+        await openSimLab(mixer, {program: null});
+        const mx = await mixerInteractions(mixer, {shotsDir: artifacts});
+        console.log(`PASS the motor mixer unfolds a slider per motor of the Forklift (${mx.ports.join(', ')}); motor C's slider clicked to about 60 % ` +
+            `lifts the forks (${mx.lifted.toFixed(0)}° in 0.3 s), its ■ stops it, Stop all stops every motor, and the fold is remembered`);
+        await mixer.close();
+
         const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
         fallback.on('pageerror', error => errors.push(error.message));
         const forced = await openSimLab(fallback, {noWebgl: true});
@@ -936,8 +998,17 @@ try {
         await openSimLab(ch, {program: null});
         const c = await challengesInteractions(ch, {shotsDir: artifacts});
         console.log(`PASS challenges: "Stop at the wall" won by the Wall stopper's program (${c.wallStars} stars, ${c.wallGapCm} cm left) and kept as ` +
-            `the best; "Stay in the ring" moves the robot to the sumo mat, where driving straight on leaves the ring after ${c.sumoLostAtS.toFixed(1)} s`);
+            `the best; "Stay in the ring" moves the robot to the sumo mat, where driving straight on leaves the ring after ${c.sumoLostAtS.toFixed(1)} s; ` +
+            `the Drawing robot's program draws a square for "Draw a square" (${c.squareStars} stars, ${c.squareOff} % off)`);
         await ch.close();
+        // 27. Pen and paper (scripts/lib/sim-lab-pen-gate.mjs): the castor ball draws the driving base's track.
+        const penPage = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        penPage.on('pageerror', error => errors.push(error.message));
+        penPage.on('dialog', dialog => dialog.accept());
+        await openSimLab(penPage, {program: null});
+        const pn = await penInteractions(penPage, {shotsDir: artifacts});
+        console.log(`PASS pen: the castor ball marked "Draws on the floor" draws the driving base's track (${pn.cm} cm, ending at the ball); Reset cleans the floor`);
+        await penPage.close();
     }
 
     if (want('tablet')) { // a 1024×768 touch page, real fingers only
@@ -1000,8 +1071,16 @@ try {
         await openSimLab(hingePage, {program: null});
         const hg = await hingeInteractions(hingePage, {shotsDir: artifacts});
         console.log(`PASS hinge: N shows an arm's hinge (1 of ${hg.hinges}: its pin's line), ] turns the arm and what hangs off it 15° in one undo step, ` +
-            'N steps to the other hinge and back, the panel\'s +15°, a turn into a beam refused, a loose beam has none');
+            `N steps to the other hinge and back, the panel's +15°, a turn into a beam refused, a loose beam has none; Ctrl+drag glides an axle ${hg.glideLdu} LDU up its hole`);
         await hingePage.close();
+        // 26. The coach marks (scripts/lib/sim-lab-coach-gate.mjs): an automated browser gets them only on ?bwCoach=1.
+        const coachPage = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
+        coachPage.on('pageerror', error => errors.push(error.message));
+        await openSimLab(coachPage, {program: null, query: 'bwCoach=1'});
+        const co = await coachInteractions(coachPage, {shotsDir: artifacts});
+        console.log(`PASS coach: the first Build shows ${co.tips} tips one after the other; put away, they stay away (Build again: none); ` +
+            '"Show the tips again" in the shortcut sheet brings them back, Got it puts them away');
+        await coachPage.close();
         // 25. Chain round gears (scripts/lib/sim-lab-chain-gate.mjs).
         const chainPage = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});
         chainPage.on('pageerror', error => errors.push(error.message));
@@ -1011,7 +1090,8 @@ try {
         console.log(`PASS chain: "Chain or tread round" lays ${ch.links} links round an 8T and a 24T in one undo step; Simulate couples them by the chain ` +
             `(ratio ${ch.ratio.toFixed(4)}, the same way round); gears too close are refused; a tread of ${ch.treadLinks} links round two sprockets ` +
             `couples them 1:1 and makes each a wheel of its outer radius; "Rubber band round" puts a ${ch.band} band round 8T and 24T that drives it, ` +
-            'taken off and put back with Ctrl+Z');
+            'taken off and put back with Ctrl+Z; "Tie a rope" ties a winch drum to a hook, a \'rope\' on the drum\'s hinge in Simulate; ' +
+            `"Connect a hose" twice hoses both valve outlets to a cylinder (${ch.hoses.join(', ')}), a 'pneumatic' coupling in Simulate`);
         await chainPage.close();
         // 21. Parts from the whole LDraw catalogue (scripts/lib/sim-lab-catalogue-gate.mjs, docs/ROBOT-LAB-ARCHITECTURE.md §5.4.1).
         const cat = await browser.newPage({viewport: {width: 1280, height: 800}, serviceWorkers: 'block'});

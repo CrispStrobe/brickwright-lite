@@ -164,7 +164,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - The pivot is the 3D point under the pointer. Without one, it is the selection centre; without a selection, the model centre.
   - The camera and its target turn together about the pivot, so nothing jumps. A dot marks the pivot during the drag.
 - **Mouse:** left-drag on empty space or middle-drag orbits, right-drag pans, the wheel zooms to the cursor. These are kept as they are.
-  - P3: an "LDD/Studio" preset where right-drag orbits.
+  - P3, built (§14): an "LDD/Studio" preset where right-drag orbits and middle-drag pans.
 - **Trackpad:**
   - A pinch (`ctrlKey` wheel) zooms to the cursor.
   - A two-finger scroll orbits; Shift+scroll pans.
@@ -218,7 +218,7 @@ This is cursor-driven. A new pure export, `snapAtPointer(model, catalog, held, r
   - ✅ Select connected (Ctrl+click, and a button in the properties panel's Group section);
   - ◐ the touch offset and button cluster (the 60 px lift applies to a part from the palette, not to dragging a placed part: §7);
   - ✅ keyboard-only placement with aria-live.
-- **P3:** ☐ the mouse preset, ☐ coach marks, ☐ Ctrl-glide for axles in holes, ✅ a Studio-style hinge tool (§10), ◐ flexible parts (chains and treads: §11; rubber bands: §12; cables to come).
+- **P3:** ✅ the mouse preset (§14), ✅ coach marks (§14), ✅ Ctrl-glide for pins and axles in holes (§14), ✅ a Studio-style hinge tool (§10), ✅ flexible parts (chains and treads: §11; rubber bands: §12; cables: §13).
 
 ## 5. Browser-gate acceptance tests
 
@@ -315,8 +315,10 @@ The starting values from §6 were kept: every gate reading lies well inside them
 
 - One per mat (`lib/bw-sim/world/challenges.js`): **One lap** (line oval), **Stop at the wall**,
   **Stay in the ring** (sumo, 30 s), **Through the maze** (to the green cell), **Four corners**
-  (colour zones). Plain and Warehouse have none yet.
-- A judge sees only what someone watching the mat would: the robot's outline on the floor (its
+  (colour zones), **Draw a square** (plain: a part marked "Draws on the floor" draws it; judged
+  once the robot has stopped, the stars for its two sides alike and its end on its start; the
+  Drawing robot's program earns 2). Warehouse has none yet.
+- A judge sees only what someone watching the mat would: what the pens drew, the robot's outline on the floor (its
   parts' collider corners, `partOutline` in the Robot Lab API), which mat obstacles it touches,
   and the simulated time. So it works for every hub, firmware and language.
 - Stars are for how well: a time, the gap to the wall, how far parts went past the ring. The
@@ -360,9 +362,10 @@ The starting values from §6 were kept: every gate reading lies well inside them
   go into another part.
 - Simulate (`lib/bw-sim/kinds/chain.js`, architecture M6): links join where a pivot of one is on a
   pivot of the next; a chain goes round a gear when two of its pivots are on the gear's pitch
-  circle. Gears on hinges in one frame then turn the same way at the teeth's ratio (the fork's
-  `GearConstraint` on the two hinges; a step-up is built the other way round, as |mRatio| < 1
-  diverges). The links are welded to the frame: in the core they do not move, but the view runs
+  circle. Gears on hinges in one frame then turn the same way at the teeth's ratio (the core couples
+  them as a gear mesh, the tooth contact outside the two sprockets on their line of centres; two
+  equal sprockets, whose contact would be at infinity, get the fork's `GearConstraint` on both
+  hinges, exact at 1:1 — it was measured 27 % off at 16:24, so it is used for nothing else). The links are welded to the frame: in the core they do not move, but the view runs
   them round with their first sprocket (`view/chain-motion.js`: each link slides along the loop of
   the links' places by the chain's travel).
   So a chain in a Studio or LDraw file works as well: the detector reads the links, not a record
@@ -377,8 +380,11 @@ The starting values from §6 were kept: every gate reading lies well inside them
   bore as a pin hole, so it could only be an idler.
 - Warnings: a chain round fewer than two gears; gears whose axles sit in different parts; a gear
   fixed to the frame locks the chain.
-- Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3,
-  two 8Ts 1:1, links running round, a tread's wheels, a tracked frame driving);
+- Example models: **Chain drive** (the motor's 16T and a 24T, its program turns it both ways) and
+  **Drawing robot** (the driving base, its castor ball a pen; its program draws a square), in the
+  model list (`sim-session.js` MODELS; `test/bw-sim-gearbox-program.test.mjs` runs both programs).
+- Tests: `test/bw-sim-chain.test.mjs` (the path, the compile, the real core: 8T→24T turns +1/3, a
+  16T +1/2, two 8Ts 1:1, links running round, a tread's wheels, a tracked frame driving);
   `test/bw-sim-part-meta.test.mjs` (the sprocket's teeth from the mesh, its pivot chord the tread's
   pitch); gate `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
 
@@ -407,3 +413,96 @@ The starting values from §6 were kept: every gate reading lies well inside them
 - Tests: `test/bw-sim-belt.test.mjs` (circles, band choice and refusals, the model and LDraw, the
   band drive at 1/3 and the spring pulling an arm in the real core); gate step 5 of
   `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+
+## 13. Cables (2026-10-20)
+
+- With the port labels ("Show ports", on by default), Build and Simulate draw a dark cable from each
+  plugged-in motor and sensor to the hub its port belongs to: the hub it names (models with several
+  hubs), else the model's first hub (`mech/insight.js` `portItems` → `hub`; `view/insight-layer.js`).
+- It is a diagram, not a part: it arches over the model from part centre to part centre (so it shows
+  between parts that touch), because the parts carry no
+  socket positions, so it says WHICH hub a device is on, not where its plug is. It does not collide,
+  weigh or pull.
+- Gate: the insight gate (`--part=ui`) checks a cable per motor of the driving base, none while
+  "Show ports" is off, and the same two in Build; `test/bw-sim-model-insight.test.mjs` the hub
+  each port item names.
+
+## 14. Studio mouse, coach marks, Ctrl-glide (2026-10-20)
+
+- **Mouse buttons** (the shortcut sheet, kept on this device): *Brickwright* (left or middle drag turns
+  the view, right drag slides it) or *like Studio and LDD* (right drag turns it about the point under
+  the pointer, middle drag slides it), in Build and Simulate (`view/camera-nav.js` `MOUSE_PRESETS`).
+  In both, a right click without a drag puts down the part in hand (it was described here before
+  but not built).
+- **Coach marks**: the first time Build opens on a device, a small card in the corner of the view
+  shows three tips one after the other (the parts list, holes first, turning and `?`). It is not a
+  dialog; Got it puts it away for good (`localStorage` `bw-sim-lab-coach-done`, read in try/catch),
+  the shortcut sheet's *Show the tips again* brings it back. An automated browser
+  (`navigator.webdriver`) gets it only on `?bwCoach=1`, so it never covers what a gate clicks.
+- **Ctrl-glide**: Ctrl+drag on a pin or an axle in its holes slides it along them, following the
+  pointer (0.1 LDU), one undo step; it stops where it would come out of its last hole, and a pose
+  into another part is refused when let go. Ctrl+click still selects what is connected; neither
+  moves the camera any more (OrbitControls pans on Ctrl+drag).
+- Gates (`--part=editor`): the connect gate's T11b (right drag orbits about the point, middle drag
+  slides, a right click puts the part down), `scripts/lib/sim-lab-coach-gate.mjs`, the hinge gate's
+  step 6 (an axle glides up its hole); `test/bw-sim-camera-nav.test.mjs` the presets.
+
+## 15. Ropes and winches (2026-10-20)
+
+- **Tie a rope** in the properties panel: select the drum first (something round on an axle: a bush,
+  a pulley, a wheel), then any parts it runs over (sheaves), then the hook last. The rope runs from
+  the drum's centre over the sheaves' centres to the top of the hook, taut as they stand, in one undo
+  step (`lib/bw-sim/editor/rope-path.js`); **Untie rope** takes it off. It is the model's `ropes`
+  record (`0 !BW ROPE <id> <length> <drum> <sheave…> <hook>` in LDraw: LDraw's strings are fixed
+  shapes), drawn as a thin tube (`view/rope-layer.js`), and it goes with a part it is tied to.
+- Simulate (`kinds/rope.js`, `physics/rope.js`, architecture M10's v1 approximation): the last segment
+  is a distance constraint (slack allowed, never longer than the free rope); before each step the
+  free length is the rope's length less what the drum has wound (r·θ, + winds in) and less the other
+  segments where the bodies are now, so a luffing boom pays rope out or in. The tension turns back on
+  the drum (T·r against winding), so its motor feels the load and a free drum is turned by the
+  weight. A part hung on a rope is not a loose part.
+- Tests: `test/bw-sim-rope.test.mjs` (tied taut, LDraw, undo; in the real core a held drum holds the
+  hook, ±6 rad/s winds it up or down by r·Δθ, a free drum pays out under the weight); gate step 6 of
+  `scripts/lib/sim-lab-chain-gate.mjs` (`--part=editor`).
+
+## 16. Pneumatics v1 (2026-10-20)
+
+- Parts: the 1 x 11 cylinder (body u9145c01 with its rod 21828c01, a 120 LDU stroke) and the valve
+  with axle hole (19474-f1). The valve's lever turns on an axle put through its pivot; its angle
+  from where the model has it is the valve's state: past +15° air goes to outlet A, past −15° to B,
+  in between the valve is shut.
+- **Connect a hose** in the properties panel (two parts selected): a hose from the nearest free valve
+  outlet to the nearest free cylinder port (`lib/bw-sim/editor/hose-path.js`), in one undo step;
+  **Remove hose** takes off the selection's hoses. It is the model's `hoses` record
+  (`0 !BW HOSE <id> <part> <port> <part> <port>` in LDraw: LDraw's tubes are fixed shapes), drawn
+  as a blue tube that sags between the nozzles and follows them in Simulate (`view/hose-layer.js`),
+  and it goes with either of its parts.
+- Simulate (`kinds/pneumatic.js`, `physics/jolt-core.js` `pneumaticDrives`, architecture M12's v1):
+  the cylinder is a slider narrowed to its stroke. Before each step the valve's hinge angle picks
+  the way: towards the port the open outlet feeds the rod moves at 6 cm/s with at most p·A
+  (150 kPa on a 10 mm bore, about 12 N); a shut valve holds it. A program cannot drive the cylinder
+  itself; it turns the valve's lever with a motor, as a real motorised valve does.
+- Air (v2, `physics/air.js`): the ports a valve's supply reaches through hoses, T-pieces (4697b, drawn
+  only, riding on the part their first hose goes to) and air tanks (75974, 37 cm³) are one network with
+  an amount of air n = p·V; a tank starts pumped up to 150 kPa. A cylinder fed from it pushes with the
+  network's p·A, not the ideal supply's, and each stroke takes (p + p_atm)·A·L of air, so the tank empties
+  stroke by stroke (150 → 126 → 105 kPa … for the 1 x 11 cylinder on one tank) until the rod stops.
+  A valve whose supply has no hose is still fed ideally (v1).
+- A pump (2943bc01 body, 2944c02 piston: a sprung slider, 16 mm stroke, 8 mm bore) hosed into a network
+  puts the air it sweeps into it each time it is pushed in (+2.1 kPa a stroke into one tank, up to 250 kPa),
+  and the network's pressure pushes back on the piston. A motor works it with a crank or a cam, gravity
+  with a weight.
+- Simulate's readout shows each network's pressure ("Air 126 kPa").
+- Left out, and said so: the air in a cylinder does not compress (a shut valve holds the rod rigidly,
+  up to 40 N), the outlet the valve does not feed vents freely, and the lever is drawn where the model
+  has it.
+- Example: **Pneumatic cylinder** (`static/sim-lab/models/pneumatic-press.ldr`, `programs/pneumatic-press.bw`):
+  motor A's axle turns the lever of a valve on a beam on top of it; the valve takes its air from a tank on
+  the base, two hoses feed a cylinder pinned to the motor's side; the program turns the lever 40° one way
+  (the rod comes out), 80° back (in), twice, and the readout's air falls from 150 to about 67 kPa.
+- Tests: `test/bw-sim-pneumatic.test.mjs` (hoses through LDraw and undo, the stroke and p·A, the
+  hose tool's port choice; in the real core one way out by 48 mm, the other way back, shut holds;
+  a network of tank, T-piece and supply; a tank emptying as n·exp(−A·L/V) per stroke until the rod stops;
+  a pump stroke adding p_atm·A·L);
+  `test/bw-sim-gearbox-program.test.mjs` runs the example (out 48 mm, back to 0); browser: editor
+  gate step 7 (`--part=editor`), and the example run from the pane (`--part=examples`, 8d).

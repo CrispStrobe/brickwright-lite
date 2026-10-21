@@ -37,6 +37,7 @@ on:
     paths-ignore:
       - 'BLOCKED.md'
       - 'BUILD.md'
+      - 'CI-POINTERS.md'
       - 'CLAUDE.md'
       - 'HANDOFF.md'
       - 'LANES.md'
@@ -44,8 +45,9 @@ on:
       - 'PLAN.md'
       - 'README.md'
       - 'ROADMAP.md'
+      - 'lanes/**'
   pull_request:
-    # The same nine prose files, for the same reason, on pull requests too:
+    # The same prose files (and lane claims), for the same reason, on pull requests too:
     # a PR that changes only these (a LANES claim, a plan) cannot change
     # vendor-pins.json, overlay/** or scripts/**, so this run could only
     # repeat main's verdict while taking a free-tier runner slot. The nightly
@@ -53,6 +55,7 @@ on:
     paths-ignore:
       - 'BLOCKED.md'
       - 'BUILD.md'
+      - 'CI-POINTERS.md'
       - 'CLAUDE.md'
       - 'HANDOFF.md'
       - 'LANES.md'
@@ -60,6 +63,7 @@ on:
       - 'PLAN.md'
       - 'README.md'
       - 'ROADMAP.md'
+      - 'lanes/**'
   schedule:
     - cron: '17 4 * * *'
   workflow_dispatch:

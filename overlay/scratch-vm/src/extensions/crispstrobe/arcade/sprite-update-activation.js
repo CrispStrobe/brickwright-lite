@@ -7,9 +7,12 @@ function create(ext) {
     // Cancellation is private state: restoring public phase fields cannot
     // revive a receipt across an actual runtime lifecycle event.
     let epoch=0,disposed=false;
-    for(const event of ['PROJECT_START','PROJECT_STOP_ALL'])ext._runtime.on(event,()=>{epoch++;});
-    ext._runtime.on('RUNTIME_DISPOSED',()=>{epoch++;disposed=true;});
-    ext._runtime.on('PROJECT_LOADED',()=>{epoch++;disposed=false;});
+    // Metadata-only construction has no runtime and therefore no lifecycle
+    // events; nothing can activate without one (hasSceneUpdates reads it).
+    const listen=(event,handler)=>{if(typeof ext._runtime?.on==='function')ext._runtime.on(event,handler);};
+    for(const event of ['PROJECT_START','PROJECT_STOP_ALL'])listen(event,()=>{epoch++;});
+    listen('RUNTIME_DISPOSED',()=>{epoch++;disposed=true;});
+    listen('PROJECT_LOADED',()=>{epoch++;disposed=false;});
     function handles(sprite) {
         if(!sprite || !owners.has(sprite))return false;
         try{return ext._objectHeap.definition(ext._objectHeap.inspect(sprite.id).className).intrinsic==='ExtendableSprite';}

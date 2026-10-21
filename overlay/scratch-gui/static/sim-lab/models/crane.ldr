@@ -1,0 +1,96 @@
+0 Crane (Brickwright Robot Lab reference model)
+0 Name: crane.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // A slewing crane on a SPIKE Prime hub: motor A turns the turntable (8 teeth into 28), motor B luffs the boom
+0 // with a small linear actuator. The hook hangs from the boom tip. scripts/gen-crane-model.mjs writes this file.
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID ttBottom
+1 72 0 -110 120 1 0 0 0 1 0 0 0 1 99009.dat
+0 !BW ID ttMountR
+1 71 40 -90 100 0 -1 0 1 0 0 0 0 1 42003.dat
+0 !BW ID ttMountPinR
+1 0 20 -90 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID ttMountAxlePinR
+1 0 60 -80 100 0 0 -1 -1 0 0 0 1 0 43093.dat
+0 !BW ID ttMountL
+1 71 -40 -90 100 0 1 0 1 0 0 0 0 -1 42003.dat
+0 !BW ID ttMountPinL
+1 0 -20 -90 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID ttMountAxlePinL
+1 0 -60 -80 100 0 0 -1 -1 0 0 0 1 0 43093.dat
+0 !BW ID ttTop
+1 72 0 -110 120 1 0 0 0 1 0 0 0 1 99010.dat
+0 !BW ID slewMotor
+0 !BW PORT A
+1 71 20 -30 160 0 0 -1 0 1 0 1 0 0 54696p01.dat
+0 !BW ID slewPinHi
+1 0 40 -50 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slewPinLo
+1 0 40 -10 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slewAxle
+1 0 20 -90 160 0 0 1 1 0 0 0 1 0 4519.dat
+0 !BW ID slewPinion
+1 71 20 -110 160 0 1 0 0 0 1 1 0 0 3647.dat
+0 !BW ID frameFront
+1 72 0 -130 100 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID frameBack
+1 72 0 -130 140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID framePinR
+1 0 20 -130 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID framePinL
+1 0 -20 -130 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID postMountR
+1 71 60 -130 60 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID postMountPinR
+1 0 60 -130 80 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID postR
+1 72 80 -190 60 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID postMountL
+1 71 -60 -130 60 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID postMountPinL
+1 0 -60 -130 80 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID postL
+1 71 -80 -190 60 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID boom
+1 72 50 -320 -61.2436 0 1 0 0.866 0 -0.5 -0.5 0 -0.866 32278.dat
+0 !BW ID boomPivot
+1 0 0 -250 60 1 0 0 0 1 0 0 0 1 60485.dat
+0 !BW ID luffLaBody
+1 25 0 -150 60 1 0 0 0 -0.3712 -0.9286 0 0.9286 -0.3712 92693c01.dat
+0 !BW ID luffLaSpindle
+1 25 0 -177.8571 48.8654 1 0 0 0 -0.3712 -0.9286 0 0.9286 -0.3712 92695.dat
+0 !BW ID luffLaPiston
+1 72 0 -280 8.0385 1 0 0 0 -0.3712 -0.9286 0 0.9286 -0.3712 92696.dat
+0 !BW ID luffLaStubGear
+1 0 0 -163.9286 54.4327 0 1 0 0.3712 0 -0.9286 -0.9286 0 -0.3712 6589.dat
+0 !BW ID luffLaAxleGear
+1 0 15 -150 60 0 0 -1 0 1 0 1 0 0 6589.dat
+0 !BW ID luffLaAxle
+1 0 80 -150 60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID luffLaEye
+1 0 20 -280 8.0385 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID luffMotor
+0 !BW PORT B
+1 71 120 -190 60 0 -1 0 1 0 0 0 0 1 54696p01.dat
+0 !BW ID luffMotorPinA
+1 0 90 -210 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID luffMotorPinB
+1 0 90 -170 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID luffMotorAxle
+1 0 171 -190 60 1 0 0 0 1 0 0 0 1 32062.dat
+0 !BW ID luffMotorGear
+1 71 180 -190 60 0 0 1 1 0 0 0 1 0 94925.dat
+0 !BW ID luffLaGear16
+1 71 180 -150 60 0 0 1 0 1 0 -1 0 0 94925.dat
+0 !BW ID hookPin
+1 0 40 -390 -182.4871 1 0 0 0 1 0 0 0 1 3673.dat
+0 !BW ID hookLink
+1 71 30 -350 -182.4871 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID loadPin60
+1 0 20 -330 -182.4871 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID loadPin80
+1 0 20 -310 -182.4871 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID load
+1 4 10 -310 -192.4871 0 0 1 1 0 0 0 1 0 3701.dat

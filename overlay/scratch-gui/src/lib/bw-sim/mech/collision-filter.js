@@ -7,6 +7,7 @@
 // GroupFilterTable (body pairs) and, for the pairs filtered part by part, a SimShapeFilter.
 
 import {lduToWorld, dirToWorld} from '../contracts.js';
+import {vecCross} from './vec.js';
 
 /**
  * The connector axes of the graph: every connector endpoint joined to another by an edge (a pin in
@@ -204,6 +205,42 @@ const nested = (bA, cA, bB, cB) => cA.some(x => cB.some(y => {
     });
 }));
 
+/** A body's colliders by part (cached per body object). */
+const byPartCache = new WeakMap();
+const collidersByPart = body => {
+    if (!byPartCache.has(body)) {
+        const m = new Map();
+        for (const c of body.colliders) {
+            if (!m.has(c.part)) m.set(c.part, []);
+            m.get(c.part).push(c);
+        }
+        byPartCache.set(body, m);
+    }
+    return byPartCache.get(body);
+};
+/** Each part's world bounding box [lo, hi] (from the oriented boxes obbOf makes; cached per body object). */
+const boxCache = new WeakMap();
+const partBoxes = body => {
+    if (!boxCache.has(body)) {
+        const m = new Map();
+        for (const [part, cols] of collidersByPart(body)) {
+            const lo = [Infinity, Infinity, Infinity];
+            const hi = [-Infinity, -Infinity, -Infinity];
+            for (const c of cols) {
+                const o = obbOf(body, c);
+                for (let i = 0; i < 3; i++) {
+                    const r = o.axes.reduce((sum, ax, k) => sum + Math.abs(ax[i]) * o.half[k], 0);
+                    lo[i] = Math.min(lo[i], o.centre[i] - r);
+                    hi[i] = Math.max(hi[i], o.centre[i] + r);
+                }
+            }
+            m.set(part, [lo, hi]);
+        }
+        boxCache.set(body, m);
+    }
+    return boxCache.get(body);
+};
+
 /** Touching counts as apart: faces in contact at zero gap (0.5 LDU = 0.2 mm, the contact slop) never interpenetrate. */
 const APART_M = 0.0002;
 const apart = (x, y) => x[1] <= y[0] + APART_M || y[1] <= x[0] + APART_M;
@@ -321,27 +358,121 @@ export const localNoCollide = (bodies, joints, noCollide, coupled, edges, island
             if (agree) motion = {kind, point, axis: a0};
         }
         // Parts the motion can never bring together: what it keeps fixed separates them.
-        const never = (cx, cy) => {
-            if (!motion) return false;
+        // Each part's bands under the motion, once per body pair (not once per part pair: a 400-body set spent
+        // most of a 40 s compile recomputing them).
+        const perps = motion && motion.kind === 'slider' ? perpendiculars(motion.axis) : null;
+        const bandsOf = (body, cols) => {
+            if (!motion) return null;
             const {kind, point, axis} = motion;
-            if (kind === 'hinge') {
-                return apart(intervalAlong(bA, cx, point, axis), intervalAlong(bB, cy, point, axis)) ||
-                    apart(radialBand(bA, cx, point, axis), radialBand(bB, cy, point, axis));
-            }
-            if (kind === 'slider') return perpendiculars(axis).some(u => apart(intervalAlong(bA, cx, point, u), intervalAlong(bB, cy, point, u)));
-            return apart(pointBand(bA, cx, point), pointBand(bB, cy, point));
+            if (kind === 'hinge') return [intervalAlong(body, cols, point, axis), radialBand(body, cols, point, axis)];
+            if (kind === 'slider') return perps.map(u => intervalAlong(body, cols, point, u));
+            return [pointBand(body, cols, point)];
+        };
+        const colsA = collidersByPart(bA);
+        const colsB = collidersByPart(bB);
+        const boxA = partBoxes(bA);
+        const boxB = partBoxes(bB);
+        const bandsA = new Map(pa.map(x => [x, bandsOf(bA, colsA.get(x))]));
+        const bandsB = new Map(pb.map(y => [y, bandsOf(bB, colsB.get(y))]));
+        // Apart under the motion: a hinge's axial or radial band, any of a slider's two cross directions, a ball's band.
+        const never = (x, y) => {
+            if (!motion) return false;
+            const ba = bandsA.get(x);
+            const bb = bandsB.get(y);
+            if (motion.kind === 'hinge' || motion.kind === 'slider') return ba.some((band, i) => apart(band, bb[i]));
+            return apart(ba[0], bb[0]);
         };
         const excluded = [];
-        let all = true;
+        const included = [];
         for (const x of pa) {
-            const cx = bA.colliders.filter(c => c.part === x);
             for (const y of pb) {
-                const cy = bB.colliders.filter(c => c.part === y);
-                if (seatedHere.has(`${x}\n${y}`) || never(cx, cy) || nested(bA, cx, bB, cy)) excluded.push([x, y]);
-                else all = false;
+                const a = boxA.get(x);
+                const b = boxB.get(y);
+                // Disjoint bounding boxes cannot nest (a separating axis exists): skip the box-by-box test.
+                const overlap = [0, 1, 2].every(i => a[0][i] < b[1][i] && b[0][i] < a[1][i]);
+                if (seatedHere.has(`${x}\n${y}`) || never(x, y) || (overlap && nested(bA, colsA.get(x), bB, colsB.get(y)))) excluded.push([x, y]);
+                else included.push([x, y]);
             }
         }
-        if (!all) out.push([A, B, excluded]);
+        // The shorter list: the pairs kept apart, or (inverted, 'collide') the only ones that may meet.
+        if (included.length) out.push(excluded.length > included.length ? [A, B, included, 'collide'] : [A, B, excluded]);
     }
     return out;
+};
+
+// ---- as built (models from elsewhere) ----------------------------------------------------------------------------
+
+/** How deep two colliders of a real model may overlap as built (m) before they count as nested: Jolt's slop scale. */
+export const AS_BUILT_DEPTH_M = 0.0005;
+
+const quatRotate = ([x, y, z, w], v) => {
+    const ix = w * v[0] + y * v[2] - z * v[1];
+    const iy = w * v[1] + z * v[0] - x * v[2];
+    const iz = w * v[2] + x * v[1] - y * v[0];
+    const iw = -x * v[0] - y * v[1] - z * v[2];
+    return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
+};
+/** A collider as a world oriented box: centre, three unit axes, half extents (a cylinder or sphere by its bounding box). */
+const worldBox = (body, c) => {
+    const he = c.shape === 'box' ? c.halfExtents : c.shape === 'cylinder' ? [c.radius, c.halfHeight, c.radius] : [c.radius, c.radius, c.radius];
+    const q = c.rotation || [0, 0, 0, 1];
+    const centre = quatRotate(body.rotation, c.position || [0, 0, 0]).map((v, i) => v + body.position[i]);
+    const axes = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(a => quatRotate(body.rotation, quatRotate(q, a)));
+    const reach = [0, 1, 2].map(i => axes.reduce((s, a, k) => s + Math.abs(a[i]) * he[k], 0));
+    return {centre, axes, he, lo: centre.map((v, i) => v - reach[i]), hi: centre.map((v, i) => v + reach[i])};
+};
+/** Penetration of two oriented boxes (m, the separating-axis minimum), or 0 when they are apart. */
+const boxDepth = (A, B) => {
+    const t = B.centre.map((v, i) => v - A.centre[i]);
+    const tests = [...A.axes, ...B.axes];
+    for (const a of A.axes) for (const b of B.axes) {
+        const c = vecCross(a, b);
+        const l = Math.hypot(...c);
+        if (l > 1e-6) tests.push(c.map(v => v / l));
+    }
+    let depth = Infinity;
+    for (const L of tests) {
+        const rA = A.axes.reduce((s, a, k) => s + Math.abs(dot(a, L)) * A.he[k], 0);
+        const rB = B.axes.reduce((s, b, k) => s + Math.abs(dot(b, L)) * B.he[k], 0);
+        const d = rA + rB - Math.abs(dot(t, L));
+        if (d <= 0) return 0;
+        depth = Math.min(depth, d);
+    }
+    return depth;
+};
+
+/**
+ * Part pairs of different bodies whose colliders overlap as built by more than AS_BUILT_DEPTH_M and that nothing
+ * keeps from colliding yet. In a model from elsewhere the file is right and the overlap is our coarse collider (a
+ * CV joint's ball in its solid-filled cup, a hub in a wheel's centre: 8–16 mm on the 4x4 Off-Roader, enough to fling
+ * them at 7 m/s on the first step). Those pairs never collide; everything else between the two bodies still does.
+ * @returns {Array<[string, string, Array<[string, string]>]>} [bodyA, bodyA < bodyB, part pairs]
+ */
+export const asBuiltOverlaps = (bodies, noCollide, noCollideParts = []) => {
+    const whole = new Set(noCollide.map(([a, b]) => `${a}|${b}`));
+    const local = new Map(noCollideParts.map(([a, b, parts, mode]) => [`${a}|${b}`, {set: new Set(parts.map(([x, y]) => `${x}\n${y}`)), collide: mode === 'collide'}]));
+    const keptApart = (k, x, y) => { const e = local.get(k); return Boolean(e) && e.set.has(`${x}\n${y}`) !== e.collide; };
+    const boxes = [];
+    for (const b of bodies) {
+        if (b.motion === 'static') continue;
+        for (const c of b.colliders) if (typeof c.part === 'string') boxes.push({body: b.id, part: c.part, ...worldBox(b, c)});
+    }
+    boxes.sort((x, y) => x.lo[0] - y.lo[0]);
+    const found = new Map();
+    for (let i = 0; i < boxes.length; i++) {
+        const A = boxes[i];
+        for (let j = i + 1; j < boxes.length && boxes[j].lo[0] <= A.hi[0]; j++) {
+            const B = boxes[j];
+            if (A.body === B.body) continue;
+            if (A.lo[1] > B.hi[1] || B.lo[1] > A.hi[1] || A.lo[2] > B.hi[2] || B.lo[2] > A.hi[2]) continue;
+            const [x, y] = A.body < B.body ? [A, B] : [B, A];
+            const k = `${x.body}|${y.body}`;
+            if (whole.has(k) && !local.has(k)) continue;
+            if (keptApart(k, x.part, y.part)) continue;
+            if (boxDepth(A, B) <= AS_BUILT_DEPTH_M) continue;
+            if (!found.has(k)) found.set(k, new Set());
+            found.get(k).add(`${x.part}\n${y.part}`);
+        }
+    }
+    return [...found].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([k, set]) => [...k.split('|'), [...set].sort().map(s => s.split('\n'))]);
 };

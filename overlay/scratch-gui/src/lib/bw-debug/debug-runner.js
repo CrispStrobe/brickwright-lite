@@ -1251,12 +1251,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     /** Immediate by default: every existing call is a semantic event. */
     function emit() {
+        // A destroyed runner has been replaced; a status it reaches on the way
+        // out of an attach await (attaching/ready) describes nothing on screen.
+        if (destroyed) return undefined;
         if (replayingDebugHistory) return replayOutputGate.emit(null);
         snapshotEmitter.immediate();
     }
 
     /** Animation-frame progress only; safe to coalesce before snapshot work. */
     function emitLive() {
+        if (destroyed) return undefined;
         if (replayingDebugHistory) return replayOutputGate.emit(null);
         snapshotEmitter.live();
     }

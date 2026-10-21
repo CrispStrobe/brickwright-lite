@@ -24,7 +24,7 @@ const open=async bytes=>{
 };
 const values=vm=>Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 const run=async(vm,expected)=>{vm.stopAll();vm.greenFlag();await stepFrames(vm,3);for(const[k,v]of Object.entries(expected))assert.equal(values(vm)[k],v,k);};
-test('edited resource pixels persist through current Code, same and fresh SB3 and current export', {todo:"animation resource ID/name validation \u2014 see docs/ARCADE-888-OPEN-FAILURES.md"},async()=>{
+test('edited resource pixels persist through current Code, same and fresh SB3 and current export',async()=>{
  const imported=importProjectFiles(files(),{target:'arcade',animationResources:true});assert.deepEqual(imported.unsupported,[]);
  const original=new Creator();original.parse(imported.code);assert.deepEqual(original.warnings,[]);
  const replay=new Creator();replay.parse(original.decompile());assert.deepEqual(replay.warnings,[]);assert.equal(replay.decompile(),original.decompile());

@@ -486,13 +486,14 @@ class MicrobitTranslator extends BaseTranslator {
         case 'Math.map':
             return `map ${this.operand(a[0])} from low ${this.operand(a[1])} high ${this.operand(a[2])} ` +
                 `to low ${this.operand(a[3])} high ${this.operand(a[4])}`;
-        // Math.idiv(a, b) is DEFINED as (a / b) | 0 — truncation toward zero,
-        // which `floor of` is not for a negative quotient. The bitwise-or
-        // with 0 is the definition, so that is what is written, and the
-        // export reads the same shape back as Math.idiv.
+        // Math.idiv(a, b) truncates BOTH operands to signed 32-bit integers,
+        // then the quotient: pxt's simulator is ((x | 0) / (y | 0)) | 0 and the
+        // device shim is C `int idiv(int x, int y)`. So Math.idiv(3.5, 0.5)
+        // is 0 where (3.5 / 0.5) | 0 is 7. That whole shape is written, and
+        // the export reads exactly that shape back as Math.idiv.
         case 'Math.idiv':
             this.usesBitops = true;
-            return `((${this.operand(a[0])} / ${this.operand(a[1])}) bitor 0)`;
+            return `(((${this.operand(a[0])} bitor 0) / (${this.operand(a[1])} bitor 0)) bitor 0)`;
         // A coin toss AS A VALUE: the dialect's truth is the number 1 or 0,
         // so it is `pick random 0 to 1` itself. Not the comparison
         // condition() writes: `set b to (pick random 0 to 1) = 1` does not

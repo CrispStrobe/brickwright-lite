@@ -29,12 +29,23 @@
 // Two counters per port: the TACHO count OUTPUT_READ reports and OUTPUT_RESET clears, and the
 // sensor COUNT OUTPUT_GET_COUNT reports and OUTPUT_CLR_COUNT clears ("the tacho count used as
 // sensor input"). One count per degree: the EV3 motors' encoders (devices/catalog.js).
+//
+// PROGRAMS (docs/EV3-RBF-VM.md): a `.rbf` downloaded with the system commands (ev3-system-commands.js
+// into the file system, ev3-files.js) is loaded with opFILE LOAD_IMAGE and started with
+// opPROGRAM_START in the user slot; it runs in the clean-room VM (routes/ev3-vm/ev3-vm.js) in 1 ms
+// steps on the Lab's clock, on THIS brick: its instructions reach the same methods the direct commands
+// do. When it ends (normally, PROGRAM_STOP, or an error) the brick's UI stops the outputs as LEGO's
+// does (INPUT_DEVICE STOP_ALL → OUTPUT_PRG_STOP: a braked motor stays braked, the others float).
 
 import {EV3_PROFILE, EV3_OUTPUTS, EV3_INPUTS} from './profile.js';
 import {dcMotorFor} from '../../devices/dc-motors.js';
 import {EV3_TYPE, EV3_DEVICE_TYPE, EV3_MODES, EV3_NAMES, ev3SensorSi, ev3SensorPct, ev3SensorRaw, ev3SensorMinMax} from '../../devices/ev3-sensors.js';
 import {freshOutput, readEncoder, driveOpen, drivePassive, driveRegulated, copyOutput} from '../mindstorms-output.js';
 import {OUTPUT_PORT_BASE} from './ev3-direct-commands.js';
+import {Ev3Vm} from '../../routes/ev3-vm/ev3-vm.js';
+import {SLOT, OBJSTAT, RESULT} from '../../routes/ev3-vm/ev3-bytecodes.js';
+import * as files from './ev3-files.js';
+import {serveSystemCommand} from './ev3-system-commands.js';
 
 /**
  * Regulated speed at 100 %, °/s: the motor's no-load speed at 9 V (Philo, devices/catalog.js:
@@ -68,7 +79,7 @@ const freshPort = () => ({
 const freshInput = () => ({type: EV3_TYPE.none, device: null, mode: 0, probe: null, pressed: false, bumps: 0, changes: 0, gyroZeroDeg: 0});
 
 export class Ev3VirtualHub {
-    constructor ({id = 'hub'} = {}) {
+    constructor ({id = 'hub', vm: vmOptions = {}} = {}) {
         this.id = id;
         this.profile = EV3_PROFILE;
         this.s = {
@@ -77,8 +88,13 @@ export class Ev3VirtualHub {
             inputs: EV3_INPUTS.map(freshInput),
             headingDeg: 0, rateDps: 0,
             volume: 100, sleepMinutes: 30, led: 0, toneEndMs: 0,
-            buttons: [0, 0, 0, 0, 0, 0, 0]
+            buttons: [0, 0, 0, 0, 0, 0, 0],
+            fs: files.freshFs(),
+            program: null, lastProgram: null
         };
+        /** The program VM (routes/ev3-vm), or null before the first PROGRAM_START. Options: {vm: {instrPerMs, seed}}. */
+        this.vm = null;
+        this.vmOptions = vmOptions;
         /** port index -> the motor's DC spec */
         this.specs = new Map();
         this.events = [];
@@ -127,8 +143,17 @@ export class Ev3VirtualHub {
 
     advanceTo (tMs) {
         const dtMs = tMs - this.s.timeMs;
+        if (!(dtMs > 0)) {
+            this.s.timeMs = tMs;
+            return;
+        }
+        // A running program first, millisecond by millisecond up to the end of the step (the brick's clock
+        // follows it: atMs); its sensor reads hold the last step's readings.
+        if (this.s.program && this.vm) {
+            this.vm.advanceTo(tMs, this);
+            if (this.vm.status !== 'running') this._programEnded(this.vm.s.ending);
+        }
         this.s.timeMs = tMs;
-        if (!(dtMs > 0)) return;
         this.s.outputs.forEach((port, i) => {
             if (port.type === EV3_TYPE.none) return;
             this._drive(i, port, dtMs);
@@ -172,7 +197,16 @@ export class Ev3VirtualHub {
     }
 
     publish () {
+        this._drainProgram();
         this._changed();
+    }
+
+    /** The program's errors into the brick's log (its tones, writes and drawing are there already). */
+    _drainProgram () {
+        if (!this.vm) return;
+        for (const {kind, t, ...rest} of this.vm.drainEvents()) {
+            if (kind === 'error') this.event('program-error', {...rest, tick: t});
+        }
     }
 
     /** fn(hub) after each published batch and each command. Returns an unsubscribe. */
@@ -188,12 +222,24 @@ export class Ev3VirtualHub {
     exportState () {
         const s = this.s;
         return {...s, outputs: s.outputs.map(p => ({...copyOutput(p), level: {...p.level}, job: p.job ? JSON.parse(JSON.stringify(p.job)) : null})),
-            inputs: s.inputs.map(i => ({...i, probe: i.probe ? {...i.probe} : null})), buttons: [...s.buttons]};
+            inputs: s.inputs.map(i => ({...i, probe: i.probe ? {...i.probe} : null})), buttons: [...s.buttons],
+            fs: JSON.parse(JSON.stringify(s.fs)), program: s.program ? JSON.parse(JSON.stringify(s.program)) : null,
+            lastProgram: s.lastProgram ? JSON.parse(JSON.stringify(s.lastProgram)) : null,
+            // The VM travels while a program runs (a finished one has nothing left to do, and its image may be gone).
+            vm: this.vm && s.program ? this.vm.snapshot() : null};
     }
 
     importState (state) {
-        const copy = JSON.parse(JSON.stringify(state));
+        const {vm, ...rest} = state;
+        const copy = JSON.parse(JSON.stringify(rest));
         this.s = copy;
+        if (!copy.fs) copy.fs = files.freshFs();
+        if (copy.program === undefined) copy.program = null;
+        if (!vm) this.vm = null;
+        else {
+            if (!this.vm) this.vm = new Ev3Vm(this.vmOptions);
+            this.vm.restore(vm, copy.program ? copy.program.image : null);
+        }
         // The worker's mirror is made with {id} only: its motors' DC specs come from the devices.
         copy.outputs.forEach((port, i) => {
             if (port.device && !this.specs.has(i)) this.specs.set(i, dcMotorFor({device: port.device, ids: {}}).motor);
@@ -281,6 +327,9 @@ export class Ev3VirtualHub {
 
     nowMs () { return this.s.timeMs; }
 
+    /** The program VM's millisecond: the brick's clock while the program runs (tone ends, timed cycles). */
+    atMs (t) { this.s.timeMs = t; }
+
     _outputs (layer, nos) {
         return layer === 0 ? portsOfMask(nos) : [];
     }
@@ -295,6 +344,38 @@ export class Ev3VirtualHub {
             const p = this.s.outputs[i];
             p.tachoZero = p.angleDeg;
         }
+    }
+
+    /**
+     * A motor command from the Robot Lab API (hubs/hub-profile.js directCommand): as an EV3 direct command
+     * does it (opOUTPUT_POWER / _SPEED + _START, _STEP_SPEED, _STOP), through this brick's own output calls.
+     * {power} | {speedDps} | {degrees, power|speedDps} (`done` when the move ends) | {position, …} | {stop}.
+     */
+    directCommand (port, c = {}) {
+        const i = EV3_OUTPUTS.indexOf(port);
+        if (i < 0 || this.s.outputs[i].type === EV3_TYPE.none) return {ok: false, code: 'no-motor', message: `no motor on output ${port}`};
+        const finite = v => typeof v === 'number' && Number.isFinite(v);
+        const mask = 1 << i;
+        const p = this.s.outputs[i];
+        if (c.stop !== undefined) {
+            if (!['brake', 'coast', 'hold'].includes(c.stop)) return {ok: false, code: 'bad-command', message: 'stop takes brake, coast, hold'};
+            this.outputStop(0, mask, c.stop !== 'coast');
+            return {ok: true};
+        }
+        const level = finite(c.speedDps) ? {kind: 'speed', value: c.speedDps / this._fullScale(p) * 100} :
+            finite(c.power) ? {kind: 'power', value: c.power} : null;
+        const degrees = finite(c.degrees) ? c.degrees : finite(c.position) ? c.position - p.angleDeg : null;
+        if (!level && degrees === null) return {ok: false, code: 'bad-command', message: 'the EV3 takes power, speedDps, degrees, position or stop'};
+        if (degrees === null) {
+            this.outputSet(0, mask, level.kind, level.value);
+            this.outputStart(0, mask);
+            return {ok: true};
+        }
+        const value = Math.sign(degrees || 1) * Math.abs(level ? level.value : 75);
+        this.outputProfile(0, mask, {regulated: true, unit: 'deg', value, steps: [0, Math.round(Math.abs(degrees)), 0], brake: true});
+        return {ok: true, done: new Promise(resolve => {
+            const off = this.onChange(() => { if (!p.busy) { off(); resolve('done'); } });
+        })};
     }
 
     outputClearCount (layer, nos) {
@@ -557,11 +638,113 @@ export class Ev3VirtualHub {
     versions () {
         return {os: 'Brickwright Robot Lab', hardware: 'V0.60', firmware: 'BW-LAB 1.0', build: 'robotlab', osBuild: 'robotlab'};
     }
+
+    // ---- files and programs (docs/EV3-RBF-VM.md) ---------------------------------------------------------
+
+    /** A system command [CDK §3] on this brick's file system; the reply frame, or null. */
+    systemCommand (frame) {
+        return serveSystemCommand(frame, this.s.fs);
+    }
+
+    /** Puts a file straight into the file system (a host's completed download; tests). Returns a status. */
+    putFile (path, bytes) { return files.putFile(this.s.fs, path, bytes); }
+
+    readFile (path) { return files.readFile(this.s.fs, path); }
+
+    /**
+     * opFILE LOAD_IMAGE: reads a program into the user slot's memory. A name without a folder is looked
+     * for in "ui/", one without an extension gets ".rbf" (the firmware's defaults). The user slot busy, or
+     * a name the brick refuses: null (the outputs keep their values). No such file: size 0, address 0.
+     */
+    loadImage (slot, name) {
+        if (slot !== SLOT.USER || this.s.program) return null;
+        let text = String(name);
+        if (!text.includes('/')) text = `ui/${text}`;
+        if (!/\.[^/.]*$/.test(text)) text += '.rbf';
+        const path = files.resolvePath(text);
+        if (!path) return null;
+        const bytes = this.s.fs.files[path];
+        if (!bytes) return {size: 0, ip: 0};
+        // One loaded image at a time (ours): its "address" is a token PROGRAM_START hands back.
+        const ip = this.s.fs.nextImage++;
+        this.s.fs.images = {[ip]: {path, image: bytes.slice()}};
+        return {size: bytes.length, ip};
+    }
+
+    /**
+     * opPROGRAM_START: runs the image LOAD_IMAGE loaded, in the user slot. Ignored (as on the brick)
+     * when the slot is busy or the address names no image; an image the VM refuses never runs (the
+     * refusal is in `lastProgram` and the events). Before it runs, every output stops and floats and
+     * the polarities return to normal (the firmware's OutputReset and its PWM driver's program start).
+     */
+    programStart (slot, size, ip) {
+        if (slot !== SLOT.USER || this.s.program) return;
+        const loaded = this.s.fs.images[ip];
+        if (!loaded) return;
+        delete this.s.fs.images[ip];
+        if (!this.vm) this.vm = new Ev3Vm(this.vmOptions);
+        const r = this.vm.start(loaded.image, {name: loaded.path, tick: Math.floor(this.s.timeMs)});
+        if (!r.ok) {
+            this.s.lastProgram = {path: loaded.path, how: 'error', error: this.vm.error};
+            this.event('program-refused', {path: loaded.path, status: r.status, detail: r.detail});
+            this._changed();
+            return;
+        }
+        this.s.outputs.forEach(p => {
+            p.job = null;
+            p.busy = false;
+            p.started = false;
+            p.polarity = 1;
+            drivePassive(p, 'coast');
+        });
+        this.s.program = {path: loaded.path, image: loaded.image};
+        this.event('program-start', {path: loaded.path});
+        this._changed();
+    }
+
+    /** opPROGRAM_STOP: USER_SLOT, or GUI_SLOT ("all programs"), stops the running program. */
+    programStop (slot) {
+        if ((slot !== SLOT.USER && slot !== SLOT.GUI) || !this.s.program) return;
+        this.vm.abort();
+        this._programEnded('abort');
+    }
+
+    /** opPROGRAM_INFO GET_STATUS: the user slot's state; the UI and the direct commands' slot always run. */
+    programStatus (slot) {
+        if (slot === SLOT.USER) return this.s.program ? OBJSTAT.RUNNING : OBJSTAT.STOPPED;
+        return slot === SLOT.GUI || slot === SLOT.CMD ? OBJSTAT.RUNNING : OBJSTAT.STOPPED;
+    }
+
+    /** opPROGRAM_INFO GET_PRGRESULT: BUSY while it runs, FAIL after an error, OK otherwise. */
+    programResult (slot) {
+        if (slot !== SLOT.USER) return RESULT.OK;
+        if (this.s.program) return RESULT.BUSY;
+        return this.s.lastProgram && this.s.lastProgram.how === 'error' ? RESULT.FAIL : RESULT.OK;
+    }
+
+    currentProgram () { return this.s.program ? this.s.program.path : null; }
+
+    /** The program is over: the brick's UI stops the outputs (a braked motor stays braked, the others float). */
+    _programEnded (how) {
+        const path = this.s.program ? this.s.program.path : null;
+        this.s.lastProgram = {path, how, error: this.vm ? this.vm.error : null};
+        this.s.program = null;
+        this.s.outputs.forEach(p => {
+            const braked = !p.job && !p.started && p.decay === 'brake';
+            p.job = null;
+            p.busy = false;
+            p.started = false;
+            drivePassive(p, braked ? 'brake' : 'coast');
+        });
+        this._drainProgram();
+        this.event('program-end', {path, how, error: this.vm ? this.vm.error : null});
+        this._changed();
+    }
 }
 
 /** The hub registry's entry for the EV3 (registry/hubs.js). */
 export const ev3Hub = Object.freeze({
     profile: EV3_PROFILE,
-    createVirtualHub: ({id} = {}) => new Ev3VirtualHub({id})
+    createVirtualHub: ({id, vm} = {}) => new Ev3VirtualHub({id, vm})
 });
 

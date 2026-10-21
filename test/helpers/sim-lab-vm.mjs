@@ -108,7 +108,8 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
                 const joints = {};
                 for (const j of mechanism.joints) if (j.type === 'hinge' || j.type === 'slider') joints[j.id] = {...session.core.jointState(j.id)};
                 track.push({t: session.time, axle: carried(axle0), sensor: sensor ? carried(sensor.origin) : null,
-                    reflection: reading.reflection, color: reading.color, points, readings, bodies, joints, busy});
+                    reflection: reading.reflection, color: reading.color, points, readings, bodies, joints, busy,
+                    air: session.core.airState ? session.core.airState() : []});
                 return stopWhen && stopWhen(track) ? {status: 'done'} : running;
             }
         };

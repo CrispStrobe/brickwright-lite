@@ -416,8 +416,16 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
     let resetFlowReady=false,spriteDataReady=false;
+    // A side-effect-free primitive literal expression (no cell read, no call):
+    // like a reset, its value is unobservable once definitely overwritten.
+    const inertLiteral=(target,n,seen=new Set())=>{
+        if(!n||seen.has(n)||invalid.has(n))return false;seen.add(n);
+        if(['math_number','math_whole_number','math_positive_number','math_integer','text'].includes(n.opcode))return n.shadow===true&&!Object.keys(n.inputs||{}).length;
+        if(!['operator_add','operator_subtract','operator_multiply'].includes(n.opcode)||!exactKeys(n,['NUM1','NUM2']))return false;
+        return ['NUM1','NUM2'].every(name=>{const slot=n.inputs[name];if(!Array.isArray(slot))return false;if(Array.isArray(slot[1]))return [4,5,6,7,8,10].includes(slot[1][0]);return inertLiteral(target,block(target,slot[1]),seen);});
+    };
     const killedReset=(c,w,at)=>{
-        if(!resetFlowReady||!resetValue(w.value?.node)||invalid.has(w.node)||w.scope.invalid)return false;
+        if(!resetFlowReady||!(resetValue(w.value?.node)||!c.global&&w.value?.node&&inertLiteral(w.target,w.value.node))||invalid.has(w.node)||w.scope.invalid)return false;
         const scope=owners.get(at);if(!scope||w.scope!==scope||!scope.executedBefore)return false;
         const st=statementOf(at),before=st&&scope.executedBefore.get(st);if(!before)return false;
         const valid=o=>o!==w&&o.scope===scope&&o.value&&!resetValue(o.value.node)&&!invalid.has(o.node)&&before.has(o.node)&&

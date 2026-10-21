@@ -117,7 +117,9 @@ for (const [file, want] of Object.entries(EXPECTED)) {
             const saved = await saveModelFile(model, format, {name: 'omr.ldr'});
             const data = typeof saved.data === 'string' ? new TextEncoder().encode(saved.data) : saved.data;
             const back = parseModel((await openModelFile(saved.filename, data)).text, {catalog: CATALOG});
-            assert.deepEqual(back.refusals, [], format);
+            // The unknown parts went out as decoration and come back as decoration (named again).
+            assert.deepEqual(back.refusals.filter(r => r.code !== 'unknown-part'), [], format);
+            assert.equal((back.model.decor || []).length, (model.decor || []).length, `${format}: the decoration kept`);
             assert.deepEqual(modelDifferences(model, back.model), [], format);
             assert.equal(serializeModel(back.model, {name: 'omr.ldr'}), ldr, `${format}: byte-stable`);
         }

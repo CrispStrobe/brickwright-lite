@@ -84,7 +84,7 @@ import {
 } from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {
-    BUILD_POLAR, CAMERA_ANIMATION_MS, VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, easeOut, orbitAboutPivot,
+    BUILD_POLAR, CAMERA_ANIMATION_MS, VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, easeOut, orbitAboutPivot, orbitButtonOf, MOUSE_PRESETS,
     viewCubeDirection, wheelIntent, wheelZoomFactor, zoomAbout
 } from '../view/camera-nav.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
@@ -98,8 +98,13 @@ import {
 } from './snap.js';
 import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
 import {chainRound} from './chain-path.js';
+import {mat3MulVec3, vecDot, vecNormalize, vecSub} from '../mech/vec.js';
 import {beltRound, beltPoints, BANDS} from './belt-path.js';
 import {createBeltLayer} from '../view/belt-layer.js';
+import {createRopeLayer, ropesFromModel} from '../view/rope-layer.js';
+import {ropeTie, ropePoints} from './rope-path.js';
+import {hoseTie, hosePoints} from './hose-path.js';
+import {createHoseLayer} from '../view/hose-layer.js';
 import {createSpatialIndex, partBounds} from '../mech/spatial-index.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
@@ -235,6 +240,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     let litList = []; // what is lit now: [{partId, connectorId, active, tone}]
     let ghostTone = null; // 'free' | 'snap' | 'blocked' | null
     let wheelMode = 'auto'; // 'auto' | 'mouse' | 'trackpad' (camera-nav.js wheelIntent)
+    let mousePreset = 'brickwright'; // camera-nav.js MOUSE_PRESETS
     let lastAnnounced = null;
     // Studio's view state (not the model): hidden parts, the group being edited, the picking tool.
     const hidden = new Set();
@@ -536,7 +542,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         };
     };
     const refreshPorts = () => insight.setPorts(portItems(editor.model, catalogMap).filter(item => !hidden.has(item.id))
-        .map(item => ({...item, label: portLabel(item), anchor: partCentre(item.id)})));
+        .map(item => ({...item, label: portLabel(item), anchor: partCentre(item.id), hubAnchor: item.hub && !hidden.has(item.hub) ? partCentre(item.hub) : null})));
     const fixed = p => (p ? () => new Vector3(...p) : () => null);
     const setMotion = ({joints = [], gears = [], tints = null} = {}) => {
         insight.setMotion({
@@ -587,15 +593,44 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const beltLayer = createBeltLayer();
     s.add(beltLayer.group);
     let beltsDrawnFor = null;
+    const ropeLayer = createRopeLayer();
+    s.add(ropeLayer.group);
+    const hoseLayer = createHoseLayer();
+    s.add(hoseLayer.group);
     const drawBelts = model => {
         if (beltsDrawnFor === model) return;
         beltsDrawnFor = model;
         beltLayer.draw((model.belts || []).map(b => ({id: b.id, band: b.band, points: beltPoints(model, catalogMap, b)})));
+        ropeLayer.draw(ropesFromModel(model, r => ropePoints(model, catalogMap, r.around)));
+        hoseLayer.draw((model.hoses || []).map(h => ({id: h.id, points: hosePoints(model, catalogMap, h)})));
         invalidate();
+    };
+    // Decoration (model.decor: a cable's segments): drawn as the file has it, in its own group (never picked).
+    const decorGroup = new Group();
+    decorGroup.name = 'decor';
+    s.add(decorGroup);
+    let decorDrawnFor = null;
+    const drawDecor = model => {
+        if ((model.decor || null) === decorDrawnFor) return;
+        decorDrawnFor = model.decor || null;
+        for (const mesh of [...decorGroup.children]) {
+            decorGroup.remove(mesh);
+            for (const m of [].concat(mesh.material)) m.dispose();
+        }
+        for (const d of model.decor || []) {
+            let geometry;
+            try { geometry = partGeometry(d.part, read, colors); } catch { continue; }
+            const mesh = new Mesh(geometry, materialsFor(d.color ?? DEFAULT_COLOR).map(m => m.clone()));
+            mesh.matrixAutoUpdate = false;
+            mesh.matrix.copy(worldMatrix(d.position, d.matrix));
+            mesh.name = `decor:${d.part}`;
+            decorGroup.add(mesh);
+        }
     };
     const rebuild = () => {
         const model = editor.model;
-        if (model.belts || beltLayer.count) drawBelts(model);
+        drawDecor(model);
+        if (model.belts || model.ropes || model.hoses || beltLayer.count || ropeLayer.count || hoseLayer.count) drawBelts(model);
         const instancing = useInstancing(model.parts.length);
         let changed = false;
         if (instancing !== Boolean(instanced) || !meshes.size) {
@@ -1639,6 +1674,37 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const band = BANDS.find(b => b.part === r.band);
         status({kind: 'banded', mm: band.mm, stretch: Math.round(r.lengthLdu / band.restLdu * 10) / 10});
     };
+    /**
+     * A rope from the first selected part (the drum: round, on an axle) over the middle ones to the last
+     * (the hook), taut as they stand (editor/rope-path.js), one undo step; refused with the reason.
+     */
+    const ropeSelection = () => {
+        if (!needSelection()) return;
+        const r = ropeTie(editor.model, catalogMap, selection);
+        if (r.error) { status({kind: 'refused', reason: `rope_${r.error}`}); return; }
+        if (run({type: 'addRope', around: r.around, lengthLdu: r.lengthLdu})) status({kind: 'roped', cm: Math.round(r.lengthLdu * 0.04 * 10) / 10});
+    };
+    /** A hose between the two selected parts' nearest free air ports, a valve's outlet to a cylinder first (editor/hose-path.js). */
+    const hoseSelection = () => {
+        if (!needSelection()) return;
+        const h = hoseTie(editor.model, catalogMap, selection);
+        if (h.error) { status({kind: 'refused', reason: `hose_${h.error}`}); return; }
+        if (run({type: 'addHose', a: h.a, b: h.b})) status({kind: 'hosed', from: h.roles[0], to: h.roles[1]});
+    };
+    /** Removes every hose on a selected part, one undo step. */
+    const removeHosesOfSelection = () => {
+        if (!needSelection()) return;
+        const ids = (editor.model.hoses || []).filter(h => selection.includes(h.a.part) || selection.includes(h.b.part)).map(h => h.id);
+        if (!ids.length) { status({kind: 'refused', reason: 'hose_none'}); return; }
+        if (run({type: 'batch', commands: ids.map(id => ({type: 'removeHose', id}))})) status({kind: 'unhosed', count: ids.length});
+    };
+    /** Unties every rope from or to a selected part, one undo step. */
+    const removeRopesOfSelection = () => {
+        if (!needSelection()) return;
+        const ids = (editor.model.ropes || []).filter(r => r.around.some(id => selection.includes(id))).map(r => r.id);
+        if (!ids.length) { status({kind: 'refused', reason: 'rope_none'}); return; }
+        if (run({type: 'batch', commands: ids.map(id => ({type: 'removeRope', id}))})) status({kind: 'unroped', count: ids.length});
+    };
     /** Takes off every rubber band round a selected part, one undo step. */
     const removeBeltsOfSelection = () => {
         if (!needSelection()) return;
@@ -2204,12 +2270,14 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             gesture = null;
             return;
         }
-        if (event.button === 1) {
-            // Middle drag: orbit about the point under the pointer.
-            gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'orbit', orbit: orbitStart(event)};
+        if (event.button === orbitButtonOf(mousePreset)) {
+            // Middle drag (right drag in the Studio preset): orbit about the point under the pointer.
+            gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'orbit', orbit: orbitStart(event), button: event.button};
             canvas.setPointerCapture(event.pointerId);
             return;
         }
+        // The right button pans (OrbitControls) or orbits (above); a right click without a drag puts down what is in hand.
+        if (event.button === 2) { gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'right'}; return; }
         if (event.button !== 0) { gesture = null; return; }
         if (pickMode) { gesture = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, kind: 'pick'}; return; }
         // The gizmo gets the press when the pointer is on one of its handles (on a
@@ -2219,7 +2287,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (tool) { gesture = {...base, kind: 'tool', orbit: orbitStart(event)}; return; }
         const hit = partUnder(event);
         if (hit && (event.ctrlKey || event.metaKey)) {
-            // Ctrl+click: the part and everything joined to it (Studio's "By Connected").
+            // Ctrl+click: the part and everything joined to it (Studio's "By Connected"); Ctrl+drag glides a
+            // pin or an axle along its hole. Not the camera: OrbitControls pans on Ctrl+drag.
+            controls.enabled = false;
             gesture = {...base, kind: 'connected', id: hit.object.name};
             return;
         }
@@ -2251,10 +2321,56 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         gesture = {...base, kind: 'empty', orbit: orbitStart(event)};
     }
 
+    // Ctrl+drag on a pin or an axle in its holes glides it along them, a little at a time (Studio's Ctrl
+    // on an axle). It stays in at least one hole; a pose into another part is refused when let go.
+    const GLIDE_SHAFTS = ['pin', 'axle'];
+    /** Where along line (point + axis·t) a ray passes closest: t (LDU), or null when the ray runs along it. */
+    const alongLine = (ray, point, axis) => {
+        const b = vecDot(axis, ray.direction);
+        const den = 1 - b * b;
+        if (den < 1e-4) return null;
+        const w = vecSub(point, ray.origin);
+        return (b * vecDot(ray.direction, w) - vecDot(axis, w)) / den;
+    };
+    const glideStart = (id, event) => {
+        const pl = partsById().get(id);
+        const meta = pl && catalogMap.get(pl.part);
+        const line = pl ? connectionLine(editor.model, catalogMap, id) : null;
+        if (!line || line.many) return null;
+        const shaft = (meta.connectors || []).some(c => GLIDE_SHAFTS.includes(c.type) &&
+            Math.abs(Math.abs(vecDot(vecNormalize(mat3MulVec3(pl.rotation, c.axis)), line.axis)) - 1) < 1e-3);
+        const t0 = shaft ? alongLine(rayLdu(event), line.point, line.axis) : null;
+        return t0 === null ? null : {id, start: pl, axis: line.axis, point: line.point, t0, delta: 0};
+    };
+    let lastGlide = null; // for the browser gate: the last glide step {t0, t, delta, out}
+    const glideMove = (g, event) => {
+        const t = alongLine(rayLdu(event), g.point, g.axis);
+        lastGlide = {t0: g.t0, t, delta: g.delta, out: false};
+        if (t === null) return;
+        const delta = tidy(Math.round((t - g.t0) * 10) / 10);
+        const move = {id: g.id, position: g.start.position.map((v, i) => tidy(v + g.axis[i] * delta)), rotation: g.start.rotation};
+        // Still in a hole? The model with the part moved there must pair it with something.
+        const parts = editor.model.parts.map(p => (p.id === g.id ? {...p, position: move.position} : p));
+        if (!pairedParts({...editor.model, parts}, catalogMap, g.id).length) { lastGlide.out = true; status({kind: 'refused', reason: 'glideOut'}); return; }
+        g.delta = delta;
+        preview = {moves: [move], candidate: null, blocked: blockedBy([move], pairedParts(editor.model, catalogMap, g.id))};
+        placeMeshes();
+        status(preview.blocked ? {kind: 'blocked', target: preview.blocked.target} : {kind: 'gliding', ldu: delta});
+        setCursor(preview.blocked ? 'not-allowed' : 'grabbing');
+    };
+
     const onMove = event => {
         if (event.pointerType === 'mouse') lastTouch = false;
         readModifiers(event);
         if (paletteDrag && paletteDrag.dragging) return; // onPaletteMove follows it
+        if (gesture && gesture.kind === 'connected' && (gesture.glide || travelled(event, gesture) > CLICK_PX)) {
+            if (gesture.glide === undefined) {
+                gesture.glide = glideStart(gesture.id, event);
+                if (!gesture.glide) status({kind: 'refused', reason: 'glideNeedsHole'});
+                else canvas.setPointerCapture(gesture.pointerId);
+            }
+            if (gesture.glide) { glideMove(gesture.glide, event); return; }
+        }
         if (gesture && gesture.orbit && (gesture.kind === 'orbit' || travelled(event, gesture) > CLICK_PX) &&
             (gesture.kind === 'orbit' || gesture.kind === 'empty' || gesture.kind === 'tool')) {
             orbitDrag(event, gesture.orbit);
@@ -2442,11 +2558,16 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         try { canvas.releasePointerCapture(event.pointerId); } catch { /* not captured */ }
         if (g.orbit) endOrbit();
         const click = travelled(event, g) <= CLICK_PX;
+        if ((g.kind === 'right' || (g.kind === 'orbit' && g.button === 2)) && click) {
+            if (tool) { setTool(null); status({kind: 'idle'}); }
+            return;
+        }
         if (g.kind === 'tool') {
             if (!click) return; // a drag orbited the camera
             updateGhost(event);
             place({keepTool: event.shiftKey});
         } else if (g.kind === 'connected') {
+            if (g.glide) { commitPreview(); setCursor(''); return; }
             if (!click) return;
             const ids = connectedComponent(editor.model, catalogMap, [g.id]);
             setSelection(ids);
@@ -2930,6 +3051,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         drawHinge(null);
         hingeLine.dispose();
         beltLayer.dispose();
+        ropeLayer.dispose();
+        hoseLayer.dispose();
         measureDiv.remove();
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
@@ -2981,10 +3104,19 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         placeHeld: () => place(), cycleHeld, fineTurn, flip: flipSelection, selectConnected, chainRoundSelection,
         /** Rubber bands: one round the selection, or off the selection. */
         beltRoundSelection, removeBeltsOfSelection,
+        /** Ropes: one from the first selected part (the drum) to the last (the hook); untied. */
+        ropeSelection, removeRopesOfSelection, hoseSelection, removeHosesOfSelection,
         /** The hinge tool: the next hinge (N), and a turn of the selection on it (±15° is [ ]). */
         nextHinge, turnOnHinge,
         /** How a scroll is read: 'auto' (wheel or trackpad, guessed), 'mouse' (zoom), 'trackpad' (orbit). */
         setWheelMode (next) { if (['auto', 'mouse', 'trackpad'].includes(next)) wheelMode = next; },
+        /** The mouse preset (camera-nav.js MOUSE_PRESETS): 'brickwright' (right drag pans) or 'studio' (right drag orbits). */
+        setMousePreset (next) {
+            if (!MOUSE_PRESETS[next]) return;
+            mousePreset = next;
+            configureOrbitControls(controls, MOUSE, next);
+        },
+        get mousePreset () { return mousePreset; },
         get wheelMode () { return wheelMode; },
         /** For the browser gate (docs/ROBOT-LAB-UX.md §5): what is lit, the candidate pose, the ghost's tone, the view cube. */
         debug: {
@@ -3003,8 +3135,13 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
                 return {left: rect.left + r.left, top: rect.top + r.top, size: r.size};
             },
             animating: () => Boolean(camAnim),
+            /** The last Ctrl-glide step: where along the line it started and is, the delta kept, whether it was out. */
+            glide: () => lastGlide,
             /** How many rubber bands are drawn. */
             bands: () => beltLayer.count,
+            /** How many ropes are drawn. */
+            ropes: () => ropeLayer.count,
+            hoses: () => hoseLayer.count,
             /** The hinge [ ] would turn on now (null: none, or not asked for yet): its line, what moves, what stays. */
             hinge: () => {
                 const c = hinge.key === selection.join(',') && hinge.list[hinge.index];

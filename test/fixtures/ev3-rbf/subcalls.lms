@@ -1,0 +1,78 @@
+// Subcalls: parameters in, out and in/out of every size, strings in and out, a nested call.
+// MAIN comes first: the firmware starts object 1 only.
+DATA32 Sum
+DATA32 Doubled
+DATA32 Twice16
+DATA32 Square
+DATA32 NameLen
+DATAF  Half
+DATAS  Greeting 16
+
+vmthread MAIN
+{
+  DATA32 X
+  DATA16 Y
+  DATA16 L
+  CALL(Add3, 10, 20, Sum, 3)
+  MOVE32_32(21, X)
+  MOVE16_16(-4, Y)
+  CALL(DoubleIt, X, Y, Half)
+  MOVE32_32(X, Doubled)
+  MOVE16_32(Y, Twice16)
+  CALL(SquareViaAdd, 7, Square)
+  CALL(Greet, 'EV3', Greeting)
+  STRINGS(GET_SIZE, Greeting, L)
+  MOVE16_32(L, NameLen)
+  // Report: each result written to the brick's console, in declaration order.
+  UI_WRITE(VALUE32, Sum)
+  UI_WRITE(VALUE32, Doubled)
+  UI_WRITE(VALUE32, Twice16)
+  UI_WRITE(VALUE32, Square)
+  UI_WRITE(VALUE32, NameLen)
+  UI_WRITE(VALUEF, Half)
+  UI_WRITE(PUT_STRING, Greeting)
+}
+
+subcall Add3
+{
+  IN_32  A
+  IN_32  B
+  OUT_32 R
+  IN_8   C
+  ADD32(A, B, R)
+  MOVE8_32(C, B)
+  ADD32(R, B, R)
+}
+
+subcall DoubleIt
+{
+  IO_32 X
+  IO_16 Y
+  OUT_F H
+  MUL32(X, 2, X)
+  MUL16(Y, 2, Y)
+  MOVE32_F(X, H)
+  DIVF(H, 8.0F, H)
+}
+
+subcall SquareViaAdd
+{
+  IN_32  N
+  OUT_32 Out
+  DATA32 Acc
+  DATA32 K
+  MOVE32_32(0, Acc)
+  MOVE32_32(0, K)
+More:
+  CALL(Add3, Acc, N, Acc, 0)
+  ADD32(K, 1, K)
+  JR_LT32(K, N, More)
+  MOVE32_32(Acc, Out)
+}
+
+subcall Greet
+{
+  IN_S  Who 8
+  OUT_S Text 16
+  STRINGS(ADD, 'Hi ', Who, Text)
+}
