@@ -171,6 +171,14 @@ jobs:
   #              on a PR only for code changes carrying ci:full (or the run the
   #              `labeled: ci:full` event starts).
   # Non-PR events are never docs-only here: push already has its paths filter.
+  # PATH-AWARE SHARDS (owner request 2026-10-20). On a PR the thorough tier runs
+  # only the shards scripts/ci-browser-scope.mjs says the changed files reach
+  # (heavy, light, robotlab, fpga): none for tests, Rust/Tauri, the CLI, docs
+  # and scripts no gate reaches; one shard for paths only it exercises (bw-sim
+  # and sim-lab -> robotlab); EVERY shard for shared or unknown paths. ci:full
+  # with no shard needed still runs every shard (an explicit request). Main
+  # pushes, dispatches and schedules run every shard, so a wrong skip is caught
+  # right after merge.
   scope:
     name: change scope
     runs-on: ubuntu-latest
@@ -180,6 +188,13 @@ jobs:
       fast: ${{ steps.tier.outputs.fast }}
       thorough: ${{ steps.tier.outputs.thorough }}
       full_label: ${{ steps.tier.outputs.full_label }}
+      browser: ${{ steps.tier.outputs.browser }}
+      heavy: ${{ steps.tier.outputs.heavy }}
+      light: ${{ steps.tier.outputs.light }}
+      robotlab: ${{ steps.tier.outputs.robotlab }}
+      fpga: ${{ steps.tier.outputs.fpga }}
+      browser_needed: ${{ steps.files.outputs.any }}
+      browser_summary: ${{ steps.files.outputs.summary }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -199,6 +214,7 @@ jobs:
           fi
           gh api "repos/$REPO/pulls/$PR/files" --paginate -q '.[] | .filename, (.previous_filename // empty)' > /tmp/changed.txt
           node scripts/ci-docs-only.mjs < /tmp/changed.txt >> "$GITHUB_OUTPUT"
+          node scripts/ci-browser-scope.mjs < /tmp/changed.txt | sed 's/^/scope_/; s/^scope_browser=/browser=/; s/^scope_any=/any=/; s/^scope_summary=/summary=/' >> "$GITHUB_OUTPUT"
       - id: tier
         name: Decide the fast and thorough tiers
         env:
@@ -207,9 +223,19 @@ jobs:
           LABEL: ${{ github.event.label.name }}
           HAS_FULL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
           DOCS_ONLY: ${{ steps.files.outputs.docs_only }}
+          NEED_HEAVY: ${{ steps.files.outputs.scope_heavy }}
+          NEED_LIGHT: ${{ steps.files.outputs.scope_light }}
+          NEED_ROBOTLAB: ${{ steps.files.outputs.scope_robotlab }}
+          NEED_FPGA: ${{ steps.files.outputs.scope_fpga }}
         run: |
           set -euo pipefail
           fast=true; thorough=true
+          # Per shard: every shard on non-PR events, and on a ci:full PR whose
+          # files need none (the label is then an explicit request for all).
+          heavy=true; light=true; robotlab=true; fpga=true
+          if [ "$EVENT" = "pull_request" ] && [ "$NEED_HEAVY$NEED_LIGHT$NEED_ROBOTLAB$NEED_FPGA" != "falsefalsefalsefalse" ]; then
+            heavy="${NEED_HEAVY:-true}"; light="${NEED_LIGHT:-true}"; robotlab="${NEED_ROBOTLAB:-true}"; fpga="${NEED_FPGA:-true}"
+          fi
           if [ "$EVENT" = "pull_request" ]; then
             if [ "$DOCS_ONLY" = "true" ]; then fast=false; thorough=false
             elif [ "$ACTION" = "labeled" ] || [ "$ACTION" = "unlabeled" ]; then
@@ -219,8 +245,12 @@ jobs:
             else thorough=false
             fi
           fi
-          echo "fast=$fast thorough=$thorough docs_only=$DOCS_ONLY event=$EVENT/$ACTION"
-          { echo "fast=$fast"; echo "thorough=$thorough"; echo "full_label=$HAS_FULL"; } >> "$GITHUB_OUTPUT"
+          if [ "$thorough" != "true" ]; then heavy=false; light=false; robotlab=false; fpga=false; fi
+          browser=false
+          if [ "$heavy" = "true" ] || [ "$light" = "true" ] || [ "$robotlab" = "true" ]; then browser=true; fi
+          echo "fast=$fast thorough=$thorough docs_only=$DOCS_ONLY event=$EVENT/$ACTION shards: heavy=$heavy light=$light robotlab=$robotlab fpga=$fpga"
+          { echo "fast=$fast"; echo "thorough=$thorough"; echo "full_label=$HAS_FULL"
+            echo "browser=$browser"; echo "heavy=$heavy"; echo "light=$light"; echo "robotlab=$robotlab"; echo "fpga=$fpga"; } >> "$GITHUB_OUTPUT"
 
   # MERGE DISCIPLINE. The merge rule is "every enabled check on the exact head
   # is SUCCESS", and a PR without ci:full has the thorough tier SKIPPED, not
@@ -239,11 +269,15 @@ jobs:
         env:
           DOCS_ONLY: ${{ needs.scope.outputs.docs_only }}
           HAS_FULL: ${{ needs.scope.outputs.full_label }}
+          BROWSER_NEEDED: ${{ needs.scope.outputs.browser_needed }}
+          SUMMARY: ${{ needs.scope.outputs.browser_summary }}
           ACTION: ${{ github.event.action }}
           LABEL: ${{ github.event.label.name }}
         run: |
           set -euo pipefail
           if [ "$DOCS_ONLY" = "true" ]; then echo "documentation-only change: the fast path is sufficient"; exit 0; fi
+          # scripts/ci-browser-scope.mjs: no browser or fpga shard reaches these files.
+          if [ "$BROWSER_NEEDED" = "false" ]; then echo "no browser-relevant paths changed: $SUMMARY"; exit 0; fi
           if [ "$ACTION" = "unlabeled" ] && [ "$LABEL" = "ci:full" ]; then HAS_FULL=false; fi
           if [ "$HAS_FULL" = "true" ]; then echo "ci:full present: the thorough tier runs for this PR"; exit 0; fi
           echo "::error::code change: add the ci:full label so the thorough tier runs before merge"
@@ -1532,7 +1566,7 @@ jobs:
   # rejects with a run that has no jobs at all.
   browser:
     needs: [guard, scope]
-    if: needs.guard.outputs.superseded != 'true' && needs.scope.outputs.thorough == 'true'
+    if: needs.guard.outputs.superseded != 'true' && needs.scope.outputs.thorough == 'true' && needs.scope.outputs.browser == 'true'
     # TWO SHARDS OF ONE BODY. The gates below took 13–15 min in series (two
     # dispatch runs, 2026-09-06: labwired heavy tier 140 s, 8086 benchmark 107 s,
     # no-engine-artifact 46 s, AVR offline bench 34 s, debugger recording 30 s,
@@ -1559,6 +1593,12 @@ jobs:
       fail-fast: false
       matrix:
         shard: [heavy, light, robotlab]
+        # Path-aware PR runs (scripts/ci-browser-scope.mjs): a shard the changed
+        # files do not reach is left out. Non-PR events set every shard true.
+        exclude:
+          - shard: ${{ needs.scope.outputs.heavy != 'true' && 'heavy' || 'none' }}
+          - shard: ${{ needs.scope.outputs.light != 'true' && 'light' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotlab' || 'none' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -3113,7 +3153,7 @@ jobs:
   fpga-surface:
     name: fpga surface (flag-on)
     needs: [guard, scope]
-    if: needs.guard.outputs.superseded != 'true' && needs.scope.outputs.thorough == 'true'
+    if: needs.guard.outputs.superseded != 'true' && needs.scope.outputs.thorough == 'true' && needs.scope.outputs.fpga == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

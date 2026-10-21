@@ -128,6 +128,17 @@ export const withRobotLab = Base => class RobotLabCreator extends Base {
         return super.parseReporter(s, context);
     }
 
+    /** A hub Boolean word (`nxt touch sensor S1 pressed`) is a condition as it stands. */
+    parseCondition (conditionStr, context) {
+        const text = this.stripOuterParens(String(conditionStr || '').trim());
+        if (isLegoHubText(text) && !/\s(?:and|or)\s|[<>=]/i.test(text)) {
+            for (const entry of legoHubWordsOf(['boolean'])) {
+                if (matchTopLevel(text, compileArcadeWord(entry).re)) return this.parseReporter(text, context)[1];
+            }
+        }
+        return super.parseCondition(conditionStr, context);
+    }
+
     drep (b, blocks) {
         const entry = b && wordFor(b.opcode);
         if (entry && entry.kind !== 'command' && entry.kind !== 'hat') return this.spellArcade(entry, b, blocks);

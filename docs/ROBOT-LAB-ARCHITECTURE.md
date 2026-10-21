@@ -1912,10 +1912,13 @@ T6 on main's mechanics, no new physics: `static/sim-lab/models/differential-car.
 - **No trail:** knuckles 5713 (axle 3L with a perpendicular pin hole): the kingpin passes through the
   wheel's axle. With the 6536 connector as knuckle (20 LDU trail) a parked car turned ~3° per 30° of
   steering, because each wheel's contact point swings sideways round its kingpin.
-- **The end of the steering's travel** is the guide's: driven open-ended at 15 %, the rack stops at 30.4 LDU (the
-  stop at 30). Pushed on, the pinion slips round on the stopped rack (B reaches 370° and more), and the parked
-  car turns 2.3°: the coupling is a velocity constraint whose drift is re-based every step, so a motor forcing it
-  against the slider's limit is not stalled by it. The program steers by position and never runs B open-ended.
+- **The end of the steering's travel** is the guide's: the stop is the rack slider's `limits` (±30 LDU), and since
+  #1137's end stops (jolt-physics 1.1.0-bw.5) the core carries it through the rack-and-pinion coupling to motor B's
+  hinge, so B stalls there as a real motor does. Driven on open-ended at 15 % speed the rack stops at 30.1 LDU with
+  B at 115.7° (the geometry's 114.6°); at 50 % speed B stops at 119.4°, at 50 % power (the motor's DC model at half
+  duty) at 112.8–114.5°, and the parked car turns at most 0.08° (`test/bw-sim-differential-car.test.mjs`). Until
+  then the pinion slipped round on the stopped rack (B past 370°) and the parked car turned 2.3°. The program steers
+  by position and never runs B open-ended.
 - **Floor:** main's floor is 2 m square; the program's circle (R ≈ 0.30 m) keeps every part within 0.66 m
   of its middle.
 
