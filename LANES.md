@@ -1,3 +1,14 @@
+## Motor-excited pendulums and clutch load bench — 2026-10-21
+
+CLAIMED — Codex, existing model-design lane / draft PR #1138. Add two original
+CrispStrobe / BSD-3-Clause motorised experiments: unequal-length pendulums with
+motor excitation and free-oscillation observations, and a torque-limiter bench
+with a controllable output load. Qualify real output poses and clutch slip,
+manual controls, connected building instructions, full BOMs and EN/DE lessons.
+Use supported catalogue mechanisms; preserve peer worktrees and the four owned
+Jolt/compiler/collision implementation files. Only qualified assemblies enter
+the bundled library. Main composition and hosted CI remain release gates.
+
 ## Robot Lab guided example lessons — 2026-10-21
 
 IMPLEMENTED / locally qualified — Codex, current model-design lane / draft PR #1138. User explicitly asks
