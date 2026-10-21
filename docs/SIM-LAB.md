@@ -373,6 +373,11 @@ motor A at 50 % power` sends one StartPower(50) and the Technic large motor runs
 the hub's supply: 945). EV3 and NXT, `test/bw-sim-bt-hubs-program.test.mjs` — the bricks drive both
 motors open loop at a duty of 0.4.
 
+Found on the way (fixed upstream, CrispStrobe/extensions #62): spikeprime's **start motor** fell back to
+`hub.port.X.motor.pwm(speed)` when the hub did not take its JSON verb — on a real 2.x hub a duty, not the
+speed the block asks for. The Lab's virtual SPIKE hub takes that fallback, and read `pwm` as a speed until
+now; the fallback is `run_at_speed(speed)` now, and `pwm` means a duty everywhere.
+
 Not there: a **motor power** reporter (SPIKE's *More Motors* has one, `motor.get_duty_cycle` in SPIKE 3
 Python): the spikeprime extension has no block for it yet, so `motor.get_duty_cycle` stays refused by the
 SPIKE 3 Python reader.
