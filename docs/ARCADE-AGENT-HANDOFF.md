@@ -1,5 +1,65 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Latest observed state and next work — 2026-10-21
+
+This section supersedes older pending-run descriptions below. PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
+at `125dacab7e183ca15d08224524b576894480d8b1` has finished all enabled
+checks. All three browser groups passed; build and all four unit shards failed.
+The repaired source fence passed all 178 controls. This is not a green candidate.
+
+The complete unit logs contain 175 ordinary failures, of which 158 stop at the
+native-addition operand-domain guard. A common message does not establish a
+common cause: the logs do not contain the actual failing operand facts. The
+other failures include bitwise expectations, the public assessment CLI output
+layout, SPIKE power opcode/menu adoption, a stale word-table count, and an x86
+supplier fence. See [the repair matrix](ARCADE-CI-REPAIR-STATUS.md#latest-complete-hosted-observation--2026-10-21).
+
+Work is preserved in separate candidates. Their presence does not establish
+execution, SDK, editor or application acceptance:
+
+1. **Array writers and constructor effects:** the corrected candidate preserves
+   actual mixed writer types, rejects missing/null malformed class kind fields,
+   and uses a closed constructor-effect proof for startup resets. Qualify the
+   entire corrected 32-test cohort in hosted CI with original and emitted SDK
+   compilation. The prior complete local run failed seven assertions and its
+   resource bound; do not repeat it locally or filter away cases.
+2. **Refusal reports:** add already-observed operand facts and the exact analyzed
+   export draft, then present them in the existing conversion report. Preserve
+   original refusal reasons, evaluation order and proof rules. Unknown source
+   locations and selected blocks must remain explicitly unavailable; candidate
+   emission sites are not selected-block attribution. Test report ownership
+   against deferred updates, edits, VM changes and overlapping requests. This
+   supplies evidence for the 158 failures; it does not itself fix them.
+3. **SPIKE supplier adoption:** the scoped upstream supplier already implements
+   the motor power operation. Genuine bundle generation has been independently
+   checked: only SPIKE's carrier and pin row changed; the other 29 bundles and
+   global supplier pin are unchanged. The matching virtual motor models use
+   torque, damping and inertia for power control. Full motor tests, affected
+   guest qualification, complete fresh metadata generation and the existing
+   opcode/menu gate remain mandatory. Generated bundle identity alone is not
+   motor qualification.
+4. **Public CLI and word table:** the CLI test must place ordinary outputs
+   outside its protected input catalogue, retain actual nonempty artifact and
+   collision assertions, and pass the complete ten-test public module. The
+   generated word table contains 406 forms, including two score-handler forms;
+   update the fixed fixture and run all five module controls. Neither repair
+   changes converter semantics or application counts.
+5. **Fresh corpus measurement:** qualify the public hosted isolation controls
+   before admitting private inputs. Preserve the existing failed local isolation
+   result. Bind read-only inputs, report encryption and complete output/lifetime
+   limits, then run the complete 225 observations once. Compare the historical
+   36 partials against the original 184-input cohort, separately from 41 context
+   revisits. A source-only isolation implementation is not a safe completed run.
+
+The historical count remains **147 translated / 36 partial / one malformed**.
+Do not promote applications from focused test successes. Every eventual closure
+needs original input, native run, Code and Blocks edits, graphics/resources where
+applicable, saved-project reopen, exported MakeCode compilation and fresh import.
+Detailed Blocks/Code/graphics acceptance remains in the
+[GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
+Private checkout locations, original logs, recovery patches and source-review
+receipts belong only in the ignored local companion and private operational log.
+
 ## Start here — 2026-10-21
 
 ### Current composition and next acceptance

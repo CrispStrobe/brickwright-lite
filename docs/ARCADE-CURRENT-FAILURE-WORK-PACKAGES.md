@@ -1,5 +1,36 @@
 # Arcade remaining failure work packages
 
+## Next batch and closure rules — 2026-10-21
+
+Read [the latest handoff](ARCADE-AGENT-HANDOFF.md#latest-observed-state-and-next-work--2026-10-21)
+and [complete hosted failure census](ARCADE-CI-REPAIR-STATUS.md#latest-complete-hosted-observation--2026-10-21)
+first. The published candidate is red. Do not conflate 175 ordinary test
+failures, 158 native-addition refusal sites and 36 historical partial apps.
+
+Close these work packages in order:
+
+1. Finish and qualify the preserved constructor/writer and refusal-report
+   candidates; use actual operand facts to identify each remaining numeric,
+   primitive or Array proof gap. Preserve opaque-call, uninitialized-read,
+   prototype/alias escape and malformed-class negatives. Never substitute type
+   annotations or a device selector for source-value authority.
+2. Complete SPIKE supplier/model adoption, regenerate the entire genuine
+   metadata table and pass the actual opcode/menu and affected guest controls.
+   Repair the CLI output fixture and word-table fixture without relaxing
+   product protection or changing the producer to match a stale expectation.
+3. Coordinate the x86 current supplier boundary with its lane. Retain original
+   source-bound receipts; require fresh affected acceptance before claiming a
+   new consumer pin. Existing historical evidence is not rewritten.
+4. Qualify the public hosted filesystem/process/network/resource controls,
+   bind private assessment input and encryption, then obtain a complete current
+   report. Preserve missing assets and packages as explicit unresolved inputs;
+   do not invent replacements or silently drop them from the denominator.
+5. For every genuine app gap, implement the operation and authoring path, then
+   exercise Code, Blocks and the relevant image/tile/animation editor. Reopen
+   the saved project, execute native behavior, compile the full exported files
+   in MakeCode and freshly reimport. Record any unqualified dimension in the
+   GUI capability ledger rather than calling a parser result full parity.
+
 ## Active work order — 2026-10-20
 
 The bounded nested-slice candidate passes its complete 50-test pure authority

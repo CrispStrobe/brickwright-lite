@@ -118,11 +118,14 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (404 opcodes)', () => {
-    // The binary and unary source reporters add two operations to the qualified 402.
-    // Retain the prior vocabulary and exact canonical selector spelling.
-    assert.equal(ARCADE_DIALECT_OPS.length, 404);
+test('the pinned parser retains the reviewed Arcade word table (406 opcodes)', () => {
+    // Binary/unary source reporters extended the earlier 402 words to 404.
+    // Reviewed supplier #160 adds the two explicit Score registration words.
+    // Retain every prior word assertion and check both exact canonical additions.
+    assert.equal(ARCADE_DIALECT_OPS.length, 406);
     const qualifiedWords = [
+        {op: 'arcade_whenRegisteredScore', kind: 'hat', words: 'when arcade score handler {TOKEN} runs'},
+        {op: 'arcade_registerScoreHandler', kind: 'command', words: 'arcade register score player {PLAYER} threshold {SCORE} as {TOKEN} capturing {CAPTURES}'},
         {op: 'arcade_sourceValueBinary', kind: 'reporter', words: 'arcade source value {LEFT} op {OP:"+"|"-"|"*"|"/"|"%"|"**"|"&"|"|"|"^"|"<<"|">>"|">>>"} with {RIGHT}'},
         {op: 'arcade_sourceValueUnary', kind: 'reporter', words: 'arcade source unary {OP:"~"} of {VALUE}'},
         {op: 'arcade_declareParameterConstraint', kind: 'command', words: 'declare arcade procedure {PROCEDURE:literal-field} parameter {PARAMETER:literal-field} as {TYPE:Number|Boolean|String|Any}'},

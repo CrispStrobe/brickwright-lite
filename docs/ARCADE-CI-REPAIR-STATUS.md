@@ -1,5 +1,36 @@
 # Arcade integration repairs and qualification order
 
+## Latest complete hosted observation — 2026-10-21
+
+PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128), exact head
+`125dacab7e183ca15d08224524b576894480d8b1`, completed its enabled checks:
+three browser groups passed, while build and four unit groups failed. The
+178-control source fence passed. The SPIKE gate reports 232 passes and two
+opcode/menu failures. Do not borrow results from an older or later head.
+
+| Complete unit group | Tests | Pass | Ordinary failures | Skip | TODO |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 3231 | 3170 | 41 | 6 | 14 |
+| 2 | 2454 | 2373 | 65 | 4 | 12 |
+| 3 | 3310 | 3249 | 43 | 8 | 10 |
+| 4 | 2903 | 2869 | 26 | 1 | 7 |
+
+TODO outcomes are separate from ordinary failures. Of 175 ordinary failures,
+158 encounter the native-addition operand-domain refusal. This is the observed
+export frontier, before later emitted-SDK/reimport assertions; it does not mean
+that preceding stages did not run, that one defect causes all cases, or that an
+unexecuted successor fixes them. Retain each full failure and obtain actual
+operand facts before extending primitive/Array admission.
+
+The coherent next qualification must include corrected Array/class effects,
+refusal diagnostics and editor report ownership, proper scoped SPIKE power
+adoption and model controls, the public CLI fixture layout, and the 406-form
+fixture. The x86 supplier fence requires coordination with its actual consumer
+and guest acceptance; do not merely stamp a new SHA onto old qualification.
+Avoid a new full-browser label unless a changed browser boundary needs it.
+Batch a reviewed candidate and use one normal hosted qualification set.
+Historical 36 partial applications remain unremeasured.
+
 ## Current published slice and first hosted repair — 2026-10-21
 
 PR #1128 now contains the coherent Sprite receiver, assessment transport and
