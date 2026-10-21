@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createHash, webcrypto} from 'node:crypto';
 import {githubIdentityMatches} from '../scripts/package-provenance.mjs';
+import {createRunnerOwnership} from '../overlay/scratch-gui/src/lib/bw-debug/runner-ownership.js';
 
 // Execute the exact browser helper as ESM without installing a browser/build tool.
 const source = fs.readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-machines/raw-hdd-download.js', import.meta.url), 'utf8');
@@ -311,15 +312,19 @@ function panelFixture (f = fixture(), asyncState = false) {
     panel.state = {runner, ui: {phase: 'paused', session: {why: {pc: 1}}}, hddDownloadBusy: false, hddDownloadStatus: null};
     Object.assign(panel, {_hddDownloadMounted: true, _hddDownloadToken: {}, _hddDownloadRunner: runner,
         _hddDownloadPhase: 'paused', _hddDownloadHalt: panel.state.ui.session.why, _hddDownload: null,
-        _hddDownloadPending: false, _runnerPromise: null});
+        _hddDownloadPending: false, _runnerPromise: null,
+        // The panel's real runner-ownership claim (#1124): _teardownRunner releases it.
+        _runnerOwnership: createRunnerOwnership()});
     panel.props = {vm: {}, onRunnerGone: () => events.push('gone'), onRunnerChange: () => events.push('change')};
     panel._mouseLeave = () => {};
     panel.tx = key => ({hddDownloadPreparing: 'Preparing image + JSON', hddDownloadInitiated: 'Image + JSON downloads initiated, not saved'}[key] || key);
     panel.setState = change => {events.push('setState'); if (asyncState) pendingState.push(change); else Object.assign(panel.state, change);};
     panel.runner = async () => runner; panel.mirrorLabwiredDisplay = () => {};
-    const marker = '            onChange: (ui) => {';
+    // The runner's onChange is wrapped in the panel's runner-ownership guard
+    // (debug-panel-runner-ownership.test.mjs); its body is the guarded callback.
+    const marker = '            onChange: this._runnerOwnership.guard(claim, (ui) => {';
     const start = panelSource.indexOf(marker) + marker.length;
-    const end = panelSource.indexOf('\n            }\n        });', start);
+    const end = panelSource.indexOf('\n            })\n        });', start);
     assert.ok(end > start);
     const onChange = new Function('runner', 'ReactDOM', `return function (ui) {${panelSource.slice(start, end)}\n};`)(
         runner, {unstable_batchedUpdates: fn => fn()}).bind(panel);
