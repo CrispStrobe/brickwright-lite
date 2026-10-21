@@ -23,6 +23,22 @@ missing values and all original assertions. The
 refusal obligations. Do not replay the unchanged carrier while its effect
 boundary remains ineligible.
 
+The complete callable-counter module now has six passes and two export failures.
+Both fail at native addition with an initialized right operand still classified
+as opaque. The captured diagnostic does not identify the operand name; do not
+infer it from the call ordinal. Implement private normal-result proof for actual
+factory arguments, captured writes and returned closure calls. Keep independent
+factory activations, aliases, unknown entry points and all writers distinct.
+Preserve the eight original tests and add negative controls; annotations alone
+must not authorize a value. The merged numeric-closure claim defines this scope.
+
+Static fresh-animation source controls currently have 31 passes and one failed
+new test: its settings menu phrase is rejected before export. Correct that
+fixture using the existing dialect, retaining its real final-source settings
+prefix and all lookup-retention assertions. Then qualify the complete affected
+three-module cohort. This is separate from the deferred SDK cohort; neither
+result is a measured reduction of historical partial apps.
+
 Read [the latest handoff](ARCADE-AGENT-HANDOFF.md#latest-observed-state-and-next-work--2026-10-21)
 and [complete hosted failure census](ARCADE-CI-REPAIR-STATUS.md#latest-complete-hosted-observation--2026-10-21)
 first. The published candidate is red. Do not conflate 175 ordinary test
