@@ -1,0 +1,1 @@
+| matrix N2: SmallerC → NASM front end → DOS bench | lego-ac delegate, audited by lego-ac | `103432e18` | 5 of 5 assemble; `requestCBuild`/`cRouteFor`; ▶ Run C on 8086; exit-code leak in smallerc-wasm fixed; ROADMAP §4.6 rewritten. |

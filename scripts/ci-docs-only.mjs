@@ -30,6 +30,7 @@ export const pushWouldBuild = (file, entries) => {
         let matches;
         if (pattern === '**') matches = true;
         else if (pattern === 'docs/*.md') matches = /^docs\/[^/]+\.md$/.test(file);
+        else if (pattern === 'lanes/*') matches = /^lanes\/[^/]+$/.test(file);
         else if (/[*?[\]{}]/.test(pattern)) throw new Error(`unsupported trigger pattern ${entry}: extend scripts/ci-docs-only.mjs`);
         else matches = pattern === file;
         if (matches) included = !negated;
