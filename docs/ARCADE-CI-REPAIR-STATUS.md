@@ -46,6 +46,15 @@ the analysis against the actual parser schema, preserve the original controls,
 and qualify the complete group again. No corpus count changes follow from
 these focused tests.
 
+The complete three-test animation carrier case reproduced one export failure;
+the other two tests passed. Current artwork survives import, editing and fresh
+project reload before export stops. The first rejected native-addition operand
+is the initialized `count` variable after `count = frames.length`, with both
+`Number` and `Opaque` provenance. Actual export arguments, resource documents
+and the returned refusal were captured without changing the original test
+assertions. Investigate the genuine frame-factory and collection producer path;
+this evidence does not establish that the lexical-readiness change fixes it.
+
 The school delivery owner has taken over the narrow
 [SPIKE power adoption](../lanes/2026-10-21-school-spike-power-takeover.md).
 Preserve the earlier candidate and its original results; reconcile its source
