@@ -1,3 +1,4 @@
+import {lowerSourceValueOperatorHelpers} from './source-value-operator-helpers.js';
 import {lowerNativeArrayBinaryHelpers} from './native-array-binary-domain.js';
 import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSharedImageSourceProgram,bindPreparedSharedImageSource,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
 import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
@@ -356,6 +357,25 @@ class ArcadeTranslator extends BaseTranslator {
         this.procedureConstraintSource=node.bwProcedureConstraintSource || null;
         this.provenArrayReferences=references.provenArrays;
         this.sourceArrayArithmeticOperands=references.sourceArrayArithmeticOperands;
+        // This separate all-writer proof is consumed only by bitwise words.
+        // A real no-initializer scalar starts Undefined; inferImageReferences'
+        // conservative annotation graph intentionally remains unchanged.
+        this.sourceBitwiseOperands=new WeakSet();this.primitiveBitwiseOperands=new WeakSet();this.possibleBitwiseArrays=new WeakSet();
+        const bitwise=value=>value?.type==='Binary'&&['&','|','^','<<','>>','>>>'].includes(value.op)||value?.type==='Unary'&&value.op==='~';
+        if(containsAst(node,bitwise)){
+            const facts=analyseSourceValueProducers(node,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+                declaredLocalUndefined:true,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true});
+            const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
+            containsAst(node,value=>{
+                if(bitwise(value))for(const operand of value.type==='Binary'?[value.left,value.right]:[value.argument]){
+                    const types=facts.typesAt(operand),array=type=>type?.kind==='Array';
+                    if([...types].some(array)||references.arrays.has(operand))this.possibleBitwiseArrays.add(operand);
+                    if(types.size&&[...types].every(type=>primitive.has(type)||array(type)))this.sourceBitwiseOperands.add(operand);
+                    if(references.primitives.has(operand)||types.size&&[...types].every(type=>primitive.has(type)))this.primitiveBitwiseOperands.add(operand);
+                }
+                return false;
+            });
+        }
         this.inferredSpriteParameters = references.parameters;
         this.primitiveReferences=references.primitives;
         this.sourceTypeOfOperands=references.sourceTypeOfOperands;
@@ -1289,7 +1309,15 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.nativeValues && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
             const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];
-            if(operands.some(value=>!this.primitiveReferences?.has(value))){this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return 'undefined value';}
+            if(operands.some(value=>this.possibleBitwiseArrays?.has(value))){
+                if(operands.some(value=>!this.sourceBitwiseOperands?.has(value))){
+                    this.unsupported.push('Arcade source Array bitwise operation requires current Array or primitive operand producers');return 'undefined value';
+                }
+                this.usesArrays=true;
+                return node.type==='Binary'?`arcade source value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
+                    `arcade source unary "~" of (${this.arrayElementValue(node.argument)})`;
+            }
+            if(operands.some(value=>!this.primitiveBitwiseOperands?.has(value))){this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return 'undefined value';}
             this.usesArrays=true;
             return node.type==='Binary'?`calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
                 `convert value (${this.arrayElementValue(node.argument)}) op "~"`;
@@ -3250,7 +3278,7 @@ const lowerLibraryCalls = program => program;
 const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     const helpers=new Map();
     for(const fn of program.body) {
-        if(fn.type!=='FunctionDeclaration' || !/^__bw(?:SourceBinary|Binary|Unary|Compare)/.test(fn.name) || fn.body.length!==1 || fn.body[0].type!=='Return')continue;
+        if(fn.type!=='FunctionDeclaration' || !/^__bw(?:Binary|Unary|Compare)/.test(fn.name) || fn.body.length!==1 || fn.body[0].type!=='Return')continue;
         const value=fn.body[0].value;
         if(value?.type==='Binary' && ['+','-','*','/','%','**','==','!=','===','!==','<','>','<=','>='].includes(value.op) && fn.params.length===2 && value.left?.type==='Identifier' && value.left.name===fn.params[0] && value.right?.type==='Identifier' && value.right.name===fn.params[1])helpers.set(fn.name,{fn,value});
         if(value?.type==='Unary' && ['+','-'].includes(value.op) && fn.params.length===1 && value.argument?.type==='Identifier' && value.argument.name===fn.params[0])helpers.set(fn.name,{fn,value});
@@ -5057,7 +5085,8 @@ export function arcadeToPseudocode (files, opts = {}) {
     const sharedSourceContext = !namedEnabled&&!callableEnabled&&!classEnabled ? bindPreparedSharedImageSource(sharedSourcePreparation,ordinarySource) : null;
     const generatedProfile=(namedEnabled||classEnabled||callableEnabled||opts.procedureConstraintsPrototype===true)?
         GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
-    const nativeBinaryInputs=lowerNativeArrayBinaryHelpers(callableSourceInput,generatedProfile);
+    const sourceOperatorInputs=lowerSourceValueOperatorHelpers(callableSourceInput,generatedProfile);
+    const nativeBinaryInputs=lowerNativeArrayBinaryHelpers(sourceOperatorInputs,generatedProfile);
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(nativeBinaryInputs.program,true),{profile:generatedProfile});
     // Recognition consumes the selected parse context before clone-heavy
     // lowerings erase its parameter descriptors or alter canonical bodies.

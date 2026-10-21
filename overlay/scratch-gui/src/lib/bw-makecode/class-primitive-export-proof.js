@@ -1,3 +1,4 @@
+import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {sdkSpriteExportClasses} from './sdk-sprite-class-descriptors.js';
 
@@ -208,6 +209,10 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
         case 'arcade_objectField':{const receivers=fieldReceivers(input(target,block,'OBJECT')),values=[];for(const name of receivers){const field=name===sdkSprite&&spriteField(fixed(target,block,'FIELD'));values.push(field&&expected.has(field.value.type)?new Set(['Constraint:'+expected.get(field.value.type)]):name.startsWith('@')?fieldValues(name.slice(1),fixed(target,block,'FIELD')):opaque());}types=values.length?union(values):opaque();break;}
         case 'arcade_callFunction':case 'arcade_callObjectMethod':{const defs=destinations(target,block);types=defs.length?union(defs.map(def=>{const declared=methodOwners.get(def)?.result;return expected.has(declared)?new Set(['Constraint:'+expected.get(declared)]):result(def);})):opaque();break;}
         default:{
+            if(['arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(block.opcode)){
+                const operation=sourceValueOperation(block);
+                types=operation?.result==='Number'?new Set(['Number']):opaque();break;
+            }
             if(block.opcode==='arrays_valueBinary'){
                 const op=fixed(target,block,'OP'),left=input(target,block,'LEFT'),right=input(target,block,'RIGHT'),all=union([left,right]);
                 if(!left.size||!right.size){types=new Set();break;}

@@ -55,10 +55,20 @@ module.exports = makeExt(`// Name: Arcade
       const scorePrototype=Object.getPrototypeOf(this),scoreMethods=new Map(
         ['getInfo','getPlayerScore','setPlayerScore','changePlayerScore','_lifeState','_infoState','_state'].map(name=>
           [name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]));
+      const sourceResultDescriptor=Object.getOwnPropertyDescriptor,sourceResultPrototype=Object.getPrototypeOf,sourceResultOwn=Object.prototype.hasOwnProperty,sourceResultApply=Reflect.apply;
+      const sourceResultMethods=['sourceValueBinary','sourceValueUnary','_bindSourceOperationAdapter'].map(name=>[name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]);
       const scoreNumberOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===scorePrototype &&
         Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...scoreMethods].every(([name,method])=>
           typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
-          Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method)});
+          Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method),
+        isSourceCurrent:()=>{
+          if(sourceResultPrototype(this)!==scorePrototype||sourceResultDescriptor(this,'_runtime')?.value!==runtime)return false;
+          for(let i=0;i<sourceResultMethods.length;i++){
+            const name=sourceResultMethods[i][0],method=sourceResultMethods[i][1];
+            if(typeof method!=='function'||sourceResultApply(sourceResultOwn,this,[name])||sourceResultDescriptor(scorePrototype,name)?.value!==method)return false;
+          }
+          return true;
+        }});
       scoreNumberOwners.set(this,scoreNumberOwner);
       const getterPrototype=Object.getPrototypeOf(this),getterMethods=new Map(
         ['getInfo','spriteProperty'].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
@@ -367,6 +377,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
           {opcode:'sourceValueBinary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source value [LEFT] [OP] with [RIGHT]',arguments:{...str('LEFT',''),OP:{type:Scratch.ArgumentType.STRING,menu:'sourceBinaryOperations',defaultValue:'+'},...str('RIGHT','')}},
+          {opcode:'sourceValueUnary',blockType:Scratch.BlockType.REPORTER,text:'Arcade source unary [OP] of [VALUE]',arguments:{OP:{type:Scratch.ArgumentType.STRING,menu:'sourceUnaryOperations',defaultValue:'~'},...str('VALUE','')}},
           {opcode:'sourceTypeOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade source type of [VALUE]',arguments:{VALUE:{type:Scratch.ArgumentType.STRING}}},
           {opcode:'inspectValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade inspect value [VALUE] limit [LIMIT]',output:'String',arguments:{...str('VALUE',''),...n('LIMIT',20)}},
           {opcode:'fontValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade font [FONT]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,menu:'fontValueNames',defaultValue:'font8'}}},
@@ -1005,7 +1016,8 @@ module.exports = makeExt(`// Name: Arcade
           sourceReferenceTypes:{acceptReporters:false,items:'_sourceReferenceChoices'},
           constraintProcedures:{acceptReporters:false,items:'_constraintProcedures'},
           constraintParameters:{acceptReporters:false,items:'_constraintParameters'},
-          sourceBinaryOperations:{acceptReporters:false,items:['+','-','*','/','%','**']},
+          sourceBinaryOperations:{acceptReporters:false,items:['+','-','*','/','%','**','&','|','^','<<','>>','>>>']},
+          sourceUnaryOperations:{acceptReporters:false,items:['~']},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
           mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
@@ -5245,8 +5257,17 @@ module.exports = makeExt(`// Name: Arcade
       });
       return this._textModule;
     }
+    // Constructor-only delegate binding: the owner stays in this source closure.
+    _bindSourceOperationAdapter(adapter) {
+      dependencies.bindSourceOperationAdapter(adapter,this,scoreNumberOwners.get(this));
+    }
+
     sourceValueBinary(args,util) {
       try {this._sourceTypeOf.assertOwner();return dependencies.sourceValueBinary(this._runtime,args,util);}
+      catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
+    }
+    sourceValueUnary(args,util) {
+      try {this._sourceTypeOf.assertOwner();return dependencies.sourceValueUnary(this._runtime,args,util);}
       catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
     }
     inspectValue(args,util) {return this._consoleInspectValues.inspect(args,util,error=>this._objectError(error));}
@@ -6115,6 +6136,7 @@ module.exports = makeExt(`// Name: Arcade
   cachedPrimitiveOwner: require('../../../util/bw-cached-primitive-owner'),
   arcadeExceptions: require('../../../util/bw-arcade-exceptions'),
   sourceValueBinary: require('../../../util/bw-array-operations').sourceValueBinary,
+  sourceValueUnary: require('../../../util/bw-array-operations').sourceValueUnary,
   createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),
@@ -6122,6 +6144,7 @@ module.exports = makeExt(`// Name: Arcade
   createSourceTypeOfValues: require('./source-typeof-values'),
   createConsoleInspectValues,
   bindScoreAdapterInfo: createConsoleInspectValues.bindScoreAdapterInfo,
+  bindSourceOperationAdapter: createConsoleInspectValues.bindSourceOperationAdapter,
   sceneClockNumber,
   bindSceneClockAdapterInfo: sceneClockNumber.bindAdapterInfo,
   nullSpriteGetter,

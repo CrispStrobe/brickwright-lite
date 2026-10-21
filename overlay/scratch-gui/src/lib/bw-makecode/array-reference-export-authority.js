@@ -1,3 +1,4 @@
+import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
@@ -535,6 +536,25 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
     const literalNumber=(target,node,name)=>{const v=input(node,name,target);if(v.raw&&[4,5,6,7,8].includes(v.raw[0]))return Number(v.raw[1]);if(v.node?.shadow&&v.node.opcode==='math_number')return Number(v.node.fields?.NUM?.[0]);return null;};
+    // Slice presence accepts only closed integer shadows and the exact numeric
+    // `0 + shadow` wrapper emitted for source constants. This does not broaden
+    // literalNumber, positional slot proofs or any general numeric producer.
+    const sliceBound=(target,node,name)=>{
+        const number=value=>{
+            let raw;
+            if(Array.isArray(value.raw)&&value.raw.length===2&&[4,5,6,7,8].includes(value.raw[0]))raw=value.raw[1];
+            else {const n=value.node,row=n?.fields?.NUM;
+                if(!n||invalid.has(n)||n.shadow!==true||n.opcode!=='math_number'||!exactKeys(n,[],['NUM'])||
+                    Object.keys(n.fields||{}).length!==1||!Array.isArray(row)||row.length!==2||row[1]!==null)return null;
+                raw=row[0];}
+            if(typeof raw!=='string'&&typeof raw!=='number')return null;
+            const result=Number(raw);return Number.isFinite(result)&&Number.isInteger(result)?result:null;
+        };
+        const value=input(node,name,target),direct=number(value);if(direct!==null)return direct;
+        const n=value.node;if(!n||invalid.has(n)||n.opcode!=='operator_add'||!exactKeys(n,['NUM1','NUM2'])||
+            Object.keys(n.fields||{}).length)return null;
+        return number(input(n,'NUM1',target))===0?number(input(n,'NUM2',target)):null;
+    };
     // A reset can be ignored for KIND facts only when a synchronous source-start
     // segment overwrites it before any observer can read that particular cell.
     // The general Array cell writer set remains unchanged.
@@ -577,6 +597,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.shadow&&node.opcode==='math_number')return !Number.isNaN(Number(node.fields?.NUM?.[0]));
         if(node.opcode==='arcade_createSpriteKind')return exactKeys(node,[]);
         if(node.opcode==='arcade_spriteKindValue')return exactKeys(node,['NAME'])&&typeof literal(node,'NAME',value.target)==='string';
+        if(sourceValueOperation(node)?.result==='Number')return true;
         if(node.opcode==='arrays_valueBinary')return ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(node,'OP',value.target))&&numericKind(input(node,'LEFT',value.target),next)&&numericKind(input(node,'RIGHT',value.target),next);
         // Scratch arithmetic reporters always cast their operands and return a Number.
         if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(node.opcode))return exactKeys(node,['NUM1','NUM2']);
@@ -651,6 +672,22 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     try{const l=operand('ARRAY'),r=operand('OTHER');if(!singleArray(new Set(l))||!singleArray(new Set(r)))return 0;
                         return Math.min(...l.map(a=>a===t?0:minimumAt(a,node)))+Math.min(...r.map(a=>a===t?0:minimumAt(a,node)));}
                     finally{concatLengths.delete(t);}}});
+            }
+            if(node.opcode==='arrays_referenceSlice'&&!Object.getOwnPropertyDescriptor(t,'minLength').get){
+                Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
+                    if(concatLengths.has(t))return 0;concatLengths.add(t);
+                    try{
+                        const start=sliceBound(target,node,'START'),end=sliceBound(target,node,'END');
+                        // With nonnegative START, slice length is monotone in
+                        // source length for either sign of END. A lower length
+                        // alone cannot prove negative-START/nonnegative-END.
+                        if(start===null||start<0||end===null)return 0;
+                        const source=[...readInput(input(node,'ARRAY',target))];
+                        if(!singleArray(new Set(source)))return 0;
+                        const length=Math.max(0,Math.min(...source.map(a=>a===t?0:minimumAt(a,node))));
+                        const first=Math.min(start,length),last=end<0?Math.max(length+end,0):Math.min(end,length);
+                        return Math.max(last-first,0);
+                    }finally{concatLengths.delete(t);}}});
             }
             return new Set([t]);
         }
@@ -734,6 +771,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(parent.opcode==='arcade_callFunction')return name==='ARGS'&&exactKeys(parent,['NAME','ARGS'])&&typeof literal(parent,'NAME',owners.get(parent).target)==='string';
         if(parent.opcode==='procedures_call'){const call=calls.find(call=>call.node===parent);return !!call?.fn&&!call.fn.invalid&&!!call.args&&Object.keys(parent.fields||{}).length===0;}
         if(schemas[parent.opcode])return operationShape(parent);
+        const sourceOperation=sourceValueOperation(parent);
+        if(sourceOperation)return sourceOperation.inputs.includes(name);
         const scalarInputs={arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2'],operator_lt:['OPERAND1','OPERAND2'],operator_gt:['OPERAND1','OPERAND2'],operator_equals:['OPERAND1','OPERAND2'],operator_and:['OPERAND1','OPERAND2'],operator_or:['OPERAND1','OPERAND2'],operator_not:['OPERAND'],operator_join:['STRING1','STRING2'],operator_length:['STRING'],operator_letter_of:['LETTER','STRING'],operator_contains:['STRING1','STRING2'],operator_round:['NUM']};
         const inputs=scalarInputs[parent.opcode];if(!inputs)return false;
         if(parent.opcode.startsWith('arrays_value'))return exactKeys(parent,Object.hasOwn(parent.fields||{},'OP')?inputs:[...inputs,'OP'],['OP'])&&inputs.includes(name);

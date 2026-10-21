@@ -119,6 +119,18 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
     };
     const primitiveValue=node=>{const found=types(node);return found.size>0&&[...found].every(type=>primitive.has(type))&&initialized(node);};
+    // A captured scalar cell may be read before its first assignment. Its
+    // actual Undefined value is still a primitive operand; this does not
+    // establish initialization, an Array producer or an input certificate.
+    // Both occurrence and complete binding writer facts must be primitive.
+    const capturedScalarIdentifier=node=>{
+        if(node?.type!=='Identifier')return false;
+        const value=actual(node),kinds=graph.bindingKindsAt(value);
+        if(graph.declarationCountAt(value)!==1||kinds.size!==1||!kinds.has('variable'))return false;
+        const occurrence=types(node),writers=graph.bindingTypesAt(value);
+        return occurrence.size>0&&writers.size>0&&
+            [...occurrence,...writers].every(type=>primitive.has(type));
+    };
     // Canonical parse NORMAL returns on non-String primitive input are
     // primitive. Its unary+/isNaN/JSON effects and possible errors remain in
     // the actual source; this is only an overapproximation of Array contents.
@@ -137,7 +149,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){
         const arg=call.args[position];
         const found=types(arg);
-        if(!found.size||!initialized(arg)||[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'))
+        if(!found.size||!initialized(arg)&&!capturedScalarIdentifier(arg)||[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'))
             return {helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
         for(const allocation of allocations(arg)){
             if(!(position===0?helper.leftArray:helper.rightArray))return {helpers:new Map(),current,reason:'native helper does not join this actual Array operand position'};

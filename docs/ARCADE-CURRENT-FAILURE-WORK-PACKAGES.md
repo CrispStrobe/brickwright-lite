@@ -2,6 +2,10 @@
 
 ## Active work order — 2026-10-20
 
+The bounded nested-slice candidate passes its complete 50-test pure authority
+module. Read [its proof and pending acceptance](ARCADE-SLICE-PRESENCE.md);
+native, original-PXT, fresh-SB3 and browser checks remain separate.
+
 This section supersedes the dated observations below. Read the
 [current handoff](ARCADE-AGENT-HANDOFF.md#current-integration-checkpoint--2026-10-20)
 for their qualification boundaries. Historical raw counts remain 147 translated,

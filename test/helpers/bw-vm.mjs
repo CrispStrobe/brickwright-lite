@@ -104,7 +104,7 @@ export function conformance (project) {
  * false accusations while still going to zero for a program that lost its
  * hardware verbs to a syntax slip.
  */
-function registerBundledExtensions (vm, calls) {
+function registerBundledExtensions (vm, calls, countExtensionCalls = true) {
     const manager = vm.extensionManager;
     const original = manager.loadExtensionURL.bind(manager);
     manager.loadExtensionURL = id => {
@@ -115,7 +115,9 @@ function registerBundledExtensions (vm, calls) {
             // lifecycle events, without adding another frame listener.
             if (manager.isExtensionLoaded(key)) return Promise.resolve();
             const instance = new (extensionClass(key))(vm.runtime);
-            for (const name of Object.getOwnPropertyNames(instance)) {
+            // Ownership-sensitive cases select genuine production delegates.
+            // No call-counter observation is available in that explicit mode.
+            for (const name of countExtensionCalls ? Object.getOwnPropertyNames(instance) : []) {
                 const method = instance[name];
                 if (typeof method !== 'function' || name === 'getInfo') continue;
                 instance[name] = function (...args) {
@@ -199,7 +201,8 @@ export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual', observeCreator = null} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual', observeCreator = null, countExtensionCalls = true} = {}) {
+    if(typeof countExtensionCalls!=='boolean')throw new Error('Extension call observation must be explicitly boolean');
     const creator = new SB3Creator();
     try { creator.parse(source); }
     catch (parseError) {
@@ -236,7 +239,7 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
         vm.attachStorage(new Storage());
     }
     const calls = new Map();
-    registerBundledExtensions(vm, calls);
+    registerBundledExtensions(vm, calls, countExtensionCalls);
     await vm.loadProject(buffer);
     if (creator.project.stc) vm.runtime.stc = creator.project.stc;
     const loadedOpcodes = new Set();
@@ -270,6 +273,6 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     let extensionCalls = 0;
     for (const count of calls.values()) extensionCalls += count;
     return {creator, vm, buffer, loadedOpcodes, blockCount, threadsStarted, greenFlagThreadsStarted, errors,
-        calls, extensionCalls, variablesChanged,
+        calls, extensionCalls, extensionCallsObserved: countExtensionCalls, variablesChanged,
         loadedExtensions: new Set(vm.extensionManager._loadedExtensions.keys())};
 }

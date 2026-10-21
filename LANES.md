@@ -66,7 +66,10 @@ PR #1123, not on main). Tests: test/bw-sim-crane.test.mjs. No physics-core chang
 
 ## Arcade slice-result element presence — 2026-10-20
 
-CLAIM CANDIDATE — Codex Arcade Array/export lane. Merge before implementation.
+CLAIM MERGED in #1148 / SOURCE CANDIDATE — Codex Arcade Array/export lane.
+The complete affected pure module passes all 50 tests with no skips or TODOs.
+Native/original slice behavior, fresh SB3 and visible authoring qualification
+remain pending; no whole-corpus classification is changed.
 An unchanged complete four-group, twelve-program pure baseline has two failing
 positive groups and two passing refusal groups. Literal bounded slice results
 lose nested Array presence during export; the importer and Creator retain them.
@@ -8445,3 +8448,15 @@ ABA restoration, fresh second VM, and the existing numeric, rotation, paint/menu
 and public roundtrip browser journeys. Preserve all current P17/boot size and
 performance thresholds, baselines, assertions and enabled exact-head gates.
 A build dependency/order claim is not browser, performance, game or corpus credit.
+
+## Source Number result and captured scalar qualification — 2026-10-21
+
+Within the existing Arcade/Array source operation and export analysis lane,
+the composed native twelve-test cohort passes without skipped or TODO cases.
+The actual runtime factory/constructor/cache binding remains unchanged by the
+fixture repairs. Restore both indexed Array prototype property and length;
+install cached-primitive attacks against the actual post-load dispatch function.
+Closed unary normal returns and primitive captured variables are source-result
+facts only, with actual operand effects and complete writer facts retained.
+Final supplier adoption, visible authoring and hosted exact-head acceptance are
+pending; no whole application corpus or hardware completion is claimed.
