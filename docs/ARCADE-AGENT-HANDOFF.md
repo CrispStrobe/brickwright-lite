@@ -4,14 +4,32 @@
 
 ### Current composition and next acceptance
 
-The closed local-class lineage candidate passes its complete eight-module,
-27-control source cohort. That establishes the selected constructor, inherited
-member and writer analysis; current SDK execution, original MakeCode execution,
-export/reimport and visible authoring remain separate pending gates. SDK Sprite
-inheritance is the next work package: an actual `x` slot contract, genuine Image
-clone ingress, and possible receiver sets from `sprites.allOfKind`. Preserve
-Undefined, exceptions, every possible writer and scene/callback effects; type
-annotations alone supply no runtime proof.
+The SDK Sprite receiver candidate now passes its complete nine-module,
+35-control source cohort. It admits the genuine Sprite `x` slot through checked
+Image ingress and closed `sprites.allOfKind` receiver sets, preserving possible
+Undefined values, exceptions and unproved writers. The unchanged two-case
+conversion diagnostic also passes; it covers import, Creator/assets and export,
+with the full source and output files retained. Current VM execution, original
+SDK execution, fresh reimport and visible authoring remain pending. Read
+[the receiver contract and qualification boundary](ARCADE-CLASS-LINEAGE.md).
+
+The stdout assessment transport passes all 23 controls across its writer,
+unchanged progress module and independently implemented decoder. The CLI can
+emit bounded framed progress, a compressed report, Markdown and a terminal
+record using `--stdio-transcript`; normal file output remains the default.
+A separate seven-invocation static CLI comparison also passes, preserving
+complete graphs, actual parse-failure exit and output-conflict refusals. The
+complete public CLI module with SB3/VM prerequisites, report admission and
+filesystem isolation remain separate gates. Read
+[the wire contract and pending work](ARCADE-PRIVATE-ASSESSMENT-STDIO.md).
+
+Canonical Array menu shadows now have a strict reader shared by the affected
+export analyses. Reimported null initialization exposes a further requirement:
+prove that an independent Array assignment precedes every read. The new proof
+must use the existing immutable project-JSON export boundary, preserve direct
+mutable-object refusals and retain all producer/writer checks. Its complete
+round-trip and hostile-input controls remain pending; menu syntax support alone
+does not close those application gaps.
 
 Current main also adds generated extension menu normalization. Before publishing
 the composed Arcade candidate, regenerate `extension-menu-table.js` from actual
