@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "ellipse-engine",
+  "language": "en",
+  "what": "One motor travels on an upper sliding carriage. A rigid coupler joins it to a passive carriage on a perpendicular guide. The red and blue marker caps trace perpendicular ellipses, each 112 × 48 mm. Both carriages have 64 mm stroke. All 169 supplied LEGO placements are retained; the coloured caps are markers rather than ink pens. Two perpendicular carriages and one moving motor make two points trace orthogonal 112 × 48 mm ellipses. Compare the carriage strokes and marker paths.",
+  "try": [
+    "Choose Ellipse Engine in Examples; its native program loads into Blocks automatically. Reset to the saved pose, then press Run. The motor makes three uninterrupted turns at 30 degrees per second, pauses holding, then reverses three turns and returns home.",
+    "Watch the moving motor housing as well as its shaft. The upper carriage follows one guide while the lower orange carriage follows the perpendicular guide. Compare their direction at quarter-turn intervals.",
+    "Follow the red and blue caps separately. Their major axes are perpendicular. After resetting, use motor A manual override for small jogs to inspect intermediate poses; reset before running the finite experiment again."
+  ],
+  "why": "Let A and B be the projected pivot positions on perpendicular guide lines. Their separation is 32 mm. Defining φ from the actual B-to-A vector gives A = (32 cos φ, 0) and B = (0, −32 sin φ). The midpoint is (16 cos φ, −16 sin φ). A marker at signed distance s mm from the midpoint has P = ((16+s) cos φ, (s−16) sin φ). At s = −40 or +40 mm, the semiaxes are 24 and 56 mm in opposite order. Thus the full axis lengths are 48 and 112 mm.",
+  "matters": "An orthogonal trammel converts one rotational input into constrained translations and elliptical point paths. The guides and physical hinge connections determine the paths. The program commands motor angle, not marker coordinates. This example has no paper, physical pen or simulated ink contact.",
+  "question": "If a third marker were placed at the exact midpoint of the coupler, what path would it follow and what would its diameter be?",
+  "answer": "A circle of diameter 32 mm: at s = 0, x = 16 cos φ and z = −16 sin φ, so both semiaxes are 16 mm. The two existing end markers have unequal semiaxes and therefore follow ellipses.",
+  "further": [
+    "Compare with Quickstroke: it has one offset guide, a crank and a rod; Ellipse Engine constrains two perpendicular carriages.",
+    "For a mathematical comparison, change s in the marker equation. A marker at s = +16 or −16 mm lies at a pivot and follows a straight guide line. Moving a real marker requires a checked new assembly.",
+    "Compare actual body positions with the equation, including intermediate travel and return. Motor encoder completion alone does not establish an ellipse."
+  ],
+  "formula": "A = (32 cos φ, 0), B = (0, −32 sin φ) mm; P(s) = ((16+s) cos φ, (s−16) sin φ) mm. s = ±40 mm ⇒ full axes 112 × 48 mm. s = 0 ⇒ circle diameter 32 mm.",
+  "related": [
+    "quickstroke.ldr",
+    "twinpoint.ldr",
+    "straight-eight.ldr"
+  ]
+}

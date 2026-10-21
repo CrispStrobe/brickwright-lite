@@ -8126,3 +8126,31 @@ within the unchanged glass collider to avoid depth flicker; no physical body,
 connector, program or glass dimension changes. The original failed source and
 intermediate diagnostics remain retained. Hosted integration and release
 ownership remain separate from this lane's local simulation qualification.
+
+### Ellipse Engine and portable builder workflow — 2026-10-21
+
+This lane adds the owner-supplied 169-piece, one-motor orthogonal trammel,
+preserving all placements and its native forward/reverse program. Independent
+body-pose measurements qualify both marker ellipses, both carriage strokes,
+encoder agreement, hinge closure, antiroll guidance, base stability and return.
+Ordinary and strict preparation runs pass, and frozen outputs fail the oracle.
+No mechanism, metadata or engine repair is needed at this checkpoint.
+
+The accompanying reusable builder brief compares lessons from earlier repairs
+and replaces machine-specific recovery bundles with a concise capability
+contract: CAD-only, headless-native and app/browser access establish different
+evidence. It keeps physical construction, actual program execution and useful
+output observations separate, and records unsupported checks as UNTESTED.
+The current motor constraint is 1–3; stale catalogs and runtime assumptions
+must not overwrite newer corrected work. Browser/render and mesh admission
+remain the next checks for this model at this checkpoint.
+
+Ellipse qualification update: all 3 construction/native controls pass, including
+both import modes and frozen-output negatives; the existing Quickstroke helper
+regression passes 2 controls. The standard real-mesh/shaft/shared-hole checks
+pass all 6 targeted controls, and 33 registry/notice controls pass. Chromium
+passes the complete native-worker program, manual A, 64-page connected
+instructions/169-piece BOM, EN/DE lessons and no page errors. The normal GUI
+build passes. The library now contains 61 choices over 53 assemblies, with
+122 offline lessons. The portable handoff is 124 lines, without an embedded
+runtime or stale model inventory. No physical build or merged release is claimed.

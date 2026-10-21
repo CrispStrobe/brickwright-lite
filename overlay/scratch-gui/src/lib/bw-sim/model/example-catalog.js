@@ -267,6 +267,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "ellipse-engine.ldr": {
+        "pieces": 169,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two perpendicular carriages and one moving motor make two points trace orthogonal 112 × 48 mm ellipses. Compare the carriage strokes and marker paths.",
+            "de": "Zwei rechtwinklige Schlitten und ein mitfahrender Motor führen zwei Punkte auf senkrecht zueinander stehenden Ellipsen von 112 × 48 mm. Vergleiche Schlittenhub und Markerbahnen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "quickstroke.ldr": {
         "pieces": 111,
         "motors": 1,

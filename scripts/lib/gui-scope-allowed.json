@@ -57,6 +57,7 @@
       "test/bw-sim-colour-explorer-program.test.mjs",
       "test/bw-sim-dc-motor.test.mjs",
       "test/bw-sim-dynamics-machines.test.mjs",
+      "test/bw-sim-ellipse-engine.test.mjs",
       "test/bw-sim-example-catalog.test.mjs",
       "test/bw-sim-excavator.test.mjs",
       "test/bw-sim-expanded-machines.test.mjs",

@@ -2501,3 +2501,11 @@ and four double-sided adhesive gaskets alongside 1,203 LEGO placements. Sarrus
 adds four LEGO clearance plates to its supplied 140-piece layout. Quickstroke
 preserves all 111 supplied placements. Official part geometry retains its
 separate CC BY notices; authored material geometry retains its BSD notice.
+
+### Ellipse Engine
+
+Owner-supplied arrangement originally dedicated under CC0; application
+adaptation, native program and bilingual lessons: Copyright (c) 2026
+CrispStrobe, BSD-3-Clause. The source fixture preserves the original CC0 grant
+and inherited BSD notice. All 169 authored LEGO placements are retained.
+Referenced official LDraw geometry keeps its separate authors and CC BY terms.

@@ -92,6 +92,7 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'ellipse-engine.ldr', title: {en: 'Ellipse Engine — orthogonal trammel', de: 'Ellipse Engine — rechtwinkliger Ellipsenzirkel'}, example: 'ellipse-engine.bw', mat: 'plain'},
     {file: 'quickstroke.ldr', title: {en: 'Quickstroke — quick-return linkage', de: 'Quickstroke — Schnellrücklauf'}, example: 'quickstroke.bw', mat: 'plain'},
     {file: 'sarrus-lift.ldr', title: {en: 'Sarrus Lift — spatial straight-line linkage', de: 'Sarrus Lift — räumliche Geradführung'}, example: 'sarrus-lift.bw', mat: 'plain'},
     {file: 'magnetic-chess.ldr', title: {en: 'Magnetic Chess — finite-force transport', de: 'Magnetic Chess — Transport mit Magnetkraft'}, example: 'magnetic-chess.bw', mat: 'plain'},

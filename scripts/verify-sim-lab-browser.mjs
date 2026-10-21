@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
 import {magneticChessInteractions,magneticChessLesson} from './lib/sim-lab-magnetic-chess-gate.mjs';
 import {sarrusLiftInteractions,sarrusLiftLesson} from './lib/sim-lab-sarrus-lift-gate.mjs';
 import {quickstrokeInteractions,quickstrokeLesson} from './lib/sim-lab-quickstroke-gate.mjs';
@@ -750,6 +751,15 @@ try {
             const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             fixed.on('pageerror',error=>errors.push(error.message));fixed.on('dialog',dialog=>dialog.accept());
             await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
+        }
+        if (runExample('ellipse-engine.ldr')) {
+            const quick=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
+            quick.on('pageerror',error=>errors.push(error.message));quick.on('dialog',dialog=>dialog.accept());
+            const opts={openSimLab,shotsDir:resolve(artifacts,'ellipse-engine'),timeout:wallBudget(150000)};
+            await ellipseEngineInteractions(quick,opts);await quick.close();
+            const german=await browser.newPage({viewport:{width:1600,height:1050},locale:'de-DE',serviceWorkers:'block'});
+            german.on('pageerror',error=>errors.push(error.message));german.on('dialog',dialog=>dialog.accept());
+            await ellipseEngineLesson(german,opts,'de');await german.close();
         }
         if (runExample('quickstroke.ldr')) {
             const quick=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});

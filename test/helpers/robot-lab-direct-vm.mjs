@@ -12,8 +12,8 @@ import {loadJolt} from '../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-co
 import {createRobotLabApi} from '../../overlay/scratch-gui/src/lib/bw-sim/api/robot-lab-api.js';
 const CATALOG=catalogFrom(JSON.parse(readFileSync(new URL('../../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',import.meta.url))));
 const Timer=createRequire(import.meta.url)(VM_SRC+'/util/timer.js');
-export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=CATALOG}){
- const p=prepareModel(modelText,catalog,{mat:'plain'}),J=await loadJolt(),hub=new HubState();hub.setSimulationEnabled(true);
+export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=CATALOG,autoPorts}){
+ const p=prepareModel(modelText,catalog,{mat:'plain',...(autoPorts===undefined?{}:{autoPorts})}),J=await loadJolt(),hub=new HubState();hub.setSimulationEnabled(true);
  const session=new SimSession({...p,hubState:hub,catalog,mat:'plain',J}),vm=new VM(),clock=new FakeClock(1.7e12);
  const api=createRobotLabApi({getSession:()=>session,getStatus:()=> 'running',start:async()=>{},locale:()=> 'en'});vm.runtime.robotLab=api;
  let finishedAt=null,clockInstalled=false;const track=[];
