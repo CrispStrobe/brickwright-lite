@@ -33,6 +33,7 @@
       "test/bw-sim-palette-ui.test.mjs",
       "test/bw-sim-pen.test.mjs",
       "test/bw-sim-render-quality.test.mjs",
+      "test/bw-sim-sarrus-lift.test.mjs",
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-surface-drawing.test.mjs",
       "test/bw-sim-world.test.mjs",
