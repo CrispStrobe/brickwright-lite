@@ -576,3 +576,12 @@ actual poses passes the browser observation criterion and is rejected by that
 fine gate. No expected poses, fitted dimensions or relaxed physical bounds are
 used. The two new browser steps use the existing eight-minute budget and were
 registered with zero readings through the canonical budget generator.
+
+The first full hosted attempt exposed an older gallery assertion that assumed
+the English `flywheel` and German `Schwungrad` searches had only one result.
+Counterturn legitimately adds a second. The original failure reproduces locally;
+the browser now requires exactly Counterturn and Flywheel Differential, checks
+the latter's piece count within its own card and opens that card explicitly.
+The complete affected English/German journey passes in Chromium and WebKit,
+including the unchanged chain-motion checks and no page errors. This is a test
+repair; application search, model geometry and physics are unchanged.
