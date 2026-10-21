@@ -3,6 +3,10 @@ name: mobile
 on:
   workflow_dispatch:
     inputs:
+      testflight_robotlab:
+        description: Upload the qualified Robot Lab beta to TestFlight (dedicated delivery branch only).
+        type: boolean
+        default: false
       sign_ios:
         description: >-
           Also build a SIGNED iOS IPA. Off by default because it talks to
@@ -796,6 +800,7 @@ jobs:
 
   android:
     needs: build-web
+    if: inputs.testflight_robotlab != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -888,6 +893,7 @@ jobs:
 
   ios:
     needs: build-web
+    if: inputs.testflight_robotlab != true
     runs-on: macos-latest
     # Simulator-only, so no Apple signing certificate or developmentTeam is
     # needed. A real-device/TestFlight build still would be. This job is
@@ -3075,7 +3081,7 @@ jobs:
   # existing MACOS_CERT_P12 is reused rather than storing a second copy.
   ios-signed:
     needs: build-web
-    if: ${{ github.event_name == 'push' || inputs.sign_ios }}
+    if: ${{ github.event_name == 'push' || (inputs.sign_ios && (!inputs.testflight_robotlab || (github.ref == 'refs/heads/delivery/robotlab-testflight-20261021' && !inputs.device_ipa))) }}
     runs-on: macos-latest
     env:
       IOS_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
@@ -3087,6 +3093,26 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+      - name: Check TestFlight version availability
+        if: inputs.testflight_robotlab
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
+        run: |
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {client, readEnv} from './scripts/lib-appstore.mjs';
+          const env = readEnv();
+          const api = client(env);
+          const version = JSON.parse(readFileSync('apps/tauri/src-tauri/tauri.conf.json')).version;
+          const builds = (await api(`/v1/builds?filter[app]=${env.APPSTORE_APP_ID}&limit=20&sort=-uploadedDate&fields[builds]=version,processingState`)).data;
+          console.log('Existing Apple builds:', builds.map(b => `${b.attributes.version}/${b.attributes.processingState}`).join(', '));
+          if (builds.some(b => b.attributes.version === version)) throw new Error(`Build ${version} already exists; preserve it and use a new version.`);
+          console.log(`TestFlight version ${version} is available.`);
+          JS
+
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: web-build
@@ -3152,8 +3178,8 @@ jobs:
           echo "signed, privacy manifest present, profile embedded, app icon present"
           echo "IPA=apps/tauri/$IPA" >> "$GITHUB_ENV"
 
-      # Validate + upload to App Store Connect -- only on real version tags,
-      # never on workflow_dispatch test runs, matching release.yml (macOS).
+      # Version tags upload normally. The explicit Robot Lab delivery mode also
+      # uploads its isolated, owner-authorized beta; ordinary dispatches do not.
       #
       # Until 2026-08-17 this job stopped at "signed IPA in a GitHub artifact":
       # it built and verified a distribution-signed build and then never sent it
@@ -3176,12 +3202,14 @@ jobs:
       # The correct answer, reported as a failed `ios-signed` job -- which reads
       # as a signing problem, two steps after signing demonstrably succeeded.
       #
+      # Ordinary manual dispatches still cannot upload. The dedicated Robot Lab
+      # beta input is the explicit owner-authorized exception.
       # ONLY THIS STEP IS GATED ON THE EVENT. The tester-notes and TestFlight
       # steps below are idempotent and their comments say a re-run is the
       # recovery path, so a dispatch over a tag still repairs those for a build
       # Apple already has. It just no longer tries to upload that build twice.
       - name: Validate + upload to App Store Connect
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) || (github.event_name == 'workflow_dispatch' && inputs.testflight_robotlab && inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/delivery/robotlab-testflight-20261021')
         run: |
           set -euo pipefail
           mkdir -p ~/.appstoreconnect/private_keys
@@ -3220,7 +3248,7 @@ jobs:
       # Connect with whatsNew EMPTY in both locales while that gate stayed green.
       # Polls, because a build is only patchable once Apple finishes processing.
       - name: Send tester notes to App Store Connect
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.testflight_robotlab && inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/delivery/robotlab-testflight-20261021')
         env:
           APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
@@ -3243,7 +3271,7 @@ jobs:
       # covers the macOS build, which shares this app record and is uploaded by
       # release.yml on the same tag.
       - name: Distribute to TestFlight (internal + external)
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.testflight_robotlab && inputs.sign_ios && !inputs.device_ipa && github.ref == 'refs/heads/delivery/robotlab-testflight-20261021')
         env:
           APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}

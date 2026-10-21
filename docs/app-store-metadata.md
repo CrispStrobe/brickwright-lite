@@ -203,6 +203,23 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+
+## What to Test — 0.1.25 en-US
+
+Robot Lab beta: 53 assemblies, 61 example choices and 122 offline English/German lessons, including 32 choices with more than 50 pieces. Try Ellipse Engine, Axis Plotter, Orbital Loom, Magnetic Chess, Sarrus Lift and Quickstroke.
+
+Selecting an example loads its program and Blocks automatically and sets the project title. Check motor controls, the compact collapsible toolbar, faster simulation, lessons and building instructions. Axis Plotter shows its measured drawing; the centrifugal governor camera stays stable.
+
+These are simulation-qualified models, not physically assembled LEGO builds. This beta packages the qualified Robot Lab preview snapshot, independently of newer main-branch work. Please report the example, iPad/iPhone model, language and exact steps for any loading, motion or layout problem.
+
+## What to Test — 0.1.25 de-DE
+
+Robot-Lab-Beta: 53 Modelle, 61 Beispielvarianten und 122 offline verfügbare deutsche/englische Lektionen; 32 Varianten haben mehr als 50 Teile. Bitte Ellipse Engine, Axis Plotter, Orbital Loom, Magnetic Chess, Sarrus Lift und Quickstroke ausprobieren.
+
+Beim Auswählen werden Programm und Blöcke automatisch geladen und der Projekttitel gesetzt. Bitte Motorsteuerung, kompakte einklappbare Werkzeugleiste, schnellere Simulation, Lektionen und Bauanleitungen prüfen. Axis Plotter zeigt die tatsächlich gemessene Zeichnung; beim Fliehkraftregler bleibt die Kamera ruhig.
+
+Die Modelle wurden in der Simulation geprüft, noch nicht mit echten LEGO-Teilen gebaut. Diese Beta enthält den geprüften Robot-Lab-Vorschaustand, unabhängig von neueren Änderungen auf main. Bitte Beispiel, iPad/iPhone-Modell, Sprache und genaue Schritte bei Lade-, Bewegungs- oder Darstellungsproblemen melden.
+
 ## What to Test — 0.1.23 en-US
 
 **Touchscreen and phone layout**
