@@ -36,7 +36,7 @@ import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, HubReplay, STEP_MS} from './hub-bridge.js';
 import {MirrorCore} from './sim-worker-protocol.js';
 import {hubRegistry, LAB_DIRECT_ID} from './hubs/index.js';
-import {upgradePartMeta, partHubProfile} from './contracts.js';
+import {upgradePartMeta, partHubProfile, partDrivenJoints} from './contracts.js';
 import {createMat} from './world/mats.js';
 import {placeOnStart, driveAnchor} from './world/place.js';
 import {LockstepRunner, isNonRewindable, L3_HUB_NEEDS_LOCKSTEP} from './routes/renode-lockstep/runner.js';
@@ -85,6 +85,9 @@ export const MODELS = Object.freeze([
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
     {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
         example: 'drawing-robot.bw', mat: 'plain'},
+    {file: 'atlas-arm.ldr', title: {en: 'Atlas Arm — worm drives and gripper', de: 'Atlas Arm — Schneckengetriebe und Greifer'}, example: 'atlas-arm.bw', mat: 'plain'},
+    {file: 'switchback-lift.ldr', title: {en: 'Switchback Lift — ball return machine', de: 'Switchback Lift — Kugel-Rücklaufmaschine'}, example: 'switchback-lift.bw', mat: 'plain'},
+    {file: 'straight-eight.ldr', title: {en: 'Straight Eight — straight-line linkage', de: 'Straight Eight — Geradführung'}, example: 'straight-eight.bw', mat: 'plain'},
     {file: 'pendulum-array.ldr', title: {en: 'Motor-excited pendulum array', de: 'Motorangeregte Pendelreihe'}, example: 'pendulum-array.bw', mat: 'plain'},
     {file: 'clutch-bench.ldr', title: {en: 'Clutch load bench', de: 'Rutschkupplungs-Prüfstand'}, example: 'clutch-bench.bw', mat: 'plain'},
     {file: 'pulse-percussion.ldr', title: {en: 'Pulse Percussion', de: 'Puls-Schlagwerk'}, example: 'pulse-percussion.bw', mat: 'plain'},
@@ -193,12 +196,29 @@ export const prepareModel = (text, catalog, {mat = null, autoPorts: plugIn = !OW
         issues.push({severity: 'info', code: 'ports-plugged', parts: plugged.map(p => p.part),
             message: `Plugged in: ${plugged.map(p => `${p.part} → ${p.hub ? `${p.hub}.` : ''}${p.port}`).join(', ')}`});
     }
+    for (const p of model.parts) if (p.rotorAngle !== undefined && partDrivenJoints(catalog instanceof Map ? catalog.get(p.part) : catalog[p.part]).length !== 1) {
+        issues.push({severity: 'warning', code: 'bad-rotor', parts: [p.id], message: 'ROTOR needs a part with one driven internal joint.'});
+    }
     const runModel = start ? placeOnStart(wired, start, driveAnchor(wired, catalog)) : wired;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
     // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
     const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
         ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
-    issues.push(...mechanismIssues(mechanism));
+    // An explicitly declared payload is free to roll or be carried by contact.
+    // Admit only wholly free payload islands: marking one structural member as
+    // LOAD must never hide an accidentally detached assembly.
+    const declaredLoads = new Set(model.parts.filter(p => p.load).map(p => p.id));
+    const freeLoads = new Set();
+    for (const b of mechanism.bodies) {
+        if (!b.parts?.length || !b.parts.every(id => declaredLoads.has(id))) continue;
+        if (mechanism.joints.some(j => j.body1 === b.id || j.body2 === b.id)) continue;
+        if (mechanism.hubs.some(h => h.body === b.id)) continue;
+        b.role = 'load';
+        b.parts.forEach(id => freeLoads.add(id));
+    }
+    for (const id of declaredLoads) if (!freeLoads.has(id)) issues.push({severity: 'warning', code: 'bad-load', parts: [id],
+        message: `Payload ${id} must be a free island containing only declared loads.`});
+    issues.push(...mechanismIssues(mechanism).filter(i => !(i.code === 'loose-part' && i.parts?.length && i.parts.every(id => freeLoads.has(id)))));
     return {model, runModel, mechanism, issues};
 };
 

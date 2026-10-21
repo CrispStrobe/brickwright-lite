@@ -1,0 +1,17 @@
+DEVICE SPIKE
+
+# STRAIGHT EIGHT — CrispStrobe, BSD-3-Clause.
+# Reset before running. Hold at home and at both +/-60 degree sector limits.
+# Keep this linkage within the sector; do not command full rotations.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 5
+  run motor A to position 0
+  wait 1 seconds
+  run motor A clockwise 60 degrees
+  wait 1 seconds
+  run motor A counterclockwise 120 degrees
+  wait 1 seconds
+  run motor A clockwise 60 degrees
+  run motor A to position 0
+  wait 1 seconds

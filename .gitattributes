@@ -32,3 +32,6 @@ test/fixtures/gallery-served/** -text
 
 # Reviewed model-source hashes identify the original bytes, including line endings.
 test/fixtures/model-files/*-source/** -text whitespace=cr-at-eol
+
+# The official LDraw lock records original bytes, including CRLF.
+overlay/scratch-gui/static/ldraw/** -text whitespace=cr-at-eol

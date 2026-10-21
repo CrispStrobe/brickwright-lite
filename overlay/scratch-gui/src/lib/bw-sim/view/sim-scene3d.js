@@ -149,15 +149,16 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
         ];
         for (const m of material) createdMaterials.add(m);
 
+        const rotor = pl.rotorAngle && catalog ? {angle: pl.rotorAngle, meta: catalogGet(catalog, pl.part)} : null;
         const hubRef = motor ? driveHubRef(pl.part, read, catalogGet(catalog, pl.part)) : -1;
         if (hubRef >= 0 && bodyGroups.get(motor.output.id)) {
-            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, {ref: hubRef, take: 'rest'}), material, pl.id));
+            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, {ref: hubRef, take: 'rest', rotor}), material, pl.id));
             // The drive hub gets its own materials: it is in another body, which may be painted differently.
             const hubMaterial = material.map(m => m.clone());
             for (const m of hubMaterial) createdMaterials.add(m);
-            hubMeshes.set(pl.id, addPartMesh(pl, motor.output, partVisual(pl.part, read, colors, {ref: hubRef, take: 'ref'}), hubMaterial, `${pl.id}#hub`));
+            hubMeshes.set(pl.id, addPartMesh(pl, motor.output, partVisual(pl.part, read, colors, {ref: hubRef, take: 'ref', rotor}), hubMaterial, `${pl.id}#hub`));
         } else {
-            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors), material, pl.id));
+            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, rotor ? {rotor} : null), material, pl.id));
         }
     }
 

@@ -169,6 +169,48 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"
     },
+    "atlas-arm.ldr": {
+        "pieces": 237,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two 24:1 worm drives position an articulated arm; a third motor opens the gripper. Compare shaft turns, joint angles and active holding.",
+            "de": "Zwei 24:1-Schneckengetriebe positionieren einen Gelenkarm; ein dritter Motor öffnet den Greifer. Vergleiche Wellenumdrehungen, Gelenkwinkel und Halten."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "switchback-lift.ldr": {
+        "pieces": 341,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Lift a free ball 64 mm, tip it onto a sloping track, catch its return at a gate, and reload the lowered cradle.",
+            "de": "Hebe eine freie Kugel um 64 mm, kippe sie auf eine schräge Bahn, halte ihren Rücklauf am Tor und lade die abgesenkte Wiege."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "straight-eight.ldr": {
+        "pieces": 113,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Seven moving links make the red marker trace a straight line through a bounded ±60° crank sector, with no sliding guide.",
+            "de": "Sieben bewegliche Glieder führen den roten Punkt geradlinig durch einen Kurbelbereich von ±60°, ohne Gleitführung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "pendulum-array.ldr": {
         "pieces": 54,
         "motors": 1,

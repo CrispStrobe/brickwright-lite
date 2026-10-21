@@ -84,3 +84,31 @@ above, the LDraw.org OMR. Nothing in the files is changed.
   Bundle: 130 pieces / motor A. App notice: `static/sim-lab/licenses/pulse-percussion.txt`.
 - Downloaded controller/generator code and predicted animation are not executed
   or bundled as app behaviour. Referenced LDraw authors/licences are unchanged.
+
+## STRAIGHT EIGHT (bundled adapted Robot Lab model)
+
+- Source: owner-supplied `straight_eight_complete.zip`, reviewed Brickwright flat export.
+- Original design: **CrispStrobe, BSD-3-Clause**, per the owner's persistent instruction
+  for their original models. This supersedes the initial generated OpenAI/CC BY headers.
+  Raw source and README remain byte-for-byte in `straight-eight-source/`.
+- Input SHA256: `20a42809c7eb9a089c68020998f0fb61d0ef436e1ccfe9bbfe5a16f347a0fbab`.
+- `scripts/adapt-straight-eight.mjs` verifies the hash, retains all 113 placements,
+  and canonicalises motor/hub IDs. One motor, port A; native ±60° sector program.
+- App notice: `static/sim-lab/licenses/straight-eight.txt`. Referenced LDraw parts
+  retain their separate credits and licences. No downloaded executable code ran.
+
+## atlas-arm (bundled adapted Robot Lab model)
+
+- Source: owner-supplied `atlas_arm_complete.zip`; exact flat original and initial README in `atlas-arm-source/`.
+- Input SHA256: `ffd577c3ceef64c462cb4b0769003b13adf711a765bff0f5f9e6e3766e367b16`.
+- Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction. This supersedes the initial generated OpenAI / CC BY headers; raw bytes are preserved.
+- `scripts/adapt-arm-lift.mjs` hash-gates the source and supplies explicit IDs/ports, a pinned hub and keyed mount braces. See `docs/ROBOT-LAB-ARM-LIFT-AND-STRAIGHT-LINE.md` for the changes and qualification.
+- Full app notice: `static/sim-lab/licenses/atlas-arm.txt`. Referenced LDraw parts keep their separate licences. Downloaded controllers and generators were not executed.
+
+## switchback-lift (bundled adapted Robot Lab model)
+
+- Source: owner-supplied `switchback_lift_complete.zip`; exact flat original and initial README in `switchback-lift-source/`.
+- Input SHA256: `534868be6444c0d47c98e3ca3defe441e7f91272605b9c2ed76c60b231053647`.
+- Original work **CrispStrobe / BSD-3-Clause**, per the owner’s persistent instruction. This supersedes the initial generated OpenAI / CC BY headers; raw bytes are preserved.
+- `scripts/adapt-arm-lift.mjs` hash-gates the source and supplies explicit IDs/ports, a pinned hub and keyed mount braces. See `docs/ROBOT-LAB-ARM-LIFT-AND-STRAIGHT-LINE.md` for the changes and qualification.
+- Full app notice: `static/sim-lab/licenses/switchback-lift.txt`. Referenced LDraw parts keep their separate licences. Downloaded controllers and generators were not executed.

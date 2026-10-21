@@ -30,3 +30,16 @@ test('9L/11L beam collision ends follow the official 9 LDU semicircular geometry
         assert.ok(source.includes(`0 -10 -${end} 9 0 0 0 20 0 0 0 -9 2-4cyli.dat`),'official outer end radius/thickness');
     }
 });
+test('perpendicular round cylinders: gearbox bearing clears the gear corner, real penetrations remain detected',()=>{
+    const bearing={shape:'cylinder',centre:[-25,18,0],axis:[1,0,0],radius:10,halfHeight:5};
+    const gear={shape:'cylinder',centre:[0,-22,0],axis:[0,0,1],radius:32,halfHeight:9.6};
+    assert.equal(primitivesOverlap(bearing,gear,0),false);
+    assert.equal(primitivesOverlap(gear,bearing,0),false);
+    assert.equal(primitivesOverlap({...bearing,centre:[-25,10,0]},gear,0),true);
+    assert.equal(primitivesOverlap({...bearing,centre:[-38,0,0]},gear,0),false,'axial slab beyond gear radius');
+    assert.equal(primitivesOverlap({...bearing,centre:[0,0,20]},gear,0),false,'radial disk clear of the other axial slab');
+    const q=Math.SQRT1_2,rotate=([x,y,z])=>[q*x-q*y,q*x+q*y,z];
+    const turn=c=>({...c,centre:rotate(c.centre),axis:rotate(c.axis)});
+    assert.equal(primitivesOverlap(turn(bearing),turn(gear),0),false);
+    assert.equal(primitivesOverlap(turn({...bearing,centre:[-25,10,0]}),turn(gear),0),true);
+});

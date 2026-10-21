@@ -26,7 +26,7 @@ Prove the actual VM changes immediately after selection, without that button.
 
 ## Atlas Arm and Switchback Lift intake — 2026-10-21
 
-CLAIMED — Codex, existing model-design lane / draft PR #1138, after completing
+IMPLEMENTED / locally qualified — Codex, existing model-design lane / draft PR #1138, after completing
 pendulum/clutch examples. Adapt the supplied three-motor arm and ball-return
 lift from exact source CAD, apply the owner’s CrispStrobe / BSD-3-Clause credit,
 repair geometry/mechanism gaps, and add native programs and EN/DE lessons.
@@ -7903,10 +7903,25 @@ threshold changed. Actual SDK/environment binding, service/family ownership,
 resources, guarded wrapper and affected installed qualification remain open.
 ## Straight Eight straight-line linkage intake — 2026-10-21
 
-CLAIMED — Codex, explicit owner request in the model-design lane. Adapt the
+IMPLEMENTED / locally qualified — Codex, explicit owner request in the model-design lane. Adapt the
 supplied 113-piece, one-motor Peaucellier linkage; preserve source provenance
 and apply the owner's CrispStrobe / BSD-3-Clause credit to the original design.
 Verify physical joint closure, straight output travel, bounded motor motion,
 connected instructions, controls and EN/DE lesson before vendoring it. Treat
 supplied kinematic animation and review reports as reference, not app results.
 
+
+Atlas/Switchback/Straight Eight qualification checkpoint: 237 / 341 / 113 pieces,
+three / three / one motors. Native VM and real-worker browser body-pose judges
+pass, including the 64 mm ball cycle and Peaucellier straightness/loop closure.
+184 focused controls, seven detailed geometry controls and 24 affected Pulse /
+notice controls pass. Initial motor rotor angles align keyed sockets; shaft
+placements are retained. Metadata is checked against the frozen official meshes.
+Six fixed LDR/MPD imports, EN/DE lessons, seven manual motor controls, Stop/hold,
+framing and instruction BOMs pass. Home/End navigate the longer manuals; only
+rigid-mount notes start folded. Exporter verifies 38 pairs / 46 choices / 92
+lessons, including standard LDraw rotor-pose geometry and separate part licences.
+Production build passes. Raw source files remain byte-preserved. No independent
+edits to the four peer-owned physics/compiler/collider files; no peer worktree
+changes, hardware qualification or automatic merge. #1137 has now merged; this
+draft still requires reconciliation with current main and exact-head hosted CI.

@@ -89,7 +89,7 @@ export const stepBounds = (fresh, all, {context = CONTEXT, min = 0.06} = {}) => 
  * @returns {{canvas: HTMLCanvasElement, show: (n: number) => void, image: (n: number, width: number, height: number) => string,
  *            stats: () => object, resize: () => void, dispose: () => void}}
  */
-export const createInstructionsView = ({container, model, plan, read, colors, reducedMotion = null}) => {
+export const createInstructionsView = ({container, model, plan, read, colors, catalog = null, reducedMotion = null}) => {
     if (!webglAvailable()) throw new WebGLUnavailableError('this browser gives a canvas no WebGL 2 context');
     let renderer;
     try {
@@ -148,7 +148,8 @@ export const createInstructionsView = ({container, model, plan, read, colors, re
     for (const placed of model.parts) {
         let geometry;
         try {
-            geometry = partGeometry(placed.part, read, colors);
+            const meta = catalog instanceof Map ? catalog.get(placed.part) : catalog?.[placed.part];
+            geometry = partGeometry(placed.part, read, colors, placed.rotorAngle && meta ? {rotor: {angle: placed.rotorAngle, meta}} : null);
         } catch {
             continue; // a part whose files are missing is left out of the pictures, not out of the steps
         }
@@ -163,7 +164,7 @@ export const createInstructionsView = ({container, model, plan, read, colors, re
         mesh.name = placed.id;
         placeMesh(mesh, placed);
         const lines = linesFor(code);
-        addEdgeLines(mesh, partVisual(placed.part, read, colors), lines);
+        addEdgeLines(mesh, partVisual(placed.part, read, colors, placed.rotorAngle && catalog ? {rotor: {angle: placed.rotorAngle, meta: catalog instanceof Map ? catalog.get(placed.part) : catalog[placed.part]}} : null), lines);
         mesh.visible = false;
         scene.add(mesh);
         geometry.computeBoundingBox();

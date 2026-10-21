@@ -264,6 +264,8 @@ Choosing the line-oval mat puts the robot on the line, the wall mat puts its dri
 1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
 ```
 
+`0 !BW LOAD` before a part declares an intentional free payload (for example, the Switchback ball). Structural loose parts still produce issues. `0 !BW ROTOR <degrees>` sets a motor output’s initial angle independently of its housing; its encoder starts at zero in that loaded pose. Both annotations survive LDraw/MPD saves. The fixed-library exporter also writes standard LDraw rotor-pose part files for external viewers. See [the arm, lift and straight-line examples](ROBOT-LAB-ARM-LIFT-AND-STRAIGHT-LINE.md).
+
 Without WebGL the pane says so and the simulation still runs (encoders and yaw keep working; only the picture is missing).
 
 **Model files** (`bw-sim/model/model-file.js`). **Save as…** (Build and Simulate) writes the model on show as `.ldr`, `.mpd` (one `0 FILE` section) or `.io`; all three read back to the same model, byte for byte for the LDraw text.

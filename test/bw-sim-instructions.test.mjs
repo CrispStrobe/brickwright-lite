@@ -78,6 +78,11 @@ const assertBuildable = (label, model, plan) => {
     plan.steps.forEach((step, n) => {
         const {built, fresh} = stepView(plan, n);
         assert.ok(fresh.length > 0, `${label} step ${n + 1}: places something`);
+        const payload = fresh.every(id => model.parts.find(p => p.id === id)?.load);
+        if (payload) {
+            assert.ok(fresh.every(id => [...adj.get(id)].every(other => model.parts.find(p => p.id === other)?.load)), 'payload does not conceal a structural connection');
+            return; // place a free payload by contact; it has no attachment connector
+        }
         const done = new Set(built);
         const freshSet = new Set(fresh);
         const reached = new Set();

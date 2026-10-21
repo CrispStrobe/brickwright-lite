@@ -446,7 +446,12 @@ test('a rack\'s teeth: tips one module beyond the pitch line, along the toothed 
     for (const [p, c] of racks) {
         const n = c.data.normal;
         const w = [c.axis[1] * n[2] - c.axis[2] * n[1], c.axis[2] * n[0] - c.axis[0] * n[2], c.axis[0] * n[1] - c.axis[1] * n[0]];
-        const vs = flat.get(p.part).polys.flat().map(v => sub(v, c.position));
+        // Measure the actual tooth primitives, rather than a rack's unrelated
+        // retaining lip (18942 has a lip 1.5 LDU above its tooth tips).
+        const teeth = flat.get(p.part).primitives.filter(q => /\/toothr\.dat$/.test(q.file));
+        const toothMesh = teeth.length ? flattenPart('toothr.dat', read).polys.flat() : null;
+        const vs = toothMesh ? teeth.flatMap(q => toothMesh.map(v => sub(apply(q.x, v), c.position))) :
+            flat.get(p.part).polys.flat().map(v => sub(v, c.position));
         // Over the toothed length nothing rises above the tips, and the tips are one module (2.5 LDU) out.
         const over = vs.filter(v => Math.abs(dot(v, c.axis)) <= c.length / 2 - 1);
         const tip = Math.max(...over.map(v => dot(v, n)));

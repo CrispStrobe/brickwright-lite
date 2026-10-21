@@ -74,7 +74,7 @@ export const RACK = {
         const welds = [];
         const diagnostics = [];
         const limits = [];
-        const gears = spurGears(nodes, islands);
+        const gears = spurGears(nodes, islands, ['spur', 'bevel']).filter(g => g.type === 'spur' || g.meshesAs.includes('spur'));
         for (const rack of toothConnectors(nodes, islands, 'rack-teeth', ['normal'])) {
             for (const gear of gears) {
                 if (gear.islandId === rack.islandId) continue;
@@ -119,7 +119,7 @@ export const RACK = {
     /** The editor's overlap rule: a rack and a spur gear meshing where they stand share volume (their teeth interleave). */
     placedMesh (a, metaA, b, metaB) {
         for (const [p, mp, q, mq] of [[a, metaA, b, metaB], [b, metaB, a, metaA]]) {
-            const gear = placedSpur(q, mq);
+            const gear = (mq.gear?.type === 'spur' || mq.gear?.meshesAs?.includes('spur')) ? placedSpur(q, mq, ['spur', 'bevel']) : null;
             if (!gear) continue;
             if (placedTooth(p, mp, 'rack-teeth', ['normal']).some(r => rackContact(r, gear))) return true;
         }

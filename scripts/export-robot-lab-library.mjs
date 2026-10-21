@@ -1,0 +1,55 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 CrispStrobe
+// Export the shipped library with single-root MPD alternatives and verify their
+// placements against the flat LDraw originals before creating the archive.
+import {readFileSync,writeFileSync,mkdirSync,readdirSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+import {resolve} from 'node:path';
+import assert from 'node:assert/strict';
+import {MODELS,catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {MODEL_LESSONS} from '../overlay/scratch-gui/src/lib/bw-sim/model/example-catalog.js';
+import {flattenPart} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
+import {phasedMotorRead, phasedMotorSource} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/motor-phase.js';
+import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
+const [directory,archive]=process.argv.slice(2);
+if(!directory||!archive)throw Error('Usage: export-robot-lab-library.mjs output-directory output.zip');
+const root=new URL('../',import.meta.url),base=new URL('overlay/scratch-gui/static/sim-lab/',root),JSZip=createRequire(new URL('../packages/scratch-gui/package.json',import.meta.url))('jszip');
+const C=catalogFrom(JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',root))));
+const files=new Map(),manifest=[],zip=new JSZip(),hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+const put=(path,bytes)=>files.set(path,Buffer.from(bytes));
+const readPart=p=>{try{return readFileSync(new URL('overlay/scratch-gui/static/ldraw/'+p,root),'latin1');}catch{return undefined;}};
+for(const file of new Set(MODELS.map(m=>m.file))){
+ const original=readFileSync(new URL('models/'+file,base),'utf8'),aliases=new Map(),angles=new Map();let phase=null;
+ const ldr=original.split(/\r?\n/).map(line=>{
+  const angle=/^0 !BW ROTOR (.+)$/.exec(line);if(angle){phase=Number(angle[1]);return line;}
+  if(!/^1\s/.test(line))return line;
+  if(phase===null||!phase){phase=null;return line;}
+  const words=line.split(/\s+/),part=words.slice(14).join(' '),alias=`bw-rotor${String(phase).replace('-','m').replace('.','p')} - ${part}`;
+  const source=phasedMotorSource(part,readPart,C.get(part),phase).replace(/^0 Name: .+$/m,'0 Name: '+alias)
+   .replace('see CAreadme.txt','see ../licenses/CAreadme.txt')+'\n0 // Initial output pose adapted by CrispStrobe; original part authors and CC BY licence retained.\n';
+  aliases.set(alias,source);angles.set(alias,{part,phase});put('models/'+alias,source);phase=null;return words.slice(0,14).join(' ')+' '+alias;
+ }).join('\n');
+ for(const [alias]of aliases){
+  const {part,phase}=angles.get(alias),reader=path=>aliases.get(path.replace(/^parts\//,''))??readPart(path);
+  const actual=flattenPart(alias,reader),expected=flattenPart(part,phasedMotorRead(part,readPart,C.get(part),phase));
+  assert.deepEqual(actual.missing,[],alias+' resolves');assert.deepEqual(actual.polys,expected.polys,alias+' exported rotor geometry');
+ }
+ const mpd=`0 FILE ${file}\n${ldr}\n`+[...aliases].map(([name,source])=>`0 FILE ${name}\n${source}\n`).join('')+'0 NOFILE\n';
+ const a=parseModel(original,{catalog:C}),flat=parseModel(ldr,{catalog:C}),b=parseModel(mpd,{catalog:C});
+ assert.deepEqual(a.refusals,[],file);assert.deepEqual(flat.refusals,[],file);assert.deepEqual(b.refusals,[],file);
+ assert.deepEqual(flat.model.parts,a.model.parts,file+' flat placements/ports/payloads/rotor angles');assert.deepEqual(b.model.parts,a.model.parts,file+' MPD placements/ports/payloads/rotor angles');
+ put('models/'+file,ldr);put('models/'+file.replace(/\.ldr$/,'.mpd'),mpd);
+ manifest.push({file,pieces:a.model.parts.length,sourceSha256:hash(original),ldrSha256:hash(ldr),mpdSha256:hash(mpd)});
+}
+for(const name of ['CAreadme.txt','CAlicense.txt','CAlicense4.txt'])put('licenses/'+name,readFileSync(new URL('overlay/scratch-gui/static/ldraw/'+name,root)));
+for(const program of new Set(MODELS.map(m=>m.example).filter(Boolean)))put('programs/'+program,readFileSync(new URL('programs/'+program,base)));
+for(const folder of ['lessons','licenses'])for(const name of readdirSync(new URL(folder+'/',base)).sort())put(folder+'/'+name,readFileSync(new URL(folder+'/'+name,base)));
+const catalog=MODELS.map(m=>({...m,...MODEL_LESSONS[m.id||m.file]}));
+put('catalog.json',JSON.stringify(catalog,null,2)+'\n');put('manifest.json',JSON.stringify({examples:MODELS.length,assemblies:manifest.length,models:manifest},null,2)+'\n');
+put('LICENSE-BSD-3-Clause.txt',readFileSync(new URL('LICENSE',root)));
+put('README.txt',`Brickwright Robot Lab — fixed model library\n\n${MODELS.length} example choices; ${manifest.length} distinct assemblies. Each assembly has a flat\nLDraw .ldr and equivalent single-root .mpd; programs and EN/DE lessons are included.\nOpen either model format in Brickwright or an editor with the standard LDraw library.\nThe app loads example programs into blocks automatically; press Run to start.\n\nOriginal models are BSD-3-Clause. Owner-supplied designs are credited to\nCrispStrobe; individual notices are in licenses/. Referenced LDraw part files\nretain their own authors and licences and are resolved by the viewer library.\nThe four included motor pose .dat files retain LDraw’s CC BY attribution; see\nlicenses/CAreadme.txt and CAlicense4.txt. The MPDs embed these rotor poses.\n\nAtlas Arm: 237 pieces, motors A/B/D; reset before the bounded program.\nSwitchback Lift: 341 pieces including one free ball, motors A/B/D.\nStraight Eight: 113 pieces, motor A; keep the crank within ±60°.\n\nQualification is simulation-based, not a physical LEGO building test.\n`);
+for(const [path,bytes]of files){const target=resolve(directory,path);mkdirSync(resolve(target,'..'),{recursive:true});writeFileSync(target,bytes);zip.file('brickwright-fixed-models/'+path,bytes);}
+mkdirSync(resolve(archive,'..'),{recursive:true});writeFileSync(archive,await zip.generateAsync({type:'nodebuffer',compression:'DEFLATE'}));
+process.stdout.write(`${manifest.length} verified LDR/MPD pairs, ${MODELS.length} examples, ${files.size} files\n`);

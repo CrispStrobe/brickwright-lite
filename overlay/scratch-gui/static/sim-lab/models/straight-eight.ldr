@@ -1,0 +1,232 @@
+0 STRAIGHT EIGHT — Peaucellier straight-line linkage
+0 Name: straight-eight.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/straight-eight.txt
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID base_rear_left
+1 0 -80 260 -260 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_rear_right
+1 0 160 260 -260 0 0 1 0 1 0 -1 0 0 40490.dat
+0 !BW ID base_rear_lap
+1 72 80 280 -260 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID lap_rear_pin_40
+1 0 40 270 -260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID lap_rear_pin_80
+1 0 80 270 -260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID lap_rear_pin_100
+1 0 100 270 -260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_front_left
+1 0 -80 260 20 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_front_right
+1 0 160 260 20 0 0 1 0 1 0 -1 0 0 40490.dat
+0 !BW ID base_front_lap
+1 72 80 280 20 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID lap_front_pin_40
+1 0 40 270 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID lap_front_pin_80
+1 0 80 270 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID lap_front_pin_100
+1 0 100 270 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID ground_foot_left
+1 0 -120 280 -120 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID ground_left_rear_pin
+1 0 -120 270 -260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID ground_left_front_pin
+1 0 -120 270 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID ground_foot_right
+1 0 220 280 -120 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID ground_right_rear_pin
+1 0 220 270 -260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID ground_right_front_pin
+1 0 220 270 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID origin_post_rear
+1 0 0 100 -20 -1 0 0 0 0 1 0 1 0 41239.dat
+0 !BW ID origin_post_front
+1 0 0 100 40 -1 0 0 0 0 1 0 1 0 41239.dat
+0 !BW ID origin_pivot_axle
+1 72 0 0 10 0 1 0 0 0 1 1 0 0 32073.dat
+0 !BW ID origin_halfbush_rear
+1 72 0 0 -35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID origin_halfbush_front
+1 72 0 0 55 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID origin_foot_bridge
+1 72 0 240 20 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_rear_foot
+1 72 0 220 0 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID origin_front_foot
+1 72 0 220 20 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID origin_rear_foot_pin
+1 0 0 230 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID origin_front_shared_pin
+1 1 0 240 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID origin_diagonal
+1 72 60 140 60 -0.8 0 0.6 0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID origin_diagonal_top_pin
+1 0 0 60 50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID origin_diagonal_foot
+1 72 120 220 40 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID origin_diagonal_bridge
+1 72 120 240 20 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID origin_diagonal_foot_pin
+1 0 120 230 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID origin_diagonal_shared_pin
+1 1 120 260 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_post_left
+1 0 60 80 -200 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID motor_foot_left
+1 0 60 240 -120 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID motor_foot_connector_left
+1 72 60 220 -220 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID motor_post_foot_pin_left
+1 0 60 230 -220 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID motor_foot_left_rear_pin
+1 1 60 260 -260 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_foot_left_front_pin
+1 1 60 260 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID motor_adapter_left_-20
+1 72 60 -20 -180 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_adapter_post_pin_left_-20
+1 0 60 -20 -190 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_carrier_left_-20
+1 72 80 -20 -140 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_body_pin_left_-20_-160
+1 0 90 -20 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_left_-20_-120
+1 0 90 -20 -120 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_adapter_left_20
+1 72 60 20 -180 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_adapter_post_pin_left_20
+1 0 60 20 -190 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_carrier_left_20
+1 72 80 20 -140 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_body_pin_left_20_-160
+1 0 90 20 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_left_20_-120
+1 0 90 20 -120 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_post_right
+1 0 180 80 -200 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID motor_foot_right
+1 0 180 240 -120 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID motor_foot_connector_right
+1 72 180 220 -220 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID motor_post_foot_pin_right
+1 0 180 230 -220 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID motor_foot_right_rear_pin
+1 0 180 250 -260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID motor_foot_right_front_pin
+1 0 180 250 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID motor_adapter_right_-20
+1 72 180 -20 -180 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_adapter_post_pin_right_-20
+1 0 180 -20 -190 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_carrier_right_-20
+1 72 160 -20 -140 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_body_pin_right_-20_-160
+1 0 150 -20 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_right_-20_-120
+1 0 150 -20 -120 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_adapter_right_20
+1 72 180 20 -180 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_adapter_post_pin_right_20
+1 0 180 20 -190 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_carrier_right_20
+1 72 160 20 -140 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_body_pin_right_20_-160
+1 0 150 20 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_right_20_-120
+1 0 150 20 -120 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_stand_diagonal
+1 72 120 120 -220 -0.8 0 0.6 0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID motor_diagonal_upper_pin
+1 0 60 40 -210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_diagonal_lower_pin
+1 0 180 200 -210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motorA
+0 !BW PORT A
+1 15 120 0 -140 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID crank
+1 1 160 0 -80 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID drive_pin_back
+1 0 100 0 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID drive_pin_front
+1 0 140 0 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID CP
+1 14 206.666667 -49.888765 -40 -0.831479 0 0.555556 0.555556 0 0.831479 0 1 0 32524.dat
+0 !BW ID DP
+1 14 206.666667 49.888765 -20 0.831479 0 0.555556 0.555556 0 -0.831479 0 1 0 32524.dat
+0 !BW ID CQ
+1 4 140 -49.888765 -20 -0.831479 0 -0.555556 -0.555556 0 0.831479 0 1 0 32524.dat
+0 !BW ID DQ
+1 4 140 49.888765 -40 0.831479 0 -0.555556 -0.555556 0 -0.831479 0 1 0 32524.dat
+0 !BW ID OC
+1 72 86.666667 -49.888765 0 0.498888 0 0.866667 0.866667 0 -0.498888 0 1 0 32525.dat
+0 !BW ID OD
+1 72 86.666667 49.888765 20 -0.498888 0 0.866667 0.866667 0 0.498888 0 1 0 32525.dat
+0 !BW ID spacerD
+1 72 173.333333 99.77753 0 0 0 1 1 0 0 0 1 0 18654.dat
+0 !BW ID spacerP
+1 72 240 0 -60 0 0 1 1 0 0 0 1 0 18654.dat
+0 !BW ID markerQ
+1 4 106.666667 0 0 0 0 1 1 0 0 0 1 0 18654.dat
+0 !BW ID pivotC
+1 0 173.333333 -99.77753 -20 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID retainerC_back
+1 72 173.333333 -99.77753 -55 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID retainerC_front
+1 72 173.333333 -99.77753 15 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID pivotP
+1 72 240 0 -50 0 1 0 0 0 1 1 0 0 32073.dat
+0 !BW ID retainerP_back
+1 72 240 0 -95 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID retainerP_front
+1 72 240 0 -5 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID pivotQ
+1 0 106.666667 0 -20 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID retainerQ_back
+1 72 106.666667 0 -55 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID retainerQ_front
+1 72 106.666667 0 15 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID pivotD
+1 72 173.333333 99.77753 -10 0 1 0 0 0 1 1 0 0 32073.dat
+0 !BW ID retainerD_back
+1 72 173.333333 99.77753 -55 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID retainerD_front
+1 72 173.333333 99.77753 35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID hub
+1 15 -100 230 -140 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_rail_left
+1 72 -180 220 -120 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID hub_side_pin_left_-220
+1 0 -170 220 -220 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_side_pin_left_-60
+1 0 -170 220 -60 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_foot_left_rear
+1 72 -200 220 -260 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID hub_spacer_left_rear
+1 72 -200 240 -260 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_floor_pin_left_rear
+1 1 -200 240 -260 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_foot_left_front
+1 72 -200 220 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID hub_spacer_left_front
+1 72 -200 240 20 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_floor_pin_left_front
+1 1 -200 240 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_rail_right
+1 72 -20 220 -120 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID hub_side_pin_right_-220
+1 0 -30 220 -220 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_side_pin_right_-60
+1 0 -30 220 -60 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_foot_right_rear
+1 72 -40 220 -260 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID hub_spacer_right_rear
+1 72 -40 240 -260 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_floor_pin_right_rear
+1 1 -40 240 -260 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_foot_right_front
+1 72 -40 220 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID hub_spacer_right_front
+1 72 -40 240 20 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_floor_pin_right_front
+1 1 -40 240 20 0 -1 0 1 0 0 0 0 1 6558.dat

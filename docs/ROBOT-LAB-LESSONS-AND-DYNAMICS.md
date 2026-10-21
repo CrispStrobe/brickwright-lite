@@ -1,7 +1,7 @@
 # Guided Robot Lab experiments and dynamics machines
 
 Choose **Robots → Examples → Read lesson**, or **Lesson** beside the current model.
-Every one of the 43 example choices has an English and German lesson bundled with
+Every one of the 46 example choices has an English and German lesson bundled with
 its model. Like Circuit's example introductions, each lesson explains what to
 observe, provides a short experiment, explains the physics and its applications,
 and asks a prediction question with a revealable answer. Related examples let
@@ -26,8 +26,8 @@ links and generated assets. The prose is original CrispStrobe / BSD-3-Clause.
 | Pulse Percussion | 130 | 1, A | Cam contact lifts three gravity beaters; angular spacing produces a rhythm. |
 | Centrifugal governor | 34 | 1, A | Two free arms rise farther as shaft speed increases; reversing preserves the outward tendency. |
 
-The library now has 43 selectable examples representing 35 distinct assemblies;
-14 selectable examples exceed 50 pieces. Pulse is adapted from the owner's
+The library now has 46 selectable examples representing 38 distinct assemblies;
+17 selectable examples exceed 50 pieces. Pulse is adapted from the owner's
 120-piece original. Ten pinned support pieces connect its console at floor level.
 The native program runs two shaft turns at each of three speeds (approximately
 15, 30 and 45 rpm). Physical poses show about 18.3 mm lift per beater, six strikes

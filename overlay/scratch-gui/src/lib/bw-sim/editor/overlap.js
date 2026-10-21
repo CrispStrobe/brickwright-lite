@@ -184,6 +184,21 @@ const cylinderCylinderOverlap = (a, b, tolerance) => {
         const radial2 = Math.max(0, vecDot(delta, delta) - axial * axial);
         return radial2 < Math.max(0, a.radius + b.radius - tolerance) ** 2 - 1e-9;
     }
+    // For orthogonal shafts, the two axial slabs leave independent radial
+    // distances. Their remaining intervals on the common normal must overlap.
+    // This is exact for perpendicular cylinders; bounding squares falsely
+    // collide a gearbox bearing with the corner outside its round gear.
+    if (Math.abs(vecDot(a.axis, b.axis)) < 1e-9) {
+        const delta = vecSub(b.centre, a.centre);
+        const normal = vecNormalize(vecCross(a.axis, b.axis));
+        const ra = Math.max(0, a.radius - tolerance / 2);
+        const rb = Math.max(0, b.radius - tolerance / 2);
+        const gapA = Math.max(0, Math.abs(vecDot(delta, a.axis)) - a.halfHeight);
+        const gapB = Math.max(0, Math.abs(vecDot(delta, b.axis)) - b.halfHeight);
+        if (gapA >= rb - 1e-9 || gapB >= ra - 1e-9) return false;
+        const reach = Math.sqrt(ra * ra - gapB * gapB) + Math.sqrt(rb * rb - gapA * gapA);
+        return Math.abs(vecDot(delta, normal)) < reach - 1e-9;
+    }
     const aBox = cylinderAsBox(a);
     const bBox = cylinderAsBox(b);
     return boxBoxOverlap(aBox, bBox, tolerance);

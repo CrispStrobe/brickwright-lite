@@ -9,6 +9,7 @@
 // (a motor: PartMeta v2 internalJoints) splits into two graph nodes with an
 // internal hinge.
 
+import {motorPhaseMeta} from '../model/motor-phase.js';
 import {mat3MulVec3, vecAdd, vecNormalize} from './vec.js';
 import {upgradePartMeta, partDrivenJoints, partMotor, portRefOf} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
@@ -48,7 +49,7 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
 
     // Create nodes, handle motors
     for (const pl of model.parts) {
-        const meta = upgradePartMeta(catalogMap.get(pl.part));
+        const meta = motorPhaseMeta(upgradePartMeta(catalogMap.get(pl.part)), pl.rotorAngle);
         if (!meta) continue; // unknown, caller handles diagnostic
         const rot = pl.rotation;
         const driven = partDrivenJoints(meta);

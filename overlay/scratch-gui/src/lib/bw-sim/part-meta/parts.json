@@ -8585,14 +8585,57 @@
     {
      "shape": "box",
      "halfExtents": [
-      29,
+      9,
       10,
-      49
+      40
+     ],
+     "position": [
+      0,
+      0,
+      40
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      10,
+      9
      ],
      "position": [
       20,
       0,
-      40
+      80
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      0,
+      0,
+      80
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "position": [
+      40,
+      0,
+      80
      ]
     }
    ],
@@ -14859,9 +14902,9 @@
     {
      "shape": "box",
      "halfExtents": [
-      12,
+      9,
       5,
-      29
+      20
      ],
      "position": [
       0,
@@ -14872,12 +14915,42 @@
     {
      "shape": "box",
      "halfExtents": [
-      29,
+      20,
       5,
-      12
+      9
      ],
      "position": [
       20,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 5,
+     "position": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 5,
+     "position": [
+      0,
+      0,
+      40
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 5,
+     "position": [
+      40,
       0,
       0
      ]
@@ -142040,6 +142113,1211 @@
    ],
    "derived": true,
    "catalogue": true
+  },
+  {
+   "part": "3648b.dat",
+   "name": "Technic gear 24 tooth with one axle hole",
+   "category": "gear",
+   "massGrams": 1.4,
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 32,
+     "halfHeight": 9.6,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "gear": {
+    "type": "spur",
+    "teeth": 24,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   },
+   "nameDe": "Technic-Zahnrad 24 Zähne mit Achsloch",
+   "mirrorOf": {
+    "part": "3648b.dat",
+    "transform": {
+     "m": [
+      -1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ],
+     "t": [
+      0,
+      0,
+      0
+     ]
+    },
+    "others": [
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "m": [
+       -1,
+       0,
+       0,
+       0,
+       -1,
+       0,
+       0,
+       0,
+       -1
+      ],
+      "t": [
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "part": "6588.dat",
+   "name": "Technic gearbox 2 x 4 x 3 & 1/3",
+   "nameDe": "Technic-Getriebegehäuse 2 × 4",
+   "nameDeGenerated": false,
+   "category": "connector",
+   "massGrams": 5.12,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -23,
+      18,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 6
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      23,
+      18,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 6
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -22,
+      -15
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -22,
+      15
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      -22,
+      -15
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      -22,
+      15
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      20,
+      -22,
+      -15
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      20,
+      -22,
+      15
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      36,
+      2.5
+     ],
+     "position": [
+      -38,
+      -4,
+      -17.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      36,
+      2.5
+     ],
+     "position": [
+      -38,
+      -4,
+      17.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      36,
+      2.5
+     ],
+     "position": [
+      38,
+      -4,
+      -17.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      2,
+      36,
+      2.5
+     ],
+     "position": [
+      38,
+      -4,
+      17.5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      4,
+      20
+     ],
+     "position": [
+      0,
+      36,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 10,
+     "halfHeight": 5,
+     "position": [
+      -25,
+      18,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 10,
+     "halfHeight": 5,
+     "position": [
+      25,
+      18,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      4,
+      14,
+      10
+     ],
+     "position": [
+      -36,
+      -22,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      3,
+      4,
+      9
+     ],
+     "position": [
+      -31,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      4,
+      9
+     ],
+     "position": [
+      -25,
+      8,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      4,
+      14,
+      10
+     ],
+     "position": [
+      36,
+      -22,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      3,
+      4,
+      9
+     ],
+     "position": [
+      31,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      4,
+      9
+     ],
+     "position": [
+      25,
+      8,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      22,
+      5
+     ],
+     "position": [
+      0,
+      -18,
+      -15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      14,
+      5
+     ],
+     "position": [
+      -30,
+      18,
+      -15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      14,
+      5
+     ],
+     "position": [
+      30,
+      18,
+      -15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      14,
+      1
+     ],
+     "position": [
+      0,
+      18,
+      -19
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      2,
+      5
+     ],
+     "position": [
+      0,
+      6,
+      -15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      2,
+      5
+     ],
+     "position": [
+      0,
+      30,
+      -15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      36,
+      22,
+      5
+     ],
+     "position": [
+      0,
+      -18,
+      15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      14,
+      5
+     ],
+     "position": [
+      -30,
+      18,
+      15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      6,
+      14,
+      5
+     ],
+     "position": [
+      30,
+      18,
+      15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      14,
+      1
+     ],
+     "position": [
+      0,
+      18,
+      19
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      2,
+      5
+     ],
+     "position": [
+      0,
+      6,
+      15
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      2,
+      5
+     ],
+     "position": [
+      0,
+      30,
+      15
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": null
+  },
+  {
+   "part": "18940.dat",
+   "name": "Technic gear rack 1 x 14 with bottom beam housing",
+   "nameDe": "Technic-Zahnstangengehäuse 1 × 14",
+   "nameDeGenerated": false,
+   "category": "connector",
+   "massGrams": 11.94,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      100,
+      -20,
+      -14
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      100,
+      -20,
+      14
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -20,
+      -14
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -20,
+      14
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 10
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -120,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      -140,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      140,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      120,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h8",
+     "type": "pinhole",
+     "position": [
+      140,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h9",
+     "type": "pinhole",
+     "position": [
+      140,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "guide",
+     "type": "rack-guide",
+     "position": [
+      0,
+      -20,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 280
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      115,
+      29,
+      3
+     ],
+     "position": [
+      5,
+      -20,
+      -17
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      115,
+      29,
+      3
+     ],
+     "position": [
+      5,
+      -20,
+      17
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9.5,
+      29,
+      10
+     ],
+     "position": [
+      139.5,
+      -20,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      149,
+      9,
+      10
+     ],
+     "position": [
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      20,
+      10
+     ],
+     "position": [
+      120,
+      -29,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      19,
+      3
+     ],
+     "position": [
+      -120,
+      -30,
+      -17
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      19,
+      3
+     ],
+     "position": [
+      -120,
+      -30,
+      17
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      20,
+      10
+     ],
+     "position": [
+      -125,
+      -29,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      15.5,
+      10
+     ],
+     "position": [
+      -115,
+      -24.5,
+      0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 5,
+     "position": [
+      -60,
+      -20,
+      -15
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 5,
+     "position": [
+      -60,
+      -20,
+      15
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 5,
+     "position": [
+      100,
+      -20,
+      -15
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 5,
+     "position": [
+      100,
+      -20,
+      15
+     ],
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": null
+  },
+  {
+   "part": "18942.dat",
+   "name": "Technic gear rack 1 x 14 with bottom beam",
+   "nameDe": "Technic-Zahnstange 1 × 14",
+   "nameDeGenerated": false,
+   "category": "beam",
+   "massGrams": 6.7700000000000005,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      10,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      30,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      110,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      -110,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -130,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x0",
+     "type": "axlehole",
+     "position": [
+      90,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "axlehole",
+     "position": [
+      130,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x2",
+     "type": "axlehole",
+     "position": [
+      -90,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "x3",
+     "type": "axlehole",
+     "position": [
+      -130,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "slide",
+     "type": "rack-slide",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 280
+    },
+    {
+     "id": "teeth",
+     "type": "rack-teeth",
+     "position": [
+      12,
+      -25,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 256,
+     "data": {
+      "normal": [
+       0,
+       -1,
+       0
+      ],
+      "widthLdu": 20
+     }
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      139,
+      19,
+      10
+     ],
+     "position": [
+      0,
+      -10,
+      0
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": null
+  },
+  {
+   "part": "72824p01.dat",
+   "name": "Minifig soccer ball with black pentagons pattern",
+   "nameDe": "Ball 14,4 mm",
+   "nameDeGenerated": false,
+   "category": "other",
+   "massGrams": 1.5,
+   "connectors": [],
+   "colliders": [
+    {
+     "shape": "sphere",
+     "radius": 18,
+     "position": [
+      0,
+      0,
+      0
+     ]
+    }
+   ],
+   "derived": true,
+   "mirrorOf": null
   }
  ]
 }

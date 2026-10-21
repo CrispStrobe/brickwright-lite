@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "straight-eight",
+  "language": "de",
+  "what": "Ein Motor treibt ein Peaucellier-Getriebe: Sieben bewegliche Glieder und das feste Gestell führen den roten Punkt auf einer Geraden. Sieben bewegliche Glieder führen den roten Punkt geradlinig durch einen Kurbelbereich von ±60°, ohne Gleitführung.",
+  "try": [
+    "Setze zurück und starte das Beispiel. Beobachte die blaue Kurbel bei +60°, −60° und der Rückkehr zur Ausgangslage.",
+    "Pausiere am Endpunkt. Vergleiche den roten Punkt mit dem festen Ursprung O; es gibt keine Gleitschiene.",
+    "Ändere das Programm auf ±30° und sage den kleineren Hub vorher. Zuerst zurücksetzen; alle Befehle innerhalb ±60° halten."
+  ],
+  "why": "Die gleich langen Arme und vier gleichen Rautenseiten erzwingen OP × OQ = L² − r². Der Antriebspunkt P läuft auf einem Kreis durch O. Die Inversion bildet diesen Kreis auf eine Gerade ab. Deshalb bewegt sich Q senkrecht, obwohl sich jedes Gelenk dreht.",
+  "matters": "Geradführungen wandeln Drehung ohne Gleitschiene in geführte Verschiebung um. Die Geometrie bestimmt den Weg und die ungleichmäßige Geschwindigkeit darauf.",
+  "question": "Erzeugt eine konstante Kurbelgeschwindigkeit eine konstante senkrechte Geschwindigkeit?",
+  "answer": "Nein. Die Höhe ist proportional zu tan(θ/2). Zum Rand hin bewegt sich der Punkt schneller, obwohl die Kurbel gleichmäßig dreht.",
+  "further": [
+    "Vergleiche den berechneten Hub von 49,27 mm bei ±60° mit 22,86 mm bei ±30°.",
+    "Vergleiche den Zahnstangenschlitten: Sein Weg ist proportional zum Wellenwinkel, anders als bei dieser Geradführung."
+  ],
+  "formula": "L = 80 mm; r = 48 mm; a = OS = SP = 48 mm; xQ = (L² − r²)/(2a) = 42,667 mm; yQ = xQ tan(θ/2)",
+  "related": [
+    "rack-shuttle.ldr",
+    "crank-rocker.ldr"
+  ]
+}

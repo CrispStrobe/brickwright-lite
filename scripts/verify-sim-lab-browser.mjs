@@ -164,6 +164,8 @@ import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_M
 import {brakingBound, judgeWallStop} from './lib/sim-lab-wall-stopper-judge.mjs';
 import {surveyRoverInteractions} from './lib/sim-lab-survey-rover-gate.mjs';
 import {physicsExamplesInteractions, germanPhysicsExamplesInteractions} from './lib/sim-lab-physics-examples-gate.mjs';
+import {armLiftInteractions} from './lib/sim-lab-arm-lift-gate.mjs';
+import {straightEightInteractions} from './lib/sim-lab-straight-eight-gate.mjs';
 import {oscillationClutchInteractions} from './lib/sim-lab-oscillation-clutch-gate.mjs';
 import {dynamicsInteractions} from './lib/sim-lab-dynamics-gate.mjs';
 import {lessonInteractions, germanLessonInteractions} from './lib/sim-lab-lesson-gate.mjs';
@@ -738,6 +740,18 @@ try {
             await ex.close();
         }
 
+        if (runExample('arm-lift.ldr')) {
+            const machines = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            machines.on('pageerror', error => errors.push(error.message)); machines.on('dialog', dialog => dialog.accept());
+            await armLiftInteractions(machines, {openSimLab, shotsDir: resolve(artifacts, 'arm-lift'), timeout: wallBudget(30000) * 2});
+            await machines.close();
+        }
+        if (runExample('straight-eight.ldr')) {
+            const linkage = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            linkage.on('pageerror', error => errors.push(error.message)); linkage.on('dialog', dialog => dialog.accept());
+            await straightEightInteractions(linkage, {openSimLab, shotsDir: resolve(artifacts, 'straight-eight'), timeout: wallBudget(14000)});
+            await linkage.close();
+        }
         if (runExample('oscillation-clutch.ldr')) {
             const experiments = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             experiments.on('pageerror', error => errors.push(error.message)); experiments.on('dialog', dialog => dialog.accept());

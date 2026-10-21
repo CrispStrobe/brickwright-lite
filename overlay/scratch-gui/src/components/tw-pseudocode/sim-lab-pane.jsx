@@ -2904,7 +2904,7 @@ class SimLabPane extends React.Component {
                     }} />
                 )}
                 {issues.length > 0 && (
-                    <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact}>
+                    <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open={!compact && issues.some(i => i.code !== 'locked-hinges')}>
                         <summary style={compact ? {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer'} : {cursor: 'pointer'}}>
                             {T.issues} ({issues.length})
                         </summary>

@@ -1511,6 +1511,134 @@
         "ratio-workbench.ldr",
         "flywheel-differential.ldr"
       ]
+    },
+    "straight-eight": {
+      "en": {
+        "what": "A motor drives a Peaucellier linkage: seven moving links and a fixed ground link constrain the red marker to a straight path.",
+        "try": [
+          "Reset and run the example. Watch the blue crank sweep +60°, −60°, then return home.",
+          "Pause at an endpoint. Compare the red marker with the fixed origin O; there is no sliding rail.",
+          "Change the program to ±30° and predict the shorter stroke before running. Reset first; keep all commands within ±60°."
+        ],
+        "why": "The equal long arms and four equal rhombus sides impose OP × OQ = L² − r². The input point P moves on a circle passing through O. Inversion maps that circle to a straight line, so Q moves vertically although every joint rotates.",
+        "matters": "Straight-line linkages convert rotation into constrained translation without a sliding guide. Geometry determines both the path and the nonlinear speed along it.",
+        "question": "Does constant crank speed give constant vertical marker speed?",
+        "answer": "No. Marker height is proportional to tan(θ/2). Its speed increases toward the endpoints even when the crank turns steadily.",
+        "further": [
+          "Compare the predicted 49.27 mm stroke for ±60° with 22.86 mm for ±30°.",
+          "Compare the rack shuttle: its displacement is proportional to shaft angle, unlike this linkage."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor treibt ein Peaucellier-Getriebe: Sieben bewegliche Glieder und das feste Gestell führen den roten Punkt auf einer Geraden.",
+        "try": [
+          "Setze zurück und starte das Beispiel. Beobachte die blaue Kurbel bei +60°, −60° und der Rückkehr zur Ausgangslage.",
+          "Pausiere am Endpunkt. Vergleiche den roten Punkt mit dem festen Ursprung O; es gibt keine Gleitschiene.",
+          "Ändere das Programm auf ±30° und sage den kleineren Hub vorher. Zuerst zurücksetzen; alle Befehle innerhalb ±60° halten."
+        ],
+        "why": "Die gleich langen Arme und vier gleichen Rautenseiten erzwingen OP × OQ = L² − r². Der Antriebspunkt P läuft auf einem Kreis durch O. Die Inversion bildet diesen Kreis auf eine Gerade ab. Deshalb bewegt sich Q senkrecht, obwohl sich jedes Gelenk dreht.",
+        "matters": "Geradführungen wandeln Drehung ohne Gleitschiene in geführte Verschiebung um. Die Geometrie bestimmt den Weg und die ungleichmäßige Geschwindigkeit darauf.",
+        "question": "Erzeugt eine konstante Kurbelgeschwindigkeit eine konstante senkrechte Geschwindigkeit?",
+        "answer": "Nein. Die Höhe ist proportional zu tan(θ/2). Zum Rand hin bewegt sich der Punkt schneller, obwohl die Kurbel gleichmäßig dreht.",
+        "further": [
+          "Vergleiche den berechneten Hub von 49,27 mm bei ±60° mit 22,86 mm bei ±30°.",
+          "Vergleiche den Zahnstangenschlitten: Sein Weg ist proportional zum Wellenwinkel, anders als bei dieser Geradführung."
+        ]
+      },
+      "formula": {
+        "en": "L = 80 mm; r = 48 mm; a = OS = SP = 48 mm; xQ = (L² − r²)/(2a) = 42.667 mm; yQ = xQ tan(θ/2)",
+        "de": "L = 80 mm; r = 48 mm; a = OS = SP = 48 mm; xQ = (L² − r²)/(2a) = 42,667 mm; yQ = xQ tan(θ/2)"
+      },
+      "related": [
+        "rack-shuttle.ldr",
+        "crank-rocker.ldr"
+      ]
+    },
+    "atlas-arm": {
+      "en": {
+        "what": "Three motors position a robot arm: two 24:1 worm drives move the shoulder and elbow, and a direct drive opens the gripper.",
+        "try": [
+          "Reset and run the example. Compare a full shoulder motor turn with the much smaller arm movement.",
+          "Watch the shoulder move 15°, the elbow 25° and the gripper through a 45° opening-and-closing range. All return to the model datum.",
+          "Pause at a raised pose and compare its holding behaviour with Switchback Lift. Use short manual jogs within the arm range; reset before running again."
+        ],
+        "why": "Each turn of a single-start worm advances its 24-tooth wheel by one tooth. The reduction trades output speed for mechanical advantage. The worm resists being driven backward by the arm load. The two arm joints combine their rotations, so equal motor increments do not make a straight tool path.",
+        "matters": "Reduction drives let a small motor position a loaded arm slowly. Joint coordinates and tool coordinates describe different things; practical arms also need limits, calibration and load checks.",
+        "question": "How many motor degrees produce a 25° elbow movement with this reduction?",
+        "answer": "600 motor degrees: 25 × 24. The gripper is direct drive, so the same calculation does not apply to it.",
+        "further": [
+          "Change one joint target by a small amount and predict how the tool path changes. Preserve the original travel range.",
+          "Compare the direct two-joint positioning arm and the backdrivable rack lift."
+        ]
+      },
+      "de": {
+        "what": "Drei Motoren positionieren einen Roboterarm: Zwei 24:1-Schneckengetriebe bewegen Schulter und Ellenbogen; ein Direktantrieb öffnet den Greifer.",
+        "try": [
+          "Setze zurück und starte das Beispiel. Vergleiche eine volle Schulter-Motorumdrehung mit der deutlich kleineren Armbewegung.",
+          "Beobachte 15° Schulterhub, 25° Ellenbogenhub und einen Greiferbereich von 45°. Alle Antriebe kehren zur Modell-Ausgangslage zurück.",
+          "Pausiere in angehobener Stellung und vergleiche das Halten mit Switchback Lift. Nutze kurze Handsteuerungsimpulse innerhalb des Armbereichs; vor dem nächsten Programmstart zurücksetzen."
+        ],
+        "why": "Jede Umdrehung einer eingängigen Schnecke schiebt das Rad mit 24 Zähnen um einen Zahn weiter. Die Untersetzung tauscht Abtriebsgeschwindigkeit gegen mechanischen Vorteil. Die Schnecke widersteht dem Rücktrieb durch die Armlast. Beide Gelenkdrehungen überlagern sich; gleiche Motorschritte ergeben daher keine gerade Werkzeugbahn.",
+        "matters": "Untersetzungen lassen kleine Motoren einen belasteten Arm langsam positionieren. Gelenk- und Werkzeugkoordinaten beschreiben verschiedene Größen. Praktische Arme brauchen zusätzlich Grenzen, Kalibrierung und Lastprüfungen.",
+        "question": "Wie viele Motorgrad ergeben 25° Ellenbogenbewegung mit dieser Untersetzung?",
+        "answer": "600 Motorgrad: 25 × 24. Der Greifer hat einen Direktantrieb; für ihn gilt diese Rechnung nicht.",
+        "further": [
+          "Ändere ein Gelenkziel geringfügig und sage die Werkzeugbahn vorher. Halte den ursprünglichen Bewegungsbereich ein.",
+          "Vergleiche den direkt angetriebenen Positionierarm und den rücktreibbaren Zahnstangenlift."
+        ]
+      },
+      "formula": {
+        "en": "θjoint = θmotor / 24; ideal output torque = 24 × input torque (losses reduce it)",
+        "de": "θGelenk = θMotor / 24; ideales Abtriebsmoment = 24 × Antriebsmoment (Verluste verringern es)"
+      },
+      "related": [
+        "positioning-arm.ldr",
+        "switchback-lift.ldr",
+        "screw-crane.ldr"
+      ]
+    },
+    "switchback-lift": {
+      "en": {
+        "what": "Three motors lift a free ball, tip it onto a downhill track and open a gate to reload it. The ball moves by gravity and contact.",
+        "try": [
+          "Reset and run the example. Follow the ball rather than only the motor readouts: lift, release, outbound run, return, gated wait and reload.",
+          "Compare the 64 mm carriage lift with the 611.155° motor command. The 12-tooth pinion has a 6 mm pitch radius.",
+          "Pause before opening the gate. Predict whether opening it before the cradle has lowered would successfully reload the ball."
+        ],
+        "why": "The lift stores gravitational potential energy in the ball. On the sloped tracks, that energy becomes translation and rotation, with losses at contacts and impacts. The gate separates the ball’s return from the carriage’s descent. Its timing matters: a motor reaching its target does not tell the controller where the free ball is.",
+        "matters": "Ball machines combine transmissions, energy conversion and sequential control. This example uses timed waits without a ball sensor; the simulator test checks the ball’s actual path and recapture.",
+        "question": "Does a 600° turn produce exactly 64 mm of lift through this pinion?",
+        "answer": "No. Travel is radius × angle in radians: 6 × 600 × π/180 = 62.83 mm. About 611.155° gives 64 mm.",
+        "further": [
+          "Compare lift energy mgh with the ball’s kinetic energy after release. The model uses a 1.5 g mass parameter, not a measured hardware value.",
+          "Compare ideal solid-sphere rolling acceleration with the simulated trip. Real hollow balls, friction and impacts change the result."
+        ]
+      },
+      "de": {
+        "what": "Drei Motoren heben eine freie Kugel, kippen sie auf eine Gefällestrecke und öffnen ein Tor zum erneuten Beladen. Die Kugel folgt Schwerkraft und Kontakten.",
+        "try": [
+          "Setze zurück und starte das Beispiel. Verfolge die Kugel statt nur die Motorwerte: Heben, Freigeben, Hinfahrt, Rücklauf, Warten am Tor und Beladen.",
+          "Vergleiche den Hub von 64 mm mit dem Motorbefehl von 611,155°. Das Ritzel mit zwölf Zähnen hat 6 mm Teilkreisradius.",
+          "Pausiere vor dem Öffnen des Tores. Sage vorher, ob sich die Kugel bei einem noch angehobenen Lift wieder laden ließe."
+        ],
+        "why": "Der Lift speichert Lageenergie in der Kugel. Auf den geneigten Bahnen wird daraus Verschiebungs- und Rotationsenergie; Kontakte und Stöße verursachen Verluste. Das Tor trennt den Kugelrücklauf vom Absenken der Wiege. Die Zeitsteuerung ist entscheidend: Ein erreichtes Motorziel verrät nicht den Ort der freien Kugel.",
+        "matters": "Kugelmaschinen verbinden Getriebe, Energieumwandlung und Ablaufsteuerung. Dieses Beispiel wartet feste Zeiten ohne Kugelsensor. Der Simulatortest prüft den tatsächlichen Kugelweg und das erneute Einfangen.",
+        "question": "Erzeugen 600° Motordrehung mit diesem Ritzel genau 64 mm Hub?",
+        "answer": "Nein. Weg ist Radius × Winkel im Bogenmaß: 6 × 600 × π/180 = 62,83 mm. Etwa 611,155° ergeben 64 mm.",
+        "further": [
+          "Vergleiche die Hubenergie mgh mit der Bewegungsenergie nach der Freigabe. Das Modell verwendet 1,5 g als Massenparameter, keinen gemessenen Hardwarewert.",
+          "Vergleiche die ideale Rollbeschleunigung einer Vollkugel mit der simulierten Fahrt. Hohle reale Kugeln, Reibung und Stöße verändern das Ergebnis."
+        ]
+      },
+      "formula": {
+        "en": "h = rθ; E = mgh; ideal solid sphere: a = (5/7)g sin(α)",
+        "de": "h = rθ; E = mgh; ideale Vollkugel: a = (5/7)g sin(α)"
+      },
+      "related": [
+        "atlas-arm.ldr",
+        "forklift.ldr",
+        "rack-shuttle.ldr"
+      ]
     }
   }
 }

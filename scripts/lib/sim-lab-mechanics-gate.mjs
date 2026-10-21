@@ -63,7 +63,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -93,8 +93,9 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
             const slider = page.locator(`[data-testid="bw-sim-lab-mixer-slider"][data-port="${port}"]`);
             const before = await angle(port);
             await slider.focus();
-            await page.keyboard.press('ArrowRight');
-            assert.equal(await slider.inputValue(), '5');
+            const sign = jogSign(id, port);
+            await page.keyboard.press(sign < 0 ? 'ArrowLeft' : 'ArrowRight');
+            assert.equal(await slider.inputValue(), String(sign * 5));
             await advance();
             const delta = await angle(port) - before;
             assert.ok(Math.abs(delta) > 0.03, `${id} motor ${port} responds to its slider: ${delta}`);
