@@ -76,7 +76,7 @@ export const MAP = {
     // consumer), and by the hosted service only where that is absent.
     legorcx: 'extensions/CrispStrobe/lego_rcx.js',
     planetemaths: 'extensions/CrispStrobe/planetemaths.js',
-    spikeprime: 'extensions/CrispStrobe/legospike_turbowarp_transpile.js',
+    spikeprime: {repo: 'CrispStrobe/extensions', pin: 'spikeprime', path: 'extensions/CrispStrobe/legospike_turbowarp_transpile.js'},
     // Opt-in hardware diagnostics: archive the four pre-consolidation drivers
     // at the same immutable upstream pin as the unified driver.
     spikeprimeBTC: 'extensions/CrispStrobe/legospikeprime_btc_scratchlink.js',
@@ -149,14 +149,6 @@ export const LITE_ONLY = {
  * which is the only difference between this and the situation the audit found.
  */
 export const ALLOWED_DIVERGENCE = {
-    // Reviewed 2026-10-18 (lane/simlab-forklift-ci-20261018); to be sent upstream to
-    // CrispStrobe/extensions and the entry removed when the pin moves past it.
-    spikeprime: 'run motor for N degrees/rotations waited a WALL-CLOCK estimate (degrees / (speed·6) + 0.5 s) ' +
-        'instead of the move: a motor slower than the estimate (loaded, or a simulated hub whose physics runs ' +
-        'slower than real time, as the Robot Lab worker does on a busy CI runner) had its move overridden ' +
-        'part-way by the next block — the Forklift lifted 38.1 mm of 40 in CI run 39079251326. It now waits ' +
-        'on the encoders like move forward (_waitForMovement), whose safety net is no encoder progress for ' +
-        '2 s (cap 120 s) instead of a 2·estimate + 1 s deadline.'
 };
 
 /**

@@ -81,8 +81,13 @@ export const movePair = (hubState, {amount = null, unit = 'rotations', speed = 5
 const UNHANDLED = Symbol('unhandled');
 
 const STATEMENTS = [
+    // Distinct duty commands: SPIKE 2 percent; SPIKE 3 hundredths of percent.
+    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:pwm|start_at_power)\\(\\s*${NUM}\\s*\\)$`), (h, m) =>
+        h.motors.runAtPower(m[1], num(m[2]))],
+    [new RegExp(`^motor\\.set_duty_cycle\\(\\s*port\\.${PORT}\\s*,\\s*${NUM}\\s*\\)$`), (h, m) =>
+        h.motors.runAtPower(m[1], num(m[2]) / 100)],
     // ---- one motor, SPIKE 2 style: hub.port.A.motor.<verb>(...) --------------
-    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:pwm|start_at_power|run_at_speed|start)\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
+    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:run_at_speed|start)\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
         const value = num(m[2]);
         if (value === 0) { h.motors.stop(m[1], 'coast'); return; }
         h.motors.runAtSpeed(m[1], h.motors.percentToDps(m[1], clampPercent(value)));
