@@ -7998,7 +7998,7 @@ Robot Lab view/pane/text/program/lessons, tests and exact-build browser checks.
 
 Production build and 67 focused controls pass. Cold Chromium/WebKit checks show
 no post-display blanking, no failed DAT requests and no duplicate-definition
-warnings. The compact default compiles to 152 authored blocks (248 including
+warnings. The compact default compiles to 136 authored blocks (248 including
 GUI-installed support blocks), down from 6,153. Both browsers record 257/53 ink
 points in the two measured strokes; square/diagonal errors stay below 0.05 mm.
 Governor camera movement stays below 0.02 mm during the browser run. Loom's
