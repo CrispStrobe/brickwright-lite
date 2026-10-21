@@ -424,7 +424,9 @@ Two complete exported examples now pass generated-helper recognition and reach
 the separate operand-domain check. Keep their existing tests and emitted source:
 
 - `test/makecode-arcade-object-heap.test.mjs`: nested generated additions need
-  primitive captured-result composition. Class instances also travel through
+  primitive captured-result composition; its corrected complete five-module
+  source set now passes all thirteen controls. Recheck the unchanged original
+  example before claiming its failure resolved. Class instances also travel through
   Array literals/index aliases and self-referential fields. Model actual
   allocation and field containment, all writers, reachable aliases and escapes;
   preserve rejection when an unknown call or writer can change those values.

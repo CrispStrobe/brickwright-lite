@@ -52,6 +52,15 @@ A read before a `let` declaration was incorrectly accepted. Keep the failing
 control and correct the capture/entry initialization proof before integration;
 the candidate is held and earns no application-completion credit.
 
+The corrected successor passes all thirteen controls across the same five
+complete domain modules, both independently and on the current composition.
+It proves actual nested helper results only after every original inner operand,
+Array allocation, writer and effect obligation passes. Captured reads also
+require actual lexical ownership and declaration-before-entry safety; module,
+local and early-call TDZ cases remain refused. The original failed candidates
+are retained. This closes the focused composition gap; original class examples
+and corpus acceptance still require their separate execution.
+
 The new score callback syntax passes all 463 controls in three complete
 canonical modules. [Supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160)
 is merged after all four enabled checks passed; merge tree and parents agree

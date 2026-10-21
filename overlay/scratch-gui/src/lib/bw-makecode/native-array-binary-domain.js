@@ -68,11 +68,11 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
     const current=()=>syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent();
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
-    const observed=new Set();
+    const observed=new Set(),provedHelperResults=new WeakSet();
     for(const node of bindings.nodes)if(tokens.has(node.nativeArrayDomainCall)){
         const token=node.nativeArrayDomainCall,entry=tokens.get(token);
         if(observed.has(token)||node.type!=='Binary'||node.op!=='+')return {helpers:new Map(),current,reason:'native addition private call identity is ambiguous'};
-        observed.add(token);domainHelpers.find(helper=>helper.declaration===entry.helper.declaration).calls.push({args:[node.left,node.right]});
+        observed.add(token);provedHelperResults.add(node);domainHelpers.find(helper=>helper.declaration===entry.helper.declaration).calls.push({args:[node.left,node.right]});
     }
     if(observed.size!==tokens.size)return {helpers:new Map(),current,reason:'native addition private call identity was not preserved'};
     const parsedValues=new Set();
@@ -136,13 +136,51 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     // actual Undefined value is still a primitive operand; this does not
     // establish initialization, an Array producer or an input certificate.
     // Both occurrence and complete binding writer facts must be primitive.
+    // A captured read is not a module/same-function lexical TDZ read. Before
+    // admitting an uninitialized primitive capture, its actual sole binding
+    // declaration must execute before any possible entry in the declaring
+    // body. Only inert definitions and literal declarations may precede it;
+    // uncertain branches, calls, accessors and callback entry remain refused.
+    const actualFunctionOwners=new WeakSet();
+    for(const node of nodes){
+        if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression')actualFunctionOwners.add(node);
+        if(node.type==='Class'){
+            if(node.ctor)actualFunctionOwners.add(node.ctor);
+            for(const method of node.methods||[])actualFunctionOwners.add(method);
+        }
+    }
+    const functionOwner=node=>{
+        for(let owner=node;owner;owner=parents.get(owner))
+            if(owner===model||actualFunctionOwners.has(owner))return owner;
+        return null;
+    };
+    const inertLiteral=node=>!node||primitive.has(node.type)||
+        node.type==='Array'&&Array.isArray(node.items)&&node.items.every(inertLiteral)||
+        node.type==='Unary'&&['+','-','!','~','typeof','void'].includes(node.op)&&inertLiteral(node.argument)||
+        node.type==='Binary'&&inertLiteral(node.left)&&inertLiteral(node.right);
+    const inertStatement=node=>node?.type==='FunctionDeclaration'||node?.type==='Declaration'&&
+        node.decls.every(decl=>inertLiteral(decl.init))||node?.type==='Class'&&!node.base&&
+        !node.fields?.some(field=>field.isStatic)&&!node.methods?.some(method=>method.isStatic);
+    const capturedDeclarationReady=node=>{
+        const value=actual(node),readOwner=functionOwner(value);
+        if(!readOwner||readOwner===model)return false;
+        const binding=graph.bindingOf(value);
+        const declarations=nodes.filter(entry=>entry.type==='Declaration').flatMap(statement=>
+            statement.decls.filter(decl=>graph.bindingOf(statement,decl.name)===binding).map(decl=>({statement,decl})));
+        if(declarations.length!==1)return false;
+        const {statement}=declarations[0],owner=functionOwner(statement);
+        if(!owner||owner===readOwner||!Array.isArray(owner.body))return false;
+        const at=owner.body.indexOf(statement);
+        return at>=0&&owner.body.slice(0,at).every(inertStatement);
+    };
     const capturedScalarIdentifier=node=>{
         if(node?.type!=='Identifier')return false;
         const value=actual(node),kinds=graph.bindingKindsAt(value);
         if(graph.declarationCountAt(value)!==1||kinds.size!==1||!kinds.has('variable'))return false;
         const occurrence=types(node),writers=graph.bindingTypesAt(value);
         return occurrence.size>0&&writers.size>0&&
-            [...occurrence,...writers].every(type=>primitive.has(type));
+            [...occurrence,...writers].every(type=>primitive.has(type))&&
+            (initialized(node)||capturedDeclarationReady(node));
     };
     // This graph leaves an unassigned module binding's writer set empty, but
     // records Undefined at its actual read. Require precisely that occurrence
@@ -182,6 +220,14 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const allTokens=new Set(),arrayHelpers=new Set();
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){
         const arg=call.args[position];
+        // An actual closed helper's result is primitive on NORMAL return only
+        // after its own operands and every selected Array/effect obligation
+        // below succeed. Defer this result edge; every original helper call,
+        // including this nested call, still has all inputs checked here.
+        // The syntax proof excludes cycles/shared executable identities, so
+        // a result cannot justify its own unproved input. No Array result or
+        // captured Array initialization is inferred through this edge.
+        if(provedHelperResults.has(arg))continue;
         const found=types(arg);
         if(!found.size||!initialized(arg)&&!capturedScalarIdentifier(arg)||[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'))
             return {helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
