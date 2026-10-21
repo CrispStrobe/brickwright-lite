@@ -1,6 +1,7 @@
 import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js';
 import {inspectNativeArrayBinaryDomains} from './native-array-binary-domain.js';
-import {GENERATED_HELPER_PROFILES} from './generated-helper-recognition.js';
+import {GENERATED_HELPER_PROFILES,mapGeneratedSourceArray} from './generated-helper-recognition.js';
+import {animationAssetArray} from './animation-asset-array.js';
 import {createOrdinaryExportSymbols} from './ordinary-export-symbols.js';
 import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
 import {throwExportOwners} from './throw-export-owners.js';
@@ -98,7 +99,44 @@ function currentSceneClockNumber(blocks,block) {
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {createAnimationFrameArrayProducers} from './animation-frame-array-producers.js';
-import {encodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
+import {encodeAnimationJres, decodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
+
+// This view is used only for the fresh parse of this emitter's complete,
+// immutable assembled source. It never accepts a caller's AST/proof flag and
+// never replaces emitted text. Only this emitter's actual encoded resources
+// supply literal image Arrays; arbitrary tag spellings remain unproved.
+function nativeAdditionAnimationView(program, resources) {
+    const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType',
+        'assertedType','ordinaryParameterDefaultNames','bwProcedureConstraintSource']);
+    let shadowed=false;
+    const scan=node=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){for(const child of node)scan(child);return;}
+        if(node.type==='Identifier'&&node.name==='assets'||
+            ['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ForOf','ForIn'].includes(node.type)&&node.name==='assets'||
+            node.params?.includes('assets')||node.type==='Declaration'&&node.decls.some(decl=>decl.name==='assets'))shadowed=true;
+        for(const [key,value]of Object.entries(node))if(!metadata.has(key))scan(value);
+    };
+    scan(program);
+    if(shadowed)return program;
+    const animations=new Map();
+    for(const resource of resources){
+        const id=resource.nativeId;
+        if(typeof id!=='string'||animations.has(id)){animations.set(id,null);continue;}
+        const animation=decodeAnimationJres(resource.nativeEntry,{key:`myAnimations.${id}`});
+        animations.set(id,animation.id===`myAnimations.${id}`?animation:null);
+    }
+    const rewrite=node=>{
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(node.type==='Template'&&node.tag==='assets.animation'){
+            const animation=typeof node.value==='string'&&animations.get(node.value);
+            return animation?animationAssetArray(animation):node;
+        }
+        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:rewrite(value)]));
+    };
+    return rewrite(program);
+}
 import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
 import {validateDocument} from '../bw-artwork-bundle.js';
 import {TileAssetExporter} from './tile-assets.js';
@@ -4210,7 +4248,8 @@ class ArcadeEmitter {
             // definition owned by this emitter after complete source proof.
             const candidate=nativeArrayAddHelperSource(addition.name,true,true);
             const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
-            const proof=inspectNativeArrayBinaryDomains(parseMakeCodeTs(draft,GENERATED_HELPER_PROFILES.ordinary));
+            const proof=inspectNativeArrayBinaryDomains(nativeAdditionAnimationView(
+                parseMakeCodeTs(draft,GENERATED_HELPER_PROFILES.ordinary),this.authoredAnimationArrays.values()));
             if(proof.reason)this.note(proof.reason);
             else if(!proof.helpers.has(addition.name))this.note('native addition requires its complete current helper body and actual caller proof');
             else if(proof.current()&&proof.arrayHelpers?.has(addition.name))

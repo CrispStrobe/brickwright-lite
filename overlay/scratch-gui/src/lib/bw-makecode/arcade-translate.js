@@ -128,6 +128,7 @@ import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
 import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
 import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
+import {animationAssetArray} from './animation-asset-array.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 import {prepareOrdinaryCallOmissions} from './ordinary-call-omission.js';
@@ -5031,10 +5032,7 @@ export function arcadeToPseudocode (files, opts = {}) {
                 return {type: 'Undefined'};
             }
             return {type: 'Array', ...(opts.animationResources ? {bwAnimationResourceId: resourceIds.get(animation.id)} : {}),
-                items: animation.frames.map(frame => ({type: 'Template', tag: 'img',
-                value: Array.from({length: animation.height}, (_, y) =>
-                    Array.from(frame.pixels.subarray(y * animation.width, (y + 1) * animation.width),
-                        index => index.toString(16)).join(' ')).join('\n')}))};
+                items: animationAssetArray(animation).items};
         }
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));

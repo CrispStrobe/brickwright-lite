@@ -106,6 +106,7 @@
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
       "test/animation-native-library-import.test.mjs",
+      "test/animation-resource-native-helper-analysis.test.mjs",
       "test/arcade-animation-resource-carrier.test.mjs",
       "test/arcade-boolean-question.test.mjs",
       "test/arcade-buffer-controller.test.mjs",
