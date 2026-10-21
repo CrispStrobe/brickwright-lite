@@ -2,7 +2,7 @@
 
 Owner: Codex, Arcade compatibility lane. Isolated branch:
 `lane/arcade-private-assessment-20261021`, based on `2ccdde721`.
-Status: claim-only proposal; implementation begins after this claim merges.
+Status: claim merged in PR1167; component implementation and qualification in progress. Hosted isolation, workflow qualification and the live assessment remain pending.
 
 ## Owned scope
 
