@@ -1,6 +1,49 @@
 # Arcade integration repairs and qualification order
 
-## Current shard-four export repair — 2026-10-20
+## Current complete CI failure census — 2026-10-21
+
+All four unit shards have now finished at `340f9eb0e`: 246 ordinary failing
+leaves comprise 198 native-addition operand-domain refusals, 43 complete-helper
+refusals, one occurrence-profile mismatch and four other failures. Failing TODO
+cases remain separate. These are test failures, not application counts. Build,
+lesson corpus, Robot Lab browser and FPGA checks pass. Heavy/light browser and
+numeric authoring fail; no retry or new full-CI request establishes closure.
+
+The animation export candidate now passes 11 tests across four complete modules.
+Its private analysis resolves only the emitter's own encoded animation resources
+into fresh image-array syntax. Emitted asset references, frame pixels, timing
+and resource files stay intact. Unknown or shadowed resources refuse admission;
+image arrays gain no primitive-join authority. Native/browser roundtrips still
+need qualification on the final composed candidate.
+
+Further work is scoped as follows:
+
+1. **Class values:** preserve refusal of edited procedure symbols, clone parser
+   metadata at its producer, and derive accessor/field values from actual source
+   constructors and writers. The current 15-test candidate passes 14; its valid
+   accessor export still refuses opaque member results. Do not accept annotations
+   as evidence or relax its positive assertion.
+2. **Source Number results:** the fresh installed candidate passes nine of twelve
+   whole-module controls. The repaired test loader reaches actual execution;
+   export composition, the setter injection boundary and a changed-primitive
+   negative remain open. Preserve the original errors and safety assertions.
+3. **CI readers:** account for the one genuinely added dialect word, align the
+   two disabled x86 readers with the existing supplier pin, and select the
+   costume picker's actual main button without weakening the GIF journey.
+4. **Browser initialization:** the official numeric artifact observes a changed
+   `Function.prototype.toString` value. Investigate global tooltip/polyfill
+   initialization before runtime capture. Keep intrinsic checks unchanged;
+   obtain a separate ownership claim before implementation. Rotation, legacy
+   layout and animation failures need their own observed closure.
+5. **Measurements:** adopt the canonical circuit repair explicitly, remeasure
+   actual quantities and then update provenance. Qualify ARM guest execution
+   through hosted checks. No stale pin restoration or provenance-only restamp.
+6. **Application census:** after these repairs pass the composed gates, complete
+   one ordered corpus run with import, execution and export/reimport diagnostics.
+   The historical result remains 147 translated, 36 partial and one malformed;
+   incomplete newer runs provide no replacement completion count.
+
+## First established export causes — 2026-10-20
 
 At `340f9eb0e`, build and lesson-corpus checks pass; unit shard four reports
 45 actual failing tests, with eight failing TODO cases counted separately.
@@ -33,11 +76,12 @@ failing and unsafe intermediate results are retained. The remaining affected
 modules and every final-head hosted check are required; this is no claim that
 all 43 failures or any corpus project are complete.
 
-The circuit fixed-point repair is separately proposed in
-[Circuit UI #101](https://github.com/CrispStrobe/bw-circuit-ui/pull/101):
-42 affected tests pass, while the exact original loader fails six of the same
-controls. Hosted acceptance, canonical adoption and new supplier measurements
-remain pending. Do not restamp expected provenance in place of those results.
+The circuit fixed-point repair in
+[Circuit UI #101](https://github.com/CrispStrobe/bw-circuit-ui/pull/101)
+has merged at `f65e6cc0027397dea42528db9225a135b1c8e8c5` after all three enabled
+checks passed. Its 42 affected tests pass, while the exact original loader fails
+six of the same controls. Explicit supplier adoption and new quantity
+measurements remain pending. Do not restamp provenance in place of those results.
 
 ## Supplier adoption guard follow-up — 2026-10-20
 

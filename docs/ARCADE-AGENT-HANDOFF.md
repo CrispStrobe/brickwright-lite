@@ -1,5 +1,20 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Start here — 2026-10-21
+
+Read [CI repair status](ARCADE-CI-REPAIR-STATUS.md) before continuing the current
+Arcade/Array lane in `LANES.md`. It records the complete four-shard failure census,
+the tested animation export repair and independently scoped class-value, native
+Number, browser initialization, supplier measurement and corpus work. A passing
+build or lesson corpus does not establish MakeCode application compatibility.
+
+Keep the historical 147 translated / 36 partial / one malformed result until a
+complete replacement census exists. Preserve failing inputs and diagnostics;
+complete affected modules, current execution and export/reimport before claiming
+a gap closed. Local operational paths and raw receipts belong in private ignored
+handoff notes, never in this document.
+
+
 ## Current integration checkpoint — 2026-10-20
 
 Start with [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md#current-batch-and-acceptance-boundary--2026-10-20)
