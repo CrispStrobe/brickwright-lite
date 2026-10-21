@@ -198,6 +198,15 @@ const inRed = ([x, , z]) => Math.abs(x + 0.35) <= 0.15 && Math.abs(z + 0.35) <= 
 const at = p => `(${p[0].toFixed(3)}, ${p[2].toFixed(3)})`;
 /** The Robot Lab's other example robots: model, its mat, what lands in the Code tab, and how the outcome is judged. */
 const EXAMPLES = [
+    // A gyro turn goes on after the yaw passes its mark (a VM frame of polling, a tick to stop, braking): the example
+    // turns fast to 70° and slowly to 89°. Four 20 cm sides with 95° corners end 4.7 cm from the start; with 90°, 0.
+    {name: 'Drawing robot', file: 'drawing-robot.ldr', mat: 'plain', sensor: null, simMs: 15000,
+        code: /wait until \(spike angle yaw\) > 89/, goal: /a drawing robot/,
+        judge: r => {
+            const off = Math.hypot(r.last.axle[0] - r.startAxle[0], r.last.axle[2] - r.startAxle[2]);
+            assert.ok(off < 0.025, `the square does not close: the axle ends ${(off * 100).toFixed(1)} cm from where it started`);
+            return `draws a square that closes: the axle ends ${(off * 100).toFixed(1)} cm from where it started`;
+        }},
     {name: 'Wall stopper', file: 'wall-stopper.ldr', mat: 'wall', sensor: 'distance', simMs: 10000,
         code: /wait until \(spike distance D\) < 10/, goal: /stop before the wall/,
         // scripts/lib/sim-lab-wall-stopper-judge.mjs: (a) never touches the wall, (b) the stop begins within two VM
@@ -244,7 +253,7 @@ const WORKER_LATENCY = Number((process.argv.find(a => a.startsWith('--worker-lat
  * the whole program slows down instead of running ahead of the world, and the wait has to allow it.
  */
 const wallBudget = simMs => 240000 + Math.ceil(simMs / (1000 / 30)) * (2 * WORKER_LATENCY + 20);
-/** `--examples=a,b` runs only those example robots in the examples part (line-follower, wall-stopper, colour-explorer, forklift, sumo, timed-drive). */
+/** `--examples=a,b` runs only those example robots in the examples part (drawing-robot, line-follower, wall-stopper, colour-explorer, forklift, sumo, timed-drive). */
 const ONLY_EXAMPLES = (process.argv.find(a => a.startsWith('--examples=')) || '').slice('--examples='.length).split(',').filter(Boolean);
 const runExample = file => !ONLY_EXAMPLES.length || ONLY_EXAMPLES.includes(file.replace(/\.ldr$/, ''));
 
@@ -680,7 +689,7 @@ try {
                 const hubId = s.bridge.hubBody;
                 const hinges = s.mechanism.joints.filter(j => j.motor);
                 const axle0 = [0, 1, 2].map(i => (hinges[0].point[i] + hinges[1].point[i]) / 2);
-                const sensor = s.mechanism.sensors.find(x => x.kind === mode.sensor);
+                const sensor = mode.sensor ? (s.mechanism.sensors || []).find(x => x.kind === mode.sensor) : null;
                 const robot = s.mechanism.bodies.filter(b => b.motion === 'dynamic');
                 const wall = s.mechanism.bodies.find(b => b.id === 'obstacle:wall');
                 const rec = window.__bwExample = {start: s.time, samples: [], closestGap: Infinity,
@@ -689,7 +698,7 @@ try {
                 const hubState = window.__bwSimLab._pane.hub;
                 const drivePorts = (s.mechanism.actuators || []).map(a => a.port);
                 s.onAdvance(() => {
-                    const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: carried(sensor.body, sensor.origin)};
+                    const sample = {t: s.time - rec.start, axle: carried(hubId, axle0), spot: sensor ? carried(sensor.body, sensor.origin) : null};
                     if (wall) {
                         sample.front = Math.max(...robot.flatMap(b => b.colliders.map(c => reachX(b.id, c))));
                         rec.closestGap = Math.min(rec.closestGap, rec.faceX - sample.front);

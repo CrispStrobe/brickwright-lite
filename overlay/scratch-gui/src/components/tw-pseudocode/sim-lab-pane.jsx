@@ -76,7 +76,8 @@ const TEXT = {
             'technic-hub-bench.bw': 'The example program is in the Code tab now, in pup words: the LEGO Powered Up blocks. Press ⇦ To blocks, then Run: the blocks connect to the Lab\'s Technic Hub and turn motor A one full turn. Challenge: make it turn three quarters.',
             'boost-rover.bw': 'The example program is in the Code tab now, in boost words: the LEGO BOOST blocks. Press ⇦ To blocks, then Run: the Move Hub drives ahead with its motors A and B, then spins on the spot. Challenge: make it spin the other way.',
             'wedo-milo.bw': 'The example program is in the Code tab now, in wedo words: the LEGO WeDo 2.0 blocks. Press ⇦ To blocks, then Run: the rover drives until its motion sensor sees the wall. Challenge: make it stop further away.',
-            'crane.bw': 'The example program is in the Code tab now. Press Run: the crane lifts its boom, swings the hook a quarter turn, lets it down and swings back. Challenge: make it swing the other way.'
+            'crane.bw': 'The example program is in the Code tab now. Press Run: the crane lifts its boom, swings the hook a quarter turn, lets it down and swings back. Challenge: make it swing the other way.',
+            'drawing-robot.bw': 'The example program is in the Code tab now. Press Run and watch a drawing robot draw a square: each corner turns fast, then slowly to 90°. Challenge: draw a triangle.'
         },
         noProgramLab: 'Nothing tells this motor to turn yet. Use the Robot Lab blocks (Add Extension) or lab words in the Code tab, press ⇦ To blocks, then press Run.',
         noProgramBt: 'No {brick} program is loaded yet, so nothing tells the motors to turn. Add the {brick} blocks (Add Extension) or load the example program, then press Run.',
@@ -192,7 +193,8 @@ const TEXT = {
             'technic-hub-bench.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in pup-Wörtern: die Blöcke von LEGO Powered Up. Drücke ⇦ Zu Blöcken und dann Start: Die Blöcke verbinden sich mit dem Technic-Hub des Labors und drehen Motor A einmal ganz herum. Aufgabe: Lass ihn eine Dreivierteldrehung machen.',
             'boost-rover.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in boost-Wörtern: die Blöcke von LEGO BOOST. Drücke ⇦ Zu Blöcken und dann Start: Der Move Hub fährt mit seinen Motoren A und B geradeaus und dreht sich dann auf der Stelle. Aufgabe: Lass ihn andersherum drehen.',
             'wedo-milo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab, in wedo-Wörtern: die Blöcke von LEGO WeDo 2.0. Drücke ⇦ Zu Blöcken und dann Start: Der Rover fährt, bis sein Bewegungssensor die Wand sieht. Aufgabe: Lass ihn weiter vorher anhalten.',
-            'crane.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Kran hebt seinen Ausleger, schwenkt den Haken eine Vierteldrehung, lässt ihn ab und schwenkt zurück. Aufgabe: Lass ihn in die andere Richtung schwenken.'
+            'crane.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Kran hebt seinen Ausleger, schwenkt den Haken eine Vierteldrehung, lässt ihn ab und schwenkt zurück. Aufgabe: Lass ihn in die andere Richtung schwenken.',
+            'drawing-robot.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und sieh zu, wie der Malroboter ein Quadrat malt: Jede Ecke dreht er erst schnell, dann langsam bis 90°. Aufgabe: Mal ein Dreieck.'
         },
         noProgramLab: 'Noch sagt dem Motor niemand, dass er sich drehen soll. Nimm die Robot-Lab-Blöcke (Erweiterung hinzufügen) oder lab-Wörter im Code-Tab, drücke ⇦ Zu Blöcken und dann Start.',
         noProgramBt: 'Es ist noch kein {brick}-Programm geladen, darum dreht sich kein Motor. Füge die {brick}-Blöcke hinzu (Erweiterung hinzufügen) oder lade das Beispielprogramm, dann drücke Start.',

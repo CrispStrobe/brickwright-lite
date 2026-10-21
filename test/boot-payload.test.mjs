@@ -24,6 +24,7 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'ext-circuitplayground': 'ID: circuitplayground',
             'ext-robotlab': 'when part [PART] touches [OTHER]',
             'bw-robotlab-tab': 'Open the Robot Lab here',
+            'bw-extension-menus': '"spikeprime_motorRunFor": {"PORT":"+MULTIPLE_PORT"}',
             'asset-library-index': '"name":"Abby"',
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
