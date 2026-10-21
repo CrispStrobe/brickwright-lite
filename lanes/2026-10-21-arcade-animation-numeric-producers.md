@@ -105,3 +105,20 @@ completion is included in this first source-qualified slice. The original
 animation two-pass/one-failure remains preserved. Continue the scoped resource
 and pixel work under this claim; see
 [the next-step contract](../docs/ARCADE-ANIMATION-NUMERIC-PRODUCERS.md).
+
+## Follow-up source candidate: static fresh resources
+
+The source-qualified follow-up adds owned JSON literal specialization
+and complete-source unused lookup accounting. It preserves the old AST API,
+dynamic/shared/missing-resource behavior, listener logging, actual encoded
+native asset/companion identity and fresh allocation on every evaluation.
+Inherited-slot and caller namespace uncertainty retain the original lookup.
+The complete affected three-module cohort passes 32 tests with no failures,
+skips or TODOs: eighteen existing authority, six JSON and eight new static
+controls. Independent saved-result review confirms current source, genuine
+providers and unchanged assertions. Preserve the preceding 31-pass/one-failure
+original; its sole correction uses the existing unquoted fixed settings menu
+value in the new fixture. This does not close the original raw-API carrier,
+pixel producer, SDK, GUI or corpus gates. The preceding complete 31-control
+length result is unchanged. Final integrated hosted and affected guest/browser
+qualification remain pending.

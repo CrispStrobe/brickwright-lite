@@ -5,6 +5,7 @@ import {nativeArrayAddHelperSource} from './native-array-binary-helper-source.js
 import {inspectNativeArrayBinaryDomains} from './native-array-binary-domain.js';
 import {GENERATED_HELPER_PROFILES,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {animationAssetArray} from './animation-asset-array.js';
+import {ownedAnimationLiteral,unusedAnimationLookups} from './static-animation-resource-emission.js';
 import {createOrdinaryExportSymbols} from './ordinary-export-symbols.js';
 import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
 import {throwExportOwners} from './throw-export-owners.js';
@@ -448,7 +449,7 @@ class ArcadeEmitter {
                         intervalMs: resource.frames[0].durationMs, frames: images});
                     usedNames.add(nativeName);
                     if (nativeName !== resource.name) this.warn(`Animation name ${JSON.stringify(resource.name)} mapped to ${JSON.stringify(nativeName)} for native export`);
-                    this.authoredAnimationArrays.set(resource.id, {...resource, nativeId, nativeEntry, document,
+                    this.authoredAnimationArrays.set(resource.id, {...resource, sourceResource:resource, nativeId, nativeEntry, document,
                         variable: this.animationSymbol(`__bwAnimationFrames${this.authoredAnimationArrays.size}`),
                         literals: images.map(image => toImgLiteral(image))});
                 } catch (error) { this.note(error.message); }
@@ -459,6 +460,18 @@ class ArcadeEmitter {
     authoredAnimation (b) {
         this.usesAnimationResources = true;
         this.prepareAuthoredAnimations();
+        // Only the actual JSON entry can skip input evaluation. The descriptor
+        // gate also excludes inherited slots/getters on otherwise frozen data.
+        if(this.snapshotCallbacks&&isProjectJsonSnapshot(this.project)&&!this.currentCallableContext&&!this.currentClassConstructor&&
+            this.functionSymbols?.current()&&!this.functionNames().includes('assets')&&ownedAnimationLiteral(this.project,this.target,b)){
+            const allocation=this.animationFrameProducers.resolve(this.target,b);
+            const resource=allocation&&!allocation.shared&&ownedAnimationLiteral(this.project,this.target,b)?
+                this.animationFrameProducers.freshResource(this.target,b):null;
+            const emitted=resource&&this.authoredAnimationArrays.get(resource.id);
+            if(emitted?.sourceResource===resource&&this.animationFrameProducers.isCurrent()&&
+                ownedAnimationLiteral(this.project,this.target,b))
+                return `assets.animation\`${emitted.nativeId}\``;
+        }
         let id = this.literalInput(b, 'RESOURCE');
         const menu = this.block(b.inputs?.RESOURCE?.[1]);
         if (menu?.opcode === 'arcade_menu_animationAssets') id = menu.fields?.animationAssets?.[0];
@@ -4213,16 +4226,18 @@ class ArcadeEmitter {
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
                 kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
+        const animationLookupDefinitions=new Map();
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
             for (const resource of resources) out.push(`let ${resource.variable}: Image[] = assets.animation\`${resource.nativeId}\``);
-            out.push(`function ${this.animationFunctionNames.frames} (id: string): Image[] {\n${resources.map(resource =>
+            animationLookupDefinitions.set(this.animationFunctionNames.frames,`function ${this.animationFunctionNames.frames} (id: string): Image[] {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return ${resource.variable}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
-            out.push(`function ${this.animationFunctionNames.fresh} (id: string): Image[] {\n${resources.map(resource =>
+            animationLookupDefinitions.set(this.animationFunctionNames.fresh,`function ${this.animationFunctionNames.fresh} (id: string): Image[] {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return assets.animation\`${resource.nativeId}\``).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
-            out.push(`function ${this.animationFunctionNames.interval} (id: string): number {\n${resources.map(resource =>
+            animationLookupDefinitions.set(this.animationFunctionNames.interval,`function ${this.animationFunctionNames.interval} (id: string): number {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return ${resource.frames[0].durationMs}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
         }
+        out.push(...animationLookupDefinitions.values());
         for (const {name, frames} of [...this.frameArrays.values(), ...this.sharedImageArrays.values()]) {
             out.push(`let ${name}: Image[] = [${frames.map(frame => toImgLiteral(frame)).join(', ')}]`);
         }
@@ -4356,8 +4371,19 @@ class ArcadeEmitter {
             startup = flagScripts.map(({script, clonable, sv}) =>
                 `control.runInParallel(function () {\n${clonable ? `    const self = ${sv}\n` : ''}${script.join('\n')}\n})`);
         }
-        const assemble=definitions=>[...helperSource(this.helpers),...definitions,
-            ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup].join('\n')+'\n';
+        const assemble=definitions=>{
+            const chunks=[...helperSource(this.helpers),...definitions,
+                ...pre,...generated,...this.generated,...functions,...out,...handlers,...startup];
+            const source=chunks.join('\n')+'\n';
+            // Final output may prepend these sources after emit(). Until they
+            // are included in one reference graph, retain every lookup when
+            // any such prefix is present. Do not infer absence from spelling.
+            if(!this.snapshotCallbacks||!isProjectJsonSnapshot(this.project)||this.tileAssets.entries.size||
+                this.requiresStringArraySettings||this.songAssets.size||!this.animationFrameProducers.isCurrent())return source;
+            const unused=unusedAnimationLookups(source,animationLookupDefinitions,
+                new Set([...this.authoredAnimationArrays.values()].map(resource=>resource.nativeId)));
+            return unused.size?chunks.filter(chunk=>!unused.has(chunk)).join('\n')+'\n':source;
+        };
         const definitions=[...this.valueOperationHelpers.values()];
         const addition=this.valueOperationHelpers.get('BinaryAdd');
         if(addition){
