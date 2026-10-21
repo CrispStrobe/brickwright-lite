@@ -3,6 +3,8 @@ import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.
 import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
 import {nativeClassScalarView} from './native-class-scalar-view.js';
+import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
+import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 
 const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
@@ -100,9 +102,17 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     };
     const analyse=model=>analyseSourceValueProducers(model,{
         arrayValues:true,arrayEffectSites:true,parenthesized:true,unboundIsOpaque:true,
-        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true
+        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,
+        ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true
     });
     let model=rewrite(classView.program),graph=analyse(model);
+    // Reuse the same closed source/binding profiles as the value graph. These
+    // are Number results on NORMAL return, never input or initialization facts
+    // about their arguments. The complete original argument/effect census is
+    // still below; omitted safe-index callbacks are intentionally conservative.
+    const numberResults=source=>[ordinaryPlayerScoreNumberCalls(source),ordinaryCameraPropertyNumberLeaves(source),
+        ordinaryMathNumberCalls(source),ordinarySceneClockNumberCalls(source)];
+    let numberResultSets=numberResults(model);
     const nodes=[],parents=new WeakMap();
     const visit=(node,parent=null)=>{
         if(!node||typeof node!=='object')return;
@@ -117,6 +127,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         if(!node||typeof node!=='object')return true;
         if(Array.isArray(node))return node.every(initialized);
         if(unaryTokens.has(node.nativeArrayDomainNormalCall))return true;
+        if(numberResultSets.some(producers=>producers.has(actual(node))))return true;
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
     };
@@ -133,6 +144,27 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         return occurrence.size>0&&writers.size>0&&
             [...occurrence,...writers].every(type=>primitive.has(type));
     };
+    // This graph leaves an unassigned module binding's writer set empty, but
+    // records Undefined at its actual read. Require precisely that occurrence
+    // AFTER its root let declaration, not an empty or opaque occurrence set.
+    // Keep this fact local to host coercion arguments: it does not initialize
+    // the binding or grant a native-add operand/Array fact. Any actual writer,
+    // alias value or read before the declaration retains the strict refusal.
+    const unassignedGlobalUndefined=node=>{
+        if(node?.type!=='Identifier'||graph.declarationCountAt(node)!==1||
+            graph.bindingKindsAt(node).size!==1||!graph.bindingKindsAt(node).has('variable')||
+            graph.bindingTypesAt(node).size||types(node).size!==1||!types(node).has('Undefined'))return false;
+        for(let owner=node;owner&&owner!==model;owner=parents.get(owner))
+            if(['FunctionDeclaration','FunctionExpression','Class'].includes(owner.type))return false;
+        let statement=node;
+        while(parents.get(statement)&&parents.get(statement)!==model)statement=parents.get(statement);
+        const readAt=model.body.indexOf(statement),binding=graph.bindingOf(node);
+        if(readAt<0)return false;
+        return model.body.some((entry,index)=>index<readAt&&entry.type==='Declaration'&&entry.kind==='let'&&
+            entry.decls.some(declaration=>declaration.init===null&&!declaration.isArray&&
+                (!declaration.typeName||['number','string','boolean','any'].includes(declaration.typeName))&&
+                graph.bindingOf(entry,declaration.name)===binding));
+    };
     // Canonical parse NORMAL returns on non-String primitive input are
     // primitive. Its unary+/isNaN/JSON effects and possible errors remain in
     // the actual source; this is only an overapproximation of Array contents.
@@ -145,7 +177,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         parsedValues.add(node);
     }
     if(unsupportedView)return {helpers:new Map(),current,reason:'native addition has no private shape model for this named mutator'};
-    if(parsedValues.size){replacements=new WeakMap();model=rewrite(classView.program);graph=analyse(model);nodes.length=0;visit(model);}
+    if(parsedValues.size){replacements=new WeakMap();model=rewrite(classView.program);graph=analyse(model);numberResultSets=numberResults(model);nodes.length=0;visit(model);}
 
     const allTokens=new Set(),arrayHelpers=new Set();
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){
@@ -188,6 +220,8 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const root=node=>node?.type==='Identifier'?node:node?.type==='Member'?root(node.object):null;
     const globalCall=node=>{const base=root(node);return !!base&&!graph.bindingKindsAt(base).size;};
     const primitiveCalls=new Set(['pause','isNaN','Number','String','Boolean','parseInt','parseFloat']);
+    const coerciveNumberInputs=new Set(['Number','String','parseInt','parseFloat','isNaN',
+        'info.setScore','info.changeScoreBy','info.startCountdown']);
     const builtinRoots=new Set([...primitiveCalls,...[...namespaceCalls].map(name=>name.split('.')[0])]);
     const arrayReturningFunctions=new Set();
     for(const node of nodes)if(node.type==='Return'&&affected(node.value)){
@@ -207,6 +241,16 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         if(node.type==='Array'&&!allTokens.has(node)&&node.items.some(affected))
             return {helpers:new Map(),current,reason:'native addition Array escapes through a containing Array'};
         if(node.type==='Call'){
+            // A known host Number result says nothing about its arguments.
+            // Numeric builtins can invoke an opaque operand's ToPrimitive;
+            // retain the scalar result fact, but do not borrow Array-join
+            // authority across that implicit callback frontier. Actual local
+            // function bodies remain subject to the complete source census.
+            if(allTokens.size&&!graph.immutableFunctionAt(node)&&
+                (types(node).size===1&&types(node).has('Number')||coerciveNumberInputs.has(path(node.callee))||
+                    node.callee?.type==='Member'&&path(node.callee.object)==='Math')&&
+                node.args.some(arg=>!primitiveValue(arg)&&!capturedScalarIdentifier(arg)&&!unassignedGlobalUndefined(arg)))
+                return {helpers:new Map(),current,reason:'native addition cannot prove host Number conversion has no opaque coercion effects'};
             if(allTokens.size&&(node.isNew||node.constructorCall||node.typeArguments?.length||node.args.some(arg=>arg?.type==='Spread')))
                 return {helpers:new Map(),current,reason:'native addition cannot prove constructor, generic or spread call effects'};
             if(node.callee?.type==='Member'){

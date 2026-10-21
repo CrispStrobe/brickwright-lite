@@ -28,10 +28,13 @@ pass all 22 controls. The side-effect import reader correction still needs its
 complete freshly integrated gate.
 
 The private native-addition analysis is being repaired to reuse existing closed
-SDK Number producers without granting input or Array authority. Its first
-complete two-group run retains an Undefined-coercion failure; the successor must
-preserve that positive and reject reads before initialization, including hoisted
-function calls. Complete affected native/original modules remain required.
+SDK Number producers without granting input or Array authority. The corrected complete two-group module now passes both groups. The retained
+first and third candidates failed the same Undefined positive; an observer-only
+capture established the actual singleton Undefined occurrence and empty writer
+set. The correction proves only a direct module read after its declaration and
+refuses hoisted-function entry, later writers and opaque coercion. It grants no
+initialization, Number input or Array permission. Complete affected
+native/original modules remain required.
 
 The new score callback syntax passes all 463 controls in three complete
 canonical modules. [Supplier PR160](https://github.com/CrispStrobe/sb3-creator/pull/160)

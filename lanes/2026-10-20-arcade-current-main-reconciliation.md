@@ -114,3 +114,10 @@ scoped in the repair guide; no annotation-based or unconditional type grant.
 Canonical score vocabulary PR160 is qualified and merged; explicit Lite adoption
 and native/original/visible authoring acceptance are pending. Historical 36
 partials remain unchanged. No new full-CI request or relaxed baseline is used.
+
+The private native-addition SDK result model now passes both complete pure
+groups. Existing closed source profiles prove normal-return Numbers; their
+arguments and full effects retain separate checks. The measured module Undefined
+case has an exact direct-read proof without lending initialization or Array
+facts. First failures and the observer-only causal capture remain retained.
+Actual affected native/original-SDK and final combined checks remain pending.
