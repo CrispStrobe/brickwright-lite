@@ -70,13 +70,16 @@ test('a claim-only PR is docs-only, like a LANES.md-only PR was', () => {
 
 // A clean environment: a runner or hook may export GIT_DIR / GIT_INDEX_FILE etc.,
 // which would point the scratch repo at the real checkout.
-const GIT_ENV = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+const GIT_ENV = {...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_'))),
+    GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1',
+    GIT_AUTHOR_NAME: 'lanes test', GIT_AUTHOR_EMAIL: 'lanes@example.com', GIT_COMMITTER_NAME: 'lanes test', GIT_COMMITTER_EMAIL: 'lanes@example.com'};
 const git = (cwd, ...args) => {
     // gate-shapes-allow: the subject is git's own merge of two claim files in a scratch repo; a missing git fails red.
     const r = spawnSync('git', [  // gate-shapes-allow'-c', 'gc.auto=0', '-c', 'user.name=t', '-c', 'user.email=t@example.invalid',
-        '-c', 'init.defaultBranch=main', '-c', 'commit.gpgsign=false', ...args], {cwd, encoding: 'utf8', env: GIT_ENV});
+        '-c', 'init.defaultBranch=main', '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', ...args], {cwd, encoding: 'utf8', env: GIT_ENV});
     return r;
 };
+const ok = (r, what) => assert.equal(r.status, 0, `${what}: ${r.stderr}${r.stdout}`);
 
 test('two claims added in parallel, in different files, merge without a conflict', () => {
     const repo = mkdtempSync(path.join(tmpdir(), 'bw-lanes-'));
@@ -86,14 +89,14 @@ test('two claims added in parallel, in different files, merge without a conflict
         writeFileSync(path.join(repo, 'LANES.md'), readFileSync(path.join(ROOT, 'LANES.md')));
         mkdirSync(path.join(repo, 'lanes'));
         writeFileSync(path.join(repo, 'lanes/2026-10-19-older.md'), '## Older — 2026-10-19\n\nDONE.\n');
-        git(repo, 'add', '-A'); assert.equal(git(repo, 'commit', '-qm', 'base').status, 0);
+        ok(git(repo, 'add', '-A'), 'add'); ok(git(repo, 'commit', '-qm', 'base'), 'commit base');
         for (const [branch, slug] of [['a', 'first-lane'], ['b', 'second-lane']]) {
-            git(repo, 'checkout', '-qb', branch, 'main');
+            ok(git(repo, 'checkout', '-qb', branch, 'main'), `checkout ${branch}`);
             writeFileSync(path.join(repo, `lanes/2026-10-20-${slug}.md`), `## ${slug} — 2026-10-20\n\nCLAIMED — owner ${branch}; paths: \`scripts/${slug}.mjs\`.\n`);
-            git(repo, 'add', '-A'); assert.equal(git(repo, 'commit', '-qm', slug).status, 0);
+            ok(git(repo, 'add', '-A'), 'add'); ok(git(repo, 'commit', '-qm', slug), `commit ${slug}`);
         }
-        git(repo, 'checkout', '-q', 'main');
-        assert.equal(git(repo, 'merge', '-q', '--no-edit', 'a').status, 0);
+        ok(git(repo, 'checkout', '-q', 'main'), 'checkout main');
+        ok(git(repo, 'merge', '-q', '--no-edit', 'a'), 'merge a');
         const second = git(repo, 'merge', '--no-edit', 'b');
         assert.equal(second.status, 0, `the second claim conflicted:\n${second.stdout}${second.stderr}`);
         assert.equal(git(repo, 'diff', '--name-only', 'HEAD~2', 'HEAD', '--', 'LANES.md').stdout, '', 'neither claim touched LANES.md');
