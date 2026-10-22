@@ -17,20 +17,39 @@ final composition before implementation and require fresh final-head checks.
 
 ## Exact ownership
 
-Change only these production paths:
+Change only these paths:
 
 - `overlay/scratch-gui/src/lib/bw-makecode/array-class-reset-effects.js`
 - `overlay/scratch-gui/src/lib/bw-makecode/array-definite-overwrite.js`
+- `overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js`: only the private retained-currentness bridge described below.
+- `scripts/lib/gui-scope-allowed.json`: append only `test/array-identity-constraint-prefix.test.mjs` to the existing `scratch-vm/src/util/bw-procedure-constraint-model.js` consumer list. Preserve every key, explanation and existing consumer; no new provider grant.
 
 Add complete `test/array-identity-constraint-prefix.test.mjs`. Maintain this claim and additive status/acceptance prose in `docs/ARCADE-COMPATIBILITY-NEXT-STEPS.md` and `docs/CONVERSION-CAPABILITIES-AND-GUI-GAPS.md`.
 
-Reuse `overlay/scratch-vm/src/util/bw-procedure-constraint-model.js` read-only through its existing `prepare(target)` API, after the existing owned-JSON/own-descendant admission. Validate actual physical inputs before its ordinary readers; do not execute inherited or computed fields. Keep currentness sticky in this effect proof. No new helper, authority/context threading, ledger row, shared authority, model, parser, importer, emitter, runtime, pin or workflow change is authorized. If exact ownership/currentness requires another path or API, stop and merge a narrow amendment first. Identify any required tracked mirror in that amendment before editing it.
+Reuse `overlay/scratch-vm/src/util/bw-procedure-constraint-model.js` read-only through its existing `prepare(target)` API, after the existing owned-JSON/own-descendant admission. Validate actual physical inputs before its ordinary readers; do not execute inherited or computed fields. Keep currentness sticky in this effect proof. Only a function-owned private proof-currentness dependency from the definite-overwrite helper to its existing caller is authorized, together with the exact existing-key consumer witness above. No caller-supplied certificate or broader authority/context threading, new module/provider key, shared model, parser, importer, emitter, runtime, pin or workflow change is authorized. If exact ownership/currentness requires another path or API, stop and merge a narrow amendment first. Identify any required tracked mirror in that amendment before editing it.
 
 ## Effect-only contract
 
 Admit only exact fixed canonical leading `Any` declarations bound to the actual target, definition/prototype and formal ID/name/order. Require original physical membership, supported fields, no inputs, complete prefix and current graph. Refuse foreign, duplicate, misplaced, stale, replaced, malformed or computed prefixes. Preserve genuine runtime ownership/rejection behavior rather than skipping arbitrary statements.
 
 After the prefix require the same sole return of the corresponding actual formal. `Any` supplies no Array, element, initialization, type, input, receiver or return authority. Preserve actual call/argument evaluation, arity, all entries/aliases/writers, effects, exception behavior and initialization order. Preserve owned JSON/own-descendant admission, all four legacy reset/effect guard bodies, intervening reads, unsafe publication, callbacks, reflection, recursion and opaque-writer refusals. Observed source mutation and restoration must not revive stale facts.
+
+## Retained currentness amendment
+
+The existing caller filters writers during construction and can later publish
+cached authority without reobserving either helper. A construction-only prefix
+check cannot satisfy retained currentness when an inherited property changes
+without changing the owned JSON bytes. Activate the new private dependency only
+when an owned `Any` prefix actually helped discharge an actual reset. Reobserve
+it before cached publication and public input validation, including diagnostic
+early exits; a false or thrown observation must expire the new fact persistently,
+including after restoration. Keep no-prefix and unused-prefix behavior unchanged.
+
+The new complete test imports the real exporter and thereby the existing
+canonical VM model. Its exact consumer-list entry records that real dependency;
+it grants neither another provider nor value authority. Keep actual validation-
+time mutation/ABA controls and the unchanged clean-report assertion. No new
+capture, constructor, SDK or Array type authority follows from this amendment.
 
 ## Complete controls and execution boundary
 
