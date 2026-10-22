@@ -10,21 +10,28 @@ import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/ste
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';
 import {judgeIntegral} from '../scripts/lib/sim-lab-integral-judge.mjs';
 import {loadJolt,createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
+import {adaptIntegralModel} from '../scripts/lib/integral-model.mjs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const base='overlay/scratch-gui/static/sim-lab/',source='test/fixtures/model-files/integral-source/';
 const C=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'))),text=read(base+'models/integral.ldr'),program=read(base+'programs/integral.bw');
-test('Integral: exact original placements and operations, authored default/strict/import/save equivalence, connected manual',()=>{
+test('Integral: reviewed fork repair and original operations, authored default/strict/import/save equivalence, connected manual',()=>{
  const provenance=JSON.parse(read(source+'provenance.json'));
  for(const[n,hash]of Object.entries(provenance.files))assert.equal(createHash('sha256').update(read(source+n)).digest('hex'),hash);
- assert.equal(text,read(source+'integral.ldr').replace('0 Author: OpenAI / ChatGPT, with reused modules by CrispStrobe','0 Author: CrispStrobe'));
+ assert.equal(text,adaptIntegralModel(Buffer.from(read(source+'integral.ldr'))));
+ assert.throws(()=>adaptIntegralModel(Buffer.from(read(source+'integral.ldr')+'\n')));
  assert.equal(program,read(source+'integral.bw').replace('Copyright (c) 2026 OpenAI','Copyright (c) 2026 CrispStrobe'));
  const p=prepareModel(text,C),strict=prepareModel(text,C,{autoPorts:false}),original=prepareModel(read(source+'integral.ldr'),C,{autoPorts:false});
- assert.deepEqual(p.model.parts,original.model.parts);assert.deepEqual(p.mechanism,strict.mechanism);assert.deepEqual(p.mechanism,original.mechanism);
+ const shifts={forkMount:-100,forkMountPin:-100,forkUpright:-100,forkPivot:-100,gravityFork:-100,outputAxle:-40,outputBushOuter:-140};
+ for(const old of original.model.parts){const expected=structuredClone(old);expected.position[0]+=shifts[old.id]||0;assert.deepEqual(p.model.parts.find(q=>q.id===old.id),expected,old.id);}
+ const spacer=p.model.parts.find(q=>q.id==='outputForkSpacer');assert.equal(spacer.part,'3713.dat');assert.deepEqual(spacer.position,[-40,-188,-2.033903176]);
+ assert.deepEqual(p.mechanism,strict.mechanism);
+ assert.deepEqual(p.mechanism.actuators,original.mechanism.actuators);
+ assert.deepEqual(p.mechanism.joints.map(j=>[j.id,j.type,j.body1,j.body2,j.axis,j.limits]),original.mechanism.joints.map(j=>[j.id,j.type,j.body1,j.body2,j.axis,j.limits]));
  const saved=serializeModel(p.model,{name:'integral.ldr'}),reopened=prepareModel(saved,C);
  assert.match(saved,/^0 Author: CrispStrobe$/m);
  assert.deepEqual(reopened.mechanism,prepareModel(saved,C,{autoPorts:false}).mechanism);
- assert.equal(p.model.parts.length,154);assert.deepEqual(p.mechanism.actuators.map(a=>a.port),['A','B']);
- const plan=buildSteps(p.model,C);assert.equal(plan.steps.flatMap(s=>s.parts).length,154);assert.ok(plan.steps.every(s=>!s.loose&&s.parts.length<=6));
+ assert.equal(p.model.parts.length,155);assert.deepEqual(p.mechanism.actuators.map(a=>a.port),['A','B']);
+ const plan=buildSteps(p.model,C);assert.equal(plan.steps.flatMap(s=>s.parts).length,155);assert.ok(plan.steps.every(s=>!s.loose&&s.parts.length<=6));
 });
 for(const autoPorts of [undefined,false])test(`Integral ${autoPorts===false?'strict':'ordinary'}: real VM signed friction drive, load and frozen-output refusal`,async t=>{
  const r=await runRobotLabProgram(program,{modelText:text,timeLimitMs:45000,autoPorts,observeFrame:({session,vm,prepared})=>({variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables).map(v=>[v.name,v.value]))),rolling:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.rollingResistance>0).map(b=>[b.id,session.core.rollingWheel(b.id)]))})});

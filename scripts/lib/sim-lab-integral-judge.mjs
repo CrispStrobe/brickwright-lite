@@ -26,7 +26,7 @@ export function judgeIntegral(_id,r,{contact=false}={}){
  assert.equal(r.issues.length,2);
  r.issues.forEach((issue,i)=>{assert.equal(issue.code,'locked-hinges');assert.deepEqual([...issue.parts].sort(),[...inherited[i]].sort());});
  assert.deepEqual(r.mechanism.actuators.map(a=>a.port),['A','B']);
- assert.equal(r.runModel.parts.length,154);
+ assert.equal(r.runModel.parts.length,155);
  const {o,wheel,disc,rows}=measureIntegral(r);
  assert.ok(!r.mechanism.actuators.some(a=>{const j=r.mechanism.joints.find(j=>j.id===a.joint);return [j.body1,j.body2].includes(wheel.id);}), 'output has no motor');
  for(const c of r.mechanism.couplings)assert.ok(!JSON.stringify(c).includes('"'+wheel.id+'"'),'output has no imposed rotation coupling');

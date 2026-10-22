@@ -3174,9 +3174,9 @@
       "en": {
         "what": "A steadily turning tiled platter drives an unmotorized rubber wheel. Motor B moves the wheel across the platter: forward, slower, near neutral, then reverse. The accumulated wheel angle demonstrates mechanical integration: it remembers the signed contact radius over the platter's motion.",
         "try": [
-          "Reset and run the bounded demonstration. Motor A spins the platter in one direction while Motor B visits +28, +14, 0 and −28 mm contact offsets. Each station lasts 6 seconds; the recorded native program finishes in about 35.7 seconds.",
+          "Reset and run the 155-piece demonstration. Motor A spins the platter in one direction while Motor B visits +28, +14, 0 and −28 mm contact offsets. Each station lasts six seconds; the finite program returns the carriage to the centre.",
           "Compare the positive-radius stations. At +14 mm, the passive wheel turns at about half the platter's angular speed; at +28 mm, it is close to the same speed.",
-          "Watch the centre carefully. Ideal point contact predicts zero speed, but the delivered native recording shows 15.92 degrees of creep during its final 4.97 seconds. Near neutral is not an exact stop.",
+          "Watch the centre carefully. Ideal point contact predicts zero speed, but finite-width contact and drag produce a little creep. Near neutral is not an exact stop.",
           "At the negative-radius station, the output reverses while the platter keeps its direction. The wheel has no motor or transmission constraint that imposes this rotation.",
           "Compare the measured wheel angle with the ideal integral in the validation data. Keep the transitions visible: shifting the tyre sideways introduces scrub and transient error."
         ],
@@ -3187,18 +3187,18 @@
         "further": [
           "Compare with Mean Machine: distinguish an instantaneous average of angles from an angle accumulated through a variable ratio.",
           "Use actual platter angle and the tyre centre when predicting output. A bearing hinge can lie beside the tyre on the same axle; it is not the radial contact centre.",
-          "The supplied independent pose fit measured wheel/platter ratios of +0.9963, +0.5053, +0.0395, -1.0045. The full-run final angle differed from the ideal measured-motion reference by +7.85 degrees. Inspect the complete residual alongside the ideal reference.",
-          "A separate native counterfactual used direct input controllers rather than the main Scratch VM program. Changing only the output body's friction to zero reduced its mean speed ratio from +1.0035 to -0.0041, with contact still present. This supports friction-driven sustained rotation; the frictionless wheel still oscillates, and the test does not establish a real hardware friction coefficient.",
+          "Compare the measured wheel/platter speed ratios with the ideal values +1, +0.5, 0 and −1. Inspect the accumulated-angle residual over the complete run, including every sideways transition; do not fit an offset to hide slip.",
+          "A separate native counterfactual changes only the output body friction to zero. Sustained wheel rotation then nearly disappears while actual wheel/platter contact remains. This distinguishes frictional transmission from a hidden gear or motor; it does not calibrate real rubber friction.",
           "Brown's mechanical movement 28 describes the historical variable-radius friction-wheel arrangement: https://507movements.com/mm_028.html. The addon supplies an original LEGO arrangement and copies no modern site animation.",
-          "The supplied separate actual-browser recordings passed 18 pose/program checks each, from the catalog and after saving and reopening the .sb3 project. The browser mirror exposes no rolling load, so these checks provide program and pose evidence only. Saved coordinates retain the application's normal serialization rounding and are checked against an independent compile of the exact saved text."
+          "The app checks actual program and body poses after gallery loading and project reopening. The browser mirror exposes no normal load, so browser checks cannot establish contact force; native checks measure that separately."
         ]
       },
       "de": {
         "what": "Eine gleichmäßig rotierende, mit Fliesen belegte Scheibe treibt ein Gummirad ohne eigenen Motor an. Motor B verschiebt das Rad über die Scheibe: vorwärts, langsamer, nahezu neutral und dann rückwärts. Der aufsummierte Radwinkel demonstriert mechanische Integration: Er speichert den vorzeichenbehafteten Kontaktradius über der Scheibenbewegung.",
         "try": [
-          "Setze das Modell zurück und starte die begrenzte Vorführung. Motor A dreht die Scheibe stets in dieselbe Richtung. Motor B fährt die Kontaktpositionen +28, +14, 0 und −28 mm an. Jede Station dauert 6 Sekunden; das aufgezeichnete native Programm endet nach ungefähr 35,7 Sekunden.",
+          "Setze die Vorführung mit 155 Teilen zurück und starte sie. Motor A dreht die Scheibe gleichsinnig, während Motor B die Kontaktabstände +28, +14, 0 und −28 mm anfährt. Jede Station dauert sechs Sekunden; das endliche Programm bringt den Schlitten zurück in die Mitte.",
           "Vergleiche die positiven Radien. Bei +14 mm dreht sich das passive Rad ungefähr mit der halben Winkelgeschwindigkeit der Scheibe; bei +28 mm sind beide Winkelgeschwindigkeiten nahezu gleich.",
-          "Beobachte die Mitte genau. Idealer Punktkontakt sagt Stillstand voraus. In der nativen Aufzeichnung kriecht das Rad während der letzten 4,97 Sekunden dieser Station jedoch um 15,92 Grad weiter. Nahezu neutral bedeutet keinen exakten Stillstand.",
+          "Beobachte die Mitte genau. Idealer Punktkontakt sagt Stillstand voraus; die endliche Kontaktbreite und Reibung führen jedoch zu etwas Kriechen. Nahe der Mitte bedeutet keinen exakten Stillstand.",
           "Bei negativem Radius kehrt das Ausgangsrad seine Richtung um, während die Scheibe ihre Drehrichtung beibehält. Weder ein eigener Motor noch eine Getriebebedingung erzwingt diese Radrotation.",
           "Vergleiche den gemessenen Radwinkel mit dem idealen Integral in den Validierungsdaten. Behalte die Übergänge im Blick: Seitliches Verschieben erzeugt Schrubben und vorübergehende Abweichungen."
         ],
@@ -3209,10 +3209,10 @@
         "further": [
           "Vergleiche mit Mean Machine: Was unterscheidet den momentanen Mittelwert zweier Winkel von einem über eine veränderliche Übersetzung aufsummierten Winkel?",
           "Nutze den tatsächlich gemessenen Scheibenwinkel und die Reifenmitte. Ein Lagergelenk kann auf derselben Achse seitlich neben dem Reifen liegen und ist dann nicht das radiale Kontaktzentrum.",
-          "Die unabhängige Auswertung der Körperposen ergab Rad/Scheibe-Verhältnisse von +0,9963; +0,5053; +0,0395; -1,0045. Am Ende wich der Radwinkel um +7,85 Grad von der idealen Referenz aus der gemessenen Bewegung ab. Betrachte den vollständigen Fehlerverlauf zusammen mit der idealen Referenz.",
-          "Ein getrennter nativer Kontrollversuch nutzte direkte Eingangsregler statt des Scratch-VM-Programms. Nur die Reibung des Ausgangskörpers wurde auf null gesetzt. Bei weiterhin bestehendem Kontakt sank das mittlere Geschwindigkeitsverhältnis von +1,0035 auf -0,0041. Das stützt die Erklärung einer durch Reibung angetriebenen dauerhaften Rotation. Das reibungsfreie Rad schwingt noch; ein realer Reibungskoeffizient ist damit nicht geprüft.",
+          "Vergleiche die gemessenen Drehzahlverhältnisse mit den Idealwerten +1, +0,5, 0 und −1. Untersuche die Abweichung des angesammelten Winkels über den ganzen Lauf, einschließlich aller seitlichen Übergänge; passe keinen Versatz an, der Schlupf verbirgt.",
+          "Ein gesonderter nativer Gegenversuch setzt nur die Reibung des Ausgangskörpers auf null. Die dauerhafte Raddrehung verschwindet dann fast, während Rad und Scheibe weiter Kontakt haben. Das unterscheidet Reibungsübertragung von einem versteckten Getriebe oder Motor; es kalibriert keine echte Gummireibung.",
           "Browns mechanische Bewegung 28 beschreibt die historische Reibradanordnung mit veränderlichem Radius: https://507movements.com/mm_028.html. Das Addon enthält eine eigenständige LEGO-Anordnung und kopiert keine moderne Website-Animation.",
-          "Getrennte Aufzeichnungen aus dem tatsächlichen Browser bestanden jeweils 18 Programm- und Posenprüfungen: nach dem Laden aus dem Katalog sowie nach dem Speichern und erneuten Öffnen des .sb3-Projekts. Der Browser-Spiegel liefert keine Radlast; diese Prüfungen belegen daher nur Programmablauf und Körperbewegung. Die normale Rundung beim Speichern bleibt erhalten; als Referenz dient eine unabhängige Übersetzung des exakt gespeicherten Textes."
+          "Die App-Prüfung beobachtet das echte Programm und die Körperlagen nach Beispielauswahl und erneutem Öffnen eines Projekts. Der Browser-Spiegel liefert keine Normalkraft; Browser-Prüfungen belegen daher keine Kontaktkraft. Native Prüfungen messen diese gesondert."
         ]
       },
       "formula": {

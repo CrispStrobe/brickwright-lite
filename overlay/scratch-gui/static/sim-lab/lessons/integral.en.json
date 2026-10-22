@@ -4,9 +4,9 @@
   "language": "en",
   "what": "A steadily turning tiled platter drives an unmotorized rubber wheel. Motor B moves the wheel across the platter: forward, slower, near neutral, then reverse. The accumulated wheel angle demonstrates mechanical integration: it remembers the signed contact radius over the platter's motion. A turning platter drives a passive rubber wheel by friction. Move the contact radius through the centre to vary speed, reverse direction and accumulate an approximate mechanical integral.",
   "try": [
-    "Reset and run the bounded demonstration. Motor A spins the platter in one direction while Motor B visits +28, +14, 0 and −28 mm contact offsets. Each station lasts 6 seconds; the recorded native program finishes in about 35.7 seconds.",
+    "Reset and run the 155-piece demonstration. Motor A spins the platter in one direction while Motor B visits +28, +14, 0 and −28 mm contact offsets. Each station lasts six seconds; the finite program returns the carriage to the centre.",
     "Compare the positive-radius stations. At +14 mm, the passive wheel turns at about half the platter's angular speed; at +28 mm, it is close to the same speed.",
-    "Watch the centre carefully. Ideal point contact predicts zero speed, but the delivered native recording shows 15.92 degrees of creep during its final 4.97 seconds. Near neutral is not an exact stop.",
+    "Watch the centre carefully. Ideal point contact predicts zero speed, but finite-width contact and drag produce a little creep. Near neutral is not an exact stop.",
     "At the negative-radius station, the output reverses while the platter keeps its direction. The wheel has no motor or transmission constraint that imposes this rotation.",
     "Compare the measured wheel angle with the ideal integral in the validation data. Keep the transitions visible: shifting the tyre sideways introduces scrub and transient error."
   ],
@@ -17,10 +17,10 @@
   "further": [
     "Compare with Mean Machine: distinguish an instantaneous average of angles from an angle accumulated through a variable ratio.",
     "Use actual platter angle and the tyre centre when predicting output. A bearing hinge can lie beside the tyre on the same axle; it is not the radial contact centre.",
-    "The supplied independent pose fit measured wheel/platter ratios of +0.9963, +0.5053, +0.0395, -1.0045. The full-run final angle differed from the ideal measured-motion reference by +7.85 degrees. Inspect the complete residual alongside the ideal reference.",
-    "A separate native counterfactual used direct input controllers rather than the main Scratch VM program. Changing only the output body's friction to zero reduced its mean speed ratio from +1.0035 to -0.0041, with contact still present. This supports friction-driven sustained rotation; the frictionless wheel still oscillates, and the test does not establish a real hardware friction coefficient.",
+    "Compare the measured wheel/platter speed ratios with the ideal values +1, +0.5, 0 and −1. Inspect the accumulated-angle residual over the complete run, including every sideways transition; do not fit an offset to hide slip.",
+    "A separate native counterfactual changes only the output body friction to zero. Sustained wheel rotation then nearly disappears while actual wheel/platter contact remains. This distinguishes frictional transmission from a hidden gear or motor; it does not calibrate real rubber friction.",
     "Brown's mechanical movement 28 describes the historical variable-radius friction-wheel arrangement: https://507movements.com/mm_028.html. The addon supplies an original LEGO arrangement and copies no modern site animation.",
-    "The supplied separate actual-browser recordings passed 18 pose/program checks each, from the catalog and after saving and reopening the .sb3 project. The browser mirror exposes no rolling load, so these checks provide program and pose evidence only. Saved coordinates retain the application's normal serialization rounding and are checked against an independent compile of the exact saved text."
+    "The app checks actual program and body poses after gallery loading and project reopening. The browser mirror exposes no normal load, so browser checks cannot establish contact force; native checks measure that separately."
   ],
   "formula": "Fixed-radius ideal: φ̇/θ̇ = x/R. Integrated ideal: Δφ = (∫x dθ)/R. With tangential fork motion: Δφ = (∫x dθ + Δz)/R. R = 28 mm; angles are signed, and wheel angle is measured relative to the support.",
   "related": [

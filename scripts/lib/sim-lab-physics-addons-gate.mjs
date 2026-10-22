@@ -18,7 +18,7 @@ export async function physicsAddonInteractions(page, opts) {
       id
     } = opts,
     n = {
-      integral: 154, counterturn: 120, snapgate: 205, 'bit-keeper': 133, 'echo-bridge': 108, linger: 158, crossline: 147,
+      integral: 155, counterturn: 120, snapgate: 205, 'bit-keeper': 133, 'echo-bridge': 108, linger: 158, crossline: 147,
       'pantograph-doubler': 83,
       'scale-studio': 101,
       'ripple-relay': 191,
