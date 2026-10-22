@@ -4,7 +4,10 @@ import {fileURLToPath} from 'node:url';
 
 // Only the runner's known Ubuntu mirror changes. Suites, components, signing
 // keys, package lists and unrelated repositories keep their original authority.
-export function officialUbuntuArchive(text) {
+export function officialUbuntuArchive(text, {mirrorList = false} = {}) {
+    if (mirrorList) return text.replace(
+        /^([ \t]*)https?:\/\/azure\.archive\.ubuntu\.com\/ubuntu(?=\/?(?:\s|$))/gm,
+        '$1https://archive.ubuntu.com/ubuntu');
     let uris = false;
     return text.split(/(?<=\n)/).map(line => {
         if (/^\s*#/.test(line)) return line;
@@ -24,7 +27,7 @@ export async function prepareUbuntuArchives(files) {
             if (error.code === 'ENOENT') continue;
             throw error;
         }
-        const after = officialUbuntuArchive(before);
+        const after = officialUbuntuArchive(before, {mirrorList: path.basename(file) === 'apt-mirrors.txt'});
         if (after !== before) {await writeFile(file, after); changed.push(file);}
     }
     return changed;
@@ -32,6 +35,6 @@ export async function prepareUbuntuArchives(files) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     if (process.platform !== 'linux') throw new Error('Ubuntu browser setup requires a Linux runner');
-    const changed = await prepareUbuntuArchives(['/etc/apt/sources.list', '/etc/apt/sources.list.d/ubuntu.sources']);
+    const changed = await prepareUbuntuArchives(['/etc/apt/sources.list', '/etc/apt/sources.list.d/ubuntu.sources', '/etc/apt/apt-mirrors.txt']);
     console.log(`Prepared official Ubuntu archive: ${changed.length} source file(s) changed`);
 }

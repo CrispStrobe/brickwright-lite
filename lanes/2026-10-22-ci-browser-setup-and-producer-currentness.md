@@ -50,3 +50,15 @@ assertion fails the identity control. All original hosted failures and raw
 metadata are retained. Every raw API observation is preserved before admission,
 and the pure validator remains unchanged. No setup result counts as compiler,
 browser, physical or installed-native acceptance.
+
+The first repaired hosted head still timed out on robotaddon3 before tests:
+its preparation changed zero source files because this runner routes Ubuntu
+through `mirror+file:/etc/apt/apt-mirrors.txt`. Verified against the exact
+`actions/runner-images` image tag `ubuntu24/20261012.334`,
+`images/ubuntu/scripts/build/configure-apt-sources.sh`. Preserve that
+indirection, both fallback mirrors, priorities, source suites and signing
+fields; rewrite only the actual Azure URI entry in the known mirror list.
+The authentic file-layout regression fails on the first repair and passes
+after this correction. All 32 complete setup/workflow/admission controls now
+pass without skips. The original hosted failure and zero-change observation
+are retained; no unchanged failed head was rerun.
