@@ -4,17 +4,48 @@
 
 The [merged claim](../lanes/2026-10-22-arcade-recursive-number-normal-results.md)
 owns a bounded proof for closed recursive and mutually recursive numeric
-functions. Implementation and the complete 55-control source cohort are qualified. Native,
+functions. The preceding implementation's complete 55-control source cohort
+passes. A new closed-comparison amendment adds four groups and awaits hosted
+qualification; do not borrow that earlier result for the changed candidate. Native,
 SDK and visible authoring qualification remain pending. No application
 completion or editor acceptance follows from this document.
 
 The existing complete function-return module has nine passing and three failing
 tests. Its recursive examples include Fibonacci, mutual even/odd calls and a
 descending counter with parameter writes. Those failures reach initial export
-after native/Code checks, but their exact first rejected operands were not
-captured. Recursion is a separately justified capability to implement, not an
-established explanation for every refusal. Sprite property/return forwarding
-remains a separate frontier.
+after native/Code checks. Their actual captured drafts reject recursive Call
+operands with Opaque/Number domains and initialization false. They contain
+closed Boolean comparison helpers, which the previous Number-only ordinary
+function grammar rejects. The comparison amendment addresses that structural
+obstacle; later stages must still run. Sprite property/return forwarding rejects
+an actual `sprite.x` Member and remains a separate frontier.
+
+## Closed comparison amendment
+
+[The merged scope](../lanes/2026-10-22-arcade-recursive-comparison-helpers.md)
+adds a separate contract for complete two-parameter comparison helper bodies.
+The existing canonical inspector proves the actual root, complete body and
+every direct call. The recursive proof still evaluates both arguments in order,
+requires actual Number producers, and retains their effects and dependencies.
+The result is Boolean, usable as a condition; it never acquires a recursive
+Number result merely by matching a helper. Arbitrary Boolean functions, escaped
+or reassigned callees, wrong arity, defaults and opaque or uninitialized
+arguments do not gain this contract.
+
+Excluded helper bodies remain in the complete source snapshot, and their call
+arguments remain in the executable census and finite-grounding analysis. An
+observed edit followed by restoration revokes the old proof. Fresh valid
+comparisons are judged on their new complete body; a changed arithmetic body
+must meet the ordinary Number-function rules instead of borrowing either role
+from its name or annotation.
+
+Four new complete groups cover all eight comparisons, native-addition
+integration, actual argument/binding/body/result negatives, finite return
+dependencies and source currentness. Production and tests have independent
+source review, and syntax checks pass. The expected whole source cohort is now
+59 controls; it has not been locally executed. Expanded local qualification
+remains unmeasured. Require the complete hosted source and original native/SDK journeys;
+do not filter, replay a held native module or increase the limit.
 
 ## What the proof must establish
 

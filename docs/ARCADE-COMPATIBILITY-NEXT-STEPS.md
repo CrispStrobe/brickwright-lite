@@ -2,9 +2,11 @@
 
 ## Latest complete hosted result and current repair
 
-The current composition's first unit shard has completed with **3,397 passes,
-42 failures, six skips and fourteen TODOs** across 3,459 tests. This is one shard,
-not a replacement full-run or application census. Its identity module now
+The current composition's complete four-unit set reports **12,197 passes,
+168 failures, 19 skips and 43 TODOs** across 12,427 tests. Five preceding failures
+are resolved and none is newly failing. The complete SDK32, 87 existing affected
+Array controls, 55 pure proof controls and six refusal-observer controls pass.
+Browser gates remain separate, and no application census is replaced. The identity module now
 passes **7/8**; the remaining failure is the positive two-formal baseline before
 the order-negative check. The next candidate retains that assertion and captures
 its actual project, consumer and single validation result on failure. Diagnose
@@ -22,7 +24,18 @@ actual `sprite.x` Member in `Game_move`; this requires its own producer repair.
 The original twelve cases still report **9/12**. No later compile or saved-project
 stage is claimed for a refused export.
 
-The [published Array-prefix checkpoint](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39737626495)
+The next source candidate implements that comparison amendment and adds four
+complete pure control groups, for an expected 59-control source cohort. Both
+production and test source have independent review; syntax checks pass. The new
+cohort and original native/SDK journeys await the next complete hosted set.
+The expanded local cohort is unqualified; no filtered replay or relaxed resource
+limit was used. The implementation recognizes complete comparison bodies and all direct
+calls, evaluates actual Number arguments and their dependencies, and retains a
+Boolean result. It does not classify a Boolean result as Number or bypass an
+arbitrary Boolean function. Source edits invalidate old facts; a valid changed
+body requires an independent fresh proof of its actual semantics.
+
+The preceding [published Array-prefix checkpoint](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39737626495)
 completed with **12,174 passes, 173 failures, 19 skips and 43 TODOs** across
 12,409 tests. Compared with the preceding checkpoint, one existing failure is
 resolved and six new regression-control groups fail. The complete original

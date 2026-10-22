@@ -1,6 +1,8 @@
 # Recursive Number proof: closed comparison helpers
 
-CLAIM — Arcade integration, branch `lane/arcade-canonical-comparison-claim-20261022`.
+DONE — implementation candidate complete; complete hosted qualification pending.
+This releases source implementation ownership, not compatibility or application completion.
+Owner: Arcade integration, branch `lane/arcade-canonical-comparison-claim-20261022`.
 Base `9e051879b14a4c9b4ca420bef47e9a06c8a515f1`. Merge this amendment before implementation. The preceding
 recursive Number implementation task is released; its qualification remains open.
 Preserve all other lanes and both published Arcade/MakeCode histories.
@@ -57,3 +59,24 @@ Normally compose current main/this merged amendment into the owned Arcade branch
 preserving both histories and full path inventories. Resolve only additive own
 claim/document conflicts here; additional source conflicts require explicit scope.
 No force push, new full-CI label, duplicate dispatch or repeated unchanged failure.
+
+## Implementation checkpoint
+
+Claim #1237 merged before implementation. Normal integration preserves both
+parent path inventories and current main; intervening main changes were claims.
+The existing inspector binds each complete comparison body and every actual
+direct call. Arguments remain in the Number/effect/dependency census; results
+remain Boolean and cannot satisfy a Number return. Exact helper definitions are
+excluded from the Number SCC without excluding their source from currentness.
+
+Four additional complete pure groups retain all eight existing groups. Both
+production and tests have independent source review, and three changed-script
+syntax checks pass. Complete expected source controls are 59; local execution
+is not claimed, and the original native/SDK module has not been replayed.
+Require the next complete hosted qualification before reporting a repaired
+original journey. Sprite forwarding and application counts remain open.
+
+Changing an admitted source revokes its old proof. A fresh valid comparison can
+independently satisfy the Boolean contract, and an actual arithmetic body can
+only satisfy the ordinary Number rules. No helper spelling or annotation fixes
+the role of a changed body.

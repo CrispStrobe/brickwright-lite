@@ -93,8 +93,24 @@ export function numericRecursiveNormalResults(program,profile) {
                 (!Object.hasOwn(fn,'functionKind')||fn.functionKind==='declaration')&&
                 (!Object.hasOwn(fn,'parameterDefaultPrologue')||typeof fn.parameterDefaultPrologue==='boolean');
         };
-        const nativeDefinitions=new Set([...native.helpers.values()].map(record=>record.declaration)),nativeCalls=new Set();
+        const helperDefinitions=new Set([...native.helpers.values()].map(record=>record.declaration)),nativeCalls=new Set();
         for(const record of native.helpers.values())for(const call of record.calls)nativeCalls.add(call);
+        // Emission preserves comparisons as ordinary Boolean-return helpers.
+        // Their complete body and every reference must be closed independently
+        // of the Number-return SCC. Actual arguments are still evaluated below;
+        // only Number arguments can establish their Boolean result contract.
+        const comparisons=new Set(['<','<=','>','>=','==','===','!=','!==']),comparisonCalls=new Set();
+        for(const fn of program.body||[]){
+            if(fn?.type!=='FunctionDeclaration'||!list(fn.body)||fn.body.length!==1||
+                fn.body[0]?.type!=='Return'||!noDefaults(fn)||fn.params.length!==2||fn.params.includes(fn.name))continue;
+            const value=fn.body[0].value;
+            if(value?.type!=='Binary'||!comparisons.has(value.op)||!syntax.root(fn))continue;
+            const name='__bwNumericComparison',[left,right]=fn.params,names=new Map([[fn.name,name]]);
+            if(!syntax.matches(fn,`function ${name}(${left}: any, ${right}: any): boolean { return ${left} ${value.op} ${right} }`,names))continue;
+            const sites=syntax.calls(fn,[2],new Set([fn]));
+            if(!sites?.length)continue;
+            helperDefinitions.add(fn);for(const call of sites)comparisonCalls.add(call);
+        }
         const records=new Map(),byNode=new Map(),aliases=new Map(),constants=new Set(),declared=new Set(),used=new WeakSet();
         const binding=node=>lexical.references.get(node);
         const local=(node,name)=>lexical.scopes.get(node)?.names.get(name);
@@ -111,7 +127,7 @@ export function numericRecursiveNormalResults(program,profile) {
             keys(fn,['type','name','params','body','typeParameters','functionKind','parameterDefaults',
                 'parameterDefaultPrologue','optionalParams','ordinaryParameterDefaultNames','async','generator','isAsync','isGenerator']);
             if(!list(fn.body)||!noDefaults(fn))fail();
-            if(nativeDefinitions.has(fn))continue;
+            if(helperDefinitions.has(fn))continue;
             const scope=lexical.functions.find(scope=>scope.node===fn),key=lexical.global.names.get(fn.name);
             if(records.size>=512||!scope||scope.parent!==lexical.global||scope.unsupported?.length||!syntax.root(fn)||key?.node!==fn)fail();
             const record={node:fn,key,scope,edges:new Set(),calls:new Set(),requiredAliases:new Set(),returns:[],reached:false,ready:null,launcher:false};
@@ -146,7 +162,7 @@ export function numericRecursiveNormalResults(program,profile) {
             if(Array.isArray(node)){if(!list(node))fail();for(const child of node)walk(child,owner,depth+1);return;}
             const type=node.type;
             if(type==='FunctionDeclaration'){
-                if(nativeDefinitions.has(node))return;
+                if(helperDefinitions.has(node))return;
                 const record=byNode.get(node);if(!record||owner)fail();walk(node.body,record,depth+1);return;
             }
             if(type==='Declaration'){
@@ -185,10 +201,10 @@ export function numericRecursiveNormalResults(program,profile) {
             if(type==='Call'){
                 keys(node,['type','callee','args','isNew','constructorCall','typeArguments']);if(!plainCall(node)||allCalls.has(node)||allCalls.size>=10000)fail();
                 const callee=unwrap(node.callee);if(callee?.type!=='Identifier')fail();
-                const target=nativeCalls.has(node)?null:resolve(binding(callee));
-                if(!nativeCalls.has(node)&&!target)fail();
+                const comparison=comparisonCalls.has(node),target=nativeCalls.has(node)||comparison?null:resolve(binding(callee));
+                if(!nativeCalls.has(node)&&!comparison&&!target)fail();
                 if(node.args.length!==(target?target.node.params.length:2))fail();
-                allCalls.set(node,{owner,target,callee});if(owner&&target){owner.edges.add(target);owner.calls.add(node);}
+                allCalls.set(node,{owner,target,callee,comparison});if(owner&&target){owner.edges.add(target);owner.calls.add(node);}
                 walk(node.callee,owner,depth+1);walk(node.args,owner,depth+1);return;
             }
             fail();
@@ -246,7 +262,8 @@ export function numericRecursiveNormalResults(program,profile) {
                     deps.add(call.target);usedCallResults.add(node);
                     if(!context.record||context.record.launcher)entries.push({target:call.target,ready:new Set(context.ready)});
                 }
-                context.prefix=union(context.prefix,deps);return num(deps);
+                context.prefix=union(context.prefix,deps);
+                return call.comparison?{kind:'Boolean',deps}:num(deps);
             }
             fail();
         };
@@ -314,7 +331,7 @@ export function numericRecursiveNormalResults(program,profile) {
         // Every executable identifier, including uncalled/after-return writers,
         // must have participated. Only exact proved native definition bodies omit.
         for(const node of syntax.nodes)if(node.type==='Identifier'&&!used.has(node)){
-            let parent=node,inside=false;while(parent){if(nativeDefinitions.has(parent)){inside=true;break;}parent=syntax.parentOf(parent);}
+            let parent=node,inside=false;while(parent){if(helperDefinitions.has(parent)){inside=true;break;}parent=syntax.parentOf(parent);}
             if(!inside)fail();
         }
         // Propagate actual root contexts to ALL reachable function entries.

@@ -71,6 +71,74 @@ const domainGood = text => {
     return {program, result};
 };
 
+const comparisonSource = (op='<') => `function compare(first:any,second:any):boolean{return first ${op} second}
+function reduce(n:number):number{if(compare(n,0)){return 3}return reduce(n-1)+2}
+let answer=reduce(4);`;
+
+test('closed comparison helpers retain Boolean conditions and actual numeric recursion entries',()=>{
+    for(const op of ['<','<=','>','>=','==','===','!=','!==']){
+        const text=comparisonSource(op),{program,proof}=eligible(text,['reduce']);
+        const selected=calls(program,['compare']);assert.equal(selected.length,1);
+        assert.equal(proof.has(selected[0]),false,'a comparison result is never a Number result loan');
+        assert.equal(program.body[0].name,'compare','recognition does not rewrite the source');
+    }
+    const text=header+'\n'+comparisonSource('<=')
+        .replace('return reduce(n-1)+2','return __bwBinaryAdd(reduce(n-1),2)');
+    domainGood(text);
+});
+
+test('comparison recognition retains actual argument, binding, body and result obligations',()=>{
+    const text=comparisonSource();
+    for(const edit of [
+        p=>{calls(p,['compare'])[0].args[0]=expression('"opaque"');},
+        p=>{calls(p,['compare'])[0].args[0]=expression('outside()');},
+        p=>{fn(p,'reduce').body.unshift(statement('let pending:number;'));
+            calls(p,['compare'])[0].args[0]=expression('pending');},
+        p=>{calls(p,['compare'])[0].args.push(expression('0'));},
+        p=>{fn(p,'compare').body[0].value=expression('"wrong result"');},
+        p=>{p.body.unshift(statement('let escaped=compare;'));},
+        p=>{p.body.push(statement('compare=reduce;'));},
+        p=>{fn(p,'compare').params.parameterDefaults.push({name:'first',value:expression('0')});},
+        p=>{fn(p,'reduce').body.at(-1).value=expression('compare(n,0)');},
+        (_p,actual)=>{actual.args[0]=expression('compare(1,0)');},
+        p=>{calls(p,['compare'])[0].args[0]=expression('compare(n,0)');}
+    ])refusesEdited(text,'reduce',edit,['reduce']);
+    // Evaluating the comparison's argument recurses BEFORE any possible base
+    // return. Omitting that argument would invent a grounded return witness.
+    refusesEdited(text,'reduce',p=>{
+        calls(p,['compare'])[0].args[0]=expression('reduce(n-1)');
+    },['reduce']);
+});
+
+test('a changed valid comparison is re-proved as Boolean rather than trusted by helper spelling',()=>{
+    const {program,proof}=eligible(comparisonSource(),['reduce']),actual=rootCall(program,'reduce');
+    const operation=fn(program,'compare').body[0].value,old=operation.op;
+    operation.op='>=';assert.equal(proof.current(),false);operation.op=old;
+    assert.equal(proof.has(actual),false,'restoration cannot revive the observed old proof');
+    operation.op='>=';
+    const fresh=numericRecursiveNormalResults(program,profile);
+    assert.equal(fresh.has(actual),true,'all closed numeric comparisons have a genuine Boolean contract');
+    assert.equal(fresh.has(calls(program,['compare'])[0]),false);
+    // A complete Number body is instead an ordinary numeric function. A
+    // familiar comparison name cannot force either its Boolean or Number role.
+    operation.op='+';
+    const ordinary=numericRecursiveNormalResults(program,profile);
+    assert.equal(ordinary.has(actual),true);
+    assert.equal(ordinary.has(calls(program,['compare'])[0]),true);
+});
+
+test('excluded comparison bodies and references remain in sticky source currentness',()=>{
+    for(const edit of [
+        p=>{const value=fn(p,'compare').body[0].value,old=value.op;value.op='+';return()=>{value.op=old;};},
+        p=>{const call=calls(p,['compare'])[0],old=call.args[1];call.args[1]=expression('1');return()=>{call.args[1]=old;};},
+        p=>{const body=fn(p,'compare').body,old=body[0];body[0]=statement('return first;');return()=>{body[0]=old;};}
+    ]){
+        const {program,proof}=eligible(comparisonSource(),['reduce']),actual=rootCall(program,'reduce');
+        const restore=edit(program);assert.equal(proof.current(),false);restore();
+        assert.equal(proof.current(),false);assert.equal(proof.has(actual),false);
+    }
+});
+
 test('recursive Number results use actual fib and mutual-call entries without changing generic cyclic facts', () => {
     const {program, selected, proof} = eligible(fib);
     assert.equal(selected.length, 3, 'two actual recursive calls and one actual root entry');
