@@ -57,6 +57,43 @@ numeric editor failure is exercised by
 the failing clean-report stage, rather than treating an earlier saved SB3 as
 that graph.
 
+## Published-history composition awaiting qualification
+
+[Composition claim #1228](https://github.com/CrispStrobe/brickwright-lite/pull/1228)
+merged before conflict resolution. The candidate normally merges MakeCode repair
+`400706ab` (including PR1219) with the Arcade history and current main. Three
+conflicts preserve both implementations: locked Playwright plus Array evidence
+admission; the relocated procedure validator with the corrected length option;
+and camera/readiness/nullable-length producers alongside lexical Array length.
+No supplier identity, assertion, diagnostic or resource bound was relaxed.
+
+The original function-return diagnostic capture and corrected identity controls
+are part of this same candidate. Require its own complete hosted results; do
+not borrow either parent's green checks. Source review is not runtime or corpus
+qualification, and the original export-refusal investigation remains open.
+
+The independently checked recovered-context records preserve all 184 raw Arcade
+inputs and exactly map 37 raw partials to 37 authentic contexts. Their separate
+prepared counts are 16 translated, 17 partial, three preparation failures and
+one parse failure. They describe an earlier dirty source state, not this final
+composition, and supply no application runtime/roundtrip completion proof. Keep
+original collector hashes and derived actual-file hashes distinct rather than
+rewriting the originals.
+
+After restoring the qualified baseline, inspect these actual prepared partials:
+
+- Cross-sprite `flamethrower.x/y` in the prepared tutorial project: retain its authentic
+  prepared assets, prove receiver/initialization ownership, and qualify actual
+  values, controls, editable blocks/Code, save/reopen and MakeCode roundtrip.
+- The two prepared projects using per-sprite `onOverlap`: inspect
+  and claim the owning extension/native event path upstream first. Preserve
+  actual sprite identities, event registration/lifetimes and callback values,
+  then qualify both original contexts and their editor/export roundtrips.
+
+These are scoped next-task candidates, not completed cases. Already translated
+recovered contexts can supply useful authoring journeys but cannot silently
+replace a raw snippet's status or shrink the original denominator.
+
 ## Standalone tasks for the next agent
 
 Start by reading `lanes/PROTOCOL.md`, the current claim files under `lanes/`,
