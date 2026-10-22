@@ -113,6 +113,8 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'cusp-lab.ldr', title: {en: 'Cusp Lab — rolling-gear curve machine', de: 'Cusp Lab — Kurvenmaschine mit rollendem Zahnrad'}, example: 'cusp-lab.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -360, maxDeg: 0, stepDeg: 10, speedDps: 10}}},
     {file: 'gimbal-lab.ldr', title: {en: 'Gimbal Lab — three-axis gimbal lock', de: 'Gimbal Lab — dreiachsige Gimbal-Sperre'},
         example: 'gimbal-lab.bw', mat: 'plain', intro: {
             en: 'Three nested frames put yaw, pitch and roll on separate motors. At 90° middle pitch the outer and inner axes align, so opposite A/C moves cancel at the green marker even though every bearing still turns.',
@@ -138,10 +140,10 @@ export const MODELS = Object.freeze([
             de: 'Motor A neigt eine gerade Führung; Motor B verschiebt die grüne Schiene. Ihr Schnittpunkt bewegt den passiven orangefarbenen Schlitten. Ähnliche Dreiecke machen seinen Weg zum Produkt beider Eingaben, geteilt durch eine feste Bezugslänge.'
         }},
     {file: 'snapgate.ldr', title: {en: 'Snapgate — a spring memory switch', de: 'Snapgate — ein Feder-Speicherschalter'}, example: 'snapgate.bw', mat: 'plain'},
-    {file: 'integral.ldr', title: {en: 'Integral — a friction wheel computer', de: 'Integral — ein Reibrad-Rechner'}, example: 'integral.bw', mat: 'plain'},
     {file: 'bit-keeper.ldr', title: {"en": "Bit Keeper — a mechanical memory", "de": "Bit Keeper — ein mechanisches Gedächtnis"}, example: 'bit-keeper.bw', mat: 'plain'},
     {file: 'offset-orbit.ldr', title: {"en": "Offset Orbit — one turn, two orbits", "de": "Offset Orbit — eine Umdrehung, zwei Bahnen"}, example: 'offset-orbit.bw', mat: 'plain'},
     {file: 'circle-splitter.ldr', title: {"en": "Circle Splitter — circles into straight strokes", "de": "Circle Splitter — Kreise werden gerade Hübe"}, example: 'circle-splitter.bw', mat: 'plain'},
+    {file: 'integral.ldr', title: {en: 'Integral — a friction wheel computer', de: 'Integral — ein Reibrad-Rechner'}, example: 'integral.bw', mat: 'plain'},
     {file: 'ellipsa.ldr', title: {"en": "Ellipsa — one-motor ellipsograph", "de": "Ellipsa — Ellipsenmechanik mit einem Motor"}, example: 'ellipsa.bw', mat: 'plain'},
     {file: 'momentum-twins.ldr', title: {"en": "Momentum Twins — reaction wheels", "de": "Momentum Twins — Reaktionsräder"}, example: 'momentum-twins.bw', mat: 'plain'},
     {file: 'bloom-gate.ldr', title: {"en": "Bloom Gate — a mechanical iris", "de": "Bloom Gate — eine mechanische Iris"}, example: 'bloom-gate.bw', mat: 'plain'},

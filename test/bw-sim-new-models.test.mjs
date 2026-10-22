@@ -6,11 +6,15 @@
 // production loader. Browser and hardware operation are separate gates.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {loadModelLesson} from '../overlay/scratch-gui/src/lib/bw-sim/model/lesson-loader.js';
 import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';
+
+import {judgeSky} from '../scripts/lib/sim-lab-sky-judge.mjs';
+import {judgeProduct,judgeGimbal,measureProduct} from '../scripts/lib/sim-lab-product-gimbal-judge.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const LAB = 'overlay/scratch-gui/static/sim-lab/';
@@ -78,12 +82,23 @@ for (const [id, spec] of Object.entries(CASES)) {
         assert.equal(parseModel(modelText).model.parts.length, spec.parts);
         const result = await runRobotLabProgram(read(`${LAB}programs/${id}.bw`).toString(), {
             modelText,
+            observeFrame: ({vm,session}) => ({...(id==='sky-courier'?{ropes:session.core.ropeState()}:{}),variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables).map(v=>[v.name,v.value])))}),
+            afterMs: id === 'gimbal-lab' ? 1000 : 0,
             timeLimitMs: spec.timeLimitMs
         });
         assert.ok(result.finishedAt, `${id}: program reaches its end`);
         assert.deepEqual(result.issues.filter(issue => issue.severity === 'error'), []);
         assert.deepEqual(result.mechanism.actuators.map(actuator => actuator.port).sort(), spec.ports);
 
+        if (id === 'sky-courier') judgeSky(result,{native:true});
+        if (id !== 'sky-courier') {
+            const judge=id==='product-plotter'?judgeProduct:judgeGimbal;
+            console.log(id,JSON.stringify(judge(result)));
+            const frozen=structuredClone(result),part=id==='product-plotter'?'output_marker':'marker_primary';
+            const body=frozen.mechanism.bodies.find(b=>b.parts.includes(part));
+            for(const frame of frozen.track)frame.bodies[body.id]=structuredClone(frozen.track[0].bodies[body.id]);
+            assert.throws(()=>judge(frozen),'Identical mechanism judge rejects a frozen passive output');
+        }
         const track = result.track;
         for (const actuator of result.mechanism.actuators) {
             const angles = track.map(frame => frame.joints[actuator.joint].angle);
@@ -112,3 +127,57 @@ for (const [id, spec] of Object.entries(CASES)) {
         }
     });
 }
+
+
+test('Product: removing only the swivel pin destroys multiplication while both factors still move',async()=>{
+    const text=read(`${LAB}models/product-plotter.ldr`).toString();
+    const removed=text.replace(/0 !BW ID p_swivel\n1 [^\n]*\n/,'');
+    assert.notEqual(removed,text);
+    assert.equal(parseModel(text).model.parts.length-parseModel(removed).model.parts.length,1);
+    const result=await runRobotLabProgram(read(`${LAB}programs/product-plotter.bw`).toString(),{
+        modelText:removed,timeLimitMs:75000,
+        observeFrame:({vm})=>({variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables).map(v=>[v.name,v.value])))})
+    });
+    assert.ok(result.finishedAt);
+    const rows=measureProduct(result),span=key=>Math.max(...rows.map(s=>s[key]))-Math.min(...rows.map(s=>s[key]));
+    assert.ok(span('a')>47&&span('b')>15,'Both physical input factors still move');
+    assert.ok(span('output')<=1,'Disconnected retained output hardly moves');
+    assert.ok(Math.max(...rows.map(s=>Math.abs(s.error)))>=10,'Physical disconnection destroys the product law');
+    assert.throws(()=>judgeProduct(result));
+    console.log('Product disconnected control',JSON.stringify({aSpan:span('a'),bSpan:span('b'),outputSpan:span('output')}));
+});
+
+
+test('intake: original source hashes and bundled model/program identity',()=>{
+ for(const [id,folder,model]of [['cusp-lab','cusp-lab','cusp-lab'],['product-plotter','product-plotter','product-plotter'],['gimbal-lab','gimbal-lab','gimbal-lab'],['sky-courier','sky-courier-rebuilt','sky-courier-native']]){
+  const root=`test/fixtures/model-files/${folder}-source/`,p=JSON.parse(read(root+'provenance.json'));
+  for(const [file,sha]of Object.entries(p.files))assert.equal(createHash('sha256').update(read(root+file)).digest('hex'),sha);
+  assert.deepEqual(read(root+`models/${model}.ldr`),read(LAB+`models/${id}.ldr`));
+  let program=read(root+`programs/${id}.bw`).toString();
+  // The pane has already reset before starting. Resetting inside the VM can
+  // replace the session the running program and observers are attached to.
+  if(id==='product-plotter')program=program.replace('  lab reset\n','');
+  // This supplier text omitted the dialect declaration and simulation start.
+  if(id==='sky-courier')program='DEVICE SPIKE\n'+program.replace('  lab stop motor A coast','  lab start\n  lab stop motor A coast');
+  assert.equal(program,read(LAB+`programs/${id}.bw`).toString());
+ }
+});
+
+test('Sky: fresh unpowered cable support and a real one-cable-loss control',async()=>{
+ const source=read(LAB+'models/sky-courier.ldr').toString();
+ const idle='DEVICE SPIKE\nWHEN flag clicked:\n  lab start\n  wait 0.01 seconds\n';
+ for(const negative of [false,true]){
+  const text=negative?source.replace(/^0 !BW ROPE B_cord.*\n/m,''):source;
+  if(negative)assert.notEqual(text,source);
+  const r=await runRobotLabProgram(idle,{modelText:text,timeLimitMs:200,coldMs:negative?100:2000,frameMs:5,
+   observeFrame:({session})=>({ropes:session.core.ropeState()})});
+  const cold=r.track.filter(f=>f.phase==='cold'),body=r.mechanism.bodies.find(b=>b.parts.includes('payload_tie_spine'));
+  const distance=(a,b)=>Math.hypot(...a.map((v,i)=>v-b[i]))*1000;
+  const loss=Math.max(...cold.map(f=>distance(f.bodies[body.id].position,cold[0].bodies[body.id].position)));
+  if(negative){assert.ok(loss>5,`A real missing cable loses support: ${loss} mm`);}
+  else{
+   assert.ok(loss<=1,`Cold gondola drift ${loss} mm`);
+   assert.ok(cold.filter(f=>f.t>=1500).every(f=>f.extra.ropes.every(s=>s.tension>=.001)),'Every native 5ms settled cold tension sample supports the gondola');
+  }
+ }
+});

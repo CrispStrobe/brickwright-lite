@@ -2594,3 +2594,11 @@ CrispStrobe, BSD-3-Clause; the full grant ships in
 `static/sim-lab/licenses/circle-splitter.txt`. The Baez rolling-circles article
 the package cites is a reference, not copied content. Standard LDraw part
 geometry retains its separate authors and CC BY licences.
+
+### Cusp Lab
+
+Original CrispStrobe arrangement, program and bilingual lessons, BSD-3-Clause;
+see `static/sim-lab/licenses/cusp-lab.txt`. The model uses 128 standard parts
+and one motor. Its two real marker holes illustrate a cycloid cusp and a
+prolate trochoid loop. Referenced LDraw geometry retains its separate notices.
+Native/browser simulation and physical hardware construction are separate scopes.

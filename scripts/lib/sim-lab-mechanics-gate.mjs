@@ -68,7 +68,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         await openManualControls(page, {motors: true});
         const mixer = page.getByTestId('bw-sim-lab-mixer-toggle');
         if (await mixer.getAttribute('aria-expanded') !== 'true') await mixer.click();
-        assert.deepEqual(await page.getByTestId('bw-sim-lab-mixer-slider').evaluateAll(es => es.map(e => e.dataset.port).sort()),
+        assert.deepEqual(await page.locator('[data-testid="bw-sim-lab-mixer-slider"], [data-testid="bw-sim-lab-mixer-jog"]').evaluateAll(es => es.map(e => e.dataset.port).sort()),
             r.mechanism.actuators.map(a => a.port).sort());
         for (const slider of await page.getByTestId('bw-sim-lab-mixer-slider').all()) assert.ok(await slider.isDisabled(), 'program control keeps manual sliders off');
         await page.screenshot({path: resolve(shotsDir, `${id}-finished.png`)});
@@ -123,6 +123,19 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
             assert.ok(Math.abs(await angle(port) - stopped) < 3 * Math.PI / 180,
                 `${id}: motor ${port} holds after Stop`);
             results[id][port] = delta * 180 / Math.PI;
+        }
+        for (const control of await page.getByTestId('bw-sim-lab-mixer-jog').all()) {
+            const port=await control.getAttribute('data-port'),before=await angle(port);
+            const choices=control.locator('button[data-target]');
+            let choice=null;
+            for(const button of await choices.all())if(!await button.isDisabled()){choice=button;break;}
+            assert.ok(choice,`${id}: at least one bounded jog is available`);
+            const target=Number(await choice.getAttribute('data-target'));assert.ok(Number.isFinite(target));
+            await choice.click();
+            await page.waitForFunction(()=>window.__bwSimLab._pane.manualJogs.size===0,null,{timeout:15000});
+            const after=await angle(port);assert.ok(Math.abs(after-before)>.03,`${id}: bounded ${port} actually moves`);
+            assert.ok(Math.abs(after*180/Math.PI-target)<=2,`${id}: bounded ${port} reaches its requested target`);
+            results[id][port]=(after-before)*180/Math.PI;
         }
         await page.getByTestId('bw-sim-lab-mixer-stop-all').click();
         assert.ok((await sliders.evaluateAll(es => es.map(e => e.value))).every(v => v === '0'));

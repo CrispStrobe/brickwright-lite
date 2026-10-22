@@ -91,7 +91,7 @@ test('production pane resolves unchanged saved/imported assembly policy without 
     context.state.shipped = null;
     context.state.modelFile = 'my-model.ldr';
     context.shippedModel = () => null;
-    context.manualPolicyResolver = createManualPolicyResolver({models: MODELS, parseModel, loadText: async () => source});
+    context.manualPolicyResolver = createManualPolicyResolver({models: MODELS, parseModel, loadText: async file => read('overlay/scratch-gui/static/sim-lab/models/'+file)});
     const result = await context.resolveManualControlPolicy(saved, savedText);
     assert.deepEqual(result, {available: true, manualJog: limits});
     context.manualPolicy = {session: context.session, ...result};
@@ -134,7 +134,7 @@ test('production drive handler respects a changed movement pair and retains all 
     const changed = pane({manualJog: {D: limits.A}, pair: ['C', 'D']});
     changed.context.drive('forward');
     assert.deepEqual(changed.calls, []);
-    for (const model of MODELS.filter(model => model.file !== 'resonance-lab.ldr')) {
+    for (const model of MODELS.filter(model => model.manualJog === undefined)) {
         const {context, calls} = pane({manualJog: model.manualJog || {}});
         context.drive('forward');
         assert.deepEqual(calls.filter(call => call[0] === 'speed'), [['speed', 'A', -500], ['speed', 'B', 500]], model.file);

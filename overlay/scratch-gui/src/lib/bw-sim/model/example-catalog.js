@@ -281,6 +281,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "cusp-lab.ldr": {
+        "pieces": 128,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor rides a guided carriage as its pinion rolls along a fixed rack. A short pointer traces a cusped cycloid; a longer pointer reverses locally and traces a loop. Compare translation, rotation and their instantaneous velocity cancellation during one continuous forward turn and return.",
+            "de": "Ein Motor fährt auf einem geführten Schlitten, während sein Ritzel an einer festen Zahnstange abrollt. Ein kurzer Zeiger beschreibt eine Zykloide mit Spitze; ein längerer Zeiger läuft zeitweise rückwärts und bildet eine Schleife. Vergleiche Verschiebung, Drehung und ihre momentane Geschwindigkeitsaufhebung bei einer durchgehenden Vorwärtsdrehung und Rückfahrt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "gimbal-lab.ldr": {
         "pieces": 245,
         "motors": 3,
@@ -421,20 +435,6 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
-    "integral.ldr": {
-        "pieces": 155,
-        "motors": 2,
-        "hubs": [
-            "spike-prime"
-        ],
-        "topic": "forces",
-        "description": {
-            "en": "A continuously rotating tiled disk drives a free rubber wheel. Move the wheel through the center to vary its speed and reverse its direction. Gravity supplies contact pressure; the wheel is not motorized. The native recording measures finite-width slip.",
-            "de": "Eine gleichmäßig rotierende, geflieste Scheibe treibt ein freies Gummirad an. Verschiebe das Rad über die Mitte, um seine Geschwindigkeit und Drehrichtung zu verändern. Schwerkraft erzeugt den Anpressdruck; das Rad besitzt keinen Motor. Die native Aufzeichnung misst den Schlupf."
-        },
-        "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
-    },
     "bit-keeper.ldr": {
         "pieces": 134,
         "motors": 1,
@@ -473,6 +473,20 @@ export const MODEL_LESSONS = Object.freeze({
         "description": {
             "en": "One motor turns a carrier whose two moving 8T gears orbit a fixed 16T sun. The planet counterrotates, so two equal-radius markers trace perpendicular 80 mm straight strokes while their shaft follows a circle of radius 20 mm. Compare two speeds and reversal, then remove only the stationary sun gear.",
             "de": "Ein Motor dreht einen Träger mit zwei beweglichen 8T-Rädern um ein festes 16T-Sonnenrad. Der Planet dreht entgegengesetzt: Zwei gleich weit entfernte Markierungen folgen senkrechten 80-mm-Geradenhüben, ihre Welle einem 20-mm-Kreis. Vergleiche zwei Geschwindigkeiten und Umkehr, entferne dann nur das feste Sonnenrad."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "integral.ldr": {
+        "pieces": 155,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A continuously rotating tiled disk drives a free rubber wheel. Move the wheel through the center to vary its speed and reverse its direction. Gravity supplies contact pressure; the wheel is not motorized. The native recording measures finite-width slip.",
+            "de": "Eine gleichmäßig rotierende, geflieste Scheibe treibt ein freies Gummirad an. Verschiebe das Rad über die Mitte, um seine Geschwindigkeit und Drehrichtung zu verändern. Schwerkraft erzeugt den Anpressdruck; das Rad besitzt keinen Motor. Die native Aufzeichnung misst den Schlupf."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"

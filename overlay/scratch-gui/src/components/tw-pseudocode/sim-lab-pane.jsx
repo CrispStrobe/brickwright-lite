@@ -1188,7 +1188,7 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         this.lastText = opened.text;
-        await this.openText(opened.text, opened.name);
+        await this.openText(opened.text, opened.name, this.state.shipped);
         if (opened.refusals.length && !this.disposed) {
             this.setState(s => ({issues: this.lib.mergeImportIssues(opened.refusals, s.issues)}));
         }
@@ -1315,7 +1315,7 @@ class SimLabPane extends React.Component {
         const opened = this.opened;
         if (this.state.status === 'running') this.pause();
         this.setState({route}, () => {
-            if (opened) this.openText(opened.text, opened.name);
+            if (opened) this.openText(opened.text, opened.name, this.state.shipped);
         });
     }
 
@@ -1908,8 +1908,10 @@ class SimLabPane extends React.Component {
     }
 
     setManualOverride (enabled) {
+        if (enabled && !this.manualControlPolicy().available) return;
         if (enabled) this.pause();
         for (const motor of this.api?.motors() || []) if (motor.direct) setMixerMotorPower(this.api, motor.id, 0);
+        this.manualJogs.clear();
         this.setState({manualOverride: enabled, mixer: {session: this.session, power: {}}});
     }
 

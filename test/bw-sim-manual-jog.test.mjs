@@ -18,8 +18,8 @@ const fakeApi = ({angle = 0, direct = true, encoderOk = true, result = {ok: true
     return {api, calls};
 };
 
-test('all three Resonance choices have the same finite port A policy; the other 85 choices keep their controls', () => {
-    const bounded = MODELS.filter(model => model.manualJog !== undefined);
+test('all three Resonance choices have the same finite port A policy; unrestricted choices keep their controls', () => {
+    const bounded = MODELS.filter(model => model.file === 'resonance-lab.ldr');
     assert.deepEqual(bounded.map(model => model.id || model.file), ['resonance-lab.ldr', 'resonance-lab-slow', 'resonance-lab-fast']);
     assert.equal(MODELS.filter(model => model.manualJog === undefined).length, 85);
     for (const model of bounded) assert.deepEqual(model.manualJog, {A: LIMITS});
@@ -31,7 +31,7 @@ test('continuous drive is excluded when either current movement-pair port has ma
     assert.equal(manualDriveAllowed({A: LIMITS}, ['C', 'D']), true);
     assert.equal(manualDriveAllowed({C: LIMITS}), true);
     assert.equal(manualDriveAllowed({A: null}), false, 'invalid configured limits must not expose continuous drive');
-    for (const model of MODELS.filter(model => model.file !== 'resonance-lab.ldr')) {
+    for (const model of MODELS.filter(model => model.manualJog === undefined)) {
         assert.equal(manualDriveAllowed(model.manualJog), true, model.file);
     }
 });

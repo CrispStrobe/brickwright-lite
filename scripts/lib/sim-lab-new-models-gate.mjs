@@ -9,11 +9,16 @@
 import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {mechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
+import {mechanicsInteractions,manualMechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
+
+import {judgeSky} from './sim-lab-sky-judge.mjs';
+import {judgeCusp} from './sim-lab-cusp-judge.mjs';
+import {judgeProduct,judgeGimbal} from './sim-lab-product-gimbal-judge.mjs';
 
 const DEG = 180 / Math.PI;
 
 const SPEC = Object.freeze({
+    'cusp-lab': {simulatedMs: 80000, motors: 1, minimumRange: {A: 359}, marker: 'marker_r20', span: {x: 49}},
     'product-plotter': {
         simulatedMs: 47000,
         motors: 2,
@@ -94,6 +99,10 @@ export const judgeNewModel = (id, record) => {
         summary.travelMm = Object.fromEntries(Object.entries(spans).map(([axis, value]) => [axis, Number(value.toFixed(2))]));
         summary.homeMm = Number(home.toFixed(2));
     }
+    if (id === 'sky-courier') summary.physics = judgeSky(record);
+    if (id === 'cusp-lab') summary.physics = judgeCusp(record);
+    if (id === 'product-plotter') summary.physics = judgeProduct(record);
+    if (id === 'gimbal-lab') summary.physics = judgeGimbal(record);
     return summary;
 };
 
@@ -101,14 +110,27 @@ export async function newModelsInteractions(page, opts) {
     mkdirSync(opts.shotsDir, {recursive: true});
     const models = (opts.models || Object.keys(SPEC)).filter(id => SPEC[id]);
     assert.ok(models.length, 'at least one new model is selected');
-    const results = await mechanicsInteractions(page, {
-        ...opts,
-        models,
-        judge: judgeNewModel,
-        simulatedMsFor: id => SPEC[id].simulatedMs,
-        speed: 4,
-        observeProgram: true
-    });
+    const results = {};
+    for (const id of models) {
+        Object.assign(results, await mechanicsInteractions(page, {
+            ...opts, models: [id], judge: judgeNewModel,
+            simulatedMsFor: key => SPEC[key].simulatedMs, speed: 4, observeProgram: true
+        }));
+        await manualMechanicsInteractions(page,{...opts,models:[id]});
+        await page.getByTestId('bw-sim-lab-instructions').click();
+        await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
+        const plan=await page.evaluate(()=>window.__bwSimLabInstructions.plan);
+        const count={'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
+        const placed=plan.steps.flatMap(s=>s.parts);
+        assert.equal(placed.length,count);assert.equal(new Set(placed).size,count);
+        assert.ok(plan.steps.every(s=>!s.loose),'Every construction step connects');
+        await page.keyboard.press('End');
+        await page.waitForFunction(()=>window.__bwSimLabInstructions.page===window.__bwSimLabInstructions.steps);
+        assert.equal(await page.getByTestId('bw-sim-instructions-bom').getByTestId('bw-sim-instructions-part').evaluateAll(es=>es.reduce((n,e)=>n+Number(e.dataset.count),0)),count);
+        await page.getByTestId('bw-sim-instructions').screenshot({path:resolve(opts.shotsDir,id+'-bom.png')});
+        await page.keyboard.press('Escape');
+        console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count}-piece BOM`);
+    }
     writeFileSync(resolve(opts.shotsDir, 'new-model-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
     return results;
 }

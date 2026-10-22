@@ -796,7 +796,7 @@ try {
             await resonanceLesson(german, opts, 'de');
             await german.close();
         }
-        const newModelIds = ['product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`));
+        const newModelIds = ['cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`));
         if (newModelIds.length) {
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             page.on('pageerror', error => errors.push(error.stack || error.message));
@@ -805,11 +805,11 @@ try {
             await newModelsInteractions(page, opts);
             for (const id of newModelIds) await newModelLesson(page, opts, id, 'en');
             await page.close();
-            if (newModelIds.includes('sky-courier')) {
+            for (const id of newModelIds) {
                 const german = await browser.newPage({viewport: {width: 1600, height: 1050}, locale: 'de-DE', serviceWorkers: 'block'});
                 german.on('pageerror', error => errors.push(error.stack || error.message));
                 german.on('dialog', dialog => dialog.accept());
-                await newModelLesson(german, opts, 'sky-courier', 'de');
+                await newModelLesson(german, opts, id, 'de');
                 await german.close();
             }
         }

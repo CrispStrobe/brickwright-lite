@@ -15,7 +15,7 @@ const mpd = read('overlay/scratch-gui/static/sim-lab/models/resonance-lab.mpd');
 const catalog = catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const model = prepareModel(source, catalog).model;
 const policy = MODELS.find(entry => entry.file === 'resonance-lab.ldr').manualJog;
-const resolver = loadText => createManualPolicyResolver({models: MODELS, loadText, parseModel});
+const resolver = loadText => createManualPolicyResolver({models: MODELS.filter(m=>m.file==='resonance-lab.ldr'), loadText, parseModel});
 
 test('exact LDR, MPD and saved-pose structures share one cached policy reference across all three aliases', async () => {
     const calls = [];
@@ -100,4 +100,14 @@ test('conflicting aliases and nonfinite physical data fail instead of matching a
     const invalid = structuredClone(model);
     invalid.parts[0].position[0] = NaN;
     await assert.rejects(() => resolver(async () => source)(invalid), /finite, serializable saved model/);
+});
+
+
+test('each bounded model resolves its own real source and saved project without aliasing another policy',async()=>{
+ const resolve=createManualPolicyResolver({models:MODELS,parseModel,loadText:async file=>read('overlay/scratch-gui/static/sim-lab/models/'+file)});
+ for(const entry of MODELS.filter(m=>m.manualJog)){
+  const raw=read('overlay/scratch-gui/static/sim-lab/models/'+entry.file),parsed=parseModel(raw).model;
+  assert.equal(await resolve(parsed),entry.manualJog,entry.file);
+  assert.equal(await resolve(parseModel(serializeModel(parsed)).model),entry.manualJog,entry.file+' saved');
+ }
 });
