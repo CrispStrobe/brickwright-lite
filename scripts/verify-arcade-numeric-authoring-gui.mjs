@@ -325,9 +325,13 @@ try {
     const [cleanDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
     await cleanDownload.saveAs(path.join(out, 'numeric-authoring-clean-after-refusal.mkcd'));await closeCodeActions();
     await page.getByTestId('bw-conversion-report').waitFor({state: 'visible'});
+    const cleanUnsupported = page.getByTestId('bw-conversion-unsupported');
+    if (!await cleanUnsupported.isVisible()) await page.getByTestId('bw-conversion-report').locator('div').first().click();
+    await cleanUnsupported.waitFor({state: 'visible'});
     assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0);
-    await page.getByTestId('bw-conversion-report').locator('div').first().click();
-    assert.match(await page.getByTestId('bw-conversion-unsupported').innerText(), /nothing reported/);
+    const cleanUnsupportedText = await cleanUnsupported.innerText();
+    report.cleanAfterRefusal = {unsupported: cleanUnsupportedText};
+    assert.match(cleanUnsupportedText, /nothing reported/);
     assert.deepEqual(await currentAssets(), assetsBeforeClean, 'later clean export also retains actual assets');
     await Promise.all(bodyChecks);assert.deepEqual(report.bundleFailures || [], []);assert.deepEqual(report.pageErrors, []);
     await page.screenshot({path: path.join(out, 'numeric-authoring.png')}); report.status = 'passed';

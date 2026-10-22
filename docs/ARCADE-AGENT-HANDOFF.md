@@ -1,21 +1,41 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Recursive Number capability — complete source controls pass
+
+[PR #1213](https://github.com/CrispStrobe/brickwright-lite/pull/1213) merged the
+exact new proof scope after all four enabled checks passed. The integrated
+candidate keeps generic cyclic `Opaque` facts and all preceding refusal gates.
+Read [the capability and acceptance contract](ARCADE-NUMERIC-RECURSIVE-RESULTS.md)
+and the Image/recursive authoring rows in the
+[GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Source eligibility,
+original/emitted SDK, native execution, fresh project reload, actual authoring
+and application accounting are separate gates. No recursive application is
+counted complete yet; preserve the previous function-return failures and the
+unmeasured historical 36 partial applications.
+
+The complete source cohort passes **55/55**: all preceding 47 controls and all
+eight new groups, without skips, TODOs or raised limits. The original complete
+twelve-test native/SDK module and visible authoring gates remain pending.
+
+
 ## New hosted checkpoint — 22 October 2026
 
 Read [the latest repair observation](ARCADE-CI-REPAIR-STATUS.md) first. The next
 hosted unit run reports **12,160 passes / 168 failures**: thirteen old failures
 resolved, zero newly failing titles. SPIKE power11 and Robot Lab groups pass;
 legacy SDK controls improve to **31/32**, with mixed Array forwarding still
-refused at initial export. Existing upload globs omitted that fixture's typing
-captures, so its current operands remain unavailable. Complete the existing
-capture route rather than infer them from older observations.
+refused after exact-file reimport. The earlier run omitted its typing captures
+and was incorrectly attributed to initial export. The next candidate now retains
+those captures: initial export, Code feedback and exact-file import pass, then
+second export refuses mutation/indexing Array producers. Diagnose the actual
+second project and its writers; preserve the earlier missing-data limitation.
 
 The standard build passes; numeric authoring stops at an open actions menu
 intercepting a report click. The source repair uses the real summary and retains
 all assertions. The complete candidate still needs qualification; historical
 **36 partial applications remain unremeasured**. Next conversion capability is
 [the bounded recursive Number proof claim](https://github.com/CrispStrobe/brickwright-lite/pull/1213).
-Merge that scope before implementation; preserve generic cyclic refusals and
+That scope has merged; preserve generic cyclic refusals and
 track Code, Blocks, fresh reopen, actual export/compiler and graphics journeys
 separately. No additional manual build dispatch or `ci:full` label is needed.
 

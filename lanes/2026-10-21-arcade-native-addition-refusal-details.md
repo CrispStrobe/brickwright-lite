@@ -151,3 +151,14 @@ report assertions and normal pointer interactions remain intact. This source
 repair awaits the complete official authoring journey; it grants no browser or
 application-completion result. Asset-byte assertions after the blocked click
 were not reached and remain mandatory.
+
+## Next official observation and state-aware report reading
+
+The next candidate passes that menu interaction, real report collapse/reopen
+and current asset-byte checks. It later hides an automatically expanded report
+with a blind header toggle. The verifier now expands only when the report body
+is not visible, verifies details after expansion, and retains the actual text
+before the unchanged clean-report assertion. The retained clean project reports
+two actual Array producer refusals; these remain failures and require separate
+producer diagnosis. No forced clicks, longer timeouts, accepted baseline refusals
+or completed browser/application claim follows from this repair.

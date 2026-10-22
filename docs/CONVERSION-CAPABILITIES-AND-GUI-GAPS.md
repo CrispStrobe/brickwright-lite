@@ -1,5 +1,13 @@
 # Conversion capabilities and GUI closure ledger
 
+## Closed recursive Number results — planned authoring acceptance
+
+After the scoped capability is implemented and qualified, author pure module value procedures with base and recursive/mutual calls, direct immutable aliases, parameters and local writes in Code/pseudocode and the actual connected Blocks representation. Edit every call edge, base case and argument; retain independent invocation frames and named diagnostics for unsafe entries, defaults, escaping callbacks and changed writers. Preserve the current bodies, values, call/effect order and assets through save/fresh reopen and actual export/MakeCode compilation/reimport. Generic cyclic facts and unrelated Sprite return forwarding remain separate. The [merged proof scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md) and [qualification contract](ARCADE-NUMERIC-RECURSIVE-RESULTS.md) do not establish this editor journey.
+
+## Image pixel normal results — source controls qualified, editor journey pending
+
+The Image/factory source proof does not add an image editor or establish a visible journey. Author and edit a genuine Image receiver and both pixel coordinates in Code/pseudocode and its existing connected Blocks representation. Preserve alias, clone and fresh-factory identity; modify the referenced pixels in graphics and verify the running program and current exported files use those edited assets. Check normal results alongside null/missing receivers, unsupported coordinates, unknown calls, changed writers and overrides without introducing Number defaults or erasing argument effects. Preserve connections, diagnostics, values and current asset bytes through save/fresh reopen, actual MakeCode compile and fresh reimport. Rendered pixels and complete SDK/browser acceptance remain separate gates.
+
 ## Numeric factory closure results — native controls qualified, GUI work open
 
 A closed numeric factory/alias family now passes 39 source controls and all

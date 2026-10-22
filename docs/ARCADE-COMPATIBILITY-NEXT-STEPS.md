@@ -1,5 +1,64 @@
 # Arcade compatibility: integration and next steps
 
+## Next closed recursive result slice
+
+Implement and qualify [the merged recursive Number scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md)
+using [the separate source/native/SDK/GUI gates](ARCADE-NUMERIC-RECURSIVE-RESULTS.md).
+Require every actual entry, alias, writer and normal return, grounded return
+induction, unchanged calls/effects and sticky raw-source currentness. Do not
+widen cyclic graph facts, infer Number from annotations or replace recursion.
+The existing twelve-function-return module remains whole; unrelated Sprite
+forwarding and the remaining Array typing refusal retain their own diagnosis.
+The Image pixel/coordinate and recursive frame authoring journeys are tracked
+explicitly in the GUI ledger, not inferred from source-control passes.
+
+
+## Next Array repair: owned parameter declarations after reimport
+
+The retained mixed Array forwarding fixture passes initial export, Code feedback
+and exact-file import, then refuses mutation/indexing on second export. The
+reimported identity procedure contains an owned `arcade_declareParameterConstraint`
+with `Any` before returning its actual formal. The existing reset/effect and
+identity recognizers reject that prefix or require the first body block to be
+its sole return. This is a concrete structural obstacle; private writer/reset
+predicate states were not captured, so it does not prove the only cause.
+
+Before implementation, merge a narrow claim for
+`overlay/scratch-gui/src/lib/bw-makecode/array-class-reset-effects.js` and
+`array-definite-overwrite.js`. Reuse the canonical procedure constraint model
+and exact procedure/formal ownership to prove the prefix's effects. `Any` must
+not grant an Array, element, initialization or callable-input type fact.
+Preserve all actual writers, alias identity and initialization order. Add
+negative controls for wrong ownership, stale/replaced blocks, unknown prefixes,
+changed returns and unsafe writers. Keep complete existing reset, overwrite,
+constraint and typing modules; run the original complete SDK module in hosted
+CI. Finish with native/Code, exact-file reimport and second export, MakeCode
+compilation, and connected Blocks edits followed by save/fresh reopen. Do not
+relax the original producer refusal or hide unrelated failures.
+
+Keep these complete affected modules, alongside a new
+`test/array-identity-constraint-prefix.test.mjs`:
+
+- `test/array-definite-overwrite.test.mjs`
+- `test/arcade-class-reset-effects.test.mjs`
+- `test/arcade-class-array-writer-types.test.mjs`
+- `test/makecode-array-menu-export.test.mjs`
+- `test/arcade-procedure-constraint-model.test.mjs`
+- `test/makecode-procedure-constraint-source.test.mjs`
+- `test/makecode-procedure-constraint-export.test.mjs`
+- `test/arcade-procedure-constraints-native.test.mjs`
+- `test/procedure-constraint-hooks.test.mjs`
+
+Freeze the complete selection and qualify its resource fit before running it.
+These paths do not authorize a local repeat or shard of the legacy SDK cohort.
+
+Also retain the official numeric authoring journey's separate clean-export
+counterexample: its current StringArray settings project reports mutation and
+indexing producer refusals. Its report had been hidden by a blind header toggle.
+Keep the original clean-report assertion and actual asset checks. Capture that
+project's local initialization, writer and settings-return facts before deciding
+whether the identity-prefix repair covers it; a shared diagnostic is insufficient.
+
 ## Next acceptance: the complete application journey — 2026-10-21
 
 The historical result remains **147 translated / 36 partial / one malformed**.

@@ -1,3 +1,4 @@
+import {numericRecursiveNormalResults} from './numeric-recursive-normal-results.js';
 import {imagePixelNormalResults} from './image-pixel-normal-results.js';
 import {numericClosureNormalResults} from './numeric-closure-normal-results.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
@@ -19,10 +20,16 @@ const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typePar
 // avoids treating their own known join as a foreign escape without inventing an Array-dependent primitive result. Primitive-only additions
 // retain their actual value flow, including nested numeric/text operations.
 export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER_PROFILES.ordinary) {
+    // Capture original own/default metadata before new proof traversal or any
+    // prepared view can drop hidden parameter-array properties. Its refusal is
+    // only absence of this new fact; existing producer paths remain independent.
+    const recursiveResults=numericRecursiveNormalResults(program,profile);
+    const recursiveSourceTokens=new Map(),recursiveNormalTokens=new Set();
+    let recursiveLive=true;
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
     const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||
+    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||Object.hasOwn(node,'nativeRecursiveSourceCall')||Object.hasOwn(node,'nativeRecursiveDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
     // A complete unary conversion body returns Number whenever it returns.
@@ -63,7 +70,11 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             const token=Symbol();unaryTokens.add(token);
             return {type:'Conditional',test:prepare(node.args[0]),consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},nativeArrayDomainNormalCall:token};
         }
-        return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:prepare(value)]));
+        const copy=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:prepare(value)]));
+        if(recursiveResults.has(node)){
+            const token=Symbol();recursiveSourceTokens.set(token,node);copy.nativeRecursiveSourceCall=token;
+        }
+        return copy;
     };
     // Reuse the existing complete body/binding/registry/ambient proof rather
     // than independently recognizing a JSON or named registry helper family.
@@ -77,7 +88,8 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
         if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
         if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
-        return now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive);
+        if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
+        return now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive)&&(!recursiveNormalTokens.size||recursiveLive);
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -141,6 +153,44 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         for(const node of bindings.nodes){const before=previous.get(node);if(before)replacements.set(node,closureCopies.get(before)||before);}
         model=closureModel;graph=analyse(model);
     }
+    // Raw-call membership survives earlier views only through fresh private
+    // source tokens, never through a callee spelling or copied source flag.
+    // Check the complete token join before projecting any result, so optional
+    // recursive rejection cannot partially loan Number into an older view.
+    if(recursiveSourceTokens.size&&recursiveResults.current()){
+        const matched=new Set();let valid=true;
+        const check=node=>{
+            if(!node||typeof node!=='object')return;
+            if(Array.isArray(node)){for(const value of node)check(value);return;}
+            if(Object.hasOwn(node,'nativeRecursiveSourceCall')){
+                const token=node.nativeRecursiveSourceCall;
+                if(node.type!=='Call'||!recursiveSourceTokens.has(token)||matched.has(token))valid=false;
+                matched.add(token);
+            }
+            for(const [key,value]of Object.entries(node))if(!metadata.has(key))check(value);
+        };
+        check(model);
+        if(valid&&matched.size===recursiveSourceTokens.size){
+            const copies=new WeakMap();
+            const normalRecursiveView=node=>{
+                if(!node||typeof node!=='object')return node;
+                if(Array.isArray(node))return mapGeneratedSourceArray(node,normalRecursiveView);
+                const selected=recursiveSourceTokens.has(node.nativeRecursiveSourceCall);
+                const copy=Object.fromEntries(Object.entries(node).filter(([key])=>key!=='nativeRecursiveSourceCall')
+                    .map(([key,value])=>[key,metadata.has(key)?value:normalRecursiveView(value)]));
+                if(!selected){copies.set(node,copy);return copy;}
+                const token=Symbol();recursiveNormalTokens.add(token);
+                // Actual invocation, arguments, exceptions and nonreturn remain
+                // the test; only its NORMAL returned value has this domain.
+                const projected={type:'Conditional',test:copy,consequent:{type:'Number',value:'0'},
+                    alternate:{type:'Number',value:'0'},nativeRecursiveDomainNormalCall:token};
+                copies.set(node,projected);return projected;
+            };
+            const projected=normalRecursiveView(model),previous=replacements;replacements=new WeakMap();
+            for(const node of bindings.nodes){const before=previous.get(node);if(before)replacements.set(node,copies.get(before)||before);}
+            model=projected;graph=analyse(model);
+        }
+    }
     // This independent actual-entry proof issues only operation normal results.
     // Literal Image origins in the exporter resource view remain separate from
     // clone nonexposure, generic Image annotations and flat Array admission.
@@ -185,7 +235,11 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const initialized=node=>{
         if(!node||typeof node!=='object')return true;
         if(Array.isArray(node))return node.every(initialized);
-        if(unaryTokens.has(node.nativeArrayDomainNormalCall)||closureNormalTokens.has(node.nativeClosureDomainNormalCall)||imageNormalTokens.has(node.nativeImageDomainNormalCall))return true;
+        if(unaryTokens.has(node.nativeArrayDomainNormalCall)||closureNormalTokens.has(node.nativeClosureDomainNormalCall)||imageNormalTokens.has(node.nativeImageDomainNormalCall)||recursiveNormalTokens.has(node.nativeRecursiveDomainNormalCall))return true;
+        // Helper operands are original preprojection nodes. Recognize only the
+        // actual joined result, not their still-opaque recursive callee binding.
+        const projected=actual(node);
+        if(projected!==node&&projected.type==='Conditional'&&recursiveNormalTokens.has(projected.nativeRecursiveDomainNormalCall)&&recursiveResults.current())return true;
         if(numberResultSets.some(producers=>producers.has(actual(node))))return true;
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));

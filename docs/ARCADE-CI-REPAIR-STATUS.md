@@ -13,12 +13,16 @@ This candidate is not qualified to merge.
 
 The complete legacy SDK cohort is **31 pass / one fail**. Constructor callback
 witnesses now pass. The sole remaining mixed Array writer/alias forwarding case
-fails at its **initial export**, refusing the actual Array producer for mutation
-and indexing. This current result supersedes the older second-export attribution.
+was previously attributed to its initial export from incomplete observations.
+The next candidate’s retained captures establish the actual failure at
+**exact-files second export**: initial export, Code feedback and exact-file import
+pass, then mutation and indexing refuse the Array producer. Preserve the earlier
+logs; their missing captures did not justify the initial-export attribution.
 All eight menu controls pass. Their absence of failure captures is expected;
-the failing typing fixture writes `typing-*` files, which the artifact upload
-omitted. Include those existing diagnostic files before changing semantics;
-the original missing data cannot be recovered by downloading the artifact again.
+the failing typing fixture writes `typing-*` files, which the earlier artifact
+upload omitted. The next candidate includes them and its retained capture
+establishes the second-export boundary above. The original missing data cannot
+be recovered by downloading the earlier artifact again.
 
 The existing 47 source controls, 39 numeric controls, eight native counters,
 three animation carriers, 48 native Array controls and CLI/word/bitwise cohorts
@@ -34,10 +38,24 @@ assert it closed, preserving every report assertion and normal pointer action.
 Asset-byte checks occur after that click and were not reached. Requalify the
 entire journey; no forced click or timeout increase is justified.
 
-Next: batch that journey repair and complete diagnostic upload, then implement
-[closed recursive numeric normal results](https://github.com/CrispStrobe/brickwright-lite/pull/1213)
-only after its claim merges. Keep generic cyclic `Opaque` facts, actual calls,
-all writer/entry checks and the complete original tests. Sprite-property
+The next candidate passes that former pointer failure, its actual collapse/reopen
+checks and current asset-byte assertions. It later times out reading the clean
+report after a blind header toggle hides it. The retained report also establishes
+**two real Array producer refusals** in that supposed clean project: mutation
+and indexing. Ensure the report is visibly open before reading; preserve the
+`nothing reported` assertion so those functional gaps remain failures. Do not
+attribute them to the identity-procedure prefix without the actual project and
+writer predicates establishing that connection.
+
+The journey repair and diagnostic upload are published in the existing PR;
+[their automatic qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39722942637)
+is still running and has unit failures. Do not substitute the earlier successes
+for this candidate. The [recursive numeric-result claim](https://github.com/CrispStrobe/brickwright-lite/pull/1213)
+has merged. Its final complete source cohort passes **55/55**, including all
+47 preceding controls and all eight new groups. Earlier integration and new-test
+contract failures are retained. Native/SDK and visible editor acceptance remain
+pending. Keep generic cyclic `Opaque` facts, actual calls, all
+writer/entry checks and the complete original tests. Sprite-property
 forwarding, class/Array producer refusal families and actual authoring/save/
 reopen/MakeCode compilation require separate evidence. These component results
 grant no application-completion credit.
