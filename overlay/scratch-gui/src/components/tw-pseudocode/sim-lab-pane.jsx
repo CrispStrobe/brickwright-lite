@@ -1375,7 +1375,7 @@ class SimLabPane extends React.Component {
                 this.clock && this.clock.installed ? this.clock.realTimeFactor : null;
             const simMs = this.session.time;
             // Keep the last measured pace after Pause, including the final worker reply.
-            this.setState(s => ({simMs, rtf: Number.isFinite(measured) ? measured : s.rtf}));
+            this.setState(s => ({simMs, rtf: Number.isFinite(measured) ? measured : s.status === 'running' ? null : s.rtf}));
         }
         if (this.state.status === 'running') this.record();
         if (this.state.readings && this.api) this.sample();
