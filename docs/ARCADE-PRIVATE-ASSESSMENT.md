@@ -26,7 +26,20 @@ on that reviewed candidate. Preserve original failures and all output/resource
 and cleanup checks; no private inputs or live assessment are enabled by this
 registration. Normal exact-head checks and matched-head landing still apply.
 
-Status: claim merged in [PR1167](https://github.com/CrispStrobe/brickwright-lite/pull/1167); controller implementation and qualification in progress. No credential setup, dispatch or complete-corpus result.
+Status: the claim and inert registration are merged in
+[PR1167](https://github.com/CrispStrobe/brickwright-lite/pull/1167) and
+[PR1186](https://github.com/CrispStrobe/brickwright-lite/pull/1186).
+The first metadata-only dispatch returned failure before a run could be
+admitted; its error text was not retained, so its cause is unestablished.
+A separate reviewed candidate fixes an invalid job environment reference by
+binding the temporary directory in step environments, where GitHub permits
+`runner.temp`. See [GitHub context availability](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability).
+That source correction is not a successful dispatch or isolation result.
+Controller qualification remains in progress: the public tool policy has no
+admitted runner/tool profile and the fixed nine-control kernel cohort remains
+unqualified. No private input, credential setup or complete-corpus result is
+enabled. Preserve the failed dispatch and the one-shot operation boundary;
+a source update alone does not authorize repeating a consumed event.
 
 Honor actual configured environment policies; this proposal introduces no mandatory human reviewer or confirmation gate. Scope a manual, reviewed Actions workflow and bounded input-admission, isolated-converter and ciphertext-only upload controllers. Use a repository-specific read-only deploy key, remove credential access before conversion, and admit every original raw and contextual subject without filtering. Use the already selected private input repository; a separate minimal input repository is an optional alternative, not a prerequisite.
 
