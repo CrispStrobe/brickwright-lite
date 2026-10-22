@@ -1606,11 +1606,14 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                         // The native rack retains position phase. Limit the
                         // spring target to the actual end, rather than freezing
                         // wherever the proximity band first caught the rack.
-                        // Keep the existing damping and never increase or
-                        // reverse commanded torque, or undo an earlier stop.
+                        // Reserve the current step's measured angular advance
+                        // for braking, retaining the fast-approach protection.
+                        // Never increase/reverse commanded torque or undo an
+                        // earlier stop; damping and physical limits stay intact.
                         const commanded = deltaAngle(h.hinge.GetTargetAngle(), angle);
                         const remaining = st.limits[end > 0 ? 1 : 0] - slider.position;
-                        offset = clamp(remaining / st.k, Math.min(0, commanded), Math.max(0, commanded));
+                        offset = clamp(remaining / st.k - h.velocity * dtFixed,
+                            Math.min(0, commanded), Math.max(0, commanded));
                     }
                     h.hinge.SetTargetAngle(normalizeAngle(angle + offset));
                 }
