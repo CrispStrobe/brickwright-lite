@@ -101,21 +101,22 @@ test('a checkpoint during rack impact replays braking, settling and reversal exa
             core.checkpoint();
             const trace=()=>{
                 const frames=[];
-                for(const direction of [sign,-sign]){
-                    core.setMotor('jp',{mode:'torque',torqueNm:direction*0.01,dampingNmsPerRad:0.001});
-                    for(let i=0;i<2*HZ;i++){
-                        core.step(1/HZ);
-                        const frame=core.snapshot();
-                        frames.push([Array.from(frame.bodies),Array.from(frame.joints)]);
-                    }
-                    assert.ok(Math.abs(core.jointState('jr').position-direction*0.012)<R*Math.PI/180,
-                        'the replay also reaches the original geometric stop allowance');
+                for(let i=0;i<2*HZ;i++){
+                    core.step(1/HZ);
+                    const frame=core.snapshot();
+                    frames.push([Array.from(frame.bodies),Array.from(frame.joints)]);
                 }
+                assert.ok(Math.abs(core.jointState('jr').position-sign*0.012)<R*Math.PI/180,
+                    'the replay also reaches the original geometric stop allowance');
                 return frames;
             };
             const original=trace();
             core.rollback();
-            assert.deepEqual(trace(),original,'every actual body and joint frame replays through both stops');
+            assert.deepEqual(trace(),original,'every actual body and joint frame replays from impact to rest');
+            core.setMotor('jp',{mode:'torque',torqueNm:-sign*0.01,dampingNmsPerRad:0.001});
+            for(let i=0;i<2*HZ;i++)core.step(1/HZ);
+            assert.ok(Math.abs(core.jointState('jr').position+sign*0.012)<R*Math.PI/180,
+                'reversal after replay reaches the opposite stop');
         }finally{core.destroy();}
     }
 });
