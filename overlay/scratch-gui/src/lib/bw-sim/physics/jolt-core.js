@@ -1600,8 +1600,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 rackApproach.delete(st);
             }
             if (h.isMotor && h.mode === 'torque') {
-                // A power drive (PWM: a torque through the hinge's spring, applyHingeTorque) pushing into the end: the
-                // spring's target is where the hinge is, so only its damping (the back-EMF) acts this step.
+                // A PWM drive pushing into a coupled stop: brake the initial
+                // impact, then bound travel without removing load-support effort.
                 if (h.driveTorque !== 0 && Math.sign(st.k * h.driveTorque) === end) {
                     const angle = h.hinge.GetCurrentAngle();
                     const slider = sliderMap.get(st.joint);
@@ -1627,13 +1627,20 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                             const commanded = deltaAngle(h.hinge.GetTargetAngle(), angle);
                             const remaining = st.limits[end > 0 ? 1 : 0] - slider.position;
                             if (stationary) {
-                                // Remove the hard stop's own reaction from the
+                                // Remove every coupled hard stop's reaction from the
                                 // measured motor impulse: the remainder supports
                                 // an external load (gravity, for example). Keep
                                 // that stationary effort when limiting position.
                                 const stiffness = h.damping / (2 * dtFixed);
-                                const supported = (h.hinge.GetTotalLambdaMotor() +
-                                    st.k * slider.slider.GetTotalLambdaPositionLimits()) / dtFixed;
+                                let reaction = h.hinge.GetTotalLambdaRotationLimits();
+                                for (const bound of endStops) {
+                                    if (bound.hinge !== h) continue;
+                                    const linear = sliderMap.get(bound.joint);
+                                    const angular = hingeMap.get(bound.joint);
+                                    reaction += bound.k * (linear ? linear.slider.GetTotalLambdaPositionLimits() :
+                                        angular ? angular.hinge.GetTotalLambdaRotationLimits() : 0);
+                                }
+                                const supported = (h.hinge.GetTotalLambdaMotor() + reaction) / dtFixed;
                                 approach.support = stiffness > 0 ? supported / stiffness : 0;
                             }
                             const support = clamp(approach.support, Math.min(0, commanded), Math.max(0, commanded));
