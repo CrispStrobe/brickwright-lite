@@ -119,6 +119,7 @@
       "test/bw-sim-sumo-program.test.mjs",
       "test/bw-sim-survey-rover.test.mjs",
       "test/bw-sim-tidal-trio.test.mjs",
+      "test/bw-sim-turntable-clearance.test.mjs",
       "test/bw-sim-turntable.test.mjs",
       "test/bw-sim-universal-joint.test.mjs",
       "test/bw-sim-validation-2.test.mjs",
@@ -151,7 +152,8 @@
       "test/bw-sim-physics-addons.test.mjs",
       "test/bw-sim-offset-ellipsa.test.mjs",
       "test/bw-sim-echo-linger-crossline.test.mjs",
-      "test/bw-sim-bit-keeper.test.mjs"
+      "test/bw-sim-bit-keeper.test.mjs",
+      "test/bw-sim-counterturn-snapgate.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },

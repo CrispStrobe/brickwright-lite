@@ -50,9 +50,11 @@ export const physicsExamplesInteractions = async (page, {openSimLab, shotsDir, t
     await page.getByTestId('bw-sim-lab-mode-build').click();
     await open.click();
     await gallery.getByRole('searchbox').fill('flywheel');
-    assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 1);
-    assert.match(await gallery.textContent(), /56 pieces/);
-    await gallery.getByRole('button', {name: /^Open model \+ program:/}).click();
+    assert.deepEqual(await gallery.getByTestId('bw-sim-example-card').evaluateAll(es =>
+        es.map(e => e.dataset.model).sort()), ['counterturn.ldr', 'flywheel-differential.ldr']);
+    const flywheel = gallery.locator('[data-testid="bw-sim-example-card"][data-model="flywheel-differential.ldr"]');
+    assert.match(await flywheel.textContent(), /56 pieces/);
+    await flywheel.getByRole('button', {name: /^Open model \+ program:/}).click();
     await gallery.waitFor({state: 'hidden'});
     await page.waitForFunction(() => window.__bwSimLab.status === 'ready' &&
         window.__bwSimLab._pane.state.modelFile === 'flywheel-differential.ldr' &&
@@ -74,8 +76,9 @@ export const germanPhysicsExamplesInteractions = async (page, {openSimLab, shots
     assert.equal(await gallery.getAttribute('aria-label'), 'Beispiele im Roboter-Labor');
     await gallery.getByRole('combobox', {name: 'Modellgröße', exact: true}).selectOption('large');
     await gallery.getByRole('searchbox').fill('Schwungrad');
-    assert.equal(await gallery.getByTestId('bw-sim-example-card').count(), 1);
-    assert.match(await gallery.textContent(), /56 Teile/);
+    assert.deepEqual(await gallery.getByTestId('bw-sim-example-card').evaluateAll(es =>
+        es.map(e => e.dataset.model).sort()), ['counterturn.ldr', 'flywheel-differential.ldr']);
+    assert.match(await gallery.locator('[data-testid="bw-sim-example-card"][data-model="flywheel-differential.ldr"]').textContent(), /56 Teile/);
     const bounds = await gallery.boundingBox();
     assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= page.viewportSize().width + 1);
     await page.screenshot({path: resolve(shotsDir, 'examples-german.png')});

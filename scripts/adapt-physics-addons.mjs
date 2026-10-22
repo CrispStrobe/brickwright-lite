@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
+import { reviseCounterturnSnapgate } from './lib/counterturn-snapgate-model.mjs';
 import { adaptAddonProgram } from './lib/physics-addon-program.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -9,6 +10,8 @@ import { catalogFrom, prepareModel } from '../overlay/scratch-gui/src/lib/bw-sim
 import { solidOverlaps } from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 const [id, source, output, programSource, programOutput] = process.argv.slice(2),
   spec = {
+    counterturn: ["656ce4e343712bf6edfd9fb2501e9847334234ce486d39d270cd350fabd04fa8",120,"Counterturn — a free carrier and flywheel"],
+    snapgate: ["4796bf3f379c6110574435a9cf0eab57698b199491f96706bf3ff9dda5fea525",205,"Snapgate — a spring memory switch"],
     "bit-keeper": ["0f7d21432b23a4e51af3993af77e37706ff568dcf799c46b305cdd02a862d7a2", 133, "Bit Keeper \u2014 a mechanical memory"],
     "crossline": ["1fc3d0868344fe581bde48d17fbda1a279356b991a9495689b9036b1f0d75041", 147, "Crossline \u2014 geared straight-line pair"],
     "linger": ["78c9a9e9da8fe94ec34beae8e742ec80582f7a649baf3a2ead20f28bb9489169", 158, "Linger \u2014 six-bar dwell machine"],
@@ -34,11 +37,11 @@ const C = catalogFrom(JSON.parse(readFileSync(new URL('../overlay/scratch-gui/sr
     catalog: C
   });
 if (refusals.length || model.decor?.length) throw Error(JSON.stringify(refusals));
-const text = bytes.toString('utf8').replace(/^0[^\n]*\n/, `0 ${spec[2]}\n`).replace(/^0 Name:.*$/m, `0 Name: ${id}.ldr`).replace(/^0 !LICENSE.*$/m, `0 !LICENSE BSD-3-Clause : see ../licenses/${id}.txt`).split(/\r?\n/).filter(line => !/^0 (?:STEP|ROTSTEP)\b/.test(line)).join('\n'),
+const text = reviseCounterturnSnapgate(id,bytes.toString('utf8')).replace(/^0[^\n]*\n/, `0 ${spec[2]}\n`).replace(/^0 Name:.*$/m, `0 Name: ${id}.ldr`).replace(/^0 !LICENSE.*$/m, `0 !LICENSE BSD-3-Clause : see ../licenses/${id}.txt`).split(/\r?\n/).filter(line => !/^0 (?:STEP|ROTSTEP)\b/.test(line)).join('\n'),
   p = prepareModel(text, C);
-const unexpectedIssues = id === 'bit-keeper' ? p.issues.filter(i => i.code !== 'gear-not-on-hinge' || i.parts.length !== 1 || i.parts[0] !== 'bob_gear') : p.issues;
+const unexpectedIssues = id === 'counterturn' ? p.issues.filter(i=>i.code!=='gear-not-on-hinge'||i.parts.length!==1||!/^ballast_[xz]_-?1_[01]$/.test(i.parts[0])) : id === 'snapgate' ? p.issues.filter(i=>i.code!=='locked-hinges'||!['stop_upper_bearing|stop_upper_bearing_pin_-60|stop_upper_bearing_pin_60','worm_wheel_bearing_-65|worm_wheel_bearing_pin_-120_-70|worm_wheel_bearing_pin_-80_-70'].includes(i.parts.slice().sort().join('|'))) : id === 'bit-keeper' ? p.issues.filter(i => i.code !== 'gear-not-on-hinge' || i.parts.length !== 1 || i.parts[0] !== 'bob_gear') : p.issues;
 if (unexpectedIssues.length || p.model.parts.length !== spec[1]) throw Error(JSON.stringify(p.issues));
 for (const part of p.model.parts) if (solidOverlaps(p.model, C, part).length) throw Error('Solid overlap ' + part.id);
 writeFileSync(output, text);
-console.log(`${id}: ${spec[1]} original placements, no solid overlaps`);
+console.log(`${id}: ${spec[1]} placements, no solid overlaps`);
 if (programSource && programOutput) writeFileSync(programOutput, adaptAddonProgram(id, readFileSync(programSource)));

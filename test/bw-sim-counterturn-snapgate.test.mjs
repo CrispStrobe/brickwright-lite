@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 CrispStrobe
+import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';import{createHash}from'node:crypto';
+import{catalogFrom,prepareModel}from'../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';import{solidOverlaps}from'../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';import{buildSteps}from'../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import{adaptAddonProgram}from'../scripts/lib/physics-addon-program.mjs';import{reviseCounterturnSnapgate}from'../scripts/lib/counterturn-snapgate-model.mjs';import{judgeCounterturn,judgeSnapgate,measureSnapgate,measureCounterturn}from'../scripts/lib/sim-lab-counterturn-snapgate-judge.mjs';import{counterturnInertia}from'./helpers/counterturn-inertia.mjs';import{runRobotLabProgram}from'./helpers/robot-lab-direct-vm.mjs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),base='overlay/scratch-gui/static/sim-lab/',C=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
+const variables=vm=>Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
+const observeCounter=({session,vm,prepared})=>{const origin=prepared.runModel.parts.find(p=>p.id==='yaw_base').position.map((x,i)=>x*(i?-.0004:.0004));return{variables:variables(vm),momentum:Object.fromEntries(prepared.mechanism.bodies.filter(b=>b.parts.length).map(b=>[b.id,session.core.bodyAngularMomentum(b.id,origin)]))};};
+for(const[id,n]of[['counterturn',120],['snapgate',205]])test(id+': exact sources, bounded clearance revision, safe editor and connected construction',()=>{
+ const dir='test/fixtures/model-files/'+id+'-source/',raw=read(dir+id+'.ldr'),text=read(base+'models/'+id+'.ldr'),program=read(base+'programs/'+id+'.bw'),p=prepareModel(text,C),revised=prepareModel(reviseCounterturnSnapgate(id,raw),C);
+ assert.deepEqual(p.model.parts,revised.model.parts);assert.equal(p.model.parts.length,n);assert.equal(program,adaptAddonProgram(id,Buffer.from(read(dir+id+'.bw'))));assert.throws(()=>adaptAddonProgram(id,Buffer.from(read(dir+id+'.bw')+'\n')));
+ const provenance=JSON.parse(read(dir+'provenance.json'));for(const f of provenance.files)assert.equal(createHash('sha256').update(Buffer.from(read(dir+f.file))).digest('hex'),f.sha256,f.file);
+ for(const part of p.model.parts)assert.deepEqual(solidOverlaps(p.model,C,part),[],part.id);const plan=buildSteps(p.model,C);assert.equal(plan.steps.flatMap(s=>s.parts).length,n);assert.ok(plan.steps.every(s=>!s.loose&&s.parts.length<=6));
+});
+for(const autoPorts of[undefined,false])test('Counterturn '+(autoPorts===false?'strict':'ordinary')+': native inertia predicts useful free-carrier reaction and momentum',async t=>{
+ const modelText=read(base+'models/counterturn.ldr'),program=read(base+'programs/counterturn.bw'),inertia=await counterturnInertia(modelText,C);assert.ok(inertia.reflectedVerticalLeakageFraction<=.005);t.diagnostic(JSON.stringify({shapeGain:inertia.shapeGain,nativeGain:inertia.nativeGain,gainDivergenceFraction:inertia.gainDivergenceFraction,reflectedVerticalLeakageFraction:inertia.reflectedVerticalLeakageFraction}));
+ const r=await runRobotLabProgram(program,{modelText,timeLimitMs:40000,autoPorts,observeFrame:observeCounter});assert.equal(Number(r.track.at(-1).extra.variables.complete),1);assert.equal(Number(r.track.at(-1).extra.variables.fault),0);t.diagnostic(JSON.stringify(judgeCounterturn('counterturn',r,{gain:inertia.nativeGain})));
+ // A common 0.2-degree world tilt leaves relative shaft/base orientation
+ // unchanged, but violates the stricter absolute horizontal-shaft requirement.
+ const theta=.2*Math.PI/180,c=Math.cos(theta),sn=Math.sin(theta),q=[Math.sin(theta/2),0,0,Math.cos(theta/2)],mul=([x,y,z,w],[a,b,c,d])=>[w*a+x*d+y*c-z*b,w*b-x*c+y*d+z*a,w*c+x*b-y*a+z*d,w*d-x*a-y*b-z*c];
+ const tilted={...r,track:r.track.map(f=>({...f,bodies:Object.fromEntries(Object.entries(f.bodies).map(([id,b])=>{const v=b.position.map((x,i)=>x-inertia.origin[i]);return[id,{position:[v[0],c*v[1]-sn*v[2],sn*v[1]+c*v[2]].map((x,i)=>x+inertia.origin[i]),rotation:mul(q,b.rotation)}];}))}))};
+ assert.ok(Math.max(...measureCounterturn(tilted).map(f=>f.shaftTiltDeg))>.199,'shaft tilt is measured against the fixed world, independently of the base');assert.throws(()=>judgeCounterturn('counterturn',tilted,{gain:inertia.nativeGain}));
+ const b=r.mechanism.bodies.find(b=>b.parts.includes('yaw_platform')),frozen={...r,track:r.track.map(f=>({...f,bodies:{...f.bodies,[b.id]:r.track[0].bodies[b.id]}}))};assert.throws(()=>judgeCounterturn('counterturn',frozen,{gain:inertia.nativeGain}),'a frozen passive carrier must fail');
+});
+test('Counterturn: a removable real-part brace locks the carrier while the same motor and rotor still complete',async t=>{
+ const modelText=reviseCounterturnSnapgate('counterturn',read('test/fixtures/model-files/counterturn-source/counterturn-locked.ldr')).split('\n').filter(l=>!/^0 (STEP|ROTSTEP)\b/.test(l)).join('\n'),p=prepareModel(modelText,C);assert.equal(p.model.parts.length,134);for(const part of p.model.parts)assert.deepEqual(solidOverlaps(p.model,C,part),[],part.id);
+ const r=await runRobotLabProgram(read(base+'programs/counterturn.bw'),{modelText,timeLimitMs:40000,observeFrame:observeCounter});t.diagnostic(JSON.stringify(judgeCounterturn('counterturn',r,{locked:true})));assert.throws(()=>judgeCounterturn('counterturn',r),'the locked control fails the free carrier criterion');
+});
+for(const autoPorts of[undefined,false])test('Snapgate '+(autoPorts===false?'strict':'ordinary')+': 5 ms native observations, cold start, four fast snaps and repeated memory',async t=>{
+ const r=await runRobotLabProgram(read(base+'programs/snapgate.bw'),{modelText:read(base+'models/snapgate.ldr'),timeLimitMs:65000,autoPorts,frameMs:5,coldMs:500,afterMs:500,observeFrame:({vm})=>({variables:variables(vm)})});assert.equal(Number(r.track.at(-1).extra.variables.completed),1);assert.equal(Number(r.track.at(-1).extra.variables.failed),0);t.diagnostic(JSON.stringify(judgeSnapgate('snapgate',r,{fine:true,cold:true})));
+ // Remove intermediate observations only, as a worker batch can do; keep the
+ // actual before/after poses. This is measurement downsampling, not simulation.
+ const rows=measureSnapgate(r),omit=new Set();
+ for(const cycle of[1,2])for(const stage of[1,3]){const direction=stage===1?1:-1,indices=rows.map((x,i)=>x.cycle===cycle&&x.stage===stage?i:-1).filter(i=>i>=0),c=indices.find(i=>i&&rows[i-1].out*direction<0&&rows[i].out*direction>=0);assert.ok(c);let lo=c,hi=c;while(lo>0&&rows[lo].out*direction>-.8*19.23533)lo--;while(hi<rows.length-1&&rows[hi].out*direction<.8*19.23533)hi++;for(let i=lo+1;i<hi;i++)omit.add(i);}
+ const batched={...r,track:r.track.filter((_,i)=>!omit.has(i))};assert.equal(judgeSnapgate('snapgate',batched,{cold:true}).snaps.length,4);assert.throws(()=>judgeSnapgate('snapgate',batched,{fine:true,cold:true}),'two-pose batches cannot substitute for the fine native transition gate');
+ const b=r.mechanism.bodies.find(b=>b.parts.includes('rocker')),frozen={...r,track:r.track.map(f=>({...f,bodies:{...f.bodies,[b.id]:r.track[0].bodies[b.id]}}))};assert.throws(()=>judgeSnapgate('snapgate',frozen,{fine:true,cold:true}),'a frozen output cannot pass memory or snap tests');
+});

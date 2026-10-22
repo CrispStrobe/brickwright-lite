@@ -543,3 +543,45 @@ Bit Keeper. The unchanged seven catalog controls pass after reproducing the
 omission. A separate claimed Arcade test repair observes the actual program
 polling clock instead of assuming a scene frame delivers held-input completion;
 its full modules and catalog controls pass with a missing-input negative.
+
+## Counterturn and Snapgate — 2026-10-22
+
+DONE locally / exact-head hosted qualification pending. Continue the original owner-requested model intake with Counterturn
+(120 placements, A) and Snapgate (205 CAD placements / 204 stock items, A).
+Exact source hashes, raw CAD, original finite programs and BSD/CrispStrobe
+notices are retained. Counterturn's real 12:20 bevel pair drives a vertical
+flywheel on a passive carrier; native inertia predicts the measured counterturn.
+The separate hollow-turntable claim covers the measured collider repair.
+Two 0.8 mm retainer clearances keep the original rigid arrangement connected.
+Snapgate's shock-eye plane has 1 mm axial clearance; a 12L anchor axle and a
+retained 5L rod-eye axle remove solid and fastener overlaps. Its bearing pin is
+seated at the beam face. The passive spring rocker retains opposite states at
+matching inputs, with four 75–80 ms switches in two cycles. Fixed source motion,
+closure, inertia, momentum, startup and repeatability bounds are preserved.
+
+Seven ordinary/strict native controls pass, including an actual real-part
+Counterturn locking brace and independently rejected frozen-output records.
+The two revised models pass all eight detailed mesh/fastener checks, zero editor
+overlaps and connected automatic instructions. Both full native programs, manual controls, English/German lessons and
+56/99 connected instruction pages pass in actual WebKit. All four exported
+LDR/MPD imports pass with automatic Blocks/titles, no missing DAT requests,
+no duplicate block definitions and no page errors. All 1,280 Sim Lab regressions
+and 21 delivery-metadata controls pass. The 72-assembly / 80-choice / 160-lesson
+library is separate from release 0.1.26; hosted CI remains the integration gate.
+
+The browser observes batched worker poses. Its snap timing is reported as a
+bracketed upper bound and secant speed; the original fine-native requirement
+of at least three transition samples stays mandatory. A downsampled copy of
+actual poses passes the browser observation criterion and is rejected by that
+fine gate. No expected poses, fitted dimensions or relaxed physical bounds are
+used. The two new browser steps use the existing eight-minute budget and were
+registered with zero readings through the canonical budget generator.
+
+The first full hosted attempt exposed an older gallery assertion that assumed
+the English `flywheel` and German `Schwungrad` searches had only one result.
+Counterturn legitimately adds a second. The original failure reproduces locally;
+the browser now requires exactly Counterturn and Flywheel Differential, checks
+the latter's piece count within its own card and opens that card explicitly.
+The complete affected English/German journey passes in Chromium and WebKit,
+including the unchanged chain-motion checks and no page errors. This is a test
+repair; application search, model geometry and physics are unchanged.
