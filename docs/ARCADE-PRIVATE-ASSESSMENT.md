@@ -40,6 +40,19 @@ Acceptance requires real credential-free isolation controls, ciphertext-only inv
 
 Proposed owned paths: a new dated claim in `lanes/`; a manual workflow; controllers under `scripts/private-assessment/`; complete policy/controller tests; and `docs/ARCADE-PRIVATE-ASSESSMENT.md`. No converter semantics, dependency pins or existing thresholds change in this work package.
 
+## Registration census and qualification
+
+The registration entry has a generated declaration with zero observed runs.
+The existing census APIs preserve all 23 older workflow records, 320 ordered
+runs and main provenance. Its dated pointer explicitly records the unobserved
+state. The complete unchanged census module passes six tests without skips;
+this is source qualification, not evidence that the workflow ran.
+
+The final registration head still needs its enabled hosted checks before
+landing. After default-branch registration, admit fresh official workflow
+metadata before the separate reviewed metadata probe. Neither registration nor
+a successful source test authorizes private inputs or the live assessment.
+
 ## Implementation and remaining work
 
 The original catalogue contains 225 observations of 184 applications: 184 RAW_BASELINE rows and 41 RETAINED_CONTEXT revisits. All 41 revisits intentionally share baseline IDs. Admission uses `(kind, ID)` identity and never renames or drops them. The report reader returns separate baseline and retained-context tallies; the historical 36 partials belong to the baseline tally.
