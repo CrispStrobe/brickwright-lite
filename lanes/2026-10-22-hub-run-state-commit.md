@@ -26,3 +26,21 @@ build, and existing complete Chromium/WebKit API/Bluetooth/radio browser
 gates. Do not relax, filter or skip any existing assertion, deadline or gate.
 Require every enabled final-head hosted check before normal landing.
 No supplier, solver, resource, native, firmware or release activation change.
+
+## Implementation and local controls
+
+Implementation DONE in the motor-power successor; production-browser and
+final-head hosted qualification remain required. All three actual methods
+await the running-state commit, then connect only for that current session
+and request. Stop, a replacement scene, manual Drive and a newer Run each
+prevent an old completion or error from taking over. The existing Bluetooth
+connection-failure behavior (continue so a program may connect itself), radio
+and SPIKE refusal behavior, and greenFlag:false remain intact.
+
+The complete 30-case state/connection cohort has five passes and 25 failures
+against the original method bytes. All 30 pass after repair; together with
+the unchanged Drive-clock and example-preparation controls, 34 pass with no
+skips. The original full browser timeout and the separate diagnostic full
+suite pass are retained. The diagnostic adds read-only state sampling and
+keeps every original step, assertion and deadline; it is not final acceptance
+of the repaired source.
