@@ -16,10 +16,12 @@ export async function integralRoundtrip(page,opts){
  const downloading=page.waitForEvent('download');
  await page.getByText('Save to your computer',{exact:true}).click();
  const project=resolve(opts.shotsDir,'integral.sb3');await(await downloading).saveAs(project);
+ console.log('PASS Integral: actual GUI project download');
  const source=readFileSync('overlay/scratch-gui/static/sim-lab/models/integral.ldr','utf8');
  for(const [name,text]of [['integral.ldr',source],['integral.mpd','0 FILE integral.ldr\n'+source+'\n0 NOFILE\n']]){
   await openFile(page,{name,buffer:Buffer.from(text)});
   const model=await page.evaluate(()=>{const p=window.__bwSimLab._pane;return {status:p.state.status,parts:p.session.model.parts,mechanism:p.session.mechanism};});
+  console.log('PASS Integral raw import: '+name);
   assert.equal(model.status,'ready');assert.equal(model.parts.length,154);
   assert.deepEqual(model.mechanism.actuators.map(a=>a.port),['A','B']);
   assert.ok(model.mechanism.joints.filter(j=>j.type==='hinge'&&!j.motor).every(j=>!j.frictionNm),'raw imports preserve free passive bearings');
@@ -30,10 +32,11 @@ export async function integralRoundtrip(page,opts){
   await opts.openSimLab(reopened,{program:null});
   await reopened.getByText('File',{exact:true}).click();await reopened.getByText('Load from your computer',{exact:true}).click();
   await reopened.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(project);
-  await reopened.waitForFunction(()=>document.querySelector('input[class*="project-title"]')?.value.includes('Integral'));
+  await reopened.waitForFunction(()=>document.querySelector('input[class*="project-title"]')?.value.toLowerCase().includes('integral'));
   await reopened.getByRole('tab',{name:/^(Robots|Robot Lab)$/}).click();
   await reopened.waitForFunction(()=>window.__bwSimLab?.status==='ready'&&window.__bwSimLab._pane.session.model.parts.length===154);
   assert.deepEqual(await reopened.evaluate(()=>window.__bwSimLab.projectRecord),record,'actual saved model survives a fresh-context project reopen');
+  console.log('PASS Integral: exact saved record restored in a fresh browser context');
   await reopened.evaluate(()=>{
    const p=window.__bwSimLab._pane,s=p.session,m=s.mechanism;
    const r=window.__bwIntegralReopened={start:s.time,runModel:s.runModel,mechanism:m,issues:p.state.issues,unsupported:[],track:[]};
@@ -48,5 +51,8 @@ export async function integralRoundtrip(page,opts){
   writeFileSync(resolve(opts.shotsDir,'integral-reopened-track.json'),JSON.stringify(r));
   const result=judgeIntegral('integral',r);
   assert.deepEqual(errors,[]);console.log('PASS Integral raw LDR/MPD, GUI save/fresh-context reopen and complete passive-output program: '+JSON.stringify(result));
+ }catch(error){
+  await reopened.screenshot({path:resolve(opts.shotsDir,'integral-reopen-failure.png')}).catch(()=>{});
+  throw error;
  }finally{await reopened.close();}
 }
