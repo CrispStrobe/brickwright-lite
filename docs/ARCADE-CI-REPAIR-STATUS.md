@@ -111,15 +111,15 @@ this component success does not change the historical 36 partial applications.
 
 ### Remaining x86 consumer boundary
 
-The Arcade candidate selects `sb3-creator` at
-`d7c258910dd3837021a7a8c4b85d38a4e28e138a`. Before this correction, the two x86 GUI admission scripts
+The preceding hosted candidate selected `sb3-creator` at
+`d7c258910dd3837021a7a8c4b85d38a4e28e138a` (D7). Before that correction, the two x86 GUI admission scripts
 selected `f4b1a789e0733d310109f056a08de4621092c0eb`; the main branch used for
 comparison selected `7d3f8be7c13091a635d919c1af5c456230eed8fd` consistently with its own
 supplier. Restoring main's literal would still be wrong for this candidate.
 The intervening supplier-maintenance commits updated these consumers before
 the later D7 adoption omitted them; this was not a merge-conflict reversion.
 
-The current remote refresh confirms that
+The earlier remote refresh confirmed that
 [PR #1095](https://github.com/CrispStrobe/brickwright-lite/pull/1095) is already
 merged. Its earlier supplier selection does not qualify D7. Main's `7d3f8be7`
 is an ancestor of D7, which adds the source operators, score callbacks and motor
@@ -136,11 +136,20 @@ updates only the fixed expectations in
 [the independent reader](../scripts/read-i80386-hdd-gui-originals.py), preserves
 disabled actual execution and every admission join, and requires the complete
 [unchanged source-control module](../test/i80386-hdd-gui-actual.test.mjs).
-That source consistency is not guest qualification. Fresh affected D7
+That source consistency is not guest qualification. Fresh affected current-source
 GUI/guest admission, including the unresolved tool-provenance boundary,
 remains mandatory; old requests, originals and source-bound receipts are not
 restamped or replayed. The ownership handoff authorizes source work; affected
 guest qualification remains pending.
+
+The current normal composition adopts main's reviewed compiler selection
+`37bfe28760f60c836097854fb141fd114bbee518` together with its supplier counterparts.
+D7 is an ancestor and the compiler `src` trees are identical; its Arcade
+capabilities are preserved. Both x86 consumers select that same fixed current
+supplier, and actual execution remains disabled. The official F9 source-control
+workflow passed 55 download and twelve GUI control groups. That earlier result
+is neither qualification of this composition nor an actual guest result.
+Preserve earlier originals with their historical readers.
 
 ### Readiness analysis and overlapping power work
 

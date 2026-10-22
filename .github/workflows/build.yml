@@ -831,6 +831,7 @@ jobs:
           # Fixtures create and remove unique children; never fall back to a host temp root.
           TMPDIR: ${{ runner.temp }}
           BW_TEST_SHARD: ${{ matrix.shard }}/4
+          BW_ARRAY_MENU_FAILURE_ROOT: ${{ github.workspace }}/test-results
           BW_ARRAY_NUMBER_VALUE_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
           BW_ARRAY_NAMED_JSON_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
           BW_ARRAY_PRIOR_BINDING_SOURCE: ${{ github.workspace }}/test-results/arrays-number-value-input/arrays.js
@@ -900,6 +901,8 @@ jobs:
             test-results/fast.census.json
             test-results/fast.gui-scope.tsv
             test-results/arrays-number-value-input/
+            test-results/menu-failure-*.json
+            test-results/menu-capture-failed-*.json
           if-no-files-found: error
 
   build:

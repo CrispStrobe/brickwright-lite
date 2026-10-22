@@ -1,5 +1,34 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## Current qualification and continuation — 2026-10-22
+
+Read [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md) before the older
+checkpoints below. The complete hosted F9 run finished, rather than remaining
+pending: its ordinary unit shards report 12,103 passes and 181 failures. The
+complete legacy SDK module has 30 passes and two failures, with its genuine
+original/emitted compilation group passing. Native Array, CLI, word and bitwise
+control cohorts pass. The historical **147 translated / 36 partial / one
+malformed** application census has not been remeasured.
+
+Main's school/SPIKE repair is now normally composed locally, retaining the
+Arcade additions and compiler capabilities. Its compiler selection is a D7
+descendant with identical compiler source; the x86 consumers match the current
+selection and actual execution remains disabled. Earlier hosted controls do
+not qualify the new composition. The incoming motor implementation removes the
+measured eager import chain and restores the historical manual percent-speed
+route, but the unchanged initial-JS budget and affected browser checks must
+measure the final result.
+
+Continue in this order: finish strict menu-companion proof; correct the scoped
+failure witnesses and diagnostic capture; qualify one complete integration
+candidate; inspect actual remaining operands; then perform the full corpus
+permutations. The [failure-witness claim](../lanes/2026-10-22-arcade-failure-witness-maintenance.md)
+is merged. Keep GUI journeys, original/emitted SDK, native execution and corpus
+accounting as separate acceptance tasks. Preserve all original failures and
+unsupported-element reports. Do not add `ci:full`, duplicate hosted dispatches,
+relax budgets or claim application completions from component passes.
+
+
 ## Latest observed state and next work — 2026-10-21
 
 ### Latest incremental closure

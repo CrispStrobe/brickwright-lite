@@ -311,6 +311,14 @@ full-OS, broad DOSBox, physical-timing, RTx or release claim.
 
 ## Next finite GUI composition and hosted acceptance
 
+Current Arcade composition selects compiler `37bfe28760f60c836097854fb141fd114bbee518` from
+main's reviewed supplier adoption. Its compiler source is identical to D7;
+both x86 consumer literals match the current selection. Actual execution remains
+disabled. The preceding F9 hosted source workflow passed all 67 Node control
+groups, including twelve GUI groups; it supplies no current composed GUI/guest,
+tool or external-event qualification. Keep the following D7 record as historical
+source maintenance and preserve its original reader identities.
+
 Current D7 supplier-consumer maintenance is a SOURCE candidate: the fixed SB3
 selection in `scripts/run-i80386-hdd-gui-actual.py` and
 `scripts/read-i80386-hdd-gui-originals.py` is

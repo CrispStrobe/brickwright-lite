@@ -79,7 +79,33 @@ test('closed pure constructors before overwrite do not exempt constructor public
     const early=source(base.replace('let gap=0;','let gap=0;let early=new Box(2);'));
     checks(early,true);checkProject(early.project,false);assert.deepEqual(projectJsonToArcade(JSON.stringify(early.project)).unsupported,[]);
     rejectedSource(base.replace('class Box{constructor(public n:number){}}','let published=0;class Box{constructor(public n:number){published=n;}}').replace('let gap=0;','let gap=0;let early=new Box(2);'));
-    rejectedSource(base.replace('class Box{constructor(public n:number){}}','class Box{constructor(public n:number){game.onUpdate(function(){});}}').replace('let gap=0;','let gap=0;let early=new Box(2);'));
+    const callbackSource=base.replace('class Box{constructor(public n:number){}}','class Box{constructor(public n:number){game.onUpdate(function(){});}}').replace('let gap=0;','let gap=0;let early=new Box(2);');
+    assert.ok(arcadeToPseudocode(callbackSource).unsupported.length,'the exact callback source is structurally refused before export');
+    const callback=source(base.replace('let gap=0;','let gap=0;let early=new Box(2);'));
+    checks(callback,true);
+    const safeBefore=JSON.stringify(callback.project);
+    const writes=callback.project.targets.flatMap(target=>Object.entries(target.blocks).filter(([,node])=>node.opcode==='arcade_setObjectField').map(([id,node])=>({target,id,node})));
+    assert.equal(writes.length,1,'actual sole constructor own-field write');
+    const {target,id:writeId,node}=writes[0];
+    const literal=(block,name)=>{const raw=block.inputs[name][1];return Array.isArray(raw)?raw[1]:target.blocks[raw].fields.TEXT[0];};
+    const declarations=Object.values(target.blocks).filter(block=>block.opcode==='arcade_declareClass'&&literal(block,'NAME')==='Box');
+    assert.equal(declarations.length,1,'actual Box declaration');
+    let definition=node;const seen=new Set();
+    while(definition.opcode!=='procedures_definition'){
+        assert.ok(definition.parent&&!seen.has(definition),'constructor body has an owned physical ancestry');seen.add(definition);
+        definition=target.blocks[definition.parent];assert.ok(definition);
+    }
+    const prototype=target.blocks[definition.inputs.custom_block[1]];
+    assert.equal(prototype.mutation.proccode,literal(declarations[0],'CONSTRUCTOR'),'the edited node belongs to the declared constructor');
+    const registrationId='__constructor_update_effect';assert.equal(Object.hasOwn(target.blocks,registrationId),false);
+    const next=node.next;
+    target.blocks[registrationId]={opcode:'arcade_registerUpdateHandler',inputs:{TOKEN:[1,[10,'handler']],CAPTURES:[1,[10,'']]},fields:{},next,parent:writeId,shadow:false,topLevel:false};
+    node.next=registrationId;if(next)target.blocks[next].parent=registrationId;
+    const before=JSON.stringify(callback.project);checks(callback,false);
+    assert.ok(projectJsonToArcade(before).unsupported.length,'the actual constructor registration remains refused by export');
+    assert.equal(JSON.stringify(callback.project),before,'proof and export retain the actual edited constructor graph');
+    node.next=next;if(next)target.blocks[next].parent=writeId;delete target.blocks[registrationId];
+    assert.equal(JSON.stringify(callback.project),safeBefore);checks(callback,true);
     refusals(localPrefix.replace('arcade set local unrelated to ((0 + 0))','arcade set local __proto__ to "foreign"'));
     const badURL=parse(localPrefix);badURL.project.extensionURLs.arrays='https://example.invalid/foreign-arrays.js';checks(badURL,false);
     const foreign=parse(localPrefix);foreign.project.extensions.push('foreign');checks(foreign,false);
