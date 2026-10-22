@@ -1592,20 +1592,28 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const applyEndStops = () => {
         const brake = new Set();
         for (const st of endStops) {
-            // A native frame-relative rack retains position phase and its
-            // slider limit supplies the stall reaction. A duty drive must keep
-            // applying its torque: cancelling it near the limit parks the rack
-            // short, and cancelling at the exact limit causes chatter. Retain
-            // the existing velocity, passive and legacy world-rate guards.
-            if (st.hinge.isMotor && st.hinge.mode === 'torque' && sliderMap.has(st.joint) &&
-                typeof J.RackMeshConstraintSettings === 'function') continue;
             const end = atEndOf(st.joint, st.limits);
             if (end === 0) continue;
             const h = st.hinge;
             if (h.isMotor && h.mode === 'torque') {
                 // A power drive (PWM: a torque through the hinge's spring, applyHingeTorque) pushing into the end: the
                 // spring's target is where the hinge is, so only its damping (the back-EMF) acts this step.
-                if (h.driveTorque !== 0 && Math.sign(st.k * h.driveTorque) === end) h.hinge.SetTargetAngle(normalizeAngle(h.hinge.GetCurrentAngle()));
+                if (h.driveTorque !== 0 && Math.sign(st.k * h.driveTorque) === end) {
+                    const angle = h.hinge.GetCurrentAngle();
+                    const slider = sliderMap.get(st.joint);
+                    let offset = 0;
+                    if (slider && typeof J.RackMeshConstraintSettings === 'function') {
+                        // The native rack retains position phase. Limit the
+                        // spring target to the actual end, rather than freezing
+                        // wherever the proximity band first caught the rack.
+                        // Keep the existing damping and never increase or
+                        // reverse commanded torque, or undo an earlier stop.
+                        const commanded = deltaAngle(h.hinge.GetTargetAngle(), angle);
+                        const remaining = st.limits[end > 0 ? 1 : 0] - slider.position;
+                        offset = clamp(remaining / st.k, Math.min(0, commanded), Math.max(0, commanded));
+                    }
+                    h.hinge.SetTargetAngle(normalizeAngle(angle + offset));
+                }
             } else if (h.isMotor) {
                 const drive = h.hinge.GetTargetAngularVelocity();
                 if (drive !== 0 && h.hinge.GetMotorState() === J.EMotorState_Velocity && Math.sign(st.k * drive) === end) h.hinge.SetTargetAngularVelocity(0);
