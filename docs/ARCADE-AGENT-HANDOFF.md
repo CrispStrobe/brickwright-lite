@@ -29,6 +29,53 @@ unsupported-element reports. Do not add `ci:full`, duplicate hosted dispatches,
 relax budgets or claim application completions from component passes.
 
 
+### Next semantic work: separate three return failures
+
+The complete [function-return module](../test/makecode-arcade-function-returns.test.mjs)
+reports **nine passes and three failures** in the hosted F9 unit run. Each failed
+case passes its native/Code checks, then stops at initial export with the native
+addition refusal. Exact rejected operands and type facts were not captured;
+exported SDK compilation and save/reload are not reached for those cases.
+Do not claim that all three have the same cause.
+
+1. **Closed numeric recursion and mutual recursion.** The actual generic value
+   graph deliberately adds `Opaque` to cyclic call results and excludes cyclic
+   immutable-function facts. Formal parameters already receive actual entry
+   initialization and argument propagation; a blanket initialization change is
+   the wrong starting point. Claim a new private normal-return Number proof for
+   closed recursive call components, with a narrow producer-query/native-addition
+   bridge and focused complete controls. Existing numeric claims explicitly
+   refuse recursion, so merge an expanded claim first. Keep generic `Opaque`
+   intact, preserve real calls and effects, and reject unknown entries, aliases,
+   defaults, fallthrough/undefined returns, opaque writers and source changes.
+   Prove values on normal return; do not invent termination or replace recursion
+   with constants. Qualify actual exported inputs before claiming either case.
+2. **Sprite forwarding and numeric properties.** The third case includes
+   `sprite.x += 5` and has no source class. The existing class scalar view returns
+   early without a class, and the generic graph has no proven Sprite property
+   contract. Capture the actual rejected operand first. Any new numeric-property
+   fact must join genuine SDK allocations, receiver identity, aliases, every
+   writer and effects; a Sprite annotation or field spelling grants no fact.
+   Treat this as a separate capability until current evidence links it otherwise.
+3. **Alias forwarding through the second owned Array export.** Use the newly
+   enabled five-leaf hosted failure capture to inspect current project, draft,
+   importer and refusal values. Preserve first/second export stages separately.
+   Do not substitute an older capture or weaken initialization/reset checks.
+
+For each capability, extend the GUI ledger with an explicit authoring journey:
+Code/pseudocode and connected Blocks, edit an operand or return, save/fresh reopen,
+run with the controller/stage, export and compile in MakeCode, and freshly
+reimport. Sprite artwork and position edits must affect the game. Source tests
+alone do not qualify those representations. The manual Robot Lab control's
+Power label also needs a separate GUI scope clarifying its existing percent-speed
+mode versus dedicated fixed-duty SPIKE power; it is not physical PWM acceptance.
+
+The menu guard now has ten passing complete controls and a passing production
+check on retained hosted JavaScript/HTML. Reporting and overwrite witnesses pass
+all 23 complete controls. New-build, affected browser/guest and full corpus
+qualification still belong to the final integration head.
+
+
 ## Latest observed state and next work — 2026-10-21
 
 ### Latest incremental closure

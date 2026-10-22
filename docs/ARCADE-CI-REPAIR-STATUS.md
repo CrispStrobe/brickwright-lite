@@ -22,7 +22,9 @@ qualify all converted programmes or the graphics-editor journey.
    fixed-duty PWM separate from the historical Robot Lab manual percent-speed
    route. The visible manual control still says Power; clarifying its actual
    mode is an open GUI task. Requalify the combined SPIKE and Robot Lab checks.
-2. **Repair emitted menu isolation recognition.** The table moved to a real
+2. **Menu isolation repaired locally; qualify the new build.** All ten
+   complete controls and the production guard against the retained hosted
+   JavaScript/HTML inputs pass. The table moved to a real
    shared lazy companion. Prove the actual loader, bound normalizer and table
    dependency, retaining eager/preload rejection and every size limit. A marker
    somewhere in lazy output is insufficient. See the
@@ -46,6 +48,13 @@ qualify all converted programmes or the graphics-editor journey.
 6. **Finish x86 acceptance.** Keep the source controls and actual GUI/guest
    admission separate. Fresh tool, installed supplier, external event and
    independent-reader evidence remain required; the actual switch stays off.
+
+The complete four-module reporting/overwrite cohort now passes **23 tests**,
+without failures, skips or TODOs. Its first attempted episode stopped at an
+incorrect observer-input catalogue: metadata had stripped comments although the
+canonical tests transform complete raw source. The catalogue was corrected by
+reconstructing the exact raw transformations; product and test guards stayed
+unchanged. Both the original failure and corrected acceptance are retained.
 
 Batch these repairs into one complete candidate before another hosted push.
 Use the existing checks; do not add `ci:full` or dispatch duplicate builds.
