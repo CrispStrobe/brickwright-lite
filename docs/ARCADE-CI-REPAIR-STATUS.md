@@ -1,6 +1,47 @@
 # Arcade integration repairs and qualification order
 
-## Latest complete hosted observation — 22 October 2026
+## Latest hosted observation — 22 October 2026
+
+The [next integration run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39719305574)
+for candidate `f92ba12441be` completed all four unit shards: **12,160 pass,
+168 fail, 19 skip and 43 TODO**. Compared with the earlier run, thirteen
+failures are resolved and no previously passing title newly fails. All eleven
+SPIKE power controls pass, including loaded Jolt, dialect and StopAll cases.
+The standard build and the Robot Lab browser groups pass. The heavy browser
+job is still pending at this checkpoint; the numeric authoring job failed.
+This candidate is not qualified to merge.
+
+The complete legacy SDK cohort is **31 pass / one fail**. Constructor callback
+witnesses now pass. The sole remaining mixed Array writer/alias forwarding case
+fails at its **initial export**, refusing the actual Array producer for mutation
+and indexing. This current result supersedes the older second-export attribution.
+All eight menu controls pass. Their absence of failure captures is expected;
+the failing typing fixture writes `typing-*` files, which the artifact upload
+omitted. Include those existing diagnostic files before changing semantics;
+the original missing data cannot be recovered by downloading the artifact again.
+
+The existing 47 source controls, 39 numeric controls, eight native counters,
+three animation carriers, 48 native Array controls and CLI/word/bitwise cohorts
+pass in the hosted observations. **147 native-addition failures across 88 test
+modules remain**; a shared reason string does not establish a shared cause.
+Application totals remain **147 translated / 36 partial / one malformed**, with
+no fresh complete application census.
+
+The authoring browser journey reached actual refusal reason, operand context
+and preserved-asset assertions, then an open Code actions menu intercepted its
+report-collapse pointer click. Close the menu through its real summary and
+assert it closed, preserving every report assertion and normal pointer action.
+Requalify the entire journey; no forced click or timeout increase is justified.
+
+Next: batch that journey repair and complete diagnostic upload, then implement
+[closed recursive numeric normal results](https://github.com/CrispStrobe/brickwright-lite/pull/1213)
+only after its claim merges. Keep generic cyclic `Opaque` facts, actual calls,
+all writer/entry checks and the complete original tests. Sprite-property
+forwarding, class/Array producer refusal families and actual authoring/save/
+reopen/MakeCode compilation require separate evidence. These component results
+grant no application-completion credit.
+
+## Earlier complete hosted observation — 22 October 2026
 
 The [integration run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39705808582)
 at `f9e8bca35f` finished with failures. Across the four ordinary unit shards,

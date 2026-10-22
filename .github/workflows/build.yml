@@ -903,6 +903,10 @@ jobs:
             test-results/arrays-number-value-input/
             test-results/menu-failure-*.json
             test-results/menu-capture-failed-*.json
+            test-results/typing-failure-*.json
+            test-results/typing-capture-failed-*.json
+            test-results/effect-failure-*.json
+            test-results/effect-capture-failed-*.json
           if-no-files-found: error
 
   build:

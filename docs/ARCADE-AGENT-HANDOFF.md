@@ -1,6 +1,25 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-## Current qualification and continuation — 2026-10-22
+## New hosted checkpoint — 22 October 2026
+
+Read [the latest repair observation](ARCADE-CI-REPAIR-STATUS.md) first. The next
+hosted unit run reports **12,160 passes / 168 failures**: thirteen old failures
+resolved, zero newly failing titles. SPIKE power11 and Robot Lab groups pass;
+legacy SDK controls improve to **31/32**, with mixed Array forwarding still
+refused at initial export. Existing upload globs omitted that fixture's typing
+captures, so its current operands remain unavailable. Complete the existing
+capture route rather than infer them from older observations.
+
+The standard build passes; numeric authoring stops at an open actions menu
+intercepting a report click. The source repair uses the real summary and retains
+all assertions. The complete candidate still needs qualification; historical
+**36 partial applications remain unremeasured**. Next conversion capability is
+[the bounded recursive Number proof claim](https://github.com/CrispStrobe/brickwright-lite/pull/1213).
+Merge that scope before implementation; preserve generic cyclic refusals and
+track Code, Blocks, fresh reopen, actual export/compiler and graphics journeys
+separately. No additional manual build dispatch or `ci:full` label is needed.
+
+## Earlier qualification and continuation — 2026-10-22
 
 Read [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md) before the older
 checkpoints below. The complete hosted F9 run finished, rather than remaining

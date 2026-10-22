@@ -48,3 +48,15 @@ no product guard. The exact native score consumer and diagnostic environment /
 upload globs are in the same source candidate. Final hosted policy and complete
 legacy SDK checks remain required; the alias failure still needs its actual
 captured operands. No application completion count has changed.
+
+## Hosted follow-up — 22 October 2026
+
+The complete 32-control hosted cohort now reports 31 passes and one failure.
+The constructor witness passes; mixed Array writer forwarding still refuses
+at its initial export. The existing typing capture uses `typing-failure-*`,
+while the previous upload covered only `menu-*`; all eight menu controls pass
+and produce no failure captures. Include the existing typing and effect
+capture prefixes in the same unit artifact. Preserve the original missing
+captures and failure: the next complete run must supply actual current operands
+before a semantic diagnosis. No new run, job, condition, test selection or limit
+is added.

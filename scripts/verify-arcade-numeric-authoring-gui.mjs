@@ -113,6 +113,18 @@ const apply = async () => {
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await page.waitForFunction(() => window.Blockly?.getMainWorkspace()?.getAllBlocks(false).some(block => block.type === 'arcade_clampNumber'));
 };
+// Downloads do not close a native details menu. Use the same summary a user
+// clicks before interacting with the report underneath the actions popover.
+const closeCodeActions = async () => {
+    const menu = page.getByTestId('bw-code-actions');
+    await menu.waitFor({state: 'attached'});
+    if (await menu.evaluate(element => element.open)) await menu.locator('summary').click();
+    await page.waitForFunction(() => {
+        const menu = document.querySelector('[data-testid="bw-code-actions"]');
+        return Boolean(menu && !menu.open);
+    });
+    assert.equal(await menu.evaluate(element => element.open), false, 'Code actions closed before report interaction');
+};
 const openFile = async file => {
     await codeTab(); await openCodeActions(page);
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles(file);
@@ -270,7 +282,7 @@ try {
     });
     await openCodeActions(page);
     const [exported] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
-    const exportedPath = path.join(out, 'numeric-authoring-export.mkcd'); await exported.saveAs(exportedPath);
+    const exportedPath = path.join(out, 'numeric-authoring-export.mkcd'); await exported.saveAs(exportedPath);await closeCodeActions();
     const exportedBytes = await readFile(exportedPath), embedded = await readMakeCodeProjectText(exportedBytes.toString('utf8'), 'mkcd');
     report.export = {sha256: digest(exportedBytes), bytes: exportedBytes.length};
     await original(embedded.files, finalOptions, false); await original(embedded.files, finalOptions, true);
@@ -294,7 +306,7 @@ try {
     await authorCode(partialCode);const assetsBeforeRefusal = await currentAssets();
     await openCodeActions(page);
     const [partialDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
-    const partialPath = path.join(out, 'numeric-authoring-refusal.mkcd');await partialDownload.saveAs(partialPath);await page.keyboard.press('Escape');
+    const partialPath = path.join(out, 'numeric-authoring-refusal.mkcd');await partialDownload.saveAs(partialPath);await closeCodeActions();
     const panel = page.getByTestId('bw-conversion-report');await panel.waitFor({state: 'visible'});
     const unsupported = page.getByTestId('bw-conversion-unsupported');await unsupported.waitFor({state: 'visible'});
     assert.match(await unsupported.innerText(), /native addition requires initialized primitive or proved flat Array operands/);
@@ -311,7 +323,7 @@ try {
     assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0, 'editing cannot display a previous export result');
     await openCodeActions(page);
     const [cleanDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
-    await cleanDownload.saveAs(path.join(out, 'numeric-authoring-clean-after-refusal.mkcd'));await page.keyboard.press('Escape');
+    await cleanDownload.saveAs(path.join(out, 'numeric-authoring-clean-after-refusal.mkcd'));await closeCodeActions();
     await page.getByTestId('bw-conversion-report').waitFor({state: 'visible'});
     assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0);
     await page.getByTestId('bw-conversion-report').locator('div').first().click();
