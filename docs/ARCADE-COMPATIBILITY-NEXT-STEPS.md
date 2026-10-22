@@ -2,6 +2,26 @@
 
 ## Latest complete hosted result and current repair
 
+The current composition's first unit shard has completed with **3,397 passes,
+42 failures, six skips and fourteen TODOs** across 3,459 tests. This is one shard,
+not a replacement full-run or application census. Its identity module now
+passes **7/8**; the remaining failure is the positive two-formal baseline before
+the order-negative check. The next candidate retains that assertion and captures
+its actual project, consumer and single validation result on failure. Diagnose
+that graph before changing producer authority or the fixture's semantics.
+
+All three original function-return refusal captures are now retained from the
+[original shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39850339272/job/120080453419).
+The recursive and parameter-writing failures reject recursive Call operands
+with Opaque/Number domains and initialization false. Their actual drafts contain
+closed Boolean comparison helpers, which the Number-only function grammar
+rejects. [Amendment #1237](https://github.com/CrispStrobe/brickwright-lite/pull/1237)
+scopes their proper Boolean handling with actual Number arguments and unchanged
+binding/effect/currentness checks. The separate Sprite failure rejects the
+actual `sprite.x` Member in `Game_move`; this requires its own producer repair.
+The original twelve cases still report **9/12**. No later compile or saved-project
+stage is claimed for a refused export.
+
 The [published Array-prefix checkpoint](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39737626495)
 completed with **12,174 passes, 173 failures, 19 skips and 43 TODOs** across
 12,409 tests. Compared with the preceding checkpoint, one existing failure is
@@ -16,7 +36,8 @@ and the emitted-name assertion assumed namespaces would not compose. A source
 correction selects the actual alias receiver by physical binding/ID, binds the
 actual emitted identity symbol to its call, and directly authors the local
 currentness control with a changed-return negative. All refusal assertions and
-late-observer/restoration checks remain; this correction awaits hosted execution.
+late-observer/restoration checks remain. The current first shard passes seven
+groups; the two-formal positive remains under investigation as described above.
 
 The whole 55-control recursive source cohort and six refusal-observer groups
 pass. The original function-return module remains **9/12**: recursive/mutual
@@ -36,8 +57,8 @@ consumer is added under the existing canonical VM model scope key; no new
 provider or value authority is granted. Complete qualification remains pending.
 
 [Diagnostic claim #1227](https://github.com/CrispStrobe/brickwright-lite/pull/1227)
-is merged, and bounded failure evidence in the original twelve-test module
-awaits hosted execution. It retains the actual project argument, consumed Code
+is merged, and bounded failure evidence from all three original refusals is now
+retained. It contains the actual project argument, consumed Code
 and export result, including emitted files and native-addition draft. Read the
 `arcade-original-function-return-export-v1` assertion message; a size or
 serialization refusal is explicitly unavailable evidence. Preserve all twelve
@@ -68,7 +89,8 @@ and camera/readiness/nullable-length producers alongside lexical Array length.
 No supplier identity, assertion, diagnostic or resource bound was relaxed.
 
 The original function-return diagnostic capture and corrected identity controls
-are part of this same candidate. Require its own complete hosted results; do
+are part of this same candidate. Its partial first-shard results are above;
+require its own complete hosted results before landing, and do
 not borrow either parent's green checks. Source review is not runtime or corpus
 qualification, and the original export-refusal investigation remains open.
 

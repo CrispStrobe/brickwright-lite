@@ -57,7 +57,23 @@ function aliasMutation(project){
 function accepted(project){
     assert.equal(isProjectJsonSnapshot(project),true);
     const proof=createArrayReferenceExportAuthority(project),rows=consumers(project);
-    for(const {target,node} of rows)assert.equal(proof.validateInput(target,node).ok,true,'actual supported '+node.opcode);
+    for(const {target,node} of rows){
+        const result=proof.validateInput(target,node),ok=result.ok;
+        let message='actual supported '+node.opcode;
+        if(ok!==true){
+            const schema='array-identity-positive-refusal-v1',limitBytes=1024*1024;
+            try{
+                const capture=JSON.stringify({schema,project,consumer:{target:target.name,
+                    id:Object.keys(target.blocks).find(id=>target.blocks[id]===node),opcode:node.opcode},result});
+                const bytes=Buffer.byteLength(capture,'utf8');
+                message+='\n'+(bytes<=limitBytes?capture:
+                    JSON.stringify({schema,captureStatus:'UNAVAILABLE_SIZE',bytes,limitBytes}));
+            }catch{
+                message+='\n'+JSON.stringify({schema,captureStatus:'UNAVAILABLE_SERIALIZATION',limitBytes});
+            }
+        }
+        assert.equal(ok,true,message);
+    }
     return {proof,rows};
 }
 function freshNegative(edit,{canonical=true}={}){
