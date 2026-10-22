@@ -5769,3 +5769,20 @@ the earlier export. Independent saved-result review verified current inputs,
 source and module loads. Preserve the outer wrapper failure on Node's module
 format warning; this is an observed conversion result, not an all-pass wrapper
 or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](ARCADE-NUMERIC-CLOSURE-RESULTS.md#ordinary-default-export-observation--2026-10-22).
+
+### Forwarded Sprite receiver source candidate
+
+The ordinary factory/forwarding candidate is documented in
+[the class-lineage contract](ARCADE-CLASS-LINEAGE.md#ordinary-sprite-factories-and-forwarded-normal-results).
+It proves selected x/y normal results through real factory, argument, return and
+alias cells, retaining selected Image effects and callback/writer refusals.
+It changes neither execution nor the visible editor surface; hosted qualification
+and the original saved-project roundtrip remain pending.
+
+GUI follow-up must author the same game with actual existing Sprite and Image
+blocks and pseudocode: create/fill an Image, create two Sprites, return/forward
+them through procedures, mutate x/y through aliases and a returned receiver,
+clone/setImage, then export, compile in MakeCode, reimport and reopen a fresh SB3.
+Check actual positions, pixels, independent allocations, shared aliases and
+effect order. Display unsupported mixed-class/callback cases honestly rather
+than granting a Sprite type from annotations or hiding export refusals.

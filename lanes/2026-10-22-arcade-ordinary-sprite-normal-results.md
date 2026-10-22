@@ -1,4 +1,7 @@
-# Ordinary SDK Sprite normal results — CLAIMED
+# Ordinary SDK Sprite normal results — implementation candidate
+
+DONE for source implementation; complete hosted qualification remains pending.
+This releases implementation ownership, not compatibility or application credit.
 
 Owner: Arcade integration. Branch: `lane/arcade-ordinary-sprite-claim-20261022`.
 Base: `0fc0743d2`. Merge this claim before implementation. Continuation of the
@@ -65,3 +68,24 @@ unchanged dispatch or application-completion credit from source inspection.
 Normally merge the current main and this claim into the owned Arcade candidate,
 verify both parent path inventories, then batch one reviewed implementation push.
 Normal matched-head merges only after all enabled exact-head checks succeed.
+
+## Implementation checkpoint
+
+Claim #1242 merged before implementation. Ordinary class-free factory rows are
+created before source effects propagate. Existing argument/result/member cells
+carry actual factories and forwarding; post-convergence allocation, call arity,
+input, default and Image-effect obligations revoke rows and propagate refusal.
+The original subclass x-only and registry profile is separate. Owned ordinary
+rows support x/y, Image identity, fill, clone and setImage normal-result effects;
+no expression is replaced in emitted or executing source.
+
+Six new pure groups preserve all eight prior receiver groups. Independent source
+reviews cover production and corrected test premises. Execution of these fourteen
+groups, the comparison cohort, original twelve, SDK32 and enabled browser/compiler
+checks remains required on the next hosted candidate. No local execution or new
+application completion is claimed here. The rest-syntax control explicitly checks
+its parser frontier; a separate actual parameter-metadata control tests refusal.
+
+The class-free no-factory route retains its original no-op behavior. A bounded
+data-descriptor syntax selection chooses full validation for possible factories
+or uncertain shapes; it grants no namespace, argument, value or getter fact.

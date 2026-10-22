@@ -17,22 +17,31 @@ const descriptorCurrent=()=>{if(!descriptorProof.isCurrent())descriptorExpired=t
 // Namespace recognition never admits an arbitrary member or callback API.
 export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['Math','SpriteKind']}),images=createSdkImageSourceProducers();
-    const literalImages=new WeakMap(),clonedImages=new WeakMap();
+    const literalImages=new WeakMap(),clonedImages=new WeakMap(),factoryImages=new WeakMap();
     const root=node=>node?.type==='Identifier'?node.name:node?.type==='Member'||node?.type==='Index'?root(node.object):null;
     const roots=new Set(['Sprite','sprites','SpriteKind','Math','img','Image']);
-    let closed=descriptorCurrent();
+    let closed=descriptorCurrent(),imageNamespaceClosed=true;
     for(const node of nodes){
         const target=node.type==='Assignment'?node.left:node.type==='Update'||node.type==='Unary'&&node.op==='delete'?node.argument:null;
         if(target&&roots.has(root(target)))closed=false;
+        if(target&&root(target)==='image')imageNamespaceClosed=false;
     }
     const selected=nodes.some(node=>node.type==='Class'&&bases.has(node.base)&&
         !lexical.bindings.some(binding=>binding.name===node.base.split('.')[0]));
     const direct=node=>parents.get(node)?.type==='Call'&&parents.get(node).callee===node&&!parents.get(node).isNew&&!parents.get(node).constructorCall&&!parents.get(node).typeArguments;
+    // Keep the old subclass profile independent. Ordinary factory rows have
+    // their own x/y and Image contracts; they never grant a child override a
+    // selected SDK getter or broaden a registry receiver set containing classes.
+    const ordinary=imageNamespaceClosed&&!nodes.some(node=>node.type==='Class')&&nodes.some(node=>
+        node.type==='Member'&&node.object?.type==='Identifier'&&node.object.name==='sprites'&&
+        node.name==='create'&&sdk.has(node)&&direct(node));
     const role=node=>{
         if(!closed||!descriptorCurrent()||node?.type!=='Member'||!sdk.has(node)||node.object?.type!=='Identifier')return null;
-        if(node.object.name==='SpriteKind'&&node.name==='Player')return 'kind';
+        if(node.object.name==='SpriteKind'&&(node.name==='Player'||ordinary&&['Projectile','Food','Enemy'].includes(node.name)))return 'kind';
+        if(ordinary&&direct(node)&&node.object.name==='sprites'&&node.name==='create')return 'factory';
+        if(ordinary&&direct(node)&&node.object.name==='image'&&node.name==='create')return 'imageFactory';
         if(direct(node)&&node.object.name==='Math'&&node.name==='round')return 'round';
-        if(direct(node)&&node.object.name==='sprites'&&node.name==='allOfKind')return 'registry';
+        if(!ordinary&&direct(node)&&node.object.name==='sprites'&&node.name==='allOfKind')return 'registry';
         return null;
     };
     const constant=node=>{
@@ -56,8 +65,16 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
             return bases.get(name);
         },
         role,
+        ordinary,
+        factory(node){
+            if(role(node?.callee)!=='imageFactory')return null;
+            if(!factoryImages.has(node)){
+                try{factoryImages.set(node,{kind:'sdkImage',proof:images.factory(node)});}catch{return null;}
+            }
+            return factoryImages.get(node);
+        },
         literal(node,scope){
-            if(!closed||!selected||node?.type!=='Template'||node.tag!=='img')return null;
+            if(!closed||!(selected||ordinary)||node?.type!=='Template'||node.tag!=='img')return null;
             if(!literalImages.has(node)){
                 try{literalImages.set(node,{kind:'sdkImage',proof:images.literal(node,scope)});}catch{return null;}
             }

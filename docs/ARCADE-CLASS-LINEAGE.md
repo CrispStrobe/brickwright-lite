@@ -127,3 +127,40 @@ be Images merely because another call supplied one. The final source cohort and 
 held intermediate source and its withdrawn provisional review are preserved.
 Native execution, original-SDK execution, current normal installation consumption
 and visible editing still require their own complete checks.
+
+## Ordinary Sprite factories and forwarded normal results
+
+The next source candidate reuses `native-sdk-sprite-source.js` and the existing
+`native-class-scalar-view.js` value cells for class-free ordinary factories.
+Actual unshadowed `image.create` uses the existing bounded literal-dimension
+Image issuer; `sprites.create` requires an issued Image alternative and a genuine
+builtin kind. Actual function arguments, returns and aliases carry the resulting
+allocation-site receiver. This is no per-invocation identity or Array certificate.
+
+The selected [SDK factory](https://github.com/microsoft/pxt-common-packages/blob/v14.1.4/libs/game/sprites.ts)
+runs matching created handlers synchronously before returning its real Sprite.
+Every allocation row therefore exists before effect propagation; unknown
+registrations, callbacks, namespace writes, extraction and foreign effects revoke
+these facts even when they occur before the factory in the source. Empty/dormant
+inputs, omitted arguments, unsupported defaults and opaque callers cannot borrow
+a formal populated by another call. Refusal is propagated again to convergence.
+
+Only these ordinary rows acquire selected x/y normal results and an owned Image
+field. Image fill returns Undefined, clone retains a fresh issued Image, image
+reads retain stored Image alternatives, and setImage joins actual Image writes
+while null remains a no-op. Generated nullable locals preserve their original
+faults; only successful Image alternatives enter the stored field. Actual getters,
+factories, calls and arguments remain once in the original execution. No input
+initialization, bounds, termination or exact pixel/position value is inferred.
+The older subclass x-only/override and registry rules remain independent; mixed
+local-class/ordinary-factory programs still need a separately qualified extension.
+
+Six new complete pure groups preserve all eight prior receiver groups. Production
+and test source reviews are complete; fourteen-group execution and the original
+native/Code/MakeCode compile/export/reimport/fresh-SB3 journey remain pending
+hosted qualification. This candidate does not by itself establish GUI parity or
+reduce the application corpus's partial count.
+
+The class-free no-factory route retains its original no-op behavior. A bounded
+data-descriptor syntax selection chooses full validation for possible factories
+or uncertain shapes; it grants no namespace, argument, value or getter fact.

@@ -8,12 +8,41 @@ const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typePar
     'assertedType','ordinaryParameterDefaultNames','bwProcedureConstraintSource']);
 const dangerous=new Set(['constructor','prototype','__proto__']);
 
+// Selection only: absence preserves the old class-free no-op. A possible
+// factory or an uncertain shape goes through the full source/lexical guards;
+// no spelling, argument or value fact is issued by this bounded walk.
+const possibleOrdinaryFactory=program=>{
+    const pending=[program],seen=new WeakSet();let count=0;
+    const own=(node,name)=>node&&typeof node==='object'?Object.getOwnPropertyDescriptor(node,name)?.value:undefined;
+    try{
+        while(pending.length){
+            const node=pending.pop();
+            if(typeof node==='function')return true;
+            if(!node||typeof node!=='object')continue;
+            if(seen.has(node)||++count>20000)return true;seen.add(node);
+            const proto=Object.getPrototypeOf(node);
+            if(proto!==Object.prototype&&proto!==Array.prototype&&proto!==null)return true;
+            const descriptors=Object.getOwnPropertyDescriptors(node);
+            for(const name of Reflect.ownKeys(descriptors)){
+                if(typeof name!=='string')return true;
+                if(metadata.has(name))continue;
+                const descriptor=descriptors[name];if(!Object.hasOwn(descriptor,'value'))return true;
+                if(descriptor.value&&['object','function'].includes(typeof descriptor.value))pending.push(descriptor.value);
+            }
+            const callee=own(node,'callee'),receiver=own(callee,'object');
+            if(own(node,'type')==='Call'&&own(callee,'type')==='Member'&&own(callee,'name')==='create'&&
+                own(receiver,'type')==='Identifier'&&own(receiver,'name')==='sprites')return true;
+        }
+        return false;
+    }catch{return true;}
+};
+
 // Private native-add analysis only. Annotations never seed this graph. Actual
 // constructors, aliases, calls, returns and every field writer contribute.
 // Unsupported/foreign object effects decline these additional scalar facts.
 // The original source is never lowered by this module.
 export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.ordinary) {
-    if(!(program.body||[]).some(node=>node?.type==='Class'))return {program,current:()=>true};
+    if(!(program.body||[]).some(node=>node?.type==='Class')&&!possibleOrdinaryFactory(program))return {program,current:()=>true};
     const guard=inspectGeneratedHelperBindings(program,profile);
     if(!guard.isCurrent())return {program,current:guard.isCurrent};
     // Structural rejection only: this helper never supplies value domains.
@@ -67,6 +96,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     };
     scan(program);
     const sdk=nativeSdkSpriteSource(program,lexical,nodes,parents),sdkParents=new Map();
+    if(!nodes.some(node=>node.type==='Class')&&!sdk.ordinary)return {program,current:guard.isCurrent};
     const sdkParent=name=>{
         const descriptor=sdk.base(name);if(!descriptor)return null;
         if(!sdkParents.has(descriptor)){
@@ -148,6 +178,24 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         return row.lineage;
     };
     for(const row of classes.values())resolveLineage(row);
+    // Allocation-site rows exist BEFORE any call/effect is evaluated. An
+    // earlier unknown callback must poison later factories too. These are
+    // normal-result receiver types, never per-invocation object identities.
+    const ordinaryFactories=new Map(),ordinaryCalls=new Map(),imageEffects=new Map();
+    for(const node of nodes)if(node.type==='Call'&&sdk.role(node.callee)==='factory'){
+        const row={node,sdk:true,ordinary:true,instance:{kind:'instance'},members:new Map(),parent:null};
+        row.instance.row=row;row.lineage=[row];
+        for(const name of ['x','y'])row.members.set(name,{field:key(),sdkSlot:name});
+        row.members.set('image',{field:key(),sdkImageSlot:true});
+        row.members.set('setImage',{sdkMethod:{kind:'sdkSetImage',row}});
+        row.ownMembers=row.members;ordinaryFactories.set(node,row);classes.set(node,row);
+    }
+    const poisonOrdinary=()=>{for(const row of ordinaryFactories.values())mark(row);};
+    const rememberOrdinaryCall=(node,fn,args)=>{
+        if(!ordinaryFactories.size)return;
+        if(!ordinaryCalls.has(node))ordinaryCalls.set(node,new Map());
+        ordinaryCalls.get(node).set(fn,args);
+    };
     for(const scope of lexical.functions){
         const row=[...classes.values()].find(row=>row.node.ctor===scope.node||(row.node.methods||[]).includes(scope.node));
         const fn={kind:'function',node:scope.node,scope,result:key(),row};functions.set(scope.node,fn);
@@ -223,6 +271,9 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         if(!rows.has(row))rows.set(row,{kind:'boundFunction',fn,row});
         return rows.get(row);
     };
+    const fillMethods=new WeakMap(),sdkFill=image=>{
+        if(!fillMethods.has(image))fillMethods.set(image,{kind:'sdkFill',image});return fillMethods.get(image);
+    };
     const cloneMethods=new WeakMap(),sdkClone=image=>{
         if(!cloneMethods.has(image))cloneMethods.set(image,{kind:'sdkClone',image});return cloneMethods.get(image);
     };
@@ -243,12 +294,18 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             if(type?.kind==='sdkImage'){
                 const parent=parents.get(node);
                 if(node.name==='clone'&&parent?.type==='Call'&&parent.callee===node&&!parent.isNew)add(result,sdkClone(type));
+                else if(ordinaryFactories.size&&node.name==='fill'&&parent?.type==='Call'&&parent.callee===node&&!parent.isNew)add(result,sdkFill(type));
                 else {poisonAll();add(result,unknown);}continue;
             }
             if(type?.kind!=='instance'){poisonAll();add(result,unknown);continue;}
             const row=type.row,lookup=node.object?.type==='Identifier'&&node.object.name==='super'?superOwner(node):row,member=lookup?.members.get(node.name);
             if(unsafe.has(row)||!member||dangerous.has(node.name)||node.object?.name==='super'&&(member.get||member.set)){add(result,unknown);continue;}
-            if(member.method){
+            if(member.sdkMethod){
+                const parent=parents.get(node);
+                if(parent?.type!=='Call'||parent.callee!==node||parent.isNew||parent.constructorCall){mark(row);add(result,unknown);}
+                else add(result,member.sdkMethod);
+            }else if(member.sdkImageSlot)copy(member.field,result);
+            else if(member.method){
                 const parent=parents.get(node);
                 if(parent?.type!=='Call'||parent.callee!==node){mark(row);add(result,unknown);}else add(result,bound(fnFor(member.method),row));
             }else if(member.get)call(fnFor(member.get),[],result,row);
@@ -265,6 +322,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             if(type?.kind!=='instance'){poisonAll();continue;}
             const row=type.row,isSuper=node.object?.type==='Identifier'&&node.object.name==='super',lookup=isSuper?superOwner(node):row;
             const selected=lookup?.members.get(node.name),member=row.members.get(node.name);
+            if(member?.sdkImageSlot||member?.sdkMethod){mark(row);poison(value);continue;}
             if(!selected||!member||selected.method||dangerous.has(node.name)||isSuper&&(selected.get||selected.set)){mark(row);poison(value);continue;}
             if(member.sdkSlot){
                 const inputs=get(value);if(inputs.size&&[...inputs].some(type=>!primitive.has(type))){mark(row);poisonAll();}continue;
@@ -431,7 +489,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         }
         if(node.type==='Member'){
             const role=sdk.role(node);
-            if(role){add(out,role==='kind'?'Number':role==='round'?'sdkRound':'sdkRegistry');return out;}
+            if(role){add(out,role==='kind'?'Number':role==='round'?'sdkRound':role==='factory'?'sdkFactory':role==='imageFactory'?'sdkImageFactory':'sdkRegistry');return out;}
             evaluate(node.object);memberRead(node,out);return out;
         }
         if(node.type==='Call'){
@@ -455,6 +513,20 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                     allocationInputs.get(node).set(row,args);
                     if(unsafe.has(row)){add(out,unknown);continue;}
                     add(out,row.instance);construct(row,args,row,discard(node));
+                }else if(!node.isNew&&!node.constructorCall&&type==='sdkImageFactory'){
+                    const image=sdk.factory(node);if(image)add(out,image);else {add(out,unknown);poisonAll();}
+                }else if(!node.isNew&&!node.constructorCall&&type==='sdkFactory'){
+                    const row=ordinaryFactories.get(node);
+                    if(!row){add(out,unknown);poisonAll();continue;}
+                    row.inputs=args;
+                    const image=get(args[0]),kind=get(args[1]);
+                    if(args.length===2&&image.size&&kind.size&&
+                        [...image].some(value=>value?.kind==='sdkImage')&&
+                        [...image].every(value=>value==='Null'||value==='Undefined'||value?.kind==='sdkImage')&&
+                        [...kind].every(value=>value==='Number')){
+                        add(out,row.instance);
+                        for(const value of image)if(value?.kind==='sdkImage')add(row.members.get('image').field,value);
+                    }
                 }else if(!node.isNew&&type==='sdkRound'){
                     if(args.length===1){const input=get(args[0]);if(input.size){if([...input].every(value=>primitive.has(value)))add(out,'Number');else {add(out,unknown);poisonAll();}}}
                     else {add(out,unknown);poisonAll();}
@@ -462,11 +534,22 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                     if(args.length===1&&get(args[0]).size&&[...get(args[0])].every(value=>value==='Number'))add(out,'sdkRegistryCollection');
                     else if(args.length!==1||get(args[0])?.size){add(out,unknown);poisonAll();}
                 }else if(!node.isNew&&type?.kind==='sdkClone'){
+                    if(ordinaryFactories.size&&node.constructorCall){add(out,unknown);poisonAll();continue;}
                     const image=sdk.clone(node,[type.image]);if(image)add(out,image);else {add(out,unknown);poisonAll();}
+                }else if(!node.isNew&&!node.constructorCall&&type?.kind==='sdkFill'){
+                    imageEffects.set(node,{kind:'fill',args});
+                    if(args.length===1&&get(args[0]).size&&[...get(args[0])].every(value=>value==='Number'))add(out,'Undefined');
+                }else if(!node.isNew&&!node.constructorCall&&type?.kind==='sdkSetImage'){
+                    imageEffects.set(node,{kind:'setImage',args});
+                    const image=get(args[0]);
+                    if(args.length===1&&image.size&&[...image].every(value=>value==='Null'||value==='Undefined'||value?.kind==='sdkImage')){
+                        for(const value of image)if(value?.kind==='sdkImage')add(type.row.members.get('image').field,value);
+                        add(out,'Undefined');
+                    }
                 }else if(!node.isNew&&type?.kind==='function'){
-                    sourceCallInputs.set(node,args);call(type,args,out);
+                    sourceCallInputs.set(node,args);rememberOrdinaryCall(node,type,args);call(type,args,out);
                 }else if(!node.isNew&&type?.kind==='boundFunction'){
-                    sourceCallInputs.set(node,args);call(type.fn,args,out,type.row);
+                    sourceCallInputs.set(node,args);rememberOrdinaryCall(node,type.fn,args);call(type.fn,args,out,type.row);
                 }else if(!node.isNew&&type?.kind==='aggregatePush'){
                     const row=type.row;
                     if(row.unsafe){add(out,unknown);poison(row.elements);continue;}
@@ -554,6 +637,28 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         }
         for(const args of sourceCallInputs.values())if(args.some(arg=>!get(arg).size))
             for(const row of selectedSdkRows)mark(row);
+        for(const row of ordinaryFactories.values()){
+            const args=row.inputs||[],image=get(args[0]),kind=get(args[1]);
+            if(args.length!==2||!image.size||!kind.size||
+                ![...image].some(value=>value?.kind==='sdkImage')||
+                [...image].some(value=>value!=='Null'&&value!=='Undefined'&&value?.kind!=='sdkImage')||
+                [...kind].some(value=>value!=='Number'))mark(row);
+        }
+        for(const entries of ordinaryCalls.values())for(const [fn,args]of entries){
+            // A populated formal from another caller cannot hide an omitted
+            // argument or dormant empty edge. Defaults need a separate contract.
+            if(args.length!==(fn.node.params||[]).length||
+                [fn.node,fn.node.params].some(value=>value&&(
+                    Object.hasOwn(value,'restParam')||
+                    ['parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams']
+                        .some(name=>value[name]?.length)))||
+                ['async','isAsync','generator','isGenerator'].some(name=>fn.node[name])||
+                args.some(arg=>!get(arg).size||get(arg).has(unknown)))poisonOrdinary();
+        }
+        for(const node of ordinaryCalls.keys())if(node.constructorCall)poisonOrdinary();
+        for(const {kind,args}of imageEffects.values())if(args.length!==1||!get(args[0]).size||
+            [...get(args[0])].some(value=>kind==='fill'?value!=='Number':
+                value!=='Null'&&value!=='Undefined'&&value?.kind!=='sdkImage'))poisonOrdinary();
     }while(changed);
     const current=()=>guard.isCurrent()&&sdk.current();
     if(!current())return {program,current};

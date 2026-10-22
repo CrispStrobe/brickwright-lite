@@ -239,10 +239,26 @@ Completion requires the actual Code/Blocks, assets, save/fresh-reopen, clean
 export and MakeCode acceptance journey passing. Do not substitute the earlier
 saved project or remove captures/reset checks to obtain green.
 
+The composed candidate's official proof artifact retains final visible Code and
+emitted MakeCode files, but its saved SB3 precedes the failed export. The final
+assertion still sees two Array producer refusals. Its native-addition detail is
+from an earlier intentional refusal, not those final Array failures. Claim a
+narrow capture amendment before changing the export/report/verifier boundary:
+`arcadeFromStage` serializes the VM, parses it and removes asset libraries before
+`projectJsonToArcade` receives its exact JSON string. Observing `vm.toJSON()` alone
+therefore misses the consumed input. Retain the original input string and actual
+result from that single invocation with explicit bounded/unavailable status;
+carry it through the existing current-report ownership and save it before the
+unchanged clean-report assertion. Do not wrap global JSON, repeat the export or
+reconstruct the graph from older files. Qualification must retain clean reporting,
+intentional refusal, assets, edited-source invalidation and the original journey.
+
 ### 4. Reconcile the remaining failures and remeasure applications
 
-The last complete unit run has 173 failures: six new identity-control failures
-and 167 retained existing failures. The corrected controls await execution.
+The complete composed unit run has 168 failures and 12,197 passing tests;
+five prior failure titles are resolved and no new failure titles appeared.
+The corrected identity controls pass seven of eight groups; the remaining
+positive two-formal baseline needs its actual project/refusal capture.
 147 failures carry native-addition diagnostics; these are not 147 applications. Group actual
 failures by their captured rejecting predicates and claim one repair area at a
 time. Keep build, pins, old guards, negative controls and unrelated lanes intact.
