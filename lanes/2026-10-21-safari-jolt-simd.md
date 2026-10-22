@@ -45,8 +45,7 @@ Complete moving-chess runs use the real worker, program and model through final
 physical completion. WebKit physics cost falls from approximately 424 to 162
 milliseconds per simulated second. With the separately claimed nominal-clock
 repair, production exact-1× runs measure 0.996× in WebKit and 0.997× in Chromium,
-with identical final poses, no dropped time and all physical outcome checks
-passing. These measurements do not reproduce the user's original 0.31× run.
+with no dropped time and the same physical outcome checks passing. These measurements do not reproduce the user's original 0.31× run.
 Final hosted qualification and normal merge composition remain pending.
 
 Current main subsequently landed the qualified Counterturn/Snapgate and turntable

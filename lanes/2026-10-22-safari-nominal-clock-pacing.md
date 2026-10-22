@@ -36,7 +36,7 @@ intervals and agreement between program and world time at every VM step.
 Complete production moving-chess runs at exact 1× measure 0.996× in WebKit and
 0.997× in Chromium. The knight reaches its target, the other 31 pieces remain
 in place, the head returns home and retracts, and magnetic forces disengage.
-Final poses match the baseline; no dropped time or redo/divergence is reported.
+The unchanged physical outcome checks pass; no dropped time or redo/divergence is reported.
 Final hosted qualification and normal merge composition remain pending.
 
 Hosted browser API execution exposed timer-triggered clock teardown inside a
