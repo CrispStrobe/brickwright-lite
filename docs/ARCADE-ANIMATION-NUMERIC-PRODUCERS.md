@@ -103,7 +103,7 @@ control, rendered pixel result or corpus completion is inferred. Existing menus
 and source export routes are unchanged. Historical 36 partial applications
 remain the last corpus measurement.
 
-## Next SOURCE candidate: closed Image operation entries
+## Qualified source candidate: closed Image operation entries
 
 An unexecuted candidate adds a separate private entry interpreter for literal
 Image arrays, immutable direct local calls and exact selected resource-factory
@@ -157,3 +157,27 @@ Independent saved-result review verified current source, actual module loads,
 input and journal identities and the unchanged resource envelope. Both failed
 originals and the temporary diagnostic are retained; the observer is absent
 from the implementation. Original carrier, SDK and GUI gates remain pending.
+
+
+### Original animation carrier result
+
+All three unchanged original animation resource-carrier tests now pass, with
+no failures, skips or TODOs. They reach the edited frame pixels, same-project
+save/reload, actual export, fresh reimport and fresh VM execution assertions.
+The exported project reports no unsupported elements or warnings. Independent
+saved-result review verifies all five original capture files, actual Storage,
+VM and model providers, and exact source and input identities.
+
+The surrounding audit wrapper still fails its exact capture-metadata identity
+comparison: JSON numbers round filesystem nanosecond timestamps beyond
+JavaScript's safe integer range. An independent reader verifies the exact
+kernel identities against the frozen inputs; this does not change the failed
+comparison or make the wrapper pass. Preserve that failure and the earlier
+two-pass/one-failure original. No successful test is rerun for this metadata
+issue. Retained providers differ from the current installed VM in three files;
+this is not current installed-app, SDK compilation or browser qualification.
+
+The remaining gates are original/emitted SDK compilation and affected clean
+GUI journeys: connected Blocks, Code and pseudocode, animation and graphics
+editing, save/fresh reopen and actual export/reimport execution. Historical
+corpus counts remain unremeasured; no application completion is claimed.
