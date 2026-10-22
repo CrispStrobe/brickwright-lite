@@ -45,9 +45,12 @@ verify the running game uses the edited collection and artwork. Preserve actual
 Undefined/uninitialized semantics wherever representation is required; report
 an unsupported representation instead of silently substituting a Scratch zero.
 
-The original edited-animation export still stops before later pixel operands
-are qualified. Source controls do not qualify rendered pixels, SDK execution,
-these editor journeys or any additional complete corpus application.
+The original three-test animation carrier now passes, including actual export
+and edited pixels in fresh VM execution. The 47-control Image/factory source
+cohort also passes. The audit wrapper retains its timestamp serialization
+identity failure; exact source identities were independently verified. These
+results do not qualify rendered browser pixels, SDK execution, the editor
+journeys above or an additional complete corpus application.
 
 ## Captured lexical declaration readiness — conversion controls only
 

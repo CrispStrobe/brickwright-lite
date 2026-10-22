@@ -125,7 +125,7 @@ qualification remain pending.
 
 ## Qualified Image operation entry candidate
 
-The next isolated SOURCE candidate changes only the native-domain consumer,
+The qualified isolated SOURCE candidate changes only the native-domain consumer,
 a new private `image-pixel-normal-results.js` module, its complete eight-group
 source tests and this contract/documentation. Shared Image/SDK contracts,
 clone exposure, runtime, resource emission and original carrier assertions are
@@ -136,10 +136,10 @@ Actual immutable entries, selected Array returns, complete writer/effect
 closure and genuine Image receiver operations are required before issuing
 normal-result Number facts for `.length`/`getPixel`. Reached logging or unknown
 callback/effect paths refuse; unused fallback text is retained. Every original
-call/argument and possible error stays present. This candidate is not yet
-executed: the complete old ten modules/thirty-nine controls plus the new whole
-eight controls, related Image/resource regressions, original three-test carrier,
-original/emitted SDK and affected clean GUI/runtime gates remain pending.
+call/argument and possible error stays present. The complete old ten modules/thirty-nine controls plus the new whole eight
+controls now pass, as does the original three-test carrier described below.
+Related Image/resource regressions, original/emitted SDK and affected clean
+GUI/runtime gates remain pending.
 Historical failures and application counts are unchanged.
 
 The first complete 47-control attempt and its diagnostic successor each
@@ -153,8 +153,8 @@ controls remain in the same eight groups. Shared helpers are unchanged and the
 temporary observer is removed. The corrected complete eleven-module cohort
 passes all 47 controls with no failures, skips or TODOs. Independent saved-result
 review verifies all source, actual module and journal identities and resource
-bounds. Both failed originals remain retained. Original carrier, SDK and GUI
-acceptance are pending; no app-count change is claimed.
+bounds. Both failed originals remain retained. Original carrier results follow below; SDK and GUI
+acceptance remain pending, and no app-count change is claimed.
 
 
 ### Original animation carrier result
@@ -172,7 +172,7 @@ JavaScript's safe integer range. An independent reader verifies the exact
 kernel identities against the frozen inputs; this does not change the failed
 comparison or make the wrapper pass. Preserve that failure and the earlier
 two-pass/one-failure original. No successful test is rerun for this metadata
-issue. Retained providers differ from the current installed VM in three files;
+issue. Retained providers differ from the current raw VM source in three files;
 this is not current installed-app, SDK compilation or browser qualification.
 
 The remaining gates are original/emitted SDK compilation and affected clean

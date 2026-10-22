@@ -23,11 +23,18 @@ See [the exact capability and next tasks](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md)
 Static fresh-resource emission now passes all **32 tests across three complete
 affected source modules**, without skips. It preserves the raw AST API and
 fallback paths; the earlier 31-pass/one-fail fixture original is retained.
-The complete edited-animation export remains unqualified. Next close exact
-image pixel result/effect provenance and the remaining raw-API/factory effects.
-SDK logging can call listeners and cannot be treated as inert. Preserve dynamic
-fallback and all original application assertions. The merged producer claim
-owns this work; changes to shared SDK/effect-contract paths need expanded scope.
+Closed Image/factory normal results now pass all **47 controls across eleven
+complete source modules**. All **three unchanged original animation carrier
+tests** also pass: edited frame pixels survive save/reload, actual export,
+fresh reimport and fresh VM execution, with no unsupported elements or warnings.
+The audit wrapper retains a failed exact metadata comparison because JavaScript
+rounds filesystem nanosecond timestamps; independent saved-result review verifies
+the exact source identities. This is an observed test success with an audit
+serialization failure, not an all-pass wrapper. Retained VM providers differ
+from the current raw VM source in three files. Original/emitted SDK compilation,
+current installed-runtime and actual editor/browser acceptance remain pending.
+No historical partial-app count has been remeasured.
+
 
 Latest main has been normally composed locally, preserving its new Robot Lab
 library, both sides of the scope ledger and the 16-group browser matrix.
@@ -66,8 +73,8 @@ Creator supplies its default Stage asset during save, not in its asset map.
 The diagnostic now uses the genuine package rather than a substitute image or
 a weakened assertion. This example did not reproduce a native-addition refusal.
 
-The complete original edited-animation case now has two passes and one export
-failure. Exact current export arguments and the returned diagnostic identify
+The preceding original edited-animation case had two passes and one export
+failure (superseded by the three passing original tests above). Exact current export arguments and the returned diagnostic identify
 an initialized `count` after `count = frames.length`, with `Opaque` and `Number`
 producer facts. Its actual resource context and all original assertions remain
 retained. The [next producer work](ARCADE-CI-REPAIR-STATUS.md#readiness-analysis-and-overlapping-power-work)

@@ -38,14 +38,18 @@ refusal, avoiding vacuous negatives. No product helper-name recognizer changed.
 Static fresh-resource emission through owned JSON now passes its complete
 three-module, 32-test affected source cohort without failures or skips. The
 preceding 31-pass/one-failure original is retained; only the new fixture's fixed
-settings menu spelling changed. This does not yet fix the complete edited
-animation case: exact image pixel producers and raw-API/factory effects remain
-open. The genuine SDK's
-logging invokes registered listeners, so do not exempt fallback logging as
-inert. Specialize only actual admitted constant resources, preserving every
-remaining dynamic fallback, then prove exact current image/index/operation
-results and effects before rerunning the original carrier. Null/missing values,
-unknown writers, method overrides and Opaque refusals remain meaningful.
+settings menu spelling changed. Closed Image/factory normal results now pass all **47 controls across eleven
+complete source modules**. All **three unchanged original animation carrier
+tests** also pass: edited frame pixels survive save/reload, actual export,
+fresh reimport and fresh VM execution, with no unsupported elements or warnings.
+The audit wrapper retains a failed exact metadata comparison because JavaScript
+rounds filesystem nanosecond timestamps; independent saved-result review verifies
+the exact source identities. This is an observed test success with an audit
+serialization failure, not an all-pass wrapper. Retained VM providers differ
+from the current raw VM source in three files. Original/emitted SDK compilation,
+current installed-runtime and actual editor/browser acceptance remain pending.
+No historical partial-app count has been remeasured.
+
 
 The local composition preserves latest main's Robot Lab additions and its
 16-group browser matrix. Old three-group results do not qualify that combined

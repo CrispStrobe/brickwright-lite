@@ -13,15 +13,18 @@ nine-module, 31-test follow-up, retaining the preceding 23 controls. These are
 source capabilities, not new complete applications. Preserve initialization,
 writer, TDZ and unknown-entry negatives rather than weakening the operand guard.
 
-The actual edited-animation case remains two passes and one export refusal,
-first at the initialized count after frames.length. Static fresh-resource emission through actual owned serialized data now passes
-its complete affected source cohort. Next close genuine image pixel
-result/effect provenance and remaining raw-API/factory effect boundaries. Logging can invoke listeners;
-unknown fallback is not inert. Keep dynamic evaluation, fresh/shared identity,
-missing values and all original assertions. The
-[producer contract](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md) defines scope and
-refusal obligations. Do not replay the unchanged carrier while its effect
-boundary remains ineligible.
+Closed Image/factory normal results now pass all **47 controls across eleven
+complete source modules**. All **three unchanged original animation carrier
+tests** also pass: edited frame pixels survive save/reload, actual export,
+fresh reimport and fresh VM execution, with no unsupported elements or warnings.
+The audit wrapper retains a failed exact metadata comparison because JavaScript
+rounds filesystem nanosecond timestamps; independent saved-result review verifies
+the exact source identities. This is an observed test success with an audit
+serialization failure, not an all-pass wrapper. Retained VM providers differ
+from the current raw VM source in three files. Original/emitted SDK compilation,
+current installed-runtime and actual editor/browser acceptance remain pending.
+No historical partial-app count has been remeasured.
+
 
 The complete callable-counter module now passes all eight tests, closing the
 two preceding export refusals. All 39 affected source controls also pass.
@@ -38,7 +41,7 @@ Static fresh-animation source controls now pass all 32 tests across the three
 complete affected modules, with no skips. Preserve the earlier 31-pass/one-fail
 original: its new settings fixture used a quoted fixed-menu value rejected
 before export. Correcting that phrase left production and assertions unchanged.
-The SDK, GUI and existing raw-API carrier remain separate acceptance work;
+The SDK and GUI remain separate acceptance work;
 this cohort is distinct from the deferred SDK cohort. Neither component result
 is a measured reduction of historical partial apps.
 

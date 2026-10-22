@@ -105,7 +105,7 @@ remain the last corpus measurement.
 
 ## Qualified source candidate: closed Image operation entries
 
-An unexecuted candidate adds a separate private entry interpreter for literal
+The qualified source candidate adds a separate private entry interpreter for literal
 Image arrays, immutable direct local calls and exact selected resource-factory
 returns. It can follow the exporter's existing encoded-resource analysis view
 through Array returns, known element indices and actual `.length`/`getPixel`
@@ -126,9 +126,9 @@ never becomes an Image. Coordinates initially require actual primitive known
 safe integers; annotations and same-name methods provide no authority.
 
 The eight-group source test module and all prior ten whole modules/thirty-nine
-controls are mandatory next source qualification: **eleven modules, forty-seven
-controls, not yet executed**. Related complete clone/Image/resource producer
-regressions and the original three-test artwork carrier remain mandatory.
+controls pass as **eleven complete modules, forty-seven controls**. The
+unchanged original three-test artwork carrier also passes as described below.
+Related clone/Image/resource producer regressions remain required hosted gates.
 No local fit is assumed; no filtering or cap increase replaces a complete gate.
 Original/emitted SDK compilation and affected hosted/browser journeys remain
 pending. The original raw carrier failure is preserved until both its actual
@@ -156,7 +156,7 @@ TODOs, preserving all preceding 39 and eight new Image/factory groups.
 Independent saved-result review verified current source, actual module loads,
 input and journal identities and the unchanged resource envelope. Both failed
 originals and the temporary diagnostic are retained; the observer is absent
-from the implementation. Original carrier, SDK and GUI gates remain pending.
+from the implementation. Original carrier results are recorded below; SDK and GUI gates remain pending.
 
 
 ### Original animation carrier result
@@ -174,7 +174,7 @@ JavaScript's safe integer range. An independent reader verifies the exact
 kernel identities against the frozen inputs; this does not change the failed
 comparison or make the wrapper pass. Preserve that failure and the earlier
 two-pass/one-failure original. No successful test is rerun for this metadata
-issue. Retained providers differ from the current installed VM in three files;
+issue. Retained providers differ from the current raw VM source in three files;
 this is not current installed-app, SDK compilation or browser qualification.
 
 The remaining gates are original/emitted SDK compilation and affected clean
