@@ -54,8 +54,7 @@ test('Counterturn retains its bevel coupling without warning about distant turnt
     const p = prepareModel(text, catalog);
     assert.equal(p.mechanism.couplings.length, 1);
     assert.equal(p.mechanism.couplings[0].ratio, -0.6);
-    assert.deepEqual(p.issues.filter(d => d.code !== 'gear-not-on-hinge'), []);
-    assert.equal(p.issues.length, 8, 'the eight real ballast gears retain their declared notes');
+    assert.deepEqual(p.issues, [], 'isolated ballast gears need no transmission axle');
 });
 
 for (const [part, ringX] of [['18938.dat', 74], ['18939.dat', 64]]) {

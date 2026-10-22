@@ -1,6 +1,6 @@
 # Bit Keeper startup and unused-gear diagnostic
 
-CLAIMED — owner: Robot Lab model delivery, isolated
+DONE — source candidate; owner: Robot Lab model delivery, isolated
 `lane/bit-keeper-startup-20261022`, base `a4876dadf7`.
 
 The user reports no visible action and a gear-without-turning-axle note in
@@ -22,3 +22,26 @@ and timeouts may not be weakened to obtain a pass. Normal source qualification
 and matched-head landing follow local proof. The pending cable-source PR and
 its immutable preview remain preserved until an explicitly composed preview
 is ready.
+
+The unchanged original geometry passes the full browser/native two-state
+experiment. Its long lead-in and one-degree-per-second input obscure activity.
+The demo now settles for half a second, then uses bounded four-degree-per-second
+sweeps; fine neutral trims, six-second observations and all physical bounds stay.
+Native early-response checks fail on the old program and pass now: the input
+moves within 1.5 seconds, the passive output changes sides within five seconds,
+and the example completes in approximately 26 seconds. The no-band and frozen
+negatives still fail the memory criterion. EN/DE lessons explain the timing and
+the ballast. The actual browser judge now also checks startup and completion.
+
+An isolated gear rigidly carried by a hinged assembly no longer gets a missing
+transmission-axle note. Genuine tooth contact, rack/worm/chain engagement and
+loose unfinished gears retain diagnostics. The same correction removes the
+eight Counterturn ballast notes. Independently compiled mechanisms for both
+models are byte-equivalent apart from diagnostic records. Seventy-five affected
+model/gear controls and forty-one coupling/Counterturn controls pass (overlapping
+modules included); no Jolt/compiler/metadata/pin edits.
+
+The existing cable source is normally composed for one integrated preview,
+preserving the independent claim/source branch and current statistics overlay.
+Final committed production browser checks and exact-head source CI are required
+before matched-head source landing; their actual receipts belong in the PR.
