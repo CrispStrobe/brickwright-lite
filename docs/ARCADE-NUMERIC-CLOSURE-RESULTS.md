@@ -1,13 +1,12 @@
 # Numeric closure normal results
 
-## Source controls qualified; native export qualification pending
+## Source and native export controls qualified
 
-The complete existing counter module has six passes and two export refusals.
-The observed refusal is an initialized top-level RIGHT Identifier with Opaque
-provenance; its name and physical source attribution were unavailable. The
-source candidate now passes the complete affected source cohort below. The
-original eight native tests have not yet run on this candidate; no observed
-runtime value or assertion substitutes for the result proof.
+The complete existing counter module now passes **all eight tests**, closing
+its two preceding export refusals. Preserve the original six-pass/two-failure
+run: its initialized top-level RIGHT Identifier had Opaque provenance, with no
+available operand name. The source proof below establishes normal returned
+values without substituting observed runtime values.
 
 The private source proof supports a closed first slice: immutable module
 factories, complete actual numeric arguments, straight-line local stores before
@@ -45,16 +44,19 @@ the unexecuted earlier source-review hold: its malformed/flag negatives queried
 an unrelated object. The correction retains the actual invocation nodes and
 requires their refusal; production code was unchanged.
 
-Next run all eight original counter tests with genuine normal dependencies,
-without changing assertions, callbacks or cleanup. Their new resource fit
-remains unmeasured; preserve any resource failure without filtering, sharding
-or cap increases. Preserve every original
-failure and record real operand diagnostics before assertions. Full affected
-native-domain and source suites, original/emitted MakeCode compilation, and
-current hosted integration remain necessary. A pure producer pass is neither
-SDK/browser qualification nor corpus or application completion. The existing
-local legacy 32-test resource failure remains preserved and is not retried,
-filtered or relabelled by this work.
+All eight original counter tests now pass without changed assertions, frames,
+callbacks or cleanup. The actual edited body and renamed alias export and
+freshly reimport with values 9, 16 and 9; the reserved-parameter case preserves
+score 10. All five real export calls retain unchanged input snapshots, and
+intentional invalid return, assignment and identity edits still produce their
+required diagnostics. Independent saved-result review checked all fifteen
+captures and the complete current source and genuine dependency guards.
+
+This finite component run uses the retained audited runtime installation;
+full current installed-runtime qualification, original/emitted MakeCode
+compilation and browser/GUI acceptance remain open. Preserve the preceding
+failure and the legacy 32-test resource failure. No filtered replay, sharding
+or larger local limit is authorized. The historical corpus count is unchanged.
 
 ## GUI acceptance still pending
 
