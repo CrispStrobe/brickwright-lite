@@ -861,6 +861,11 @@ export class BaseTranslator {
                     continue;
                 }
                 if (d.init) this.assign(this.varName(d.name), d.init, indent, out);
+                // An uninitialised `let s: string` must not become `set s to 0`:
+                // that is a number, so export.js types the global as a number and
+                // pxt refuses the re-export ("Type 'string' is not assignable to
+                // type 'number'"). Preserve the declared type's zero value.
+                else if (/\bstring\b/i.test(d.typeName || '')) push(`set ${this.varName(d.name)} to ""`);
                 else push(`set ${this.varName(d.name)} to 0`);
             }
             return;
