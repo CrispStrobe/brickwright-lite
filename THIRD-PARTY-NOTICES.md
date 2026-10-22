@@ -2602,3 +2602,18 @@ see `static/sim-lab/licenses/cusp-lab.txt`. The model uses 128 standard parts
 and one motor. Its two real marker holes illustrate a cycloid cusp and a
 prolate trochoid loop. Referenced LDraw geometry retains its separate notices.
 Native/browser simulation and physical hardware construction are separate scopes.
+
+### Balance Engine
+
+Original regenerated CrispStrobe assembly and finite program, BSD-3-Clause;
+see `static/sim-lab/licenses/balance-engine.txt`. The arrangement reuses the
+previously licensed CrispStrobe Quickstroke construction patterns and adds
+two independent drives and two centring bands: 292 rigid placements and two
+physical bands (294 components). External LDraw meshes retain their notices.
+Simulation parameters do not establish calibrated hardware rubber stiffness.
+
+### Root Bridge
+
+Original model and program by Christian Ströbele (CrispStrobe), BSD-3-Clause.
+The repaired rails and supports preserve the input-only geometric-mean mechanism.
+Full license: `overlay/scratch-gui/static/sim-lab/licenses/root-bridge.txt`.

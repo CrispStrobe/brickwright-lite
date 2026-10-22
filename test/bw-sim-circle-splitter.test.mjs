@@ -79,3 +79,15 @@ test('circle-splitter: a frozen output body fails the measurement', async () => 
     for (const frame of frozen.track) frame.bodies[body.id] = structuredClone(frozen.track[0].bodies[body.id]);
     assert.throws(() => judgeCircleSplitter('circle-splitter', frozen), 'a frozen output must fail');
 });
+
+
+test('Circle: removing only the stationary sun gear destroys the actual straight-line law',async()=>{
+ const text=read(`${LAB}models/circle-splitter.ldr`).toString();
+ const removed=text.replace(/0 !BW ID sun_gear\n1 [^\n]*\n/,'');
+ assert.notEqual(removed,text);assert.equal(parseModel(text).model.parts.length-parseModel(removed).model.parts.length,1);
+ const r=await runRobotLabProgram(read(`${LAB}programs/circle-splitter.bw`).toString(),{modelText:removed,timeLimitMs:100000});
+ assert.ok(r.finishedAt);const motor=r.mechanism.joints.find(j=>j.motor);
+ const angles=r.track.map(f=>f.joints[motor.id].angle);
+ assert.ok(Math.max(...angles)-Math.min(...angles)>6,'The physical input still completes its turn');
+ assert.throws(()=>judgeCircleSplitter('circle-splitter',r),'Real sun-gear loss must fail the identical motion judge');
+});

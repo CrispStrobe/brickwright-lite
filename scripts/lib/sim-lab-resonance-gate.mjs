@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {exportedProject} from './sim-lab-integral-gate.mjs';
 import {openManualControls} from './sim-lab-manual-controls.mjs';
 
 const PRESETS = [
@@ -276,10 +277,8 @@ export async function resonanceInteractions(page, opts) {
     assert.equal(await page.evaluate(()=>window.__bwSimLab._pane.state.shipped),null,'custom model stays custom');
     const savedRecord=await page.evaluate(()=>window.__bwSimLab.projectRecord);
     await page.getByText('File',{exact:true}).click();
-    const download=page.waitForEvent('download',{timeout:30000});
-    await page.getByText('Save to your computer',{exact:true}).click();
     const savedPath=resolve(shotsDir,'resonance-roundtrip.sb3');
-    await (await download).saveAs(savedPath);
+    await exportedProject(page,savedPath);
     await choose(page,'driving-base.ldr');
     const priorLoad=await page.evaluateHandle(()=>window.__bwSimLab._pane.session);
     await page.getByText('File',{exact:true}).click();

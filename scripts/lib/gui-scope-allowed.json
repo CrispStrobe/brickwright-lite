@@ -160,7 +160,9 @@
       "test/bw-sim-new-models.test.mjs",
       "test/bw-sim-circle-splitter.test.mjs",
       "test/bw-sim-integral.test.mjs",
-      "test/bw-sim-cusp.test.mjs"
+      "test/bw-sim-cusp.test.mjs",
+      "test/bw-sim-balance-engine.test.mjs",
+      "test/bw-sim-root-bridge.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },
@@ -557,7 +559,9 @@
       "test/bw-sim-new-models.test.mjs",
       "test/bw-sim-circle-splitter.test.mjs",
       "test/bw-sim-integral.test.mjs",
-      "test/bw-sim-cusp.test.mjs"
+      "test/bw-sim-cusp.test.mjs",
+      "test/bw-sim-balance-engine.test.mjs",
+      "test/bw-sim-root-bridge.test.mjs"
     ],
     "why": "SIMD-capable physical controls use the qualified optional single-thread Jolt variant through the same GUI dependency boundary; the explicitly listed baseline callers also exercise its supported variant"
   }

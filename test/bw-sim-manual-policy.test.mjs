@@ -111,3 +111,15 @@ test('each bounded model resolves its own real source and saved project without 
   assert.equal(await resolve(parseModel(serializeModel(parsed)).model),entry.manualJog,entry.file+' saved');
  }
 });
+
+
+test('rounded Root Bridge project retains its published finite controls',async()=>{
+ const source=read('overlay/scratch-gui/static/sim-lab/models/root-bridge.ldr');
+ const original=parseModel(source).model,saved=parseModel(serializeModel(original)).model;
+ assert.notDeepEqual(saved.parts,original.parts,'The real serializer rounds the supplied non-cardinal placements');
+ const limits=MODELS.find(m=>m.file==='root-bridge.ldr').manualJog;
+ const resolve=createManualPolicyResolver({models:[{file:'root-bridge.ldr',manualJog:limits}],parseModel,loadText:async()=>source});
+ assert.equal(await resolve(original),limits);assert.equal(await resolve(saved),limits);
+ const moved=structuredClone(saved);moved.parts[0].position[0]+=.00001;
+ assert.equal(await resolve(moved),null,'A representable physical edit is still a different assembly');
+});

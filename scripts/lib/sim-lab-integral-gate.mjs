@@ -24,7 +24,7 @@ export async function exportedProject(page,project){
  });
  try{
   await page.getByText('Save to your computer',{exact:true}).click();
-  const route=await Promise.any([download,shared]);console.log('PASS Integral GUI export: '+route);
+  const route=await Promise.any([download,shared]);console.log('PASS actual GUI project export: '+route);
   await page.keyboard.press('Escape');
  }finally{
   await page.evaluate(()=>{const state=window.__bwProjectShareObservation;if(!state)return;if(state.own)Object.defineProperty(navigator,'share',state.own);else delete navigator.share;delete window.__bwProjectShareObservation;});

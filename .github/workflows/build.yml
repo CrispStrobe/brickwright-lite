@@ -1975,6 +1975,16 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
         run: npm run verify:sim-lab -- --part=examples --examples=cusp-lab,product-plotter,gimbal-lab,sky-courier
 
+      - name: Browser gate — Robot Lab root-bridge complete example
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=root-bridge
+
+      - name: Browser gate — Robot Lab balance-engine complete example
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=balance-engine
+
       - name: Browser gate — Robot Lab linger complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}

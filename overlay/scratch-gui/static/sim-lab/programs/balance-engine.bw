@@ -1,0 +1,148 @@
+# BSD 3-Clause License
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Copyright (c) 2026, Christian Ströbele (CrispStrobe)
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+# Balance Engine — regenerated edition, 22 October 2026.
+# Robot Lab experiment; import the matching LDR and reset its saved pose first.
+# Two motors drive inline slider cranks on a passive band-centred carrier.
+# A and B rotate about the same world axis; two real bands centre the carrier.
+# Three trials: B leads A by 0, 90, then 180 degrees; four turns per trial.
+# Each trial returns to its starting phase. Both inputs finish at encoder zero.
+# Lab speeds are degrees/second. This is simulator code, not hub firmware.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL commandSpeed = 60
+GLOBAL phase = 0
+GLOBAL experiment = 0
+GLOBAL stage = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set completed to 0
+  set failed to 0
+  set experiment to 0
+  set phase to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    set stage to -1
+    say "Reset the model to its saved pose before running."
+    stop all
+  IF (abs of (lab motor B angle)) > 1 THEN:
+    set failed to 1
+    set stage to -1
+    say "Reset the model to its saved pose before running."
+    stop all
+  broadcast "balance watchdog"
+  REPEAT 3:
+    set experiment to (experiment + 1)
+    set phase to ((experiment - 1) * 90)
+    set stage to 1
+    set targetA to 0
+    set targetB to phase
+    set commandSpeed to 60
+    broadcast "balance move" and wait
+    wait 0.5 seconds
+    set stage to 2
+    set targetA to 1440
+    set targetB to (1440 + phase)
+    set commandSpeed to 180
+    broadcast "balance move" and wait
+    set stage to 3
+    wait 0.5 seconds
+    set stage to 4
+    set targetA to 0
+    set targetB to phase
+    set commandSpeed to 180
+    broadcast "balance move" and wait
+    wait 0.5 seconds
+  set stage to 5
+  set targetA to 0
+  set targetB to 0
+  set commandSpeed to 60
+  broadcast "balance move" and wait
+  lab stop motor A hold
+  lab stop motor B hold
+  set stage to 6
+  set completed to 1
+  say "Finished: 0, 90 and 180 degree trials; both cranks home."
+
+WHEN I receive "balance move":
+  IF (abs of (targetA - (lab motor A angle))) > 0.2 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at commandSpeed degrees per second
+  lab stop motor A hold
+  wait 0.1 seconds
+  REPEAT 3:
+    IF (abs of (targetA - (lab motor A angle))) > 0.2 THEN:
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 5 degrees per second
+      lab stop motor A hold
+      wait 0.1 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    set failed to 1
+    set stage to -1
+    say "Crank A missed its target. Inspect and reset the model."
+    stop all
+
+WHEN I receive "balance move":
+  IF (abs of (targetB - (lab motor B angle))) > 0.2 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at commandSpeed degrees per second
+  lab stop motor B hold
+  wait 0.1 seconds
+  REPEAT 3:
+    IF (abs of (targetB - (lab motor B angle))) > 0.2 THEN:
+      lab run motor B for (targetB - (lab motor B angle)) degrees at 5 degrees per second
+      lab stop motor B hold
+      wait 0.1 seconds
+  IF (abs of (targetB - (lab motor B angle))) > 0.5 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    set failed to 1
+    set stage to -1
+    say "Crank B missed its target. Inspect and reset the model."
+    stop all
+
+WHEN I receive "balance watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 85 THEN:
+      lab stop motor A hold
+      lab stop motor B hold
+      set failed to 1
+      set stage to -1
+      say "Experiment timed out. Inspect and reset the model."
+      stop all
+    wait 0.1 seconds

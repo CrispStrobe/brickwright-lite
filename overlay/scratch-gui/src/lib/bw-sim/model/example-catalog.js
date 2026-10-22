@@ -281,6 +281,34 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "root-bridge.ldr": {
+        "pieces": 443,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two motors set positive input distances. Perpendicular sliding guides locate a passive output at their geometric mean; equal products give the same output.",
+            "de": "Zwei Motoren stellen positive Eingangsstrecken ein. Senkrechte Schiebeführungen legen den passiven Ausgang auf ihr geometrisches Mittel fest; gleiche Produkte ergeben denselben Ausgang."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "balance-engine.ldr": {
+        "pieces": 294,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Two slider-cranks drive a passive spring-centred carrier. Compare 0°, 90° and 180° phasing: primary piston motions add or cancel, while finite rod length leaves a residual.",
+            "de": "Zwei Schubkurbeltriebe bewegen einen passiven, durch Bänder zentrierten Träger. Vergleiche 0°, 90° und 180° Phasenversatz: Die primären Kolbenbewegungen addieren sich oder heben sich auf; die endliche Pleuellänge lässt einen Rest."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "cusp-lab.ldr": {
         "pieces": 128,
         "motors": 1,

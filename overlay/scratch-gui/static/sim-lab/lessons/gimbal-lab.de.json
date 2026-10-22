@@ -4,7 +4,7 @@
   "language": "de",
   "what": "Motor A dreht den orangefarbenen Gierrahmen. Motor B bewegt sich mit ihm und neigt den blauen Nickrahmen. Motor C sitzt auf diesem Rahmen und dreht ein grünes Orientierungskreuz mit gelber und weißer Spitze. Die gehaltenen azurblauen Räder dienen als Gegengewichte. Drei motorisierte, verschachtelte Achsen zeigen eine Orientierungssingularität. Vergleiche Gieren und Rollen bei 0°, 60° und 90° mittlerer Neigung: Nahe 90° heben sich zwei Motorbewegungen am Marker fast auf, während alle Lager beweglich bleiben.",
   "try": [
-    "Importiere das mitgelieferte Modell oder setze es auf die gespeicherte Lage zurück. Füge gimbal-lab.bw in Code ein, wähle To Blocks und danach Run. Die endliche Vorführung endet mit allen Motoren in gehaltener Ausgangslage. Vor einer Wiederholung zurücksetzen.",
+    "Öffne Gimbal Lab unter Beispiele; das Programm lädt automatisch. Zurücksetzen, dann Ausführen. Die endliche Vorführung hält zum Schluss alle drei Motoren in Ausgangsstellung; vor einer Wiederholung zurücksetzen.",
     "Vergleiche bei 0° mittlerer Neigung Gieren allein mit Rollen allein. Verfolge die beiden senkrecht zueinander stehenden Achslinien und die Markerspitzen.",
     "Sage bei der 60°-Stufe voraus, ob äußere und innere Achse schon identisch sind. Sie nähern sich an, liefern aber weiterhin drei unabhängige momentane Drehrichtungen.",
     "Beobachte nahe 90°, wie A auf +20° und C auf −20° fährt. Rahmen und Drehgeber bewegen sich, während sich ihre Wirkungen auf die Markerorientierung fast aufheben. Bei genau 90° ist die ideale Aufhebung vollständig.",

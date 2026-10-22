@@ -9,7 +9,7 @@ import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
-    simulatedMsFor = () => simulatedMs,
+    simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false,
     fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
@@ -35,7 +35,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
             const m = s.mechanism;
             const record = window.__bwMechanics = {start: s.time, runModel:s.runModel, mechanism: m, hubId: s.bridge.hubBody,
                 issues: pane.state.issues, unsupported: [], track: []};
-            s.onAdvance(() => {
+            const capture = () => {
                 const bodies = {};
                 for (const b of m.bodies.filter(b => b.motion === 'dynamic')) bodies[b.id] = s.core.bodyPose(b.id);
                 const joints = {};
@@ -45,7 +45,9 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
                 if (observeProgram && !record.finishedAt && s.time-record.start>1000 && !pane.props.vm.runtime.threads.some(t=>t.status!==4)) record.finishedAt=s.time;
                 const extra=observeProgram?{variables:Object.fromEntries(pane.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]))}:null;
                 record.track.push({t: s.time, bodies, joints, busy, ...(extra?{extra}: {})});
-            });
+            };
+            window.__bwCaptureMechanics = capture;
+            s.onAdvance(capture);
         }, observeProgram);
         await page.getByTestId('bw-sim-lab-speed').selectOption(String(speed));
         await page.getByTestId('bw-sim-lab-run').click();
@@ -53,9 +55,13 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         // The pane briefly drops its session while a model or program reloads; a
         // predicate that dereferences it then fails the whole gate with a TypeError
         // instead of waiting for the next frame.
-        await page.waitForFunction(ms => Boolean(window.__bwSimLab?._pane?.session) &&
-            window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= ms,
-            simulatedForThis, {timeout});
+        await page.waitForFunction(({ms, paused}) => {
+            const pane=window.__bwSimLab?._pane;if(!pane?.session)return false;
+            if(!paused)return pane.session.time-window.__bwMechanics.start>=ms;
+            return pane.session.time-window.__bwMechanics.start>1000&&window.__bwSimLab.status==='paused'&&
+                !pane.props.vm.runtime.threads.some(t=>t.status!==4);
+        }, {ms:simulatedForThis,paused:completeWhenPausedFor(id)}, {timeout});
+        if(completeWhenPausedFor(id))await page.evaluate(()=>window.__bwCaptureMechanics());
         const r = await page.evaluate(() => window.__bwMechanics);
         if (observeProgram) writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
         results[id] = judge(id, r);

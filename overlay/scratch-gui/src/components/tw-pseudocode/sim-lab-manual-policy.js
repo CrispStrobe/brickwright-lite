@@ -2,16 +2,20 @@
 // Copyright (c) 2026 Brickwright contributors
 // Manual UI policy follows unchanged saved structure, independently of gallery/program identity.
 
-const canonical = value => {
+// The model writer stores geometry with six decimal places. Compare that same
+// representation so an unchanged save cannot drop finite controls. Physical
+// parameters (including bearing resistance) retain their full numeric value.
+const GEOMETRY = new Set(['position', 'rotation', 'matrix', 'rotorAngle', 'lengthLdu', 'tip', 'center', 'radiusLdu']);
+const canonical = (value, geometry = false) => {
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (Array.isArray(value)) return value.map(canonical);
+    if (typeof value === 'number' && Number.isFinite(value)) return geometry ? Number(value.toFixed(6)) : value;
+    if (Array.isArray(value)) return value.map(item => canonical(item, geometry));
     if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort()
-        .filter(key => value[key] !== undefined).map(key => [key, canonical(value[key])]));
+        .filter(key => value[key] !== undefined).map(key => [key, canonical(value[key], geometry || GEOMETRY.has(key))]));
     throw new Error('Manual policy requires a finite, serializable saved model');
 };
 
-/** Exact parsed saved structure, including custom geometry; only attribution and instruction steps are omitted. */
+/** Saved structure at the writer's precision, including custom geometry; omit attribution and instruction steps. */
 export const manualAssemblyKey = model => {
     if (!model || !Array.isArray(model.parts) || !model.parts.length) return null;
     const structure = Object.fromEntries(Object.entries(model).filter(([key]) => key !== 'attribution' && key !== 'steps'));

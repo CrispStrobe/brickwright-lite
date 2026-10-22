@@ -113,10 +113,13 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'root-bridge.ldr', title: {en: 'Root Bridge — passive geometric mean', de: 'Root Bridge — passives geometrisches Mittel'}, example: 'root-bridge.bw', mat: 'plain',
+        manualJog: {A: {minDeg: -17.4, maxDeg: 22.8, stepDeg: 2, speedDps: 8}, B: {minDeg: -22.8, maxDeg: 17.4, stepDeg: 2, speedDps: 8}}},
+    {file: 'balance-engine.ldr', title: {en: 'Balance Engine — reciprocating-mass balance', de: 'Balance Engine — Ausgleich hin- und hergehender Massen'}, example: 'balance-engine.bw', mat: 'plain'},
     {file: 'cusp-lab.ldr', title: {en: 'Cusp Lab — rolling-gear curve machine', de: 'Cusp Lab — Kurvenmaschine mit rollendem Zahnrad'}, example: 'cusp-lab.bw', mat: 'plain',
         manualJog: {A: {minDeg: -360, maxDeg: 0, stepDeg: 10, speedDps: 10}}},
     {file: 'gimbal-lab.ldr', title: {en: 'Gimbal Lab — three-axis gimbal lock', de: 'Gimbal Lab — dreiachsige Gimbal-Sperre'},
-        example: 'gimbal-lab.bw', mat: 'plain', intro: {
+        example: 'gimbal-lab.bw', mat: 'plain', manualJog: {A: {minDeg: -30, maxDeg: 30, stepDeg: 5, speedDps: 10}, B: {minDeg: -5, maxDeg: 95, stepDeg: 5, speedDps: 10}, C: {minDeg: -30, maxDeg: 30, stepDeg: 5, speedDps: 10}}, intro: {
             en: 'Three nested frames put yaw, pitch and roll on separate motors. At 90° middle pitch the outer and inner axes align, so opposite A/C moves cancel at the green marker even though every bearing still turns.',
             de: 'Drei verschachtelte Rahmen verteilen Gieren, Nicken und Rollen auf getrennte Motoren. Bei 90° mittlerer Neigung liegen die äußere und innere Achse auf einer Linie; entgegengesetzte A/C-Bewegungen heben sich am grünen Marker auf, obwohl sich jedes Lager weiter dreht.'
         }},
@@ -135,7 +138,7 @@ export const MODELS = Object.freeze([
     {file: 'crossline.ldr', title: {"en": "Crossline — geared straight-line pair", "de": "Crossline — Geradführung durch Gegenrotation"}, example: 'crossline.bw', mat: 'plain'},
     {file: 'counterturn.ldr', title: {en: 'Counterturn — a free carrier and flywheel', de: 'Counterturn — freier Träger und Schwungrad'}, example: 'counterturn.bw', mat: 'plain'},
     {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
-        example: 'product-plotter.bw', mat: 'plain', intro: {
+        example: 'product-plotter.bw', mat: 'plain', manualJog: {A: {minDeg: -15, maxDeg: 15, stepDeg: 2, speedDps: 10}, B: {minDeg: -75, maxDeg: 75, stepDeg: 10, speedDps: 30}}, intro: {
             en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',
             de: 'Motor A neigt eine gerade Führung; Motor B verschiebt die grüne Schiene. Ihr Schnittpunkt bewegt den passiven orangefarbenen Schlitten. Ähnliche Dreiecke machen seinen Weg zum Produkt beider Eingaben, geteilt durch eine feste Bezugslänge.'
         }},

@@ -21,7 +21,7 @@ const fakeApi = ({angle = 0, direct = true, encoderOk = true, result = {ok: true
 test('all three Resonance choices have the same finite port A policy; unrestricted choices keep their controls', () => {
     const bounded = MODELS.filter(model => model.file === 'resonance-lab.ldr');
     assert.deepEqual(bounded.map(model => model.id || model.file), ['resonance-lab.ldr', 'resonance-lab-slow', 'resonance-lab-fast']);
-    assert.equal(MODELS.filter(model => model.manualJog === undefined).length, 85);
+    assert.equal(MODELS.filter(model => model.manualJog === undefined).length, 84);
     for (const model of bounded) assert.deepEqual(model.manualJog, {A: LIMITS});
 });
 

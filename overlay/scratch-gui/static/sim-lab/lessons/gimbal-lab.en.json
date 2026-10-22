@@ -4,7 +4,7 @@
   "language": "en",
   "what": "Motor A turns the orange yaw cradle. Motor B rides on it and tilts the blue pitch frame. Motor C rides on that frame and turns a green attitude cross with yellow and white tips. The retained azure wheels balance the pitch assembly. Three motorized nested axes reveal an orientation singularity. Compare yaw and roll at 0°, 60° and 90° middle pitch; near 90°, two moving motors nearly cancel at the marker while every bearing remains free.",
   "try": [
-    "Import or reset the supplied model to its saved pose. Paste gimbal-lab.bw into Code, choose To Blocks, then Run. The finite demonstration finishes holding all three motors at home; reset before repeating.",
+    "Open Gimbal Lab in Examples; the program loads automatically. Reset, then Run. The finite demonstration finishes holding all three motors at home; reset before repeating.",
     "At the 0° middle-pitch stage, compare yaw alone with roll alone. Follow the two perpendicular motor-axis lines and the marker tips.",
     "At the 60° stage, predict whether the outer and inner axes are already identical. They approach one another but still give three independent instantaneous rotation directions.",
     "Near the 90° stage, watch A move to +20° and C to −20°. The frames and encoders move while their effects on marker orientation nearly cancel. The ideal cancellation is exact at precisely 90°.",

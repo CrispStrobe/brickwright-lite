@@ -11,6 +11,8 @@ import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {mechanicsInteractions,manualMechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
 
+import {judgeBalance} from './sim-lab-balance-judge.mjs';
+import {judgeRootBridge} from './sim-lab-root-bridge-judge.mjs';
 import {judgeSky} from './sim-lab-sky-judge.mjs';
 import {judgeCusp} from './sim-lab-cusp-judge.mjs';
 import {judgeProduct,judgeGimbal} from './sim-lab-product-gimbal-judge.mjs';
@@ -18,7 +20,9 @@ import {judgeProduct,judgeGimbal} from './sim-lab-product-gimbal-judge.mjs';
 const DEG = 180 / Math.PI;
 
 const SPEC = Object.freeze({
-    'cusp-lab': {simulatedMs: 80000, motors: 1, minimumRange: {A: 359}, marker: 'marker_r20', span: {x: 49}},
+    'root-bridge': {simulatedMs:125000},
+    'balance-engine': {simulatedMs: 80000},
+    'cusp-lab': {simulatedMs: 80000, motors: 1, minimumRange: {A: 359}, marker: 'marker_r20', span: {}},
     'product-plotter': {
         simulatedMs: 47000,
         motors: 2,
@@ -49,6 +53,8 @@ const quaternionAngle = (a, b) => {
 const bodyWithPart = (mechanism, part) => mechanism.bodies.find(body => (body.parts || []).includes(part));
 
 export const judgeNewModel = (id, record) => {
+    if(id==='root-bridge')return judgeRootBridge(record);
+    if(id==='balance-engine')return judgeBalance(record);
     const spec = SPEC[id];
     assert.ok(spec, `${id}: known delivery`);
     assert.ok(record.finishedAt, `${id}: the program finished: ${JSON.stringify({finishedAt: record.finishedAt})}`);
@@ -114,22 +120,24 @@ export async function newModelsInteractions(page, opts) {
     for (const id of models) {
         Object.assign(results, await mechanicsInteractions(page, {
             ...opts, models: [id], judge: judgeNewModel,
-            simulatedMsFor: key => SPEC[key].simulatedMs, speed: 4, observeProgram: true
+            simulatedMsFor: key => SPEC[key].simulatedMs, completeWhenPausedFor:key=>key==='root-bridge', speed: 4, observeProgram: true
         }));
         await manualMechanicsInteractions(page,{...opts,models:[id]});
         await page.getByTestId('bw-sim-lab-instructions').click();
         await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
         const plan=await page.evaluate(()=>window.__bwSimLabInstructions.plan);
-        const count={'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
+        const count={'root-bridge':443,'balance-engine':292,'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
+        const bands=id==='balance-engine'?2:0;
         const placed=plan.steps.flatMap(s=>s.parts);
+        assert.equal(plan.steps.flatMap(s=>s.belts||[]).length,bands);
         assert.equal(placed.length,count);assert.equal(new Set(placed).size,count);
         assert.ok(plan.steps.every(s=>!s.loose),'Every construction step connects');
         await page.keyboard.press('End');
         await page.waitForFunction(()=>window.__bwSimLabInstructions.page===window.__bwSimLabInstructions.steps);
-        assert.equal(await page.getByTestId('bw-sim-instructions-bom').getByTestId('bw-sim-instructions-part').evaluateAll(es=>es.reduce((n,e)=>n+Number(e.dataset.count),0)),count);
+        assert.equal(await page.getByTestId('bw-sim-instructions-bom').getByTestId('bw-sim-instructions-part').evaluateAll(es=>es.reduce((n,e)=>n+Number(e.dataset.count),0)),count+bands);
         await page.getByTestId('bw-sim-instructions').screenshot({path:resolve(opts.shotsDir,id+'-bom.png')});
         await page.keyboard.press('Escape');
-        console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count}-piece BOM`);
+        console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count+bands}-piece BOM`);
     }
     writeFileSync(resolve(opts.shotsDir, 'new-model-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
     return results;

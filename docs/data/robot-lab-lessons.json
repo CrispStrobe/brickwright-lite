@@ -3608,8 +3608,7 @@
           "One complete turn translates the centre by 2πR, about 50.265 mm. The point does not return to its starting place after that forward turn; the orange path contains a local loop within an overall translating path. The second motor command retraces the motion and returns the complete carriage.",
           "Compare rack-shuttle.ldr for direct rack displacement, orbital-loom.ldr for coordinates on rotating paper, and ellipsa.ldr for an ellipse produced by perpendicular sliders. Cusp Lab demonstrates velocity cancellation from a rack-constrained rolling motion.",
           "Read validation/RESULTS.md for the actual raw paths, slowdown, backward travel and geometric residuals. The plotted traces follow visible marker holes. Exact instantaneous zero speed is a mathematical prediction; finite simulation samples establish a strong slowdown. Physical ink, backlash and a hardware build require separate experiments."
-        ],
-        "formula": "Planar coordinates in LDU: C=(−64+20θ,0); P=C+(20 sinθ,−20 cosθ); Q=C+(40 sinθ,−40 cosθ), with θ in radians and 1 LDU=0.4 mm. R=20 LDU=8 mm. Physical θ is measured from the same-layer arm centre-to-radius-20 vector, θ=atan2(radial X,−radial Z), unwrapped from the saved −Z direction. The actual colored marker holes are the useful outputs. |vP|/|vC|=2|cos(θ/2)|; vQx/vCx=1+2 cosθ. Ideal cusp: θ=180 degrees, P=(−0.46725877,8) mm. Ideal outer backtracking: 120–240 degrees, 10.95765210 mm against 16.75516082 mm carriage travel. The finite physical sequence is 0→360→0 degrees."
+        ]
       },
       "de": {
         "what": "Ein Motor fährt auf einem geradlinig geführten Schlitten und dreht ein Zahnrad mit 16 Zähnen an einer feststehenden Zahnstange. Zwei farbige Querbalken drehen sich mit derselben Welle. Verfolge ihre mittleren Löcher: Der gelbe Punkt liegt 8 mm von der Welle entfernt, der orange Punkt 16 mm. Der innere Punkt beschreibt eine Zykloide mit einer Spitze, der äußere eine verlängerte Zykloide mit einer Schleife. Beide Bahnen entstehen durch die Überlagerung von Schlittenverschiebung und Armdrehung.",
@@ -3630,9 +3629,106 @@
           "Eine volle Umdrehung verschiebt die Mitte um 2πR, also etwa 50,265 mm. Der Punkt kehrt nach der Vorwärtsdrehung nicht an seinen Ausgangsort zurück; die orange Bahn enthält eine örtliche Schleife innerhalb einer insgesamt wandernden Bahn. Erst der zweite Motorbefehl durchläuft die Bewegung rückwärts und bringt den ganzen Schlitten zurück.",
           "Vergleiche rack-shuttle.ldr für direkte Zahnstangenverschiebung, orbital-loom.ldr für Koordinaten auf rotierendem Papier und ellipsa.ldr für eine Ellipse aus senkrecht zueinander laufenden Schiebern. Cusp Lab zeigt die Aufhebung von Geschwindigkeiten durch eine zahnstangengeführte Rollbewegung.",
           "In validation/RESULTS.md stehen die tatsächlich gemessenen Rohbahnen, die Verlangsamung, der Rückwärtsweg und die geometrischen Abweichungen. Die gezeichneten Spuren folgen sichtbaren Markierungslöchern. Eine exakt verschwindende Momentangeschwindigkeit ist eine mathematische Vorhersage; endlich viele Simulationsmessungen belegen eine starke Verlangsamung. Echte Tinte, Zahnflankenspiel und ein Hardwareaufbau benötigen eigene Versuche."
+        ]
+      },
+      "formula": {
+        "en": "Planar coordinates in LDU: C=(−64+20θ,0); P=C+(20 sinθ,−20 cosθ); Q=C+(40 sinθ,−40 cosθ), with θ in radians and 1 LDU=0.4 mm. R=20 LDU=8 mm. Physical θ is measured from the same-layer arm centre-to-radius-20 vector, θ=atan2(radial X,−radial Z), unwrapped from the saved −Z direction. The actual colored marker holes are the useful outputs. |vP|/|vC|=2|cos(θ/2)|; vQx/vCx=1+2 cosθ. Ideal cusp: θ=180 degrees, P=(−0.46725877,8) mm. Ideal outer backtracking: 120–240 degrees, 10.95765210 mm against 16.75516082 mm carriage travel. The finite physical sequence is 0→360→0 degrees.",
+        "de": "Ebene Koordinaten in LDU: C=(−64+20θ,0); P=C+(20 sinθ,−20 cosθ); Q=C+(40 sinθ,−40 cosθ), mit θ im Bogenmaß und 1 LDU=0,4 mm. R=20 LDU=8 mm. Die physische Phase θ wird aus dem Vektor zwischen Armmitte und Radius-20-Loch in derselben Ebene gemessen: θ=atan2(radial X,−radial Z), fortlaufend ab der gespeicherten −Z-Richtung. Die tatsächlichen Löcher der farbigen Markierungen sind die beobachteten Ausgänge. |vP|/|vC|=2|cos(θ/2)|; vQx/vCx=1+2 cosθ. Ideale Spitze: θ=180 Grad, P=(−0,46725877;8) mm. Idealer Rückwärtsweg des äußeren Punkts: 120–240 Grad, 10,95765210 mm entgegen 16,75516082 mm Schlittenweg. Die endliche physische Folge lautet 0→360→0 Grad."
+      },
+      "related": [
+        "rack-shuttle.ldr",
+        "orbital-loom.ldr",
+        "ellipsa.ldr"
+      ]
+    },
+    "balance-engine": {
+      "en": {
+        "what": "Two identical slider-cranks share a passive carrier. Each motor drives a 16 mm crank and 64 mm connecting rod; each piston travels 32 mm. Two real rubber bands centre the carrier while allowing it to react to the moving masses. The program compares crank phase offsets of 0°, 90° and 180°.",
+        "try": [
+          "Open Balance Engine in Examples; its finite program loads automatically. Reset and Run. Each trial advances both cranks four turns, pauses, reverses and returns them to their starting angles.",
+          "At 0° phase, watch the pistons reach their ends together. Compare the carrier with the stationary outer base, rather than with the moving hub mounted on the carrier.",
+          "At 90°, follow one piston while the other is midway through its stroke. At 180°, the primary motions oppose one another; watch for the smaller residual motion instead of expecting perfect stillness.",
+          "Reset before a new comparison. For manual exploration, enable the motor override and use A and B independently. Stop both before returning to the automatic program."
         ],
-        "formula": "Ebene Koordinaten in LDU: C=(−64+20θ,0); P=C+(20 sinθ,−20 cosθ); Q=C+(40 sinθ,−40 cosθ), mit θ im Bogenmaß und 1 LDU=0,4 mm. R=20 LDU=8 mm. Die physische Phase θ wird aus dem Vektor zwischen Armmitte und Radius-20-Loch in derselben Ebene gemessen: θ=atan2(radial X,−radial Z), fortlaufend ab der gespeicherten −Z-Richtung. Die tatsächlichen Löcher der farbigen Markierungen sind die beobachteten Ausgänge. |vP|/|vC|=2|cos(θ/2)|; vQx/vCx=1+2 cosθ. Ideale Spitze: θ=180 Grad, P=(−0,46725877;8) mm. Idealer Rückwärtsweg des äußeren Punkts: 120–240 Grad, 10,95765210 mm entgegen 16,75516082 mm Schlittenweg. Die endliche physische Folge lautet 0→360→0 Grad."
-      }
+        "why": "Moving each piston accelerates the rest of the mechanism in reaction. At equal phase, the two primary reciprocating motions add. Opposite phase cancels their first harmonic. A finite connecting rod makes a slider-crank asymmetric: its second harmonic remains at 180°, so neither the sum of piston positions nor the carrier motion becomes exactly constant.",
+        "matters": "Engine balancing and machine vibration depend on mass, phase, rod geometry and mounting. Springs and inertia also affect the platform response. The range seen in one finite trial is an observation of that experiment, not a universal steady-state vibration amplitude or a calibration of real LEGO rubber.",
+        "question": "At 180° crank phase, should the passive carrier remain perfectly still?",
+        "answer": "No. The first-harmonic piston motions cancel, but the finite rods leave an even-harmonic residual. The two piston strokes remain 32 mm; the range of their summed displacement falls from about 64 mm at equal phase to about 4.06 mm at opposite phase. The carrier can still move because of that residual, the other moving bodies and spring transients.",
+        "further": [
+          "Compare the sum of the two measured piston displacements across the three trials. The geometric ranges are about 64, 45.25 and 4.06 mm; these are not predicted carrier amplitudes.",
+          "Reduce the program speed while keeping the same four-turn travel and phase offsets. The geometric strokes remain the same, while acceleration and the band response can change.",
+          "Compare Quickstroke for a single slider-crank, Momentum Twins for angular momentum, and Counterturn for a rotating carrier. These machines isolate different forms of reaction motion."
+        ]
+      },
+      "de": {
+        "what": "Zwei gleiche Schubkurbeltriebe sitzen auf einem passiven Träger. Jeder Motor treibt eine Kurbel mit 16 mm Radius und ein 64 mm langes Pleuel; jeder Kolben hat 32 mm Hub. Zwei echte Gummibänder zentrieren den Träger und lassen ihn auf die bewegten Massen reagieren. Das Programm vergleicht 0°, 90° und 180° Phasenversatz.",
+        "try": [
+          "Öffne Balance Engine unter Beispiele; das endliche Programm lädt automatisch. Zurücksetzen und Ausführen. Jeder Versuch dreht beide Kurbeln viermal vorwärts, pausiert, fährt rückwärts und kehrt zu den Ausgangswinkeln zurück.",
+          "Bei 0° erreichen beide Kolben ihre Endlagen gleichzeitig. Vergleiche den Träger mit der festen äußeren Basis; der Hub sitzt auf dem bewegten Träger.",
+          "Bei 90° ist ein Kolben unterwegs, wenn der andere seine Endlage erreicht. Bei 180° wirken die primären Bewegungen gegeneinander. Achte auf die kleinere Restbewegung statt auf völligen Stillstand.",
+          "Vor einem neuen Vergleich zurücksetzen. Aktiviere für eigene Versuche die manuelle Motorsteuerung und bewege A und B getrennt. Stoppe beide, bevor du das automatische Programm erneut startest."
+        ],
+        "why": "Die Beschleunigung jedes Kolbens ruft eine Gegenwirkung auf den übrigen Aufbau hervor. Bei gleicher Phase addieren sich die primären Hubbewegungen. Gegenphase hebt ihre erste Harmonische auf. Ein endlich langes Pleuel macht die Bewegung unsymmetrisch: Die zweite Harmonische bleibt bei 180° erhalten. Daher werden weder die Summe der Kolbenwege noch die Trägerbewegung genau konstant.",
+        "matters": "Massenausgleich und Maschinenschwingungen hängen von Masse, Phase, Pleuelgeometrie und Befestigung ab. Federn und Trägheit verändern ebenfalls die Antwort des Trägers. Die beobachtete Spannweite eines endlichen Versuchs ist keine allgemeine eingeschwungene Amplitude und keine Kalibrierung echter LEGO-Gummibänder.",
+        "question": "Muss der passive Träger bei 180° Kurbelversatz völlig stillstehen?",
+        "answer": "Nein. Die primären Kolbenbewegungen heben sich auf, doch die endlichen Pleuel lassen einen geradzahligen Schwingungsanteil zurück. Beide Kolben behalten 32 mm Hub. Die Spannweite ihrer summierten Wege sinkt von etwa 64 mm bei gleicher Phase auf etwa 4,06 mm bei Gegenphase. Dieser Rest, weitere bewegte Teile und Einschwingvorgänge der Bänder können den Träger weiter bewegen.",
+        "further": [
+          "Vergleiche die Summe beider gemessenen Kolbenwege in den drei Versuchen. Die geometrischen Spannweiten betragen etwa 64, 45,25 und 4,06 mm. Das sind keine vorhergesagten Trägeramplituden.",
+          "Verringere die Programmgeschwindigkeit und behalte vier Umdrehungen sowie die Phasenversätze bei. Die geometrischen Hübe bleiben gleich; Beschleunigung und Bandantwort können sich ändern.",
+          "Vergleiche Quickstroke mit einer einzelnen Schubkurbel, Momentum Twins zum Drehimpuls und Counterturn mit einem drehbaren Träger. Die Modelle zeigen unterschiedliche Gegenwirkungen bewegter Massen."
+        ]
+      },
+      "formula": {
+        "en": "x(θ) = r cosθ + √(l² − r² sin²θ), with r = 16 mm and l = 64 mm. Compare x(θ) + x(θ+φ) for φ = 0°, 90°, 180°.",
+        "de": "x(θ) = r cosθ + √(l² − r² sin²θ), r = 16 mm, l = 64 mm. Vergleiche x(θ) + x(θ+φ) für φ = 0°, 90°, 180°."
+      },
+      "related": [
+        "quickstroke.ldr",
+        "momentum-twins.ldr",
+        "counterturn.ldr"
+      ]
+    },
+    "root-bridge": {
+      "en": {
+        "what": "This horizontal linkage computes a geometric mean with two motorized inputs and an unmotorized output. The output coordinate is a distance across the base, not a vertical lift.",
+        "try": [
+          "Open Root Bridge in Examples. Reset and Run; the matching program loads automatically. Watch the two input carriages visit fifteen pairs of positive distances.",
+          "Compare equal inputs of 24, 32 and 40 mm. The orange output should match each input distance.",
+          "Compare (32,32), (25.6,40) and (40,25.6) mm. Predict the output before each equal-product pair.",
+          "Pause and enable manual control. Use the bounded A/B steps to change one input slightly; Reset before rerunning the complete demonstration."
+        ],
+        "why": "The guides meet at a right angle. With input endpoints A = (−a,0), B = (b,0) and output C = (0,h), perpendicularity gives (A−C)·(B−C) = h²−ab = 0. The retained positive branch therefore places the passive carriage at √(ab). The controller calculates only the two input crank angles and never commands the output.",
+        "matters": "Mechanical constraints can calculate nonlinear functions directly. This illustrates geometric means, analog computation and the difference between an input drive and a passive computed coordinate.",
+        "question": "Why do (32,32) and (25.6,40) mm give the same output?",
+        "answer": "Both input products are 1024 mm², so the ideal positive output is √1024 = 32 mm. Unequal inputs need not give an arithmetic average.",
+        "further": [
+          "Compare Mean Machine for an arithmetic average and Product Plotter for multiplication.",
+          "The repaired model uses shorter right-input rails and relocated supports to clear the moving linkage. The 24–40 mm demonstration range is a simulation working range, not a hardware accuracy calibration."
+        ]
+      },
+      "de": {
+        "what": "Dieses waagerechte Gestänge berechnet ein geometrisches Mittel mit zwei motorisierten Eingängen und einem passiven Ausgang. Die Ausgangsstrecke liegt quer über der Basis; sie ist kein senkrechter Hub.",
+        "try": [
+          "Öffne Root Bridge unter Beispiele. Zurücksetzen und Ausführen; das passende Programm lädt automatisch. Beobachte fünfzehn Paare positiver Eingangsstrecken.",
+          "Vergleiche gleiche Eingänge von 24, 32 und 40 mm. Der orange Ausgang sollte jeweils dieselbe Strecke anzeigen.",
+          "Vergleiche (32,32), (25,6,40) und (40,25,6) mm. Sage den Ausgang bei gleichem Produkt voraus.",
+          "Pausiere und aktiviere die manuelle Steuerung. Verändere einen Eingang mit den begrenzten A/B-Schritten; setze vor dem nächsten vollständigen Versuch zurück."
+        ],
+        "why": "Die Führungen stehen senkrecht aufeinander. Für A = (−a,0), B = (b,0) und C = (0,h) ergibt das Skalarprodukt (A−C)·(B−C) = h²−ab = 0. Der gehaltene positive Ast legt den passiven Schieber daher auf √(ab). Das Programm berechnet nur die Winkel der beiden Eingangskurbeln und steuert den Ausgang niemals direkt.",
+        "matters": "Mechanische Zwangsbedingungen können nichtlineare Funktionen unmittelbar berechnen. Das zeigt geometrische Mittel, Analogrechner und den Unterschied zwischen Antrieb und passiv berechneter Koordinate.",
+        "question": "Warum ergeben (32,32) und (25,6,40) mm denselben Ausgang?",
+        "answer": "Beide Produkte sind 1024 mm²; der ideale positive Ausgang ist daher √1024 = 32 mm. Ungleiche Eingänge ergeben hier keinen arithmetischen Mittelwert.",
+        "further": [
+          "Vergleiche Mean Machine für den arithmetischen Mittelwert und Product Plotter für die Multiplikation.",
+          "Kürzere rechte Eingangsführungen und versetzte Stützen schaffen Platz für das bewegte Gestänge. Der Bereich 24–40 mm ist ein Simulationsbereich und keine Kalibrierung eines echten Aufbaus."
+        ]
+      },
+      "formula": "h² = ab; h = √(ab), a,b > 0.",
+      "related": [
+        "mean-machine.ldr",
+        "product-plotter.ldr",
+        "integral.ldr"
+      ]
     }
   }
 }
