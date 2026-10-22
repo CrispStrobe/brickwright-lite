@@ -19,11 +19,15 @@ marker-location failure, not a size overrun.
 - `scripts/verify-boot-payload.mjs` and complete `test/boot-payload.test.mjs`.
 - Optional new `scripts/lib/boot-lazy-companion.mjs` and complete
   `test/boot-lazy-companion.test.mjs` for a factored recognizer.
+- `package.json` and `package-lock.json` only for a pinned Acorn build/test
+  parser dependency. Use real JavaScript syntax and lexical bindings instead
+  of treating comments, strings or regular expressions as executable loaders.
 - `docs/ARCADE-CI-REPAIR-STATUS.md` and this claim.
 
 Earlier boot campaigns are done. The ten newly merged school claims leave
-these paths unclaimed. No bundler configuration, dependencies, supplier pins,
+these paths unclaimed. No bundler configuration, supplier pins,
 runtime, menu table, SPIKE model or unrelated browser gates are in scope.
+The parser is tooling only; retain its MIT notice and keep it out of app boot.
 
 ## Required proof and acceptance
 
