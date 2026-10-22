@@ -28,6 +28,18 @@ original failure, full ordinary-call controls, affected source/procedure control
 and final exact-head CI before normal landing. No provider, dependency, pin,
 workflow, budget, skip or native-activation change is authorized by this claim.
 
+PR1219 source repair is DONE in the isolated successor
+`lane/ordinary-omission-repair-20261022`; exact-head hosted qualification remains
+required. The original default failure and three additional regression groups
+fail on the published candidate. All 47 complete source controls (including
+the unchanged dense-Array negatives) and 33 native/constraint-export controls
+pass after the repair, with no skips or TODOs in either cohort. The existing
+result-type module has 17 passes and three named local skips because the
+original MakeCode runtimes are not synced; original compiler qualification
+belongs to the full hosted matrix. The normal local build preflight deferred
+under high system load; no threshold was raised. The older sequential scopes
+below remain CLAIMED and do not acquire landing or native acceptance credit.
+
 ## Sequential reconciliation of the older reviewed PRs
 
 The same user-requested repair sweep may next compose published PR1162,

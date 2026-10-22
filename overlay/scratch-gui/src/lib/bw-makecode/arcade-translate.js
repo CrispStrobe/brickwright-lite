@@ -1529,12 +1529,11 @@ class ArcadeTranslator extends BaseTranslator {
         if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
         if (this.functions.some(fn=>fn.name===name)) {
             const fn=this.sourceFunctions?.get(name),actual=[...a];
-            // A call that omits arguments still has to be READABLE: the DEFINE
-            // carries every formal, so a shorter call cannot be matched by the
-            // block parser and the whole project would fail to build. The
-            // omitted slots are filled with the dialect's explicit undefined
-            // value, and a missing REQUIRED formal is still named.
-            if(fn && a.length<fn.params.length){
+            // Ordinary optional calls were already padded by the call-site
+            // omission proof. A refused default/escaped declaration must keep
+            // its original arguments; rendering cannot manufacture that proof.
+            // The separate creation-event protocol retains its existing ABI.
+            if(this.handleTemplates && fn && a.length<fn.params.length){
                 if(fn.params.slice(a.length).some(param=>!fn.optionalParams?.includes(param)))this.unsupported.push(`${name}() argument count differs from its declaration`);
                 while(actual.length<fn.params.length)actual.push({type:'Undefined'});
             }

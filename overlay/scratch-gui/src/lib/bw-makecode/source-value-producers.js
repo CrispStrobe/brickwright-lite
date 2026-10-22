@@ -93,52 +93,27 @@ function deadLocalResets(program) {
     visit(program);return dead;
 }
 
-// Which names are provably ARRAYS from their actual producers alone (never from
-// a type annotation). A name qualifies when at least one of its definitions is
-// an Array literal and every definition is an Array literal or a copy from
-// another proven array; a compound update, a non-array assignment or any other
-// method call disqualifies it. `length of` such a value is a Number, which is
-// what `arr.length` says in TypeScript and in pxt. Names are considered
-// program-wide (shadowed names with a different shape conservatively refuse).
-function provenArrayNames(program) {
-    const definitions=new Map(),unsafe=new Set();
-    const addDef=(name,value)=>{if(typeof name!=='string')return;if(!definitions.has(name))definitions.set(name,[]);definitions.get(name).push(value);};
-    const scan=node=>{
-        if(!node||typeof node!=='object')return;
-        if(Array.isArray(node)){node.forEach(scan);return;}
-        if(node.type==='Declaration')for(const decl of node.decls||[])if(decl.init)addDef(decl.name,decl.init);
-        if(node.type==='Assignment'&&node.left?.type==='Identifier'){
-            if(node.op==='=')addDef(node.left.name,node.right);else unsafe.add(node.left.name);
-        }
-        if(node.type==='Update'&&node.argument?.type==='Identifier')unsafe.add(node.argument.name);
-        if(node.type==='Call'&&node.callee?.type==='Member'&&node.callee.object?.type==='Identifier'&&
-            !['push','unshift','pop','shift'].includes(node.callee.name))unsafe.add(node.callee.object.name);
-        // A name used as a callee holds a function, not an array.
-        if(node.type==='Call'&&node.callee?.type==='Identifier')unsafe.add(node.callee.name);
-        for(const value of Object.values(node))if(value&&typeof value==='object')scan(value);
-    };
-    scan(program);
-    const proven=new Set();
-    for(let changed=true;changed;){
-        changed=false;
-        for(const [name,values] of definitions){
-            if(unsafe.has(name)||proven.has(name))continue;
-            if(!values.some(value=>value?.type==='Array'))continue;
-            if(values.every(value=>value?.type==='Array'||(value?.type==='Identifier'&&proven.has(value.name)))){
-                proven.add(name);changed=true;
-            }
-        }
-    }
-    return proven;
-}
-
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
 function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
-    const provenArrays=provenArrayLength?provenArrayNames(program):null;
+    // Loan only a length result from the existing lexical/all-writer Array
+    // graph. Enabling general Array values here would also authorize index
+    // reads in primitive consumers. An unrelated same-named binding, an
+    // annotation, an escaped allocation or a read before initialization cannot
+    // supply this fact. The independent graph keeps this option disabled.
+    let arrayLengthFacts;
+    const provenArrayLengthAt=node=>{
+        if(!provenArrayLength||node.type!=='Member'||node.name!=='length'||node.object?.type!=='Identifier')return false;
+        const graph=arrayLengthFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,
+            unboundIsOpaque:true,uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
+        const types=graph.typesAt(node);
+        return types.size===1&&types.has('Number')&&graph.isInitializedAt(node.object)&&
+            graph.arrayAllocationsAt(node.object).length>0&&graph.arrayMapReceiverSafeAt(node.object)&&
+            graph.arrayConstraintErrorsAt(node.object).length===0;
+    };
     const callbackEntry=arrayCallbackParameters?proveArrayCallbackPrimitiveEntries(program,normalCompletion):null;
     const completion=normalCompletion?sourceNormalCompletionFor(program,normalCompletion):null;
     if(normalCompletion&&!completion)throw new Error('Source completion proof must belong to the actual Program');
@@ -232,7 +207,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
-        if(provenArrays&&node.type==='Member'&&node.name==='length'&&node.object?.type==='Identifier'&&provenArrays.has(node.object.name)){add(current,'Number');return;}
+        if(provenArrayLengthAt(node)){add(current,'Number');return;}
         if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',receiver:cell(node.object),result:current});return;}
         if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&['map','push','pop','shift','unshift'].includes(node.callee.name)){
             const operation={kind:node.callee.name,node,receiver:cell(node.callee.object),result:current};arrayOperations.push(operation);
