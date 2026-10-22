@@ -7,9 +7,11 @@ import {observeAddon} from './sim-lab-addon-judge.mjs';
 const sub=(a,b)=>a.map((x,i)=>x-b[i]),dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0),norm=a=>Math.hypot(...a);
 const unit=a=>a.map(x=>x/norm(a)),span=a=>Math.max(...a)-Math.min(...a);
 export function measureRootBridge(r){
- const o=observeAddon(r,'foundation_0'),origin=o.initial('foundation_0',[10,-404,0]);
- const X=unit(sub(o.initial('foundation_0',[10,-404,1]),origin));
- const Z=unit(sub(o.initial('foundation_0',[9,-404,0]),origin));
+ // The repaired single-stud feet use the foundation's adjacent stud grid.
+ // The foundation is shifted +10 LDU in X; the linkage datum stays at X=0.
+ const o=observeAddon(r,'foundation_0'),origin=o.initial('foundation_0',[10,-404,-10]);
+ const X=unit(sub(o.initial('foundation_0',[10,-404,-9]),origin));
+ const Z=unit(sub(o.initial('foundation_0',[9,-404,-10]),origin));
  const project=p=>[dot(sub(p,origin),X)*1000,dot(sub(p,origin),Z)*1000];
  return r.track.map(f=>{
   const A=project(o.point(f,'a_marker',[0,0,20])),B=project(o.point(f,'b_marker',[0,0,20])),C=project(o.point(f,'height_marker'));

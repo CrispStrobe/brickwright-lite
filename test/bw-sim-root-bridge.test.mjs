@@ -18,10 +18,11 @@ test('Root Bridge: exact source provenance and reproducible physical clearance r
  assert.equal(program,adaptRootBridgeProgram(read(fixture+'root-bridge.bw')));
  assert.match(model,/Author: CrispStrobe/);assert.match(read(lab+'licenses/root-bridge.txt'),/BSD 3-Clause/);
  const original=parseModel(read(fixture+'models/root-bridge.ldr')).model,patched=parseModel(model).model;
- assert.equal(patched.parts.length,443);assert.equal(original.parts.length,443);
- assert.deepEqual(patched.parts.map(p=>p.id),original.parts.map(p=>p.id));
- for(const p of patched.parts){const before=original.parts.find(x=>x.id===p.id);
-  if(JSON.stringify(p)!==JSON.stringify(before))assert.match(p.id,/^b_(?:rail|spine|seat|seat_pin|outer_bush|stop_near|end_node|end_pin|end_cross|column|column_node|column_pin)_/);
+ assert.equal(patched.parts.length,447);assert.equal(original.parts.length,443);
+ for(const p of original.parts)if(!patched.parts.some(x=>x.id===p.id))assert.match(p.id,/_foot_brick_|^b_stop_(near|far)_|^b_column(?:_node)?_-120(?:_|$)/);
+ for(const p of patched.parts)if(!original.parts.some(x=>x.id===p.id))assert.match(p.id,/^foot_/);
+ for(const p of patched.parts){const before=original.parts.find(x=>x.id===p.id);if(!before)continue;
+  if(JSON.stringify(p)!==JSON.stringify(before))assert.match(p.id,/^(?:foundation_|b_(?:rail|spine|seat|seat_pin|outer_bush|end_node|end_pin|end_cross|column|column_node|column_pin)_)/);
  }
 });
 for(const autoPorts of [undefined,false])test(`Root Bridge ${autoPorts===false?'strict saved project':'ordinary'}: real shared SPIKE hub and passive geometric mean`,async()=>{

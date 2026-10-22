@@ -8,6 +8,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {loadModelLesson} from '../overlay/scratch-gui/src/lib/bw-sim/model/lesson-loader.js';
@@ -17,6 +18,14 @@ import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';
 const ROOT = new URL('../', import.meta.url);
 const LAB = 'overlay/scratch-gui/static/sim-lab/';
 const read = path => readFileSync(new URL(path, ROOT));
+
+test('Circle Splitter: source identity and gallery-owned reset are reproducible',()=>{
+    const base='test/fixtures/model-files/circle-splitter-source/';
+    const provenance=JSON.parse(read(base+'provenance.json'));
+    for(const [file,hash]of Object.entries(provenance.files))assert.equal(createHash('sha256').update(read(base+file)).digest('hex'),hash);
+    assert.equal(read(LAB+'models/circle-splitter.ldr').toString(),read(base+'models/circle-splitter.ldr').toString());
+    assert.equal(read(LAB+'programs/circle-splitter.bw').toString(),read(base+'programs/circle-splitter.bw').toString().replace('  lab reset\n',''));
+});
 
 test('circle-splitter: shipped title, program and both lessons', async () => {
     const entry = MODELS.find(model => model.file === 'circle-splitter.ldr');

@@ -1,6 +1,6 @@
 # Preserve Root Bridge bearing resistance independently of credit
 
-CLAIMED — owner: Robot Lab mechanics intake; isolated implementation branch
+INVESTIGATION DONE — owner: Robot Lab mechanics intake; isolated implementation branch
 `lane/integral-library-20261022`, base `b335d9371`, composing current main normally.
 This is a bounded extension of the merged model-intake claims #1238 and #1240.
 Preserve other owners' generated supplier menus/notices, NXT extension surface,
@@ -27,3 +27,18 @@ imposed poses, broadened collision exclusions, controller tuning, threshold
 relaxation, supplier pins, firmware, signing or release tags. No changes to other
 models' dynamics. Finish in the same reviewed intake head with affected parser,
 serialization and physics regressions and normal exact-head CI/landing.
+
+Further isolation corrected the initial diagnosis: the ordinary import also
+suppresses contacts and relieves closed hinge loops. Resistance alone did not
+repair authored execution. Actual contact records identified the right input
+rails/supports crossing the left input and passive output paths. Shorter rails,
+relocated supports and retained physical stops now clear those paths.
+
+The repaired 447-part model completes all fifteen input cells with ordinary
+authored collisions, every pin hinge retained and **zero** imported resistance.
+Its actual passive height differs from sqrt(a*b) by less than 0.025 mm in the
+native run. The saved/rounded model also completes and passes the same judge.
+The experimental declaration/parser/physics changes were therefore discarded;
+there is no new model parameter or general physics behavior in this delivery.
+Original failed and passing experiments are preserved. Production-browser and
+hosted qualification remain part of the parent intake lane, not this finding.

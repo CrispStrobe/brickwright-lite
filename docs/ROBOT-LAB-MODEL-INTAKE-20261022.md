@@ -61,3 +61,29 @@ release or TestFlight delivery is implied.
 
 The subsequent user request adds Balance Engine and Root Bridge. Their intake
 is tracked in the same lane; neither inherits the earlier models' qualification.
+
+
+## Balance Engine and Root Bridge
+
+Balance Engine retains the original 292 rigid placements and two physical bands,
+two input motors and an unmotorized sprung carrier. Native checks measure both
+32 mm piston strokes, complete four-turn trials at 0/90/180-degree phases,
+slider-crank geometry and the smaller nonzero secondary reaction at opposition.
+Ten unpowered seconds and frozen-output refusals are included.
+
+Root Bridge uses 447 placements and its original input-only finite program.
+Actual authored contacts exposed an overlong right input rail/support crossing
+the left input and the passive output. The repair uses 10L rails, 11L spines
+and relocated seats/crossbars on the existing 20-LDU grid. Single-stud
+Technic feet replace broad intersecting bricks; an adjacent foundation stud
+grid engages them. Redundant near columns and overlapping collars are removed. Working stops
+retain the demonstrated 24–40 mm input range. It requires no new joints, loop
+conversion, bearing-resistance declaration or broader collision exclusions.
+Ordinary and saved/rounded strict native runs visit all fifteen cells, return
+the inputs and pause. The actual passive output satisfies h = sqrt(a*b) within
+0.025 mm in the ordinary native run; this is simulation evidence, not hardware
+calibration. Both models have bilingual lessons and automatically loaded code.
+
+Library census is now 81 assemblies and 91 example choices. Actual production
+browser, connected instructions, export and hosted qualification remain pending
+until the candidate's corresponding checks finish.

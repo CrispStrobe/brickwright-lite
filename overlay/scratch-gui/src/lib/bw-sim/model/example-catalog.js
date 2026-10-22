@@ -282,7 +282,7 @@ export const MODEL_LESSONS = Object.freeze({
         "license": "BSD-3-Clause"
     },
     "root-bridge.ldr": {
-        "pieces": 443,
+        "pieces": 447,
         "motors": 2,
         "hubs": [
             "spike-prime"

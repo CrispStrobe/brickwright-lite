@@ -42,7 +42,12 @@ export function judgeBalance(r,{native=false}={}){
   const sum=span(samples.map(s=>s.engines[0].x+s.engines[1].x))*1000;
   assert.ok(Math.abs(sum-expected[i])<=.5,`Balance ${phase}: sum range ${sum} mm`);
   for(const s of samples){const e=(s.engines[1].encoder-s.engines[0].encoder-phase)/DEG;assert.ok(Math.abs(Math.atan2(Math.sin(e),Math.cos(e)))*DEG<=.5,'Actual coordinated phase');}
-  for(const k of [0,1]){const travel=full.at(-1).engines[k].encoder-full[0].engines[k].encoder;assert.ok(travel>1439&&travel<1441,`Four complete turns: ${travel}°`);}
+  // A browser's first moving frame is already ~1 degree into the stroke.
+  // Measure from the actually observed held pose before motion, not from
+  // that later sample. Keep the same four-turn tolerance in both runtimes.
+  const before=rows.slice(0,rows.indexOf(full[0])).findLast(s=>Number(s.variables.stage)===1&&Number(s.variables.phase)===phase);
+  assert.ok(before,`Balance ${phase}: actual stationary start observation`);
+  for(const k of [0,1]){const travel=full.at(-1).engines[k].encoder-before.engines[k].encoder;assert.ok(travel>1439&&travel<1441,`Four complete turns: ${travel}°`);}
   return {phase,pistonStrokesMm:strokes,sumStrokeMm:sum,carrierSpanMm:span(samples.map(s=>s.carrierMm))};
  });
  const moving=rows.filter(s=>Number(s.variables.stage)===2);assert.ok(span(moving.map(s=>s.carrierMm))>.2,'The unmotorized carrier actually reacts');
