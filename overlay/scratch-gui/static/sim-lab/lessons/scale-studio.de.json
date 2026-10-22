@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "scale-studio",
+  "language": "de",
+  "what": "Ein Motor dreht die orange Kurbel; ein passiver Pantograph bewegt die rote Spitze. Zwei lange Arme und zwei kurze Koppelglieder verdoppeln in der idealen ebenen Geometrie jede Verschiebung des Eingangspunkts. Aus einem Eingangskreis mit 32 mm Durchmesser wird ohne zweiten Motor ein Ausgangskreis mit 64 mm Durchmesser. Vierteldrehungs-Pausen zeigen einen passiven 2:1-Pantografen. Vergleiche entsprechende Punkte der 32-mm- und 64-mm-Kreise.",
+  "try": [
+    "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
+    "Nutze die Draufsicht. Vergleiche jeden Punkt mit seinem eigenen Kreismittelpunkt: Beide durchlaufen pro Kurbelumdrehung genau einen Kreis, während die blauen Arme mit veränderlichem Winkel schwingen. Vergleiche die beiden Kreisdurchmesser.",
+    "Vergleiche bei entsprechenden Pausen die beiden in die Ebene projizierten Vektoren vom festen Ursprung O aus. Die rote Spitze sollte auf demselben Strahl wie D und doppelt so weit von O entfernt liegen. Beurteile dies anhand gemessener Positionen; ein erreichter Motorzielwinkel allein beweist diese Beziehung nicht."
+  ],
+  "why": "Die Gelenkabstände bilden ein Parallelogramm. Bezeichne die beiden gleich langen Gliedvektoren mit u und v; beide sind 32 mm lang. Vom Ursprung O aus gilt dann A=u, B=2u, D=u+v, C=2u+v und P=2u+2v. Somit gilt P=2D für jede Stellung dieses Montagezweigs. Der Motor bewegt nur die Eingangskurbel; die Glieder bestimmen den Maßstab. Die dreidimensionalen Teile liegen in verschiedenen Schichten. Die Maßstabsgleichung bezieht sich deshalb auf ihre in die Chassisebene projizierten Koordinaten.",
+  "matters": "Pantographen übertragen und vergrößern Bahnen in Kopier- und Graviermechanismen. Der Maßstab zwei verdoppelt Weg und ideale Geschwindigkeit; dadurch entsteht keine zusätzliche mechanische Arbeit. Bei entsprechenden tangentialen Eingangs- und Ausgangskräften liefert ein ideales verlustfreies Gestänge am Ausgang die halbe Kraft. Dies erklärt Kinematik und virtuelle Arbeit und ist keine gemessene Kraftangabe.",
+  "question": "Der Eingang zeichnet einen Kreis mit 32 mm Durchmesser. Sage den Ausgangsdurchmesser, das Verhältnis der Kreisumfänge und das Verhältnis der eingeschlossenen Flächen voraus. Muss der Ausgang für die doppelte Bahngröße zwei Umläufe machen?",
+  "answer": "Der Ausgangsdurchmesser beträgt 64 mm. Sein Umfang ist doppelt so groß und seine eingeschlossene Fläche viermal so groß wie beim Eingangskreis. Beide Punkte durchlaufen pro Kurbelumdrehung einen Kreis; der Ausgang legt in derselben Zeit den doppelten Weg zurück. Bei konstanter Kurbelgeschwindigkeit zwischen den Pausen ist seine ideale Spitzengeschwindigkeit deshalb doppelt so groß.",
+  "further": [
+    "Sage vor dem Messen eine lokale Änderung voraus: Zu jedem Verschiebungsvektor von 8 mm am Eingang gehört ein Ausgangsvektor von 16 mm in derselben Richtung. Eine Umkehr der Kurbel durchläuft dieselbe ideale Bahn rückwärts.",
+    "Vergleiche Twinpoint: Dort koordinieren zwei Motoreingänge einen Fünfgelenkmechanismus. Scale Studio hat einen Motor und ein passives geometrisches Maßstabsverhältnis. Vergleiche Mean Machine: Dessen Differential kombiniert zwei Drehungen, während dieser Pantograph Verschiebungen in einer Ebene vergrößert.",
+    "Die Gleichungen beschreiben starre Glieder und ideale Gelenke. Überlege, wie Spiel, Reibung, Verformung oder Werkzeuglast die beobachtete Bahn verändern könnten; das Beispiel misst keine reale Werkzeugkraft."
+  ],
+  "formula": "Alle Koordinaten in mm in der XZ-Chassisebene; θ ist die geometrische Kurbelphase im Bogenmaß. O=(0,0), M=(40,0); D=(40+16 cos θ, 16 sin θ); P=(80+32 cos θ, 32 sin θ). Also P−O=2(D−O), ΔP=2ΔD und vP=2vD. Gelenkabstände der langen Arme: OB=BP=64 mm; OA=AB=BC=CP=AD=DC=32 mm. Ideale entsprechende Tangentialkräfte: FP=FD/2.",
+  "related": [
+    "twinpoint.ldr",
+    "mean-machine.ldr",
+    "parallel-lift.ldr"
+  ]
+}

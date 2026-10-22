@@ -59,12 +59,15 @@ class LazyPseudocodeImporter extends React.Component {
             importerReady: false,
             pendingBundleDetail: null
         };
+        this.importerReady = false;
+        this.pendingPseudocodeDetail = null;
         this.Importer = createLazyImporter();
     }
     static getDerivedStateFromError (error) {
         return {error};
     }
     componentDidCatch (error, info) {
+        this.pendingPseudocodeDetail?.onComplete?.({ok: false, message: error.message});
         const componentStack = (info && info.componentStack) || null;
         this.setState({componentStack});
         // eslint-disable-next-line no-console
@@ -72,6 +75,7 @@ class LazyPseudocodeImporter extends React.Component {
     }
     componentDidMount () {
         window.addEventListener('bw-project-bundle-loaded', this.handleBundleLoaded);
+        window.addEventListener('bw-load-pseudocode', this.handleLoadPseudocode);
         this.bindRuntime(this.props.vm);
     }
     componentDidUpdate (previousProps) {
@@ -82,7 +86,10 @@ class LazyPseudocodeImporter extends React.Component {
         }
     }
     componentWillUnmount () {
+        this.pendingPseudocodeDetail?.onComplete?.({ok: false, message: 'Code editor closed.'});
+        this.pendingPseudocodeDetail = null;
         window.removeEventListener('bw-project-bundle-loaded', this.handleBundleLoaded);
+        window.removeEventListener('bw-load-pseudocode', this.handleLoadPseudocode);
         this.unbindRuntime(this.props.vm);
     }
     bindRuntime (vm) {
@@ -104,8 +111,25 @@ class LazyPseudocodeImporter extends React.Component {
         }
     };
     handlePendingBundleHandled = () => this.setState({pendingBundleDetail: null});
-    handleImporterReady = () => this.setState({importerReady: true});
+    handleLoadPseudocode = event => {
+        // Robot Lab can be opened before Code. Keep the latest explicit example
+        // selection while its editor chunk loads; ordinary startup stays lazy.
+        if (this.importerReady || typeof event?.detail?.code !== 'string') return;
+        this.pendingPseudocodeDetail?.onComplete?.({ok: false, message: 'A newer example was selected.'});
+        this.pendingPseudocodeDetail = event.detail;
+        this.setState({activated: true});
+    };
+    handleImporterReady = () => {
+        // The child has installed its event listener before calling onReady.
+        // Mark readiness synchronously so replay is handled only by that child.
+        this.importerReady = true;
+        this.setState({importerReady: true});
+        const detail = this.pendingPseudocodeDetail;
+        this.pendingPseudocodeDetail = null;
+        if (detail) window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail}));
+    };
     handleRetry = () => {
+        this.importerReady = false;
         this.Importer = createLazyImporter();
         this.setState(state => ({componentStack: null, error: null, generation: state.generation + 1, importerReady: false}));
     };

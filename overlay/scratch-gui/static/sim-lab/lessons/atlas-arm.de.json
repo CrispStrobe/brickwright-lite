@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "atlas-arm",
+  "language": "de",
+  "what": "Drei Motoren positionieren einen Roboterarm: Zwei 24:1-Schneckengetriebe bewegen Schulter und Ellenbogen; ein Direktantrieb öffnet den Greifer. Zwei 24:1-Schneckengetriebe positionieren einen Gelenkarm; ein dritter Motor öffnet den Greifer. Vergleiche Wellenumdrehungen, Gelenkwinkel und Halten.",
+  "try": [
+    "Setze zurück und starte das Beispiel. Vergleiche eine volle Schulter-Motorumdrehung mit der deutlich kleineren Armbewegung.",
+    "Beobachte 15° Schulterhub, 25° Ellenbogenhub und einen Greiferbereich von 45°. Alle Antriebe kehren zur Modell-Ausgangslage zurück.",
+    "Pausiere in angehobener Stellung und vergleiche das Halten mit Switchback Lift. Nutze kurze Handsteuerungsimpulse innerhalb des Armbereichs; vor dem nächsten Programmstart zurücksetzen."
+  ],
+  "why": "Jede Umdrehung einer eingängigen Schnecke schiebt das Rad mit 24 Zähnen um einen Zahn weiter. Die Untersetzung tauscht Abtriebsgeschwindigkeit gegen mechanischen Vorteil. Die Schnecke widersteht dem Rücktrieb durch die Armlast. Beide Gelenkdrehungen überlagern sich; gleiche Motorschritte ergeben daher keine gerade Werkzeugbahn.",
+  "matters": "Untersetzungen lassen kleine Motoren einen belasteten Arm langsam positionieren. Gelenk- und Werkzeugkoordinaten beschreiben verschiedene Größen. Praktische Arme brauchen zusätzlich Grenzen, Kalibrierung und Lastprüfungen.",
+  "question": "Wie viele Motorgrad ergeben 25° Ellenbogenbewegung mit dieser Untersetzung?",
+  "answer": "600 Motorgrad: 25 × 24. Der Greifer hat einen Direktantrieb; für ihn gilt diese Rechnung nicht.",
+  "further": [
+    "Ändere ein Gelenkziel geringfügig und sage die Werkzeugbahn vorher. Halte den ursprünglichen Bewegungsbereich ein.",
+    "Vergleiche den direkt angetriebenen Positionierarm und den rücktreibbaren Zahnstangenlift."
+  ],
+  "formula": "θGelenk = θMotor / 24; ideales Abtriebsmoment = 24 × Antriebsmoment (Verluste verringern es)",
+  "related": [
+    "positioning-arm.ldr",
+    "switchback-lift.ldr",
+    "screw-crane.ldr"
+  ]
+}

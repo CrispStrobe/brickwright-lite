@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "offset-orbit",
+  "language": "en",
+  "what": "Offset Orbit sends rotation between two parallel shafts whose axes are 16 mm apart. One motor drives the input; a floating cross connects two perpendicular sliding guides and turns the passive output through the same angle. The orange middle marker has a second, surprising motion: its centre makes two circuits of a 16 mm-diameter circle for every one shaft turn. One motor drives a parallel offset shaft at the same angular motion through two perpendicular sliders. The floating middle cross rotates once while its centre orbits twice per input turn.",
+  "try": [
+    "Select this example and run it. Watch the driven and passive members, then Reset before another run.",
+    "Count the orange centre marker's circuits during the two forward shaft turns. Predict whether there will be two or four, then compare with the recorded path. The return stage reverses the shaft and the orbital motion.",
+    "Follow the input, middle cross and output orientations while watching both sliding interfaces. All three bodies turn through the same angle, while the guide displacements alternate in quadrature. At each half-turn of the shaft, the centre marker reaches its starting position again."
+  ],
+  "why": "Each pair of parallel rails permits sliding and keeps the connected bodies aligned. The two guide directions are perpendicular, so their projected centre lines always intersect at one point C. If A and B are the shaft axes and u is the input guide's unit direction, then C = A + u[u·(B − A)]. As u rotates once, this point goes twice around a circle centered halfway between A and B. The sliding constraints also keep input and output at a 1:1 angular relationship.",
+  "matters": "An Oldham coupling accommodates parallel shaft offset using sliding motion. Its output remains synchronized with the input even while the middle member continually changes position. This experiment makes the extra translation visible. The source geometry uses two rails per sliding interface to restrain unwanted roll, and a rigid middle cross connects the two separated guide layers.",
+  "question": "After half an input turn, the orange centre marker is back at its starting position. Has the whole mechanism returned to its starting configuration?",
+  "answer": "The centre position has repeated, but the input, middle cross and output have each turned 180°. The sliding positions have also exchanged their signs. A marked body distinguishes these orientations even when its centre follows the same point. The full orientation repeats after one shaft turn; the centre completes two circles during that turn.",
+  "further": [
+    "The 16 mm shaft offset fixes an 8 mm orbit radius. A full shaft turn produces two orbital circuits. Increasing offset in a separate qualified rebuild would enlarge that circle and increase each slider's required travel.",
+    "Compare Ellipse Engine: it also uses two perpendicular sliding constraints, but fixes different members of the chain. Compare Phase Bridge, which transfers rotation across angled shafts through universal joints."
+  ],
+  "formula": "Mechanism plane: e = |B − A| = 16 mm; M = (A + B)/2; C = A + u[u·(B − A)]; |C − M| = e/2 = 8 mm. With one common positive shaft axis: Δθ_output = Δθ_input and Δβ_centre = 2Δθ_input. Input +720° → output +720° and centre orbit +1440°; return reverses all three. The middle body itself turns at the shaft rate.",
+  "related": [
+    "ellipse-engine.ldr",
+    "phase-bridge.ldr",
+    "pantograph-doubler.ldr"
+  ]
+}

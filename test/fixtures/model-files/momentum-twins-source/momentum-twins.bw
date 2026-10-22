@@ -1,0 +1,80 @@
+# Momentum Twins — CrispStrobe, BSD-3-Clause.
+# Reset to the saved model pose before running. Motors A and B use degrees/second.
+# Both +720, both home, opposite +720/-720, both home; finite and guarded.
+# The passive platform's actual motion is measured independently by validation.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL stage = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set stage to 0
+  set completed to 0
+  set failed to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    say "Reset both rotors to the saved model datum before running."
+    stop all
+  IF (abs of (lab motor B angle)) > 1 THEN:
+    set failed to 1
+    say "Reset both rotors to the saved model datum before running."
+    stop all
+  broadcast "watchdog"
+  set stage to 1
+  set targetA to 720
+  set targetB to 720
+  broadcast "move both" and wait
+  wait 0.5 seconds
+  set stage to 2
+  set targetA to 0
+  set targetB to 0
+  broadcast "move both" and wait
+  wait 0.5 seconds
+  set stage to 3
+  set targetA to 720
+  set targetB to -720
+  broadcast "move both" and wait
+  wait 0.5 seconds
+  set stage to 4
+  set targetA to 0
+  set targetB to 0
+  broadcast "move both" and wait
+  wait 0.5 seconds
+  lab stop motor A hold
+  lab stop motor B hold
+  set stage to 5
+  set completed to 1
+
+WHEN I receive "move both":
+  IF (abs of (targetA - (lab motor A angle))) > 0.001 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at 90 degrees per second
+  lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    set failed to 1
+    say "Rotor A did not reach its target. Inspect and reset the model."
+    stop all
+
+WHEN I receive "move both":
+  IF (abs of (targetB - (lab motor B angle))) > 0.001 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at 90 degrees per second
+  lab stop motor B hold
+  IF (abs of (targetB - (lab motor B angle))) > 1.5 THEN:
+    set failed to 1
+    say "Rotor B did not reach its target. Inspect and reset the model."
+    stop all
+
+WHEN I receive "watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 59 THEN:
+      lab stop motor A hold
+      lab stop motor B hold
+      set failed to 1
+      say "The experiment timed out. Inspect the model and reset."
+      stop all
+    wait 0.1 seconds

@@ -42,7 +42,14 @@ export const tool = async (page, id, {tap = false} = {}) => {
     if (!(await button.isVisible())) {
         const more = page.getByTestId('bw-sim-lab-more');
         if (tap) await more.tap(); else await more.click();
-        await button.waitFor({state: 'visible', timeout: 5000});
+        await button.waitFor({state: 'visible', timeout: 5000}).catch(async error => {
+            console.error('Toolbar action unavailable after opening More', id, await page.evaluate(() => ({
+                menu:window.__bwSimLab?._pane.state.menu,mode:window.__bwSimLab?._pane.state.mode,
+                events:window.__bwTapLog?.slice(-16),
+                more:document.querySelector('[data-testid="bw-sim-lab-more"]')?.getAttribute('aria-expanded')
+            })));
+            throw error;
+        });
     }
     if (tap) await button.tap(); else await button.click();
 };
@@ -59,7 +66,7 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 const EPS = 1e-6;
 
 /** Every toolbar control now on screen (and in the open menu): test id, name, tooltip, shortcut. */
-const controlsOf = page => page.evaluate(() => [...document.querySelectorAll('[data-testid="bw-sim-lab-toolbar"] button, [data-testid="bw-sim-lab-toolbar"] select')]
+const controlsOf = page => page.evaluate(() => [...document.querySelectorAll('[data-testid="bw-sim-lab-toolbar"] button, [data-testid="bw-sim-lab-toolbar"] select, [data-testid="bw-sim-lab-more-menu"] button, [data-testid="bw-sim-lab-more-menu"] select')]
     .filter(el => el.offsetParent !== null)
     .map(el => ({id: el.dataset.testid || null, label: el.getAttribute('aria-label'), title: el.getAttribute('title') || el.closest('[title]')?.getAttribute('title'),
         keys: el.getAttribute('aria-keyshortcuts'), role: el.getAttribute('role'), checked: el.getAttribute('aria-checked')})));
@@ -227,7 +234,15 @@ const partDragKeepsCamera = async page => {
 
 const partsOf = page => page.evaluate(() => window.__bwSimLab.editor.model.parts.length);
 const selectedOf = page => page.evaluate(() => window.__bwSimLab.editView.selection.length);
-const pressedOf = (page, id) => page.getByTestId(`bw-sim-lab-${id}`).getAttribute('aria-pressed');
+export const toolAttribute = async (page, id, attribute) => {
+    const button=page.getByTestId(`bw-sim-lab-${id}`);
+    const inMore=!(await button.isVisible());
+    if(inMore) await page.getByTestId('bw-sim-lab-more').click();
+    const pressed=await button.getAttribute(attribute);
+    if(inMore) await page.getByTestId('bw-sim-lab-more').click();
+    return pressed;
+};
+const pressedOf = (page,id) => toolAttribute(page,id,'aria-pressed');
 
 /** Build: every action by a click, and the shortcuts by key, each with its effect. */
 const buildActions = async page => {
@@ -357,9 +372,9 @@ const buildActions = async page => {
     await page.waitForFunction(was => Boolean(document.querySelector('[data-testid="bw-sim-lab-properties-panel"]')) === was, props, {timeout: 5000});
     // The overlay switches.
     for (const sw of ['show-ports', 'show-motion']) {
-        const was = await page.getByTestId(`bw-sim-lab-${sw}`).getAttribute('aria-checked');
+        const was = await toolAttribute(page, sw, 'aria-checked');
         await tool(page, sw);
-        assert.notEqual(await page.getByTestId(`bw-sim-lab-${sw}`).getAttribute('aria-checked'), was, `${sw} switches`);
+        assert.notEqual(await toolAttribute(page, sw, 'aria-checked'), was, `${sw} switches`);
         await tool(page, sw);
     }
     // The grid step.
@@ -401,14 +416,17 @@ export const toolbarInteractions = async (page, {shotsDir, labels, full = true})
     const sim = await assertNamed(page, 'Simulate');
     for (const [id, name] of Object.entries(labels.simulate)) {
         const c = sim.find(x => x.id === `bw-sim-lab-${id}`);
-        assert.ok(c, `Simulate: ${id} is on the toolbar`);
+        assert.ok(c, `Simulate: ${id} is on the toolbar or in More`);
         assert.equal(c.label, name, `Simulate: ${id} is called "${name}"`);
     }
     // The File menu offers Open and the three Save formats.
-    await page.getByTestId('bw-sim-lab-file-menu').click();
+    const fileMenu=page.getByTestId('bw-sim-lab-file-menu');
+    if(await fileMenu.isVisible()) await fileMenu.click();
+    else await page.getByTestId('bw-sim-lab-more').click();
     for (const id of ['open', 'save-ldr', 'save-mpd', 'save-io']) await page.getByTestId(`bw-sim-lab-${id}`).waitFor();
     await page.keyboard.press('Escape');
     await page.getByTestId('bw-sim-lab-file-list').waitFor({state: 'detached', timeout: 5000});
+    await page.getByTestId('bw-sim-lab-more-menu').waitFor({state: 'detached', timeout: 5000});
     await page.screenshot({path: resolve(shotsDir, 'robot-lab-tab-simulate.png')});
     if (full) result.simulateCamera = await cameraInteractions(page, {build: false});
 

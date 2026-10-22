@@ -38,13 +38,6 @@
 // positionSettled hook), as a real motor's does; a blocked shaft is reported
 // stalled to the generator (its load input) and ends as 'stalled'.
 //
-// "Start motor at % power" (backend.startPower: SPIKE 3's
-// motor.set_duty_cycle, the 2.x hub module's pwm) is NOT a reference: the
-// duty goes to the DC model as it is, with no feedback and no stall
-// detection, so the motor slows under load and stalls at a hard stop (the
-// physics' end stops), as an unregulated motor does. The encoder still
-// reports the measured angle and speed.
-//
 // The ideal servo (drive: 'servo', the pre-D5 behaviour: the controller's
 // commanded °/s as a velocity target) stays as a test fixture.
 //
@@ -197,20 +190,20 @@ export class SpikeVirtualHub {
             const refDeg = m.position;
             const refDps = Number(m.degPerSec) || 0;
             m.position = st.measuredDeg;
-            if (c.mode === 'stop') st.passive = c.action;
             if (c.mode === 'power') {
-                // Open loop: the commanded duty, as it is. The reference follows the shaft, and
-                // the speed the hub reports is the measured one (no generator speed to report).
+                // Duty bypasses the trajectory feedback loop; measured load cannot
+                // make the controller add power or accumulate a catch-up angle.
                 st.active = false;
                 st.integral = 0;
+                st.stallMs = 0;
                 st.refDeg = st.measuredDeg;
-                m.degPerSec = Number(m.measuredDegPerSec) || 0;
                 this._setStalled(index, st, false);
-                st.passive = c.defaultStopAction;
                 st.duty = c.duty;
                 st.decay = 'brake';
+                st.passive = c.defaultStopAction;
                 continue;
             }
+            if (c.mode === 'stop') st.passive = c.action;
             if (!ACTIVE.has(c.mode)) {
                 // Stopped: the H-bridge's passive state, no feedback.
                 st.active = false;
@@ -272,6 +265,8 @@ export class SpikeVirtualHub {
             data[index].measuredDegPerSec = r.radPerSec * DEG;
             const st = this.drive === 'pwm' && this.dc.get(index);
             if (st) {
+                // Duty mode reports measured shaft speed, not the arena's no-load approximation.
+                if (hubState.backend._controllers[index].mode === 'power') data[index].degPerSec = r.radPerSec * DEG;
                 // The hub's port report (classicPorts) carries the measured angle, not the reference.
                 st.lastWritten = data[index].position;
                 hubState.backend._publish(index);
@@ -304,9 +299,10 @@ export class SpikeVirtualHub {
      * A direct command from the Robot Lab API (api/robot-lab-api.js) to a motor on this hub:
      * it goes through the hub's own controller, exactly as a SPIKE block's command does (the
      * spikeprime extension calls the same `hubState.motors`), so the motor keeps ONE owner and
-     * the last command wins, as between two blocks of one program. SPIKE regulates every
-     * motor, so `power` is the SPIKE app's "start motor at N %" (a speed, N % of the motor's top
-     * speed), not an open-loop duty. Same shape as LabDirectHub.directCommand.
+     * the last command wins, as between two blocks of one program. The existing
+     * Robot Lab API's `power` retains its regulated percent-speed semantics.
+     * The SPIKE duty block calls motors.runAtPower separately through the
+     * hub command parser. Same shape as LabDirectHub.directCommand.
      */
     directCommand (port, command = {}) {
         if (!this.motorPorts.has(port)) return {ok: false, code: 'no-motor', message: `there is no motor on port ${port}`};

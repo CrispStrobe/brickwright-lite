@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "phase-bridge",
+  "language": "de",
+  "what": "Ein Motor treibt zwei geknickte Kardangelenke an. Die Zwischenwelle wird pro Umdrehung zweimal schneller und langsamer. Bei gleichen Knickwinkeln und richtig ausgerichteten Gabeln gleicht das zweite Gelenk diese Schwankung am Abtrieb aus. Die Datei enthält 144 explizite Teile; mit den zwei vom Simulator ergänzten Gelenkkreuzen sind es 146 physische Teile. Gleiche Knickwinkel und richtig ausgerichtete Gabeln gleichen die Drehzahlschwankung zweier Kardangelenke aus. Vergleiche Zwischenwelle und Abtrieb.",
+  "try": [
+    "Wähle Phase Bridge unter Beispiele; das Programm wird automatisch in Blöcke geladen. Drücke Start und vergleiche den gelben Zwischenwellenzeiger mit dem blauen Abtrieb bei zwei Umdrehungen und der Rückfahrt.",
+    "Setze zurück und wähle Phase Bridge — falsch ausgerichteter Vergleich. Beim selben Programm schwankt die Abtriebsdrehzahl nun stärker. Nur die Ausrichtung am zweiten Gelenk ändert sich.",
+    "Setze zurück, öffne phase-bridge-steps.bw im Code-Editor und wandle es in Blöcke um. Acht gleich große 45°-Schritte am Eingang zeigen ungleiche Schritte der Zwischenwelle. Vergleiche die Abtriebspositionen beider Modelle."
+  ],
+  "why": "Ein Kardankreuz hat zwei senkrechte Gelenkachsen. Bei geknickten Wellen ergibt diese Geometrie einen nichtlinearen Zusammenhang zwischen den Winkeln. Ein gleicher zweiter Knick gleicht ihn nur bei richtiger Gabelstellung aus. Der Simulator löst pro Gelenk zwei echte Scharniere und einen Kreuzkörper; die Ausgangslage oder eine konstante Übersetzung wird nicht vorgegeben.",
+  "matters": "Kardangelenke übertragen Drehmoment zwischen schräg zueinander stehenden Wellen. Doppel-Kardan-Antriebe können Schwingungen durch ungleichförmigen Lauf verringern. Gabelstellung und gleiche Knickwinkel sind auch bei einer mittleren Übersetzung von eins zu eins entscheidend.",
+  "question": "Warum können beide Modelle unterschiedlich laufen, obwohl eine Eingangsumdrehung jeweils eine Abtriebsumdrehung ergibt?",
+  "answer": "Die mittlere Übersetzung bestimmt nicht die momentane Drehzahl. Bei richtiger Ausrichtung bleiben Ein- und Ausgang synchron, während die Zwischenwelle schwankt. Ein Ausrichtungsfehler von einer Vierteldrehung verstärkt die Abtriebsschwankung, obwohl die Wellen gleich viele volle Umdrehungen machen.",
+  "further": [
+    "Die Knicke folgen einem 3–4–5-Dreieck: 48 mm seitlich, 64 mm nach vorn und 80 mm zwischen den Gelenkzentren. Daraus folgt β = atan(3/4) ≈ 36,87°. Die Zwischenwelle eilt um etwa 6,38° vor oder nach; der falsch ausgerichtete Abtrieb erreicht etwa 12,69°.",
+    "Jedes Gabelpaar braucht ein vom Solver ergänztes Kreuz. Diese physisch erforderlichen Teile sind keine zusätzlichen Motoren. Teileliste und Anleitung führen 144 explizite Teile sowie den Hinweis auf zwei Kreuze. Vor jedem Programm zurücksetzen; Ziele nutzen den aktuellen Drehgeber und stoppen bei mehr als 2° Abweichung.",
+    "Das Modell ist in Simulation geprüft. Reibung, Spiel, Gabelkollisionen und hohe Drehzahlen eines realen Aufbaus müssen getrennt gemessen werden."
+  ],
+  "formula": "β = atan(3/4), cos β = 0,8. tan φ = tan θ / 0,8. Richtige Ausrichtung: ψ = θ. Falsche Ausrichtung: tan ψ = tan θ / 0,64. Winkel über volle Umdrehungen fortlaufend zählen. Drehzahlverhältnis der Zwischenwelle: 0,8–1,25; falsch ausgerichteter Abtrieb: 0,64–1,5625.",
+  "related": [
+    "phase-bridge-misphased.ldr",
+    "tempo-loop.ldr",
+    "ratio-workbench.ldr"
+  ]
+}

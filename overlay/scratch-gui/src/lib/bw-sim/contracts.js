@@ -412,6 +412,7 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
             out.push(`${p}.mirrorOf.others: only on a part that is its own mirror image, a list of {m, t}`);
         }
     }
+    if (meta.ownedGeometry !== undefined && typeof meta.ownedGeometry !== 'boolean') out.push(`${p}.ownedGeometry: must be boolean`);
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
         out.push(`${p}.friction: need a number in 0..2`);
     }
@@ -430,6 +431,8 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
             if (!isVec(c?.position)) out.push(`${w}.position: not a Vec3`);
             checkUnit(c?.axis, `${w}.axis`, out);
             if (c?.length !== undefined && !(isNum(c.length) && c.length > 0)) out.push(`${w}.length: need a positive number`);
+            if (c?.data?.seatOffsetLdu !== undefined && !(c.type === 'stud' && isNum(c.data.seatOffsetLdu) &&
+                c.data.seatOffsetLdu >= 0 && c.data.seatOffsetLdu < c.length)) out.push(`${w}.data.seatOffsetLdu: a stud clutch plane must lie within its primitive length`);
             if (c?.friction !== undefined && typeof c.friction !== 'boolean') out.push(`${w}.friction: need a boolean`);
             if (c?.closedEnd !== undefined && !((c.closedEnd === 1 || c.closedEnd === -1) && (c.type === 'pinhole' || c.type === 'axlehole'))) {
                 out.push(`${w}.closedEnd: only a pinhole/axlehole may have one, and it is 1 or -1`);
@@ -457,6 +460,12 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         checkUnit(meta.gear.axis, `${p}.gear.axis`, out);
         if (!isVec(meta.gear.center)) out.push(`${p}.gear.center: not a Vec3`);
         if (meta.gear.pitchRadiusLdu !== undefined && !(meta.gear.pitchRadiusLdu > 0)) out.push(`${p}.gear.pitchRadiusLdu: a positive number (LDU)`);
+        if (meta.gear.meshesAs !== undefined && (!Array.isArray(meta.gear.meshesAs) ||
+            !meta.gear.meshesAs.length || !meta.gear.meshesAs.every(t => GEAR_TYPES.includes(t)) ||
+            !meta.gear.meshesAs.includes(meta.gear.type))) out.push(`${p}.gear.meshesAs: supported profiles including the native type`);
+        if (meta.gear.faceWidthLdu !== undefined && !(isNum(meta.gear.faceWidthLdu) && meta.gear.faceWidthLdu > 0)) {
+            out.push(`${p}.gear.faceWidthLdu: a positive finite tooth-face width`);
+        }
     }
     if (meta.drawnOnly !== undefined && typeof meta.drawnOnly !== 'boolean') out.push(`${p}.drawnOnly: true or false`);
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
@@ -513,6 +522,9 @@ const checkPartMetaV2 = (meta, p, out) => {
                     if (!(typeof meta.hubProfile === 'string' || meta.hub)) out.push(`${w}: only a hub part has built-in motors`);
                 }
                 if (j?.limitsLdu !== undefined && !(isVec(j.limitsLdu, 2) && j.limitsLdu[0] <= j.limitsLdu[1])) out.push(`${w}.limitsLdu: [min, max]`);
+                // A hinge's end stops in degrees from the start pose (a servo: kinds/servo-stops.js).
+                if (j?.limitsDeg !== undefined && !(j.type === 'hinge' && isVec(j.limitsDeg, 2) && j.limitsDeg[0] <= 0 && j.limitsDeg[1] >= 0 &&
+                    j.limitsDeg[0] >= -180 && j.limitsDeg[1] <= 180)) out.push(`${w}.limitsDeg: a hinge's [min ≤ 0, max ≥ 0] within ±180`);
             }
         }
     }
@@ -650,12 +662,27 @@ export const partDrivenJoints = meta => {
 };
 
 /**
- * A graph node's share of its part (mech/graph.js makes one node per driven joint's moving side
- * and one for the rest): {fraction of the part's mass, collider indices}, or null for a part
- * with no driven joint (one node, everything).
+ * A part's free internal hinges (actuatedBy 'none'): a wheelset that turns in its housing with nothing
+ * driving it, as a train motor's second axle does ('#free-<joint id>', mech/graph.js).
+ * [{joint, suffix}]
+ */
+export const partFreeJoints = meta => {
+    const m = upgradePartMeta(meta);
+    return (m && Array.isArray(m.internalJoints) ? m.internalJoints : [])
+        .filter(j => j && j.actuatedBy === 'none' && j.type === 'hinge')
+        .map(j => ({joint: j, suffix: `#free-${j.id}`}));
+};
+
+/** Every internal joint that splits its part into graph nodes: the driven ones, then the free ones. */
+export const partMovingJoints = meta => [...partDrivenJoints(meta), ...partFreeJoints(meta)];
+
+/**
+ * A graph node's share of its part (mech/graph.js makes one node per driven or free joint's moving
+ * side and one for the rest): {fraction of the part's mass, collider indices}, or null for a part
+ * with no such joint (one node, everything).
  */
 export const motorNodeShare = (meta, nodeId) => {
-    const driven = partDrivenJoints(meta);
+    const driven = partMovingJoints(meta);
     if (!driven.length) return null;
     const moving = driven.find(d => nodeId.endsWith(d.suffix));
     if (moving) return {fraction: moving.joint.massFraction, colliders: [...(moving.joint.movingColliders || [])]};
@@ -696,6 +723,15 @@ export const validatePlacedModel = (model, catalog) => {
     if (model.version !== 1 && model.version !== 2) out.push(`model.version: expected 1, got ${model.version}`);
     if (!Array.isArray(model.parts)) return [...out, 'model.parts: not an array'];
     uniqueIds(model.parts, 'model.parts', out);
+    if (model.drawings !== undefined) {
+        if (!Array.isArray(model.drawings)) out.push('model.drawings: not an array');
+        else for (const d of model.drawings) {
+            if (!model.parts.some(p => p.id === d?.surface) || !model.parts.some(p => p.id === d?.pen) || d.surface === d.pen ||
+                !isVec(d.tip) || !isVec(d.center) || !(isNum(d.radiusLdu) && d.radiusLdu > 0)) {
+                out.push('model.drawings: distinct existing surface/pen, finite local tip/centre and positive radius required');
+            }
+        }
+    }
     const has = catalog instanceof Map ? k => catalog.has(k) : k => catalog && Object.hasOwn(catalog, k);
     for (const pl of model.parts) {
         const w = `model.parts[${pl?.id}]`;
@@ -974,6 +1010,8 @@ export const dirToWorld = d => [d[0], 0 - d[1], 0 - d[2]];
  *   solver?     {lightLinks: {massKg, ratio, velocity, position}} more solver iterations for joints
  *               holding a body below massKg against one ratio times heavier (mech/compile.js
  *               FOREIGN_LIGHT_LINKS, models from elsewhere only); bodies keep their own massKg.
+ *               loopBalls?: the ids of the hinges made ball joints to break closed hinge loops (mech/loops.js).
+ *               maxLinearVelocity?: m/s no body exceeds (mech/compile.js FOREIGN_MAX_SPEED_M_S).
  * The v1 fields are the derived v1 VIEW (mechanismV1Aliases): `gears` = the gear and
  * rackAndPinion couplings, `sensors` = the devices, `joint.motor` = the actuator's numbers
  * (port without its hub). validateCompiledMechanism checks they agree; mechanismV1(m)

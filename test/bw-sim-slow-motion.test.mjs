@@ -12,7 +12,29 @@
 //   - a long pause (Pause, a hidden tab) does not make the next seconds rush to catch up.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {slowMotionWait, SLOW_MOTION_GAP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-clock.js';
+import {SimLabClock, slowMotionWait, SLOW_MOTION_GAP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-clock.js';
+
+test('fast forward schedules another unchanged VM step after the world catches up; Pause cancels it', async () => {
+    for (const scale of [1, 2, 4]) {
+        const tasks = [];
+        let steps = 0;
+        const runtime = {currentStepTime: 20, _step () { steps++; }};
+        const session = {time: 0, tick (ms) { this.time += ms; }, idle: async () => {}};
+        const clock = new SimLabClock({defer: fn => tasks.push(fn), wallNow: () => 0});
+        clock.timeScale = scale;
+        clock.install(runtime, session);
+        runtime._step();
+        tasks.shift()();
+        for (let i = 0; i < 8; i++) await Promise.resolve();
+        assert.equal(session.time, 20, 'physics step size stays unchanged');
+        assert.equal(clock.programMs, 20, 'program time agrees with physics');
+        assert.equal(tasks.length, scale > 1 ? 1 : 0, 'fast forward requests an extra VM step');
+        if (scale > 1) { tasks.shift()(); assert.equal(steps, 2); }
+        clock.uninstall();
+        while (tasks.length) tasks.shift()();
+        assert.equal(steps, scale > 1 ? 2 : 1, 'queued work cannot restart after Pause');
+    }
+});
 
 /** A run of `steps` VM steps of `stepMs` simulated each; returns simulated and wall time spent. */
 const run = (scale, {steps = 600, stepMs = 1000 / 60, start = {now: 0, sim: 0, pace: null}, cost = i => (i * 7919) % 11} = {}) => {

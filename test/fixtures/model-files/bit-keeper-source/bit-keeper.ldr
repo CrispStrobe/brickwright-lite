@@ -1,0 +1,290 @@
+0 BIT KEEPER - a gravity-and-band mechanical memory
+0 Name: bit-keeper.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/bit-keeper.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // One hub, one motor A, one free rocker and one physical33mm rubber band.
+0 // Same neutral motor input can retain either left or right output state.
+0 // Saved output angle -24.62822030007degrees; native input encoder zero.
+0 // No custom joints, invisible stops, imposed output trajectories or ground anchors.
+0 // 45610 hub battery is additional. Route integral motor cable behind the portal.
+0 !BW ID foot_left
+1 0 -180 270 -130 0 0 1 0 1 0 -1 0 0 3703.dat
+0 !BW ID foot_block_left
+1 72 -160 260 -140 0 0 -1 0 1 0 1 0 0 32557.dat
+0 !BW ID foot_pin_left_-150
+1 0 -170 280 -150 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_pin_left_-130
+1 0 -170 280 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_right
+1 0 180 270 -130 0 0 1 0 1 0 -1 0 0 3703.dat
+0 !BW ID foot_block_right
+1 72 160 260 -140 0 0 -1 0 1 0 1 0 0 32557.dat
+0 !BW ID foot_pin_right_-150
+1 0 170 280 -150 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID foot_pin_right_-130
+1 0 170 280 -130 1 0 0 0 1 0 0 0 1 2780.dat
+0 STEP
+0 !BW ID column_lower_left
+1 0 -160 160 -160 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID column_upper_left
+1 0 -160 20 -140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID column_lap_left_80
+1 0 -160 80 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_left_100
+1 0 -160 100 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_left_140
+1 0 -160 140 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_left_160
+1 0 -160 160 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_left_240
+1 0 -160 240 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_left_260
+1 0 -160 260 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lower_right
+1 0 160 160 -160 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID column_upper_right
+1 0 160 20 -140 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID column_lap_right_80
+1 0 160 80 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_right_100
+1 0 160 100 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_right_140
+1 0 160 140 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID column_lap_right_160
+1 0 160 160 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_right_240
+1 0 160 240 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID foot_column_right_260
+1 0 160 260 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID arch_top_left
+1 72 -120 -120 -120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID arch_top_right
+1 72 120 -120 -120 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID arch_splice
+1 72 0 -120 -140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID arch_splice_pin_-40
+1 0 -40 -120 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_splice_pin_40
+1 0 40 -120 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID arch_brace_spacer_left
+1 72 -160 -80 -120 -1 0 0 0 0 1 0 1 0 32523.dat
+0 !BW ID arch_brace_left
+1 72 -160 -40 -100 -1 0 0 0 0 -1 0 -1 0 32526.dat
+0 !BW ID arch_corner_left_-120
+1 1 -160 -120 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_left_-100
+1 1 -160 -100 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_left_-60
+1 1 -160 -60 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_brace_tip_left_20
+1 0 -180 -120 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_brace_tip_left_40
+1 0 -200 -120 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_brace_spacer_right
+1 72 160 -80 -120 -1 0 0 0 0 1 0 1 0 32523.dat
+0 !BW ID arch_brace_right
+1 72 160 -40 -100 1 0 0 0 0 -1 0 1 0 32526.dat
+0 !BW ID arch_corner_right_-120
+1 1 160 -120 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_right_-100
+1 1 160 -100 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_corner_right_-60
+1 1 160 -60 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID arch_brace_tip_right_20
+1 0 180 -120 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID arch_brace_tip_right_40
+1 0 200 -120 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID hub
+1 15 0 230 -260 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_cross_left_180
+1 72 -120 180 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_cross_right_180
+1 72 120 180 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_splice_180
+1 72 0 180 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID hub_cross_column_-160_180
+1 0 -160 180 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_cross_column_160_180
+1 0 160 180 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_mount_-40_180
+1 1 -40 180 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID hub_mount_40_180
+1 1 40 180 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID hub_cross_left_220
+1 72 -120 220 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_cross_right_220
+1 72 120 220 -140 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID hub_splice_220
+1 72 0 220 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID hub_cross_column_-160_220
+1 0 -160 220 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_cross_column_160_220
+1 0 160 220 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID hub_mount_-40_220
+1 1 -40 220 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID hub_mount_40_220
+1 1 40 220 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 STEP
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 0 -120 -80 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID motor_front_-20
+1 1 -20 -120 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID motor_front_20
+1 1 20 -120 -120 0 1 0 0 0 1 1 0 0 6558.dat
+0 STEP
+0 !BW ID bearing_rear_center_20
+1 72 0 20 -120 0 0 1 1 0 0 0 1 0 32523.dat
+0 !BW ID bearing_rear_left_20
+1 72 -120 20 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID bearing_splice_left_20
+1 72 -60 20 -140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID bearing_column_left_20
+1 0 -160 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_left_20_20
+1 0 -20 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_left_20_60
+1 0 -60 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_left_20_80
+1 0 -80 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_rear_right_20
+1 72 120 20 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID bearing_splice_right_20
+1 72 60 20 -140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID bearing_column_right_20
+1 0 160 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_right_20_20
+1 0 20 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_right_20_60
+1 0 60 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_right_20_80
+1 0 80 20 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_rear_center_40
+1 72 0 40 -120 0 0 1 1 0 0 0 1 0 32523.dat
+0 !BW ID bearing_rear_left_40
+1 72 -120 40 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID bearing_splice_left_40
+1 72 -60 40 -140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID bearing_column_left_40
+1 0 -160 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_left_40_20
+1 0 -20 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_left_40_60
+1 0 -60 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_left_40_80
+1 0 -80 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_rear_right_40
+1 72 120 40 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID bearing_splice_right_40
+1 72 60 40 -140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID bearing_column_right_40
+1 0 160 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_right_40_20
+1 0 20 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_right_40_60
+1 0 60 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_splice_pin_right_40_80
+1 0 80 40 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_rear_mount
+1 0 0 20 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID bearing_layer_left_100
+1 72 -100 20 -100 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_left_100_20
+1 0 -100 20 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_left_100_40
+1 0 -100 40 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_left_80
+1 72 -100 20 -80 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_left_80_-20
+1 0 -100 -20 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_left_80_0
+1 0 -100 0 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_left_60
+1 72 -100 20 -60 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_left_60_20
+1 0 -100 20 -70 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_left_60_40
+1 0 -100 40 -70 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_left_40
+1 72 -100 20 -40 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_left_40_-20
+1 0 -100 -20 -50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_left_40_60
+1 0 -100 60 -50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_right_100
+1 72 100 20 -100 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_right_100_20
+1 0 100 20 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_right_100_40
+1 0 100 40 -110 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_right_80
+1 72 100 20 -80 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_right_80_-20
+1 0 100 -20 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_right_80_0
+1 0 100 0 -90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_right_60
+1 72 100 20 -60 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_right_60_20
+1 0 100 20 -70 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_right_60_40
+1 0 100 40 -70 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_right_40
+1 72 100 20 -40 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID bearing_layer_pin_right_40_-20
+1 0 100 -20 -50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_layer_pin_right_40_60
+1 0 100 60 -50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing
+1 72 0 0 -20 0 0 1 1 0 0 0 1 0 32525.dat
+0 !BW ID bearing_front_pin_-100
+1 0 -100 0 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID bearing_front_pin_100
+1 0 100 0 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 !BW ID crank_rear
+1 25 0 -120 -20 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID crank_front
+1 25 0 -120 0 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID rotor_pin_140
+1 1 0 -140 -20 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID rotor_pin_100
+1 1 0 -100 -20 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID input_post
+1 0 0 -80 10 0 1 0 0 0 1 1 0 0 43093.dat
+0 !BW ID input_anchor
+1 25 0 -80 20 1 0 0 0 1 0 0 0 1 3713.dat
+0 STEP
+0 !BW ID pivot
+1 71 0 0 -10 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID arm
+1 4 -25.003714458761 54.541857900742 0 -0.909030965012 0 -0.416728574313 -0.416728574313 0 0.909030965012 0 1 0 32524.dat
+0 !BW ID output_post
+1 0 -16.669142972507 36.361238600495 10 0 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 1 0 0 43093.dat
+0 !BW ID output_anchor
+1 4 -16.669142972507 36.361238600495 20 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 0 0 0 1 3713.dat
+0 !BW ID calibration_post
+1 0 -25.003714458761 54.541857900742 -10 0 0.909030965012 0.416728574313 0 0.416728574313 -0.909030965012 -1 0 0 43093.dat
+0 !BW ID calibration_bush
+1 4 -25.003714458761 54.541857900742 -20 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 0 0 0 1 3713.dat
+0 STEP
+0 !BW ID bob_adapter
+1 4 -41.672857431268 90.903096501237 20 0.909030965012 0 0.416728574313 0.416728574313 0 -0.909030965012 0 1 0 60483.dat
+0 !BW ID bob_pin
+1 0 -33.338285945014 72.72247720099 10 0 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 1 0 0 2780.dat
+0 !BW ID bob_axle
+1 0 -41.672857431268 90.903096501237 20 0 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 1 0 0 3705.dat
+0 !BW ID bob_gear
+1 71 -41.672857431268 90.903096501237 40 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 0 0 0 1 3648.dat
+0 !BW ID bob_rear_retainer
+1 4 -41.672857431268 90.903096501237 -15 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 0 0 0 1 4265c.dat
+0 !BW ID bob_front_retainer
+1 4 -41.672857431268 90.903096501237 55 0.909030965012 -0.416728574313 0 0.416728574313 0.909030965012 0 0 0 1 4265c.dat
+0 STEP
+0 // Step12: fit the band over both flanged anchor bushes.
+0 !BW BELT toggle_band 85546.dat output_anchor input_anchor

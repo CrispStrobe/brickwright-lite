@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "straight-eight",
+  "language": "en",
+  "what": "A motor drives a Peaucellier linkage: seven moving links and a fixed ground link constrain the red marker to a straight path. Seven moving links make the red marker trace a straight line through a bounded ±60° crank sector, with no sliding guide.",
+  "try": [
+    "Reset and run the example. Watch the blue crank sweep +60°, −60°, then return home.",
+    "Pause at an endpoint. Compare the red marker with the fixed origin O; there is no sliding rail.",
+    "Change the program to ±30° and predict the shorter stroke before running. Reset first; keep all commands within ±60°."
+  ],
+  "why": "The equal long arms and four equal rhombus sides impose OP × OQ = L² − r². The input point P moves on a circle passing through O. Inversion maps that circle to a straight line, so Q moves vertically although every joint rotates.",
+  "matters": "Straight-line linkages convert rotation into constrained translation without a sliding guide. Geometry determines both the path and the nonlinear speed along it.",
+  "question": "Does constant crank speed give constant vertical marker speed?",
+  "answer": "No. Marker height is proportional to tan(θ/2). Its speed increases toward the endpoints even when the crank turns steadily.",
+  "further": [
+    "Compare the predicted 49.27 mm stroke for ±60° with 22.86 mm for ±30°.",
+    "Compare the rack shuttle: its displacement is proportional to shaft angle, unlike this linkage."
+  ],
+  "formula": "L = 80 mm; r = 48 mm; a = OS = SP = 48 mm; xQ = (L² − r²)/(2a) = 42.667 mm; yQ = xQ tan(θ/2)",
+  "related": [
+    "rack-shuttle.ldr",
+    "crank-rocker.ldr"
+  ]
+}

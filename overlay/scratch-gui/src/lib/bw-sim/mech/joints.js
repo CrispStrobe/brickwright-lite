@@ -10,6 +10,7 @@ import {COS_1_DEG, vecAdd, vecSub, vecDot, vecCross, vecLen, vecScale, vecNormal
 import {lduToWorld, dirToWorld, LDU_M} from '../contracts.js';
 import {MIN_ENGAGE_LDU} from '../kinds/pin-axle.js';
 import {slipTorqueOf} from '../kinds/slip-clutch.js';
+import {continuousStrip} from '../kinds/continuous-strip.js';
 
 const COS_1 = COS_1_DEG;
 const TOL = 0.5 + 1e-9;
@@ -118,19 +119,23 @@ const sliderTravel = (group, ref, nodes, edges, nodeToBody) => {
         // The joint moves body2 relative to body1 along u; this edge's bore moves relative to its
         // shaft along u by sign·d (its shaft may be on body2: a carriage axle through a frame bore).
         const sign = g.body1 === ref.body1 ? 1 : -1;
-        const [s0, s1] = segmentAlong(shaft, u);
+        const seed={partId:g.edge.a.part,islandId:nodeToBody.get(g.edge.a.part),c:shaft};
+        const run=shaft._orig?.data?.continuous ? continuousStrip(seed,[...nodes].flatMap(([id,node])=>
+            node.connectors.filter(c=>c.type===shaft.type&&c._orig?.data?.continuous).map(c=>({partId:id,islandId:nodeToBody.get(id),c})))) : {c:shaft,members:[seed]};
+        const [s0, s1] = segmentAlong(run.c, u);
         const [b0, b1] = segmentAlong(bore, u);
         const need = Math.min(MIN_ENGAGE_LDU, s1 - s0, b1 - b0);
         const engage = [s0 - b1 + need, s1 - b0 - need].map(v => sign * v).sort((p, q) => p - q);
-        const key = `${g.edge.a.part}|${g.edge.a.connector}`;
+        const segments=new Set(run.members.map(m=>`${m.partId}|${m.c.id}`));
+        const key=[...segments].sort().join(';');
         const prev = byShaft.get(key);
         byShaft.set(key, prev ? [Math.min(prev[0], engage[0]), Math.max(prev[1], engage[1])] : engage);
         // Stops: every other connector seated on this shaft, unless it moves with the bore.
         const moving = nodeToBody.get(g.edge.b.part);
         for (const e of edges) {
             let other = null;
-            if (e.a.part === g.edge.a.part && e.a.connector === g.edge.a.connector) other = e.b;
-            else if (e.b.part === g.edge.a.part && e.b.connector === g.edge.a.connector) other = e.a;
+            if (segments.has(`${e.a.part}|${e.a.connector}`)) other = e.b;
+            else if (segments.has(`${e.b.part}|${e.b.connector}`)) other = e.a;
             if (!other || nodeToBody.get(other.part) === moving) continue;
             const c = connectorOf(nodes, other);
             if (!c) continue;

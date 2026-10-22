@@ -36,6 +36,7 @@ import {
     mirrorSymmetry, mul, mulVec, placementRotation, transpose
 } from '../overlay/scratch-gui/src/lib/bw-sim/part-meta/canonical-frame.js';
 import {partsFileText} from './migrate-parts-v2.mjs';
+import {OWNED_PART_FILES} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/owned-parts.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PARTS_FILE = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json');
@@ -44,7 +45,11 @@ const LIB = path.join(ROOT, 'overlay/scratch-gui/static/ldraw');
 
 export const libReader = lib => p => {
     const f = path.join(lib, p.toLowerCase());
-    return existsSync(f) ? readFileSync(f, 'latin1') : undefined;
+    if (existsSync(f)) return readFileSync(f, 'latin1');
+    const name = p.toLowerCase().replace(/^parts\//, '');
+    if (!OWNED_PART_FILES.includes(name)) return undefined;
+    const owned = path.join(lib, '../sim-lab/parts', name);
+    return existsSync(owned) ? readFileSync(owned, 'latin1') : undefined;
 };
 
 const r4 = v => Math.round(v * 1e4) / 1e4 + 0;

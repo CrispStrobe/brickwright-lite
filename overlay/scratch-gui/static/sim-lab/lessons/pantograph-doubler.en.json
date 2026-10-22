@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "pantograph-doubler",
+  "language": "en",
+  "what": "Pantograph Doubler uses one motor to move input point C around a small circle. Four passive bars carry the free endpoint E around a circle with twice the diameter. Viewed from above, at every position the planar vector from the fixed pivot O to E is twice the vector from O to C. The moving points demonstrate a trajectory; the model does not claim physical pen or ink contact. A single motor drives a passive pantograph: a 32 mm input circle becomes a 64 mm output circle. Compare displacement, speed and enclosed area.",
+  "try": [
+    "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
+    "Watch the input joint C and the free endpoint E through a quarter-turn. Compare their directions and distances from the fixed pivot O: in the top view O, C and E stay on one line, with E twice as far from O.",
+    "Compare the two complete paths. Predict their diameters before measuring: the input circle is 32 mm across and the output circle is 64 mm across. Check that both points return to their own starting positions."
+  ],
+  "why": "The long bars OB and BE each span 96 mm between their end holes. A and D are their midpoints, while the short bars AC and CD each span 48 mm. These lengths form the parallelogram A–B–D–C. If u is the vector OA and v is the vector AC, then C = u + v and E = 2u + 2v. In the XZ projection, the endpoint therefore follows E − O = 2(C − O), without a separate output guide.",
+  "matters": "Pantographs transfer a two-dimensional motion at a chosen scale. This geometry is useful in drawing enlargers and motion-copying mechanisms. Here the output has twice the input speed at corresponding instants and travels twice as far. That motion gain is a geometric relation; this experiment does not measure available force or performance under a tool load.",
+  "question": "If the output circle has twice the input diameter, does it enclose twice the area?",
+  "answer": "It encloses four times the area. Both planar coordinates are multiplied by two, so lengths and corresponding speeds double while area is multiplied by 2 × 2 = 4. The circle centre also moves twice as far from O: the output is a dilation about O, not just a larger circle about the motor axis.",
+  "further": [
+    "At the saved starting pose, C is 64 mm from O along +X and E is 128 mm from O. After a quarter-turn in the positive geometric direction, C = (80, −16) mm and E = (160, −32) mm in the XZ plane.",
+    "Compare Parallel Lift, which preserves the orientation of a platform, with this pantograph, which scales the position of a point. Compare Straight Eight, whose Peaucellier linkage maps its permitted input arc to a straight line.",
+    "Find the historical pantograph in Henry T. Brown’s 507 Mechanical Movements, movement 246: https://507movements.com/mm_246.html. The current model uses ordinary pinned beams to demonstrate the same scaling principle."
+  ],
+  "formula": "XZ plane, lengths in mm; q = 0 at crank +Z. O = (0, 0); S = (64, −16); C(q) = (64 + 16 sin q, −16 + 16 cos q); E − O = 2(C − O). Input radius = 16 mm; output radius = 32 mm; diameter 32 → 64 mm; area ×4.",
+  "related": [
+    "parallel-lift.ldr",
+    "straight-eight.ldr",
+    "axis-plotter.ldr"
+  ]
+}

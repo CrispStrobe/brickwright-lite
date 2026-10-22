@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "id": "snapgate",
+  "language": "en",
+  "what": "Snapgate is an experimental mechanical memory cell. One motor moves the anchor of a compressed shock absorber. The other end pushes a passive rocker between two physical stops. A long orange pointer reveals its state and adds rotational inertia. The rocker can keep either of two states at the same held input position; a sufficiently large input excursion makes it snap to the other state. One motor moves a compressed shock absorber’s anchor. A passive rocker snaps between two stops and remembers either state at the same held input position.",
+  "try": [
+    "Find the red driven anchor fork, the complete 9L shock absorber, the blue passive rocker, the long orange pointer and its two yellow roller stops. Follow the force path from the spring through the rocker to its pivot and active stop. Only the anchor fork is motor-driven.",
+    "Select the example and Run. The input moves slowly while the passive output switches quickly. The program positions only the anchor; the spring and physical stops determine the rocker state. Reset before another run after manual operation.",
+    "Compare the central pauses after opposite input excursions, then compare the second cycle with the first. Is the input anchor in the same place? Does the rocker retain opposite states after opposite histories and repeat the same state after the same history?",
+    "Before the next return to the middle, predict the rocker state. Returning the input to the middle does not erase the preceding switch. A complete opposite excursion is needed to change the stored state again."
+  ],
+  "why": "A compressed spring pushes its two mounting eyes apart. The line joining those eyes passes to one side of the rocker pivot and presses the rocker into a stop. Moving the anchor carries that force line across the pivot, reversing its moment. The current stop can no longer hold the rocker in that direction, so it moves toward the opposite stop. Around the central input position, either stop state is stable. The previous input motion chooses which state remains.",
+  "matters": "The machine separates input position from output state. Its direction-dependent switching thresholds create hysteresis, a useful property of snap switches, latches and memory elements. Elastic energy stored during input motion is released during the rapid transition and partly dissipated by damping and contact. The motion does not require software to choose an output angle.",
+  "question": "After a switch, the motor returns the anchor to its central position. Must the rocker return to its original stop?",
+  "answer": "No. In the bistable interval, the same held anchor position supports both stop states. The rocker retains the state selected by the preceding excursion. To restore the original state, move the anchor far enough through the opposite switching threshold and then return it to the centre. This memory claim assumes the input anchor is held; it does not by itself prove that the whole machine retains its setting after electrical power is removed.",
+  "further": [
+    "Name three different angles: alpha is the driven anchor-arm angle about its own pivot; beta is the anchor angle as seen from the rocker pivot; phi is the rocker angle. Because the two pivots are displaced, alpha and beta are not equal. A motor transmission adds its own encoder-to-arm ratio.",
+    "The saved input arm is at +1.875 degrees to set the selected worm phase. Its actual central hold is motor encoder +45 degrees because alpha=1.875−a/24. The two excursions use +477 and −387 motor degrees, and the final encoder target 0 restores the saved phase. Central input and saved source datum are different positions.",
+    "The finite program first centres the input, then repeats negative excursion → centre → positive excursion → centre twice, and restores the source datum. This requests four passive switches. Its completed flag only means the finite input commands ended; the independent judge must still verify actual output motion and memory.",
+    "The real 13L orange pointer adds output inertia through two shared 3L pins. It changes snap speed and landing without changing the 16 mm spring-attachment radius or nominal source thresholds. Its motion is passive; the program never drives the pointer.",
+    "If P=R(cos(phi),sin(phi)) is the rocker attachment and A=(a_x,a_y) is the moving anchor, the elastic moment changes sign with a_x*sin(phi)−a_y*cos(phi). For a compressed strut, their same-ray alignment is unstable. The real hard stops provide the two stable resting states.",
+    "The selected cylinder eye is offset by 8 mm from the internal slider axis; the rod eye lies on that axis. Therefore the relevant axial eye separation is h=sqrt(|P−A|^2−(8 mm)^2), with 48≤h≤64 mm. Spring compression is 64 mm−h. Using diagonal eye distance directly would give the wrong compression and energy.",
+    "The CAD source lists cylinder 2909 and rod 2910 as two moving components of one complete stock 9L shock absorber. Its factory spring is included in the physical assembly. A separately generated coil surface makes it visible in renders; that surface is not an additional rigid body or a measurement of wire deformation.",
+    "Compare a nominal dead-centre prediction with the recorded switch. Finite input speed, rocker inertia, damping, friction, stop shape and clearance can shift the observed transition. Keep a source-derived prediction separate from a threshold fitted to the output trace.",
+    "The adapted assembly has 205 CAD placements, or 204 purchased items: the cylinder and rod belong to one complete factory-sprung 9L shock. A longer anchor axle, two retained rod-eye bushes and small axial clearances keep the mechanism connected without solid overlaps.",
+    "The fixed native test observes two complete memory cycles, four fast switches, actual eye closure, spring stroke and stop contact. Small native contact penetration is a simulator approximation, not deformation of real LEGO. The spring law is nominal; a physical build and force calibration remain separate."
+  ],
+  "formula": "P=R(cos(phi),sin(phi)); A=(-d+L*cos(alpha),L*sin(alpha)); beta=atan2(L*sin(alpha),L*cos(alpha)−d). Both physical stop states ±phi_s are stable while −phi_s<beta<phi_s and the strut stays compressed. The near-zero ideal input threshold is alpha_star=phi_s−asin((d/L)*sin(phi_s)). With e=8 mm, h=sqrt(|P−A|^2−e^2), h_0=64 mm and consistent SI units: U=(k/2)*(h_0−h)^2; tau_elastic=k*(h_0−h)*R*(a_x*sin(phi)−a_y*cos(phi))/h. This elastic term excludes damping and dynamic constraint reactions.",
+  "related": [
+    "pulse-percussion.ldr",
+    "centrifugal-governor.ldr",
+    "clutch-bench.ldr"
+  ]
+}

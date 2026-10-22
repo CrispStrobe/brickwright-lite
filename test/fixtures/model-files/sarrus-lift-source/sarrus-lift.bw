@@ -1,0 +1,50 @@
+# EXPERIMENTAL: current public Brickwright native physics is NOT QUALIFIED
+# for this spatial hinge loop. Encoder completion does not prove deck motion.
+# This is a CAD prototype; read verification/physics.json before running.
+# SARRUS LIFT — exact vertical travel from a spatial six-hinge linkage.
+# Original control sequence: CC0. Native feedback pattern follows the
+# owner-supplied Axis Plotter control template (CrispStrobe, BSD-3-Clause).
+# Reset Robot Lab to the supplied 45-degree linkage pose before running.
+# Operating linkage range: 20 to 70 degrees. One motor, port A.
+# Motor targets are unwrapped encoder angles relative to that saved pose.
+# Every move reads fresh feedback. The motor controller decides completion.
+# A missed target holds the motor and stops the entire native program.
+# Dwell waits only let the viewer inspect each stop; they never time a move.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 0.5 seconds
+  # Stop 1: linkage 20 degrees.
+  lab run motor A for (-600 - (lab motor A angle)) degrees at 96 degrees per second
+  lab stop motor A hold
+  IF (abs of (-600 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Stop 2: linkage 45 degrees.
+  lab run motor A for (0 - (lab motor A angle)) degrees at 96 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Stop 3: linkage 70 degrees.
+  lab run motor A for (600 - (lab motor A angle)) degrees at 96 degrees per second
+  lab stop motor A hold
+  IF (abs of (600 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Stop 4: linkage 45 degrees.
+  lab run motor A for (0 - (lab motor A angle)) degrees at 96 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  lab stop motor A hold

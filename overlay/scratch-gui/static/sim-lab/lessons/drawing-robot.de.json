@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "drawing-robot",
+  "language": "de",
+  "what": "Ein vom Roboter getragener Stift zeichnet seinen tatsächlichen Weg. Der nachlaufende Stift zeichnet die Geometrie von Fahrt und Drehung.",
+  "try": [
+    "Setze zurück, um die Spur zu löschen, und starte das Zeichenprogramm.",
+    "Vergleiche gerade Abschnitte mit Kurven.",
+    "Ändere eine Raddrehzahl oder Strecke, setze zurück und vergleiche die neue Kurve."
+  ],
+  "why": "Der Stift folgt einem fest am Fahrgestell sitzenden Punkt. Liegt er neben der Antriebsachse, schwenkt er bei einer Drehung um diese Achse.",
+  "matters": "Die Werkzeugposition ist beim Zeichnen, Schweißen und Prüfen wichtig.",
+  "question": "Zeichnen Stift und Mittelpunkt der Antriebsachse immer denselben Weg?",
+  "answer": "Nein. Ein versetzter Punkt beschreibt beim Drehen einen anderen Bogen, obwohl beide zum starren Fahrgestell gehören.",
+  "further": [
+    "Vergleiche fahrendes Zeichnen mit rotierendem Papier.",
+    "Was bewirkt ein größerer Abstand des Stifts zur Achse?"
+  ],
+  "formula": "",
+  "related": [
+    "orbital-loom.ldr"
+  ]
+}

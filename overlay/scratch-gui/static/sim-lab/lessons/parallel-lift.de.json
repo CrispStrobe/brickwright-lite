@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "parallel-lift",
+  "language": "de",
+  "what": "Ein Parallelogramm trägt eine Plattform und hält ihre Orientierung annähernd konstant. Gleich lange Seiten halten die Bühne waagerecht, obwohl sie einer Kurve folgt. Anschläge begrenzen den Hub.",
+  "try": [
+    "Setze zurück und starte den Hubzyklus.",
+    "Beobachte die Plattformkante beim Anheben und seitlichen Versetzen.",
+    "Vergleiche einen Punkt der Plattform mit den rotierenden Stützgliedern."
+  ],
+  "why": "Gleich lange gegenüberliegende Seiten erhalten die Plattformorientierung. Ihre Position folgt dennoch einem Bogen: waagerecht bleiben bedeutet nicht senkrecht fahren.",
+  "matters": "Parallelführungen bewegen Plattformen, Lampen und Handhabungsgeräte.",
+  "question": "Muss eine waagerechte Plattform gerade nach oben fahren?",
+  "answer": "Nein. Orientierung und Bahn sind verschiedene Bedingungen. Hier bleibt die Plattform waagerecht, während ihre Stützen Kreisbögen durchlaufen.",
+  "further": [
+    "Skizziere die gekrümmte Plattformbahn.",
+    "Vergleiche mit dem geradlinigen Zahnstangenschlitten."
+  ],
+  "formula": "",
+  "related": [
+    "rack-shuttle.ldr",
+    "crank-rocker.ldr"
+  ]
+}

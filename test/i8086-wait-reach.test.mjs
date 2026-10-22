@@ -106,7 +106,9 @@ const auditReach = (receipt, {compiled}) => {
     // and print share an 8051 again (the UART moves to the BRT), so
     // arduino-02-tone-pitch-follower leaves retargetRefused for its adc+tone
     // choke and brings its literal wait back: waitLiteralPrograms +1.
-    assert.equal(s.programs, 304);
+    // Three new analog school sketches remain refused at MCU retarget; emitted sets stay fixed.
+    assert.equal(s.programs, 307);
+    for (const name of ["school-intercom-101455", "school-led-people-dog", "school-miniorgan-107056"]) assert.ok(namesOf(receipt.retarget).includes(name), name);
     // 122 -> 121 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row (a literal
     // `wait 150 ms`) names a LEDBANK8, which i8086 does not have; its LED line
     // was DROPPED with a warning and the rest counted as reached. An unreadable
@@ -193,7 +195,7 @@ const auditReach = (receipt, {compiled}) => {
     'every gallery program must land in exactly one outcome bucket');
 };
 
-test('the 304-program gallery records the wait/print gains and every emitted program compiles',
+test('the 307-program gallery records the wait/print gains and every emitted program compiles',
     {timeout: 300000}, async t => {
         const {stdout} = await execFileP(process.execPath, [
             '--import', guiScopeHook,

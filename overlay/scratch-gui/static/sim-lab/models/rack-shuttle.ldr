@@ -1,0 +1,59 @@
+0 Rack shuttle table — rotary input and linear travel
+0 Name: rack-shuttle.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 0 -1 0 1 0 45601.dat
+0 !BW ID topBeam
+1 71 60 -20 -90 1 0 0 0 0 -1 0 1 0 32278.dat
+0 !BW ID topPinFront
+1 0 60 -100 -80 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID topPinBack
+1 0 60 100 -80 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID lift
+0 !BW PORT A
+1 71 60 -140 -250 0 1 0 -1 0 0 0 0 1 54696p01.dat
+0 !BW ID liftPin1
+1 0 60 -120 -100 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID liftPin2
+1 0 60 -160 -100 0 -1 0 0 0 -1 1 0 0 2780.dat
+0 !BW ID pinionAxle
+1 4 10 -140 -250 1 0 0 0 0 -1 0 1 0 32062.dat
+0 !BW ID pinion
+1 71 0 -140 -250 0 0 1 -1 0 0 0 -1 0 3647.dat
+0 !BW ID rack
+1 71 0 -155 -174 0 0 1 0 -1 0 1 0 0 64781.dat
+0 !BW ID carriageAxle
+1 4 -20 -155 -74 1 0 0 0 0 -1 0 1 0 4519.dat
+0 !BW ID upright
+1 72 -20 -155 -74 0 -1 0 -1 0 0 0 0 -1 32140.dat
+0 !BW ID forkArm
+1 72 -40 -155 -74 0 1 0 -1 0 0 0 0 1 32140.dat
+0 !BW ID forkBeam
+1 72 -20 -195 -14 0 1 0 0 0 -1 -1 0 0 32316.dat
+0 !BW ID forkBeamPin1
+1 0 -30 -155 -14 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID forkBeamPin2
+1 0 -30 -175 -14 1 0 0 0 0 -1 0 1 0 2780.dat
+0 !BW ID slide
+1 72 -30 -155 -114 0 1 0 -1 0 0 0 0 1 48496.dat
+0 !BW ID guideHolder
+1 71 -60 -115 -50 0 0 1 0 -1 0 1 0 0 6632.dat
+0 !BW ID guideHolderPin
+1 0 -40 -110 -50 0 1 0 -1 0 0 0 0 1 2780.dat
+0 !BW ID guideStub
+1 4 -60 -140 -50 0 1 0 -1 0 0 0 0 1 4519.dat
+0 !BW ID guideTee
+1 71 -60 -155 -70 0 -1 0 -1 0 0 0 0 -1 32039.dat
+0 !BW ID guide
+1 4 -60 -155 -160 0 -1 0 0 0 -1 1 0 0 3737.dat
+0 !BW ID tableBase
+1 72 0 120 -30 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID tableFoot-40
+1 72 -40 140 -130 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID tableFootPin-40
+1 0 -40 120 -30 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID tableFoot40
+1 72 40 140 -130 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID tableFootPin40
+1 0 40 120 -30 0 1 0 1 0 0 0 0 -1 6558.dat

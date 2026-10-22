@@ -5,35 +5,31 @@
 // (model/lxf-model.js): which LDraw part an LDD design is, how the two part
 // frames differ, and which LDraw colour an LDD material is.
 //
-// PARTS: A SMALL CURATED TABLE, NOT A VENDORED MAPPING FILE
-// --------------------------------------------------------
+// PARTS: THE DESIGN NUMBER, AND A FRAME WORKED OUT, NEVER A RECORDED TABLE
+// -------------------------------------------------------------------------
 // LDraw names a part file after the design number moulded on the part, and
 // LDD's `designID` is that same LEGO design number, so the NAME mapping is the
-// identity for the parts below (plus four LDD design numbers that are newer
-// mould numbers of an LDraw part: 64290, 64871, 6590, 6562). What is not the
-// identity is the part FRAME: LDD puts a part's origin elsewhere (for a beam,
-// at its end hole) and lays it along another axis. The community-maintained
-// LDD↔LDraw mapping file `ldraw.xml` (header "MG beta 4.32 … LDD 4.3.6 Brick
-// ver 1033", shipped with LDD and copied by LeoCAD/LPub3D) records that frame
-// difference per part as a translation (LDD units) and an axis-angle. That
-// file carries no licence statement, so it is NOT vendored: the rows below
-// record its frame facts only for the 27 core Technic parts the Robot Lab's
-// catalog knows (beams, pins, axles, bushes, round and bevel gears), checked
-// by hand against the pattern they follow (a beam of n holes sits
-// (n-1)/2 × 0.8 LDD units from its end hole; an axle or pin of length L
-// studs at L × 0.4, half its length, from its end).
-// Any other design is placed only when it is a catalogue part whose LDD frame the
-// geometry rule of model/ldd-frame.js derives with a trusted rule (stud-grid parts;
-// warning `lxf-derived-frame`, scores in docs/ROBOT-LAB-LDD-FRAMES.md); every other
-// design ID — including every SPIKE Prime element, which LDD never had — is refused
-// with code `lxf-unknown-design`.
-// The sub-LDU offsets (0.02 LDD = 0.5 LDU) are kept as recorded.
+// identity: design 32524 is 32524.dat. What is not the identity is the part
+// FRAME: LDD puts a part's origin elsewhere (for a beam, at its end hole) and
+// lays it along another axis. No per-part frame is recorded in this repository
+// (LDD's mapping file `ldraw.xml` carries no licence statement: it is used only
+// as a local check, docs/ROBOT-LAB-LDD-FRAMES.md). The frame is worked out:
+//   - from the part's geometry (model/ldd-frame.js): the stud-grid rule for
+//     System parts, and the Technic rules for the shapes where LDD's choice of
+//     end and sense cannot matter (technicShape: a pin, an axle, a bush, a round
+//     gear's hub; a straight beam of alike holes — a beam of n holes sits
+//     (n−1)/2 × 0.8 LDD units from its end hole, an axle or pin of length L
+//     studs at L × 0.4, half its length, from its end);
+//   - for any other catalogue part, from its connections in the model
+//     (model/ldd-snap.js);
+// every other design ID — including every SPIKE Prime element, which LDD never
+// had — is refused with code `lxf-unknown-design`.
 //
-// How a row is used (column vectors; LeoCAD's lc_lxf.cpp reads the same file
-// the same way, which is how the convention was confirmed):
+// How a frame row is used (column vectors; the convention LeoCAD's lc_lxf.cpp
+// applies to LDD files too):
 //   LDraw rotation = F · B · Rn · F,  LDraw position = 25 · F · (b − B · Rn · t)
 // with B, b the LXFML bone's rotation and translation (LDD units, y up),
-// Rn the rotation by −angle about `axis`, t the row's translation and
+// Rn the frame's rotation, t its translation and
 // F = diag(1, −1, −1) (LDraw is −y up, −z toward the viewer); 1 LDD unit is
 // 25 LDU (a stud pitch: 0.8 LDD = 20 LDU).
 //
@@ -43,42 +39,6 @@
 // parts) writes the LEGO colour number above each colour as
 // `0 // LEGOID 21 - Bright Red`; an LDD material IS that LEGO colour number.
 // lddColours() reads the map from the file, so no colour table is kept here.
-
-const K = 0.5773503; // 1/√3: the beams' frame turns 120° about the cube diagonal
-/** [design IDs, LDraw part, translation (LDD units), axis, angle (rad)] */
-const ROWS = [
-    [['32523'], '32523.dat', [0.02, 0.4, -0.8], [K, K, K], -2.0943951],
-    [['32316'], '32316.dat', [0.02, 0.4, -1.6], [K, K, K], -2.0943951],
-    [['32524'], '32524.dat', [0.02, 0.4, -2.4], [K, K, K], -2.0943951],
-    [['40490'], '40490.dat', [0.02, 0.4, -3.2], [K, K, K], -2.0943951],
-    [['32525', '64290'], '32525.dat', [0.02, 0.4, -4], [K, K, K], -2.0943951],
-    [['41239'], '41239.dat', [0.02, 0.4, -4.8], [K, K, K], -2.0943951],
-    [['32278', '64871'], '32278.dat', [0.02, 0.4, -5.6], [K, K, K], -2.0943951],
-    [['2780'], '2780.dat', [0.8, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3673'], '3673.dat', [0.8, 0.02, 0], [0, 1, 0], 1.570796],
-    [['43093'], '43093.dat', [0.8, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3749', '6562'], '3749.dat', [0.8, 0.02, 0], [0, 1, 0], 1.570796],
-    [['6558'], '6558.dat', [-1.2, 0.02, 0], [0, 1, 0], 4.712389],
-    [['32062'], '32062.dat', [0.8, 0.02, 0], [0, 1, 0], 1.570796],
-    [['4519'], '4519.dat', [1.2, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3705'], '3705.dat', [1.6, 0.02, 0], [0, 1, 0], 1.570796],
-    [['32073'], '32073.dat', [2, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3706'], '3706.dat', [2.4, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3707'], '3707.dat', [3.2, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3737'], '3737.dat', [4, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3708'], '3708.dat', [4.8, 0.02, 0], [0, 1, 0], 1.570796],
-    [['3713', '6590'], '3713.dat', [0, 0.02, -0.4], [0, 1, 0], 3.141593],
-    [['3647'], '3647.dat', [0, 0.02, 0.4], [1, 0, 0], 0],
-    [['94925'], '94925.dat', [0, 0.02, -0.4], [0, 1, 0], 3.141593],
-    [['3648'], '3648.dat', [0, 0.02, 0.4], [1, 0, 0], 0],
-    [['3649'], '3649.dat', [0, 0.02, 0.3], [1, 0, 0], 0],
-    [['6589'], '6589.dat', [0, 0.02, -0.3], [0, 1, 0], 3.141593],
-    [['32198'], '32198.dat', [0, 0.02, 0.3], [0, 1, 0], 0]
-];
-
-/** design ID → {part, translation, axis, angle} */
-export const LDD_PARTS = new Map(ROWS.flatMap(([ids, part, translation, axis, angle]) =>
-    ids.map(id => [id, Object.freeze({part, translation, axis, angle})])));
 
 /** 1 LDD unit in LDU. */
 export const LDD_UNIT_LDU = 25;

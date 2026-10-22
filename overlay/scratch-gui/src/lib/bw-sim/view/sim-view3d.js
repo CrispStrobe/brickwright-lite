@@ -11,15 +11,20 @@ import {Box3, BufferGeometry, Color, Float32BufferAttribute, GridHelper, LineBas
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {LDU_M, dirToWorld, lduToWorld} from '../contracts.js';
-import {buildSimScene, applySnapshot} from './sim-scene3d.js';
+import {buildSimScene, applySnapshot, movingMassCentre} from './sim-scene3d.js';
 import {createChainMotion} from './chain-motion.js';
 import {createSimBelts} from './belt-layer.js';
 import {createPenLayer} from './pen-layer.js';
+import {sampleDrawingSnapshot} from './drawing-sampler.js';
 import {createSimRopes} from './rope-layer.js';
 import {createSimHoses} from './hose-layer.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
+import {createCableAnchors} from './cable-anchors.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
+import {modelMeshBounds, cameraFollowBody} from './model-bounds.js';
+import {createDrawingPreview} from './drawing-preview.js';
+import {createGpuFrameQueue} from './gpu-frame-queue.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -70,7 +75,7 @@ export const frameModel = (box, aspect, fovDeg = 40) => {
  * @param {function} [options.onContextLost]
  * @returns {{canvas, render(snapshot), resize(), resetCamera(), dispose()}}
  */
-export const createSimView3D = ({container, model, mechanism, read, catalog = null, onContextLost = null}) => {
+export const createSimView3D = ({container, model, mechanism, read, catalog = null, onContextLost = null, drawingLabel = 'Drawing'}) => {
     if (!webglAvailable()) throw new WebGLUnavailableError('this browser gives a canvas no WebGL 2 context');
     const config = read('ldconfig.ldr');
     if (!config) throw new Error('LDConfig.ldr (the LDraw colour table) is missing');
@@ -96,6 +101,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const simBelts = createSimBelts({model, mechanism, catalog, built});
     // Pens draw on the floor (model parts marked `pen`; view/pen-layer.js).
     const pens = createPenLayer({model, mechanism, built, colors: ldColors});
+    const drawingPreview = pens && model.parts.some(p => p.pen) ?
+        createDrawingPreview({container, pens, label: drawingLabel}) : null;
     // Ropes from their bodies' points (view/rope-layer.js).
     const simRopes = createSimRopes({mechanism, built});
     // Pneumatic hoses between their parts' nozzles, following the bodies (view/hose-layer.js).
@@ -111,9 +118,10 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         grid = new GridHelper(4, 40, 0x64748b, 0xcbd5e1);
         // and 10 cm lines over the rest of the floor (mech/compile.js FLOOR_HALF_M), so driving far still shows motion
         const far = new GridHelper(20, 200, 0x94a3b8, 0xdde3ea);
-        far.position.y = -0.0005;
+        far.renderOrder = 1;
+        grid.renderOrder = 2; // near lines cover coincident far lines consistently
         grid.add(far);
-        grid.position.y = floorY + 0.001; // above the floor mesh, so depth testing shows it
+        grid.position.y = floorY; // the floor faces have depth bias; lines stay below thin parts
         built.scene.add(grid);
     }
     const camera = new PerspectiveCamera(40, 1, 0.005, 50);
@@ -136,11 +144,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const focusCanvas = () => canvas.focus({preventScroll: true});
     canvas.addEventListener('pointerdown', focusCanvas);
 
-    const modelBox = () => {
-        const box = new Box3();
-        for (const mesh of [...built.partMeshes.values(), ...built.hubMeshes.values()]) box.expandByObject(mesh);
-        return box;
-    };
+    const modelBox = () => modelMeshBounds(built);
     const resetCamera = () => {
         const size = renderer.getSize(new Vector2());
         const {position, target} = frameModel(modelBox(), size.x / Math.max(1, size.y));
@@ -198,8 +202,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         }
     };
 
-    // Follow: the camera and its orbit target move with the model's centre, so
-    // the robot stays in view while the learner can still orbit around it.
+    // Follow the chassis translation: moving arms must not move the camera.
+    // Explicit API part following still tracks the requested part.
+    const followFrame = built.bodyGroups.get(cameraFollowBody(mechanism));
     let followed = null;
     /** A part the camera follows instead of the model's centre (the Robot Lab API's camera({follow})), or null. */
     let followPartId = null;
@@ -207,6 +212,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const insight = createInsightLayer({container, scene: built.scene});
     const pulse = createPulse();
     const bodyStart = new Map(mechanism.bodies.map(b => [b.id, new Vector3(...b.position)]));
+    // The followed centre: the moving bodies' centre of mass (sim-scene3d.js movingMassCentre), not the meshes' box.
+    const massCentre = () => movingMassCentre(built, mechanism);
     /** An anchor on a body: a world point at t = 0, carried along by the body's pose now. */
     const onBody = (bodyId, world) => {
         const group = built.bodyGroups.get(bodyId);
@@ -288,8 +295,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     };
 
     /** Port badges: items {id, port, label} (motors and sensors). */
+    const cableAnchors = createCableAnchors({read, partOf: id => model.parts.find(p => p.id === id), meshOf: id => built.partMeshes.get(id)});
     const setPorts = items => {
-        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id), hubAnchor: item.hub ? partCentre(item.hub) : null})));
+        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id), ...cableAnchors(item)})));
         dirty = true;
     };
     /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */
@@ -323,6 +331,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     // page busy for nothing. Small models are drawn every frame, as always.
     const onDemand = Boolean(built.instanced);
     let dirty = true;
+    const sampleDrawing = snapshot => {
+        if (sampleDrawingSnapshot({built, pens, snapshot})) dirty = true;
+    };
     let lastBodies = null;
     // Float64: the camera matrix is doubles, and a float32 copy differs from it in nearly every
     // element, so "the camera moved" was true every frame and an idle big model was redrawn forever
@@ -355,18 +366,21 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
      * @param {object} [snapshot] the physics snapshot
      * @param {{force?: boolean}} [options] force: draw even when nothing changed (frame timing)
      */
+    const gpuFrames = createGpuFrameQueue(renderer.getContext());
     const render = (snapshot, {force = false} = {}) => {
         resize();
         if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
+        if (!force && gpuFrames.busy()) { dirty = true; return; }
         dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
         if (snapshot && chainMotion) chainMotion.update();
         if (snapshot && simBelts) simBelts.update();
         if (snapshot && pens) pens.update();
+        if (drawingPreview) drawingPreview.update();
         if (snapshot && simRopes) simRopes.update();
         if (snapshot && simHoses) simHoses.update();
-        const centre = (followPartId && partCentre(followPartId)()) || modelBox().getCenter(new Vector3());
-        if (followed) {
+        const centre = (followPartId && partCentre(followPartId)()) || followFrame?.position.clone() || massCentre() || modelBox().getCenter(new Vector3());
+        if (followed && centre) {
             const delta = centre.clone().sub(followed);
             delta.y = 0;
             camera.position.add(delta);
@@ -381,11 +395,14 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         const size = renderer.getSize(new Vector2());
         insight.update(camera, size.x, size.y);
         renderer.render(built.scene, camera);
+        gpuFrames.submitted();
     };
 
     const dispose = () => {
+        gpuFrames.dispose();
         insight.dispose();
         if (simBelts) simBelts.dispose();
+        if (drawingPreview) drawingPreview.dispose();
         if (pens) pens.dispose();
         if (simRopes) simRopes.dispose();
         if (simHoses) simHoses.dispose();
@@ -424,7 +441,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const penStrokes = () => (pens ? pens.strokes() : []);
     /** The pens' tips' heights above the floor (m), [] without a pen. */
     const penHeights = () => (pens ? pens.heights() : []);
-    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight, setMousePreset, penStrokes, penHeights,
+    return {canvas, render, sampleDrawing, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, setSensors, highlight, setMousePreset, penStrokes, penHeights,
         /** How many pneumatic hoses are drawn (view/hose-layer.js), for the browser gate. */
         hoseCount: () => (simHoses ? simHoses.count : 0),
         /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
@@ -444,6 +461,14 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         /** The camera now (for the browser gate to read what a gesture did): position, target, distance (metres). */
         get camera () {
             return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
+        },
+        /** World bounds and their projected corners, for camera-framing diagnostics. */
+        framingStats: () => {
+            const box = modelBox();
+            camera.updateMatrixWorld();
+            const corners = [box.min.x, box.max.x].flatMap(x => [box.min.y, box.max.y].flatMap(y =>
+                [box.min.z, box.max.z].map(z => new Vector3(x, y, z).project(camera).toArray())));
+            return {min: box.min.toArray(), max: box.max.toArray(), corners};
         },
         /** What the last frame cost: three's draw calls and triangles, GPU objects, and the instancing (scale gate). */
         // `frames`: frames drawn so far (three counts each render), so a gate can see an idle big model is not redrawn.

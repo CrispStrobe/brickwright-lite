@@ -203,6 +203,56 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.26 en-US
+
+Robot Lab now includes 57 assemblies, 65 example choices and 130 English/German
+lessons. Try Scale Echo's two-motor pantograph and Turnwise's one-motor steering:
+compare the two marker paths and the inner/outer wheel angles. The other recent
+machines include Ellipse Engine, Sarrus Lift, Quickstroke and Magnetic Chess.
+Lessons explain what the mechanism demonstrates and where simulation ends.
+
+Selecting an example loads its program into Code and Blocks and updates the
+project title. Check the compact toolbar, collapsible manual motor overrides,
+simulation speed controls, example gallery, building instructions and parts list.
+Axis Plotter and Orbital Loom draw paths measured from the moving mechanism;
+Governor keeps its camera on the stationary frame. Check opening the supplied
+LDraw/MPD files, saving a project, reopening it offline and switching languages.
+
+This release also composes current main's Differential Car and Crane examples.
+The rack-and-pinion solver now retains its physical phase between steps: test
+steering reversals, moving-frame racks and save/restore. Please report unexpected
+motion, stalls, missing parts, blank views or a program that does not finish.
+
+For Android and Windows, test the release APK/installer on a real device, including
+startup, local file open/save, Robot Lab motion and offline use. Browser and
+simulation checks do not establish physical LEGO buildability or hardware support.
+
+## What to Test — 0.1.26 de-DE
+
+Robot Lab enthält jetzt 57 Modelle, 65 Beispielvarianten und 130 Lektionen auf
+Deutsch und Englisch. Probiere den zweimotorigen Pantografen Scale Echo und die
+Einmotor-Lenkung Turnwise: Vergleiche beide Markerbahnen beziehungsweise die
+Winkel des inneren und äußeren Rads. Weitere neue Maschinen sind Ellipse Engine,
+Sarrus Lift, Quickstroke und Magnetic Chess. Die Lektionen erklären die gezeigte
+Mechanik und die Grenzen der Simulation.
+
+Die Beispielauswahl lädt das Programm automatisch in Code und Blöcke und setzt
+den Projekttitel. Prüfe die kompakte Werkzeugleiste, einklappbare manuelle
+Motorsteuerung, Simulationsgeschwindigkeit, Beispielgalerie, Bauanleitung und
+Teileliste. Axis Plotter und Orbital Loom zeichnen die tatsächlich gemessene
+Bewegung; beim Governor bleibt die Kamera am festen Rahmen. Öffne die gelieferten
+LDraw/MPD-Dateien, speichere und öffne Projekte offline und wechsle die Sprache.
+
+Enthalten sind auch Differential Car und Crane aus dem aktuellen Hauptzweig.
+Die Zahnstangenkopplung behält ihre mechanische Phase über Simulationsschritte:
+Prüfe Richtungswechsel, Zahnstangen in bewegten Rahmen und Speichern/Fortsetzen.
+Bitte melde unerwartete Bewegungen, Stillstand, fehlende Teile, leere Ansichten
+oder Programme, die nicht fertig werden.
+
+Prüfe APK und Windows-Installer auf echten Geräten: Start, lokale Dateien,
+Robot-Lab-Bewegung und Offline-Nutzung. Browser- und Simulationstests belegen
+keine physische LEGO-Baubarkeit oder Hardware-Unterstützung.
+
 ## What to Test — 0.1.23 en-US
 
 **Touchscreen and phone layout**

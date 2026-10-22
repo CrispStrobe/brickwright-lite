@@ -9,9 +9,11 @@
 // (a motor: PartMeta v2 internalJoints) splits into two graph nodes with an
 // internal hinge.
 
+import {motorPhaseMeta} from '../model/motor-phase.js';
 import {mat3MulVec3, vecAdd, vecNormalize} from './vec.js';
-import {upgradePartMeta, partDrivenJoints, partMotor, portRefOf} from '../contracts.js';
+import {upgradePartMeta, partDrivenJoints, partFreeJoints, partMotor, portRefOf} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
+import {connectorSeatPosition,connectorSeatLength,connectorNormal} from '../kinds/connector-frame.js';
 import {PAIR_REACH_LDU, connectorBounds, createSpatialIndex, grow} from './spatial-index.js';
 
 // The v1 connector rules live in kinds/pin-axle.js (the connector kind registry's first
@@ -20,10 +22,11 @@ export {edgeKind, MIN_ENGAGE_LDU, shaftEngagement, isShaftTypeExport, isHoleType
 
 /** Transform a connector from part frame to LDraw model frame (LDU). */
 const transformConnector = (conn, pos, rot) => {
-    const p = vecAdd(mat3MulVec3(rot, conn.position), pos);
+    const p = vecAdd(mat3MulVec3(rot, connectorSeatPosition(conn)), pos);
     const aRaw = mat3MulVec3(rot, conn.axis);
     const a = vecNormalize(aRaw);
-    const out = {id: conn.id, type: conn.type, position: p, axis: a, length: conn.length, friction: conn.friction, _orig: conn};
+    const out = {id: conn.id, type: conn.type, position: p, axis: a, length: connectorSeatLength(conn), friction: conn.friction, _orig: conn};
+    if (conn.data?.normal) out.normal = connectorNormal(conn,rot);
     if (conn.closedEnd !== undefined) out.closedEnd = conn.closedEnd;
     return out;
 };
@@ -48,10 +51,20 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
 
     // Create nodes, handle motors
     for (const pl of model.parts) {
-        const meta = upgradePartMeta(catalogMap.get(pl.part));
+        let meta = motorPhaseMeta(upgradePartMeta(catalogMap.get(pl.part)), pl.rotorAngle);
         if (!meta) continue; // unknown, caller handles diagnostic
+        if (pl.slides?.length) {
+            const ids = new Set(pl.slides);
+            const valid = meta.connectors.filter(c => ids.has(c.id) && c.type === 'pinhole');
+            if (valid.length !== ids.size) diagnostics.push({severity: 'error', code: 'bad-slide', message: `SLIDE must name existing round pinholes on ${pl.id}`, parts: [pl.id]});
+            const selected = new Set(valid.map(c => c.id));
+            meta = {...meta, connectors: meta.connectors.map(c => selected.has(c.id) ? {...c, type: 'slide-bore'} : c)};
+        }
         const rot = pl.rotation;
-        const driven = partDrivenJoints(meta);
+        // A free internal hinge (contracts.js partFreeJoints: a train motor's second wheelset) splits
+        // the part like a driven one, and its hinge has no motor.
+        const free = partFreeJoints(meta).map(f => ({...f, isFree: true}));
+        const driven = [...partDrivenJoints(meta), ...free];
         if (driven.length) {
             // One node per driven joint's moving side (a motor's output; each built-in motor of a
             // hub, contracts.js partDrivenJoints) and one for the rest of the part (the housing).
@@ -61,7 +74,7 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
             const housingNodeId = pl.id;
             nodes.set(housingNodeId, {id: housingNodeId, partId: pl.id, placed: pl, meta, connectors: housingTrans});
             const ref = portRefOf(pl);
-            for (const {joint: shaftJoint, suffix, device: jointDevice, port: builtInPort} of driven) {
+            for (const {joint: shaftJoint, suffix, device: jointDevice, port: builtInPort, isFree} of driven) {
                 const outIds = new Set(shaftJoint.movingConnectors || []);
                 const outConns = meta.connectors.filter(c => outIds.has(c.id));
                 const outTrans = outConns.map(c => transformConnector(c, pl.position, rot));
@@ -98,12 +111,16 @@ export const buildGraph = (model, catalog, diagnostics = [], kinds = BUILTIN_KIN
                     kind: 'hinge',
                     point,
                     axis,
-                    isMotor: true,
+                    isMotor: !isFree,
                     motor: null,
                     _isMotorInternal: true,
                     _aNode: housingNodeId,
                     _bNode: outNodeId,
                 };
+                if (isFree) {
+                    edges.push(edge);
+                    continue;
+                }
                 // A built-in motor plugs into its own hub's port; a motor part into the port its `!BW PORT` names.
                 const portRef = builtInPort ? {hub: pl.id, port: builtInPort} : ref;
                 const motor = builtInPort ? (jointDevice && jointDevice.motor ? {device: jointDevice} : null) : partMotor(meta);

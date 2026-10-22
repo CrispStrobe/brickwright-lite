@@ -1,0 +1,176 @@
+0 TEMPO LOOP — changing speed within each turn
+0 Name: tempo-loop.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/tempo-loop.txt
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID baseRail0
+1 0 20 220 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID baseRail180
+1 0 20 220 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID baseEnd-100
+1 72 -100 240 80 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID baseEndPin-100_0
+1 0 -100 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseEndPin-100_180
+1 0 -100 230 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseEnd120
+1 72 120 240 80 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID baseEndPin120_0
+1 0 120 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseEndPin120_180
+1 0 120 230 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail-80
+1 72 -80 200 80 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID footBasePin-80_0
+1 0 -80 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin-80_180
+1 0 -80 210 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail-60
+1 72 -60 200 80 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID footBasePin-60_0
+1 0 -60 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin-60_180
+1 0 -60 210 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail40
+1 72 40 200 80 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID footBasePin40_0
+1 0 40 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin40_180
+1 0 40 210 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail60
+1 72 60 200 80 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID footBasePin60_0
+1 0 60 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin60_180
+1 0 60 210 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseBraceSpacer
+1 72 0 240 0 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID baseBraceSpacerPin-20
+1 0 -20 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseBraceSpacerPin20
+1 0 20 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseDiagonal
+1 72 60 260 80 0.8 0 0.6 0 1 0 -0.6 0 0.8 32525.dat
+0 !BW ID baseDiagonalPinstart
+1 0 0 250 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseDiagonalPinend
+1 0 120 250 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID leftLanding
+1 72 -100 260 180 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID leftLandingPin160
+1 0 -100 250 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID leftLandingPin200
+1 0 -100 250 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorA
+0 !BW PORT A
+1 15 0 0 0 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID motorPost-1_-20
+1 0 -40 60 -20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin-1_-20_-20
+1 0 -30 -20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_-20_20
+1 0 -30 20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_-20_140
+1 0 -30 140 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFoot-1_-20
+1 72 -60 180 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motorFootPin-1_-20
+1 0 -60 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorPost-1_20
+1 0 -40 60 20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin-1_20_-20
+1 0 -30 -20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_20_20
+1 0 -30 20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_20_140
+1 0 -30 140 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFoot-1_20
+1 72 -60 180 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motorFootPin-1_20
+1 0 -60 190 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorPost1_-20
+1 0 40 60 -20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin1_-20_-20
+1 0 30 -20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_-20_20
+1 0 30 20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_-20_140
+1 0 30 140 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFoot1_-20
+1 72 60 180 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motorFootPin1_-20
+1 0 60 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorPost1_20
+1 0 40 60 20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin1_20_-20
+1 0 30 -20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_20_20
+1 0 30 20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_20_140
+1 0 30 140 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFoot1_20
+1 72 60 180 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motorFootPin1_20
+1 0 60 190 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID rotorPin-20
+1 0 -20 0 50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID rotorPin20
+1 0 20 0 50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID outputPost120
+1 0 40 80 120 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID outputPost140
+1 0 40 80 140 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID outputPivot
+1 71 40 0 120 0 1 0 0 0 1 1 0 0 32556a.dat
+0 !BW ID postTie
+1 0 40 80 130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID outputBrace
+1 72 -20 100 160 -0.8 0 -0.6 -0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID braceTopPin
+1 1 40 20 140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID outputFoot100
+1 72 40 180 100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID outputFootPin100
+1 0 40 190 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID outputFoot160
+1 72 40 180 160 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID outputFootPin160
+1 0 40 190 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID braceFoot
+1 72 -80 180 140 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID braceFootPin
+1 0 -80 190 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID inputCrank
+1 4 0 0 60 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID coupler
+1 14 68 -58.787754 80 0.979796 0 -0.2 -0.2 0 -0.979796 0 1 0 32524.dat
+0 !BW ID outputCrank
+1 1 40 0 100 0.979796 0 0.2 0.2 0 -0.979796 0 1 0 32525.dat
+0 !BW ID hingeB
+1 71 80 0 70 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID hingeC
+1 71 60 -97.97959 90 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID hub
+1 15 90 160 -180 0 -1 0 1 0 0 0 0 1 45601.dat
+0 !BW ID hubRail100
+1 72 100 240 -140 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hubMountPin100_0
+1 0 100 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin100_-100
+1 0 100 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin100_-260
+1 0 100 230 -260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubRail140
+1 72 140 240 -140 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hubMountPin140_0
+1 0 140 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin140_-100
+1 0 140 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin140_-260
+1 0 140 230 -260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubRearLanding
+1 72 120 260 -240 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID hubLandingPin100
+1 0 100 250 -240 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubLandingPin140
+1 0 140 250 -240 0 1 0 1 0 0 0 0 -1 2780.dat

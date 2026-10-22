@@ -1,0 +1,29 @@
+DEVICE SPIKE
+
+# Example: tidal-trio-alternating
+# TIDAL TRIO, CrispStrobe — BSD-3-Clause. Reset before repeating.
+# Phase offsets: [0, 180, 0]. Four-bar output is nonlinear.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 10
+  set motor stop action B hold
+  set motor speed B 10
+  set motor stop action C hold
+  set motor speed C 10
+  run motor A to position 0
+  run motor B to position 180
+  run motor C to position 0
+  wait 4 seconds
+  broadcast "run wave" and wait
+
+WHEN I receive "run wave":
+  set motor speed A 3
+  run motor A clockwise 720 degrees
+
+WHEN I receive "run wave":
+  set motor speed B 3
+  run motor B clockwise 720 degrees
+
+WHEN I receive "run wave":
+  set motor speed C 3
+  run motor C clockwise 720 degrees

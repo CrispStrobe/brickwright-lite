@@ -78,6 +78,11 @@ const assertBuildable = (label, model, plan) => {
     plan.steps.forEach((step, n) => {
         const {built, fresh} = stepView(plan, n);
         assert.ok(fresh.length > 0, `${label} step ${n + 1}: places something`);
+        const payload = fresh.every(id => model.parts.find(p => p.id === id)?.load);
+        if (payload) {
+            assert.ok(fresh.every(id => [...adj.get(id)].every(other => model.parts.find(p => p.id === other)?.load)), 'payload does not conceal a structural connection');
+            return; // place a free payload by contact; it has no attachment connector
+        }
         const done = new Set(built);
         const freshSet = new Set(fresh);
         const reached = new Set();
@@ -142,6 +147,26 @@ for (const {name, text} of MODELS_UNDER_TEST) {
             const joins = [...adj.get(p.id)];
             assert.ok(joins.length >= 1, `${name}: ${p.id} holds something`);
             if (joins.length > 2) continue;
+            // A retaining bush supported only by a shaft may slide onto that shaft on
+            // a following page; it does not need to precede the shaft that holds it.
+            if (/bush/i.test(CATALOG.get(p.part).name) && joins.every(id => category(model, id) === 'axle')) {
+                const support = Math.min(...joins.map(id => at.get(id)));
+                assert.ok(support <= at.get(p.id) && at.get(p.id) - support <= 3,
+                    `${name}: ${p.id} follows its fastener support within three pages`);
+                checked++;
+                continue;
+            }
+            // A perpendicular pin/hole connector has two insertion stages: it can
+            // seat on an existing axle before a later beam slides onto its pin,
+            // or seat in a beam before receiving the axle. Connectivity above
+            // independently verifies its support on the installation page.
+            if (/perpendicular pin hole/.test(CATALOG.get(p.part).name)) {
+                const ends = joins.map(id => at.get(id));
+                if (Math.min(...ends) <= at.get(p.id) && at.get(p.id) <= Math.max(...ends)) {
+                    checked++;
+                    continue;
+                }
+            }
             beforeOrWith(plan, at.get(p.id), Math.max(...joins.map(id => at.get(id))), `${name}: ${p.id} joins ${joins.join(', ')}`);
             checked++;
         }
@@ -150,7 +175,9 @@ for (const {name, text} of MODELS_UNDER_TEST) {
         assert.ok(checked >= (fasteners >= 4 ? 4 : 1), `${name}: ${checked} of ${fasteners} pins and axles checked`);
         // Each wheel goes on with the axle it sits on, or right after it (the axle first, sticking out).
         for (const wheel of model.parts.filter(p => category(model, p.id) === 'wheel')) {
-            const axles = [...adj.get(wheel.id)].filter(id => category(model, id) === 'axle');
+            const axles = [...adj.get(wheel.id)].filter(id => category(model, id) === 'axle' ||
+                (category(model, id) === 'pin' && CATALOG.get(model.parts.find(p => p.id === id).part).connectors.some(c => c.type === 'axle')));
+            // An axle-pin's genuine cross axle supports a wheel too (18651).
             // A wheel straight on a motor's output stub (the RCX bumper car's mini-motors) needs no axle
             // of its own: it sits on one motor, and may go on in a later step.
             const motors = [...adj.get(wheel.id)].filter(id => category(model, id) === 'motor');
@@ -202,7 +229,7 @@ const mirroredStructural = model => {
 const DRIVING_BASES = MODELS_UNDER_TEST.filter(m => /!BW ID motorL\b/.test(m.text));
 test('the mirrored-pair check covers the fixture and every shipped driving base', () => {
     assert.deepEqual(DRIVING_BASES.map(m => m.name),
-        ['S1 driving base (test fixture)', 'driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'maze-runner.ldr', 'drawing-robot.ldr', 'excavator.ldr']);
+        ['S1 driving base (test fixture)', 'driving-base.ldr', 'line-follower.ldr', 'wall-stopper.ldr', 'colour-explorer.ldr', 'maze-runner.ldr', 'drawing-robot.ldr', 'pivot-rover.ldr', 'survey-rover.ldr', 'excavator.ldr']);
 });
 
 for (const {name, text} of DRIVING_BASES) {

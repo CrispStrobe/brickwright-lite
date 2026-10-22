@@ -22,7 +22,7 @@ export const spurGears = (nodes, islands, types = ['spur']) => {
         if (!islandId) continue;
         const rot = node.placed.rotation;
         out.push({
-            partId: node.partId, islandId, type: gear.type, teeth: gear.teeth, r: gearPitchRadius(gear),
+            partId: node.partId, islandId, type: gear.type, meshesAs: gear.meshesAs || [], teeth: gear.teeth, r: gearPitchRadius(gear),
             centerLdu: vecAdd(mat3MulVec3(rot, gear.center), node.placed.position),
             axisLdu: vecNormalize(mat3MulVec3(rot, gear.axis))
         });

@@ -4,6 +4,8 @@ The Robot Lab simulates a model built from real LEGO Technic parts and lets a pr
 
 The code and its paths call it **Sim Lab** (`lib/bw-sim/`, `sim-lab-pane.jsx`); the learner sees the **Robot Lab** / **Roboter-Labor** tab.
 
+**Continuing this work?** Start with [ROBOT-LAB-AGENT-HANDOFF.md](ROBOT-LAB-AGENT-HANDOFF.md): what landed, how work lands here, what is in flight and the open work packages.
+
 ## Where it lives
 
 The Robot Lab is **its own editor tab**, after Blocks, Costumes, Sounds, Code and Circuit (and FPGA when that is switched on): `components/tw-pseudocode/robot-lab-tab.jsx`, appended last in `gui.jsx` so no existing tab index moves (its own index is 5, or 6 with the FPGA tab). The 3D view fills the tab. The tab costs nothing until it is first shown: the pane and its toolbar arrive then (chunk `bw-robot-lab`), the scene, the catalogue and the 3D views after that (chunk `bw-sim-lab`), the physics in its worker (`bw-sim-physics-worker`, Jolt in `bw-sim-jolt`) — `scripts/verify-boot-payload.mjs` checks all four stay out of the first load and out of the arena's chunk. Once shown, the tab stays mounted: the model, the camera and a running program survive a trip to the Code tab.
@@ -12,16 +14,48 @@ The Robot Lab is **its own editor tab**, after Blocks, Costumes, Sounds, Code an
 
 **The program it runs** is the project's, on the green flag (Run), through the project's hub: today the virtual SPIKE Prime, behind the VirtualHub boundary (docs/ROBOT-LAB-ARCHITECTURE.md R1); the tab knows nothing SPIKE-specific, so other hubs plug in at that boundary.
 
+## Survey rover: three motors and a nodding sensor head
+
+Choose **Survey rover** / **Erkundungsrover**, load its example program and press
+Run on the Plain mat. Motors **A/B** drive the wheels; **C** tilts the distance
+sensor on **D**. The rover homes its head, drives 10 cm to a survey point, looks
+30° up and 30° down, returns the head to level, and reverses 10 cm to its start.
+The Readings panel shows D; the example demonstrates movement and head positioning,
+without using distance readings to navigate. Keep manual head movements within
+±30° so the sensor cable does not wind around the motor.
+
+The original 28-part model uses catalogue parts and a rear ball castor to support
+the head's weight. The head uses **hold** after each positioning move: passive
+braking alone lets gravity turn it. Instructions are generated from its actual
+connections, including separate pin-insertion steps. Every motor is available to
+the motor mixer, Robot Lab blocks and the API.
+
+`test/bw-sim-survey-rover.test.mjs` checks the connections and solid overlaps,
+instruction continuity, all three motors under load, independent API control,
+and the shipped program through the Scratch VM and virtual SPIKE hub. It measures
+the outward trip, return position, head travel and chassis stability; an omitted
+return trip must fail its position judge. These are simulation checks, not a
+physical LEGO build qualification.
+
 ## The toolbar
 
 One row of grouped icon buttons (`sim-lab-toolbar.jsx`, words in `sim-lab-toolbar-text.js`, EN and DE). Every button has its name as its accessible name and a tooltip with the name and the shortcut, e.g. *“Turn 90° (R)”* / *“Um 90° drehen (R)”*, *“Undo (Ctrl+Z)”* / *“Rückgängig (Strg+Z)”*. Icons are inline SVG strokes, as the Code tab's icon is: no icon font, no new dependency.
 
 - **Mode** — a segmented control: **Simulate · Build · Instructions**.
-- **Simulate:** **Run/Pause**, **Reset**; **View**: Home, Fit, Top, Front, Side; **Show**: ports, how it moves (switches); **File** menu (Open a model…, Save as .ldr / .mpd / .io). Under the toolbar one line holds the Model and Mat lists, the program route (desktop), **Load example program** and the status.
+- **Simulate:** **Run/Pause**, **Reset**; **View**: Home, Fit, Top, Front, Side; **Show**: ports, how it moves (switches); **File** menu (Open a model…, Save as .ldr / .mpd / .io). The same scrolling row holds the compact Model/Mat lists, lesson icon and elapsed time. Selecting an example replaces its model, pseudocode and blocks automatically and sets the project title. Run starts it.
 - **Build:** **Edit**: Move with arrows (W), Turn with rings (E), Turn 90° (R), Turn back 90° (Shift+R), Tip 90° (T); **Arrange**: Delete, Duplicate, Copy, Paste, Select all, Group, Ungroup, Cancel (Esc); **Undo / Redo**; **View**: Home, Fit (F), Top, Front, Side, Grid; **Show**: ports, how it moves; **Tools**: mirror ↔ / ⇅, Hide (H), Isolate (I), Show all (Shift+H), Measure (M), Eyedropper (K); **Panels**: Parts, Properties, Shortcuts (?); **File**. Under the toolbar: the selection as a chip, its Port list, the hidden-parts chip, and a one-line hint of what a click will do now.
 - **Help (?)** at the right end holds what used to be the paragraph above everything: what the Lab is, and how to move the view (and, in Build, how to select and the full shortcut sheet).
-- **Narrow panes.** From 1000 px wide the toolbar may take a second row and shows everything; narrower it keeps one row and the rarer tools go to **More** (⋯), with their names and shortcuts; below 720 px the Lab is compact (the parts palette is a drawer over the view, notes fold to one line). Under a finger every button is at least 40 × 40 px.
+- **Narrow panes.** The action row never wraps. Below 1200 px, buttons use their icons; rarer tools remain in **More** (⋯). Scroll horizontally when the core controls exceed the available width. Pop-up menus stay outside the scrolling clip. Below 720 px the parts palette is a drawer; explanatory text opens on request. Under a finger every button is at least 40 × 40 px.
 - **Side panels (Build).** The parts palette is a panel left of the view and the properties a panel on its right (from 1280 px; narrower they open over the view); both close from the toolbar and are resized with the app's pane divider (`gui/pane-divider.jsx`; double-click closes).
+
+**Manual controls.** The motion icon shows or hides the entire Drive/Motors bar.
+Drive arrows and Motors share one row. Motor sliders start disabled, marked
+“Off · program controls motors”; their angles remain live. Enable **Manual
+override** to pause the program and use the sliders. Disabling override stops
+manual commands; **Run** or the green flag returns control to the program.
+The toolbar offers ¼×, ½×, 1×, 2× and 4×. Fast forward schedules additional
+normal VM/physics steps; timer durations and physical trajectories keep the
+same simulated time. A slower machine may achieve less than the requested rate.
 
 ## Moving the view
 
@@ -236,11 +270,13 @@ Choosing the line-oval mat puts the robot on the line, the wall mat puts its dri
 1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
 ```
 
+`0 !BW LOAD` before a part declares an intentional free payload (for example, the Switchback ball). Structural loose parts still produce issues. `0 !BW ROTOR <degrees>` sets a motor output’s initial angle independently of its housing; its encoder starts at zero in that loaded pose. Both annotations survive LDraw/MPD saves. The fixed-library exporter also writes standard LDraw rotor-pose part files for external viewers. See [the arm, lift and straight-line examples](ROBOT-LAB-ARM-LIFT-AND-STRAIGHT-LINE.md).
+
 Without WebGL the pane says so and the simulation still runs (encoders and yaw keep working; only the picture is missing).
 
 **Model files** (`bw-sim/model/model-file.js`). **Save as…** (Build and Simulate) writes the model on show as `.ldr`, `.mpd` (one `0 FILE` section) or `.io`; all three read back to the same model, byte for byte for the LDraw text.
 - **BrickLink Studio `.io`** is a ZIP whose `model.ldr` is the model in plain LDraw with LDraw colour codes (LDraw wiki "IO"; read the same way by the open-source readers in vengi and brick-mcp). Opening reads only `model.ldr`; parts Studio carries in `CustomParts/` are listed as Studio-only, other parts the Robot Lab does not know as unknown. Studio's own library has 127 part names in another frame than upstream LDraw (the MIT-licensed census in tribixbite/craftmatic); none is a Robot Lab part, so nothing is re-framed. **Older Studio versions encrypt the archive: such a file is refused** with a message to re-save it in a current Studio or export LDraw there — the Robot Lab does not open protected archives. Saving writes a plain ZIP holding `model.ldr` (the `.ldr` save byte for byte, `!BW` ports, ids and groups inside as LDraw comments); not written: the thumbnail, `.info`, `model2.ldr`/`modelv2.ldr`, instruction settings and `CustomParts/`.
-- **LEGO Digital Designer `.lxf`** (LDD 4, LXFML version 5; open only) is a ZIP with `IMAGE100.LXFML`. Each `<Part>` becomes an LDraw part through a curated table of 27 core Technic parts (`bw-sim/model/ldd-parts.js`: beams, pins, axles, bushes, round and bevel gears, plus four newer LDD design numbers of them). LDD design numbers are LEGO's moulded design numbers, which LDraw also uses as file names; the per-part frame offsets are recorded from the community `ldraw.xml` mapping file (no licence statement, so not vendored). LDD units are 25 LDU, LDD is +y up. Materials are LEGO colour numbers, mapped through LDraw's own `LDConfig.ldr` `LEGOID` comments. A design outside the table that is a plain studded catalogue part (brick, plate, tile) is placed from its geometry and flagged `lxf-derived-frame`; any other design — every SPIKE element included — is listed and left out; so are mirrored parts; an unknown material keeps the part in light bluish grey. Why LDD needs per-part offsets at all, how far geometry predicts them, and the two planned better routes (snapping to connections; the user's own `ldraw.xml`): `docs/ROBOT-LAB-LDD-FRAMES.md`.
+- **LEGO Digital Designer `.lxf`** (LDD 4, LXFML version 5; open only) is a ZIP with `IMAGE100.LXFML`. Each `<Part>` becomes the LDraw part of the same number (LDD design numbers are LEGO's moulded design numbers, which LDraw also uses as file names). No per-part frame table is kept (the community `ldraw.xml` mapping file has no licence statement, so it is only a local check): the frame is worked out from the part's geometry where that is safe (`bw-sim/model/ldd-frame.js importFrame`: stud-grid parts, pins, axles, bushes, straight beams) and otherwise from its connections in the model (`bw-sim/model/ldd-snap.js`; docs/ROBOT-LAB-LDD-FRAMES.md). LDD units are 25 LDU, LDD is +y up. Materials are LEGO colour numbers, mapped through LDraw's own `LDConfig.ldr` `LEGOID` comments. A design outside the table that is a plain studded catalogue part (brick, plate, tile) is placed from its geometry and flagged `lxf-derived-frame`; any other design — every SPIKE element included — is listed and left out; so are mirrored parts; an unknown material keeps the part in light bluish grey. Why LDD needs per-part offsets at all, how far geometry predicts them, and the two planned better routes (snapping to connections; the user's own `ldraw.xml`): `docs/ROBOT-LAB-LDD-FRAMES.md`.
 
 **What opens and what saves (2026-10-18).**
 
@@ -306,7 +342,7 @@ Owner (2026-10-18): *"all must be steerable also by pseudocode and blocks and ot
 - A motor on a hub that **runs its own program** (the SPIKE firmware route; the RCX VM when it lands here) is **refused** by name: *"Motor A belongs to the SPIKE Prime hub, whose own program drives it."* Two programs fighting over one port is not something a child can debug, and the hub program is the one the learner chose to run there. (Chosen over "allowed while the hub program is idle": an idle firmware still owns its ports and may start any moment.)
 - Every command crosses the VirtualHub boundary as port data and reaches the motor on the next 5 ms step. With the physics in the worker, a command made while a batch is in flight redoes that batch from the worker's checkpoint, as SPIKE commands always have: part poses are bit-identical to the main-thread run (tested).
 
-**The API for gates and hosts** (`window.__bwSimLab.api`, `runtime.robotLab`): scene — `status()`, `models()`, `loadModel(id | LDraw text)`, `start()`, `stop()`, `reset()`, `setTimeScale(0.1…1)` (slow motion), `camera('home'|'top'|'front'|'side'|'fit' | {follow: partId})`; lists — `motors()`, `sensors()`, `parts()`; control — `setMotor(actuator | part | port, {power} | {speedDps} | {degrees, speedDps, then} | {position, speedDps, then} | {stop: 'brake'|'coast'|'hold'})` → `{ok, done?}` or `{ok: false, code, message}`, `stopMotor(ref, action)`; reads — `encoder(ref)`, `readSensor(ref)`, `pose(partId)` (world position, quaternion, heading), `touching(a, b)`, `onContact(a, b, fn)` (a part, `ground`, or a mat obstacle such as `wall`; checked after every step, edge-triggered; boxes from the compiled colliders with a 1 mm margin). It reads the session only through its public surface and imports nothing from `physics/` or `mech/` (`test/bw-sim-hub-boundary-imports.test.mjs`).
+**The API for gates and hosts** (`window.__bwSimLab.api`, `runtime.robotLab`): scene — `status()`, `models()`, `loadModel(id | LDraw text)`, `start()`, `stop()`, `reset()`, `setTimeScale(0.1…4)` (slow motion or requested fast forward; achievable speed depends on physics throughput), `camera('home'|'top'|'front'|'side'|'fit' | {follow: partId})`; lists — `motors()`, `sensors()`, `parts()`; control — `setMotor(actuator | part | port, {power} | {speedDps} | {degrees, speedDps, then} | {position, speedDps, then} | {stop: 'brake'|'coast'|'hold'})` → `{ok, done?}` or `{ok: false, code, message}`, `stopMotor(ref, action)`; reads — `encoder(ref)`, `readSensor(ref)`, `pose(partId)` (world position, quaternion, heading), `touching(a, b)`, `onContact(a, b, fn)` (a part, `ground`, or a mat obstacle such as `wall`; checked after every step, edge-triggered; boxes from the compiled colliders with a 1 mm margin). It reads the session only through its public surface and imports nothing from `physics/` or `mech/` (`test/bw-sim-hub-boundary-imports.test.mjs`).
 
 ## Powered Up, BOOST and WeDo 2.0 hubs
 
@@ -687,3 +723,9 @@ Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (
 - `scripts/lib/sim-lab-toolbar-gate.mjs` (`--part=ui`) — the Robot Lab tab is selected and filled by the Lab; Help holds the description; every toolbar control (bar and More) has a name and a tooltip starting with it and giving its shortcut, in English and on a de-DE page in German (*Roboter-Labor*, *Rückgängig (Strg+Z)*); the File menu; every Build action by click and by its key (W/E, R/Shift+R/T, Ctrl+A/Esc, Ctrl+Z/Y, Ctrl+D, Delete, copy/paste, Ctrl+G/Ctrl+Shift+G, H/Shift+H/I, M, K, F, ?) with its effect; in both modes Top/Front/Side/Home frame the model, a left drag on empty space orbits about a fixed target, a right drag pans, Shift+drag pans (Simulate), the wheel zooms, arrows/Shift+arrows/− move the focused view; a drag on a part moves the part and leaves the camera, and with a part selected the arrows leave the camera. The core part reaches the Lab through the arena's **Open in Robot Lab** and checks the arena stands aside.
 - `scripts/lib/sim-lab-layout-gate.mjs` (`--part=layout`) — the tab alone at 1024×768 … 1920×1080, with the stage column beside it at 1024×768 and 1366×768, and with the stage dragged wide so the Lab is ~470 px: the view big enough and wholly visible, primary controls pressable, the toolbar never wider than the pane (More when narrower than 1000 px, its Top view works), the palette (drawer when compact) places a part and Undo removes it.
 - `scripts/lib/sim-lab-touch-gate.mjs` — a school tablet (1024×768, `hasTouch`, real touch through CDP `Input.dispatchTouchEvent`): tap a tile then the floor places a part, one finger drags a part by grid steps and a tile out of the palette, a long press adds to the selection, a long press then drag on open floor box-selects, a finger drags the gizmo's X arrow (x only), the build bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom in Build and Simulate, holding ▲ drives (sliding off keeps driving) and lifting the finger stops both motors; two fingers moving together pan the Simulate view. It starts with the stage column beside the tab (compact), then hides it so the tab takes the whole width.
+
+Counterturn and Snapgate add reaction-wheel yaw and over-centre spring memory.
+See [their mechanisms, bounded design revisions and validation](ROBOT-LAB-COUNTERTURN-AND-SNAPGATE.md).
+Both have one motor, automatic example programs, bilingual lessons and connected
+building instructions. The current source library has 72 assemblies and 80 example
+choices; individual release tags preserve their own documented inventories.

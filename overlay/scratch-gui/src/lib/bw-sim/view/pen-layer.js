@@ -9,6 +9,7 @@
 // The strokes are read as vectors (the Robot Lab API's drawing(), the browser gate).
 
 import {Box3, BufferGeometry, Float32BufferAttribute, Group, Line, LineBasicMaterial, Matrix4, Quaternion, Vector3} from 'three';
+import {createSurfaceDrawing} from './surface-drawing.js';
 
 /** The pen draws while its tip is this close to the floor (m): a pen pressed on paper, a little play. */
 export const PEN_DOWN_M = 0.0012;
@@ -49,7 +50,7 @@ const lowestPoint = (body, partId) => {
  * @param {{model, mechanism, built: {scene, bodyGroups: Map, partMeshes: Map, ground}, colors?: Map}} args
  * @returns {{update(): void, strokes(): number[][][], dispose(): void, count: number}|null} null without a pen
  */
-export const createPenLayer = ({model, mechanism, built, colors = null}) => {
+const createFloorPenLayer = ({model, mechanism, built, colors = null}) => {
     const pens = model.parts.filter(p => p.pen);
     if (!pens.length) return null;
     const floorY = built.ground ? new Box3().setFromObject(built.ground).max.y : 0;
@@ -119,6 +120,7 @@ export const createPenLayer = ({model, mechanism, built, colors = null}) => {
         /** Every stroke drawn so far: [[x, z], ...] on the floor (world metres), per pen in model order. */
         strokes: () => tips.flatMap(t => t.strokes.filter(s => s.length > 1).map(s => s.map(q => q.slice()))),
         get count () { return tips.length; },
+        get pointCount () { return total; },
         /** Each pen tip's height above the floor now (m): for the browser gate's messages. */
         heights: () => tips.map(t => { t.g.updateMatrixWorld(true); return p.copy(t.local).applyMatrix4(t.g.matrixWorld).y - t.local.sphere - floorY; }),
         dispose () {
@@ -126,5 +128,18 @@ export const createPenLayer = ({model, mechanism, built, colors = null}) => {
             for (const t of tips) t.material.dispose();
             group.removeFromParent();
         }
+    };
+};
+
+export const createPenLayer = args => {
+    const layers = [createFloorPenLayer(args), createSurfaceDrawing(args)].filter(Boolean);
+    if (!layers.length) return null;
+    return {
+        update: () => layers.forEach(l => l.update()),
+        strokes: () => layers.flatMap(l => l.strokes()),
+        heights: () => layers.flatMap(l => l.heights()),
+        get count () { return layers.reduce((n, l) => n + l.count, 0); },
+        get pointCount () { return layers.reduce((n, l) => n + l.pointCount, 0); },
+        dispose: () => layers.forEach(l => l.dispose())
     };
 };

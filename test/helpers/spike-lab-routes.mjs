@@ -16,6 +16,10 @@
  *        'scratchlink-bt'   scratch-vm's Scratch Link socket -> lite's SPIKE 2.x RFCOMM double
  *                           (virtual-hub/spike-classic-scratch-link.js), the hub on the
  *                           'legacy-v2' firmware target as the SPIKE panel's profile sets it;
+ *        'bridge'           the extension's own `connect to bridge at [URL]` (ws://localhost:8081)
+ *                           -> lite's virtual WebSocket relay (bw-sim/transports/virtual-bridge.js,
+ *                           text framing) -> the same 2.x REPL double as a byte stream
+ *                           (bw-sim/transports/virtual-spike-stream.js), 'legacy-v2' as above;
  *   -> the virtual hub state -> SimSession (the Lab's physics, built as test/helpers/sim-lab-vm.mjs
  *      builds it: prepareModel on the mat, then Jolt) -> sensors back the same way.
  *
@@ -40,6 +44,8 @@ const {default: installSpikeProjectMigration} = await import(path.join(LIB, 'spi
 const {default: installScratchLinkBle} = await import(path.join(LIB, 'virtual-hub', 'scratch-link-ble.js'));
 const {default: installVirtualSpikeClassicScratchLink} = await import(path.join(LIB, 'virtual-hub', 'spike-classic-scratch-link.js'));
 const {connectVirtualHub} = await import(path.join(LIB, 'virtual-hub', 'connect-virtual-hub.js'));
+const {installVirtualBridge, registerVirtualBridge, clearVirtualBridgesForTest} = await import(path.join(SIM, 'transports', 'virtual-bridge.js'));
+const {spikeStreamPeripheral} = await import(path.join(SIM, 'transports', 'virtual-spike-stream.js'));
 const JSZip = (await importGuiDependency('jszip/lib/index.js')).default;
 
 const nodeRequire = createRequire(import.meta.url);
@@ -47,7 +53,7 @@ const Timer = nodeRequire(path.join(INTEGRATED, 'node_modules', 'scratch-vm', 's
 
 export const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta', 'parts.json'), 'utf8')));
 export {FRAME_MS};
-export const ROUTES = Object.freeze(['web-ble', 'scratchlink-ble', 'scratchlink-bt']);
+export const ROUTES = Object.freeze(['web-ble', 'scratchlink-ble', 'scratchlink-bt', 'bridge']);
 export const modelText = file => readFileSync(path.join(REPO, 'overlay', 'scratch-gui', 'static', 'sim-lab', 'models', file), 'utf8');
 
 if (!globalThis.self) globalThis.self = globalThis; // scratch-vm's Scratch Link socket factory reads `self`
@@ -147,6 +153,12 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
             removeClassicClaim = globalThis.__brickwrightVirtualSpikeClassicClaim;
         }
         if (route === 'scratchlink-ble') installScratchLinkBle(globalThis);
+        if (route === 'bridge') {
+            hub.setFirmwareTarget('legacy-v2');
+            clearVirtualBridgesForTest();
+            installVirtualBridge({host: globalThis});
+            registerVirtualBridge({port: 8081, framing: 'text', peripheral: spikeStreamPeripheral(hub)});
+        }
         // Which sockets the page opened, and what answered each (a double's class, or the silent page socket).
         const Installed = globalThis.WebSocket;
         const Recording = function WebSocket (url, protocols) {
@@ -195,6 +207,8 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
         const peripheral = vm.runtime.peripheralExtensions.spikeprime;
         let connectError = null;
         let settled = false;
+        // The bridge has no chooser and no Scratch Link: the extension's own `connect to bridge at` block.
+        (route === 'bridge' ? Promise.resolve(extension.connectHubAt({URL: 'localhost:8081'})).catch(e => { connectError = e; }) :
         connectVirtualHub({host: globalThis, extensionId: 'SPIKE', hubState: hub, timeoutMs: 10000,
             wait: ms => clock.advance(ms),
             connected: () => vm.getPeripheralIsConnected('spikeprime'),
@@ -212,7 +226,7 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
                 await peripheral.scan();
             }})
             // The RFCOMM route has no GATT chooser: connectVirtualHub's "selected" check cannot hold there.
-            .catch(e => { if (!(route === 'scratchlink-bt' && /No connection from SPIKE/.test(e.message) && vm.getPeripheralIsConnected('spikeprime'))) connectError = e; })
+            .catch(e => { if (!(route === 'scratchlink-bt' && /No connection from SPIKE/.test(e.message) && vm.getPeripheralIsConnected('spikeprime'))) connectError = e; }))
             .finally(() => { settled = true; });
         for (let i = 0; i < 800 && !settled; i++) await clock.advance(25);
         if (!settled) throw new Error(`spikeprime over ${route} did not settle connecting in 20 s of simulated time`);
@@ -260,6 +274,7 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
         try { if (registration) registration.unregister(); } catch { /* noop */ }
         try { if (removeClassicClaim) removeClassicClaim(); } catch { /* noop */ }
         delete globalThis.__brickwrightVirtualSpikeClassicClaim;
+        if (route === 'bridge') clearVirtualBridgesForTest();
         globalThis.__brickwrightChooseVirtualBluetooth = undefined;
         globalThis.WebSocket = savedWebSocket;
         session?.dispose();

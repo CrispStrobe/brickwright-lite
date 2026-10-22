@@ -1,0 +1,390 @@
+0 Ellipsa — one-motor ellipsograph
+0 Name: ellipsa.ldr
+0 Author: CrispStrobe
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE BSD-3-Clause : see ../licenses/ellipsa.txt
+0 // Original native arrangement. One motor on hub port A rides the X carriage.
+0 // Two perpendicular sliders and two ordinary hinges produce a 3:1 ellipse.
+0 // Every guide and shaft is physically retained; no output path is assigned.
+0 // External standard part meshes are referenced, not embedded.
+0 Assembly stage 1: Freestanding base with coplanar feet and a four-point hub cradle
+0 !BW ID base_b_-1
+1 72 -220 360 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_a_-1
+1 72 -140 360 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_side_-1_-60
+1 72 -180 380 -60 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID floor_side_pin_-220_-60
+1 0 -220 370 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_side_-1_140
+1 72 -180 380 140 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID floor_side_pin_-140_140
+1 0 -140 370 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_b_1
+1 72 220 360 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_a_1
+1 72 140 360 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_side_1_-60
+1 72 180 380 -60 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID floor_side_pin_220_-60
+1 0 220 370 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_side_1_140
+1 72 180 380 140 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID floor_side_pin_140_140
+1 0 140 370 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_centre_0
+1 72 0 380 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_centre_pin_-1_0
+1 0 -140 370 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_centre_pin_1_0
+1 0 140 370 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_centre_60
+1 72 0 380 60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_centre_pin_-1_60
+1 0 -140 370 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID floor_centre_pin_1_60
+1 0 140 370 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_base_-400
+1 72 -400 360 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_base_-280
+1 72 -280 360 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hub_floor_cross_-100
+1 72 -280 380 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID hub_frame_pin_-100
+1 0 -220 370 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub_floor_cross_100
+1 72 -280 380 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID hub_frame_pin_100
+1 0 -220 370 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 Assembly stage 2: Four lapped columns, upper bridges and two retained perpendicular guide pairs
+0 !BW ID a_top_angle_-1_-60
+1 71 -140 300 -60 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID a_post_-1_-60
+1 72 -160 320 -60 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID a_foot_-1_-60
+1 71 -140 340 -60 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID a_foot_pin_-1_-60
+1 1 -140 360 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID a_top_angle_-1_180
+1 71 -140 300 180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID a_post_-1_180
+1 72 -160 320 180 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID a_foot_-1_180
+1 71 -140 340 180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID a_foot_pin_-1_180
+1 0 -140 350 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID a_top_angle_1_-60
+1 71 140 300 -60 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID a_post_1_-60
+1 72 160 320 -60 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID a_foot_1_-60
+1 71 140 340 -60 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID a_foot_pin_1_-60
+1 1 140 360 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID a_top_angle_1_180
+1 71 140 300 180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID a_post_1_180
+1 72 160 320 180 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID a_foot_1_180
+1 71 140 340 180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID a_foot_pin_1_180
+1 0 140 350 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_header_-140
+1 72 0 -140 -140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID b_header_extension_-1_-140
+1 72 -160 -160 -140 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID b_header_lap_pin_-120_-140
+1 0 -120 -150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_header_lap_pin_-140_-140
+1 0 -140 -150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_top_angle_-1_-140
+1 71 -200 -140 -140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID b_top_pin_-1_-140
+1 0 -200 -150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_post_upper_-1_-140
+1 72 -220 0 -140 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID b_post_lower_-1_-140
+1 72 -240 220 -140 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID b_post_lap_pin_-1_-140_100
+1 0 -230 100 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_-1_-140_120
+1 0 -230 120 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_-1_-140_140
+1 0 -230 140 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_foot_-1_-140
+1 71 -220 340 -140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID b_foot_pin_-1_-140
+1 0 -220 350 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_header_extension_1_-140
+1 72 160 -160 -140 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID b_header_lap_pin_120_-140
+1 0 120 -150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_header_lap_pin_140_-140
+1 0 140 -150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_top_angle_1_-140
+1 71 200 -140 -140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID b_top_pin_1_-140
+1 0 200 -150 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_post_upper_1_-140
+1 72 220 0 -140 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID b_post_lower_1_-140
+1 72 240 220 -140 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID b_post_lap_pin_1_-140_100
+1 0 230 100 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_1_-140_120
+1 0 230 120 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_1_-140_140
+1 0 230 140 -140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_foot_1_-140
+1 71 220 340 -140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID b_foot_pin_1_-140
+1 0 220 350 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_header_140
+1 72 0 -140 140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID b_header_extension_-1_140
+1 72 -160 -160 140 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID b_header_lap_pin_-120_140
+1 0 -120 -150 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_header_lap_pin_-140_140
+1 0 -140 -150 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_top_angle_-1_140
+1 71 -200 -140 140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID b_top_pin_-1_140
+1 0 -200 -150 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_post_upper_-1_140
+1 72 -220 0 140 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID b_post_lower_-1_140
+1 72 -240 220 140 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID b_post_lap_pin_-1_140_100
+1 0 -230 100 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_-1_140_120
+1 0 -230 120 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_-1_140_140
+1 0 -230 140 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_foot_-1_140
+1 71 -220 340 140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID b_foot_pin_-1_140
+1 1 -220 360 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID b_header_extension_1_140
+1 72 160 -160 140 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID b_header_lap_pin_120_140
+1 0 120 -150 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_header_lap_pin_140_140
+1 0 140 -150 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_top_angle_1_140
+1 71 200 -140 140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID b_top_pin_1_140
+1 0 200 -150 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID b_post_upper_1_140
+1 72 220 0 140 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID b_post_lower_1_140
+1 72 240 220 140 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID b_post_lap_pin_1_140_100
+1 0 230 100 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_1_140_120
+1 0 230 120 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_post_lap_pin_1_140_140
+1 0 230 140 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID b_foot_1_140
+1 71 220 340 140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID b_foot_pin_1_140
+1 1 220 360 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_a_-1
+1 0 0 260 -40 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID guide_holder_a_-1_-1
+1 71 -140 260 -40 1 0 0 0 0 1 0 -1 0 6536.dat
+0 !BW ID guide_cap_a_-1_-1
+1 71 -155 260 -40 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_pin_a_-1_-1
+1 1 -140 280 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_holder_a_-1_1
+1 71 140 260 -40 1 0 0 0 0 1 0 -1 0 6536.dat
+0 !BW ID guide_cap_a_-1_1
+1 71 155 260 -40 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_pin_a_-1_1
+1 1 140 280 -60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_support_a_-1
+1 72 0 280 -60 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID guide_a_1
+1 0 0 260 160 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID guide_holder_a_1_-1
+1 71 -140 260 160 1 0 0 0 0 -1 0 1 0 6536.dat
+0 !BW ID guide_cap_a_1_-1
+1 71 -155 260 160 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_pin_a_1_-1
+1 1 -140 280 180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_holder_a_1_1
+1 71 140 260 160 1 0 0 0 0 -1 0 1 0 6536.dat
+0 !BW ID guide_cap_a_1_1
+1 71 155 260 160 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID guide_pin_a_1_1
+1 1 140 280 180 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_support_a_1
+1 72 0 280 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID guide_b_-1
+1 0 -40 -120 0 0 0 -1 0 1 0 1 0 0 50451.dat
+0 !BW ID guide_holder_b_-1_-1
+1 71 -40 -120 -140 0 -1 0 0 0 -1 1 0 0 6536.dat
+0 !BW ID guide_cap_b_-1_-1
+1 71 -40 -120 -155 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID guide_pin_b_-1_-1
+1 1 -60 -120 -140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_holder_b_-1_1
+1 71 -40 -120 140 0 -1 0 0 0 -1 1 0 0 6536.dat
+0 !BW ID guide_cap_b_-1_1
+1 71 -40 -120 155 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID guide_pin_b_-1_1
+1 1 -60 -120 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_support_b_-1
+1 72 -60 -100 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID guide_b_1
+1 0 40 -120 0 0 0 -1 0 1 0 1 0 0 50451.dat
+0 !BW ID guide_holder_b_1_-1
+1 71 40 -120 -140 0 1 0 0 0 1 1 0 0 6536.dat
+0 !BW ID guide_cap_b_1_-1
+1 71 40 -120 -155 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID guide_pin_b_1_-1
+1 1 60 -120 -140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_holder_b_1_1
+1 71 40 -120 140 0 1 0 0 0 1 1 0 0 6536.dat
+0 !BW ID guide_cap_b_1_1
+1 71 40 -120 155 1 0 0 0 1 0 0 0 1 4265c.dat
+0 !BW ID guide_pin_b_1_1
+1 1 60 -120 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID guide_support_b_1
+1 72 60 -100 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 Assembly stage 3: Red X carriage, two sliding toggles and six-point moving motor mount
+0 !BW ID toggle_a_-1
+1 4 80 230 -40 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID carriage_a_lower_-1
+1 4 80 220 -40 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID toggle_a_1
+1 4 80 230 160 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID carriage_a_lower_1
+1 4 80 220 160 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID carriage_a_motor_side_-1
+1 4 40 120 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID carriage_a_motor_pin_-1_-20
+1 0 50 120 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_motor_pin_-1_20
+1 0 50 120 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_motor_pin_-1_140
+1 0 50 120 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_post_-1_-40
+1 4 20 160 -40 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID carriage_a_post_pin_-1_-40
+1 0 30 120 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_foot_-1_-40
+1 71 40 200 -40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID carriage_a_foot_pin_-1_-40
+1 0 40 210 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_a_post_-1_160
+1 4 20 160 160 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID carriage_a_post_pin_-1_160
+1 0 30 120 160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_foot_-1_160
+1 71 40 200 160 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID carriage_a_foot_pin_-1_160
+1 0 40 210 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_a_motor_side_1
+1 4 120 120 60 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID carriage_a_motor_pin_1_-20
+1 0 110 120 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_motor_pin_1_20
+1 0 110 120 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_motor_pin_1_140
+1 0 110 120 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_post_1_-40
+1 4 140 160 -40 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID carriage_a_post_pin_1_-40
+1 0 130 120 -40 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_foot_1_-40
+1 71 120 200 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID carriage_a_foot_pin_1_-40
+1 0 120 210 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_a_post_1_160
+1 4 140 160 160 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID carriage_a_post_pin_1_160
+1 0 130 120 160 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID carriage_a_foot_1_160
+1 71 120 200 160 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID carriage_a_foot_pin_1_160
+1 0 120 210 160 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 80 140 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 Assembly stage 4: Yellow Z carriage with two sliding toggles and a retained passive pivot
+0 !BW ID toggle_b_-1
+1 14 -40 -90 0 1 0 0 0 1 0 0 0 1 48496.dat
+0 !BW ID carriage_b_support_-1
+1 14 -40 -80 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID toggle_b_1
+1 14 40 -90 0 1 0 0 0 1 0 0 0 1 48496.dat
+0 !BW ID carriage_b_support_1
+1 14 40 -80 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID carriage_b_crossbar_-40
+1 14 0 -60 -40 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID carriage_b_crossbar_pin_-40_-1
+1 0 -40 -70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_b_crossbar_pin_-40_1
+1 0 40 -70 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_b_crossbar_0
+1 14 0 -60 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID carriage_b_crossbar_pin_0_-1
+1 0 -40 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_b_crossbar_pin_0_1
+1 0 40 -70 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_b_crossbar_40
+1 14 0 -60 40 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID carriage_b_crossbar_pin_40_-1
+1 0 -40 -70 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_b_crossbar_pin_40_1
+1 0 40 -70 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_b_keyed
+1 14 0 -40 0 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID carriage_b_keyed_pin_-1
+1 0 -20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carriage_b_keyed_pin_1
+1 0 20 -50 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID pivot_B
+1 0 0 -30 0 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID pivot_B_upper
+1 71 0 -80 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID pivot_B_spacer
+1 71 0 -20 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID pivot_B_lower
+1 71 0 20 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 Assembly stage 5: Blue trammel arm, retained motor shaft and orange ellipse marker
+0 !BW ID trammel_bar
+1 1 20 0 0 0 0 -1 0 1 0 1 0 0 40490.dat
+0 !BW ID arm_keyed_A
+1 1 80 20 0 0 0 -1 0 1 0 1 0 0 7229.dat
+0 !BW ID arm_keyed_A_pin_-1
+1 0 60 10 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID arm_keyed_A_pin_1
+1 0 100 10 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID drive_axle
+1 0 80 40 0 0 1 0 1 0 0 0 0 -1 44294.dat
+0 !BW ID drive_upper
+1 71 80 -20 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID drive_spacer_1
+1 71 80 40 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID drive_spacer_2
+1 71 80 60 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID drive_spacer_3
+1 71 80 80 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID marker_Q
+1 25 -40 20 0 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID marker_Q_pin
+1 0 -40 10 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 Assembly stage 6: Fixed hub; complete guide end retention and connect a slack cable to port A
+0 !BW ID hub
+1 15 -340 350 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_pin_-400_-100
+1 1 -400 360 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-400_100
+1 1 -400 360 100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-280_-100
+1 1 -280 360 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-280_100
+1 1 -280 360 100 0 1 0 1 0 0 0 0 -1 6558.dat

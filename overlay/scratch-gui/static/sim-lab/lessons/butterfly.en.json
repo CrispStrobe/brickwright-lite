@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "butterfly",
+  "language": "en",
+  "what": "A crank and connecting rod move a crosshead along two axle guides. Two passive links rotate the rigid triangular wings together. The wings move because their joints close, not because an animation assigns their poses. One crank and a sliding crosshead lift two rigid triangular wings together.",
+  "try": [
+    "Reset and run one slow flap. Compare the crank circle, straight crosshead travel and wing arcs.",
+    "Pause near the lowest crosshead position: both wings are nearly level.",
+    "Stop and enable the motor override for short slow jogs; switch it off before running the program again."
+  ],
+  "why": "The crank radius is 8 mm and the rod length is 48 mm. Their slider-crank loop gives the crosshead a 16 mm stroke. Two 40 mm links push the 8 mm wing drive arms. Mirrored geometry gives the wings opposite angular signs in a common view, but both rise together.",
+  "matters": "This automaton illustrates conversion of rotary motion to reciprocating and oscillating motion, with paired guides and triangular bracing. It illustrates flapping kinematics, not aerodynamic lift or flight.",
+  "question": "How many complete flaps result from two complete motor turns?",
+  "answer": "Two. Each full crank revolution lowers and raises the crosshead once. Ideal wing travel is 53.130102°; the motor rotates continuously while the wings reverse at each end.",
+  "further": [
+    "Compare crosshead displacement during the first and last quarter-turn; the finite rod makes its speed nonuniform.",
+    "Find the triangular braces and distinguish rigid wing members from freely turning linkage pivots.",
+    "The nominal 53.13° sweep is an ideal-geometry value. The small 8 mm drive arms amplify sub-millimetre numerical joint error; transient overshoot is visible."
+  ],
+  "formula": "crosshead stroke = 2r = 16 mm; one crank revolution = one flap; ideal wing sweep = 53.130102°",
+  "related": [
+    "crank-rocker.ldr",
+    "parallel-lift.ldr"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "rack-shuttle",
+  "language": "en",
+  "what": "A pinion pushes a guided rack, turning motor rotation into straight travel. An 8-tooth pinion translates a guided horizontal table. Compare travel with pitch radius times shaft angle; two turns give 50.27 mm.",
+  "try": [
+    "Reset and run the supplied out-and-back program.",
+    "Count motor turns and compare them with rack travel.",
+    "Stop the program and use a low manual speed to approach a travel stop."
+  ],
+  "why": "At the gear’s pitch circle, tangential distance becomes rack displacement. The guide prevents unwanted sideways motion. At a physical stop the mechanism stalls instead of moving through the end of the rail.",
+  "matters": "Rack drives appear in lifting equipment, machine slides and steering.",
+  "question": "If the pinion turns twice as far, what happens before reaching the stop?",
+  "answer": "The ideal rack travel doubles. A stop limits the actual travel, so encoder rotation alone is not enough evidence.",
+  "further": [
+    "Compare lifting against gravity with a horizontal shuttle.",
+    "Explain why a larger pinion gives more travel per turn but less force for the same torque."
+  ],
+  "formula": "travel = pitch radius × angle in radians;  8T pinion: r = 4 mm",
+  "related": [
+    "screw-crane.ldr"
+  ]
+}

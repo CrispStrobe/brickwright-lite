@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "crossglide",
+  "language": "de",
+  "what": "Ein Motor dreht den roten Antrieb und den blauen Abtrieb um parallele Achsen mit 16 mm Abstand. Zwei rechtwinklige Gleitführungen lassen den gelben Zwischenrahmen seitlich wandern und übertragen dabei denselben Winkel auf den Abtrieb. Beobachte seine Mitte genau: Sie durchläuft je voller Wellenumdrehung zweimal einen Kreis mit 8 mm Radius, obwohl sich die Orientierung des gelben Körpers nur einmal dreht. Eine Oldham-Kupplung verbindet versetzte Wellen mit gleicher Drehzahl. Ihr Mittelschlitten gleitet in zwei Richtungen und umläuft zweimal pro Wellendrehung.",
+  "try": [
+    "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
+    "Vergleiche bei jedem Halt die Ausrichtung des roten und des blauen Rahmens. Verfolge dann das mittlere Loch der gelben Querstrebe. Positive Motorwinkel laufen entgegengesetzt zu positiven geometrischen XZ-Winkeln: Das erste Motorziel +45° ergibt den Mittelpunkt (8, −8) mm in X/Z. Wie oft kehrt er vor einer vollen Wellenumdrehung zurück?",
+    "Beobachte die beiden Paare von Führungsachsen. Nach einer Vierteldrehung ist eine Gleitführung mittig, während die andere ihren größten Versatz erreicht. Nach einer halben Drehung kehrt der Mittelpunkt zurück, doch der gelbe Rahmen ist um 180° gedreht."
+  ],
+  "why": "Jede echte Gleitführung verhindert eine Relativdrehung, weil sie zwei voneinander entfernte parallele Führungsachsen besitzt. Die unteren Achsen gehören zum Antrieb; die oberen, senkrecht dazu stehenden Achsen gehören zum Zwischenrahmen. Beide Gleitpaare erhalten daher die Orientierung zwischen Antrieb, Zwischenkörper und Abtrieb. Der Mittelpunkt liegt zugleich auf einer rotierenden Geraden durch die Antriebsachse und auf einer dazu senkrechten rotierenden Geraden durch die Abtriebsachse. Ihr Schnittpunkt beschreibt einen Kreis mit dem halben Achsabstand als Radius und dem doppelten Wellenwinkel als Umlaufphase.",
+  "matters": "Eine Oldham-Kupplung zeigt, wie parallele Wellen trotz seitlichem Versatz mit derselben Winkelgeschwindigkeit laufen können. Dafür muss ihr Zwischenstück im Inneren gleiten. Gleiche Drehzahlen bedeuten nicht, dass alle Teile dieselbe Bahn beschreiben; die Drehung eines Körpers unterscheidet sich vom Umlauf seines Mittelpunkts. Die native Bewegung demonstriert hier Geometrie. Gleitreibung, Verschleiß sowie reale Drehmoment- und Drehzahlgrenzen sind keine gemessenen Hardwarewerte dieses Modells.",
+  "question": "Die Wellen liegen 16 mm auseinander und drehen sich jeweils einmal. Welchen Radius beschreibt der Mittelpunkt, wie viele Umläufe vollendet er, und welchen Weg legt jede Gleitführung zwischen ihren beiden Extremlagen zurück?",
+  "answer": "Der Mittelpunkt durchläuft zweimal einen Kreis mit 8 mm Radius. Die mittige Auslenkung jeder Gleitführung beträgt bis zu 16 mm; ihr vollständiger Hub zwischen beiden Extremen ist somit 32 mm. Antrieb, gelber Körper und Abtrieb drehen sich jeweils einmal. Die doppelte Umlaufzahl betrifft die Bahn des Mittelpunkts und bedeutet keine Übersetzung von 2:1 am Abtrieb.",
+  "further": [
+    "Leite beide Schlittenwege aus senkrechten rotierenden Geraden ab. Ihre sinusförmigen 32-mm-Hübe sind um eine Vierteldrehung versetzt.",
+    "Vergleiche Orbit Mixer: Beide Beispiele unterscheiden Körperdrehung und Umlauf seines Mittelpunkts. Crossglide nutzt zwei Gleitpaare mit jeweils zwei parallelen Führungsachsen.",
+    "Vergleiche Quickstroke: Es erzeugt ungleichförmigen Hin- und Rückhub; diese Kupplung erhält gleiche Ein- und Ausgangsdrehzahlen."
+  ],
+  "formula": "In der XZ-Ebene seien O=(0,0), Q=(e,0), u=(cosθ,sinθ), v=(−sinθ,cosθ), mit e=40 LDU=16 mm. Dann gilt C=O+e cosθ·u=Q+e sinθ·v=(e/2+(e/2)cos2θ,(e/2)sin2θ). Die Lage des Abtriebs relativ zu seinen oberen Führungen ist (Q−C)·v=−e sinθ. Nativ gilt der geometrische Winkel θ=−A für Motorwinkel A. θ_Abtrieb=θ_Antrieb; Umlaufradius=e/2=8 mm; Umlaufphase=2θ. Bei konstantem ω gilt |dC/dt|=e|ω|. 1 LDU=0,4 mm.",
+  "related": [
+    "quickstroke.ldr",
+    "orbit-mixer.ldr",
+    "turnwise.ldr"
+  ]
+}

@@ -51,6 +51,7 @@ export const CAMERA_PRESETS = Object.freeze(['home', 'top', 'front', 'side', 'fi
 
 /** The slowest the Lab may run (slow motion); 1 is real time and the fastest (the VM paces the program). */
 export const MIN_TIME_SCALE = 0.1;
+export const MAX_TIME_SCALE = 4;
 
 /** Contact margin, m: two parts closer than this count as touching (Jolt's contact tolerances are below it). */
 export const CONTACT_MARGIN_M = 0.001;
@@ -377,7 +378,7 @@ export const createRobotLabApi = (host) => {
         stop () { if (host.stop) host.stop(); return {ok: true, status: status()}; },
         async reset () { if (host.reset) await host.reset(); return {ok: Boolean(session()), status: status()}; },
         setTimeScale (scale) {
-            const s = Math.max(MIN_TIME_SCALE, Math.min(1, num(scale) || 1));
+            const s = Math.max(MIN_TIME_SCALE, Math.min(MAX_TIME_SCALE, num(scale) || 1));
             if (host.setTimeScale) host.setTimeScale(s);
             return {ok: true, scale: s};
         },

@@ -1,0 +1,508 @@
+0 STEPWORKS — walking-beam transfer conveyor
+0 Name: stepworks.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/stepworks.txt
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID base_runner_rear_-60
+1 0 -60 180 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_runner_front_-60
+1 0 -60 180 180 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_lap_-60
+1 72 -60 200 60 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID base_runner_rear_20
+1 0 20 180 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_runner_front_20
+1 0 20 180 180 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_lap_20
+1 72 20 200 60 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID base_runner_rear_60
+1 0 60 180 -20 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID base_runner_front_60
+1 0 60 180 180 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_lap_60
+1 72 60 200 60 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID base_runner_rear_80
+1 0 80 180 -20 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID base_runner_front_80
+1 0 80 180 180 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_lap_80
+1 72 80 200 60 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID base_runner_rear_100
+1 0 100 180 -20 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID base_runner_front_100
+1 0 100 180 180 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_lap_100
+1 72 100 200 60 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID base_runner_rear_140
+1 0 140 180 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_runner_front_140
+1 0 140 180 180 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_lap_140
+1 72 140 200 60 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID base_runner_rear_220
+1 0 220 180 -100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_runner_front_220
+1 0 220 180 180 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_lap_220
+1 72 220 200 60 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID base_crossbar_-240
+1 0 80 200 -240 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_crossbar_-80
+1 0 80 200 -80 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_crossbar_300
+1 0 80 200 300 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_lower_-60_-240
+1 0 -60 190 -240 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_foot_-60_-100
+1 0 -60 170 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_-60_-80
+1 0 -60 190 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_foot_-60_-20
+1 0 -60 170 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_-60_20
+1 1 -60 180 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_-60_40
+1 0 -60 190 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_-60_60
+1 0 -60 190 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_-60_80
+1 0 -60 190 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_-60_100
+1 1 -60 180 100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_-60_300
+1 0 -60 190 300 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_20_-240
+1 1 20 180 -240 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_20_-80
+1 0 20 190 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_20_20
+1 0 20 190 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_20_40
+1 0 20 190 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_20_60
+1 1 20 180 60 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_20_80
+1 0 20 190 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_20_100
+1 0 20 190 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_20_300
+1 1 20 180 300 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_60_-80
+1 0 60 190 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_60_20
+1 0 60 190 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_60_40
+1 1 60 180 40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_60_60
+1 0 60 190 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_60_80
+1 0 60 190 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_60_100
+1 0 60 190 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_60_300
+1 0 60 190 300 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_80_-80
+1 0 80 190 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_foot_80_-60
+1 0 80 170 -60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_80_20
+1 0 80 190 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_80_40
+1 0 80 190 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_80_60
+1 1 80 180 60 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_80_80
+1 0 80 190 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_80_100
+1 0 80 190 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_80_300
+1 0 80 190 300 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_100_-80
+1 0 100 190 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_foot_100_-40
+1 0 100 170 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_100_20
+1 0 100 190 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_100_40
+1 0 100 190 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_100_60
+1 0 100 190 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_100_80
+1 0 100 190 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_100_100
+1 0 100 190 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_100_300
+1 0 100 190 300 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_140_-240
+1 1 140 180 -240 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_140_-80
+1 0 140 190 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_140_20
+1 0 140 190 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_140_40
+1 0 140 190 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_140_60
+1 1 140 180 60 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_140_80
+1 0 140 190 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_140_100
+1 0 140 190 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_140_300
+1 1 140 180 300 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_220_-240
+1 0 220 190 -240 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_foot_220_-100
+1 0 220 170 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_220_-80
+1 0 220 190 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_foot_220_-20
+1 0 220 170 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_220_20
+1 1 220 180 20 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_220_40
+1 0 220 190 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_220_60
+1 0 220 190 60 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_lower_220_80
+1 0 220 190 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_shared_220_100
+1 1 220 180 100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_lower_220_300
+1 0 220 190 300 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID bearing_rail_rear
+1 72 80 0 -20 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID fixed_rail_rear
+1 0 80 0 -140 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID post_bearing_rear_left
+1 0 -60 80 -40 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_bearing_rear_left
+1 72 -60 160 -20 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID post_fixed_rear_left
+1 0 -60 80 -120 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_fixed_rear_left
+1 72 -60 160 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID bed_top_rear_left
+1 0 -60 0 -30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID fixed_top_rear_left
+1 1 -60 0 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID post_bearing_rear_right
+1 0 220 80 -40 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_bearing_rear_right
+1 72 220 160 -20 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID post_fixed_rear_right
+1 0 220 80 -120 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_fixed_rear_right
+1 72 220 160 -100 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID bed_top_rear_right
+1 1 220 0 -40 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID fixed_top_rear_right
+1 0 220 0 -130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID fixed_corner_brace_rear
+1 72 -60 80 -160 1 0 0 0 0 -1 0 1 0 32526.dat
+0 !BW ID fixed_corner_spacer_rear
+1 72 -60 20 -140 0 0 1 1 0 0 0 1 0 18654.dat
+0 !BW ID fixed_corner_lower_pin_rear
+1 1 -60 20 -140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID fixed_corner_short_pin_rear
+1 0 -40 0 -150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID center_bearing_post_rear
+1 0 80 80 -40 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID center_bearing_foot_rear
+1 72 80 160 -60 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bearing_rail_front
+1 72 80 0 20 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID fixed_rail_front
+1 0 80 0 140 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID post_bearing_front_left
+1 0 -60 80 40 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_bearing_front_left
+1 72 -60 160 20 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID post_fixed_front_left
+1 0 -60 80 120 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_fixed_front_left
+1 72 -60 160 100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bed_top_front_left
+1 1 -60 0 40 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID fixed_top_front_left
+1 1 -60 0 140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID post_bearing_front_right
+1 0 220 80 40 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_bearing_front_right
+1 72 220 160 20 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID post_fixed_front_right
+1 0 220 80 120 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID foot_fixed_front_right
+1 72 220 160 100 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bed_top_front_right
+1 0 220 0 30 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID fixed_top_front_right
+1 0 220 0 130 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID fixed_corner_brace_front
+1 72 -60 80 160 1 0 0 0 0 -1 0 1 0 32526.dat
+0 !BW ID fixed_corner_spacer_front
+1 72 -60 20 140 0 0 1 1 0 0 0 1 0 18654.dat
+0 !BW ID fixed_corner_lower_pin_front
+1 1 -60 20 140 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID fixed_corner_short_pin_front
+1 0 -40 0 150 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID center_bearing_post_front
+1 0 80 80 40 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID center_bearing_foot_front
+1 72 80 160 60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID bed_diagonal_front
+1 72 0 80 60 -0.8 0 0.6 0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID bed_brace_foot_front
+1 72 60 160 40 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID bed_diagonal_rear
+1 72 160 80 -60 -0.8 0 -0.6 -0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID bed_brace_foot_rear
+1 72 100 160 -40 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID motor_post_left
+1 0 20 60 -220 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID motor_foot_left
+1 72 20 160 -240 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID motor_carrier_left_20
+1 72 40 20 -160 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_adapter_left_20
+1 72 20 20 -200 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_adapter_pin_left_20
+1 0 20 20 -210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_body_pin_left_20_-180
+1 0 50 20 -180 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_left_20_-140
+1 0 50 20 -140 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_carrier_left_60
+1 72 40 60 -160 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_adapter_left_60
+1 72 20 60 -200 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID motor_adapter_pin_left_60
+1 0 20 60 -210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_body_pin_left_60_-180
+1 0 50 60 -180 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_left_60_-140
+1 0 50 60 -140 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_post_right
+1 0 140 60 -220 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID motor_foot_right
+1 72 140 160 -240 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID motor_carrier_right_20
+1 72 120 20 -160 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_adapter_right_20
+1 72 140 20 -200 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_adapter_pin_right_20
+1 0 140 20 -210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_body_pin_right_20_-180
+1 0 110 20 -180 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_right_20_-140
+1 0 110 20 -140 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_carrier_right_60
+1 72 120 60 -160 0 1 0 -1 0 0 0 0 1 32316.dat
+0 !BW ID motor_adapter_right_60
+1 72 140 60 -200 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID motor_adapter_pin_right_60
+1 0 140 60 -210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_body_pin_right_60_-180
+1 0 110 60 -180 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_body_pin_right_60_-140
+1 0 110 60 -140 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motor_diagonal
+1 72 80 60 -240 -0.8 0 0.6 0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID motor_diagonal_pin_upper
+1 0 20 -20 -230 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_diagonal_pin_lower
+1 0 140 140 -230 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 80 40 -160 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID gear_inline_0
+1 71 0 0 0 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 94925.dat
+0 !BW ID gear_shaft_0
+1 0 0 0 0 0 0.980785 -0.19509 0 0.19509 0.980785 1 0 0 3706.dat
+0 !BW ID gear_halfbush_0_-55
+1 72 0 0 -55 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_0_-35
+1 72 0 0 -35 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_0_35
+1 72 0 0 35 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_0_55
+1 72 0 0 55 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_inline_1
+1 71 40 0 0 1 0 0 0 1 0 0 0 1 94925.dat
+0 !BW ID gear_shaft_1
+1 0 40 0 0 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID gear_halfbush_1_-35
+1 72 40 0 -35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_1_35
+1 72 40 0 35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID gear_inline_2
+1 71 80 0 0 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 94925.dat
+0 !BW ID gear_shaft_2
+1 0 80 0 0 0 0.980785 -0.19509 0 0.19509 0.980785 1 0 0 3706.dat
+0 !BW ID gear_halfbush_2_-55
+1 72 80 0 -55 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_2_55
+1 72 80 0 55 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_inline_3
+1 71 120 0 0 1 0 0 0 1 0 0 0 1 94925.dat
+0 !BW ID gear_shaft_3
+1 0 120 0 0 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID gear_halfbush_3_-35
+1 72 120 0 -35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_3_35
+1 72 120 0 35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID gear_inline_4
+1 71 160 0 0 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 94925.dat
+0 !BW ID gear_shaft_4
+1 0 160 0 0 0 0.980785 -0.19509 0 0.19509 0.980785 1 0 0 3706.dat
+0 !BW ID gear_halfbush_4_-55
+1 72 160 0 -55 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_4_-35
+1 72 160 0 -35 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_4_35
+1 72 160 0 35 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_halfbush_4_55
+1 72 160 0 55 0.980785 -0.19509 0 0.19509 0.980785 0 0 0 1 32123a.dat
+0 !BW ID gear_input
+1 71 80 40 0 1 0 0 0 1 0 0 0 1 94925.dat
+0 !BW ID input_axle
+1 0 80 40 -30 0 1 0 0 0 1 1 0 0 3737.dat
+0 !BW ID input_bush_-20
+1 71 80 40 -20 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID input_bush_20
+1 71 80 40 20 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID input_bush_60
+1 71 80 40 60 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID input_halfbush_rear
+1 72 80 40 -55 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID crank_left_rear
+1 4 0 0 -45 0.980785 0 -0.19509 0.19509 0 0.980785 0 -1 0 6632.dat
+0 !BW ID carrier_pivot_left_rear
+1 0 -3.901806 19.615706 -70 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID carrier_inner_half_left_rear
+1 72 -3.901806 19.615706 -35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID carrier_spacer_left_rear
+1 71 -3.901806 19.615706 -60 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID carrier_outer_bush_left_rear
+1 71 -3.901806 19.615706 -100 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_right_rear
+1 4 160 0 -45 0.980785 0 -0.19509 0.19509 0 0.980785 0 -1 0 6632.dat
+0 !BW ID carrier_pivot_right_rear
+1 0 156.098194 19.615706 -70 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID carrier_inner_half_right_rear
+1 72 156.098194 19.615706 -35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID carrier_spacer_right_rear
+1 71 156.098194 19.615706 -60 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID carrier_outer_bush_right_rear
+1 71 156.098194 19.615706 -100 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID carrier_rear
+1 14 76.098194 19.615706 -80 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID crank_left_front
+1 4 0 0 45 0.980785 0 -0.19509 0.19509 0 0.980785 0 -1 0 6632.dat
+0 !BW ID carrier_pivot_left_front
+1 0 -3.901806 19.615706 70 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID carrier_inner_half_left_front
+1 72 -3.901806 19.615706 35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID carrier_spacer_left_front
+1 71 -3.901806 19.615706 60 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID carrier_outer_bush_left_front
+1 71 -3.901806 19.615706 100 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID crank_right_front
+1 4 160 0 45 0.980785 0 -0.19509 0.19509 0 0.980785 0 -1 0 6632.dat
+0 !BW ID carrier_pivot_right_front
+1 0 156.098194 19.615706 70 0 1 0 0 0 1 1 0 0 3705.dat
+0 !BW ID carrier_inner_half_right_front
+1 72 156.098194 19.615706 35 1 0 0 0 1 0 0 0 1 32123a.dat
+0 !BW ID carrier_spacer_right_front
+1 71 156.098194 19.615706 60 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID carrier_outer_bush_right_front
+1 71 156.098194 19.615706 100 1 0 0 0 1 0 0 0 1 3713.dat
+0 !BW ID carrier_front
+1 14 76.098194 19.615706 80 0 0 1 1 0 0 0 1 0 40490.dat
+0 !BW ID hub
+1 15 80 170 180 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_rail_left
+1 72 0 160 180 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID hub_side_pin_left_100
+1 0 10 160 100 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_side_pin_left_260
+1 0 10 160 260 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_foot_left_rear
+1 72 20 160 60 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID hub_foot_left_front
+1 72 20 160 300 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID hub_rail_right
+1 72 160 160 180 0 1 0 -1 0 0 0 0 1 32278.dat
+0 !BW ID hub_side_pin_right_100
+1 0 150 160 100 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_side_pin_right_260
+1 0 150 160 260 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID hub_foot_right_rear
+1 72 140 160 60 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID hub_foot_right_front
+1 72 140 160 300 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID pallet_rung_rear
+0 !BW LOAD
+1 14 0 -39 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID pallet_foot_rear_m140
+0 !BW LOAD
+1 72 0 -19 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_foot_rear_m80
+0 !BW LOAD
+1 72 0 -19 -80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_foot_rear_p80
+0 !BW LOAD
+1 72 0 -19 80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_foot_rear_p140
+0 !BW LOAD
+1 72 0 -19 140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_rung_front
+0 !BW LOAD
+1 14 40 -39 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID pallet_foot_front_m140
+0 !BW LOAD
+1 72 40 -19 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_foot_front_m80
+0 !BW LOAD
+1 72 40 -19 -80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_foot_front_p80
+0 !BW LOAD
+1 72 40 -19 80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_foot_front_p140
+0 !BW LOAD
+1 72 40 -19 140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID pallet_rigid_l_tie
+0 !BW LOAD
+1 4 0 -59 -100 1 0 0 0 1 0 0 0 1 32526.dat
+0 !BW ID pallet_straight_tie
+0 !BW LOAD
+1 4 20 -59 80 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID pallet_foot_pin_rear_m140
+0 !BW LOAD
+1 0 0 -29 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID pallet_foot_pin_rear_m80
+0 !BW LOAD
+1 1 0 -39 -80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID pallet_foot_pin_rear_p80
+0 !BW LOAD
+1 1 0 -39 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID pallet_foot_pin_rear_p140
+0 !BW LOAD
+1 0 0 -29 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID pallet_foot_pin_front_m140
+0 !BW LOAD
+1 0 40 -29 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID pallet_foot_pin_front_m80
+0 !BW LOAD
+1 0 40 -29 -80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID pallet_foot_pin_front_p80
+0 !BW LOAD
+1 1 40 -39 80 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID pallet_foot_pin_front_p140
+0 !BW LOAD
+1 0 40 -29 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID pallet_tie_pin_l_rear
+0 !BW LOAD
+1 0 0 -49 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID pallet_tie_pin_l_front
+0 !BW LOAD
+1 0 40 -49 -20 0 -1 0 1 0 0 0 0 1 2780.dat

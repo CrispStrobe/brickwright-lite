@@ -1,0 +1,65 @@
+0 Survey rover — three-motor SPIKE explorer
+0 Name: survey-rover.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID motorR
+0 !BW PORT B
+1 71 100 10 80 0 -1 0 -1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinR
+1 0 70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleR
+1 0 170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelR
+1 15 170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID motorL
+0 !BW PORT A
+1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinL
+1 0 -70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleL
+1 0 -170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelL
+1 15 -170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID frontBeam
+1 71 0 -10 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID frontPin1
+1 1 40 -10 -120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID frontPin2
+1 1 -40 -10 -120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID castor
+1 71 0 10 -140 0 0 -1 0 1 0 1 0 0 39370.dat
+0 !BW ID ball
+1 15 0 56 -140 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID rearPinR
+1 1 40 -10 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID rearPinL
+1 1 -40 -10 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID rearBeam
+1 25 0 -10 120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID rearCastor
+1 71 0 10 140 0 0 1 0 1 0 -1 0 0 39370.dat
+0 !BW ID rearBall
+1 15 0 56 140 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID topBeam
+1 71 60 -90 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID topPinFront
+1 0 60 -80 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID topPinBack
+1 0 60 -80 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID headMotor
+0 !BW PORT C
+1 71 60 -250 140 0 1 0 0 0 1 1 0 0 54696p01.dat
+0 !BW ID headMountPin1
+1 0 60 -100 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID headMountPin2
+1 0 60 -100 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 // Head pitches about the motor's X axis; D looks forward at its home angle.
+0 !BW ID headPinLow
+1 0 10 -230 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID headPinHigh
+1 0 10 -270 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID eyes
+0 !BW PORT D
+1 15 -60 -250 140 1 0 0 0 1 0 0 0 1 37316.dat

@@ -121,8 +121,14 @@ export class Emitter {
         return BOOLEAN_REPORTERS.has(opcode);
     }
 
+    /** A menu value: the block's field, or the menu shadow in an input of that name
+     *  (how an extension's acceptReporters menus are stored; extension-menu-args.js). */
     field (block, name) {
-        return block.fields && block.fields[name] ? block.fields[name][0] : '';
+        if (block.fields && block.fields[name]) return block.fields[name][0];
+        const input = block.inputs && block.inputs[name];
+        const shadow = Array.isArray(input) && typeof input[1] === 'string' ? this.block(input[1]) : null;
+        const fields = shadow && shadow.shadow ? Object.values(shadow.fields || {}) : [];
+        return fields.length === 1 ? fields[0][0] : '';
     }
 
     /** An input, as a TypeScript expression. */

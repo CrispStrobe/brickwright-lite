@@ -149,15 +149,16 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
         ];
         for (const m of material) createdMaterials.add(m);
 
+        const rotor = pl.rotorAngle && catalog ? {angle: pl.rotorAngle, meta: catalogGet(catalog, pl.part)} : null;
         const hubRef = motor ? driveHubRef(pl.part, read, catalogGet(catalog, pl.part)) : -1;
         if (hubRef >= 0 && bodyGroups.get(motor.output.id)) {
-            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, {ref: hubRef, take: 'rest'}), material, pl.id));
+            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, {ref: hubRef, take: 'rest', rotor}), material, pl.id));
             // The drive hub gets its own materials: it is in another body, which may be painted differently.
             const hubMaterial = material.map(m => m.clone());
             for (const m of hubMaterial) createdMaterials.add(m);
-            hubMeshes.set(pl.id, addPartMesh(pl, motor.output, partVisual(pl.part, read, colors, {ref: hubRef, take: 'ref'}), hubMaterial, `${pl.id}#hub`));
+            hubMeshes.set(pl.id, addPartMesh(pl, motor.output, partVisual(pl.part, read, colors, {ref: hubRef, take: 'ref', rotor}), hubMaterial, `${pl.id}#hub`));
         } else {
-            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors), material, pl.id));
+            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, rotor ? {rotor} : null), material, pl.id));
         }
     }
 
@@ -208,7 +209,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
     if (groundBody) {
         const he = (groundBody.colliders[0] && groundBody.colliders[0].halfExtents) || [1, 0.01, 1];
         const geo = new BoxGeometry(he[0] * 2, he[1] * 2, he[2] * 2);
-        const mat = new MeshStandardMaterial({color: '#c0c0c0', roughness: 0.9});
+        const mat = new MeshStandardMaterial({color: '#c0c0c0', roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4});
         createdGeometries.add(geo);
         createdMaterials.add(mat);
         const mesh = new Mesh(geo, mat);
@@ -235,16 +236,21 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
                 matTexture = new DataTexture(imageData.data, width, height);
                 matTexture.colorSpace = SRGBColorSpace;
                 matTexture.needsUpdate = true;
-                // Create a plane for the mat, slightly above ground to avoid z-fighting
+                // Depth bias separates the two floor layers without raising them through thin LEGO plates.
                 const matGeo = new PlaneGeometry(matW, matD);
                 matGeo.rotateX(-Math.PI / 2);
-                const matMaterial = new MeshStandardMaterial({map: matTexture, roughness: 0.9});
+                // The texture's row 0 is the mat's −z edge (paint), and a DataTexture is not flipped (flipY false):
+                // row 0 is v = 0. The turned plane has v = 0 at +z, so v is mirrored here; without it the mat was
+                // drawn front to back, and the Colour Zones' red corner showed where colorAt has green.
+                const uv = matGeo.attributes.uv;
+                for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+                const matMaterial = new MeshStandardMaterial({map: matTexture, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 2});
                 createdGeometries.add(matGeo);
                 createdMaterials.add(matMaterial);
                 matMesh = new Mesh(matGeo, matMaterial);
-                // Position at ground top + small epsilon, centred at world origin
+                // The painted surface coincides with the physical floor, centred at world origin.
                 const groundTopY = groundBody.position[1] + 0.01;
-                matMesh.position.set(0, groundTopY + 0.001, 0);
+                matMesh.position.set(0, groundTopY, 0);
                 matMesh.name = 'mat';
                 scene.add(matMesh);
                 // Expose texture on ground for test that expects ground with mat has DataTexture
@@ -349,6 +355,25 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
  * @param {{scene: any, bodyGroups: Map<string,Group>|Record<string,Group>, partMeshes: Map<string,Mesh>|Record<string,Mesh>, ground: any}} built
  * @param {{bodyIds: string[], bodies: Float32Array}} snapshot
  */
+/**
+ * The moving bodies' centre of mass as drawn now (a body group's origin is its body's centre of mass, mech/islands.js),
+ * or null when nothing moves: what the camera follows (sim-view3d.js). Not the meshes' box: Box3 boxes each mesh's own
+ * box, which swings round a turning part's axis — the Flywheel differential's box centre swung 9 mm side to side at
+ * every turn of its casing, and the camera with it.
+ */
+export const movingMassCentre = (built, mechanism) => {
+    const c = new Vector3();
+    let mass = 0;
+    for (const b of mechanism.bodies) {
+        if (b.motion === 'static' || !(b.massKg > 0)) continue;
+        const group = built.bodyGroups.get(b.id);
+        if (!group) continue;
+        c.addScaledVector(group.position, b.massKg);
+        mass += b.massKg;
+    }
+    return mass > 0 ? c.divideScalar(mass) : null;
+};
+
 export const applySnapshot = (built, snapshot) => {
     const {bodyGroups} = built;
     const {bodyIds, bodies} = snapshot;

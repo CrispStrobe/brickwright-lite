@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "tilt-lab",
+  "language": "de",
+  "what": "Motor A neigt einen äußeren Kardanrahmen. Motor B bewegt sich mit ihm und kippt die Labyrinthschale um eine senkrechte lokale Achse. Eine unabhängige freie Kugel reagiert auf Schwerkraft und Wände. Zwei verschachtelte Motorachsen neigen eine Labyrinthschale unter einer freien Kugel. Untersuche Neigung, Schwerkraft, Trägheit und Wandkontakte; nutze ±6° an A und ±10° an B.",
+  "try": [
+    "In der gespeicherten waagerechten Lage zurücksetzen und die begrenzte Vorführung starten. Beobachte Schale und Kugel.",
+    "Bei einer einachsigen Neigung pausieren und Kugelbewegung mit der tieferen Schalenseite vergleichen.",
+    "Nur kurze langsame manuelle Tippbewegungen verwenden. A innerhalb ±6° und B innerhalb ±10° halten und vor einer Wiederholung waagerecht stellen. Das Programm demonstriert Neigung und löst das Labyrinth nicht automatisch."
+  ],
+  "why": "Der hangabwärts wirkende Schwerkraftanteil wächst mit sin(Neigung). Die Kugel beschleunigt, rollt oder gleitet und tauscht mit den Wänden Impuls aus. Eine neue Neigung setzt weder Ort noch Geschwindigkeit sofort. Die innere Motorachse bewegt sich mit dem äußeren Rahmen: Die Drehungen sind verschachtelt.",
+  "matters": "Die Trennung zwischen Plattformlage und Nutzlastbewegung tritt bei Kardanführungen, Balancierspielen und Handhabungsanlagen auf. Dieses Labyrinth besitzt keinen Kugelpositionssensor und keinen Rückkopplungsregler.",
+  "question": "Stoppt die Kugel sofort und kehrt zum Start zurück, wenn die Schale wieder waagerecht steht?",
+  "answer": "Nein. Waagerecht entfällt der hangabwärts wirkende Schwerkraftanteil, nicht aber der vorhandene Impuls. Reibung und Wandstöße können die Kugel abbremsen. Für den Rückweg sind gezieltes Steuern oder Zurücksetzen nötig.",
+  "further": [
+    "Vergleiche 5° mit 10°: Die idealen hangabwärts wirkenden Schwerkraftanteile verhalten sich wie sin(10°)/sin(5°), etwa 1,99.",
+    "Versuche, die Kugel mit begrenzten Neigungen durch die wechselnden Öffnungen zu führen. Neige früh zurück, um vor der nächsten Wand zu bremsen.",
+    "Physische Anlaufanschläge begrenzen den äußeren Rahmen; das Beispiel nutzt ±6° an A und ±10° an B. Halte Änderungen in diesen Betriebsbereichen."
+  ],
+  "formula": "Hangabtrieb = g sin(Neigung); Schalenlage R = Rx(A) Rz(B); |A| ≤ 6°, |B| ≤ 10°",
+  "related": [
+    "switchback-lift.ldr",
+    "atlas-arm.ldr"
+  ]
+}

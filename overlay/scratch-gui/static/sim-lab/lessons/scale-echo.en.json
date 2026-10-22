@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "scale-echo",
+  "language": "en",
+  "what": "A 148-piece pantograph has two motors: A turns the long arm at the fixed pivot, while B rides on that arm. A physical parallelogram copies the red marker path at twice its size at the blue marker. The caps are coloured markers, not ink pens. The frame rests freely on the floor. Two inputs and a parallelogram mechanically copy a marker path at twice its size. Compare both actual paths and displacement vectors.",
+  "try": [
+    "Select Scale Echo in Examples. Its guarded native program loads into Blocks automatically. Reset to the saved pose and run the eight finite moves; both motors must start at zero.",
+    "Watch motor B travel with the long arm. First A moves while B holds, then B moves while A holds. Compare the direction and distance of both coloured caps.",
+    "After a reset, use small manual jogs on A or B to compare the two freedoms. Reset before restarting the finite experiment. Keep away from a flattened linkage; the qualified relative angle stays near 60–120 degrees."
+  ],
+  "why": "Let O be the fixed pivot and let the equal pivot step be L = 48 mm. The long arm gives A = Lu and B = 2Lu. The short input has C = L(u+v). The parallelogram forces H = L(2u+v), and extending the output by the same step gives D = 2L(u+v). Thus D−O = 2(C−O): both components and every displacement are doubled. The two independent motor angles set u and v; the passive hinges impose the scaling.",
+  "matters": "Pantographs copy or enlarge shapes through geometry. Unlike a coordinate-controlled plotter, this program commands joint angles and the linkage establishes the output relation. Motor B must move with its support arm. Numerical precision in this simulation does not establish physical friction, stiffness or cable clearance.",
+  "question": "If the red marker moves 10 mm right and 6 mm forward, what displacement should the blue marker make?",
+  "answer": "The blue marker moves 20 mm right and 12 mm forward. Both components scale by two about the fixed pivot. Doubling only the total length while changing direction would not satisfy the pantograph relation.",
+  "further": [
+    "Compare with Ellipse Engine: it constrains two carriages to perpendicular guides, while this machine has two independent rotary inputs.",
+    "Compare measured red and blue paths, not just motor encoder completion. A physical prototype still needs checks for backlash, frame flex, torque and the cable to moving motor B."
+  ],
+  "formula": "L = 48 mm; C = L(u+v), D = 2L(u+v); D−O = 2(C−O), ΔD = 2ΔC (top-view / Draufsicht).",
+  "related": [
+    "ellipse-engine.ldr",
+    "axis-plotter.ldr",
+    "twinpoint.ldr"
+  ]
+}

@@ -41,6 +41,7 @@
  * Usage:
  *   node scripts/probe-pyodide-packer.mjs               # both designs, in node
  *   node scripts/probe-pyodide-packer.mjs --install     # fetch pyodide first
+ *   node scripts/probe-pyodide-packer.mjs --install-only # bounded CI setup, no measurements
  *   node scripts/probe-pyodide-packer.mjs --design blink
  */
 
@@ -95,16 +96,20 @@ export const DESIGNS = Object.freeze({
 export const INSTALL_HINT =
     'node scripts/probe-pyodide-packer.mjs --install   (~17 MB into artifacts/, gitignored)';
 
+// CI setup has a four-minute outer allowance. Leave time for npm termination
+// and the existing named-absence report, without running measurements here.
+export const INSTALL_ONLY_TIMEOUT_MS = 3 * 60 * 1000;
+
 /** Install pyodide into artifacts/, out of the way of this repo's own tree. */
-export function installPyodide () {
+export function installPyodide ({timeoutMs} = {}) {
     mkdirSync(PYODIDE_DIR, {recursive: true});
     // The manifest is not a formality. Without one, npm walks UP, finds this
     // repo's package.json and installs pyodide into the repo's own tree —
     // which is the opposite of keeping it out of the way, and silent.
     writeFileSync(path.join(PYODIDE_DIR, 'package.json'),
         JSON.stringify({name: 'bw-pyodide-probe', private: true, version: '0.0.0'}, null, 2));
-    execFileSync('npm', ['install', '--no-save', '--silent', 'pyodide'],
-        {cwd: PYODIDE_DIR, stdio: 'inherit'});
+    execFileSync('npm', ['install', '--no-save', '--silent', '--no-audit', '--no-fund', 'pyodide'],
+        {cwd: PYODIDE_DIR, stdio: 'inherit', ...(timeoutMs === undefined ? {} : {timeout: timeoutMs})});
 }
 
 /**
@@ -174,7 +179,11 @@ except Exception as e:
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     const argv = process.argv.slice(2);
-    if (argv.includes('--install')) installPyodide();
+    const installOnly = argv.includes('--install-only');
+    if (argv.includes('--install') || installOnly) {
+        installPyodide(installOnly ? {timeoutMs: INSTALL_ONLY_TIMEOUT_MS} : undefined);
+    }
+    if (installOnly) process.exit(0);
     if (!existsSync(PYODIDE_ENTRY)) {
         process.stderr.write(`pyodide is not installed. Run:\n  ${INSTALL_HINT}\n`);
         process.exit(2);

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "momentum-twins",
+  "language": "en",
+  "what": "Momentum Twins carries a hub and two weighted rotors on a platform that can turn freely about a vertical bearing. Run both rotors in the same direction and the platform turns the other way. Run the matched rotors in opposite directions and their reactions nearly cancel, even though both rotors are moving. The free bearing has no geared drive: the platform responds to the motors' internal reaction torque. Two balanced motor rotors exchange angular momentum with a freely turning platform. Compare matching and opposing spins.",
+  "try": [
+    "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the finite experiment and its observation pauses.",
+    "Watch the hub and orange platform beams against the lower gray support. During the first two stages, compare the direction of platform motion with the rotors' motion relative to the platform. During the last two stages, check that both rotors really turn while the platform moves much less.",
+    "Use the measured wheel angles and platform heading to compare the two experiments. A wheel encoder measures rotation relative to its motor housing; the platform heading is a separate world-frame measurement. Returning both encoder readings to their starting values does not by itself prove that the platform has returned to the same world heading."
+  ],
+  "why": "A motor applies torque to its rotor and an equal opposing torque to its housing. Both housings are part of the movable platform. With little external torque about the bearing, total angular momentum of the upper assembly stays approximately constant. Same-direction wheel motion adds the two reactions. Equal opposite wheel motion cancels them. The amount of platform rotation depends on the complete rotor inertias and the inertia of the whole upper assembly, including the hub, motor housings and the rotors' offsets from the central bearing.",
+  "matters": "Spacecraft use reaction wheels to change attitude by exchanging angular momentum internally. This tabletop model isolates one axis and makes the response visible. Accelerating or braking the wheels exchanges momentum with the platform; constant wheel speed is not a continuing source of torque. A platform that has acquired angular velocity can keep turning while that velocity persists.",
+  "question": "If the two rotors spin in opposite directions and the platform hardly turns, are the motors doing nothing?",
+  "answer": "Both motors are moving their loads. The rotors carry approximately equal and opposite angular momentum, so their combined effect about the platform's yaw axis is small. Unequal masses, different mass radii or mismatched wheel motions would leave a residual response. Cancellation describes the combined angular momentum; it does not mean that the wheels are stationary or that no energy is used.",
+  "further": [
+    "Predict the platform direction before each stage. Compare its largest same-spin excursion with the opposite-spin excursion, while checking that both wheels are moving.",
+    "For a balanced rebuild, move both equal weights on each rotor farther from its axis. Their radial contribution to inertia grows with the square of the distance. Include the resulting change to the whole platform inertia before predicting an angle.",
+    "Keep both motor leads aboard the moving platform and clear of the rotors. Bearing friction, cable contact and unequal rotor loads can leave a residual turn. Compare with Flywheel Differential, where inertia acts through a geared transmission."
+  ],
+  "formula": "From initial rest with negligible external yaw torque: J_locked Δθ + I_A Δα_A + I_B Δα_B ≈ 0. θ is platform yaw in the world frame; α_A and α_B are wheel angles relative to the platform, with one common positive axis. J_locked is the yaw inertia of the complete upper assembly with both rotor spins locked. Equal rotors: same spin gives Δθ ≈ −2I Δα/J_locked; equal opposite spins give Δθ ≈ 0.",
+  "related": [
+    "flywheel-differential.ldr",
+    "mean-machine.ldr"
+  ]
+}

@@ -29,7 +29,7 @@ import {PhysicsClient} from './physics/physics-client.js';
 import {upgradePartMeta, validatePartMeta} from './contracts.js';
 import {BUILTIN_KINDS} from './kinds/index.js';
 import {MIN_ENGAGE_LDU} from './kinds/pin-axle.js';
-import {referencedFiles} from './model/ldraw-model.js';
+import {referencedFiles, WITH_CABLE} from './model/ldraw-model.js';
 import {openLDrawCatalog} from './ldraw/ldraw-catalog.js';
 import {fetchLDrawClosure, setLDrawFallback, vendoredFiles} from './ldraw/ldraw-fetch.js';
 import {createCatalogPartStore, creditOf} from './part-meta/catalog-store.js';
@@ -200,7 +200,9 @@ export const catalogFor = async text => {
     // A part an MPD embeds under its own name ('42099 - 52731.dat', an unofficial copy) is derived as the library
     // part it names (model/ldraw-model.js knownAs then maps the embedded name to it).
     const named = name => /^.+? - (.+\.dat)$/i.exec(name)?.[1].toLowerCase() || name;
-    const unknown = [...new Set([...referencedFiles(text)].map(named))].filter(name => !catalog.has(name) && /\.dat$/i.test(name));
+    // A motor with its cable (model/ldraw-model.js WITH_CABLE) is the catalogue's motor: nothing to derive.
+    const unknown = [...new Set([...referencedFiles(text)].map(named))].filter(name => !catalog.has(name) &&
+        !(WITH_CABLE[name] && catalog.has(WITH_CABLE[name])) && /\.dat$/i.test(name));
     if (!unknown.length) return catalog;
     let lib;
     try {

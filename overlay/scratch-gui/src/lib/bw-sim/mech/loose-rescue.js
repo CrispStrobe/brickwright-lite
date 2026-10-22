@@ -103,8 +103,12 @@ export const rescueLoose = (nodes, edges) => {
     return {edges: added, groups};
 };
 
-/** Parts a coupling holds, not the connector graph (kinds/chain.js: chain and tread links): never welded, nor welded to. */
-const COUPLED = new Set(['chain-link']);
+/**
+ * Parts a coupling holds, not the connector graph: chain and tread links (kinds/chain.js), a CV joint's ends and a
+ * universal joint's forks (kinds/cv-joint.js, kinds/universal-joint.js): never welded, nor welded to. A drive axle's CV
+ * end welded into the knuckle it turns in tied the wheel to the knuckle (the 4x4 Off-Roader's wheels could not turn).
+ */
+const COUPLED = new Set(['chain-link', 'cv-ball', 'cv-socket', 'uj-fork']);
 const coupled = n => n.connectors.some(c => COUPLED.has(c.type));
 
 /** How far apart two parts' boxes may be and still touch (LDU): half a plate's rounding. */
@@ -223,4 +227,38 @@ export const weldByContact = (nodes, edges) => {
         if (!joined) break;
     }
     return {pairs, groups};
+};
+
+/** How far a ball's centre may miss its socket's in a model from elsewhere (LDU; the graph's own rule allows 0.5). */
+export const BALL_NEAR_LDU = 1.5;
+
+/**
+ * Near-miss ball joints (models from elsewhere): a ball that the graph left unjoined, within BALL_NEAR_LDU of a socket
+ * of another part that is free too, is joined to it. A file places a towball 1 LDU from its steering link's socket
+ * (the 4x4 Off-Roader's steering links); the graph's 0.5 LDU missed them, and the links were welded instead.
+ * @returns {object[]} new edges (kind 'ball': a = the socket's part, b = the ball's), `rescued: true`
+ */
+export const nearBallJoints = (nodes, edges) => {
+    const used = new Set(edges.filter(e => e.kind === 'ball').flatMap(e => [`${e.a.part}#${e.a.connector}`, `${e.b.part}#${e.b.connector}`]));
+    const sockets = [];
+    for (const n of nodes.values()) for (const c of n.connectors) if (c.type === 'ballsocket' && !used.has(`${n.id}#${c.id}`)) sockets.push({n, c});
+    const out = [];
+    for (const n of nodes.values()) {
+        for (const c of n.connectors) {
+            if (c.type !== 'ball' || used.has(`${n.id}#${c.id}`)) continue;
+            let best = null;
+            for (const s of sockets) {
+                if (s.n.partId === n.partId || used.has(`${s.n.id}#${s.c.id}`)) continue;
+                const d = Math.hypot(...s.c.position.map((v, i) => v - c.position[i]));
+                if (d <= BALL_NEAR_LDU && (!best || d < best.d)) best = {d, s};
+            }
+            if (!best) continue;
+            const {s} = best;
+            used.add(`${n.id}#${c.id}`);
+            used.add(`${s.n.id}#${s.c.id}`);
+            out.push({a: {part: s.n.id, connector: s.c.id}, b: {part: n.id, connector: c.id}, kind: 'ball',
+                point: s.c.position.slice(), axis: (s.c.axis || [0, 1, 0]).slice(), rescued: true});
+        }
+    }
+    return out;
 };

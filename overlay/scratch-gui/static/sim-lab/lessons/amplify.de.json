@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "amplify",
+  "language": "de",
+  "what": "Ein Motor bewegt die gelbe Eingangsmarkierung D auf einem Kreis mit 16 mm Radius. Ein echtes Parallelogramm mit verlängerten Armen lässt die orange Ausgangsmarkierung Q einen Kreis mit 32 mm Radius beschreiben. Q kopiert jede ebene Verschiebung von D im doppelten Maßstab. Beide Punkte vollenden ihren Umlauf gemeinsam; der Ausgang legt in derselben Zeit einen längeren Weg zurück. Ein Motor bewegt den passiven Ausgang mit doppeltem Radius und doppelter Bahngeschwindigkeit. Acht Pausen zeigen die Punktgeometrie im Verhältnis 2:1.",
+  "try": [
+    "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte das begrenzte Experiment und die Pausen.",
+    "Verfolge die gelbe Markierung D und die orange Markierung Q relativ zum festen Ursprung O. Beim ersten Motorziel +45° lauten die vorhergesagten X/Z-Koordinaten D=(59,314;43,314) mm und Q=(118,627;86,627) mm. Vergleiche beide Koordinaten statt nur die Kreisdurchmesser.",
+    "Beobachte die vier Seiten des Parallelogramms und die Mittelpunkte auf den beiden langen Armen. Vergleiche dann die Markierungsgeschwindigkeiten während eines gleichmäßigen Abschnitts. Braucht der größere Kreis mehr Zeit, eine höhere Geschwindigkeit oder mehr Umläufe?"
+  ],
+  "why": "Der lange rote Arm hält A genau in der Mitte zwischen O und B. Der lange blaue Arm hält C in der Mitte zwischen B und Q. Die gleich langen 48-mm-Seiten von A–B–C–D erhalten auf dem gewählten offenen Bewegungszweig ein Parallelogramm. Mit A=u und D=u+v gilt B=2u sowie Q=2u+2v=2D. Das Größenverhältnis folgt aus den tatsächlichen Stablängen und Mittelpunkten. Der Motor wählt die Eingangsbahn; er berechnet oder setzt die Ausgangsposition nicht.",
+  "matters": "Ein Pantograf kopiert eine ebene Bahn in einem festgelegten Maßstab. Das Modell trennt den Wegmaßstab von der Umlauffrequenz: Doppelter Radius bedeutet doppelte Bahngeschwindigkeit, während beide Markierungen dieselbe Umlaufphase behalten. Die ideal eingeschlossene Fläche vervierfacht sich. Größere Wege erzeugen keine zusätzliche Energie; ohne Reibung und Trägheit beträgt die entsprechende Ausgangskraft die Hälfte der am Eingangspunkt wirkenden Kraft. Reale Belastbarkeit und physischer Aufbau wurden hier nicht gemessen.",
+  "question": "D durchläuft einen Kreis mit 16 mm Radius einmal in 36 Sekunden. Welchen Radius beschreibt Q, wie lange dauert sein Umlauf, und wie ändern sich Bahngeschwindigkeit und eingeschlossene Fläche?",
+  "answer": "Q beschreibt einen Kreis mit 32 mm Radius in denselben 36 Sekunden. Seine Bahngeschwindigkeit ist doppelt so groß, und die eingeschlossene Fläche ist viermal so groß. Beide Punkte vollenden einen Umlauf. Das Verhältnis 2:1 beschreibt Koordinaten, Verschiebungen und Bahngeschwindigkeiten, nicht zwei Ausgangsumläufe je Eingangsumlauf.",
+  "further": [
+    "Leite Q−O=2(D−O) aus den beiden Mittelpunktbeziehungen ab. Prüfe, dass die Verdopplung des Eingangskreises auch den Abstand seines Mittelpunkts von O verdoppelt.",
+    "Vergleiche die Wege beider Markierungen zwischen zwei Pausen. Nutze dasselbe Zeitintervall für den Geschwindigkeitsvergleich und prüfe, dass beide gleich viele Umläufe vollenden.",
+    "Untersuche die Bauebenen am Gelenk D. Eine gesicherte Achse gehört zur grünen Kurbel; beide kurzen Arme drehen sich unabhängig in ihren Rundlöchern. Die Antriebsachse beginnt unterhalb beider Arme, damit sie darüber hinwegschwenken können.",
+    "Vergleiche Straight Eight, das eine Gerade erzeugt, und Crossglide, dessen Zwischenpunkt zweimal je Wellenumdrehung umläuft. Amplify verdoppelt die Bahngröße bei gleicher Umlauffrequenz."
+  ],
+  "formula": "In der projizierten XZ-Ebene gilt OA=AB=BC=CQ=AD=DC=120 LDU=48 mm. Auf dem offenen Parallelogrammzweig gilt Q−O=2(D−O). Mit O=(0,0), F=(120,80) LDU und Kurbelradius 40 LDU folgt D(α)=(120−40 sinα,80+40 cosα) und Q(α)=2D(α). Beim platzierten nativen Motor ist α=−A für den Encoderwinkel A. Eingangsradius 16 mm, Ausgangsradius 32 mm; vQ=2vD; gleiche Umlaufphase. Bei 10°/s betragen die idealen gleichmäßigen Geschwindigkeiten 2,793 und 5,585 mm/s. 1 LDU=0,4 mm.",
+  "related": [
+    "straight-eight.ldr",
+    "crossglide.ldr",
+    "twinpoint.ldr"
+  ]
+}

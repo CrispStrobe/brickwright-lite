@@ -99,6 +99,8 @@ export class ConnectorKindRegistry extends Registry {
  *         common-frame / gear-on-frame rules every mesh shares;
  *   detect(ctx): {couplings, welds?, diagnostics?} — a free detector run after the meshes
  *         (ctx: {nodes, islands, joints, jointEntries, catalog}).
+ * `collisionPairs?(ctx)`: mating part pairs along a continuous sliding guide;
+ * only existing jointed body pairs use these local contact exclusions.
  * `bodies?(c, m)`: the two bodies a coupling of this kind ties (for the no-collide pairs).
  */
 export class CouplingKindRegistry extends Registry {

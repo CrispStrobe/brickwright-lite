@@ -616,7 +616,12 @@ test('tilting table: a loose tower of two 1 × 1 × 3 bricks tips at tan θ = (h
         }
     }
     const h = mv / m;
-    const critical = Math.atan(half / h) * DEG;
+    // Jolt's box is rounded by at most 0.5 mm. At incipient tipping the
+    // COM lies over the corner arc's centre: tan(theta)=(half-r)/(h-r).
+    // The catalog's sharp-corner reference is useful, but is not this contact shape.
+    const cornerRadius = Math.min(0.0005 / LDU_M, .25 * half);
+    const sharpCritical = Math.atan(half / h) * DEG;
+    const critical = Math.atan((half-cornerRadius) / (h-cornerRadius)) * DEG;
     const tilt = async dir => {
         const mech = compile(model, CATALOG, {version: 2, ground: false});
         const mj = motorJoint(mech);
@@ -647,7 +652,7 @@ test('tilting table: a loose tower of two 1 × 1 × 3 bricks tips at tan θ = (h
         return {standing, tipped};
     };
     const out = [await tilt(1), await tilt(-1)];
-    t.diagnostic(`COM ${h.toFixed(2)} LDU above the face, half base ${half} LDU: θc ${critical.toFixed(2)}°; ` +
+    t.diagnostic(`COM ${h.toFixed(2)} LDU above the face, half base ${half} LDU: sharp θc ${sharpCritical.toFixed(2)}°, rounded θc ${critical.toFixed(2)}°; ` +
         out.map(o => `stood at ${o.standing.toFixed(2)}°, tipped at ${o.tipped?.toFixed(2)}°`).join('; '));
     for (const o of out) assert.ok(o.tipped !== null && Math.abs(Math.abs(o.tipped) - critical) <= 0.5, `tipped at ${o.tipped}° vs ${critical}°`);
 });

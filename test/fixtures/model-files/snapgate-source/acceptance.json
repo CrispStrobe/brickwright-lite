@@ -1,0 +1,1045 @@
+{
+  "model_id": "snapgate",
+  "contract_version": 1,
+  "status": "PREDECLARED_BEFORE_FINAL_TWO_CYCLE_QUALIFICATION",
+  "scope": "Bistable state and snap-action demonstrator; native contact approximation is quantified separately from source CAD and joint closure. Physical force calibration and browser operation remain untested.",
+  "finite_experiment": {
+    "cycles": 2,
+    "initial_hold_seconds": 1,
+    "motor_speed_degrees_per_second": 144,
+    "nominal_input_speed_degrees_per_second": 6,
+    "motor_encoder_per_input_degree_magnitude": 24,
+    "input_targets_degrees": [
+      -18,
+      0,
+      18,
+      0
+    ],
+    "stage_ids": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "end_hold_seconds": [
+      0.5,
+      1,
+      0.5,
+      1
+    ],
+    "initial_stage": 0,
+    "completion_stage": 6,
+    "watchdog_seconds": 59,
+    "host_deadline_seconds": 60.0,
+    "physical_step_ms": 5,
+    "recording_interval_ms": 5,
+    "cold_start_ms": 500,
+    "post_completion_hold_ms": 500,
+    "initial_centering_encoder_degrees": 45,
+    "source_return_encoder_degrees": 0,
+    "source_return_stage": 5,
+    "source_saved_input_degrees": 1.875
+  },
+  "source_geometry": {
+    "input_pivot_core_ldu": [
+      -60,
+      0,
+      140
+    ],
+    "output_pivot_core_ldu": [
+      0,
+      0,
+      140
+    ],
+    "input_radius_ldu": 240,
+    "output_radius_ldu": 40,
+    "stop_centres_core_ldu": [
+      [
+        60,
+        -40,
+        100
+      ],
+      [
+        60,
+        40,
+        100
+      ]
+    ],
+    "source_stop_angle_degrees": 19.23533125484944,
+    "source_quasistatic_trigger_input_degrees": 14.510971316264616,
+    "shock_eye_offset_mm": 8,
+    "shock_internal_h_limits_mm": [
+      48,
+      64
+    ],
+    "shock_spring_stiffness_N_per_m": 150,
+    "shock_damping_Ns_per_m": 1,
+    "note": "Nominal stop and trigger values derive from source CAD and nominal colliders, not observed motion. Saved input alpha+1.875 degrees phases the worm/24T teeth. Saved output remains-17 degrees and settles toward the lower stop in the unpowered cold phase.",
+    "saved_input_angle_degrees": 1.875
+  },
+  "observation_rules": {
+    "input_angle": "Actual input-arm A_input minus fixed input pivot M, expressed in the measured chassis O/X/Y frame. Cylinder eye A is measured separately.",
+    "output_angle": "Actual rigid rocker RP minus R, expressed in the measured chassis frame; independently compare RP with rod eye P and R with chassis O.",
+    "shock_h": "16mm plus actual rod origin P minus cylinder origin C0 projected on measured cylinder local Y. Check native slider coordinate and independent endpoint geometry separately.",
+    "memory_selection": "For stage0 and each cycle stages2/4, select the last0.5seconds using only stage/cycle/time. Test input/output afterward. Do not select samples by desired output.",
+    "snap_selection": "Exactly one directed zero crossing in each cycle stage1(+output) andstage3(-output). Source10\u201390percent levels are\u00b10.8times the nominal source stop angle. Use bracketing observed frames, no interpolated or commanded output poses.",
+    "stop_overlap": "Measured bush centre and carried cylinder axis versus the actual rocker-body side plane, including finite-cylinder support projection. Native overlap is an approximation error, not physical LEGO compression or a redefined CAD stop.",
+    "cold_and_return": "Cold observations are fully retained. Compare final passive output with the initial cold-settled source state, both at saved input alpha+1.875 degrees. Central memory holds are separately at alpha0/encoder45 degrees; initial centring and final return are real motor moves.",
+    "force_energy": "Elastic force/energy channels use uncalibrated native metadata and measured compression. They are model-law inferences, not measured hardware forces."
+  },
+  "predeclared_acceptance_gates": {
+    "minimum_total_samples": 6000,
+    "required_cycles": 2,
+    "required_completed_position_commands": 10,
+    "required_directed_snaps": 4,
+    "minimum_input_signed_travel_each_leg_deg": 16.5,
+    "minimum_motor_range_deg": 860,
+    "maximum_final_encoder_error_deg": 1.5,
+    "maximum_initial_encoder_error_deg": 1,
+    "maximum_input_encoder_phase_error_deg": 0.5,
+    "maximum_program_seconds": 58,
+    "hold_window_seconds": 0.5,
+    "minimum_hold_samples": 100,
+    "maximum_hold_input_abs_deg": 0.5,
+    "maximum_memory_input_mean_separation_deg": 0.25,
+    "maximum_memory_anchor_mean_separation_mm": 0.5,
+    "minimum_held_output_abs_deg": 16,
+    "minimum_opposite_memory_separation_deg": 32,
+    "maximum_held_output_range_deg": 0.5,
+    "maximum_held_output_source_stop_error_deg": 3,
+    "maximum_repeat_state_mean_difference_deg": 1,
+    "maximum_final_output_settled_return_deg": 1.5,
+    "maximum_snap_10_to_90_seconds": 0.25,
+    "minimum_snap_measured_samples": 3,
+    "minimum_snap_peak_output_dps": 30,
+    "minimum_snap_output_to_input_speed_ratio": 5,
+    "maximum_snap_source_trigger_error_deg": 4,
+    "maximum_joint_closure_mm": 0.8,
+    "maximum_axis_mismatch_deg": 2,
+    "maximum_output_axis_tilt_deg": 2,
+    "maximum_output_eye_out_of_plane_mm": 0.8,
+    "maximum_anchor_eye_closure_mm": 0.8,
+    "maximum_rocker_eye_closure_mm": 0.8,
+    "maximum_rocker_axis_closure_mm": 0.8,
+    "maximum_chassis_translation_mm": 1,
+    "maximum_chassis_yaw_deg": 1,
+    "maximum_stop_penetration_all_samples_mm": 1.5,
+    "maximum_stop_penetration_held_mm": 1,
+    "maximum_held_active_stop_gap_mm": 1,
+    "maximum_shock_transverse_error_mm": 0.8,
+    "maximum_shock_endpoint_geometry_error_mm": 0.8,
+    "maximum_shock_native_coordinate_error_mm": 0.3,
+    "minimum_shock_internal_h_mm": 49,
+    "maximum_shock_internal_h_mm": 63,
+    "minimum_observed_shock_stroke_mm": 4,
+    "maximum_cold_input_drift_deg": 0.5,
+    "maximum_cold_encoder_drift_deg": 1,
+    "maximum_cold_output_source_excursion_deg": 8,
+    "minimum_cold_samples": 101,
+    "maximum_cold_final_input_speed_dps": 1,
+    "maximum_cold_final_output_speed_dps": 5,
+    "maximum_source_frame_orthogonality_error": 1e-08,
+    "expected_sample_interval_seconds": 0.005,
+    "minimum_datum_move_input_travel_deg": 1.5
+  },
+  "gate_rationale": {
+    "memory": "The machine must retain opposite useful passive states while the same input is held and reproduce them twice. Motor travel alone cannot pass.",
+    "snap": "A bounded fast passive transition must occur in each direction twice, with measured samples spanning it and timing around the source-predicted trigger region.",
+    "native_contact_approximation": "1.0mm held and1.5mm transient stop overlap are explicit maximum accepted native contact errors for this state demonstrator. They do not validate millimetre-accurate physical stops; all values must be reported next to source nominal geometry.",
+    "shock_margin": "The actual internal slider must stay at least1mm from both nominal stroke ends. Observed compression variation must be useful, never an invisible locked spring.",
+    "physical_integrity": "All model bodies remain dynamic with the floor as the sole static body; physical hinge closure, alignment, support and independently measured eye attachment errors are bounded."
+  },
+  "negative_controls": [
+    "copied_frozen_output_channel",
+    "copied_single_valued_input_follower_channel",
+    "copied_frozen_shock_channel",
+    "actual_native_wrong_datum_guard",
+    "actual_native_watchdog_delayed_main"
+  ],
+  "declaration_basis": {
+    "timing_scope": "Frozen before final two-cycle qualification and exact ordinary comparison. A completed one-cycle development pilot of these same canonical model bytes was observed beforehand; it is explicitly not the final qualification.",
+    "unchanged_numerical_gates_sha256": "5c8b315d60d94419b80dd58b04be60702d58f88574e7c63f16ccb0317ce09106",
+    "prior_canonical_model_one_cycle_pilot": {
+      "model_sha256": "4796bf3f379c6110574435a9cf0eab57698b199491f96706bf3ff9dda5fea525",
+      "program_sha256": "9cfb45d6a9f513279a0e1ba0264c249ca00a392c2bc280476e96bfb9f773d8b7",
+      "observations_sha256": "0f11c153be222ab5980cebd8fb60a347538ca381661bc2419176ab04344e99eb",
+      "diagnostics_sha256": "cb5f3a9bf4762659eb85d36f5aa0e203442c0305ac22e07791c19391e23763b5",
+      "status": "DEVELOPMENT_PILOT_ONLY",
+      "source_model_bytes_already_observed": true
+    },
+    "development_decision": "A real 13L orange pointer increases output inertia. The preceding lighter core14 failed the existing 1.5 degree cold-settled output return bound; no numerical acceptance gate was relaxed."
+  },
+  "declaration_time_utc": "2026-10-21T20:47:44.739171+00:00",
+  "frozen_binding": {
+    "model_sha256": "4796bf3f379c6110574435a9cf0eab57698b199491f96706bf3ff9dda5fea525",
+    "program_sha256": "cb3dd5e8ad34cb4242342428eb88ffab1abcee25369dd1c4c82b6efbf834d62b",
+    "validation_host_sha256": "c03502856cebf672a00453e96166b25355d9c8ff65da7b73c48b085edc2feab8",
+    "judge_sha256": "01e2b202fd424a645361aaa87bcbdc0ca8c74f3254a2988009dc8ef9f2b77bb6",
+    "derive_sha256": "8c4ed754bb4d0d9c8ab5beb334da1c1ae6a22e1339326edde7d3204a68312942",
+    "guard_judge_sha256": "e3e2b8311284012365ba869d20de34f9fbcac33be621f2ddec9c3bfa41177c32",
+    "equivalence_checker_sha256": "72f40b60c99bb661d202466ea2bd9176dd3f0ed4c6e906c85173be79a9512b85",
+    "part_catalog_sha256": "4cf61046b391c454130321ed7983c73f570821e6f2741639895dec974d681e35",
+    "reviewed_draft_sha256": "631ee93dc24587b137bb1a0ec2143b3a2c67931f48f452ca07ee4d02ff170d76",
+    "preflight_sha256": "9bfd2086a53d8c54a11a56e2f634860f8e76b739bcaba6ebf01d539db73a3a0d",
+    "freeze_tool_sha256": "1e3223b1c77db75a20b84c11c54877d0c63eb20aac4cd6d91eec954b0a211576"
+  },
+  "frozen_observation_configuration": {
+    "chassisPart": "sun_shaft",
+    "points": [
+      {
+        "id": "O",
+        "part": "sun_shaft",
+        "localLdu": [
+          80.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "id": "M",
+        "part": "sun_shaft",
+        "localLdu": [
+          80.0,
+          0.0,
+          60.0
+        ]
+      },
+      {
+        "id": "X",
+        "part": "sun_shaft",
+        "localLdu": [
+          80.0,
+          0.0,
+          -100.0
+        ]
+      },
+      {
+        "id": "Y",
+        "part": "sun_shaft",
+        "localLdu": [
+          80.0,
+          100.0,
+          0.0
+        ]
+      },
+      {
+        "id": "A",
+        "part": "spring_cylinder",
+        "localLdu": [
+          -20,
+          -40,
+          0
+        ]
+      },
+      {
+        "id": "A_input",
+        "part": "input_arm_-60",
+        "localLdu": [
+          60.0,
+          120.0,
+          100.00000000000001
+        ]
+      },
+      {
+        "id": "P",
+        "part": "spring_rod",
+        "localLdu": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "R",
+        "part": "rocker",
+        "localLdu": [
+          0.0,
+          40.0,
+          0.0
+        ]
+      },
+      {
+        "id": "RP",
+        "part": "rocker",
+        "localLdu": [
+          0.0,
+          40.0,
+          40.0
+        ]
+      },
+      {
+        "id": "C0",
+        "part": "spring_cylinder",
+        "localLdu": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "CY",
+        "part": "spring_cylinder",
+        "localLdu": [
+          0,
+          100,
+          0
+        ]
+      },
+      {
+        "id": "S_lower",
+        "part": "stop_bush_-40",
+        "localLdu": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "S_upper",
+        "part": "stop_bush_40",
+        "localLdu": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "roles": {
+      "chassis": "sun_shaft",
+      "input": "input_arm_-60",
+      "worm": "worm_gear",
+      "rocker": "rocker",
+      "springCylinder": "spring_cylinder",
+      "springRod": "spring_rod",
+      "stopLower": "stop_bush_-40",
+      "stopUpper": "stop_bush_40",
+      "passiveBearingPin": "worm_wheel_bearing_pin_-160_40"
+    },
+    "sourceGeometry": {
+      "inputRadiusMm": 96,
+      "outputRadiusMm": 16,
+      "cylinderEyeAxialOffsetMm": 16,
+      "shockEyeOffsetMm": 8,
+      "shockRestInternalHmm": 64,
+      "shockMinimumInternalHmm": 48,
+      "sourceStopAngleDeg": 19.23533125484944,
+      "sourceTriggerInputAngleDeg": 14.510971316264616,
+      "encoderPerInputDegree": -24,
+      "inputSourceAngleDeg": 1.875,
+      "nominalSpringStiffnessNPerM": 150,
+      "nominalSpringDampingNsPerM": 1,
+      "cylinderAxesWorldInitial": [
+        [
+          -0.27397058224631465,
+          0.0,
+          -0.9617380724831556
+        ],
+        [
+          -0.9617380724831556,
+          0.0,
+          0.27397058224631465
+        ],
+        [
+          0.0,
+          1.0,
+          -0.0
+        ]
+      ],
+      "rockerNormalWorldInitial": [
+        0.0,
+        1.0,
+        -0.0
+      ],
+      "rockerSideWorldInitial": [
+        0.29237170472273677,
+        0.0,
+        -0.9563047559630354
+      ],
+      "rockerBeamCentreFromPivotWorldInitialM": [
+        0,
+        -0.016,
+        0
+      ],
+      "stopAxisWorldInitial": [
+        0,
+        1,
+        0
+      ],
+      "rockerHalfWidthMm": 3.6,
+      "stopRadiusMm": 3.6,
+      "stopHalfHeightMm": 4
+    },
+    "expectedPhysicalPartCount": 203,
+    "expectedDynamicBodyCount": 9,
+    "expectedStrictJointCount": 9,
+    "expectedWormPartPair": [
+      "worm_gear",
+      "input_wheel"
+    ],
+    "expectedDynamicBodyCountByMode": {
+      "ordinary": 8,
+      "strict": 9
+    },
+    "expectedStrictHingeCount": 8,
+    "declaredOrdinaryMergedPin": "worm_wheel_bearing_pin_-160_40",
+    "preparation": "strict",
+    "coldStartMs": 500,
+    "frameMs": 5,
+    "settleAfterCompletionMs": 500,
+    "maxSimulatedMs": 60000,
+    "acceptance": {
+      "minimumSamples": 6000,
+      "minimumMotorRangeDeg": 860,
+      "maximumReturnErrorDeg": 1.5,
+      "maximumJointClosureMm": 0.8,
+      "maximumChassisTranslationMm": 1,
+      "completionVariable": "completed",
+      "failureVariable": "failed"
+    },
+    "qualificationScope": "Frozen exact two-cycle Snapgate experiment. Strict is the primary headless qualification; ordinary is the predeclared normal-import comparison. The complete cold phase and independent passive observations are retained."
+  },
+  "integration": {
+    "preparation": "strict",
+    "declared_comparison_modes": [
+      "ordinary"
+    ],
+    "body_membership_by_mode": {
+      "ordinary": [
+        {
+          "id": "ground",
+          "motion": "static",
+          "massKg": 0,
+          "parts": []
+        },
+        {
+          "id": "b0",
+          "motion": "dynamic",
+          "massKg": 0.0025100000000000005,
+          "parts": [
+            "anchor_axle",
+            "anchor_retainer_-15",
+            "anchor_retainer_105",
+            "anchor_retainer_15",
+            "anchor_retainer_155",
+            "spring_cylinder"
+          ]
+        },
+        {
+          "id": "b1",
+          "motion": "dynamic",
+          "massKg": 0.2721200000000001,
+          "parts": [
+            "base_foot_-120",
+            "base_foot_240",
+            "base_foot_pin_-120_140",
+            "base_foot_pin_-120_20",
+            "base_long_-20",
+            "base_long_140",
+            "base_long_20",
+            "base_short_140",
+            "base_short_20",
+            "base_splice_140",
+            "base_splice_20",
+            "base_splice_pin_120_140",
+            "base_splice_pin_120_20",
+            "base_splice_pin_140_140",
+            "base_splice_pin_140_20",
+            "base_splice_pin_180_140",
+            "base_splice_pin_180_20",
+            "base_splice_pin_200_140",
+            "base_splice_pin_200_20",
+            "ground_output_bridge_pin",
+            "ground_output_cross",
+            "ground_output_key_pin",
+            "ground_output_shared_pin",
+            "hub",
+            "hub_foot_shared_140",
+            "hub_foot_shared_20",
+            "hub_pin_140",
+            "hub_pin_20",
+            "motor_A",
+            "output_pivot_retainer_135",
+            "output_pivot_retainer_85",
+            "stop_bridge",
+            "stop_cap_cross_-1",
+            "stop_cap_cross_1",
+            "stop_cap_pin_-1_-20",
+            "stop_cap_pin_-1_60",
+            "stop_cap_pin_1_-20",
+            "stop_cap_pin_1_60",
+            "stop_floor_pin_-20_-20",
+            "stop_floor_pin_-20_140",
+            "stop_floor_pin_-20_20",
+            "stop_floor_pin_60_-20",
+            "stop_floor_pin_60_140",
+            "stop_floor_pin_60_20",
+            "stop_floor_rail_-20",
+            "stop_floor_rail_60",
+            "stop_foot_-1_-20",
+            "stop_foot_-1_60",
+            "stop_foot_1_-20",
+            "stop_foot_1_60",
+            "stop_foot_pin_-1_-20",
+            "stop_foot_pin_-1_60",
+            "stop_foot_pin_1_-20",
+            "stop_foot_pin_1_60",
+            "stop_frame_splice_-1_-20_-40",
+            "stop_frame_splice_-1_-20_-80",
+            "stop_frame_splice_-1_60_-40",
+            "stop_frame_splice_-1_60_-80",
+            "stop_frame_splice_1_-20_-40",
+            "stop_frame_splice_1_-20_-80",
+            "stop_frame_splice_1_60_-40",
+            "stop_frame_splice_1_60_-80",
+            "stop_head_-1_-20",
+            "stop_head_-1_60",
+            "stop_head_1_-20",
+            "stop_head_1_60",
+            "stop_head_pin_-1_-20",
+            "stop_head_pin_-1_60",
+            "stop_head_pin_1_-20",
+            "stop_head_pin_1_60",
+            "stop_lower_frame_-1",
+            "stop_lower_frame_1",
+            "stop_negative_foot_extension_-20",
+            "stop_negative_foot_extension_60",
+            "stop_negative_foot_pin_-20_-100",
+            "stop_negative_foot_pin_-20_-120",
+            "stop_negative_foot_pin_60_-100",
+            "stop_negative_foot_pin_60_-120",
+            "stop_negative_foot_spacer_-20",
+            "stop_negative_foot_spacer_60",
+            "stop_side_bridge_-20",
+            "stop_upper_bearing",
+            "stop_upper_bearing_pin_-60",
+            "stop_upper_bearing_pin_60",
+            "stop_upper_frame_-1",
+            "stop_upper_frame_1",
+            "sun_key",
+            "sun_retainer_5",
+            "sun_retainer_55",
+            "sun_shaft",
+            "worm_bearing_elbow_-100",
+            "worm_bearing_elbow_40",
+            "worm_bearing_pin_-100",
+            "worm_bearing_pin_40",
+            "worm_foot_-20",
+            "worm_foot_-60",
+            "worm_foot_pin_-20",
+            "worm_foot_pin_-60",
+            "worm_front_bearing",
+            "worm_head_-20",
+            "worm_head_-60",
+            "worm_head_pin_-20",
+            "worm_head_pin_-60",
+            "worm_L_-80",
+            "worm_L_40",
+            "worm_L_pin_-40_-70",
+            "worm_L_pin_-40_30",
+            "worm_motor_pin_-120_-50",
+            "worm_motor_pin_-120_10",
+            "worm_motor_rail_-60",
+            "worm_motor_rail_20",
+            "worm_motor_shared_pin_-60",
+            "worm_motor_shared_pin_20",
+            "worm_pedestal_-20",
+            "worm_pedestal_-60",
+            "worm_pedestal_brace_pin",
+            "worm_pedestal_Lbrace",
+            "worm_upper_cross",
+            "worm_upper_cross_pin",
+            "worm_upper_cross_shared_pin",
+            "worm_wheel_bearing_-65",
+            "worm_wheel_bearing_25",
+            "worm_wheel_bearing_pin_-120_-70",
+            "worm_wheel_bearing_pin_-160_40",
+            "worm_wheel_bearing_pin_-80_-70"
+          ]
+        },
+        {
+          "id": "b2",
+          "motion": "dynamic",
+          "massKg": 0.01128,
+          "parts": [
+            "flag",
+            "flag_pin_-100",
+            "flag_pin_-80",
+            "output_pointer",
+            "rocker",
+            "rocker_layer_pin_-20",
+            "rocker_layer_pin_20",
+            "rocker_upper",
+            "rod_eye_pin"
+          ]
+        },
+        {
+          "id": "b3",
+          "motion": "dynamic",
+          "massKg": 0.041099999999999984,
+          "parts": [
+            "input_anchor_foot_-1_120",
+            "input_anchor_foot_-1_200",
+            "input_anchor_foot_1_120",
+            "input_anchor_foot_1_200",
+            "input_anchor_foot_pin_-1_120",
+            "input_anchor_foot_pin_-1_200",
+            "input_anchor_foot_pin_1_120",
+            "input_anchor_foot_pin_1_200",
+            "input_anchor_frame_-1",
+            "input_anchor_frame_1",
+            "input_anchor_head_-1_120",
+            "input_anchor_head_-1_200",
+            "input_anchor_head_1_120",
+            "input_anchor_head_1_200",
+            "input_anchor_head_pin_-1_120",
+            "input_anchor_head_pin_-1_200",
+            "input_anchor_head_pin_1_120",
+            "input_anchor_head_pin_1_200",
+            "input_anchor_toprail_-1",
+            "input_anchor_toprail_1",
+            "input_anchor_upper_cross",
+            "input_anchor_upper_pin_-60",
+            "input_anchor_upper_pin_60",
+            "input_arm_-60",
+            "input_arm_60",
+            "input_cross_160",
+            "input_cross_180",
+            "input_cross_pin_160_-60",
+            "input_cross_pin_160_60",
+            "input_cross_pin_180_-60",
+            "input_cross_pin_180_60",
+            "input_key",
+            "input_key_pin_-20",
+            "input_key_pin_20",
+            "input_rear_wing_-1",
+            "input_rear_wing_1",
+            "input_rear_wing_pin_-1",
+            "input_rear_wing_pin_1",
+            "input_retainer_-55",
+            "input_retainer_-75",
+            "input_retainer_15",
+            "input_retainer_35",
+            "input_retainer_45",
+            "input_retainer_75",
+            "input_shaft",
+            "input_wheel",
+            "input_wheel_spacer_-40",
+            "input_wheel_spacer_0"
+          ]
+        },
+        {
+          "id": "b4",
+          "motion": "dynamic",
+          "massKg": 0.00818,
+          "parts": [
+            "motor_A",
+            "worm_gear",
+            "worm_rear_spacer",
+            "worm_retainer",
+            "worm_shaft"
+          ]
+        },
+        {
+          "id": "b5",
+          "motion": "dynamic",
+          "massKg": 0.0011899999999999999,
+          "parts": [
+            "spring_rod"
+          ]
+        },
+        {
+          "id": "b6",
+          "motion": "dynamic",
+          "massKg": 0.0011400000000000002,
+          "parts": [
+            "stop_bush_-40",
+            "stop_roller_retainer_-40_115",
+            "stop_roller_retainer_-40_45",
+            "stop_roller_retainer_-40_85",
+            "stop_shaft_-40"
+          ]
+        },
+        {
+          "id": "b7",
+          "motion": "dynamic",
+          "massKg": 0.0011400000000000002,
+          "parts": [
+            "stop_bush_40",
+            "stop_roller_retainer_40_115",
+            "stop_roller_retainer_40_45",
+            "stop_roller_retainer_40_85",
+            "stop_shaft_40"
+          ]
+        }
+      ],
+      "strict": [
+        {
+          "id": "ground",
+          "motion": "static",
+          "massKg": 0,
+          "parts": []
+        },
+        {
+          "id": "b0",
+          "motion": "dynamic",
+          "massKg": 0.0025100000000000005,
+          "parts": [
+            "anchor_axle",
+            "anchor_retainer_-15",
+            "anchor_retainer_105",
+            "anchor_retainer_15",
+            "anchor_retainer_155",
+            "spring_cylinder"
+          ]
+        },
+        {
+          "id": "b1",
+          "motion": "dynamic",
+          "massKg": 0.27192000000000005,
+          "parts": [
+            "base_foot_-120",
+            "base_foot_240",
+            "base_foot_pin_-120_140",
+            "base_foot_pin_-120_20",
+            "base_long_-20",
+            "base_long_140",
+            "base_long_20",
+            "base_short_140",
+            "base_short_20",
+            "base_splice_140",
+            "base_splice_20",
+            "base_splice_pin_120_140",
+            "base_splice_pin_120_20",
+            "base_splice_pin_140_140",
+            "base_splice_pin_140_20",
+            "base_splice_pin_180_140",
+            "base_splice_pin_180_20",
+            "base_splice_pin_200_140",
+            "base_splice_pin_200_20",
+            "ground_output_bridge_pin",
+            "ground_output_cross",
+            "ground_output_key_pin",
+            "ground_output_shared_pin",
+            "hub",
+            "hub_foot_shared_140",
+            "hub_foot_shared_20",
+            "hub_pin_140",
+            "hub_pin_20",
+            "motor_A",
+            "output_pivot_retainer_135",
+            "output_pivot_retainer_85",
+            "stop_bridge",
+            "stop_cap_cross_-1",
+            "stop_cap_cross_1",
+            "stop_cap_pin_-1_-20",
+            "stop_cap_pin_-1_60",
+            "stop_cap_pin_1_-20",
+            "stop_cap_pin_1_60",
+            "stop_floor_pin_-20_-20",
+            "stop_floor_pin_-20_140",
+            "stop_floor_pin_-20_20",
+            "stop_floor_pin_60_-20",
+            "stop_floor_pin_60_140",
+            "stop_floor_pin_60_20",
+            "stop_floor_rail_-20",
+            "stop_floor_rail_60",
+            "stop_foot_-1_-20",
+            "stop_foot_-1_60",
+            "stop_foot_1_-20",
+            "stop_foot_1_60",
+            "stop_foot_pin_-1_-20",
+            "stop_foot_pin_-1_60",
+            "stop_foot_pin_1_-20",
+            "stop_foot_pin_1_60",
+            "stop_frame_splice_-1_-20_-40",
+            "stop_frame_splice_-1_-20_-80",
+            "stop_frame_splice_-1_60_-40",
+            "stop_frame_splice_-1_60_-80",
+            "stop_frame_splice_1_-20_-40",
+            "stop_frame_splice_1_-20_-80",
+            "stop_frame_splice_1_60_-40",
+            "stop_frame_splice_1_60_-80",
+            "stop_head_-1_-20",
+            "stop_head_-1_60",
+            "stop_head_1_-20",
+            "stop_head_1_60",
+            "stop_head_pin_-1_-20",
+            "stop_head_pin_-1_60",
+            "stop_head_pin_1_-20",
+            "stop_head_pin_1_60",
+            "stop_lower_frame_-1",
+            "stop_lower_frame_1",
+            "stop_negative_foot_extension_-20",
+            "stop_negative_foot_extension_60",
+            "stop_negative_foot_pin_-20_-100",
+            "stop_negative_foot_pin_-20_-120",
+            "stop_negative_foot_pin_60_-100",
+            "stop_negative_foot_pin_60_-120",
+            "stop_negative_foot_spacer_-20",
+            "stop_negative_foot_spacer_60",
+            "stop_side_bridge_-20",
+            "stop_upper_bearing",
+            "stop_upper_bearing_pin_-60",
+            "stop_upper_bearing_pin_60",
+            "stop_upper_frame_-1",
+            "stop_upper_frame_1",
+            "sun_key",
+            "sun_retainer_5",
+            "sun_retainer_55",
+            "sun_shaft",
+            "worm_bearing_elbow_-100",
+            "worm_bearing_elbow_40",
+            "worm_bearing_pin_-100",
+            "worm_bearing_pin_40",
+            "worm_foot_-20",
+            "worm_foot_-60",
+            "worm_foot_pin_-20",
+            "worm_foot_pin_-60",
+            "worm_front_bearing",
+            "worm_head_-20",
+            "worm_head_-60",
+            "worm_head_pin_-20",
+            "worm_head_pin_-60",
+            "worm_L_-80",
+            "worm_L_40",
+            "worm_L_pin_-40_-70",
+            "worm_L_pin_-40_30",
+            "worm_motor_pin_-120_-50",
+            "worm_motor_pin_-120_10",
+            "worm_motor_rail_-60",
+            "worm_motor_rail_20",
+            "worm_motor_shared_pin_-60",
+            "worm_motor_shared_pin_20",
+            "worm_pedestal_-20",
+            "worm_pedestal_-60",
+            "worm_pedestal_brace_pin",
+            "worm_pedestal_Lbrace",
+            "worm_upper_cross",
+            "worm_upper_cross_pin",
+            "worm_upper_cross_shared_pin",
+            "worm_wheel_bearing_-65",
+            "worm_wheel_bearing_25",
+            "worm_wheel_bearing_pin_-120_-70",
+            "worm_wheel_bearing_pin_-80_-70"
+          ]
+        },
+        {
+          "id": "b2",
+          "motion": "dynamic",
+          "massKg": 0.01128,
+          "parts": [
+            "flag",
+            "flag_pin_-100",
+            "flag_pin_-80",
+            "output_pointer",
+            "rocker",
+            "rocker_layer_pin_-20",
+            "rocker_layer_pin_20",
+            "rocker_upper",
+            "rod_eye_pin"
+          ]
+        },
+        {
+          "id": "b3",
+          "motion": "dynamic",
+          "massKg": 0.041099999999999984,
+          "parts": [
+            "input_anchor_foot_-1_120",
+            "input_anchor_foot_-1_200",
+            "input_anchor_foot_1_120",
+            "input_anchor_foot_1_200",
+            "input_anchor_foot_pin_-1_120",
+            "input_anchor_foot_pin_-1_200",
+            "input_anchor_foot_pin_1_120",
+            "input_anchor_foot_pin_1_200",
+            "input_anchor_frame_-1",
+            "input_anchor_frame_1",
+            "input_anchor_head_-1_120",
+            "input_anchor_head_-1_200",
+            "input_anchor_head_1_120",
+            "input_anchor_head_1_200",
+            "input_anchor_head_pin_-1_120",
+            "input_anchor_head_pin_-1_200",
+            "input_anchor_head_pin_1_120",
+            "input_anchor_head_pin_1_200",
+            "input_anchor_toprail_-1",
+            "input_anchor_toprail_1",
+            "input_anchor_upper_cross",
+            "input_anchor_upper_pin_-60",
+            "input_anchor_upper_pin_60",
+            "input_arm_-60",
+            "input_arm_60",
+            "input_cross_160",
+            "input_cross_180",
+            "input_cross_pin_160_-60",
+            "input_cross_pin_160_60",
+            "input_cross_pin_180_-60",
+            "input_cross_pin_180_60",
+            "input_key",
+            "input_key_pin_-20",
+            "input_key_pin_20",
+            "input_rear_wing_-1",
+            "input_rear_wing_1",
+            "input_rear_wing_pin_-1",
+            "input_rear_wing_pin_1",
+            "input_retainer_-55",
+            "input_retainer_-75",
+            "input_retainer_15",
+            "input_retainer_35",
+            "input_retainer_45",
+            "input_retainer_75",
+            "input_shaft",
+            "input_wheel",
+            "input_wheel_spacer_-40",
+            "input_wheel_spacer_0"
+          ]
+        },
+        {
+          "id": "b4",
+          "motion": "dynamic",
+          "massKg": 0.00818,
+          "parts": [
+            "motor_A",
+            "worm_gear",
+            "worm_rear_spacer",
+            "worm_retainer",
+            "worm_shaft"
+          ]
+        },
+        {
+          "id": "b5",
+          "motion": "dynamic",
+          "massKg": 0.0011899999999999999,
+          "parts": [
+            "spring_rod"
+          ]
+        },
+        {
+          "id": "b6",
+          "motion": "dynamic",
+          "massKg": 0.0011400000000000002,
+          "parts": [
+            "stop_bush_-40",
+            "stop_roller_retainer_-40_115",
+            "stop_roller_retainer_-40_45",
+            "stop_roller_retainer_-40_85",
+            "stop_shaft_-40"
+          ]
+        },
+        {
+          "id": "b7",
+          "motion": "dynamic",
+          "massKg": 0.0011400000000000002,
+          "parts": [
+            "stop_bush_40",
+            "stop_roller_retainer_40_115",
+            "stop_roller_retainer_40_45",
+            "stop_roller_retainer_40_85",
+            "stop_shaft_40"
+          ]
+        },
+        {
+          "id": "b8",
+          "motion": "dynamic",
+          "massKg": 0.0002,
+          "parts": [
+            "worm_wheel_bearing_pin_-160_40"
+          ]
+        }
+      ]
+    },
+    "physical_axis_body_maps_by_mode": {
+      "ordinary": {
+        "ground": "ground",
+        "b0": "b0",
+        "b1": "b1",
+        "b2": "b2",
+        "b3": "b3",
+        "b4": "b4",
+        "b5": "b5",
+        "b6": "b6",
+        "b7": "b7",
+        "b8": "b1"
+      },
+      "strict": {
+        "ground": "ground",
+        "b0": "b0",
+        "b1": "b1",
+        "b2": "b2",
+        "b3": "b3",
+        "b4": "b4",
+        "b5": "b5",
+        "b6": "b6",
+        "b7": "b7",
+        "b8": "b8"
+      }
+    },
+    "ordinary_body_membership_difference": "The fully seated frictionless3/4 pin worm_wheel_bearing_pin_-160_40 remains a separately spinning passive body in strict preparation; ordinary rescue merges it into its fixed support. Both modes leave the plate physically fixed by two separated attachments.",
+    "expected_issues": {
+      "ordinary": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b1 and b8 lock, merging islands",
+          "parts": [
+            "stop_upper_bearing",
+            "stop_upper_bearing_pin_-60",
+            "stop_upper_bearing_pin_60"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b1 and b9 lock, merging islands",
+          "parts": [
+            "worm_wheel_bearing_-65",
+            "worm_wheel_bearing_pin_-120_-70",
+            "worm_wheel_bearing_pin_-80_-70"
+          ]
+        }
+      ],
+      "strict": [
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b1 and b8 lock, merging islands",
+          "parts": [
+            "stop_upper_bearing",
+            "stop_upper_bearing_pin_-60",
+            "stop_upper_bearing_pin_60"
+          ]
+        },
+        {
+          "severity": "warning",
+          "code": "locked-hinges",
+          "message": "Hinges between b1 and b9 lock, merging islands",
+          "parts": [
+            "worm_wheel_bearing_-65",
+            "worm_wheel_bearing_pin_-120_-70",
+            "worm_wheel_bearing_pin_-80_-70"
+          ]
+        }
+      ]
+    },
+    "selected_solver": null,
+    "solvers_by_mode": {
+      "ordinary": {
+        "lightLinks": {
+          "massKg": 0.01,
+          "ratio": 20,
+          "velocity": 30,
+          "position": 10
+        },
+        "maxLinearVelocity": 5,
+        "loopBalls": [
+          "j7"
+        ]
+      },
+      "strict": null
+    },
+    "source_commit": "0a23bd8446f3cdb9a51668ea17dedb054648480a",
+    "strict_option_call": "prepareModel(text,catalog,{mat:null,autoPorts:false,breakLoops:false})",
+    "normal_import_boundary": "Strict preparation is a headless harness option, not an established user-facing browser selector. Normal import performance is judged separately and any failure retained.",
+    "native_contact_boundary": "1.0mm held and 1.5mm transient stop overlap are bounded simulator approximation errors, not physical part deformation or redefined source geometry."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "phase-bridge-misphased",
+  "language": "en",
+  "what": "One motor turns two bent universal joints. The intermediate shaft speeds up and slows down twice each revolution. With equal bends and correctly phased forks, the second joint cancels this ripple at the output. This file contains 144 explicit placements; add the two joint crosses, inferred by the simulator, for 146 physical pieces. A quarter-turn phasing error makes the two universal joints reinforce their speed ripple. Compare with the correctly phased bridge.",
+  "try": [
+    "Choose Phase Bridge in Examples; the program loads into Blocks automatically. Press Run and compare the yellow middle indicator with the blue output through two turns and a reversal.",
+    "Reset and choose Phase Bridge — misphased comparison. Run the same program: the output now speeds up and slows down more strongly. Only the second joint phasing changes.",
+    "Reset, open the included phase-bridge-steps.bw in Code and convert it to Blocks. Eight equal input steps of 45° reveal unequal intermediate advances. Compare output positions between the two assemblies."
+  ],
+  "why": "A Cardan cross has two perpendicular hinge axes. At a bend, this geometry produces a nonlinear angle relation. The equal second bend cancels it only with the correct fork orientation. This simulator solves two actual hinges and a cross body for each joint; it does not prescribe the output pose or force a constant gear ratio.",
+  "matters": "Universal joints transmit torque between shafts at an angle. Double-Cardan transmissions can reduce vibration from speed ripple. Geometry, fork phase and equal bend angles matter even when the average ratio is one-to-one.",
+  "question": "If both versions transmit one complete output turn for one input turn, why can their motion still look different?",
+  "answer": "The average ratio does not specify instantaneous speed. In the correctly phased version the outer shafts stay together while the middle shaft varies. A quarter-turn phasing error reinforces the variation at the output, although both shafts still complete the same number of revolutions.",
+  "further": [
+    "The bends follow a 3–4–5 triangle: 48 mm sideways, 64 mm forward and 80 mm between joint centres, giving β = atan(3/4) ≈ 36.87°. The middle shaft leads or lags by about 6.38°; the misphased output reaches about 12.69°.",
+    "The solver needs one inferred cross in each pair of fork ends. These are physically required parts, not extra motors. The placement BOM and instructions list 144 parts, plus those two crosses. Reset before each program; all targets read the current encoder and stop on an error above 2°.",
+    "The model is qualified in simulation. Bearing friction, backlash, fork collisions and high-speed behaviour of a physical build require separate measurements."
+  ],
+  "formula": "β = atan(3/4), cos β = 0.8. tan φ = tan θ / 0.8. Correct phase: ψ = θ. Misphased: tan ψ = tan θ / 0.64. Unwrap all angles continuously. Middle speed ratio spans 0.8–1.25; misphased output spans 0.64–1.5625.",
+  "related": [
+    "phase-bridge.ldr",
+    "tempo-loop.ldr",
+    "ratio-workbench.ldr"
+  ]
+}

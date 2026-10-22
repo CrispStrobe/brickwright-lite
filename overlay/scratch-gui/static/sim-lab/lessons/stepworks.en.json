@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "stepworks",
+  "language": "en",
+  "what": "One motor synchronizes four cranks through six equal gears. Two walking rails rise between fixed rails and carry a genuinely free pallet. A phased six-gear train lifts a loose pallet, carries it forward and returns underneath. Three transfers, then reset or reload.",
+  "try": [
+    "Reset the pallet to the start and run three transfers. Watch each lift, forward carry and lowering.",
+    "Follow the yellow rails returning underneath while the pallet rests on the fixed rails.",
+    "Reset before repeating. The example stops after three transfers; it does not return the cargo automatically."
+  ],
+  "why": "Equal-radius cranks in phase translate each carrier rail without changing its angle. Gravity lowers the pallet onto whichever rails support it. Friction carries it during the raised part of the orbit. Ideal no-slip travel is 16 mm per cycle; contact, inertia and slip can reduce actual travel.",
+  "matters": "Walking-beam conveyors move parts through successive work stations without dragging them along the return stroke. This is a finite tabletop demonstrator, not an endless conveyor.",
+  "question": "Does reversing the motor merely return the empty rails while leaving the pallet where it is?",
+  "answer": "No. The rails already return underneath during every forward cycle. Reversing the orbit reverses the transport direction when contact and friction carry the pallet. Three ideal forward cycles advance it 48 mm.",
+  "further": [
+    "Compare the 16 mm rail orbit diameter with the observed pallet advance.",
+    "Compare slow and faster cycles. The geometric orbit is unchanged, but contact and slip can change."
+  ],
+  "formula": "crank radius r = 8 mm; ideal advance ≤ 2r = 16 mm/cycle; three cycles = 48 mm",
+  "related": [
+    "crank-rocker.ldr",
+    "switchback-lift.ldr"
+  ]
+}

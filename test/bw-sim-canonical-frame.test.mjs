@@ -17,7 +17,7 @@ import {
 import {mirrorPoses, mirrorCounterpart} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-parity.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
 import {validatePartMeta, validatePlacedModel} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
-import {LDD_PARTS} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-parts.js';
+import {importFrame} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldd-frame.js';
 import {fitLibrary, parsePrimitive, lddLines, rowForm, rowTransform, primitivesDir} from '../scripts/fit-ldd-offsets.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -368,7 +368,7 @@ const sameModuloSymmetry = (fit, exp, meta) => {
     });
 };
 
-test('the LDD fitter recovers the hand-made frames of a synthetic fixture and agrees with the importer\'s rows', () => {
+test('the LDD fitter recovers the hand-made frames of a synthetic fixture and agrees with the frames the importer works out', () => {
     const result = fitLibrary(FIXTURE);
     // The fixture was written with Axels along local +y from their point; the fitter is told
     // nothing and finds that convention as the only one that fits every part.
@@ -394,16 +394,15 @@ test('the LDD fitter recovers the hand-made frames of a synthetic fixture and ag
     // The fixture's Axel type 7 is a beam hole: learnt as a pin hole, it keeps the cross block's
     // pin hole off its axle hole (both one hole long, so geometry alone could swap them).
     assert.equal(result.typeMap['7'], 'pinhole');
-    // Cross-check against model/ldd-parts.js for the two designs it records: same rotation,
-    // offsets 0.5 LDU apart — the rows keep LDD's 0.02-unit sub-offset, the fixture does not.
+    // Cross-check against the frame the importer works out from geometry (ldd-frame.js importFrame) for the
+    // two designs it places by shape: same transform, modulo the part's symmetry.
     for (const id of ['32523', '4519']) {
-        assert.ok(LDD_PARTS.has(id));
+        assert.ok(importFrame(CATALOG.get(`${id}.dat`)));
         const cc = by(id).crossCheck;
         assert.equal(cc.agree, true, `${id}: ${JSON.stringify(cc)}`);
-        // (the rows' angles carry 7 digits: 1.570796 is 2e-5° off a quarter turn)
-        assert.ok(cc.angleDeg < 1e-3 && Math.abs(cc.offsetLDU - 0.5) < 1e-4, `${id}: ${JSON.stringify(cc)}`);
+        assert.ok(cc.angleDeg < 1e-3 && cc.offsetLDU < 1e-4, `${id}: ${JSON.stringify(cc)}`);
     }
-    assert.equal(by('6536').crossCheck, undefined, 'not one of the importer\'s 27 rows');
+    assert.equal(by('6536').crossCheck, undefined, 'a cross block: not placed by its shape alone');
     assert.match(by('3001').skipped, /no Axel/);
     assert.match(by('99999').skipped, /no catalogue part/);
     assert.throws(() => primitivesDir('/somewhere/db.lif'), /extract LDD's db\.lif/);

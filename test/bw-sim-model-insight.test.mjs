@@ -305,3 +305,13 @@ test('the Build overlay compile is quick on a ~70-part model', t => {
     // A debounced recompile after an edit must not be felt: well under a frame budget of a few frames.
     assert.ok(median < 250, `compiling ${big.parts.length} parts took ${median.toFixed(1)} ms`);
 });
+
+
+test('rigid assembly notes group repeated names and distinguish other moving joints in EN/DE', () => {
+    const issue = {code: 'locked-hinges', parts: ['a','b','c','d','table']};
+    const en = issueSentence(INSIGHT_TEXT.en, issue, id => id === 'table' ? 'turntable bottom' : 'free pin');
+    assert.match(en, /4 × free pin and turntable bottom/);
+    assert.match(en, /this assembly rigid.*other joints can still turn/);
+    const de = issueSentence(INSIGHT_TEXT.de, issue, id => id === 'table' ? 'Drehteller unten' : 'Pin');
+    assert.match(de, /4 × Pin/); assert.match(de, /andere Gelenke können sich weiter drehen/);
+});

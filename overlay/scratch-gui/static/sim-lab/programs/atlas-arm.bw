@@ -1,0 +1,24 @@
+DEVICE SPIKE
+
+# atlas-arm — CrispStrobe, BSD-3-Clause.
+# Reset to the model datum before running this bounded sequence.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor stop action D hold
+  set motor speed A 12
+  set motor speed B 12
+  set motor speed D 5
+  run motor D counterclockwise 15 degrees
+  wait 1 seconds
+  run motor A clockwise 360 degrees
+  wait 1 seconds
+  run motor B clockwise 600 degrees
+  wait 1 seconds
+  run motor D clockwise 45 degrees
+  wait 1 seconds
+  run motor D counterclockwise 45 degrees
+  run motor B counterclockwise 600 degrees
+  run motor A counterclockwise 360 degrees
+  run motor D clockwise 15 degrees
+  wait 2 seconds

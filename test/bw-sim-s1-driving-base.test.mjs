@@ -169,10 +169,12 @@ test('no two solid parts of the driving base overlap; only pins and axles sit in
     const partly = [...CATALOG.values()].filter(m => !sitsInside(m) && m.colliders.some(c => c.region && c.region !== 'stud')).map(m => m.part).sort();
     // 71427, the RCX's 9 V mini-motor: its output axle stub is an axle region (a wheel's hole takes it).
     // 19474-f1, the pneumatic valve: its lever's handle stub is an axle (region), its box is solid (kinds/pneumatic.js).
-    assert.deepEqual(partly, ['15100.dat', '19474-f1.dat', '22961.dat', '27940.dat', '32054.dat', '32138.dat', '44874.dat', '48496.dat', '48989.dat',
-        '5713.dat', '65304.dat', '65487.dat', '6553.dat', '71427.dat', '87082.dat',
-        // The linear actuator's spindle: its input stub is an axle (region), its threaded rod is solid (kinds/screw.js).
-        '92695.dat']);
+    // The old motors: the mini-motor's alias 71427c01, the 9 V (2838c01, 74569, 74569p01) and 4.5 V (6216m) Technic
+    // motors' output axles, the 9 V train motor's pivot pin on top (2894c01 and its black 70358).
+    // The linear actuator's spindle 92695: its input stub is an axle (region), its threaded rod is solid (kinds/screw.js).
+    assert.deepEqual(partly, ['15100.dat', '19474-f1.dat', '22961.dat', '27940.dat', '2838c01.dat', '2894c01.dat', '32054.dat', '32138.dat',
+        '44874.dat', '48496.dat', '48989.dat', '5713.dat', '6216m.dat', '65304.dat', '65487.dat', '6553.dat', '70358.dat', '71427.dat',
+        '71427c01.dat', '74569.dat', '74569p01.dat', '87082.dat', '92695.dat']);
     // The other region is a System part's stud layer (kinds/stud.js): it sits in the hollow underside of the part on top.
     for (const m of CATALOG.values()) {
         if (m.colliders.some(c => c.region === 'stud')) assert.ok(m.connectors.some(c => c.type === 'stud'), `${m.part}: a stud region without studs`);

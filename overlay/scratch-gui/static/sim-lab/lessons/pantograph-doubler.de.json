@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "pantograph-doubler",
+  "language": "de",
+  "what": "Im Modell Pantograf — Bewegungsverdoppler bewegt ein Motor den Eingangspunkt C auf einem kleinen Kreis. Vier passive Stäbe führen den freien Endpunkt E auf einem Kreis mit doppeltem Durchmesser. In der Draufsicht ist der Vektor vom festen Drehpunkt O zu E in jeder Stellung doppelt so groß wie der Vektor von O zu C. Die beweglichen Punkte zeigen eine Bahn; ein tatsächlicher Kontakt zwischen Stift und Zeichenfläche wird nicht vorausgesetzt. Ein Motor treibt einen passiven Pantografen: Aus einem 32-mm-Eingangskreis wird ein 64-mm-Ausgangskreis. Vergleiche Weg, Geschwindigkeit und Fläche.",
+  "try": [
+    "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
+    "Beobachte das Eingangsgelenk C und den freien Endpunkt E während einer Vierteldrehung. Vergleiche in der Draufsicht ihre Richtungen und Abstände vom festen Drehpunkt O: O, C und E liegen auf einer Geraden, und E ist doppelt so weit von O entfernt.",
+    "Vergleiche die beiden vollständigen Bahnen. Sage ihre Durchmesser vor dem Messen voraus: Der Eingangskreis hat 32 mm, der Ausgangskreis 64 mm Durchmesser. Prüfe, ob beide Punkte zu ihrer jeweiligen Ausgangslage zurückkehren."
+  ],
+  "why": "Die langen Stäbe OB und BE haben jeweils 96 mm Abstand zwischen ihren äußeren Löchern. A und D sind ihre Mittelpunkte; die kurzen Stäbe AC und CD haben jeweils 48 mm Lochabstand. Dadurch entsteht das Parallelogramm A–B–D–C. Bezeichnet u den Vektor OA und v den Vektor AC, gilt C = u + v und E = 2u + 2v. In der XZ-Projektion folgt der Endpunkt daher E − O = 2(C − O), ohne eine zusätzliche Führung am Ausgang.",
+  "matters": "Pantografen übertragen eine Bewegung in zwei Dimensionen in einem gewählten Maßstab. Diese Geometrie lässt sich zum Vergrößern von Zeichnungen und zum Kopieren von Bewegungsbahnen nutzen. Hier ist der Ausgangspunkt zu jedem Zeitpunkt doppelt so schnell wie der Eingangspunkt und legt den doppelten Weg zurück. Diese Bewegungsverstärkung ist eine geometrische Beziehung; das Experiment misst weder die verfügbare Kraft noch das Verhalten unter einer Werkzeuglast.",
+  "question": "Wenn der Ausgangskreis den doppelten Durchmesser hat, ist seine eingeschlossene Fläche ebenfalls doppelt so groß?",
+  "answer": "Die Fläche ist viermal so groß. Beide Koordinaten in der Ebene werden mit zwei multipliziert. Dadurch verdoppeln sich Längen und entsprechende Geschwindigkeiten, während sich die Fläche mit 2 × 2 = 4 vervielfacht. Auch der Kreismittelpunkt ist doppelt so weit von O entfernt: Die Bahn entsteht durch eine zentrische Streckung um O, nicht nur durch einen größeren Kreis um die Motorachse.",
+  "further": [
+    "In der gespeicherten Ausgangslage liegt C in +X-Richtung 64 mm von O entfernt, E liegt 128 mm entfernt. Nach einer Vierteldrehung in positiver geometrischer Richtung gilt in der XZ-Ebene C = (80, −16) mm und E = (160, −32) mm.",
+    "Vergleiche Parallel Lift, das die Ausrichtung einer Plattform beibehält, mit diesem Pantografen, der die Position eines Punktes maßstäblich überträgt. Vergleiche auch Straight Eight: Dessen Peaucellier-Getriebe bildet den zulässigen Eingangsbogen auf eine Gerade ab.",
+    "Den historischen Pantografen findest du in Henry T. Browns 507 Mechanical Movements unter Bewegung 246: https://507movements.com/mm_246.html. Das aktuelle Modell zeigt dasselbe Skalierungsprinzip mit gewöhnlichen, durch Pins verbundenen Stäben."
+  ],
+  "formula": "XZ-Ebene, Längen in mm; q = 0 bei Kurbelstellung +Z. O = (0, 0); S = (64, −16); C(q) = (64 + 16 sin q, −16 + 16 cos q); E − O = 2(C − O). Eingangsradius = 16 mm; Ausgangsradius = 32 mm; Durchmesser 32 → 64 mm; Fläche ×4.",
+  "related": [
+    "parallel-lift.ldr",
+    "straight-eight.ldr",
+    "axis-plotter.ldr"
+  ]
+}

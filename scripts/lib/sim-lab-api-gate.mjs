@@ -116,7 +116,7 @@ export const apiInteractions = async ({browser, errors, openSimLab, wallBudget})
         await page.getByTestId('bw-sim-lab-model').selectOption('motor-bench.ldr');
         await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'motor-bench.ldr' &&
             window.__bwSimLab._pane.session, null, {timeout: 60000});
-        await page.getByRole('button', {name: 'Load example program'}).click();
+
         await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
         assert.match(await page.locator('.cm-content').first().textContent(), /lab run motor A for 360 degrees at 180 degrees per second/,

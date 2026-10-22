@@ -128,7 +128,7 @@ test('2. maze: colors, the green goal square and the wall list', () => {
     assert.equal(mat.colorAt(-0.45, -0.45).color, 10, 'start cell (0,0) centre is white');
     assert.equal(mat.colorAt(0.45, -0.45).color, 6, 'goal cell (3,0) centre is green');
     const goal = mat.colorAt(0.45, -0.45);
-    assert.deepEqual(goal.rgb, [0, 200, 0], 'the green square is the green colour rgb');
+    assert.deepEqual(goal.rgb, createMat('colour-zones').colorAt(-0.35, 0.35).rgb, 'the green square is the Colour Zones green');
     assert.equal(goal.reflection, 50);
     // Wall across the corridor north of the start cell: on the line z = -0.6 + 2*0.3 = 0,
     // spanning x in [-0.6, -0.3]. Its floor footprint reads dark grey.

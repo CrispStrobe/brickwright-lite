@@ -5,12 +5,14 @@
 
 import {palletLoad} from './objects.js';
 
+// A printed colour's raw RGB (0..1024, what a SPIKE colour sensor reports on it) is also how it is drawn (÷ 4):
+// at 200 of 1024 the squares were drawn at a fifth of full brightness and looked near black.
 const COLORS = {
     0: {color: 0, reflection: 5, rgb: [0, 0, 0]},
-    3: {color: 3, reflection: 50, rgb: [0, 100, 200]}, // blue approx
-    6: {color: 6, reflection: 50, rgb: [0, 200, 0]}, // green
-    7: {color: 7, reflection: 80, rgb: [200, 200, 0]}, // yellow
-    9: {color: 9, reflection: 50, rgb: [200, 0, 0]}, // red
+    3: {color: 3, reflection: 50, rgb: [120, 380, 900]}, // blue
+    6: {color: 6, reflection: 50, rgb: [170, 700, 260]}, // green
+    7: {color: 7, reflection: 80, rgb: [940, 830, 160]}, // yellow
+    9: {color: 9, reflection: 50, rgb: [820, 140, 110]}, // red
     10: {color: 10, reflection: 100, rgb: [1024, 1024, 1024]} // white
 };
 
@@ -154,10 +156,10 @@ const colourZones = {
         // Blue at (0.35, 0.35) (bottom-right, +x +z)
         // Each with half size 0.15, so x from centre-0.15 to centre+0.15.
         const squares = [
-            {centre: [-0.35, -0.35], color: 9, rgb: [200, 0, 0]}, // red
-            {centre: [0.35, -0.35], color: 7, rgb: [200, 200, 0]}, // yellow
-            {centre: [-0.35, 0.35], color: 6, rgb: [0, 200, 0]}, // green
-            {centre: [0.35, 0.35], color: 3, rgb: [0, 100, 200]} // blue
+            {centre: [-0.35, -0.35], color: 9, rgb: col(9).rgb}, // red
+            {centre: [0.35, -0.35], color: 7, rgb: col(7).rgb}, // yellow
+            {centre: [-0.35, 0.35], color: 6, rgb: col(6).rgb}, // green
+            {centre: [0.35, 0.35], color: 3, rgb: col(3).rgb} // blue
         ];
         for (const sq of squares) {
             if (Math.abs(x - sq.centre[0]) <= 0.15 + 1e-9 && Math.abs(z - sq.centre[1]) <= 0.15 + 1e-9) {
@@ -298,7 +300,7 @@ for (let j = 0; j < MAZE.n; j++) {
 // except the goal cell, which is green (colour id 6).
 const mazeFloorColor = (x, z) => {
     if (x >= 0.3 && x <= 0.6 && z >= -0.6 && z <= -0.3) {
-        return {color: 6, reflection: 50, rgb: [0, 200, 0]};    // goal cell, green
+        return {color: 6, reflection: 50, rgb: col(6).rgb.slice()};    // goal cell, green
     }
     return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
 };

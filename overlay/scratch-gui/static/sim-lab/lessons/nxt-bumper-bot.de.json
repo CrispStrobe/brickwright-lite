@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "nxt-bumper-bot",
+  "language": "de",
+  "what": "Ein Kontaktsensor verändert die Fahrbefehle, sobald der Roboter ein Hindernis berührt. Ein Tastsensor meldet dem NXT die Berührung.",
+  "try": [
+    "Nutze Beispiel und Hindernismatte. Setze zurück und starte.",
+    "Beobachte den Tasterwert beim Berühren des Hindernisses.",
+    "Vergleiche den Kontakt-Rückwärtslauf mit dem Abstands-Wandstopper."
+  ],
+  "why": "Der Kontakt am Stoßfänger löst eine programmierte Reaktion aus. Kontaktfläche und Sensorweg bestimmen den Auslösezeitpunkt.",
+  "matters": "Stoßfänger erkennen auf einfache Weise einen blockierten Weg oder eine Berührung.",
+  "question": "Kann dieser Sensor den Roboter vor jeder Berührung stoppen?",
+  "answer": "Nein. Er erkennt Kontakt. Für eine vorherige Hinderniserkennung ist ein geeigneter berührungsloser Sensor nötig.",
+  "further": [
+    "Vergleiche Stoßfänger und Gehäusefront.",
+    "Erprobe eine niedrigere Annäherungsgeschwindigkeit."
+  ],
+  "formula": "",
+  "related": [
+    "wall-stopper.ldr"
+  ]
+}

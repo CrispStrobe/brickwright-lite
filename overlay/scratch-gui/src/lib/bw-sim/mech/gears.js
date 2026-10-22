@@ -64,9 +64,10 @@
 // bevel: u = unit(c2 − O).
 
 import {vecAdd, vecSub, vecDot, vecLen, vecScale, vecNormalize, vecCross, mat3MulVec3, lineClosestMidpoint} from './vec.js';
-import {pitchRadiusLdu, dirToWorld, lduToWorld, LDU_M} from '../contracts.js';
+import {pitchRadiusLdu, gearPitchRadius, dirToWorld, lduToWorld, LDU_M} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
 import {TOL, parallelAxes, meshRatio, gearHinges} from '../kinds/gear-mesh.js';
+import {partBounds} from './spatial-index.js';
 
 // The hinges a gear turns on (gearHinges) moved to kinds/gear-mesh.js unchanged, so the coupling
 // kinds that are connectors (kinds/worm.js, kinds/rack.js) share the frame rules without importing
@@ -75,6 +76,11 @@ export {gearHinges};
 
 /** A readable name for a gear: "the 8-tooth gear (g8)". */
 const gearName = g => `the ${g.teeth}-tooth gear (${g.partId})`;
+
+// A double-bevel tooth form can engage a parallel spur/ring as well as a bevel pair.
+// Keep its native type for old files and choose among explicitly declared profiles by geometry.
+const meshModules = (a, b, kinds) => [...new Set((a.meshesAs || [a.type]).flatMap(t1 =>
+    (b.meshesAs || [b.type]).map(t2 => kinds.couplings.meshFor(t1, t2))).filter(Boolean))];
 
 /**
  * The part of the frame that holds a gear's hinge (the beam its axle turns
@@ -124,19 +130,72 @@ export const placedGearsMesh = (a, metaA, b, metaB, kinds = BUILTIN_KINDS) => {
     for (const m of kinds.connectors.list()) {
         if (typeof m.placedShare === 'function' && (m.placedShare(a, metaA, b, metaB) || m.placedShare(b, metaB, a, metaA))) return true;
     }
-    if (!metaA?.gear || !metaB?.gear || metaA.gear.type !== metaB.gear.type) return false;
-    const module = kinds.couplings.meshFor(metaA.gear.type, metaB.gear.type);
-    if (!module) return false;
+    if (!metaA?.gear || !metaB?.gear) return false;
     const info = (p, meta) => ({
         type: meta.gear.type, teeth: meta.gear.teeth, r: pitchRadiusLdu(meta.gear.teeth),
+        meshesAs: meta.gear.meshesAs, faceWidthLdu: meta.gear.faceWidthLdu,
         centerLdu: vecAdd(mat3MulVec3(p.rotation, meta.gear.center), p.position),
         axisLdu: vecNormalize(mat3MulVec3(p.rotation, meta.gear.axis))
     });
-    return Boolean(module.mesh.contact(info(a, metaA), info(b, metaB)));
+    const ga = info(a, metaA); const gb = info(b, metaB);
+    return meshModules(ga, gb, kinds).some(module => Boolean(module.mesh.contact(ga, gb)));
 };
 
-export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [], jointEntries = null, kinds = BUILTIN_KINDS) => {
+/**
+ * A model from elsewhere rounds its rotations (a sub-model turned 1.1°: the 4x4 Off-Roader's pinion axis misses its
+ * differential's ring axis by 0.9 LDU, past the bevel rule's 0.5): gear 2 as the mesh test sees it, squared up to gear 1
+ * when it is within slack.deg of square or parallel, and (square, a bevel pair) its axis line moved onto gear 1's when
+ * it misses by at most slack.ldu. The mesh rules (kinds/) are unchanged; the joints keep their own axes.
+ */
+const squaredUp = (g1, g2, slack) => {
+    const d = vecDot(g1.axisLdu, g2.axisLdu);
+    const sin = Math.sin(slack.deg * Math.PI / 180);
+    let a2 = null;
+    if (Math.abs(d) <= sin) a2 = vecNormalize(vecSub(g2.axisLdu, vecScale(g1.axisLdu, d)));
+    else if (Math.abs(d) >= Math.cos(slack.deg * Math.PI / 180)) a2 = vecScale(g1.axisLdu, Math.sign(d));
+    if (!a2) return g2;
+    let c2 = g2.centerLdu;
+    if (Math.abs(d) <= sin) {
+        // The common perpendicular of the two axis lines: move line 2 along it onto line 1.
+        const n = vecCross(g1.axisLdu, a2);
+        const len = Math.hypot(...n);
+        if (len > 1e-9) {
+            const miss = vecDot(vecSub(c2, g1.centerLdu), vecScale(n, 1 / len));
+            if (Math.abs(miss) <= slack.ldu) c2 = vecSub(c2, vecScale(n, miss / len));
+        }
+    }
+    return {...g2, axisLdu: a2, centerLdu: c2};
+};
+
+export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [], jointEntries = null, kinds = BUILTIN_KINDS, {slack = null} = {}) => {
     const {nodeToBody} = islands;
+    const warningBounds = new Map();
+    const boundsOf = g => {
+        if (!warningBounds.has(g.nodeId)) {
+            const n = nodes.get(g.nodeId);
+            warningBounds.set(g.nodeId, partBounds(n.placed, n.meta));
+        }
+        return warningBounds.get(g.nodeId);
+    };
+    const warningEnvelopesSeparated = (a, b) => {
+        const ba = boundsOf(a), bb = boundsOf(b);
+        if (!ba || !bb) return false;
+        if ([0, 1, 2].some(i => ba.max[i] < bb.min[i] - 1e-9 || bb.max[i] < ba.min[i] - 1e-9)) return true;
+        const insideToothRoot = (ring, box) => {
+            if (ring.type !== 'spur' || ring.r <= 5) return false;
+            const n = nodes.get(ring.nodeId);
+            const centre = vecAdd(mat3MulVec3(n.placed.rotation, n.meta.gear.center), n.placed.position);
+            const axis = vecNormalize(mat3MulVec3(n.placed.rotation, n.meta.gear.axis));
+            // A whole conservative envelope inside an external gear's root circle
+            // cannot meet its teeth. Keep five LDU clear of the pitch circle.
+            for (const x of [box.min[0], box.max[0]]) for (const y of [box.min[1], box.max[1]]) for (const z of [box.min[2], box.max[2]]) {
+                const d = vecSub([x, y, z], centre);
+                if (vecLen(vecSub(d, vecScale(axis, vecDot(d, axis)))) >= ring.r - 5) return false;
+            }
+            return true;
+        };
+        return insideToothRoot(a, bb) || insideToothRoot(b, ba);
+    };
 
     // Every placed gear part with its centre/axis in the model frame (LDU).
     const gearInfos = [];
@@ -155,16 +214,54 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             nodeId,
             islandId,
             type: meta.gear.type,
+            meshesAs: meta.gear.meshesAs,
+            faceWidthLdu: meta.gear.faceWidthLdu,
             teeth: meta.gear.teeth,
-            r: pitchRadiusLdu(meta.gear.teeth),
+            r: gearPitchRadius(meta.gear),
             centerLdu: vecAdd(mat3MulVec3(rot, meta.gear.center), node.placed.position),
             axisLdu: vecNormalize(mat3MulVec3(rot, meta.gear.axis)),
+            // A double bevel's teeth mesh square with a bevel gear AND parallel with a spur or another double bevel.
+            doubleBevel: meta.gear.type === 'bevel' && /double bevel/i.test(meta.name || ''),
         });
     }
 
+    // A gear rigidly carried off-axis by a hinged assembly may simply be a
+    // weight. Its own axle need not turn unless teeth engage another device.
+    // Keep the warning for loose gears and for actual gear/rack/worm/chain
+    // contacts; this changes diagnostics only, never joints or constraints.
+    const hasToothMate = g => gearInfos.some(other => {
+        if (other === g || other.islandId === g.islandId) return false;
+        const modules = meshModules(g, other, kinds);
+        if (modules.length) return modules.some(m => m.mesh.contact(g, slack ? squaredUp(g, other, slack) : other));
+        return vecLen(vecSub(g.centerLdu, other.centerLdu)) <= g.r + other.r + 5 && !warningEnvelopesSeparated(g, other);
+    }) || [...nodes.entries()].some(([id, other]) => other.partId !== g.partId && nodeToBody.get(id) !== g.islandId &&
+        kinds.couplings.list().some(m => typeof m.placedMesh === 'function' &&
+            m.placedMesh(nodes.get(g.nodeId).placed, nodes.get(g.nodeId).meta, other.placed, other.meta)));
+
     for (const g of gearInfos) {
         g.hinges = gearHinges(g, joints);
-        if (g.hinges.length === 0) {
+        // A model from elsewhere: a gear a few LDU off its axle's line (42099's rear differential places its side gears
+        // 3 LDU off the half axles) sits on the nearest parallel hinge of its body within slack.hingeLdu, moved onto it.
+        if (g.hinges.length === 0 && slack) {
+            let best = null;
+            for (const j of joints) {
+                if (j.type !== 'hinge' || (j.body1 !== g.islandId && j.body2 !== g.islandId)) continue;
+                const a = vecNormalize([j.axis[0], -j.axis[1], -j.axis[2]]);
+                if (Math.abs(vecDot(a, g.axisLdu)) < Math.cos(slack.deg * Math.PI / 180)) continue;
+                const p0 = [j.point[0] / LDU_M, -j.point[1] / LDU_M, -j.point[2] / LDU_M];
+                const d = vecSub(g.centerLdu, p0);
+                const along = vecScale(a, vecDot(d, a));
+                const miss = vecLen(vecSub(d, along));
+                if (miss <= slack.hingeLdu && (!best || miss < best.miss)) best = {miss, centre: vecAdd(p0, along), axis: a};
+            }
+            if (best) {
+                g.centerLdu = best.centre;
+                g.axisLdu = vecScale(best.axis, Math.sign(vecDot(best.axis, g.axisLdu)) || 1);
+                g.hinges = gearHinges(g, joints);
+            }
+        }
+        const carried = joints.some(j => j.type === 'hinge' && (j.body1 === g.islandId || j.body2 === g.islandId));
+        if (g.hinges.length === 0 && (!carried || hasToothMate(g))) {
             diagnostics.push({severity: 'warning', code: 'gear-not-on-hinge', message: `Gear ${g.partId} not on hinge`, parts: [g.partId]});
         }
     }
@@ -186,13 +283,29 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
             const g2 = gearInfos[k];
             if (g1.islandId === g2.islandId) continue; // one rigid body: nothing to couple
 
-            const t1 = g1.type; const t2 = g2.type;
+            // Parallel, a double bevel is a spur gear (12T and 20T double bevels on two axles 2 studs apart: the
+            // 4x4 Off-Roader's motor drives its differential's pinion so; read as bevels only, no pair meshed).
+            const parallel = parallelAxes(g1.axisLdu, g2.axisLdu) ||
+                (slack && Math.abs(vecDot(g1.axisLdu, g2.axisLdu)) >= Math.cos(slack.deg * Math.PI / 180));
+            const spurlike = g => g.type === 'spur' || g.doubleBevel;
+            const asSpur = parallel && spurlike(g1) && spurlike(g2);
+            const t1 = asSpur ? 'spur' : g1.type;
+            const t2 = asSpur ? 'spur' : g2.type;
             // The coupling registry's tooth meshes (kinds/spur.js, kinds/bevel.js, …) say which pairs mesh.
-            const module = kinds.couplings.meshFor(t1, t2);
+            const modules = meshModules(g1, g2, kinds);
+            let module = modules[0];
             // Gears of kinds that cannot mesh are only worth a warning where their teeth meet: pitch
             // circles within a module of touching (a spur and a bevel gear across a model are not a pair).
             if (!module && Math.hypot(...[0, 1, 2].map(i => g1.centerLdu[i] - g2.centerLdu[i])) > g1.r + g2.r + 2.5) continue;
             if (!module) {
+                if (warningEnvelopesSeparated(g1, g2)) continue;
+                // Internal side/planet gears occupy a casing with its own external flange.
+                // The seat kind explicitly permits that placement; its outer tooth profile
+                // does not engage the internal gears. Keep all actual gear-pair checks.
+                const n1 = nodes.get(g1.nodeId), n2 = nodes.get(g2.nodeId);
+                const seatKind = kinds.connectors.list().find(k => k.kind === 'gear-seat');
+                if (seatKind?.placedShare && (seatKind.placedShare(n1.placed, n1.meta, n2.placed, n2.meta) ||
+                    seatKind.placedShare(n2.placed, n2.meta, n1.placed, n1.meta))) continue;
                 // Only gears near enough to touch (centres within the two tip radii) are a pair to warn about.
                 if (vecLen(vecSub(g1.centerLdu, g2.centerLdu)) > g1.r + g2.r + 5 + 1e-9) continue;
                 let message = `Gear pair ${g1.partId}(${t1})–${g2.partId}(${t2}) unsupported`;
@@ -201,7 +314,11 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
                 diagnostics.push({severity: 'warning', code: 'unsupported-gear', message, parts: [g1.partId, g2.partId]});
                 continue;
             }
-            const contact = module.mesh.contact(g1, g2);
+            let contact = null;
+            for (const candidate of modules) {
+                contact = candidate.mesh.contact(g1, slack ? squaredUp(g1, g2, slack) : g2);
+                if (contact) { module = candidate; break; }
+            }
             if (!contact) continue;
 
             // Gear-on-frame: one gear is rigidly part of the frame the other turns in.

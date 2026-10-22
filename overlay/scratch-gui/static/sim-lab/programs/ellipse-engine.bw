@@ -1,0 +1,38 @@
+# Ellipse Engine — two perpendicular ellipses from one motor
+# Adapted from the supplied Quickstroke finite-program guard pattern.
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe).
+# SPDX-License-Identifier: BSD-3-Clause
+# Reset/reload the saved model before starting. Connect its motor to hub A.
+# The motor travels with the upper carriage; the lower carriage is passive.
+# One uninterrupted three-turn move traces both ellipses three times.
+# Reversing retraces the same paths, then returns to the saved encoder datum.
+# All speeds are degrees per second. No ellipse coordinates drive the physics.
+# This is a Robot Lab simulation program, not downloadable hub firmware.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (1080 - (lab motor A angle)) degrees at 30 degrees per second
+  lab stop motor A hold
+  IF (abs of (1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1.5 seconds
+  IF (abs of (1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (0 - (lab motor A angle)) degrees at 30 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  lab stop motor A hold

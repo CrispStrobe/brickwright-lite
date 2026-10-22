@@ -1,0 +1,34 @@
+name: Public assessment isolation qualification
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Public tool metadata or fixed-nine controls on a reviewed candidate ref
+        required: true
+        default: metadata-probe
+        type: choice
+        options: [metadata-probe, qualify-public]
+
+permissions: {}
+
+concurrency:
+  group: public-assessment-isolation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  registration-only:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'CrispStrobe/brickwright-lite'
+    name: Registration only; no assessment or qualification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - name: Explain the inert default-branch entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'This default-branch workflow only registers the manual entry.' \
+            'No inputs, credentials, checkout, controller or privileged setup are used.' \
+            'No assessment result or qualification artifact is produced.' \
+            'Select an exact source-reviewed candidate ref for a public metadata probe.'

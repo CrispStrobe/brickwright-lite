@@ -1,0 +1,9 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archive": "pantograph-doubler-addon-20261021.zip",
+  "modelSha256": "1704386e0b6531fd45fe1179c5264da0e6ff0b6716fe94ba2423c29c3c62600a",
+  "programSha256": "4e35bee121d3211554e1fe9e9f8cb53da273981b498e807e03a1eff9871721d4",
+  "note": "Raw source retained as data; no bundled generators or runtimes are executed.",
+  "archiveSha256": "ec89ec742c1a4f5bb786241d66b8e0c95ad96e84afee1a80456c8a516932cbd8"
+}

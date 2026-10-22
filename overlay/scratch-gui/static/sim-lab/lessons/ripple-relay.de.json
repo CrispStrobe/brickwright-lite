@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "ripple-relay",
+  "language": "de",
+  "what": "Ein Motor dreht drei Wellen mit zwei Kardangelenken. Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer; der richtig ausgerichtete Ausgang dreht wieder gleichmäßig. Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke gleichen die Drehzahlschwankung der Zwischenwelle aus. Vergleiche alle drei Wellen.",
+  "try": [
+    "Wähle Ripple Relay, setze zurück und starte. Vergleiche gelben Eingang, rote Zwischenwelle und blauen Ausgang während drei Vorwärtsdrehungen und Rückkehr.",
+    "Vergleiche nach der langsamen Rückkehr jeden Zeiger mit seiner eigenen Startlage. Der Motor hält bei null.",
+    "Vergleiche Phase Bridge und die falsch ausgerichtete Variante. Sage vorher, welcher Ausgang eine Drehzahlschwankung zeigt."
+  ],
+  "why": "Ein einzelnes Kardangelenk überträgt Winkel bei fester Abwinkelung nichtlinear. Bei 36,87° ist cos β=0,8; das momentane Drehzahlverhältnis der Zwischenwelle zum Eingang liegt zwischen 0,8 und 1,25. Das zweite gleich abgewinkelte, richtig ausgerichtete Gelenk wendet die umgekehrte Winkelabbildung an. So gleicht es die Verzerrung am Ausgang aus, während die Zwischenwelle weiterhin schwankt.",
+  "matters": "Bei Antriebswellen begrenzen gleiche Beugewinkel und richtige Gabelstellung Drehzahlschwankungen. Das Modell zeigt Kinematik; reale Drehmomentgrenzen, Lagerreibung, Kabel und Bautoleranzen werden damit nicht gemessen.",
+  "question": "Bedeutet eine gleichmäßige Ausgangsdrehzahl, dass auch die Zwischenwelle gleichmäßig dreht?",
+  "answer": "Nein. Die Zwischenwelle beschleunigt und verzögert weiterhin zweimal je Eingangsdrehung. Erst das zweite Gelenk gleicht die Verzerrung aus. Bei 45°/s am Eingang liegt die ideale Zwischendrehzahl bei 36–56,25°/s.",
+  "further": [
+    "Vergleiche den Winkelvorlauf von etwa 6,39° in der Mitte mit der nahezu fehlenden Ausgangsdifferenz.",
+    "Probiere die separat modellierte falsch ausgerichtete Phase Bridge. Gleiche Beugewinkel allein reichen nicht; die Gabelstellung zählt."
+  ],
+  "formula": "cos β = 0.8; φ = atan2(sin θ, 0.8 cos θ), unwrapped; correct second joint: ψ = θ; dφ/dθ = 0.8/(0.64 cos²θ + sin²θ).",
+  "related": [
+    "phase-bridge.ldr",
+    "phase-bridge-misphased.ldr",
+    "crossglide.ldr"
+  ]
+}

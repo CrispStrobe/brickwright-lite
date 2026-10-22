@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "stride-lab",
+  "language": "de",
+  "what": "Ein Motor dreht eine 16-mm-Kurbel. Eine 40-mm-Koppel, eine 40-mm-Schwinge und zwei feste Drehpunkte mit 32 mm Abstand bestimmen die Bewegung einer verlängerten Spitze. Die Koppel reicht 40 mm über ihr Schwingengelenk hinaus. Dieses Hoeken-ähnliche Getriebe erzeugt einen nahezu geraden Arbeitshub und einen bogenförmigen Rücklauf. Eine Kurbel führt den Koppelpunkt eines Hoeken-Viergelenks durch einen fast geraden Arbeitshub und einen gekrümmten Rücklauf.",
+  "try": [
+    "Setze das Modell zurück, lade stride-lab.bw und starte das Programm. Verfolge die markierte Spitze bei zwei langsamen Vorwärts- und zwei Rückwärtsumdrehungen.",
+    "Vergleiche den langen, nahezu geraden Arbeitshub mit dem gekrümmten Rücklauf. Beobachte, wie sich die Kurbel weiterdreht, während die Spitze ihre Bewegungsrichtung ändert.",
+    "Beobachte gleiche Zeitabschnitte während des Arbeitshubs. Ist die Geschwindigkeit der Spitze konstant? Vergleiche Vorwärts- und Rückwärtslauf."
+  ],
+  "why": "Die Spitze folgt der Geometrie eines geschlossenen Viergelenks. Je 40 mm lange Koppel und Schwinge, eine 16-mm-Kurbel, 32 mm Abstand zwischen den festen Drehpunkten und eine gleich lange Koppelverlängerung machen eine Hälfte der Spitzenbahn nahezu gerade. In der idealen ebenen Geometrie ergeben Kurbelwinkel von 90° bis 270° einen 64-mm-Hub mit höchstens etwa 0,1561 mm vertikaler Abweichung von y = 64 mm. Der Motor treibt die Kurbel an; er programmiert nicht die Spitzenbahn.",
+  "matters": "Näherungsweise geradführende Getriebe erzeugen wiederholte Arbeits- und Rücklaufbewegungen mit Drehgelenken, etwa in Lauf- und Handhabungsmechanismen. Dieses Modell veranschaulicht die Kinematik; es ist weder ein Laufroboter noch eine für bestimmte Lasten ausgelegte Maschine.",
+  "question": "Bedeutet eine nahezu gerade Spitzenbahn exakte Geradführung oder konstante Spitzengeschwindigkeit?",
+  "answer": "Nein. Der ideale Arbeitshub hat eine kleine geometrische Abweichung. Außerdem verändert das nichtlineare Getriebe die Spitzengeschwindigkeit selbst bei gleichmäßiger Kurbeldrehzahl. Bei umgekehrtem Antrieb wird dieselbe ideale Bahn in Gegenrichtung durchlaufen.",
+  "further": [
+    "Vergleiche die Spitzenbahn mit dem Kurbelkreis und dem Schwingenbogen. Alle drei gehören zu demselben Mechanismus mit nur einem Motor.",
+    "Die Abweichung von 0,1561 mm gilt für die ideale starre, ebene Geometrie. Sie sagt nichts über reale LEGO-Toleranzen, Gelenkspiel, Verformung oder die Genauigkeit der Simulation aus."
+  ],
+  "formula": "A = (0, 0), D = (32, 0); B = (16 cos θ, 16 sin θ); |C − B| = |C − D| = 40; P = 2C − B [mm]. Oberer Lösungszweig: θ = 90°…270° ergibt x = 64…0 mm, y ≈ 64 mm.",
+  "related": [
+    "crank-rocker.ldr",
+    "tidal-trio.ldr"
+  ]
+}

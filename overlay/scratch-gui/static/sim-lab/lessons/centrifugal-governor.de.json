@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "centrifugal-governor",
+  "language": "de",
+  "what": "Zwei frei gelagerte Arme drehen mit einem motorisierten Querträger. Höhere Drehzahl schwenkt sie gegen die Schwerkraft nach außen. Freie Arme schwingen bei höherer Drehzahl nach außen. Vergleiche das Quadrat der Winkelgeschwindigkeit mit der Schwerkraft und kehre die Drehrichtung um.",
+  "try": [
+    "Setze zurück und starte die drei Drehzahlstufen. Vergleiche den mittleren Ausschlag trotz Schwingungen.",
+    "Beobachte die Arme nach dem Rotorstopp.",
+    "Vergleiche Vorwärts- und Rückwärtslauf bei mittlerer Drehzahl."
+  ],
+  "why": "Ein rotierender Arm benötigt Zentripetalbeschleunigung. Im mitrotierenden System konkurriert die nach außen gerichtete Trägheitswirkung mit der Schwerkraft. Die Drehzahl geht quadratisch ein. Dies ist ein Reglermechanismus-Modell; die Arme regeln den Motor nicht automatisch.",
+  "matters": "Mechanische Fliehkraftregler nutzen diese drehzahlabhängige Bewegung als Teil einer Rückkopplung.",
+  "question": "Sollte die umgekehrte Drehrichtung bei gleichem Drehzahlbetrag die Arme nach innen ziehen?",
+  "answer": "Nein. Der Fliehkraftterm hängt vom Quadrat der Winkelgeschwindigkeit ab. Die ideale stationäre Gleichgewichtslage ist gleich; Übergänge und Schwingungen können verschieden sein.",
+  "further": [
+    "Vergleiche verdoppelte niedrige Drehzahl mit der Änderung des mittleren Winkels.",
+    "Ein ausgedehnter Arm ist keine Punktmasse: die einfache Formel ist eine Näherung."
+  ],
+  "formula": "Punktmassen-Näherung: tan(Neigung) ≈ ω² × Radius / g",
+  "related": [
+    "survey-rover.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

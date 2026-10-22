@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "flywheel-differential",
+  "language": "de",
+  "what": "Ein Differenzial verteilt die Bewegung des Korbs auf zwei unterschiedlich schnelle Abtriebe. Zwei Stapel aus je drei Schwungrädern erhöhen die Rotationsträgheit. Bremse eine Seite und miss die Drehzahlverteilung im Differenzial.",
+  "try": [
+    "Setze zurück und starte. Beobachte beide Abtriebe bei wechselndem Befehl des zweiten Motors.",
+    "Vergleiche einen gehaltenen und einen drehenden Abtrieb.",
+    "Notiere beide Drehzahlen und vergleiche ihren Mittelwert mit dem Korb."
+  ],
+  "why": "Gleich große Seitenräder legen die Summe ihrer Drehzahlen fest, nicht deren Gleichheit. Im Schwungradbeispiel widersetzt sich die Trägheit Drehzahländerungen; die Getriebekinematik gilt trotzdem.",
+  "matters": "Ein Fahrzeugdifferenzial lässt innere und äußere Räder verschiedene Wege zurücklegen.",
+  "question": "Dreht bei einem festgehaltenen Seitenrad das andere mit Korbdrehzahl?",
+  "answer": "Es dreht doppelt so schnell. Der Mittelwert beider Drehzahlen muss der Korbdrehzahl entsprechen.",
+  "further": [
+    "Vergleiche Beschleunigungsphasen mit gleichförmiger Bewegung.",
+    "Unterscheide Ritzeldrehzahl und Korbdrehzahl."
+  ],
+  "formula": "(ωLinks + ωRechts) / 2 = ωTräger",
+  "related": [
+    "pivot-rover.ldr"
+  ]
+}

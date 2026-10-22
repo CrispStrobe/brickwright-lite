@@ -1,0 +1,25 @@
+DEVICE SPIKE
+
+# Clutch load bench, CrispStrobe — BSD-3-Clause.
+# A turns the clutch shaft. B switches between a free output and an active holding load.
+# Compare the shaft pointers with the clutch's outer toothed ring.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B coast
+  stop motor B
+  set motor speed A 15
+  start motor A clockwise
+  wait 3 seconds
+  set motor speed B 30
+  set motor stop action B hold
+  run motor B to position 0
+  wait 3 seconds
+  set motor stop action B coast
+  stop motor B
+  wait 3 seconds
+  start motor A counterclockwise
+  wait 3 seconds
+  stop motor A
+  set motor stop action B hold
+  stop motor B
+  wait 1 second

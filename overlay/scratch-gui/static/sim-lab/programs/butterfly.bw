@@ -1,0 +1,9 @@
+DEVICE SPIKE
+
+# BUTTERFLY — guided crosshead drives both wings. CrispStrobe / BSD-3-Clause.
+# One slow revolution makes one flap and returns to raised home.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 1
+  run motor A clockwise 360 degrees
+  wait 2 seconds

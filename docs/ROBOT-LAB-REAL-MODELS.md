@@ -187,3 +187,105 @@ our own models use it when the package has it). It gives the same results as the
 thread, and it runs on Jolt's worker threads. With it, the multithreaded build works in a cross-origin isolated page:
 1.1–1.25× on the biggest sets, nothing on the 4x4. Shipping that needs the multithreaded file served unbundled, and
 COOP/COEP from the host.
+
+## Drive lines: round tyres, CV joints, differentials, a speed limit (2026-10-21)
+
+The 4x4 Off-Roader (42099) turned its motors and did not move: 1.4 cm in 2 s. Four things held it.
+
+- **Tyres were boxes.** Every tyre derived from the LDraw library (30 of them, the decoration path in
+  `part-meta/catalog-parts.js`) got a box collider; a box does not roll, so the front wheels held the front motor.
+  A tyre is now a cylinder along its box's odd side (`tyreCylinder`).
+- **CV joints and wheel hubs.** The CV ball 52731 and its sockets 52730 and the hub 46490c01 are a new coupling kind,
+  `cvJoint` (`kinds/cv-joint.js`), built as the universal joint's cross. The hub's flange turns on a free internal
+  hinge. Its planetary reduction is not modelled (1:1); no reliable source for its ratio was found (forum figures range
+  from about 3:1 to 5:1).
+- **The differential 62821** is locked: its bores hold the half axles, so both wheels turn with the casing. That is
+  exact going straight. Open, the casing has to be hinged in the chassis, and in real files it turns on its half axles,
+  which locked the drive. Its ring's pitch radius is where the models put the 20T double bevel that drives it, 40 LDU
+  (2 studs). The 28 teeth would say 35, so the mesh's ratio is 1.6, not the teeth's 1.4.
+- **Double bevels mesh as spur gears with a parallel partner** (`mech/gears.js`), for every model: a 12T and a 20T
+  double bevel on axles 2 studs apart. For models from elsewhere, gears within 2° of square or parallel and 1.5 LDU of
+  their partner's axis mesh, and a gear up to 3.5 LDU off its axle sits on it.
+
+The 4x4 now drives 0.67 m in 2 s. With every body free to roll, models that had been held still by their box tyres
+moved, and some flung a light part to NaN. A model from elsewhere now caps every body's speed at 5 m/s
+(`FOREIGN_MAX_SPEED_M_S`; Jolt's own limit is 500 m/s). The 96-model bench, every motor at 60 %, 2 s:
+
+| | before | after |
+|---|---|---|
+| NaN | 17 | 12 |
+| drove 0.1–5 m | 19 | 25 |
+| under real time (≤ 5 ms a step) | 58 | 58 |
+
+Eight models stop going NaN (42042, 42043 Flatbed Trailer, 42055, 42070, 42109, 8094 Robotic Arm, 8258, odin). Three
+newly do: 42080, 42113 and 42131. In each, a light linkage spins free once the machine moves (42080's arm at 16 rad/s
+against its neighbours). The 5 m/s cap does not catch them. They are open.
+
+**Pin friction on free hinges.** A hinge in a model from elsewhere that nothing drives, limits or couples now turns
+with 0.02 N·m of friction (`FOREIGN_FREE_HINGE_NM`). A friction pin holds a 10 g liftarm level 6 cm out, which is
+0.006 N·m, so 0.02 is that order. Frictionless, 42080's arm was hit by its neighbours and spun up to 16 rad/s. Exempt:
+- hinges on a wheel's body (it rolls);
+- hinges on a motor's body (a train motor's idler axles are its own free joints; with friction, the 7760 shunter
+  stopped);
+- hinges on a body a coupling moves (a CV joint drives the hub through it).
+
+On 19 models: NaN 13 with no friction, 9 at 0.005, 7 at 0.02, 6 at 0.05. On all 96: NaN 12 → 11, driving 25 → 30
+(42080, 42131, 42043, 8868 and brickhub-9 hold together; 42055, 42066, 42129 and 75253 now fail late in the 2 s).
+Small changes reshuffle which models fail, so the totals are the measure.
+
+## Old motors and the LeoCAD and LDD files (2026-10-21)
+
+**Old motors are motor parts now** (`parts.json`, `devices/catalog.js`):
+
+| LDraw part | motor | device numbers |
+|---|---|---|
+| 2894c01, 70358 | 9 V train motor | Philo's page, "9V Train" (Stefan Vorst's measurement): 2000 rpm, 2.8 N·cm at 9 V |
+| 501bc01 | 12 V train motor | stand-in: the 9 V train motor's fitted line at 12 V (no published measurement) |
+| 74569p01, 74569, 2838c01 | 9 V Technic motor 2838 | Philo, "2838" (existing device) |
+| 47154c01 | 9 V geared motor | Philo, "47154" (existing device) |
+| 71427c01 | 9 V mini-motor (LDraw's alias of 71427) | Philo, "71427" (existing device) |
+| 6216m | 4.5 V Technic motor | stand-in: the 2838's line at 4.5 V (no published measurement) |
+| 99498 (and 99498c01, 22169c01, 22172c01: the motor with its cable) | PF servo 88004 | stand-in: PF Medium; turns to an angle, 90° either way |
+
+A **train motor** is a bogie with its wheels built in: its driven wheelset is the device's
+internal hinge, its other wheelsets free internal hinges (`actuatedBy: 'none'`, new: contracts.js
+`partFreeJoints`, mech/graph.js), on a `wheel-axle` connector that joins nothing
+(`kinds/wheelset.js`); the wheels are cylinders that meet the floor. Alone on the floor it rolls as
+far as its wheels turn (`test/bw-sim-old-motors.test.mjs`). The **servo** carries
+`limitsDeg: [-90, 90]` on its internal joint (`kinds/servo-stops.js` gives the compiler the end
+stops), and the lab-direct hub reads a power or speed command to it as an angle (full power one way
+is its 90° end; no signal centres it), with a proportional loop of its own. 43362 (the later
+mini-motor) is not in the LDraw library under that number; PF and Powered Up train motors (87574,
+which takes separate wheels) have no part yet.
+
+Bench (`STEPS=200`, every motor at 60 %), the reference sets that use them, before → after:
+
+| set | motors | turned (°, after) |
+|---|---|---|
+| 4558, 4558 B (9 V train) | 0 → 1 | 2685, 2700 |
+| 4563, 4565 (9 V train) | 0 → 1 | 2700, 2700 |
+| 7722, 7725, 7735, 7735 B, 7740, 7745, 7755, 7760 (12 V train) | 0 → 1 | 2700 each |
+| 8054 models A, C, D (4.5 V) | 0 → 1 | 2700, 2694, 2708 |
+| 8094 crane, plotter, robot plotter, robotic arm (2838) | 0 → 2 | −170/276, 2463/2463, 2700/2700, 294/316 |
+| 8868, 8868 dump truck (2838) | 0 → 1 | 884, 971 |
+| brickhub-302/305/347/584/587/588/9 (PF servo) | 1–2 → 2–3 | the servo's ≤ 90 |
+| brickhub-596 (99498c01) | 0 → 1 | 1 |
+| Philo's hammerhead, display, rama | 0 → 2, 2, 3 | 255/335, 1297/1297, 1306/−833/−359 |
+
+2700° in 2 s is Jolt's cap on a body's spin (47 rad/s, `jolt-core.js` keeps Jolt's default), not
+the motor: an ungeared 2838 or a train motor's axle runs faster than that at full power. The
+4558 file starts with a UTF-8 byte-order mark; the app's text decoder drops it, a Latin-1 read
+must too. hammerhead's 47154 is drawn from its four pieces, not as 47154c01, so it stays a drawing.
+
+**LeoCAD `.lcd`** (`model/lcd-model.js`, our own reader): the binary project format of LeoCAD
+0.x, pieces with their LDraw part numbers, LeoCAD's 28-colour table as LDraw colours, the poses
+of the building instructions (25 LDU units, z up) and their steps; hidden pieces are left out
+with a note. The model keeps its author, so it is a model from elsewhere. Philo's 11 LeoCAD
+models in the collection open (they could not before): cardreader 159 parts, cardreader2 106,
+radarcar 235, brickmixer 544, seesaw 107, sorter3 565, steercar 340, panobot 241, panobot2 228,
+turntable 107, skyshooter 245; every one has its motors (1–3) turning, none NaN, unknown parts
+0–6, loose 0 except brickmixer (44) and panobot (42).
+
+**LDD `.lxf`**: see ROBOT-LAB-LDD-FRAMES.md "Snap to connections, built": no per-part table any more
+(frames from geometry where safe, else from the model's connections); 13 files, the parts refused
+fall from 34–264 to 10–40 per file, and all 13 run with their motors turning (1–4 each).

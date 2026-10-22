@@ -50,6 +50,9 @@ const {default: installWebBluetooth, clearVirtualPeripheralsForTest} = await imp
 const {default: installScratchLinkBle} = await import(path.join(LIB, 'virtual-hub', 'scratch-link-ble.js'));
 const {connectVirtualHub} = await import(path.join(LIB, 'virtual-hub', 'connect-virtual-hub.js'));
 const {registerRobotLabBlePeripherals} = await import(path.join(LIB, 'virtual-hub', 'lab-ble-peripherals.js'));
+const {Lwp3Peripheral, Wedo2Peripheral} = await import(path.join(LIB, 'virtual-hub', 'lab-ble-peripherals.js'));
+const {installVirtualFetch, registerVirtualHttp, clearVirtualHttpForTest} = await import(path.join(SIM, 'transports', 'virtual-http.js'));
+const {createVirtualBleBridge} = await import(path.join(SIM, 'transports', 'virtual-ble-bridge.js'));
 const {SimSession, catalogFrom} = await import(path.join(SIM, 'sim-session.js'));
 
 export const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta', 'parts.json'), 'utf8')));
@@ -109,7 +112,8 @@ const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(resol
  * @param {object} options
  * @param {string} options.modelText LDraw text
  * @param {string|null} [options.mat]
- * @param {'ble'|'scratchlink'} [options.transport] the extension's connection type
+ * @param {'ble'|'scratchlink'|'bridge'} [options.transport] the extension's connection type; 'bridge' is its
+ *   HTTP bridge at http://localhost:8080, served by bw-sim/transports/virtual-ble-bridge.js (no Bluetooth)
  * @param {number} options.timeLimitMs simulated time after the green flag
  * @param {function} [options.stopWhen] ({session, hub, t}) => true ends early
  * @param {function} [options.onFrame] ({session, hub, t}) after every frame
@@ -123,6 +127,8 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
     let unregister = null;
     let session = null;
     const savedWebSocket = globalThis.WebSocket;
+    const savedFetch = globalThis.fetch;
+    let restoreFetch = null;
     try {
         const built = await SimSession.fromText(text, {hubState: null, catalog: CATALOG, mat});
         session = built.session;
@@ -169,7 +175,21 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         extension.setConnectionType({TYPE: transport});
         const t0 = clock.now;
         let connectError = null;
-        const connecting = connectVirtualHub({host: globalThis, extensionId, hubState: hub,
+        let bridged = null;
+        if (transport === 'bridge') {
+            // The extension's own `set bridge URL` and connect; Web Bluetooth and Scratch Link take no part.
+            const peripheral = hub.protocol === 'wedo2' ? new Wedo2Peripheral(hub) : new Lwp3Peripheral(hub);
+            clearVirtualHttpForTest();
+            globalThis.fetch = async url => { throw new TypeError(`fetch failed: nothing at ${url}`); };
+            restoreFetch = installVirtualFetch({host: globalThis});
+            bridged = [];
+            const handle = createVirtualBleBridge(() => [peripheral]);
+            registerVirtualHttp({port: 8080, handle: request => { bridged.push(`${request.method} ${request.path}`); return handle(request); }});
+            extension.setBridgeURL({URL: 'http://localhost:8080'});
+        }
+        const connecting = transport === 'bridge' ?
+            Promise.resolve(extension.connect()).catch(e => { connectError = e; }) :
+            connectVirtualHub({host: globalThis, extensionId, hubState: hub,
             connected: () => Boolean(extension.isConnected()),
             disconnect: () => extension.disconnect(),
             connect: () => Promise.resolve(extension.connect()).catch(e => { connectError = e; }),
@@ -201,12 +221,17 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         const written = hub.log.filter(e => e.dir === 'down').map(e => e.bytes);
         const received = hub.log.filter(e => e.dir === 'up').map(e => e.bytes);
         const log = hub.log.slice();
-        return {session, hub, extension, extensionId, frames, connectMs, written, received, vm, log};
+        return {session, hub, extension, extensionId, frames, connectMs, written, received, vm, log, bridged};
     } finally {
         try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
         try { if (unregister) unregister(); } catch { /* noop */ }
         globalThis.__brickwrightChooseVirtualBluetooth = undefined;
         globalThis.WebSocket = savedWebSocket;
+        if (restoreFetch) {
+            restoreFetch();
+            clearVirtualHttpForTest();
+            globalThis.fetch = savedFetch;
+        }
         clock.uninstall();
     }
 }

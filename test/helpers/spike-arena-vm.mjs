@@ -46,7 +46,9 @@ const browserGlobals = () => {
 
 // The VM first: scratch-svg-renderer's DOMPurify misreads a node global named
 // `window` as a browser, so the browser-shaped globals come after it.
-export const SB3Creator = (await importSource('src/lib/sb3-creator.js')).default;
+// The compiler as the GUI obtains it: through the one door that registers Lite's layers
+// (lib/sb3-creator-register-art.js), extension menu shapes among them.
+export const SB3Creator = (await importSource('src/lib/sb3-creator-register-art.js')).default;
 export const VM = (await importGuiDependency('scratch-vm/src/index.js')).default;
 browserGlobals();
 const nodeRequire = createRequire(import.meta.url);
