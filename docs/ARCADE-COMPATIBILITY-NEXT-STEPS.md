@@ -35,13 +35,14 @@ its proof through cached writer removal and public validation. The exact test
 consumer is added under the existing canonical VM model scope key; no new
 provider or value authority is granted. Complete qualification remains pending.
 
-After this slice, diagnose the three original return failures with lossless
-observations of the actual exporter input/project, emitted files, unsupported
-details and Code. Preserve the entire original twelve-test module, assertions,
-source programs, frames and cleanup. Merge a narrow diagnostic claim before
-adding observation hooks or artifact globs. Observe the original exporter once,
-return its actual result unchanged, and retain captures before the existing
-assertion. Do not replay a filtered native/SDK module locally or infer a shared
+[Diagnostic claim #1227](https://github.com/CrispStrobe/brickwright-lite/pull/1227)
+is merged, and bounded failure evidence in the original twelve-test module
+awaits hosted execution. It retains the actual project argument, consumed Code
+and export result, including emitted files and native-addition draft. Read the
+`arcade-original-function-return-export-v1` assertion message; a size or
+serialization refusal is explicitly unavailable evidence. Preserve all twelve
+original programs, assertions, frames and cleanup. Do not add a second export
+or replay an unchanged failure just to obtain its already retained output. Do not replay a filtered native/SDK module locally or infer a shared
 cause from the 147 native-addition diagnostics.
 
 The original integration cases are in
@@ -91,9 +92,10 @@ without executing the original application.
 
 Use the complete `test/makecode-arcade-function-returns.test.mjs`, particularly
 recursion/mutual recursion, parameter writes and Sprite forwarding. Current
-source-proof success has not fixed these original tests. First claim a narrow
-capture change that retains the real `roundtrip()` export input/result and named
-unsupported details before the existing assertion. Preserve original native
+source-proof success has not fixed these original tests. The diagnostic capture from merged claim #1227 is implemented and awaiting
+the complete hosted route. Read its retained real `roundtrip()` export
+input/result, native candidate draft and named unsupported details before
+proposing a source repair; do not repeat the capture implementation. Preserve original native
 verification, Code feedback, frames, original/emitted MakeCode compilation and
 SB3 reload. Use the captured rejecting predicates to scope the implementation;
 do not assume all three share a cause. Acceptance is the complete original

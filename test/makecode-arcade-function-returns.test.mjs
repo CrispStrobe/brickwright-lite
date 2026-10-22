@@ -9,10 +9,25 @@ import {compile} from '../scripts/lib/pxt-node.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(source,frames=120){const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported));const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);run.imported=imported;return run;}
+// Only the existing public fixtures are captured, after their real exporter
+// returns. Diagnostics cannot replace its zero-unsupported assertion failure.
+const exportRefusalEvidence=(source,pseudocode,projectArgument,exported)=>{
+    const schema='arcade-original-function-return-export-v1',limitBytes=1024*1024;
+    try{
+        const text=JSON.stringify({schema,source,pseudocode,projectArgument,exported});
+        const bytes=Buffer.byteLength(text,'utf8');
+        return bytes<=limitBytes?text:JSON.stringify({schema,captureStatus:'UNAVAILABLE_SIZE',bytes,limitBytes});
+    }catch{
+        return JSON.stringify({schema,captureStatus:'UNAVAILABLE_SERIALIZATION',limitBytes});
+    }
+};
 async function roundtrip(source,verify,frames=120){
     const run=await execute(source,frames);verify(run);
-    const code=await runProgram(run.creator.decompile(),{frames,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);assert.deepEqual(code.creator.warnings,[]);verify(code);
-    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const pseudocode=run.creator.decompile();
+    const code=await runProgram(pseudocode,{frames,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);assert.deepEqual(code.creator.warnings,[]);verify(code);
+    const projectArgument=run.creator.project;
+    const exported=projectToArcade(projectArgument,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[],exported.unsupported.length?exportRefusalEvidence(source,pseudocode,projectArgument,exported):undefined);
     const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({ts:exported.ts,diagnostics:built.diagnostics}));verify(await execute(exported.ts,frames));
     const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,frames);verify(run);return {run,exported};
 }
