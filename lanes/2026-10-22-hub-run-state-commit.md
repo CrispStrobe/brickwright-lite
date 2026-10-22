@@ -1,6 +1,6 @@
 # Commit Run state before asynchronous virtual-hub connection
 
-CLAIMED — owner: user-requested PR repair sweep, isolated branch
+Implementation DONE — owner: user-requested PR repair sweep, isolated branch
 `lane/hub-run-transition-claim-20261022`, base `2dff9a05c`.
 Preserve other owners' worktrees and all existing browser/physical bounds.
 
@@ -44,3 +44,8 @@ skips. The original full browser timeout and the separate diagnostic full
 suite pass are retained. The diagnostic adds read-only state sampling and
 keeps every original step, assertion and deadline; it is not final acceptance
 of the repaired source.
+
+The fresh guarded production build and all six complete existing API,
+radio-hub and Bluetooth browser journeys now pass in Chromium and WebKit,
+with every original assertion/deadline retained and no page errors. Final-head
+hosted qualification remains required before normal landing.

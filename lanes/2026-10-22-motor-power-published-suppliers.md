@@ -1,6 +1,6 @@
 # Complete the published motor-power supplier adoption
 
-CLAIMED — owner: user-requested PR repair sweep, branch
+Implementation DONE — owner: user-requested PR repair sweep, branch
 `lane/motor-power-supplier-adoption-claim-20261022`, base `b6def08e8`.
 Continues PR1162 and the merged PR repair claim; preserve other worktrees.
 
@@ -90,5 +90,12 @@ replays every native body and joint frame through support and reversal.
 All 94 controls in the complete affected and adjacent modules now pass with
 the actual SIMD factory; all 29 rack, steering, motor-power and Robot Lab API
 controls also pass with the actual baseline factory. Neither run skips tests.
-Fresh production GUI/browser checks and final-head hosted qualification remain
-required before landing this correction.
+The fresh guarded production build and all six complete API/radio/Bluetooth
+browser journeys pass in Chromium and WebKit, with every original assertion
+and deadline retained. The original mixer journey plus a separate prolonged
+loaded-lift Stop case also pass in both engines: captured-angle errors are
+0.24 and 0.26 degrees after one simulated second, within the existing 0.5-degree
+bound; subsequent drift stays below one degree. All eight journeys have no
+page errors. These are headless engine results; actual Safari application
+automation was not used. Final-head hosted qualification remains required
+before landing this correction.

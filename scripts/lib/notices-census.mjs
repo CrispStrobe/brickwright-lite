@@ -133,7 +133,7 @@ export const vendoredTrees = (root, owner) => {
             const header = JSON.parse(encoded[1]).split('\n').slice(0, 8).join('\n');
             const licence = licenceId(header);
             if (!licence) throw new Error(`Scoped pin ${name} has no readable source licence: ${evidence}`);
-            // This source declares its author in a By header, not a copyright
+            // These sources declare their authors in By headers, not copyright
             // notice. Retain that attribution without changing holderOf or
             // turning it into an own-code exemption.
             const needsAuthor = ['wedo2unified', 'ev3comprehensive', 'legoboostunified', 'legonxt', 'legopoweredup'].includes(name);
