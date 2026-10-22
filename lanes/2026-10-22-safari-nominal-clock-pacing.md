@@ -1,4 +1,4 @@
-# Safari nominal-speed program-clock pacing — CLAIMED
+# Safari nominal-speed program-clock pacing — DONE (source candidate)
 
 Owner: Codex school/performance delivery, isolated
 `lane/safari-jolt-simd-20261021`, based on `b48f7685d`.
@@ -25,3 +25,33 @@ the real moving program in WebKit and Chromium. Keep measured RTF truthful;
 no near-1 speed setting, timer-only benchmark or changed resource/numerical
 budget may stand in for production qualification. No model, force, collision,
 physics-worker, hardware, workflow or other owner's source is in scope.
+
+The browser pane opts into elapsed-wall deadline pacing at exactly 1×. Other
+callers retain their default contract. A deterministic quantized-interval
+regression reproduces the old slowdown and verifies the repaired path; queued
+continuations cannot restart a paused clock. Ten focused and real-program
+clock controls pass, including delayed worker transport, unchanged fixed
+intervals and agreement between program and world time at every VM step.
+
+Complete production moving-chess runs at exact 1× measure 0.996× in WebKit and
+0.997× in Chromium. The knight reaches its target, the other 31 pieces remain
+in place, the head returns home and retracts, and magnetic forces disengage.
+The unchanged physical outcome checks pass; no dropped time or redo/divergence is reported.
+Final hosted qualification and normal merge composition remain pending.
+
+Hosted browser API execution exposed timer-triggered clock teardown inside a
+completed-step callback. The continuation previously captured its generation
+after running due timers and could queue a step against a cleared or replacement
+runtime. Capture the completing runtime and generation before those callbacks;
+verify both after timers and again before the deferred step. Four regressions
+reproduce the old failure at nominal and fast-forward speed, for uninstall and
+replacement, and pass with the fix. Existing pacing and slow-motion controls
+remain passing; affected browser API and final qualification are still required.
+
+The corrected clock subsequently passes all 14 focused and real-program clock
+controls. A fresh production build passes the exact hosted browser API path in
+both Chromium and WebKit, preserving the physical angle/wait/brake assertions
+with no page errors. Complete moving-chess checks pass at exact 1×: WebKit
+0.996× and Chromium 0.997×, with all original physical outcome checks, no dropped
+time, and no redo/divergence. Original hosted and regression failures are kept.
+Final hosted qualification of the repaired candidate remains required.

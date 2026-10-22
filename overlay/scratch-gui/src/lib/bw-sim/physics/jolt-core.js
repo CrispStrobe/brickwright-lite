@@ -34,6 +34,7 @@
 
 import { validateCompiledMechanism, upgradeMechanismV1, colliderVolume } from '../contracts.js';
 import { BUILTIN_KINDS } from '../kinds/index.js';
+import {supportsWasmSimd} from './wasm-simd.js';
 import { createStateRegistry } from './state-registry.js';
 import { createScrewDrives } from './screw.js';
 import { buildUniversalJoint } from './universal-joint.js';
@@ -75,8 +76,12 @@ export const LEGO_MIN_BOUNCE_SPEED_M_S = 1;
  */
 export const loadJolt = async () => {
     if (!joltPromise) {
-        joltPromise = import(/* webpackChunkName: "bw-sim-jolt" */ 'jolt-physics/wasm-compat')
-            .then(m => (m.default || m)());
+        const module = supportsWasmSimd()
+            ? import(/* webpackChunkName: "bw-sim-jolt-simd" */ 'jolt-physics/wasm-simd-compat')
+            : import(/* webpackChunkName: "bw-sim-jolt" */ 'jolt-physics/wasm-compat');
+        // Unsupported SIMD selects the existing baseline. A real import or
+        // initialization failure stays visible; it cannot qualify an engine.
+        joltPromise = module.then(m => (m.default || m)());
     }
     return joltPromise;
 };
