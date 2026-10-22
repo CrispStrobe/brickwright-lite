@@ -72,9 +72,9 @@ jobs:
       - name: Record container and tool versions
         run: |
           docker image inspect nuttx-builder --format 'container={{.Id}}'
-          docker run --rm nuttx-builder arm-none-eabi-gcc --version | head -n 2
+          docker run --rm nuttx-builder arm-none-eabi-gcc --version
           docker run --rm nuttx-builder python3 --version
-          docker run --rm nuttx-builder make --version | head -n 1
+          docker run --rm nuttx-builder make --version
 
       # CI builds and runs only the two TI-free simulation profiles. The hardware
       # profile embeds TI's chip-restricted service pack and is never built,

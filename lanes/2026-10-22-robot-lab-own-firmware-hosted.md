@@ -64,3 +64,9 @@ the timed controller no longer forces process exit over retained handles.
 PID/argument/pipe-closure and TERM-resistant/idempotent cleanup controls pass,
 and removing exec is detected. This qualifies the controller only; it does not
 establish what the still-running original guest checks observed.
+
+Original run 39873733132 failed before the firmware build: Docker reported a
+broken output pipe from `make --version | head` under pipefail. Version
+reporting now drains the complete bounded version output for both compiler
+and make, preserving their real exit status. The failed log and input receipt
+are retained; no guest result is inferred from that run.
