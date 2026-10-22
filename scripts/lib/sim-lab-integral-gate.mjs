@@ -30,6 +30,8 @@ export async function integralRoundtrip(page,opts){
   await opts.openSimLab(reopened,{program:null});
   await reopened.getByText('File',{exact:true}).click();await reopened.getByText('Load from your computer',{exact:true}).click();
   await reopened.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(project);
+  await reopened.waitForFunction(()=>document.querySelector('input[class*="project-title"]')?.value.includes('Integral'));
+  await reopened.getByRole('tab',{name:/^(Robots|Robot Lab)$/}).click();
   await reopened.waitForFunction(()=>window.__bwSimLab?.status==='ready'&&window.__bwSimLab._pane.session.model.parts.length===154);
   assert.deepEqual(await reopened.evaluate(()=>window.__bwSimLab.projectRecord),record,'actual saved model survives a fresh-context project reopen');
   await reopened.evaluate(()=>{
