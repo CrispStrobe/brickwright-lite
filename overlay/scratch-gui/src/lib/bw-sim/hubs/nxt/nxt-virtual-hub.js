@@ -761,6 +761,26 @@ export class NxtVirtualHub {
         return out;
     }
 
+    /**
+     * Stock Button module offsets (docs/NXT-PROTOCOL-FACTS.md), deliberately
+     * limited to the two fields our button model observes. State bytes expose
+     * the held bit only; sampled press/release event flags are not modeled.
+     * Refuse unmodeled bytes instead of inventing counters or flag lifetimes.
+     * 0x91 for an unsupported slice is our conservative model policy.
+     */
+    readButtonIOMap (offset, count) {
+        if (!Number.isInteger(offset) || !Number.isInteger(count) || offset < 0 || count < 0 || offset + count > 36) {
+            return {status: 0x91, data: []};
+        }
+        const data = [];
+        for (let address = offset; address < offset + count; address++) {
+            if (address >= 32) data.push(this.readButton(address - 32).pressed ? 0x80 : 0);
+            else if (address % 8 === 4) data.push(this.readButton((address - 4) / 8).count);
+            else return {status: 0x91, data: []};
+        }
+        return {status: 0, data};
+    }
+
     /** Six AA cells, full (estimated, devices/catalog.js HUB_SUPPLY_VOLTS.nxt). */
     batteryMillivolts () { return 9000; }
 

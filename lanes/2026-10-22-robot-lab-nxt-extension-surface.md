@@ -28,3 +28,18 @@ arbitrary module access. The ultrasonic event byte remains an explicit model
 estimate; no hardware accuracy claim. No reset-counter API (read/reset race).
 Require all enabled final-head checks and affected clean real-extension guest
 qualification before normal matched-head merges and predicted-tree proof.
+
+Supplier source candidate: CrispStrobe/extensions#63. The five live blocks pass
+18 byte/error controls and five real-extension Lab probes through the canonical
+adapter, including zero-power and reversed-emitter controls. Existing motor
+method bodies are unchanged. Named NXC refusal preserves the prior compile
+subset without silently dropping a live block or uploading stale bytecode.
+
+The Button IOMap projection exposes held bit `0x80` at `32 + index` and the
+combined release byte at `8 * index + 4`. Other counter/event-phase slices are
+explicitly refused: this does not model the stock firmware's sampling phases.
+IOMAP reads never clear release counts. Existing 2000 ms button duration and
+ultrasonic event interpretation remain estimates.
+
+Downstream adoption remains pending the supplier's final checks/review and
+#1226's normal merge. No tracked wrapper or pin is moved in this model candidate.
