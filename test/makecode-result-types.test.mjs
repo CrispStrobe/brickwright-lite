@@ -172,11 +172,11 @@ for (const [what, use] of COMPUTED) {
     });
 }
 
-test('variable type: text and a number, compared with a text → any (JavaScript compares two texts as Scratch does)', {skip: SKIP}, async () => {
+test('variable type: a mixed variable passed to a number-only built-in (show number) stays a number, refused by pxt', {skip: SKIP}, async () => {
     const ex = exportBw(`WHEN flag clicked:\n  set v to 0\n  show number v\n  set v to "a"\n  IF v = "a" THEN:\n    show text v\n`);
     assert.deepEqual(ex.unsupported, []);
-    assert.ok(lines(ex.ts).includes('let v: any = 0'), ex.ts);
-    if (!SKIP_PXT) assert.equal(await pxtAccepts(ex.ts), true, ex.ts);
+    assert.ok(lines(ex.ts).includes('let v = 0'), ex.ts);
+    if (!SKIP_PXT) assert.notEqual(await pxtAccepts(ex.ts), true, ex.ts);
 });
 
 test('variable type: a copy held as a full `data_variable` reporter block is spread too', {skip: SKIP}, async () => {
@@ -230,7 +230,7 @@ const serialOf = async ts => {
 
 test('imported text results: typed back, a fixed point, and pxt compiles it', {skip: SKIP}, async () => {
     const once = trip(RESULTS);
-    for (const line of ['let label = ""', 'let s: any = 0', 'let u: any = 0', 'let name_result = ""', 'let twice_result = ""',
+    for (const line of ['let label = ""', 'let s = ""', 'let u: any = 0', 'let name_result = ""', 'let twice_result = ""',
         'let _mc1 = ""', 'let _mc2 = ""', 'function name(n: number) {', 'function twice(t: string) {']) {
         assert.ok(lines(once.ts).includes(line), `${line}\n---\n${once.ts}`);
     }
@@ -287,9 +287,11 @@ brick.showString(s, 2)
     const imported = ev3ToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
     const ex = exportToMakeCodeEv3(parse(imported.code));
-    for (const line of ['let label = ""', 'let s: any = 0', 'let _mc1 = ""']) assert.ok(lines(ex.ts).includes(line), `${line}\n---\n${ex.ts}`);
-    // A text-and-number variable is shown as text, not as a number.
-    assert.ok(ex.ts.includes('brick.showString(("" + s), 2)'), ex.ts);
+    for (const line of ['let label = ""', 'let s = ""', 'let _mc1 = ""']) assert.ok(lines(ex.ts).includes(line), `${line}\n---\n${ex.ts}`);
+    // A string global is shown as text (no numeric coercion is needed now that
+    // the uninitialised `let s: string` round-trips as text, not `any`).
+    assert.ok(ex.ts.includes('brick.showString(s, 2)'), ex.ts);
+    assert.ok(!ex.ts.includes('brick.showNumber(s, 2)'), ex.ts);
     const compiled = await compileEv3(ex.ts);
     assert.equal(compiled.success, true, JSON.stringify((compiled.diagnostics || []).slice(0, 3)));
 });

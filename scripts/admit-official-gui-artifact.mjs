@@ -4,13 +4,21 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {inspectGuiHarnessSource} from './lib/gui-harness-source.mjs';
-import {fetchGuiArtifactMetadata, admitGuiArtifactMetadata, acquireGuiArchive, inspectGuiArchive, extractAdmittedGui} from './lib/official-gui-artifact.mjs';
+import {fetchGuiArtifactMetadata, observeGuiProducerCompletion, admitGuiArtifactMetadata, acquireGuiArchive, inspectGuiArchive, extractAdmittedGui} from './lib/official-gui-artifact.mjs';
 
 export async function admitOfficialGui({expected, directory, archivePath: retainedArchivePath, token, fetchImpl = fetch}) {
     await mkdir(path.dirname(directory), {recursive: true});
     await mkdir(directory); // an existing output is a preserved receipt, not scratch
     try {
-        const metadata = await fetchGuiArtifactMetadata({...expected, token, fetchImpl});
+        const observations = path.join(directory, 'producer-observations');
+        await mkdir(observations);
+        let observed = 0;
+        const metadata = await observeGuiProducerCompletion({readMetadata: async signal => {
+            const snapshot = await fetchGuiArtifactMetadata({...expected, token, fetchImpl, signal});
+            await writeFile(path.join(observations, `${++observed}.json`),
+                JSON.stringify({expected, metadata: snapshot}, null, 2) + '\n', {flag: 'wx'});
+            return snapshot;
+        }});
         await writeFile(path.join(directory, 'metadata.json'), JSON.stringify({expected, metadata}, null, 2) + '\n', {flag: 'wx'});
         const admission = admitGuiArtifactMetadata(metadata, {...expected, jobId: metadata.job.id, artifactId: metadata.artifact.id});
         // Raw metadata is retained even on refusal; no archive request precedes
