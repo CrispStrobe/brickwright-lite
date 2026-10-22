@@ -3023,8 +3023,8 @@
       "en": {
         "what": "A freely hinged, weighted arm can remember which way it was selected. Motor A moves the upper anchor of a rubber band a little to one side, then returns it to the center. The lower arm can remain leaning right or left at the same held motor position. Gravity and elastic tension create the two resting states; the output has no motor and no contact stop.",
         "try": [
-          "Select this example and Run. Reset before another experiment after manual motion. The program writes and reads both states; watch the passive red rocker.",
-          "During the two observations, compare the input and output separately. Motor A should be close to zero in both. Read a left angle at or below −8° as state 0 and a right angle at or above +8° as state 1; the region between them is a transition. Watch the entire interval so that a swinging arm passing through a state is not mistaken for a retained state.",
+          "Select this example and Run. After a short settling pause, motor A starts moving within 1.5 simulated seconds and the passive red rocker switches to the opposite side within five seconds. The complete demonstration takes about 27 simulated seconds, including two six-second memory observations. Reset before another experiment after manual motion.",
+          "During the two observations, compare the input and output separately. Motor A should be close to zero in both. Read a left angle at or below −8° as state 0 and a right angle at or above +8° as state 1; the region between them is a transition. Watch the entire interval so that a swinging arm passing through a state is not mistaken for a retained state. The 24-tooth gear at the tip is a weight: its teeth drive nothing, so it moves with the rocker rather than spinning on a separate axle.",
           "Compare the included no-band control. It keeps the rigid parts, initial pose, program and ordinary import settings and removes only the flexible band record. The output can swing under gravity, but the input carrier has no elastic connection with which to select its side. The validation checks that the passive-hinge friction policy matches between the two runs."
         ],
         "why": "Near vertical, a sideways lean lets the stretched band shorten, which lowers its elastic energy. The same lean lifts the weighted arm and increases gravitational energy. With this geometry and mass, their sum has two stable minima and an unstable position between them. Moving the upper anchor biases this potential. A sufficiently large slow bias removes one local minimum, so the arm moves to the other side. Returning the anchor to center restores the two minima while the arm stays in the selected one. Inertia causes a snap and some oscillation; damping helps it settle.",
@@ -3040,8 +3040,8 @@
       "de": {
         "what": "Ein frei gelagerter, beschwerter Arm kann sich merken, zu welcher Seite er geschaltet wurde. Motor A bewegt den oberen Haltepunkt eines Gummibands etwas zur Seite und anschließend wieder in die Mitte. Der untere Arm kann bei derselben gehaltenen Motorposition rechts oder links geneigt bleiben. Gewichtskraft und elastische Spannung erzeugen die beiden Ruhelagen; der Ausgang hat weder einen eigenen Motor noch einen Anschlag.",
         "try": [
-          "Wähle dieses Beispiel und starte es. Setze es nach manueller Bewegung vor einem weiteren Versuch zurück. Das Programm schreibt und liest beide Zustände; beobachte den freien roten Hebel.",
-          "Vergleiche während der beiden Beobachtungen Eingang und Ausgang getrennt. Motor A sollte beide Male nahe null stehen. Lies einen linken Winkel von höchstens −8° als Zustand 0 und einen rechten Winkel von mindestens +8° als Zustand 1; dazwischen liegt der Übergangsbereich. Beobachte jeweils den ganzen Zeitraum, damit ein durchschwingender Arm nicht mit einem gehaltenen Zustand verwechselt wird.",
+          "Wähle das Beispiel und drücke Start. Nach einer kurzen Beruhigungsphase bewegt sich Motor A innerhalb von 1,5 simulierten Sekunden; der passive rote Hebel wechselt innerhalb von fünf Sekunden auf die andere Seite. Die ganze Vorführung dauert etwa 27 simulierte Sekunden, einschließlich zweier Gedächtnisbeobachtungen von je sechs Sekunden. Setze das Modell nach manuellen Experimenten vor einem neuen Lauf zurück.",
+          "Vergleiche während der beiden Beobachtungen Eingang und Ausgang getrennt. Motor A sollte beide Male nahe null stehen. Lies einen linken Winkel von höchstens −8° als Zustand 0 und einen rechten Winkel von mindestens +8° als Zustand 1; dazwischen liegt der Übergangsbereich. Beobachte jeweils den ganzen Zeitraum, damit ein durchschwingender Arm nicht mit einem gehaltenen Zustand verwechselt wird. Das Zahnrad mit 24 Zähnen an der Spitze dient als Gewicht: Es treibt kein anderes Zahnrad an und bewegt sich mit dem Hebel, statt auf einer eigenen Achse zu drehen.",
           "Vergleiche den mitgelieferten Versuch ohne Gummiband. Er behält die starren Teile, die Ausgangslage, das Programm und die normalen Importeinstellungen bei und entfernt nur den Eintrag des flexiblen Bands. Der Ausgang kann unter dem Einfluss der Schwerkraft schwingen, aber dem Eingang fehlt die elastische Verbindung, um seine Seite auszuwählen. Die Validierung prüft, dass die Regel für die passive Gelenkreibung in beiden Läufen übereinstimmt."
         ],
         "why": "Nahe der Senkrechten kann sich das gespannte Band durch eine seitliche Neigung verkürzen; seine elastische Energie sinkt. Gleichzeitig hebt die Neigung den beschwerten Arm an und erhöht seine potenzielle Energie im Schwerefeld. Bei dieser Geometrie und Masse besitzt die Summe zwei stabile Minima und eine instabile Lage dazwischen. Das Verschieben des oberen Haltepunkts verändert dieses Potenzial. Eine ausreichend große langsame Auslenkung lässt eines der lokalen Minima verschwinden, sodass der Arm auf die andere Seite wechselt. Die Rückkehr des Haltepunkts zur Mitte stellt die beiden Minima wieder her, während der Arm im ausgewählten bleibt. Die Trägheit führt zu einem Umschnappen und etwas Nachschwingen; Dämpfung hilft beim Beruhigen.",
@@ -3168,6 +3168,62 @@
         "pulse-percussion.ldr",
         "centrifugal-governor.ldr",
         "clutch-bench.ldr"
+      ]
+    },
+    "integral": {
+      "en": {
+        "what": "A steadily turning tiled platter drives an unmotorized rubber wheel. Motor B moves the wheel across the platter: forward, slower, near neutral, then reverse. The accumulated wheel angle demonstrates mechanical integration: it remembers the signed contact radius over the platter's motion.",
+        "try": [
+          "Reset and run the bounded demonstration. Motor A spins the platter in one direction while Motor B visits +28, +14, 0 and −28 mm contact offsets. Each station lasts 6 seconds; the recorded native program finishes in about 35.7 seconds.",
+          "Compare the positive-radius stations. At +14 mm, the passive wheel turns at about half the platter's angular speed; at +28 mm, it is close to the same speed.",
+          "Watch the centre carefully. Ideal point contact predicts zero speed, but the delivered native recording shows 15.92 degrees of creep during its final 4.97 seconds. Near neutral is not an exact stop.",
+          "At the negative-radius station, the output reverses while the platter keeps its direction. The wheel has no motor or transmission constraint that imposes this rotation.",
+          "Compare the measured wheel angle with the ideal integral in the validation data. Keep the transitions visible: shifting the tyre sideways introduces scrub and transient error."
+        ],
+        "why": "At fixed radius x, the platter's local surface speed is proportional to x. A tyre of radius R rolls at the corresponding angular speed, giving the ideal signed ratio wheel speed / platter speed = x/R. Crossing the centre changes the sign. Accumulating that speed makes output angle proportional to the integral of x over actual platter angle. The gravity-loaded fork also moves slightly, so the full reference includes its measured tangential centre displacement. Contact width, drag, slip and sideways scrub cause departures from the ideal relation.",
+        "matters": "This is the principle of a wheel-and-disc mechanical integrator and a continuously variable friction drive. It adds a different operation to Mean Machine's differential average: the changing contact radius weights each increment of input rotation. The native contact run passed the predeclared behavior and position bounds. These numerical results concern native simulation; browser integration requires separate evidence, and physical hardware accuracy has not been established.",
+        "question": "After one platter turn at x = +28 mm with a 28 mm tyre radius, you move the wheel back to the centre. Does its accumulated output angle reset to zero?",
+        "answer": "No. Under ideal rolling, the first platter turn adds one wheel turn. Moving to the centre changes the subsequent rate; it does not erase the accumulated angle. An equal opposite signed integral, for example one platter turn at −28 mm, would ideally cancel it. Actual contact and transition motion introduce error.",
+        "further": [
+          "Compare with Mean Machine: distinguish an instantaneous average of angles from an angle accumulated through a variable ratio.",
+          "Use actual platter angle and the tyre centre when predicting output. A bearing hinge can lie beside the tyre on the same axle; it is not the radial contact centre.",
+          "The supplied independent pose fit measured wheel/platter ratios of +0.9963, +0.5053, +0.0395, -1.0045. The full-run final angle differed from the ideal measured-motion reference by +7.85 degrees. Inspect the complete residual alongside the ideal reference.",
+          "A separate native counterfactual used direct input controllers rather than the main Scratch VM program. Changing only the output body's friction to zero reduced its mean speed ratio from +1.0035 to -0.0041, with contact still present. This supports friction-driven sustained rotation; the frictionless wheel still oscillates, and the test does not establish a real hardware friction coefficient.",
+          "Brown's mechanical movement 28 describes the historical variable-radius friction-wheel arrangement: https://507movements.com/mm_028.html. The addon supplies an original LEGO arrangement and copies no modern site animation.",
+          "The supplied separate actual-browser recordings passed 18 pose/program checks each, from the catalog and after saving and reopening the .sb3 project. The browser mirror exposes no rolling load, so these checks provide program and pose evidence only. Saved coordinates retain the application's normal serialization rounding and are checked against an independent compile of the exact saved text."
+        ]
+      },
+      "de": {
+        "what": "Eine gleichmäßig rotierende, mit Fliesen belegte Scheibe treibt ein Gummirad ohne eigenen Motor an. Motor B verschiebt das Rad über die Scheibe: vorwärts, langsamer, nahezu neutral und dann rückwärts. Der aufsummierte Radwinkel demonstriert mechanische Integration: Er speichert den vorzeichenbehafteten Kontaktradius über der Scheibenbewegung.",
+        "try": [
+          "Setze das Modell zurück und starte die begrenzte Vorführung. Motor A dreht die Scheibe stets in dieselbe Richtung. Motor B fährt die Kontaktpositionen +28, +14, 0 und −28 mm an. Jede Station dauert 6 Sekunden; das aufgezeichnete native Programm endet nach ungefähr 35,7 Sekunden.",
+          "Vergleiche die positiven Radien. Bei +14 mm dreht sich das passive Rad ungefähr mit der halben Winkelgeschwindigkeit der Scheibe; bei +28 mm sind beide Winkelgeschwindigkeiten nahezu gleich.",
+          "Beobachte die Mitte genau. Idealer Punktkontakt sagt Stillstand voraus. In der nativen Aufzeichnung kriecht das Rad während der letzten 4,97 Sekunden dieser Station jedoch um 15,92 Grad weiter. Nahezu neutral bedeutet keinen exakten Stillstand.",
+          "Bei negativem Radius kehrt das Ausgangsrad seine Richtung um, während die Scheibe ihre Drehrichtung beibehält. Weder ein eigener Motor noch eine Getriebebedingung erzwingt diese Radrotation.",
+          "Vergleiche den gemessenen Radwinkel mit dem idealen Integral in den Validierungsdaten. Behalte die Übergänge im Blick: Seitliches Verschieben erzeugt Schrubben und vorübergehende Abweichungen."
+        ],
+        "why": "Bei festem Kontaktradius x ist die örtliche Oberflächengeschwindigkeit der Scheibe proportional zu x. Ein Reifen mit Radius R rollt mit der entsprechenden Winkelgeschwindigkeit. Ideal gilt mit Vorzeichen: Winkelgeschwindigkeit des Rads / Winkelgeschwindigkeit der Scheibe = x/R. Beim Überqueren der Mitte wechselt das Vorzeichen. Durch Aufsummieren wird der Ausgangswinkel proportional zum Integral von x über dem tatsächlich gedrehten Scheibenwinkel. Die durch ihr Gewicht belastete Gabel bewegt sich ebenfalls geringfügig; die vollständige Referenz berücksichtigt ihre gemessene tangentiale Verschiebung. Kontaktbreite, Widerstände, Schlupf und seitliches Schrubben erzeugen Abweichungen.",
+        "matters": "Das ist das Prinzip eines Rad-Scheiben-Integrators und eines stufenlos verstellbaren Reibradgetriebes. Gegenüber dem Differentialmittelwert von Mean Machine kommt eine andere Rechenoperation hinzu: Der Kontaktradius gewichtet jeden Zuwachs der Eingangsrotation. Die native Kontaktsimulation erfüllte die vorher festgelegten Grenzen für Verhalten und Position. Diese Zahlen betreffen die native Simulation; eine Browserprüfung benötigt einen eigenen Nachweis. Die Genauigkeit eines physischen Aufbaus wurde nicht nachgewiesen.",
+        "question": "Die Scheibe dreht sich einmal bei x = +28 mm und einem Reifenradius von 28 mm. Anschließend verschiebst du das Rad zurück zur Mitte. Wird sein aufsummierter Ausgangswinkel dadurch auf null zurückgesetzt?",
+        "answer": "Nein. Bei idealem Abrollen addiert die erste Scheibenumdrehung eine volle Radumdrehung. Das Verschieben zur Mitte ändert die anschließende Geschwindigkeit, löscht aber den aufgelaufenen Winkel nicht. Ein gleich großes Integral mit entgegengesetztem Vorzeichen, etwa eine Scheibenumdrehung bei −28 mm, würde ihn ideal ausgleichen. Tatsächlicher Kontakt und Übergangsbewegung erzeugen Abweichungen.",
+        "further": [
+          "Vergleiche mit Mean Machine: Was unterscheidet den momentanen Mittelwert zweier Winkel von einem über eine veränderliche Übersetzung aufsummierten Winkel?",
+          "Nutze den tatsächlich gemessenen Scheibenwinkel und die Reifenmitte. Ein Lagergelenk kann auf derselben Achse seitlich neben dem Reifen liegen und ist dann nicht das radiale Kontaktzentrum.",
+          "Die unabhängige Auswertung der Körperposen ergab Rad/Scheibe-Verhältnisse von +0,9963; +0,5053; +0,0395; -1,0045. Am Ende wich der Radwinkel um +7,85 Grad von der idealen Referenz aus der gemessenen Bewegung ab. Betrachte den vollständigen Fehlerverlauf zusammen mit der idealen Referenz.",
+          "Ein getrennter nativer Kontrollversuch nutzte direkte Eingangsregler statt des Scratch-VM-Programms. Nur die Reibung des Ausgangskörpers wurde auf null gesetzt. Bei weiterhin bestehendem Kontakt sank das mittlere Geschwindigkeitsverhältnis von +1,0035 auf -0,0041. Das stützt die Erklärung einer durch Reibung angetriebenen dauerhaften Rotation. Das reibungsfreie Rad schwingt noch; ein realer Reibungskoeffizient ist damit nicht geprüft.",
+          "Browns mechanische Bewegung 28 beschreibt die historische Reibradanordnung mit veränderlichem Radius: https://507movements.com/mm_028.html. Das Addon enthält eine eigenständige LEGO-Anordnung und kopiert keine moderne Website-Animation.",
+          "Getrennte Aufzeichnungen aus dem tatsächlichen Browser bestanden jeweils 18 Programm- und Posenprüfungen: nach dem Laden aus dem Katalog sowie nach dem Speichern und erneuten Öffnen des .sb3-Projekts. Der Browser-Spiegel liefert keine Radlast; diese Prüfungen belegen daher nur Programmablauf und Körperbewegung. Die normale Rundung beim Speichern bleibt erhalten; als Referenz dient eine unabhängige Übersetzung des exakt gespeicherten Textes."
+        ]
+      },
+      "formula": {
+        "en": "Fixed-radius ideal: φ̇/θ̇ = x/R. Integrated ideal: Δφ = (∫x dθ)/R. With tangential fork motion: Δφ = (∫x dθ + Δz)/R. R = 28 mm; angles are signed, and wheel angle is measured relative to the support.",
+        "de": "Ideal bei festem Radius: φ̇/θ̇ = x/R. Ideales Integral: Δφ = (∫x dθ)/R. Mit tangentialer Gabelbewegung: Δφ = (∫x dθ + Δz)/R. R = 28 mm; Winkel haben ein Vorzeichen, und der Radwinkel wird relativ zum Traggestell gemessen."
+      },
+      "related": [
+        "mean-machine.ldr",
+        "clutch-bench.ldr",
+        "ratio-workbench.ldr",
+        "rack-shuttle.ldr"
       ]
     }
   }

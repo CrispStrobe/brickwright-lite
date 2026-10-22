@@ -113,6 +113,7 @@ export const MODELS = Object.freeze([
     {file: 'crossline.ldr', title: {"en": "Crossline — geared straight-line pair", "de": "Crossline — Geradführung durch Gegenrotation"}, example: 'crossline.bw', mat: 'plain'},
     {file: 'counterturn.ldr', title: {en: 'Counterturn — a free carrier and flywheel', de: 'Counterturn — freier Träger und Schwungrad'}, example: 'counterturn.bw', mat: 'plain'},
     {file: 'snapgate.ldr', title: {en: 'Snapgate — a spring memory switch', de: 'Snapgate — ein Feder-Speicherschalter'}, example: 'snapgate.bw', mat: 'plain'},
+    {file: 'integral.ldr', title: {en: 'Integral — a friction wheel computer', de: 'Integral — ein Reibrad-Rechner'}, example: 'integral.bw', mat: 'plain'},
     {file: 'bit-keeper.ldr', title: {"en": "Bit Keeper — a mechanical memory", "de": "Bit Keeper — ein mechanisches Gedächtnis"}, example: 'bit-keeper.bw', mat: 'plain'},
     {file: 'offset-orbit.ldr', title: {"en": "Offset Orbit — Oldham coupling", "de": "Offset Orbit — Oldham-Kupplung"}, example: 'offset-orbit.bw', mat: 'plain'},
     {file: 'ellipsa.ldr', title: {"en": "Ellipsa — one-motor ellipsograph", "de": "Ellipsa — Ellipsenmechanik mit einem Motor"}, example: 'ellipsa.bw', mat: 'plain'},

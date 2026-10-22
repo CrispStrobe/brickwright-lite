@@ -153,6 +153,7 @@
       "test/bw-sim-offset-ellipsa.test.mjs",
       "test/bw-sim-echo-linger-crossline.test.mjs",
       "test/bw-sim-bit-keeper.test.mjs",
+      "test/bw-sim-integral.test.mjs",
       "test/spikeprime-motor-power-adoption.test.mjs",
       "test/bw-sim-counterturn-snapgate.test.mjs"
     ],
@@ -542,6 +543,7 @@
       "test/bw-sim-offset-ellipsa.test.mjs",
       "test/bw-sim-echo-linger-crossline.test.mjs",
       "test/bw-sim-bit-keeper.test.mjs",
+      "test/bw-sim-integral.test.mjs",
       "test/spikeprime-motor-power-adoption.test.mjs",
       "test/bw-sim-counterturn-snapgate.test.mjs"
     ],

@@ -9,6 +9,8 @@ import { judgeAddon } from './sim-lab-addon-judge.mjs';
 import {judgeOffsetEllipsa} from './sim-lab-offset-ellipsa-judge.mjs';
 import {judgeEchoLingerCrossline} from './sim-lab-echo-linger-crossline-judge.mjs';
 import {judgeCounterturnSnapgate} from './sim-lab-counterturn-snapgate-judge.mjs';
+import {integralRoundtrip} from './sim-lab-integral-gate.mjs';
+import {judgeIntegral} from './sim-lab-integral-judge.mjs';
 import {judgeBit} from './sim-lab-bit-keeper-judge.mjs';
 export { addonLesson };
 export async function physicsAddonInteractions(page, opts) {
@@ -16,7 +18,7 @@ export async function physicsAddonInteractions(page, opts) {
       id
     } = opts,
     n = {
-      counterturn: 120, snapgate: 205, 'bit-keeper': 133, 'echo-bridge': 108, linger: 158, crossline: 147,
+      integral: 154, counterturn: 120, snapgate: 205, 'bit-keeper': 133, 'echo-bridge': 108, linger: 158, crossline: 147,
       'pantograph-doubler': 83,
       'scale-studio': 101,
       'ripple-relay': 191,
@@ -30,10 +32,10 @@ export async function physicsAddonInteractions(page, opts) {
   await mechanicsInteractions(page, {
     ...opts,
     models: [id],
-    observeProgram: ['counterturn','snapgate','bit-keeper'].includes(id),
-    simulatedMs: id === 'counterturn' ? 30000 : id === 'snapgate' ? 45000 : id === 'bit-keeper' ? 65000 : id === 'linger' ? 155000 : id === 'echo-bridge' ? 30000 : id === 'crossline' ? 30000 : id === 'scale-studio' || id === 'bloom-gate' ? 40000 : id === 'amplify' || id === 'ellipsa' ? 170000 : 75000,
+    observeProgram: ['integral','counterturn','snapgate','bit-keeper'].includes(id),
+    simulatedMs: id === 'integral' ? 45000 : id === 'counterturn' ? 30000 : id === 'snapgate' ? 45000 : id === 'bit-keeper' ? 65000 : id === 'linger' ? 155000 : id === 'echo-bridge' ? 30000 : id === 'crossline' ? 30000 : id === 'scale-studio' || id === 'bloom-gate' ? 40000 : id === 'amplify' || id === 'ellipsa' ? 170000 : 75000,
     speed: 4,
-    judge: ['counterturn','snapgate'].includes(id) ? judgeCounterturnSnapgate : id === 'bit-keeper' ? judgeBit : ['echo-bridge','linger','crossline'].includes(id) ? judgeEchoLingerCrossline : ['offset-orbit','ellipsa'].includes(id) ? judgeOffsetEllipsa : ['momentum-twins', 'bloom-gate', 'amplify'].includes(id) ? judgeNewAddon : judgeAddon
+    judge: id === 'integral' ? judgeIntegral : ['counterturn','snapgate'].includes(id) ? judgeCounterturnSnapgate : id === 'bit-keeper' ? judgeBit : ['echo-bridge','linger','crossline'].includes(id) ? judgeEchoLingerCrossline : ['offset-orbit','ellipsa'].includes(id) ? judgeOffsetEllipsa : ['momentum-twins', 'bloom-gate', 'amplify'].includes(id) ? judgeNewAddon : judgeAddon
   });
   const manual = await manualMechanicsInteractions(page, {
     ...opts,
@@ -60,5 +62,6 @@ export async function physicsAddonInteractions(page, opts) {
     path: resolve(opts.shotsDir, id + '-bom.png')
   });
   await page.keyboard.press('Escape');
+  if (id === 'integral') await integralRoundtrip(page, opts);
   console.log(`PASS ${id}: actual worker/output, manual controls, lesson, ${plan.steps.length} connected instruction pages and ${n}-piece BOM`);
 }

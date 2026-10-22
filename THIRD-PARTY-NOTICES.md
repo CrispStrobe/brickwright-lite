@@ -2543,3 +2543,12 @@ uses two small axial retainer clearances. Snapgate uses 205 CAD placements
 a longer anchor axle and a retained rod-eye axle. Official LDraw geometry keeps
 its separate authors and CC BY terms. Downloaded runtimes, generators and
 claimed validation reports are not included as application code.
+
+### Integral friction-wheel integrator
+
+Original CrispStrobe model, program and bilingual lessons, BSD-3-Clause; see
+`overlay/scratch-gui/static/sim-lab/licenses/integral.txt`. The 154 placements
+reuse 63 base, drive, hub and platter placements from Orbital Loom, also by
+CrispStrobe under BSD-3-Clause. Referenced LDraw parts retain their own notices.
+The free output wheel is driven by native frictional contact. Native and browser
+checks describe simulation behavior; physical hardware accuracy is unverified.

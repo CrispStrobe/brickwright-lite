@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "integral",
+  "language": "de",
+  "what": "Eine gleichmäßig rotierende, mit Fliesen belegte Scheibe treibt ein Gummirad ohne eigenen Motor an. Motor B verschiebt das Rad über die Scheibe: vorwärts, langsamer, nahezu neutral und dann rückwärts. Der aufsummierte Radwinkel demonstriert mechanische Integration: Er speichert den vorzeichenbehafteten Kontaktradius über der Scheibenbewegung. Eine rotierende Scheibe treibt ein freies Gummirad durch Reibung an. Verschiebe den Kontaktradius über die Mitte, um Tempo und Richtung zu ändern und ein angenähertes mechanisches Integral zu bilden.",
+  "try": [
+    "Setze das Modell zurück und starte die begrenzte Vorführung. Motor A dreht die Scheibe stets in dieselbe Richtung. Motor B fährt die Kontaktpositionen +28, +14, 0 und −28 mm an. Jede Station dauert 6 Sekunden; das aufgezeichnete native Programm endet nach ungefähr 35,7 Sekunden.",
+    "Vergleiche die positiven Radien. Bei +14 mm dreht sich das passive Rad ungefähr mit der halben Winkelgeschwindigkeit der Scheibe; bei +28 mm sind beide Winkelgeschwindigkeiten nahezu gleich.",
+    "Beobachte die Mitte genau. Idealer Punktkontakt sagt Stillstand voraus. In der nativen Aufzeichnung kriecht das Rad während der letzten 4,97 Sekunden dieser Station jedoch um 15,92 Grad weiter. Nahezu neutral bedeutet keinen exakten Stillstand.",
+    "Bei negativem Radius kehrt das Ausgangsrad seine Richtung um, während die Scheibe ihre Drehrichtung beibehält. Weder ein eigener Motor noch eine Getriebebedingung erzwingt diese Radrotation.",
+    "Vergleiche den gemessenen Radwinkel mit dem idealen Integral in den Validierungsdaten. Behalte die Übergänge im Blick: Seitliches Verschieben erzeugt Schrubben und vorübergehende Abweichungen."
+  ],
+  "why": "Bei festem Kontaktradius x ist die örtliche Oberflächengeschwindigkeit der Scheibe proportional zu x. Ein Reifen mit Radius R rollt mit der entsprechenden Winkelgeschwindigkeit. Ideal gilt mit Vorzeichen: Winkelgeschwindigkeit des Rads / Winkelgeschwindigkeit der Scheibe = x/R. Beim Überqueren der Mitte wechselt das Vorzeichen. Durch Aufsummieren wird der Ausgangswinkel proportional zum Integral von x über dem tatsächlich gedrehten Scheibenwinkel. Die durch ihr Gewicht belastete Gabel bewegt sich ebenfalls geringfügig; die vollständige Referenz berücksichtigt ihre gemessene tangentiale Verschiebung. Kontaktbreite, Widerstände, Schlupf und seitliches Schrubben erzeugen Abweichungen.",
+  "matters": "Das ist das Prinzip eines Rad-Scheiben-Integrators und eines stufenlos verstellbaren Reibradgetriebes. Gegenüber dem Differentialmittelwert von Mean Machine kommt eine andere Rechenoperation hinzu: Der Kontaktradius gewichtet jeden Zuwachs der Eingangsrotation. Die native Kontaktsimulation erfüllte die vorher festgelegten Grenzen für Verhalten und Position. Diese Zahlen betreffen die native Simulation; eine Browserprüfung benötigt einen eigenen Nachweis. Die Genauigkeit eines physischen Aufbaus wurde nicht nachgewiesen.",
+  "question": "Die Scheibe dreht sich einmal bei x = +28 mm und einem Reifenradius von 28 mm. Anschließend verschiebst du das Rad zurück zur Mitte. Wird sein aufsummierter Ausgangswinkel dadurch auf null zurückgesetzt?",
+  "answer": "Nein. Bei idealem Abrollen addiert die erste Scheibenumdrehung eine volle Radumdrehung. Das Verschieben zur Mitte ändert die anschließende Geschwindigkeit, löscht aber den aufgelaufenen Winkel nicht. Ein gleich großes Integral mit entgegengesetztem Vorzeichen, etwa eine Scheibenumdrehung bei −28 mm, würde ihn ideal ausgleichen. Tatsächlicher Kontakt und Übergangsbewegung erzeugen Abweichungen.",
+  "further": [
+    "Vergleiche mit Mean Machine: Was unterscheidet den momentanen Mittelwert zweier Winkel von einem über eine veränderliche Übersetzung aufsummierten Winkel?",
+    "Nutze den tatsächlich gemessenen Scheibenwinkel und die Reifenmitte. Ein Lagergelenk kann auf derselben Achse seitlich neben dem Reifen liegen und ist dann nicht das radiale Kontaktzentrum.",
+    "Die unabhängige Auswertung der Körperposen ergab Rad/Scheibe-Verhältnisse von +0,9963; +0,5053; +0,0395; -1,0045. Am Ende wich der Radwinkel um +7,85 Grad von der idealen Referenz aus der gemessenen Bewegung ab. Betrachte den vollständigen Fehlerverlauf zusammen mit der idealen Referenz.",
+    "Ein getrennter nativer Kontrollversuch nutzte direkte Eingangsregler statt des Scratch-VM-Programms. Nur die Reibung des Ausgangskörpers wurde auf null gesetzt. Bei weiterhin bestehendem Kontakt sank das mittlere Geschwindigkeitsverhältnis von +1,0035 auf -0,0041. Das stützt die Erklärung einer durch Reibung angetriebenen dauerhaften Rotation. Das reibungsfreie Rad schwingt noch; ein realer Reibungskoeffizient ist damit nicht geprüft.",
+    "Browns mechanische Bewegung 28 beschreibt die historische Reibradanordnung mit veränderlichem Radius: https://507movements.com/mm_028.html. Das Addon enthält eine eigenständige LEGO-Anordnung und kopiert keine moderne Website-Animation.",
+    "Getrennte Aufzeichnungen aus dem tatsächlichen Browser bestanden jeweils 18 Programm- und Posenprüfungen: nach dem Laden aus dem Katalog sowie nach dem Speichern und erneuten Öffnen des .sb3-Projekts. Der Browser-Spiegel liefert keine Radlast; diese Prüfungen belegen daher nur Programmablauf und Körperbewegung. Die normale Rundung beim Speichern bleibt erhalten; als Referenz dient eine unabhängige Übersetzung des exakt gespeicherten Textes."
+  ],
+  "formula": "Ideal bei festem Radius: φ̇/θ̇ = x/R. Ideales Integral: Δφ = (∫x dθ)/R. Mit tangentialer Gabelbewegung: Δφ = (∫x dθ + Δz)/R. R = 28 mm; Winkel haben ein Vorzeichen, und der Radwinkel wird relativ zum Traggestell gemessen.",
+  "related": [
+    "mean-machine.ldr",
+    "clutch-bench.ldr",
+    "ratio-workbench.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

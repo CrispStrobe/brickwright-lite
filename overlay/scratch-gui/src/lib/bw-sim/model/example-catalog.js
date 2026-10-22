@@ -351,6 +351,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "integral.ldr": {
+        "pieces": 154,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A turning platter drives a passive rubber wheel by friction. Move the contact radius through the centre to vary speed, reverse direction and accumulate an approximate mechanical integral.",
+            "de": "Eine rotierende Scheibe treibt ein freies Gummirad durch Reibung an. Verschiebe den Kontaktradius über die Mitte, um Tempo und Richtung zu ändern und ein angenähertes mechanisches Integral zu bilden."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "bit-keeper.ldr": {
         "pieces": 134,
         "motors": 1,

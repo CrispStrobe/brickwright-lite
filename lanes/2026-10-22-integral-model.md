@@ -1,6 +1,6 @@
 # Integral friction-wheel integrator
 
-CLAIMED — owner: Robot Lab model delivery; isolated branch
+DONE — source candidate; owner: Robot Lab model delivery; isolated branch
 `lane/integral-model-20261022`, base `b056a20e6`.
 
 Integrate the supplied original BSD-3-Clause Integral model, two-motor program,
@@ -23,3 +23,17 @@ Do not apply the archive's cumulative old library over current assets. Existing
 models, other owners' worktrees and the served preview remain preserved. Finish
 with focused local qualification, normal production build, exact-head hosted CI
 and matched-head normal landing. No new release tag in this lane.
+
+The 154 placements and all program operations are preserved. CrispStrobe
+authorship selects the existing authored import path without the supplier's
+additional loader/project-format patch. Ordinary and strict native programs
+produce the same four signed speed ratios and finish in 35.7 simulated seconds.
+Four native controls, seventeen affected catalogue/lesson/persistence controls
+and twenty-seven registration/CI boundary controls pass; frozen output is
+rejected, and zero-friction contact loses sustained drive. Existing Bit Keeper
+lesson source profiles are aligned with their already shipped text so generating
+Integral's lessons does not roll back that earlier correction. Mirrors and
+lesson regeneration pass. The original foreign-import failure and a diagnostic
+test-coordinate mistake are retained separately. Production Chromium/WebKit,
+normal build and exact-head hosted qualification remain landing requirements;
+record their actual results in the source PR rather than imply completion here.
