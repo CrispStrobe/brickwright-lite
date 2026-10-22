@@ -364,6 +364,7 @@ const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout', 'editor', 'scale', 
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 // A narrow replay of the loaded-motor stop regression; default UI coverage stays complete.
+const INSIGHT_ONLY = process.argv.includes('--ui-only=insight');
 const MIXER_ONLY = process.argv.includes('--ui-only=mixer');
 
 let browser;
@@ -1221,7 +1222,16 @@ try {
         await mixer.close();
     }
 
-    if (want('ui') && !MIXER_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
+    if (want('ui') && INSIGHT_ONLY) {
+        const see = await browser.newPage({viewport: {width:1600,height:1050}, serviceWorkers:'block'});
+        see.on('pageerror', error => errors.push(error.stack || error.message));
+        see.on('dialog', dialog => dialog.accept());
+        await openSimLab(see, {program:null});
+        await insightInteractions(see, {shotsDir:artifacts});
+        await see.close();
+    }
+
+    if (want('ui') && !MIXER_ONLY && !INSIGHT_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
         // 15. The Robot Lab tab: icon toolbar (names, tooltips with shortcuts, every action by click and key)
         //     and the movable 3D view (orbit, pan, zoom by mouse and keys; part drags move parts), in English…
         const bar = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});

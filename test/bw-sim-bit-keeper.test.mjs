@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import test from 'node:test';import assert from 'node:assert/strict';import{readFileSync}from'node:fs';
+import{compile}from'../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import{catalogFrom,prepareModel}from'../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import{solidOverlaps}from'../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 import{buildSteps}from'../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 import{adaptAddonProgram}from'../scripts/lib/physics-addon-program.mjs';
-import{judgeBit,measureBit}from'../scripts/lib/sim-lab-bit-keeper-judge.mjs';
+import{judgeBit,measureBit,judgeBitStartup}from'../scripts/lib/sim-lab-bit-keeper-judge.mjs';
 import{observeAddon}from'../scripts/lib/sim-lab-addon-judge.mjs';
 import{runRobotLabProgram}from'./helpers/robot-lab-direct-vm.mjs';
 const base=new URL('../overlay/scratch-gui/static/sim-lab/',import.meta.url),modelText=readFileSync(new URL('models/bit-keeper.ldr',base),'utf8'),program=readFileSync(new URL('programs/bit-keeper.bw',base),'utf8'),C=catalogFrom(JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',import.meta.url))));
@@ -23,4 +24,23 @@ test('Bit Keeper: removing only the elastic loop loses retained memory',async t=
 });
 test('Bit Keeper: independent ten-second coast preserves its saved state without an active hold',async t=>{
  const r=await runRobotLabProgram('DEVICE SPIKE\nWHEN flag clicked:\n  lab start\n  lab stop motor A coast\n  wait 10 seconds\n',{modelText,timeLimitMs:12000});assert.ok(r.finishedAt);const o=observeAddon(r),angle=f=>{const p=o.point(f,'bob_gear'),q=o.point(f,'pivot');return Math.atan2(p[2]-q[2],q[1]-p[1])*180/Math.PI;},initial=angle(r.track[0]),drift=Math.max(...r.track.map(f=>Math.abs(angle(f)-initial)));assert.ok(drift<=1);t.diagnostic('Coast-only output drift '+drift+' degrees');
+});
+
+test('Bit Keeper: the isolated ballast is not an unfinished gear transmission',()=>{
+ const p=prepareModel(modelText,C);assert.deepEqual(p.issues,[]);
+ assert.equal(p.mechanism.gears.length,0);
+ assert.ok(p.mechanism.joints.some(j=>j.type==='hinge'&&!j.motor),'the rocker remains a passive hinge');
+});
+test('Bit Keeper: Run visibly selects the opposite state promptly',async t=>{
+ const r=await runRobotLabProgram(program,{modelText,timeLimitMs:85000});
+ t.diagnostic(JSON.stringify(judgeBitStartup(r)));
+});
+
+test('gear diagnostics preserve real tooth contact and unfinished loose gears',()=>{
+ const p=prepareModel(modelText,C),bob=p.model.parts.find(p=>p.id==='bob_gear');
+ const partner=axial=>({...bob,id:'tooth_mate',position:bob.position.map((x,i)=>x+60*bob.rotation[i*3]+axial*bob.rotation[i*3+2])});
+ const inspect=axial=>compile({...p.model,parts:[...p.model.parts,partner(axial)]},C,{version:2}).diagnostics;
+ assert.ok(inspect(0).some(d=>d.code==='gear-not-on-hinge'&&d.parts.includes('bob_gear')),'a meshing counterweight still needs a turning axle');
+ const separated=inspect(40).filter(d=>d.code==='gear-not-on-hinge');
+ assert.deepEqual(separated.map(d=>d.parts),[['tooth_mate']],'an isolated loose gear still warns, but cannot implicate the carried ballast');
 });

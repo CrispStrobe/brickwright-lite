@@ -117,6 +117,7 @@ import {
 } from './editor-parity.js';
 import {portItems} from '../mech/insight.js';
 import {createInsightLayer, tintMaterial} from '../view/insight-layer.js';
+import {createCableAnchors} from '../view/cable-anchors.js';
 import {
     COARSE_CENTRE_PX, COARSE_GIZMO_MIN_PX, COARSE_HANDLE_PX, LONG_PRESS_MS, TOUCH_SLOP_PX, createTouchTracker, orbitAngles,
     panAmounts, pinchDistance
@@ -541,8 +542,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             return local.clone().applyMatrix4(mesh.matrixWorld);
         };
     };
+    const cableAnchors = createCableAnchors({read, partOf: id => editor.model.parts.find(p => p.id === id),
+        meshOf: id => hidden.has(id) ? null : meshes.get(id)});
     const refreshPorts = () => insight.setPorts(portItems(editor.model, catalogMap).filter(item => !hidden.has(item.id))
-        .map(item => ({...item, label: portLabel(item), anchor: partCentre(item.id), hubAnchor: item.hub && !hidden.has(item.hub) ? partCentre(item.hub) : null})));
+        .map(item => ({...item, label: portLabel(item), anchor: partCentre(item.id), ...cableAnchors(item)})));
     const fixed = p => (p ? () => new Vector3(...p) : () => null);
     const setMotion = ({joints = [], gears = [], tints = null} = {}) => {
         insight.setMotion({
