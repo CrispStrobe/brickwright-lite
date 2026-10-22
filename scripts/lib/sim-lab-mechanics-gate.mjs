@@ -79,12 +79,12 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
     for (const id of models) {
-        await page.getByTestId('bw-sim-lab-model').selectOption(`${id}.ldr`);
+        await page.getByTestId('bw-sim-lab-model').selectOption(keyFor(id));
         await page.waitForFunction(file => window.__bwSimLab.status === 'ready' &&
             window.__bwSimLab._pane.state.modelFile === file, `${id}.ldr`, {timeout: 60000});
         const framing = await page.evaluate(() => window.__bwSimLab._pane.view.framingStats());

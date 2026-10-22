@@ -45,6 +45,7 @@ export async function physicsAddonInteractions(page, opts) {
   const manual = await manualMechanicsInteractions(page, {
     ...opts,
     models: [id],
+    keyFor: key => key === 'integral' ? 'integral' : `${key}.ldr`,
     jogMs: id === 'bit-keeper' ? 100 : 250,
     jogSign: () => id === 'bloom-gate' ? -1 : 1
   });
