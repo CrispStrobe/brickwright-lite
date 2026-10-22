@@ -27,3 +27,24 @@ never force-push, overwrite private work or relax existing tests. Prove the
 original failure, full ordinary-call controls, affected source/procedure controls
 and final exact-head CI before normal landing. No provider, dependency, pin,
 workflow, budget, skip or native-activation change is authorized by this claim.
+
+## Sequential reconciliation of the older reviewed PRs
+
+The same user-requested repair sweep may next compose published PR1162,
+PR1099 and PR1100 with current main in separate isolated branches. Preserve
+their authors' commits, worktrees and manual acceptance requirements. Own only
+conflict resolution and regressions at their existing changed paths: motor
+dialects/runtime operations, independent SPIKE backend, virtual-hub commands
+and SPIKE physics adapter; the four existing motor-program/roundtrip test
+modules plus `test/bw-sim-spike-power.test.mjs`; and the already changed
+`renode-arena-session.js`, `renode_debugger.rs`, session tests and status docs.
+Preserve main's supplier identities and regenerate canonical mirrored/derived
+files rather than restoring obsolete pins, compiler constants or example
+receipts. The scope witness may name only actual existing consumers of the
+already admitted provider. No new supplier implementation or pin movement.
+
+Resolve historical LANES.md conflicts by retaining its current short header
+and the migrated claims, without editing LANES.md or the migration map.
+Native PRs remain drafts until fresh installed own-NuttX startup, Stop/cancel,
+normal operation and recovery evidence qualifies their changed source. Repairing
+CI does not supply that acceptance. No firmware, release or activation work.
