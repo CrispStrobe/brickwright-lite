@@ -64,3 +64,23 @@ inspect connected callable Blocks, edit its captured increment, preserve alias
 identity and independent instances, save/fresh reopen, export/compile in MakeCode
 and freshly reimport. Record unqualified representations or diagnostics in the
 GUI ledger. No new visible journey is qualified by source tests alone.
+
+## SOURCE candidate status
+
+The initial private normal-result proof and domain projection are authored but
+unexecuted. Eight new pure controls and the complete original counter eight
+remain pending independent SOURCE review and root qualification. The general
+Undefined/callable facts are retained; no runtime, SDK, browser, compatibility
+or corpus success is claimed. See `docs/ARCADE-NUMERIC-CLOSURE-RESULTS.md` for the
+bounded family, refusals and still-pending GUI journey.
+
+## Source qualification checkpoint
+
+The complete affected ten-module cohort passes 39 tests without failures,
+skips or TODOs, retaining all preceding 31 source controls and eight new
+numeric-closure controls. Independent saved-result review verified current
+source, genuine Node identity, actual module closure and resource bounds.
+The earlier unexecuted test-review hold is preserved; negative controls now
+query actual invocation nodes. Production stayed unchanged. The original
+native counter8, exported/reimported runtime, SDK and GUI journeys remain
+pending; this does not reduce historical corpus partials.

@@ -1,3 +1,4 @@
+import {numericClosureNormalResults} from './numeric-closure-normal-results.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
@@ -20,7 +21,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
     const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||
+    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
     // A complete unary conversion body returns Number whenever it returns.
@@ -69,7 +70,13 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     if(named.unsupported.length)return {helpers:new Map(),current:syntax.current,reason:'native addition named-helper source proof refused: '+named.unsupported.join('; ')};
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
-    const current=()=>syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
+    let closureResults=null,closureLive=true;
+    const closureNormalTokens=new Set();
+    const current=()=>{
+        const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
+        if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
+        return now&&(!closureNormalTokens.size||closureLive);
+    };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
     for(const node of bindings.nodes)if(tokens.has(node.nativeArrayDomainCall)){
@@ -109,6 +116,29 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true
     });
     let model=rewrite(classView.program),graph=analyse(model);
+    const hasClosureCandidate=bindings.nodes.some(node=>node.type==='FunctionExpression'&&bindings.parentOf(node)?.type==='Return');
+    closureResults=hasClosureCandidate?numericClosureNormalResults(model,profile):{current:()=>true,has:()=>false};
+    // The original invocation remains the test of this private normal-return
+    // projection. It is still evaluated once, including all callee/argument
+    // effects and exceptions. Only the returned value has the proved Number
+    // domain; no input, callable binding or capture cell receives that fact.
+    const closureCopies=new WeakMap();
+    const normalClosureView=node=>{
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,normalClosureView);
+        const selected=closureResults.has(node);
+        const copy=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:normalClosureView(value)]));
+        if(!selected){closureCopies.set(node,copy);return copy;}
+        const token=Symbol();closureNormalTokens.add(token);
+        const projected={type:'Conditional',test:copy,consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},nativeClosureDomainNormalCall:token};
+        closureCopies.set(node,projected);return projected;
+    };
+    const closureModel=hasClosureCandidate?normalClosureView(model):model;
+    if(closureNormalTokens.size){
+        const previous=replacements;replacements=new WeakMap();
+        for(const node of bindings.nodes){const before=previous.get(node);if(before)replacements.set(node,closureCopies.get(before)||before);}
+        model=closureModel;graph=analyse(model);
+    }
     // Reuse the same closed source/binding profiles as the value graph. These
     // are Number results on NORMAL return, never input or initialization facts
     // about their arguments. The complete original argument/effect census is
@@ -129,7 +159,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const initialized=node=>{
         if(!node||typeof node!=='object')return true;
         if(Array.isArray(node))return node.every(initialized);
-        if(unaryTokens.has(node.nativeArrayDomainNormalCall))return true;
+        if(unaryTokens.has(node.nativeArrayDomainNormalCall)||closureNormalTokens.has(node.nativeClosureDomainNormalCall))return true;
         if(numberResultSets.some(producers=>producers.has(actual(node))))return true;
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
