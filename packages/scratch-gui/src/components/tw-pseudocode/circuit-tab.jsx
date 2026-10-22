@@ -334,6 +334,7 @@ class CircuitTab extends React.Component {
                 if (!data.parts.length && !(data.wires && data.wires.length)) {
                     // Emptying needs no parser, so replacement stays atomic even
                     // before the bw-circuit-ui chunk has ever been fetched.
+                    model.vcc = data.vcc === undefined ? 5 : data.vcc;
                     model.parts.length = 0;
                     model.wires.length = 0;
                     if (model.breadboards && typeof model.breadboards.clear === 'function') {
@@ -341,6 +342,7 @@ class CircuitTab extends React.Component {
                     }
                 } else if (this._Circuit) {
                     const parsed = this._Circuit.fromJSON(data);
+                    model.vcc = parsed.vcc;
                     model.parts = parsed.parts;
                     model.wires = parsed.wires;
                     model.breadboards = parsed.breadboards;

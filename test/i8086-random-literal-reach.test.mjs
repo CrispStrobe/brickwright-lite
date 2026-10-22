@@ -146,8 +146,12 @@ test('N2f production holds device 62 and mixed generation 62 without neutralisat
         // generate device C (the five i8086-wait-reach adds) and 23 are refused
         // by name (micro:bit/SPIKE sensor reads, Arduino String joined prints,
         // one 32-bit constant). The neutralisation lattice still changes nothing.
+        // Three analog school programs have no MCU; every lattice must refuse their retarget.
+        for (const variant of Object.values(report.variants)) {
+            for (const name of ["school-intercom-101455", "school-led-people-dog", "school-miniorgan-107056"]) assert.ok(variant.retargetRefused.includes(name), name);
+        }
         assert.deepEqual(report.variants.baseline.counts, {
-            programs: 304, retargetRefused: 132, parsed: 164, parseFailed: 8,
+            programs: 307, retargetRefused: 135, parsed: 164, parseFailed: 8,
             refused: 102, generatedHost: 0, generatedDevice: 62, generatedTotal: 62
         });
         assert.equal(report.variants.literalOnly.counts.generatedTotal, 62);

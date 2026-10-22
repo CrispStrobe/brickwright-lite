@@ -1,4 +1,4 @@
-# School adoption: retained artifact identity counterparts — CLAIMED
+# School adoption: retained artifact identity counterparts — DONE (source candidate)
 
 Owner: Codex school-circuit delivery, branch
 `docs/school-retained-artifact-identities-20261021`, based on `b03e9515c`.
@@ -23,3 +23,12 @@ Qualify exact source/byte joins, unchanged workflow activation and negative
 controls, full pin-history checks and final school candidate hosted CI. Merge
 claim before implementation. No gate exception, dependency, physics, resource
 allowance, firmware execution or historical receipt rewrite is authorized.
+
+Four retained firmware blobs equal the exact new pinned Git blobs, sizes and
+SHA-256 values. The retained DOS image hash matches its original manifest;
+its assembler, producer and repository IO.SYS source are byte-identical between
+old and new pins. External source hashes remain unchanged; no new DOS image
+build or guest run is claimed. Only six fixed workflow identities move; label
+activation and every other workflow byte remain unchanged. All 39 affected
+pin-history, retained-ROM, census and held-workflow source controls pass.
+Final candidate hosted qualification remains required.

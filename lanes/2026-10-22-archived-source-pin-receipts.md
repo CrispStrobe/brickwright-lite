@@ -1,4 +1,4 @@
-# Preserve archived source measurement pins — CLAIMED
+# Preserve archived source measurement pins — DONE (source candidate)
 
 Owner: Codex school-circuit delivery, isolated
 `docs/archived-source-pin-receipts-20261022`, base `6f74e0cf0`.
@@ -24,3 +24,11 @@ without modification, never-pinned supplier SHA mutations still fail, and the
 same past pin in active code remains a failure. Run complete pin history and
 fetch-pinning controls and the final composed candidate's hosted qualification.
 No numerical threshold, corpus allowance, runtime or workflow change is scoped.
+
+The archive README is classified as a receipt, retaining its real historical
+compiler pin. Its bytes and existing fetch-admission fence are unchanged.
+Positive checks use the actual recorded previous pin; negative mutations
+continue rejecting never-pinned supplier commits and the same past pin in
+model, executable, JSON, nested or active inputs. All 48 complete pin-history,
+fetch-pinning, bundle and claim controls pass without skips. Final composed
+hosted qualification remains required before landing.
