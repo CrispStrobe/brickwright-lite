@@ -1624,7 +1624,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                             // earlier stop. Damping and native limits stay intact.
                             const commanded = deltaAngle(h.hinge.GetTargetAngle(), angle);
                             const remaining = st.limits[end > 0 ? 1 : 0] - slider.position;
-                            offset = clamp(commanded + remaining / st.k, Math.min(0, commanded), Math.max(0, commanded));
+                            offset = slider.velocity * end > 0 ?
+                                clamp(remaining / st.k, Math.min(0, commanded), Math.max(0, commanded)) : commanded;
                         }
                     }
                     h.hinge.SetTargetAngle(normalizeAngle(angle + offset));
