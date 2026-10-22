@@ -1264,3 +1264,36 @@ firmware compatibility or complete distribution licensing. The adoption
    selected-component provenance/notices review before a release claim. Run CPU
    qualification through the authorized direct-server route; private Actions and
    Kaggle are not the test route for this work.
+
+## G02 terminal debugger startup reason — 2026-10-19
+
+Candidate in the existing merged native-startup diagnostic envelope, branch
+`lane/spike-g02-rsp-terminal-reason-20261019`. The frontend's original startup
+error retains only `operation-failed`; native phase observations end at debugger
+connection. Emit one closed native reason for the terminal RSP error after existing
+retries. Unknown or decorated error strings map to `other`; backend text is never
+echoed. Preserve original error propagation, retry timing, teardown and public
+redaction. `unavailable` still combines connection, socket setup and closed-socket
+failures; it does not establish TCP refusal, child-exit cause or a startup fix.
+
+Source tests cover all declared reasons and hostile/decorated text. Candidate only:
+require every enabled exact-head native CI check and fresh source-bound installed
+cold-start, Stop/reset/closure and distinct recovery qualification before merge.
+The retained installed failure does not exercise this new diagnostic. No pin,
+firmware, model, timeout, workflow, broker policy or public error change; broader
+G02 and release gates remain open.
+
+## Current-main source composition of the two native candidates — 2026-10-22
+
+The PR repair sweep composes the published preflight-cancellation and terminal
+reason candidates with current main in `lane/native-pr-current-main-repair-20261022`.
+The migrated claim files and short LANES header remain unchanged; the legacy
+monolithic ledger is not restored. The original seven cancellation guards,
+their complete session controls, and the closed native diagnostic are retained.
+
+All 74 session controls and six claim/migration controls pass together with no
+skips or TODOs. Both existing terminal-reason tests also pass when compiled from
+the actual composed Rust function and test bodies. This is source qualification,
+not a full native-crate or installed-app result. Every enabled final-head check
+and fresh installed own-NuttX startup, Stop/cancel, normal-operation and recovery
+acceptance remain required; the successor remains a draft until those gates pass.
