@@ -150,6 +150,7 @@
         "node": ">=22"
     },
     "devDependencies": {
+        "acorn": "8.14.0",
         "bw-board": "github:CrispStrobe/bw-board#b5650092695643622a53bcc40008133760e2d8a2",
         "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#5b26de2fbbd2f019285b5acd72885f79663be2f6",
         "digitaljs": "^0.14.2",

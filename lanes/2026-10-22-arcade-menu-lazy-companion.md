@@ -1,4 +1,4 @@
-# Arcade menu table: prove its emitted lazy companion — CLAIMED
+# Arcade menu table: prove its emitted lazy companion — IMPLEMENTED
 
 Owner: Codex, Arcade integration repair. Isolated branch:
 `lane/arcade-menu-lazy-companion-claim-v2-20261022`, based on `fd61f8c1ef`.
@@ -47,3 +47,16 @@ another download. Final affected hosted qualification uses one complete
 integration candidate; no duplicate dispatch or unnecessary `ci:full` label.
 Normal landing requires every enabled final-head check, matched head and
 verified parents/tree. A guard pass is not an application or corpus completion.
+
+## Local source and retained-artifact acceptance
+
+All ten complete control groups pass, including the two unchanged boot tests.
+The production guard also passes against the admitted hosted artifact's retained
+JavaScript and HTML inputs. Its actual runtime filename resolver selects the
+named entry despite an unrequested compiler chunk sharing its chunk ID; the
+bound normalizer reaches the shared table through genuine module dependencies.
+Comment/string, unrelated, eager, preloaded, mutable and ambiguous alternatives
+remain refused. Tooling uses pinned Acorn 8.14.0 with its MIT licence retained;
+it is not part of application boot. Earlier fixture and recognition failures
+remain recorded. Final new-build and integrated hosted qualification remain
+required. These results do not change application or corpus completion counts.
