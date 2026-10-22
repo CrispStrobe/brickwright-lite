@@ -48,3 +48,11 @@ repair, production exact-1× runs measure 0.996× in WebKit and 0.997× in Chrom
 with identical final poses, no dropped time and all physical outcome checks
 passing. These measurements do not reproduce the user's original 0.31× run.
 Final hosted qualification and normal merge composition remain pending.
+
+Current main subsequently landed the qualified Counterturn/Snapgate and turntable
+clearance work. Normal composition preserves that owner's changes and declares
+the two new physical suites for the same SIMD dependency boundary. Those suites
+and the real program-clock suite pass all 23 controls through the installed SIMD
+package, with the measured GUI dependency gate passing. Same-engine compilation
+produces an exactly identical complete Magnetic Chess mechanism before and after
+that main update. Earlier production-browser receipts retain their build identity.
