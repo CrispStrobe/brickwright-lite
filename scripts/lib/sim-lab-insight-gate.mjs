@@ -39,7 +39,10 @@ const socketAttachments = async (page, which, ids) => {
         return window.__bwSimLab.status === 'ready' || window.__bwSimLab.status === 'paused' ?
             ids.every(id => view?.overlayStats().cableAttachments.some(c => c.id === id)) : false;
     }, {which,ids}, {timeout:15000});
-    const observations = await page.evaluate(({which, ids}) => {
+    // A paused worker may finish its in-flight batch while the GPU queue
+    // still shows the preceding frame. Wait for the independently calculated
+    // pose, rather than comparing a new snapshot with old drawn endpoints.
+    const observationsHandle = await page.waitForFunction(({which, ids}) => {
         const pane = window.__bwSimLab._pane, session = pane.session;
         const model = which === 'build' ? pane.editor.model : session.runModel;
         const stats = (which === 'build' ? pane.editView : pane.view).overlayStats();
@@ -64,14 +67,18 @@ const socketAttachments = async (page, which, ids) => {
             const i = snapshot.bodyIds.indexOf(body.id)*7, pose = Array.from(snapshot.bodies.slice(i,i+7));
             return add(pose.slice(0,3),rotate(pose.slice(3),offset));
         };
-        return ids.map(id => {
+        const observations = ids.map(id => {
             const device = model.parts.find(p => p.id === id);
             const hub = model.parts.find(p => p.id === (device.hub || 'hub'));
             const local = device.part === '37308.dat' ? [0,0,3] : [0,0,143];
             return {id, port:device.port, actual:stats.cableAttachments.find(c => c.id === id),
                 from:point(device,local), to:point(hub,sockets[device.port])};
         });
-    }, {which,ids});
+        return observations.every(o => o.actual && ['from','to'].every(end =>
+            Math.hypot(...o.actual[end].map((x,i) => x-o[end][i])) < 0.00006)) ? observations : false;
+    }, {which,ids}, {timeout:15000});
+    const observations = await observationsHandle.jsonValue();
+    await observationsHandle.dispose();
     for (const o of observations) {
         assert.ok(o.actual, `${which}: cable ${o.id} is rendered`);
         for (const end of ['from','to']) assert.ok(Math.hypot(...o.actual[end].map((x,i) => x-o[end][i])) < 0.00006,
