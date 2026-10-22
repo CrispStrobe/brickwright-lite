@@ -996,7 +996,8 @@ const NUMERIC_TEXT = /^-?\d+(\.\d+)?$/;
 const NUMBER_SLOTS = {
     operator_add: ['NUM1', 'NUM2'], operator_subtract: ['NUM1', 'NUM2'], operator_multiply: ['NUM1', 'NUM2'],
     operator_divide: ['NUM1', 'NUM2'], operator_mod: ['NUM1', 'NUM2'], operator_mathop: ['NUM'],
-    operator_round: ['NUM'], operator_random: ['FROM', 'TO'], data_changevariableby: ['VALUE']
+    operator_round: ['NUM'], operator_random: ['FROM', 'TO'], data_changevariableby: ['VALUE'],
+    microbitplus_shownumber: ['VALUE'], microbitplus_plotbargraph: ['VALUE', 'HIGH']
 };
 /** A comparison's operands: `any` against a number compares as JavaScript does, not as Scratch (E16). */
 const COMPARED_SLOTS = {operator_lt: ['OPERAND1', 'OPERAND2'], operator_gt: ['OPERAND1', 'OPERAND2'], operator_equals: ['OPERAND1', 'OPERAND2']};
