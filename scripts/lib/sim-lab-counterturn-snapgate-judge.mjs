@@ -15,7 +15,7 @@ export function measureCounterturn(r){
  return r.track.map((f,i)=>({t:f.t,encoder:deg(f.joints[motor.id].angle),speed:deg(f.joints[motor.id].velocity),yaw:yaw[i]-yaw[0],beta:rotor[i]-rotor[0]-yaw[i]+yaw[0],gapMm:o.gap(f),tiltDeg:o.tilt(f),baseMm:norm(sub(f.bodies[o.base.id].position,r.track[0].bodies[o.base.id].position))*1000,shaftTiltDeg:deg(Math.asin(Math.min(1,Math.abs(worldVector(o.body('g12'),f,motor.axis)[1])))),baseYaw:baseYaw(o,f)}));
 }
 export function judgeCounterturn(id,r,{gain,locked=false}={}){
- finite(r);assert.equal(r.issues.length,8);assert.ok(r.issues.every(i=>i.code==='gear-not-on-hinge'&&i.parts.length===1&&/^ballast_[xz]_[+-]?1_[01]$/.test(i.parts[0])));
+ finite(r);assert.deepEqual(r.issues,[]);
  const a=measureCounterturn(r);assert.ok(a.length>=500);assert.ok(r.finishedAt<35000);assert.ok(r.mechanism.bodies.filter(b=>b.parts.length).every(b=>b.motion==='dynamic'));assert.equal(r.mechanism.couplings.length,1);
  assert.ok(span(a.map(x=>x.encoder))>1439&&Math.abs(a.at(-1).encoder)<=1);assert.ok(span(a.map(x=>x.beta))>=360);
  const ratio=span(a.map(x=>x.beta))/span(a.map(x=>x.encoder));assert.ok(Math.abs(ratio/.6-1)<=.01,'physical bevel ratio');assert.ok(Math.max(...a.map(x=>Math.abs(x.beta-.6*x.encoder)))<=2,'physical bevel phase');

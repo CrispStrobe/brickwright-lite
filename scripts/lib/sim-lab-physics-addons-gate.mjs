@@ -30,7 +30,7 @@ export async function physicsAddonInteractions(page, opts) {
   await mechanicsInteractions(page, {
     ...opts,
     models: [id],
-    observeProgram: ['counterturn','snapgate'].includes(id),
+    observeProgram: ['counterturn','snapgate','bit-keeper'].includes(id),
     simulatedMs: id === 'counterturn' ? 30000 : id === 'snapgate' ? 45000 : id === 'bit-keeper' ? 65000 : id === 'linger' ? 155000 : id === 'echo-bridge' ? 30000 : id === 'crossline' ? 30000 : id === 'scale-studio' || id === 'bloom-gate' ? 40000 : id === 'amplify' || id === 'ellipsa' ? 170000 : 75000,
     speed: 4,
     judge: ['counterturn','snapgate'].includes(id) ? judgeCounterturnSnapgate : id === 'bit-keeper' ? judgeBit : ['echo-bridge','linger','crossline'].includes(id) ? judgeEchoLingerCrossline : ['offset-orbit','ellipsa'].includes(id) ? judgeOffsetEllipsa : ['momentum-twins', 'bloom-gate', 'amplify'].includes(id) ? judgeNewAddon : judgeAddon
