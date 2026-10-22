@@ -95,10 +95,25 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
+    // Loan only a length result from the existing lexical/all-writer Array
+    // graph. Enabling general Array values here would also authorize index
+    // reads in primitive consumers. An unrelated same-named binding, an
+    // annotation, an escaped allocation or a read before initialization cannot
+    // supply this fact. The independent graph keeps this option disabled.
+    let arrayLengthFacts;
+    const provenArrayLengthAt=node=>{
+        if(!provenArrayLength||node.type!=='Member'||node.name!=='length'||node.object?.type!=='Identifier')return false;
+        const graph=arrayLengthFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,
+            unboundIsOpaque:true,uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true});
+        const types=graph.typesAt(node);
+        return types.size===1&&types.has('Number')&&graph.isInitializedAt(node.object)&&
+            graph.arrayAllocationsAt(node.object).length>0&&graph.arrayMapReceiverSafeAt(node.object)&&
+            graph.arrayConstraintErrorsAt(node.object).length===0;
+    };
     const callbackEntry=arrayCallbackParameters?proveArrayCallbackPrimitiveEntries(program,normalCompletion):null;
     const completion=normalCompletion?sourceNormalCompletionFor(program,normalCompletion):null;
     if(normalCompletion&&!completion)throw new Error('Source completion proof must belong to the actual Program');
@@ -192,6 +207,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
         if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
+        if(provenArrayLengthAt(node)){add(current,'Number');return;}
         if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',receiver:cell(node.object),result:current});return;}
         if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&['map','push','pop','shift','unshift'].includes(node.callee.name)){
             const operation={kind:node.callee.name,node,receiver:cell(node.callee.object),result:current};arrayOperations.push(operation);
