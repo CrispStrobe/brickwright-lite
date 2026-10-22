@@ -1,10 +1,113 @@
+import constraintModel from 'scratch-vm/src/util/bw-procedure-constraint-model.js';
+import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {sdkExportClasses,sdkClassPublicName} from './sdk-class-descriptors.js';
+// Local to this proof: no caller can supply a prepared model or enroll a graph.
+// The canonical model uses ordinary property reads and JSON.stringify. Its
+// complete actual input must be owned data BEFORE either prepare or current.
+const ownedAnyPrefixes = (project,targets) => {
+    const get=Object.getOwnPropertyDescriptor,keys=Reflect.ownKeys,proto=Object.getPrototypeOf;
+    const own=(o,k)=>!!o&&Object.hasOwn(o,k),value=(o,k)=>get(o,k)?.value;
+    const empty=Object.freeze({body:()=>null,contains:()=>false,current:()=>false});
+    if(!isProjectJsonSnapshot(project))return empty;
+    const ordinary=new Set(['constructor','__defineGetter__','__defineSetter__','hasOwnProperty',
+        '__lookupGetter__','__lookupSetter__','isPrototypeOf','propertyIsEnumerable','toString','valueOf','__proto__','toLocaleString']);
+    const arrayNames=new Set(['length','constructor','at','concat','copyWithin','fill','find','findIndex','findLast','findLastIndex',
+        'lastIndexOf','pop','push','reverse','shift','unshift','slice','sort','splice','includes','indexOf','join','keys','entries','values',
+        'forEach','filter','flat','flatMap','map','every','some','reduce','reduceRight','toReversed','toSorted','toSpliced','with',
+        'toLocaleString','toString',Symbol.iterator,Symbol.unscopables]);
+    if(proto(Object.prototype)!==null||proto(Array.prototype)!==Object.prototype||
+        keys(Object.prototype).some(k=>!ordinary.has(k))||keys(Array.prototype).some(k=>!arrayNames.has(k)))return empty;
+    const prototypeRows=[Object.prototype,Array.prototype].map(object=>({object,parent:proto(object),
+        entries:keys(object).map(key=>[key,get(object,key)])}));
+    const same=(a,b)=>!!a&&!!b&&a.enumerable===b.enumerable&&a.configurable===b.configurable&&
+        own(a,'value')===own(b,'value')&&(own(a,'value')?Object.is(a.value,b.value)&&a.writable===b.writable:
+            a.get===b.get&&a.set===b.set);
+    const prototypesCurrent=()=>prototypeRows.every(row=>proto(row.object)===row.parent&&
+        keys(row.object).length===row.entries.length&&row.entries.every(([key,d])=>same(get(row.object,key),d)));
+    const owned=new WeakSet(),objects=[],pending=[project];
+    const slots=['targets','blocks','variables','extensions','extensionURLs','monitors','isStage','name','inputs','fields','mutation',
+        'opcode','next','parent','topLevel','shadow','proccode','argumentnames','argumentids','argumentdefaults','warp',
+        'block','value','TYPE','PARAMETER','PROCEDURE','VALUE','custom_block','NAME','_blocks','toJSON'];
+    while(pending.length){
+        const object=pending.pop();if(owned.has(object))continue;
+        if(objects.length>=100000||!Object.isFrozen(object))return empty;
+        const array=Array.isArray(object),parent=proto(object);
+        if(parent!==(array?Array.prototype:Object.prototype))return empty;
+        owned.add(object);objects.push(object);
+        if(own(object,'toJSON')||own(object,'_blocks'))return empty;
+        for(const key of keys(object)){
+            const d=get(object,key);if(typeof key!=='string'||!own(d,'value'))return empty;
+            const child=d.value;if(typeof child==='function'||typeof child==='symbol')return empty;
+            if(child&&typeof child==='object')pending.push(child);
+        }
+        if(array)for(let i=0;i<value(object,'length');i++)if(!own(object,i+''))return empty;
+        for(const key of slots)if(!own(object,key)&&(get(Object.prototype,key)||array&&get(Array.prototype,key)))return empty;
+    }
+    if(value(project,'targets')!==targets||!Array.isArray(targets)||!owned.has(targets))return empty;
+    const safeId=id=>typeof id==='string'&&!ordinary.has(id)&&id!=='_blocks'&&id!=='toJSON';
+    const models=new Map(),prefixes=new Map();let expired=false;
+    const physical=()=>prototypesCurrent()&&objects.every(o=>proto(o)===(Array.isArray(o)?Array.prototype:Object.prototype));
+    const current=()=>{
+        if(expired)return false;
+        try{if(!physical()||[...models.values()].some(m=>m.current()!==true)||!physical())expired=true;}
+        catch(_){expired=true;}
+        return !expired;
+    };
+    const prepare=target=>{
+        if(!current()||!owned.has(target)||!targets.includes(target))return null;
+        if(models.has(target))return models.get(target);
+        const blocks=value(target,'blocks');
+        if(!blocks||Array.isArray(blocks)||!owned.has(blocks)||keys(blocks).some(k=>!safeId(k)))return null;
+        for(const id of keys(blocks)){
+            const node=value(blocks,id),inputs=node&&value(node,'inputs'),fields=node&&value(node,'fields');
+            if(!node||Array.isArray(node)||!owned.has(node)||typeof value(node,'opcode')!=='string'||
+                !inputs||Array.isArray(inputs)||!owned.has(inputs)||!fields||Array.isArray(fields)||!owned.has(fields))return null;
+            for(const name of keys(inputs)){
+                const tuple=value(inputs,name);if(!Array.isArray(tuple)||![2,3].includes(tuple.length)||![1,2,3].includes(tuple[0]))return null;
+                if(typeof tuple[1]==='string'&&(!safeId(tuple[1])||!own(blocks,tuple[1])))return null;
+            }
+            for(const name of ['next','parent']){const id=value(node,name);if(typeof id==='string'&&(!safeId(id)||!own(blocks,id)))return null;}
+            for(const name of keys(fields))if(!Array.isArray(value(fields,name)))return null;
+            const mutation=value(node,'mutation');if(mutation!==undefined&&mutation!==null&&
+                (typeof mutation!=='object'||Array.isArray(mutation)||!owned.has(mutation)))return null;
+        }
+        try{const model=constraintModel.prepare(target);models.set(target,model);return current()?model:null;}
+        catch(_){expired=true;return null;}
+    };
+    const body=scope=>{
+        if(!scope||scope.invalid||scope.unknownEntry||!current())return null;
+        const model=prepare(scope.target),entry=model?.procedures.get(scope.proc);
+        if(!entry||entry.definition!==scope.root||entry.definitionId!==scope.id||
+            entry.names.length!==scope.params.length||entry.ids.length!==scope.ids.length||
+            !entry.names.every((name,i)=>name===scope.params[i]&&entry.ids[i]===scope.ids[i]))return null;
+        const blocks=value(scope.target,'blocks'),accepted=[],seen=new Set();let id=value(scope.root,'next'),previous=scope.id,index=-1;
+        while(id){
+            const node=value(blocks,id);if(!node||value(node,'opcode')!==constraintModel.OPCODE)break;
+            const binding=model.declarations.get(node),fields=value(node,'fields');
+            if(!binding||binding.block!==node||binding.type!=='Any'||binding.index<=index||
+                entry.constraints.get(binding.name)!==binding||entry.names[binding.index]!==binding.name||entry.ids[binding.index]!==binding.id||
+                value(node,'parent')!==previous||seen.has(node)||keys(value(node,'inputs')).length||
+                keys(fields).sort().join('|')!=='PARAMETER|PROCEDURE|TYPE')return null;
+            for(const [key,text]of [['PARAMETER',binding.name],['PROCEDURE',entry.code],['TYPE','Any']]){
+                const row=value(fields,key);if(!Array.isArray(row)||row.length!==2||row[0]!==text||row[1]!==null)return null;
+            }
+            accepted.push(node);seen.add(node);index=binding.index;previous=id;id=value(node,'next');
+        }
+        if(!accepted.length||!id||value(blocks,id)!==entry.body||!current())return null;
+        prefixes.set(scope,new Set(accepted));return entry.body;
+    };
+    return Object.freeze({body,current,contains:(node,scope)=>current()&&prefixes.get(scope)?.has(node)===true});
+};
+
 // Private effect proof for the immutable JSON overwrite theorem. Nothing here
 // supplies a value type, a receiver identity or an Array allocation/body fact.
 export function createArrayClassResetEffects(context) {
     const {targets,scopes,records,calls,owners,invalid,block,child,input,binding,literal,
         exactKeys,shape,primitive,resetValue,reads,safeName,isArrayMenuSelector,isKnownArrayMenuOperation}=context;
     const denied=()=>({closed:false,declaration:()=>false,operand:()=>false});
+    const prefixes=records.some(r=>r.node.opcode===constraintModel.OPCODE)?ownedAnyPrefixes(context.project,targets):
+        Object.freeze({body:()=>null,contains:()=>false,current:()=>true});
+    let prefixUsed=false;
     const classes=new Map(),roles=new Map(),byName=new Map();
     const sdkNames=new Set(sdkExportClasses().flatMap(cls=>[cls.name,sdkClassPublicName(cls.name)]));
     const identifier=name=>typeof name==='string'&&/^[A-Za-z_]\w*$/.test(name)&&safeName(name);
@@ -115,12 +218,18 @@ export function createArrayClassResetEffects(context) {
         const cls=classes.get(fixed(node,'CLASS',scope.target)),args=argumentsOf(node,scope);
         return !!cls&&cls.target===scope.target&&!!args&&args.length===cls.params.length&&args.every(v=>primitiveValue(v,scope));
     };
-    const identityReturn=(node,scope)=>{
-        const call=calls.find(c=>c.node===node),fn=call?.fn,n=fn&&block(fn.target,fn.root.next);
-        if(!call||!fn||fn.invalid||fn.unknownEntry||!call.args||!n||n.next||
-            n.opcode!=='arcade_returnValue'||!shape(n,fn,['VALUE']))return null;
+    const identityBody=fn=>{
+        if(!fn||fn.invalid||fn.unknownEntry)return null;
+        const first=block(fn.target,fn.root.next),prefixed=first?.opcode===constraintModel.OPCODE;
+        const n=prefixed&&!roles.has(fn)?prefixes.body(fn):first;
+        if(!n||n.next||n.opcode!=='arcade_returnValue'||!shape(n,fn,['VALUE']))return null;
         const name=localName(input(n,'VALUE',fn.target),fn),index=fn.params.indexOf(name);
-        return index>=0&&call.args.length===fn.params.length?{value:call.args[index],scope,args:call.args}:null;
+        return index<0?null:{node:n,index,prefixed};
+    };
+    const identityReturn=(node,scope)=>{
+        const call=calls.find(c=>c.node===node),fn=call?.fn,body=identityBody(fn);
+        if(!call||!call.args||!body||call.args.length!==fn.params.length)return null;
+        return {value:call.args[body.index],scope,args:call.args};
     };
     const writes=(value,scope,visit,path)=>{
         const c=value?.cell||(value?.node&&binding(scope.target,value.node));
@@ -169,6 +278,11 @@ export function createArrayClassResetEffects(context) {
         'operator_add','operator_subtract','operator_multiply','math_number','math_whole_number','math_integer','math_positive_number','text','argument_reporter_string_number','argument_reporter_boolean',
         'arrays_menu_referenceMutations','arrays_menu_referenceTakeOperations']);
     for(const {node,scope,target}of records){
+        if(node.opcode===constraintModel.OPCODE){
+            const body=identityBody(scope);
+            if(!body?.prefixed||!prefixes.contains(node,scope)||invalid.has(node)||scope.invalid||scope.unknownEntry)return denied();
+            prefixUsed=true;continue;
+        }
         if(!allowed.has(node.opcode)||invalid.has(node)||scope.invalid||scope.unknownEntry)return denied();
         if(node.opcode==='arcade_createObject'&&!allocation(node,scope))return denied();
         if(node.opcode==='arcade_setObjectField'&&!roles.has(scope))return denied();
@@ -184,7 +298,9 @@ export function createArrayClassResetEffects(context) {
                 reachable.has(scope)&&roles.has(call.fn))return denied();
         }
     }
-    return {closed:true,
+    return {get closed(){return !prefixUsed||prefixes.current();},
+        prefixUsed:()=>prefixUsed,
+        prefixCurrent:()=>!prefixUsed||prefixes.current(),
         declaration(node,scope){
             if(node.opcode==='arcade_declareClass')return classes.get(fixed(node,'NAME',scope.target))?.node===node;
             if(node.opcode==='arcade_declareSourceScalar')return scope.root.opcode==='arcade_whenSourceStarts'&&

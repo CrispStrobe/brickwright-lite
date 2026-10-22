@@ -1116,6 +1116,15 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // Every actual overwrite and other writer retains its producer checks.
         extendedResetUsed=true;return false;
     });
+    let prefixResetExpired=false;
+    const prefixResetCurrent=()=>{
+        // This function is the exact helper instance constructed above, never
+        // a caller certificate. Legacy/unused prefix paths acquire no watcher.
+        if(!definiteOverwrite.used?.())return true;
+        if(!prefixResetExpired)try{if(!definiteOverwrite.current())prefixResetExpired=true;}
+        catch(error){prefixResetExpired=true;throw error;}
+        return !prefixResetExpired;
+    };
     // A push precedes an occurrence in every activation when it executed
     // earlier in the occurrence's own scope (directly or on a called
     // procedure's straight prefix), or when the occurrence is in an ordinary
@@ -1337,8 +1346,12 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const occurrence=mixedArrayCell?createArrayOccurrenceExportAuthority(project,(target,node,name)=>{
         const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
     }):null;
-    const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const live=()=>prefixResetCurrent()&&project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    // Observe a newly used dependency before publishing the cached authority.
+    // A later validation still observes it before any diagnostic early exit.
+    prefixResetCurrent();
     return Object.freeze({spriteFlagWriters,validateInput(target,node,name='ARRAY'){
+        if(!prefixResetCurrent())return {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'};
         // Observe retained occurrence facts before *any* diagnostic early exit.
         // A false/throw observation cannot revive after physical restoration.
         const protectedReceiver=protectedInput(target,node,name);
@@ -1361,11 +1374,18 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // Only a successfully discounted reset may retain this dependency.
         // False or thrown currentness expires it before any diagnostic exit.
         if(frameResetUsed&&frameResetExpired)current=false;
+        // Existing metadata observers can run while live() is checked. Bind
+        // the prefix again after them before consuming any cached reset fact.
+        if(!prefixResetCurrent())return {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'};
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
-        if(deadOccurrence(target,node))return {ok:true};
-        if(occurrence?.candidate(target,node,name))return occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'};
-        const value=input(node,name,target),types=readInput(value);return singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'};
+        // Compute the original result once. A genuine producer observer below
+        // can change ambient ownership after the earlier metadata fence.
+        const publish=result=>result.ok&&!prefixResetCurrent()?
+            {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result;
+        if(deadOccurrence(target,node))return publish({ok:true});
+        if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
+        const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});
     }});
 }

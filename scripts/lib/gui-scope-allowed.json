@@ -165,6 +165,7 @@
       "test/arcade-static-fresh-animation-export.test.mjs",
       "test/arcade-export-refusal-report.test.mjs",
       "test/array-definite-overwrite.test.mjs",
+      "test/array-identity-constraint-prefix.test.mjs",
       "test/arcade-class-array-writer-types.test.mjs",
       "test/animation-native-library-import.test.mjs",
       "test/animation-resource-native-helper-analysis.test.mjs",

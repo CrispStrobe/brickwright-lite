@@ -1,8 +1,24 @@
 # Conversion capabilities and GUI closure ledger
 
+## Current hosted boundary for recursive procedures and Array identity
+
+The complete 55 source controls and six observer groups pass, but the original
+native/Code/export function-return module is still 9/12. Recursive/mutual calls,
+parameter writes and Sprite forwarding require actual export diagnosis and
+native/SDK/editor acceptance; source control success does not close their GUI
+rows. The active Array prefix repair must retain current proof ownership through
+cached writer removal and validation; its model `Any` marker is not a type fact.
+
+The numeric authoring journey now displays the real clean-export failure:
+mutation/indexing Array producer refusals. Its retained later Code and emitted files show a startup-local
+null reset, intervening device operations and an explicit local capture; an
+older saved project is not the failed current graph. Capture the exact input
+consumed by export before choosing a causal fix. Preserve the current assets,
+clean-report assertion, Code/Blocks/save/fresh-reopen and MakeCode acceptance.
+
 ## Closed recursive Number results — planned authoring acceptance
 
-After the scoped capability is implemented and qualified, author pure module value procedures with base and recursive/mutual calls, direct immutable aliases, parameters and local writes in Code/pseudocode and the actual connected Blocks representation. Edit every call edge, base case and argument; retain independent invocation frames and named diagnostics for unsafe entries, defaults, escaping callbacks and changed writers. Preserve the current bodies, values, call/effect order and assets through save/fresh reopen and actual export/MakeCode compilation/reimport. Generic cyclic facts and unrelated Sprite return forwarding remain separate. The [merged proof scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md) and [qualification contract](ARCADE-NUMERIC-RECURSIVE-RESULTS.md) do not establish this editor journey.
+The source implementation has 55 passing controls; original integration and visible acceptance remain pending. Author pure module value procedures with base and recursive/mutual calls, direct immutable aliases, parameters and local writes in Code/pseudocode and the actual connected Blocks representation. Edit every call edge, base case and argument; retain independent invocation frames and named diagnostics for unsafe entries, defaults, escaping callbacks and changed writers. Preserve the current bodies, values, call/effect order and assets through save/fresh reopen and actual export/MakeCode compilation/reimport. Generic cyclic facts and unrelated Sprite return forwarding remain separate. The [merged proof scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md) and [qualification contract](ARCADE-NUMERIC-RECURSIVE-RESULTS.md) do not establish this editor journey.
 
 ## Image pixel normal results — source controls qualified, editor journey pending
 

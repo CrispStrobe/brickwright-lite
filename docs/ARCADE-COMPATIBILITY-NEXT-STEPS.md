@@ -1,9 +1,118 @@
 # Arcade compatibility: integration and next steps
 
-## Next closed recursive result slice
+## Latest complete hosted result and current repair
 
-Implement and qualify [the merged recursive Number scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md)
-using [the separate source/native/SDK/GUI gates](ARCADE-NUMERIC-RECURSIVE-RESULTS.md).
+The [reviewed recursive candidate](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39731607214)
+completed with **12,171 passes, 168 failures, 19 skips and 43 TODOs**. All
+previous failure titles remain: zero newly failing or resolved cases. Its whole
+55-control source cohort and six refusal-observer groups pass. The original
+function-return module remains **9/12**: recursive/mutual calls, parameter writes
+and Sprite forwarding still fail initial export after native/Code verification.
+Emitted compilation and saved-project continuation after those refusals were
+not reached; original SDK acceptance remains separate. Do not infer native
+compatibility from source controls.
+
+[Claim #1217](https://github.com/CrispStrobe/brickwright-lite/pull/1217) and its
+[currentness amendment #1218](https://github.com/CrispStrobe/brickwright-lite/pull/1218)
+are merged. The active repair handles owned `Any` identity prefixes and retains
+its proof through cached writer removal and public validation. The exact test
+consumer is added under the existing canonical VM model scope key; no new
+provider or value authority is granted. Complete qualification remains pending.
+
+After this slice, diagnose the three original return failures with lossless
+observations of the actual exporter input/project, emitted files, unsupported
+details and Code. Preserve the entire original twelve-test module, assertions,
+source programs, frames and cleanup. Merge a narrow diagnostic claim before
+adding observation hooks or artifact globs. Observe the original exporter once,
+return its actual result unchanged, and retain captures before the existing
+assertion. Do not replay a filtered native/SDK module locally or infer a shared
+cause from the 147 native-addition diagnostics.
+
+The original integration cases are in
+`test/makecode-arcade-function-returns.test.mjs`: recursive/mutual calls,
+parameter writes and Sprite forwarding. Its `roundtrip()` checks native and
+Code feedback before calling the real `projectToArcade()` and asserting zero
+unsupported elements. Capture that actual invocation and result without
+replacing its input with a reconstructed project. Keep the later emitted
+MakeCode compilation, execution and SB3 reload checks intact. The distinct
+numeric editor failure is exercised by
+`scripts/verify-arcade-numeric-authoring-gui.mjs`; capture the export input at
+the failing clean-report stage, rather than treating an earlier saved SB3 as
+that graph.
+
+## Standalone tasks for the next agent
+
+Start by reading `lanes/PROTOCOL.md`, the current claim files under `lanes/`,
+and `docs/ARCADE-AGENT-HANDOFF.md`. Fetch current main and the current PR head;
+these results describe a checkpoint, not a guarantee that no later work landed.
+Preserve other lanes. Merge a claim for any additional source or diagnostic
+paths before editing them. Do not merge a red candidate or repeat an unchanged
+failed run. Use the existing automatic checks; add a full browser gate only
+when the affected acceptance requires it.
+
+### 1. Qualify and finish the Array identity-prefix repair
+
+The implementation is in [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128),
+with the scope in
+[`arcade-array-identity-constraint-prefix`](../lanes/2026-10-22-arcade-array-identity-constraint-prefix.md).
+Read that scope for the complete nine existing modules and the new
+`test/array-identity-constraint-prefix.test.mjs`. The two reset-effect helpers
+and `array-reference-export-authority.js` accept canonical owned `Any`
+identity prefixes without obtaining value types from annotations. Validation
+must recheck an actually used prefix dependency after all success-producing
+computations; changed facts remain revoked after restoration.
+
+Run the complete affected route with genuine VM/runtime-hook providers in
+hosted CI. The new source has not been locally runtime-qualified. Preserve the
+whole original SDK cohort and all assertions. Inspect the actual mixed-Array
+fixture's initial export, Code feedback, exact-file reimport and second export;
+retain initialization/all-writer facts if it still refuses. Completion requires
+passing positive, unsafe-writer, ownership, effect and sticky-currentness cases,
+plus the original native/SDK acceptance. Do not count this as a corpus completion
+without executing the original application.
+
+### 2. Diagnose and repair the three original function-return failures
+
+Use the complete `test/makecode-arcade-function-returns.test.mjs`, particularly
+recursion/mutual recursion, parameter writes and Sprite forwarding. Current
+source-proof success has not fixed these original tests. First claim a narrow
+capture change that retains the real `roundtrip()` export input/result and named
+unsupported details before the existing assertion. Preserve original native
+verification, Code feedback, frames, original/emitted MakeCode compilation and
+SB3 reload. Use the captured rejecting predicates to scope the implementation;
+do not assume all three share a cause. Acceptance is the complete original
+twelve-test module passing with the same values, identities and effects.
+
+### 3. Finish the numeric authoring editor journey
+
+Use `scripts/verify-arcade-numeric-authoring-gui.mjs`. Its clean-report assertion
+now reveals two Array producer refusals. Capture the actual export input at that
+stage; retained later Code suggests reset/device/capture obstacles but does not
+establish the rejecting physical graph. Claim diagnostic or source changes
+before editing. Keep report visibility and the zero-unsupported assertion.
+Completion requires the actual Code/Blocks, assets, save/fresh-reopen, clean
+export and MakeCode acceptance journey passing. Do not substitute the earlier
+saved project or remove captures/reset checks to obtain green.
+
+### 4. Reconcile the remaining failures and remeasure applications
+
+The last complete unit run has 168 failures, unchanged from its predecessor;
+147 are native-addition diagnostic failures, not 147 applications. Group actual
+failures by their captured rejecting predicates and claim one repair area at a
+time. Keep build, pins, old guards, negative controls and unrelated lanes intact.
+After qualified fixes, rerun the original corpus through the established
+conversion/roundtrip and execution paths and publish its per-application reasons.
+The last application census is **184 inputs: 147 translated, 36 partial and one
+malformed**; 225 assessment subjects include 41 extra contexts. No new census
+has been measured at this checkpoint. Keep malformed input distinct from
+unsupported capabilities and distinguish source, runtime, SDK and GUI evidence.
+
+## Recursive result implementation — integration acceptance pending
+
+The source implementation of [the merged recursive Number scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md)
+is already present in PR #1128, with 55 passing source controls. Finish
+[the separate native/SDK/GUI gates](ARCADE-NUMERIC-RECURSIVE-RESULTS.md);
+do not repeat the source implementation.
 Require every actual entry, alias, writer and normal return, grounded return
 induction, unchanged calls/effects and sticky raw-source currentness. Do not
 widen cyclic graph facts, infer Number from annotations or replace recursion.
@@ -13,20 +122,22 @@ The Image pixel/coordinate and recursive frame authoring journeys are tracked
 explicitly in the GUI ledger, not inferred from source-control passes.
 
 
-## Next Array repair: owned parameter declarations after reimport
+## Array prefix repair — retained diagnosis and qualification contract
 
 The retained mixed Array forwarding fixture passes initial export, Code feedback
 and exact-file import, then refuses mutation/indexing on second export. The
 reimported identity procedure contains an owned `arcade_declareParameterConstraint`
-with `Any` before returning its actual formal. The existing reset/effect and
-identity recognizers reject that prefix or require the first body block to be
+with `Any` before returning its actual formal. Before this checkpoint, the reset/effect and
+identity recognizers rejected that prefix or required the first body block to be
 its sole return. This is a concrete structural obstacle; private writer/reset
 predicate states were not captured, so it does not prove the only cause.
 
-Before implementation, merge a narrow claim for
-`overlay/scratch-gui/src/lib/bw-makecode/array-class-reset-effects.js` and
-`array-definite-overwrite.js`. Reuse the canonical procedure constraint model
-and exact procedure/formal ownership to prove the prefix's effects. `Any` must
+Claims #1217 and #1218 are already merged. The checkpoint changes
+`overlay/scratch-gui/src/lib/bw-makecode/array-class-reset-effects.js`,
+`array-definite-overwrite.js` and the private currentness bridge in
+`array-reference-export-authority.js`. It reuses the canonical procedure
+constraint model and exact procedure/formal ownership for the prefix's effects.
+Keep these obligations when finishing qualification. `Any` must
 not grant an Array, element, initialization or callable-input type fact.
 Preserve all actual writers, alias identity and initialization order. Add
 negative controls for wrong ownership, stale/replaced blocks, unknown prefixes,
