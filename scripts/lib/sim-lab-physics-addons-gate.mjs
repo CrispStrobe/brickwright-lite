@@ -10,6 +10,8 @@ import {judgeOffsetEllipsa} from './sim-lab-offset-ellipsa-judge.mjs';
 import {judgeEchoLingerCrossline} from './sim-lab-echo-linger-crossline-judge.mjs';
 import {judgeCounterturnSnapgate} from './sim-lab-counterturn-snapgate-judge.mjs';
 import {judgeBit} from './sim-lab-bit-keeper-judge.mjs';
+import {judgeCircleSplitter} from './sim-lab-circle-splitter-judge.mjs';
+import {judgeIntegral} from './sim-lab-integral-judge.mjs';
 export { addonLesson };
 export async function physicsAddonInteractions(page, opts) {
   const {
@@ -24,16 +26,21 @@ export async function physicsAddonInteractions(page, opts) {
       'momentum-twins': 125,
       'bloom-gate': 170,
       amplify: 155,
-      'offset-orbit': 141,
+      'offset-orbit': 191,
+      'circle-splitter': 136,
+      integral: 154,
       ellipsa: 187
     }[id];
   await mechanicsInteractions(page, {
     ...opts,
     models: [id],
+    // A catalog entry with an explicit id (Integral) is keyed by that id in the
+    // gallery; entries without one use their file name.
+    keyFor: key => key === 'integral' ? 'integral' : `${key}.ldr`,
     observeProgram: ['counterturn','snapgate'].includes(id),
-    simulatedMs: id === 'counterturn' ? 30000 : id === 'snapgate' ? 45000 : id === 'bit-keeper' ? 65000 : id === 'linger' ? 155000 : id === 'echo-bridge' ? 30000 : id === 'crossline' ? 30000 : id === 'scale-studio' || id === 'bloom-gate' ? 40000 : id === 'amplify' || id === 'ellipsa' ? 170000 : 75000,
+    simulatedMs: id === 'counterturn' ? 30000 : id === 'snapgate' ? 45000 : id === 'bit-keeper' ? 65000 : id === 'linger' ? 155000 : id === 'echo-bridge' ? 30000 : id === 'crossline' ? 30000 : id === 'scale-studio' || id === 'bloom-gate' ? 40000 : id === 'amplify' || id === 'ellipsa' ? 170000 : id === 'offset-orbit' ? 30000 : id === 'circle-splitter' ? 100000 : id === 'integral' ? 45000 : 75000,
     speed: 4,
-    judge: ['counterturn','snapgate'].includes(id) ? judgeCounterturnSnapgate : id === 'bit-keeper' ? judgeBit : ['echo-bridge','linger','crossline'].includes(id) ? judgeEchoLingerCrossline : ['offset-orbit','ellipsa'].includes(id) ? judgeOffsetEllipsa : ['momentum-twins', 'bloom-gate', 'amplify'].includes(id) ? judgeNewAddon : judgeAddon
+    judge: ['counterturn','snapgate'].includes(id) ? judgeCounterturnSnapgate : id === 'bit-keeper' ? judgeBit : ['echo-bridge','linger','crossline'].includes(id) ? judgeEchoLingerCrossline : ['offset-orbit','ellipsa'].includes(id) ? judgeOffsetEllipsa : id === 'circle-splitter' ? judgeCircleSplitter : id === 'integral' ? judgeIntegral : ['momentum-twins', 'bloom-gate', 'amplify'].includes(id) ? judgeNewAddon : judgeAddon
   });
   const manual = await manualMechanicsInteractions(page, {
     ...opts,
@@ -49,16 +56,23 @@ export async function physicsAddonInteractions(page, opts) {
     timeout: 120000
   });
   const plan = await page.evaluate(() => window.__bwSimLabInstructions.plan);
+  const bandCount = {'bit-keeper': 1, 'echo-bridge': 2}[id] || 0;
   assert.equal(plan.steps.flatMap(s => s.parts).length, n);
-  assert.ok(plan.steps.every(s => !s.loose && s.parts.length <= 6));
+  assert.equal(plan.steps.flatMap(s => s.belts || []).length, bandCount);
+  if (['offset-orbit', 'circle-splitter'].includes(id)) {
+    // These two deliveries ship their own assembly groups, so their instruction
+    // pages are as coarse as the model says; every piece is still placed once.
+    assert.equal(new Set(plan.steps.flatMap(s => s.parts)).size, n);
+    assert.ok(plan.steps.every(s => !s.loose && s.parts.length > 0));
+  } else assert.ok(plan.steps.every(s => !s.loose && s.parts.length <= 6));
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => window.__bwSimLabInstructions.stats?.step === 1);
   await page.keyboard.press('End');
   await page.waitForFunction(() => window.__bwSimLabInstructions.page === window.__bwSimLabInstructions.steps);
-  assert.equal(await page.getByTestId('bw-sim-instructions-bom').getByTestId('bw-sim-instructions-part').evaluateAll(es => es.reduce((n, e) => n + Number(e.dataset.count), 0)), n);
+  assert.equal(await page.getByTestId('bw-sim-instructions-bom').getByTestId('bw-sim-instructions-part').evaluateAll(es => es.reduce((n, e) => n + Number(e.dataset.count), 0)), n + bandCount);
   await d.screenshot({
     path: resolve(opts.shotsDir, id + '-bom.png')
   });
   await page.keyboard.press('Escape');
-  console.log(`PASS ${id}: actual worker/output, manual controls, lesson, ${plan.steps.length} connected instruction pages and ${n}-piece BOM`);
+  console.log(`PASS ${id}: actual worker/output, manual controls, lesson, ${plan.steps.length} connected instruction pages and ${n + bandCount}-piece BOM`);
 }

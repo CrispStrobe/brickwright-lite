@@ -16,10 +16,11 @@
 //
 // WHAT IS STORED
 // --------------
-// `{ldraw, name?, mat?}`: the model as the LDraw text `serializeModel` writes
+// `{ldraw, name?, mat?, autoPorts?}`: the model as the LDraw text `serializeModel` writes
 // (the format of record; it reopens in LeoCAD and Studio), the model's file
 // name (it is written into the text's `0 Name:` line, so it is kept to make
-// the round trip byte-exact) and the selected mat id, when there is one.
+// the round trip byte-exact), selected mat id and an explicit import setting.
+// Absent autoPorts retains the existing author-based import default.
 //
 // This module has NO imports on purpose: bw-project-bundle.js validates the
 // section with it, and that file is on the first load. The LDraw parser and
@@ -59,7 +60,7 @@ export const simLabRecord = value => {
     if (value === null || typeof value !== 'object' || Array.isArray(value)) {
         throw new Error('simLab must be an object');
     }
-    const {ldraw, name, mat} = value;
+    const {ldraw, name, mat, autoPorts} = value;
     if (typeof ldraw !== 'string') throw new Error('simLab.ldraw must be a string');
     if (ldraw.includes('\u0000')) throw new Error('simLab.ldraw contains a NUL byte');
     if (!PART_LINE.test(ldraw)) throw new Error('simLab.ldraw places no part (no type-1 line)');
@@ -69,9 +70,13 @@ export const simLabRecord = value => {
     if (mat !== undefined && (typeof mat !== 'string' || !MAT_ID.test(mat))) {
         throw new Error('simLab.mat must be a mat id (lower-case letters, digits, hyphens)');
     }
+    if (autoPorts !== undefined && typeof autoPorts !== 'boolean') {
+        throw new Error('simLab.autoPorts must be a boolean');
+    }
     const record = {ldraw};
     if (name !== undefined) record.name = name;
     if (mat !== undefined) record.mat = mat;
+    if (autoPorts !== undefined) record.autoPorts = autoPorts;
     if (utf8Size(JSON.stringify(record)) > SIM_LAB_LIMIT) {
         throw new Error(`simLab exceeds ${SIM_LAB_LIMIT} bytes`);
     }
@@ -83,14 +88,15 @@ export const simLabRecord = value => {
  * (the text places no part). A name that cannot be stored is left out rather
  * than failing the save; a mat id that cannot is a programming error.
  * @param {string} ldraw text from serializeModel
- * @param {{name?: string, mat?: string|null}} [options]
- * @returns {{ldraw: string, name?: string, mat?: string}|null}
+ * @param {{name?: string, mat?: string|null, autoPorts?: boolean}} [options]
+ * @returns {{ldraw: string, name?: string, mat?: string, autoPorts?: boolean}|null}
  */
-export const simLabRecordFromText = (ldraw, {name, mat} = {}) => {
+export const simLabRecordFromText = (ldraw, {name, mat, autoPorts} = {}) => {
     if (typeof ldraw !== 'string' || !PART_LINE.test(ldraw)) return null;
     const value = {ldraw};
     if (isStorableName(name)) value.name = name;
     if (mat !== undefined && mat !== null) value.mat = mat;
+    if (autoPorts !== undefined) value.autoPorts = autoPorts;
     return simLabRecord(value);
 };
 

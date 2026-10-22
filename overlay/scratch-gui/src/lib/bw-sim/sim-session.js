@@ -50,6 +50,11 @@ import {LockstepRunner, isNonRewindable, L3_HUB_NEEDS_LOCKSTEP} from './routes/r
  */
 export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part, upgradePartMeta(p)]));
 
+/** Optional manual commands for a model's ports; these limit requested targets, never physical poses. */
+const RESONANCE_MANUAL_JOG = Object.freeze({
+    A: Object.freeze({minDeg: -2, maxDeg: 2, stepDeg: 0.5, speedDps: 5})
+});
+
 /**
  * Reference models shipped in static/sim-lab/models/ (file name → titles). A model
  * may name an example program in static/sim-lab/programs/ (DEVICE SPIKE text; for the
@@ -57,28 +62,28 @@ export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part
  * the mat it is meant for: the pane offers to load it into the Code tab.
  */
 export const MODELS = Object.freeze([
-    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}},
-    {file: 'line-follower.ldr', title: {en: 'Line follower', de: 'Linienfolger'},
+    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base — differential steering', de: 'SPIKE-Fahrbasis — Differenziallenkung'}},
+    {file: 'line-follower.ldr', title: {en: 'Line follower — light-sensor feedback', de: 'Linienfolger — Regelung mit Lichtsensoren'},
         example: 'line-follower.bw', mat: 'line-oval'},
-    {file: 'wall-stopper.ldr', title: {en: 'Wall stopper', de: 'Wandstopper'},
+    {file: 'wall-stopper.ldr', title: {en: 'Wall stopper — distance-controlled braking', de: 'Wandstopper — Bremsen nach Abstand'},
         example: 'wall-stopper.bw', mat: 'wall'},
-    {file: 'colour-explorer.ldr', title: {en: 'Colour explorer', de: 'Farbentdecker'},
+    {file: 'colour-explorer.ldr', title: {en: 'Colour explorer — colour and heading feedback', de: 'Farbentdecker — Rückmeldung aus Farbe und Fahrtrichtung'},
         example: 'colour-explorer.bw', mat: 'colour-zones'},
     // The same robot a second time, with its Sumo program: `id` keys the entry (the pane lists by it).
-    {id: 'sumo', file: 'colour-explorer.ldr', title: {en: 'Sumo ring', de: 'Sumo-Ring'},
+    {id: 'sumo', file: 'colour-explorer.ldr', title: {en: 'Sumo ring — colour-guided pushing', de: 'Sumo-Ring — farbgeführtes Schieben'},
         example: 'sumo.bw', mat: 'sumo'},
-    {file: 'forklift.ldr', title: {en: 'Forklift', de: 'Gabelstapler'},
+    {file: 'forklift.ldr', title: {en: 'Forklift — rack-and-pinion lift', de: 'Gabelstapler — Zahnstangen-Hub'},
         example: 'forklift.bw', mat: 'warehouse'},
-    {file: 'maze-runner.ldr', title: {en: 'Maze runner', de: 'Labyrinth-Läufer'},
+    {file: 'maze-runner.ldr', title: {en: 'Maze runner — distance and colour navigation', de: 'Labyrinth-Läufer — Navigation mit Abstand und Farbe'},
         example: 'maze.bw', mat: 'maze'},
     // Gear mechanics (docs/ROBOT-LAB-ARCHITECTURE.md §1.2): a shifting gearbox and a differential, on a stand.
-    {file: 'gearbox.ldr', title: {en: 'Two-speed gearbox', de: 'Zweigang-Schaltgetriebe'},
+    {file: 'gearbox.ldr', title: {en: 'Two-speed gearbox — sliding-clutch shift', de: 'Zweigang-Schaltgetriebe — Schalten mit Schiebekupplung'},
         example: 'gearbox.bw'},
-    {file: 'differential.ldr', title: {en: 'Differential', de: 'Differenzialgetriebe'},
+    {file: 'differential.ldr', title: {en: 'Differential — holding one output doubles the other', de: 'Differenzialgetriebe — ein Abtrieb fest, der andere doppelt so schnell'},
         example: 'differential.bw'},
     // The differential on wheels (docs/ROBOT-LAB-ARCHITECTURE.md T6): motor A drives the rear axle through it,
     // motor B steers the front wheels (an Ackermann tie rod). The `intro` is the pane's one-paragraph story.
-    {file: 'differential-car.ldr', title: {en: 'Differential car', de: 'Differenzial-Auto'},
+    {file: 'differential-car.ldr', title: {en: 'Differential car — differential drive and rack steering', de: 'Differenzial-Auto — Differenzialantrieb und Zahnstangenlenkung'},
         example: 'differential-car.bw', mat: 'plain',
         intro: {
             en: 'A car that steers like a real one. Motor A turns the back wheels through a differential, ' +
@@ -93,13 +98,13 @@ export const MODELS = Object.freeze([
                 'und rückwärts zurück zum Start.'
         }},
     // Flexible parts (docs/ROBOT-LAB-UX.md §11): a chain from the motor's 8T to a 24T.
-    {file: 'chain-drive.ldr', title: {en: 'Chain drive', de: 'Kettenantrieb'},
+    {file: 'chain-drive.ldr', title: {en: 'Chain drive — 8T to 24T in the same direction', de: 'Kettenantrieb — 8er auf 24er, gleiche Drehrichtung'},
         example: 'chain-drive.bw'},
     // Pneumatics v1 (docs/ROBOT-LAB-UX.md §16): motor A turns a valve's lever; hoses feed a cylinder.
-    {file: 'pneumatic-press.ldr', title: {en: 'Pneumatic cylinder', de: 'Pneumatikzylinder'},
+    {file: 'pneumatic-press.ldr', title: {en: 'Pneumatic cylinder — valve-reversed air drive', de: 'Pneumatikzylinder — Druckluft, vom Ventil umgeschaltet'},
         example: 'pneumatic-press.bw'},
     // Pen and paper (architecture M15): the driving base, its castor ball a pen.
-    {file: 'drawing-robot.ldr', title: {en: 'Drawing robot', de: 'Malroboter'},
+    {file: 'drawing-robot.ldr', title: {en: 'Drawing robot — trailing pen traces the motion', de: 'Malroboter — nachlaufender Stift zeichnet die Bewegung'},
         example: 'drawing-robot.bw', mat: 'plain'},
     {file: 'mean-machine.ldr', title: {en: 'Mean Machine — mechanical average', de: 'Mean Machine — mechanischer Mittelwert'}, example: 'mean-machine.bw', mat: 'plain'},
     {file: 'stepworks.ldr', title: {en: 'Stepworks — walking-beam conveyor', de: 'Stepworks — Hubbalkenförderer'}, example: 'stepworks.bw', mat: 'plain'},
@@ -108,21 +113,43 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'gimbal-lab.ldr', title: {en: 'Gimbal Lab — three-axis gimbal lock', de: 'Gimbal Lab — dreiachsige Gimbal-Sperre'},
+        example: 'gimbal-lab.bw', mat: 'plain', intro: {
+            en: 'Three nested frames put yaw, pitch and roll on separate motors. At 90° middle pitch the outer and inner axes align, so opposite A/C moves cancel at the green marker even though every bearing still turns.',
+            de: 'Drei verschachtelte Rahmen verteilen Gieren, Nicken und Rollen auf getrennte Motoren. Bei 90° mittlerer Neigung liegen die äußere und innere Achse auf einer Linie; entgegengesetzte A/C-Bewegungen heben sich am grünen Marker auf, obwohl sich jedes Lager weiter dreht.'
+        }},
+    // Selecting any preset reloads the same saved assembly before loading its finite experiment.
+    {file: 'resonance-lab.ldr', title: {en: 'Resonance Lab — near-resonant burst', de: 'Resonance Lab — resonanznahe Anregung'},
+        example: 'resonance-lab.bw', mat: 'plain', manualJog: RESONANCE_MANUAL_JOG, intro: {
+            en: 'One motor rocks the blue input through ±2°. Two bands excite the passive orange arm. Compare the three fresh experiments, then watch the output ring down while the input holds.',
+            de: 'Ein Motor bewegt den blauen Eingang um ±2°. Zwei Bänder regen den passiven orangefarbenen Arm an. Vergleiche die drei frisch geladenen Versuche und beobachte anschließend das Ausschwingen bei gehaltenem Eingang.'
+        }},
+    {id: 'resonance-lab-slow', file: 'resonance-lab.ldr', title: {en: 'Resonance Lab — slow comparison', de: 'Resonance Lab — langsamer Vergleich'},
+        example: 'resonance-lab-slow.bw', mat: 'plain', manualJog: RESONANCE_MANUAL_JOG},
+    {id: 'resonance-lab-fast', file: 'resonance-lab.ldr', title: {en: 'Resonance Lab — fast comparison', de: 'Resonance Lab — schneller Vergleich'},
+        example: 'resonance-lab-fast.bw', mat: 'plain', manualJog: RESONANCE_MANUAL_JOG},
     {file: 'echo-bridge.ldr', title: {"en": "Echo Bridge — motion passed between pendulums", "de": "Echo Bridge — Bewegung wandert zwischen Pendeln"}, example: 'echo-bridge.bw', mat: 'plain'},
     {file: 'linger.ldr', title: {"en": "Linger — six-bar dwell machine", "de": "Linger — sechsgliedriges Rastgetriebe"}, example: 'linger.bw', mat: 'plain'},
     {file: 'crossline.ldr', title: {"en": "Crossline — geared straight-line pair", "de": "Crossline — Geradführung durch Gegenrotation"}, example: 'crossline.bw', mat: 'plain'},
     {file: 'counterturn.ldr', title: {en: 'Counterturn — a free carrier and flywheel', de: 'Counterturn — freier Träger und Schwungrad'}, example: 'counterturn.bw', mat: 'plain'},
+    {file: 'product-plotter.ldr', title: {en: 'Product Plotter — a mechanical multiplier', de: 'Product Plotter — ein mechanischer Multiplizierer'},
+        example: 'product-plotter.bw', mat: 'plain', intro: {
+            en: 'Motor A tilts a straight guide; motor B slides the green rail. Their intersection moves the passive orange carriage, so similar triangles make its displacement equal the product of both inputs divided by a fixed reference length.',
+            de: 'Motor A neigt eine gerade Führung; Motor B verschiebt die grüne Schiene. Ihr Schnittpunkt bewegt den passiven orangefarbenen Schlitten. Ähnliche Dreiecke machen seinen Weg zum Produkt beider Eingaben, geteilt durch eine feste Bezugslänge.'
+        }},
     {file: 'snapgate.ldr', title: {en: 'Snapgate — a spring memory switch', de: 'Snapgate — ein Feder-Speicherschalter'}, example: 'snapgate.bw', mat: 'plain'},
     {file: 'bit-keeper.ldr', title: {"en": "Bit Keeper — a mechanical memory", "de": "Bit Keeper — ein mechanisches Gedächtnis"}, example: 'bit-keeper.bw', mat: 'plain'},
-    {file: 'offset-orbit.ldr', title: {"en": "Offset Orbit — Oldham coupling", "de": "Offset Orbit — Oldham-Kupplung"}, example: 'offset-orbit.bw', mat: 'plain'},
+    {file: 'offset-orbit.ldr', title: {"en": "Offset Orbit — one turn, two orbits", "de": "Offset Orbit — eine Umdrehung, zwei Bahnen"}, example: 'offset-orbit.bw', mat: 'plain'},
+    {file: 'circle-splitter.ldr', title: {"en": "Circle Splitter — circles into straight strokes", "de": "Circle Splitter — Kreise werden gerade Hübe"}, example: 'circle-splitter.bw', mat: 'plain'},
+    {id: 'integral', file: 'integral.ldr', title: {"en": "Integral — a friction wheel computer", "de": "Integral — ein Reibrad-Rechner"}, example: 'integral.bw', mat: 'plain', autoPorts: false},
     {file: 'ellipsa.ldr', title: {"en": "Ellipsa — one-motor ellipsograph", "de": "Ellipsa — Ellipsenmechanik mit einem Motor"}, example: 'ellipsa.bw', mat: 'plain'},
     {file: 'momentum-twins.ldr', title: {"en": "Momentum Twins — reaction wheels", "de": "Momentum Twins — Reaktionsräder"}, example: 'momentum-twins.bw', mat: 'plain'},
     {file: 'bloom-gate.ldr', title: {"en": "Bloom Gate — a mechanical iris", "de": "Bloom Gate — eine mechanische Iris"}, example: 'bloom-gate.bw', mat: 'plain'},
     {file: 'amplify.ldr', title: {"en": "Amplify — a path at twice the scale", "de": "Amplify — eine Bahn im doppelten Maßstab"}, example: 'amplify.bw', mat: 'plain'},
-    {file: 'pantograph-doubler.ldr', title: {en: "Pantograph Doubler", de: "Pantograf-Verdoppler"}, example: 'pantograph-doubler.bw', mat: 'plain'},
-    {file: 'scale-studio.ldr', title: {en: "Scale Studio", de: "Skalenstudio"}, example: 'scale-studio.bw', mat: 'plain'},
-    {file: 'ripple-relay.ldr', title: {en: "Ripple Relay", de: "Drehzahl-Ausgleich"}, example: 'ripple-relay.bw', mat: 'plain'},
-    {file: 'crossglide.ldr', title: {en: "Crossglide", de: "Kreuzschlittenkupplung"}, example: 'crossglide.bw', mat: 'plain'},
+    {file: 'pantograph-doubler.ldr', title: {en: 'Pantograph Doubler — passive 2:1 scale', de: 'Pantograf-Verdoppler — passive 2:1-Übersetzung'}, example: 'pantograph-doubler.bw', mat: 'plain'},
+    {file: 'scale-studio.ldr', title: {en: 'Scale Studio — 2:1 pantograph in quarter turns', de: 'Skalenstudio — 2:1-Pantograf in Vierteldrehungen'}, example: 'scale-studio.bw', mat: 'plain'},
+    {file: 'ripple-relay.ldr', title: {en: 'Ripple Relay — phased Cardan joints cancel ripple', de: 'Ripple Relay — phasenrichtige Kardangelenke heben Ungleichförmigkeit auf'}, example: 'ripple-relay.bw', mat: 'plain'},
+    {file: 'crossglide.ldr', title: {en: 'Crossglide — Oldham coupling for offset shafts', de: 'Crossglide — Oldham-Kupplung für versetzte Wellen'}, example: 'crossglide.bw', mat: 'plain'},
     {file: 'scale-echo.ldr', title: {en: 'Scale Echo — two-to-one pantograph', de: 'Scale Echo — Pantograf mit Faktor zwei'}, example: 'scale-echo.bw', mat: 'plain'},
     {file: 'turnwise.ldr', title: {en: 'Turnwise — unequal steering angles', de: 'Turnwise — unterschiedliche Lenkwinkel'}, example: 'turnwise.bw', mat: 'plain'},
     {file: 'ellipse-engine.ldr', title: {en: 'Ellipse Engine — orthogonal trammel', de: 'Ellipse Engine — rechtwinkliger Ellipsenzirkel'}, example: 'ellipse-engine.bw', mat: 'plain'},
@@ -136,77 +163,82 @@ export const MODELS = Object.freeze([
     {file: 'atlas-arm.ldr', title: {en: 'Atlas Arm — worm drives and gripper', de: 'Atlas Arm — Schneckengetriebe und Greifer'}, example: 'atlas-arm.bw', mat: 'plain'},
     {file: 'switchback-lift.ldr', title: {en: 'Switchback Lift — ball return machine', de: 'Switchback Lift — Kugel-Rücklaufmaschine'}, example: 'switchback-lift.bw', mat: 'plain'},
     {file: 'straight-eight.ldr', title: {en: 'Straight Eight — straight-line linkage', de: 'Straight Eight — Geradführung'}, example: 'straight-eight.bw', mat: 'plain'},
-    {file: 'pendulum-array.ldr', title: {en: 'Motor-excited pendulum array', de: 'Motorangeregte Pendelreihe'}, example: 'pendulum-array.bw', mat: 'plain'},
-    {file: 'clutch-bench.ldr', title: {en: 'Clutch load bench', de: 'Rutschkupplungs-Prüfstand'}, example: 'clutch-bench.bw', mat: 'plain'},
-    {file: 'pulse-percussion.ldr', title: {en: 'Pulse Percussion', de: 'Puls-Schlagwerk'}, example: 'pulse-percussion.bw', mat: 'plain'},
-    {file: 'centrifugal-governor.ldr', title: {en: 'Centrifugal governor demonstrator', de: 'Fliehkraftregler-Modell'}, example: 'centrifugal-governor.bw', mat: 'plain'},
-    {file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Wave', de: 'Gezeiten-Trio: Welle'},
+    {file: 'pendulum-array.ldr', title: {en: 'Motor-excited pendulum array — length sets the period', de: 'Motorangeregte Pendelreihe — Länge bestimmt die Periode'}, example: 'pendulum-array.bw', mat: 'plain'},
+    {file: 'clutch-bench.ldr', title: {en: 'Clutch load bench — slipping clutch and hold', de: 'Rutschkupplungs-Prüfstand — schleifende Kupplung und Halten'}, example: 'clutch-bench.bw', mat: 'plain'},
+    {file: 'pulse-percussion.ldr', title: {en: 'Pulse Percussion — cam-lifted gravity beaters', de: 'Puls-Schlagwerk — Nockenhub für Fallgewichte'}, example: 'pulse-percussion.bw', mat: 'plain'},
+    {file: 'centrifugal-governor.ldr', title: {en: 'Centrifugal governor — lift grows with speed squared', de: 'Fliehkraftregler — Hub wächst mit dem Quadrat der Drehzahl'}, example: 'centrifugal-governor.bw', mat: 'plain'},
+    {file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Wave — three phased four-bars', de: 'Gezeiten-Trio: Welle — drei phasenversetzte Viergelenke'},
         example: 'tidal-trio.bw', mat: 'plain'},
-    {id: 'tidal-trio-together', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Together', de: 'Gezeiten-Trio: Gleichlauf'},
+    {id: 'tidal-trio-together', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Together — synchronized four-bars', de: 'Gezeiten-Trio: Gleichlauf — gleichphasige Viergelenke'},
         example: 'tidal-trio-together.bw', mat: 'plain'},
-    {id: 'tidal-trio-alternating', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Alternating', de: 'Gezeiten-Trio: Abwechselnd'},
+    {id: 'tidal-trio-alternating', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Alternating — offset crank phases', de: 'Gezeiten-Trio: Abwechselnd — versetzte Kurbelphasen'},
         example: 'tidal-trio-alternating.bw', mat: 'plain'},
-    {id: 'tidal-trio-reverse', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Reverse wave', de: 'Gezeiten-Trio: Gegenwelle'},
+    {id: 'tidal-trio-reverse', file: 'tidal-trio.ldr', title: {en: 'Tidal Trio: Reverse wave — reversed phase order', de: 'Gezeiten-Trio: Gegenwelle — umgekehrte Phasenfolge'},
         example: 'tidal-trio-reverse.bw', mat: 'plain'},
-    {file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Fivefold', de: 'Orbit-Zeichner: Fünffach'},
+    {file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Fivefold — rotating paper and pen', de: 'Orbit-Zeichner: Fünffach — drehendes Papier und Stift'},
         example: 'orbital-loom.bw', mat: 'plain'},
-    {id: 'orbital-loom-sevenfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Sevenfold', de: 'Orbit-Zeichner: Siebenfach'},
+    {id: 'orbital-loom-sevenfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Sevenfold — 7:1 pen-to-paper turns', de: 'Orbit-Zeichner: Siebenfach — 7:1 Stift zu Papier'},
         example: 'orbital-loom-sevenfold.bw', mat: 'plain'},
-    {id: 'orbital-loom-elevenfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Elevenfold', de: 'Orbit-Zeichner: Elffach'},
+    {id: 'orbital-loom-elevenfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Elevenfold — 11:1 pen-to-paper turns', de: 'Orbit-Zeichner: Elffach — 11:1 Stift zu Papier'},
         example: 'orbital-loom-elevenfold.bw', mat: 'plain'},
-    {id: 'orbital-loom-eightfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Eightfold', de: 'Orbit-Zeichner: Achtfach'},
+    {id: 'orbital-loom-eightfold', file: 'orbital-loom.ldr', title: {en: 'Orbital Loom: Eightfold — 8:1 pen-to-paper turns', de: 'Orbit-Zeichner: Achtfach — 8:1 Stift zu Papier'},
         example: 'orbital-loom-eightfold.bw', mat: 'plain'},
-    {file: 'positioning-arm.ldr', title: {en: 'Two-joint positioning arm', de: 'Zweigelenk-Positionierarm'},
+    {file: 'positioning-arm.ldr', title: {en: 'Two-joint positioning arm — serial 80/64 mm links', de: 'Zweigelenk-Positionierarm — serielle 80/64-mm-Glieder'},
         example: 'positioning-arm.bw', mat: 'plain'},
-    {file: 'ratio-workbench.ldr', title: {en: 'Three-drive ratio workbench', de: 'Getriebe-Vergleich mit drei Antrieben'},
+    {file: 'ratio-workbench.ldr', title: {en: 'Three-drive ratio workbench — 1:1, 1:15, 1:243', de: 'Getriebe-Vergleich — 1:1, 1:15, 1:243'},
         example: 'ratio-workbench.bw', mat: 'plain'},
-    {file: 'rack-shuttle.ldr', title: {en: 'Rack shuttle table', de: 'Zahnstangen-Schiebetisch'},
+    {file: 'rack-shuttle.ldr', title: {en: 'Rack shuttle table — 8T pinion, 50.27 mm per two turns', de: 'Zahnstangen-Schiebetisch — 8er-Ritzel, 50,27 mm je zwei Umdrehungen'},
         example: 'rack-shuttle.bw', mat: 'plain'},
-    {file: 'crank-rocker.ldr', title: {en: 'Motorised crank-rocker', de: 'Motorisierte Kurbelschwinge'},
+    {file: 'crank-rocker.ldr', title: {en: 'Motorised crank-rocker — four-bar rocker', de: 'Motorisierte Kurbelschwinge — Viergelenk'},
         example: 'crank-rocker.bw', mat: 'plain'},
-    {file: 'parallel-lift.ldr', title: {en: 'Parallel-motion lift', de: 'Parallelogramm-Hebebühne'},
+    {file: 'parallel-lift.ldr', title: {en: 'Parallel-motion lift — level tray on a curved path', de: 'Parallelogramm-Hebebühne — waagerechte Plattform auf gekrümmter Bahn'},
         example: 'parallel-lift.bw', mat: 'plain'},
-    {file: 'screw-crane.ldr', title: {en: 'Screw crane with powered slew', de: 'Spindelkran mit Schwenkantrieb'},
+    {file: 'screw-crane.ldr', title: {en: 'Screw crane with powered slew — screw lift and 8:28 slew', de: 'Spindelkran mit Schwenkantrieb — Spindelhub und 8:28-Schwenkung'},
         example: 'screw-crane.bw', mat: 'plain'},
-    {file: 'pivot-rover.ldr', title: {en: 'Pivot-steered rover', de: 'Drehschemel-Rover'},
+    {file: 'sky-courier.ldr', title: {en: 'Sky Courier — two-winch suspended gondola', de: 'Sky Courier — schwebende Gondel an zwei Winden'},
+        example: 'sky-courier.bw', mat: 'plain', intro: {
+            en: 'Two 24:1 worm winches wind separate cords onto flanged drums. Shortening both cords lifts the gondola; shortening one more than the other moves it sideways. The gondola itself has no motor and may sway.',
+            de: 'Zwei 24:1-Schneckenwinden wickeln getrennte Schnüre auf Bundtrommeln. Werden beide Schnüre kürzer, hebt sich die Gondel; ist eine kürzer als die andere, wandert sie zur Seite. Die Gondel selbst hat keinen Motor und kann schwingen.'
+        }},
+    {file: 'pivot-rover.ldr', title: {en: 'Pivot-steered rover — bogie steering and free half-shafts', de: 'Drehschemel-Rover — Drehschemellenkung und freie Halbwellen'},
         example: 'pivot-rover.bw', mat: 'plain'},
-    {file: 'chain-transmission.ldr', title: {en: 'Long chain transmission', de: 'Langes Kettengetriebe'},
+    {file: 'chain-transmission.ldr', title: {en: 'Long chain transmission — 16T to 24T, 42 links', de: 'Langes Kettengetriebe — 16er auf 24er, 42 Glieder'},
         example: 'chain-transmission.bw', mat: 'plain'},
-    {file: 'flywheel-differential.ldr', title: {en: 'Flywheel differential', de: 'Schwungrad-Differenzial'},
+    {file: 'flywheel-differential.ldr', title: {en: 'Flywheel differential — inertia split across two outputs', de: 'Schwungrad-Differenzial — Trägheit auf zwei Abtriebe verteilt'},
         example: 'flywheel-differential.bw', mat: 'plain'},
-    {file: 'survey-rover.ldr', title: {en: 'Survey rover', de: 'Erkundungsrover'},
+    {file: 'survey-rover.ldr', title: {en: 'Survey rover — gravity back-drives the sensor head', de: 'Erkundungsrover — Schwerkraft bewegt den Sensorkopf zurück'},
         example: 'survey-rover.bw', mat: 'plain'},
-    {file: 'excavator.ldr', title: {en: 'Excavator', de: 'Bagger'},
+    {file: 'excavator.ldr', title: {en: 'Excavator — screw actuators and slewing frame', de: 'Bagger — Spindelantriebe und Drehgestell'},
         example: 'excavator.bw', mat: 'plain'},
     // A slewing crane (docs/ROBOT-LAB-ARCHITECTURE.md T1): the turntable on A, the boom luffed by a linear actuator on B.
-    {file: 'crane.ldr', title: {en: 'Crane', de: 'Kran'},
+    {file: 'crane.ldr', title: {en: 'Crane — linear-actuator boom and geared slew', de: 'Kran — Spindelausleger und Zahnkranz-Schwenkung'},
         example: 'crane.bw', mat: 'plain'},
     // The LEGO MINDSTORMS RCX (hubs/rcx/, docs/ROBOT-LAB-RCX.md): its examples are NQC (`.nqc`), compiled
     // by nqc-wasm and downloaded to the Lab's RCX, where the clean-room bytecode VM runs them.
-    {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car', de: 'RCX-Rempelauto'},
+    {file: 'rcx-bumper-car.ldr', title: {en: 'RCX bumper car — contact feedback stops or reverses', de: 'RCX-Rempelauto — Kontaktrückmeldung stoppt oder kehrt um'},
         example: 'rcx-bumper-car.nqc', mat: 'wall'},
-    {id: 'rcx-line-follower', file: 'rcx-bumper-car.ldr', title: {en: 'RCX line follower', de: 'RCX-Linienfolger'},
+    {id: 'rcx-line-follower', file: 'rcx-bumper-car.ldr', title: {en: 'RCX line follower — light-sensor edge tracking', de: 'RCX-Linienfolger — Kantenfolge mit Lichtsensor'},
         example: 'rcx-line-follower.nqc', mat: 'line-oval'},
     // MINDSTORMS EV3 and NXT (hubs/ev3/, hubs/nxt/, docs/ROBOT-LAB-EV3-NXT.md): their blocks reach the
     // Lab's brick as direct commands over the Scratch Link BT-classic registry. The EV3's example is
     // DEVICE EV3 text (the ev3comprehensive blocks); the NXT's, legonxt blocks (`.blocks.json`: a
     // sprite's script, added to the editing sprite) — the NXT has no DEVICE words yet.
-    {file: 'ev3-wall-stopper.ldr', title: {en: 'EV3 wall stopper', de: 'EV3-Wandstopper'},
+    {file: 'ev3-wall-stopper.ldr', title: {en: 'EV3 wall stopper — ultrasonic distance stop', de: 'EV3-Wandstopper — Stopp per Ultraschall'},
         example: 'ev3-wall-stopper.bw', mat: 'wall'},
-    {file: 'nxt-bumper-bot.ldr', title: {en: 'NXT bumper bot', de: 'NXT-Rempelroboter'},
+    {file: 'nxt-bumper-bot.ldr', title: {en: 'NXT bumper bot — touch-sensor reversal', de: 'NXT-Rempelroboter — Umkehr per Tastsensor'},
         example: 'nxt-bumper-bot.blocks.json', mat: 'wall'},
     // No hub at all: the Robot Lab's own lab-direct hub owns the motor, and its example steers it
     // with `lab` words (docs/SIM-LAB.md "Steering the Lab").
-    {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub)', de: 'Motorprüfstand (ohne Hub)'},
+    {file: 'motor-bench.ldr', title: {en: 'Motor bench (no hub) — free-running motor and gear', de: 'Motorprüfstand (ohne Hub) — Motor und Getriebe im Leerlauf'},
         example: 'motor-bench.bw'},
     // LEGO radio hubs (hubs/lwp3, hubs/wedo2; docs/LWP3-VIRTUAL-HUB-NOTES.md): their examples are written in the
     // pup / boost / wedo words (lib/legoHubsDialect.js), which ⇦ To blocks turns into the real LEGO extensions'
     // blocks; Run connects those blocks to the scene's hub over Web Bluetooth or Scratch Link.
-    {file: 'technic-hub-bench.ldr', title: {en: 'Technic Hub motor bench (Powered Up)', de: 'Technic-Hub-Motorprüfstand (Powered Up)'},
+    {file: 'technic-hub-bench.ldr', title: {en: 'Technic Hub motor bench — encoder measurement', de: 'Technic-Hub-Motorprüfstand — Messung am Drehgeber'},
         example: 'technic-hub-bench.bw'},
-    {file: 'boost-rover.ldr', title: {en: 'BOOST rover (Move Hub)', de: 'BOOST-Rover (Move Hub)'},
+    {file: 'boost-rover.ldr', title: {en: 'BOOST rover — two built-in wheel motors', de: 'BOOST-Rover — zwei eingebaute Radmotoren'},
         example: 'boost-rover.bw', mat: 'plain'},
-    {file: 'wedo-milo.ldr', title: {en: 'WeDo 2.0 rover with motion sensor', de: 'WeDo-2.0-Rover mit Bewegungssensor'},
+    {file: 'wedo-milo.ldr', title: {en: 'WeDo 2.0 rover — distance-sensor stop', de: 'WeDo-2.0-Rover — Stopp per Abstandssensor'},
         example: 'wedo-milo.bw', mat: 'wall'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
@@ -437,8 +469,8 @@ export class SimSession {
      * With `worker` (a PhysicsClient) the physics runs there; if the worker cannot load the
      * scene, it runs on this thread and `session.workerError` says why.
      */
-    static async fromText (text, {hubState, catalog, mat = null, worker = null, registry = hubRegistry, createHub = null}) {
-        const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat});
+    static async fromText (text, {hubState, catalog, mat = null, autoPorts: importAutoPorts, worker = null, registry = hubRegistry, createHub = null}) {
+        const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat, autoPorts: importAutoPorts});
         if (!mechanism) return {session: null, issues, model, runModel};
         let workerError = null;
         const defs = sceneHubDefs(model, mechanism, catalog, {all: Boolean(createHub), registry});

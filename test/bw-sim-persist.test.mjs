@@ -205,3 +205,21 @@ test('fields a newer writer adds are dropped; the known ones keep a fixed order'
     assert.equal(isStorableName('a\u0007b'), false);
     assert.deepEqual(simLabRecordFromText(DRIVING_BASE, {name: 'a\u0007b'}), {ldraw: DRIVING_BASE});
 });
+
+test('an explicit import setting survives the real project archive without replacing its author', async () => {
+    const text = DRIVING_BASE.replace(/^0 Author:.*$/m, '0 Author: Example contributor');
+    for (const autoPorts of [false, true]) {
+        const record = simLabRecordFromText(text, {name: 'contributed.ldr', mat: 'plain', autoPorts});
+        const saved = await save({[SIM_LAB_STORAGE_KEY]: JSON.stringify(record)});
+        assert.deepEqual(saved.document.state.simLab, record);
+        const {after} = await open(saved.bytes);
+        const {record: restored, refusals} = readSimLabStorage(after[SIM_LAB_STORAGE_KEY]);
+        assert.deepEqual(refusals, []);
+        assert.deepEqual(restored, record);
+        assert.match(restored.ldraw, /^0 Author: Example contributor/m);
+    }
+    assert.equal(Object.hasOwn(simLabRecordFromText(text), 'autoPorts'), false);
+    for (const invalid of [null, 0, 'false', {}, []]) {
+        assert.throws(() => simLabRecord({ldraw: text, autoPorts: invalid}), /autoPorts must be a boolean/);
+    }
+});

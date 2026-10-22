@@ -154,7 +154,11 @@
       "test/bw-sim-echo-linger-crossline.test.mjs",
       "test/bw-sim-bit-keeper.test.mjs",
       "test/spikeprime-motor-power-adoption.test.mjs",
-      "test/bw-sim-counterturn-snapgate.test.mjs"
+      "test/bw-sim-counterturn-snapgate.test.mjs",
+      "test/bw-sim-resonance-program.test.mjs",
+      "test/bw-sim-new-models.test.mjs",
+      "test/bw-sim-circle-splitter.test.mjs",
+      "test/bw-sim-integral.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },
@@ -433,7 +437,9 @@
       "test/makecode-shared-image-array-text-source.test.mjs",
       "test/makecode-shared-image-array-transport.test.mjs",
       "test/makecode-string-conversion-roundtrip.test.mjs",
-      "test/makecode-translate.test.mjs"
+      "test/makecode-translate.test.mjs",
+      "test/bw-sim-circle-splitter.test.mjs",
+      "test/bw-sim-integral.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },
@@ -543,7 +549,11 @@
       "test/bw-sim-echo-linger-crossline.test.mjs",
       "test/bw-sim-bit-keeper.test.mjs",
       "test/spikeprime-motor-power-adoption.test.mjs",
-      "test/bw-sim-counterturn-snapgate.test.mjs"
+      "test/bw-sim-counterturn-snapgate.test.mjs",
+      "test/bw-sim-resonance-program.test.mjs",
+      "test/bw-sim-new-models.test.mjs",
+      "test/bw-sim-circle-splitter.test.mjs",
+      "test/bw-sim-integral.test.mjs"
     ],
     "why": "SIMD-capable physical controls use the qualified optional single-thread Jolt variant through the same GUI dependency boundary; the explicitly listed baseline callers also exercise its supported variant"
   }

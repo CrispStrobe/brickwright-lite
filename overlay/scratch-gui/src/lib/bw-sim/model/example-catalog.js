@@ -281,6 +281,62 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "gimbal-lab.ldr": {
+        "pieces": 245,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Three motorized nested axes reveal an orientation singularity. Compare yaw and roll at 0°, 60° and 90° middle pitch; near 90°, two moving motors nearly cancel at the marker while every bearing remains free.",
+            "de": "Drei motorisierte, verschachtelte Achsen zeigen eine Orientierungssingularität. Vergleiche Gieren und Rollen bei 0°, 60° und 90° mittlerer Neigung: Nahe 90° heben sich zwei Motorbewegungen am Marker fast auf, während alle Lager beweglich bleiben."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "resonance-lab.ldr": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A small motor-driven input excites a separate weighted arm through two rubber bands. Compare the near-resonant finite burst with fresh slow and fast experiments, then observe passive ringdown.",
+            "de": "Ein kleiner motorisierter Eingang regt über zwei Gummibänder einen getrennten, beschwerten Arm an. Vergleiche die resonanznahe endliche Anregung mit frisch geladenen langsamen und schnellen Versuchen und beobachte danach das freie Ausschwingen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "resonance-lab-slow": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same ±2° input and four cycles at 5 degrees per second. Compare the passive arm with the near-resonant and fast presets; each selection restores the saved pose.",
+            "de": "Derselbe Eingang von ±2° und vier Zyklen bei 5 Grad pro Sekunde. Vergleiche den passiven Arm mit den resonanznahen und schnellen Varianten; jede Auswahl lädt die gespeicherte Ausgangslage neu."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "resonance-lab-fast": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same ±2° input and four cycles at 80 degrees per second. Observe how inertia changes the passive response, then hold the input and compare the remaining oscillation.",
+            "de": "Derselbe Eingang von ±2° und vier Zyklen bei 80 Grad pro Sekunde. Beobachte, wie die Trägheit die passive Antwort verändert, und vergleiche danach das Ausschwingen bei gehaltenem Eingang."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "echo-bridge.ldr": {
         "pieces": 110,
         "motors": 1,
@@ -337,6 +393,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "product-plotter.ldr": {
+        "pieces": 301,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Motor A tilts a straight guide and the blue carriage displays the first factor. Motor B moves the green output rail to set the second factor. The orange carriage has no motor: similar triangles make its displacement equal their product divided by a fixed reference length.",
+            "de": "Motor A neigt eine gerade Führung; der blaue Schlitten zeigt den ersten Faktor. Motor B verschiebt die grüne Ausgangsführung und stellt den zweiten Faktor ein. Der orange Schlitten hat keinen Motor: Ähnliche Dreiecke machen seinen Weg zum Produkt der beiden Faktoren, geteilt durch eine feste Bezugslänge."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "snapgate.ldr": {
         "pieces": 205,
         "motors": 1,
@@ -366,7 +436,7 @@ export const MODEL_LESSONS = Object.freeze({
         "license": "BSD-3-Clause"
     },
     "offset-orbit.ldr": {
-        "pieces": 141,
+        "pieces": 191,
         "motors": 1,
         "hubs": [
             "spike-prime"
@@ -377,6 +447,34 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Motor treibt über zwei senkrecht zueinander stehende Schiebeführungen eine parallel versetzte Welle mit gleicher Drehbewegung an. Das schwimmende Kreuz dreht sich einmal, während sein Mittelpunkt pro Eingangsumdrehung zweimal umläuft."
         },
         "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "circle-splitter.ldr": {
+        "pieces": 136,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor turns a carrier whose two moving 8T gears orbit a fixed 16T sun. The planet counterrotates, so two equal-radius markers trace perpendicular 80 mm straight strokes while their shaft follows a circle of radius 20 mm. Compare two speeds and reversal, then remove only the stationary sun gear.",
+            "de": "Ein Motor dreht einen Träger mit zwei beweglichen 8T-Rädern um ein festes 16T-Sonnenrad. Der Planet dreht entgegengesetzt: Zwei gleich weit entfernte Markierungen folgen senkrechten 80-mm-Geradenhüben, ihre Welle einem 20-mm-Kreis. Vergleiche zwei Geschwindigkeiten und Umkehr, entferne dann nur das feste Sonnenrad."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "integral": {
+        "pieces": 154,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A continuously rotating tiled disk drives a free rubber wheel. Move the wheel through the center to vary its speed and reverse its direction. Gravity supplies contact pressure; the wheel is not motorized. The native recording measures finite-width slip.",
+            "de": "Eine gleichmäßig rotierende, geflieste Scheibe treibt ein freies Gummirad an. Verschiebe das Rad über die Mitte, um seine Geschwindigkeit und Drehrichtung zu verändern. Schwerkraft erzeugt den Anpressdruck; das Rad besitzt keinen Motor. Die native Aufzeichnung misst den Schlupf."
+        },
+        "author": "ChatGPT (OpenAI); reused base, drive, hub and deck modules by CrispStrobe",
         "license": "BSD-3-Clause"
     },
     "ellipsa.ldr": {
@@ -923,6 +1021,20 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Motor A hebt den Ausleger über eine Spindel; C schwenkt ihn mit 8:28-Untersetzung. Vergleiche Umdrehungen, Hub und Höhe."
         },
         "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "sky-courier.ldr": {
+        "pieces": 251,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two 24:1 worm drives wind cords onto flanged drums. Changing both lengths moves the suspended gondola through a small workspace; the finite program visits top, left, right and home with both motors and fresh encoder readings.",
+            "de": "Zwei 24:1-Schneckengetriebe wickeln Schnüre auf Bundtrommeln. Ändern sich beide Längen, bewegt sich die schwebende Gondel in einem kleinen Arbeitsraum; das endliche Programm fährt oben, links, rechts und zurück mit beiden Motoren und frischen Drehgeberwerten."
+        },
+        "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
     "pivot-rover.ldr": {

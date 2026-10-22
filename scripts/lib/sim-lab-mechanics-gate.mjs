@@ -9,6 +9,7 @@ import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
+    simulatedMsFor = () => simulatedMs,
     fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
@@ -48,8 +49,13 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         }, observeProgram);
         await page.getByTestId('bw-sim-lab-speed').selectOption(String(speed));
         await page.getByTestId('bw-sim-lab-run').click();
-        await page.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= ms,
-            simulatedMs, {timeout});
+        const simulatedForThis = simulatedMsFor(id);
+        // The pane briefly drops its session while a model or program reloads; a
+        // predicate that dereferences it then fails the whole gate with a TypeError
+        // instead of waiting for the next frame.
+        await page.waitForFunction(ms => Boolean(window.__bwSimLab?._pane?.session) &&
+            window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= ms,
+            simulatedForThis, {timeout});
         const r = await page.evaluate(() => window.__bwMechanics);
         if (observeProgram) writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
         results[id] = judge(id, r);
