@@ -38,3 +38,12 @@ Complete production moving-chess runs at exact 1× measure 0.996× in WebKit and
 in place, the head returns home and retracts, and magnetic forces disengage.
 Final poses match the baseline; no dropped time or redo/divergence is reported.
 Final hosted qualification and normal merge composition remain pending.
+
+Hosted browser API execution exposed timer-triggered clock teardown inside a
+completed-step callback. The continuation previously captured its generation
+after running due timers and could queue a step against a cleared or replacement
+runtime. Capture the completing runtime and generation before those callbacks;
+verify both after timers and again before the deferred step. Four regressions
+reproduce the old failure at nominal and fast-forward speed, for uninstall and
+replacement, and pass with the fix. Existing pacing and slow-motion controls
+remain passing; affected browser API and final qualification are still required.

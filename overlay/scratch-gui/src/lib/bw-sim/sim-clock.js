@@ -244,18 +244,22 @@ export class SimLabClock {
     }
 
     _applied (ms) {
+        const generation = this._generation;
+        const runtime = this.runtime;
         this.owedMs = Math.max(0, this.owedMs - ms);
         this.programMs += ms;
         this._sample();
         this._runTimers();
+        // A due program timer may stop or replace this clock synchronously.
+        // Only the runtime/generation that completed the step may continue it.
+        if (generation !== this._generation || !runtime || this.runtime !== runtime) return;
         if (this.deferred || this._selfPaced()) {
             // Deadline-paced runs request the next VM step after physics and
             // timer continuations finish, without waiting for a rounded VM tick.
-            const generation = this._generation;
             // A macrotask, so the timers' continuations (a resolved wait, a rate-limited send) come first.
             this.defer(() => {
-                if (generation !== this._generation || (!this.deferred && !this._selfPaced()) || this.owedMs > 0) return;
-                this.runtime._step();
+                if (generation !== this._generation || this.runtime !== runtime || (!this.deferred && !this._selfPaced()) || this.owedMs > 0) return;
+                runtime._step();
             });
         }
     }

@@ -45,3 +45,27 @@ test('browser nominal pacing removes quantized-interval drift without changing d
     assert.ok(legacy>.91&&legacy<.94,`the original interval demonstrably runs at ${legacy}`);
     assert.ok(browser>.98&&browser<1.02,`the exact-1× browser clock must meet elapsed-wall deadlines, got ${browser}`);
 });
+
+for(const paceNominal of [true,false])for(const replace of [false,true])test(
+    `program timer ${replace?'replacement':'uninstall'} cannot queue a step in the completed generation (${paceNominal?'nominal':'fast forward'})`,async()=>{
+    const deferred=[];let oldSteps=0,newSteps=0;
+    const clock=new SimLabClock({paceNominal,defer:fn=>deferred.push(fn),wallNow:()=>0});
+    clock.timeScale=paceNominal?1:2;
+    const oldRuntime={currentStepTime:1000/30,_step(){oldSteps++;}};
+    const newRuntime={currentStepTime:1000/30,_step(){newSteps++;}};
+    const session={time:0,tick(ms){this.time+=ms;},idle(){return Promise.resolve();}};
+    const replacement={...session,time:0};
+    try{
+        clock.install(oldRuntime,session);
+        clock.setTimeout(()=>{clock.uninstall();if(replace)clock.install(newRuntime,replacement);},1);
+        oldRuntime._step();
+        assert.equal(oldSteps,1);
+        deferred.shift()();
+        for(let i=0;i<10;i++)await Promise.resolve();
+        assert.equal(clock.installed,replace);
+        for(let i=0;deferred.length&&i<10;i++)deferred.shift()();
+        assert.equal(deferred.length,0,'the completed generation queues no continuing work');
+        assert.equal(oldSteps,1);assert.equal(newSteps,0,'a timer replacement waits for its own first VM tick');
+        assert.equal(replacement.time,0);
+    }finally{clock.uninstall();}
+});
