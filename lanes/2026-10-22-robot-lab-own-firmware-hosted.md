@@ -43,3 +43,14 @@ at the existing installer pin `14b80cde0a136b684f316eb7f6a31aeaae0684bf`, with
 
 Real hosted results remain pending. This is not a closure or guest-success claim;
 the matrix's two firmware cells stay partial/gap until independently read results.
+
+The first hosted original built firmware and Runtime successfully but failed
+before timed/degrees acceptance: the state service did not listen within 600 s.
+Its bounded receipts and original job log are retained; Python never ran.
+The workflow now explicitly stages `--compiled-models` for the matched source
+Runtime, and startup failures retain a bounded output tail and stop their own
+child. The original discarded that tail, so its precise boot error is unknown.
+Python controls also drain the first frame, resume the unmanaged guest between
+cases and require actual interpreter/motor progress on retained restart. These
+source repairs need fresh hosted guest qualification; no timeout or acceptance
+threshold was relaxed.

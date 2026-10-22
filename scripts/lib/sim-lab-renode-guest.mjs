@@ -37,24 +37,43 @@ export const launchRenode = async (RENODE, PACKAGE) => {
     const started = now();
     const child = spawn(RENODE, args, {cwd: PACKAGE, stdio: ['ignore', 'pipe', 'pipe'],
         env: {...process.env, ...(process.platform === 'darwin' ? {DOTNET_DefaultStackSize: '0x4000000'} : {})}});
+    const tail = await waitForRenodeStateService(child, statePort);
+    return {child, monitorPort, statePort, bootWallMs: now() - started, tail};
+};
+
+// Separate child-startup supervision from the guest protocol so failures can be
+// tested without running a firmware guest. Only this launcher's child is stopped.
+export const waitForRenodeStateService = async (child, statePort, timeoutMs = 600000) => {
+    const started = now();
     let tail = '';
     const keep = d => { tail = (tail + d).slice(-4000); };
     child.stdout.on('data', keep);
     child.stderr.on('data', keep);
-    let exited = null;
-    child.on('exit', code => { exited = code; });
-    for (;;) {
-        if (exited !== null) throw new Error(`Renode exited (${exited}) before its state service listened:\n${tail}`);
-        if (now() - started > 600000) throw new Error('Renode did not start its state service within 600 s');
-        const ok = await new Promise(resolve => {
-            const s = net.connect(statePort, '127.0.0.1');
-            s.once('connect', () => { s.destroy(); resolve(true); });
-            s.once('error', () => resolve(false));
-        });
-        if (ok) break;
-        await pause(100);
+    let terminal = null;
+    child.once('error', error => { terminal = `Renode spawn failed: ${error.code || error.message}`; });
+    child.once('exit', (code, signal) => { terminal = `Renode exited (code=${code}, signal=${signal})`; });
+    const closed = new Promise(resolve => child.once('close', resolve));
+    try {
+        for (;;) {
+            if (terminal) throw new Error(`${terminal} before its state service listened`);
+            if (now() - started > timeoutMs) throw new Error(`Renode did not start its state service within ${timeoutMs / 1000} s`);
+            const ok = await new Promise(resolve => {
+                const s = net.connect(statePort, '127.0.0.1');
+                s.once('connect', () => { s.destroy(); resolve(true); });
+                s.once('error', () => { s.destroy(); resolve(false); });
+            });
+            if (ok) return () => tail;
+            await pause(100);
+        }
+    } catch (error) {
+        if (child.pid && child.exitCode === null && child.signalCode === null) {
+            child.kill('SIGTERM');
+            await Promise.race([closed, pause(2000)]);
+            if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+        }
+        await Promise.race([closed, pause(2000)]);
+        throw new Error(`${error.message}\nRenode startup output (last 4000 characters):\n${tail}`, {cause: error});
     }
-    return {child, monitorPort, statePort, bootWallMs: now() - started, tail: () => tail};
 };
 
 /** `start` over Renode's telnet monitor; returns once the emulation has started. */

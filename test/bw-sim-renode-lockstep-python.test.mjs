@@ -2,11 +2,13 @@
 // Copyright (c) 2026 Brickwright contributors
 // Source/protocol controls only: no Python interpreter or firmware guest is faked here.
 import {test} from 'node:test';
-import {spawnSync} from 'node:child_process';
+import {spawn, spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {LockstepProgram} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/program.js';
 import {openLockstepRoute} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/route.js';
 import {encodePython, crc32} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
+import net from 'node:net';
+import {waitForRenodeStateService} from '../scripts/lib/sim-lab-renode-guest.mjs';
 const compiled = {version: 1, instructions: [[0, 0, 0, 0]]};
 let transportCalls = 0;
 const unused = {call () { transportCalls++;throw Error('must validate before transport'); }};
@@ -52,4 +54,35 @@ test('required real lockstep mode refuses missing inputs instead of a successful
         encoding: 'utf8', env: {...process.env, BW_SIMLAB_REQUIRED: '0', BW_RENODE: '/nonexistent-robot-lab-renode'}
     });
     assert.equal(optional.status, 0);assert.match(optional.stdout, /SKIP verify-sim-lab-renode-lockstep/);
+});
+
+// These children exercise startup supervision only; no firmware is substituted.
+const unusedPort = () => new Promise(resolve => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1', () => {
+        const {port} = server.address(); server.close(() => resolve(port));
+    });
+});
+test('startup refusal retains bounded diagnostics even when the child exits successfully', async () => {
+    const port = await unusedPort();
+    const child = spawn(process.execPath, ['-e', 'process.stderr.write("x".repeat(6000)+"startup-marker")'],
+        {stdio: ['ignore', 'pipe', 'pipe']});
+    await assert.rejects(waitForRenodeStateService(child, port), error => {
+        assert.match(error.message, /code=0/);
+        assert.match(error.message, /startup-marker/);
+        assert.ok(error.message.length < 4300);
+        return true;
+    });
+});
+test('startup timeout stops its child and preserves its diagnostic output', async () => {
+    const port = await unusedPort();
+    const child = spawn(process.execPath, ['-e', 'process.stderr.write("waiting-marker");setInterval(()=>{},1000)'],
+        {stdio: ['ignore', 'pipe', 'pipe']});
+    await assert.rejects(waitForRenodeStateService(child, port, 500), /within 0.5 s[\s\S]*waiting-marker/);
+    assert.notEqual(child.signalCode, null);
+});
+test('startup spawn errors are reported instead of waiting the whole boot bound', async () => {
+    const port = await unusedPort();
+    const child = spawn('/nonexistent-robot-lab-renode', [], {stdio: ['ignore', 'pipe', 'pipe']});
+    await assert.rejects(waitForRenodeStateService(child, port), /spawn failed: ENOENT/);
 });

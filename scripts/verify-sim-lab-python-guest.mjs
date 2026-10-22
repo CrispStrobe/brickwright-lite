@@ -24,7 +24,7 @@ const base = readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/mo
 // Use the shipped wall stopper's mechanically mounted distance sensor. The
 // wrong-scene control removes the wall via the actual plain mat, not fake data.
 const report = {schema: 'robot-lab-own-python/v1', cases: [], failures: []};
-let renode, transport, active;
+let renode, transport, active, pausedBetweenCases = false;
 const output = frame => frame?.lifecycle?.nuttxProgramOutput;
 const frameOf = run => run.hub.read.frame;
 async function step (run, count = 1) {
@@ -32,7 +32,8 @@ async function step (run, count = 1) {
         run.session.tick(5);await run.session.idle();
         const frame = frameOf(run), p = frame.lifecycle.nuttxProgram, out = output(frame);
         assert.ok(out && out.truncated === false && typeof out.text === 'string', 'bounded untruncated Python output');
-        run.text = out.text;run.states.add(p.state);
+        assert.ok(Number.isSafeInteger(out.sequence) && out.sequence >= 0 && out.sequence % 2 === 0, 'coherent output publication');
+        run.text = out.text;run.outputSequence = out.sequence;run.states.add(p.state);
         run.last = {state: p.state, error: p.error, positions: p.positions, duties: p.duties,
             physicalAngles: Object.fromEntries([...run.joints].map(([port, joint]) => [port, (run.session.core.jointState(joint).angle - run.angle0.get(port)) * 180 / Math.PI])),
             sensor: structuredClone(run.hub.sensors.get('D') || null),
@@ -45,6 +46,9 @@ async function until (run, predicate, maxSteps, label) {
     throw Error(`${label} exceeded ${maxSteps * 5} ms virtual: ${JSON.stringify(run.last)}`);
 }
 async function open (name, source, facing = true) {
+    // lockstep.end leaves this unmanaged machine paused. Restore free-running
+    // execution before BEGIN/CHUNK/COMMIT waits for the real guest's replies.
+    if (pausedBetweenCases) {await monitorCommand(renode.monitorPort, 'start');pausedBetweenCases = false;}
     const before = transport.validated.packet;
     const route = await openLockstepRoute({transport, manageSession: false, pythonSource: source});
     assert.equal(route.program.stateName, 'ready');
@@ -58,9 +62,9 @@ async function open (name, source, facing = true) {
     active = run;await route.program.start();return run;
 }
 async function close (run) {
-    await run.route.driver.end();run.session.dispose();active = null;
+    await run.route.driver.end();pausedBetweenCases = true;run.session.dispose();active = null;
     report.cases.push({name: run.name, states: [...run.states], output: run.text, last: run.last,
-        controls: run.route.program.sent.map(c => c.op), uploadPackets: run.packets, complete: run.complete || null});
+        controls: run.route.program.sent.map(c => c.op), uploadPackets: run.packets, complete: run.complete || null, restart: run.restart || null, sleepAdmission: run.sleepAdmission || null});
 }
 const motionSource = `import brickwright as b
 assert sum([x*x for x in range(6)]) == 55
@@ -76,6 +80,7 @@ try {
     transport = new StateServiceTransport(renode.statePort);await transport.connect();
     report.imageSha256 = transport.latest.target.imageSha256;
     const run = await open('embedded computation and physical motor', motionSource);
+    await step(run); // accept a real frame before reading observed motors
     const initial = run.hub.read.motors.find(m => m.port === 'A').position;
     await until(run, () => run.route.program.idle && run.route.program.state === PROGRAM_STATE.COMPLETE, 1200, 'Python completion');
     assert.ok(run.states.has(PROGRAM_STATE.RUNNING));assert.equal(run.last.error, 0);
@@ -83,9 +88,15 @@ try {
     assert.ok(Math.abs(run.last.motors.find(m => m.port === 'A').position - initial) > 20, 'real physics shaft moved');
     assert.equal(run.last.duties[0], 0, 'completed program stopped motor demand');
     assert.ok(Math.abs(run.last.physicalAngles.A) > 20, 'actual Jolt hinge moved');
-    run.complete = {output: run.text, last: structuredClone(run.last)};
+    run.complete = {output: run.text, outputSequence: run.outputSequence, last: structuredClone(run.last)};
+    const previousOutputSequence = run.outputSequence, restartAngle = run.last.physicalAngles.A;
     await run.route.program.start();
-    await until(run, () => run.route.program.idle && run.route.program.state === PROGRAM_STATE.RUNNING, 100, 'retained restart');
+    await until(run, () => run.route.program.idle && run.route.program.state === PROGRAM_STATE.RUNNING &&
+        run.outputSequence > previousOutputSequence && run.text.includes('WP6_BEGIN') && !run.text.includes('WP6_DONE') &&
+        Math.abs(run.last.physicalAngles.A - restartAngle) > 5 && run.last.duties[0] !== 0,
+    100, 'retained Python execution');
+    run.restart = {previousOutputSequence, outputSequence: run.outputSequence, output: run.text,
+        movedDegrees: run.last.physicalAngles.A - restartAngle, motorDemand: run.last.duties[0]};
     assert.equal(transport.validated.packet, run.packets, 'retained restart did not reupload source');
     await run.route.program.stop();
     await until(run, () => run.route.program.idle && run.route.program.state === PROGRAM_STATE.STOPPED, 100, 'retained Stop');
@@ -94,9 +105,13 @@ try {
     assert.deepEqual(run.route.program.sent.map(c => c.op), [3, 4, 3, 4]);
     await close(run);
 
-    const sleeping = await open('Stop interrupts actual Python sleep', 'import brickwright as b\nprint("WP6_SLEEP")\nb.motor(b.A,300)\nb.sleep_ms(3000)\nprint("WP6_TOO_LATE")\n');
+    const sleeping = await open('Stop interrupts actual Python sleep', 'import brickwright as b\nb.motor(b.A,300)\nprint("WP6_SLEEP")\nb.sleep_ms(3000)\nprint("WP6_TOO_LATE")\n');
     await until(sleeping, () => sleeping.text.includes('WP6_SLEEP') && sleeping.states.has(PROGRAM_STATE.RUNNING), 100, 'sleep start');
-    await step(sleeping, 60);await sleeping.route.program.stop();
+    await step(sleeping, 60);
+    assert.equal(sleeping.route.program.state, PROGRAM_STATE.RUNNING, 'long sleep is still running before Stop');
+    assert.ok(sleeping.last.duties[0] !== 0 && Math.abs(sleeping.last.physicalAngles.A) > 5, 'sleep follows an executed motor command');
+    sleeping.sleepAdmission = {output: sleeping.text, last: structuredClone(sleeping.last)};
+    await sleeping.route.program.stop();
     await until(sleeping, () => sleeping.route.program.idle && sleeping.route.program.state === PROGRAM_STATE.STOPPED, 100, 'sleep Stop');
     await step(sleeping, 60);assert.doesNotMatch(sleeping.text, /WP6_TOO_LATE/);
     assert.equal(sleeping.last.duties[0], 0);
@@ -110,8 +125,8 @@ try {
         await until(sensor, () => sensor.route.program.idle && [PROGRAM_STATE.COMPLETE, PROGRAM_STATE.FAULT].includes(sensor.route.program.state), 1200, 'sensor terminal');
         assert.match(sensor.text, /WP6_SENSOR/);
         assert.ok(sensor.last.sensor?.raw, 'the real physical scene supplied the probe');
-        if (facing) {assert.ok(sensor.last.sensor.raw.distance > 0 && sensor.last.sensor.raw.distance < 2000);assert.equal(sensor.route.program.state, PROGRAM_STATE.COMPLETE);assert.match(sensor.text, /WP6_SENSOR_PASS/);}
-        else {assert.equal(sensor.last.sensor.raw.distance, -1);assert.equal(sensor.route.program.state, PROGRAM_STATE.FAULT);assert.doesNotMatch(sensor.text, /WP6_SENSOR_PASS/);}
+        if (facing) {assert.equal(sensor.last.error, 0);assert.ok(sensor.last.sensor.raw.distance > 0 && sensor.last.sensor.raw.distance < 2000);assert.equal(sensor.route.program.state, PROGRAM_STATE.COMPLETE);assert.match(sensor.text, /WP6_SENSOR_PASS/);}
+        else {assert.notEqual(sensor.last.error, 0);assert.equal(sensor.last.sensor.raw.distance, -1);assert.equal(sensor.route.program.state, PROGRAM_STATE.FAULT);assert.doesNotMatch(sensor.text, /WP6_SENSOR_PASS/);}
         await close(sensor);
     }
     const fault = await open('actual Python OSError fault', 'print("WP6_FAULT")\nraise OSError(5)\n');

@@ -215,7 +215,7 @@ jobs:
           node scripts/prepare-spike-nuttx-package.mjs \
             .qualification/firmware .qualification/runtime \
             .qualification/runtime/src/Infrastructure .qualification/runtime/renode \
-            .qualification/package
+            .qualification/package --compiled-models
           python3 - <<'PY_HASH'
           import hashlib, json
           from pathlib import Path
@@ -223,6 +223,14 @@ jobs:
                    '.qualification/runtime/output/bin/Release/Renode.dll',
                    '.qualification/runtime/output/bin/Release/Infrastructure.dll',
                    '.qualification/runtime/src/Infrastructure/src/Emulator/Cores/bin/Release/lib/translate-arm-m-le.so']
+          scenario = Path('.qualification/package/nuttx.resc').read_text()
+          if 'models.cs' in scenario:
+              raise SystemExit('compiled Runtime must not load dynamic models')
+          files += ['.qualification/package/nuttx.resc', '.qualification/package/manifest.json',
+                    '.qualification/package/platforms/boards/spike-prime.repl',
+                    '.qualification/package/platforms/boards/spike-prime-brick-devices.repl',
+                    '.qualification/package/platforms/cpus/stm32f413vg.repl',
+                    '.qualification/package/platforms/cpus/stm32f4.repl']
           Path('qualification/outputs.json').write_text(json.dumps({p: hashlib.sha256(Path(p).read_bytes()).hexdigest() for p in files}, indent=2)+'\n')
           PY_HASH
       - name: Run source and refusal controls

@@ -37,10 +37,11 @@ files = [
     'scripts/verify-sim-lab-python-guest.mjs',
     'scripts/lib/sim-lab-renode-guest.mjs',
     'scripts/prepare-spike-nuttx-package.mjs',
+    'scripts/lib/spike-package-model-loading.mjs',
     'scripts/qualify-sim-lab-inputs.py',
     '.github/workflows/robot-lab-own-firmware.yml',
 ]
-receipt = {'schema': 'robot-lab-own-inputs/v1', 'lite': git(lite, 'rev-parse', 'HEAD'), 'heads': heads,
+receipt = {'schema': 'robot-lab-own-inputs/v1', 'lite': git(lite, 'rev-parse', 'HEAD'), 'heads': heads, 'modelMode': 'compiled',
            'sourceSha256': {name: hashlib.sha256((lite / name).read_bytes()).hexdigest() for name in files}}
 output.parent.mkdir(parents=True, exist_ok=True)
 output.write_text(json.dumps(receipt, indent=2) + '\n')
