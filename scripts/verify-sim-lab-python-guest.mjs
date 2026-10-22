@@ -20,10 +20,9 @@ for (const f of ['nuttx.resc', 'nuttx-kernel.elf', 'nuttx-user.elf', 'state-conf
 }
 const SIM = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim');
 const catalog = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta/parts.json'), 'utf8')));
-const base = readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/models/driving-base.ldr'), 'utf8');
-// A detached physical sensor above the ground: both orientations fall equally;
-// the forward probe sees the wall. Never replace its physics-derived reading.
-const scene = facing => `${base}\n0 !BW ID python-distance\n0 !BW PORT D\n1 71 0 -300 260 ${facing ? '-1 0 0 0 1 0 0 0 -1' : '1 0 0 0 1 0 0 0 1'} 37316.dat\n`;
+const base = readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/sim-lab/models/wall-stopper.ldr'), 'utf8');
+// Use the shipped wall stopper's mechanically mounted distance sensor. The
+// wrong-scene control removes the wall via the actual plain mat, not fake data.
 const report = {schema: 'robot-lab-own-python/v1', cases: [], failures: []};
 let renode, transport, active;
 const output = frame => frame?.lifecycle?.nuttxProgramOutput;
@@ -35,6 +34,8 @@ async function step (run, count = 1) {
         assert.ok(out && out.truncated === false && typeof out.text === 'string', 'bounded untruncated Python output');
         run.text = out.text;run.states.add(p.state);
         run.last = {state: p.state, error: p.error, positions: p.positions, duties: p.duties,
+            physicalAngles: Object.fromEntries([...run.joints].map(([port, joint]) => [port, (run.session.core.jointState(joint).angle - run.angle0.get(port)) * 180 / Math.PI])),
+            sensor: structuredClone(run.hub.sensors.get('D') || null),
             motors: run.hub.read.motors.map(m => ({port: m.port, position: m.position, speedDps: m.speedDps})),
             drives: run.hub.read.drives.map(d => ({port: d.port, meanDrive: d.meanDrive, brakingTicks: d.brakingTicks, ticks: d.ticks}))};
     }
@@ -49,15 +50,17 @@ async function open (name, source, facing = true) {
     assert.equal(route.program.stateName, 'ready');
     assert.ok(transport.validated.packet > before, 'actual source uploaded before lockstep');
     let hub;
-    const {session, issues} = await SimSession.fromText(scene(facing), {catalog, mat: 'wall', createHub: def => (hub = route.createHub(def))});
+    const {session, issues} = await SimSession.fromText(base, {catalog, mat: facing ? 'wall' : 'plain', createHub: def => (hub = route.createHub(def))});
     assert.ok(session?.lockstep && hub, JSON.stringify(issues));
-    const run = {name, source, route, session, hub, states: new Set(), text: '', packets: transport.validated.packet, last: null};
+    const joints = new Map(session.mechanism.actuators.map(a => [a.port, a.joint]));
+    const angle0 = new Map([...joints].map(([port, joint]) => [port, session.core.jointState(joint).angle]));
+    const run = {name, source, route, session, hub, joints, angle0, states: new Set(), text: '', packets: transport.validated.packet, last: null};
     active = run;await route.program.start();return run;
 }
 async function close (run) {
     await run.route.driver.end();run.session.dispose();active = null;
     report.cases.push({name: run.name, states: [...run.states], output: run.text, last: run.last,
-        controls: run.route.program.sent.map(c => c.op), uploadPackets: run.packets});
+        controls: run.route.program.sent.map(c => c.op), uploadPackets: run.packets, complete: run.complete || null});
 }
 const motionSource = `import brickwright as b
 assert sum([x*x for x in range(6)]) == 55
@@ -79,6 +82,8 @@ try {
     assert.match(run.text, /WP6_BEGIN/);assert.match(run.text, /WP6_DONE/);
     assert.ok(Math.abs(run.last.motors.find(m => m.port === 'A').position - initial) > 20, 'real physics shaft moved');
     assert.equal(run.last.duties[0], 0, 'completed program stopped motor demand');
+    assert.ok(Math.abs(run.last.physicalAngles.A) > 20, 'actual Jolt hinge moved');
+    run.complete = {output: run.text, last: structuredClone(run.last)};
     await run.route.program.start();
     await until(run, () => run.route.program.idle && run.route.program.state === PROGRAM_STATE.RUNNING, 100, 'retained restart');
     assert.equal(transport.validated.packet, run.packets, 'retained restart did not reupload source');
@@ -104,8 +109,9 @@ try {
         const sensor = await open(facing ? 'scene sensor positive' : 'wrong scene sensor control', sensorSource, facing);
         await until(sensor, () => sensor.route.program.idle && [PROGRAM_STATE.COMPLETE, PROGRAM_STATE.FAULT].includes(sensor.route.program.state), 1200, 'sensor terminal');
         assert.match(sensor.text, /WP6_SENSOR/);
-        if (facing) {assert.equal(sensor.route.program.state, PROGRAM_STATE.COMPLETE);assert.match(sensor.text, /WP6_SENSOR_PASS/);}
-        else {assert.equal(sensor.route.program.state, PROGRAM_STATE.FAULT);assert.doesNotMatch(sensor.text, /WP6_SENSOR_PASS/);}
+        assert.ok(sensor.last.sensor?.raw, 'the real physical scene supplied the probe');
+        if (facing) {assert.ok(sensor.last.sensor.raw.distance > 0 && sensor.last.sensor.raw.distance < 2000);assert.equal(sensor.route.program.state, PROGRAM_STATE.COMPLETE);assert.match(sensor.text, /WP6_SENSOR_PASS/);}
+        else {assert.equal(sensor.last.sensor.raw.distance, -1);assert.equal(sensor.route.program.state, PROGRAM_STATE.FAULT);assert.doesNotMatch(sensor.text, /WP6_SENSOR_PASS/);}
         await close(sensor);
     }
     const fault = await open('actual Python OSError fault', 'print("WP6_FAULT")\nraise OSError(5)\n');
