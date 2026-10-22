@@ -23,6 +23,9 @@
 //
 // The word table itself is robotLabDialect.js (one table for all of this).
 
+import SB3Creator from './sb3-creator.js';
+import MENU_ARGS from './extension-menu-table.js';
+import spikeRuntimeOps from './spike-runtime-ops.js';
 import pythonToPseudocode, {Translator} from './sb3-creator-python.js';
 import javascriptToPseudocode from './sb3-creator-javascript.js';
 import {compileArcadeWord} from './arcadeDialect.js';
@@ -247,6 +250,66 @@ const labRegistration = (translator, statement) => {
     return {fn: call.args[1].id, header};
 };
 
+// Reuse the compiler's registry and word spellings, including the unified SPIKE
+// registry installed at the registering door. No second method/argument table.
+const HUB_RUNTIMES = new Set(['spikeprime', 'ev3comprehensive', 'legopoweredup', 'legoboostunified', 'wedo2unified']);
+const asHub = node => {
+    if (node?.type !== 'Call' || node.func?.type !== 'Attribute' || node.func.value?.type !== 'Name') return null;
+    const runtime = node.func.value.id.slice(1);
+    return node.func.value.id.startsWith('_') && HUB_RUNTIMES.has(runtime) ?
+        {runtime, method: node.func.attr, args: node.args, keywords: node.keywords} : null;
+};
+const HubWordCreator = withRobotLab(SB3Creator);
+
+/** A registry call is admitted only if its word recompiles with every argument intact. */
+const hubCallToPseudo = (translator, call, command) => {
+    const reg = SB3Creator.RUNTIME_EXTENSIONS[call.runtime] || (call.runtime === 'spikeprime' ? spikeRuntimeOps : null);
+    const found = Object.entries(reg?.ops || {}).filter(([, op]) => op.method === call.method);
+    if (found.length !== 1 || call.keywords?.length) return null;
+    const [name, op] = found[0];
+    if ((op.kind === 'command') !== command || !['command', 'reporter', 'boolean'].includes(op.kind) ||
+        call.args.length !== (op.args || []).length) return null;
+    const opcode = `${call.runtime}_${name}`;
+    const args = call.args.map(arg => translator.expr(arg));
+    const block = {opcode, inputs: {}, fields: {}};
+    const blocks = {};
+    for (const [i, key] of (op.args || []).entries()) {
+        const text = args[i];
+        const quoted = /^"(?:[^"\\]|\\.)*"$/.test(text);
+        const numeric = /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(text);
+        const menu = MENU_ARGS[opcode]?.[key];
+        if (menu && !menu.startsWith('+') && !quoted && !numeric) return null;
+        if (quoted || numeric) block.fields[key] = [quoted ? JSON.parse(text) : text, null];
+        if (menu && quoted) {
+            const field = menu.replace(/^\+/, '');
+            blocks[key] = {opcode: `${call.runtime}_menu_${field}`, shadow: true, inputs: {},
+                fields: {[field]: [JSON.parse(text), null]}};
+            block.inputs[key] = [1, key];
+        } else if (quoted || numeric) block.inputs[key] = [1, [quoted ? 10 : 4, quoted ? JSON.parse(text) : text]];
+        else {
+            blocks[key] = {opcode: 'argument_reporter_string_number', inputs: {}, fields: {VALUE: [text, null]}};
+            block.inputs[key] = [1, key];
+        }
+    }
+    const creator = new HubWordCreator();
+    const word = command ? creator.decompileStackBlock(block, blocks, 0).join('\n') : creator.drep(block, blocks);
+    // Unsupported spellings, invalid fixed menus and dropped/changed arguments
+    // are refused by name, rather than being accepted as a different program.
+    try {
+        const device = call.runtime === 'spikeprime' ? 'SPIKE' : call.runtime === 'ev3comprehensive' ? 'EV3' : null;
+        creator.parse(`${device ? `DEVICE ${device}\n` : ''}WHEN flag clicked:\n  ${command ? word : `say (${word})`}\n`);
+        const target = creator.project.targets.find(t => Object.values(t.blocks).some(b => b.opcode === opcode));
+        const candidates = Object.values(target?.blocks || {}).filter(b => b.opcode === opcode);
+        if (candidates.length !== 1) return null;
+        const normalize = text => creator.stripOuterParens(String(text).trim());
+        if (!(op.args || []).every((key, i) => normalize(creator.runtimeArg(candidates[0], key, target.blocks,
+            k => creator.dval(candidates[0].inputs[k], target.blocks))) === normalize(args[i]))) return null;
+    } catch { return null; }
+    if (call.runtime === 'ev3comprehensive') translator.hubDevices.add('EV3');
+    if (call.runtime === 'spikeprime') translator.hubDevices.add('SPIKE');
+    return word;
+};
+
 const LIFT = Symbol.for('brickwright.robotLabLift');
 
 /** Teaches the shared Translator the `_robotlab` calls, once (idempotent). */
@@ -255,6 +318,13 @@ export const installRobotLabReaders = () => {
     if (proto[LIFT]) return false;
     const {callExpr, exprStmt, program, resolveHat} = proto;
     proto.callExpr = function (node) {
+        const hub = asHub(node);
+        if (hub) {
+            const word = hubCallToPseudo(this, hub, false);
+            if (word) return `(${word})`;
+            this.warn(`unsupported _${hub.runtime}.${hub.method} in expression`);
+            return '""';
+        }
         const call = asLab(node);
         if (call) {
             const word = robotLabCallToPseudo(call.method, call.args.map(x => this.expr(x)));
@@ -266,6 +336,13 @@ export const installRobotLabReaders = () => {
     };
     proto.exprStmt = function (eRaw, indent) {
         const e = eRaw && eRaw.type === 'Await' ? eRaw.value : eRaw;
+        const hub = asHub(e);
+        if (hub) {
+            const word = hubCallToPseudo(this, hub, true);
+            if (word) return [this.pad(indent) + word];
+            this.warn(`unsupported _${hub.runtime}.${hub.method}`);
+            return [];
+        }
         const call = asLab(e);
         if (call) {
             const word = robotLabCallToPseudo(call.method, call.args.map(x => this.expr(x)));
@@ -278,14 +355,29 @@ export const installRobotLabReaders = () => {
     proto.program = function (ast) {
         // The hats' registrations are read first (the emitter writes them after the handlers).
         this.labHats = new Map();
+        this.hubDevices = new Set();
         const body = ast.body.filter(statement => {
+            const hub = statement.type === 'Expr' && asHub(statement.value);
+            if (hub) {
+                this.warn(`unsupported top-level _${hub.runtime}.${hub.method}`);
+                return false;
+            }
             const reg = labRegistration(this, statement);
             if (!reg) return true;
             if (reg.header) this.labHats.set(reg.fn, reg.header);
             else this.warn('unknown Robot Lab event');
             return false;
         });
-        return program.call(this, {...ast, body});
+        const text = program.call(this, {...ast, body});
+        // Native hub words require their DEVICE context. The runtime emitter
+        // names the extension but does not emit a scratch.device marker.
+        const declared = /^DEVICE\s+(\S+)/m.exec(text)?.[1].toUpperCase();
+        const devices = [...this.hubDevices];
+        if (devices.length > 1 || (declared && devices.length && devices[0] !== declared)) {
+            this.warn(`incompatible hub DEVICE contexts: ${[declared, ...devices].filter(Boolean).join(', ')}`);
+            return '\n';
+        }
+        return devices.length && !declared ? `DEVICE ${devices[0]}\n${text}` : text;
     };
     proto.resolveHat = function (name, args) {
         return (this.labHats && this.labHats.get(name)) || resolveHat.call(this, name, args);
