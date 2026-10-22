@@ -12,10 +12,11 @@
  * Unknown methods, wrong arity and unsupported fixed menus stay named refusals.
  */
 import {test} from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {readFileSync} from 'node:fs';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIB = path.join(ROOT, 'overlay', 'scratch-gui', 'src', 'lib');
@@ -113,3 +114,22 @@ test('Python: an awaited hub command survives, and a command cannot become a rep
     assert.ok(wrong.warnings.some(w => w.includes('_spikeprime.steer')));
     assert.deepEqual(hubOps(compile(wrong.pseudocode), 'spikeprime'), []);
 });
+
+
+for (const first of ['robot-lab-pseudocode.js', 'sb3-creator-register-art.js']) {
+    test(`registered hub reader works in a fresh process with ${first} imported first`, () => {
+        const url = name => pathToFileURL(path.join(LIB, name)).href;
+        const code = `import assert from 'node:assert/strict';
+            await import(${JSON.stringify(url(first))});
+            const {readPython} = await import(${JSON.stringify(url('robot-lab-pseudocode.js'))});
+            const {default: Creator} = await import(${JSON.stringify(url('sb3-creator-register-art.js'))});
+            const read = readPython(${JSON.stringify('def when_flag_clicked():\n    _spikeprime.steer(0)\n')});
+            assert.deepEqual(read.warnings, []);
+            assert.match(read.pseudocode, /DEVICE SPIKE/);
+            const c = new Creator();c.parse(read.pseudocode);
+            assert.deepEqual(c.warnings, []);
+            assert.ok(c.project.targets.some(t => Object.values(t.blocks).some(b => b.opcode === 'spikeprime_steer')));`;
+        const result = spawnSync(process.execPath, ['--input-type=module', '--eval', code], {cwd: ROOT, encoding: 'utf8'});
+        assert.equal(result.status, 0, result.stderr || result.stdout);
+    });
+}
