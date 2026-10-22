@@ -30,6 +30,7 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
+import SimLabStats from './sim-lab-stats.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import SimLabExamples from './sim-lab-examples.jsx';
@@ -375,7 +376,7 @@ class SimLabPane extends React.Component {
             controlsOpen: false, manualOverride: false, programLoading: false,
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
-            showSensors: false, readings: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
+            showSensors: false, readings: false, showStats: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
             examplesOpen: false, lessonKey: null, challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
@@ -1370,7 +1371,11 @@ class SimLabPane extends React.Component {
         }
         // With the physics in the worker, simulated time advances when a batch comes back.
         if (Math.floor(this.session.time / 100) !== Math.floor(this.state.simMs / 100)) {
-            this.setState({simMs: this.session.time, rtf: this.clock && this.clock.installed ? this.clock.realTimeFactor : null});
+            const measured = this.session.lockstep ? this.session.realTimeFactor :
+                this.clock && this.clock.installed ? this.clock.realTimeFactor : null;
+            const simMs = this.session.time;
+            // Keep the last measured pace after Pause, including the final worker reply.
+            this.setState(s => ({simMs, rtf: Number.isFinite(measured) ? measured : s.status === 'running' ? null : s.rtf}));
         }
         if (this.state.status === 'running') this.record();
         if (this.state.readings && this.api) this.sample();
@@ -2453,6 +2458,8 @@ class SimLabPane extends React.Component {
                 run: () => this.setOverlay({showSensors: !this.state.showSensors}), pri: 3},
             readings: {id: 'readings', label: A.readings, kind: 'switch', pressed: this.state.readings,
                 run: () => this.setState(s => ({readings: !s.readings})), pri: 2},
+            'show-stats': {id: 'show-stats', label: A['show-stats'], kind: 'switch', pressed: this.state.showStats,
+                run: () => this.setState(s => ({showStats: !s.showStats})), pri: 3},
             challenges: {id: 'challenges', label: A.challenges, kind: 'switch', pressed: this.state.challengesOpen,
                 run: () => this.setState(s => ({challengesOpen: !s.challengesOpen})), pri: 2},
             file: {id: 'file-menu', label: A['file-menu'], pri: 2, width: 46, render: inMenu => this.renderFile(inMenu)}
@@ -2481,7 +2488,7 @@ class SimLabPane extends React.Component {
         return [
             pick('run', G.run, ['run', 'reset', 'speed', 'challenges']),
             pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side']),
-            pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings']),
+            pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings', 'show-stats']),
             pick('file', G.file, ['file'])
         ];
     }
@@ -2900,6 +2907,12 @@ class SimLabPane extends React.Component {
                         background: '#fff', borderRadius: 6}}>
                         <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}} />
                         {build && this.editView && this.renderHoldOverlays()}
+                        {simulate && this.state.showStats && this.session && (
+                            <SimLabStats locale={this.locale} measurement={{status: this.state.status, rtf: this.state.rtf,
+                                simMs: this.session.time, timeScale: this.state.timeScale, worker: this.session.worker,
+                                lockstep: this.session.lockstep, stats: this.session.stats}}
+                                onClose={() => this.setState({showStats: false})} />
+                        )}
                         {simulate && this.state.readings && (
                             <SimLabReadings text={{...this.text, close: this.text.readingsClose}} {...this.readingsRows()}
                                 onClose={() => this.setState({readings: false})} />

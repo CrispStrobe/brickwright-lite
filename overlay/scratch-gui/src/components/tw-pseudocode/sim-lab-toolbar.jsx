@@ -52,6 +52,7 @@ export const ICONS = {
     speed: 'M4 17a8 8 0 1 1 16 0M12 17l4-6M3 17h2M19 17h2',
     'show-sensors': 'M3 9h5v6H3zM8 12h3M13 12h2M17 12h2M21 10v4',
     readings: 'M3 3v18h18M7 15l4-5 3 3 5-7',
+    'show-stats': 'M3 21h18M6 17v-5M12 17V4M18 17V8',
     // a trophy (challenges)
     challenges: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3',
     'mirror-x': 'M12 3v18M9 7l-6 5 6 5zM15 7l6 5-6 5z',
