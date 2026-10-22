@@ -9,7 +9,10 @@ newly reproduced construction defect is corrected.
 
 Scope: source-archive comparison and deduplication for Circle Splitter, Cusp Lab,
 Offset Orbit revision, Gimbal Lab, Sky Courier, Product Plotter, Counterturn,
-Bit Keeper, Resonance Lab and Integral. Own the corresponding model/program/
+Bit Keeper, Resonance Lab and Integral. User extension on 2026-10-23 also adds
+Balance Engine rebuilt and Root Bridge to the same intake and qualification
+envelope; preserve their source archives and apply the same physics, licensing,
+program, lesson, construction and browser acceptance rules. Own the corresponding model/program/
 lesson/attribution assets, registrations, source adapters and exports; the
 associated native and browser judges/tests; inherited PR #1235 instruction/band
 and bounded-manual-control integration; necessary catalogue collider corrections
