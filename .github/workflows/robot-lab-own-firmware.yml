@@ -7,6 +7,7 @@ on:
       - 'scripts/verify-sim-lab-python-guest.mjs'
       - 'scripts/verify-sim-lab-renode-lockstep.mjs'
       - 'scripts/lib/sim-lab-renode-guest.mjs'
+      - 'scripts/lib/sim-lab-dotnet-launcher.mjs'
       - 'overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/**'
       - 'test/bw-sim-renode-lockstep-python.test.mjs'
   workflow_dispatch:
@@ -212,14 +213,15 @@ jobs:
       - name: Stage source-built own firmware through the existing package producer
         working-directory: .
         run: |
+          node --input-type=module -e "import {prepareDotnetLauncher} from './scripts/lib/sim-lab-dotnet-launcher.mjs'; await prepareDotnetLauncher('.qualification/runtime')"
           node scripts/prepare-spike-nuttx-package.mjs \
             .qualification/firmware .qualification/runtime \
-            .qualification/runtime/src/Infrastructure .qualification/runtime/renode \
+            .qualification/runtime/src/Infrastructure .qualification/runtime/renode-qualified \
             .qualification/package --compiled-models
           python3 - <<'PY_HASH'
           import hashlib, json
           from pathlib import Path
-          files = ['.qualification/firmware/nuttx/nuttx', '.qualification/firmware/nuttx/nuttx_user.elf',
+          files = ['.qualification/runtime/renode-qualified', '.qualification/firmware/nuttx/nuttx', '.qualification/firmware/nuttx/nuttx_user.elf',
                    '.qualification/runtime/output/bin/Release/Renode.dll',
                    '.qualification/runtime/output/bin/Release/Infrastructure.dll',
                    '.qualification/runtime/src/Infrastructure/src/Emulator/Cores/bin/Release/lib/translate-arm-m-le.so']
@@ -241,14 +243,14 @@ jobs:
         env:
           BW_SIMLAB_REQUIRED: '1'
         run: |
-          export BW_RENODE="$GITHUB_WORKSPACE/.qualification/runtime/renode"
+          export BW_RENODE="$GITHUB_WORKSPACE/.qualification/runtime/renode-qualified"
           export BW_SIMLAB_NUTTX_PACKAGE="$GITHUB_WORKSPACE/.qualification/package"
           node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-sim-lab-renode-lockstep.mjs --json qualification/timed.json
           BW_SIMLAB_FORM=degrees node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-sim-lab-renode-lockstep.mjs --json qualification/degrees.json
       - name: Require embedded Python through the actual Lab route
         working-directory: .
         run: |
-          export BW_RENODE="$GITHUB_WORKSPACE/.qualification/runtime/renode"
+          export BW_RENODE="$GITHUB_WORKSPACE/.qualification/runtime/renode-qualified"
           export BW_SIMLAB_NUTTX_PACKAGE="$GITHUB_WORKSPACE/.qualification/package"
           node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-sim-lab-python-guest.mjs --json qualification/python.json
       - name: Bound receipt bytes and omit runner locations

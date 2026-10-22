@@ -22,6 +22,43 @@ const freePort = () => new Promise((resolve, reject) => {
 const pause = ms => new Promise(r => setTimeout(r, ms));
 const monitorPath = p => `@${p.replace(/ /g, '\\ ')}`;
 
+const lifetimes = new WeakMap();
+const lifetime = child => {
+    if (!lifetimes.has(child)) {
+        const state = {closed: false, error: null, stopping: null};
+        state.done = new Promise(resolve => child.once('close', () => {state.closed = true;resolve();}));
+        child.on('error', error => {state.error = error;});
+        if ((child.exitCode !== null || child.signalCode !== null) && child.stdout.closed && child.stderr.closed) state.closed = true;
+        lifetimes.set(child, state);
+    }
+    return lifetimes.get(child);
+};
+const drain = (state, ms) => {
+    if (state.closed) return Promise.resolve(true);
+    return new Promise(resolve => {
+        const timer = setTimeout(() => resolve(false), ms);
+        state.done.then(() => {clearTimeout(timer);resolve(true);});
+    });
+};
+
+// The qualification package binds an exec launcher: this child IS the Runtime.
+// A wrapper retaining descendant pipes is a cleanup failure, never hidden by exit().
+export const stopRenodeChild = child => {
+    const state = lifetime(child);
+    if (!state.stopping) state.stopping = (async () => {
+        if (child.pid && child.exitCode === null && child.signalCode === null) {
+            child.kill('SIGTERM');
+            if (!await drain(state, 2000) && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+        }
+        if (!await drain(state, 2000)) {
+            child.stdout.destroy();child.stderr.destroy();
+            throw new Error('Renode child retained output pipes after cleanup; the launcher must exec the Runtime');
+        }
+        if (state.error && state.error.code !== 'ENOENT' && state.error.code !== 'ESRCH') throw state.error;
+    })();
+    return state.stopping;
+};
+
 /** Launches Renode exactly as RenodeSupervisor::start_spike_profile does for NuttX (no GDB server: no debugger holds the CPU). */
 export const launchRenode = async (RENODE, PACKAGE) => {
     const config = JSON.parse(readFileSync(path.join(PACKAGE, 'state-config.json'), 'utf8'));
@@ -37,8 +74,9 @@ export const launchRenode = async (RENODE, PACKAGE) => {
     const started = now();
     const child = spawn(RENODE, args, {cwd: PACKAGE, stdio: ['ignore', 'pipe', 'pipe'],
         env: {...process.env, ...(process.platform === 'darwin' ? {DOTNET_DefaultStackSize: '0x4000000'} : {})}});
+    lifetime(child);
     const tail = await waitForRenodeStateService(child, statePort);
-    return {child, monitorPort, statePort, bootWallMs: now() - started, tail};
+    return {child, monitorPort, statePort, bootWallMs: now() - started, tail, stop: () => stopRenodeChild(child)};
 };
 
 // Separate child-startup supervision from the guest protocol so failures can be
@@ -52,7 +90,7 @@ export const waitForRenodeStateService = async (child, statePort, timeoutMs = 60
     let terminal = null;
     child.once('error', error => { terminal = `Renode spawn failed: ${error.code || error.message}`; });
     child.once('exit', (code, signal) => { terminal = `Renode exited (code=${code}, signal=${signal})`; });
-    const closed = new Promise(resolve => child.once('close', resolve));
+    lifetime(child);
     try {
         for (;;) {
             if (terminal) throw new Error(`${terminal} before its state service listened`);
@@ -66,13 +104,9 @@ export const waitForRenodeStateService = async (child, statePort, timeoutMs = 60
             await pause(100);
         }
     } catch (error) {
-        if (child.pid && child.exitCode === null && child.signalCode === null) {
-            child.kill('SIGTERM');
-            await Promise.race([closed, pause(2000)]);
-            if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
-        }
-        await Promise.race([closed, pause(2000)]);
-        throw new Error(`${error.message}\nRenode startup output (last 4000 characters):\n${tail}`, {cause: error});
+        let cleanup = '';
+        try {await stopRenodeChild(child);} catch (stopError) {cleanup = `\nCleanup failed: ${stopError.message}`;}
+        throw new Error(`${error.message}${cleanup}\nRenode startup output (last 4000 characters):\n${tail}`, {cause: error});
     }
 };
 

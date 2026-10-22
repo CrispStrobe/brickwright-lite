@@ -54,3 +54,13 @@ Python controls also drain the first frame, resume the unmanaged guest between
 cases and require actual interpreter/motor progress on retained restart. These
 source repairs need fresh hosted guest qualification; no timeout or acceptance
 threshold was relaxed.
+
+Source review found another controller-lifetime defect: the Runtime's original
+shell launcher starts a dotnet descendant without exec. Direct shell cleanup
+can leave that descendant holding the output pipes. The qualification package
+now binds its own `exec dotnet` launcher to the same reviewed binaries. Both
+controllers await bounded direct-child cleanup and report cleanup failures;
+the timed controller no longer forces process exit over retained handles.
+PID/argument/pipe-closure and TERM-resistant/idempotent cleanup controls pass,
+and removing exec is detected. This qualifies the controller only; it does not
+establish what the still-running original guest checks observed.

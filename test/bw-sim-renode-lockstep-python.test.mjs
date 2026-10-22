@@ -8,7 +8,11 @@ import {LockstepProgram} from '../overlay/scratch-gui/src/lib/bw-sim/routes/reno
 import {openLockstepRoute} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/route.js';
 import {encodePython, crc32} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
 import net from 'node:net';
-import {waitForRenodeStateService} from '../scripts/lib/sim-lab-renode-guest.mjs';
+import {once} from 'node:events';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import path from 'node:path';
+import {prepareDotnetLauncher} from '../scripts/lib/sim-lab-dotnet-launcher.mjs';
+import {waitForRenodeStateService, stopRenodeChild} from '../scripts/lib/sim-lab-renode-guest.mjs';
 const compiled = {version: 1, instructions: [[0, 0, 0, 0]]};
 let transportCalls = 0;
 const unused = {call () { transportCalls++;throw Error('must validate before transport'); }};
@@ -85,4 +89,60 @@ test('startup spawn errors are reported instead of waiting the whole boot bound'
     const port = await unusedPort();
     const child = spawn('/nonexistent-robot-lab-renode', [], {stdio: ['ignore', 'pipe', 'pipe']});
     await assert.rejects(waitForRenodeStateService(child, port), /spawn failed: ENOENT/);
+});
+
+test('the source .NET launcher execs the owned runtime PID and preserves arguments', {timeout: 5000}, async () => {
+    const root = mkdtempSync(path.join(process.cwd(), '.lab-dotnet-launcher-test-'));
+    let child, runtimePid;
+    try {
+        mkdirSync(path.join(root, 'output/bin/Release'), {recursive: true});
+        writeFileSync(path.join(root, 'output/bin/Release/Renode.dll'), 'startup-control placeholder');
+        mkdirSync(path.join(root, 'bin'));
+        writeFileSync(path.join(root, 'bin/dotnet'), '#!/bin/sh\nprintf \'%s\\n\' "$$" "$@"\nexec sleep 60\n', {mode: 0o700});
+        const launcher = await prepareDotnetLauncher(root);
+        await assert.rejects(prepareDotnetLauncher(root), /EEXIST/, 'never replace an earlier launcher');
+        child = spawn(launcher, ['--disable-gui', 'argument with spaces'], {
+            env: {...process.env, PATH: `${path.join(root, 'bin')}:${process.env.PATH}`},
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+        const closed = once(child, 'close');
+        const lines = await new Promise((resolve, reject) => {
+            let output = '';
+            child.once('error', reject);
+            child.stdout.on('data', bytes => {
+                output += bytes;
+                if (output.split('\n').length >= 5) resolve(output.trim().split('\n'));
+            });
+        });
+        runtimePid = Number(lines[0]);
+        assert.equal(runtimePid, child.pid, 'the process Node owns must be the Runtime, not its shell parent');
+        assert.deepEqual(lines.slice(1), [path.join(root, 'output/bin/Release/Renode.dll'), '--disable-gui', 'argument with spaces']);
+        await stopRenodeChild(child);
+        await closed;
+        assert.equal(child.stdout.closed, true, 'the owned runtime left no pipe holder behind');
+    } finally {
+        if (child && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+        // Only the PID emitted by this test's own tiny launch control, if the
+        // exec regression recreated a shell parent. Never a guest-reported PID.
+        if (runtimePid && runtimePid !== child?.pid) {
+            try {process.kill(runtimePid, 'SIGKILL');} catch (e) {if (e.code !== 'ESRCH') throw e;}
+        }
+        rmSync(root, {recursive: true, force: true});
+    }
+});
+
+test('owned Runtime cleanup is idempotent and escalates a TERM-resistant child', {timeout: 6000}, async () => {
+    const child = spawn(process.execPath, ['-e', 'process.on("SIGTERM",()=>{});console.log("ready");setInterval(()=>{},1000)'],
+        {stdio: ['ignore', 'pipe', 'pipe']});
+    try {
+        await once(child.stdout, 'data');
+        const first = stopRenodeChild(child), second = stopRenodeChild(child);
+        assert.equal(first, second, 'concurrent cleanup shares one operation');
+        await first;
+        assert.equal(child.signalCode, 'SIGKILL');
+        assert.equal(child.stdout.closed, true);
+        assert.equal(stopRenodeChild(child), first);
+    } finally {
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }
 });

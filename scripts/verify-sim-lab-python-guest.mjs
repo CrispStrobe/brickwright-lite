@@ -34,6 +34,8 @@ async function step (run, count = 1) {
         assert.ok(out && out.truncated === false && typeof out.text === 'string', 'bounded untruncated Python output');
         assert.ok(Number.isSafeInteger(out.sequence) && out.sequence >= 0 && out.sequence % 2 === 0, 'coherent output publication');
         run.text = out.text;run.outputSequence = out.sequence;run.states.add(p.state);
+        run.steps = (run.steps || 0) + 1;
+        if (run.steps % 100 === 0) console.log(`[own Python] ${run.name}: ${run.steps} steps, ${run.session.time} ms simulated, state ${p.state}`);
         run.last = {state: p.state, error: p.error, positions: p.positions, duties: p.duties,
             physicalAngles: Object.fromEntries([...run.joints].map(([port, joint]) => [port, (run.session.core.jointState(joint).angle - run.angle0.get(port)) * 180 / Math.PI])),
             sensor: structuredClone(run.hub.sensors.get('D') || null),
@@ -46,12 +48,14 @@ async function until (run, predicate, maxSteps, label) {
     throw Error(`${label} exceeded ${maxSteps * 5} ms virtual: ${JSON.stringify(run.last)}`);
 }
 async function open (name, source, facing = true) {
+    console.log(`[own Python] begin ${name}`);
     // lockstep.end leaves this unmanaged machine paused. Restore free-running
     // execution before BEGIN/CHUNK/COMMIT waits for the real guest's replies.
     if (pausedBetweenCases) {await monitorCommand(renode.monitorPort, 'start');pausedBetweenCases = false;}
     const before = transport.validated.packet;
     const route = await openLockstepRoute({transport, manageSession: false, pythonSource: source});
     assert.equal(route.program.stateName, 'ready');
+    console.log(`[own Python] source ready: ${name}`);
     assert.ok(transport.validated.packet > before, 'actual source uploaded before lockstep');
     let hub;
     const {session, issues} = await SimSession.fromText(base, {catalog, mat: facing ? 'wall' : 'plain', createHub: def => (hub = route.createHub(def))});
@@ -63,6 +67,7 @@ async function open (name, source, facing = true) {
 }
 async function close (run) {
     await run.route.driver.end();pausedBetweenCases = true;run.session.dispose();active = null;
+    console.log(`[own Python] completed ${run.name}: ${run.steps || 0} steps`);
     report.cases.push({name: run.name, states: [...run.states], output: run.text, last: run.last,
         controls: run.route.program.sent.map(c => c.op), uploadPackets: run.packets, complete: run.complete || null, restart: run.restart || null, sleepAdmission: run.sleepAdmission || null});
 }
@@ -141,7 +146,8 @@ try {
     report.failures.push(error.stack || error.message);console.error(error.stack);
 } finally {
     if (active) {try {await active.route.driver.end();} catch {} active.session.dispose();}
-    transport?.close();renode?.child.kill('SIGKILL');
+    transport?.close();
+    if (renode) {try {await renode.stop();} catch (error) {report.failures.push(`Runtime cleanup: ${error.message}`);console.error(error.stack);}}
 }
 const arg = process.argv.indexOf('--json');if (arg !== -1) writeFileSync(process.argv[arg + 1], `${JSON.stringify(report, null, 2)}\n`);
 console.log(`own Python Lab guest: ${report.failures.length ? 'FAIL' : 'PASS'} (${report.cases.length} completed cases)`);

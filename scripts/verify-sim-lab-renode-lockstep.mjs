@@ -356,9 +356,9 @@ try {
     if (renode) console.error(renode.tail());
 } finally {
     transport?.close();
-    renode?.child.kill('SIGKILL');
+    if (renode) {try {await renode.stop();} catch (error) {failures.push(`Runtime cleanup: ${error.message}`);console.error(error.stack);}}
 }
 report.failures = failures;
 if (jsonOut) writeFileSync(jsonOut, `${JSON.stringify(report, null, 2)}\n`);
 console.log(failures.length ? `R13e headless lockstep: ${failures.length} failure(s)` : 'R13e headless lockstep: all checks passed');
-process.exit(failures.length ? 1 : 0);
+process.exitCode = failures.length ? 1 : 0;

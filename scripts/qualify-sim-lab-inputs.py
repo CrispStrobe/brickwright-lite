@@ -36,6 +36,7 @@ files = [
     'scripts/verify-sim-lab-renode-lockstep.mjs',
     'scripts/verify-sim-lab-python-guest.mjs',
     'scripts/lib/sim-lab-renode-guest.mjs',
+    'scripts/lib/sim-lab-dotnet-launcher.mjs',
     'scripts/prepare-spike-nuttx-package.mjs',
     'scripts/lib/spike-package-model-loading.mjs',
     'scripts/qualify-sim-lab-inputs.py',
