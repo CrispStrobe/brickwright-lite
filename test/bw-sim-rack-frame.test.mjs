@@ -60,6 +60,29 @@ const runBench = (Jx, spec, {v = [0, 0, 0], w = [0, 0, 0], turn = false} = {}) =
     return out;
 };
 
+test('a powered rack reaches its geometric limit before torque cutoff and reverses from either end',()=>{
+    const spec={pinionAxis:[0,1,0],rackAxis:[1,0,0],pinionAt:[0,0.01,0],rackAt:[0,0.01,0.006]};
+    const travel=0.012;
+    // The unchanged steering acceptance permits one degree at its pinion.
+    // Convert that same angular allowance through this fixture's pitch radius.
+    const positionAllowance=R*Math.PI/180;
+    for(const first of [1,-1]){
+        const mechanism=benchMechanism(spec);
+        mechanism.joints.find(j=>j.id==='jr').limits=[-travel,travel];
+        const core=createPhysicsCore(J,mechanism,{stepHz:HZ});
+        try{
+            for(const sign of [first,-first]){
+                core.setMotor('jp',{mode:'torque',torqueNm:sign*0.01,dampingNmsPerRad:0.001});
+                for(let i=0;i<2*HZ;i++)core.step(1/HZ);
+                const rack=core.jointState('jr');
+                assert.ok(Math.abs(rack.position-sign*travel)<positionAllowance,
+                    `direction ${sign}: rack ${rack.position} must reach its actual ${sign*travel} m limit`);
+                assert.ok(Math.abs(rack.velocity)<0.001,'the rack settles at the end rather than chattering');
+            }
+        }finally{core.destroy();}
+    }
+});
+
 test('a rack on a turning chassis keeps its place on it: it moves only by r times the pinion\'s turn relative to the chassis', t => {
     // The chassis spins at 3 rad/s about the pinion's own axis (a steering pinion, vertical, as the car turns).
     const spec = {pinionAxis: [0, 1, 0], rackAxis: [1, 0, 0], pinionAt: [0, 0.01, 0], rackAt: [0, 0.01, 0.006]};
