@@ -161,7 +161,8 @@ export const insightInteractions = async (page, {shotsDir}) => {
     // not the spinning wheel/output bodies. Pause before comparing one pose.
     const beforeDrive = await socketAttachments(page, 'simulate', ['motorL', 'motorR']);
     await openManualControls(page);
-    await page.getByTestId('bw-sim-lab-run').click();
+    // Drive starts the clock itself. Do not race its manual takeover against
+    // an unrelated asynchronous Run/connect/green-flag sequence.
     await page.getByTestId('bw-sim-lab-drive-forward').hover();
     const t0 = await page.evaluate(() => window.__bwSimLab._pane.session.time);
     await page.mouse.down();
