@@ -37,3 +37,26 @@ test('actual apt files are updated once, retaining permissions and unrelated con
         assert.deepEqual(await prepareUbuntuArchives([file,unrelated]),[]);
     }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+// Exact mirror layout in actions/runner-images ubuntu24/20261012.334,
+// images/ubuntu/scripts/build/configure-apt-sources.sh (the failed runner).
+test('the actual runner mirror-list indirection preserves fallback priorities and signing fields',async()=>{
+    const dir=await mkdtemp(path.join(tmpdir(),'bw-apt-mirrors-'));
+    const sources='Types: deb\nURIs: mirror+file:/etc/apt/apt-mirrors.txt\nSuites: noble noble-updates noble-backports noble-security\nComponents: main universe restricted multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n';
+    const mirrors='http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://archive.ubuntu.com/ubuntu/\tpriority:2\nhttps://security.ubuntu.com/ubuntu/\tpriority:3\n';
+    try{
+        const file=path.join(dir,'ubuntu.sources'),list=path.join(dir,'apt-mirrors.txt');
+        await writeFile(file,sources);await writeFile(list,mirrors);
+        assert.deepEqual(await prepareUbuntuArchives([file,list]),[list]);
+        assert.equal(await readFile(file,'utf8'),sources);
+        assert.equal(await readFile(list,'utf8'),mirrors.replace('http://azure.archive.ubuntu.com/ubuntu/','https://archive.ubuntu.com/ubuntu/'));
+        assert.deepEqual(await prepareUbuntuArchives([file,list]),[]);
+        for(const unrelated of ['# http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n',
+            'https://azure.archive.ubuntu.com.evil.invalid/ubuntu/\tpriority:1\n',
+            'https://private.invalid/path/http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n']){
+            await writeFile(list,unrelated);
+            assert.deepEqual(await prepareUbuntuArchives([list]),[]);
+            assert.equal(await readFile(list,'utf8'),unrelated);
+        }
+    }finally{await rm(dir,{recursive:true,force:true});}
+});
