@@ -122,3 +122,36 @@ value in the new fixture. This does not close the original raw-API carrier,
 pixel producer, SDK, GUI or corpus gates. The preceding complete 31-control
 length result is unchanged. Final integrated hosted and affected guest/browser
 qualification remain pending.
+
+## Unexecuted Image operation entry candidate
+
+The next isolated SOURCE candidate changes only the native-domain consumer,
+a new private `image-pixel-normal-results.js` module, its complete eight-group
+source tests and this contract/documentation. Shared Image/SDK contracts,
+clone exposure, runtime, resource emission and original carrier assertions are
+unchanged. The existing private emitted-resource view supplies concrete Image
+literals; no caller-supplied context or annotation issues a value fact.
+
+Actual immutable entries, selected Array returns, complete writer/effect
+closure and genuine Image receiver operations are required before issuing
+normal-result Number facts for `.length`/`getPixel`. Reached logging or unknown
+callback/effect paths refuse; unused fallback text is retained. Every original
+call/argument and possible error stays present. This candidate is not yet
+executed: the complete old ten modules/thirty-nine controls plus the new whole
+eight controls, related Image/resource regressions, original three-test carrier,
+original/emitted SDK and affected clean GUI/runtime gates remain pending.
+Historical failures and application counts are unchanged.
+
+The first complete 47-control attempt and its diagnostic successor each
+retained all old 39 passes and failed all eight new groups. Source and saved
+original review located a local factory-reference census that confused formal
+bindings with the function binding because both share a declaration node.
+The corrected SOURCE candidate uses strict binding identity for every actual
+function reference, including body references, while preserving exact direct
+call/arity/new/generic/spread/escape refusal. Parameter-call and body-escape
+controls remain in the same eight groups. Shared helpers are unchanged and the
+temporary observer is removed. The corrected complete eleven-module cohort
+passes all 47 controls with no failures, skips or TODOs. Independent saved-result
+review verifies all source, actual module and journal identities and resource
+bounds. Both failed originals remain retained. Original carrier, SDK and GUI
+acceptance are pending; no app-count change is claimed.

@@ -1,3 +1,4 @@
+import {imagePixelNormalResults} from './image-pixel-normal-results.js';
 import {numericClosureNormalResults} from './numeric-closure-normal-results.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
@@ -21,7 +22,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const syntax=inspectNativeArrayAddHelpers(program,profile),helpers=syntax.helpers;
     if(!helpers.size)return {helpers:new Map(),current:syntax.current,reason:null};
     const suppliedTags=new Set(['NativeNamedArrayCreate','NativeNamedArrayDelete','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||
+    const supplied=node=>node&&typeof node==='object'&&(Object.hasOwn(node,'bwNativeNamedArray')||Object.hasOwn(node,'nativeArrayDomainCall')||Object.hasOwn(node,'nativeArrayDomainNormalCall')||Object.hasOwn(node,'nativeClosureDomainNormalCall')||Object.hasOwn(node,'nativeImageDomainNormalCall')||
         suppliedTags.has(node.type)||Object.entries(node).some(([key,value])=>!metadata.has(key)&&(Array.isArray(value)?value.some(supplied):supplied(value))));
     if(supplied(program))return {helpers:new Map(),current:syntax.current,reason:'native addition requires original source, not supplied private named-helper tags'};
     // A complete unary conversion body returns Number whenever it returns.
@@ -70,12 +71,13 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     if(named.unsupported.length)return {helpers:new Map(),current:syntax.current,reason:'native addition named-helper source proof refused: '+named.unsupported.join('; ')};
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
-    let closureResults=null,closureLive=true;
-    const closureNormalTokens=new Set();
+    let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
+    const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
         const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
         if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
-        return now&&(!closureNormalTokens.size||closureLive);
+        if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
+        return now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive);
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -139,6 +141,30 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         for(const node of bindings.nodes){const before=previous.get(node);if(before)replacements.set(node,closureCopies.get(before)||before);}
         model=closureModel;graph=analyse(model);
     }
+    // This independent actual-entry proof issues only operation normal results.
+    // Literal Image origins in the exporter resource view remain separate from
+    // clone nonexposure, generic Image annotations and flat Array admission.
+    const hasImageCandidate=bindings.nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='getPixel');
+    imageResults=hasImageCandidate?imagePixelNormalResults(model,profile):{current:()=>true,has:()=>false};
+    if(hasImageCandidate){
+        const copies=new WeakMap();
+        const normalImageView=node=>{
+            if(!node||typeof node!=='object')return node;
+            if(Array.isArray(node))return mapGeneratedSourceArray(node,normalImageView);
+            const selected=imageResults.has(node);
+            const copy=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,metadata.has(key)?value:normalImageView(value)]));
+            if(!selected){copies.set(node,copy);return copy;}
+            const token=Symbol();imageNormalTokens.add(token);
+            const projected={type:'Conditional',test:copy,consequent:{type:'Number',value:'0'},alternate:{type:'Number',value:'0'},nativeImageDomainNormalCall:token};
+            copies.set(node,projected);return projected;
+        };
+        const projected=normalImageView(model);
+        if(imageNormalTokens.size){
+            const previous=replacements;replacements=new WeakMap();
+            for(const node of bindings.nodes){const before=previous.get(node);if(before)replacements.set(node,copies.get(before)||before);}
+            model=projected;graph=analyse(model);
+        }
+    }
     // Reuse the same closed source/binding profiles as the value graph. These
     // are Number results on NORMAL return, never input or initialization facts
     // about their arguments. The complete original argument/effect census is
@@ -159,7 +185,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const initialized=node=>{
         if(!node||typeof node!=='object')return true;
         if(Array.isArray(node))return node.every(initialized);
-        if(unaryTokens.has(node.nativeArrayDomainNormalCall)||closureNormalTokens.has(node.nativeClosureDomainNormalCall))return true;
+        if(unaryTokens.has(node.nativeArrayDomainNormalCall)||closureNormalTokens.has(node.nativeClosureDomainNormalCall)||imageNormalTokens.has(node.nativeImageDomainNormalCall))return true;
         if(numberResultSets.some(producers=>producers.has(actual(node))))return true;
         if(node.type==='Identifier'&&!graph.isInitializedAt(actual(node))&&!graph.immutableFunctionAt(actual(node)))return false;
         return Object.entries(node).every(([key,value])=>metadata.has(key)||initialized(value));
