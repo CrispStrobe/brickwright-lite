@@ -31,3 +31,9 @@ Four reader mutations and the sensor identity mutation are detected. See the upd
 finite evidence and remaining boundaries. Final enabled exact-head hosted checks
 must pass before landing; no firmware, installed native or hardware closure is
 claimed by these tests.
+
+The reader now acquires its compiler through the registering entry point. Both
+fresh-process import orders and the unchanged registration/lazy-load guards
+pass. Final affected suite: 99 tests, plus CI-example manifest and lazy policies.
+The official earlier raw-import guard failure is retained; it is repaired at
+source without broadening its allow-list.
