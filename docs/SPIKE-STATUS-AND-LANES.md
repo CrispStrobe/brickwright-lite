@@ -1288,7 +1288,7 @@ G02 and release gates remain open.
 The PR repair sweep composes the published preflight-cancellation and terminal
 reason candidates with current main in `lane/native-pr-current-main-repair-20261022`.
 The migrated claim files and short LANES header remain unchanged; the legacy
-monolithic ledger is not restored. The original seven cancellation guards,
+monolithic ledger is not restored. The original cancellation guards,
 their complete session controls, and the closed native diagnostic are retained.
 
 All 74 session controls and six claim/migration controls pass together with no
