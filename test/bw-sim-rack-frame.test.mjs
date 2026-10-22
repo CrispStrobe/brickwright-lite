@@ -13,7 +13,11 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {upgradeMechanismV1} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
-import {MODELS, MODELS_BASE, prepareModel, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {SimSession, MODELS, MODELS_BASE, prepareModel, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+
+import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
+import {createRobotLabApi} from '../overlay/scratch-gui/src/lib/bw-sim/api/robot-lab-api.js';
+import {setMixerMotorPower} from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-motor-control.js';
 
 const J = await loadJolt();
 /** The same Jolt without the fork's RackMeshConstraint: the core falls back to RackAndPinionConstraint (world rates). */
@@ -119,6 +123,42 @@ test('a checkpoint during rack impact replays braking, settling and reversal exa
                 'reversal after replay reaches the opposite stop');
         }finally{core.destroy();}
     }
+});
+
+test('a loaded rack retains its Stop angle and replays learned support through reversal',async()=>{
+    const catalog=catalogFrom(JSON.parse(readFileSync(path.join(GUI,'src/lib/bw-sim/part-meta/parts.json'),'utf8')));
+    const {session,issues}=await SimSession.fromText(readFileSync(path.join(GUI,MODELS_BASE,'forklift.ldr'),'latin1'),
+        {hubState:new VirtualSpikeHubState(),catalog});
+    const api=createRobotLabApi({getSession:()=>session,getStatus:()=> 'running',locale:()=> 'en'});
+    const advance=async ms=>{const start=session.time;while(session.time-start<ms){session.tick(16);await session.idle();}};
+    try{
+        assert.deepEqual(issues,[]);
+        await advance(200);
+        assert.equal(setMixerMotorPower(api,'C',60).ok,true);
+        await advance(2000);
+        const held=api.encoder('C').angleDeg;
+        assert.equal(setMixerMotorPower(api,'C',0).ok,true);
+        await advance(1000);
+        assert.ok(Math.abs(api.encoder('C').angleDeg-held)<0.5,'retain the existing loaded-Stop allowance');
+        // Freeze the hub command: this replays the physical core and its actual
+        // constraint impulses, without advancing an uncheckpointed hub clock.
+        const core=session.core,joint=session.mechanism.actuators.find(a=>a.port==='C').joint;
+        core.checkpoint();
+        const trace=()=>{
+            const frames=[];
+            for(const reverse of [false,true]){
+                if(reverse)core.setMotor(joint,{mode:'torque',torqueNm:-0.01,dampingNmsPerRad:0.001});
+                for(let i=0;i<HZ;i++){
+                    core.step(1/HZ);const frame=core.snapshot();
+                    frames.push([Array.from(frame.bodies),Array.from(frame.joints)]);
+                }
+            }
+            return frames;
+        };
+        const original=trace();core.rollback();const replay=trace();
+        assert.equal(replay.length,original.length);
+        replay.forEach((frame,i)=>assert.deepEqual(frame,original[i],`loaded physical frame ${i} replays exactly`));
+    }finally{session.dispose();}
 });
 
 test('a rack on a turning chassis keeps its place on it: it moves only by r times the pinion\'s turn relative to the chassis', t => {
