@@ -49,8 +49,10 @@ writer predicates establishing that connection.
 
 The journey repair and diagnostic upload are published in the existing PR;
 [their automatic qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39722942637)
-is still running and has unit failures. Do not substitute the earlier successes
-for this candidate. The [recursive numeric-result claim](https://github.com/CrispStrobe/brickwright-lite/pull/1213)
+completed with 30 successful checks, eight declared skips and five failures
+(the four unit shards and numeric authoring). Its unit totals and all 168 failing
+titles match the preceding candidate; standard build, heavy/light browsers and
+Robot Lab groups pass. Do not substitute those successes for the failed gates. The [recursive numeric-result claim](https://github.com/CrispStrobe/brickwright-lite/pull/1213)
 has merged. Its final complete source cohort passes **55/55**, including all
 47 preceding controls and all eight new groups. Earlier integration and new-test
 contract failures are retained. Native/SDK and visible editor acceptance remain
