@@ -1613,19 +1613,31 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                         // at the first point inside the proximity band.
                         let approach = rackApproach.get(st);
                         if (!approach || approach.end !== end) {
-                            approach = {end, braking:true, position:slider.position};
+                            approach = {end, braking:true, position:slider.position, angle, support:0};
                             rackApproach.set(st, approach);
                         } else if (approach.braking && (slider.velocity * end <= 0 || approach.position === slider.position)) {
                             approach.braking = false;
                         }
+                        const stationary = approach.position === slider.position && approach.angle === angle;
                         approach.position = slider.position;
+                        approach.angle = angle;
                         if (!approach.braking) {
                             // Never increase/reverse the command or undo an
                             // earlier stop. Damping and native limits stay intact.
                             const commanded = deltaAngle(h.hinge.GetTargetAngle(), angle);
                             const remaining = st.limits[end > 0 ? 1 : 0] - slider.position;
-                            offset = slider.velocity * end > 0 ?
-                                clamp(remaining / st.k, Math.min(0, commanded), Math.max(0, commanded)) : commanded;
+                            if (stationary) {
+                                // Remove the hard stop's own reaction from the
+                                // measured motor impulse: the remainder supports
+                                // an external load (gravity, for example). Keep
+                                // that stationary effort when limiting position.
+                                const stiffness = h.damping / (2 * dtFixed);
+                                const supported = (h.hinge.GetTotalLambdaMotor() +
+                                    st.k * slider.slider.GetTotalLambdaPositionLimits()) / dtFixed;
+                                approach.support = stiffness > 0 ? supported / stiffness : 0;
+                            }
+                            const support = clamp(approach.support, Math.min(0, commanded), Math.max(0, commanded));
+                            offset = clamp(remaining / st.k + support, Math.min(0, commanded), Math.max(0, commanded));
                         }
                     }
                     h.hinge.SetTargetAngle(normalizeAngle(angle + offset));
