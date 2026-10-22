@@ -73,3 +73,22 @@ yaw and velocity bounds intact. A checkpoint during impact replays every body
 and joint frame exactly; omitting the new phase registrant fails that control.
 Both measured existing Jolt providers now name only the new SPIKE-power test
 as their additional actual consumer. No provider or dependency is added.
+
+The first hosted qualification subsequently exposed a loaded Forklift hold
+failure: the existing prolonged manual-drive API case stopped 0.527 degrees
+from its target, outside its unchanged 0.5-degree bound. The original failure
+is retained. The end-stop correction now retains the stationary external load
+support measured from native motor and coupled limit impulses, reflected through
+the existing coupling ratio. It uses the existing spring stiffness and clamps
+the result within the commanded torque. Native position and angle stagnation
+identify rest; there is no new tuning constant or tolerance. All coupled stop
+reactions are included so a limit reaction cannot masquerade as a gravity load.
+
+The learned support and phase remain checkpointed. An additional loaded
+Forklift control exercises the original prolonged drive/Stop sequence and
+replays every native body and joint frame through support and reversal.
+All 94 controls in the complete affected and adjacent modules now pass with
+the actual SIMD factory; all 29 rack, steering, motor-power and Robot Lab API
+controls also pass with the actual baseline factory. Neither run skips tests.
+Fresh production GUI/browser checks and final-head hosted qualification remain
+required before landing this correction.
