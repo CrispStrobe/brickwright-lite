@@ -147,8 +147,7 @@ const MESH_VELOCITY_STEPS = 120;
  * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
  */
 const GEAR_POSITION_STEPS = 10;
-/** How near its limit a joint counts as at its end (m for a slider, rad for a hinge), and the brake (N·m) on a pinion driven into it. */
-const RACK_STOP_M = 0.0005;
+/** Hinge end proximity (rad), and the brake (N·m) on a pinion driven into a coupled end. */
 const HINGE_STOP_RAD = 0.01;
 const RACK_STOP_NM = 5;
 
@@ -1550,7 +1549,11 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const s = h ? null : sliderMap.get(jointId);
         const x = h ? h.unwrapped : s ? s.position : null;
         if (x === null) return 0;
-        const tol = h ? HINGE_STOP_RAD : RACK_STOP_M;
+        // A slider must reach its actual native limit before its coupled drive
+        // is cut. A proximity band left powered racks stationary short of the
+        // stop once RackMeshConstraint retained the accumulated position phase.
+        // Native constraints still bound penetration; reversal is never cut.
+        const tol = h ? HINGE_STOP_RAD : 0;
         return x >= limits[1] - tol ? 1 : x <= limits[0] + tol ? -1 : 0;
     };
     // Every joint with limits, and the hinges that drive it: the couplings walked from it, rates multiplied.
