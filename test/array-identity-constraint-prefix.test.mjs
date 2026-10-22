@@ -37,6 +37,23 @@ function consumers(project){
     assert.ok(rows.some(({node})=>node.opcode==='arrays_referenceItem'));
     return rows;
 }
+// Identify the genuine alias consumer, not the earlier temporary-array push
+// that initializes boxes. Its actual visible name and variable ID must agree.
+function aliasMutation(project){
+    const rows=consumers(project).filter(({target,node})=>{
+        if(node.opcode!=='arrays_mutateReference')return false;
+        const raw=node.inputs.ARRAY?.[1];
+        const read=typeof raw==='string'?target.blocks[raw]:null;
+        const field=read?.opcode==='data_variable'?read.fields.VARIABLE:
+            Array.isArray(raw)&&raw[0]===12?[raw[1],raw[2]]:null;
+        if(!field||field[0]!=='alias')return false;
+        const owners=project.targets.filter(t=>Object.hasOwn(t.variables,field[1]));
+        return owners.length===1&&owners[0].variables[field[1]][0]==='alias'&&
+            (owners[0]===target||owners[0].isStage);
+    });
+    assert.equal(rows.length,1,'one actual alias.push receiver with a physical binding');
+    return rows[0];
+}
 function accepted(project){
     assert.equal(isProjectJsonSnapshot(project),true);
     const proof=createArrayReferenceExportAuthority(project),rows=consumers(project);
@@ -45,7 +62,7 @@ function accepted(project){
 }
 function freshNegative(edit,{canonical=true}={}){
     const draft=fixture(),before=createProjectJsonSnapshot(JSON.stringify(draft));
-    const baseline=accepted(before),ids=baseline.rows.map(({id})=>id);
+    const baseline=accepted(before),ids=baseline.rows.map(({id})=>id),aliasID=aliasMutation(before).id;
     edit(draft,identity(draft));
     const owned=createProjectJsonSnapshot(JSON.stringify(draft)),actual=consumers(owned);
     assert.deepEqual(actual.map(({id})=>id),ids,'semantic edits retain the genuine consumer blocks');
@@ -53,7 +70,7 @@ function freshNegative(edit,{canonical=true}={}){
     if(canonical){const p=model.prepare(selected.target);assert.equal(p.current(),true);}
     else assert.throws(()=>model.prepare(selected.target),/constraint/,'explicit malformed canonical frontier');
     const proof=createArrayReferenceExportAuthority(owned);
-    const mutation=actual.find(({node})=>node.opcode==='arrays_mutateReference');
+    const mutation=aliasMutation(owned);assert.equal(mutation.id,aliasID,'same actual alias consumer after the semantic edit');
     assert.equal(proof.validateInput(mutation.target,mutation.node).ok,false,'fresh current source refuses the actual alias receiver');
     return owned;
 }
@@ -108,7 +125,7 @@ test('canonical procedure prototype and ordered formal identities are physical o
     assert.deepEqual([...entry.constraints.values()].map(x=>x.type),['Any','Any']);
     const target=draft.targets.find(t=>Object.hasOwn(t.blocks,entry.prototypeId));assert.ok(target);
     target.blocks[entry.prototypeId].mutation.argumentids=JSON.stringify([...entry.ids].reverse());
-    const changed=createProjectJsonSnapshot(JSON.stringify(draft)),actual=consumers(changed).find(r=>r.node.opcode==='arrays_mutateReference');
+    const changed=createProjectJsonSnapshot(JSON.stringify(draft)),actual=aliasMutation(changed);
     assert.throws(()=>model.prepare(actual.target),/constraint/);
     assert.equal(createArrayReferenceExportAuthority(changed).validateInput(actual.target,actual.node).ok,false);
 });
@@ -188,11 +205,24 @@ test('owned snapshot immutability and observed ambient graph edits cannot revive
     // A local reset actually needs the new identity-call effect proof. A
     // separate genuine animation query can run an options descriptor observer
     // after the early currentness fences, before the result is published.
-    const local=source('function same(value:any):any{return value;}function build(){let kept:number[]=null;let z=same(0);kept=[];let count=kept.length;}build();');
-    const initial=projectJsonToArcade(JSON.stringify(local.project));clean(initial);
-    const imported=arcadeToPseudocode(initial.files);clean(imported);const second=parse(imported.code);
+    // Author this local effect control directly in Code. The independent
+    // mixed fixture already covers import/reimport. This control must have
+    // exactly one direct build entry and no generated declaration scaffolding.
+    const local=parse(`DEVICE ARCADE
+GLOBAL out
+WHEN arcade source starts:
+  CALL: (build)
+DEFINE same (value):
+  declare arcade procedure "same %s" parameter "value" as Any
+  arcade return value (arcade local value)
+DEFINE build:
+  arcade set local kept to (null value)
+  arcade set local z to (arcade call function "same %s" arguments (arcade function argument ((0 + 0)) rest ("[]")))
+  arcade set local kept to (new array reference from ("[]"))
+  set out to (length of array reference (arcade local kept))
+`);
     const resourceID='12345678-1234-4234-8234-123456789abc';
-    const creator=parse(second.decompile()+'\nWHEN arcade source starts:\n  arcade set local animationCount to (length of array reference (arcade animation frames resource "'+resourceID+'"))\n');
+    const creator=parse(local.decompile()+'\nWHEN arcade source starts:\n  arcade set local animationCount to (length of array reference (arcade animation frames resource "'+resourceID+'"))\n');
     const frames=[2,8].map((colour,index)=>({id:'f'+index,durationMs:100,activeLayerId:'pixels',
         layers:[{id:'pixels',name:'Pixels',locked:false,type:'pixel',visible:true,opacity:1,
             content:{kind:'pixels',value:{width:2,height:1,pixels:[colour,colour]}}}]}));
@@ -217,6 +247,12 @@ test('owned snapshot immutability and observed ambient graph edits cannot revive
     }});
     const actual=createArrayReferenceExportAuthority(project,options);
     assert.equal(actual.validateInput(retained.target,retained.node).ok,true,'actual local reset through Any-prefix identity');
+    const nonidentity=JSON.parse(JSON.stringify(project)),changed=identity(nonidentity);
+    changed.returned.inputs.VALUE=[1,[10,'not an identity return']];
+    const unsafe=createProjectJsonSnapshot(JSON.stringify(nonidentity));
+    const sameConsumer=all(unsafe).find(({id})=>id===retained.id);assert.ok(sameConsumer);
+    assert.equal(createArrayReferenceExportAuthority(unsafe,options).validateInput(sameConsumer.target,sameConsumer.node).ok,false,
+        'the intervening call must genuinely use the identity effect proof to discount the local reset');
     assert.equal(actual.validateInput(animation.target,animation.node).ok,true,'genuine resource Array positive before arming');
     let published;
     try{observations=0;armed=true;published=actual.validateInput(animation.target,animation.node);}
@@ -228,15 +264,23 @@ test('owned snapshot immutability and observed ambient graph edits cannot revive
 
 });
 
+function assertIdentitySource(ts){
+    const matches=[...ts.matchAll(/function ([A-Za-z_]\w*)\s*\(value: any\): any\s*\{\s*return value\s*\}/g)];
+    assert.equal(matches.length,1,'one actual emitted Any identity definition');
+    const name=matches[0][1];
+    assert.ok(ts.includes('alias = '+name+'(boxes)'),
+        'the actual alias assignment calls that exact emitted identity symbol');
+}
+
 test('real Code feedback exact-files reimport and owned second export keep honest mixed declarations and canonical prefix',()=>{
     const original=source(text),before=JSON.stringify(original.project),first=projectJsonToArcade(before);clean(first);
-    assert.match(first.ts,/function Game_same\s*\(value: any\): any/);assert.match(first.ts,/let alias: any\[\]/);
+    assertIdentitySource(first.ts);assert.match(first.ts,/let alias: any\[\]/);
     assert.match(first.ts,/alias\.push\(\(0 \+ 0\)\)/);
     const feedback=parse(original.decompile());clean(projectJsonToArcade(JSON.stringify(feedback.project)));
     const imported=arcadeToPseudocode(first.files);clean(imported);const second=parse(imported.code);
     const project=createProjectJsonSnapshot(JSON.stringify(second.project));ownEntry(project);accepted(project);
     const exported=projectJsonToArcade(JSON.stringify(second.project));clean(exported);
-    assert.match(exported.ts,/function Game_same\s*\(value: any\): any/);assert.match(exported.ts,/any\[\]/);
+    assertIdentitySource(exported.ts);assert.match(exported.ts,/any\[\]/);
     assert.ok(Object.keys(exported.files).length>0);assert.equal(JSON.stringify(original.project),before);
     const unsafe=fixture(),row=identity(unsafe);row.returned.inputs.VALUE=[1,[10,'foreign']];
     const rejected=projectJsonToArcade(JSON.stringify(unsafe));assert.ok(rejected.unsupported.length);
