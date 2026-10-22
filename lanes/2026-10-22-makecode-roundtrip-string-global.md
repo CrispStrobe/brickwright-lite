@@ -27,6 +27,14 @@ Claim: VPS Claude (opus), 2026-10-22.
    This closes `arcade-5522443bf9525301` (quicksort/sort), which failed on
    `swap.j`, `qsort.hi` and `partition.hi` feeding off `qsort(0, arr.length)`.
 
+5. **A call that omits arguments is still readable.** `arcade-translate.js`
+   padded a short call with the dialect's undefined only when the handle-template
+   path was active, so a namespace call with fewer arguments than its `DEFINE`
+   could not be matched by the block parser and the whole project failed to
+   build ("2 lines could not be read, so nothing would be built from them"). The
+   omitted slots are now padded with the dialect's explicit undefined value; a
+   missing *required* formal is still named as a diagnostic.
+
 ## Qualification
 
 - `test/makecode-result-types.test.mjs`: 20/20 pass (includes the pxt-microbit
@@ -34,12 +42,29 @@ Claim: VPS Claude (opus), 2026-10-22.
 - Procedure/array/loop controls: `makecode-procedure-constraint-*`,
   `arcade-procedure-constraint-*`, `makecode-dense-array-loop-entry`,
   `makecode-arcade-{loop-control,value-arithmetic,update-values,
-  numeric-constant-values,array-*}`, `makecode-array-map-values`: 124 pass /
+  numeric-constant-values,array-*}`, `makecode-array-map-values`: 223 pass /
   11 documented todo / 0 fail. A second array set: 153 pass / 1 todo / 0 fail.
+- The Arcade buffer suite shows exactly the same 8 failures as the pristine base
+  commit (all in the export/SB3 route, unrelated to this change).
 - `scripts/verify-arcade-background-corpus.mjs` on the local corpus: both
   inputs pass all four stages (native, Code, SB3, compile, MakeCode reimport).
 - Full Arcade census (`scripts/compat-audit.mjs --target arcade`): **146
   translated / 37 partial / 1 malformed input** (was 145/38/1).
+
+## Complete-context census (authentic tutorial contexts)
+
+The documented B1 recovery was executed end to end against the pinned upstream
+documents: all 37 partial rows received an authentic tutorial context
+(`scripts/recover-makecode-context.mjs`, 37/37 recovered, 0 failed). Two
+censuses follow from it:
+
+| census | result |
+| --- | --- |
+| raw recovered contexts | 9 translated / 28 partial |
+| prepared (dependencies fetched and prepared) | **16 translated / 17 partial / 3 preparation-failed / 1 parse-failed** (was 16/13/3/5) |
+
+So four projects that previously built *nothing* now build, with their
+remaining diagnostics named.
 
 ## Re-audited and not landed
 
@@ -56,19 +81,37 @@ Claim: VPS Claude (opus), 2026-10-22.
   producer graph. It produced no census change on its own and was reverted to
   keep the change set to proven work.
 
-## Open coverage (37 partial + 1 malformed)
+## Open coverage, measured and classified
 
-The 184-input local corpus is `147/36/1` in the published baseline and
-`146/37/1` here. The one remaining delta row is `28379fc0` (snake), blocked by
-array *element* reads (`snake[0] >> 8`) outside the dense-loop proof. Closing it
-needs a sound definite-initialization proof for the array at the read (its
-literal assignment happens in `nextLevel()`, reached through a call from
-top-level `newFood()`), not a type annotation. The existing rule proves
-`length`, not element presence.
+The 184-input corpus is `147/36/1` in the published baseline and `146/37/1`
+here. The one remaining delta row is `28379fc0` (snake): array *element* reads
+(`snake[0] >> 8`) outside the dense-loop proof. Closing it needs a sound
+definite-initialization proof for the array at the read (its literal
+assignment happens in `nextLevel()`, reached through a call from top-level
+`newFood()`), not a type annotation.
 
-The remaining families need external project context or cross-repo work:
-- missing artwork/animation/song assets (25+ diagnostics);
-- per-sprite `onOverlap` / `setVelocity` / `setStayInScreen` / `setFlag`
-  (extension primitives, upstream-first);
-- custom tutorial packages (`globetrotters`, `carnival`, `freethrow`, …);
-- one genuinely malformed corpus input (unbalanced call, `12904c83`).
+The prepared complete-context census (17 partial) classifies as:
+
+| rows | cause | next step |
+| ---: | --- | --- |
+| 5 | `Math.idiv` operands unproven: the dependency calls `control.timer1.millis()`, which the pinned pxt-arcade 4.2.1 does not have | a runtime/pin decision, not an importer fix |
+| 4 | per-sprite `onOverlap` | an extension primitive (upstream-first) |
+| 2 | `createProjectileFromSprite` source is a variable declared in an earlier tutorial step | complete the tutorial context |
+| 2 | duplicate namespace/class declaration: the recovered `main.ts` repeats the tutorial's custom file | context assembly |
+| 4 | other (array element presence, cross-sprite property access, namespace constant lookup, class-callable duplication) | one scoped task each |
+
+Remaining raw-corpus families need external project context or cross-repo work:
+missing artwork/animation/song assets (25+ diagnostics); per-sprite `onOverlap`,
+`setVelocity`, `setStayInScreen`, `setFlag` (extension primitives,
+upstream-first); custom tutorial packages (`globetrotters`, `carnival`,
+`freethrow`, …); and one genuinely malformed corpus input (unbalanced call,
+`12904c83`).
+
+## Corpus integrity note
+
+42 of the 399 collected corpus files do not match their manifest hash: the
+collector wrote them after hashing the pre-merge snippet, so those files are
+merged multi-block programs. 11 of the 15 Arcade ones match an upstream code
+block byte-for-byte and the other 4 are merged programs of consecutive
+blocks; the 27 micro:bit ones have no pinned pxt-arcade source. No corpus byte
+was changed.
