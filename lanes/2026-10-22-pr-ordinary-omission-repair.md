@@ -28,6 +28,18 @@ original failure, full ordinary-call controls, affected source/procedure control
 and final exact-head CI before normal landing. No provider, dependency, pin,
 workflow, budget, skip or native-activation change is authorized by this claim.
 
+PR1219 source repair is DONE in the isolated successor
+`lane/ordinary-omission-repair-20261022`; exact-head hosted qualification remains
+required. The original default failure and three additional regression groups
+fail on the published candidate. All 47 complete source controls (including
+the unchanged dense-Array negatives) and 33 native/constraint-export controls
+pass after the repair, with no skips or TODOs in either cohort. The existing
+result-type module has 17 passes and three named local skips because the
+original MakeCode runtimes are not synced; original compiler qualification
+belongs to the full hosted matrix. The normal local build preflight deferred
+under high system load; no threshold was raised. The older sequential scopes
+below remain CLAIMED and do not acquire landing or native acceptance credit.
+
 ## Sequential reconciliation of the older reviewed PRs
 
 The same user-requested repair sweep may next compose published PR1162,
@@ -48,3 +60,17 @@ and the migrated claims, without editing LANES.md or the migration map.
 Native PRs remain drafts until fresh installed own-NuttX startup, Stop/cancel,
 normal operation and recovery evidence qualifies their changed source. Repairing
 CI does not supply that acceptance. No firmware, release or activation work.
+
+## Review of the owner's subsequent checkpoint
+
+Composed published head `4badd3de32536ad2a48d423f543d45d36a00d403`
+by normal merge, preserving the author's census and taxonomy verbatim as a
+historical checkpoint in the original claim. Its only new implementation-area
+change updates the refused mixed-default test to expect universal padding.
+Retained the original refusal assertion: the importer still reports that the
+default protocol is unqualified, and the separate escaped-callee control proves
+that textual padding bypasses call-site ownership. Against the exact published
+source bytes, the two complete focused modules have 16 passes and four failing
+regression groups; the repaired source has all 20 passing without skips.
+The census measurements are the original owner's report, not measurements of
+this repaired successor; their numerical credit is not transferred.

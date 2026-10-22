@@ -165,3 +165,10 @@ test('missing signature provenance is unknown, never proof of no defaults', () =
     assert.equal(result.program,program);assert.equal(result.omissions.length,0);
     assert.ok(result.unsupported.some(message=>/retained original default-signature provenance/.test(message)));
 });
+
+test('an escaped ordinary declaration cannot acquire padded slots during textual emission', () => {
+    const source=neighbor+'function retain(value?:any){console.log(value)} let alias=retain; alias(); retain();';
+    const result=arcadeToPseudocode(source);
+    assert.ok(result.code.split('\n').some(line=>/CALL: \(retain\)/.test(line)),result.code);
+    assert.doesNotMatch(result.code,/CALL: \(retain \(undefined value\)\)/);
+});

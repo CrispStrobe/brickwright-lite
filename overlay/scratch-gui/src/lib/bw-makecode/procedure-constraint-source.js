@@ -53,7 +53,7 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null,or
   for(const child of Object.values(node))if(child&&typeof child==='object')scanWrites(child);};
  scanWrites(program);
  const numericHelpers=new Set([...helperNames].filter(([name,fn])=>fn&&!written.has(name)).map(([,fn])=>fn));
- const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,primitiveComparisons:true,closureEntries:true,numericHelpers});
+ const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers});
  const constraintTypes=graph.constraintTypesAt||graph.typesAt;
  const functions=new Map(),uses=[],calls=[],writes=[];
  const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
