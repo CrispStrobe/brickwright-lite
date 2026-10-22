@@ -14,15 +14,15 @@
 //   gear pairs       a violet rod from one gear's centre to the other's, with
 //                    the tooth ratio ("1:3") as a label at its middle;
 //   cables           with the port labels: a dark cable arching from each plugged-in
-//                    motor or sensor to its hub (from part centre to part centre: the
-//                    parts have no socket positions, so it says which hub, not where).
+//                    motor or sensor's cable exit to its assigned hub socket.
+//                    Badge anchors are separate from these physical attachments.
 //
 // Everything is anchored: an anchor is a function returning the world point
 // now (a body that moves, a part being dragged), read once per frame, so the
 // overlay follows the simulation. Rods and heads are drawn on top of the parts
 // (no depth test): an axle hidden inside the robot still shows.
 
-import {ConeGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, QuadraticBezierCurve3, SphereGeometry, TubeGeometry, Vector3} from 'three';
+import {ConeGeometry, CubicBezierCurve3, CurvePath, CylinderGeometry, Group, Mesh, MeshBasicMaterial, SphereGeometry, TubeGeometry, Vector3} from 'three';
 
 export const INSIGHT_COLORS = Object.freeze({motorAxis: 0xdc2626, axis: 0x2563eb, gear: 0x7c3aed});
 /** Rod radius, metres: thin, but more than a 1 px line. */
@@ -38,6 +38,21 @@ const CABLE_RADIUS = 0.0012;
 const CABLE_ARCH = 0.5;
 const CABLE_CLEARANCE = 0.015;
 const CABLE_COLOR = 0x3a3f44;
+
+// Two smooth spans retain the outward tangent at BOTH socket mouths. A single
+// centre-to-centre arch instead cuts through the device or the hub's casing.
+const cableCurve = (from, to, fromDirection, toDirection) => {
+    const span = from.distanceTo(to), lead = Math.max(0.006, Math.min(0.03, span * 0.3));
+    const mid = from.clone().add(to).multiplyScalar(0.5);
+    mid.y = Math.max(from.y, to.y) + span * CABLE_ARCH + CABLE_CLEARANCE;
+    const across = to.clone().sub(from); across.y = 0;
+    if (across.lengthSq() < 1e-12) across.set(1, 0, 0);
+    across.normalize().multiplyScalar(lead);
+    const path = new CurvePath();
+    path.add(new CubicBezierCurve3(from.clone(), from.clone().addScaledVector(fromDirection, lead), mid.clone().sub(across), mid.clone()));
+    path.add(new CubicBezierCurve3(mid.clone(), mid.clone().add(across), to.clone().addScaledVector(toDirection, lead), to.clone()));
+    return path;
+};
 
 const badgeStyle = (el, extra) => Object.assign(el.style, {
     position: 'absolute', left: '0', top: '0', pointerEvents: 'none', whiteSpace: 'nowrap',
@@ -123,13 +138,14 @@ export const createInsightLayer = ({container, scene, onPortClick = null}) => {
             }
             dom.appendChild(el);
             ports.push({id: item.id, el, anchor: item.anchor});
-            if (item.port && item.hubAnchor) {
+            if (item.port && item.cableAnchor && item.hubAnchor && item.cableDirection && item.hubDirection) {
                 const mesh = new Mesh(undefined, cableMaterial);
                 mesh.name = 'bw-insight-cable';
                 mesh.userData.part = item.id;
                 mesh.frustumCulled = false;
                 cableRoot.add(mesh);
-                cables.push({from: item.anchor, to: item.hubAnchor, mesh, at: null});
+                cables.push({from: item.cableAnchor, to: item.hubAnchor,
+                    fromDirection: item.cableDirection, toDirection: item.hubDirection, mesh, at: null});
             }
         }
     };
@@ -226,14 +242,14 @@ export const createInsightLayer = ({container, scene, onPortClick = null}) => {
         for (const c of cables) {
             const pa = show.ports ? c.from() : null;
             const pb = pa ? c.to() : null;
-            c.mesh.visible = Boolean(pa && pb);
-            if (!pa || !pb || (c.at && c.at[0].distanceToSquared(pa) < 1e-10 && c.at[1].distanceToSquared(pb) < 1e-10)) continue;
+            const da = pa && pb ? c.fromDirection() : null;
+            const db = da ? c.toDirection() : null;
+            c.mesh.visible = Boolean(pa && pb && da && db);
+            if (!pa || !pb || !da || !db || (c.at && [pa, pb, da, db].every((p, i) => c.at[i].distanceToSquared(p) < 1e-10))) continue;
             // The ends moved: the cable is laid anew, arching over the middle.
-            c.at = [pa.clone(), pb.clone()];
-            const mid = pa.clone().add(pb).multiplyScalar(0.5);
-            mid.y = Math.max(pa.y, pb.y) + pa.distanceTo(pb) * CABLE_ARCH + CABLE_CLEARANCE;
+            c.at = [pa.clone(), pb.clone(), da.clone(), db.clone()];
             c.mesh.geometry.dispose();
-            c.mesh.geometry = new TubeGeometry(new QuadraticBezierCurve3(pa.clone(), mid, pb.clone()), 24, CABLE_RADIUS, 6, false);
+            c.mesh.geometry = new TubeGeometry(cableCurve(pa, pb, da, db), 32, CABLE_RADIUS, 6, false);
         }
         for (const p of ports) {
             const at = show.ports ? p.anchor() : null;
@@ -250,7 +266,9 @@ export const createInsightLayer = ({container, scene, onPortClick = null}) => {
         balls: dots.filter(d => d.mesh.visible).length,
         gears: rods.filter(r => !r.head && r.mesh.visible).length,
         ratios: ratios.filter(r => r.el.style.display !== 'none').map(r => r.el.textContent),
-        cables: cables.filter(c => c.mesh.visible).map(c => c.mesh.userData.part)
+        cables: cables.filter(c => c.mesh.visible).map(c => c.mesh.userData.part),
+        cableAttachments: cables.filter(c => c.mesh.visible && c.at).map(c => ({id: c.mesh.userData.part,
+            from: c.at[0].toArray(), to: c.at[1].toArray(), fromDirection: c.at[2].toArray(), toDirection: c.at[3].toArray()}))
     });
 
     const dispose = () => {

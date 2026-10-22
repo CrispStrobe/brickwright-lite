@@ -1,3 +1,4 @@
+import {openManualControls} from './sim-lab-manual-controls.mjs';
 import {tool, toolAttribute} from './sim-lab-toolbar-gate.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
@@ -27,6 +28,57 @@ const overlay = (page, which) => page.evaluate(w => {
     const view = w === 'build' ? pane.editView : pane.view;
     return view ? view.overlayStats() : null;
 }, which);
+
+// Independent port-mouth measurements, transformed from the authored part frame
+// and then by the physics housing pose. Never derive expected endpoints from
+// the view's anchor helper, badge centres, or the motor output body's transform.
+const socketAttachments = async (page, which, ids) => {
+    await page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+    await page.waitForFunction(({which,ids}) => {
+        const pane = window.__bwSimLab._pane, view = which === 'build' ? pane.editView : pane.view;
+        return window.__bwSimLab.status === 'ready' || window.__bwSimLab.status === 'paused' ?
+            ids.every(id => view?.overlayStats().cableAttachments.some(c => c.id === id)) : false;
+    }, {which,ids}, {timeout:15000});
+    const observations = await page.evaluate(({which, ids}) => {
+        const pane = window.__bwSimLab._pane, session = pane.session;
+        const model = which === 'build' ? pane.editor.model : session.runModel;
+        const stats = (which === 'build' ? pane.editView : pane.view).overlayStats();
+        const snapshot = which === 'build' ? null : session.snapshot();
+        const sockets = {A: [-69, -68, 40], B: [69, -68, 40], C: [-69, -68, 0], F: [69, -68, -40]};
+        const add = (a,b) => a.map((x,i) => x+b[i]);
+        const sub = (a,b) => a.map((x,i) => x-b[i]);
+        const rotate = (q,v) => { // quaternion rotation, independent of Three's scene graph
+            const [x,y,z,w] = q, [a,b,c] = v;
+            const t = [2*(y*c-z*b), 2*(z*a-x*c), 2*(x*b-y*a)];
+            return [a+w*t[0]+y*t[2]-z*t[1], b+w*t[1]+z*t[0]-x*t[2], c+w*t[2]+x*t[1]-y*t[0]];
+        };
+        const point = (part, local) => {
+            const r = part.rotation;
+            const ldraw = add(part.position, [0,1,2].map(i => r[i*3]*local[0]+r[i*3+1]*local[1]+r[i*3+2]*local[2]));
+            const world = ldraw.map((x,i) => x * (i ? -0.0004 : 0.0004));
+            if (!snapshot) return world;
+            const bodies = session.mechanism.bodies.filter(b => b.parts.includes(part.id));
+            const own = session.mechanism.joints.find(j => bodies.some(b => b.id === j.body1) && bodies.some(b => b.id === j.body2));
+            const body = bodies.find(b => b.id === own?.body1) || bodies[0];
+            const q = body.rotation, offset = rotate([-q[0],-q[1],-q[2],q[3]], sub(world,body.position));
+            const i = snapshot.bodyIds.indexOf(body.id)*7, pose = Array.from(snapshot.bodies.slice(i,i+7));
+            return add(pose.slice(0,3),rotate(pose.slice(3),offset));
+        };
+        return ids.map(id => {
+            const device = model.parts.find(p => p.id === id);
+            const hub = model.parts.find(p => p.id === (device.hub || 'hub'));
+            const local = device.part === '37308.dat' ? [0,0,3] : [0,0,143];
+            return {id, port:device.port, actual:stats.cableAttachments.find(c => c.id === id),
+                from:point(device,local), to:point(hub,sockets[device.port])};
+        });
+    }, {which,ids});
+    for (const o of observations) {
+        assert.ok(o.actual, `${which}: cable ${o.id} is rendered`);
+        for (const end of ['from','to']) assert.ok(Math.hypot(...o.actual[end].map((x,i) => x-o[end][i])) < 0.00006,
+            `${which}: ${o.id}/${o.port} ${end} is at its physical socket: ${JSON.stringify(o)}`);
+    }
+    return observations;
+};
 
 /** Pixels of the motor-axis red (#dc2626) in a screenshot of the 3D view, decoded by the page. */
 const redPixels = async (page, locator) => {
@@ -74,6 +126,7 @@ export const insightInteractions = async (page, {shotsDir}) => {
     // A cable from each plugged-in motor to the hub.
     await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().cables.length === 2, null, {timeout: 5000});
     assert.deepEqual((await overlay(page, 'simulate')).cables.slice().sort(), ['motorL', 'motorR'], 'a cable from each motor to the hub');
+    await socketAttachments(page, 'simulate', ['motorL', 'motorR']);
     assert.equal((await toolAttribute(page,'show-motion','aria-checked')) === 'true', false, '"Show how it moves" starts off');
     // "Show ports" off hides the badges, on brings them back.
     await tool(page,'show-ports');
@@ -97,6 +150,23 @@ export const insightInteractions = async (page, {shotsDir}) => {
     console.log(`PASS Simulate: port badges A/B; "Show how it moves" draws ${sim.motorAxes} motor axes, 1 ball joint, ` +
         `${sim.tinted} tinted meshes (${simAfter - simBefore} red axis pixels)`);
 
+    // Run and drive through actual controls: cables travel with housings,
+    // not the spinning wheel/output bodies. Pause before comparing one pose.
+    const beforeDrive = await socketAttachments(page, 'simulate', ['motorL', 'motorR']);
+    await openManualControls(page);
+    await page.getByTestId('bw-sim-lab-run').click();
+    await page.getByTestId('bw-sim-lab-drive-forward').hover();
+    const t0 = await page.evaluate(() => window.__bwSimLab._pane.session.time);
+    await page.mouse.down();
+    try { await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t+1000, t0, {timeout:60000}); }
+    finally { await page.mouse.up(); }
+    await tool(page, 'pause');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'paused');
+    const afterDrive = await socketAttachments(page, 'simulate', ['motorL', 'motorR']);
+    assert.ok(Math.hypot(...afterDrive[0].actual.from.map((x,i) => x-beforeDrive[0].actual.from[i])) > 0.01,
+        'the driven motor housing and its cable moved by more than 1 cm');
+    console.log('PASS moving motor cables follow physical housings and selected hub sockets');
+
     // ---- 2. Build --------------------------------------------------------------------
     await page.getByTestId('bw-sim-lab-mode-build').click();
     const editor = page.getByTestId('bw-sim-lab-editor-canvas');
@@ -105,6 +175,15 @@ export const insightInteractions = async (page, {shotsDir}) => {
         window.__bwSimLab.editView.overlayStats().cables.length === 2,
         null, {timeout: 60000});
     assert.equal(await badge(page, 'motorL').textContent(), 'A');
+    await socketAttachments(page, 'build', ['motorL','motorR']);
+    // Move A to the physically different F socket through the existing picker.
+    await badge(page, 'motorL').click();
+    await page.getByTestId('bw-sim-lab-port-pick-F').click();
+    await page.waitForFunction(() => window.__bwSimLab.editor.model.parts.find(p => p.id === 'motorL').port === 'F');
+    await socketAttachments(page, 'build', ['motorL','motorR']);
+    await badge(page, 'motorL').click();
+    await page.getByTestId('bw-sim-lab-port-pick-A').click();
+    await socketAttachments(page, 'build', ['motorL','motorR']);
     const buildBefore = await redPixels(page, editor);
     await setMotion(page, 'build', true);
     const built = await overlay(page, 'build');
@@ -176,4 +255,17 @@ export const insightInteractions = async (page, {shotsDir}) => {
     // The pulse ends by itself.
     await page.waitForFunction(() => window.__bwSimLab._pane.view.overlayStats().pulsing === 0, null, {timeout: 10000});
     console.log('PASS Simulate: with no motor plugged in, "Before you press Run" says so; clicking it pulses both motors');
+    assert.deepEqual((await overlay(page, 'simulate')).cables, [], 'unplugged devices have no cable');
+    // A rotated colour sensor has a captive lead exit too, independent of its
+    // optical sensing face. Check motors and sensor in both real renderers.
+    await page.getByTestId('bw-sim-lab-model').selectOption('line-follower.ldr');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'line-follower.ldr' &&
+        window.__bwSimLab._pane.view?.overlayStats().cables.length === 3, null, {timeout:60000});
+    await socketAttachments(page, 'simulate', ['motorL','motorR','sens']);
+    await page.screenshot({path:resolve(shotsDir,'sim-lab-cable-sensor-simulate.png')});
+    await page.getByTestId('bw-sim-lab-mode-build').click();
+    await page.waitForFunction(() => window.__bwSimLab.editView?.overlayStats().cables.length === 3, null, {timeout:60000});
+    await socketAttachments(page, 'build', ['motorL','motorR','sens']);
+    await page.screenshot({path:resolve(shotsDir,'sim-lab-cable-sensor-build.png')});
+    console.log('PASS motor/sensor socket anchors in Simulate and Build, changed port F, unplug and visibility');
 };

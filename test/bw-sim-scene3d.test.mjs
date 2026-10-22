@@ -21,7 +21,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {Box3, Vector3} from 'three';
+import {Box3, Vector3, Group, Mesh, PerspectiveCamera} from 'three';
+import {electricalFeatures, hubCableSocket, deviceCableExit, createCableAnchors} from '../overlay/scratch-gui/src/lib/bw-sim/view/cable-anchors.js';
+import {createInsightLayer} from '../overlay/scratch-gui/src/lib/bw-sim/view/insight-layer.js';
 import {parseLDConfig} from '../overlay/scratch-gui/src/lib/bw-sim/view/ldraw-colors.js';
 import {partGeometry} from '../overlay/scratch-gui/src/lib/bw-sim/view/part-geometry.js';
 import {flattenPart, bounds} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
@@ -244,4 +246,94 @@ test('a load (the Warehouse pallet under the Forklift) is drawn in its own body\
     } finally {
         built.dispose();
     }
+});
+
+test('electrical anchors use official socket mouths and integral cable markers', () => {
+    const hub = electricalFeatures('45601.dat', read);
+    const expected = {A: [-69, -68, 40], B: [69, -68, 40], C: [-69, -68, 0], D: [69, -68, 0], E: [-69, -68, -40], F: [69, -68, -40]};
+    for (const [port, point] of Object.entries(expected)) {
+        const socket = hubCableSocket('45601.dat', port, hub);
+        assert.deepEqual(socket.position, point, port);
+        assert.deepEqual(socket.direction, [point[0] < 0 ? -1 : 1, 0, 0], port);
+    }
+    assert.equal(hubCableSocket('45601.dat', 'G', hub), null);
+    assert.equal(hubCableSocket('26910.dat', 'A', electricalFeatures('26910.dat', read)), null, 'built-in BOOST motor has no external cable');
+    // The C/D letters molded into 27191.dat are at -x/+x respectively.
+    const boost = electricalFeatures('26910.dat', read);
+    assert.deepEqual(hubCableSocket('26910.dat', 'C', boost).position, [-40, 11, 20]);
+    assert.deepEqual(hubCableSocket('26910.dat', 'D', boost).position, [40, 11, 20]);
+    for (const [part, point, normal] of [
+        ['54696p01.dat', [0, 0, 143], [0, 0, 1]],
+        ['54675.dat', [0, 14, 142], [0, 0, 1]],
+        ['37308.dat', [0, 0, 3], [0, 0, 1]],
+        ['37316.dat', [0, 14, 3], [0, 0, 1]],
+        ['37312.dat', [0, 0, 43], [0, 0, 1]],
+        ['95658.dat', [0, -56.5, -239], [0, 0, -1]],
+        ['99455.dat', [0, 0.5, 181], [0, 0, 1]],
+        ['53787.dat', [0, 38.5, -241], [0, 0, -1]]
+    ]) {
+        const exit = deviceCableExit(electricalFeatures(part, read));
+        assert.deepEqual(exit.position, point, part);
+        assert.deepEqual(exit.direction, normal, part);
+    }
+    assert.deepEqual(hubCableSocket('95646.dat', '1', electricalFeatures('95646.dat', read)).position, [-57, 20.5, -139]);
+    assert.deepEqual(hubCableSocket('95646.dat', 'D', electricalFeatures('95646.dat', read)).position, [27, 20.5, 139]);
+    assert.deepEqual(hubCableSocket('53788.dat', '1', electricalFeatures('53788.dat', read)).position, [-57, -70.5, -139]);
+    assert.deepEqual(hubCableSocket('53788.dat', 'C', electricalFeatures('53788.dat', read)).position, [19, -70.5, 139]);
+    // Port letters from the molded labels / LEGO hub photos, not file order:
+    // City faces -z, while Essential and WeDo face +z.
+    for (const [part,port,point] of [
+        ['28738.dat','A',[20,10,-80]], ['28738.dat','B',[-20,10,-80]],
+        ['67351.dat','A',[-40,-68,49]], ['67351c01.dat','B',[40,-68,49]],
+        ['19071.dat','A',[-20,11,80]], ['19071.dat','B',[20,11,80]],
+        ['22127.dat','A',[-50,-40,-60]], ['22127.dat','D',[50,-40,-20]],
+        ['76454c02.dat','A',[40,8,40]], ['76454c02.dat','3',[-40,8,-60]]
+    ]) assert.deepEqual(hubCableSocket(part,port,electricalFeatures(part,read)).position, point, `${part}/${port}`);
+    assert.deepEqual(electricalFeatures('unknown.dat', read), []);
+});
+
+test('cable attachments follow the named hub and transformed motor housing, including direction-only changes', () => {
+    const parts = [{id: 'first', part: '45601.dat'}, {id: 'named', part: '45601.dat'}, {id: 'motor', part: '54696p01.dat'}];
+    const meshes = new Map(parts.map(p => [p.id, new Mesh()]));
+    const group = new Group(); for (const m of meshes.values()) group.add(m);
+    const motor = meshes.get('motor'), hub = meshes.get('named');
+    group.position.set(0.2, 0.3, -0.4); group.rotation.set(0.2, -0.7, 0.1);
+    motor.position.set(0.01, 0.02, 0.03); motor.rotation.set(0.4, 0.5, 0.6);
+    hub.position.set(-0.1, 0.05, 0.02); hub.rotation.set(0, 0, Math.PI / 2); group.updateMatrixWorld(true);
+    const anchors = createCableAnchors({read, partOf: id => parts.find(p => p.id === id), meshOf: id => meshes.get(id)});
+    const item = anchors({id: 'motor', hub: 'named', port: 'F'});
+    assert.ok(item.cableAnchor().distanceTo(motor.localToWorld(new Vector3(0, 0, -0.0572))) < 1e-12);
+    assert.ok(item.hubAnchor().distanceTo(hub.localToWorld(new Vector3(0.0276, 0.0272, 0.016))) < 1e-12);
+    const before = item.cableAnchor(); motor.rotation.y += 0.7; group.updateMatrixWorld(true);
+    assert.ok(item.cableAnchor().distanceTo(before) > 0.001, 'housing rotation carries cable, not the motor rotor');
+    assert.ok(Math.abs(item.cableDirection().length() - 1) < 1e-12);
+    assert.deepEqual(anchors({id: 'motor', hub: 'missing', port: 'A'}), {});
+    assert.deepEqual(anchors({id: 'motor', hub: 'named', port: null}), {});
+    meshes.delete('named'); assert.equal(item.hubAnchor(), null, 'hidden/removed hub cannot leave a floating cable');
+});
+
+test('cables attach at sockets instead of badge centres and leave both surfaces outwards', () => {
+    const original = globalThis.document;
+    globalThis.document = {createElement: () => ({style: {}, dataset: {}, setAttribute () {}, addEventListener () {}, appendChild () {}, remove () {}})};
+    const scene = new Group(), camera = new PerspectiveCamera();
+    const from = new Vector3(0.04, 0.02, 0), to = new Vector3(-0.03, 0.04, 0.01);
+    const outA = new Vector3(1, 0, 0), outB = new Vector3(-1, 0, 0);
+    const layer = createInsightLayer({container: {appendChild () {}}, scene});
+    try {
+        layer.setPorts([{id: 'motor', port: 'A', label: 'Motor A', anchor: () => new Vector3(9, 8, 7),
+            cableAnchor: () => from, hubAnchor: () => to, cableDirection: () => outA, hubDirection: () => outB}]);
+        layer.update(camera, 100, 100);
+        const mesh = scene.getObjectByName('bw-insight-cable'), curve = mesh.geometry.parameters.path;
+        assert.ok(curve.getPoint(0).distanceTo(from) < 1e-12, 'badge centre must never be the cable endpoint');
+        assert.ok(curve.getPoint(1).distanceTo(to) < 1e-12);
+        assert.ok(curve.getTangent(0).dot(outA) > 0.999);
+        assert.ok(curve.getTangent(1).dot(outB) < -0.999);
+        const oldGeometry = mesh.geometry;
+        outA.set(0, 0, 1); layer.update(camera, 100, 100);
+        assert.notEqual(mesh.geometry, oldGeometry, 'rotation must update even when endpoint position is unchanged');
+        assert.ok(mesh.geometry.parameters.path.getTangent(0).dot(outA) > 0.999);
+        layer.setVisible({ports: false}); layer.update(camera, 100, 100);
+        assert.equal(layer.stats().cables.length, 0);
+        layer.setPorts([]); assert.equal(scene.getObjectByName('bw-insight-cable'), undefined);
+    } finally { layer.dispose(); globalThis.document = original; }
 });

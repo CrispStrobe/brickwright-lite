@@ -1,6 +1,6 @@
 # Robot Lab cables at actual sockets and device cable exits
 
-CLAIMED — owner: Robot Lab model delivery, isolated
+DONE — source candidate; owner: Robot Lab model delivery, isolated
 `lane/robot-lab-cable-sockets-20261022`, base `45c8dc8e4`.
 
 The owner reports cables appearing away from their ports. Both views currently
@@ -27,3 +27,13 @@ check socket identity and geometry in independent controls, and inspect actual
 Chromium/WebKit Simulate and Build rendering, including a running/moved model.
 Run the affected model-insight/editor/view tests, normal production build and
 applicable exact-source hosted qualification before normal matched-head merge.
+
+Implementation uses the official nested LDraw socket/captive-lead markers,
+explicit port-to-socket identities, and current housing transforms in both views.
+Curves leave both mouths outward; badges retain their independent picker anchors.
+The old centre-endpoint assertion fails on the original layer and passes now.
+All 25 affected scene/model-insight/editor-port controls pass. The Chromium
+insight journey passes moving housings, A/F reassignment, unplug/replug, visibility
+and a rotated colour sensor in both views, with no page errors. Final production
+build, WebKit counterpart and exact-head hosted qualification are required before
+normal matched-head landing; the PR records their actual results.

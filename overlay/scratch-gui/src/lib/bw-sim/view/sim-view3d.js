@@ -20,6 +20,7 @@ import {createSimRopes} from './rope-layer.js';
 import {createSimHoses} from './hose-layer.js';
 import {addPartLights} from './part-style.js';
 import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
+import {createCableAnchors} from './cable-anchors.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
 import {modelMeshBounds, cameraFollowBody} from './model-bounds.js';
 import {createDrawingPreview} from './drawing-preview.js';
@@ -294,8 +295,9 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     };
 
     /** Port badges: items {id, port, label} (motors and sensors). */
+    const cableAnchors = createCableAnchors({read, partOf: id => model.parts.find(p => p.id === id), meshOf: id => built.partMeshes.get(id)});
     const setPorts = items => {
-        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id), hubAnchor: item.hub ? partCentre(item.hub) : null})));
+        insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id), ...cableAnchors(item)})));
         dirty = true;
     };
     /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */
