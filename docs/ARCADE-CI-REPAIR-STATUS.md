@@ -47,6 +47,14 @@ supplier. Restoring main's literal would still be wrong for this candidate.
 The intervening supplier-maintenance commits updated these consumers before
 the later D7 adoption omitted them; this was not a merge-conflict reversion.
 
+The current remote refresh confirms that
+[PR #1095](https://github.com/CrispStrobe/brickwright-lite/pull/1095) is already
+merged. Its earlier supplier selection does not qualify D7. Main's `7d3f8be7`
+is an ancestor of D7, which adds the source operators, score callbacks and motor
+power needed by this candidate. All twenty mapped compiler files and both
+mirrors match D7 under the declared rewrites. Preserve that explicit adoption;
+no new supplier selection or sync is needed for this handoff.
+
 The operator authorized taking over this narrow maintenance. The
 [new claim](../lanes/2026-10-21-x86-d7-gui-consumer-source-maintenance.md)
 landed in PR [#1193](https://github.com/CrispStrobe/brickwright-lite/pull/1193),

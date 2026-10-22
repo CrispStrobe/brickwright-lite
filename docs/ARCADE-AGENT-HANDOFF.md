@@ -74,6 +74,11 @@ See [the contract and remaining gates](ARCADE-LEXICAL-DECLARATION-READINESS.md).
 This is source-analysis qualification; full SDK, native, browser and corpus
 acceptance remain separate. No fresh corpus count is available.
 
+The x86 refresh confirms that PR #1095 is already merged. Current main's SB3
+selection is an ancestor of D7; retain the candidate's reviewed D7 compiler
+capabilities and its matching consumer fences. Continue from the
+[current x86 guide](X86-NEXT-LANES.md#next-finite-gui-composition-and-hosted-acceptance).
+
 The operator-authorized x86 supplier-consumer claim has merged in PR #1193;
 its two fixed D7 identities are a local candidate with actual execution disabled
 and fresh affected GUI/guest acceptance pending. The school owner has separately

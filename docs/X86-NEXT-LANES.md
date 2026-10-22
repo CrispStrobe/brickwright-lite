@@ -322,6 +322,15 @@ installed supplier/browser and tool graph, finite resources, external request an
 event, and independent original reader. No earlier source result or consumed
 event qualifies this candidate; no guest attempt is authorized here.
 
+The earlier GUI source work in
+[PR #1095](https://github.com/CrispStrobe/brickwright-lite/pull/1095) has merged.
+The current-main compiler selection is an ancestor of the explicit D7 adoption;
+D7 adds the source operators, score callbacks and motor-power support. The
+candidate's twenty mapped compiler files and mirrors match D7. Preserve that
+adoption and the two matching consumer fences while qualifying the combined
+head. This refresh supplies no new tool availability, request, event or guest
+result; retain the earlier consumed failures and their historical readers.
+
 A separate source-only exact-entry chain slice is being reviewed on top of
 PR1013's `79afc8bc` checkpoint. It adds `font-chain-guard` and `font-chain`
 controller modes plus independent `--font-chain` observation validation, all
