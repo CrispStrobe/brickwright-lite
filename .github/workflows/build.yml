@@ -806,6 +806,10 @@ jobs:
           ref: ${{ steps.stc_flasher_pin.outputs.sha }}
           path: .stc-compiler-flasher
 
+      - name: Prepare official Ubuntu package mirror
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
+
       - name: Install Playwright Chromium for the PXT Arcade oracle in the unit tests
         id: unit_playwright
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
@@ -814,7 +818,7 @@ jobs:
         # this actual installation; they must not run against a missing browser.
         # Bound one installation step; do not start nested retries that may
         # contend with APT children left behind by a timed-out attempt.
-        run: npx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:
@@ -1360,6 +1364,10 @@ jobs:
           ref: ${{ steps.stc_flasher_pin.outputs.sha }}
           path: .stc-compiler-flasher
 
+      - name: Prepare official Ubuntu package mirror
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
+
       - name: Install Playwright Chromium for the PXT Arcade oracle in the unit tests
         id: unit_playwright
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
@@ -1368,7 +1376,7 @@ jobs:
         # this actual installation; they must not run against a missing browser.
         # Bound one installation step; do not start nested retries that may
         # contend with APT children left behind by a timed-out attempt.
-        run: npx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
 
       # A green suite says every assertion PASSED. It does not say any of them could have
       # failed. These mutations weaken a real enforcement point and require the named suite to
@@ -1696,6 +1704,10 @@ jobs:
       # green unit tests — unit suites cannot see a lost theme, a
       # broken pane, or a dead button. These gates drive the ACTUAL
       # BUILT APP and block the deploy when it is visibly wrong.
+      - name: Prepare official Ubuntu package mirror
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
+        run: sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
+
       - name: Install Playwright browser
         id: playwright
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
@@ -3429,16 +3441,29 @@ jobs:
         id: build_editor_fpga
         if: ${{ !cancelled() && steps.fpga_overlays.outcome == 'success' }}
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=1 npm run build
+      - name: Prepare official Ubuntu package mirror
+        if: ${{ !cancelled() && steps.build_editor_fpga.outcome == 'success' }}
+        run: sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
+
       - name: Install Playwright browser for the flag-on drive
         id: fpga_playwright
         if: ${{ !cancelled() && steps.build_editor_fpga.outcome == 'success' }}
         run: |
-          npm install --no-save playwright
+          test -x ./node_modules/.bin/playwright
+          # Keep the prior three-by-300-second setup budget. Privileged apt
+          # children belong to the root-owned timeout group; browser downloads
+          # remain unprivileged and share the remaining original budget.
+          pw_install_deadline=$((SECONDS + 900))
+          sudo env "PATH=$PATH" timeout --kill-after=15s 300 ./node_modules/.bin/playwright install-deps chromium
           ok=0
           for i in 1 2 3; do
-            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
+            pw_remaining=$((pw_install_deadline - SECONDS))
+            [ "$pw_remaining" -gt 0 ] || break
+            pw_attempt=$((pw_remaining < 300 ? pw_remaining : 300))
+            if timeout --kill-after=15s "$pw_attempt" ./node_modules/.bin/playwright install chromium; then ok=1; break; fi
             echo "playwright chromium install attempt $i failed/timed out; retrying"
-            sleep 5
+            pw_remaining=$((pw_install_deadline - SECONDS))
+            if [ "$pw_remaining" -gt 0 ]; then sleep "$((pw_remaining < 5 ? pw_remaining : 5))"; fi
           done
           [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
       # The script serves the build itself (its own http server on 8631), so
@@ -3543,6 +3568,8 @@ jobs:
           try {await lstat(link);assert.equal(await realpath(link),await realpath(expected),'Existing SDK must already be admitted SDK');}
           catch(error){if(error.code!=='ENOENT')throw error;await symlink(expected,link);}
           JS
+      - name: Prepare official Ubuntu package mirror
+        run: sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
       - name: Install Playwright Chromium for production UI and original SDK
         run: npx --no-install playwright install --with-deps chromium
       - name: Serve the admitted original app

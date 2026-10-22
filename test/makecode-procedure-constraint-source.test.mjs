@@ -27,3 +27,24 @@ test('source catalogue excludes generated class procedures and retains actual or
  assert.equal(prepared.prefix({...fn,source:'f',name:'Game_f'},'Game_f %s').length,1);
  assert.throws(()=>prepared.prefix({...fn,params:['wrong']},'f %s'),/metadata differs/);
 });
+
+test('Array length reaches a Number formal from actual lexical allocations and initialized entries',()=>{
+ for(const source of [
+  'function take(n:number){} let a=[1];take(a.length);',
+  'function take(n:number){} let a:number[]=[1];take(a.length);',
+  'function take(n:number){} let a=[1];let alias=a;take(alias.length);',
+  'function take(n:number){} function length(a:any){return a.length} take(length([1,2]));',
+  'function take(n:number){} let a=[1];a.push(2);take(a.length);'
+ ]) assert.deepEqual(validateProcedureConstraintSource(parse(source)),[],source);
+});
+
+test('an unrelated Array spelling cannot prove shadowed opaque or uninitialized length receivers',()=>{
+ for(const source of [
+  'let a=[1];function length(a:any){return a.length} function take(n:number){}take(length(1));',
+  'let a=[1];function use(a:any){take(a.length)} function take(n:number){}use(1);',
+  'function take(n:number){}let a:any;take(a.length);a=[1];',
+  'function take(n:number){}function use(){take(a.length)}use();let a=[1];',
+  'function take(n:number){}let a=[1];unknown(a);take(a.length);',
+  'function take(n:number){}let a:number[];take(a.length);'
+ ]) assert.ok(validateProcedureConstraintSource(parse(source)).some(message=>/requires Number from actual producers/.test(message)),source);
+});

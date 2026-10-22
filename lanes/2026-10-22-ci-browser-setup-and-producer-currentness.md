@@ -35,3 +35,30 @@ admission controls, and a complete final-head hosted set that actually runs
 every selected browser/compiler/physical gate. A setup-only or partial result
 cannot qualify the source. Preserve the separate Arcade semantic and native
 installed-acceptance holds; no automatic activation follows.
+
+## Implementation and local qualification
+
+Implementation DONE in successor `lane/ordinary-omission-repair-20261022`;
+final-head hosted qualification remains required. All 31 complete setup,
+workflow, artifact-admission and producer-observation controls pass, no skips.
+The source-only local admission checks resolve only JSZip from the verified
+canonical ROOT dependency cache (key `9f9ba058ac1c2faa98da4339`); no GUI
+provider, factory, product result or test body is replaced. Fresh hosted checks
+use normal locked dependencies. Deliberately returning the first pending
+snapshot fails all five new observation controls; removing the exact-identity
+assertion fails the identity control. All original hosted failures and raw
+metadata are retained. Every raw API observation is preserved before admission,
+and the pure validator remains unchanged. No setup result counts as compiler,
+browser, physical or installed-native acceptance.
+
+The first repaired hosted head still timed out on robotaddon3 before tests:
+its preparation changed zero source files because this runner routes Ubuntu
+through `mirror+file:/etc/apt/apt-mirrors.txt`. Verified against the exact
+`actions/runner-images` image tag `ubuntu24/20261012.334`,
+`images/ubuntu/scripts/build/configure-apt-sources.sh`. Preserve that
+indirection, both fallback mirrors, priorities, source suites and signing
+fields; rewrite only the actual Azure URI entry in the known mirror list.
+The authentic file-layout regression fails on the first repair and passes
+after this correction. All 32 complete setup/workflow/admission controls now
+pass without skips. The original hosted failure and zero-change observation
+are retained; no unchanged failed head was rerun.

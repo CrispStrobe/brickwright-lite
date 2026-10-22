@@ -24,7 +24,7 @@ async function check(run,id){
         assert.equal(image.pixels[0],0);assert.equal(Object.values(state.sprites).length,0);
     }else{
         assert.ok(image.pixels.some(pixel=>pixel!==0));
-        const sprites=Object.values(state.sprites),player=sprites.find(s=>s.kind==='Player'),ball=sprites.find(s=>s.kind==='Basketball');
+        const sprites=Object.values(state.sprites),player=sprites.find(s=>s.kindName==='Player'),ball=sprites.find(s=>s.kindName==='Basketball');
         assert.equal(sprites.length,2);assert.ok(player&&ball);
         const score=()=>Number(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>/^(Game_)?score$/.test(v.name))?.value ?? state.score);
         const before=score();

@@ -182,13 +182,13 @@ export async function extractAdmittedGui(inspected, directory) {
     }
 }
 
-export async function fetchGuiArtifactMetadata({repository, runId, attempt, fetchImpl = fetch, token}) {
+export async function fetchGuiArtifactMetadata({repository, runId, attempt, fetchImpl = fetch, token, signal}) {
     assert.equal(repository, 'CrispStrobe/brickwright-lite'); id(runId); id(attempt);
     const base = `https://api.github.com/repos/${repository}/actions`;
     const headers = {accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
         ...(token ? {authorization: `Bearer ${token}`} : {})};
     const get = async url => {
-        const response = await fetchImpl(url, {headers, redirect: 'error'});
+        const response = await fetchImpl(url, {headers, redirect: 'error', ...(signal ? {signal} : {})});
         assert.equal(response.status, 200, 'Official metadata GET must succeed'); return response.json();
     };
     const run = await get(`${base}/runs/${runId}`);
@@ -212,6 +212,36 @@ export async function fetchGuiArtifactMetadata({repository, runId, attempt, fetc
     const producers = jobs.filter(value => value.name === 'build'), pages = artifacts.filter(value => value.name === 'github-pages');
     same(producers.length, 1, 'Unique official build producer'); same(pages.length, 1, 'Unique official Pages artifact');
     return {run, job: producers[0], artifact: pages[0], artifacts};
+}
+
+// A needs: build consumer may start before the API reflects job completion.
+// This observes one exact producer; it grants no admission and never retries
+// an admission failure. The unchanged validator must still accept the result.
+export async function observeGuiProducerCompletion({readMetadata, now = () => performance.now(),
+    pause = ms => new Promise(resolve => setTimeout(resolve, ms)), maxWaitMs = 60000}) {
+    assert.ok(Number.isFinite(maxWaitMs) && maxWaitMs > 0 && maxWaitMs <= 60000, 'Bounded producer observation');
+    const deadline = now() + maxWaitMs;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error('Producer metadata observation deadline')), maxWaitMs);
+    timer.unref?.();
+    const identity = m => [m.run.id, m.run.run_attempt, m.run.head_sha,
+        m.job.id, m.job.run_id, m.job.run_attempt, m.job.head_sha, m.artifact.id];
+    try {
+        let metadata = await readMetadata(controller.signal);
+        const original = identity(metadata);
+        for (;;) {
+            assert.ok(now() <= deadline, 'Producer did not complete within observation bound');
+            assert.deepEqual(identity(metadata), original, 'Exact producer/run/attempt/head/artifact must remain unchanged');
+            assert.ok(['queued', 'in_progress', 'completed'].includes(metadata.job.status), 'Known producer status');
+            if (metadata.job.status === 'completed') return metadata;
+            same(metadata.job.conclusion, null, 'Pending producer cannot have a conclusion');
+            const remaining = deadline - now();
+            assert.ok(remaining > 0, 'Producer did not complete within observation bound');
+            await pause(Math.min(1000, remaining));
+            assert.ok(now() < deadline, 'Producer did not complete within observation bound');
+            metadata = await readMetadata(controller.signal);
+        }
+    } finally {clearTimeout(timer);}
 }
 
 export async function acquireGuiArchive({admission, archivePath, fetchImpl = fetch, token}) {
