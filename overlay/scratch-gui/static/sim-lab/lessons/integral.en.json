@@ -2,7 +2,7 @@
   "version": 1,
   "id": "integral",
   "language": "en",
-  "what": "A steadily turning tiled platter drives an unmotorized rubber wheel. Motor B moves the wheel across the platter: forward, slower, near neutral, then reverse. The accumulated wheel angle demonstrates mechanical integration: it remembers the signed contact radius over the platter's motion. A turning platter drives a passive rubber wheel by friction. Move the contact radius through the centre to vary speed, reverse direction and accumulate an approximate mechanical integral.",
+  "what": "A steadily turning tiled platter drives an unmotorized rubber wheel. Motor B moves the wheel across the platter: forward, slower, near neutral, then reverse. The accumulated wheel angle demonstrates mechanical integration: it remembers the signed contact radius over the platter's motion. A continuously rotating tiled disk drives a free rubber wheel. Move the wheel through the center to vary its speed and reverse its direction. Gravity supplies contact pressure; the wheel is not motorized. The native recording measures finite-width slip.",
   "try": [
     "Reset and run the 155-piece demonstration. Motor A spins the platter in one direction while Motor B visits +28, +14, 0 and −28 mm contact offsets. Each station lasts six seconds; the finite program returns the carriage to the centre.",
     "Compare the positive-radius stations. At +14 mm, the passive wheel turns at about half the platter's angular speed; at +28 mm, it is close to the same speed.",

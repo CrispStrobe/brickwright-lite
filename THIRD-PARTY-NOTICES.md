@@ -2547,8 +2547,50 @@ claimed validation reports are not included as application code.
 ### Integral friction-wheel integrator
 
 Original CrispStrobe model, program and bilingual lessons, BSD-3-Clause; see
-`overlay/scratch-gui/static/sim-lab/licenses/integral.txt`. The 154 placements
+`overlay/scratch-gui/static/sim-lab/licenses/integral.txt`. The 155 placements
 reuse 63 base, drive, hub and platter placements from Orbital Loom, also by
 CrispStrobe under BSD-3-Clause. Referenced LDraw parts retain their own notices.
 The free output wheel is driven by native frictional contact. Native and browser
 checks describe simulation behavior; physical hardware accuracy is unverified.
+
+### Resonance Lab
+
+Original one-motor assembly, three finite programs, construction guide and
+bilingual lessons: Copyright (c) 2026 Christian Ströbele (CrispStrobe),
+BSD-3-Clause. The LDR, MPD and programs retain the exact supplied source bytes;
+the full grant ships in `static/sim-lab/licenses/resonance-lab.txt`. Original
+source, construction details and hashes are retained under
+`test/fixtures/model-files/resonance-lab-source/`. The assembly has 142 rigid
+placements and two physical rubber-band loops (144 components). Standard LDraw
+part geometry retains its separate authors and CC BY licences. No external
+mechanism CAD, illustration, unlicensed or noncommercial asset was copied.
+Original source-release measurements describe their recorded simulator revision;
+application integration and hardware qualification remain separate evidence.
+
+### Product Plotter, Sky Courier and Gimbal Lab
+
+Original arrangements, finite programs, construction guides and bilingual
+lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. The full grant ships
+with each model in `static/sim-lab/licenses/`. The delivered LDraw models and
+programs are used as supplied; the MPD variants are not shipped. Standard LDraw
+part geometry retains its separate authors and CC BY licences. Supplier
+measurements describe their recorded simulator revision; application
+integration, browser operation and hardware construction remain separate
+evidence.
+
+### Offset Orbit
+
+Original arrangement, finite program, mechanics derivation and bilingual
+lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause; the full grant ships in
+`static/sim-lab/licenses/offset-orbit.txt`. The delivered revision uses two
+parallel shafts 24 mm apart with a floating Oldham cross; the Huco mechanism
+reference in the package is a citation, not copied content. Standard LDraw part
+geometry retains its separate authors and CC BY licences.
+
+### Circle Splitter
+
+Original arrangement, finite program and bilingual lessons: Copyright (c) 2026
+CrispStrobe, BSD-3-Clause; the full grant ships in
+`static/sim-lab/licenses/circle-splitter.txt`. The Baez rolling-circles article
+the package cites is a reference, not copied content. Standard LDraw part
+geometry retains its separate authors and CC BY licences.

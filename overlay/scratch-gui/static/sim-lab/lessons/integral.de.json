@@ -2,7 +2,7 @@
   "version": 1,
   "id": "integral",
   "language": "de",
-  "what": "Eine gleichmäßig rotierende, mit Fliesen belegte Scheibe treibt ein Gummirad ohne eigenen Motor an. Motor B verschiebt das Rad über die Scheibe: vorwärts, langsamer, nahezu neutral und dann rückwärts. Der aufsummierte Radwinkel demonstriert mechanische Integration: Er speichert den vorzeichenbehafteten Kontaktradius über der Scheibenbewegung. Eine rotierende Scheibe treibt ein freies Gummirad durch Reibung an. Verschiebe den Kontaktradius über die Mitte, um Tempo und Richtung zu ändern und ein angenähertes mechanisches Integral zu bilden.",
+  "what": "Eine gleichmäßig rotierende, mit Fliesen belegte Scheibe treibt ein Gummirad ohne eigenen Motor an. Motor B verschiebt das Rad über die Scheibe: vorwärts, langsamer, nahezu neutral und dann rückwärts. Der aufsummierte Radwinkel demonstriert mechanische Integration: Er speichert den vorzeichenbehafteten Kontaktradius über der Scheibenbewegung. Eine gleichmäßig rotierende, geflieste Scheibe treibt ein freies Gummirad an. Verschiebe das Rad über die Mitte, um seine Geschwindigkeit und Drehrichtung zu verändern. Schwerkraft erzeugt den Anpressdruck; das Rad besitzt keinen Motor. Die native Aufzeichnung misst den Schlupf.",
   "try": [
     "Setze die Vorführung mit 155 Teilen zurück und starte sie. Motor A dreht die Scheibe gleichsinnig, während Motor B die Kontaktabstände +28, +14, 0 und −28 mm anfährt. Jede Station dauert sechs Sekunden; das endliche Programm bringt den Schlitten zurück in die Mitte.",
     "Vergleiche die positiven Radien. Bei +14 mm dreht sich das passive Rad ungefähr mit der halben Winkelgeschwindigkeit der Scheibe; bei +28 mm sind beide Winkelgeschwindigkeiten nahezu gleich.",

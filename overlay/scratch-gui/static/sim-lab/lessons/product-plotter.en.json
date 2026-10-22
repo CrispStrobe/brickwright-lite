@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "product-plotter",
+  "language": "en",
+  "what": "A small analog calculating machine represents two factors as lengths and produces their scaled product as a third length. Motor A tilts the yellow guide. The blue carriage, constrained at the fixed horizontal offset L from the pivot, displays the first factor a. Motor B translates the green rail to the second factor b. The orange output carriage is passive: its swivel and paired rails make its position y follow y = ab/L. Read the orange carriage itself; motor completion alone does not show multiplication. Motor A tilts a straight guide and the blue carriage displays the first factor. Motor B moves the green output rail to set the second factor. The orange carriage has no motor: similar triangles make its displacement equal their product divided by a fixed reference length.",
+  "try": [
+    "Import the model with its matching finite program and reset to the saved pose. Run the sequence and watch the blue input, green rail and orange output. It visits several values of each input, includes pauses and returns to its starting input settings. The output has no motor command.",
+    "Compare movement of the green rail with a positive, zero and negative blue reading. With a positive, increasing b increases y. At a = 0, the green rail can move while the orange carriage stays near zero. With a negative, increasing b makes y more negative. Keep the motion within the delivered travel limits.",
+    "Reset and compare the included decoupled model, which removes only the output swivel pin. Both separated carriages remain retained on their own rails, and both motors run the same program. During a fixed-b sweep of a, the disconnected output should lose its response even though the inputs still move. This is a different physical model, so record its result separately."
+  ],
+  "why": "The guide passes through a fixed pivot O, the blue swivel at (L, a), and the output swivel at (b, y). The reference triangle and the smaller output triangle are similar, so a/L = y/b. Rearranging gives y = ab/L. Each radial follower must both slide along the guide and swivel relative to its other carriage. Two separate parallel axles physically restrain unwanted roll; the two collinear eyes of one toggle alone would not do so.",
+  "matters": "A mechanism can calculate with positions. Here one input changes the gain applied to the other. The output is linear in each input when the other is held, but depends on their product when both change. This differs from commanding two Cartesian axes or using a fixed-ratio linkage. It also makes the distinction between motor angle, displayed input length and useful output visible: the blue reading is a = L tan θ, not a constant multiple of guide angle.",
+  "question": "Suppose a stays positive and b increases by 50% within the allowed travel. What should happen to y? What changes if a is zero or negative? Why is it insufficient to test only one path on which a and b always move together?",
+  "answer": "With a fixed and positive, y increases by 50%. With a = 0, y stays zero in the ideal geometry. With a fixed and negative, its negative magnitude increases by 50%. A single linked input path might also be produced by a different one-input mechanism. Held-input sweeps and a grid of independently chosen a and b values reveal whether the gain really depends on the other factor.",
+  "further": [
+    "Measure a, b and y from the actual carriage positions in the chassis frame. Compare y with ab/L using the design L; do not fit a new reference length to make the readings agree. Keep the largest error during motion as well as the paused values. Check that the carriages and swivel axes stay in the intended plane.",
+    "Use four corner measurements. The quantity y(a2,b2) − y(a2,b1) − y(a1,b2) + y(a1,b1) should equal (a2−a1)(b2−b1)/L. An additive response gives zero. Compare this with the decoupled experiment and explain the lost mechanical connection.",
+    "Compare Mean Machine, Scale Studio and Ellipse Engine. Their useful outputs are a mean, a fixed scale and a traced curve. For a changed rail spacing, follower or travel limit, repeat the actual-part retention, clearance, startup and motion checks. The native recording does not establish browser operation or a physical build."
+  ],
+  "formula": "Let O=(0,0), A=(L,a), P=(b,y), with L>0 and b on the same side of O as A. The guide angle θ gives tan θ=a/L=y/b, hence y=ab/L. All four lengths use the same unit. For normalized values A=a/L, B=b/L and Y=y/L, Y=AB. The radial positions are sA=√(L²+a²) and sP=(b/L)√(L²+a²). The velocity law is ẏ=(b/L)ȧ+(a/L)ḃ. Motor A sets the guide angle; the displayed a and passive y must be independently measured from their own bodies.",
+  "related": [
+    "mean-machine.ldr",
+    "scale-studio.ldr",
+    "ellipse-engine.ldr"
+  ]
+}

@@ -134,7 +134,7 @@ test('PartMeta v2 fields: each malformation is named', () => {
     const cases = [
         [motor, m => { m.device = 'warp-drive'; }, /device: 'warp-drive' is not in the device catalogue/],
         [motor, m => { m.internalJoints[0].movingConnectors = ['nope']; }, /unknown connector 'nope'/],
-        [motor, m => { m.internalJoints[0].movingColliders = [0, 1]; }, /fixed body needs at least one collider/],
+        [motor, m => { m.internalJoints[0].movingColliders = m.colliders.map((_, i) => i); }, /fixed body needs at least one collider/],
         [motor, m => { m.internalJoints[0].massFraction = 1.5; }, /massFraction/],
         [motor, m => { delete m.internalJoints[0].axis; }, /point and axis come together/],
         [motor, m => { m.internalJoints[0].actuatedBy = 'none'; }, /a motor drives exactly one internal joint/],

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "resonance-lab",
+  "language": "en",
+  "what": "A single motor rocks a short input arm. Two retained rubber bands pull a separate, weighted balance arm. The output has its own bearing and no motor. It stores energy in its moving masses and the stretched bands, so its motion depends on the rhythm of the input as well as its size.",
+  "try": [
+    "Import resonance-lab.ldr, reload its saved pose, open resonance-lab.bw in Code, choose To blocks and start the green flag. Port A is the only motor. The program makes a finite burst of small alternating input angles, returns the input to zero, holds it, and leaves time to observe the passive arm ringing.",
+    "Watch both arms at the same time. Near the natural rhythm, the passive arm can swing farther than the driven input. The motor is not directly commanding that larger angle.",
+    "Reload the saved model before each comparison. Run resonance-lab-slow.bw and resonance-lab-fast.bw separately. The three files use the same small angle range and cycle count, with different explicit motor speeds. A fresh reload removes the earlier experiment’s residual motion.",
+    "Compare the last two driven cycles and the final input-held interval. Count the output’s oscillations after the input stops. A driven response and a free ringdown answer different questions."
+  ],
+  "why": "The two bands pull on opposite sides of the output pivot. Their pretension torques cancel in the saved symmetric pose. A small angular difference changes the two tensions in opposite directions, producing a restoring torque. Inertia prevents the weighted arm from following every change immediately. Repeated excitation near its natural rhythm builds a larger response; faster excitation is increasingly filtered by inertia.",
+  "matters": "Elastic couplings can amplify vibration, shift its timing and keep moving after an actuator stops. These effects matter in machinery, flexible robot transmissions, suspension systems and vibration isolation. An encoder on the motor does not by itself describe the motion of a compliant load.",
+  "question": "Does a passive swing larger than the motor swing mean that the machine creates energy?",
+  "answer": "No. The motor supplies energy through the two bands over several cycles. The larger output motion stores that accumulated energy as elastic potential energy and rotational kinetic energy. When the input is held, losses gradually dissipate the stored energy. The comparison is a finite burst, not a claim of an undamped steady state.",
+  "further": [
+    "For small angles and equal bands, the restoring stiffness is K = 2kr². Here r is the distance from each band seat to its rotor pivot, and k is the native spring stiffness of one complete band loop. The mass positions matter through rotational inertia I, not mass alone.",
+    "The small-angle natural frequency is fₙ = √(K/I)/(2π). Predict how moving the same physical weights farther from the pivot changes the frequency. Any modified model needs its own construction and native verification; the supplied evidence covers the delivered arrangement.",
+    "Requested motor speed is not the measured oscillation frequency. Finite accelerations, target completion and the Blocks scheduler affect the actual cycle duration. The supplied evaluator uses the measured input trace and actual native timestamps.",
+    "The output phase is the measured timing relative to the input’s fundamental component in a fixed late-burst window. It is a transient-window estimate. Four cycles do not establish the mathematical steady-state frequency response.",
+    "The native band model is tension only. Both delivered bands remain stretched throughout the certified range. The band loops are explicit physical elements, not invisible joints or a hidden gear ratio.",
+    "The retained 3713 groove has a 2.8 mm native attachment radius. The visible round band's centerline is at 3.6 mm because its drawn tube has thickness. The native spring law uses the first radius; the construction drawing uses the second. They do not constitute a measured rubber material law.",
+    "The standard part masses and native rubber stiffness/damping are estimates. Hardware bands vary with size, age, temperature and preload. The native runs establish the simulation result; a physical build and measured material calibration remain separate work.",
+    "Compare pendulum-array.ldr for gravity-driven natural periods and flywheel-differential.ldr for rotational inertia. Here the passive response comes from elastic transmission between two independent shafts."
+  ],
+  "formula": "Pivot spacing D = 56 mm; two band-seat lever arms r = 8 mm; two 33 mm nominal bands around retained 3713 grooves of native radius 2.8 mm. Native k = 100×15/33 = 45.454545 N/m per complete band loop; native rest centre distance d₀ = π(33−2×2.8)/2 = 43.039819 mm. Reset pretension per band = k(D−d₀) ≈ 0.589099 N. K₀ = 2kr² = 0.005818182 N·m/rad. The 34 actual passive parts have mass 41.17 g and independently computed yaw inertia I = 0.0000842334536 kg·m², giving the small-angle prediction fₙ = √(K₀/I)/(2π) ≈ 1.32273 Hz. Exact nonlinear predictions and native results are provided separately.",
+  "related": [
+    "pendulum-array.ldr",
+    "flywheel-differential.ldr",
+    "clutch-bench.ldr"
+  ]
+}
