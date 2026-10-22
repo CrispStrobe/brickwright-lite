@@ -78,3 +78,19 @@ with saved-data review of all 12 launched operations. It does not provide
 namespace or credential isolation. Persistent bounded sandbox storage, actual
 isolation controls, normal provider admission and the manual workflow remain
 pending before the complete assessment.
+
+## Registration landed; first metadata attempt — 2026-10-22
+
+[PR1186](https://github.com/CrispStrobe/brickwright-lite/pull/1186) is merged.
+All 29 enabled checks on the reviewed head succeeded; six conditional jobs were
+skipped. The actual merge tree and parents matched the reviewed composition,
+and the registered manual workflow is active. This qualifies registration only.
+
+The separately reviewed metadata-only candidate was published normally. Its one
+dispatch command failed, and the subsequent run list contained no dispatched
+run. The command wrapper did not retain the original error text; the cause is
+unestablished. Preserve that evidence limitation. No retry, runner profile,
+kernel-control result, private input or complete assessment is admitted by this
+attempt. Recover the dispatch diagnostic under an explicitly scoped next
+operation before authorizing further hosted qualification; do not guess tool
+identities or silently repeat the event.

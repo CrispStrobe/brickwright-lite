@@ -4271,3 +4271,12 @@ may cost more on nonempty selections. Full affected controls and a separately
 admitted changed complete-input run are required before selection; there is no
 speed or fit claim. Runtime, exporter and editor differences remain separate
 qualification work.
+
+## Ordinary default export observation — 2026-10-22
+
+The ordinary JSON API, without either prototype option, exported the captured
+counter with no unsupported elements or result warnings; complete files match
+the earlier export. Independent saved-result review verified current inputs,
+source and module loads. Preserve the outer wrapper failure on Node's module
+format warning; this is an observed conversion result, not an all-pass wrapper
+or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](ARCADE-NUMERIC-CLOSURE-RESULTS.md#ordinary-default-export-observation--2026-10-22).

@@ -941,3 +941,12 @@ inheritance/coordinate facts. These are source/export observations, with no new
 VM, original-SDK or corpus-completion credit. The original six-pass/two-fail
 fixture run is retained; corrected boundaries use the real helper pipeline and
 keep the original call/currentness assertions.
+
+## Ordinary default export observation — 2026-10-22
+
+The ordinary JSON API, without either prototype option, exported the captured
+counter with no unsupported elements or result warnings; complete files match
+the earlier export. Independent saved-result review verified current inputs,
+source and module loads. Preserve the outer wrapper failure on Node's module
+format warning; this is an observed conversion result, not an all-pass wrapper
+or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](ARCADE-NUMERIC-CLOSURE-RESULTS.md#ordinary-default-export-observation--2026-10-22).

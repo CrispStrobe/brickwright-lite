@@ -72,3 +72,21 @@ exact values/effect order. Unsafe entry, writer or callback edits must retain
 specific unsupported diagnostics; do not show a successful run/export merely
 because a producer proof passed. Missing representations or currentness feedback
 remain named GUI followups, not a new graphics editor or a completed journey.
+
+## Ordinary default export observation — 2026-10-22
+
+One distinct call through the ordinary serialized JSON export API, without
+`callableLexicalPrototype` or `classCallablePrototype`, returned no unsupported
+elements or result warnings for the captured counter project. Its complete
+generated files match the preceding prototype-option export. Independent
+saved-result review verified current source, genuine dependencies, input
+identity and actual module loads. No VM or successful original export was
+replayed.
+
+Preserve the validation wrapper failure: its final stderr-zero assertion
+rejected Node's `MODULE_TYPELESS_PACKAGE_JSON` warning. The exporter exited
+successfully; the wrapper is not an all-pass result. No assertion, module
+format or source was changed to hide the warning. This observation closes
+the prototype-option uncertainty for this project only. Actual editor
+authoring, connected Blocks, save and fresh reopen, MakeCode SDK compilation
+and current installed-runtime acceptance remain separate tasks.
