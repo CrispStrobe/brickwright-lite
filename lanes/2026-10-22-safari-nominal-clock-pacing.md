@@ -47,3 +47,11 @@ verify both after timers and again before the deferred step. Four regressions
 reproduce the old failure at nominal and fast-forward speed, for uninstall and
 replacement, and pass with the fix. Existing pacing and slow-motion controls
 remain passing; affected browser API and final qualification are still required.
+
+The corrected clock subsequently passes all 14 focused and real-program clock
+controls. A fresh production build passes the exact hosted browser API path in
+both Chromium and WebKit, preserving the physical angle/wait/brake assertions
+with no page errors. Complete moving-chess checks pass at exact 1×: WebKit
+0.996× and Chromium 0.997×, with all original physical outcome checks, no dropped
+time, and no redo/divergence. Original hosted and regression failures are kept.
+Final hosted qualification of the repaired candidate remains required.
