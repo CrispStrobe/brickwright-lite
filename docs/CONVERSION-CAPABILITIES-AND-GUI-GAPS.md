@@ -2,7 +2,9 @@
 
 ## Current hosted boundary for recursive procedures and Array identity
 
-The complete 55 source controls and six observer groups pass, but the original
+The complete original 32-case SDK cohort and all 87 existing affected Array controls now pass, including mixed forwarding through second export. The new identity-control corrections remain unqualified; this is not a completed editor or application journey.
+
+The complete 55 recursive source controls and six observer groups pass, but the original
 native/Code/export function-return module is still 9/12. Recursive/mutual calls,
 parameter writes and Sprite forwarding require actual export diagnosis and
 native/SDK/editor acceptance; source control success does not close their GUI

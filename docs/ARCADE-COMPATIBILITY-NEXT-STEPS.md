@@ -2,15 +2,31 @@
 
 ## Latest complete hosted result and current repair
 
-The [reviewed recursive candidate](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39731607214)
-completed with **12,171 passes, 168 failures, 19 skips and 43 TODOs**. All
-previous failure titles remain: zero newly failing or resolved cases. Its whole
-55-control source cohort and six refusal-observer groups pass. The original
-function-return module remains **9/12**: recursive/mutual calls, parameter writes
-and Sprite forwarding still fail initial export after native/Code verification.
+The [published Array-prefix checkpoint](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39737626495)
+completed with **12,174 passes, 173 failures, 19 skips and 43 TODOs** across
+12,409 tests. Compared with the preceding checkpoint, one existing failure is
+resolved and six new regression-control groups fail. The complete original
+32-case SDK cohort now passes, including mixed Array forwarding through Code,
+export, exact-file reimport and second export. All nine existing affected
+modules pass their 87 controls. These results are not application completions.
+
+The new eight-group identity module passes two groups and fails six. Review
+found that four negative groups selected an unrelated temporary Array push,
+and the emitted-name assertion assumed namespaces would not compose. A source
+correction selects the actual alias receiver by physical binding/ID, binds the
+actual emitted identity symbol to its call, and directly authors the local
+currentness control with a changed-return negative. All refusal assertions and
+late-observer/restoration checks remain; this correction awaits hosted execution.
+
+The whole 55-control recursive source cohort and six refusal-observer groups
+pass. The original function-return module remains **9/12**: recursive/mutual
+calls, parameter writes and Sprite forwarding refuse initial export after
+native/Code verification. The same original module exists on the independent
+MakeCode repair branch with a green containing unit shard. Treat our extra
+native-addition emission gate as a regression candidate requiring actual draft
+capture, rather than declaring these functions intrinsically unsupported.
 Emitted compilation and saved-project continuation after those refusals were
-not reached; original SDK acceptance remains separate. Do not infer native
-compatibility from source controls.
+not reached.
 
 [Claim #1217](https://github.com/CrispStrobe/brickwright-lite/pull/1217) and its
 [currentness amendment #1218](https://github.com/CrispStrobe/brickwright-lite/pull/1218)
@@ -96,8 +112,9 @@ saved project or remove captures/reset checks to obtain green.
 
 ### 4. Reconcile the remaining failures and remeasure applications
 
-The last complete unit run has 168 failures, unchanged from its predecessor;
-147 are native-addition diagnostic failures, not 147 applications. Group actual
+The last complete unit run has 173 failures: six new identity-control failures
+and 167 retained existing failures. The corrected controls await execution.
+147 failures carry native-addition diagnostics; these are not 147 applications. Group actual
 failures by their captured rejecting predicates and claim one repair area at a
 time. Keep build, pins, old guards, negative controls and unrelated lanes intact.
 After qualified fixes, rerun the original corpus through the established
