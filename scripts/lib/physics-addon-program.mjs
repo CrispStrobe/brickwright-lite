@@ -2,6 +2,8 @@
 // Copyright (c) 2026 CrispStrobe
 import { createHash } from 'node:crypto';
 const hashes = {
+  counterturn: "a5cf64e80d3123baaffa42d0e3076882f0e354b0c5322bf1a499ab48d6885842",
+  snapgate: "cb3dd5e8ad34cb4242342428eb88ffab1abcee25369dd1c4c82b6efbf834d62b",
   "bit-keeper": "b2bfb18d2c91fda719f3d7c5d310629e9f0727c25bd1a69180ba1ace6a7286d5",
   "crossline": "66be1c3afe47d7d2e8d696a4829a506e9ecb213aef85161f5c2801ff395ef650",
   "linger": "0ef813840b5a8d2a057b59528322df4f41a46bdb5dd2f14e07433de5f4e50ec0",
@@ -19,7 +21,7 @@ const hashes = {
 export function adaptAddonProgram(id, bytes) {
   if (createHash('sha256').update(bytes).digest('hex') !== hashes[id]) throw Error('Program differs from reviewed source');
   let text = bytes.toString('utf8');
-  if (id === 'scale-studio' || id === 'bloom-gate' || id === 'echo-bridge' || id === 'bit-keeper') {
+  if (id === 'counterturn' || id === 'scale-studio' || id === 'bloom-gate' || id === 'echo-bridge' || id === 'bit-keeper') {
     // Gallery selection already reconstructs the saved model. Keep the real datum guard.
     if (text.split('  lab reset\n').length !== 2) throw Error('Expected one redundant reset');
     text = text.replace('  lab reset\n', '').replace('# Reset restores the closed saved pose and its zero encoder datum.', '# Gallery selection loads the closed saved pose. Use Reset before another run.').replace('# The reset restores the saved pose; encoder zero is the right-pointing crank.', '# Gallery selection loads the saved pose; use Reset before rerunning after manual motion.');

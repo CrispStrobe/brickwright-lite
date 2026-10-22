@@ -2519,3 +2519,14 @@ original assembly has a separate CC0 dedication retained in its source fixture.
 All 148 Scale Echo and 127 Turnwise placements are preserved. Referenced official
 LDraw part geometry keeps its separate authors and CC BY terms. Archive runtimes,
 generators and claimed validation reports are not included as application code.
+
+### Counterturn and Snapgate
+
+Owner-supplied original designs, native programs, adaptations and bilingual
+lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. Full source grants and
+inherited notices ship with each model. Counterturn retains 120 placements and
+uses two small axial retainer clearances. Snapgate uses 205 CAD placements
+(204 stock items: the cylinder and rod are components of one complete 9L shock),
+a longer anchor axle and a retained rod-eye axle. Official LDraw geometry keeps
+its separate authors and CC BY terms. Downloaded runtimes, generators and
+claimed validation reports are not included as application code.

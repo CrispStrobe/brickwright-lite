@@ -1091,11 +1091,49 @@ const fitBox = (verts, pick, extra = {}) => {
  * a hinge (kinds/turntable.js). The top carries the teeth: a spur `gear` of <n> teeth (the
  * description's number, which the test counts on the mesh) centred on the axis at the middle of
  * the tooth crests' height. Colliders: the mounting blocks (the mesh beyond the disc's height,
- * one box per side) and the disc as a cylinder of the mesh's radius over the height where the
- * mesh reaches 80 % of it.
+ * one box per side), plus bounded radial sectors fitted to clipped disc/hub triangles.
+ * Their compound envelope preserves the measured opening rather than filling it with a cylinder.
  */
 export const TURNTABLE_DESC = /^Technic Turntable (\d+) Tooth (Top|Bottom)$/;
-export const deriveTurntable = (desc, verts, holes) => {
+// Bound each actual surface sector separately. A solid cylinder fills the
+// turntable's central opening and brakes an independent shaft passing through it.
+// Clipping faces at sector boundaries also encloses faces between mesh vertices.
+const turntableSlabBoxes = (tris, slab) => {
+    // libm's last bits differ between platforms. Fix sector planes at much
+    // finer precision than the 0.01 LDU enclosure padding before clipping.
+    const sin = a => round(Math.sin(a), 1e-12) || 0;
+    const cos = a => round(Math.cos(a), 1e-12) || 0;
+    const clip = (poly, normal, limit) => {
+        const out = [];
+        for (let i = 0; i < poly.length; i++) {
+            const a = poly[i], b = poly[(i + 1) % poly.length];
+            const da = dot(normal, a) - limit, db = dot(normal, b) - limit;
+            if (da >= -1e-9) out.push(a);
+            if ((da >= 0) !== (db >= 0)) out.push(add(a, scale(sub(b, a), da / (da - db))));
+        }
+        return out;
+    };
+    const low = slab.position[1] - slab.halfHeight;
+    const high = slab.position[1] + slab.halfHeight;
+    const faces = tris.map(t => clip(clip(t.v, [0, 1, 0], low), [0, -1, 0], -high)).filter(p => p.length);
+    const out = [], count = 16, half = Math.PI / count;
+    for (let k = 0; k < count; k++) {
+        const a = 2 * Math.PI * k / count, c = cos(a), s = sin(a);
+        const left = [-sin(a - half), 0, cos(a - half)];
+        const right = [sin(a + half), 0, -cos(a + half)];
+        const points = faces.flatMap(face => clip(clip(clip(face, left, 0), right, 0), [-c, 0, -s], -slab.radius))
+            .map(v => [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]]);
+        if (!points.length) continue;
+        const lo = [0, 1, 2].map(i => Math.floor(round(Math.min(...points.map(v => v[i])), 1e-9) * 100) / 100 - 0.01);
+        const hi = [0, 1, 2].map(i => Math.ceil(round(Math.max(...points.map(v => v[i])), 1e-9) * 100) / 100 + 0.01);
+        const mid = lo.map((v, i) => (v + hi[i]) / 2);
+        out.push({shape: 'box', halfExtents: lo.map((v, i) => round((hi[i] - v) / 2, 0.001)),
+            position: roundVec([c * mid[0] - s * mid[2], mid[1], s * mid[0] + c * mid[2]], 1e-6).map(v => v || 0),
+            rotation: [0, -sin(a / 2) || 0, 0, cos(a / 2)]});
+    }
+    return out;
+};
+export const deriveTurntable = (desc, verts, holes, tris = null) => {
     const m = TURNTABLE_DESC.exec(desc);
     if (!m) return null;
     const problems = [];
@@ -1126,7 +1164,9 @@ export const deriveTurntable = (desc, verts, holes) => {
     const dy = disc.map(v => v[1]);
     const connectors = [...holes, {id: 't', type: top ? 'turntable-ring' : 'turntable-race', position: [0, 0, 0], axis: [0, -1, 0],
         length: round(Math.max(...dy) - Math.min(...dy), 0.5)}];
-    const colliders = [cylinder(disc), ...(hub.length ? [cylinder(hub)] : []), ...inBlock.map(f => fitBox(verts, f)).filter(Boolean)];
+    const envelopes = [cylinder(disc), ...(hub.length ? [cylinder(hub)] : [])];
+    const colliders = [...envelopes.flatMap(c => tris ? turntableSlabBoxes(tris, c) : [c]),
+        ...inBlock.map(f => fitBox(verts, f)).filter(Boolean)];
     let gear = null;
     if (top) {
         const crest = verts.filter(v => radius(v) > rMax - 0.3).map(v => v[1]);
@@ -1418,7 +1458,7 @@ export const derivePart = (part, read) => {
     notes.push(...cn);
     // Parts whose connectors and colliders the generic rules cannot see (kinds/turntable.js, kinds/screw.js).
     let special = null;
-    const turntable = deriveTurntable(desc, found.verts, connectors.filter(c => c.type === 'pinhole'));
+    const turntable = deriveTurntable(desc, found.verts, connectors.filter(c => c.type === 'pinhole'), found.tris);
     if (turntable) special = turntable;
     const actuator = deriveLinearActuator(part, found, read);
     if (actuator) special = actuator;
