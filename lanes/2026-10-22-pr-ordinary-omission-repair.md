@@ -13,6 +13,15 @@ Preserve the existing original-call ownership/default protocol: readable output
 must not manufacture omitted-slot proof after the producer refused it. Keep
 the independently prepared string/global/array changes and their assertions.
 
+Also own the new `provenArrayLength` implementation in
+`overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js` and its
+complete controls in `test/makecode-procedure-constraint-source.test.mjs`.
+The published program-wide name heuristic can mistake a same-named formal for
+an unrelated literal Array. Replace spelling authority with the existing actual
+lexical/all-writer/allocation and initialization proof. No annotations or opaque
+receivers may acquire Number authority. Preserve valid literal Array length,
+existing graph consumers, and all default refusals; no shared provider grant.
+
 Compose PR1219's published head and current main in an isolated successor;
 never force-push, overwrite private work or relax existing tests. Prove the
 original failure, full ordinary-call controls, affected source/procedure controls
