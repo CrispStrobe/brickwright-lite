@@ -12,7 +12,7 @@ import {loadJolt} from '../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-co
 import {createRobotLabApi} from '../../overlay/scratch-gui/src/lib/bw-sim/api/robot-lab-api.js';
 const CATALOG=catalogFrom(JSON.parse(readFileSync(new URL('../../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',import.meta.url))));
 const Timer=createRequire(import.meta.url)(VM_SRC+'/util/timer.js');
-export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=CATALOG,autoPorts}){
+export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=CATALOG,autoPorts,frameMs=1000/30,observeFrame,coldMs=0,afterMs=0}){
  const p=prepareModel(modelText,catalog,{mat:'plain',...(autoPorts===undefined?{}:{autoPorts})}),J=await loadJolt(),hub=new HubState();hub.setSimulationEnabled(true);
  const session=new SimSession({...p,hubState:hub,catalog,mat:'plain',J}),vm=new VM(),clock=new FakeClock(1.7e12);
  const api=createRobotLabApi({getSession:()=>session,getStatus:()=> 'running',start:async()=>{},locale:()=> 'en'});vm.runtime.robotLab=api;
@@ -22,13 +22,17 @@ export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=C
   const manager=vm.extensionManager,original=manager.loadExtensionURL.bind(manager);
   manager.loadExtensionURL=id=>{if(id!=='robotlab')return original(id);const Cls=loadExtensionClass(bundledExtensionIds().get(id)),ext=new Cls(vm.runtime);manager._loadedExtensions.set(id,manager._registerInternalExtension(ext));return Promise.resolve();};
   await vm.loadProject(data);vm.setCompatibilityMode(true);vm.runtime.currentStepTime=1000/30;
-  clock.install();clockInstalled=true;let budget=0;vm.runtime.sequencer.timer=new Timer({now:()=>budget++});vm.greenFlag();
-  for(let i=0;i<Math.ceil(timeLimitMs/(1000/30));i++){
-   await clock.advance(1000/30);vm.runtime._step();for(let j=0;j<5;j++)await Promise.resolve();
-   session.tick(1000/30);await session.idle();
-   track.push({t:session.time,bodies:Object.fromEntries(p.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,session.core.bodyPose(b.id)])),joints:Object.fromEntries(p.mechanism.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,session.core.jointState(j.id)])),busy:Object.fromEntries(p.mechanism.actuators.map(a=>[a.port,hub.motors.busy(a.port)]))});
+  clock.install();clockInstalled=true;let budget=0;vm.runtime.sequencer.timer=new Timer({now:()=>budget++});
+  const snapshot=phase=>track.push({t:session.time,phase,bodies:Object.fromEntries(p.mechanism.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,session.core.bodyPose(b.id)])),joints:Object.fromEntries(p.mechanism.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,session.core.jointState(j.id)])),busy:Object.fromEntries(p.mechanism.actuators.map(a=>[a.port,hub.motors.busy(a.port)])),...(observeFrame?{extra:observeFrame({session,vm,hub,prepared:p})}:{})});
+  if(coldMs){snapshot('cold');for(let ms=0;ms<coldMs;ms+=frameMs){await clock.advance(frameMs);session.tick(frameMs);await session.idle();snapshot('cold');}}
+  vm.greenFlag();
+  for(let i=0;i<Math.ceil(timeLimitMs/frameMs);i++){
+   await clock.advance(frameMs);vm.runtime._step();for(let j=0;j<5;j++)await Promise.resolve();
+   session.tick(frameMs);await session.idle();
+   snapshot('program');
    if(i>5&&!vm.runtime.threads.some(t=>t.status!==4)){finishedAt=session.time;break;}
   }
+  if(finishedAt)for(let ms=0;ms<afterMs;ms+=frameMs){await clock.advance(frameMs);session.tick(frameMs);await session.idle();snapshot('after');}
   return {track,runModel:p.runModel,mechanism:p.mechanism,issues:p.issues,hubId:hubBodyOf(p.model,p.mechanism,catalog),unsupported:[],finishedAt};
  }finally{api.dispose();vm.stopAll();vm.quit();if(clockInstalled)clock.uninstall();session.dispose();}
 }

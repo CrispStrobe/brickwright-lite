@@ -1,0 +1,51 @@
+{
+  "archive": "counterturn-addon.zip",
+  "archiveSha256": "6b95bfba130ce2279a461913dd01db685d5da1a1f1cbbf9d3ce8bcd4b2cec445",
+  "files": [
+    {
+      "source": "counterturn/models/counterturn.ldr",
+      "file": "counterturn.ldr",
+      "sha256": "656ce4e343712bf6edfd9fb2501e9847334234ce486d39d270cd350fabd04fa8"
+    },
+    {
+      "source": "counterturn/models/counterturn.mpd",
+      "file": "counterturn.mpd",
+      "sha256": "ddc7ad6957af228c166cf9aa99cda356614f04adcb1c78fe3bd336bd125534a2"
+    },
+    {
+      "source": "counterturn/programs/counterturn.bw",
+      "file": "counterturn.bw",
+      "sha256": "a5cf64e80d3123baaffa42d0e3076882f0e354b0c5322bf1a499ab48d6885842"
+    },
+    {
+      "source": "counterturn/controls/counterturn-locked.ldr",
+      "file": "counterturn-locked.ldr",
+      "sha256": "7c5f3caa0feb60d76b92cd9d704e33b963a64bd3d899087daadd4783bf681b10"
+    },
+    {
+      "source": "counterturn/source/native_acceptance.json",
+      "file": "acceptance.json",
+      "sha256": "71bc7e9827c976573a1abef79052c72b22b2eac3a54b94eb454d781a3ac2ffe2"
+    },
+    {
+      "source": "counterturn/licenses/counterturn.txt",
+      "file": "LICENSE.txt",
+      "sha256": "9fbf8e27a3092636d594686bf927ff6677e02f47817bcdf71c8e7073caae55a3"
+    },
+    {
+      "source": "counterturn/THIRD-PARTY-NOTICES.txt",
+      "file": "THIRD-PARTY-NOTICES.txt",
+      "sha256": "7c1e53a79df69a6fb4b004dccb8616c1d726cd328d90e0b5e0752cd930ae0cc9"
+    },
+    {
+      "source": "counterturn/lessons/counterturn.en.json",
+      "file": "counterturn.en.json",
+      "sha256": "edefe4ebec9d5002730f568b81943d7371e5118dbde05726e48ff5d16334abb7"
+    },
+    {
+      "source": "counterturn/lessons/counterturn.de.json",
+      "file": "counterturn.de.json",
+      "sha256": "1b97dfeb4b0759c87cf42d9aa4fd3ca940cec7fc982c08df9f81b22e3db74be5"
+    }
+  ]
+}

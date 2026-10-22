@@ -323,6 +323,34 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "counterturn.ldr": {
+        "pieces": 120,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "A horizontal motor spins a vertical flywheel through a 12:20 bevel pair. Its free carrier turns the other way; compare the measured yaw with the complete native inertia.",
+            "de": "Ein waagerechter Motor dreht ein senkrechtes Schwungrad über ein 12:20-Kegelradpaar. Der freie Träger dreht sich entgegengesetzt; vergleiche seinen Winkel mit der gesamten nativen Trägheit."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "snapgate.ldr": {
+        "pieces": 205,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor moves a compressed shock absorber’s anchor. A passive rocker snaps between two stops and remembers either state at the same held input position.",
+            "de": "Ein Motor verschiebt den Anker eines zusammengedrückten Stoßdämpfers. Ein passiver Hebel springt zwischen zwei Anschlägen und behält bei gleicher gehaltener Eingangsposition einen von zwei Zuständen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "bit-keeper.ldr": {
         "pieces": 134,
         "motors": 1,
