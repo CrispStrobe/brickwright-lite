@@ -94,6 +94,61 @@ These are scoped next-task candidates, not completed cases. Already translated
 recovered contexts can supply useful authoring journeys but cannot silently
 replace a raw snippet's status or shrink the original denominator.
 
+### Preserve the original unresolved-case set
+
+The original 41 unresolved cases and the 37 recovered tutorial contexts are
+different sets. The recovered set contains 36 of those original cases and one
+additional case. Within the original 41, the historical and recovered-report
+raw-source classifications remain 36 partial and five translated. Static
+translation is not evidence of execution or a complete editable roundtrip.
+
+Keep a case ledger keyed by original source identity and hash. Record raw and
+authentic-context outcomes separately, with original compiler validity, actual
+native execution, Code/Blocks feedback, graphics preservation, fresh SB3 reopen
+and emitted MakeCode compile/run/reimport. Missing evidence is unverified,
+rather than proof of either success or failure. The five raw translated cases
+and sixteen translated authentic contexts identify 21 distinct original cases
+worth qualifying first. Even qualifying all 21 would leave twenty unresolved;
+fewer than twenty requires at least 22 genuine case closures. Do not substitute
+the recovered set or a test-count improvement for that original-case ledger.
+
+### Timer support: implement the capability before changing SDK pins
+
+Pinned Arcade 4.2.1 already includes `control.Timer`, `control.timer1` through
+`control.timer8`, and `Math.idiv`. The supplied prepared reports did not request
+original compilation. A missing-SDK diagnosis therefore does not establish a
+reason to move the pin. The import namespace catalogue recognizing a name is
+also insufficient evidence that its runtime or authoring behavior exists.
+
+Before implementation, claim the owning runtime, converter and canonical
+`sb3-creator` dialect boundaries. Resolve how Timer identity uses the existing
+reference ABI; avoid an independent competing handle heap. The task must cover:
+
+- Constructor allocations, eight distinct fixed instances, aliases and
+  forwarded values; public `start` reads/writes; `millis`, `seconds`, `reset`
+  and `pauseUntil`, with genuine initialized Number producers.
+- The program's existing monotonic clock and epoch, independent per-instance
+  offsets, scene transitions, restart and cancellation. The Carnival host's
+  existing elapsed-time-only `timer1` adapter must use the same Timer service.
+- Connected blocks and pseudocode authored from scratch, receiver and argument
+  edits, actual native execution, save/fresh reopen, and export to real
+  `control.Timer` expressions followed by pinned MakeCode compile/run/reimport.
+  Keep existing artwork and all unrelated authoring surfaces intact.
+- Wrong receivers, namespace/method replacement, uninitialized and stale
+  references, aliases with incompatible writers and unsafe effects. Neither a
+  type annotation nor a familiar API spelling grants Number authority.
+
+Compare `pauseUntil` against the exact pinned implementation: it computes
+elapsed time minus the requested time before applying the nonnegative pause.
+Preserve its actual single receiver/argument evaluation and yielding behavior;
+do not silently substitute the more usual deadline calculation. Verify fixed
+instance initialization and constructors at nonzero program time as well.
+
+The four prepared Timer/`idiv` partials, the separate duplicate-dependency parse
+failure and the stopwatch `idiv` refusal are distinct tasks. Capture the actual
+rejected `idiv` operand, binding, initialization and writers before changing its
+proof. Timer implementation alone cannot complete projects with other gaps.
+
 ## Standalone tasks for the next agent
 
 Start by reading `lanes/PROTOCOL.md`, the current claim files under `lanes/`,
