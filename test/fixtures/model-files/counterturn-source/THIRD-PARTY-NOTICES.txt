@@ -1,0 +1,77 @@
+COUNTERTURN — SOURCE AND THIRD-PARTY NOTICES
+==========================================
+
+ORIGINAL WORK
+
+The model arrangement, finite program, placement generator, original checks,
+lessons, assembly/mechanics guides and visualization layout are credited to
+CrispStrobe. Copyright (c) 2026 CrispStrobe / Christian Ströbele.
+BSD-3-Clause; see licenses/counterturn.txt.
+
+The central right-angle drive is adapted from the pinned application's
+BSD-3-Clause test/fixtures/bw-sim/gears/bevel-12-20.json fixture, as credited in
+the generator. The free carrier, balanced flywheel, support, mounts, retention,
+physical locking control and experiment are developed for this add-on. No
+external photographs or model-building instructions are redistributed.
+The explanation cites the reaction-wheel principle described by NASA in
+Basics of Space Flight, Chapter 11:
+https://science.nasa.gov/learn/basics-of-space-flight/chapter11-2/
+That source document is not redistributed.
+
+APPLICATION AND ADAPTED HELPERS
+
+https://github.com/CrispStrobe/brickwright-lite
+Revision: 0a23bd8446f3cdb9a51668ea17dedb054648480a
+BSD-3-Clause; see licenses/brickwright-source.txt.
+
+Drive fixture:
+https://github.com/CrispStrobe/brickwright-lite/blob/0a23bd8446f3cdb9a51668ea17dedb054648480a/test/fixtures/bw-sim/gears/bevel-12-20.json
+
+The marked helper section in source/check_model_mesh.mjs is copied unchanged
+from the selected app's test/bw-sim-models-solid.test.mjs, retaining attribution.
+The other original wrappers and rendering helpers use methods developed for
+the preceding CrispStrobe add-ons. Their source and dependency identities are
+recorded in the accompanying evidence.
+
+The native verifier imports the actual registering compiler, overlaid VM,
+Robot Lab extension, hub/controller, Jolt session and official test clock.
+No upstream source, device metadata, controller or physics change was made
+for Counterturn. All runtime/part-library installations remain external.
+
+EXTERNAL LDRAW GEOMETRY
+
+The main model uses 23 standard rigid part types. Its physical locking control
+adds one further type. Together they resolve to 273 external dependency files.
+The LDR/MPD reference that standard geometry without bundling the mesh library.
+The CAD illustration renders its surfaces in this original arrangement.
+
+Source archive: https://library.ldraw.org/library/updates/complete.zip
+Recorded date: 2026-09-30
+SHA256: f3e496d0ede69ca7942fa4aa198e661ee2d22723906101e2e339d8917a4dd5f2
+
+All selected geometry offers the CC BY 4.0 license option. This package uses
+that option. Original texts are retained in licenses/CAreadme.txt,
+licenses/CAlicense4.txt and licenses/CAlicense.txt.
+https://creativecommons.org/licenses/by/4.0/
+
+Per-file authors, license headers, history notices, sizes and exact hashes are
+retained in evidence/dependencies.json. That complete attribution record is
+part of this notice and covers nested primitives and subparts as well as the
+named top-level parts. The standard part files themselves are unchanged.
+
+RUNTIME AND PRESENTATION DEPENDENCIES
+
+source/runtime/package-lock.json pins the separately installed Node runtime
+dependencies. Their license texts remain in their separately obtained packages;
+no node_modules or complete runtime tree is redistributed. Jolt 1.1.0-bw.5,
+Scratch VM 4.8.115 with the app's own overlay, and the tested Python/NumPy,
+Matplotlib and Pillow versions are recorded in evidence/environment.json.
+Font binaries are not included.
+
+CURRENT COLLECTION
+
+The corrected starting collection contained 61 choices / 53 model files.
+Scale Studio, Bloom Gate, Echo Bridge and Bit Keeper brought it to 65 / 57.
+Counterturn preserves all 65 entries and adds one, reaching 66 / 58.
+Previous models, assets and notices remain in their original packages.
+The selected input identities are recorded in evidence/source-identity.json.

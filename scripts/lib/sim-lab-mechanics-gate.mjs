@@ -9,7 +9,7 @@ import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
-    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1}) => {
+    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -28,7 +28,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
             el.textContent.includes(marker)), programMarker(id), {timeout: 30000});
         await page.getByTestId('bw-sim-lab-3d-canvas').waitFor();
         await page.screenshot({path: resolve(shotsDir, `${id}.png`)});
-        await page.evaluate(() => {
+        await page.evaluate(observeProgram => {
             const pane = window.__bwSimLab._pane;
             const s = pane.session;
             const m = s.mechanism;
@@ -41,14 +41,17 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
                 for (const j of m.joints.filter(j => j.type === 'hinge' || j.type === 'slider')) joints[j.id] = s.core.jointState(j.id);
                 const busy = {};
                 for (const a of m.actuators) busy[a.port] = pane.hub.motors.busy(a.port);
-                record.track.push({t: s.time, bodies, joints, busy});
+                if (observeProgram && !record.finishedAt && s.time-record.start>1000 && !pane.props.vm.runtime.threads.some(t=>t.status!==4)) record.finishedAt=s.time;
+                const extra=observeProgram?{variables:Object.fromEntries(pane.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]))}:null;
+                record.track.push({t: s.time, bodies, joints, busy, ...(extra?{extra}: {})});
             });
-        });
+        }, observeProgram);
         await page.getByTestId('bw-sim-lab-speed').selectOption(String(speed));
         await page.getByTestId('bw-sim-lab-run').click();
         await page.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= ms,
             simulatedMs, {timeout});
         const r = await page.evaluate(() => window.__bwMechanics);
+        if (observeProgram) writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
         results[id] = judge(id, r);
         // Capture the measured final pose without racing a continuously redrawn
         // software WebGL surface. The next model selection starts a fresh run.

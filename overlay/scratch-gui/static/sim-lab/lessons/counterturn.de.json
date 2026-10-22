@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "counterturn",
+  "language": "de",
+  "what": "Ein Motor dreht ein inneres Schwungrad, und die Plattform mit Motor und Hub dreht sich in die Gegenrichtung. Motor A treibt ein waagerechtes Kegelzahnrad mit 12 Zähnen an, das über ein Zahnrad mit 20 Zähnen das senkrechte Schwungrad dreht. Die senkrechte Lagerung der Plattform ist frei: Kein Motor treibt sie direkt an. Beobachte die Plattform als eigentlichen Ausgang, statt den Versuch nur am Motorencoder zu beurteilen. Ein waagerechter Motor dreht ein senkrechtes Schwungrad über ein 12:20-Kegelradpaar. Der freie Träger dreht sich entgegengesetzt; vergleiche seinen Winkel mit der gesamten nativen Trägheit.",
+  "try": [
+    "Wähle dieses Beispiel und starte es. Beobachte fünf Sekunden freien Anlauf, vier Motorumdrehungen, Pause und Rückkehr. Setze das Modell vor einem weiteren Versuch nach Handbetrieb zurück.",
+    "Vergleiche drei Winkel: den Motorencoder, die Drehung des Schwungrads relativ zur Plattform und die Drehung der Plattform relativ zum Sockel. Vier Motorumdrehungen ergeben ideal 2,4 Schwungradumdrehungen relativ zur Plattform. Dreht sich die Plattform in dieselbe Richtung? Beträgt ihre Gegendrehung ebenfalls 2,4 Umdrehungen, oder hängt sie davon ab, was die Plattform trägt?",
+    "Sage voraus, wie zusätzliches symmetrisches Gewicht weiter außen am Träger wirkt. Vergleiche die freie Plattform mit dem mechanisch versteiften Aufbau im Prüfversuch."
+  ],
+  "why": "Der innere Antrieb tauscht Drehimpuls zwischen dem senkrechten Schwungrad und seinem Träger aus. Bei vernachlässigbarem äußerem Drehmoment um das senkrechte Lager erfordert mehr Drehimpuls des Schwungrads eine entgegengesetzte Änderung beim Träger. Die Größe der Gegendrehung hängt von beiden Trägheitsmomenten ab. Masse weiter von einer Achse entfernt trägt mehr zum Trägheitsmoment bei, näherungsweise proportional zum Quadrat ihres Abstands. Die waagerechte Motorwelle hält ihre große modellierte innere Rotationsträgheit aus der untersuchten senkrechten Komponente heraus.",
+  "matters": "Reaktionsräder ändern eine Ausrichtung durch bewegte Masse im Inneren. Hier ist der freie Träger der Ausgang. Die numerische Mindestträgheit des Getriebes verringert den vorhergesagten Drehwinkel gegenüber der reinen Formschätzung um etwa 4,53 %. Beide Werte sind keine Kalibrierung für echte Hardware.",
+  "question": "Muss sich die Plattform um vier Umdrehungen gegendrehen, wenn der Motor vier Umdrehungen ausführt? Was sollte sich ändern, wenn gleich große Gewichte weiter nach außen auf die Plattform gesetzt werden und das Schwungrad gleich bleibt?",
+  "answer": "Nein. Die Kegelradübersetzung ergibt 2,4 Schwungradumdrehungen relativ zum Träger. Die Drehung des Trägers hängt dagegen davon ab, welcher Anteil der gesamten Trägheit um die senkrechte Achse zum Schwungrad gehört. Ausgewogen nach außen versetztes Gewicht auf dem Träger erhöht dessen Trägheitsmoment und verringert seine Gegendrehung bei gleicher Schwungraddrehung. Nach außen versetztes Gewicht am Schwungrad wirkt tendenziell umgekehrt. Eine Motorumkehr kehrt den Austausch um; Dämpfung, kleine Sockelbewegungen und numerische Fehler können jedoch einen Restwinkel nach der Rückkehr hinterlassen. Die Validierung misst ihn, statt ihn als null anzunehmen.",
+  "further": [
+    "Trage die beobachtete Plattformdrehung gegen die beobachtete Schwungraddrehung relativ zur Plattform auf. Behalte die zeitliche Reihenfolge der Werte auf Hin- und Rückweg bei. Vergleiche die Steigung mit der Vorhersage aus dem vollständigen nativen Trägheitsdatensatz; berechne die dargestellte Plattformlage nicht aus dem Motorwinkel.",
+    "Sage voraus, was passiert, wenn gleich große Gewichte paarweise ausgewogen nach innen oder außen versetzt werden. Ein geänderter Rotor oder Träger ist eine neue Konfiguration und benötigt neue Prüfungen von Befestigung, Bewegungsfreiraum, Start und nativem Verhalten. Verwende das dokumentierte endliche Programm und halte den Bereich der umlaufenden Arme frei.",
+    "Vergleiche Flywheel Differential und den Fliehkraftregler. Dieser Versuch betrifft eine waagerechte, geführte Drehachse bei ausgeschalteten nativen Kreiselkräften. Reibung, Kabelkräfte und ein echter Aufbau erfordern eigene Messungen."
+  ],
+  "formula": "Sei α der Motorwinkel, β der Schwungradwinkel relativ zum Träger und ψ der Winkel des Trägers relativ zum ruhenden Sockel. Für den eingebauten Kegelradantrieb gilt β≈(12/20)α=0,6α. Bei waagerechter Plattform, gemeinsam senkrechter Schwungrad- und Lagerachse, anfangs verschwindendem senkrechtem Drehimpuls und vernachlässigbarem äußerem Drehmoment um diese Achse gilt (Ic+If)ψ̇+Ifβ̇=0 und Δψ=−[If/(Ic+If)]Δβ. If ist die axiale Schwungradträgheit; Ic umfasst den Träger sowie die transversale Trägheit und den Beitrag des umlaufenden Schwerpunkts der waagerechten Eingangsbaugruppe. Für diese Verhältnisse können alle Winkel in Grad stehen; Trägheitsmomente haben die Einheit kg·m². Die native Vorhersage verwendet die dokumentierten wirksamen Solverwerte einschließlich der Mindestmasse von 0,020 kg für Zahnradkörper und des Mindestwerts von 3×10⁻⁵ kg·m² für Hauptträgheitsmomente, soweit sie angewendet werden.",
+  "related": [
+    "flywheel-differential.ldr",
+    "centrifugal-governor.ldr",
+    "motor-bench.ldr"
+  ]
+}
