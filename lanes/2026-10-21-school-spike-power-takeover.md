@@ -48,3 +48,10 @@ The hosted shard passed all 3,248 non-TODO controls but caught a missing GUI
 dependency declaration for the new real-Jolt power test. Its exact test path
 is now registered for the existing baseline Jolt specifier; the scope gate
 and its rejection controls remain in force.
+
+The subsequent hosted shard also caught the missing canonical runtime-registry
+entry for `motorStartPower`. Regenerate it from the adopted extension using
+`gen-runtime-ops.mjs`; preserve the vendored Creator registry. The independent
+gate manifest control now reads the complete balanced test list through the
+existing JavaScript scope helper, retaining unique-path, existence and all
+eight bridge-group assertions. No audit allowance or baseline is changed.
