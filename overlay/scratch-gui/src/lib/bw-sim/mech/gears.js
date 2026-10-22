@@ -225,6 +225,19 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
         });
     }
 
+    // A gear rigidly carried off-axis by a hinged assembly may simply be a
+    // weight. Its own axle need not turn unless teeth engage another device.
+    // Keep the warning for loose gears and for actual gear/rack/worm/chain
+    // contacts; this changes diagnostics only, never joints or constraints.
+    const hasToothMate = g => gearInfos.some(other => {
+        if (other === g || other.islandId === g.islandId) return false;
+        const modules = meshModules(g, other, kinds);
+        if (modules.length) return modules.some(m => m.mesh.contact(g, slack ? squaredUp(g, other, slack) : other));
+        return vecLen(vecSub(g.centerLdu, other.centerLdu)) <= g.r + other.r + 5 && !warningEnvelopesSeparated(g, other);
+    }) || [...nodes.entries()].some(([id, other]) => other.partId !== g.partId && nodeToBody.get(id) !== g.islandId &&
+        kinds.couplings.list().some(m => typeof m.placedMesh === 'function' &&
+            m.placedMesh(nodes.get(g.nodeId).placed, nodes.get(g.nodeId).meta, other.placed, other.meta)));
+
     for (const g of gearInfos) {
         g.hinges = gearHinges(g, joints);
         // A model from elsewhere: a gear a few LDU off its axle's line (42099's rear differential places its side gears
@@ -247,7 +260,8 @@ export const buildGears = (nodes, islands, joints, catalogMap, diagnostics = [],
                 g.hinges = gearHinges(g, joints);
             }
         }
-        if (g.hinges.length === 0) {
+        const carried = joints.some(j => j.type === 'hinge' && (j.body1 === g.islandId || j.body2 === g.islandId));
+        if (g.hinges.length === 0 && (!carried || hasToothMate(g))) {
             diagnostics.push({severity: 'warning', code: 'gear-not-on-hinge', message: `Gear ${g.partId} not on hinge`, parts: [g.partId]});
         }
     }

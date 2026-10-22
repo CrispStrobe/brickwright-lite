@@ -2,7 +2,7 @@ DEVICE SPIKE
 # BIT KEEPER - write either mechanical state, return the input to the same datum.
 # Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
 # Import Bit Keeper first. Its output arm is always a passive free hinge.
-# A slow band-anchor sweep writes the state; motor A then holds near zero.
+# A bounded band-anchor sweep writes the state; motor A then holds near zero.
 # Fresh-encoder returns and bounded trims guard the native angle completion tolerance.
 WHEN flag clicked:
   set complete to 0
@@ -16,7 +16,7 @@ WHEN flag clicked:
   broadcast "Bit Keeper watchdog"
   lab start
   lab stop motor A coast
-  wait 5 seconds
+  wait 0.5 seconds
   if (abs of (lab motor A angle)) > 1 then:
     set fault to 1
     say "The input moved during coast startup. Reset and inspect the frame."
@@ -25,7 +25,7 @@ WHEN flag clicked:
   lab stop motor A hold
   wait 0.5 seconds
   set phase to 1
-  lab run motor A for (8 - (lab motor A angle)) degrees at 1 degrees per second
+  lab run motor A for (8 - (lab motor A angle)) degrees at 4 degrees per second
   lab stop motor A hold
   wait 2 seconds
   if (abs of ((lab motor A angle) - 8)) > 1 then:
@@ -34,7 +34,7 @@ WHEN flag clicked:
     lab stop motor A hold
     stop all
   set phase to 2
-  lab run motor A for (0 - (lab motor A angle)) degrees at 1 degrees per second
+  lab run motor A for (0 - (lab motor A angle)) degrees at 4 degrees per second
   lab stop motor A hold
   wait 0.15 seconds
   set trimAttempts to 0
@@ -61,7 +61,7 @@ WHEN flag clicked:
     lab stop motor A hold
     stop all
   set phase to 4
-  lab run motor A for (-8 - (lab motor A angle)) degrees at 1 degrees per second
+  lab run motor A for (-8 - (lab motor A angle)) degrees at 4 degrees per second
   lab stop motor A hold
   wait 2 seconds
   if (abs of ((lab motor A angle) - -8)) > 1 then:
@@ -70,7 +70,7 @@ WHEN flag clicked:
     lab stop motor A hold
     stop all
   set phase to 5
-  lab run motor A for (0 - (lab motor A angle)) degrees at 1 degrees per second
+  lab run motor A for (0 - (lab motor A angle)) degrees at 4 degrees per second
   lab stop motor A hold
   wait 0.15 seconds
   set trimAttempts to 0

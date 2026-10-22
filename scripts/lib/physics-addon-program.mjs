@@ -26,5 +26,14 @@ export function adaptAddonProgram(id, bytes) {
     if (text.split('  lab reset\n').length !== 2) throw Error('Expected one redundant reset');
     text = text.replace('  lab reset\n', '').replace('# Reset restores the closed saved pose and its zero encoder datum.', '# Gallery selection loads the closed saved pose. Use Reset before another run.').replace('# The reset restores the saved pose; encoder zero is the right-pointing crank.', '# Gallery selection loads the saved pose; use Reset before rerunning after manual motion.');
   }
+  if (id === 'bit-keeper') {
+    // Keep the source's write order and six-second memory observations. The
+    // independent ten-second coast control covers retention; the demo needs
+    // only a short settling lead-in and a bounded, visible input sweep.
+    text = text.replace('  wait 5 seconds\n', '  wait 0.5 seconds\n')
+      .replace(/(lab run motor A for .+ degrees at )1 degrees per second/g, '$14 degrees per second')
+      .replace('# A slow band-anchor sweep writes the state; motor A then holds near zero.',
+        '# A bounded band-anchor sweep writes the state; motor A then holds near zero.');
+  }
   return text;
 }
