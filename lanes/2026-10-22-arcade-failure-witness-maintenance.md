@@ -1,0 +1,40 @@
+# Arcade failed-control witnesses and capture — CLAIMED
+
+Owner: Arcade integration. Branch: `lane/arcade-failure-witness-claim-20261022`.
+Base: `b040fd9be907c67a17876c77ab527eb0ed7593cc`.
+Merge this claim before implementation; preserve other active workflow lanes.
+
+## Observed failures and owned paths
+
+The complete [integration run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39705808582)
+has a source-policy failure for an actual native score test and two remaining
+legacy SDK failures. Work only these narrow witnesses and capture routes:
+
+- `scripts/lib/gui-scope-allowed.json`: add only
+  `test/makecode-arcade-score-threshold-native.test.mjs` under the existing
+  procedure-constraint-model consumer key. No new module key or broad grant.
+- `test/array-definite-overwrite.test.mjs`: preserve the exact constructor
+  callback source as an explicit structural-refusal witness; separately test
+  constructor callback effects through genuine canonical nodes. The previous
+  fixture failed before reaching its intended export-authority guard.
+- `.github/workflows/build.yml`: only the existing unit-shard test environment
+  and its existing failure-artifact upload. Enable the already implemented
+  `BW_ARRAY_MENU_FAILURE_ROOT` capture into a shard-owned `test-results/` folder
+  and include that folder in the same artifact. No new dispatch, job, build,
+  credential, test selection, timeout, resource limit or qualification condition.
+- This claim and Arcade status/handoff documentation.
+
+Keep the Pyodide installation lane and every unrelated workflow byte intact.
+No producer, parser, runtime, supplier, effect, initialization or writer policy
+changes are authorized here. The alias-forwarding failure needs actual current
+operands before a semantic repair; an older capture cannot supply those facts.
+
+## Acceptance
+
+Keep all original failures. Verify the actual consumer import, exact scope-list
+addition, canonical unsafe-constructor witness and unchanged supported controls.
+The complete legacy 32-test module runs on hosted CI only; no local filtered,
+sharded or mirrored replay. Capture is diagnostic data, never a pass condition
+or a reason to weaken existing assertions. Batch this with the complete Arcade
+candidate and existing enabled checks, without a new `ci:full` label or duplicate
+dispatch. Corpus counts require a complete fresh report and remain unchanged.
