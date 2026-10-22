@@ -20,7 +20,7 @@
 // START (Run again after the program completed) first sends a STOP. stop() during an
 // unanswered START waits for its reply, then stops.
 
-import {NuttXProgramClient, encodeInstructions, encodeCommand, decodeReply, PROGRAM_OP, PROGRAM_STATE} from '../../../spike-nuttx/upload-protocol.js';
+import {NuttXProgramClient, encodeInstructions, encodePython, encodeCommand, decodeReply, PROGRAM_OP, PROGRAM_STATE} from '../../../spike-nuttx/upload-protocol.js';
 import {LOCKSTEP_OPS, parseReply} from './contract.js';
 
 /** The program id the route uploads under (one program per session). */
@@ -45,17 +45,26 @@ export class LockstepProgram {
     /**
      * @param {object} options
      * @param {{call: Function}} options.transport the route's transport (broker op names)
+     * @param {string|null} [options.pythonSource] own-NuttX embedded Python, mutually exclusive with program
      * @param {{version: 1, instructions: number[][]}} options.program compileFirmwareProgram's output
      * @param {'default'|'six-motors'|'dual-ultrasonic'} [options.topology]
      * @param {number} [options.id]
      * @param {Function} [options.onChange] called after the program's state or a control changed
      */
-    constructor ({transport, program, topology = 'default', id = ROUTE_PROGRAM_ID, onChange = () => {}}) {
+    constructor ({transport, program = null, pythonSource = null, topology = 'default', id = ROUTE_PROGRAM_ID, onChange = () => {}}) {
         if (!transport || typeof transport.call !== 'function') throw new TypeError('a lockstep program needs a transport');
         // Validate (and copy) before anything is sent: a program the ABI refuses never reaches the hub.
-        encodeInstructions(program, {topology});
-        this.program = {version: 1, instructions: program.instructions.map(row => [...row])};
-        this.key = JSON.stringify(this.program.instructions);
+        if ((program !== null) === (pythonSource !== null)) throw new TypeError('provide exactly one compiled program or Python source');
+        this.python = pythonSource !== null;
+        if (this.python) {
+            encodePython(pythonSource);
+            this.program = pythonSource;
+            this.key = `python:${pythonSource}`;
+        } else {
+            encodeInstructions(program, {topology});
+            this.program = {version: 1, instructions: program.instructions.map(row => [...row])};
+            this.key = JSON.stringify(this.program.instructions);
+        }
         this.transport = transport;
         this.topology = topology;
         this.id = id;
@@ -102,7 +111,7 @@ export class LockstepProgram {
         const client = new NuttXProgramClient(bytes => this._packet(bytes), this.id, {topology: this.topology});
         let committed;
         try {
-            committed = await client.upload(this.program, {start: false});
+            committed = await client.upload(this.program, {python: this.python, start: false});
         } catch (error) {
             throw new FirmwareRunError(`the emulated hub refused the program upload: ${error.message}`,
                 {code: 'upload-refused', result: error.result ?? null});

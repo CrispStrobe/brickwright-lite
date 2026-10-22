@@ -33,3 +33,13 @@ failures; missing-input SKIP is failure in required mode. Firmware stays local
 to the runner; publish no binaries/reference media, only bounded qualification
 receipts. Acquire each admitted official original once. No heavy local build or
 guest run, no hardware or broad physical/performance/native-app claim.
+
+Source candidate now adds mutually exclusive Python upload and a required-input
+mode. Source controls preserve the existing compiled-program lifecycle. The new
+hosted job retains the exact simulation baseline gates, builds both own sources,
+and runs timed/degrees and embedded-Python acceptance. Support resources remain
+at the existing installer pin `14b80cde0a136b684f316eb7f6a31aeaae0684bf`, with
+`--skip-fetch` on both Runtime build commands. No moving resources fetch.
+
+Real hosted results remain pending. This is not a closure or guest-success claim;
+the matrix's two firmware cells stay partial/gap until independently read results.
