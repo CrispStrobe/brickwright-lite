@@ -1003,7 +1003,7 @@ class SimLabPane extends React.Component {
     startClock () {
         const vm = this.props.vm;
         if (!this.session || this.session.lockstep || !vm || !vm.runtime || this.clockInert) return;
-        if (!this.clock) this.clock = new this.lib.SimLabClock();
+        if (!this.clock) this.clock = new this.lib.SimLabClock({paceNominal: true});
         this.clock.timeScale = this.timeScale || 1;
         this.clock.install(vm.runtime, this.session);
     }

@@ -65,15 +65,15 @@ pkg.dependencies['@xyflow/react'] = pkg.dependencies['@xyflow/react'] || '^12.3.
 pkg.dependencies['@xterm/xterm'] = '6.0.0';                       // MIT — the Linux lesson's terminal emulator (lazy-imported, exact pin)
 pkg.dependencies['three'] = '0.186.1';                               // MIT — the SPIKE arena's 3D view (lazy-imported, exact pin)
 // MIT — the Sim Lab physics engine (WASM, lazy-imported). OUR FORK, pinned to an immutable release
-// tarball (sha256 3342ec69f60e6a0a935f0ecfe0372e633243b23bf6f748d7871a5d94f74b26e9): upstream Jolt's GearConstraint passed
+// tarball (sha256 15861ecd15d4eacaac2ce9f4875a18bff4470f397cc4774227c73a62142a69e6): upstream Jolt's GearConstraint passed
 // torque across a mesh 1:1 (an 8:24 train put 3× the load on its motor) and is angular-only (no axle
 // reaction: a gearbox on a free frame gained angular momentum). The fork fixes the ratio and adds
-// GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.5, branch brickwright/part-pair-filter on brickwright/gear-mesh-master; bw.3 adds the CCD bounce fix and MaterialPairs, bw.4 RackMeshConstraint, bw.5 PartPairSimShapeFilter: the Robot Lab's part-pair collision filter in C++).
+// GearMeshConstraint (a tooth contact at the pitch point); built on upstream Jolt master 01adafb (release v1.1.0-bw.6, branch brickwright/part-pair-filter on brickwright/gear-mesh-master; bw.3 adds the CCD bounce fix and MaterialPairs, bw.4 RackMeshConstraint, bw.5 PartPairSimShapeFilter: the Robot Lab's part-pair collision filter in C++; bw.6 adds optional single-thread SIMD with unchanged physical controls and regression hash).
 // https://github.com/CrispStrobe/JoltPhysics.js/blob/brickwright/gear-mesh-master/BRICKWRIGHT.md
 // The release URL names a tag, which can move; the bytes are what is trusted: npm checks the tarball
 // against the lockfile's integrity before it unpacks anything, and the lockfile must carry THIS value.
-const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.5/jolt-physics-1.1.0-bw.5.tgz';
-const JOLT_PHYSICS_INTEGRITY = 'sha512-M1SVZ80BdRK6mVnrXK/bg3XFIi0s1NO4BBtmGuAkVBS+3WcYcDOEY+1bRRgjlKA1b6SNLtDOF9QbT1hE83dLGg==';
+const JOLT_PHYSICS_URL = 'https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.6/jolt-physics-1.1.0-bw.6.tgz';
+const JOLT_PHYSICS_INTEGRITY = 'sha512-n6G3uxIdjzw1P/wZn2/DrPJaFXX7oTMztQ7IvGAChaQw4C4CLWXwWEWEbF0/PwSCID6xSfJya5Tlc9js8TFskg==';
 pkg.dependencies['jolt-physics'] = JOLT_PHYSICS_URL;
 {
     const lockPath = path.join(GUI, 'package-lock.json');

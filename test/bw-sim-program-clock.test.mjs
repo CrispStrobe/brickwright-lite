@@ -116,7 +116,7 @@ if (!existsSync(missing)) {
             const skews = [];
             const wall0 = performance.now();
             if (clocked) {
-                clock = new SimLabClock();
+                clock = new SimLabClock({paceNominal: true});
                 clock.timeScale = scale;
                 clock.install(vm.runtime, session);
                 // What the program reads at each step (_step emits ARCADE_FRAME right after it refreshes
