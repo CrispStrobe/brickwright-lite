@@ -154,7 +154,13 @@ test('mixed reference signature defaults retain original provenance independentl
     assert.equal(calls(program)[0].args.length,0);assert.equal(calls(program)[1].args[0].type,'Undefined');
     const imported=arcadeToPseudocode(neighbor+original);
     assert.ok(imported.unsupported.some(message=>/separately qualified default protocol/.test(message)));
-    assert.ok(imported.code.split('\n').some(line=>/CALL: \(choose\)/.test(line)),imported.code);
+    // The omitted formals are still a fact of the call, not of the formal: the
+    // emitted call names the omission with explicit undefined placeholders (the
+    // callee's own default prologue applies the default) instead of a short call
+    // the block parser cannot match against its DEFINE.
+    const chooseCall=imported.code.split('\n').find(line=>/CALL: \(choose /.test(line));
+    assert.ok(chooseCall,imported.code);
+    assert.match(chooseCall,/\(choose \(undefined value\) \(undefined value\)\)/);
     assert.match(imported.code,/DEFINE choose/);assert.match(imported.code,/confetti/);
 });
 
