@@ -83,6 +83,43 @@ test('a powered rack reaches its geometric limit before torque cutoff and revers
     }
 });
 
+test('a checkpoint during rack impact replays braking, settling and reversal exactly',()=>{
+    for(const sign of [1,-1]){
+        const mechanism=benchMechanism({pinionAxis:[0,1,0],rackAxis:[1,0,0],
+            pinionAt:[0,0.01,0],rackAt:[0,0.01,0.006]});
+        mechanism.joints.find(j=>j.id==='jr').limits=[-0.012,0.012];
+        const core=createPhysicsCore(J,mechanism,{stepHz:HZ});
+        try{
+            core.setMotor('jp',{mode:'torque',torqueNm:sign*0.01,dampingNmsPerRad:0.001});
+            let entered=false;
+            for(let i=0;i<2*HZ;i++){
+                core.step(1/HZ);
+                if(sign*core.jointState('jr').position>=0.012-0.0005){entered=true;break;}
+            }
+            assert.ok(entered,'the actual rack enters its impact band');
+            core.step(1/HZ); // record the first braking step, before final settling
+            core.checkpoint();
+            const trace=()=>{
+                const frames=[];
+                for(const direction of [sign,-sign]){
+                    core.setMotor('jp',{mode:'torque',torqueNm:direction*0.01,dampingNmsPerRad:0.001});
+                    for(let i=0;i<2*HZ;i++){
+                        core.step(1/HZ);
+                        const frame=core.snapshot();
+                        frames.push([Array.from(frame.bodies),Array.from(frame.joints)]);
+                    }
+                    assert.ok(Math.abs(core.jointState('jr').position-direction*0.012)<R*Math.PI/180,
+                        'the replay also reaches the original geometric stop allowance');
+                }
+                return frames;
+            };
+            const original=trace();
+            core.rollback();
+            assert.deepEqual(trace(),original,'every actual body and joint frame replays through both stops');
+        }finally{core.destroy();}
+    }
+});
+
 test('a rack on a turning chassis keeps its place on it: it moves only by r times the pinion\'s turn relative to the chassis', t => {
     // The chassis spins at 3 rad/s about the pinion's own axis (a steering pinion, vertical, as the car turns).
     const spec = {pinionAxis: [0, 1, 0], rackAxis: [1, 0, 0], pinionAt: [0, 0.01, 0], rackAt: [0, 0.01, 0.006]};
