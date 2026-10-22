@@ -30,6 +30,7 @@ import {readFileSync, existsSync, readdirSync, statSync} from 'node:fs';
 import {join, resolve, dirname, basename} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {gzipSync} from 'node:zlib';
+import {proveMenuLazyCompanion} from './lib/boot-lazy-companion.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = process.env.BW_BUILD
@@ -56,6 +57,7 @@ const LAZY = [
     // The extension menu-shape table (~35 KB): read by the Code tab's compiler and by the
     // load-time repair of extension projects; the first load carries only the import() call.
     {what: 'extension menu shape table', marker: '+MULTIPLE_PORT', chunk: 'bw-extension-menus',
+        menuCompanion: true,
         why: 'the import() in lib/arcade-project-migration.js (lib/extension-menu-args.js)'},
     {what: 'Robot Lab tab', marker: 'Open the Robot Lab here', chunk: 'bw-robotlab-tab',
         why: 'the React.lazy RobotLabTab in components/gui/gui.jsx'},
@@ -247,12 +249,29 @@ for (const m of LAZY) {
     check(`${m.what} have their own chunk (chunks/${m.chunk}*.js)`, Boolean(chunk),
         chunk ? `${chunk}, ${kib(statSync(join(chunksDir, chunk)).size)}` : `no chunks/${m.chunk}*.js — check ${m.why}`);
     if (chunk && !m.optional) {
+        if (m.menuCompanion && !has(readFileSync(join(chunksDir, chunk), 'utf8'), m)) {
+            const matches = chunkFiles.filter(f => f.endsWith('.js') &&
+                (f === `${m.chunk}.js` || f.startsWith(`${m.chunk}.`)));
+            const eagerNames = new Set(eagerSources.map(({p}) => resolve(p)));
+            const proof = matches.length === 1 ? proveMenuLazyCompanion({
+                entryName: `chunks/${chunk}`, marker: m.marker, html,
+                eagerSources: eagerSources.map(({p, src}) => ({name: p.slice(build.length + 1), source: src})),
+                lazySources: chunkFiles.filter(f => f.endsWith('.js') && !eagerNames.has(resolve(chunksDir, f)))
+                    .map(f => ({name: `chunks/${f}`, source: readFileSync(join(chunksDir, f), 'utf8')}))
+            }) : {ok: false, reason: 'DUPLICATE_NAMED_ENTRY'};
+            check(`the marker for ${m.what} belongs to its actual lazy request group`, proof.ok,
+                proof.ok ? proof.markerFiles.join(', ') : proof.reason);
+            check(`nothing preloads the menu request group`, proof.ok && proof.files.every(f =>
+                !html.includes(f) && !html.includes(basename(f))),
+            'named entry and every actual companion must be absent from HTML script/preload/prefetch references');
+        } else {
         const candidates = m.sharedLazy ? chunkFiles.filter(f => f.endsWith('.js')) : [chunk];
         const found = candidates.filter(f => has(readFileSync(join(chunksDir, f), 'utf8'), m));
         check(`the marker for ${m.what} still discriminates (found in ${m.sharedLazy ? 'lazy JS' : 'its chunk'})`, found.length > 0,
             found.length ? found.join(', ') : `${JSON.stringify(m.marker)} is missing from its permitted lazy chunks — the marker rotted, so the "not in the first load" check above proves nothing`);
         if (m.sharedLazy) check(`nothing preloads shared ${m.what} payloads`,
             found.every(f => !html.includes(f)), 'index.html must not reference the matched shared payload assets');
+        }
     }
     check(`nothing preloads ${m.what} into the first load`, !html.includes(m.chunk),
         `index.html must not reference chunks/${m.chunk}*`);
