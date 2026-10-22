@@ -1589,12 +1589,16 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         return out;
     };
     const braked = new Set();
+    const rackApproach = new Map();
     const applyEndStops = () => {
         const brake = new Set();
         for (const st of endStops) {
             const end = atEndOf(st.joint, st.limits);
-            if (end === 0) continue;
+            if (end === 0) {rackApproach.delete(st); continue;}
             const h = st.hinge;
+            if (!h.isMotor || h.mode !== 'torque' || h.driveTorque === 0 || Math.sign(st.k * h.driveTorque) !== end) {
+                rackApproach.delete(st);
+            }
             if (h.isMotor && h.mode === 'torque') {
                 // A power drive (PWM: a torque through the hinge's spring, applyHingeTorque) pushing into the end: the
                 // spring's target is where the hinge is, so only its damping (the back-EMF) acts this step.
@@ -1603,17 +1607,25 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     const slider = sliderMap.get(st.joint);
                     let offset = 0;
                     if (slider && typeof J.RackMeshConstraintSettings === 'function') {
-                        // The native rack retains position phase. Limit the
-                        // spring target to the actual end, rather than freezing
-                        // wherever the proximity band first caught the rack.
-                        // Reserve the current step's measured slider advance
-                        // for braking, retaining the fast-approach protection.
-                        // Never increase/reverse commanded torque or undo an
-                        // earlier stop; damping and physical limits stay intact.
-                        const commanded = deltaAngle(h.hinge.GetTargetAngle(), angle);
-                        const remaining = st.limits[end > 0 ? 1 : 0] - slider.position;
-                        offset = clamp((remaining - slider.velocity * dtFixed) / st.k,
-                            Math.min(0, commanded), Math.max(0, commanded));
+                        // Brake an incoming rack exactly as before. Once its
+                        // forward motion stops or reverses, let the spring reach
+                        // the actual geometric end instead of parking forever
+                        // at the first point inside the proximity band.
+                        let approach = rackApproach.get(st);
+                        if (!approach || approach.end !== end) {
+                            approach = {end, braking:true, position:slider.position};
+                            rackApproach.set(st, approach);
+                        } else if (approach.braking && (slider.velocity * end <= 0 || approach.position === slider.position)) {
+                            approach.braking = false;
+                        }
+                        approach.position = slider.position;
+                        if (!approach.braking) {
+                            // Never increase/reverse the command or undo an
+                            // earlier stop. Damping and native limits stay intact.
+                            const commanded = deltaAngle(h.hinge.GetTargetAngle(), angle);
+                            const remaining = st.limits[end > 0 ? 1 : 0] - slider.position;
+                            offset = clamp(remaining / st.k, Math.min(0, commanded), Math.max(0, commanded));
+                        }
                     }
                     h.hinge.SetTargetAngle(normalizeAngle(angle + offset));
                 }
@@ -1633,6 +1645,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     };
     // experiments.noEndStops: none (a bench comparing the rack constraints alone, test/bw-sim-rack-frame.test.mjs).
     endStops = experiments.noEndStops ? [] : buildEndStops();
+    if (endStops.length) stateRegistry.register('rackApproach', {
+        save: () => endStops.map(st => rackApproach.has(st) ? {...rackApproach.get(st)} : null),
+        restore: states => {
+            rackApproach.clear();
+            states.forEach((state, i) => {if (state) rackApproach.set(endStops[i], {...state});});
+        }
+    });
     // The brakes are hinge friction, which Jolt's state does not record: a rollback puts them back as they were.
     if (endStops.length) stateRegistry.register('endStops', {
         save: () => [...hingeMap].filter(([, h]) => braked.has(h)).map(([id]) => id),
