@@ -144,9 +144,10 @@ resolve the 158 hosted refusal sites or change the historical app count.
 ## Hosted authoring follow-up — 22 October 2026
 
 The current official journey reached the real refusal details, operand and
-asset-preservation checks, then its first report-collapse pointer click was
+preservation/outcome wording checks, then its first report-collapse pointer click was
 blocked by the still-open Code actions menu. The verifier now closes that menu
 through its real summary after each export and asserts it closed. Original
 report assertions and normal pointer interactions remain intact. This source
 repair awaits the complete official authoring journey; it grants no browser or
-application-completion result.
+application-completion result. Asset-byte assertions after the blocked click
+were not reached and remain mandatory.
