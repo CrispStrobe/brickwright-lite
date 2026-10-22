@@ -25,3 +25,21 @@ measurements, dialect roundtrips and final exact-head qualification. No local
 supplier fork, workflow/gate/resource change, firmware or native activation.
 The separate observed steering-stop physical failure remains a blocking result;
 this adoption does not waive or broaden its existing physical assertions.
+
+## Early rack drive cutoff
+
+The native program reaches a peak near 119.5 degrees but settles near 111.7,
+short of the unchanged 114.6-degree geometric stop. Actual scalar and SIMD
+factory runs produce identical tracks, with the motor still busy. Current
+`physics/jolt-core.js` cuts torque within 0.5 mm of a slider limit, a substantial
+fraction of a tooth; the prior rack phase rebasing concealed this early cutoff.
+
+Own only the slider end-stop proximity/drive-cutoff rule in that file and
+focused controls in `test/bw-sim-rack-frame.test.mjs`, preserving the complete
+Differential car assertions. Prove the cutoff cause against actual slider and
+hinge measurements. Derive any proximity correction from the existing physical
+contact/constraint accuracy contract, not from an observed passing angle.
+Preserve hinge-stop handling, drive reversal, passive joints, torque limits,
+collision filters/shapes, timesteps, solver budgets and every physical bound.
+Require complete affected rack, motor, steering and rollback controls plus
+final exact-head hosted physical/browser qualification before normal landing.
