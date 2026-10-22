@@ -950,3 +950,48 @@ the earlier export. Independent saved-result review verified current inputs,
 source and module loads. Preserve the outer wrapper failure on Node's module
 format warning; this is an observed conversion result, not an all-pass wrapper
 or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](ARCADE-NUMERIC-CLOSURE-RESULTS.md#ordinary-default-export-observation--2026-10-22).
+
+## Next single hosted qualification batch — 2026-10-22
+
+Use the existing [PR1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
+branch after its normal ancestry check. Its existing `ci:full` already requests
+the browser gates needed by the composed converter changes; do not add another
+label or dispatch. Finish and review the image proof, complete affected source
+cohort and unchanged animation carrier first. Preserve all original failures.
+Then publish one final candidate with a normal push and let its enabled checks
+finish. Match the reviewed head when merging and verify the landed parents and
+tree. Never borrow results from the preceding published head.
+
+The existing four unit jobs discover complete test files automatically:
+
+| Pending acceptance | Complete existing files |
+| --- | --- |
+| SDK32 | `makecode-array-menu-export`, `array-definite-overwrite`, `arcade-class-array-writer-types`, `arcade-class-reset-effects` |
+| Public CLI10 | `compat-audit.test.mjs`, including actual mixed-catalogue exit-zero and exit-one cases |
+| Word corpus5 | `dialect-arcade-import-lines.test.mjs`, retaining its complete input census |
+| Native Array48 | `arrays-operation-host-native`, `arrays-number-value-ingress-native`, `arrays-owned-plus-native`, `arrays-failure-routing-native`, `arrays-closed-cjs-exports-native` |
+| Closure and image follow-up | `native-numeric-closure-results`, `makecode-callable-source-counter`, `native-image-pixel-normal-results`, `arcade-animation-resource-carrier` |
+
+Names without a suffix in this table refer to `test/<name>.test.mjs`. Inspect
+actual per-file TAP and prerequisite results. SDK preparation is allowed to be
+absent in the general unit setup: a green job does not qualify a compiler test
+that reports `SDK_ABSENT` or skips. Require genuine pinned workers and actual
+original and emitted compilation. Do not replay the resource-failed SDK32
+cohort locally or replace it with filtered tests. If hosted preparation fails,
+preserve that original and scope its repair; a new strict workflow needs its
+own merged ownership claim.
+
+The official Arcade authoring job and existing browser gates must use the
+final built application. They do not automatically exercise this exact closure
+or edited-frame project. Separately scope Code/pseudocode authoring, connected
+Blocks, captured-state edits, animation costume edits, save and fresh reopen,
+export/SDK compilation and fresh reimport. Record any missing representation
+in the GUI ledger. A general browser pass cannot close those named journeys.
+The x86 supplier consumers also need their complete source controls and the
+separately admitted genuine download/GUI acceptance described in
+[the x86 handoff](X86-NEXT-LANES.md#next-finite-gui-composition-and-hosted-acceptance).
+Keep actual execution disabled until its existing admission succeeds.
+
+This public test campaign is separate from the private 225-subject assessment.
+Historical partial-app counts change only after a complete current report has
+been independently admitted.
