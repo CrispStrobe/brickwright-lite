@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-21T23:34:57.243Z",
+  "generatedAt": "2026-10-22T23:42:03.756Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1923,6 +1923,12 @@
       "workflow": "i80386-hdd-gui-actual.yml",
       "branch": "lane/386-hdd-composition-20261016",
       "sha": "b5c2921a0"
+    },
+    {
+      "run": 39862908482,
+      "workflow": "robot-lab-own-firmware.yml",
+      "branch": "lane/robot-lab-firmware-coverage-20261022",
+      "sha": "c9512f122"
     }
   ],
   "workflowsInTree": [
@@ -1946,6 +1952,7 @@
     "pascal-ack-image.yml",
     "production-sw-probe.yml",
     "release.yml",
+    "robot-lab-own-firmware.yml",
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
@@ -6896,11 +6903,463 @@
       "steps": {},
       "jobs": {},
       "sourceSha": "478750596aaeee882018dc89fa4a370e7bbbf796"
+    },
+    "robot-lab-own-firmware.yml": {
+      "runs": 1,
+      "stepsInFile": [
+        "Check out exact Lite head",
+        "Check out own firmware",
+        "Check out reviewed lockstep Runtime and paired Infrastructure",
+        "Pin the existing reviewed support libraries",
+        "Initialize firmware gitlinks and admit exact graph",
+        "Apply and test reviewed NuttX backports",
+        "Build the pinned tool container",
+        "Record container and tool versions",
+        "Build protected NuttX firmware (selected simulation profile)",
+        "Record actual selected temporary-file libc member hashes",
+        "Record actual simulation probe object hash",
+        "Test saved programs through real LittleFS interrupted writes",
+        "Prepare an explicit existing-filesystem simulation fixture",
+        "Bind the offline-reviewed TI-free fingerprint and scan the images",
+        "Gate the simulation image and build as TI-free",
+        "Enforce protected resource budgets",
+        "Verify addressed sensor capability in the actual userspace ELF",
+        "Cross-compile Zephyr buffer boundary against pinned NuttX",
+        "Cross-compile pinned PSA Bluetooth units",
+        "Link complete host-side Bluetooth harness",
+        "Record local-only outputs",
+        "Set up reviewed headless SDK",
+        "Build exact headless Runtime without moving library fetches",
+        "Set up Node",
+        "Install declared Lite guest dependencies",
+        "Stage source-built own firmware through the existing package producer",
+        "Run source and refusal controls",
+        "Require real timed and degrees Lab lockstep acceptance",
+        "Require embedded Python through the actual Lab route",
+        "Bound receipt bytes and omit runner locations",
+        "Retain bounded receipts only"
+      ],
+      "inFileInNoRun": [],
+      "steps": {
+        "Check out exact Lite head": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Check out own firmware": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Check out reviewed lockstep Runtime and paired Infrastructure": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Pin the existing reviewed support libraries": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Initialize firmware gitlinks and admit exact graph": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Apply and test reviewed NuttX backports": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Build the pinned tool container": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Record container and tool versions": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Build protected NuttX firmware (selected simulation profile)": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Record actual selected temporary-file libc member hashes": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Record actual simulation probe object hash": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Test saved programs through real LittleFS interrupted writes": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Prepare an explicit existing-filesystem simulation fixture": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Bind the offline-reviewed TI-free fingerprint and scan the images": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Gate the simulation image and build as TI-free": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Enforce protected resource budgets": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Verify addressed sensor capability in the actual userspace ELF": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Cross-compile Zephyr buffer boundary against pinned NuttX": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Cross-compile pinned PSA Bluetooth units": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Link complete host-side Bluetooth harness": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Record local-only outputs": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Set up reviewed headless SDK": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Build exact headless Runtime without moving library fetches": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Set up Node": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Install declared Lite guest dependencies": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Stage source-built own firmware through the existing package producer": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Run source and refusal controls": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Require real timed and degrees Lab lockstep acceptance": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Require embedded Python through the actual Lab route": {
+          "existed": 1,
+          "ran": 0,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 1,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": null,
+          "class": "never"
+        },
+        "Bound receipt bytes and omit runner locations": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": "always()",
+          "class": "always"
+        },
+        "Retain bounded receipts only": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "own-firmware"
+          ],
+          "clause": "always()",
+          "class": "always"
+        }
+      },
+      "jobs": {
+        "own-firmware": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "always"
+        }
+      },
+      "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
     }
   },
   "lastRefresh": {
-    "workflow": "arcade-private-assessment.yml",
-    "at": "2026-10-21T23:34:57.243Z",
-    "sourceSha": "478750596aaeee882018dc89fa4a370e7bbbf796"
+    "workflow": "robot-lab-own-firmware.yml",
+    "at": "2026-10-22T23:42:03.756Z",
+    "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
   }
 }
