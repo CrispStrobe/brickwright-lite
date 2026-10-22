@@ -15,6 +15,10 @@ Own only regeneration of
 `overlay/scratch-gui/src/lib/extension-menu-table.js` using the existing
 `scripts/gen-extension-menu-args.mjs`, for the actual current bundled getInfo()
 results. Do not hand-edit the table, generator or freshness assertion.
+Also own additive controls in `test/extension-menu-args.test.mjs` for the
+four actual new power-word programs: require the emitted opcode's table entry,
+proper declared menu fields/shadows and named ports, and readable round trips.
+Preserve the complete original suite and every existing assertion/fixture.
 
 Also own four exact additions to the scoped-bundle map and source-author
 handling in `scripts/lib/notices-census.mjs`, corresponding notices in
