@@ -1,5 +1,21 @@
 # Conversion capabilities and GUI closure ledger
 
+## Numeric factory closure results — native controls qualified, GUI work open
+
+A closed numeric factory/alias family now passes 39 source controls and all
+eight original native counter tests. An edited captured increment and renamed
+alias retain independent instances through actual export/reimport. The tested
+export explicitly sets `callableLexicalPrototype: true`; visible option access
+and propagation must be checked along with the complete authoring journey.
+
+Author and edit the factory in Code/pseudocode and connected callable Blocks,
+rename aliases, preserve independent instances, save/reopen, compile the actual
+exported files in MakeCode and freshly reimport them. Cover unsafe entry order,
+unknown callbacks, changed capture writers and currentness diagnostics. Larger
+games require proved effect/entry expansion beyond the current numeric family
+and its `info.setScore` sink. Source and VM results do not qualify the visible
+editor journey, rendered assets or a new complete corpus application.
+
 ## Static fresh animation resources — source qualification, GUI work open
 
 Owned serialized exports preserve fresh evaluation at each literal animation

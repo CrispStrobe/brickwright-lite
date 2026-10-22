@@ -60,6 +60,10 @@ or larger local limit is authorized. The historical corpus count is unchanged.
 
 ## GUI acceptance still pending
 
+The qualified exporter invocation explicitly sets
+`callableLexicalPrototype: true`. Check the actual user-facing option and
+Code/Blocks export call path rather than assuming this API selection is enabled.
+
 Author a numeric factory in Code and pseudocode, inspect its connected callable
 Blocks, edit the captured increment and preserve shared alias behaviour and
 independent instances. Save, reopen in a fresh project, export/compile the actual

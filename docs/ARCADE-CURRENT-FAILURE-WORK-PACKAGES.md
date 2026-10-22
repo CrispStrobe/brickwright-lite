@@ -23,14 +23,16 @@ missing values and all original assertions. The
 refusal obligations. Do not replay the unchanged carrier while its effect
 boundary remains ineligible.
 
-The complete callable-counter module now has six passes and two export failures.
-Both fail at native addition with an initialized right operand still classified
-as opaque. The captured diagnostic does not identify the operand name; do not
-infer it from the call ordinal. Implement private normal-result proof for actual
-factory arguments, captured writes and returned closure calls. Keep independent
-factory activations, aliases, unknown entry points and all writers distinct.
-Preserve the eight original tests and add negative controls; annotations alone
-must not authorize a value. The merged numeric-closure claim defines this scope.
+The complete callable-counter module now passes all eight tests, closing the
+two preceding export refusals. All 39 affected source controls also pass.
+The proof uses actual factory arguments, dominating capture writes and normal
+returns, preserving independent activations and aliases. Preserve both the old
+six-pass/two-failure original and the unexecuted negative-test review hold.
+The tested export route enables `callableLexicalPrototype`. Extend only with
+proved additional entries/effects; larger games, unknown callbacks and arbitrary
+SDK sinks cannot borrow this closed numeric-family proof. Original/emitted SDK,
+current installed-runtime and visible Code/Blocks/pseudocode journeys remain
+open. No historical app partial count has been remeasured.
 
 Static fresh-animation source controls now pass all 32 tests across the three
 complete affected modules, with no skips. Preserve the earlier 31-pass/one-fail

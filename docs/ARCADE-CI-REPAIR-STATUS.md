@@ -11,6 +11,21 @@ corpus measurement have not advanced; the counts below remain the last hosted
 observation. Next: complete-app refusal facts, a properly scoped semantic fix,
 then one qualification of the complete integration candidate.
 
+### Closed numeric factory results: source and native controls qualified
+
+The [normal-result proof](ARCADE-NUMERIC-CLOSURE-RESULTS.md) passes all 39 source
+controls and all eight unchanged original native counter tests. The earlier
+six-pass/two-export-failure run is retained. Actual edited factory bodies and
+aliases export and freshly reimport with 9, 16 and 9; the reserved-parameter
+case preserves score 10. Intentional invalid edits retain their diagnostics.
+The qualified export path explicitly enables `callableLexicalPrototype`.
+
+This first slice closes a whole numeric factory family with actual entry
+stores, capture writers, aliases and normal returns. Its known SDK sink is
+`info.setScore`; unknown callbacks or larger source programmes refuse the new
+fact. General Undefined/Opaque facts remain intact. Current installed-runtime,
+original/emitted SDK, visible authoring and corpus acceptance remain open.
+
 ### Nullable collection length: source controls qualified
 
 The [new producer slice](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md) passes all

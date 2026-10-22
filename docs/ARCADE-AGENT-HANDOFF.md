@@ -4,6 +4,15 @@
 
 ### Latest incremental closure
 
+Closed numeric factories now pass all **39 affected source controls** and
+**all eight original native counter tests**, without skips. The two original
+export refusals are closed: edited captures and renamed aliases export and
+reimport with values 9, 16 and 9. The tested export uses
+`callableLexicalPrototype: true`. The bounded source proof preserves actual
+calls, Undefined/callable facts, separate activations and unknown-entry refusals.
+See [the exact scope and remaining GUI/SDK work](ARCADE-NUMERIC-CLOSURE-RESULTS.md).
+These component results do not change historical corpus counts.
+
 Nullable native Array `.length` now has a source-qualified Number result on
 normal completion: **31/31 tests across nine complete modules**, no skips.
 Null/Undefined receivers, initialization, all writers and strict Array/coercion
