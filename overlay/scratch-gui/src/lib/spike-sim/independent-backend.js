@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright 2026 Brickwright contributors.
 import {effectiveMotorSpeed} from './speed-envelope.mjs';
-import {dcMotorFor, SPIKE_MEDIUM_ANGULAR} from '../bw-sim/devices/dc-motors.js';
-import {unloadedPowerStep} from '../bw-sim/hubs/spike/spike-motor-controller.js';
 
 export const MAX_DEG_PER_S = Object.freeze({
     48: 1110,
@@ -151,20 +149,16 @@ export default class IndependentSpikeBackend {
         });
     }
 
-    /** Signed percent of electrical duty, deliberately separate from regulated speed. */
+    // Unregulated PWM. The standalone arena uses an explicit kinematic no-load
+    // approximation; Robot Lab sends this duty to the existing DC motor physics.
     runAtPower(port, percent) {
         const i = this._port(port);
         const duty = clamp(finite(percent), -100, 100) / 100;
-        this._assertClock();
-        if (duty === 0) {this.stop(i, 'coast'); return;}
-        this._start(i, 'power', {duty});
-    }
-
-    _powerDevice(i) {
-        const id = this.data.sensors[i]?.deviceId ?? this.data.classicPorts[i]?.[0];
-        const device = dcMotorFor({deviceId: id});
-        // Unknown devices retain the arena's default medium-motor approximation.
-        return device.motor.rotorInertiaKgM2 > 0 ? device : SPIKE_MEDIUM_ANGULAR;
+        if (duty === 0) {
+            this.stop(i, 'coast');
+            return;
+        }
+        this._start(i, 'power', {duty, requested: duty * this.maxSpeed(i)});
     }
 
     _position(i, target, dps) {
@@ -281,7 +275,7 @@ export default class IndependentSpikeBackend {
     busy(port) {
         const i = this._port(port);
         const c = this._controllers[i];
-        return ['power', 'speed', 'position', 'time'].includes(c.mode);
+        return ['speed', 'power', 'position', 'time'].includes(c.mode);
     }
 
     done(port) {
@@ -290,8 +284,7 @@ export default class IndependentSpikeBackend {
         const m = this.data.motors[i];
         if (c.mode === 'hold') return Math.abs(m.position - c.target) <= 0.5 && Math.abs(m.degPerSec || 0) <= 1;
         if (['position', 'time', 'stop'].includes(c.mode)) return false;
-        if (c.mode === 'power') return false; // continuous duty has no finite completion
-        if (c.mode === 'speed') return Math.abs((m.degPerSec || 0) - c.requested * (1 - Math.max(c.load, c.arenaLoad))) <= 1;
+        if (c.mode === 'speed' || c.mode === 'power') return Math.abs((m.degPerSec || 0) - c.requested * (1 - Math.max(c.load, c.arenaLoad))) <= 1;
         return true;
     }
 
@@ -327,8 +320,7 @@ export default class IndependentSpikeBackend {
     /** Unloaded requested direction lets the arena release contact when reversing. */
     demandSpeed(port) {
         const i = this._port(port), c = this._controllers[i];
-        if (c.mode === 'power') return c.duty * this._powerDevice(i).motor.noLoadRadPerSec * 180 / Math.PI;
-        if (c.mode === 'speed' || c.mode === 'time') return c.requested;
+        if (c.mode === 'speed' || c.mode === 'power' || c.mode === 'time') return c.requested;
         if (c.mode === 'position' || c.mode === 'hold') return Math.sign(c.target - this.data.motors[i].position) * c.requested;
         return 0;
     }
@@ -359,22 +351,10 @@ export default class IndependentSpikeBackend {
             const m = this.data.motors[i];
             const cfg = c.config;
             let v = m.degPerSec || 0;
-            if (c.mode === 'power') {
-                const load = Math.max(c.load, c.arenaLoad);
-                const next = unloadedPowerStep(this._powerDevice(i), v, c.duty, 1, load);
-                const previous = m.position;
-                if (load === 1) v = 0; // contact blocks travel as well as reported speed
-                m.position += (v + next) / 2000;
-                m.degPerSec = next;
-                m.stalled = load === 1 && c.duty !== 0;
-                moved ||= previous !== m.position;
-                this._publish(i);
-                continue;
-            }
             let desired = 0;
             let rate = cfg.deceleration;
             const positionMode = c.mode === 'position' || c.mode === 'hold';
-            if (c.mode === 'speed') desired = c.requested * (1 - Math.max(c.load, c.arenaLoad));
+            if (c.mode === 'speed' || c.mode === 'power') desired = c.requested * (1 - Math.max(c.load, c.arenaLoad));
             // Reserve the final portion of timed motion for deceleration.
             if (c.mode === 'time') {
                 c.remaining = Math.max(0, c.remaining - 1);
@@ -405,7 +385,7 @@ export default class IndependentSpikeBackend {
             const previous = m.position;
             m.position += (v + next) / 2000;
             m.degPerSec = next;
-            m.stalled = Math.max(c.load, c.arenaLoad) === 1 && ['position', 'speed', 'time'].includes(c.mode) && c.requested !== 0;
+            m.stalled = Math.max(c.load, c.arenaLoad) === 1 && ['position', 'speed', 'power', 'time'].includes(c.mode) && c.requested !== 0;
             if (c.mode === 'position' && m.stalled && Math.abs(next) <= cfg.stallSpeed) {
                 c.stallElapsed++;
                 if (c.stallElapsed >= cfg.stallMs) this._complete(c, RESULT.STALLED);

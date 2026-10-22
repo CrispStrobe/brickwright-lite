@@ -51,7 +51,7 @@ import VirtualSpikeHubState from '../../../virtual-hub/spike-hub-state.js';
 import {SENSOR_DEVICE, imuFromPose} from '../../sensors.js';
 import {SPIKE_PRIME_PROFILE} from './profile.js';
 import {dcMotorFor} from '../../devices/dc-motors.js';
-import {controlStep, freshPortState, powerDrive, STALL_DPS, STALL_MS} from './spike-motor-controller.js';
+import {controlStep, freshPortState, STALL_DPS, STALL_MS} from './spike-motor-controller.js';
 
 const DEG = 180 / Math.PI;
 
@@ -190,21 +190,20 @@ export class SpikeVirtualHub {
             const refDeg = m.position;
             const refDps = Number(m.degPerSec) || 0;
             m.position = st.measuredDeg;
-            if (c.mode === 'stop') st.passive = c.action;
             if (c.mode === 'power') {
-                // Open-loop duty bypasses trajectory/PI feedback. The unchanged
-                // actuator applies its DC torque/back-EMF to the measured hinge.
+                // Duty bypasses the trajectory feedback loop; measured load cannot
+                // make the controller add power or accumulate a catch-up angle.
                 st.active = false;
                 st.integral = 0;
                 st.stallMs = 0;
                 st.refDeg = st.measuredDeg;
                 this._setStalled(index, st, false);
-                const drive = powerDrive(c.duty);
-                st.duty = drive.duty;
-                st.decay = drive.decay;
-                m.degPerSec = Number(m.measuredDegPerSec) || 0;
+                st.duty = c.duty;
+                st.decay = 'brake';
+                st.passive = c.defaultStopAction;
                 continue;
             }
+            if (c.mode === 'stop') st.passive = c.action;
             if (!ACTIVE.has(c.mode)) {
                 // Stopped: the H-bridge's passive state, no feedback.
                 st.active = false;
@@ -266,6 +265,8 @@ export class SpikeVirtualHub {
             data[index].measuredDegPerSec = r.radPerSec * DEG;
             const st = this.drive === 'pwm' && this.dc.get(index);
             if (st) {
+                // Duty mode reports measured shaft speed, not the arena's no-load approximation.
+                if (hubState.backend._controllers[index].mode === 'power') data[index].degPerSec = r.radPerSec * DEG;
                 // The hub's port report (classicPorts) carries the measured angle, not the reference.
                 st.lastWritten = data[index].position;
                 hubState.backend._publish(index);
@@ -298,9 +299,10 @@ export class SpikeVirtualHub {
      * A direct command from the Robot Lab API (api/robot-lab-api.js) to a motor on this hub:
      * it goes through the hub's own controller, exactly as a SPIKE block's command does (the
      * spikeprime extension calls the same `hubState.motors`), so the motor keeps ONE owner and
-     * the last command wins, as between two blocks of one program. `power` is
-     * signed open-loop duty; `speedDps` remains regulated speed. Same shape as
-     * LabDirectHub.directCommand.
+     * the last command wins, as between two blocks of one program. The existing
+     * Robot Lab API's `power` retains its regulated percent-speed semantics.
+     * The SPIKE duty block calls motors.runAtPower separately through the
+     * hub command parser. Same shape as LabDirectHub.directCommand.
      */
     directCommand (port, command = {}) {
         if (!this.motorPorts.has(port)) return {ok: false, code: 'no-motor', message: `there is no motor on port ${port}`};
@@ -315,7 +317,7 @@ export class SpikeVirtualHub {
             }
             if (c.power !== undefined) {
                 if (!finite(c.power)) return {ok: false, code: 'bad-command', message: 'power is a number from -100 to 100'};
-                motors.runAtPower(port, c.power);
+                motors.runAtSpeed(port, motors.percentToDps(port, c.power));
                 return {ok: true};
             }
             const speed = c.speedDps === undefined ? motors.percentToDps(port, 50) : c.speedDps;

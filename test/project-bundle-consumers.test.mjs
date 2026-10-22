@@ -87,3 +87,26 @@ describe('mounted project consumers obey replacement outcomes', () => {
             'controller clearing must happen before and outside the optional incoming record');
     });
 });
+
+test('hidden Circuit replacement preserves the saved supply and live model identity',async()=>{
+ const {Circuit}=await import('bw-circuit-ui/model/circuit.js');
+ const {setEngine}=await import('bw-circuit-ui/engine.js');
+ const {BoardImpl}=await import('bw-board/board.js');
+ const {inferNetlist,checkWiring}=await import('bw-board/infer-netlist.js');
+ setEngine({BoardImpl,inferNetlist,checkWiring});
+ const body=/this\._applyToLiveCircuit = data => \{([\s\S]*?)\n        \};/.exec(circuit);
+ assert.ok(body,'test executes the actual hidden host replacement');
+ const model=new Circuit(5),host={props:{vm:{runtime:{circuitModel:model}}},_Circuit:Circuit};
+ const load=new Function('data',body[1]).bind(host);
+ for(const vcc of [4.5,9,5]){
+  const incoming=new Circuit(vcc),v=incoming.addPart('vcc',{},0,0),g=incoming.addPart('gnd',{},0,100),r=incoming.addPart('resistor',{ohms:1000},0,50);
+  incoming.addWire(v.id,'vcc',r.id,'a');
+  incoming.addWire(r.id,'b',g.id,'gnd');
+  load(incoming.toJSON());assert.equal(host.props.vm.runtime.circuitModel,model);
+  assert.equal(model.vcc,vcc);assert.equal(model.board.vcc,vcc);
+  model.advanceTo(1_000_000n);
+  assert.ok(Math.abs(model.board.branchCurrent(r.id,'a')+vcc/1000)<1e-9);
+ }
+ load({vcc:4.5,parts:[],wires:[]});assert.equal(model.vcc,4.5);assert.equal(model.board.vcc,4.5);
+ load({parts:[],wires:[]});assert.equal(model.vcc,5);assert.equal(model.board.vcc,5);
+});

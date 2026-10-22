@@ -316,8 +316,10 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> d7c25891 (2026-10-21): reviewed supplier #160 score callbacks and #161
     // SPIKE motor-power/PWM mapping adoption. SPIKE compiler/registry source changed;
     // rerun every executable artifact and round-trip assertion at this exact pin.
+    // -> 37bfe287 (2026-10-21): canonical school examples and supplier provenance.
+    // Compiler src is byte-identical to d7c25891; keep all artifact assertions.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'd7c258910dd3837021a7a8c4b85d38a4e28e138a');
+        '37bfe28760f60c836097854fb141fd114bbee518');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

@@ -1,4 +1,4 @@
-# School delivery: narrow SPIKE power adoption takeover — CLAIMED
+# School delivery: narrow SPIKE power adoption takeover — DONE (source candidate)
 
 Owner: Codex school-circuit delivery, branch
 `lane/school-spike-power-repair-20261021`, based on `ecdd6c1ad`.
@@ -22,3 +22,36 @@ transport, shared physics, compiler copy, gate or numerical budget change.
 Merge this claim before implementation. Carry this narrow repair into the school
 circuit integration, run complete affected conformance and exact-head checks,
 and verify normal merge composition. Do not duplicate other owners' claims.
+
+The qualified extension source is adopted at ff74f1309b8807713508884048292182a369f8f5
+with only SPIKE bundle/menu identity changes. Encoder movement-wait source is
+preserved exactly. The distinct duty path, signed clamping, zero/coast, replacement,
+Stop and measured shaft feedback pass focused tests, including actual Jolt load
+response and both shipping block firmware dialects. Fifty combined motor/bridge/
+identity controls and ten power-block controls pass. The initial complete
+independent run passed 234 controls but one module lacked this isolated worktree's
+React registry; rerun the entire suite in the canonically prepared composed
+school worktree. Final hosted qualification is still required. The explicit
+scoped SPIKE pin also needs the existing pin-policy census counterpart.
+
+The complete independent suite subsequently passed all 242 controls in the
+prepared composed worktree. The existing Robot Lab direct-command percent-speed
+API is preserved; only the explicit SPIKE duty command selects open-loop power.
+Thirty-three affected motor/hub/physical controls pass after that scope check.
+
+Final Stop All review reproduced a stale passive state after a previous coast.
+Power mode now remembers the configured default stop action, as regulated mode
+already does. The new regression checks both brake and coast through actual hub
+drives; 40 affected controls and all 242 independent SPIKE controls pass.
+
+The hosted shard passed all 3,248 non-TODO controls but caught a missing GUI
+dependency declaration for the new real-Jolt power test. Its exact test path
+is now registered for the existing baseline Jolt specifier; the scope gate
+and its rejection controls remain in force.
+
+The subsequent hosted shard also caught the missing canonical runtime-registry
+entry for `motorStartPower`. Regenerate it from the adopted extension using
+`gen-runtime-ops.mjs`; preserve the vendored Creator registry. The independent
+gate manifest control now reads the complete balanced test list through the
+existing JavaScript scope helper, retaining unique-path, existence and all
+eight bridge-group assertions. No audit allowance or baseline is changed.

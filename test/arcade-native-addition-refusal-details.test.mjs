@@ -71,7 +71,7 @@ test('failure of the refusal-only observer cannot replace the original refusal',
     assert.equal(source.split(needle).length,2,'one refusal-only observer, no proof replacement');
     const observed=source.replace(needle,"            try {\n                throw new Error('observer unavailable');\n                result.refusal=")
         .replace(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g,(_,prefix,quote,specifier)=>`${prefix}${quote}${new URL(specifier,url).href}${quote}`);
-    assert.equal([...source.matchAll(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g)].length,7,'all current literal dependencies are rebased, including parent paths');
+    assert.equal([...source.matchAll(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g)].length,9,'all current literal dependencies are rebased, including parent paths');
     assert.equal(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/.test(observed),false,'data URL retains no relative literal import');
     const copy=await import('data:text/javascript;base64,'+Buffer.from(observed).toString('base64'));
     const result=copy.inspectNativeArrayBinaryDomains(program('let value={};let result=__bwNativeArrayAddBoth(value,1)'));

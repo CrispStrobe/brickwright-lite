@@ -230,6 +230,14 @@ export default {
                 "SPEED"
             ]
         },
+        "motorStartPower": {
+            "kind": "command",
+            "method": "motorStartPower",
+            "args": [
+                "PORT",
+                "POWER"
+            ]
+        },
         "motorSetStopAction": {
             "kind": "command",
             "method": "motorSetStopAction",

@@ -1,5 +1,58 @@
 # Arcade integration repairs and qualification order
 
+## Latest complete hosted observation — 22 October 2026
+
+The [integration run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39705808582)
+at `f9e8bca35f` finished with failures. Across the four ordinary unit shards,
+12,103 tests passed and 181 failed; 19 were skipped and 43 marked TODO.
+These are test results, not application counts. The historical **36 partial
+applications remain unremeasured**.
+
+Confirmed progress includes all 48 native Array controls, ten CLI controls,
+five word controls, twelve native bitwise controls and 30 of the complete
+32 legacy SDK controls. The genuine original/emitted compilation group passed.
+The separate official Arcade input check compiled its real authored programme
+and passed six desktop/mobile keyboard, touch and restart checks. This does not
+qualify all converted programmes or the graphics-editor journey.
+
+### Repairs and next acceptance steps
+
+1. **Compose landed supplier work coherently.** Adopt main's qualified school
+   SPIKE implementation and its eleven power tests together. Keep dedicated
+   fixed-duty PWM separate from the historical Robot Lab manual percent-speed
+   route. The visible manual control still says Power; clarifying its actual
+   mode is an open GUI task. Requalify the combined SPIKE and Robot Lab checks.
+2. **Repair emitted menu isolation recognition.** The table moved to a real
+   shared lazy companion. Prove the actual loader, bound normalizer and table
+   dependency, retaining eager/preload rejection and every size limit. A marker
+   somewhere in lazy output is insufficient. See the
+   [merged scope](../lanes/2026-10-22-arcade-menu-lazy-companion.md).
+3. **Reduce initial JavaScript.** The ownership gate measured 4,484,850 bytes
+   against its unchanged 4,476,352-byte cap. It stopped before desktop/mobile
+   performance benchmarks ran. Use the admitted ownership report to identify
+   the extra 8,498 bytes; preserve the cap and measure the final build.
+4. **Close the two remaining SDK controls properly.** One constructor fixture
+   reaches structural refusal before its intended Array effect guard: preserve
+   that real refusal and add a canonical authority-negative witness. The alias
+   forwarding case fails during the second owned export; capture its actual
+   graph and refusal in the next complete hosted 32-test run before changing
+   producer or reset analysis. Do not filter that module or infer a cause from
+   an older capture.
+5. **Reconcile source-policy witnesses.** Register the actual native score
+   test's procedure-model dependency and update exact import-graph witnesses
+   for genuine added dependencies. Preserve all effect, writer, initialization,
+   ownership and unsupported-element checks. Class/reset, factory/alias and
+   callable-return families need their individual failed operands recorded.
+6. **Finish x86 acceptance.** Keep the source controls and actual GUI/guest
+   admission separate. Fresh tool, installed supplier, external event and
+   independent-reader evidence remain required; the actual switch stays off.
+
+Batch these repairs into one complete candidate before another hosted push.
+Use the existing checks; do not add `ci:full` or dispatch duplicate builds.
+Complete application accounting requires a fresh full corpus report with the
+original/Code/export/reimport permutations and explicit unsupported elements.
+
+
 ## Local follow-up, awaiting hosted qualification
 
 The preserved fixes now have one clean local composition. Source review checked

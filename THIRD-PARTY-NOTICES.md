@@ -2304,6 +2304,19 @@ sprite/image facade. The original generated speech-pxt.js and credited fonts
 remain unchanged for comparisons. This is attributed PXT adaptation and
 integration, not a clean-room implementation.
 
+## spikeprime — MPL-2.0
+
+The scoped `spikeprime` pin selects the LEGO SPIKE Prime / Robot Inventor
+extension authored by CrispStrobe from https://github.com/CrispStrobe/extensions.
+The complete source and original author/license header are retained in
+`overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js` as the
+JSON source string consumed by the separate host adapter.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/ff74f1309b8807713508884048292182a369f8f5/extensions/CrispStrobe/legospike_turbowarp_transpile.js.
+`vendor-pins.json` and the generated per-file receipt record its commit and
+content hash. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
 ## wedo2unified — MPL-2.0
 
 The scoped `wedo2unified` pin selects LEGO WeDo 2.0 Universal, authored by

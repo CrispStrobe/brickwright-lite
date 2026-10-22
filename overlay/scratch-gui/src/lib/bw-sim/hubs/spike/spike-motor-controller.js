@@ -76,8 +76,6 @@ const E_MAX_TORQUE = 1.5;
 export const STALL_DPS = 20;
 export const STALL_MS = 200;
 
-import {dcMotorCommand} from '../../physics/actuators.js';
-
 const DEG = 180 / Math.PI;
 
 /** A port's controller state: plain data (exported to the physics worker's mirror). */
@@ -110,36 +108,4 @@ export const controlStep = (s, {refDeg, refDps, posDeg, speedDps}, motor, dtMs, 
     // Anti-windup: integrate only while the duty can still act on it.
     if (!saturated || Math.sign(e) !== Math.sign(raw)) s.integral += e * dt;
     return {duty, refDeg, saturated};
-};
-
-/** Open-loop drive/brake PWM; zero explicitly opens the H-bridge (coast). */
-export const powerDrive = duty => {
-    if (typeof duty !== 'number' || !Number.isFinite(duty)) throw new TypeError('Expected finite duty');
-    return {mode: 'pwm', duty: Math.max(-1, Math.min(1, duty)), decay: duty === 0 ? 'coast' : 'brake'};
-};
-
-/**
- * Arena-only rotor approximation, using the SAME DC torque/back-EMF command as
- * the Lab's actuator. No coupled load inertia or speed regulator is assumed.
- * The existing load fraction is opposing stall torque; a full load blocks the
- * shaft. Robot Lab instead applies powerDrive directly to its actual hinge.
- */
-export const unloadedPowerStep = (device, speedDps, duty, dtMs, load = 0) => {
-    const drive = powerDrive(duty);
-    const command = dcMotorCommand(device, drive.duty, drive.decay);
-    const inertia = device.motor.rotorInertiaKgM2;
-    if (!(inertia > 0)) throw new RangeError('Power model requires rotor inertia');
-    const dt = dtMs / 1000;
-    const speed = speedDps / DEG;
-    const direction = Math.sign(speed || duty);
-    const resistance = command.mode === 'coast' ? device.motor.frictionTorqueNm :
-        Math.max(0, Math.min(1, load)) * device.motor.stallTorqueNm;
-    const torque = command.mode === 'coast' ? 0 : command.torqueNm;
-    const damping = command.mode === 'coast' ? 0 : command.dampingNmsPerRad;
-    // Same implicit damping step as the physical hinge, with only rotor inertia.
-    let next = (speed + (torque - direction * resistance) * dt / inertia) / (1 + damping * dt / inertia);
-    if (direction && Math.sign(next) !== direction && Math.sign(torque) === direction) next = 0;
-    if (command.mode === 'coast' && Math.sign(next) !== Math.sign(speed)) next = 0;
-    if (load >= 1) next = 0;
-    return next * DEG;
 };
