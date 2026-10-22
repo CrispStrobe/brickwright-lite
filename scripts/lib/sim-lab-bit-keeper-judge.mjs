@@ -27,7 +27,7 @@ export function judgeBitStartup(r){
  assert.ok(firstSwitch,'passive output switches away from its saved state within five seconds');
  assert.ok(r.finishedAt&&r.finishedAt-start<35000,'two-state demonstration completes within 35 simulated seconds');
  const variables=r.track.at(-1).extra?.variables;
- if(variables){assert.equal(variables.complete,1);assert.equal(variables.fault,0);}
+ if(variables){assert.equal(Number(variables.complete),1);assert.equal(Number(variables.fault),0);}
  return{inputAt1_5s:deg(early.joints[j.id].angle),firstSwitchMs:firstSwitch.t-start,finishedMs:r.finishedAt-start};
 }
 export function judgeBit(_id,r){const result=measureBit(r);const startup=judgeBitStartup(r);for(const [i,w]of result.windows.entries()){assert.ok(w.samples>=100&&w.duration>=3.9);assert.ok((i===0?w.minimum:-w.maximum)>=8&&w.crossings===0,JSON.stringify(result));assert.ok(w.encoderMax<=.3);}assert.ok(result.separationDegrees>=20&&result.neutralDifferenceDegrees<=.15&&result.bobSeparationMm>=10,JSON.stringify(result));return{...result,startup};}
