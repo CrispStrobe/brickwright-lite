@@ -1,4 +1,4 @@
-# CI Pyodide setup without duplicate measurements — CLAIMED
+# CI Pyodide setup without duplicate measurements — DONE (source candidate)
 
 Owner: Codex school/performance delivery, isolated
 `lane/safari-jolt-simd-20261021`, based on `fd61f8c1e`.
@@ -22,3 +22,12 @@ measurement, existing measurement modes still do, and a stalled installer is
 terminated and reported before the existing outer deadline. Retain the original
 timeout and all actual packer checks; qualify the composed final source and
 normal merge.
+
+The setup now uses `--install-only`, with a three-minute child-install deadline
+inside the unchanged four-minute workflow allowance. Existing developer
+measurement modes and both real packer tests remain intact. Four regressions
+fail on the old behavior; all five focused controls pass with the repair.
+Workflow/census and gate-shape controls pass. A real install-only execution
+succeeds, and the actual packer produces both recorded native bitstream hashes;
+the existing WasmGC independence precondition is unchanged. Final composed
+hosted qualification remains required.

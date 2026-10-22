@@ -754,7 +754,7 @@ jobs:
       - name: Install Pyodide for the FPGA bitstream-packer gate (tolerated absent)
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         timeout-minutes: 4
-        run: node scripts/probe-pyodide-packer.mjs --install || echo "::warning::pyodide install failed — the two packer gates will skip by name"
+        run: node scripts/probe-pyodide-packer.mjs --install-only || echo "::warning::pyodide install failed — the two packer gates will skip by name"
 
       # THE GPL TOOLCHAIN, FETCHED RATHER THAN TRACKED.
       # SDCC is GPL-2.0-or-later and this repository is BSD-3-Clause, so as of
@@ -1308,7 +1308,7 @@ jobs:
       - name: Install Pyodide for the FPGA bitstream-packer gate (tolerated absent)
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         timeout-minutes: 4
-        run: node scripts/probe-pyodide-packer.mjs --install || echo "::warning::pyodide install failed — the two packer gates will skip by name"
+        run: node scripts/probe-pyodide-packer.mjs --install-only || echo "::warning::pyodide install failed — the two packer gates will skip by name"
 
       # THE GPL TOOLCHAIN, FETCHED RATHER THAN TRACKED.
       # SDCC is GPL-2.0-or-later and this repository is BSD-3-Clause, so as of
