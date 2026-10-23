@@ -229,7 +229,7 @@ format. A wider chooser or ISO/CD-ROM path needs its own claim and qualification
 
 Proposed 2026-10-16; documentation only. This is a serialized next task for a
 fresh agent, not a transfer of package or pin ownership. The
-[ledger proposal](../LANES.md#proposed-386-board-hdd-adoption-handoff--2026-10-16)
+[ledger proposal](../lanes/2026-10-16-proposed-386-board-hdd-adoption-handoff.md)
 owns only these two documents. Refresh both repositories and the existing
 adopters before implementation; do not treat this dated checkpoint as a current
 merge decision.
@@ -509,7 +509,7 @@ its 17 enabled final-head checks passed, with seven declared conditional skips.
 PR1013 is not merged or qualified on main. This historical candidate selection
 is separate from current main's dependency declarations; refresh those before
 any later integration without changing pins as part of this handoff.
-The [merged acceptance claim](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
+The [merged acceptance claim](../lanes/2026-10-16-386-gui-hdd-and-forward-debug-hosted-acceptance.md)
 adds only one hosted entry controller, one standalone original reader, focused
 inert controls and a separate workflow around the existing probe. Ownership
 was merged in [PR1014](https://github.com/CrispStrobe/brickwright-lite/pull/1014)
