@@ -65,9 +65,18 @@ sb3-creator test holds the reader to that list sample by sample.
 
 | Status | Count | Functions |
 |---|---|---|
-| mapped (same meaning) | 22 | `motor.stop`, `reset_relative_position`, `relative_position`, `absolute_position`; `motor_pair.pair`, `stop`; `color_sensor.rgbi` (items 0-2); `distance_sensor.clear`; `force_sensor.force`, `pressed`; `light_matrix.write`, `clear`, `set_pixel`; `sound.beep`, `stop`, `volume`; `motion_sensor.tilt_angles`, `reset_yaw`, `acceleration`; `runloop.run`, `sleep_ms`, `until` |
-| approximate (a note says what changes) | 24 | `motor.run`, `run_for_degrees`, `run_for_time`, `run_to_absolute_position`, `run_to_relative_position`, `velocity`, `set_duty_cycle`; `motor_pair.move`, `move_tank`, `move_for_degrees`, `move_for_time`, `move_tank_for_degrees`, `move_tank_for_time`, `unpair`; `color_sensor.color`, `reflection`; `distance_sensor.distance`, `show`; `button.pressed`; `light.color`; `light_matrix.show_image`, `show`; `motion_sensor.up_face`, `angular_velocity` |
+| mapped (same meaning) | 23 | `motor.stop`, `reset_relative_position`, `relative_position`, `absolute_position`, `set_duty_cycle`; `motor_pair.pair`, `stop`; `color_sensor.rgbi` (items 0-2); `distance_sensor.clear`; `force_sensor.force`, `pressed`; `light_matrix.write`, `clear`, `set_pixel`; `sound.beep`, `stop`, `volume`; `motion_sensor.tilt_angles`, `reset_yaw`, `acceleration`; `runloop.run`, `sleep_ms`, `until` |
+| approximate (a note says what changes) | 23 | `motor.run`, `run_for_degrees`, `run_for_time`, `run_to_absolute_position`, `run_to_relative_position`, `velocity`; `motor_pair.move`, `move_tank`, `move_for_degrees`, `move_for_time`, `move_tank_for_degrees`, `move_tank_for_time`, `unpair`; `color_sensor.color`, `reflection`; `distance_sensor.distance`, `show`; `button.pressed`; `light.color`; `light_matrix.show_image`, `show`; `motion_sensor.up_face`, `angular_velocity` |
 | unsupported (named, with its reason, `# unsupported:` in the program) | 27 | see the table below |
+
+### `set_duty_cycle`, 2026-10-21: approximate -> mapped
+
+`motor.set_duty_cycle(port.B, 5000)` was read as `set motor speed B 50` + `start motor B forward`: a
+speed the hub regulates, where SPIKE 3 drives an unregulated duty cycle. It is now the More Motors block
+**start motor at % power** (`spikeprime_motorStartPower`, CrispStrobe/extensions#60), the dialect word
+`start motor B at 50 % power` (pwm / 100, so `-1234` is `-12.34 %`), and the blocks write
+`motor.set_duty_cycle(port.B, 5000)` back. The virtual hub runs it as a duty into the motor's DC model
+(docs/SIM-LAB.md "Motor power"). `motor.get_duty_cycle` stays refused: there is no block reporting it.
 
 ### Refusals closed, 2026-09-29 (task D1): all 34, before -> after
 

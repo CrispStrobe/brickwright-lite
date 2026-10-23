@@ -174,6 +174,37 @@ test('every extension block sb3-creator builds holds each menu argument in its d
     }
 });
 
+for (const {id, device, words, arg, port} of [
+    {id: 'ev3comprehensive', device: 'DEVICE EV3\n', words: 'start motor B at 50 % power', arg: 'PORT', port: 'B'},
+    {id: 'legoboostunified', device: '', words: 'boost start motor AB at 50 % power', arg: 'MOTOR_ID', port: 'AB'},
+    {id: 'legonxt', device: '', words: 'nxt start motor C at 50 % power', arg: 'PORT', port: 'C'},
+    {id: 'legopoweredup', device: '', words: 'pup start motor A at 50 % power', arg: 'PORT', port: 'A'}
+]) {
+    test(`${id} power words retain the declared menu shape and named motor on readback`, () => {
+        const source = `${device}WHEN flag clicked:\n  ${words}\n`;
+        const project = new Creator().parse(source);
+        const target = project.targets.find(t => Object.values(t.blocks).some(b => b.opcode === `${id}_motorStartPower`));
+        assert.ok(target, 'the power word emits the actual extension opcode');
+        const block = Object.values(target.blocks).find(b => b.opcode === `${id}_motorStartPower`);
+        assert.ok(Object.hasOwn(TABLE, block.opcode), 'the emitted power opcode is in the generated shape table');
+        assert.ok(Object.hasOwn(TABLE[block.opcode], arg), 'its named motor argument is declared');
+        assert.deepEqual(misplaced(project), []);
+        const {menu, reporters} = menuArgOf(block.opcode, arg);
+        if (reporters) {
+            assert.equal(block.fields[arg], undefined);
+            const shadow = target.blocks[block.inputs[arg][1]];
+            assert.equal(shadow.opcode, menuShadowOpcode(block.opcode, menu));
+            assert.equal(shadow.fields[menu][0], port);
+        } else {
+            assert.equal(block.inputs[arg], undefined);
+            assert.equal(block.fields[arg][0], port);
+        }
+        const back = new Creator().decompile(project);
+        assert.ok(back.split('\n').some(line => line.trim() === words), 'readable power word preserves its named motor');
+        assert.equal(new Creator().decompile(new Creator().parse(back)), back, 'readback is a text fixpoint');
+    });
+}
+
 test('the SPIKE motor words build the shadow menus the extension declares, with their ports', () => {
     const c = new Creator();
     const project = c.parse(OWNER_PROGRAM);
