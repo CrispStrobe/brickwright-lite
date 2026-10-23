@@ -47,3 +47,19 @@ Model PR1235/1236, native PR1224/1099/1100 and Arcade PR1128 remain with their
 existing owners. Review current failures and retained originals without duplicate
 acquisition or dispatch; carry their qualified composition through normal
 landing only after their owning acceptance requirements are met.
+
+## Radio notification ownership amendment
+
+The HTTP BLE bridge uses the same model notification sink as Web Bluetooth.
+An older peripheral currently clears that sink unconditionally on disconnect,
+which can remove a newer connection's notifications. Before integrating this
+route, also own the narrow sink-lifetime boundary in
+`lib/virtual-hub/lab-ble-peripherals.js`,
+`lib/bw-sim/hubs/lwp3/lwp3-virtual-hub.js` and
+`lib/bw-sim/hubs/wedo2/wedo2-virtual-hub.js`: return an identity-guarded sink
+release from the existing setter, and let each peripheral release only its own
+sink. Preserve notification bytes, formats, motor/sensor behavior and existing
+caller signatures. Qualify newer-owner preservation, idempotent disconnect and
+real extension traffic. This does not add notification multicast, a new radio
+protocol or a hardware connection-capacity claim. Do not edit those three paths
+until this amendment merges. Existing authorized transport work stays isolated.
