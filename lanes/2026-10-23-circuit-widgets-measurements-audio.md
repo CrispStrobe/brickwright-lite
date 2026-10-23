@@ -1,7 +1,7 @@
 # Circuit measurements, reusable organ faceplate and sampled audio
 
-CLAIMED — Codex circuit/performance owner, isolated source worktree
-`/private/tmp/brickwright-sim-stats-20261022`, base `e3be735b3`.
+IMPLEMENTED LOCALLY — Codex circuit/performance owner, isolated source branch,
+base `e3be735b3`; supplier adoption and hosted qualification pending.
 User authorizes product implementation now; extensive manual/hardware acceptance
 is deferred. Preserve other owners' branches, worktrees, previews and claims.
 
@@ -33,3 +33,12 @@ power warnings, variant topology/current paths, actual sample timing and bounded
 audio queues. Use automated browser checks for new UI paths. No physical,
 acoustic, installed-native or universal-SPICE equivalence claim. No hardware,
 firmware, native build/release, scheduler or unrelated Robot Lab work.
+
+Local qualification: 13 shortcut/binding/lifecycle controls pass. Actual React
+components with the real circuit engine pass Chromium and WebKit checks for
+keyboard/pointer ownership, tuning, serialized layout restoration, release and
+unmount. The organ produces measured 261.3 Hz pulse envelopes; a separate
+1 kHz sampled-source benchmark renders at 1 kHz through native Web Audio.
+These component checks do not establish integrated Scratch VM Save/Open,
+actual Safari audio, acoustic or physical acceptance. Supplier CI and canonical
+immutable adoption remain required before landing this consumer candidate.

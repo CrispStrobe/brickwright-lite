@@ -1,4 +1,5 @@
 import React from 'react';
+import {clearControllerPanel, serializeControllerPanel} from '../../lib/controller-inputs.js';
 import {makeT} from '../../lib/bw-i18n.js';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
@@ -295,7 +296,7 @@ class CircuitTab extends React.Component {
                 const p = rt && rt.controllerPanel;
                 if (p && typeof p.toJSON === 'function') {
                     if (p.getWidgetNames().length) {
-                        localStorage.setItem('bw-ctl-widgets', JSON.stringify(p.toJSON()));
+                        localStorage.setItem('bw-ctl-widgets', JSON.stringify(serializeControllerPanel(p)));
                     } else {
                         localStorage.removeItem('bw-ctl-widgets');
                     }
@@ -376,7 +377,7 @@ class CircuitTab extends React.Component {
                 const rt = this.props.vm && this.props.vm.runtime;
                 const p = rt && rt.controllerPanel;
                 if (p && (event?.detail?.outcome === 'legacy' || event?.detail?.outcome === 'loaded')) {
-                    for (const name of p.getWidgetNames()) p.removeWidget(name);
+                    clearControllerPanel(p);
                     if (wraw) {
                         const data = JSON.parse(wraw);
                         if (data && data.version === 1 && Array.isArray(data.widgets)) {
@@ -1334,7 +1335,7 @@ class CircuitTab extends React.Component {
         const panel = runtime && runtime.controllerPanel;
         const path = example && example.files && example.files.controller;
         if (!path) {
-            if (panel) for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+            if (panel) clearControllerPanel(panel);
             return false;
         }
         const response = await fetch(`examples/${path}`);
@@ -1347,12 +1348,13 @@ class CircuitTab extends React.Component {
             if (opts.required) throw new Error('controller layout is not available');
             return false;
         }
-        for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+        clearControllerPanel(panel);
         for (const widget of layout.widgets) {
             const added = panel.addWidget(widget.name, widget.type,
                 widget.config || {}, widget.layout || {});
             if (widget.binding) added.binding = {...widget.binding};
         }
+        panel.setHideBindings?.(!!layout.hideBindings);
         if (layout.mode) panel.setMode(layout.mode);
         if (runtime.stc) runtime.stc.controller = layout;
         return true;

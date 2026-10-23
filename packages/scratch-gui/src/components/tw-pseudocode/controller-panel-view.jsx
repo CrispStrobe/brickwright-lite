@@ -1,6 +1,8 @@
 import React, {useEffect, useRef} from 'react';
 import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from 'bw-board/controller.js';
 import { bindPanelToBoard } from 'bw-board/controller-binding.js';
+import {clearControllerPanel, createWidgetButtonInputs, releaseMomentaryButtons,
+    serializeControllerPanel} from '../../lib/controller-inputs.js';
 import MachineConsole from './machine-console.jsx';
 import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 import SpikePortMonitor from './spike-port-monitor.jsx';
@@ -19,7 +21,7 @@ const L10N = {
         dpad: 'D-Pad', dial: 'Dial',
         bindPart: 'Bind to part…', bindProgram: 'Program only',
         unbind: 'Unbind', remove: 'Remove',
-        hideBindings: 'Hide binding targets',
+        hideBindings: 'Hide binding targets', keyboardKey: 'Keyboard key', compact: 'Compact card',
         namePlaceholder: 'name',
         noWidgets: 'No widgets yet. Click "+ Add Widget" to begin.',
         x: 'X', y: 'Y',
@@ -42,7 +44,7 @@ const L10N = {
         dpad: 'Steuerkreuz', dial: 'Drehregler',
         bindPart: 'An Bauteil binden…', bindProgram: 'Nur Programm',
         unbind: 'Lösen', remove: 'Entfernen',
-        hideBindings: 'Bindungsziele ausblenden',
+        hideBindings: 'Bindungsziele ausblenden', keyboardKey: 'Tastenkürzel', compact: 'Kompakte Karte',
         namePlaceholder: 'Name',
         noWidgets: 'Noch keine Widgets. Klicke auf „+ Widget hinzufügen".',
         x: 'X', y: 'Y',
@@ -76,7 +78,8 @@ const t = key => (L10N[pickLocale()] || L10N.en)[key] || L10N.en[key] || key;
 // `WIDGET_DEFAULTS`, so a widget type that grows a config key and does not
 // grow an editor here fails rather than quietly becoming JSON-only.
 const CONFIG_FIELDS = {
-    button: [{ key: 'toggle', kind: 'bool', label: 'toggle' }],
+    button: [{ key: 'toggle', kind: 'bool', label: 'toggle' },
+        {key: 'label', kind: 'text', label: 'label'}, {key: 'key', kind: 'text', label: 'key'}],
     slider: [
         { key: 'min', kind: 'num', label: 'min' },
         { key: 'max', kind: 'num', label: 'max' },
@@ -813,6 +816,7 @@ function WidgetInspector({ widget, onRename, onLayout, onConfig, onBind, onOpenL
                         style={{ width: 40, height: 24, padding: 0, border: '1px solid #cbd5e1', borderRadius: 4 }} />
                 </div>
                 {[
+                    ['compact', t('compact')],
                     ['borderless', 'No border'],
                     ['hideLabel', 'Hide label'],
                     ['hideValue', 'Hide value'],
@@ -1068,7 +1072,45 @@ function SimpleVgaWidget({widget}) {
 
 // ─── Widget card (edit mode wrapper) ──────────────────────────────────────
 
-function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart, hideBindings }) {
+function WidgetButton({widget, mode, inputs}) {
+    const name = widget.name;
+    React.useEffect(() => () => inputs?.release(name), [inputs, name]);
+    const releasePointer = event => inputs?.release(name, `pointer:${event.pointerId}`);
+    return <button disabled={mode !== 'play'} data-testid={`bw-ctl-button-${name}`}
+        aria-label={`${name}: ${widget.config.label || 'Button'}`}
+        aria-pressed={!!widget.state.pressed}
+        title={widget.config.key ? `${t('keyboardKey')}: ${widget.config.key}` : undefined}
+        onPointerDown={event => {
+            if (event.button !== 0) return;
+            event.stopPropagation();
+            inputs?.press(name, `pointer:${event.pointerId}`);
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+        }}
+        onPointerUp={releasePointer} onPointerCancel={releasePointer}
+        onLostPointerCapture={releasePointer}
+        onPointerLeave={event => {
+            if (!event.currentTarget.hasPointerCapture?.(event.pointerId)) releasePointer(event);
+        }}
+        onKeyDown={event => {
+            if (![' ', 'Enter'].includes(event.key)) return;
+            event.preventDefault();
+            if (!event.repeat) inputs?.press(name, `focus:${event.key}`);
+        }}
+        onKeyUp={event => {
+            if (![' ', 'Enter'].includes(event.key)) return;
+            event.preventDefault();
+            inputs?.release(name, `focus:${event.key}`);
+        }}
+        onBlur={() => { inputs?.release(name, 'focus: '); inputs?.release(name, 'focus:Enter'); }}
+        style={{width: 56, height: 56, borderRadius: '50%', touchAction: 'none',
+            border: '2px solid #4f46e5', background: widget.state.pressed ? '#7C3AED' : '#e2e8f0',
+            color: widget.state.pressed ? '#fff' : '#334155', fontWeight: 700, fontSize: 14,
+            cursor: mode === 'play' ? 'pointer' : 'default'}}>
+        {widget.config.label || (widget.config.toggle ? (widget.state.pressed ? 'ON' : 'OFF') : '●')}
+    </button>;
+}
+
+function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart, hideBindings, buttonInputs }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
         dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg',
@@ -1093,26 +1135,26 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart, hideBi
             background: L.backgroundColor || (cardColor ? (cardColor + '22') : '#fff'),
             border: L.borderless ? 'none' : ('2px solid ' + (cardColor || '#e2e8f0')),
             borderRadius: L.borderless ? 0 : 8,
-            padding: 12,
+            padding: L.compact ? 4 : 12,
             display: 'inline-flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: 8,
             position: 'relative',
-            minWidth: 130,
+            minWidth: L.compact ? 0 : 130,
         }}>
             {!L.hideLabel && (
                 <div style={{
                     fontWeight: 600, fontSize: 13, color: '#334155',
                     display: 'flex', alignItems: 'center', gap: 6
                 }}>
-                    <span style={{
+                    {!L.compact && <span style={{
                         background: cardColor || '#7C3AED',
                         color: '#fff', borderRadius: 4,
                         padding: '1px 6px', fontSize: 10, textTransform: 'uppercase'
                     }}>
                         {typeLabels[widget.type] || widget.type}
-                    </span>
+                    </span>}
                     <span data-testid={'bw-ctl-title-' + widget.name}>
                         {L.label || widget.name}
                     </span>
@@ -1138,9 +1180,10 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart, hideBi
             )}
 
             {widget.type === 'slider' && (
-                <div style={{ width: '100%', padding: '0 4px' }}>
+                <div style={{ width: L.compact ? 56 : '100%', padding: '0 4px' }}>
                     <input
                         type="range"
+                        aria-label={widget.name}
                         min={widget.config.min}
                         max={widget.config.max}
                         step={widget.config.step}
@@ -1157,26 +1200,7 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart, hideBi
                 </div>
             )}
 
-            {widget.type === 'button' && (
-                <button
-                    disabled={mode !== 'play'}
-                    onPointerDown={() => panel.setButtonInput(widget.name, true)}
-                    onPointerUp={() => panel.setButtonInput(widget.name, false)}
-                    onPointerLeave={() => {
-                        if (!widget.config.toggle) panel.setButtonInput(widget.name, false);
-                    }}
-                    style={{
-                        width: 56, height: 56, borderRadius: '50%',
-                        border: '2px solid #4f46e5',
-                        background: widget.state.pressed ? '#7C3AED' : '#e2e8f0',
-                        color: widget.state.pressed ? '#fff' : '#334155',
-                        fontWeight: 700, fontSize: 14,
-                        cursor: mode === 'play' ? 'pointer' : 'default',
-                    }}
-                >
-                    {widget.config.label || (widget.config.toggle ? (widget.state.pressed ? 'ON' : 'OFF') : '●')}
-                </button>
-            )}
+            {widget.type === 'button' && <WidgetButton widget={widget} mode={mode} inputs={buttonInputs} />}
 
             {widget.type === 'dial' && (
                 <div style={{ width: '100%', padding: '0 4px' }}>
@@ -1392,6 +1416,13 @@ class ControllerPanelView extends React.Component {
     componentDidMount() {
         const panel = this._getPanel();
         panel.addListener(this._onPanelEvent);
+        this._buttonInputs = createWidgetButtonInputs(panel);
+        this._onProgramStop = () => {
+            this._buttonInputs.releaseAll();
+            releaseMomentaryButtons(panel);
+        };
+        this.props.vm?.runtime?.on?.('PROJECT_STOP_ALL', this._onProgramStop);
+        this.setState(s => ({revision: s.revision + 1}));
         // Expose panel on runtime for the extension to find
         this._exposeOnRuntime(panel);
         // If entering in play mode and board exists, bind
@@ -1407,6 +1438,9 @@ class ControllerPanelView extends React.Component {
     componentWillUnmount() {
         const panel = this._getPanel();
         panel.removeListener(this._onPanelEvent);
+        this._buttonInputs?.dispose();
+        releaseMomentaryButtons(panel);
+        this.props.vm?.runtime?.removeListener?.('PROJECT_STOP_ALL', this._onProgramStop);
         if (this._unregisterUndo) this._unregisterUndo();
         this._unbind();
     }
@@ -1414,6 +1448,8 @@ class ControllerPanelView extends React.Component {
     componentDidUpdate(prevProps) {
         if (prevProps.board !== this.props.board) {
             const panel = this._getPanel();
+            this._buttonInputs?.releaseAll();
+            releaseMomentaryButtons(panel);
             if (panel.mode === 'play' && this.props.board) {
                 this._bindToBoard(panel);
             }
@@ -1431,13 +1467,25 @@ class ControllerPanelView extends React.Component {
         }
     }
 
-    _onPanelEvent() {
+    _onPanelEvent(kind, detail) {
         this.setState(s => ({ revision: s.revision + 1 }));
+        if (kind === 'mode') {
+            const panel = this._getPanel();
+            if (panel.mode === 'play') this._bindToBoard(panel);
+            else {
+                this._buttonInputs?.releaseAll();
+                releaseMomentaryButtons(panel);
+                this._unbind();
+            }
+        }
+        if (kind === 'input' && ['slider', 'dial'].includes(this._getPanel().getWidget(detail.name)?.type)) {
+            this._persist();
+        }
         notifyUndoState();
     }
 
     _snapshot() {
-        return JSON.parse(JSON.stringify(this._getPanel().toJSON()));
+        return JSON.parse(JSON.stringify(serializeControllerPanel(this._getPanel())));
     }
 
     _recordUndo(snapshot) {
@@ -1448,7 +1496,7 @@ class ControllerPanelView extends React.Component {
 
     _restoreSnapshot(snapshot) {
         const panel = this._getPanel();
-        for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+        clearControllerPanel(panel);
         for (const widget of snapshot.widgets || []) {
             const added = panel.addWidget(widget.name, widget.type,
                 widget.config || {}, widget.layout || {});
@@ -1484,12 +1532,9 @@ class ControllerPanelView extends React.Component {
 
     _setMode(mode) {
         const panel = this._getPanel();
+        this._buttonInputs?.releaseAll();
+        releaseMomentaryButtons(panel);
         panel.setMode(mode);
-        if (mode === 'play') {
-            this._bindToBoard(panel);
-        } else {
-            this._unbind();
-        }
     }
 
     _addWidget(type) {
@@ -1513,6 +1558,8 @@ class ControllerPanelView extends React.Component {
 
     _removeWidget(name) {
         const before = this._snapshot();
+        this._buttonInputs?.release(name);
+        releaseMomentaryButtons(this._getPanel(), name);
         this._getPanel().removeWidget(name);
         this._persist();
         this._recordUndo(before);
@@ -1521,7 +1568,7 @@ class ControllerPanelView extends React.Component {
     _persist() {
         // Emit a persistence event so the host knows to save
         window.dispatchEvent(new CustomEvent('bw-controller-changed', {
-            detail: { data: this._getPanel().toJSON() }
+            detail: { data: serializeControllerPanel(this._getPanel()) }
         }));
     }
 
@@ -1893,6 +1940,7 @@ class ControllerPanelView extends React.Component {
                                 widget={w}
                                 mode={mode}
                                 panel={panel}
+                                buttonInputs={this._buttonInputs}
                                 onInput={(name, x, y) => this._handleJoystickInput(name, x, y)}
                                 onRemove={() => { this._removeWidget(w.name); this.setState({ selected: null }); }}
                                 hideBindings={panel.hideBindings}
