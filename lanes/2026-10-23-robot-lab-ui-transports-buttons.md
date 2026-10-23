@@ -13,7 +13,8 @@ existing serial, bridge, ev3dev, BLE HTTP and SPIKE text routes to the current
 Lab session through explicit virtual routing. Preserve physical fallthrough,
 other owners' wrappers and non-Lab requests. Dispose only owned endpoints and
 connections; stale sessions and asynchronous replies must not revive a closed
-or replaced scene. Do not change supplier sources, pins, native or firmware.
+or replaced scene. Supplier changes are limited to the send-failure amendment
+below; do not change native or firmware.
 
 Own WP5: `hubs/ev3/ev3-virtual-hub.js`, `ev3-direct-commands.js`, the button
 capability adapters for already-modelled bricks, and `api/robot-lab-api.js` for
@@ -47,3 +48,50 @@ Model PR1235/1236, native PR1224/1099/1100 and Arcade PR1128 remain with their
 existing owners. Review current failures and retained originals without duplicate
 acquisition or dispatch; carry their qualified composition through normal
 landing only after their owning acceptance requirements are met.
+
+## Radio notification ownership amendment
+
+The HTTP BLE bridge uses the same model notification sink as Web Bluetooth.
+An older peripheral currently clears that sink unconditionally on disconnect,
+which can remove a newer connection's notifications. Before integrating this
+route, also own the narrow sink-lifetime boundary in
+`lib/virtual-hub/lab-ble-peripherals.js`,
+`lib/bw-sim/hubs/lwp3/lwp3-virtual-hub.js` and
+`lib/bw-sim/hubs/wedo2/wedo2-virtual-hub.js`: return an identity-guarded sink
+release from the existing setter, and let each peripheral release only its own
+sink. Preserve notification bytes, formats, motor/sensor behavior and existing
+caller signatures. Qualify newer-owner preservation, idempotent disconnect and
+real extension traffic. This does not add notification multicast, a new radio
+protocol or a hardware connection-capacity claim. Do not edit those three paths
+until this amendment merges. Existing authorized transport work stays isolated.
+
+## Powered Up asynchronous send-failure amendment
+
+Actual real-extension teardown exposes unobserved rejections from motor-stop
+writes queued by `PROJECT_STOP_ALL`. Own the narrow producer boundary in
+CrispStrobe/extensions `extensions/CrispStrobe/lego_poweredup.js`: observe and
+report rejected sends while returning the original rejecting promise to awaiters.
+Keep command bytes, rate limiting, stop actions and dispatch order unchanged.
+Prove normal sends, awaited error identity, fire-and-forget stop reporting,
+limiter failures and no unhandled rejection with actual extension controls and
+meaningful mutants. No global rejection suppression or invented acknowledgement.
+Do not edit this supplier source until the amendment is merged.
+
+Carry only the directly affected scoped `legopoweredup` adoption through
+`vendor-pins.json`, its canonical generated wrapper and upstream-byte receipt,
+plus focused pin and real-extension transport controls. Other pins and the
+global bundle baseline remain fixed. Supplier review requirements remain in
+force; downstream pin movement follows qualified supplier merge. Keep existing
+owners and all original failures. No unrelated extension or vocabulary changes.
+
+## Existing radio button input
+
+The LWP3 Button property and WeDo Button characteristic currently always return
+unpressed. Within the same two radio-hub files, add owned input state behind
+those existing reads and their existing notification subscriptions, a strict
+single-button press/read capability, and worker state export/import. Default
+unpressed bytes and every unrelated command stay unchanged. Qualify real
+extension property/characteristic traffic, press/release and unsupported-input
+controls, notification ownership and worker replay. This models readable input;
+it does not model physical power, pairing or firmware button-event phases.
+Keep these source edits behind this amendment's merge as well.
