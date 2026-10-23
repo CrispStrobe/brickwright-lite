@@ -294,6 +294,68 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "wavemaker.ldr": {
+        "pieces": 298,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two bent, misphased Cardan joints create speed ripple. A differential reveals it as passive pointer motion. 298 placements plus two inferred crosses: 300 physical pieces.",
+            "de": "Zwei abgewinkelte, falsch ausgerichtete Kardangelenke erzeugen Drehzahlschwankungen. Ein Differenzial zeigt sie am passiven Zeiger. 298 Platzierungen plus zwei ergänzte Kreuze: 300 reale Teile."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cardan velocity ripple and differential subtraction",
+            "de": "Kardanschwankung und Differenzial-Subtraktion"
+        },
+        "keywords": [
+            "Cardan velocity ripple and differential subtraction",
+            "Kardanschwankung und Differenzial-Subtraktion",
+            "universal joint",
+            "double Cardan",
+            "Kardangelenk",
+            "fork phasing",
+            "Gabelausrichtung",
+            "angular velocity",
+            "differential",
+            "arithmetic mean",
+            "Doppel-Kardangelenk"
+        ]
+    },
+    "wavemaker-control.ldr": {
+        "pieces": 298,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Correct phasing cancels the outer-shaft ripple; compare the same one-motor program with WaveMaker. 298 placements plus two inferred crosses: 300 physical pieces.",
+            "de": "Richtige Ausrichtung gleicht die Schwankung der äußeren Welle aus. Vergleiche dasselbe Einmotor-Programm mit WaveMaker. 298 Platzierungen plus zwei ergänzte Kreuze: 300 reale Teile."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cardan velocity ripple and differential subtraction",
+            "de": "Kardanschwankung und Differenzial-Subtraktion"
+        },
+        "keywords": [
+            "Cardan velocity ripple and differential subtraction",
+            "Kardanschwankung und Differenzial-Subtraktion",
+            "universal joint",
+            "double Cardan",
+            "Kardangelenk",
+            "fork phasing",
+            "Gabelausrichtung",
+            "angular velocity",
+            "differential",
+            "arithmetic mean",
+            "Doppel-Kardangelenk"
+        ]
+    },
     "sine-shuttle.ldr": {
         "pieces": 105,
         "motors": 1,

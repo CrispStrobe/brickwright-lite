@@ -3928,6 +3928,100 @@
         "linger.ldr",
         "bit-keeper.ldr"
       ]
+    },
+    "wavemaker": {
+      "en": {
+        "what": "This 300-piece simulation experiment uses two equal-angle Cardan joints, a symmetric differential and a pointer. The second joint is quarter-turn misphased, so its speed variation adds to the first joint's variation. The pointer shows a periodic angular waveform; no elastic wave travels through the model.",
+        "try": [
+          "Choose WaveMaker — the example loads its Blocks program automatically. Reset the model to its saved starting position, then Run. The program makes four slow pointer cycles at 30°/s, four faster cycles at 60°/s, then reverses through eight cycles before holding at the start target.",
+          "Reset, then choose WaveMaker Control and Run the same program. The second joint's forks are correctly phased, so the output pointer nearly cancels the ripple.",
+          "Compare the reference shaft, the Cardan output shaft, the differential carrier and pointer. The outer shafts average one turn for one turn in both versions, but their instantaneous motion differs."
+        ],
+        "why": "A bent universal joint does not turn its output at a constant instantaneous speed. Equal bends cancel that variation when the middle forks are aligned. A quarter-turn phase shift makes the second variation reinforce the first. The differential converts the two signed side-shaft motions into their average, and a 16-tooth rim driving an 8-tooth pinion doubles the carrier angle while reversing its sign.",
+        "matters": "Universal joints let shafts transmit rotation across an angle. Fork phase matters when two joints are combined: one-to-one average turns do not guarantee constant instantaneous speed. A differential follows the arithmetic mean of its equal side gears' signed angles.",
+        "question": "Both versions turn their outer shafts by nearly the same average amount. Why does the main pointer rock while the control pointer stays almost still?",
+        "answer": "The quarter-turn phase of the main model makes the two Cardan angle variations add. The correctly phased control makes the second joint undo the first joint's variation. The differential and 16:8 takeoff reveal that difference at the pointer.",
+        "further": [
+          "From the 48–64–80 shaft-center triangle, cos β=0.8 and β≈36.87°. The ideal misphased pointer law has 25.3608° peak-to-peak stroke every 180° of reference-shaft rotation; the hosted trace measures about 25.50° over its full program.",
+          "The LDraw file has 298 explicit placements. Add the two required inferred universal-joint crosses for 300 physical pieces. The experiment uses one motor on port A; all shafts and the pointer are passive.",
+          "The Blocks program is finite and includes slow, fast, reverse and guarded hold stages. Reset to the saved starting pose before every run. Tested simulation speeds are 30 and 60 degrees per second.",
+          "These results are from a native mechanism simulation. They do not establish physical buildability, torque capacity, friction, backlash, real-world swept clearance, or hardware firmware behavior."
+        ]
+      },
+      "de": {
+        "what": "Dieses Simulationsexperiment mit 300 Teilen kombiniert zwei gleich abgewinkelte Kardangelenke, ein symmetrisches Differential und einen Zeiger. Das zweite Gelenk ist um eine Vierteldrehung fehlphasig. Dadurch addieren sich die Geschwindigkeitsschwankungen. Der Zeiger zeigt eine periodische Winkelbewegung; durch das Modell läuft keine elastische Welle.",
+        "try": [
+          "Wähle WaveMaker. Das Beispiel lädt sein Blocks-Programm automatisch. Setze das Modell auf die gespeicherte Ausgangsstellung zurück und drücke dann auf Start. Das Programm erzeugt vier langsame Zeigerzyklen mit 30°/s, vier schnellere mit 60°/s und kehrt anschließend in acht Zyklen um, bevor es am Ziel anhält.",
+          "Setze das Modell zurück, wähle WaveMaker Control und starte dasselbe Programm. Die Gabeln des zweiten Gelenks sind richtig ausgerichtet; dadurch wird die Schwankung am Ausgang fast aufgehoben.",
+          "Vergleiche Bezugswelle, Kardanausgang, Differentialgehäuse und Zeiger. Beide Versionen haben außen im Mittel nahezu dieselbe Übersetzung, aber ihre momentane Bewegung ist verschieden."
+        ],
+        "why": "Ein abgewinkeltes Kardangelenk dreht seinen Ausgang nicht mit gleichmäßiger momentaner Geschwindigkeit. Bei gleichen Winkeln heben sich die Schwankungen zweier Gelenke auf, wenn die mittleren Gabeln fluchten. Eine Phasenverschiebung um eine Vierteldrehung lässt sich die Schwankungen verstärken. Das Differential bildet den Mittelwert der vorzeichenbehafteten Bewegungen seiner beiden gleichen Seitenräder. Ein 16-Zahn-Kranz treibt ein 8-Zahn-Ritzel an und verdoppelt dadurch den Zeigerwinkel bei umgekehrter Drehrichtung.",
+        "matters": "Kardangelenke übertragen Drehbewegungen zwischen abgewinkelten Wellen. Bei zwei Gelenken ist die Gabelphase entscheidend: Gleiche mittlere Drehwinkel bedeuten nicht gleiche momentane Geschwindigkeit. Ein Differential folgt dem arithmetischen Mittel der vorzeichenbehafteten Winkel seiner gleich großen Seitenräder.",
+        "question": "Beide Versionen drehen ihre Außenwellen im Mittel fast gleich weit. Warum schwingt der Zeiger des Hauptmodells, während er beim Kontrollmodell fast stillsteht?",
+        "answer": "Durch die Vierteldrehung der Gabeln addieren sich im Hauptmodell die Winkelabweichungen beider Kardangelenke. Im korrekt ausgerichteten Kontrollmodell hebt das zweite Gelenk die Abweichung des ersten auf. Differential und 16:8-Abtrieb machen den Unterschied am Zeiger sichtbar.",
+        "further": [
+          "Aus dem Wellenabstand von 48–64–80 folgt cos β=0,8 und β≈36,87°. Das ideale fehlphasige Doppel-Kardangelenk erzeugt einen Zeigerausschlag von 25,3608° Spitze zu Spitze je 180° Bezugswellendrehung; die gehostete Simulation misst über das gesamte Programm etwa 25,50°.",
+          "Die LDraw-Datei enthält 298 explizite Platzierungen. Dazu kommen zwei erforderliche, vom Simulator erschlossene Kardankreuze: insgesamt 300 physische Teile. Das Experiment verwendet einen Motor an Anschluss A; Wellen und Zeiger sind passiv.",
+          "Das Blocks-Programm ist endlich und enthält langsame, schnelle und umgekehrte Bewegung sowie überwachte Haltephasen. Setze das Modell vor jedem Lauf auf die gespeicherte Ausgangsstellung zurück. Erprobte Simulationsgeschwindigkeiten sind 30 und 60 Grad pro Sekunde.",
+          "Die Ergebnisse stammen aus einer nativen Mechanismensimulation. Sie belegen weder einen physischen Aufbau noch Drehmoment, Reibung, Spiel, reale Freigängigkeit während der Bewegung oder das Verhalten einer Hardware-Firmware."
+        ]
+      },
+      "formula": {
+        "en": "β=acos(0.8). For the 90°-misphased double Cardan, δ(θ)=atan2(sin²β·sinθ·cosθ, cos²β·cos²θ+sin²θ). The symmetric differential gives 2·carrier=reference+ripple; the 16T:8T external takeoff gives pointer=−2·carrier=δ. The correctly phased control ideally has δ=0.",
+        "de": "β=acos(0,8). Für das um 90° fehlphasige Doppel-Kardangelenk gilt δ(θ)=atan2(sin²β·sinθ·cosθ, cos²β·cos²θ+sin²θ). Das symmetrische Differential erfüllt 2·Gehäusewinkel=Bezugswinkel+Riffelwellenwinkel; der externe 16:8-Abtrieb ergibt Zeiger=−2·Gehäusewinkel=δ. Im korrekt ausgerichteten Kontrollmodell ist δ idealerweise 0."
+      },
+      "related": [
+        "wavemaker-control.ldr",
+        "phase-bridge.ldr",
+        "ripple-relay.ldr"
+      ]
+    },
+    "wavemaker-control": {
+      "en": {
+        "what": "This 300-piece correctly phased Cardan control uses two equal bends, a symmetric differential and a pointer. The second joint cancels the first joint's periodic speed variation at the outer shaft. The mechanism displays angular motion; it does not transmit an elastic wave.",
+        "try": [
+          "Choose WaveMaker Control; its Blocks program loads automatically. Reset to the saved starting pose and press Run. The one-motor program runs four cycles at 30°/s, four at 60°/s, reverses through eight cycles, and then holds.",
+          "Reset and load WaveMaker to compare. Only the two downstream fork orientations change. The main pointer rocks while this control stays close to its initial angle.",
+          "Compare the reference shaft and output shaft. Correct phasing preserves the one-to-one outer-shaft relationship even though the intermediate shaft of the first joint has nonuniform speed."
+        ],
+        "why": "For equal Cardan bends, correctly aligned middle forks make the second joint apply the inverse of the first joint's angle mapping. The outer shafts therefore have a constant one-to-one ideal ratio. The symmetric differential and 16:8 pointer takeoff show the remaining small numerical residual in the simulation.",
+        "matters": "A correctly phased double Cardan can cancel the angular-speed variation produced by one bent universal joint. This is why alignment matters even when both arrangements have the same average ratio.",
+        "question": "Why does the intermediate shaft speed up and slow down while the control pointer barely moves?",
+        "answer": "One bent Cardan joint has a varying instantaneous ratio. The equal, correctly phased second joint reverses that variation at the outer output. The output stays at a one-to-one ideal angle ratio even though the intermediate shaft is not uniform.",
+        "further": [
+          "The 48–64–80 shaft-center triangle gives β≈36.87°. For the correctly phased pair, the ideal outer-shaft relation is output angle = input angle; the measured pointer span is about 0.0164° over the complete run.",
+          "The model has 298 explicit placements plus two required inferred universal-joint crosses, for 300 pieces. It has one motor on port A and passive output shafts.",
+          "The automatic Blocks program uses 30 and 60 degrees per second, includes reversal and guarded holds, and should be run from the saved starting pose after Reset.",
+          "This is simulation evidence only. It does not establish physical buildability, torque capacity, friction, backlash, real-world swept clearance, or firmware behavior."
+        ]
+      },
+      "de": {
+        "what": "Dieses Kontrollmodell mit 300 Teilen verwendet zwei gleich abgewinkelte, korrekt ausgerichtete Kardangelenke, ein symmetrisches Differential und einen Zeiger. Das zweite Gelenk hebt die periodische Geschwindigkeitsschwankung des ersten Gelenks an der Außenwelle auf. Der Mechanismus zeigt Winkelbewegung, überträgt aber keine elastische Welle.",
+        "try": [
+          "Wähle WaveMaker Control; das Blocks-Programm wird automatisch geladen. Setze das Modell auf die gespeicherte Ausgangsstellung zurück und drücke Start. Das Programm fährt mit einem Motor vier Zyklen bei 30°/s, vier bei 60°/s, kehrt durch acht Zyklen um und hält anschließend.",
+          "Setze das Modell zurück und lade WaveMaker zum Vergleich. Nur die beiden nachgelagerten Gabelausrichtungen sind verändert. Beim Hauptmodell schwingt der Zeiger; dieses Kontrollmodell bleibt nahe am Ausgangswinkel.",
+          "Vergleiche Bezugswelle und Ausgangswelle. Bei richtiger Phasenlage bleibt das Verhältnis der Außenwellen eins zu eins, obwohl die Zwischenwelle des ersten Gelenks ungleichmäßig läuft."
+        ],
+        "why": "Bei gleichen Kardanknickwinkeln bildet das zweite Gelenk die Winkelabbildung des ersten umgekehrt ab, wenn die mittleren Gabeln korrekt fluchten. Die Außenwellen haben dadurch ideal ein konstantes Verhältnis von eins zu eins. Differential und 16:8-Zeigerabtrieb zeigen die kleine numerische Restbewegung der Simulation.",
+        "matters": "Ein korrekt ausgerichtetes Doppel-Kardangelenk kann die momentane Geschwindigkeitsschwankung eines abgewinkelten Kardangelenks aufheben. Deshalb ist die Ausrichtung wichtig, obwohl beide Anordnungen dasselbe mittlere Verhältnis haben.",
+        "question": "Warum wird die Zwischenwelle schneller und langsamer, während der Kontrollzeiger sich kaum bewegt?",
+        "answer": "Ein abgewinkeltes Kardangelenk hat ein veränderliches momentanes Übersetzungsverhältnis. Das zweite Gelenk mit gleichem Winkel hebt diese Änderung am Ausgang auf, wenn seine Gabeln richtig fluchten. Der ideale Außenabtrieb bleibt eins zu eins, obwohl die Zwischenwelle ungleichmäßig läuft.",
+        "further": [
+          "Das Wellenabstands-Dreieck 48–64–80 ergibt β≈36,87°. Beim korrekt ausgerichteten Gelenkpaar ist der ideale Außenwinkel gleich dem Eingangswinkel; der gemessene Zeigerausschlag beträgt über den vollständigen Lauf etwa 0,0164°.",
+          "Das Modell enthält 298 explizite Platzierungen und zwei erforderliche, erschlossene Kardankreuze: insgesamt 300 Teile. Es besitzt einen Motor an Anschluss A und passive Ausgangswellen.",
+          "Das automatisch geladene Blocks-Programm verwendet 30 und 60 Grad pro Sekunde, enthält eine Richtungsumkehr und überwachte Haltephasen. Starte nach dem Zurücksetzen an der gespeicherten Ausgangsstellung.",
+          "Dies sind Simulationsergebnisse. Sie belegen keinen physischen Aufbau, kein Drehmoment, keine Reibung, kein Spiel, keine reale Freigängigkeit während der Bewegung und kein Firmware-Verhalten."
+        ]
+      },
+      "formula": {
+        "en": "For one Cardan joint, tan φ=tan θ/cos β. For equal bends with aligned middle forks the second joint is the inverse mapping, so outer output angle θout=θin and the ideal output speed ratio is 1.",
+        "de": "Für ein Kardangelenk gilt tan φ=tan θ/cos β. Bei gleichen Winkeln und korrekt fluchtenden mittleren Gabeln ist das zweite Gelenk die Umkehrabbildung des ersten. Daher gilt außen ideal θaus=θein und das Geschwindigkeitsverhältnis ist 1."
+      },
+      "related": [
+        "wavemaker.ldr",
+        "phase-bridge.ldr",
+        "ripple-relay.ldr"
+      ]
     }
   }
 }

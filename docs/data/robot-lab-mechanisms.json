@@ -181,6 +181,27 @@
         "Vierteldrehung",
         "Rastsperre"
       ]
+    },
+    {
+      "models": [
+        "wavemaker",
+        "wavemaker-control"
+      ],
+      "name": {
+        "en": "Cardan velocity ripple and differential subtraction",
+        "de": "Kardanschwankung und Differenzial-Subtraktion"
+      },
+      "aliases": [
+        "universal joint",
+        "double Cardan",
+        "Kardangelenk",
+        "fork phasing",
+        "Gabelausrichtung",
+        "angular velocity",
+        "differential",
+        "arithmetic mean",
+        "Doppel-Kardangelenk"
+      ]
     }
   ]
 }

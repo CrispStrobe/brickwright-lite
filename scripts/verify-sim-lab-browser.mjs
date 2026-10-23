@@ -797,7 +797,7 @@ try {
             await resonanceLesson(german, opts, 'de');
             await german.close();
         }
-        const newModelIds = ['sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`));
+        const newModelIds = ['wavemaker', 'wavemaker-control', 'sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`) || (id==='wavemaker-control' && runExample('wavemaker.ldr')));
         if (newModelIds.length) {
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             page.on('pageerror', error => errors.push(error.stack || error.message));
