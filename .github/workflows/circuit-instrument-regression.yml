@@ -46,26 +46,25 @@ jobs:
           node scripts/circuit-instrument-regression.mjs --bind-release-log \
             release-evidence/run.json release-evidence/jobs.json release-evidence/original.log release-evidence/acquisition.json
       - name: Read exact source pins
-        id: pins
         run: |
-          node --input-type=module - <<'JS' >> "$GITHUB_OUTPUT"
+          node --input-type=module - <<'JS'
           import {readFileSync} from 'node:fs';
+          import {CONTRACT_SOURCES} from './scripts/lib/instrument-regression-cases.mjs';
           const pins = JSON.parse(readFileSync('vendor-pins.json'));
-          for (const [output, key] of [['board','bw-board'],['cui','bw-circuit-ui']]) {
-            if (!/^[0-9a-f]{40}$/.test(pins[key])) throw new Error('Exact package pin required');
-            console.log(`${output}=${pins[key]}`);
+          for (const [key, sha] of Object.entries(CONTRACT_SOURCES)) {
+            if (pins[key] !== sha) throw new Error('Audited source contract changed');
           }
           JS
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: CrispStrobe/bw-board
-          ref: ${{ steps.pins.outputs.board }}
+          ref: b5650092695643622a53bcc40008133760e2d8a2
           path: admitted-sources/bw-board
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: CrispStrobe/bw-circuit-ui
-          ref: ${{ steps.pins.outputs.cui }}
+          ref: 17fd4afb0bf27015b099ca67c9cca05919084654
           path: admitted-sources/bw-circuit-ui
           persist-credentials: false
       - name: Install locked consumer and independent oracle

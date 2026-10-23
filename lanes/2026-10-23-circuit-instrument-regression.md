@@ -1,8 +1,9 @@
 # Fixed CLI instrument regression campaign
 
-CLAIMED — Codex circuit owner, branch
-`lane/circuit-instrument-regression-20261023`, exact base
-`2a06b2d1ea057835b6764bea8ea36cee9819efbd`.
+DONE — bounded harness source implementation, Codex circuit owner, branch
+`lane/circuit-instrument-regression-source-20261023`, source base
+`09c324eaecbfcc209b45e6a32122e7094fbee969` after the merged claim.
+Numerical execution and the later upstream repair/display lanes are not done.
 
 The user authorizes preparing the harness alongside existing-release recovery.
 Numerical campaign execution remains after the TestFlight prerequisite with
@@ -60,3 +61,20 @@ removed combinations or unsupported-physics success claims.
 Merge this claim before implementation. Require focused controls, canonical
 derived checks and every enabled exact-head check before landing source.
 Release preparation and later campaign execution need separate honest receipts.
+
+Implementation: deterministic case manifest, independent passive/loaded-LM741/
+piecewise-ADP equations, strict SI/clock/CSV/whole-work readers, installed package
+and runtime identity, manual-only hosted runner and preserved per-case outcomes.
+Twenty-four pure controls pass without skips; they cover all nine required
+retained-record perturbations on explicitly synthetic fixtures. They do not
+establish circuit agreement. The first ADP reference closure defect and the
+independent review's watch/JSON conflict were fixed before qualification.
+Hosted Node 22 qualification remains required; no numerical case, Apple action,
+dependency installation, model change or pin move occurred in preparation.
+
+The release source is a normal stacked parent, not a copied helper or second
+generator. Its canonical census bootstrap supports this workflow's zero-run
+declaration while retaining all 321 prior run observations and 26 workflow
+records. The scoped pointer records six unobserved named steps, not fake runs.
+Retarget the source PR to main after the release parent lands; preserve its
+exact executable tree and qualify any noncommuting change.

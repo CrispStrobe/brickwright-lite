@@ -279,6 +279,20 @@ export async function runCampaign({output, installedRoot, boardSource, cuiSource
         claims: {authoredParameterCases: true, importedCorpusValidation: false, physicalAccuracy: false,
             nominalDeviceCasesAreSpiceProof: false, rawEvidenceRetained: true}};
     save(join(output, 'report.json'), json(report));
+    const originals = [];
+    const collect = (relative = '') => {
+        for (const entry of readdirSync(join(output, relative), {withFileTypes: true}).sort((a, b) => a.name.localeCompare(b.name))) {
+            const name = relative ? `${relative}/${entry.name}` : entry.name;
+            if (entry.isDirectory()) collect(name);
+            else if (entry.isFile()) {
+                const bytes = readFileSync(join(output, name));
+                originals.push({name, bytes: bytes.length, sha256: contentHash(bytes)});
+            } else throw new Error('Unexpected evidence symlink or special file');
+        }
+    };
+    collect();
+    save(join(output, 'originals-index.json'), json({schemaVersion: 1, originals,
+        limit: 'content hashes of retained originals; not signed provenance or a numerical oracle'}));
     return report;
 }
 
