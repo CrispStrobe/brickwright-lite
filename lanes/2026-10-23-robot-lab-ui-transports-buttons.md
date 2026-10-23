@@ -67,6 +67,12 @@ Powered Up pin adopts qualified supplier #64; all other pins and the global
 baseline remain fixed. Supplier policy #65 replaces the inherited reviewer
 quota with owner-command authorization and the same technical gates.
 
+After normal composition of qualified plots #1272, 249 combined focused
+controls pass without failures or skips, including measurement history and
+teaching presets. The parent's measurement seam and both dependency-scope
+registrations are preserved. This is fresh combined source qualification;
+its built-browser and enabled exact-head hosted results remain pending.
+
 The existing hubs-bt browser part now includes the actual connection/button
 journey. Its first built-browser result and final exact-head hosted checks are
 still pending; this DONE status records the final implementation candidate,
