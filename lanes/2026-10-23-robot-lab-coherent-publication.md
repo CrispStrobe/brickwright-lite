@@ -34,3 +34,21 @@ exact one-quantum clock/physics behavior, retained-START and missing-output
 counterexamples, all enabled exact-head CI and affected real own-firmware guest
 qualification. Acquire official originals once; no local heavy build or guest,
 no binaries/reference inputs published. Other lane owners remain untouched.
+
+Runtime source candidate is CrispStrobe/renode-spike-prime#60 at
+`26d9eb2b7e5b9ede70c95471f5b4b678ad30d8c0`. The draft consumer's hosted
+qualification input explicitly selects that reviewed candidate so its actual
+own-firmware behavior can qualify the upstream change before either source PR
+lands. This is a proposed CI input, with no product/package pin adoption. Before
+consumer merge, upstream must pass and land; replace the proposed CI input with
+its verified exact merge revision and refresh final-head qualification. Paired
+Infrastructure, firmware, support resources and all baseline gates stay fixed.
+
+Lite now separates real ACK handling from a status publication barrier; queued
+Stop sends immediately after the preceding ACK. Status from the ACK frame or a
+non-advancing publication cannot finish retained START. Finite reset/wrap refuses.
+Both real controllers tolerate typed omissions while requiring current coherent
+acceptance. Fixed physical checkpoint windows retain all original quanta, record
+the observed sample time explicitly, and never replay that sample as the final
+missing observation. All six Python cases, physical assertions and bounds remain.
+Actual candidate qualification remains pending; the matrix is unchanged.

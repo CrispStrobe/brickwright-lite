@@ -206,20 +206,20 @@ try {
         session.tick(5);
         await session.idle();
         const p = hub.read.frame.lifecycle.nuttxProgram;
-        state = p.state;
-        if (state !== program.state) throw new Error(`the route's program state ${program.state} is not the snapshot's ${state}`);
-        if (state === PROGRAM_STATE.RUNNING) seenRunning = true;
+        state = program.state;
+        if (p && program.stateFresh && state !== p.state) throw new Error(`the route's program state ${program.state} is not the snapshot's ${state}`);
+        if (program.stateFresh && state === PROGRAM_STATE.RUNNING) seenRunning = true;
         steps.push({t: session.time, wallMs: now() - t0,
             angles: Object.fromEntries([...byPort].map(([port, joint]) => [port, (session.core.jointState(joint).angle - angle0.get(port)) * DEG])),
             guest: Object.fromEntries(hub.read.motors.map(m => [m.port, m.position])),
-            firmware: {A: p.positions[0], B: p.positions[1]},
-            duty: {A: p.duties[0], B: p.duties[1]}, fwClockMs: p.clockMs, clockNs: hub.read.clockNs,
+            firmware: p ? {A: p.positions[0], B: p.positions[1]} : null,
+            duty: p ? {A: p.duties[0], B: p.duties[1]} : null, fwClockMs: p?.clockMs ?? null, stateFresh: program.stateFresh, clockNs: hub.read.clockNs,
             drives: hub.readDrives(), state});
         // After the program ends, 300 ms more so the base comes to rest (the Scratch run does too).
-        if (seenRunning && state !== PROGRAM_STATE.RUNNING && (doneAt ??= session.time) <= session.time - 300) break;
+        if (seenRunning && program.idle && program.stateFresh && state === PROGRAM_STATE.COMPLETE && (doneAt ??= session.time) <= session.time - 300) break;
         if (steps.length % 100 === 0) {
             const s = steps.at(-1);
-            console.log(`  t=${s.t} ms  A ${s.angles.A.toFixed(1)}°  B ${s.angles.B.toFixed(1)}°  duty ${s.duty.A}/${s.duty.B}  state ${state}  ${(s.wallMs).toFixed(0)} ms/step`);
+            console.log(`  t=${s.t} ms  A ${s.angles.A.toFixed(1)}°  B ${s.angles.B.toFixed(1)}°  duty ${s.duty?.A ?? "unavailable"}/${s.duty?.B ?? "unavailable"}  state ${state}  ${(s.wallMs).toFixed(0)} ms/step`);
         }
     }
     const wallMs = now() - wall0;
@@ -233,20 +233,30 @@ try {
     // Pause is STOP with the clock running until the firmware has taken it.
     await program.start();
     let again = 0;
-    while (program.state !== PROGRAM_STATE.RUNNING && again < 100) { session.tick(5); await session.idle(); again++; }
-    const runningAgain = program.state === PROGRAM_STATE.RUNNING;
+    while (!(program.stateFresh && program.state === PROGRAM_STATE.RUNNING) && again < 100) { session.tick(5); await session.idle(); again++; }
+    const runningAgain = program.stateFresh && program.state === PROGRAM_STATE.RUNNING;
     for (let k = 0; k < 60; k++) { session.tick(5); await session.idle(); }
     const before = {...hub.read.motors.reduce((o, m) => ({...o, [m.port]: m.position}), {})};
     await program.stop();
     let stopSteps = 0;
-    while (!(program.idle && program.state === PROGRAM_STATE.STOPPED) && stopSteps < 100) { session.tick(5); await session.idle(); stopSteps++; }
-    for (let k = 0; k < 60; k++) { session.tick(5); await session.idle(); }
+    while (!(program.idle && program.stateFresh && program.state === PROGRAM_STATE.STOPPED) && stopSteps < 100) { session.tick(5); await session.idle(); stopSteps++; }
+    let stoppedObservation = null;
+    const stopWindowStartMs = session.time;
+    for (let k = 0; k < 60; k++) {
+        session.tick(5);await session.idle();
+        if (program.stateFresh) {
+            if (program.state !== PROGRAM_STATE.STOPPED) throw new Error('fresh post-Stop state changed');
+            stoppedObservation = {state: program.state, publicationSeq: hub.read.frame.lifecycle.nuttxProgram.publicationSeq,
+                observedMs: session.time, clockNs: hub.read.clockNs};
+        }
+    }
+    check(stoppedObservation !== null, 'coherent stopped observation within the original 300 ms physical settling window');
     const after = hub.read.motors.reduce((o, m) => ({...o, [m.port]: m.position}), {});
-    report.rerun = {stepsToRunning: again, stepsToStopped: stopSteps, controls: program.sent.map(c => c.op),
+    report.rerun = {stepsToRunning: again, stepsToStopped: stopSteps, stoppedObservation, stopWindow: {startMs: stopWindowStartMs, endMs: session.time}, controls: program.sent.map(c => c.op),
         coastAfterStopDeg: Object.fromEntries(Object.keys(after).map(port => [port, +(after[port] - before[port]).toFixed(1)])),
         finalWheelSpeedDps: Object.fromEntries(hub.read.motors.map(m => [m.port, +m.speedDps.toFixed(1)])),
         finalDrives: hub.read.drives.map(d => ({port: d.port, meanDrive: d.meanDrive, brakingTicks: d.brakingTicks, ticks: d.ticks}))};
-    check(runningAgain && program.state === PROGRAM_STATE.STOPPED && program.sent.map(c => c.op).join(',') === '3,4,3,4' &&
+    check(runningAgain && stoppedObservation && program.state === PROGRAM_STATE.STOPPED && program.sent.map(c => c.op).join(',') === '3,4,3,4' &&
         // The degrees form drives port A only; an untouched port's bridge stays coasting.
         hub.read.drives.filter(d => FORM !== 'degrees' || d.port === 'A').every(d => d.meanDrive === 0 && d.brakingTicks === d.ticks),
         `Run again + Pause: controls ${report.rerun.controls.join(',')} (START, STOP, START, STOP), RUNNING after ${again} steps, STOPPED after ${stopSteps}; ` +
@@ -268,11 +278,13 @@ try {
         for (const port of ['A', 'B']) {
             worstGuest = Math.max(worstGuest, Math.abs(steps[k].guest[port] - steps[k].angles[port]));
             // The program status' positions are live only while the program runs.
-            if (steps[k].state === PROGRAM_STATE.RUNNING) worstFirmware = Math.max(worstFirmware, Math.abs(steps[k].firmware[port] - steps[k].angles[port]));
+            if (steps[k].stateFresh && steps[k].firmware && steps[k].state === PROGRAM_STATE.RUNNING) worstFirmware = Math.max(worstFirmware, Math.abs(steps[k].firmware[port] - steps[k].angles[port]));
         }
         const physics = k === 0 ? {A: 0, B: 0} : steps[k - 1].angles;
         for (const s of hub.sent[k].shafts) worstShaft = Math.max(worstShaft, Math.abs(s.positionMdeg / 1000 - physics[s.port]));
     }
+    const observed = steps.filter(s => s.fwClockMs !== null);
+    check(observed.length >= 2 && observed.at(-1).clockNs > observed[0].clockNs, 'multiple coherent firmware status publications observed');
     const last = steps.at(-1);
     const firmwareDistance = along(start, end);
     const exch = steps.map(s => s.wallMs);
@@ -282,9 +294,9 @@ try {
         wheels: {A: +last.angles.A.toFixed(2), B: +last.angles.B.toFixed(2)},
         worstShaftVsPhysicsDeg: +worstShaft.toFixed(4), worstGuestVsPhysicsDeg: +worstGuest.toFixed(4), worstFirmwarePosVsPhysicsDeg: +worstFirmware.toFixed(3),
         // The firmware's own millisecond clock against Renode's virtual time over the run.
-        firmwareClockRate: +((last.fwClockMs - steps[0].fwClockMs) / ((last.clockNs - steps[0].clockNs) / 1e6)).toFixed(5),
+        firmwareClockRate: +((observed.at(-1).fwClockMs - observed[0].fwClockMs) / ((observed.at(-1).clockNs - observed[0].clockNs) / 1e6)).toFixed(5),
         // Steady wheel speed over the middle half of the drive (physics), against the commanded one.
-        maxDuty: Math.max(...steps.map(s => Math.max(Math.abs(s.duty.A), Math.abs(s.duty.B)))),
+        maxDuty: Math.max(...observed.map(s => Math.max(Math.abs(s.duty.A), Math.abs(s.duty.B)))),
         firmwareDistanceMm: +(firmwareDistance * 1000).toFixed(1), validated: transport.validated});
     console.log(`${steps.length} steps (${last.t} ms simulated) in ${(wallMs / 1000).toFixed(1)} s wall: real-time factor ${report.realTimeFactor}; ` +
         `step wall median ${report.stepWallMs.median} ms, p90 ${report.stepWallMs.p90} ms`);
@@ -301,7 +313,7 @@ try {
     console.log(`firmware clock ${report.firmwareClockRate} ms per virtual ms; steady wheel speed ${report.steadySpeedDps} °/s (commanded ${PROGRAM.instructions[1]?.[2]}); ` +
         `peak (50 ms mean) ${report.peakSpeedDps ?? '-'} °/s, overshoot ${report.overshootPct ?? '-'} %`);
     console.log(`wheels A ${report.wheels.A}°, B ${report.wheels.B}°; firmware program state ${state}; distance ${report.firmwareDistanceMm} mm`);
-    check(seenRunning && state === PROGRAM_STATE.COMPLETE, `the firmware program ran and completed (final state ${state})`);
+    check(seenRunning && last.stateFresh && state === PROGRAM_STATE.COMPLETE, `the firmware program ran and completed (final state ${state})`);
     check(worstShaft <= 0.0005 + 1e-9, `shafts sent = physics hinge angles to the milli-degree (worst ${worstShaft.toFixed(5)}°)`);
     check(worstGuest <= 1, `emulator encoders follow the physics within 1° (worst ${worstGuest.toFixed(4)}°)`);
     console.log(`     (the firmware's own LPF2 POS reading while running, integer degrees reported every 10 ms: worst ${worstFirmware.toFixed(2)}° from the physics)`);

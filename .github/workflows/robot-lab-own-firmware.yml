@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: CrispStrobe/renode-spike-prime
-          ref: 7d4a79a21e3a71586545f588b1336a9beb1ddd4b
+          ref: 26d9eb2b7e5b9ede70c95471f5b4b678ad30d8c0
           path: .qualification/runtime
           submodules: recursive
           persist-credentials: false

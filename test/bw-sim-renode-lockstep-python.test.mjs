@@ -9,7 +9,7 @@ import {openLockstepRoute} from '../overlay/scratch-gui/src/lib/bw-sim/routes/re
 import {encodePython, crc32} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
 import net from 'node:net';
 import {once} from 'node:events';
-import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import {prepareDotnetLauncher} from '../scripts/lib/sim-lab-dotnet-launcher.mjs';
 import {waitForRenodeStateService, stopRenodeChild, StateServiceTransport, monitorCommand} from '../scripts/lib/sim-lab-renode-guest.mjs';
@@ -33,7 +33,7 @@ test('Lab Python upload uses canonical BEGIN_PYTHON, UTF-8 chunks and CRC, holds
         assert.equal(op, 'renode.spike.program.packet');
         const request = Uint8Array.from(args.bytes); packets.push(request);
         const reply = new Uint8Array(20);reply.set([0x71, 1, request[2], 1, 1]);
-        return {lifecycle: {nuttxProgramReply: [...reply]}};
+        return {target: {capabilities: ['nuttx-program-publication/v1']}, lifecycle: {nuttxProgramReply: [...reply]}};
     }};
     const control = new LockstepProgram({transport, pythonSource: source});
     await control.upload();
@@ -228,4 +228,139 @@ test('a monitor prompt without the Start acknowledgement cannot report resumed e
     const server = await monitorControl(t, socket => socket.end('(machine-0) '));
     await assert.rejects(monitorCommand(server.port, 'start'), /closed before its start acknowledgement/);
     assert.deepEqual(server.lines, ['', 'start']);
+});
+
+
+// Coherence source controls: these are packets/observations, never guest execution.
+const coherentFrame = ({publication = 10, state = 3, replySeq, op = 3, result = 0, id = 1} = {}) => {
+    const frame = {lifecycle: {}};
+    if (publication !== null) frame.lifecycle.nuttxProgram = {publicationSeq: publication, state, error: 0};
+    if (replySeq !== undefined) {
+        const reply = new Uint8Array(20);reply.set([0x71, 1, op, op === 3 ? 2 : 4]);
+        const view = new DataView(reply.buffer);view.setUint32(4, id, true);view.setInt32(8, result, true);
+        frame.lifecycle.nuttxProgramReply = [...reply];frame.lifecycle.nuttxProgramReplySeq = replySeq;
+    }
+    return frame;
+};
+const coherentControl = () => {
+    let seq = 2;
+    const program = new LockstepProgram({program: compiled,
+        transport: {async call () {return {data: {requestSeq: seq += 2}};}}});
+    program.coherentPublications = true;program.uploaded = true;program.state = 3;program.lastReplyOp = 2;
+    return program;
+};
+test('coherent START ACK cannot accept old COMPLETE; only a later status publication completes it', async () => {
+    const p = coherentControl();await p.start();
+    p.observe(coherentFrame({replySeq: 4}));
+    assert.equal(p.idle, true);assert.equal(p.stateName, 'running');assert.equal(p.stateFresh, false);
+    p.observe(coherentFrame());assert.equal(p.stateName, 'running');assert.equal(p.stateFresh, false);
+    p.observe(coherentFrame({publication: 12}));assert.equal(p.stateName, 'complete');assert.equal(p.stateFresh, true);
+    p.observe(coherentFrame({publication: null}));assert.equal(p.stateFresh, false);
+});
+test('queued Stop submits immediately after START ACK despite unavailable status and replaces its freshness barrier', async () => {
+    const p = coherentControl();await p.start();await p.stop();
+    p.observe(coherentFrame({publication: null, replySeq: 4}));await Promise.resolve();
+    assert.deepEqual(p.sent.map(c => c.op), [3, 4]);assert.equal(p.pending.requestSeq, 6);
+    p.observe(coherentFrame({publication: 10, replySeq: 6, op: 4}));
+    assert.equal(p.stateName, 'stopped');assert.equal(p.stateFresh, false);
+    p.observe(coherentFrame({publication: 10, state: 2}));assert.equal(p.stateName, 'stopped');
+    p.observe(coherentFrame({publication: 12, state: 4}));assert.equal(p.stateName, 'stopped');assert.equal(p.stateFresh, true);
+});
+test('ACK without status establishes a later coherent floor and requires another advance', async () => {
+    const p = coherentControl();await p.start();p.observe(coherentFrame({publication: null, replySeq: 4}));
+    p.observe(coherentFrame());assert.equal(p.stateFresh, false);assert.equal(p.stateName, 'running');
+    p.observe(coherentFrame());assert.equal(p.stateFresh, false);
+    p.observe(coherentFrame({publication: 12}));assert.equal(p.stateFresh, true);assert.equal(p.stateName, 'complete');
+});
+test('pending control ignores stale or absent real ACK sequence and wrong opcode; bad id or failed ACK refuses', async () => {
+    const p = coherentControl();await p.start();
+    for (const opts of [{replySeq: 2}, {replySeq: 3}, {replySeq: 6}, {replySeq: 4, op: 4}, {}]) {
+        p.observe(coherentFrame(opts));assert.ok(p.pending);assert.equal(p.lastReplyOp, 2);
+    }
+    p.observe(coherentFrame({replySeq: 4, id: 9}));assert.equal(p.failed.code, 'control-refused');
+    const malformed = coherentControl();await malformed.start();const bad = coherentFrame({replySeq: 4});
+    bad.lifecycle.nuttxProgramReply[0] += 256;malformed.observe(bad);assert.equal(malformed.failed.code, 'control-refused');
+    const failed = coherentControl();await failed.start();await failed.stop();
+    failed.observe(coherentFrame({publication: null, replySeq: 4, result: -16}));
+    assert.equal(failed.failed.result, -16);assert.equal(failed.stateName, 'complete');assert.equal(failed.queue.length, 0);
+});
+test('coherent status rejects zero/odd/out-of-range publication and refuses reset/wrap', () => {
+    for (const publication of [0, 1, 3, -2, 0x100000000, '2']) {
+        assert.throws(() => coherentControl().observe(coherentFrame({publication})), /invalid coherent/);
+    }
+    const p = coherentControl();p.observe(coherentFrame({publication: 0xfffffffe}));
+    assert.throws(() => p.observe(coherentFrame({publication: 2})), /reset or wrapped/);
+});
+test('permanent publication absence never becomes a fresh terminal observation within the unchanged 1200-step bound', async () => {
+    const p = coherentControl();await p.start();p.observe(coherentFrame({publication: null, replySeq: 4}));
+    for (let i = 0; i < 1200; i++) p.observe(coherentFrame({publication: null}));
+    assert.equal(p.stateName, 'running');assert.equal(p.stateFresh, false);
+});
+test('embedded Python refuses legacy Runtime without coherent publication capability', async () => {
+    const p = new LockstepProgram({pythonSource: 'pass', transport: {async call () {return {lifecycle: {}};}}});
+    await assert.rejects(p.upload(), /requires coherent program publications/);
+});
+
+test('actual Python acceptance functions refuse missing output or stale status within the same bound', async () => {
+    const source = readFileSync(new URL('../scripts/verify-sim-lab-python-guest.mjs', import.meta.url), 'utf8');
+    const functions = source.slice(source.indexOf('async function step ('), source.indexOf('async function open ('));
+    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+    const {step, until} = await new AsyncFunction('assert', 'output', 'frameOf', `${functions};return {step,until};`)(
+        assert, frame => frame.lifecycle.nuttxProgramOutput, run => run.frame);
+    for (const absent of ['output', 'status', 'freshness']) {
+        let ticks = 0;
+        const run = {name: 'observation control', frame: {lifecycle: {
+            nuttxProgram: {state: 3, error: 0, positions: [0, 0], duties: [0, 0], publicationSeq: 10},
+            nuttxProgramOutput: {sequence: 2, text: 'old-terminal-marker', truncated: false}}},
+        route: {program: {stateFresh: absent !== 'freshness'}}, states: new Set(), joints: new Map(),
+        hub: {sensors: new Map(), read: {motors: [], drives: []}},
+        session: {time: 0, tick () {ticks++;this.time += 5;}, async idle () {}}};
+        if (absent === 'output') delete run.frame.lifecycle.nuttxProgramOutput;
+        if (absent === 'status') delete run.frame.lifecycle.nuttxProgram;
+        await assert.rejects(until(run, () => true, 4, 'observation acceptance'), /exceeded 20 ms virtual/);
+        assert.equal(ticks, 4);assert.equal(run.steps, 4);
+        if (absent === 'output') {assert.equal(run.text, '');assert.equal(run.outputSequence, null);}
+        // A current real observation can satisfy the unchanged acceptance next time.
+        run.frame.lifecycle.nuttxProgram ??= {state: 3, error: 0, positions: [0, 0], duties: [0, 0], publicationSeq: 12};
+        run.frame.lifecycle.nuttxProgramOutput ??= {sequence: 4, text: 'new-marker', truncated: false};
+        run.route.program.stateFresh = true;
+        await until(run, () => true, 4, 'positive observation');assert.equal(ticks, 5);
+        await step(run);assert.equal(run.last.state, 3);
+    }
+});
+
+test('actual checkpoint window keeps every physical quantum and records available evidence without replaying final missing fields', async () => {
+    const source = readFileSync(new URL('../scripts/verify-sim-lab-python-guest.mjs', import.meta.url), 'utf8');
+    const functions = source.slice(source.indexOf('async function step ('), source.indexOf('async function open ('));
+    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+    const checkpoint = await new AsyncFunction('assert', 'output', 'frameOf', `${functions};return windowCheckpoint;`)(
+        assert, frame => frame.lifecycle.nuttxProgramOutput, run => run.frame);
+    for (const allAbsent of [false, true]) {
+        let ticks = 0;
+        const status = {state: 4, error: 0, positions: [0, 0], duties: [0, 0], publicationSeq: 12};
+        const run = {name: 'window control', frame: {lifecycle: {}}, route: {program: {stateFresh: true}},
+            states: new Set(), joints: new Map(), hub: {sensors: new Map(), read: {motors: [], drives: []}},
+            session: {time: 0, tick () {ticks++;this.time += 5;}, async idle () {
+                run.frame.lifecycle = !allAbsent && ticks < 60 ? {nuttxProgram: status,
+                    nuttxProgramOutput: {sequence: 6, text: 'observed', truncated: false}} : {};
+            }}};
+        if (allAbsent) await assert.rejects(checkpoint(run, 60, 4, 'Stop'), /no coherent checkpoint in 300 ms/);
+        else {
+            const observed = await checkpoint(run, 60, 4, 'Stop');
+            assert.equal(observed.observedMs, 295);assert.deepEqual(observed.window, {startMs: 0, endMs: 300});
+            assert.equal(observed.last.state, 4);assert.equal(observed.output, 'observed');
+            assert.equal(run.last.state, null);assert.equal(run.text, '');assert.equal(run.statusFresh, false);
+        }
+        assert.equal(ticks, 60);assert.equal(run.session.time, 300);
+        if (!allAbsent) {
+            ticks = 0;run.session.time = 0;
+            const originalIdle = run.session.idle;
+            run.session.idle = async () => {
+                await originalIdle();
+                if (ticks === 60) run.frame.lifecycle = {nuttxProgramOutput: {sequence: 8, text: 'WP6_TOO_LATE', truncated: false}};
+            };
+            await assert.rejects(checkpoint(run, 60, 4, 'Stop', /WP6_TOO_LATE/), /forbidden output observed/);
+            assert.equal(ticks, 60, 'output-only late marker is observed independently of absent status');
+        }
+    }
 });

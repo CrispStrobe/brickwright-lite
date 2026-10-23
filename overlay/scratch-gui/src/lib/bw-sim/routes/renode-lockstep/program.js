@@ -15,8 +15,9 @@
 //             a step snapshot (`lifecycle.nuttxProgramReply`), which observe() reads.
 //
 // The firmware's mailbox holds ONE request: nothing is submitted while another is
-// unanswered (the state service refuses it). A reply carries no sequence, only its
-// operation, so consecutive controls must differ to be told apart: START after a
+// unanswered (the state service refuses it). Legacy packages distinguish replies
+// by operation; coherent packages additionally bind the real request/reply sequence.
+// Preserve alternating controls for both routes: START after a
 // START (Run again after the program completed) first sends a STOP. stop() during an
 // unanswered START waits for its reply, then stops.
 
@@ -27,6 +28,9 @@ import {LOCKSTEP_OPS, parseReply} from './contract.js';
 export const ROUTE_PROGRAM_ID = 1;
 
 export const PROGRAM_STATE_NAMES = Object.freeze(['empty', 'ready', 'running', 'complete', 'stopped', 'fault']);
+
+export const PUBLICATION_CAPABILITY = 'nuttx-program-publication/v1';
+const publicationSequence = value => Number.isInteger(value) && value > 0 && value <= 0xffffffff && value % 2 === 0;
 
 const OP_NAME = {[PROGRAM_OP.START]: 'START', [PROGRAM_OP.STOP]: 'STOP'};
 
@@ -84,6 +88,11 @@ export class LockstepProgram {
         this.failed = null;
         /** Every control sent, in order ([{op, requestSeq}]) — what tests and the headless proof read. */
         this.sent = [];
+        /** Real Runtime metadata; legacy compiled packages retain their old contract. */
+        this.coherentPublications = false;
+        this.stateFresh = false;
+        this.lastPublication = null;
+        this.statusBarrier = null;
     }
 
     get stateName () {
@@ -101,6 +110,10 @@ export class LockstepProgram {
 
     async _packet (bytes) {
         const frame = parseReply(await this.transport.call(LOCKSTEP_OPS.programPacket, {bytes: Array.from(bytes)}));
+        const advertised = frame?.target?.capabilities?.includes(PUBLICATION_CAPABILITY) === true;
+        if (this.coherentPublications && !advertised) throw new Error('program publication capability disappeared');
+        if (this.python && !advertised) throw new Error('embedded Python requires coherent program publications');
+        this.coherentPublications = advertised;
         this._readStatus(frame);
         return new Uint8Array(frame?.lifecycle?.nuttxProgramReply || []);
     }
@@ -156,7 +169,7 @@ export class LockstepProgram {
             const reply = parseReply(await this.transport.call(LOCKSTEP_OPS.programControl,
                 {bytes: Array.from(encodeCommand(op, this.id))}));
             const requestSeq = reply?.data?.requestSeq;
-            if (!Number.isSafeInteger(requestSeq)) throw new Error('the emulator did not acknowledge the submission');
+            if (!Number.isSafeInteger(requestSeq) || (this.coherentPublications && !publicationSequence(requestSeq))) throw new Error('the emulator did not acknowledge the submission');
             this.pending.requestSeq = requestSeq;
             this.sent.push({op, requestSeq});
         } catch (error) {
@@ -169,11 +182,39 @@ export class LockstepProgram {
         this.onChange(this);
     }
 
-    _readStatus (frame) {
+    _publication (frame) {
         const status = frame?.lifecycle?.nuttxProgram;
-        if (!status || !Number.isInteger(status.state)) return;
+        if (status === undefined) return null;
+        const sequence = status.publicationSeq;
+        if (!publicationSequence(sequence) || !Number.isInteger(status.state) || status.state < 0 || status.state > 5) {
+            throw new FirmwareRunError('invalid coherent program status', {code: 'publication-invalid'});
+        }
+        if (this.lastPublication !== null && sequence < this.lastPublication) {
+            throw new FirmwareRunError('program publication reset or wrapped; open a new session', {code: 'publication-reset'});
+        }
+        this.lastPublication = sequence;
+        return sequence;
+    }
+
+    _readStatus (frame, publication = undefined) {
+        const status = frame?.lifecycle?.nuttxProgram;
+        this.stateFresh = false;
+        if (this.coherentPublications) {
+            const sequence = publication === undefined ? this._publication(frame) : publication;
+            if (sequence === null) return false;
+            if (this.statusBarrier) {
+                if (this.statusBarrier.floor === null) {
+                    this.statusBarrier.floor = sequence;
+                    return false;
+                }
+                if (sequence <= this.statusBarrier.floor) return false;
+                this.statusBarrier = null;
+            }
+        }
+        if (!status || !Number.isInteger(status.state)) return false;
         const before = this.state;
         this.state = status.state;
+        this.stateFresh = true;
         if (status.state === PROGRAM_STATE.FAULT && before !== PROGRAM_STATE.FAULT) {
             this.fault = status.error ?? status.runtimeError ?? null;
         }
@@ -182,19 +223,31 @@ export class LockstepProgram {
 
     /** A lockstep snapshot (the driver calls this for every one it accepts). */
     observe (frame) {
-        let changed = this._readStatus(frame);
+        const publication = this.coherentPublications ? this._publication(frame) : undefined;
+        let acknowledged = false;
+        let changed = false;
         const raw = frame?.lifecycle?.nuttxProgramReply;
-        if (this.pending && Array.isArray(raw) && raw.length === 20 && raw[2] === this.pending.op && raw[2] !== this.lastReplyOp) {
+        if (this.pending && Array.isArray(raw) && raw.length === 20 && raw[2] === this.pending.op && raw[2] !== this.lastReplyOp &&
+            (!this.coherentPublications || (publicationSequence(this.pending.requestSeq) &&
+                frame.lifecycle.nuttxProgramReplySeq === this.pending.requestSeq))) {
             const op = this.pending.op;
             this.pending = null;
             this.lastReplyOp = op;
             changed = true;
             try {
+                if (raw.some(value => !Number.isInteger(value) || value < 0 || value > 255)) throw new Error('reply bytes out of range');
                 const reply = decodeReply(new Uint8Array(raw), {op, id: this.id});
                 if (reply.result !== 0) {
                     this.queue = [];
                     this.failed = new FirmwareRunError(`the firmware refused ${OP_NAME[op]} (${reply.result})`,
                         {code: 'control-refused', result: reply.result});
+                } else if (this.coherentPublications) {
+                    // ACK state is genuine but may precede the status refresh. Never
+                    // let this frame's old COMPLETE/STOPPED undo a new START.
+                    this.state = reply.state;
+                    this.stateFresh = false;
+                    this.statusBarrier = {floor: publication};
+                    acknowledged = true;
                 }
             } catch (error) {
                 this.queue = [];
@@ -203,6 +256,7 @@ export class LockstepProgram {
             // The next control in line goes out now (between steps; the transport serializes).
             if (!this.failed && this.queue.length) this._pump().catch(() => {});
         }
+        if (!acknowledged) changed = this._readStatus(frame, publication) || changed;
         if (changed) this.onChange(this);
     }
 }

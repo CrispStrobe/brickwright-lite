@@ -31,12 +31,15 @@ async function step (run, count = 1) {
     for (let i = 0; i < count; i++) {
         run.session.tick(5);await run.session.idle();
         const frame = frameOf(run), p = frame.lifecycle.nuttxProgram, out = output(frame);
-        assert.ok(out && out.truncated === false && typeof out.text === 'string', 'bounded untruncated Python output');
-        assert.ok(Number.isSafeInteger(out.sequence) && out.sequence >= 0 && out.sequence % 2 === 0, 'coherent output publication');
-        run.text = out.text;run.outputSequence = out.sequence;run.states.add(p.state);
+        if (out) assert.ok(out.truncated === false && typeof out.text === 'string', 'bounded untruncated Python output');
+        if (out) assert.ok(Number.isSafeInteger(out.sequence) && out.sequence >= 0 && out.sequence % 2 === 0, 'coherent output publication');
+        run.outputFresh = Boolean(out);run.statusFresh = Boolean(p) && run.route.program.stateFresh;
+        run.text = out?.text ?? '';run.outputSequence = out?.sequence ?? null;
+        if (run.statusFresh) run.states.add(p.state);
         run.steps = (run.steps || 0) + 1;
-        if (run.steps % 100 === 0) console.log(`[own Python] ${run.name}: ${run.steps} steps, ${run.session.time} ms simulated, state ${p.state}`);
-        run.last = {state: p.state, error: p.error, positions: p.positions, duties: p.duties,
+        if (run.steps % 100 === 0) console.log(`[own Python] ${run.name}: ${run.steps} steps, ${run.session.time} ms simulated, state ${p?.state ?? "unavailable"}`);
+        run.last = {state: p?.state ?? null, error: p?.error ?? null, positions: p?.positions ?? null, duties: p?.duties ?? null,
+            publicationSeq: p?.publicationSeq ?? null, statusFresh: run.statusFresh, outputFresh: run.outputFresh,
             physicalAngles: Object.fromEntries([...run.joints].map(([port, joint]) => [port, (run.session.core.jointState(joint).angle - run.angle0.get(port)) * 180 / Math.PI])),
             sensor: structuredClone(run.hub.sensors.get('D') || null),
             motors: run.hub.read.motors.map(m => ({port: m.port, position: m.position, speedDps: m.speedDps})),
@@ -44,8 +47,25 @@ async function step (run, count = 1) {
     }
 }
 async function until (run, predicate, maxSteps, label) {
-    for (let i = 0; i < maxSteps; i++) {await step(run);if (predicate()) return;}
+    for (let i = 0; i < maxSteps; i++) {await step(run);if (run.statusFresh && run.outputFresh && predicate()) return;}
     throw Error(`${label} exceeded ${maxSteps * 5} ms virtual: ${JSON.stringify(run.last)}`);
+}
+// Keep all 60 original physical quanta. Record a named coherent checkpoint
+// observed INSIDE this window, not retained bytes from before it or an invented
+// observation at its final quantum. Later unavailable frames remain unavailable.
+async function windowCheckpoint (run, count, expectedState, label, forbiddenOutput = null) {
+    const startMs = run.session.time;
+    let checkpoint = null;
+    for (let i = 0; i < count; i++) {
+        await step(run);
+        if (run.outputFresh && forbiddenOutput) assert.doesNotMatch(run.text, forbiddenOutput, `${label}: forbidden output observed`);
+        if (run.statusFresh) assert.equal(run.last.state, expectedState, `${label}: observed state changed`);
+        if (run.statusFresh && run.outputFresh) checkpoint = {last: structuredClone(run.last),
+            output: run.text, outputSequence: run.outputSequence, observedMs: run.session.time};
+    }
+    assert.ok(checkpoint, `${label}: no coherent checkpoint in ${count * 5} ms virtual`);
+    checkpoint.window = {startMs, endMs: run.session.time};
+    return checkpoint;
 }
 async function open (name, source, facing = true) {
     console.log(`[own Python] begin ${name}`);
@@ -68,8 +88,8 @@ async function open (name, source, facing = true) {
 async function close (run) {
     await run.route.driver.end();pausedBetweenCases = true;run.session.dispose();active = null;
     console.log(`[own Python] completed ${run.name}: ${run.steps || 0} steps`);
-    report.cases.push({name: run.name, states: [...run.states], output: run.text, last: run.last,
-        controls: run.route.program.sent.map(c => c.op), uploadPackets: run.packets, complete: run.complete || null, restart: run.restart || null, sleepAdmission: run.sleepAdmission || null});
+    report.cases.push({name: run.name, states: [...run.states], output: run.acceptance?.output ?? run.text, last: run.acceptance?.last ?? run.last,
+        acceptance: run.acceptance ?? null, finalObservation: run.last, controls: run.route.program.sent.map(c => c.op), uploadPackets: run.packets, complete: run.complete || null, restart: run.restart || null, sleepAdmission: run.sleepAdmission || null});
 }
 const motionSource = `import brickwright as b
 assert sum([x*x for x in range(6)]) == 55
@@ -105,21 +125,22 @@ try {
     assert.equal(transport.validated.packet, run.packets, 'retained restart did not reupload source');
     await run.route.program.stop();
     await until(run, () => run.route.program.idle && run.route.program.state === PROGRAM_STATE.STOPPED, 100, 'retained Stop');
-    await step(run, 60);
-    assert.equal(run.last.duties[0], 0);assert.ok(run.last.drives.find(d => d.port === 'A').meanDrive === 0);
+    run.acceptance = await windowCheckpoint(run, 60, PROGRAM_STATE.STOPPED, 'retained Stop settling');
+    assert.equal(run.acceptance.last.duties[0], 0);
+    assert.ok(run.last.drives.find(d => d.port === 'A').meanDrive === 0, 'final physical bridge stopped');
     assert.deepEqual(run.route.program.sent.map(c => c.op), [3, 4, 3, 4]);
     await close(run);
 
     const sleeping = await open('Stop interrupts actual Python sleep', 'import brickwright as b\nb.motor(b.A,300)\nprint("WP6_SLEEP")\nb.sleep_ms(3000)\nprint("WP6_TOO_LATE")\n');
     await until(sleeping, () => sleeping.text.includes('WP6_SLEEP') && sleeping.states.has(PROGRAM_STATE.RUNNING), 100, 'sleep start');
-    await step(sleeping, 60);
+    sleeping.sleepAdmission = await windowCheckpoint(sleeping, 60, PROGRAM_STATE.RUNNING, 'sleep admission');
     assert.equal(sleeping.route.program.state, PROGRAM_STATE.RUNNING, 'long sleep is still running before Stop');
-    assert.ok(sleeping.last.duties[0] !== 0 && Math.abs(sleeping.last.physicalAngles.A) > 5, 'sleep follows an executed motor command');
-    sleeping.sleepAdmission = {output: sleeping.text, last: structuredClone(sleeping.last)};
+    assert.ok(sleeping.sleepAdmission.last.duties[0] !== 0 && Math.abs(sleeping.sleepAdmission.last.physicalAngles.A) > 5, 'sleep follows an executed motor command');
     await sleeping.route.program.stop();
     await until(sleeping, () => sleeping.route.program.idle && sleeping.route.program.state === PROGRAM_STATE.STOPPED, 100, 'sleep Stop');
-    await step(sleeping, 60);assert.doesNotMatch(sleeping.text, /WP6_TOO_LATE/);
-    assert.equal(sleeping.last.duties[0], 0);
+    sleeping.acceptance = await windowCheckpoint(sleeping, 60, PROGRAM_STATE.STOPPED, 'sleep Stop settling', /WP6_TOO_LATE/);
+    assert.doesNotMatch(sleeping.acceptance.output, /WP6_TOO_LATE/);
+    assert.equal(sleeping.acceptance.last.duties[0], 0);
     const drive = sleeping.last.drives.find(d => d.port === 'A');
     assert.ok(drive.meanDrive === 0 && drive.brakingTicks === drive.ticks, 'actual stopped bridge brakes');
     await close(sleeping);
