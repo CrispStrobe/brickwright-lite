@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import assert from 'node:assert/strict';
+import {isDeepStrictEqual} from 'node:util';
+import {serializeModel} from '../../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {catalogFrom,prepareModel} from '../../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {evaluateReviewedIntake} from './sim-lab-six-intake-judge.mjs';
 import {reviewedIntakeContract,intakeRead} from './sim-lab-six-intake-contracts.mjs';
@@ -29,6 +31,24 @@ const compareStructure=(actual,expected,path='mechanism')=>{
  }else assert.equal(actual,expected,path);
 };
 
+// The app project writer stores twelve decimal places. Bind replay to that exact,
+// deterministic derivative of the reviewed source, never to arbitrary observed
+// input or a wider geometric tolerance. Both compiled variants keep the same
+// numerical source-binding and physical acceptance limits.
+export function bindSixBrowserSource(id,record){
+ const source=intakeRead('overlay/scratch-gui/static/sim-lab/models/'+id+'.ldr').toString(),catalog=catalogFrom(JSON.parse(intakeRead('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
+ const prepare=(text,autoPorts)=>{const p=prepareModel(text,catalog,{mat:'plain',...(autoPorts===undefined?{}:{autoPorts})});return {issues:p.issues,model:p.model,runModel:p.runModel,mechanism:p.mechanism};};
+ const original=prepare(source,false),saved=serializeModel(original.model,{precision:12});
+ const variants=[{name:'reviewed-source',text:source,prepared:original},{name:'canonical-project-save',text:saved,prepared:prepare(saved,false)}];
+ const variant=variants.find(v=>isDeepStrictEqual(record.model,v.prepared.model));
+ assert.ok(variant,'actual model is exactly the reviewed source or its canonical project serialization');
+ assert.deepEqual(record.runModel,variant.prepared.runModel,'actual simulation placements match the bound input');
+ compareStructure(structure(record.mechanism),structure(variant.prepared.mechanism));
+ const ordinaryPrepared=prepare(variant.text,undefined);
+ const unassisted={issues:variant.prepared.issues,mechanism:variant.prepared.mechanism},ordinary={issues:ordinaryPrepared.issues,mechanism:ordinaryPrepared.mechanism};
+ return {ordinary,unassisted,sourceBinding:variant.name};
+}
+
 export async function judgeSixBrowser(id,record){
  assert.ok(Number.isFinite(record.finishedAt),'actual VM finishes');
  assert.deepEqual(record.issues,[]);assert.ok(record.track.length>=500);
@@ -36,15 +56,12 @@ export async function judgeSixBrowser(id,record){
  assert.equal(Number(variables.completed),1);assert.equal(Number(variables.failed),0);
  assert.ok(Object.values(last.busy).every(busy=>busy===false));
  assert.ok(Object.values(last.extra.modes).every(mode=>mode==='hold'),'every actual native motor holds at completion');
- const source=intakeRead('overlay/scratch-gui/static/sim-lab/models/'+id+'.ldr').toString(),catalog=catalogFrom(JSON.parse(intakeRead('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
- const prepare=autoPorts=>{const p=prepareModel(source,catalog,{mat:'plain',...(autoPorts===undefined?{}:{autoPorts})});return {issues:p.issues,mechanism:p.mechanism};};
- const ordinary=prepare(undefined),unassisted=prepare(false);
- compareStructure(structure(record.mechanism),structure(unassisted.mechanism));
+ const {ordinary,unassisted,sourceBinding}=bindSixBrowserSource(id,record);
  const initialWorldErrorMm=Math.max(...record.mechanism.bodies.filter(b=>b.parts.length&&b.motion==='dynamic').map(b=>Math.hypot(...record.track[0].bodies[b.id].position.map((v,k)=>v-b.position[k]))*1000));
  assert.ok(initialWorldErrorMm<=.5,'initial saved world datum within0.5mm; the chassis remains free during the experiment');
  if(['rod-ratio','vernier-drive','line-turner'].includes(id)){
   const result=await evaluateReviewedIntake(id,record,{native:false});assert.deepEqual(result.failures,[]);
-  return {scope:'Actual browser program, complete mechanical laws and hold; full unpowered startup qualified natively',initialWorldErrorMm,...result.metrics};
+  return {scope:'Actual browser program, complete mechanical laws and hold; full unpowered startup qualified natively',sourceBinding,initialWorldErrorMm,...result.metrics};
  }
  const contract=reviewedIntakeContract(id),start=record.start;
  const r={...record,finishedAt:record.finishedAt-start,
@@ -63,5 +80,5 @@ export async function judgeSixBrowser(id,record){
  }
  assert.deepEqual(gates.filter(g=>g.status!=='PASS'),[],'Every declared browser-observable physical and API gate');
  return {scope:'Actual browser mechanics and API events; native-only startup/compiler/source gates qualified separately',
-  initialWorldErrorMm,checkedGates:gates.length,nativeOnlyNotEvaluated:excluded.map(g=>g.name),metrics:result.metrics||result.measurements};
+  sourceBinding,initialWorldErrorMm,checkedGates:gates.length,nativeOnlyNotEvaluated:excluded.map(g=>g.name),metrics:result.metrics||result.measurements};
 }

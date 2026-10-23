@@ -56,6 +56,11 @@ These six examples contain physical comparisons inside their own assemblies
 or routes. Their specific comparisons are registered by the reviewer. Other
 intakes still require their existing disconnected-mechanism controls.
 
+Project saves, model-file exports and Build-to-Simulate retain twelve decimal places for precise authored joint geometry;
+the default standalone writer retains its existing six-decimal output. Source
+binding accepts only the reviewed model or its exact canonical project-save
+derivative, with unchanged compiled-geometry and motion tolerances.
+
 Browser qualification separately checks actual worker poses and API calls,
 program completion, hold, manual controls and Stop, visible PNG pixels,
 connected instructions, placement BOM, raw LDR/MPD imports, actual project save

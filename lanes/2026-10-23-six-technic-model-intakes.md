@@ -39,3 +39,10 @@ one Oblique roof brace and the stock suspension-arm fork representation;
 all supports, masses and connectors remain. The six named internal physical
 comparisons and Atlas Six exception are explicit reviewer-owned registrations.
 Final qualification of the composed candidate remains required.
+
+Saved-project qualification reproduced loss of precise joint geometry in the
+six-decimal writer. Project saves, model-file exports and the Build transition
+now request twelve decimals; the standalone serializer's default stays intact.
+The original Vernier marker check rejects the old output and accepts the precise
+output. Browser source binding accepts only the exact reviewed model or its
+canonical save derivative, while retaining compiled-geometry and physical limits.

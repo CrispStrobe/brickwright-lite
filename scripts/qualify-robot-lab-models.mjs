@@ -29,7 +29,7 @@ const steps=[
  {id:'lessons-generated',args:['scripts/gen-robot-lab-lessons.mjs','--check']},
  {id:'registrations-lessons-search',args:[...native,'test/bw-sim-models.test.mjs','test/bw-sim-example-catalog.test.mjs','test/bw-sim-lazy-catalog.test.mjs','test/bw-sim-resonance-intake.test.mjs','test/bw-sim-lessons.test.mjs','test/robot-lab-mechanism-search.test.mjs','test/bw-sim-manual-policy.test.mjs']},
  {id:'construction',args:[...native,'test/bw-sim-models-solid.test.mjs','test/bw-sim-instructions.test.mjs']},
- {id:'native-motion-and-negatives',args:[...native,'test/bw-sim-qualification.test.mjs',...new Set(contracts.filter(c=>c.nativeSuite).map(c=>QUALIFICATION_NATIVE_TESTS[c.nativeSuite]))]},
+ {id:'native-motion-and-negatives',args:[...native,'test/bw-sim-qualification.test.mjs',...new Set(contracts.filter(c=>c.nativeSuite).map(c=>QUALIFICATION_NATIVE_TESTS[c.nativeSuite])),...(contracts.some(c=>QUALIFICATION_NATIVE_TESTS[c.nativeSuite]==='test/bw-sim-six-technic-intakes.test.mjs')?['test/sim-lab-six-source-binding.test.mjs','test/bw-sim-model-file.test.mjs','test/bw-sim-ldraw-model.test.mjs','test/bw-sim-persist.test.mjs']:[])]},
  {id:'mirrors',args:['scripts/check-mirrors.mjs']}
 ];
 if(mode==='full'){
