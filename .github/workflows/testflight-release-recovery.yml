@@ -28,11 +28,23 @@ jobs:
         with:
           path: recovery
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /scripts/testflight-release-recovery.mjs
+            /scripts/lib/testflight-release-state.mjs
+            /scripts/lib-appstore.mjs
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: refs/tags/v0.1.26
           path: release
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /apps/tauri/src-tauri/tauri.conf.json
+            /docs/app-store-metadata.md
+            /scripts/push-tester-notes.mjs
+            /scripts/testflight-submit.mjs
+            /scripts/lib-appstore.mjs
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
