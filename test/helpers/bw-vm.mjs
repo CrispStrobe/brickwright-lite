@@ -79,8 +79,9 @@ export function conformance (project) {
         const probe = probes.get(id);
         if (probe.error) { errors.push({extension: id, error: probe.error}); continue; }
         const bare = opcode.slice(id.length + 1);
-        const defined = probe.opcodes.has(bare);
-        const implemented = probe.methods.has(bare);
+        const menu = probe.menus.has(bare);
+        const defined = menu || probe.opcodes.has(bare);
+        const implemented = menu || probe.methods.has(bare);
         if (defined && implemented) provided.add(opcode);
         else missing.push({opcode, defined, implemented, extension: id});
     }

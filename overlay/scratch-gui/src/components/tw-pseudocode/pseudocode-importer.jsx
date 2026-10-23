@@ -1,4 +1,5 @@
 import React from 'react';
+import {clearControllerPanel} from '../../lib/controller-inputs.js';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {setProjectTitle} from '../../reducers/project-title';
@@ -4995,7 +4996,7 @@ class PseudocodeImporter extends React.Component {
                         const rt = this.props.vm && this.props.vm.runtime;
                         const panel = rt && rt.controllerPanel;
                         if (panel && layout && Array.isArray(layout.widgets)) {
-                            for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+                            clearControllerPanel(panel);
                             // ONE BAD WIDGET MUST NOT EMPTY THE PANEL. This loop
                             // removes every existing widget before it adds any,
                             // and used to sit inside the outer bare `catch` — so
@@ -5026,6 +5027,7 @@ class PseudocodeImporter extends React.Component {
                             // layouts were in that state; they now declare it,
                             // and the panel's own toJSON carries it through a
                             // save (Wave 4 defect 5b).
+                            panel.setHideBindings?.(!!layout.hideBindings);
                             if (layout.mode) panel.setMode(layout.mode);
                             if (rt.stc) rt.stc.controller = layout;
                         }

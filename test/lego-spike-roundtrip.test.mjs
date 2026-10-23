@@ -318,8 +318,10 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // rerun every executable artifact and round-trip assertion at this exact pin.
     // -> 37bfe287 (2026-10-21): canonical school examples and supplier provenance.
     // Compiler src is byte-identical to d7c25891; keep all artifact assertions.
+    // -> 371a8f9d (2026-10-23): programmable Widgets and school battery variants;
+    // preserve and re-run all executable SPIKE artifact checks below.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '37bfe28760f60c836097854fb141fd114bbee518');
+        '1cbaeed325f5a890e43b78a4211acae8f801f2d2');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
