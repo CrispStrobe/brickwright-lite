@@ -3,13 +3,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {FROZEN,RUNTIME_IMAGE,webkitDependencyLibraryPath,admitPreprovisionedRuntime,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
-const fixture=()=>({head:FROZEN.reviewedHeadSha,tree:FROZEN.treeSha,metadata:{job:{id:FROZEN.jobId},artifact:{id:FROZEN.artifactId,size_in_bytes:FROZEN.archiveBytes,digest:FROZEN.archiveDigest}}});
+import {FROZEN,RUNTIME_IMAGE,webkitDependencyLibraryPath,admitPreprovisionedRuntime,admitFrozenArtifactInputs,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
+const reviewed={...FROZEN,runId:1,jobId:2,artifactId:3,archiveBytes:128,archiveDigest:'sha256:'+'a'.repeat(64),checkoutSha:'b'.repeat(40),producerLogSha256:'c'.repeat(64)};
+const fixture=()=>({head:reviewed.reviewedHeadSha,tree:reviewed.treeSha,metadata:{job:{id:reviewed.jobId},artifact:{id:reviewed.artifactId,size_in_bytes:reviewed.archiveBytes,digest:reviewed.archiveDigest}}});
 test('comparison admits only the reviewed whole tree and frozen existing artifact',()=>{
-    assert.deepEqual(admitComparisonSource(fixture()),FROZEN);
+    assert.deepEqual(admitComparisonSource(fixture(),reviewed),reviewed);
     for(const cut of [x=>x.head='0'.repeat(40),x=>x.tree='1'.repeat(40),x=>x.metadata.job.id++,x=>x.metadata.artifact.id++,x=>x.metadata.artifact.size_in_bytes++,x=>x.metadata.artifact.digest='sha256:'+'f'.repeat(64)]){
-        const input=fixture();cut(input);assert.throws(()=>admitComparisonSource(input));
+        const input=fixture();cut(input);assert.throws(()=>admitComparisonSource(input,reviewed));
     }
+});
+test('unadmitted producer inputs cannot reach source or archive admission',()=>{
+    admitFrozenArtifactInputs(reviewed);
+    for(const key of ['runId','jobId','artifactId','archiveBytes','checkoutSha','archiveDigest','producerLogSha256']){
+        const pending={...reviewed,[key]:null};assert.throws(()=>admitFrozenArtifactInputs(pending));assert.throws(()=>admitComparisonSource(fixture(),pending));
+    }
+});
+test('an unset archive bound refuses before any CDN request',async()=>{
+    let calls=0;const get=boundedComparisonFetch(async()=>{calls++;return new Response('unrequested');},{archiveBytes:null});
+    await assert.rejects(get('https://fixture.actions.githubusercontent.com/artifact'),/before request/);assert.equal(calls,0);
 });
 test('metadata streaming enforces actual bytes and cancels before concatenation',async()=>{
     let cancelled=false;
@@ -39,7 +50,7 @@ test('unapproved artifact transport and credentials refuse before any request',a
     assert.equal(requests,0);
 });
 test('completed original CDN response can be retained before downstream digest refusal',async()=>{
-    let original;const get=boundedComparisonFetch(async()=>new Response('original bytes'),{onArchiveBytes:bytes=>{original=bytes;}});
+    let original;const get=boundedComparisonFetch(async()=>new Response('original bytes'),{archiveBytes:128,onArchiveBytes:bytes=>{original=bytes;}});
     const response=await get('https://fixture.actions.githubusercontent.com/artifact');
     assert.equal((await response.arrayBuffer()).toString(),'original bytes');assert.equal(original.toString(),'original bytes');
 });

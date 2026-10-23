@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T20:31:48.356Z",
+  "generatedAt": "2026-10-23T21:00:00.051587Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -7503,13 +7503,13 @@
           "class": "always"
         }
       },
-      "sourceSha": "368bd55ae",
-      "observationScope": "Retained 048a deadline failure, dc250 outer cancellation and 368 preinput diagnostic refusal. Counts record execution, not acceptance; corrected dependency probe remains unqualified."
+      "sourceSha": "working-tree",
+      "observationScope": "New combined-source replacement declaration; historical048a/DC/368 execution records are retained, not acceptance of this replacement. Artifact fields remain unadmitted."
     }
   },
   "lastRefresh": {
     "workflow": "robot-model-webkit-comparison.yml",
-    "at": "2026-10-23T20:31:48.356Z",
-    "sourceSha": "368bd55ae"
+    "at": "2026-10-23T21:00:00.051587Z",
+    "sourceSha": "working-tree"
   }
 }

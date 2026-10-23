@@ -12,24 +12,24 @@ import os from 'node:os';
 
 export const FROZEN = Object.freeze({
     "repository": "CrispStrobe/brickwright-lite",
-    "runId": 39999619745,
+    "runId": null,
     "attempt": 1,
-    "runHeadSha": "bfb775501f20b96b793e759bee21766d10d93b96",
-    "reviewedHeadSha": "bfb775501f20b96b793e759bee21766d10d93b96",
-    "checkoutSha": "bc66cab7f1eeeab20b57987019717b7634d815c5",
-    "treeSha": "9c20b3aafe1f83e653c32f342c2f8f5e92ffbcb6",
-    "jobId": 120573107110,
-    "artifactId": 12523413892,
-    "archiveBytes": 117526665,
-    "archiveDigest": "sha256:9e0b4d5075a788d4d84ad232304e3cb60457a3b1cc6bedc9ce4f6c755b32e543",
-    "producerLogSha256": "cb2c8b53c97adfd37195d11ab544e2b658015b4c36db3266bb24b96b6c506847",
-    "producerSha": "37bfe28760f60c836097854fb141fd114bbee518",
+    "runHeadSha": "07f1a47a72b1a41c4b6dd7d7bae04fabbf3bcacc",
+    "reviewedHeadSha": "07f1a47a72b1a41c4b6dd7d7bae04fabbf3bcacc",
+    "checkoutSha": null,
+    "treeSha": "3aeebc6d3ca05c3dce36dfd611024d6f2f5c8f87",
+    "jobId": null,
+    "artifactId": null,
+    "archiveBytes": null,
+    "archiveDigest": null,
+    "producerLogSha256": null,
+    "producerSha": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
     "arraysValuesSha": "4db2813d366af8a110fc79599afb55d1cd42d8df"
 });
 const sha = b=>createHash('sha256').update(b).digest('hex');
 const git = (root,...args)=>execFileSync('git',['-c','gc.auto=0','-c','maintenance.auto=false',...args],{cwd:root,encoding:'utf8'}).trim();
 export const RUNTIME_IMAGE = 'mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac';
-export const QUALIFICATION_CONDITION = 'preprovisioned-ubuntu24-amd64-playwright-1.62.1';
+export const QUALIFICATION_CONDITION = 'combined-main-preprovisioned-ubuntu24-amd64-playwright-1.62.1';
 export function webkitDependencyLibraryPath(directory,tail='') {
     const bundled=posix.join(directory,'minibrowser-wpe/lib')+':'+posix.join(directory,'minibrowser-wpe/sys/lib');
     return tail ? bundled+':'+tail : bundled;
@@ -76,25 +76,38 @@ async function preflightRuntime() {
     admitPreprovisionedRuntime(packet);assert.equal(packet.candidateHead,FROZEN.reviewedHeadSha);
     await writeFile(output,JSON.stringify(packet,null,2)+'\n',{flag:'wx'});
 }
-export function admitComparisonSource({head,tree,metadata}) {
-    assert.equal(head,FROZEN.reviewedHeadSha,'Exact reviewed candidate');
-    assert.equal(tree,FROZEN.treeSha,'Complete candidate/producer tree equality');
-    assert.equal(metadata.job.id,FROZEN.jobId,'Exact retained producer');
-    assert.equal(metadata.artifact.id,FROZEN.artifactId,'Exact existing artifact');
-    assert.equal(metadata.artifact.size_in_bytes,FROZEN.archiveBytes,'Frozen original archive length');
-    assert.equal(metadata.artifact.digest,FROZEN.archiveDigest,'Frozen original archive digest');
-    return {...FROZEN};
+export function admitFrozenArtifactInputs(expected) {
+    assert.equal(expected.repository,'CrispStrobe/brickwright-lite');assert.equal(expected.attempt,1);
+    for(const key of ['runId','jobId','artifactId','archiveBytes'])
+        assert.ok(Number.isSafeInteger(expected[key])&&expected[key]>0,'Frozen input remains unadmitted: '+key);
+    assert.ok(expected.archiveBytes<=256*1024*1024,'Frozen archive resource bound');
+    for(const key of ['runHeadSha','reviewedHeadSha','checkoutSha','treeSha','producerSha','arraysValuesSha'])
+        assert.match(expected[key]||'',/^[0-9a-f]{40}$/,'Frozen source remains unadmitted: '+key);
+    assert.match(expected.archiveDigest||'',/^sha256:[0-9a-f]{64}$/);
+    assert.match(expected.producerLogSha256||'',/^[0-9a-f]{64}$/);
+    return expected;
 }
-export function boundedComparisonFetch(fetchImpl=fetch,{onArchiveBytes=()=>{}}={}) {
+export function admitComparisonSource({head,tree,metadata},expected=FROZEN) {
+    admitFrozenArtifactInputs(expected);
+    assert.equal(head,expected.reviewedHeadSha,'Exact reviewed candidate');
+    assert.equal(tree,expected.treeSha,'Complete candidate/producer tree equality');
+    assert.equal(metadata.job.id,expected.jobId,'Exact retained producer');
+    assert.equal(metadata.artifact.id,expected.artifactId,'Exact existing artifact');
+    assert.equal(metadata.artifact.size_in_bytes,expected.archiveBytes,'Frozen original archive length');
+    assert.equal(metadata.artifact.digest,expected.archiveDigest,'Frozen original archive digest');
+    return {...expected};
+}
+export function boundedComparisonFetch(fetchImpl=fetch,{onArchiveBytes=()=>{},archiveBytes=FROZEN.archiveBytes}={}) {
     let calls=0;
     return async (url,options={})=>{
         assert.ok(++calls<=20,'Bounded metadata/archive request count');
         const u=new URL(url),api=u.hostname==='api.github.com';
         assert.equal(u.protocol,'https:');assert.equal(u.username+u.password,'');assert.equal(u.port,'');
         assert.ok(api||/(?:\.blob\.core\.windows\.net|\.actions\.githubusercontent\.com|\.githubusercontent\.com)$/.test(u.hostname),'Admitted GitHub artifact host');
+        if(!api)assert.ok(Number.isSafeInteger(archiveBytes)&&archiveBytes>0&&archiveBytes<=256*1024*1024,'Frozen archive bound required before request');
         const response=await fetchImpl(url,{...options,signal:AbortSignal.timeout(90000)});
         if(response.status===302){await response.body?.cancel();return {status:response.status,headers:response.headers};}
-        const limit=api?4*1024*1024:FROZEN.archiveBytes;
+        const limit=api?4*1024*1024:archiveBytes;
         const length=response.headers.get('content-length');
         try{if(length!==null){assert.match(length,/^[0-9]+$/);assert.ok(Number(length)<=limit,'Declared response bound before buffering');}}
         catch(error){await response.body?.cancel();throw error;}
@@ -153,6 +166,7 @@ async function installReadonlyObserver() {
 }
 async function main() {
     assert.equal(process.argv.length,4,'Use candidate-directory and new output-directory');
+    admitFrozenArtifactInputs(FROZEN);
     assert.equal(Number(process.versions.node.split('.')[0]),22,'Supported Node 22');
     const root=resolve(process.argv[2]),out=resolve(process.argv[3]),harness=resolve(dirname(fileURLToPath(import.meta.url)),'..');
     assert.equal(process.env.GITHUB_REPOSITORY,FROZEN.repository,'Owned repository only');
@@ -201,10 +215,11 @@ async function main() {
     const archivePath=join(out,'official-frontend.zip');
     await save('original-acquisition-reservation.json',{owner:process.env.GITHUB_RUN_ID,admission,archivePath:'official-frontend.zip',
         qualificationCondition:QUALIFICATION_CONDITION,runtimeImage:RUNTIME_IMAGE,
-        priorInputCondition:{consumerHead:'dc250d461b7f161c7696504a054d1cc49ccac003',runId:40007060335,inputConsumed:true},
+        priorInputCondition:{consumerHead:'dc250d461b7f161c7696504a054d1cc49ccac003',runId:40007060335,inputArtifactId:12523413892,
+            candidateHead:'bfb775501f20b96b793e759bee21766d10d93b96',inputConsumed:true,obsoleteForCombinedApplication:true},
         preinputRefusals:[{consumerHead:'368bd55aea021ac2922578200819b85938631dba',runId:40018078929,inputConsumed:false,
             reason:'Dependency probe omitted bundled sys/lib; corrected to the launcher library search contract'}],
-        scope:'New declared runtime condition consumes the same immutable input for actual qualification; audit originals remain once-only.'});
+        scope:'Fresh combined-source frontend for actual qualification; prior BFB inputs do not qualify this application. Each condition audit remains once-only.'});
     let bytes;
     try{bytes=await helper.acquireGuiArchive({admission,archivePath,token:process.env.GITHUB_TOKEN,fetchImpl});}
     catch(error){

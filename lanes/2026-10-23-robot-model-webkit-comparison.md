@@ -98,3 +98,15 @@ the old two missing-library reports and resolve both with the launcher path.
 No package is installed, missing library ignored, pin moved or oracle changed.
 The three observed historical conditions record execution only; the corrected
 probe and full journey remain unqualified until their new source event.
+
+A replacement consumer is prepared on the owned
+`lane/robot-model-webkit-preprovisioned-20261023` branch against combined
+model/renderer/main source `07f1a47a72b1a41c4b6dd7d7bae04fabbf3bcacc`,
+tree `3aeebc6d3ca05c3dce36dfd611024d6f2f5c8f87`. Earlier BFB producer
+inputs and outcomes above remain historical and do not qualify this changed
+application bootstrap and dependency graph. New producer identities, archive
+length and digests must be admitted and bound before any input request.
+The source and fetch guards refuse unadmitted fields; no old-artifact fallback
+is allowed. The former comparison PR remains closed and unqualified.
+The replacement must be created with the frozen model branch as its base
+from the start, without retargeting, manual dispatch or a repeated label.
