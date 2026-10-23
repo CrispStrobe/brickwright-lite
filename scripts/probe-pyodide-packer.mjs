@@ -50,6 +50,7 @@ import {execFileSync} from 'node:child_process';
 import {existsSync, readFileSync, mkdirSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
+import {acquireApyculaWheel, APYCULA_WHEEL} from './lib/apycula-wheel.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const PYODIDE_DIR = path.join(ROOT, 'artifacts', 'pyodide');
@@ -130,6 +131,8 @@ export async function packWithPyodide (design, {loadPyodide, pnrOverride = null}
     const t0 = Date.now();
     const py = await load({stdout: () => {}, stderr: () => {}});
     await py.loadPackage(['micropip', 'numpy'], {messageCallback: () => {}});
+    const wheelPath = `/${APYCULA_WHEEL.filename}`;
+    py.FS.writeFile(wheelPath, await acquireApyculaWheel(PYODIDE_DIR));
 
     // deps=False is load-bearing, not a shortcut: the dependency that has no
     // pure wheel (fastcrc) is one the packer does not need, and asking for it
@@ -145,7 +148,7 @@ export async function packWithPyodide (design, {loadPyodide, pnrOverride = null}
     await py.runPythonAsync(`
 import micropip
 await micropip.install('msgspec')
-await micropip.install(${JSON.stringify(APYCULA)}, deps=False)
+await micropip.install(${JSON.stringify('emfs:/'+APYCULA_WHEEL.filename)}, deps=False)
 `);
     const ready = Date.now() - t0;
 

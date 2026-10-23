@@ -126,7 +126,7 @@ Virtual hub: `G/bw-sim/hubs/nxt/` (direct + system commands, files); VM `G/bw-si
 | legonxt | SL-BT | blocks | GREEN | `bw-sim-bt-hubs-program` "NXT bumper bot: legonxt turns B and C 360 ± 2° ...", "NXT motor reporters ..." |
 | legonxt | SL-BT upload | `.rxe` on-brick | GREEN | `bw-sim-nxt-rxe-legonxt` "legonxt uploads touch-bumper.rxe ... stops at the wall" (#1115 merged); `bw-sim-nxt-rxe-brick` |
 | legonxt | SL-BT | `nxt` DEVICE words | GREEN (#1129 merged) | `lego-hubs-dialect` proves the words compile to the same real extension blocks that the NXT Lab tests execute. |
-| legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PARTIAL (#1130 merged) | `bw-sim-mindstorms-model-limits` proves model sync, buttons and estimated ultrasonic event capture directly (and the .rxe VM’s ReadButton). The adopted extension has no blocks exposing these operations. Candidate CrispStrobe/extensions#63 adds them with strict protocol controls, but its required two-reviewer approval remains pending; Lite has not adopted that supplier |
+| legonxt | SL-BT | motor sync, buttons, ultrasonic listen | GREEN | `lab-nxt-live-surface`: the real pinned extension’s VM blocks synchronize both motors, read held/released buttons and release counts through the closed Button IOMap, and set/read ultrasonic listen mode through the actual scene. Zero-power and reversed-emitter programs fail the same motion/event judges. Direct extension probes also cover long releases, non-clearing counts and wrong-port refusal. Supplier CrispStrobe/extensions#63 is adopted at merge `428d440353120856620dac86a257e8e1b91d7348`; ultrasonic event bytes and the 2000 ms button-duration model remain estimates. |
 | legonxt | hosted NXC -> `.rxe` | NXC source | GREEN | `bw-sim-nxt-rxe-legonxt`: the real compile/upload/start blocks post the exact committed `touch-bumper.nxc`, receive its recorded compiler reply, and the Robot Lab bot stops on its bumper; an altered source has no recorded reply, uploads no fixture and never drives. No live compiler is exercised. |
 | legonxt | Web Serial ("direct"), bridge | blocks | GREEN | `bw-sim-virtual-transports-nxt` "legonxt over Web Serial (\"direct\", 9600 baud): the bumper bot drives until the bumper meets the wall and stops", "legonxt over its WebSocket bridge (base64 telegrams): …" (+ a no-stop control on both). Connected by its own `set connection mode` / `connect` blocks with no Scratch Link; `G/bw-sim/transports/virtual-serial.js` and `virtual-bridge.js` (ws://localhost:8765, one base64 text message per length-prefixed telegram) -> the Virtual NXT session. Needed CrispStrobe/extensions#58: both backends called methods they do not have, so neither could connect, and the bridge resolved numbers its callers parse as telegrams |
 
@@ -151,9 +151,9 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 | Powered Up City / Technic | 6 | 0 | 0 | 0 |
 | WeDo 2.0 | 5 | 0 | 0 | 0 |
 | SPIKE Essential | 2 | 0 | 0 | 0 |
-| NXT | 5 | 1 | 0 | 0 |
+| NXT | 6 | 0 | 0 | 0 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **42** | **1** | **0** | **0** |
+| **Total** | **43** | **0** | **0** | **0** |
 
 ## Gaps, by user impact
 
@@ -176,7 +176,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 14. ~~BOOST / Powered Up, bridge~~: closed by `lab-hubs-bridge` (virtual HTTP BLE bridge, `G/bw-sim/transports/virtual-ble-bridge.js`).
 15. ~~WeDo 2.0, tilt / lights / tones through the Lab hub~~: closed by `lab-hubs-wedo-observables` on both BLE routes, after repairing sensor identity propagation.
 16. ~~SPIKE Essential, legopoweredup over WB and SL-BLE~~: closed by `lab-hubs-coverage` using the already catalogued assembly `67351c01.dat`, with wrong-program controls on both routes. LDraw geometry/connector checks remain mandatory.
-17. ~~NXT, NXC compile-then-run~~: closed by exact-source recorded compiler-reply tests, not a live compiler. #1129’s words are merged. The sync/buttons/listen cell remains PARTIAL: supplier candidate CrispStrobe/extensions#63 provides the APIs, but its required two-reviewer approval and subsequent Lite adoption remain outstanding. Direct model tests alone cannot close this cell.
+17. ~~NXT, NXC compile-then-run~~: closed by exact-source recorded compiler-reply tests, not a live compiler. #1129’s words are merged. The sync/buttons/listen cell is also closed by `lab-nxt-live-surface` through the real pinned supplier’s blocks and protocol replies, with motion and wrong-scene controls. Estimated sensor/button timing boundaries remain explicit.
 18. ~~RCX, legorcx blocks into the Lab RCX~~: closed by `bw-sim-rcx-legorcx`.
 
 The WeDo gap proved to require a sensor-binding product fix under `G/bw-sim/`; direct protocol tests had bypassed it. #1127 (merged) closed the Powered Up stop-action

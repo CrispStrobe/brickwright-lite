@@ -5,6 +5,7 @@
 // on an axle turning in a clamped beam is the drum — and a brick hung from it on a rope. No ground,
 // so the brick hangs. A motor holding the drum holds the brick; turning it winds the brick up or
 // lets it down by r·Δθ; a free drum is turned by the weight (the rope's tension on the drum).
+import {createMeasurementReader, ropeBinding} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -84,6 +85,12 @@ const run = async (cmd, seconds = 1.5) => {
     for (let i = 0; i < seconds * HZ; i++) core.step(1 / HZ);
     const out = {rise: core.bodyPose(hook).position[1] - y0, wound: rope.drumSign * (core.jointState(hinge.id).angle - a0), r: rope.radiusM,
         state: core.ropeState()[0]};
+    const [reading] = createMeasurementReader({core, mechanism: mech, model: tied()}).read([
+        {id: 'rope-load', kind: 'tension', label: 'Hook load', rope: rope.id, binding: ropeBinding(rope), visible: true}
+    ]);
+    assert.ok(reading.available, reading.reason);
+    assert.equal(reading.value, out.state.tension, 'the overlay reports the actual native constraint tension');
+    assert.ok(reading.points.every(p => p.every(Number.isFinite)));
     core.destroy();
     return out;
 };

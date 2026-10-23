@@ -186,6 +186,9 @@ export const LEGO_HUB_EXCLUSIONS = Object.freeze({
         'legoboostunified_whenMotorOverloaded',
         'wedo2unified_isConnected', 'wedo2unified_whenTilted', 'wedo2unified_isTilted', 'wedo2unified_setLightBrightness',
         'wedo2unified_whenButtonPressed', 'wedo2unified_isButtonPressed',
+        // Live extension APIs; the NXT learner vocabulary does not expose these operations yet.
+        'legonxt_motorSync', 'legonxt_buttonPressed', 'legonxt_buttonReleaseCount',
+        'legonxt_setUltrasonicMode', 'legonxt_getUltrasonicEventByte',
         'legonxt_isConnected', 'legonxt_getMotorMode', 'legonxt_getMotorRegulationMode', 'legonxt_getMotorTurnRatio',
         'legonxt_getMotorRunState', 'legonxt_getMotorTachoLimit', 'legonxt_getMotorTachoCount',
         'legonxt_getMotorBlockTachoCount', 'legonxt_getMotorRotationCount', 'legonxt_getSensorPort',

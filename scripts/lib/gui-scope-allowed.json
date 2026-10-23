@@ -532,6 +532,7 @@
       "test/bw-sim-worm.test.mjs",
       "test/lab-hubs-extensions.test.mjs",
       "test/lab-hubs-wedo-observables.test.mjs",
+      "test/lab-nxt-live-surface.test.mjs",
       "test/lwp3-virtual-hub.test.mjs",
       "test/bw-sim-crane.test.mjs",
       "test/bw-sim-drawing-robot-program.test.mjs",
