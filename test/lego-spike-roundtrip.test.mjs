@@ -314,7 +314,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 371a8f9d (2026-10-23): programmable Widgets and school battery variants;
     // preserve and re-run all executable SPIKE artifact checks below.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '371a8f9d4489a91a9a596135a40cbdc6dbc1c7d7');
+        '1cbaeed325f5a890e43b78a4211acae8f801f2d2');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

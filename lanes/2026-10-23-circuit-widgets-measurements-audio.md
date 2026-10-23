@@ -1,8 +1,7 @@
 # Circuit measurements, reusable organ faceplate and sampled audio
 
 DONE (implementation) — Codex circuit/performance owner, isolated source branch,
-base `e3be735b3`; final consumer build/browser and exact-head hosted qualification
-remain landing gates.
+base `e3be735b3`; exact-head hosted consumer qualification remains the landing gate.
 User authorizes product implementation now; extensive manual/hardware acceptance
 is deferred. Preserve other owners' branches, worktrees, previews and claims.
 
@@ -35,30 +34,35 @@ audio queues. Use automated browser checks for new UI paths. No physical,
 acoustic, installed-native or universal-SPICE equivalence claim. No hardware,
 firmware, native build/release, scheduler or unrelated Robot Lab work.
 
-Qualification available before consumer landing: 24 runtime/widget and project
-consumer controls pass, including a complete SPIKE compiler round trip. The
-project owns circuit bindings while Widgets is closed; only physical input
-capture belongs to the visible pane. Stop All, board replacement, edit/Play and
-saved tuning have executable controls. A full-app hidden-pane negative exposed
-the previous missing binding before this repair.
+Qualification available before final consumer landing: 119 widget/runtime and
+project-bundle controls pass without skips, including the complete SPIKE compiler
+round trip. Project-owned circuit bindings work while Widgets is closed; physical
+input capture belongs to the visible pane. Stop All, board replacement, edit/Play,
+saved tuning and vanilla project replacement have executable controls. An actual
+full-app hidden-pane negative exposed the previous missing binding.
 
-Actual React components with the real circuit engine pass Chromium and WebKit
-checks for keyboard/pointer ownership, tuning, restored layout, cancellation,
-measurements, power warnings and bounded sampled audio. The organ produces
-measured 261.3 Hz pulse envelopes; changing the actual trimmer changes frequency
-to 386.1 Hz. A separate 1 kHz sampled-source benchmark renders at 1 kHz through
-native Web Audio. Earlier full-app File Save/fresh-context Open and programmed
-eight-key playback pass; final integrated supplier adoption is checked again
-before landing. These automated checks do not establish actual Safari audio,
-acoustic or physical acceptance.
+A production build and actual full-app browser checks pass Code-to-Blocks,
+programmed keys with Widgets never mounted, keyboard input, tuning, File Save and
+fresh-context Open. Component voltage/current/power and authored-limit warnings
+pass. Actual native Web Audio renders the 1 kHz sample fixture at 1 kHz; observed
+underruns are visible, and Build mode stops audio. Component Chromium/WebKit
+checks also pass. These checks do not establish actual Safari audio, acoustic or
+physical acceptance. Final compiler adoption receives a fresh consumer build and
+browser check before landing.
 
-Suppliers landed first: [circuit UI PR108](https://github.com/CrispStrobe/bw-circuit-ui/pull/108)
-and [compiler/examples PR164](https://github.com/CrispStrobe/sb3-creator/pull/164).
+Suppliers landed first: [circuit UI PR108](https://github.com/CrispStrobe/bw-circuit-ui/pull/108),
+[compiler/examples PR164](https://github.com/CrispStrobe/sb3-creator/pull/164), and
+[Controller menu repair PR166](https://github.com/CrispStrobe/sb3-creator/pull/166).
 Canonical immutable adoption uses circuit UI `17fd4afb0bf27015b099ca67c9cca05919084654`
-and compiler/examples `371a8f9d4489a91a9a596135a40cbdc6dbc1c7d7`.
-Installed package payloads match pinned Git/npm pack bytes in both package
-scopes, with one resolved engine. Generated notices, provenance and active
-adoption guards follow the new pins; historical run receipts retain their
-measured source. No solver limits or oracle tolerances are changed. The broader
-Linux qualification controls require hosted Linux; Mac-only failures at Linux
-OS APIs are retained and are not reported as passes.
+and compiler/examples `1cbaeed325f5a890e43b78a4211acae8f801f2d2`.
+Installed package payloads match pinned Git/npm pack bytes in both scopes, with
+one engine. Notices, provenance and active adoption guards follow the pins;
+historical receipts retain their measured source. Original consumer CI caught
+missing Controller menu shadows, the four new circuits absent from the census
+count, and noncanonical Linux lock metadata. Preserve these failures. The
+supplier repair has 179 focused and 60 actual-VM controls passing; all five
+consumer corpus/placement controls pass across 1516 circuits. Canonical Linux
+npm lock generation is byte-stable. Current main's 26 affected measurement plot,
+history, preset and pane controls pass after normal composition. No solver
+limits or oracle tolerances are changed. Linux qualification runs on hosted
+Linux; original Mac failures at Linux-only OS APIs remain retained.
