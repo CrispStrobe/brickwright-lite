@@ -28,6 +28,9 @@ Only these production paths under `overlay/scratch-gui/src/lib/bw-makecode/`:
 
 - `lexical-declaration-readiness.js`: exact own-data parser no-else If handling
   and context-bound instance-method/constructor this syntax recognition.
+- `ts-import.js`: retain an own Boolean `isStatic` on parsed constructors and
+  record an unsupported diagnostic for an illegal static constructor. Preserve
+  every other parser option, parameter/body shape and language profile.
 - `native-class-scalar-view.js`: Boolean false values in its own private literal
   and alternative carriers; preserve their issued identity/currentness model.
 
@@ -39,7 +42,7 @@ Include this claim, associated status/limits in
 next/GUI tasks in `docs/ARCADE-COMPATIBILITY-NEXT-STEPS.md` and
 `docs/CONVERSION-CAPABILITIES-AND-GUI-GAPS.md`.
 
-No generic graph, parser, native-array consumer, helper-recognition, runtime,
+No generic graph, broader parser, native-array consumer, helper-recognition, runtime,
 heap, emitter, SDK/supplier/pin, workflow or policy-ledger change. No new public
 analysis option, caller certificate, receiver/type producer or method entry
 seed. Keep all three helper profiles, native-domain import witness, preceding
@@ -70,7 +73,10 @@ occurrence in an exactly owned instance constructor/method/getter/setter record
 created from the current Class's own constructor or method collection. Bind
 actual parser shape, method identity, nonstatic role and lexical owner; a
 params/body-shaped record, moved ordinary function, name or supplied owner flag
-cannot enroll a method. Reject explicit this formals and inherited/forged role
+cannot enroll a method. A constructor must retain its actual own
+`isStatic:false` parser role; absence is never treated as proof of instance
+ownership. The parser currently erases that role, so the narrow retention and
+static-constructor diagnostic above are part of this scope. Reject explicit this formals and inherited/forged role
 metadata. Own source/accessor/prototype mutation remains revocable.
 
 A nested ordinary function/allocation does not inherit this exemption merely
@@ -121,6 +127,9 @@ local same-name bindings, consequent-only and early/unknown-entry refusals, abru
 completion joins, missing/inherited/accessor/nondata alternates with zero getter
 calls, and physical edits/observed restoration. Pair actual instance ctor/getter/
 setter/method this positives with global/static/field/nested/forged-owner negatives.
+Explicitly test parsed instance constructors retain own `isStatic:false`, parsed
+static constructors retain own true plus an unsupported diagnostic, and absent,
+inherited or forged constructor role metadata cannot authorize this.
 Explicitly test generic receiver initialization stays false, method entry seeds
 stay empty, constructor calling a captured read before its declaration completes,
 early virtual field access, bad second call, extracted/escaped methods, defaults,
