@@ -90,11 +90,11 @@ await page.waitForFunction(() => Boolean(window.__vm.runtime.controllerPanel), {
 await page.evaluate(() => {
     const p = window.__vm.runtime.controllerPanel;
     for (const n of ['scr', 'a', 'b']) { try { p.removeWidget(n); } catch { /* absent */ } }
-    p.addWidget('scr', 'matrix');
+    p.addWidget('scr', 'matrix', {}, {x: 16, y: 16});
     p.bindToVariable('scr', 'screen');
-    p.addWidget('a', 'button');
+    p.addWidget('a', 'button', {}, {x: 16, y: 200});
     p.bindToVariable('a', 'btnA');
-    p.addWidget('b', 'button');
+    p.addWidget('b', 'button', {}, {x: 100, y: 200});
     p.bindToVariable('b', 'btnB');
     p.setMode('play');
 });
@@ -121,25 +121,27 @@ const buttons = panel.locator('button').filter({ hasText: '●' });
 const nBtns = await buttons.count();
 if (nBtns !== 2) fail(`expected exactly 2 button widgets, found ${nBtns}`);
 pass('two button widgets rendered (2)');
-await buttons.first().dispatchEvent('pointerdown');
+await buttons.first().hover();
+await page.mouse.down();
 await page.waitForFunction(() => {
     const el = document.querySelector('[data-testid="bw-ctl-matrix-scr"]');
     return el && el.querySelectorAll('[data-lit="1"]').length === 9;
 }, { timeout: 10000 }).catch(async () => fail(`X pattern never showed while A held (lit=${await litCount()})`));
 pass('button A held → btnA=1 → program draws the X (9 dots) — FULL LOOP');
-await buttons.first().dispatchEvent('pointerup');
+await page.mouse.up();
 await page.waitForFunction(() => {
     const el = document.querySelector('[data-testid="bw-ctl-matrix-scr"]');
     return el && el.querySelectorAll('[data-lit="1"]').length === 1;
 }, { timeout: 10000 }).catch(async () => fail(`did not return to idle (lit=${await litCount()})`));
 pass('release → back to idle');
-await buttons.nth(1).dispatchEvent('pointerdown');
+await buttons.nth(1).hover();
+await page.mouse.down();
 await page.waitForFunction(() => {
     const el = document.querySelector('[data-testid="bw-ctl-matrix-scr"]');
     return el && el.querySelectorAll('[data-lit="1"]').length === 5;
 }, { timeout: 10000 }).catch(async () => fail(`bar pattern never showed while B held (lit=${await litCount()})`));
 pass('button B held → middle-row bar (5 dots)');
-await buttons.nth(1).dispatchEvent('pointerup');
+await page.mouse.up();
 
 // ---- the gallery example loads its faceplate ready-wired --------------------
 {

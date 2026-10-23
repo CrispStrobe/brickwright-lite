@@ -182,9 +182,14 @@ export function probeExtension (Cls, runtime) {
                 try { if (typeof instance[key] === 'function') methods.add(key); } catch { /* getter */ }
             }
         }
-        return {id: info.id, instance, opcodes, methods, error: null};
+        // Reporter menus are implemented by the VM's field reporter path. They
+        // have no same-named extension method; field-only menus are not inputs.
+        const menus = new Set(Object.entries(info.menus || {})
+            .filter(([, menu]) => menu?.acceptReporters)
+            .map(([name]) => `menu_${name}`));
+        return {id: info.id, instance, opcodes, methods, menus, error: null};
     } catch (error) {
-        return {id: null, instance: null, opcodes: new Set(), methods: new Set(),
+        return {id: null, instance: null, opcodes: new Set(), methods: new Set(), menus: new Set(),
             error: (error && error.message) || String(error)};
     } finally {
         for (const handle of timers) { try { clearInterval(handle); clearTimeout(handle); } catch { /* noop */ } }
