@@ -1,5 +1,6 @@
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {createArrayDefiniteOverwrite} from './array-definite-overwrite.js';
+import {createArrayNativeFrameReset} from './array-native-frame-reset.js';
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
 const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create;
 import {sourceValueOperation} from './source-value-operator-helpers.js';
@@ -391,8 +392,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return false;
     };
+    const nativeFrameReset=createArrayNativeFrameReset({project,targets,scopes,records,calls,owners,invalid,block,child,input,
+        literal,binding,globalCell,localCell,captures,closedEffects});
     for(const destination of cells.values())destination.writers=destination.writers.filter(writer=>
-        !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer));
+        !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer)&&!nativeFrameReset.discount(destination,writer));
     // Orphan writes and dynamic local names cannot disappear from all-writer proof.
     for(const target of targets)for(const node of Object.values(target.blocks||{})){
         if(!owners.has(node)&&['data_setvariableto','data_changevariableby'].includes(node.opcode)){const c=globalCell(target,node.fields?.VARIABLE?.[1]);if(c)(c.directBad=true,c.types.add(bad));}
@@ -1351,6 +1354,9 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // A later validation still observes it before any diagnostic early exit.
     prefixResetCurrent();
     return Object.freeze({spriteFlagWriters,validateInput(target,node,name='ARRAY'){
+        // Observe the used frame theorem before every diagnostic exit. A
+        // prototype/reflection failure permanently expires this dependency.
+        if(!nativeFrameReset.current())return {ok:false,reason:'requires the current native frame and activation frontier for a discounted Array reset'};
         if(!prefixResetCurrent())return {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'};
         // Observe retained occurrence facts before *any* diagnostic early exit.
         // A false/throw observation cannot revive after physical restoration.
@@ -1382,7 +1388,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
         // Compute the original result once. A genuine producer observer below
         // can change ambient ownership after the earlier metadata fence.
-        const publish=result=>result.ok&&!prefixResetCurrent()?
+        const publish=result=>result.ok&&!nativeFrameReset.current()?
+            {ok:false,reason:'requires the current native frame and activation frontier for a discounted Array reset'}:result.ok&&!prefixResetCurrent()?
             {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});

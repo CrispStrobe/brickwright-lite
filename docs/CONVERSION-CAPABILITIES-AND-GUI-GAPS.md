@@ -1,22 +1,30 @@
 # Conversion capabilities and GUI closure ledger
 
-## Current hosted boundary for recursive procedures and Array identity
+## Current measured boundary and open editor work — 23 October 2026
 
-The complete original 32-case SDK cohort and all 87 existing affected Array controls now pass, including mixed forwarding through second export. The new identity-control corrections remain unqualified; this is not a completed editor or application journey.
+The [completed unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39939025985)
+has 12,433 passes and 147 failures; its current class/operation/diagnostic and
+original SDK Sprite receiver cohorts pass. These counts do not measure complete
+applications or editor parity. Subsequent class-frontier source controls pass
+38 focused groups; their combined hosted qualification remains pending.
 
-The complete 55 recursive source controls and six observer groups pass, but the original
-native/Code/export function-return module is still 9/12. Recursive/mutual calls,
-parameter writes and Sprite forwarding require actual export diagnosis and
-native/SDK/editor acceptance; source control success does not close their GUI
-rows. The active Array prefix repair must retain current proof ownership through
-cached writer removal and validation; its model `Any` marker is not a type fact.
+The numeric authoring journey has now retained its exact consumed input and
+semantic result with capture status COMPLETE. It still refuses two mutation/
+indexing Array receivers. The concrete graph has an entry-local null reset,
+intervening game setup, a genuine later Array allocation and a later callback
+that captures the local. It supplies no block-level private predicate trace.
 
-The numeric authoring journey now displays the real clean-export failure:
-mutation/indexing Array producer refusals. Its retained later Code and emitted files show a startup-local
-null reset, intervening device operations and an explicit local capture; an
-older saved project is not the failed current graph. Capture the exact input
-consumed by export before choosing a causal fix. Preserve the current assets,
-clean-report assertion, Code/Blocks/save/fresh-reopen and MakeCode acceptance.
+[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) is implemented as a
+candidate under merged claim #1283; the new 11-group integrated-product module
+has not yet executed. The proof may discard only a proven dead entry reset;
+all actual producers, remaining writers and settings presence stay independent.
+Keep original assets, clean-report assertions and input/controller behavior.
+
+The authoring acceptance task remains: create/edit the whole game in Code,
+pseudocode and Blocks, preserve graphics, export and reimport exact files, save
+and reopen the project, then repeat the real controller journey. These surfaces
+need readable local/capture/loop/Array/settings blocks and diagnostics; parser
+support or a clean focused receiver result alone does not close their GUI rows.
 
 ## Closed recursive Number results — planned authoring acceptance
 

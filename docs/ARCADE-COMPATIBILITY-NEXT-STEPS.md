@@ -1,35 +1,40 @@
 # Arcade compatibility: integration and next steps
 
-## Latest completed unit set and next candidate
+## Latest measured boundary and current candidate — 23 October 2026
 
-The [completed hosted unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39905957395)
-reports **12,346 passes, 162 failures, 19 skips and 37 TODOs across 12,564 tests**.
-There are no new failing titles versus its preceding head; the remaining Sprite
-source-restoration failure is resolved. Complete source61, original return12,
-identity8, SDK32, Sprite receiver14, existing Array87, refusal6, report12 and
-diagnostic7 cohorts pass. These results are not a new application census.
+The [completed four-unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39939025985)
+on `df2cdb4c94592bdda7fb4c177e5d99604e1311e5` reports **12,433 passes,
+147 failures, 19 skips and 37 TODOs**. Against the preceding head it adds 50
+passes with no new or resolved failing title. These are unit-test results,
+not application completions. The current class/operation/diagnostic cohorts and
+original SDK Sprite receiver cohort pass; the remaining failures require their
+own semantic repairs.
 
-The actual numeric GUI still fails its unchanged clean-export assertion with
-two Array producer refusals. Its artifact records `UNAVAILABLE_FRESHNESS` and
-no exact failed input graph. The observer's actual failure cause is not retained.
-A source-reviewed follow-up supports the real constructor's absent request slot,
-uses the directly rendered editor root, retains all post-action ownership checks
-and records fixed unavailable reason codes. The complete diagnostic module now
-has nine groups; their new hosted result and actual GUI capture remain pending.
+That run's actual numeric authoring artifact now records **COMPLETE** exact
+consumed input and semantic result. The unchanged clean-export assertion still
+reports two Array producer/all-writer refusals. The earlier unavailable capture
+is historical and must not be mistaken for this complete pair. The result does
+not contain block-level predicate observations or prove a unique cause.
 
-The separate [captured-operation proof](ARCADE-CAPTURED-PRIMITIVE-OPERATIONS.md)
-passes all **11 new source groups locally** under Node 22.23.2, including the exact
-retained Math.idiv draft. Original input initialization stays unchanged. The
-original Math.idiv native/Code/saved-project/export/reimport routes and the final
-combined hosted matrix still need qualification.
+The subsequent [class frontier](ARCADE-CLASS-LEXICAL-FRONTIER.md) source set
+passes all 38 focused groups. Published head
+`6df26f1d0e738f1228057671c350a221388f0988` is still undergoing hosted
+qualification in [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128).
+Source success does not establish native, SDK, editor or application completion.
 
-Continue with the final pushed head: inspect complete affected controls and the
-actual numeric artifact once. Require COMPLETE exact input/result bytes, their
-hashes and build/source identity before changing the Array initialized-producer
-or compatible-writer guards. If observation remains unavailable, use its retained
-reason to repair observation ownership. Keep assertions, diagnostics and corpus
-accounting intact. Historical **147 translated / 36 partial / one malformed**
-remains unremeasured.
+The next implementation is [native-frame reset nonreachability](ARCADE-NATIVE-FRAME-RESET.md),
+claimed by merged [PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283)
+before code. It adds a private full-prefix effect and activation-frontier proof
+while preserving all four old reset routes. Its 11 new integrated-product test
+groups are authored; execution and affected final-head qualification remain
+pending. Do not report them as passed or remove the original GUI assertion.
+
+Continue by qualifying that whole module after normal integration, preserving
+actual native frame allocation, primitive arguments, loop fixed points, dormant
+later capture, early callback/prototype/read refusal and all-writer authority.
+Then verify the unchanged numeric GUI, Code/Blocks export/reimport and project
+save/reopen. If another condition refuses, retain and diagnose it separately.
+Historical **147 translated / 36 partial / one malformed** remains unremeasured.
 
 ## Earlier source-restoration checkpoint — 23 October 2026
 
