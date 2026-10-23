@@ -13,6 +13,9 @@ in `scripts/lib/gui-scope-allowed.json`, and focused qualification controls and
 delivery notes. Continue from the complete PR #1236 ancestry in a new successor
 branch and normally compose qualified main. Keep supplied model bytes and
 physical acceptance laws intact while diagnosing any further genuine failure.
+Resolve the narrow normal-composition conflict in `sim-lab-pane.jsx` by retaining
+both the model candidate's session-bound manual policy and qualified main's
+measurement initialization after the existing load-token/disposal fence.
 
 Declare the actual instructions-test dependency boundary narrowly. Report
 generated-translation exclusions in the model identity receipt while preserving
