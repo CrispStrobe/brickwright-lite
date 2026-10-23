@@ -24,7 +24,7 @@ Continue in this order:
    authoring result. Retain each completed original log once; preserve failures.
 2. Land the [exact refusal-capture scope amendment](https://github.com/CrispStrobe/brickwright-lite/pull/1256)
    after its enabled exact-head checks pass. Follow its
-   [self-contained contract](../lanes/2026-10-23-arcade-exact-refusal-capture.md)
+   [self-contained contract](https://github.com/CrispStrobe/brickwright-lite/blob/0266e30e76bd36a39c4362328b60d8d7354f505c/lanes/2026-10-23-arcade-exact-refusal-capture.md)
    before implementation. The existing GUI failure lacks the exact consumed
    project, so an earlier project or matching visible code cannot explain it.
 3. Capture that input and the actual semantic result from the existing single
