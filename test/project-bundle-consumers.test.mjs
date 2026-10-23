@@ -1,6 +1,9 @@
 import {describe, test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {ControllerPanel} from 'bw-board/controller.js';
+import {bindPanelToBoard} from 'bw-board/controller-binding.js';
+import {clearControllerPanel} from '../overlay/scratch-gui/src/lib/controller-inputs.js';
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 const uploader = read('../overlay/scratch-gui/src/lib/sb-file-uploader-hoc.jsx');
@@ -81,10 +84,41 @@ describe('mounted project consumers obey replacement outcomes', () => {
             `vm.runtime.circuitModel, not only to setState — found ${applied.length}`);
         assert.match(circuit, /\{version: 1, parts: \[\], wires: \[\]\}/,
             'replacement must still produce an empty bench');
-        const clear = 'for (const name of p.getWidgetNames()) p.removeWidget(name)';
-        assert.ok(circuit.includes(clear), 'the old controller widgets are not removed');
-        assert.ok(circuit.indexOf(clear) < circuit.indexOf('if (wraw)', circuit.indexOf(clear)),
-            'controller clearing must happen before and outside the optional incoming record');
+        // Execute the actual mounted consumer rather than require an inline
+        // spelling of its clearing loop. The helper also releases bound inputs.
+        const body = /this\._onBundleLoaded = event => \{([\s\S]*?)\n        \};/.exec(circuit);
+        assert.ok(body, 'mounted bundle consumer is present');
+        for (const outcome of ['loaded', 'legacy']) {
+            const panel = new ControllerPanel();
+            panel.addWidget('old-key', 'button', {});
+            panel.bindToPart('old-key', 'old-switch');
+            panel.setMode('play');
+            const writes = [];
+            const binding = bindPanelToBoard(panel, {setControl: (...args) => writes.push(args)});
+            panel.setButtonInput('old-key', true);
+            const host = {props: {vm: {runtime: {controllerPanel: panel}}},
+                _markReactUpdate () {}, setState () {}, _applyToLiveCircuit () {}};
+            const storage = {getItem: () => null, setItem () {}};
+            const apply = new Function('event', 'localStorage', 'clearControllerPanel', body[1]).bind(host);
+            try {
+                apply({detail: {outcome}}, storage, clearControllerPanel);
+                assert.deepEqual(panel.getWidgetNames(), [], 'an absent section removes old widgets');
+                assert.deepEqual(writes.at(-1), ['old-switch', 0], 'replacement releases the old circuit input');
+                if (outcome === 'loaded') {
+                    const data = {version: 1, mode: 'play', hideBindings: true, widgets: [
+                        {name: 'trim1', type: 'slider', config: {min: 0, max: 1, value: .7},
+                            binding: {target: 'part', partId: 'new-trimmer', param: 'position'}}
+                    ]};
+                    storage.getItem = key => key === 'bw-ctl-widgets' ? JSON.stringify(data) : null;
+                    apply({detail: {outcome}}, storage, clearControllerPanel);
+                    assert.deepEqual(panel.getWidgetNames(), ['trim1']);
+                    assert.equal(panel.getValue('trim1'), .7);
+                    assert.equal(panel.mode, 'play');
+                    assert.equal(panel.hideBindings, true);
+                    assert.deepEqual(panel.getWidget('trim1').binding, data.widgets[0].binding);
+                }
+            } finally { binding.dispose(); }
+        }
     });
 });
 
