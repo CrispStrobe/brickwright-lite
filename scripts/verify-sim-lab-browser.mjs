@@ -157,7 +157,7 @@ import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
-import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
+import {simulateUxInteractions, measurementInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
 import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
 import {hingeInteractions} from './lib/sim-lab-hinge-gate.mjs';
 import {chainInteractions} from './lib/sim-lab-chain-gate.mjs';
@@ -366,6 +366,7 @@ const want = part => PART === 'all' || PART === part;
 // A narrow replay of the loaded-motor stop regression; default UI coverage stays complete.
 const INSIGHT_ONLY = process.argv.includes('--ui-only=insight');
 const MIXER_ONLY = process.argv.includes('--ui-only=mixer');
+const MEASUREMENTS_ONLY = process.argv.includes('--ui-only=measurements');
 
 let browser;
 const errors = [];
@@ -1231,7 +1232,21 @@ try {
         await see.close();
     }
 
-    if (want('ui') && !MIXER_ONLY && !INSIGHT_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
+    if (want('ui') && MEASUREMENTS_ONLY) {
+        const page = await browser.newPage({viewport: {width: 1440, height: 900}, serviceWorkers: 'block'});
+        page.on('pageerror', error => errors.push(error.stack || error.message));
+        page.on('dialog', dialog => dialog.accept());
+        await openSimLab(page, {program: null});
+        try { await measurementInteractions(page, {shotsDir: artifacts}); }
+        catch (error) {
+            await page.screenshot({path: resolve(artifacts, 'sim-lab-measurements-failure.png'), fullPage: true}).catch(() => {});
+            throw error;
+        }
+        console.log('PASS live measurements: custom distance/speed, independent overlays, replay, Reset and Build/Simulate');
+        await page.close();
+    }
+
+    if (want('ui') && !MIXER_ONLY && !INSIGHT_ONLY && !MEASUREMENTS_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
         // 15. The Robot Lab tab: icon toolbar (names, tooltips with shortcuts, every action by click and key)
         //     and the movable 3D view (orbit, pan, zoom by mouse and keys; part drags move parts), in English…
         const bar = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
