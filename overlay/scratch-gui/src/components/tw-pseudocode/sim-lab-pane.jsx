@@ -1161,6 +1161,7 @@ class SimLabPane extends React.Component {
         if (!entry) return;
         const file = entry.file;
         const response = await fetch(`${this.lib.MODELS_BASE}${file}`);
+        if (this.disposed || this.shippedRequest !== request) return;
         if (!response.ok) {
             this.setState({status: 'failed', message: this.t('failed', {error: `HTTP ${response.status}`})});
             return;
@@ -1178,13 +1179,13 @@ class SimLabPane extends React.Component {
             await new Promise(resolve => this.setState({mat: entry.mat}, resolve));
             if (this.disposed || this.shippedRequest !== request) return;
         }
-        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example), preserveProgram});
+        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example), preserveProgram, shippedRequest: request});
         if (this.disposed || this.shippedRequest !== request || this.state.status === 'failed') return;
         if (includeProgram && entry.example) await this.loadExample();
         if (this.disposed || this.shippedRequest !== request) return;
         if (updateTitle) this.props.onSetProjectTitle?.(entry.title[this.locale] || entry.title.en);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
-        if (!this.disposed) this.setState({...(this.state.lessonKey ? {lessonKey: key} : {}),
+        if (!this.disposed && this.shippedRequest === request) this.setState({...(this.state.lessonKey ? {lessonKey: key} : {}),
             ...(!includeProgram ? {info: this.shippedModel()?.example && !this.spikeLoaded() ? this.withIntro(this.text.exampleOffer) : ''} : {})});
     }
 
@@ -1290,7 +1291,11 @@ class SimLabPane extends React.Component {
         }
     }
 
-    async openText (text, name, shipped = null, {programLoading = false, measurements, preserveProgram = false} = {}) {
+    async openText (text, name, shipped = null, {programLoading = false, measurements, preserveProgram = false, shippedRequest = null} = {}) {
+        if (shippedRequest !== null && this.shippedRequest !== shippedRequest) return;
+        // Inline/UI opens supersede pending shipped fetches. The owning shipped
+        // loader retains its identity for its later program/title publication.
+        this.shippedRequest = shippedRequest;
         if (this.opened && this.measurementReader) this.measurementModels.set(this.opened.text, this.measurements);
         const savedMeasurements = measurements === undefined ? this.measurementModels.get(text) : measurements;
         this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null; this.measurementRowsTime = null;

@@ -404,7 +404,7 @@ test('actual shipped loader forwards caller preservation without importing a rep
     const pane = {lib: {MODELS: [{id: 'motorbench', file: 'motorbench.ldr'}], MODELS_BASE: '/models/'},
         state: {}, async openText (...args) {calls.push(args);}, setState () {}, shippedModel: () => null};
     await shipped.call(pane, 'motorbench', {preserveProgram: true});
-    assert.deepEqual(calls, [['0 model', 'motorbench.ldr', 'motorbench', {programLoading: false, preserveProgram: true}]]);
+    assert.deepEqual(calls, [['0 model', 'motorbench.ldr', 'motorbench', {programLoading: false, preserveProgram: true, shippedRequest: pane.shippedRequest}]]);
 });
 
 const modelLoaderFixture = () => {
@@ -462,4 +462,70 @@ test('a replaced asynchronous API load cannot install its scene or leak preserva
     assert.equal(pane.session, session);
     assert.deepEqual(calls, [['teardown', {preserveProgram: true}], ['teardown', {preserveProgram: false}],
         ['scene', session, {preserveProgram: false}], 'old-disposed']);
+});
+
+const shippedLoader = fetch => {
+    const start = source.indexOf('    async openShipped (');
+    const end = source.indexOf('    /** The gallery', start);
+    return new Function('fetch', 'modelKey', `return ({${source.slice(start, end)}}).openShipped`)(fetch, entry => entry.id);
+};
+for (const ok of [true, false]) test(`a pending shipped API fetch cannot replace a newer UI model or feedback (HTTP success=${ok})`, async () => {
+    const {pane, calls, session, openText} = modelLoaderFixture();
+    const pending = deferred();
+    pane.lib.MODELS = [{id: 'old', file: 'old.ldr'}];
+    pane.openText = openText;
+    pane.shippedModel = () => null;
+    const first = shippedLoader(() => pending.promise).call(pane, 'old', {preserveProgram: true});
+    await openText.call(pane, 'new UI model', 'new.ldr');
+    const feedback = pane.state.message;
+    pending.resolve({ok, status: 500, text: async () => 'old shipped model'});
+    await first;
+    assert.deepEqual(pane.opened, {text: 'new UI model', name: 'new.ldr'});
+    assert.equal(pane.session, session);
+    assert.equal(pane.state.status, 'ready');
+    assert.equal(pane.state.message, feedback);
+    assert.deepEqual(calls, [['teardown', {preserveProgram: false}], ['scene', session, {preserveProgram: false}]]);
+});
+
+test('a current shipped request retains its identity through model installation and project-title publication', async () => {
+    const {pane, calls, openText} = modelLoaderFixture();
+    pane.lib.MODELS = [{id: 'current', file: 'current.ldr', title: {en: 'Current model'}}];
+    pane.openText = openText;
+    pane.shippedModel = () => null;
+    pane.locale = 'en';
+    pane.props = {onSetProjectTitle: value => calls.push(['title', value])};
+    await shippedLoader(async () => ({ok: true, text: async () => 'current model'})).call(pane, 'current', {updateTitle: true});
+    assert.deepEqual(pane.opened, {text: 'current model', name: 'current.ldr'});
+    assert.equal(pane.state.status, 'ready');
+    assert.deepEqual(calls.at(-1), ['title', 'Current model']);
+});
+
+test('project-title callback reentrancy cannot publish old lesson or help text over a successor model', async () => {
+    const {pane, openText} = modelLoaderFixture();
+    pane.lib.MODELS = [{id: 'old', file: 'old.ldr', title: {en: 'Old model'}}];
+    pane.openText = openText;
+    pane.shippedModel = () => null;
+    pane.locale = 'en';
+    pane.state.lessonKey = 'initial lesson';
+    let successor;
+    pane.props = {onSetProjectTitle: () => {
+        successor = pane.openText('new UI model', 'new.ldr');
+        pane.setState({lessonKey: 'new UI lesson', info: 'new UI hint'});
+    }};
+    await shippedLoader(async () => ({ok: true, text: async () => 'old model'})).call(pane, 'old', {updateTitle: true});
+    await successor;
+    assert.equal(pane.opened.name, 'new.ldr');
+    assert.equal(pane.state.lessonKey, 'new UI lesson');
+    assert.equal(pane.state.info, 'new UI hint');
+});
+
+test('a stale shipped handoff is refused before any model or teardown effect', async () => {
+    const {pane, calls, openText} = modelLoaderFixture();
+    const newer = pane.shippedRequest = {};
+    await openText.call(pane, 'old model', 'old.ldr', null, {shippedRequest: {}, preserveProgram: true});
+    assert.equal(pane.shippedRequest, newer);
+    assert.equal(pane.opened, undefined);
+    assert.equal(pane.session, undefined);
+    assert.deepEqual(calls, []);
+    assert.deepEqual(pane.state, {});
 });
