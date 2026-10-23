@@ -10,7 +10,21 @@ import {numericAuthoringFiles} from './fixtures/arcade-numeric-authoring-game.mj
 const clean=value=>{for(const key of ['unsupported','warnings','errors','unparsed'])if(Object.hasOwn(value,key))assert.deepEqual(value[key],[],key);};
 const rows=project=>project.targets.flatMap(target=>Object.entries(target.blocks).map(([id,node])=>({target,id,node})));
 const literal=(target,node,name)=>{const raw=node.inputs?.[name]?.[1];if(Array.isArray(raw)&&raw[0]===10)return raw[1];const leaf=target.blocks[raw];return leaf?.opcode==='text'?leaf.fields.TEXT[0]:null;};
-function imported(files){const translated=arcadeToPseudocode(files);clean(translated);const creator=new Creator();creator.parse(translated.code);clean(creator);return creator;}
+function checkedCode(creator,project=creator.project){
+ const code=creator.decompile(project);assert.equal(typeof code,'string');assert.match(code,/DEVICE ARCADE/);
+ assert.doesNotMatch(code,/^\s*# unsupported:/m,'Code feedback cannot silently erase an unsupported block');return code;
+}
+function imported(files){
+ const translated=arcadeToPseudocode(files);clean(translated);
+ const creator=new Creator();creator.parse(translated.code);clean(creator);
+ // Match the actual From blocks -> Code -> To blocks feedback boundary.
+ // The initial import alone has no entry reset. Read its serialized project
+ // through the public decompiler, then parse the genuine emitted Code again;
+ // no reset block is manufactured or inserted by this fixture.
+ const savedProject=JSON.parse(JSON.stringify(creator.project));
+ const code=checkedCode(new Creator(),savedProject);
+ const feedback=new Creator();feedback.parse(code);clean(feedback);return feedback;
+}
 const fullFiles=()=>numericAuthoringFiles({maximum:12,operation:'max',message:'PLAY'});
 function prefixFiles(prefix){const files=fullFiles();files['main.ts']=prefix+`
 bwStringArraySettings.write("bw-owned-numeric-gui", ["Ä", "PLAY"])
@@ -45,7 +59,7 @@ test('each audited prefix and their composition keep an independent entry reset 
 
 test('alpha-renamed source bindings and genuine Code decompile/reparse keep the complete proof',()=>{
  const files=fullFiles();files['main.ts']=files['main.ts'].replace(/\bhero\b/g,'actor').replace(/\bcount\b/g,'ticks').replace(/\bpressed\b/g,'presses');const creator=imported(files);accepted(creator.project);
- const again=new Creator();again.parse(creator.decompile());clean(again);accepted(again.project);
+ const again=new Creator();again.parse(checkedCode(creator));clean(again);accepted(again.project);
 });
 
 test('a later capture is allowed, but the same genuine registration moved before overwrite is not',()=>{
