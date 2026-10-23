@@ -2558,9 +2558,15 @@ class PseudocodeImporter extends React.Component {
                 if (this._unmounted || this._arcadeReportRequest !== request || request.vm !== this.props.vm ||
                     request.revision !== (this._arcadeReportRevision || 0)) return null;
                 try {
+                    let observation=null;
+                    try {
+                        const evidence=Object.getOwnPropertyDescriptor(out,'refusalEvidence')?.value;
+                        observation=evidence&&typeof evidence==='object'?
+                            Object.getOwnPropertyDescriptor(evidence,'ownedJsonObservation')?.value:null;
+                    } catch { /* Missing evidence cannot hide the original unsupported report. */ }
                     return {conversionReport: {direction: operation === 'export' ? 'Blocks → Arcade export' : 'Blocks → Arcade run',
                         operation, outcome, preserved: false, changed: [], unsupported: [...out.unsupported],
-                        details: out.unsupportedDetails || []}, reportExpanded: Boolean(out.unsupported.length)};
+                        details: out.unsupportedDetails || [], observation: observation || null}, reportExpanded: Boolean(out.unsupported.length)};
                 } catch { return null; }
             });
         } catch { /* Reporting must not replace the original export/run outcome. */ }
@@ -2604,7 +2610,9 @@ class PseudocodeImporter extends React.Component {
         try {
             const original = this.makeCodeOriginalStatus();
             const out = original.status === 'current' && original.target === 'arcade' ?
-                {files: original.files, unsupported: [], warnings: []} : await this.arcadeFromStage();
+                {files: original.files, unsupported: [], warnings: [], refusalEvidence: {ownedJsonObservation: {
+                    schema: 'arcade-clean-export-observation-v1', origin: 'original-source-passthrough',
+                    captureStatus: 'UNAVAILABLE_ORIGINAL_SOURCE_BRANCH'}}} : await this.arcadeFromStage();
             const {makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = JSON.parse(out.files['pxt.json']).name;

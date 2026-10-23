@@ -1,6 +1,6 @@
 # Arcade exact refused-export observation — scope amendment
 
-CLAIMED. Owner: Arcade integration. Branch:
+DONE for source implementation; exact-head hosted qualification pending. Owner: Arcade integration. Branch:
 `lane/arcade-exact-refusal-capture-claim-20261023`.
 Base: `735174531` (resolve the complete object identity before composition).
 Merge this amendment before implementation. Existing published Arcade source
@@ -80,3 +80,33 @@ not a semantic fix. Mark source implementation DONE in its final candidate,
 retain original failures, and require all enabled exact-head checks before
 normal matched-head landing. A fresh agent can then diagnose the captured
 Array writer/reset/initialization frontier before proposing its narrow repair.
+
+## Implementation checkpoint
+
+Claim #1256 merged after four successful enabled checks and twelve declared
+skips, before implementation. The JSON entry now retains its exact consumed
+primitive input and descriptor-serialized actual result from the single original
+export invocation, on refusal only. The 8 MiB combined UTF-8 bound is retention,
+not process-memory qualification. Unsupported shapes and size failures are
+explicitly unavailable; no incomplete graph is called complete.
+
+The current report carries optional plain evidence through its existing ownership
+checks. The verifier retains a readonly pre-click component handle only when
+report/request are null and it is idle; the post-click report must belong to the
+same instance, VM and revision with a current request and matching visible text.
+Ambiguous, stale or incomplete ancestry is unavailable. React 16 and later fiber
+pointer names are supported. Capture precedes the unchanged clean-export assertion
+and preserves later asset checks. Missing evidence cannot replace that assertion.
+
+The existing export-report tests retain their six original groups and add six;
+the existing diagnostics module retains three and adds four. Complete source
+review and six syntax checks pass, with exact component mirror equality. No local
+browser, SDK or affected-test execution is claimed. Require actual hosted results
+before reporting usable capture, GUI acceptance or any application completion.
+
+Next: acquire the next completed numeric-authoring failure artifact once after
+metadata admission. Require COMPLETE observation, exact build/source identity,
+byte lengths and hashes for `clean-export-consumed-project.json` and
+`clean-export-semantic-result.json`; otherwise diagnose the explicit unavailable
+status. Then inspect the actual Array receiver/writer/initialization boundary and
+claim its narrow semantic repair. Preserve the original failure and every guard.

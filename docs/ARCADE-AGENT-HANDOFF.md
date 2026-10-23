@@ -33,11 +33,17 @@ Continue in this order:
 
 1. Qualify the ordinary Sprite source-restoration repair with the complete
    existing receiver module and affected source/SDK controls. Preserve failures.
-2. Land the [exact refusal-capture scope amendment](https://github.com/CrispStrobe/brickwright-lite/pull/1256)
-   after its enabled exact-head checks pass. Follow its
+2. Qualify the implementation of the [merged refusal-capture scope](https://github.com/CrispStrobe/brickwright-lite/pull/1256).
+   Follow its
    [self-contained contract](https://github.com/CrispStrobe/brickwright-lite/blob/0266e30e76bd36a39c4362328b60d8d7354f505c/lanes/2026-10-23-arcade-exact-refusal-capture.md)
    before implementation. The existing GUI failure lacks the exact consumed
    project, so an earlier project or matching visible code cannot explain it.
+   The source candidate now adds exact input/result capture to the existing
+   invocation, with an 8 MiB combined UTF-8 bound and explicit unavailable states.
+   Its readonly browser observer requires the same idle pre-click component and
+   current post-click report; no extra export or VM serialization occurs.
+   Inspect the next actual artifact's observation status before diagnosing a
+   semantic producer. Source review and syntax checks are not GUI qualification.
 3. Capture that input and the actual semantic result from the existing single
    export invocation, then repair the demonstrated Array writer/initialization
    boundary. Keep the original clean-export and later asset assertions.

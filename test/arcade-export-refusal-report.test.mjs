@@ -116,3 +116,130 @@ test('original export error remains visible and assets are not modified by repor
     assert.doesNotThrow(()=>setCode.call(edited,{pseudocode:'Pseudocode'},'current source'));
     assert.equal(edited.state.buffers.pseudocode,'current source','report-only clearing cannot block the original edit');
 });
+
+
+const ownedRefusalInput=label=>{
+    const creator=new Creator();
+    creator.parse('DEVICE ARCADE\nGLOBAL result\nSPRITE Game:\nWHEN flag clicked:\n  set result to (calculate value (arcade new image width 1 height 1) op "+" with (1))');
+    assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.unparsed,[]);
+    creator.project.meta={...creator.project.meta,observationLabel:label};
+    return {creator,input:JSON.stringify(creator.project,null,2)+'\n'};
+};
+const ownObservation=out=>{
+    const evidence=Object.getOwnPropertyDescriptor(out,'refusalEvidence');assert.ok(evidence&&Object.hasOwn(evidence,'value'));
+    const observation=Object.getOwnPropertyDescriptor(evidence.value,'ownedJsonObservation');
+    assert.ok(observation&&Object.hasOwn(observation,'value'));return observation.value;
+};
+
+test('owned JSON refusal captures the exact nonASCII input and original semantic result once without recursion',()=>{
+    const {creator,input}=ownedRefusalInput('猫🧱'),before=JSON.stringify(creator.project),out=projectJsonToArcade(input),capture=ownObservation(out);
+    assert.equal(JSON.stringify(creator.project),before);assert.ok(out.unsupported.length);
+    assert.equal(capture.schema,'arcade-clean-export-observation-v1');assert.equal(capture.origin,'owned-json-export');
+    assert.equal(capture.captureStatus,'COMPLETE');assert.equal(capture.limitUtf8Bytes,8388608);assert.equal(Object.isFrozen(capture),true);
+    assert.equal(capture.inputJson,input);assert.deepEqual(JSON.parse(capture.inputJson),creator.project);
+    assert.equal(capture.inputUtf8Bytes,Buffer.byteLength(input,'utf8'));assert.ok(capture.inputUtf8Bytes>input.length);
+    assert.equal(capture.resultUtf8Bytes,Buffer.byteLength(capture.resultJson,'utf8'));
+    assert.equal(capture.totalUtf8Bytes,capture.inputUtf8Bytes+capture.resultUtf8Bytes);assert.ok(capture.totalUtf8Bytes<=capture.limitUtf8Bytes);
+    for(const key of Reflect.ownKeys(capture)){
+        const descriptor=Object.getOwnPropertyDescriptor(capture,key);assert.equal(typeof key,'string');assert.ok(Object.hasOwn(descriptor,'value'));
+        assert.equal(typeof descriptor.value==='object'&&descriptor.value!==null,false,'flat data envelope');
+    }
+    const {ownedJsonObservation,...priorEvidence}=out.refusalEvidence;
+    assert.strictEqual(ownedJsonObservation,capture);
+    const semantic={...out,refusalEvidence:priorEvidence},capturedResult=JSON.parse(capture.resultJson);
+    assert.deepEqual(capturedResult,semantic,'capture precedes attachment and retains every original result field');
+    assert.equal(Object.hasOwn(capturedResult.refusalEvidence,'ownedJsonObservation'),false);
+    assert.equal(capturedResult.refusalEvidence.nativeAdditionDraft,out.refusalEvidence.nativeAdditionDraft);
+    assert.deepEqual(capturedResult.unsupportedDetails,out.unsupportedDetails);
+});
+
+test('owned refusal observations do not attach to direct objects or leak across clean and later exports',()=>{
+    const first=ownedRefusalInput('first capture'),out=projectJsonToArcade(first.input),capture=ownObservation(out);
+    assert.equal(capture.captureStatus,'COMPLETE');
+    const direct=projectToArcade(first.creator.project);assert.deepEqual(direct.unsupported,out.unsupported);assert.deepEqual(direct.files,out.files);
+    assert.equal(Object.hasOwn(direct.refusalEvidence,'ownedJsonObservation'),false);
+    const clean=exported('let result=1+2;').out;
+    assert.deepEqual(Object.keys(clean).sort(),['files','ts','unsupported','warnings']);
+    const later=ownedRefusalInput('second capture'),next=projectJsonToArcade(later.input),nextCapture=ownObservation(next);
+    assert.equal(nextCapture.captureStatus,'COMPLETE');assert.equal(nextCapture.inputJson,later.input);
+    assert.notStrictEqual(nextCapture,capture);assert.notEqual(nextCapture.inputJson,capture.inputJson);assert.equal(capture.inputJson,first.input);
+});
+
+test('owned refusal capture enforces the combined UTF8 limit without truncating or replacing semantic refusal',()=>{
+    const {creator,input}=ownedRefusalInput('size control'),baseline=projectJsonToArcade(input),limit=8388608;
+    for(const beyondInput of [true,false]){
+        creator.project.meta.observationPadding='';
+        const emptyBytes=Buffer.byteLength(JSON.stringify(creator.project),'utf8');
+        creator.project.meta.observationPadding=beyondInput?'🧱'.repeat(limit/4):'x'.repeat(limit-emptyBytes-32);
+        const actualInput=JSON.stringify(creator.project),out=projectJsonToArcade(actualInput),capture=ownObservation(out);
+        assert.equal(capture.captureStatus,'UNAVAILABLE_SIZE');assert.equal(capture.origin,'owned-json-export');
+        assert.equal(capture.limitUtf8Bytes,limit);assert.equal(capture.inputUtf8Bytes,Buffer.byteLength(actualInput,'utf8'));
+        assert.equal(Object.isFrozen(capture),true);assert.equal(Object.hasOwn(capture,'inputJson'),false);assert.equal(Object.hasOwn(capture,'resultJson'),false);
+        if(beyondInput)assert.ok(capture.inputUtf8Bytes>limit);
+        else {assert.equal(capture.inputUtf8Bytes,limit-32);assert.ok(ownObservation(baseline).resultUtf8Bytes>32,'result must consume the shared remaining budget');}
+        assert.deepEqual(out.files,baseline.files);assert.deepEqual(out.unsupported,baseline.unsupported);
+        assert.deepEqual(out.unsupportedDetails,baseline.unsupportedDetails);
+        assert.equal(out.refusalEvidence.nativeAdditionDraft,baseline.refusalEvidence.nativeAdditionDraft);
+    }
+});
+
+test('diagnostic serialization refuses an unexpected result prototype without invoking inherited toJSON',async()=>{
+    const {input}=ownedRefusalInput('inherited toJSON'),original=projectJsonToArcade(input);
+    const url=new URL('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js',import.meta.url),source=readFileSync(url,'utf8');
+    const needle='const observation=observeRefusedJson(json,result),previous=';
+    assert.equal(source.split(needle).length,2,'one capture site after the actual export result');
+    const injection=`result.diagnosticToJSONReads=0;
+        const unexpectedPrototype=Object.create(Object.prototype);
+        Object.defineProperty(unexpectedPrototype,'toJSON',{get(){result.diagnosticToJSONReads++;throw new Error('inherited toJSON must not run');}});
+        Object.setPrototypeOf(result,unexpectedPrototype);
+        ${needle}`;
+    const modified=source.replace(needle,injection)
+        .replace(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/g,(_,prefix,quote,specifier)=>`${prefix}${quote}${new URL(specifier,url).href}${quote}`);
+    assert.equal(/\b(from\s+|import\s*\(\s*|import\s+)(['"])(\.{1,2}\/[^'"\n]+)\2/.test(modified),false);
+    const copy=await import('data:text/javascript;base64,'+Buffer.from(modified).toString('base64'));
+    const out=copy.projectJsonToArcade(input),capture=ownObservation(out);
+    assert.equal(out.diagnosticToJSONReads,0,'a caught serialization error must not hide invoking the inherited getter');
+    assert.equal(capture.captureStatus,'UNAVAILABLE_SERIALIZATION');assert.equal(Object.isFrozen(capture),true);
+    assert.equal(Object.hasOwn(capture,'inputJson'),false);assert.equal(Object.hasOwn(capture,'resultJson'),false);
+    assert.deepEqual(out.unsupported,original.unsupported);assert.deepEqual(out.files,original.files);
+    assert.deepEqual(out.unsupportedDetails,original.unsupportedDetails);
+    assert.equal(out.refusalEvidence.nativeAdditionDraft,original.refusalEvidence.nativeAdditionDraft);
+});
+
+test('current reports carry only own observation data and clean or stale reports cannot retain a previous capture',()=>{
+    const {input}=ownedRefusalInput('report capture'),out=projectJsonToArcade(input),capture=ownObservation(out),c=context();
+    const current=c.beginArcadeReport();c.publishArcadeReport(current,out,'run','refused actual run');
+    assert.strictEqual(c.state.conversionReport.observation,capture);
+    c.invalidateArcadeReport();c.publishArcadeReport(current,out,'run','stale');assert.equal(c.state.conversionReport,null);
+    const clean=exported('let result=1+2;').out,fresh=c.beginArcadeReport();c.publishArcadeReport(fresh,clean,'export','clean');
+    assert.equal(c.state.conversionReport.observation,null);
+    let inheritedReads=0;
+    const inheritedEvidence=Object.create({get ownedJsonObservation(){inheritedReads++;return capture;}});
+    const ownOut={...out,refusalEvidence:inheritedEvidence},request=c.beginArcadeReport();c.publishArcadeReport(request,ownOut,'export','own data only');
+    assert.equal(inheritedReads,0);assert.equal(c.state.conversionReport.observation,null);
+    let evidenceReads=0;
+    const getterOut={...out};Object.defineProperty(getterOut,'refusalEvidence',{get(){evidenceReads++;throw new Error('evidence getter must not run');}});
+    const hostile=[getterOut,{...out,refusalEvidence:new Proxy({}, {getOwnPropertyDescriptor(){throw new Error('descriptor unavailable');}})}];
+    for(const actual of hostile){
+        const next=c.beginArcadeReport();c.publishArcadeReport(next,actual,'export','original refusal remains visible');
+        assert.deepEqual(c.state.conversionReport.unsupported,out.unsupported);assert.strictEqual(c.state.conversionReport.details,out.unsupportedDetails);
+        assert.equal(c.state.conversionReport.observation,null);assert.equal(c.state.conversionReport.outcome,'original refusal remains visible');
+    }
+    assert.equal(evidenceReads,0);
+    const queued=context(),queue=[];queued.setState=update=>queue.push(update);
+    const token=queued.beginArcadeReport();queued.publishArcadeReport(token,out,'run','deferred capture');queued.invalidateArcadeReport();
+    assert.equal(queue[0](queued.state),null);assert.equal(queued.state.conversionReport,null);
+});
+
+test('original source passthrough reports its unavailable observation branch without regenerating the original',async()=>{
+    const c=context(),files={'main.ts':'let original=7;','pxt.json':JSON.stringify({name:'retained'})};
+    c.makeCodeOriginalStatus=()=>({status:'current',target:'arcade',files});c.arcadeFromStage=()=>{throw new Error('passthrough must not regenerate');};
+    c.L={arcDone:()=> 'saved',mcFailed:(_,message)=>message};let downloads=0;
+    const body=method('async exportArcade ()'),importLine=/const \{makeCodeProjectFile\} = await import\([\s\S]*?'\.\.\/\.\.\/lib\/bw-makecode\/index\.js'\);/;
+    assert.match(body,importLine);
+    const execute=new (Object.getPrototypeOf(async function(){}).constructor)('makeCodeProjectFile','downloadBlob','Blob',body.slice(1,-1).replace(importLine,''));
+    await execute.call(c,makeCodeProjectFile,async(name,blob)=>{downloads++;assert.equal(name,'arcade-retained.mkcd');assert.ok((await blob.text()).length);},Blob);
+    assert.equal(downloads,1);assert.equal(c.state.status,'saved');assert.equal(c.state.busy,false);
+    assert.deepEqual(c.state.conversionReport.observation,{schema:'arcade-clean-export-observation-v1',origin:'original-source-passthrough',captureStatus:'UNAVAILABLE_ORIGINAL_SOURCE_BRANCH'});
+    assert.deepEqual(c.state.conversionReport.unsupported,[]);assert.match(c.state.conversionReport.outcome,/Recovered original/);
+});

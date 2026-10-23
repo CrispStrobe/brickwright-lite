@@ -4533,6 +4533,99 @@ const snapshotAssetContext=(project,target,costume)=>freezeSnapshotContext({
  * Asset callbacks receive frozen records. costumePalette additionally receives
  * a read-only {targetIndex,costumeIndex}; direct AST callback arity is unchanged.
  */
+// Diagnostic serialization never calls an object's getters, toJSON or coercion.
+// Capture intrinsics before artwork callbacks can alter inherited methods.
+const refusalQuote=JSON.stringify,refusalKeys=Reflect.ownKeys,refusalDescriptor=Object.getOwnPropertyDescriptor,
+    refusalPrototype=Object.getPrototypeOf,refusalOwn=Object.hasOwn,refusalArray=Array.isArray,
+    refusalFinite=Number.isFinite,refusalIs=Object.is,refusalCreate=Object.create,
+    refusalDefine=Object.defineProperty,refusalFreeze=Object.freeze,refusalApply=Reflect.apply,
+    refusalCodeUnit=String.prototype.charCodeAt,refusalIndex=String,
+    refusalObjectPrototype=Object.prototype,refusalArrayPrototype=Array.prototype;
+const refusalLimit=8*1024*1024,refusalSize={},refusalShape={};
+const refusalUtf8=text=>{
+    let bytes=0;
+    for(let i=0;i<text.length;i++){
+        const unit=refusalApply(refusalCodeUnit,text,[i]);
+        if(unit<0x80)bytes++;
+        else if(unit<0x800)bytes+=2;
+        else if(unit>=0xd800&&unit<=0xdbff&&i+1<text.length){
+            const next=refusalApply(refusalCodeUnit,text,[i+1]);
+            if(next>=0xdc00&&next<=0xdfff){bytes+=4;i++;}else bytes+=3;
+        }else bytes+=3;
+    }
+    return bytes;
+};
+const observeRefusedJson=(input,result)=>{
+    const base={schema:'arcade-clean-export-observation-v1',origin:'owned-json-export',limitUtf8Bytes:refusalLimit};
+    let inputBytes;
+    try{
+        if(typeof input!=='string')throw refusalShape;
+        inputBytes=refusalUtf8(input);
+        if(inputBytes>refusalLimit)throw refusalSize;
+        let text='',bytes=0,nodes=0;
+        const active=refusalCreate(null),budget=refusalLimit-inputBytes;
+        const append=part=>{
+            bytes+=refusalUtf8(part);if(bytes>budget)throw refusalSize;text+=part;
+        };
+        const encode=(value,depth=0)=>{
+            if(value===null){append('null');return;}
+            if(typeof value==='string'||typeof value==='boolean'){append(refusalQuote(value));return;}
+            if(typeof value==='number'){
+                if(!refusalFinite(value)||refusalIs(value,-0))throw refusalShape;
+                append(refusalQuote(value));return;
+            }
+            if(typeof value!=='object'||depth>128||++nodes>20000)throw refusalShape;
+            for(let i=0;i<depth;i++)if(active[i]===value)throw refusalShape;
+            const prototype=refusalPrototype(value),array=refusalArray(value);
+            if(prototype!==null&&prototype!==(array?refusalArrayPrototype:refusalObjectPrototype))throw refusalShape;
+            active[depth]=value;
+            const keys=refusalKeys(value);
+            if(array){
+                const length=refusalDescriptor(value,'length');
+                if(!length||!refusalOwn(length,'value')||!refusalFinite(length.value)||
+                    length.value<0||length.value%1||keys.length!==length.value+1)throw refusalShape;
+                append('[');
+                for(let i=0;i<length.value;i++){
+                    const descriptor=refusalDescriptor(value,refusalIndex(i));
+                    if(!descriptor||!refusalOwn(descriptor,'value')||!descriptor.enumerable)throw refusalShape;
+                    if(i)append(',');encode(descriptor.value,depth+1);
+                }
+                append(']');
+            }else{
+                append('{');
+                for(let i=0;i<keys.length;i++){
+                    const key=keys[i],descriptor=refusalDescriptor(value,key);
+                    if(typeof key!=='string'||!descriptor||!refusalOwn(descriptor,'value')||!descriptor.enumerable)throw refusalShape;
+                    if(i)append(',');append(refusalQuote(key));append(':');encode(descriptor.value,depth+1);
+                }
+                append('}');
+            }
+            delete active[depth];
+        };
+        encode(result);
+        return refusalFreeze({...base,captureStatus:'COMPLETE',inputJson:input,resultJson:text,
+            inputUtf8Bytes:inputBytes,resultUtf8Bytes:bytes,totalUtf8Bytes:inputBytes+bytes});
+    }catch(error){
+        return refusalFreeze({...base,captureStatus:error===refusalSize?'UNAVAILABLE_SIZE':'UNAVAILABLE_SERIALIZATION',
+            ...(inputBytes===undefined?{}:{inputUtf8Bytes:inputBytes})});
+    }
+};
+
 export function projectJsonToArcade(json,opts={}){
-    return emitProjectToArcade(createProjectJsonSnapshot(json),opts,true);
+    const result=emitProjectToArcade(createProjectJsonSnapshot(json),opts,true);
+    // The single original invocation has already completed. Capture only its
+    // refusal, never reparse/re-export or replace its original exception.
+    if(typeof json==='string'&&result.unsupported.length)try{
+        const observation=observeRefusedJson(json,result),previous=refusalDescriptor(result,'refusalEvidence');
+        const old=previous&&refusalOwn(previous,'value')?previous.value:null;
+        const evidence=refusalCreate(old?refusalPrototype(old):refusalObjectPrototype);
+        if(old)for(const key of refusalKeys(old)){
+            const descriptor=refusalDescriptor(old,key);
+            if(typeof key!=='string'||!descriptor||!refusalOwn(descriptor,'value'))throw refusalShape;
+            refusalDefine(evidence,key,descriptor);
+        }
+        refusalDefine(evidence,'ownedJsonObservation',{value:observation,enumerable:true,writable:true,configurable:true});
+        refusalDefine(result,'refusalEvidence',{value:evidence,enumerable:true,writable:true,configurable:true});
+    }catch{ /* Evidence failure cannot replace the actual result/refusal. */ }
+    return result;
 }
