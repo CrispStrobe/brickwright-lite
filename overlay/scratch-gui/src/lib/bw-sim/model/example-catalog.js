@@ -294,6 +294,64 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "rise-ratio.ldr": {
+        "pieces": 182,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A rack drives a scissor lift through equal horizontal steps. Measure the decreasing vertical increments, level deck and return; compare the disconnected-drive control.",
+            "de": "Eine Zahnstange treibt einen Scherenhubtisch in gleich großen waagerechten Schritten. Miss die abnehmenden Hubschritte, die waagerechte Plattform und die Rückkehr; vergleiche den getrennten Antrieb."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scissor lift — changing displacement ratio",
+            "de": "Scherenhubtisch — veränderliches Wegverhältnis"
+        },
+        "keywords": [
+            "Scissor lift — changing displacement ratio",
+            "Scherenhubtisch — veränderliches Wegverhältnis",
+            "scissor linkage",
+            "scissor mechanism",
+            "pantograph lift",
+            "Scherenmechanismus",
+            "Scherenheber",
+            "nonlinear motion ratio",
+            "virtual work"
+        ]
+    },
+    "rise-ratio-control.ldr": {
+        "pieces": 181,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "The pinion is physically removed. Motor A executes the same route while the supported scissor deck stays near its lower rest.",
+            "de": "Das Ritzel ist mechanisch entfernt. Motor A führt dieselbe Folge aus, während die abgestützte Scherenplattform nahe ihrer unteren Ruhelage bleibt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scissor lift — changing displacement ratio",
+            "de": "Scherenhubtisch — veränderliches Wegverhältnis"
+        },
+        "keywords": [
+            "Scissor lift — changing displacement ratio",
+            "Scherenhubtisch — veränderliches Wegverhältnis",
+            "scissor linkage",
+            "scissor mechanism",
+            "pantograph lift",
+            "Scherenmechanismus",
+            "Scherenheber",
+            "nonlinear motion ratio",
+            "virtual work"
+        ]
+    },
     "cascade.ldr": {
         "pieces": 70,
         "motors": 1,

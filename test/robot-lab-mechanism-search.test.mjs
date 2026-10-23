@@ -6,6 +6,7 @@ import {filterModelExamples} from '../overlay/scratch-gui/src/lib/bw-sim/model/e
 import {MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {MODEL_LESSONS} from '../overlay/scratch-gui/src/lib/bw-sim/model/example-catalog.js';
 for(const [query,ids] of [
+ ['scissor lift',['rise-ratio','rise-ratio-control']],['Scherenhubtisch',['rise-ratio','rise-ratio-control']],
  ['Hoeken',['stride-lab']],['Höken linkage',['stride-lab']],['Peaucellier Lipkin',['straight-eight']],['Peaucellier–Lipkin cell',['straight-eight']],['Peaucellier–Lipkin',['straight-eight']],
  ['Sarrus',['sarrus-lift']],['pantograph',['amplify','pantograph-doubler','scale-studio','scale-echo']],['Pantographs',['amplify','pantograph-doubler','scale-studio','scale-echo']],['Storchschnabel',['amplify','pantograph-doubler','scale-studio','scale-echo']],
  ['Oldham',['offset-orbit','crossglide']],['Oldham couplings',['offset-orbit','crossglide']],['Kreuzschieberkupplung',['offset-orbit','crossglide']],['universal joint',['phase-bridge','phase-bridge-misphased','ripple-relay']],

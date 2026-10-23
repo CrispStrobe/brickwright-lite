@@ -222,6 +222,26 @@
         "Pendelkopplung",
         "elbow brace"
       ]
+    },
+    {
+      "id": "scissor-lift",
+      "name": {
+        "en": "Scissor lift — changing displacement ratio",
+        "de": "Scherenhubtisch — veränderliches Wegverhältnis"
+      },
+      "aliases": [
+        "scissor linkage",
+        "scissor mechanism",
+        "pantograph lift",
+        "Scherenmechanismus",
+        "Scherenheber",
+        "nonlinear motion ratio",
+        "virtual work"
+      ],
+      "models": [
+        "rise-ratio",
+        "rise-ratio-control"
+      ]
     }
   ]
 }

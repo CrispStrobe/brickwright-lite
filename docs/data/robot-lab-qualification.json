@@ -69,6 +69,21 @@
       "frameMs": 25,
       "frozenOutput": "lower_link",
       "physicalControl": "cascade-control.ldr"
+    },
+    {
+      "id": "rise-ratio",
+      "judge": "scissor-rack-v1",
+      "nativeSuite": "rise-ratio",
+      "parts": 182,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 90000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "top_fork_front",
+      "physicalControl": "rise-ratio-control.ldr"
     }
   ]
 }

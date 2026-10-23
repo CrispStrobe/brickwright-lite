@@ -4118,6 +4118,102 @@
         "echo-bridge.ldr",
         "momentum-twins.ldr"
       ]
+    },
+    "rise-ratio": {
+      "en": {
+        "what": "A single motor turns a 12-tooth pinion that pulls a horizontal rack inward. Crossing 80 mm scissor links raise a deck. The experiment commands four equal 4 mm rack steps, pauses at each width, and retraces the route to its saved datum. The intended effect is a diminishing rise per step while the deck remains level. The numerical heights below are ideal predictions; consult the packaged qualification record for the measured scope.",
+        "try": [
+          "Choose Rise Ratio in Examples: its program loads into Blocks automatically and the saved pose is restored. Press Run. Reset before repeating after manual movement.",
+          "Watch stages 0 through 4. The commanded lower-pivot widths are 64, 60, 56, 52 and 48 mm. The ideal heights between the lower and upper pivot lines are 48.000, 52.915, 57.131, 60.795 and 64.000 mm. Measure the actual deck position; the encoder alone cannot establish the lift height.",
+          "At each pause, subtract the preceding measured height. Compare the first 4 mm rack step with the last one. During stages 5 through 8 the deck follows the same targets in reverse, then the motor holds the return datum. Check completed = 1 and failed = 0.",
+          "Keep the supplied targets and qualified motor direction. A timeout or failed arrival stops and holds the motor. Reset and inspect before retrying. The software envelope is not a physical stop; manual travel and retention bounds are declared separately in the construction record.",
+          "Compare Rise Ratio Control. Its 12-tooth pinion is removed, but the same motor program still runs. Observe the independent rack and deck instead of treating encoder arrival as proof of lifting."
+        ],
+        "why": "One scissor diagonal has fixed pivot span L = 80 mm. Its horizontal separation w and vertical separation h satisfy w² + h² = L² on the positive-height branch. Pulling the lower moving pivot inward by s reduces the width to w = 64 − s. Therefore h = sqrt(80² − (64 − s)²). The local gain dh/ds = w/h falls as the lift rises. The pinion gives equal horizontal travel for equal encoder changes, but the scissor changes that travel into unequal vertical increments.",
+        "matters": "This is a mechanical change of motion ratio produced by geometry. In an ideal slow, frictionless lift, a vertical load W needs horizontal rack force F = W w/h. As the deck rises the displacement gain falls and the ideal load-to-input force advantage h/w increases. This relation is a prediction, not a measured payload rating; friction, inertia, compliance, gear losses and motor limits change the required force.",
+        "question": "Four equal inward rack steps of 4 mm move the width from 64 to 48 mm. Should the deck rise farther on the first step or the last? What total ideal rise does the full 16 mm rack motion produce?",
+        "answer": "The first step gives the larger rise. The ideal increments are approximately 4.915, 4.216, 3.663 and 3.205 mm. The ideal total rise is 16.000 mm, from 48 to 64 mm. Equal total horizontal and vertical travel here is an endpoint coincidence of the chosen 48–64–80 geometry, not a constant 1:1 ratio: the local gain decreases from 64/48 = 1.333 to 48/64 = 0.750.",
+        "further": [
+          "At a width of 56 mm, calculate h and w/h, then compare with a measured stage-2 height. Use pivot centers, not the top surface thickness, in the equation.",
+          "Explain why the almost-flat configuration w ≈ 80 mm would demand a very large ideal input force. Do not try that region with the supplied model or program; it lies outside the declared route and qualification envelope.",
+          "Compare the linkage with Sarrus Lift or Parallel Lift: all raise a platform, but different physical constraints set the path and motion ratio. Investigate actual motion before deciding whether a deck stayed vertical and level."
+        ]
+      },
+      "de": {
+        "what": "Ein Motor dreht ein Ritzel mit zwölf Zähnen und zieht eine waagerechte Zahnstange nach innen. Gekreuzte Scherenglieder mit 80 mm Gelenkabstand heben eine Bühne. Das Experiment gibt vier gleich große Zahnstangenschritte von je 4 mm vor, hält an jeder Breite an und fährt dieselbe Strecke zum gespeicherten Ausgangspunkt zurück. Dabei soll der Höhenzuwachs je Schritt abnehmen und die Bühne waagerecht bleiben. Die folgenden Höhen sind ideale Vorhersagen; den tatsächlich geprüften Umfang enthält der beiliegende Prüfbericht.",
+        "try": [
+          "Wähle Rise Ratio unter Beispiele: Das Programm wird automatisch als Blöcke geladen und die gespeicherte Lage wiederhergestellt. Drücke Start. Nach manueller Bewegung vor einer Wiederholung zurücksetzen.",
+          "Beobachte die Stufen 0 bis 4. Die vorgegebenen Abstände zwischen den unteren Gelenken sind 64, 60, 56, 52 und 48 mm. Die idealen Höhen zwischen unterer und oberer Gelenklinie sind 48,000, 52,915, 57,131, 60,795 und 64,000 mm. Miss die tatsächliche Bühnenlage; der Motordrehgeber allein belegt die Hubhöhe nicht.",
+          "Ziehe bei jeder Pause die vorherige gemessene Höhe ab. Vergleiche den ersten Zahnstangenschritt von 4 mm mit dem letzten. In den Stufen 5 bis 8 fährt die Bühne dieselben Ziele rückwärts an; anschließend hält der Motor die Ausgangslage. Prüfe completed = 1 und failed = 0.",
+          "Behalte die mitgelieferten Ziele und die geprüfte Motordrehrichtung bei. Eine Zeitüberschreitung oder ein verfehltes Ziel stoppt den Motor im Haltemodus. Setze vor einem neuen Versuch zurück und prüfe den Aufbau. Die Softwaregrenze ist kein mechanischer Anschlag; manuelle Wege und Halterungen sind im Konstruktionsnachweis gesondert beschrieben.",
+          "Vergleiche Rise-Ratio-Kontrolle. Ihr Ritzel mit zwölf Zähnen ist entfernt, dasselbe Motorprogramm läuft aber weiter. Beobachte Zahnstange und Plattform unabhängig; ein erreichter Motorwinkel beweist noch keinen Hub."
+        ],
+        "why": "Eine Scherendiagonale hat den festen Gelenkabstand L = 80 mm. Für ihren waagerechten Abstand w und ihre Höhe h gilt auf dem Lösungszweig mit positiver Höhe w² + h² = L². Zieht die Zahnstange das untere bewegliche Gelenk um s nach innen, wird w = 64 − s. Damit gilt h = sqrt(80² − (64 − s)²). Die örtliche Wegübersetzung dh/ds = w/h nimmt beim Heben ab. Das Ritzel erzeugt bei gleichen Drehwinkeländerungen gleiche waagerechte Wege; die Schere wandelt diese in ungleiche Höhenzuwächse um.",
+        "matters": "Die Geometrie verändert hier mechanisch die Wegübersetzung. Bei einer idealen langsamen, reibungsfreien Hubbewegung braucht eine senkrechte Last W die waagerechte Zahnstangenkraft F = W w/h. Mit steigender Bühne sinkt die Wegübersetzung, und das ideale Verhältnis Last zu Antriebskraft h/w nimmt zu. Das ist eine Vorhersage und keine gemessene Traglastangabe; Reibung, Trägheit, Nachgiebigkeit, Getriebeverluste und Motorgrenzen verändern die erforderliche Kraft.",
+        "question": "Vier gleiche Zahnstangenschritte von jeweils 4 mm verkleinern die Breite von 64 auf 48 mm. Steigt die Bühne beim ersten oder beim letzten Schritt stärker? Welchen idealen Gesamthub erzeugt der Zahnstangenweg von 16 mm?",
+        "answer": "Der erste Schritt hebt die Bühne stärker. Die idealen Höhenzuwächse betragen ungefähr 4,915, 4,216, 3,663 und 3,205 mm. Der ideale Gesamthub beträgt 16,000 mm: von 48 auf 64 mm. Dass der gesamte waagerechte Weg hier dem gesamten Höhenzuwachs entspricht, folgt nur aus den gewählten Endpunkten des 48–64–80-Dreiecks. Es ist keine konstante 1:1-Übersetzung: Die örtliche Wegübersetzung sinkt von 64/48 = 1,333 auf 48/64 = 0,750.",
+        "further": [
+          "Berechne bei einer Breite von 56 mm die Höhe h und das Verhältnis w/h. Vergleiche mit einer gemessenen Höhe in Stufe 2. Verwende die Gelenkmitten statt der durch die Materialdicke versetzten Bühnenoberfläche.",
+          "Erkläre, warum die fast flache Lage w ≈ 80 mm eine sehr große ideale Antriebskraft erfordern würde. Fahre diesen Bereich mit dem mitgelieferten Modell oder Programm nicht an: Er liegt außerhalb der vorgegebenen Strecke und des Prüfbereichs.",
+          "Vergleiche die Schere mit Sarrus Lift oder Parallel Lift. Alle heben eine Plattform, doch unterschiedliche Gelenkführungen bestimmen Bahn und Übersetzung. Untersuche die tatsächliche Bewegung, bevor du entscheidest, ob die Bühne senkrecht geführt und waagerecht geblieben ist."
+        ]
+      },
+      "formula": {
+        "en": "L = 80 mm; r_p = 6 mm; s = direction × A × π/180 × r_p; w = 64 − s; h = sqrt(L² − w²); dh/ds = w/h; ideal static F_rack/W = w/h. A is the measured unwrapped encoder angle in degrees. Commands: w = 48…64 mm. Qualification envelope: w = 46.4…65.6 mm, separate from physical stop bounds.",
+        "de": "L = 80 mm; r_p = 6 mm; s = direction × A × π/180 × r_p; w = 64 − s; h = sqrt(L² − w²); dh/ds = w/h; ideal statisch F_Zahnstange/W = w/h. A ist der gemessene fortlaufende Drehgeberwinkel in Grad. Sollbereich: w = 48…64 mm. Prüfbereich: w = 46,4…65,6 mm; mechanische Anschläge sind gesondert festgelegt."
+      },
+      "related": [
+        "rise-ratio-control.ldr",
+        "sarrus-lift.ldr",
+        "parallel-lift.ldr",
+        "rack-shuttle.ldr"
+      ]
+    },
+    "rise-ratio-control": {
+      "en": {
+        "what": "This physical causal control removes the 12-tooth pinion from the same scissor lift. The shaft retains its bearings and collars. Motor A still executes the complete finite program, while the lower rack receives no motor transmission.",
+        "try": [
+          "Choose this control in Examples, then press Run. Its program loads automatically.",
+          "Watch motor A reach the same signed targets as in Rise Ratio. Measure the rack and passive deck independently.",
+          "Compare with Rise Ratio after resetting both examples. The main rises about 16 mm; this disconnected deck should stay near its lower support."
+        ],
+        "why": "The scissor geometry still constrains the deck, but the removed pinion breaks the path from motor rotation to rack travel. The lower supports retain the resting pose. Motor targets alone therefore cannot establish output movement.",
+        "matters": "This is a mechanical change of motion ratio produced by geometry. In an ideal slow, frictionless lift, a vertical load W needs horizontal rack force F = W w/h. As the deck rises the displacement gain falls and the ideal load-to-input force advantage h/w increases. This relation is a prediction, not a measured payload rating; friction, inertia, compliance, gear losses and motor limits change the required force.",
+        "question": "Does an encoder reaching every target prove that the deck rose?",
+        "answer": "No. The pinion transmits rotation into rack travel. Removing it lets the motor complete its route while the supported rack and scissor deck stay near their lower rest. Independent measurements distinguish input motion from useful passive output.",
+        "further": [
+          "At a width of 56 mm, calculate h and w/h, then compare with a measured stage-2 height. Use pivot centers, not the top surface thickness, in the equation.",
+          "Explain why the almost-flat configuration w ≈ 80 mm would demand a very large ideal input force. Do not try that region with the supplied model or program; it lies outside the declared route and qualification envelope.",
+          "Compare the linkage with Sarrus Lift or Parallel Lift: all raise a platform, but different physical constraints set the path and motion ratio. Investigate actual motion before deciding whether a deck stayed vertical and level."
+        ]
+      },
+      "de": {
+        "what": "Diese mechanische Kontrolle entfernt das Ritzel mit zwölf Zähnen aus demselben Scherenhubtisch. Lager und Sicherungsringe der Welle bleiben erhalten. Motor A führt das vollständige Programm aus; die untere Zahnstange erhält keine Antriebskraft.",
+        "try": [
+          "Wähle diese Kontrolle unter Beispiele und drücke Start. Das Programm wird automatisch geladen.",
+          "Beobachte dieselben vorzeichenbehafteten Motorziele wie bei Rise Ratio. Miss Zahnstange und passive Plattform unabhängig.",
+          "Vergleiche nach dem Zurücksetzen mit Rise Ratio. Das Hauptmodell hebt sich etwa 16 mm; diese Plattform soll nahe ihrer unteren Auflage bleiben."
+        ],
+        "why": "Die Scherengeometrie führt die Plattform weiterhin, doch ohne Ritzel ist der Weg vom Motor zur Zahnstange unterbrochen. Die unteren Auflagen halten die Ruhelage. Erreichte Motorziele allein belegen deshalb keine Ausgangsbewegung.",
+        "matters": "Die Geometrie verändert hier mechanisch die Wegübersetzung. Bei einer idealen langsamen, reibungsfreien Hubbewegung braucht eine senkrechte Last W die waagerechte Zahnstangenkraft F = W w/h. Mit steigender Bühne sinkt die Wegübersetzung, und das ideale Verhältnis Last zu Antriebskraft h/w nimmt zu. Das ist eine Vorhersage und keine gemessene Traglastangabe; Reibung, Trägheit, Nachgiebigkeit, Getriebeverluste und Motorgrenzen verändern die erforderliche Kraft.",
+        "question": "Beweist ein erreichter Motorwinkel, dass sich die Plattform gehoben hat?",
+        "answer": "Nein. Das Ritzel wandelt die Drehung in Zahnstangenweg um. Ohne Ritzel kann der Motor seine Ziele erreichen, während Zahnstange und Scherenplattform nahe ihrer unteren Auflage bleiben. Unabhängige Messungen trennen Antriebsbewegung und nutzbaren passiven Ausgang.",
+        "further": [
+          "Berechne bei einer Breite von 56 mm die Höhe h und das Verhältnis w/h. Vergleiche mit einer gemessenen Höhe in Stufe 2. Verwende die Gelenkmitten statt der durch die Materialdicke versetzten Bühnenoberfläche.",
+          "Erkläre, warum die fast flache Lage w ≈ 80 mm eine sehr große ideale Antriebskraft erfordern würde. Fahre diesen Bereich mit dem mitgelieferten Modell oder Programm nicht an: Er liegt außerhalb der vorgegebenen Strecke und des Prüfbereichs.",
+          "Vergleiche die Schere mit Sarrus Lift oder Parallel Lift. Alle heben eine Plattform, doch unterschiedliche Gelenkführungen bestimmen Bahn und Übersetzung. Untersuche die tatsächliche Bewegung, bevor du entscheidest, ob die Bühne senkrecht geführt und waagerecht geblieben ist."
+        ]
+      },
+      "formula": {
+        "en": "For the scissor geometry, h² + w² = (80 mm)². The encoder-to-rack equation applies only with an engaged pinion; this disconnected control should remain near w=64 mm and h=48 mm despite the input rotation.",
+        "de": "Für die Scherengeometrie gilt h² + w² = (80 mm)². Die Beziehung zwischen Motorwinkel und Zahnstangenweg gilt nur mit eingreifendem Ritzel; diese Kontrolle soll trotz Eingangsdrehung nahe w=64 mm und h=48 mm bleiben."
+      },
+      "related": [
+        "rise-ratio.ldr",
+        "sarrus-lift.ldr",
+        "parallel-lift.ldr",
+        "rack-shuttle.ldr"
+      ]
     }
   }
 }
