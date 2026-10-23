@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "gimbal-lab",
+  "language": "de",
+  "what": "Motor A dreht den orangefarbenen Gierrahmen. Motor B bewegt sich mit ihm und neigt den blauen Nickrahmen. Motor C sitzt auf diesem Rahmen und dreht ein grünes Orientierungskreuz mit gelber und weißer Spitze. Die gehaltenen azurblauen Räder dienen als Gegengewichte. Drei motorisierte, verschachtelte Achsen zeigen eine Orientierungssingularität. Vergleiche Gieren und Rollen bei 0°, 60° und 90° mittlerer Neigung: Nahe 90° heben sich zwei Motorbewegungen am Marker fast auf, während alle Lager beweglich bleiben.",
+  "try": [
+    "Öffne Gimbal Lab unter Beispiele; das Programm lädt automatisch. Zurücksetzen, dann Ausführen. Die endliche Vorführung hält zum Schluss alle drei Motoren in Ausgangsstellung; vor einer Wiederholung zurücksetzen.",
+    "Vergleiche bei 0° mittlerer Neigung Gieren allein mit Rollen allein. Verfolge die beiden senkrecht zueinander stehenden Achslinien und die Markerspitzen.",
+    "Sage bei der 60°-Stufe voraus, ob äußere und innere Achse schon identisch sind. Sie nähern sich an, liefern aber weiterhin drei unabhängige momentane Drehrichtungen.",
+    "Beobachte nahe 90°, wie A auf +20° und C auf −20° fährt. Rahmen und Drehgeber bewegen sich, während sich ihre Wirkungen auf die Markerorientierung fast aufheben. Bei genau 90° ist die ideale Aufhebung vollständig.",
+    "Bleibe bei langsamen manuellen Bewegungen mit den nativen Winkeln A und C innerhalb ±30° und mit B zwischen −5° und +95°. Vor dem Programmstart zurückfahren oder zurücksetzen. Motorkabel nicht durch wiederholte Umläufe um eine Achse wickeln."
+  ],
+  "why": "Die innere Achse bewegt sich mit beiden äußeren Rahmen. Hier gelten die geometrischen Winkel a=A, b=B und c=−C sowie R=Ry(a)Rx(b)Rz(c). Bei b=90° fallen die erste und dritte Achslinie zusammen. Zwei Gelenkeingänge erzeugen dann dieselbe momentane Orientierungsrichtung; ihre Wirkungen können sich aufheben. Die Lager klemmen nicht und alle Motoren bleiben beweglich. Eine Änderung von B weg von 90° stellt drei unabhängige Richtungen wieder her.",
+  "matters": "Roboterhandgelenke und Orientierungsplattformen müssen die veränderliche Geometrie ihrer Gelenkachsen berücksichtigen. Nahe einer Singularität erfordern manche gewünschten Orientierungsänderungen zunehmend große, aufeinander abgestimmte Gelenkgeschwindigkeiten. Dieses Modell zeigt die Geometrie; eine Kreiselstabilisierung wird damit nicht nachgewiesen.",
+  "question": "Bei genau B=90° wächst A um 20°, während C um 20° abnimmt. Müssen alle Teile stillstehen, weil der Marker dieselbe Endorientierung hat?",
+  "answer": "Nein. Gierrahmen und Nickbaugruppe bewegen sich, und der C-Rotor dreht sich gegenüber seinem Gehäuse. Die gemeinsame Wirkung auf die Markerorientierung hebt sich auf: Native A=+20°, B=90°, C=−20° entsprechen Ry(20°)Rx(90°)Rz(20°)=Rx(90°). Die Vorführung mit endlicher Regeltoleranz nähert sich diesem Ideal; die verbleibende Orientierungsdifferenz wird gemessen.",
+  "further": [
+    "Sage die Wirkung derselben Kombination A+20°/C−20° bei B=0° voraus und prüfe sie innerhalb der manuellen Grenzen. Dort stehen beide Achsrichtungen senkrecht zueinander; ihre Wirkungen heben sich nicht auf.",
+    "J enthalte die drei Einheitsvektoren der Drehachsen. Vergleiche |det J|=|cos b|: 1 bei 0°, 0,5 bei 60° und 0 bei 90°. Diese dimensionslose Determinante beschreibt die örtliche Unabhängigkeit, keine Getriebeübersetzung.",
+    "Bei B=95° ist der Betrag der Determinante wieder positiv. Warum gewinnt der Mechanismus durch eine andere Konfiguration eine dritte unabhängige Orientierungsrichtung zurück?",
+    "Vergleiche Tilt Lab: Dort ändern verschachtelte Achsen die Schwerkraftwirkung auf eine freie Kugel. Gimbal Lab nutzt einen starren Marker, um die Orientierungsgeometrie selbst zu untersuchen."
+  ],
+  "formula": "Geometrisch a=A, b=B, c=−C; R=Ry(a)Rx(b)Rz(c); |det J|=|cos b| für drei Einheitsvektoren der Achsen. Bei B=90° heben sich native A=+δ und C=−δ ideal auf. Winkel in Grad; lab-Geschwindigkeiten in Grad/s.",
+  "related": [
+    "tilt-lab.ldr",
+    "positioning-arm.ldr",
+    "atlas-arm.ldr"
+  ]
+}

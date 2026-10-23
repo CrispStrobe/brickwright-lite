@@ -2,7 +2,7 @@
   "version": 1,
   "id": "amplify",
   "language": "de",
-  "what": "Ein Motor bewegt die gelbe Eingangsmarkierung D auf einem Kreis mit 16 mm Radius. Ein echtes Parallelogramm mit verlängerten Armen lässt die orange Ausgangsmarkierung Q einen Kreis mit 32 mm Radius beschreiben. Q kopiert jede ebene Verschiebung von D im doppelten Maßstab. Beide Punkte vollenden ihren Umlauf gemeinsam; der Ausgang legt in derselben Zeit einen längeren Weg zurück. Ein Motor bewegt den passiven Ausgang mit doppeltem Radius und doppelter Bahngeschwindigkeit. Acht Pausen zeigen die Punktgeometrie im Verhältnis 2:1.",
+  "what": "Pantograf. Ein Motor bewegt die gelbe Eingangsmarkierung D auf einem Kreis mit 16 mm Radius. Ein echtes Parallelogramm mit verlängerten Armen lässt die orange Ausgangsmarkierung Q einen Kreis mit 32 mm Radius beschreiben. Q kopiert jede ebene Verschiebung von D im doppelten Maßstab. Beide Punkte vollenden ihren Umlauf gemeinsam; der Ausgang legt in derselben Zeit einen längeren Weg zurück. Ein Motor bewegt den passiven Ausgang mit doppeltem Radius und doppelter Bahngeschwindigkeit. Acht Pausen zeigen die Punktgeometrie im Verhältnis 2:1.",
   "try": [
     "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte das begrenzte Experiment und die Pausen.",
     "Verfolge die gelbe Markierung D und die orange Markierung Q relativ zum festen Ursprung O. Beim ersten Motorziel +45° lauten die vorhergesagten X/Z-Koordinaten D=(59,314;43,314) mm und Q=(118,627;86,627) mm. Vergleiche beide Koordinaten statt nur die Kreisdurchmesser.",

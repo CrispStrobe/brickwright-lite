@@ -230,7 +230,7 @@ export const createInstancedParts = ({colors}) => {
                 const e = proxy.userData.hidden ? ZERO : proxy.matrixWorld.elements;
                 const o = i * 16;
                 for (let k = 0; k < 16; k++) {
-                    if (m[o + k] !== e[k]) {
+                    if (m[o + k] !== Math.fround(e[k])) {
                         m[o + k] = e[k];
                         moved = true;
                     }
@@ -248,7 +248,7 @@ export const createInstancedParts = ({colors}) => {
                     if (material.emissive) scratch.add(glow.copy(material.emissive));
                     if (proxy.userData.dim) scratch.lerp(DIM_COLOR, DIM_AMOUNT);
                     const o = i * 3;
-                    if (a[o] !== scratch.r || a[o + 1] !== scratch.g || a[o + 2] !== scratch.b) {
+                    if (a[o] !== Math.fround(scratch.r) || a[o + 1] !== Math.fround(scratch.g) || a[o + 2] !== Math.fround(scratch.b)) {
                         a[o] = scratch.r;
                         a[o + 1] = scratch.g;
                         a[o + 2] = scratch.b;

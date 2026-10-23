@@ -17,11 +17,11 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {Color, Matrix4, Quaternion, Raycaster, Vector3} from 'three';
+import {BufferGeometry, Color, Float32BufferAttribute, Matrix4, Mesh, MeshStandardMaterial, Quaternion, Raycaster, Vector3} from 'three';
 import {parseLDConfig} from '../overlay/scratch-gui/src/lib/bw-sim/view/ldraw-colors.js';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {buildSimScene, applySnapshot} from '../overlay/scratch-gui/src/lib/bw-sim/view/sim-scene3d.js';
-import {INSTANCE_FROM} from '../overlay/scratch-gui/src/lib/bw-sim/view/instanced-parts.js';
+import {createInstancedParts, INSTANCE_FROM} from '../overlay/scratch-gui/src/lib/bw-sim/view/instanced-parts.js';
 import {tintMaterial} from '../overlay/scratch-gui/src/lib/bw-sim/view/insight-layer.js';
 import {prepareModel, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {stressModel} from '../scripts/lib/sim-lab-stress-model.mjs';
@@ -187,4 +187,62 @@ test('small models keep one mesh per part (auto stays off below INSTANCE_FROM)',
     assert.equal(built.instanced, null);
     assert.ok([...built.partMeshes.values()].every(m => m.visible && m.children.length > 0));
     built.dispose();
+});
+
+/** A tiny real Three.js batch isolates upload invalidation from geometry loading. */
+const uploadFixture = t => {
+    const faces = new BufferGeometry();
+    faces.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    faces.addGroup(0, 3, 0);
+    const proxy = new Mesh(faces, new MeshStandardMaterial({color: new Color(0.1, 0.2, 0.3)}));
+    proxy.matrixWorld.makeTranslation(0.1, 0.2, 0.3);
+    const instanced = createInstancedParts({colors});
+    instanced.add(proxy, {faces, edges: new BufferGeometry(), conditional: new BufferGeometry()}, 16);
+    instanced.build();
+    const batch = instanced.object.children[0].userData.batch;
+    t.after(() => { instanced.dispose(); faces.dispose(); proxy.material.dispose(); });
+    return {proxy, instanced, matrix: batch.matrices, color: batch.colours[0].attribute};
+};
+
+test('unchanged GPU-precision transforms and colors retain bytes and attribute versions', t => {
+    const {proxy, instanced, matrix, color} = uploadFixture(t);
+    const before = {matrix: matrix.array.slice(), color: color.array.slice(), mv: matrix.version, cv: color.version};
+    instanced.sync();
+    assert.deepEqual(matrix.array, before.matrix);
+    assert.deepEqual(color.array, before.color);
+    assert.equal(matrix.version, before.mv, 'No upload for identical stored matrix bytes');
+    assert.equal(color.version, before.cv, 'No upload for identical stored color bytes');
+    proxy.matrixWorld.elements[12] += 1e-10;
+    proxy.material.color.r += 1e-10;
+    instanced.sync();
+    assert.deepEqual(matrix.array, before.matrix, 'Sub-float32 movement leaves the existing GPU bytes');
+    assert.deepEqual(color.array, before.color, 'Sub-float32 tint leaves the existing GPU bytes');
+    assert.equal(matrix.version, before.mv);
+    assert.equal(color.version, before.cv);
+});
+
+test('representable changes and forced uploads remain live after precision-aware caching', t => {
+    const {proxy, instanced, matrix, color} = uploadFixture(t);
+    let mv = matrix.version, cv = color.version;
+    proxy.matrixWorld.elements[12] = 0.1001;
+    proxy.material.color.r = 0.25;
+    instanced.sync();
+    assert.ok(matrix.version > mv);
+    assert.ok(color.version > cv);
+    assert.equal(matrix.array[12], new Float32Array([0.1001])[0]);
+    assert.equal(color.array[0], new Float32Array([0.25])[0]);
+    mv = matrix.version; cv = color.version;
+    instanced.sync(true);
+    assert.ok(matrix.version > mv, 'Explicit forced matrix upload retained');
+    assert.ok(color.version > cv, 'Explicit forced color upload retained');
+    const visible = matrix.array.slice();
+    proxy.userData.hidden = true; instanced.sync();
+    assert.ok(matrix.array.every(value => value === 0));
+    proxy.userData.hidden = false; instanced.sync();
+    assert.deepEqual(matrix.array, visible, 'Unhide restores the same placement');
+    proxy.material.emissive.setRGB(0.15, 0.01, 0.07); instanced.sync();
+    assert.equal(color.array[0], new Float32Array([0.4])[0], 'Emissive highlight still reaches the GPU');
+    const lit = color.array.slice();
+    proxy.userData.dim = true; instanced.sync();
+    assert.notDeepEqual(color.array, lit, 'Dimming still reaches the GPU');
 });

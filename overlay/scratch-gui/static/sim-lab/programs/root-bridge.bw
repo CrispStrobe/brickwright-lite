@@ -1,0 +1,156 @@
+# Root Bridge - fresh rebuild, input-only geometric-mean demonstration.
+# SPDX-License-Identifier: BSD-3-Clause
+# Load matching root-bridge.ldr in Robot Lab, then load this BW in the Code tab.
+# Start with Robot Lab Run; it connects the virtual SPIKE hub and starts the code.
+# A/B drive real 60 LDU cranks and 100 LDU connecting rods.
+# Only input targets are computed; the C carriage is entirely passive.
+# Saved factors: a=b=80 LDU. Motor targets refer to that saved crank pose.
+# Each target uses a fresh unwrapped encoder delta. No encoder is reset.
+# The finite demonstration returns to the saved inputs, holds them, and pauses.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL phase = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set phase to 0
+  set motor stop action A brake
+  set motor stop action B brake
+  lab start
+  reset timer
+  broadcast "finite watchdog"
+  say "Free startup: watch the passive linkage."
+  wait 5 seconds
+  set motor stop action A hold
+  set motor stop action B hold
+  set phase to -1
+  set targetA to 0
+  set targetB to 0
+  broadcast "move inputs and observe" and wait
+  # Cell 1: a=60 LDU, b=60 LDU.
+  set phase to 1
+  set targetA to -17.457603124
+  set targetB to 17.457603124
+  say "Cell 1: a=24 mm, b=24 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 2: a=60 LDU, b=80 LDU.
+  set phase to 2
+  set targetA to -17.457603124
+  set targetB to 0
+  say "Cell 2: a=24 mm, b=32 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 3: a=60 LDU, b=100 LDU.
+  set phase to 3
+  set targetA to -17.457603124
+  set targetB to -22.885380476
+  say "Cell 3: a=24 mm, b=40 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 4: a=80 LDU, b=100 LDU.
+  set phase to 4
+  set targetA to 0
+  set targetB to -22.885380476
+  say "Cell 4: a=32 mm, b=40 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 5: a=100 LDU, b=100 LDU.
+  set phase to 5
+  set targetA to 22.885380476
+  set targetB to -22.885380476
+  say "Cell 5: a=40 mm, b=40 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 6: a=100 LDU, b=80 LDU.
+  set phase to 6
+  set targetA to 22.885380476
+  set targetB to 0
+  say "Cell 6: a=40 mm, b=32 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 7: a=100 LDU, b=60 LDU.
+  set phase to 7
+  set targetA to 22.885380476
+  set targetB to 17.457603124
+  say "Cell 7: a=40 mm, b=24 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 8: a=80 LDU, b=60 LDU.
+  set phase to 8
+  set targetA to 0
+  set targetB to 17.457603124
+  say "Cell 8: a=32 mm, b=24 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 9: a=80 LDU, b=80 LDU.
+  set phase to 9
+  set targetA to 0
+  set targetB to 0
+  say "Cell 9: a=32 mm, b=32 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 10: a=64 LDU, b=100 LDU.
+  set phase to 10
+  set targetA to -14.149004509
+  set targetB to -22.885380476
+  say "Cell 10: a=25.6 mm, b=40 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 11: a=100 LDU, b=64 LDU.
+  set phase to 11
+  set targetA to 22.885380476
+  set targetB to 14.149004509
+  say "Cell 11: a=40 mm, b=25.6 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 12: a=80 LDU, b=80 LDU.
+  set phase to 12
+  set targetA to 0
+  set targetB to 0
+  say "Cell 12: a=32 mm, b=32 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 13: a=60 LDU, b=100 LDU.
+  set phase to 13
+  set targetA to -17.457603124
+  set targetB to -22.885380476
+  say "Cell 13: a=24 mm, b=40 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 14: a=100 LDU, b=60 LDU.
+  set phase to 14
+  set targetA to 22.885380476
+  set targetB to 17.457603124
+  say "Cell 14: a=40 mm, b=24 mm"
+  broadcast "move inputs and observe" and wait
+  # Cell 15: a=80 LDU, b=80 LDU.
+  set phase to 15
+  set targetA to 0
+  set targetB to 0
+  say "Cell 15: a=32 mm, b=32 mm"
+  broadcast "move inputs and observe" and wait
+  lab stop motor A hold
+  lab stop motor B hold
+  set completed to 1
+  say "Complete: inputs returned to center; the height was passive."
+  lab stop
+
+WHEN I receive "move inputs and observe":
+  IF (abs of (targetA - (lab motor A angle))) > 50 THEN:
+    broadcast "stop safely" and wait
+  lab run motor A for (targetA - (lab motor A angle)) degrees at 8 degrees per second
+  IF (abs of (targetB - (lab motor B angle))) > 50 THEN:
+    broadcast "stop safely" and wait
+  lab run motor B for (targetB - (lab motor B angle)) degrees at 8 degrees per second
+  wait 0.5 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    broadcast "stop safely" and wait
+  IF (abs of (targetB - (lab motor B angle))) > 1 THEN:
+    broadcast "stop safely" and wait
+  wait 0.75 seconds
+
+WHEN I receive "finite watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 115 THEN:
+      broadcast "stop safely" and wait
+    wait 0.1 seconds
+
+WHEN I receive "stop safely":
+  set failed to 1
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop
+  say "Stopped: inspect the linkage and reload its saved pose."
+  stop all

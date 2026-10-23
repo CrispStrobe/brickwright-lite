@@ -1,0 +1,75 @@
+# INTEGRAL — disc-and-wheel mechanical integrator.
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 OpenAI
+# Reload the saved model before starting. Native replay uses explicit ports.
+# A drives the platter through the physical 20:60 gear pair.
+# B moves the rack; the azure wheel is passive and receives NO motor command.
+# Nominal B targets: radius / 6 mm pinion pitch radius, converted to degrees.
+# The real motor encoder completes every move; a two-degree guard detects error.
+# Phases 1..4 are six-second measurements at +28, +14, 0, -28 mm.
+# During phase 0 the carriage is settling or changing radius, with axial scrub.
+# The ideal integrator equation is not part of this control program.
+DEVICE SPIKE
+GLOBAL phase = 0
+GLOBAL targetB = 0
+GLOBAL fault = 0
+GLOBAL complete = 0
+
+WHEN flag clicked:
+  lab start
+  set phase to 0
+  set fault to 0
+  set complete to 0
+  lab stop motor A hold
+  lab stop motor B hold
+  wait 1 seconds
+  IF (abs of (lab motor B angle)) > 2 THEN:
+    set fault to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  set targetB to 267.380304
+  broadcast "move radius" and wait
+  lab run motor A at 180 degrees per second
+  set phase to 1
+  wait 6 seconds
+  set phase to 0
+  set targetB to 133.690152
+  broadcast "move radius" and wait
+  set phase to 2
+  wait 6 seconds
+  set phase to 0
+  set targetB to 0
+  broadcast "move radius" and wait
+  set phase to 3
+  wait 6 seconds
+  set phase to 0
+  set targetB to -267.380304
+  broadcast "move radius" and wait
+  set phase to 4
+  wait 6 seconds
+  set phase to 0
+  set targetB to 0
+  broadcast "move radius" and wait
+  lab stop motor A hold
+  lab stop motor B hold
+  wait 1 seconds
+  IF (abs of (lab motor B angle)) > 2 THEN:
+    set fault to 1
+    stop all
+  set phase to 9
+  set complete to 1
+
+WHEN I receive "move radius":
+  IF (abs of (targetB - (lab motor B angle))) > 540 THEN:
+    set fault to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  lab run motor B for (targetB - (lab motor B angle)) degrees at 120 degrees per second
+  lab stop motor B hold
+  IF (abs of (targetB - (lab motor B angle))) > 2 THEN:
+    set fault to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all

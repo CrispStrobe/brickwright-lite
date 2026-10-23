@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import {physicsAddonInteractions,addonLesson} from './lib/sim-lab-physics-addons-gate.mjs';
+import {resonanceInteractions, resonanceLesson} from './lib/sim-lab-resonance-gate.mjs';
+import {newModelsInteractions, newModelLesson} from './lib/sim-lab-new-models-gate.mjs';
 import {scalingSteeringInteractions,scalingSteeringLesson} from './lib/sim-lab-scaling-steering-gate.mjs';
 import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
 import {magneticChessInteractions,magneticChessLesson} from './lib/sim-lab-magnetic-chess-gate.mjs';
@@ -781,12 +783,43 @@ try {
             await ex.close();
         }
 
+        if (runExample('resonance-lab.ldr')) {
+            const resonance = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            resonance.on('pageerror', error => errors.push(error.stack || error.message));
+            resonance.on('dialog', dialog => dialog.accept());
+            const opts = {openSimLab, shotsDir: resolve(artifacts, 'resonance-lab'), timeout: wallBudget(22000),
+                sourceModelsDir: resolve(root, 'overlay/scratch-gui/static/sim-lab/models')};
+            await resonanceInteractions(resonance, opts);
+            await resonance.close();
+            const german = await browser.newPage({viewport: {width: 1600, height: 1050}, locale: 'de-DE', serviceWorkers: 'block'});
+            german.on('pageerror', error => errors.push(error.stack || error.message));
+            german.on('dialog', dialog => dialog.accept());
+            await resonanceLesson(german, opts, 'de');
+            await german.close();
+        }
+        const newModelIds = ['sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`));
+        if (newModelIds.length) {
+            const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+            page.on('pageerror', error => errors.push(error.stack || error.message));
+            page.on('dialog', dialog => dialog.accept());
+            const opts = {openSimLab, shotsDir: resolve(artifacts, 'new-models'), timeout: wallBudget(140000), models: newModelIds};
+            await newModelsInteractions(page, opts);
+            for (const id of newModelIds) await newModelLesson(page, opts, id, 'en');
+            await page.close();
+            for (const id of newModelIds) {
+                const german = await browser.newPage({viewport: {width: 1600, height: 1050}, locale: 'de-DE', serviceWorkers: 'block'});
+                german.on('pageerror', error => errors.push(error.stack || error.message));
+                german.on('dialog', dialog => dialog.accept());
+                await newModelLesson(german, opts, id, 'de');
+                await german.close();
+            }
+        }
         if (process.env.BW_SIMLAB_LIBRARY && runExample('fixed-machines.ldr')) {
             const fixed=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             fixed.on('pageerror',error=>errors.push(error.stack || error.message));fixed.on('dialog',dialog=>dialog.accept());
             await fixedMachinesInteractions(fixed,{openSimLab,shotsDir:resolve(artifacts,'fixed-machines'),timeout:wallBudget(110000)*2,fixedModelsDir:process.env.BW_SIMLAB_LIBRARY});await fixed.close();
         }
-        for (const id of ['counterturn','snapgate','bit-keeper','echo-bridge','linger','crossline','pantograph-doubler','scale-studio','ripple-relay','crossglide','offset-orbit','ellipsa','momentum-twins','bloom-gate','amplify']) if (runExample(id+'.ldr')) {
+        for (const id of ['counterturn','snapgate','bit-keeper','echo-bridge','linger','crossline','pantograph-doubler','scale-studio','ripple-relay','crossglide','offset-orbit','circle-splitter','integral','ellipsa','momentum-twins','bloom-gate','amplify']) if (runExample(id+'.ldr')) {
             const machine=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'});
             machine.on('pageerror',error=>errors.push(error.stack || error.message));machine.on('dialog',dialog=>dialog.accept());
             const opts={id,openSimLab,shotsDir:resolve(artifacts,id),timeout:wallBudget(180000)};
