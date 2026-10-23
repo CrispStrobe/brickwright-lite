@@ -45,6 +45,9 @@ const POWEREDUP_WORDS = [
     pup('motorOn', 'command', `turn motor ${PORT} on`),
     pup('motorOff', 'command', `turn motor ${PORT} off`),
     pup('setMotorPower', 'command', `set motor ${PORT} power to {POWER} %`),
+    // LWP3 StartPower: an unregulated duty cycle. (`set motor … power` + `turn motor … on` is
+    // StartSpeed, a speed the hub holds under load, as LEGO's own Scratch blocks send it.)
+    pup('motorStartPower', 'command', `start motor ${PORT} at {POWER} % power`),
     pup('setMotorDirection', 'command', `set motor ${PORT} direction to {DIRECTION:forward|backward|reverse}`),
     pup('setMotorStopAction', 'command', `set motor ${PORT} stop action to {ACTION:float|brake|hold}`),
     pup('setMotorAcceleration', 'command', `set motor ${PORT} acceleration to {TIME} ms`),
@@ -72,6 +75,7 @@ const BOOST_WORDS = [
     boost('motorOn', 'command', `turn motor ${MOTOR} on`),
     boost('motorOff', 'command', `turn motor ${MOTOR} off`),
     boost('setMotorPower', 'command', `set motor ${MOTOR} power to {POWER} %`),
+    boost('motorStartPower', 'command', `start motor ${MOTOR} at {POWER} % power`),
     boost('setMotorDirection', 'command', `set motor ${MOTOR} direction to {MOTOR_DIRECTION:forward|backward|reverse}`),
     boost('setMotorStopAction', 'command', `set motor ${MOTOR} stop action to {ACTION:float|brake|hold}`),
     boost('setMotorAcceleration', 'command', `set motor ${MOTOR} acceleration to {TIME} ms`),
@@ -118,6 +122,9 @@ const NXT_WORDS = [
     nxt('motorRunDegrees', 'command', `motor ${NXT_MOTOR} power {POWER} for {DEGREES} degrees`),
     nxt('motorRunRotations', 'command', `motor ${NXT_MOTOR} power {POWER} for {ROTATIONS} rotations`),
     nxt('motorOn', 'command', `motor ${NXT_MOTOR} power {POWER}`),
+    // SETOUTPUTSTATE unregulated (MOTORON | BRAKE, regulation IDLE): a duty cycle. `motor … power …` above is
+    // REGULATION_MODE_MOTOR_SPEED, a speed the brick holds under load.
+    nxt('motorStartPower', 'command', `start motor ${NXT_MOTOR} at {POWER} % power`),
     nxt('motorStop', 'command', `stop motor ${NXT_MOTOR} {ACTION:brake|coast}`),
     nxt('resetMotorPosition', 'command', `reset motor ${NXT_MOTOR} position`),
     nxt('setupTouchSensorNXT', 'command', `setup touch sensor ${NXT_SENSOR}`),
