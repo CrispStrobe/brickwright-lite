@@ -1584,7 +1584,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4]
+        shard: [heavy, light, robotlab, robotdraw, robotlink, robotmotion, robotbench, robotlink2, robotbench2, robotdraw2, robotdraw3, robotmotion2, robotaddon1, robotaddon2, robotaddon3, robotaddon4, robotaddon5, robotaddon6]
         # Path-aware PR runs (scripts/ci-browser-scope.mjs): a shard the changed
         # files do not reach is left out. Non-PR events set every shard true.
         exclude:
@@ -1604,6 +1604,8 @@ jobs:
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon2' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon3' || 'none' }}
           - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon4' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon5' || 'none' }}
+          - shard: ${{ needs.scope.outputs.robotlab != 'true' && 'robotaddon6' || 'none' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -1975,32 +1977,32 @@ jobs:
 
       - name: Browser gate — Robot Lab SineShuttle and Quartermaster complete examples
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon5' }}
         run: npm run verify:sim-lab -- --part=examples --examples=sine-shuttle,quartermaster
 
       - name: Browser gate — Robot Lab Watt Line and TwinTempo complete examples
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon5' }}
         run: npm run verify:sim-lab -- --part=examples --examples=watt-line,twin-tempo
 
       - name: Browser gate — Robot Lab root-bridge complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=root-bridge
 
       - name: Browser gate — Robot Lab balance-engine complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=balance-engine
 
       - name: Browser gate — Robot Lab linger complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=linger
 
       - name: Browser gate — Robot Lab crossline complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=crossline
 
       - name: Browser gate — Robot Lab pantograph-doubler complete example
