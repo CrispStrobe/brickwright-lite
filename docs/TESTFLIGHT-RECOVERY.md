@@ -11,6 +11,9 @@ qualified recovery source separately from that tag. Both the actual release
 checkout and the app version/bundle identity are admitted before API access.
 No credentials are needed locally: existing Actions secrets remain in their
 existing secret boundary. Never print keys, raw API bodies or writer output.
+Resolve the app privately using Apple's [bundle-ID filter](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-apps).
+Only the three existing API credentials enter the workflow environment;
+the resolved app ID is passed to captured writers inside the process.
 
 ## Qualification and operation
 
@@ -56,3 +59,13 @@ and [build beta details](https://developer.apple.com/documentation/appstoreconne
 are separate observations. Preserve that distinction when reporting delivery.
 Do not close the instrument campaign's release prerequisite merely because an
 upload, GitHub release or metadata writer succeeded.
+
+## Follow-up for future releases
+
+Apply private app discovery to the ordinary metadata launch points in
+`mobile.yml` and `release.yml`, with their shared writer interfaces and tests.
+Keep opaque app IDs inside the authenticated process, including subprocess
+environments; prove runner headers and summaries omit them. Preserve existing
+version/platform selection, signing and upload behavior, and immutable tags.
+Claim that separate boundary before implementation and require affected
+workflow qualification. This recovery does not qualify those launch points.

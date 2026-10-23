@@ -51,7 +51,7 @@ and secret-output controls. Admit all enabled exact-head CI before landing;
 then perform the bounded actual API audit and qualified recovery, recording
 observed results without a native or physical-device qualification claim.
 
-Local source controls pass: 59 recovery/census/workflow tests and eight complete
+Local source controls pass: 61 recovery/census/workflow tests and eight complete
 doc-trigger tests, without skips. Four recovery mutations are detected; the
 malformed-state privacy regression and scoped zero-run regression failed before
 their fixes. The actual sparse release input passes tag/config and bilingual
@@ -60,3 +60,11 @@ run. Canonical scoped regeneration preserves all 321 prior observations across
 25 workflows and declares one new workflow with zero runs, explicitly sourced
 from the working tree. The existing presentation is preserved too; no unrelated
 workflow evidence or execution is manufactured.
+
+Private app discovery replaces the unmasked repository-variable input to this
+workflow; only existing secret API credentials enter its runner environment.
+The original header exposure was observed without reproducing its identifier.
+App discovery refuses missing, ambiguous or mismatched records before writers;
+tagged writers receive the admitted ID only inside captured child processes.
+The old runner-header negative failed before this repair. Ordinary packaging
+launch-point consistency is explicitly scoped as a follow-up in the guide.

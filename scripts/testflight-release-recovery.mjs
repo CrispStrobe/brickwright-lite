@@ -5,7 +5,7 @@ import {resolve, join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {execFileSync, spawnSync} from 'node:child_process';
 import {client, readEnv} from './lib-appstore.mjs';
-import {RELEASE, admitRelease, releaseNotes, inspectRelease, recoverRelease} from './lib/testflight-release-state.mjs';
+import {RELEASE, admitRelease, releaseNotes, discoverReleaseApp, inspectRelease, recoverRelease} from './lib/testflight-release-state.mjs';
 
 export function argumentsFor(argv) {
     const result = {action: 'audit'};
@@ -41,15 +41,16 @@ async function main() {
     const directory = realpathSync(resolve(options['release-dir']));
     const identity = sourceIdentity(directory);
     const notes = releaseNotes(readFileSync(join(directory, 'docs/app-store-metadata.md'), 'utf8'));
-    const env = readEnv();
+    const env = readEnv(['APPSTORE_API_KEY_ID', 'APPSTORE_API_ISSUER_ID', 'APPSTORE_API_KEY_P8']);
     const api = client(env);
-    const inspect = () => inspectRelease({api, appId: env.APPSTORE_APP_ID, identity, notes});
+    const appId = await discoverReleaseApp({api, identity});
+    const inspect = () => inspectRelease({api, appId, identity, notes});
     const runWriter = async kind => {
         sourceIdentity(directory);
         const args = kind === 'notes' ? ['scripts/push-tester-notes.mjs', '--platform', 'IOS'] :
             kind === 'distribution' ? ['scripts/testflight-submit.mjs', '--version', RELEASE.version] : null;
         if (!args) throw Object.assign(new Error('INVALID_WRITER'), {code: 'INVALID_WRITER'});
-        const childEnv = {...process.env, NODE_OPTIONS: '', NODE_PATH: ''};
+        const childEnv = {...process.env, APPSTORE_APP_ID: appId, NODE_OPTIONS: '', NODE_PATH: ''};
         const result = spawnSync(process.execPath, args, {cwd: directory, env: childEnv,
             encoding: 'utf8', timeout: 180000, maxBuffer: 2 * 1024 * 1024});
         if (result.status !== 0 || result.error || result.signal) {

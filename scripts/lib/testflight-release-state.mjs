@@ -61,6 +61,17 @@ async function resource(api, route) {
     return value;
 }
 
+/** Resolve the private app ID inside the authenticated process, not a job env. */
+export async function discoverReleaseApp({api, identity}) {
+    admitRelease(identity);
+    const apps = await pages(api, `/v1/apps?filter[bundleId]=${encodeURIComponent(RELEASE.bundleId)}&fields[apps]=bundleId&limit=2`);
+    if (apps.length !== 1 || apps[0].attributes?.bundleId !== RELEASE.bundleId) {
+        refuse('APP_IDENTITY_MISSING_OR_AMBIGUOUS');
+    }
+    id(apps[0].id);
+    return apps[0].id;
+}
+
 export async function inspectRelease({api, appId, identity, notes}) {
     admitRelease(identity);
     if (typeof api !== 'function' || ['en-US', 'de-DE'].some(k => typeof notes?.[k] !== 'string' || !notes[k])) {

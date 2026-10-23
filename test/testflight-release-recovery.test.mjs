@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {RELEASE, admitRelease, releaseNotes, inspectRelease, recoverRelease} from '../scripts/lib/testflight-release-state.mjs';
+import {RELEASE, admitRelease, releaseNotes, discoverReleaseApp, inspectRelease, recoverRelease} from '../scripts/lib/testflight-release-state.mjs';
 import {argumentsFor} from '../scripts/testflight-release-recovery.mjs';
 import * as originalState from '../scripts/lib/testflight-release-state.mjs';
 
@@ -64,6 +64,30 @@ function fixture({platforms = ['IOS'], complete = false} = {}) {
 }
 
 const noPause = async ms => assert.equal(ms, 60000);
+
+test('private app identity is discovered read-only from the admitted public bundle ID', async () => {
+    const requests = [];
+    const api = async (route, method) => {
+        requests.push({route, method});
+        const url = new URL(route, 'https://api.appstoreconnect.apple.com');
+        assert.equal(url.pathname, '/v1/apps');
+        assert.equal(url.searchParams.get('filter[bundleId]'), RELEASE.bundleId);
+        return {data: [mk(appId, {bundleId: RELEASE.bundleId})]};
+    };
+    assert.equal(await discoverReleaseApp({api, identity}), appId);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].method, 'GET');
+    await assert.rejects(() => discoverReleaseApp({api, identity: {...identity, version: 'wrong'}}), /RELEASE_IDENTITY/);
+    assert.equal(requests.length, 1, 'wrong release refuses before any discovery request');
+});
+
+test('app discovery refuses missing, duplicate, mismatched and malformed identities', async () => {
+    for (const data of [[], [mk(appId, {bundleId: 'other.bundle'})],
+        [mk(appId, {bundleId: RELEASE.bundleId}), mk('OTHER-APP', {bundleId: RELEASE.bundleId})]]) {
+        await assert.rejects(() => discoverReleaseApp({api: async () => ({data}), identity}), /APP_IDENTITY_MISSING_OR_AMBIGUOUS/);
+    }
+    await assert.rejects(() => discoverReleaseApp({api: async () => ({data: [mk('../other', {bundleId: RELEASE.bundleId})]}), identity}), /INVALID_RESOURCE_ID/);
+});
 
 test('malformed API testing-state text cannot enter the public summary', async () => {
     for (const field of ['internalState', 'externalState']) {
@@ -242,6 +266,8 @@ test('workflow is manual-only, least-privilege and cannot build or upload a bina
     assert.match(workflow, /default: audit/);
     assert.match(workflow, /ref: refs\/tags\/v0\.1\.26/);
     assert.match(workflow, /contents: read/);
+    assert.doesNotMatch(workflow, /APPSTORE_APP_ID:/,
+        'an unmasked repository variable must not enter runner environment headers');
     assert.doesNotMatch(workflow, /contents: write|cancel-in-progress: true/);
     assert.equal((workflow.match(/persist-credentials: false/g) || []).length, 2);
     const runs = [...workflow.matchAll(/^\s+run: (.+)$/gm)].map(m => m[1]);
