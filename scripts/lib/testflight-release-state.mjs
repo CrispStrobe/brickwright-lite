@@ -116,6 +116,8 @@ export async function inspectRelease({api, appId, identity, notes}) {
             record.internalState = beta.attributes.internalBuildState;
             record.externalState = beta.attributes.externalBuildState;
             if ([record.internalState, record.externalState].some(s => typeof s !== 'string' || !s)) refuse('MISSING_TESTING_STATE');
+            // Publish categorical labels only, never arbitrary API text or IDs.
+            if ([record.internalState, record.externalState].some(s => !/^[A-Z]+(?:_[A-Z]+)*$/.test(s))) refuse('INVALID_TESTING_STATE');
         }
     }
     const iosPresent = records.some(r => r.platform === 'IOS');

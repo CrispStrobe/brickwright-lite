@@ -65,6 +65,23 @@ function fixture({platforms = ['IOS'], complete = false} = {}) {
 
 const noPause = async ms => assert.equal(ms, 60000);
 
+test('malformed API testing-state text cannot enter the public summary', async () => {
+    for (const field of ['internalState', 'externalState']) {
+        const f = fixture({complete: true});
+        f.state.records[0][field] = 'PRIVATE-RESOURCE-123';
+        await assert.rejects(f.inspect, /INVALID_TESTING_STATE/);
+    }
+});
+
+test('an unfamiliar categorical state never establishes availability or repeats distribution', async () => {
+    const f = fixture({complete: true});
+    f.state.records[0].externalState = 'FUTURE_TESTING_STATE';
+    const result = await recoverRelease({inspect: f.inspect, runWriter: f.writer, pause: noPause});
+    assert.equal(result.complete, false);
+    assert.equal(result.outcome, 'PENDING_AVAILABILITY');
+    assert.deepEqual(f.writes, []);
+});
+
 test('exact release identity is admitted; every identity substitution refuses', () => {
     admitRelease(identity);
     for (const field of Object.keys(RELEASE)) assert.throws(() => admitRelease({...identity, [field]: 'wrong'}), /RELEASE_IDENTITY_MISMATCH/);
