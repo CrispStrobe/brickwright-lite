@@ -1,6 +1,37 @@
 # Arcade compatibility: integration and next steps
 
-## Current qualification — 23 October 2026
+## Latest completed unit set and next candidate
+
+The [completed hosted unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39905957395)
+reports **12,346 passes, 162 failures, 19 skips and 37 TODOs across 12,564 tests**.
+There are no new failing titles versus its preceding head; the remaining Sprite
+source-restoration failure is resolved. Complete source61, original return12,
+identity8, SDK32, Sprite receiver14, existing Array87, refusal6, report12 and
+diagnostic7 cohorts pass. These results are not a new application census.
+
+The actual numeric GUI still fails its unchanged clean-export assertion with
+two Array producer refusals. Its artifact records `UNAVAILABLE_FRESHNESS` and
+no exact failed input graph. The observer's actual failure cause is not retained.
+A source-reviewed follow-up supports the real constructor's absent request slot,
+uses the directly rendered editor root, retains all post-action ownership checks
+and records fixed unavailable reason codes. The complete diagnostic module now
+has nine groups; their new hosted result and actual GUI capture remain pending.
+
+The separate [captured-operation proof](ARCADE-CAPTURED-PRIMITIVE-OPERATIONS.md)
+passes all **11 new source groups locally** under Node 22.23.2, including the exact
+retained Math.idiv draft. Original input initialization stays unchanged. The
+original Math.idiv native/Code/saved-project/export/reimport routes and the final
+combined hosted matrix still need qualification.
+
+Continue with the final pushed head: inspect complete affected controls and the
+actual numeric artifact once. Require COMPLETE exact input/result bytes, their
+hashes and build/source identity before changing the Array initialized-producer
+or compatible-writer guards. If observation remains unavailable, use its retained
+reason to repair observation ownership. Keep assertions, diagnostics and corpus
+accounting intact. Historical **147 translated / 36 partial / one malformed**
+remains unremeasured.
+
+## Earlier source-restoration checkpoint — 23 October 2026
 
 The subsequent receiver shard confirms **14/14 Sprite receiver controls pass**.
 The capture/report modules and complete current matrix remain pending. A further

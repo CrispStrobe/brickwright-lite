@@ -104,3 +104,9 @@ Used-only sticky currentness and semantic-slot absence fences preserve source
 ownership. The complete new pure module contains eleven groups. Source review,
 bounded local qualification and hosted/native/GUI results remain separate; do
 not claim a repaired original export or corpus count from source implementation.
+
+The complete new source module now passes locally: eleven tests, no failures,
+skips, TODOs or cancellations, with every admitted module observed and unchanged
+source/tool guards. This includes the exact retained public synthetic Math.idiv
+draft. No original SDK/native fixture was replayed locally. Complete affected
+hosted qualification and actual original export/reimport remain required.

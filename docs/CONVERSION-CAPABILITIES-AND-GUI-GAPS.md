@@ -5792,8 +5792,9 @@ than granting a Sprite type from annotations or hiding export refusals.
 See the self-contained [capability and acceptance contract](ARCADE-CAPTURED-PRIMITIVE-OPERATIONS.md).
 The source candidate composes exact canonical arithmetic/comparison results over
 captured primitive cells for the native-addition consumer. It leaves generic
-initialization and type cells unchanged. Eleven new complete source groups are
-pending qualification; they do not qualify editor or graphics behavior.
+initialization and type cells unchanged. All eleven new complete source groups
+pass locally under Node 22.23.2. Hosted original/exported SDK and native routes,
+visible editor connections and graphics behavior remain separately unqualified.
 
 Use existing global-variable, value-procedure and Arrays arithmetic blocks to
 build a procedure that updates a global trace with nested multiplication and

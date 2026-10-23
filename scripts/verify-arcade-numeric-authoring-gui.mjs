@@ -59,66 +59,93 @@ const readCode = () => editor().evaluate(element => element.cmTile.root.view.sta
 // Read only actual component data. The pre-click handle is local to this
 // verifier; it never becomes a product hook, cache or report identity token.
 const observeCleanExport = (element, {phase, held, visibleText}) => {
-    const unavailable = () => ({captureStatus: 'UNAVAILABLE_FRESHNESS'});
+    const nonData = {};
+    const unavailable = (reasonCode, beforeReason) => {
+        const result = {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode};
+        if (typeof beforeReason === 'string' && beforeReason.length <= 80) result.beforeReason = beforeReason;
+        return result;
+    };
     try {
         const own = (value, name) => {
             if (!value || typeof value !== 'object') return undefined;
             const descriptor = Object.getOwnPropertyDescriptor(value, name);
             if (!descriptor) return undefined;
-            if (!Object.hasOwn(descriptor, 'value')) throw new Error('non-data observation');
+            if (!Object.hasOwn(descriptor, 'value')) throw nonData;
             return descriptor.value;
         };
         const vm = window.__brickwrightStore.getState().scratchGui.vm;
         let fiber;
         for (let node = element, count = 0; node && count < 64; node = node.parentElement, count++) {
             const keys = Object.getOwnPropertyNames(node).filter(key => key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$'));
-            if (keys.length > 1) return unavailable();
+            if (keys.length > 1) return unavailable('FIBER_POINTER_AMBIGUOUS');
             if (keys.length === 1) { fiber = own(node, keys[0]); break; }
         }
+        if (!fiber) return unavailable('FIBER_POINTER_MISSING');
         const candidates = [], seenFibers = [];
         for (let count = 0; fiber && count < 128; fiber = own(fiber, 'return'), count++) {
-            if (seenFibers.includes(fiber)) return unavailable();
+            if (seenFibers.includes(fiber)) return unavailable('FIBER_CYCLE');
             seenFibers.push(fiber);
             const instance = own(fiber, 'stateNode'), state = own(instance, 'state'), props = own(instance, 'props');
             if (state && Object.hasOwn(state, 'conversionReport') && own(props, 'vm') === vm && !candidates.includes(instance)) candidates.push(instance);
         }
-        if (fiber || candidates.length !== 1) return unavailable();
+        if (fiber) return unavailable('FIBER_DEPTH');
+        if (candidates.length !== 1) return unavailable('OWNER_AMBIGUOUS');
         const instance = candidates[0], state = own(instance, 'state'), revision = own(instance, '_arcadeReportRevision') ?? 0;
-        if (!Number.isSafeInteger(revision) || revision < 0 || own(instance, '_unmounted') || own(state, 'busy') !== false) return unavailable();
-        const request = own(instance, '_arcadeReportRequest'), report = own(state, 'conversionReport');
+        if (!Number.isSafeInteger(revision) || revision < 0) return unavailable('REVISION_INVALID');
+        if (own(instance, '_unmounted')) return unavailable('COMPONENT_DISPOSED');
+        if (own(state, 'busy') !== false) return unavailable('COMPONENT_BUSY');
+        const requestDescriptor = Object.getOwnPropertyDescriptor(instance, '_arcadeReportRequest');
+        if (requestDescriptor && !Object.hasOwn(requestDescriptor, 'value')) throw nonData;
+        const request = requestDescriptor?.value, report = own(state, 'conversionReport');
         if (phase === 'before') {
-            if (report !== null || request !== null) return unavailable();
+            if (report !== null) return unavailable('PRE_REPORT_PRESENT');
+            // The actual constructor has no request slot. Only begin creates
+            // its object; invalidation assigns null. A fresh absent slot has
+            // never begun a request and must not hide an inherited one.
+            if (!requestDescriptor) {
+                if ('_arcadeReportRequest' in instance) return unavailable('PRE_REQUEST_INHERITED');
+            } else if (request !== null) {
+                return unavailable(request === undefined ? 'PRE_REQUEST_UNDEFINED' : 'PRE_REQUEST_ACTIVE');
+            }
             return {status: 'READY', instance, vm, revision};
         }
-        if (own(held, 'status') !== 'READY' || own(held, 'instance') !== instance || own(held, 'vm') !== vm ||
-            own(held, 'revision') !== revision || !request || own(request, 'vm') !== vm || own(request, 'revision') !== revision ||
-            own(report, 'operation') !== 'export') return unavailable();
+        if (phase !== 'after') return unavailable('OBSERVATION_SHAPE');
+        if (own(held, 'status') !== 'READY') return unavailable('HELD_NOT_READY', own(held, 'reasonCode'));
+        if (own(held, 'instance') !== instance) return unavailable('OWNER_CHANGED');
+        if (own(held, 'vm') !== vm) return unavailable('VM_CHANGED');
+        if (own(held, 'revision') !== revision) return unavailable('REVISION_CHANGED');
+        if (!requestDescriptor || !request || typeof request !== 'object' || own(request, 'vm') !== vm || own(request, 'revision') !== revision) return unavailable('REQUEST_INVALID');
+        if (own(report, 'operation') !== 'export') return unavailable('REPORT_OPERATION');
         const unsupported = own(report, 'unsupported');
-        if (!Array.isArray(unsupported)) return unavailable();
+        if (!Array.isArray(unsupported)) return unavailable('OBSERVATION_SHAPE');
         let reasons = '';
         for (let i = 0; i < unsupported.length; i++) {
             const reason = own(unsupported, String(i));
-            if (typeof reason !== 'string') return unavailable();
+            if (typeof reason !== 'string') return unavailable('OBSERVATION_SHAPE');
             reasons += (i ? ' · ' : '') + reason;
         }
-        if (visibleText !== 'Unsupported: ' + (reasons || 'nothing reported')) return unavailable();
+        if (visibleText !== 'Unsupported: ' + (reasons || 'nothing reported')) return unavailable('VISIBLE_TEXT_CHANGED');
         const observation = own(report, 'observation');
-        if (!observation || own(observation, 'schema') !== 'arcade-clean-export-observation-v1') return {captureStatus: 'UNAVAILABLE_OBSERVATION'};
+        if (!observation || own(observation, 'schema') !== 'arcade-clean-export-observation-v1') return unavailable('OBSERVATION_MISSING');
         const result = {};
         for (const name of ['schema', 'origin', 'captureStatus', 'inputJson', 'resultJson', 'inputUtf8Bytes', 'resultUtf8Bytes', 'totalUtf8Bytes', 'limitUtf8Bytes']) {
             const value = own(observation, name);
             if (value !== undefined) {
-                if (typeof value !== 'string' && typeof value !== 'number') return unavailable();
+                if (typeof value !== 'string' && typeof value !== 'number') return unavailable('OBSERVATION_SHAPE');
                 result[name] = value;
             }
         }
-        if (result.captureStatus === 'COMPLETE' &&
-            (result.origin !== 'owned-json-export' || typeof result.inputJson !== 'string' || typeof result.resultJson !== 'string' ||
-            result.limitUtf8Bytes !== 8388608 || !Number.isSafeInteger(result.totalUtf8Bytes) || result.totalUtf8Bytes > result.limitUtf8Bytes)) return unavailable();
+        if (result.captureStatus === 'COMPLETE') {
+            if (result.origin !== 'owned-json-export' || typeof result.inputJson !== 'string' || typeof result.resultJson !== 'string') return unavailable('OBSERVATION_SHAPE');
+            if (result.limitUtf8Bytes !== 8388608 || !Number.isSafeInteger(result.totalUtf8Bytes) || result.totalUtf8Bytes > result.limitUtf8Bytes ||
+                result.inputJson.length + result.resultJson.length > result.limitUtf8Bytes) return unavailable('OBSERVATION_SIZE');
+            const inputBytes = new TextEncoder().encode(result.inputJson).byteLength, resultBytes = new TextEncoder().encode(result.resultJson).byteLength;
+            if (inputBytes !== result.inputUtf8Bytes || resultBytes !== result.resultUtf8Bytes || inputBytes + resultBytes !== result.totalUtf8Bytes ||
+                inputBytes + resultBytes > result.limitUtf8Bytes) return unavailable('OBSERVATION_SIZE');
+        } else if (typeof result.inputJson === 'string' || typeof result.resultJson === 'string') return unavailable('OBSERVATION_SHAPE');
         return result;
-    } catch { return unavailable(); }
+    } catch (error) { return unavailable(error === nonData ? 'NON_DATA_STATE' : 'OBSERVER_ERROR'); }
 };
-
 const fresh = async () => {
     const context = await browser.newContext({viewport: {width: 1600, height: 1100}, acceptDownloads: true});
     const tab = await context.newPage();
@@ -385,7 +412,7 @@ try {
     await authorCode(cleanAuthoringCode);const assetsBeforeClean = await currentAssets();
     assert.equal(await page.getByTestId('bw-conversion-refusal-details').count(), 0, 'editing cannot display a previous export result');
     let cleanObservationOwner;
-    try { cleanObservationOwner = await editor().evaluateHandle(observeCleanExport, {phase: 'before'}); }
+    try { cleanObservationOwner = await page.getByTestId('bw-code-editor').evaluateHandle(observeCleanExport, {phase: 'before'}); }
     catch { /* Missing freshness evidence cannot replace the original journey. */ }
     await openCodeActions(page);
     const [cleanDownload] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
@@ -412,7 +439,7 @@ try {
         } else {
             // Retain only small status data, never an incomplete graph as COMPLETE.
             report.cleanAfterRefusal.observation = {captureStatus: observed.captureStatus || 'UNAVAILABLE_OBSERVATION',
-                schema: observed.schema, origin: observed.origin};
+                schema: observed.schema, origin: observed.origin, reasonCode: observed.reasonCode, beforeReason: observed.beforeReason};
         }
     } catch { report.cleanAfterRefusal.observation = {captureStatus: 'UNAVAILABLE_OBSERVER'}; }
     finally { try { await cleanObservationOwner?.dispose(); } catch { /* The original assertion stays authoritative. */ } }

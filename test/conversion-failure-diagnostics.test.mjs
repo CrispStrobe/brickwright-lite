@@ -137,48 +137,48 @@ test('clean export observer retains the actual mount before one action and retur
 });
 
 test('clean export observation refuses stale preconditions and foreign or changed post-action ownership', async () => {
-    const observe = await cleanExportObserver(), refused = {captureStatus: 'UNAVAILABLE_FRESHNESS'};
-    for (const edit of [
-        f => { f.instance.state.conversionReport = {operation: 'export'}; },
-        f => { f.instance._arcadeReportRequest = {vm: f.vm, revision: 7}; },
-        f => { f.instance.state.busy = true; }, f => { f.instance._unmounted = true; }
+    const observe = await cleanExportObserver(), refused = reasonCode => ({captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode});
+    for (const [edit,reason] of [
+        [f => { f.instance.state.conversionReport = {operation: 'export'}; },'PRE_REPORT_PRESENT'],
+        [f => { f.instance._arcadeReportRequest = {vm: f.vm, revision: 7}; },'PRE_REQUEST_ACTIVE'],
+        [f => { f.instance.state.busy = true; },'COMPONENT_BUSY'], [f => { f.instance._unmounted = true; },'COMPONENT_DISPOSED']
     ]) {
-        const f = cleanExportFixture();edit(f);assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), refused);
+        const f = cleanExportFixture();edit(f);assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), refused(reason));
     }
-    for (const edit of [
-        f => { f.fiber.stateNode = {...f.instance}; },
-        f => { f.instance.props.vm = {}; }, f => { f.instance._arcadeReportRevision++; },
-        f => { f.instance._arcadeReportRequest = null; },
-        f => { f.instance._arcadeReportRequest.vm = {}; },
-        f => { f.instance._arcadeReportRequest.revision++; },
-        f => { f.instance._unmounted = true; }, f => { f.instance.state.busy = true; },
-        f => { f.instance.state.conversionReport.operation = 'run'; }
+    for (const [edit,reason] of [
+        [f => { f.fiber.stateNode = {...f.instance}; },'OWNER_CHANGED'],
+        [f => { f.instance.props.vm = {}; },'OWNER_AMBIGUOUS'], [f => { f.instance._arcadeReportRevision++; },'REVISION_CHANGED'],
+        [f => { f.instance._arcadeReportRequest = null; },'REQUEST_INVALID'],
+        [f => { f.instance._arcadeReportRequest.vm = {}; },'REQUEST_INVALID'],
+        [f => { f.instance._arcadeReportRequest.revision++; },'REQUEST_INVALID'],
+        [f => { f.instance._unmounted = true; },'COMPONENT_DISPOSED'], [f => { f.instance.state.busy = true; },'COMPONENT_BUSY'],
+        [f => { f.instance.state.conversionReport.operation = 'run'; },'REPORT_OPERATION']
     ]) {
         const f = cleanExportFixture(), held = observe(f.window, f.element, {phase: 'before'});assert.equal(held.status, 'READY');
         f.publish();edit(f);
-        assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}), refused);
+        assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}), refused(reason));
         assert.equal(f.methods(), 0);
     }
     const f = cleanExportFixture(), held = observe(f.window, f.element, {phase: 'before'});f.publish();
-    assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: nothing reported'}), refused);
+    assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: nothing reported'}), refused('VISIBLE_TEXT_CHANGED'));
 });
 
 test('clean export observer rejects missing ambiguous cyclic and incomplete fiber ancestry', async () => {
-    const observe = await cleanExportObserver(), refused = {captureStatus: 'UNAVAILABLE_FRESHNESS'};
-    for (const edit of [
-        f => { delete f.element.__reactFiber$sourceControl; },
-        f => { f.element.__reactFiber$second = f.fiber; },
-        f => { f.fiber.return = {stateNode: {...f.instance}, return: null}; },
-        f => { f.fiber.return = f.fiber; },
-        f => { let tail = f.fiber;for (let i = 0; i < 129; i++) tail = tail.return = {stateNode: null, return: null}; }
+    const observe = await cleanExportObserver(), refused = reasonCode => ({captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode});
+    for (const [edit,reason] of [
+        [f => { delete f.element.__reactFiber$sourceControl; },'FIBER_POINTER_MISSING'],
+        [f => { f.element.__reactFiber$second = f.fiber; },'FIBER_POINTER_AMBIGUOUS'],
+        [f => { f.fiber.return = {stateNode: {...f.instance}, return: null}; },'OWNER_AMBIGUOUS'],
+        [f => { f.fiber.return = f.fiber; },'FIBER_CYCLE'],
+        [f => { let tail = f.fiber;for (let i = 0; i < 129; i++) tail = tail.return = {stateNode: null, return: null}; },'FIBER_DEPTH']
     ]) {
-        const f = cleanExportFixture();edit(f);assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), refused);
+        const f = cleanExportFixture();edit(f);assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), refused(reason));
         assert.equal(f.methods(), 0);
     }
 });
 
 test('clean export observer declines descriptor getters without invoking them or product methods', async () => {
-    const observe = await cleanExportObserver(), refused = {captureStatus: 'UNAVAILABLE_FRESHNESS'};
+    const observe = await cleanExportObserver(), refused = {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'NON_DATA_STATE'};
     for (const slot of ['state', 'request', 'unsupported', 'observation', 'payload']) {
         const f = cleanExportFixture(), held = observe(f.window, f.element, {phase: 'before'});f.publish();let gets = 0;
         const [object, name] = slot === 'state' ? [f.instance, 'state'] : slot === 'request' ? [f.instance, '_arcadeReportRequest'] :
@@ -187,4 +187,61 @@ test('clean export observer declines descriptor getters without invoking them or
         assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}), refused);
         assert.equal(gets, 0, slot);assert.equal(f.methods(), 0);
     }
+});
+
+test('a genuine fresh constructor state with no request or revision slot observes only its new same-owner export', async () => {
+    const observe = await cleanExportObserver(), f = cleanExportFixture();
+    delete f.instance._arcadeReportRequest;delete f.instance._arcadeReportRevision;delete f.instance._unmounted;
+    assert.equal(Object.hasOwn(f.instance, '_arcadeReportRequest'), false);
+    assert.equal('_arcadeReportRequest' in f.instance, false);
+    const instanceBefore = Object.getOwnPropertyDescriptors(f.instance), stateBefore = Object.getOwnPropertyDescriptors(f.instance.state);
+    const held = observe(f.window, f.element, {phase: 'before'});
+    assert.equal(held.status, 'READY');assert.strictEqual(held.instance, f.instance);assert.strictEqual(held.vm, f.vm);assert.equal(held.revision, 0);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance), instanceBefore);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance.state), stateBefore);
+    assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}),
+        {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'REQUEST_INVALID'}, 'absence before cannot stand in for a new post-action request');
+    f.instance._arcadeReportRequest = {vm: f.vm, revision: 0};
+    f.instance.state.conversionReport = {operation: 'export', unsupported: ['receiver'], observation: f.observation};
+    const after = Object.getOwnPropertyDescriptors(f.instance), stateAfter = Object.getOwnPropertyDescriptors(f.instance.state);
+    const result = observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'});
+    assert.deepEqual(result, f.observation);assert.notStrictEqual(result, f.observation);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance), after);
+    assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance.state), stateAfter);assert.equal(f.methods(), 0);
+});
+
+test('own undefined and inherited request slots retain exact unavailable causes without reading a getter or admitting stale evidence', async () => {
+    const observe = await cleanExportObserver();
+    for (const kind of ['own undefined', 'inherited null', 'inherited getter']) {
+        const f = cleanExportFixture();let gets = 0;
+        if (kind === 'own undefined') f.instance._arcadeReportRequest = undefined;
+        else {
+            delete f.instance._arcadeReportRequest;
+            const prototype = Object.create(Object.getPrototypeOf(f.instance));
+            Object.defineProperty(prototype, '_arcadeReportRequest', kind === 'inherited null' ? {value: null} :
+                {get () {gets++;throw new Error('inherited request getter must not execute');}});
+            Object.setPrototypeOf(f.instance, prototype);
+        }
+        const reasonCode = kind === 'own undefined' ? 'PRE_REQUEST_UNDEFINED' : 'PRE_REQUEST_INHERITED';
+        const before = Object.getOwnPropertyDescriptors(f.instance), held = observe(f.window, f.element, {phase: 'before'});
+        assert.deepEqual(held, {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode});
+        assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance), before);assert.equal(gets, 0);assert.equal(f.methods(), 0);
+        // Make a real own current token without reading or assigning through an inherited accessor.
+        Object.defineProperty(f.instance, '_arcadeReportRequest', {value: {vm: f.vm, revision: 7}, writable: true, configurable: true, enumerable: true});
+        f.instance.state.conversionReport = {operation: 'export', unsupported: ['receiver'], observation: f.observation};
+        assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}),
+            {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'HELD_NOT_READY', beforeReason: reasonCode});
+        assert.equal(gets, 0);assert.equal(f.methods(), 0);
+    }
+    const f = cleanExportFixture(), held = observe(f.window, f.element, {phase: 'before'});f.publish();
+    assert.deepEqual(observe(f.window, f.element, {phase: 'after', held: {...held, vm: {}}, visibleText: 'Unsupported: receiver'}),
+        {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'VM_CHANGED'});
+    delete f.instance._arcadeReportRequest;
+    Object.setPrototypeOf(f.instance, {_arcadeReportRequest: {vm: f.vm, revision: 7}});
+    assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}),
+        {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'REQUEST_INVALID'}, 'an inherited post request never acquires own token identity');
+    assert.equal(f.methods(), 0);
+    const verifier = await fs.readFile(new URL('../scripts/verify-arcade-numeric-authoring-gui.mjs', import.meta.url), 'utf8');
+    assert.match(verifier, /reasonCode:\s*observed\.reasonCode/, 'Node artifact retains the bounded unavailable reason');
+    assert.match(verifier, /beforeReason:\s*observed\.beforeReason/, 'Node artifact retains the actual failed precondition reason');
 });

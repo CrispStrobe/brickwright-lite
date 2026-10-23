@@ -110,3 +110,23 @@ byte lengths and hashes for `clean-export-consumed-project.json` and
 `clean-export-semantic-result.json`; otherwise diagnose the explicit unavailable
 status. Then inspect the actual Array receiver/writer/initialization boundary and
 claim its narrow semantic repair. Preserve the original failure and every guard.
+
+## Fresh-component observation follow-up
+
+The completed hosted exporter/report module passes 12/12 and diagnostic source
+controls 7/7. The actual numeric GUI artifact still reports only
+`UNAVAILABLE_FRESHNESS`, so its failing input remains unavailable and the exact
+observer failure cause is unestablished. Keep that limitation and original
+clean-export assertion.
+
+Source review identifies a legitimate initial component state: its constructor
+has no request slot. Only beginning a report creates an object and invalidation
+assigns null. The follow-up admits true own absence with no inherited slot, while
+retaining null-report/idle and every same-instance/VM/revision/new-own-request
+postcondition. Own undefined, inherited data/getters and active requests remain
+refused. The pre-action anchor is the existing directly rendered editor root.
+Every unavailable branch now records a small fixed reason code and preserves an
+unavailable precondition's reason in the artifact. Nine complete diagnostic
+source groups preserve the seven preceding scenarios and add fresh-mount and
+reason controls. Source review is not actual GUI acceptance; require the next
+hosted artifact and COMPLETE bytes before diagnosing the Array refusal itself.

@@ -64,11 +64,15 @@ remains false, all primitive domains, nested and alpha-renamed bodies, Boolean
 separation, effects, Arrays, TDZ, metadata and source-restoration controls.
 Existing controls and the ten-import witness remain unchanged.
 
-Source review, local qualification and hosted acceptance must each be recorded
-separately. No new test execution or repaired Math.idiv export is claimed here
-until its actual result is available. Preserve the original failure, original
-SDK/native fixtures, frame counts, saved-project phases and every assertion.
-A passing source proof does not complete an application corpus row.
+The complete new module passes **11/11 locally**, without skips, TODOs or
+cancelled cases, under Node 22.23.2 and the unchanged qualification bounds.
+The actual retained draft passes the source proof. Original captured inputs
+remain uninitialized in the generic graph, as the controls require.
+
+Hosted acceptance and original native/SDK execution remain separate. The current
+source has not yet passed the complete original Math.idiv export/reimport routes.
+Preserve original fixtures, frame counts, saved-project phases and every
+assertion. This source result does not complete an application corpus row.
 
 ## Authoring and remaining GUI acceptance
 
