@@ -385,6 +385,7 @@ class CircuitTab extends React.Component {
                                 const added = p.addWidget(w.name, w.type, w.config || {}, w.layout || {});
                                 if (w.binding) added.binding = {...w.binding};
                             }
+                            p.setHideBindings?.(!!data.hideBindings);
                             if (data.mode === 'play' || data.mode === 'edit') p.setMode(data.mode);
                         }
                     }
