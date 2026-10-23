@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-22T23:42:03.756Z",
+  "generatedAt": "2026-10-23T22:13:28.336Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1956,6 +1956,7 @@
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
+    "testflight-release-recovery.yml",
     "vendor-freshness.yml"
   ],
   "workflows": {
@@ -7355,11 +7356,23 @@
         }
       },
       "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
+    },
+    "testflight-release-recovery.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Audit or recover existing release metadata"
+      ],
+      "inFileInNoRun": [
+        "Audit or recover existing release metadata"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "robot-lab-own-firmware.yml",
-    "at": "2026-10-22T23:42:03.756Z",
-    "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
+    "workflow": "testflight-release-recovery.yml",
+    "at": "2026-10-23T22:13:28.336Z",
+    "sourceSha": "working-tree"
   }
 }

@@ -49,6 +49,34 @@ test('a new workflow sources its own branch run until main has actually run it',
 });
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+
+test('a scoped zero-run declaration keeps recorded main provenance without inventing observations', () => {
+    const sha = 'a'.repeat(40);
+    const source = workflowSource([], 'manual.yml', undefined, sha);
+    assert.deepEqual(source, {sha});
+    const workflows = census([], {'manual.yml': 'jobs:\n  audit:\n    steps:\n      - name: Inspect metadata\n        run: node audit.mjs\n'});
+    workflows['manual.yml'].sourceSha = 'working-tree';
+    const previous = {repo: 'owner/repo', headSha: sha, newestMainRun: 17,
+        runs: [{run: 17, workflow: 'old.yml', branch: 'main', sha}],
+        workflowsInTree: ['old.yml'], workflows: {'old.yml': {runs: 1, steps: {}, jobs: {}}}};
+    const merged = mergeWorkflowReadings(previous, {repo: previous.repo,
+        generatedAt: '2026-10-23', runs: [], workflows}, 'manual.yml');
+    assert.equal(merged.headSha, sha);
+    assert.equal(merged.newestMainRun, 17);
+    assert.deepEqual(merged.runs, previous.runs);
+    assert.deepEqual(merged.workflows['old.yml'], previous.workflows['old.yml']);
+    assert.equal(merged.workflows['manual.yml'].runs, 0);
+    assert.deepEqual(merged.workflows['manual.yml'].steps, {});
+    assert.deepEqual(merged.workflows['manual.yml'].jobs, {});
+    assert.deepEqual(merged.workflows['manual.yml'].inFileInNoRun, ['Inspect metadata']);
+    const observed = {workflow: 'manual.yml', branch: 'main', sha: 'b'.repeat(40), createdAt: '2026-10-22'};
+    assert.equal(workflowSource([observed], 'manual.yml', undefined, sha), observed);
+    assert.equal(workflowSource([], 'manual.yml'), undefined, 'global discovery still needs actual observations');
+    for (const bad of ['main', '', 'a'.repeat(41), 'source\nother']) {
+        assert.throws(() => workflowSource([], 'manual.yml', undefined, bad), /commit SHA/);
+    }
+});
+
 const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
 const pointers = parseStepPointers(readFileSync(path.join(ROOT, 'CI-POINTERS.md'), 'utf8'));
 

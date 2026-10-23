@@ -1,8 +1,12 @@
 # TestFlight 0.1.26 metadata and distribution recovery
 
-CLAIMED — Codex circuit/release follow-through owner, isolated branch
-`lane/testflight026-metadata-recovery-20261023`, exact base
-`6ed78045cb672acfd67271500a4eaf5ff9c82cb6`.
+DONE (source implementation) — Codex circuit/release follow-through owner,
+isolated branch `lane/testflight026-recovery-implementation-20261023`, exact
+integration base `143373cec8fb26560cb9d5b090dad8295d01b88a`.
+
+Actual Apple audit/recovery remains owned and held for qualified source and
+guarded landing. This source status does not close the release prerequisite or
+claim delivery, review approval, a native package or device qualification.
 
 The user authorizes completing release recovery before the scoped instrument
 campaign. The existing v0.1.26 mobile run built, signed and uploaded the iOS app,
@@ -40,9 +44,19 @@ and Beta App Review state. Pending review is not approval or external delivery.
 Retain the original failure and report partial or uncertain operations honestly.
 No blind rerun or duplicate upload; audit existing state first.
 
-Merge this claim before implementation. Require pure executable controls for
+The claim and its census expansion merged before their implementation. Require pure executable controls for
 read-only mode, source/platform/version refusal, missing/ambiguous builds,
 writer ordering/failure and postcondition mutations, plus workflow-call-path
 and secret-output controls. Admit all enabled exact-head CI before landing;
 then perform the bounded actual API audit and qualified recovery, recording
 observed results without a native or physical-device qualification claim.
+
+Local source controls pass: 59 recovery/census/workflow tests and eight complete
+doc-trigger tests, without skips. Four recovery mutations are detected; the
+malformed-state privacy regression and scoped zero-run regression failed before
+their fixes. The actual sparse release input passes tag/config and bilingual
+notes admission. No Apple API request, recovery writer, upload or campaign has
+run. Canonical scoped regeneration preserves all 321 prior observations across
+25 workflows and declares one new workflow with zero runs, explicitly sourced
+from the working tree. The existing presentation is preserved too; no unrelated
+workflow evidence or execution is manufactured.
