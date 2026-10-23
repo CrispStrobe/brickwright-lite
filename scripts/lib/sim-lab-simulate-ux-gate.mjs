@@ -16,6 +16,7 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 import {tool} from './sim-lab-toolbar-gate.mjs';
+import {measurementPlotInteractions} from './sim-lab-measurement-plots-gate.mjs';
 
 const lab = (page, fn, arg) => page.evaluate(fn, arg);
 const simTime = page => lab(page, () => window.__bwSimLab._pane.session.time);
@@ -133,6 +134,14 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     await tool(page, 'measurements');
     const panel = page.getByTestId('bw-sim-lab-measurements-panel');
     await panel.waitFor();
+    const totalMass = panel.getByTestId('bw-sim-lab-measurement-preset-0');
+    assert.match(await totalMass.textContent(), /Model mass/);
+    const catalogueMass = await lab(page, () => {
+        const pane = window.__bwSimLab._pane;
+        return pane.session.model.parts.reduce((sum, part) => sum + pane.lib.CATALOG.get(part.part).massGrams, 0);
+    });
+    assert.ok(Math.abs(parseFloat(await totalMass.locator('output').textContent()) - catalogueMass) < 0.1,
+        'model mass matches the catalogue total without world/scenery mass');
     await panel.getByTestId('bw-sim-lab-measurements-shown').check();
     await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption('distance');
     await panel.getByTestId('bw-sim-lab-measurement-target-0').selectOption('hub');
@@ -169,6 +178,10 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     }
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-live-measurements.png')});
     await tool(page, 'pause');
+    await page.waitForFunction(() => {
+        const pane = window.__bwSimLab._pane;
+        return pane.state.status === 'paused' && pane.measurementSampleTime === pane.session.time;
+    });
     await page.getByTestId('bw-sim-lab-replay-slider').fill('0');
     await page.waitForFunction(() => window.__bwSimLab._pane.state.replayAt === 0 && document.querySelectorAll('[data-testid="bw-sim-lab-measurement-overlay"] g').length === 0);
     assert.match(await panel.textContent(), /hidden during pose replay/);
@@ -195,4 +208,5 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     assert.match(await span.locator('output').textContent(), /mm/, 'returning to the model restores its custom reading');
     assert.equal(await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).isChecked(), false);
     await panel.getByRole('button', {name: 'Close', exact: true}).click();
+    await measurementPlotInteractions(page, {shotsDir});
 };

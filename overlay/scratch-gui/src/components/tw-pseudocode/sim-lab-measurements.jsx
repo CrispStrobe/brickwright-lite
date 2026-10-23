@@ -2,31 +2,34 @@
 // Copyright (c) 2026 Brickwright contributors
 import React from 'react';
 import PropTypes from 'prop-types';
+import SimLabMeasurementPlot from './sim-lab-measurement-plot.jsx';
+import {createMeasurementHistory, PLOT_LIMIT} from '../../lib/bw-sim/measurements/history.js';
 import {MEASUREMENT_KINDS, MEASUREMENT_LIMIT} from '../../lib/bw-sim/measurements/schema.js';
 import {measurementText, jointBinding, ropeBinding} from '../../lib/bw-sim/measurements/readings.js';
+import {jointTargetContext} from '../../lib/bw-sim/measurements/target-context.js';
 
 export const measurementWords = locale => locale === 'de' ? {
     title: 'Messungen', close: 'Schließen', add: 'Messung hinzufügen', remove: 'Entfernen', presets: 'Auf empfohlene Messungen zurücksetzen',
-    show: 'Im Modell anzeigen', label: 'Name', kind: 'Messgröße', target: 'Teil', joint: 'Gelenk', rope: 'Seil',
+    show: 'Im Modell anzeigen', label: 'Name', kind: 'Messgröße', target: 'Teil', joint: 'Gelenk', rope: 'Seil', world: 'Boden',
     missing: 'Ziel fehlt im Modell', unavailable: 'Nicht verfügbar', coincident: 'Winkel braucht drei verschiedene Punkte',
     replay: 'Live-Messungen sind während der Positionswiedergabe ausgeblendet.', empty: 'Füge eine Messung hinzu oder wähle die empfohlenen Messungen.',
     help: 'Teile wählen ihre starre Baugruppe für Masse und Bewegung. Geschwindigkeit gilt am Schwerpunkt. Abstand und Winkel messen Teilursprünge (A–B–C: Scheitel B).',
     vectors: 'Pfeile: Geschwindigkeit × 0,1 s; Kräfte 20 mm/N.',
-    kinds: {mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe',
+    kinds: {modelMass: 'Modellmasse', mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe',
         distance: 'Abstand A–B', angle: 'Winkel A–B–C', jointAngle: 'Gelenkwinkel', jointSpeed: 'Gelenkdrehzahl', travel: 'Schieberweg', tension: 'Seilspannung', normalLoad: 'Rad-Normallast'},
-    sources: {'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
+    sources: {'configured-model-mass': 'Konfigurierte Modell-Baugruppen ohne Umgebung', 'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
         'jolt-angular-velocity': 'Jolt: Winkelgeschwindigkeit', 'part-origins': 'Teilursprünge', 'jolt-joint': 'Jolt: Gelenkkoordinate',
         'rope-constraint': 'Seil-Zwangsimpuls / Zeitschritt', 'rolling-load-estimate': 'Normallast-Schätzung des Rollmodells'}
 } : {
     title: 'Measurements', close: 'Close', add: 'Add measurement', remove: 'Remove', presets: 'Reset to recommended measurements',
-    show: 'Show in model', label: 'Name', kind: 'Quantity', target: 'Part', joint: 'Joint', rope: 'Rope',
+    show: 'Show in model', label: 'Name', kind: 'Quantity', target: 'Part', joint: 'Joint', rope: 'Rope', world: 'Ground',
     missing: 'Target missing from model', unavailable: 'Unavailable', coincident: 'Angle needs three distinct points',
     replay: 'Live measurements are hidden during pose replay.', empty: 'Add a measurement or choose the recommended measurements.',
     help: 'Parts select their rigid assembly for mass and motion. Speed is at its centre of mass. Distance and angle use part origins (A–B–C: vertex B).',
     vectors: 'Arrows: velocity × 0.1 s; forces 20 mm/N.',
-    kinds: {mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed',
+    kinds: {modelMass: 'Model mass', mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed',
         distance: 'Distance A–B', angle: 'Angle A–B–C', jointAngle: 'Joint angle', jointSpeed: 'Joint angular speed', travel: 'Slider travel', tension: 'Rope tension', normalLoad: 'Wheel normal load'},
-    sources: {'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
+    sources: {'configured-model-mass': 'Configured model assemblies, excluding scenery', 'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
         'jolt-angular-velocity': 'Jolt angular velocity', 'part-origins': 'Part origins', 'jolt-joint': 'Jolt joint coordinate',
         'rope-constraint': 'Rope constraint impulse / step', 'rolling-load-estimate': 'Rolling-model normal load estimate'}
 };
@@ -35,11 +38,16 @@ export const measurementWords = locale => locale === 'de' ? {
 class SimLabMeasurements extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: ''};
+        this.state = {kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: '', plots: []};
+        this.history = createMeasurementHistory();
     }
     render () {
         const {locale, definitions, rows, parts, mechanism, shown, replaying, onChange, onShown, onPresets, onClose} = this.props;
         const T = measurementWords(locale), {kind} = this.state, spec = MEASUREMENT_KINDS[kind];
+        const de = locale === 'de';
+        const selected = this.state.plots.filter(id => definitions.some(d => d.id === id && d.visible !== false)).slice(0, PLOT_LIMIT);
+        const histories = this.history.update({session: this.props.session || mechanism, definitions, selected, rows,
+            time: this.props.sampleTime, replaying, paused: this.props.paused});
         const joints = mechanism.joints.filter(j => j.type === spec.joint);
         const ropes = (mechanism.couplings || []).filter(c => c.kind === 'rope');
         const targets = this.state.targets.slice(0, spec.targets || 0).map((id, i) => id || parts[Math.min(i, parts.length - 1)]?.id || '');
@@ -72,6 +80,8 @@ class SimLabMeasurements extends React.Component {
                         const row = rows.find(r => r.id === d.id);
                         const name = d.label === d.kind ? T.kinds[d.kind] : d.label;
                         const reason = row?.reason === 'missing-target' ? T.missing : row?.reason === 'coincident-points' ? T.coincident : T.unavailable;
+                        const selectedJoint = d.joint && mechanism.joints.find(j => j.id === d.joint);
+                        const target = d.targets ? d.targets.join(' → ') : selectedJoint ? `${d.joint} · ${jointTargetContext(selectedJoint, mechanism, T.world)}` : d.joint || d.rope;
                         return <li key={d.id} data-testid={`bw-sim-lab-measurement-${d.id}`} style={{borderTop: '1px solid #e2e8f0', padding: '5px 0'}}>
                             <label><input type="checkbox" checked={d.visible !== false} aria-label={`${T.show}: ${name}`}
                                 onChange={e => onChange(definitions.map(m => m.id === d.id ? {...m, visible: e.target.checked} : m))} />{name}</label>
@@ -79,6 +89,15 @@ class SimLabMeasurements extends React.Component {
                             <button type="button" style={{float: 'right'}} aria-label={`${T.remove}: ${name}`}
                                 onClick={() => onChange(definitions.filter(m => m.id !== d.id))}>×</button>
                             <small title={(d.targets || [d.joint || d.rope]).join(" → ")} style={{display: 'block'}}>{T.kinds[d.kind]} · {replaying ? T.replay : row?.available ? T.sources[row.source] : reason}</small>
+                            {target && <small style={{display: 'block'}}>{target}</small>}
+                            <label style={{display: 'block'}}><input type="checkbox" data-testid={`bw-sim-measurement-plot-toggle-${d.id}`}
+                                checked={selected.includes(d.id)} disabled={d.visible === false || (!selected.includes(d.id) && selected.length >= PLOT_LIMIT)}
+                                onChange={e => {
+                                    const plots = e.target.checked ? [...selected, d.id] : selected.filter(id => id !== d.id);
+                                    this.setState({plots}, () => this.props.onSample?.());
+                                }} />{de ? 'Zeitdiagramm' : 'Time plot'}</label>
+                            {!replaying && selected.includes(d.id) && <SimLabMeasurementPlot points={histories.get(d.id) || []}
+                                name={name} unit={MEASUREMENT_KINDS[d.kind].unit} locale={locale} />}
                         </li>;
                     })}
                 </ul>
@@ -91,7 +110,7 @@ class SimLabMeasurements extends React.Component {
                         {parts.map(p => <option key={p.id} value={p.id}>{p.id} · {p.label}</option>)}
                     </select></label>)}
                     {spec.joint && <label>{T.joint} <select style={input} value={joint?.id || ''} onChange={e => this.setState({joint: e.target.value})}>
-                        {joints.map(j => <option key={j.id} value={j.id}>{j.motor?.port || j.id} · {j.id}</option>)}
+                        {joints.map(j => <option key={j.id} value={j.id}>{j.motor?.port || j.id} · {jointTargetContext(j, mechanism, T.world)}</option>)}
                     </select></label>}
                     {spec.rope && <label>{T.rope} <select style={input} value={rope?.id || ''} onChange={e => this.setState({rope: e.target.value})}>
                         {ropes.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
@@ -99,6 +118,10 @@ class SimLabMeasurements extends React.Component {
                     <label>{T.label} <input style={input} maxLength={80} value={this.state.label} onChange={e => this.setState({label: e.target.value})} /></label>
                     <button type="submit" disabled={!valid} data-testid="bw-sim-lab-measurement-add">{T.add}</button>
                 </form>
+                <p style={{fontSize: 10}}>{de ? 'Bis zu 4 Diagramme mit je 128 echten Simulationszeitwerten. Lücken bedeuten: nicht verfügbar.' : 'Up to 4 plots, each with 128 actual simulation-time samples. Gaps mean unavailable.'}</p>
+                {this.props.teachingPreset && <button type="button" data-testid="bw-sim-measurement-teaching-preset"
+                    onClick={() => onChange(this.props.teachingPreset.definitions)} style={{marginTop: 6}}>
+                    {de ? 'Lektionsmessungen anwenden' : 'Apply lesson measurements'}: {this.props.teachingPreset.title}</button>}
                 <button type="button" onClick={onPresets} style={{marginTop: 6}}>{T.presets}</button>
             </section>
         );
@@ -107,6 +130,7 @@ class SimLabMeasurements extends React.Component {
 SimLabMeasurements.propTypes = {
     locale: PropTypes.string.isRequired, definitions: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     parts: PropTypes.array.isRequired, mechanism: PropTypes.object.isRequired, shown: PropTypes.bool.isRequired, replaying: PropTypes.bool.isRequired,
+    session: PropTypes.object, sampleTime: PropTypes.number, paused: PropTypes.bool, teachingPreset: PropTypes.object, onSample: PropTypes.func,
     onChange: PropTypes.func.isRequired, onShown: PropTypes.func.isRequired, onPresets: PropTypes.func.isRequired, onClose: PropTypes.func.isRequired
 };
 export default SimLabMeasurements;

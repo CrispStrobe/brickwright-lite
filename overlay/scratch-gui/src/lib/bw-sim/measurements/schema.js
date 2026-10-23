@@ -3,6 +3,7 @@
 // Small, dependency-free schema: also used by the first-load project bundle validator.
 export const MEASUREMENT_LIMIT = 64;
 export const MEASUREMENT_KINDS = Object.freeze({
+    modelMass: {unit: 'g'},
     mass: {targets: 1, unit: 'g'}, weight: {targets: 1, unit: 'N'},
     speed: {targets: 1, unit: 'm/s'}, angularSpeed: {targets: 1, unit: '°/s'},
     distance: {targets: 2, unit: 'mm'}, angle: {targets: 3, unit: '°'},

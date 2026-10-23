@@ -270,6 +270,7 @@ test('live measurements observe native motion and wheel loads identically throug
     const p = await pair('driving-base.ldr');
     try {
         const defs = measurementPresets(p.here);
+        const catalogMass = p.here.model.parts.reduce((sum, part) => sum + CATALOG.get(part.part).massGrams, 0);
         const here = createMeasurementReader(p.here), there = createMeasurementReader(p.there);
         p.both(h => {h.motors.runAtSpeed('A', -360); h.motors.runAtSpeed('B', 360);});
         let moving = false, loaded = false;
@@ -278,6 +279,8 @@ test('live measurements observe native motion and wheel loads identically throug
             const a = here.read(defs), b = there.read(defs);
             assert.deepEqual(b, a, 'readings and force vectors bind to the accepted native batch');
             assert.ok(a.every(r => r.available), JSON.stringify(a.filter(r => !r.available)));
+            assert.ok(Math.abs(a.find(r => r.kind === 'modelMass').value - catalogMass) < 1e-9,
+                'native model mass equals the independent catalogue sum, without ground or duplicate motor shares');
             moving ||= a.some(r => r.kind === 'speed' && r.value > 0.01);
             loaded ||= a.some(r => r.kind === 'normalLoad' && r.value > 0.01);
         }
