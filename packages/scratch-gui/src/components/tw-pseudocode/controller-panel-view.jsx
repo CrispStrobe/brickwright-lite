@@ -1439,7 +1439,9 @@ class ControllerPanelView extends React.Component {
         const panel = this._getPanel();
         panel.removeListener(this._onPanelEvent);
         this._buttonInputs?.dispose();
-        releaseMomentaryButtons(panel);
+        // A host-owned runtime keeps program-held inputs when only this pane
+        // closes. Standalone views own their board lifetime and release it.
+        if (this.props.manageBoardBinding !== false) releaseMomentaryButtons(panel);
         this.props.vm?.runtime?.removeListener?.('PROJECT_STOP_ALL', this._onProgramStop);
         if (this._unregisterUndo) this._unregisterUndo();
         this._unbind();
@@ -1518,7 +1520,7 @@ class ControllerPanelView extends React.Component {
 
     _bindToBoard(panel) {
         this._unbind();
-        if (this.props.board) {
+        if (this.props.board && this.props.manageBoardBinding !== false) {
             this._binding = bindPanelToBoard(panel, this.props.board);
             this._binding.sync();
         }

@@ -131,16 +131,22 @@ test('hidden Circuit replacement preserves the saved supply and live model ident
  const body=/this\._applyToLiveCircuit = data => \{([\s\S]*?)\n        \};/.exec(circuit);
  assert.ok(body,'test executes the actual hidden host replacement');
  const model=new Circuit(5),host={props:{vm:{runtime:{circuitModel:model}}},_Circuit:Circuit};
- const load=new Function('data',body[1]).bind(host);
+ const announcements=[],browser={dispatchEvent:event=>announcements.push(event.type)};
+ const apply=new Function('data','window','CustomEvent',body[1]).bind(host);
+ const load=data=>apply(data,browser,class {constructor(type){this.type=type;}});
  for(const vcc of [4.5,9,5]){
   const incoming=new Circuit(vcc),v=incoming.addPart('vcc',{},0,0),g=incoming.addPart('gnd',{},0,100),r=incoming.addPart('resistor',{ohms:1000},0,50);
   incoming.addWire(v.id,'vcc',r.id,'a');
   incoming.addWire(r.id,'b',g.id,'gnd');
   load(incoming.toJSON());assert.equal(host.props.vm.runtime.circuitModel,model);
+  assert.equal(host.props.vm.runtime.circuitBoard,model.board);
+  assert.equal(browser.__board,model.board);
   assert.equal(model.vcc,vcc);assert.equal(model.board.vcc,vcc);
   model.advanceTo(1_000_000n);
   assert.ok(Math.abs(model.board.branchCurrent(r.id,'a')+vcc/1000)<1e-9);
  }
  load({vcc:4.5,parts:[],wires:[]});assert.equal(model.vcc,4.5);assert.equal(model.board.vcc,4.5);
  load({parts:[],wires:[]});assert.equal(model.vcc,5);assert.equal(model.board.vcc,5);
+ assert.equal(host.props.vm.runtime.circuitBoard,model.board);
+ assert.deepEqual(announcements,Array(5).fill('bw-board-ready'));
 });

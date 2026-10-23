@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
 import {ControllerPanel} from 'bw-board/controller.js';
+import {ControllerExtension} from 'bw-board/controller-extension.js';
 import {bindPanelToBoard} from 'bw-board/controller-binding.js';
-import {clearControllerPanel,createWidgetButtonInputs,releaseMomentaryButtons,
+import {clearControllerPanel,connectControllerBoard,createWidgetButtonInputs,releaseMomentaryButtons,
  serializeControllerPanel} from '../overlay/scratch-gui/src/lib/controller-inputs.js';
 class Events {
  listeners=new Map(); hidden=false;
@@ -25,6 +27,52 @@ test('keyboard press/release uses the actual part binding and reserves only its 
   f.window.send('keyup',{key:'a',ctrlKey:true,target:{closest:()=>true}});
   assert.equal(f.panel.isPressed('key1'),false);assert.deepEqual(f.writes.at(-1),['switch1',0]);
  }finally{f.close();}
+});
+
+function runtimeFixture(board = undefined) {
+ const panel=new ControllerPanel(),runtime=new EventEmitter(),ext=new ControllerExtension(),writes=[];
+ panel.addWidget('key1','button',{});panel.bindToPart('key1','switch1');
+ panel.addWidget('trim1','slider',{min:0,max:1,value:.3});panel.bindToPart('trim1','pot1','position');
+ panel.setMode('play');ext.setPanel(panel);
+ const target=board===undefined?{setControl:(...args)=>writes.push(args)}:board;
+ const connection=connectControllerBoard(panel,target,runtime);
+ return {panel,runtime,ext,writes,connection};
+}
+
+test('program controls and saved tuning drive the circuit without a Widgets view',()=>{
+ const f=runtimeFixture();try{
+  assert.deepEqual(f.writes,[['switch1',0],['pot1',.3]]);
+  f.ext.setWidget({NAME:'key1',VALUE:1});assert.deepEqual(f.writes.at(-1),['switch1',1]);
+  f.ext.setWidget({NAME:'trim1',VALUE:.7});assert.deepEqual(f.writes.at(-1),['pot1',.7]);
+ }finally{f.connection.dispose();}
+});
+
+test('program Stop releases hidden momentary inputs and keeps live tuning',()=>{
+ const f=runtimeFixture();try{
+  f.ext.setWidget({NAME:'key1',VALUE:1});f.ext.setWidget({NAME:'trim1',VALUE:.7});
+  f.runtime.emit('PROJECT_STOP_ALL');assert.deepEqual(f.writes.at(-1),['switch1',0]);
+  assert.equal(f.panel.isPressed('key1'),false);assert.equal(f.panel.getValue('trim1'),.7);
+ }finally{f.connection.dispose();}
+ assert.equal(f.runtime.listenerCount('PROJECT_STOP_ALL'),0);
+});
+
+test('runtime edit mode releases the old board and Play resynchronizes tuning',()=>{
+ const f=runtimeFixture();try{
+  f.ext.setWidget({NAME:'key1',VALUE:1});f.panel.setMode('edit');
+  assert.deepEqual(f.writes.at(-1),['switch1',0]);const count=f.writes.length;
+  f.ext.setWidget({NAME:'key1',VALUE:1});f.ext.setWidget({NAME:'trim1',VALUE:.7});assert.equal(f.writes.length,count);
+  f.panel.setMode('play');assert.deepEqual(f.writes.slice(-2),[['switch1',0],['pot1',.7]]);
+ }finally{f.connection.dispose();}
+});
+
+test('replacing a runtime board detaches the old target before synchronizing the new one',()=>{
+ const f=runtimeFixture(),newWrites=[];f.ext.setWidget({NAME:'key1',VALUE:1});f.connection.dispose();
+ assert.deepEqual(f.writes.at(-1),['switch1',0]);const oldCount=f.writes.length;
+ const next=connectControllerBoard(f.panel,{setControl:(...args)=>newWrites.push(args)},f.runtime);
+ try{f.ext.setWidget({NAME:'key1',VALUE:1});assert.deepEqual(newWrites.at(-1),['switch1',1]);assert.equal(f.writes.length,oldCount);}
+ finally{next.dispose();next.dispose();}
+ assert.equal(f.runtime.listenerCount('PROJECT_STOP_ALL'),0);
+ const count=newWrites.length;f.ext.setWidget({NAME:'key1',VALUE:1});assert.equal(newWrites.length,count);
 });
 
 test('typing, modifier shortcuts, key repeat, hidden documents and edit mode cannot press keys',()=>{

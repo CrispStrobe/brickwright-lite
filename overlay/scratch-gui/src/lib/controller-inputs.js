@@ -1,3 +1,5 @@
+import {bindPanelToBoard} from 'bw-board/controller-binding.js';
+
 /** Physical button inputs share ownership, so releasing a mouse does not release
  * a key still held on the keyboard. Program writes use the existing panel API.
  */
@@ -8,6 +10,40 @@ export function releaseMomentaryButtons(panel, name) {
             panel.setButtonInput(widget.name, false);
         }
     }
+}
+
+/** Project bindings survive closing the Widgets pane; UI input capture does not. */
+export function connectControllerBoard(panel, board, runtime) {
+    let binding = null;
+    let disposed = false;
+    const stop = () => releaseMomentaryButtons(panel);
+    const detach = () => {
+        if (!binding) return;
+        stop();
+        binding.dispose();
+        binding = null;
+    };
+    const refresh = () => {
+        detach();
+        if (panel.mode === 'play' && board) {
+            binding = bindPanelToBoard(panel, board);
+            binding.sync();
+        }
+    };
+    const changed = kind => {
+        if (kind === 'mode') refresh();
+        if (kind === 'bind') binding?.sync();
+    };
+    panel.addListener(changed);
+    runtime?.on?.('PROJECT_STOP_ALL', stop);
+    refresh();
+    return {dispose() {
+        if (disposed) return;
+        disposed = true;
+        panel.removeListener(changed);
+        runtime?.removeListener?.('PROJECT_STOP_ALL', stop);
+        detach();
+    }};
 }
 
 export function clearControllerPanel(panel) {

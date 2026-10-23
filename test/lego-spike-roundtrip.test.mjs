@@ -311,8 +311,10 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 37bfe287 (2026-10-21): canonical school circuits share this compiler pin.
     // The range also carries arithmetic, score/motor words and registry updates;
     // the existing executable SPIKE artifact assertions must qualify this bump.
+    // -> 371a8f9d (2026-10-23): programmable Widgets and school battery variants;
+    // preserve and re-run all executable SPIKE artifact checks below.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '37bfe28760f60c836097854fb141fd114bbee518');
+        '371a8f9d4489a91a9a596135a40cbdc6dbc1c7d7');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

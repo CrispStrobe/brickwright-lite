@@ -353,6 +353,13 @@ class CircuitTab extends React.Component {
                     return;
                 }
                 if (typeof model._syncNetlist === 'function') model._syncNetlist();
+                // Publish hidden replacements through the same authority/event
+                // as Designer.onBoardReady, so runtime widget bindings follow.
+                rt.circuitBoard = model.board;
+                if (typeof window !== 'undefined') {
+                    window.__board = model.board;
+                    window.dispatchEvent(new CustomEvent('bw-board-ready'));
+                }
             } catch (e) {
                 console.warn('[brickwright] could not apply the loaded circuit to the live model', e);
             }

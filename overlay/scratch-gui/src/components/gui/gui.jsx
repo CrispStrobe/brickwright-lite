@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import omit from 'lodash.omit';
 import PropTypes from 'prop-types';
 import React from 'react';
-import {clearControllerPanel} from '../../lib/controller-inputs.js';
+import {clearControllerPanel, connectControllerBoard} from '../../lib/controller-inputs.js';
 import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-intl';
 import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
@@ -683,6 +683,12 @@ const GUIComponent = props => {
         () => props.vm?.runtime?.bwRunBoard || props.vm?.runtime?.circuitBoard || props.vm?.runtime?.stc?.board || null,
         [props.vm, boardEpoch]);
 
+    // Programs and saved tuning must reach the board even while Widgets is closed.
+    React.useEffect(() => {
+        const connection = connectControllerBoard(controllerPanel, board, props.vm?.runtime);
+        return () => connection.dispose();
+    }, [controllerPanel, board, props.vm]);
+
     const {
         accountNavOpen,
         activeTabIndex,
@@ -1232,6 +1238,7 @@ const GUIComponent = props => {
                                         <ControllerPanelView
                                             panel={controllerPanel}
                                             board={board}
+                                            manageBoardBinding={false}
                                             vm={vm}
                                             machineConsole={machineConsole}
                                             locale={intl.locale}
