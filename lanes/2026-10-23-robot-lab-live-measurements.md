@@ -49,6 +49,16 @@ frontend builds pass. The first full Chromium journey passed measurements,
 Reset and Build/Simulate, then exposed an existing Challenges test assumption
 about a button moved into More. Its original failure is retained; the same
 assertion now uses the existing overflow-aware toolbar reader without changing
-its deadline. Final full Chromium and focused WebKit journeys and every enabled
-exact-head hosted check remain required before landing. No dependency or solver
+its deadline. Full Chromium and WebKit UI journeys now pass, along with focused custom
+measurement/model-switch checks in both browsers. Every enabled exact-head
+hosted check remains required before landing. No dependency or solver
 change and no hardware-accuracy claim.
+
+
+A separate cold standalone WebKit Simulate-UX run failed its unchanged half-speed
+ratio (0.16 versus 0.50 of wall time). The default full UI sequence passes the
+same timing assertion in both browsers; no general cold-start timing closure is
+claimed. The measurement-only diagnostic now invokes the measurement journey
+alone, while default UI coverage retains the full speed/readings/rays/replay
+journey. Its new model-switch check also waits for the actual replay control's
+published frame count before pausing; the initial fixture wait failure is retained.

@@ -157,7 +157,7 @@ import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 import {editorParityInteractions} from './lib/sim-lab-editor-parity-gate.mjs';
 import {connectInteractions} from './lib/sim-lab-connect-gate.mjs';
 import {catalogueInteractions} from './lib/sim-lab-catalogue-gate.mjs';
-import {simulateUxInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
+import {simulateUxInteractions, measurementInteractions} from './lib/sim-lab-simulate-ux-gate.mjs';
 import {challengesInteractions} from './lib/sim-lab-challenges-gate.mjs';
 import {hingeInteractions} from './lib/sim-lab-hinge-gate.mjs';
 import {chainInteractions} from './lib/sim-lab-chain-gate.mjs';
@@ -1237,7 +1237,11 @@ try {
         page.on('pageerror', error => errors.push(error.stack || error.message));
         page.on('dialog', dialog => dialog.accept());
         await openSimLab(page, {program: null});
-        await simulateUxInteractions(page, {shotsDir: artifacts});
+        try { await measurementInteractions(page, {shotsDir: artifacts}); }
+        catch (error) {
+            await page.screenshot({path: resolve(artifacts, 'sim-lab-measurements-failure.png'), fullPage: true}).catch(() => {});
+            throw error;
+        }
         console.log('PASS live measurements: custom distance/speed, independent overlays, replay, Reset and Build/Simulate');
         await page.close();
     }

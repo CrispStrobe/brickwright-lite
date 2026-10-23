@@ -128,7 +128,8 @@ const checks = async (page, {shotsDir}) => {
 
 
 /** Custom measurements use real controls; the simulation is only observed or driven through its public API. */
-const measurementInteractions = async (page, {shotsDir}) => {
+export const measurementInteractions = async (page, {shotsDir}) => {
+    const originalModel = await page.getByTestId('bw-sim-lab-model').inputValue();
     await tool(page, 'measurements');
     const panel = page.getByTestId('bw-sim-lab-measurements-panel');
     await panel.waitFor();
@@ -158,7 +159,7 @@ const measurementInteractions = async (page, {shotsDir}) => {
     const speed = panel.getByTestId('bw-sim-lab-measurement-custom-2');
     await tool(page, 'run');
     await lab(page, () => Promise.all(['A','B'].map(p => window.__bwSimLab.api.setMotorSpeed(p, p === 'A' ? 180 : -180))));
-    await page.waitForFunction(() => parseFloat(document.querySelector('[data-testid="bw-sim-lab-measurement-custom-2"] output')?.textContent) > 0.01, null, {timeout: 10000});
+    await page.waitForFunction(() => parseFloat(document.querySelector('[data-testid="bw-sim-lab-measurement-custom-2"] output')?.textContent) > 0.01 && window.__bwSimLab._pane.state.replayFrames >= 2, null, {timeout: 10000});
     const boxes = await page.locator('[data-testid="bw-sim-lab-measurement-overlay"] text').evaluateAll(nodes => nodes.map(n => {
         const r = n.getBoundingClientRect(); return {x: r.x, y: r.y, right: r.right, bottom: r.bottom};
     }));
@@ -184,6 +185,14 @@ const measurementInteractions = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-mode-simulate').click();
     await page.waitForFunction(() => window.__bwSimLab._pane.state.mode === 'simulate' && window.__bwSimLab.status === 'ready');
     assert.match(await span.locator('output').textContent(), /mm/, 'custom definitions survive Build/Simulate');
+    assert.equal(await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).isChecked(), false);
+    // A different example has its own definitions; returning restores this model's custom choice.
+    await page.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === 'forklift.ldr');
+    assert.equal(await span.count(), 0, 'custom readings do not leak into another model');
+    await page.getByTestId('bw-sim-lab-model').selectOption(originalModel);
+    await page.waitForFunction(key => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === key, originalModel);
+    assert.match(await span.locator('output').textContent(), /mm/, 'returning to the model restores its custom reading');
     assert.equal(await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).isChecked(), false);
     await panel.getByRole('button', {name: 'Close', exact: true}).click();
 };
