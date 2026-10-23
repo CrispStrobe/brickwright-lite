@@ -27,8 +27,8 @@ import {judgeSineShuttle,judgeQuartermaster} from './sim-lab-sine-quarter-judge.
 const DEG = 180 / Math.PI;
 
 const SPEC = Object.freeze({
-    'cascade': {simulatedMs: 20000},
-    'cascade-control': {simulatedMs: 20000},
+    'cascade': {simulatedMs: 22000},
+    'cascade-control': {simulatedMs: 22000},
     'wavemaker': {simulatedMs: 80000},
     'wavemaker-control': {simulatedMs: 80000},
     'sine-shuttle': {simulatedMs: 45000},
