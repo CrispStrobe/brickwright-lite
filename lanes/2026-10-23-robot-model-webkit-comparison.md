@@ -110,3 +110,9 @@ The source and fetch guards refuse unadmitted fields; no old-artifact fallback
 is allowed. The former comparison PR remains closed and unqualified.
 The replacement must be created with the frozen model branch as its base
 from the start, without retargeting, manual dispatch or a repeated label.
+
+The replacement now binds successful current-main Build 40021842629, job
+120655731951, checkout `8e71d13c41a4014049636ad50aa15bfa5a288bce` (complete tree equal to
+the reviewed candidate), and sole Pages artifact 12533921398, 117535693 bytes.
+Its original producer log and archive digest are frozen in the consumer.
+No replacement journey has executed yet; all earlier failures remain retained.

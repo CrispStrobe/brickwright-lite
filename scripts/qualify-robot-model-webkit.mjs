@@ -12,17 +12,17 @@ import os from 'node:os';
 
 export const FROZEN = Object.freeze({
     "repository": "CrispStrobe/brickwright-lite",
-    "runId": null,
+    "runId": 40021842629,
     "attempt": 1,
     "runHeadSha": "07f1a47a72b1a41c4b6dd7d7bae04fabbf3bcacc",
     "reviewedHeadSha": "07f1a47a72b1a41c4b6dd7d7bae04fabbf3bcacc",
-    "checkoutSha": null,
+    "checkoutSha": "8e71d13c41a4014049636ad50aa15bfa5a288bce",
     "treeSha": "3aeebc6d3ca05c3dce36dfd611024d6f2f5c8f87",
-    "jobId": null,
-    "artifactId": null,
-    "archiveBytes": null,
-    "archiveDigest": null,
-    "producerLogSha256": null,
+    "jobId": 120655731951,
+    "artifactId": 12533921398,
+    "archiveBytes": 117535693,
+    "archiveDigest": "sha256:81e01c721f7df8370a3f5383434fa62d4ed36caf8c3b6e5cd69c3d0252f10892",
+    "producerLogSha256": "114beb312f1ae6da5957b4d63970109c0e8f3d7391914507b95d09539d8bbb5b",
     "producerSha": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
     "arraysValuesSha": "4db2813d366af8a110fc79599afb55d1cd42d8df"
 });
