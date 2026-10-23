@@ -2,39 +2,41 @@
 
 ## Latest measured boundary and current candidate — 23 October 2026
 
-The [completed four-unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39939025985)
-on `df2cdb4c94592bdda7fb4c177e5d99604e1311e5` reports **12,433 passes,
-147 failures, 19 skips and 37 TODOs**. Against the preceding head it adds 50
-passes with no new or resolved failing title. These are unit-test results,
-not application completions. The current class/operation/diagnostic cohorts and
-original SDK Sprite receiver cohort pass; the remaining failures require their
-own semantic repairs.
+The [completed four-unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39959713589)
+on `6df26f1d0e738f1228057671c350a221388f0988` reports **12,463 passes,
+147 failures, 19 skips and 37 TODOs**. Against its predecessor it adds 30
+passes with no new or resolved failing title. The frontier's 11 groups and the
+current class/operation/diagnostic, original SDK Sprite receiver and existing
+Array cohorts pass. These are unit-test results, not application completions.
 
-That run's actual numeric authoring artifact now records **COMPLETE** exact
-consumed input and semantic result. The unchanged clean-export assertion still
-reports two Array producer/all-writer refusals. The earlier unavailable capture
-is historical and must not be mistaken for this complete pair. The result does
-not contain block-level predicate observations or prove a unique cause.
+That older candidate's actual numeric journey still fails; its exact terminal
+output must remain separate from subsequent source qualification. Original
+captures and failed assertions are preserved. A complete input/result pair
+supplies physical graph evidence, not a private predicate trace or sole-cause
+claim.
 
-The subsequent [class frontier](ARCADE-CLASS-LEXICAL-FRONTIER.md) source set
-passes all 38 focused groups. Published head
-`6df26f1d0e738f1228057671c350a221388f0988` is still undergoing hosted
-qualification in [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128).
-Source success does not establish native, SDK, editor or application completion.
+[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md), claimed by merged
+[PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283) before code,
+now passes all **11 source-conversion regression groups** at
+`4a5d5e6574d874b35c75fcaecaf711430677bf9b`. The full owned game retains its
+Sprite artwork, loop, Math, Array/settings operations and later capture through
+real MakeCode export/reimport and Code feedback. Unsafe controls remain refused.
+A separate exact captured-input source check accepts all three Array receivers;
+this does not relabel the original failed result or qualify the GUI.
 
-The next implementation is [native-frame reset nonreachability](ARCADE-NATIVE-FRAME-RESET.md),
-claimed by merged [PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283)
-before code. It adds a private full-prefix effect and activation-frontier proof
-while preserving all four old reset routes. Its 11 new integrated-product test
-groups are authored; execution and affected final-head qualification remain
-pending. Do not report them as passed or remove the original GUI assertion.
+Continue with the final candidate's exact-head qualification in
+[PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128): run the
+unchanged numeric browser/controller journey, full affected unit cohorts and
+all enabled checks. Keep every original asset and assertion. Diagnose any
+remaining refusal independently; never remove a failing gate or borrow an
+older head's result.
 
-Continue by qualifying that whole module after normal integration, preserving
-actual native frame allocation, primitive arguments, loop fixed points, dormant
-later capture, early callback/prototype/read refusal and all-writer authority.
-Then verify the unchanged numeric GUI, Code/Blocks export/reimport and project
-save/reopen. If another condition refuses, retain and diagnose it separately.
-Historical **147 translated / 36 partial / one malformed** remains unremeasured.
+The next bounded source extension is documented in the frame-analysis guide:
+prove additional native Sprite-kind domains and complete multi-caller/frame
+activation patterns with genuine positives and unsafe controls. Broader GUI
+acceptance remains Code/Blocks/pseudocode authoring, graphics, export/reimport
+and project save/reopen. Historical **147 translated / 36 partial / one
+malformed** remains unremeasured.
 
 ## Earlier source-restoration checkpoint — 23 October 2026
 

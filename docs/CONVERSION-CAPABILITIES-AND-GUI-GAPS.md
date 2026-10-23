@@ -2,29 +2,30 @@
 
 ## Current measured boundary and open editor work — 23 October 2026
 
-The [completed unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39939025985)
-has 12,433 passes and 147 failures; its current class/operation/diagnostic and
-original SDK Sprite receiver cohorts pass. These counts do not measure complete
-applications or editor parity. Subsequent class-frontier source controls pass
-38 focused groups; their combined hosted qualification remains pending.
+The [completed unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39959713589)
+has 12,463 passes and 147 failures. Its current frontier, class, operation,
+diagnostic and original SDK Sprite receiver cohorts pass. These counts do not
+measure application completions or editor parity.
 
-The numeric authoring journey has now retained its exact consumed input and
-semantic result with capture status COMPLETE. It still refuses two mutation/
-indexing Array receivers. The concrete graph has an entry-local null reset,
-intervening game setup, a genuine later Array allocation and a later callback
-that captures the local. It supplies no block-level private predicate trace.
-
-[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) is implemented as a
-candidate under merged claim #1283; the new 11-group integrated-product module
-has not yet executed. The proof may discard only a proven dead entry reset;
-all actual producers, remaining writers and settings presence stay independent.
-Keep original assets, clean-report assertions and input/controller behavior.
+[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) now passes all
+11 source-conversion groups at `4a5d5e6574d874b35c75fcaecaf711430677bf9b`,
+including the complete owned numeric game with real artwork, MakeCode
+export/reimport, Code decompile/reparse, Array/settings operations and a later
+callback that captures the temporary. The exact input retained from an earlier
+failed GUI export also passes the separate three-receiver source check. The
+original failure stays preserved; official browser/controller qualification is
+still required. This proof discards only a proven dead entry reset, leaving
+actual allocation, every other writer and settings presence independent.
 
 The authoring acceptance task remains: create/edit the whole game in Code,
 pseudocode and Blocks, preserve graphics, export and reimport exact files, save
-and reopen the project, then repeat the real controller journey. These surfaces
-need readable local/capture/loop/Array/settings blocks and diagnostics; parser
-support or a clean focused receiver result alone does not close their GUI rows.
+and reopen the project, then repeat the real controller journey. Keep assets,
+clean-report assertions and behavior unchanged. These surfaces need readable
+local/capture/loop/Array/settings blocks and diagnostics. The current frame
+slice still refuses additional caller/entry patterns, visible monitors and
+unproved kind/effect domains; the frame guide scopes their proper extension.
+Source conversion support alone does not close those GUI rows or reduce the
+historical corpus partial count.
 
 ## Closed recursive Number results — planned authoring acceptance
 

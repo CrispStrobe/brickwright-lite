@@ -1,8 +1,9 @@
 # Native Arcade frame reset analysis
 
-Status: implementation candidate after merged claim #1283. The 11 new
-integrated-product regression groups are authored but not yet executed.
-Affected hosted/native/GUI qualification and corpus reassessment remain pending.
+Status: implemented after merged claim #1283. All 11 source-conversion
+regression groups pass at `4a5d5e6574d874b35c75fcaecaf711430677bf9b`.
+Affected final-head hosted/native/GUI qualification and corpus reassessment
+remain pending.
 
 This task concerns Array export authority after an ordinary procedure's entry
 local reset. It does not add a runtime Array operation or infer an Array from a
@@ -17,7 +18,7 @@ to null at entry. A later direct write gives that same binding a genuine empty
 Array, followed by Unicode/String pushes and a StringArray settings write/read.
 The existing narrow reset proofs cannot cross the whole native effect prefix.
 
-The new proof must establish only that the particular entry reset cannot reach
+The new proof establishes only that the particular entry reset cannot reach
 those later consumers. Actual allocation, every remaining writer, element types,
 settings key/type correspondence and item presence remain separate obligations.
 The four existing reset/overwrite routes retain their independent behavior.
@@ -62,8 +63,8 @@ an owned JSON snapshot.
 It does not embed a captured project or invent a runtime/compiler result.
 The module imports production code from `packages/scratch-gui/src/lib/`. Run the
 repository's normal integration step first so the integrated GUI resolves its
-actual production dependencies. Do not substitute copied providers, stubs or
-policy exceptions for that prerequisite.
+actual production dependencies. Do not borrow another worktree's dependencies
+or substitute stubs, fake SDKs or policy exceptions for that prerequisite.
 
 Its whole module covers:
 
@@ -76,13 +77,38 @@ Its whole module covers:
 - Non-dominating overwrite, incompatible writer/allocation, foreign caller,
   raw-object rejection, snapshot isolation and prototype-change revocation.
 
-Source authoring is not test execution. The module and production change need
-whole-module qualification on their exact final source. A clean focused Array
-receiver result does not establish a clean complete export or MakeCode build;
-the module keeps a separate complete-export assertion for positive fixtures.
-The original numeric GUI journey must also pass its unchanged clean-export
-assertion and other existing checks before its boundary is closed. No corpus
-completion count or full compatibility claim follows from this task alone.
+The complete module passed with the real conversion code, Creator, structural
+constraint model and locked source dependencies. Its fixture includes the actual
+MakeCode export/reimport before Code feedback. Both imports attach real artwork
+using Creator's public SVG methods; exports receive the associated asset bytes.
+Code feedback rejects unsupported-block comments before parsing. This matters:
+omitting either the first export/reimport or artwork attachment tests a different
+program, and must not be corrected by inserting a reset or deleting the Sprite.
+
+A separate source check of the exact owned input retained from the failing
+numeric journey now accepts both mutation receivers and the item-read receiver.
+The original failed result remains preserved. These checks establish Array
+receiver analysis and clean source conversion for the owned regression; they do
+not establish an original SDK build, native execution, installed GUI behavior,
+controller operation or a completed corpus application. The official numeric
+journey must still pass its unchanged clean-export and existing assertions.
+
+## Current supported slice and follow-up boundaries
+
+This proof currently requires one ordinary zero-argument procedure with one
+direct source-start caller. It audits the complete preceding sequence, admits
+other source-start scripts only when they hide their own target, and permits a
+unique registered-button handler only after the overwrite. Visible monitors,
+unknown entries/effects and unrelated procedures remain refused. Other safe
+calling patterns need a complete caller/frame and activation proof, not a name
+exception. Sprite kind effects currently admit the native Player literal;
+other built-in and custom kinds need their actual domain/effect contract.
+
+The existing ownership index deliberately excludes declaration prototypes.
+The new census therefore recognizes only the exact, physically linked and
+validated zero-argument prototype as a declaration. Root identity, link tuple,
+parent, shadow/top-level roles and signature remain required. An orphan or
+prototype-looking object cannot gain executable ownership or value authority.
 
 ## Follow-up work if a boundary remains refused
 
