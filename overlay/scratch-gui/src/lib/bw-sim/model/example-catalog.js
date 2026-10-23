@@ -294,6 +294,66 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "sine-shuttle.ldr": {
+        "pieces": 105,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A captured transverse block projects a 16 mm crank circle into two perpendicular 32 mm slider strokes. Compare sinusoidal position, speed, acceleration and reverse return.",
+            "de": "Ein gefangener Quergleitstein zerlegt den Kurbelkreis mit 16 mm Radius in zwei rechtwinklige Schieberhübe von 32 mm. Vergleiche sinusförmige Lage, Geschwindigkeit, Beschleunigung und Rücklauf."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scotch yoke",
+            "de": "Kurbelschleife"
+        },
+        "keywords": [
+            "Scotch yoke",
+            "Kurbelschleife",
+            "Scotch yoke",
+            "captured block",
+            "harmonic motion",
+            "sinusoidal motion",
+            "Kurbelschleife",
+            "harmonische Bewegung",
+            "Doppelschieber"
+        ]
+    },
+    "quartermaster.ldr": {
+        "pieces": 209,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A retained roller advances a passive four-slot wheel by quarter turns. A second motor opens and closes the physical latch: compare engagement, dwell and reverse indexing.",
+            "de": "Eine gehaltene Rolle schaltet ein passives Rad mit vier Schlitzen in Vierteldrehungen weiter. Ein zweiter Motor öffnet und schließt die mechanische Sperre: Vergleiche Eingriff, Rast und Rückschaltung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Contact indexer with dwell latch",
+            "de": "Schrittgetriebe mit Rastsperre"
+        },
+        "keywords": [
+            "Contact indexer with dwell latch",
+            "Schrittgetriebe mit Rastsperre",
+            "contact indexer",
+            "indexing wheel",
+            "quarter turn",
+            "intermittent motion",
+            "dwell latch",
+            "Schrittgetriebe",
+            "Rastgetriebe",
+            "Vierteldrehung",
+            "Rastsperre"
+        ]
+    },
     "watt-line.ldr": {
         "pieces": 148,
         "motors": 1,

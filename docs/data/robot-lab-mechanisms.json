@@ -143,6 +143,44 @@
         "Seilzug",
         "Trommelwinde"
       ]
+    },
+    {
+      "models": [
+        "sine-shuttle"
+      ],
+      "name": {
+        "en": "Scotch yoke",
+        "de": "Kurbelschleife"
+      },
+      "aliases": [
+        "Scotch yoke",
+        "captured block",
+        "harmonic motion",
+        "sinusoidal motion",
+        "Kurbelschleife",
+        "harmonische Bewegung",
+        "Doppelschieber"
+      ]
+    },
+    {
+      "models": [
+        "quartermaster"
+      ],
+      "name": {
+        "en": "Contact indexer with dwell latch",
+        "de": "Schrittgetriebe mit Rastsperre"
+      },
+      "aliases": [
+        "contact indexer",
+        "indexing wheel",
+        "quarter turn",
+        "intermittent motion",
+        "dwell latch",
+        "Schrittgetriebe",
+        "Rastgetriebe",
+        "Vierteldrehung",
+        "Rastsperre"
+      ]
     }
   ]
 }

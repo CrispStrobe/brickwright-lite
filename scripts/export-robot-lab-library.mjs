@@ -3,7 +3,7 @@
 // Copyright (c) 2026 CrispStrobe
 // Export the shipped library with single-root MPD alternatives and verify their
 // placements against the flat LDraw originals before creating the archive.
-import {readFileSync,writeFileSync,mkdirSync,readdirSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,readdirSync,existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
@@ -15,6 +15,7 @@ import {phasedMotorRead, phasedMotorSource} from '../overlay/scratch-gui/src/lib
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 const [directory,archive]=process.argv.slice(2);
 if(!directory||!archive)throw Error('Usage: export-robot-lab-library.mjs output-directory output.zip');
+assert.ok(!existsSync(directory)&&!existsSync(archive),'Use new export paths; preserve existing evidence');
 const root=new URL('../',import.meta.url),base=new URL('overlay/scratch-gui/static/sim-lab/',root),JSZip=createRequire(new URL('../packages/scratch-gui/package.json',import.meta.url))('jszip');
 const C=catalogFrom(JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',root))));
 const files=new Map(),manifest=[],zip=new JSZip(),hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -48,7 +49,9 @@ for(const file of new Set(MODELS.map(m=>m.file))){
  const a=parseModel(original,{catalog:C}),flat=parseModel(ldr,{catalog:C}),b=parseModel(mpd,{catalog:C});
  assert.deepEqual(a.refusals,[],file);assert.deepEqual(flat.refusals,[],file);assert.deepEqual(b.refusals,[],file);
  assert.deepEqual(flat.model.parts,a.model.parts,file+' flat placements/ports/payloads/rotor angles');assert.deepEqual(b.model.parts,a.model.parts,file+' MPD placements/ports/payloads/rotor angles');
- assert.deepEqual(flat.model.belts,a.model.belts,file+' flat physical bands');assert.deepEqual(b.model.belts,a.model.belts,file+' MPD physical bands');
+ const semantics=({files,...state})=>state;
+ assert.deepEqual(semantics(flat.model),semantics(a.model),file+' flat complete model semantics (including ropes, hoses, drawings and assembly steps)');
+ assert.deepEqual(semantics(b.model),semantics(a.model),file+' MPD complete model semantics');
  put('models/'+file,ldr);put('models/'+file.replace(/\.ldr$/,'.mpd'),mpd);
  manifest.push({file,pieces:a.model.parts.length+(a.model.belts||[]).length,...(a.model.belts?.length?{rigidPlacements:a.model.parts.length,flexibleBands:a.model.belts.length}:{}),sourceSha256:hash(original),ldrSha256:hash(ldr),mpdSha256:hash(mpd)});
 }

@@ -2680,3 +2680,7 @@ Copyright (c) 2026 Christian Ströbele (CrispStrobe), BSD-3-Clause.
 Models, programs and lessons are shipped with complete notices in
 `static/sim-lab/licenses/watt-line.txt` and `static/sim-lab/licenses/twin-tempo.txt`.
 External LDraw parts retain their existing separate attribution and licences.
+
+### SineShuttle and Quartermaster
+
+Original model and program designs by CrispStrobe, BSD-3-Clause. SineShuttle supplies the full grant; Quartermaster uses the owner-authorized BSD grant and retains its corrected Crossglide cradle credit. Individual notices: `static/sim-lab/licenses/sine-shuttle.txt` and `quartermaster.txt`. Standard LDraw part meshes retain their individual authors and licences.

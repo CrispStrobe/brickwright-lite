@@ -13,7 +13,8 @@ const mechanismSearch = async (gallery, shotsDir, language) => {
   ['Hoeken', ['stride-lab.ldr']], ['Peaucellier–Lipkin cell', ['straight-eight.ldr']],
   ['Sarrus', ['sarrus-lift.ldr']], ['Pantographs', ['amplify.ldr', 'pantograph-doubler.ldr', 'scale-studio.ldr', 'scale-echo.ldr']],
   ['Oldham couplings', ['offset-orbit.ldr', 'crossglide.ldr']], ['Kardangelenk', ['phase-bridge.ldr', 'phase-bridge-misphased.ldr', 'ripple-relay.ldr']],
-  ['Watt linkage', ['watt-line.ldr']], ['3:1', ['twin-tempo.ldr']]
+  ['Watt linkage', ['watt-line.ldr']], ['3:1', ['twin-tempo.ldr']],
+  ['Scotch yoke', ['sine-shuttle.ldr']], ['Kurbelschleife', ['sine-shuttle.ldr']], ['contact indexer', ['quartermaster.ldr']], ['Rastsperre', ['quartermaster.ldr']]
  ]) {
   await gallery.getByRole('searchbox').fill(query);
   for (const id of ids) {
