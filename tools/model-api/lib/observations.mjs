@@ -2,9 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 // Reuse the live reader. Extra API markers are read-only rigid transforms.
 import {createMeasurementReader,jointBinding,ropeBinding} from '../../../overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js';
-const add=(a,b)=>a.map((x,i)=>x+b[i]),sub=(a,b)=>a.map((x,i)=>x-b[i]),dot=(a,b)=>a.reduce((s,x,i)=>s+x*b[i],0),scale=(a,n)=>a.map(x=>x*n),norm=a=>Math.hypot(...a),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],unit=a=>scale(a,1/norm(a));
-const mul=([x,y,z,w],[a,b,c,d])=>[w*a+x*d+y*c-z*b,w*b-x*c+y*d+z*a,w*c+x*b-y*a+z*d,w*d-x*a-y*b-z*c],inv=q=>[-q[0],-q[1],-q[2],q[3]],rot=(q,v)=>mul(mul(q,[...v,0]),inv(q)).slice(0,3);
-const world=p=>p.map((v,i)=>v*(i===0?.0004:-.0004));
+import {add,sub,dot,scale,norm,cross,unit,inv,rot,world} from './rigid-poses.mjs';
 export function createBatchObserver(session,requested,readVariable){
  const m=session.mechanism,core=session.core,parts=new Map(session.runModel.parts.map(p=>[p.id,p])),bodyOf=new Map();for(const b of m.bodies)for(const id of b.parts||[])if(!bodyOf.has(id))bodyOf.set(id,b);
  const carry=(b,p)=>{const actual=core.bodyPose(b.id);return add(actual.position,rot(actual.rotation,rot(inv(b.rotation),sub(p,b.position))));};

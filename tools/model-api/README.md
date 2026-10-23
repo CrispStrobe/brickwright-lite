@@ -149,3 +149,9 @@ For local development, configure master key and token digests and run
 This mode supervises a child Node process, without the hosted Docker sandbox,
 and is only for trusted local callers. Its volatile job store is not a hosted
 queue. Real hosted Docker/Actions execution must be verified separately.
+
+## Replaying native poses
+
+`poseRecording.initialPartPlacements` contains the actual prepared `runModel` placements for parts in recorded bodies, after the mat import transform. These positions and 3×3 rotations use LDraw units/axes; native body poses use metres and `[x,y,z,w]` quaternions. Do not reconstruct semantic markers using raw input LDraw placements or treat a body origin as a part origin.
+
+Import `createRecordedPoseReader` from `lib/rigid-poses.mjs` and pass the report. `reader.point(frameIndex, partId, localLdu)` returns a semantic point in world metres; `reader.placement(frameIndex, partId)` returns a reconstructed LDraw placement. The helper carries the inverse initial body transform, refuses unavailable dynamic poses and ambiguous split parts, and allows an explicit body selector when needed. Old reports require the exact prepared `runModel.parts` as the second argument; raw authored parts are insufficient. These transforms observe recorded motion and do not grant mesh, retention or continuous-contact qualification.

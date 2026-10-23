@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
+import {createRecordedPoseReader,sub,dot,unit} from '../tools/model-api/lib/rigid-poses.mjs';
 import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {measureSubmission} from '../tools/model-api/native-runner.mjs';
 const text=readFileSync(new URL('../overlay/scratch-gui/static/sim-lab/models/sine-shuttle.ldr',import.meta.url),'utf8');
 test('submitted LDR/BW executes in real VM/Jolt and records passive marker motion through the PR1255 reader',async t=>{
@@ -13,12 +14,18 @@ test('a submitted idler fixture exposes its actual inferred gear connections wit
 });
 test('5 ms scalar and rigid-pose capture observes every existing physics step with identical 25 ms VM commands',async()=>{
  const text=readFileSync(new URL('./fixtures/bw-sim/machines/gears-idler-24-24-24.ldr',import.meta.url),'utf8');
- const input={model:{name:'idler.ldr',text},program:{name:'turn.bw',text:'DEVICE SPIKE\nWHEN flag clicked:\n  lab run motor A for 90 degrees at 90 degrees per second\n  lab stop motor A hold\n'},settings:{programMs:2500,coldMs:250,afterMs:250,sampleMs:25},measurements:[{id:'input',kind:'jointAngle',port:'A'},{id:'output',kind:'signedAngle',point:{part:'gOut'},reference:{part:'frame'},axis:'y',vectorLdu:[1,0,0]}]};
+ const input={model:{name:'idler.ldr',text},program:{name:'turn.bw',text:'DEVICE SPIKE\nWHEN flag clicked:\n  lab run motor A for 90 degrees at 90 degrees per second\n  lab stop motor A hold\n'},settings:{programMs:2500,coldMs:250,afterMs:250,sampleMs:25},measurements:[{id:'input',kind:'jointAngle',port:'A'},{id:'output',kind:'signedAngle',point:{part:'gOut'},reference:{part:'frame'},axis:'y',vectorLdu:[1,0,0]},{id:'tip_x',kind:'pointCoordinate',point:{part:'gOut',localLdu:[20,0,0]},reference:{part:'frame'},axis:'x'}]};
  const regular=await measureSubmission(input),dense=await measureSubmission({...input,settings:{...input.settings,physicsSamples:true,sampleMs:5,poseParts:['frame','gIdler','gOut']}});
  assert.equal(dense.runtime.vmFrameMs,25);assert.equal(dense.runtime.actualSampleMs,5);assert.deepEqual(dense.completion,regular.completion);assert.ok(dense.samples.length>regular.samples.length*4);assert.equal(dense.samples[0].timeMs,0);assert.equal(dense.samples.at(-1).timeMs,dense.completion.sceneTimeMs);
  for(let i=1;i<dense.samples.length;i++)assert.equal(dense.samples[i].timeMs-dense.samples[i-1].timeMs,5);
  const byTime=new Map(dense.samples.map(s=>[s.timeMs,s]));for(const s of regular.samples){const d=byTime.get(s.timeMs);assert.ok(d);for(let i=0;i<s.values.length;i++)assert.ok(Math.abs(d.values[i]-s.values[i])<1e-4,'read-only capture preserves actual native dynamics');}
  assert.equal(dense.poseRecording.completePhysicsSteps,true);assert.equal(dense.poseRecording.frames.length,dense.samples.length);assert.equal(dense.poseRecording.bodyIds.length,3);assert.equal(dense.poseRecording.frames[0].positions.length,3);assert.ok(dense.topology.bodies.every(b=>b.initialPositionM.length===3&&b.initialRotationQuat.length===4));
+ const replay=createRecordedPoseReader(dense);assert.ok(replay.parts.has('gOut'));assert.match(dense.poseRecording.placementFrame,/prepared runModel/);
+ for(let i=0;i<replay.frames.length;i++){
+  const f=replay.frames[i],origin=replay.point(f,'frame'),axis=unit(sub(replay.point(f,'frame',[1,0,0]),origin));
+  const x=dot(sub(replay.point(f,'gOut',[20,0,0]),origin),axis)*1000;
+  assert.ok(Math.abs(x-dense.samples[i].values[2])<1e-6,'self-contained replay reproduces independent live semantic marker coordinates');
+ }
  await assert.rejects(()=>measureSubmission({...input,settings:{...input.settings,poseParts:['absent']}}),e=>e.code==='pose-target-unavailable');
 });
 test('the same uploaded root MPD produces the same bounded native output law',async()=>{
