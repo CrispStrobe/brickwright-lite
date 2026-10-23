@@ -1,4 +1,4 @@
-# Robot Lab hub coverage matrix (2026-10-22)
+# Robot Lab hub coverage matrix (2026-10-23)
 
 Which hub x extension x route x code-flavour combinations the Robot Lab (`bw-sim`) emulates and tests
 end to end. The original matrix was built at main `95cc043c9`; the closure tests named below update that baseline, using code and executed tests rather than the plans alone
@@ -51,8 +51,8 @@ Virtual hub: `G/bw-sim/hubs/spike/spike-virtual-hub.js` + `G/virtual-hub/spike-p
 | spikeprimeBTC / spikeprime | SL-BT (RFCOMM double, 2.x firmware) | blocks | GREEN | `bw-sim-spike-routes` "(b) … motor A turns 360 degrees in the physics" and "(b) spikeprime over Scratch Link BT Classic stops the Wall stopper by its reading". The second needed two fixes to the double: the port report now streams on every hub change, and its distance is in whole cm, as a 2.x hub sends it (it was mm read as cm). |
 | spikeprime | SL-BLE | blocks | GREEN | `bw-sim-spike-routes` "(c) spikeprime over Scratch Link BLE (the BLE double, SPIKE 3 GATT) stops the Wall stopper by its reading" (+ a judge-can-fail control) |
 | spikeprime (absorbed spikeprimeBridge) | bridge (WebSocket relay, 2.x REPL) | `DEVICE SPIKE` pseudocode | GREEN | `bw-sim-spike-bridge` "spikeprime over its WebSocket bridge (firmware 2.x REPL) stops the Wall stopper by its reading" (+ a judge-can-fail control). The real extension's own `connect to bridge at [URL]` (ws://localhost:8081) -> `G/bw-sim/transports/virtual-bridge.js` (text both ways) -> `virtual-spike-stream.js`, which unwraps the same 2.x REPL double Scratch Link BT reaches. Needed CrispStrobe/extensions#58: BridgeLink sent the relay base64 while reading the hub's text as text. Legacy spikeprimeBridge / legospikeprimeBLE projects migrate to spikeprime (`spike-legacy-migration`) |
-| Renode firmware (lockstep) | firmware route | blocks / pseudocode compiled for the firmware | PARTIAL | `bw-sim-renode-lockstep`, `bw-sim-renode-lockstep-program` against the in-process fake (`bw-sim-renode-lockstep-fake.mjs`); `-native` checks only the desktop contract |
-| Renode firmware | firmware route | MicroPython on the hub | GAP | MicroPython exercised in the arena pane only (`spike-arena-pane-units`) |
+| Renode firmware (lockstep) | firmware route | blocks / pseudocode compiled for the firmware | GREEN | Required `robot-lab-own-firmware.yml` builds the project’s own NuttX and runs `verify-sim-lab-renode-lockstep.mjs` through the actual Lab compiler/upload/lockstep/Jolt route. Both timed-speed (within 1%) and degrees (within ±2°) comparisons pass against the Scratch route. See the source-bound qualification below. |
+| Renode firmware | firmware route | embedded MicroPython in own NuttX | GREEN | Required `verify-sim-lab-python-guest.mjs` runs real Python in the project’s own simulated hub through the Lab route: computation/output plus physical motor motion, retained restart, Stop during sleep, sensor positive/wrong-scene refusal, OSError and distinct-source recovery. Actual coherent acknowledgements, status and output are independently observed within unchanged bounds; no interpreter is substituted. |
 
 ## EV3
 
@@ -126,7 +126,7 @@ Virtual hub: `G/bw-sim/hubs/nxt/` (direct + system commands, files); VM `G/bw-si
 | legonxt | SL-BT | blocks | GREEN | `bw-sim-bt-hubs-program` "NXT bumper bot: legonxt turns B and C 360 ± 2° ...", "NXT motor reporters ..." |
 | legonxt | SL-BT upload | `.rxe` on-brick | GREEN | `bw-sim-nxt-rxe-legonxt` "legonxt uploads touch-bumper.rxe ... stops at the wall" (#1115 merged); `bw-sim-nxt-rxe-brick` |
 | legonxt | SL-BT | `nxt` DEVICE words | GREEN (#1129 merged) | `lego-hubs-dialect` proves the words compile to the same real extension blocks that the NXT Lab tests execute. |
-| legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PARTIAL (#1130 merged) | `bw-sim-mindstorms-model-limits` proves model sync, buttons and estimated ultrasonic event capture directly (and the .rxe VM’s ReadButton). The current extension has no blocks exposing these operations; WP4 needs an owning-extension API and qualified protocol/model changes |
+| legonxt | SL-BT | motor sync, buttons, ultrasonic listen | PARTIAL (#1130 merged) | `bw-sim-mindstorms-model-limits` proves model sync, buttons and estimated ultrasonic event capture directly (and the .rxe VM’s ReadButton). The adopted extension has no blocks exposing these operations. Candidate CrispStrobe/extensions#63 adds them with strict protocol controls, but its required two-reviewer approval remains pending; Lite has not adopted that supplier |
 | legonxt | hosted NXC -> `.rxe` | NXC source | GREEN | `bw-sim-nxt-rxe-legonxt`: the real compile/upload/start blocks post the exact committed `touch-bumper.nxc`, receive its recorded compiler reply, and the Robot Lab bot stops on its bumper; an altered source has no recorded reply, uploads no fixture and never drives. No live compiler is exercised. |
 | legonxt | Web Serial ("direct"), bridge | blocks | GREEN | `bw-sim-virtual-transports-nxt` "legonxt over Web Serial (\"direct\", 9600 baud): the bumper bot drives until the bumper meets the wall and stops", "legonxt over its WebSocket bridge (base64 telegrams): …" (+ a no-stop control on both). Connected by its own `set connection mode` / `connect` blocks with no Scratch Link; `G/bw-sim/transports/virtual-serial.js` and `virtual-bridge.js` (ws://localhost:8765, one base64 text message per length-prefixed telegram) -> the Virtual NXT session. Needed CrispStrobe/extensions#58: both backends called methods they do not have, so neither could connect, and the bridge resolved numbers its callers parse as telegrams |
 
@@ -145,7 +145,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 
 | Hub | GREEN | PARTIAL | PENDING | GAP |
 |---|---|---|---|---|
-| SPIKE Prime / Robot Inventor | 7 | 1 | 0 | 1 |
+| SPIKE Prime / Robot Inventor | 9 | 0 | 0 | 0 |
 | EV3 | 7 | 0 | 0 | 0 |
 | BOOST Move Hub | 6 | 0 | 0 | 0 |
 | Powered Up City / Technic | 6 | 0 | 0 | 0 |
@@ -153,7 +153,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 | SPIKE Essential | 2 | 0 | 0 | 0 |
 | NXT | 5 | 1 | 0 | 0 |
 | RCX | 2 | 0 | 0 | 0 |
-| **Total** | **40** | **2** | **0** | **1** |
+| **Total** | **42** | **1** | **0** | **0** |
 
 ## Gaps, by user impact
 
@@ -164,7 +164,7 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 3. ~~SPIKE Prime, SPIKE 3 Python in the Lab~~: closed by `bw-sim-spike3-python-lab`. Was: test-only; `runOnSimLab` on the
    imported program.
 4. ~~SPIKE Prime, Python/JS `_spikeprime` calls~~: default-exporter round trips closed by `hub-runtime-calls-to-blocks`; every runtime argument and sensor reporter survives. Unsupported calls are named refusals.
-5. SPIKE Prime, real Renode lockstep and MicroPython on the hub: virtual support (needs Renode in CI).
+5. ~~SPIKE Prime, real Renode lockstep and embedded MicroPython in own NuttX~~: closed by the required hosted own-firmware route and six Python cases. Standalone/raw-REPL firmware, installed native lifecycle and hardware are separate boundaries.
 6. ~~SPIKE Prime, bridge route~~: closed by `bw-sim-spike-bridge` (virtual WebSocket relay + 2.x REPL stream; extension fix CrispStrobe/extensions#58).
 7. ~~EV3, Web Serial / bridge~~: closed by `bw-sim-virtual-transports-ev3` (virtual Web Serial port and WebSocket bridge, `G/bw-sim/transports/`).
 8. ~~EV3, ev3dev~~: closed by `bw-sim-virtual-ev3dev` (virtual ev3dev brick over HTTP, `G/bw-sim/transports/virtual-ev3dev.js`).
@@ -176,8 +176,14 @@ Virtual hub: `G/bw-sim/hubs/rcx/rcx-virtual-hub.js`, `rcx-lab-target.js`; VM `G/
 14. ~~BOOST / Powered Up, bridge~~: closed by `lab-hubs-bridge` (virtual HTTP BLE bridge, `G/bw-sim/transports/virtual-ble-bridge.js`).
 15. ~~WeDo 2.0, tilt / lights / tones through the Lab hub~~: closed by `lab-hubs-wedo-observables` on both BLE routes, after repairing sensor identity propagation.
 16. ~~SPIKE Essential, legopoweredup over WB and SL-BLE~~: closed by `lab-hubs-coverage` using the already catalogued assembly `67351c01.dat`, with wrong-program controls on both routes. LDraw geometry/connector checks remain mandatory.
-17. ~~NXT, NXC compile-then-run~~: closed by exact-source recorded compiler-reply tests, not a live compiler. #1129’s words are merged. The sync/buttons/listen cell remains PARTIAL: the current `legonxt` extension has no blocks for these operations, so it requires owning-extension API work and protocol/model qualification, not only additional Lab tests.
+17. ~~NXT, NXC compile-then-run~~: closed by exact-source recorded compiler-reply tests, not a live compiler. #1129’s words are merged. The sync/buttons/listen cell remains PARTIAL: supplier candidate CrispStrobe/extensions#63 provides the APIs, but its required two-reviewer approval and subsequent Lite adoption remain outstanding. Direct model tests alone cannot close this cell.
 18. ~~RCX, legorcx blocks into the Lab RCX~~: closed by `bw-sim-rcx-legorcx`.
 
 The WeDo gap proved to require a sensor-binding product fix under `G/bw-sim/`; direct protocol tests had bypassed it. #1127 (merged) closed the Powered Up stop-action
 and EV3 `.rbf` cells.
+
+## Hosted firmware qualification
+
+Source [#1239](https://github.com/CrispStrobe/brickwright-lite/pull/1239) landed at `6da92497d2e8f51b2a75e137fab9e6946d3a3457` from qualified head `64949a78117a3937ad5241e8ec41d1b8fffca3b2` after all 32 enabled exact-head checks succeeded; six conditional jobs were skipped as declared. [Official own-firmware run 39892243464](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39892243464) passed both motor comparisons and all six real Python cases. Independent original reading bound the fixed Runtime/Infra/firmware graph, source hashes and built outputs to the actual Lab consumer. The timed speed ratio was 1.0053; degrees endpoints were 359.16° versus 359.15° (target 360°), within the unchanged limits.
+
+This qualifies embedded MicroPython in the project’s own NuttX through the Lab route. No physical hardware accuracy, standalone raw-REPL or installed native lifecycle claim follows from this result.
