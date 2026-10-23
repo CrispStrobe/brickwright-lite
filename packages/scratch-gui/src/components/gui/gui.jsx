@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import omit from 'lodash.omit';
 import PropTypes from 'prop-types';
 import React from 'react';
+import {clearControllerPanel, connectControllerBoard} from '../../lib/controller-inputs.js';
 import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-intl';
 import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
@@ -400,9 +401,7 @@ const GUIComponent = props => {
                 if (stc && stc.controller) {
                     const restored = ControllerPanel.fromJSON(stc.controller);
                     // Replace widgets in the existing panel
-                    for (const name of controllerPanel.getWidgetNames()) {
-                        controllerPanel.removeWidget(name);
-                    }
+                    clearControllerPanel(controllerPanel);
                     const skipped = [];
                     for (const w of restored.getWidgets()) {
                         // Same rule as the importer's restore: one widget the
@@ -424,6 +423,7 @@ const GUIComponent = props => {
                     // where every input control renders disabled — so a
                     // faceplate that worked when the example was opened was
                     // dead the next time the project was loaded.
+                    controllerPanel.setHideBindings?.(!!restored.hideBindings);
                     controllerPanel.setMode(restored.mode);
                 }
             } catch { /* ignore corrupt data */ }
@@ -682,6 +682,12 @@ const GUIComponent = props => {
         // displays must mirror the device the emulator drives.
         () => props.vm?.runtime?.bwRunBoard || props.vm?.runtime?.circuitBoard || props.vm?.runtime?.stc?.board || null,
         [props.vm, boardEpoch]);
+
+    // Programs and saved tuning must reach the board even while Widgets is closed.
+    React.useEffect(() => {
+        const connection = connectControllerBoard(controllerPanel, board, props.vm?.runtime);
+        return () => connection.dispose();
+    }, [controllerPanel, board, props.vm]);
 
     const {
         accountNavOpen,
@@ -1232,6 +1238,7 @@ const GUIComponent = props => {
                                         <ControllerPanelView
                                             panel={controllerPanel}
                                             board={board}
+                                            manageBoardBinding={false}
                                             vm={vm}
                                             machineConsole={machineConsole}
                                             locale={intl.locale}
