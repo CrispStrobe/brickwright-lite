@@ -37,6 +37,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {Worker} from 'node:worker_threads';
 import {SimSession, catalogFrom, MODELS_BASE} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {createMeasurementReader, measurementPresets} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js';
 import {PhysicsClient} from '../overlay/scratch-gui/src/lib/bw-sim/physics/physics-client.js';
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
 
@@ -87,6 +88,9 @@ const seen = session => {
         time: session.time,
         snapshot: Buffer.from(session.snapshot().bodies.buffer).toString('hex') + Buffer.from(session.snapshot().joints.buffer).toString('hex'),
         poses: session.mechanism.bodies.map(b => session.core.bodyPose(b.id)),
+        velocities: session.mechanism.bodies.map(b => [session.core.bodyLinearVelocity(b.id), session.core.bodyAngularVelocity(b.id)]),
+        rolling: session.mechanism.bodies.map(b => session.core.rollingWheel(b.id)),
+        ropes: session.core.ropeState(),
         joints: session.mechanism.joints.filter(j => j.type === 'hinge').map(j => session.core.jointState(j.id)),
         motors: structuredClone(hub.motors),
         imu: structuredClone(hub.imu),
@@ -259,4 +263,27 @@ test('the line follower\'s example program, run by the real VM, draws the same t
     const far = Math.max(...here.track.map(p => Math.hypot(p.axle[0] - here.track[0].axle[0], p.axle[2] - here.track[0].axle[2])));
     assert.ok(far > 0.3, `the line follower drove ${far.toFixed(2)} m from its start`);
     for (let i = 0; i < here.track.length; i++) assert.deepStrictEqual(there.track[i], here.track[i], `frame ${i}`);
+});
+
+
+test('live measurements observe native motion and wheel loads identically through the worker', async () => {
+    const p = await pair('driving-base.ldr');
+    try {
+        const defs = measurementPresets(p.here);
+        const catalogMass = p.here.model.parts.reduce((sum, part) => sum + CATALOG.get(part.part).massGrams, 0);
+        const here = createMeasurementReader(p.here), there = createMeasurementReader(p.there);
+        p.both(h => {h.motors.runAtSpeed('A', -360); h.motors.runAtSpeed('B', 360);});
+        let moving = false, loaded = false;
+        for (let i = 0; i < 40; i++) {
+            await p.tick(16.7);
+            const a = here.read(defs), b = there.read(defs);
+            assert.deepEqual(b, a, 'readings and force vectors bind to the accepted native batch');
+            assert.ok(a.every(r => r.available), JSON.stringify(a.filter(r => !r.available)));
+            assert.ok(Math.abs(a.find(r => r.kind === 'modelMass').value - catalogMass) < 1e-9,
+                'native model mass equals the independent catalogue sum, without ground or duplicate motor shares');
+            moving ||= a.some(r => r.kind === 'speed' && r.value > 0.01);
+            loaded ||= a.some(r => r.kind === 'normalLoad' && r.value > 0.01);
+        }
+        assert.ok(moving, 'the real body moved'); assert.ok(loaded, 'the wheel carried a real load');
+    } finally {await p.close();}
 });

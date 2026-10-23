@@ -58,6 +58,17 @@ export const posesOf = (core, mechanism) => {
         bodies.set(position, i * 7);
         bodies.set(rotation, i * 7 + 3);
     });
+    // Observational telemetry travels with the accepted batch, including after a redo.
+    const linear = new Float64Array(mechanism.bodies.length * 3);
+    const angular = new Float64Array(mechanism.bodies.length * 3);
+    const rolling = {};
+    mechanism.bodies.forEach((b, i) => {
+        linear.set(core.bodyLinearVelocity ? core.bodyLinearVelocity(b.id) : [NaN, NaN, NaN], i * 3);
+        angular.set(core.bodyAngularVelocity ? core.bodyAngularVelocity(b.id) : [NaN, NaN, NaN], i * 3);
+        const wheel = core.rollingWheel ? core.rollingWheel(b.id) : null;
+        if (wheel) rolling[b.id] = {...wheel};
+    });
+    const ropes = core.ropeState ? core.ropeState() : [];
     const joints = new Float64Array(mechanism.joints.length * 2);
     mechanism.joints.forEach((j, i) => {
         if (j.type === 'hinge') {
@@ -71,7 +82,7 @@ export const posesOf = (core, mechanism) => {
         }
     });
     // Each air network's pressure (physics/air.js), for the pane's readout.
-    return {t: core.time, bodies, joints, air: core.airState ? core.airState() : []};
+    return {t: core.time, bodies, joints, linear, angular, rolling, ropes, air: core.airState ? core.airState() : []};
 };
 
 /**
@@ -138,11 +149,13 @@ export class MirrorCore {
         this.update(poses);
     }
 
-    update ({t, bodies, joints, air = []}) {
+    update ({t, bodies, joints, air = [], linear = null, angular = null, rolling = {}, ropes = []}) {
         this.t = t;
         this.bodies = bodies;
         this.joints = joints;
         this.air = air;
+        this.linear = linear; this.angular = angular;
+        this.rolling = rolling; this.ropes = ropes;
     }
 
     /** Each air network's pressure, as the worker's core last had it. */
@@ -161,6 +174,17 @@ export class MirrorCore {
         const b = this.bodies;
         return {position: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], rotation: [b[i * 7 + 3], b[i * 7 + 4], b[i * 7 + 5], b[i * 7 + 6]]};
     }
+
+    bodyLinearVelocity (bodyId) { return this._velocity(this.linear, bodyId); }
+    bodyAngularVelocity (bodyId) { return this._velocity(this.angular, bodyId); }
+    _velocity (values, bodyId) {
+        const i = this.bodyIndex.get(bodyId);
+        if (i === undefined) throw new Error(`unknown body ${bodyId}`);
+        if (!values) throw new Error('velocity telemetry unavailable');
+        return Array.from(values.slice(i * 3, i * 3 + 3));
+    }
+    rollingWheel (bodyId) { return this.rolling[bodyId] ? {...this.rolling[bodyId]} : null; }
+    ropeState () { return this.ropes.map(r => ({...r})); }
 
     jointState (jointId) {
         const i = this.jointIndex.get(jointId);

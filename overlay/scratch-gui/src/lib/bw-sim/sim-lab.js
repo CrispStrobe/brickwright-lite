@@ -251,3 +251,5 @@ export const startPhysicsClient = () => {
     const worker = startPhysicsWorker();
     return worker ? new PhysicsClient(worker) : null;
 };
+
+export {createMeasurementReader, measurementPresets, measurementText, jointBinding, ropeBinding} from './measurements/readings.js';
