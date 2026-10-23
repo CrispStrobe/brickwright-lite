@@ -8,7 +8,15 @@ export function githubBackend({repository,workflow,ref,token,master,fetchImpl=fe
  const runFor=async job=>{
   let run;if(job.runId)run=await(await request('/actions/runs/'+job.runId)).json();
   else{const after=new Date(job.createdAt-60000).toISOString(),q=new URLSearchParams({event:'workflow_dispatch',branch:ref,per_page:'100',created:'>='+after}),page=await(await request('/actions/workflows/'+workflow+'/runs?'+q)).json();run=page.workflow_runs.find(r=>r.display_title==='model-measure:'+job.id);}
-  if(!run)return null;if(run.event!=='workflow_dispatch'||run.display_title!=='model-measure:'+job.id||run.path!=='.github/workflows/'+workflow)throw new ApiError(404,'not-found','Job not found');return run;
+  if(!run)return null;
+  if(run.event!=='workflow_dispatch'||run.path!=='.github/workflows/'+workflow)throw new ApiError(404,'not-found','Job not found');
+  if(run.display_title!=='model-measure:'+job.id){
+   // GitHub can expose the dispatch run ID before evaluating run-name. Do not
+   // return an uncorrelated run; let the caller keep its existing queued job.
+   if(run.status!=='completed'&&run.display_title==='Submitted model measurements'&&Date.now()-job.createdAt<60000)return null;
+   throw new ApiError(404,'not-found','Job not found');
+  }
+  return run;
  };
  return{
   async submit(job,envelope){const r=await request('/actions/workflows/'+workflow+'/dispatches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ref,inputs:{request_id:job.id,envelope}})});if(r.status===204)return null;const data=await r.json();return Number.isSafeInteger(data.workflow_run_id)?data.workflow_run_id:null;},

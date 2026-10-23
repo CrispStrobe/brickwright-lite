@@ -24,6 +24,15 @@ test('worker failures never become fabricated measurements or successful qualifi
 test('GitHub backend accepts 200 and legacy 204 dispatch without caller-selected code or refs',async()=>{
  for(const status of [200,204]){const calls=[],backend=githubBackend({repository:'owner/repo',workflow:'model-measurements.yml',ref:'trusted',token:'private-server-token',fetchImpl:async(url,options)=>{calls.push({url,options});return{ok:true,status,json:async()=>({workflow_run_id:123})};}});const id=await backend.submit({id:'owned'},'encrypted');assert.equal(id,status===200?123:null);const body=JSON.parse(calls[0].options.body);assert.equal(body.ref,'trusted');assert.deepEqual(Object.keys(body.inputs).sort(),['envelope','request_id']);assert.ok(calls[0].url.endsWith('/actions/workflows/model-measurements.yml/dispatches'));}
 });
+test('an initializing GitHub run stays queued until its exact request name is visible',async()=>{
+ const job={id:'request',runId:123,createdAt:Date.now()},run={event:'workflow_dispatch',path:'.github/workflows/model-measurements.yml',display_title:'Submitted model measurements',status:'queued',id:123,head_sha:'fixed'};
+ const backend=githubBackend({repository:'owner/repo',workflow:'model-measurements.yml',ref:'main',token:'server-only',fetchImpl:async()=>({ok:true,json:async()=>({...run})})});
+ assert.deepEqual(await backend.status(job),{status:'queued'});
+ run.display_title='model-measure:request';assert.equal((await backend.status(job)).runId,123);
+ run.display_title='another-request';await assert.rejects(()=>backend.status(job),e=>e.status===404);
+ run.display_title='Submitted model measurements';run.status='completed';await assert.rejects(()=>backend.status(job),e=>e.status===404);
+ run.status='queued';run.path='.github/workflows/other.yml';await assert.rejects(()=>backend.status(job),e=>e.status===404);
+});
 test('hosted worker has no credential/network channel and preserves failures as encrypted artifacts',()=>{
  const s=readFileSync(new URL('../.github/workflows/model-measurements.yml',import.meta.url),'utf8'),run=s.slice(s.indexOf('      - name: Run bounded'),s.indexOf('      - name: Encrypt'));
  assert.match(run,/--network=none/);assert.match(run,/--read-only/);assert.match(run,/--pids-limit=128/);assert.match(run,/--memory=2g/);assert.match(run,/timeout --signal=TERM/);assert.match(run,/node@sha256:[a-f0-9]{64}/);assert.ok(!/secrets\.|GITHUB_TOKEN|MODEL_API_MASTER_KEY/.test(run));assert.match(s,/persist-credentials: false/);assert.match(s,/retention-days: 1/);assert.ok(!s.includes('concurrency:'));assert.ok(!s.includes('${{ inputs.envelope }}'),'payload is read from event data, never expanded into shell code');

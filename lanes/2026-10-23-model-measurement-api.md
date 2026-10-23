@@ -33,4 +33,10 @@ Docker/Actions and Vercel execution remain deployment acceptance requirements.
 The earlier model-candidate fingerprint SILENT-SKIP is corrected by including
 generated translations after their recorded build-side-effect restoration;
 all eleven gate-shape controls pass without any baseline/tolerance change.
-The private worker/planning repository will keep idea JSON edits off app CI.
+The private worker/planning repository keeps idea JSON edits off app CI.
+Hosted acceptance now passes: the Vercel endpoint dispatched the pinned native
+worker, returned its encrypted report, and measured a 32.0136 mm passive stroke
+with 0.00192 mm maximum hinge closure error. Hosted missing-token, foreign-job
+ownership and allowed/denied-origin controls pass. A separate 811-idea catalogue
+audit, nine compact primary-domain queues and coordinator-only atomic claims
+live in the private planning repository; no catalogue edits trigger app CI.

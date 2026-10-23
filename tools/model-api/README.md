@@ -77,6 +77,9 @@ node tools/model-api/client.mjs --model=machine.mpd --program=experiment.bw \
 The client preserves old reports and polls a bounded interval. Each agent token
 has independent result ownership and can be revoked through server configuration.
 Credentials stay out of query strings, source code, browser bundles and logs.
+Use `--settings=settings.json` for an explicit experiment budget. The client
+writes `<out>.job.json` immediately after submission so an interrupted caller
+can resume polling the retained job rather than submit duplicate work.
 
 ## Deployment
 
