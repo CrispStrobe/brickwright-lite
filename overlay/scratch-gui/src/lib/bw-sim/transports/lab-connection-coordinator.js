@@ -19,8 +19,9 @@ export const labConnectionRoutes = (scene, record) => {
 const canceled = () => new DOMException('The Lab connection request was replaced.', 'AbortError');
 const failureOf = errors => errors.length === 1 ? errors[0] : new AggregateError(errors, 'Lab connection cleanup failed');
 
-/** stopProgram receives the captured old VM/scene, and must retire their program
- * and motor ownership. prepareRun commits the pane's running state; startClock
+/** stopProgram receives the captured old VM/scene and per-operation options.
+ * preserveProgram keeps only the API caller alive; routes, motor ownership and
+ * pending Run admission always retire. prepareRun commits the pane's running state; startClock
  * installs its clock. The coordinator calls the actual VM greenFlag only after
  * those async/synchronous boundaries still belong to the admitted request.
  * Callers observe returned cleanup promises, without awaiting them before
@@ -73,7 +74,7 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
         }
         if (cleanupFailure) throw cleanupFailure;
     };
-    const invalidate = () => {
+    const invalidate = ({preserveProgram = false} = {}) => {
         const stamp = ++revision;
         runIntent = null;
         const previous = request;
@@ -84,7 +85,7 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
         // Tombstones precede host callbacks: late HTTP writes cannot discover
         // a replacement brick at the same loopback address or device ID.
         const tasks = [observe(() => routing.setScene(null)),
-            observe(() => stopClock?.(oldScene)), observe(() => stopProgram?.(oldVM, oldScene))];
+            observe(() => stopClock?.(oldScene)), observe(() => stopProgram?.(oldVM, oldScene, {preserveProgram}))];
         if (previous?.connection) tasks.push(observe(() => previous.connection.cancel()));
         return {stamp, tasks};
     };
@@ -179,9 +180,10 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
     };
     return {
         snapshot,
-        setScene (next, {hubId: nextId = null} = {}) {
+        setScene (next, {hubId: nextId = null, preserveProgram = false} = {}) {
             live();
-            const transition = invalidate();
+            if (typeof preserveProgram !== 'boolean') throw new TypeError('preserveProgram must be boolean');
+            const transition = invalidate({preserveProgram});
             if (transition.stamp !== revision) return joined(transition.tasks);
             scene = next?._disposed ? null : next;
             sceneVM = scene ? getVM() : null;

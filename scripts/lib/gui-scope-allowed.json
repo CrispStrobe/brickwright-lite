@@ -444,6 +444,7 @@
   },
   "jolt-physics/wasm-simd-compat": {
     "tests": [
+      "test/bw-sim-brick-buttons-guest.test.mjs",
       "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
       "test/bw-sim-belt.test.mjs",

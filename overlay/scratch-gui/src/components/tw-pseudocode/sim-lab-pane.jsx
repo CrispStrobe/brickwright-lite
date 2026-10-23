@@ -553,10 +553,12 @@ class SimLabPane extends React.Component {
         this.connections = this.lib.createLabConnectionCoordinator({
             getVM: () => this.props.vm,
             stopClock: () => this.stopClock(),
-            stopProgram: (vm, scene) => {
+            stopProgram: (vm, scene, {preserveProgram = false} = {}) => {
                 if (!scene || scene.lockstep || !scene.hubs.some(record => this.lib.labConnectionRoutes(scene, record).length)) return;
                 const errors = [];
-                try { vm?.stopAll(); } catch (error) { errors.push(error); }
+                // A loadModel block replaces its world while its calling script
+                // continues. Its old motors and pending toolbar Run still retire.
+                try { if (!preserveProgram) vm?.stopAll(); } catch (error) { errors.push(error); }
                 // Queued provider stop writes may outlive cancellation. Retire
                 // the actual old model motors now, while routes are tombstones.
                 for (const {hub} of scene.hubs || []) {
@@ -656,10 +658,10 @@ class SimLabPane extends React.Component {
             this.setState({mode: 'simulate', placing: null, selection: []});
         }
         const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
-        if (entry) await this.openShipped(modelKey(entry));
+        if (entry) await this.openShipped(modelKey(entry), {preserveProgram: true});
         else {
             this.lastText = spec;
-            await this.openText(spec, 'my-model.ldr');
+            await this.openText(spec, 'my-model.ldr', null, {preserveProgram: true});
         }
         return {ok: Boolean(this.session), status: this.state.status, issues: this.state.issues.length};
     }
@@ -1136,9 +1138,9 @@ class SimLabPane extends React.Component {
         if (this.clock) this.clock.uninstall();
     }
 
-    teardown () {
+    teardown ({preserveProgram = false} = {}) {
         this.runConnection = null;
-        if (this.connections) this.observeConnection(() => this.connections.setScene(null));
+        if (this.connections) this.observeConnection(() => this.connections.setScene(null, {preserveProgram}));
         if (this.unregisterBt) this.observeConnection(() => this.unregisterBt());
         this.stopClock();
         if (this.unsubscribeDrawing) this.unsubscribeDrawing();
@@ -1151,7 +1153,7 @@ class SimLabPane extends React.Component {
     }
 
     /** Opens a MODELS entry by its key (`id`, else its file): one model file may be listed twice, with different examples. */
-    async openShipped (key, {includeProgram = false, updateTitle = false} = {}) {
+    async openShipped (key, {includeProgram = false, updateTitle = false, preserveProgram = false} = {}) {
         const request = this.shippedRequest = {};
         this.programRequest = null;
         if (includeProgram && this.session) this.pause();
@@ -1176,7 +1178,7 @@ class SimLabPane extends React.Component {
             await new Promise(resolve => this.setState({mat: entry.mat}, resolve));
             if (this.disposed || this.shippedRequest !== request) return;
         }
-        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example)});
+        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example), preserveProgram});
         if (this.disposed || this.shippedRequest !== request || this.state.status === 'failed') return;
         if (includeProgram && entry.example) await this.loadExample();
         if (this.disposed || this.shippedRequest !== request) return;
@@ -1288,14 +1290,14 @@ class SimLabPane extends React.Component {
         }
     }
 
-    async openText (text, name, shipped = null, {programLoading = false, measurements} = {}) {
+    async openText (text, name, shipped = null, {programLoading = false, measurements, preserveProgram = false} = {}) {
         if (this.opened && this.measurementReader) this.measurementModels.set(this.opened.text, this.measurements);
         const savedMeasurements = measurements === undefined ? this.measurementModels.get(text) : measurements;
         this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null; this.measurementRowsTime = null;
         const token = this.loadToken = {};
         this.clearReplay();
         this.opened = {text, name};
-        this.teardown();
+        this.teardown({preserveProgram});
         this.setState({status: 'loading', manualOverride: false, programLoading, message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
         const {SimSession, fetchModelDrawing, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
@@ -1350,7 +1352,7 @@ class SimLabPane extends React.Component {
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
         this.registerBtBricks();
-        if (this.connections) this.observeConnection(() => this.connections.setScene(session));
+        if (this.connections) this.observeConnection(() => this.connections.setScene(session, {preserveProgram}));
         this.measurementReader = this.lib.createMeasurementReader(session);
         this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
         this.measurementRows = this.measurementReader.read(this.measurements);

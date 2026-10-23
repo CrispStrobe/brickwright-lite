@@ -279,7 +279,7 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         await connected(page);
         const serial = await page.evaluate(async () => {
             const ports = await navigator.serial.getPorts();
-            return ports.filter(port => port.session).map(port => ({baudRate: port.options.baudRate}));
+            return ports.filter(port => port.session).map(port => ({baudRate: port.openOptions.baudRate}));
         });
         assert.deepEqual(serial, [{baudRate: 115200}], 'actual EV3 backend opened the selected virtual serial port');
         await controls.getByRole('button', {name: /^(Disconnect|Trennen)$/}).click();

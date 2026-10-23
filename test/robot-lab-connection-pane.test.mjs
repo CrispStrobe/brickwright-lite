@@ -333,3 +333,111 @@ test('a Bluetooth Run refused by uncertain provider cleanup cannot fall through 
     assert.match(pane.state.message, /the old virtual provider did not retire/);
     await pane.connections.dispose();
 });
+
+test('API model replacement preserves its caller while retiring old routes, clock and motors', async t => {
+    const {pane, events, scene} = fixture();
+    t.after(() => pane.connections.dispose());
+    await pane.connections.setScene(scene);
+    pane.selectConnection({route: 'bridge'});
+    await pane.connectConnection();
+    events.length = 0;
+    await pane.connections.setScene(null, {preserveProgram: true});
+    assert.equal(events.includes('stop'), false);
+    assert.ok(events.includes('clock-stop'));
+    assert.deepEqual(events.filter(Array.isArray), [['motor', 'A', 'brake'], ['motor', 'B', 'brake']]);
+    assert.equal(pane.connections.snapshot().status, 'idle');
+    assert.equal(events.includes('flag'), false);
+    await pane.connections.setScene(scene, {preserveProgram: true});
+    assert.equal(events.includes('stop'), false);
+    events.length = 0;
+    await pane.connections.setScene(null);
+    assert.equal(events.includes('stop'), true, 'ordinary UI replacement still stops the program');
+});
+
+test('model preservation refuses non-boolean options before retiring the current scene', async t => {
+    const {pane, events, scene} = fixture();
+    t.after(() => pane.connections.dispose());
+    await pane.connections.setScene(scene);
+    events.length = 0;
+    assert.throws(() => pane.connections.setScene(null, {preserveProgram: 'true'}), /must be boolean/);
+    assert.deepEqual(events, []);
+    assert.equal(pane.connections.snapshot().hubId, 'brick');
+});
+
+test('the actual API loader carries caller preservation through shipped and inline model paths', async () => {
+    const begin = source.indexOf('    async apiLoadModel (');
+    const end = source.indexOf('    /** start from a block:', begin);
+    const load = new Function('modelKey', `return ({${source.slice(begin, end)}}).apiLoadModel`)(entry => entry.id);
+    const calls = [];
+    const pane = {lib: {MODELS: [{id: 'motorbench'}]}, state: {status: 'ready', issues: []},
+        session: {}, async openShipped (...args) {calls.push(args);}, async openText (...args) {calls.push(args);}};
+    await load.call(pane, 'motorbench');
+    await load.call(pane, '0 inline model');
+    assert.deepEqual(calls, [['motorbench', {preserveProgram: true}],
+        ['0 inline model', 'my-model.ldr', null, {preserveProgram: true}]]);
+});
+
+test('actual pane teardown forwards caller preservation and still disposes old world resources', () => {
+    const {pane, events} = fixture();
+    pane.teardown = method('teardown', '    /** Opens a MODELS entry', {}, {});
+    pane.connections = {setScene: (...args) => {events.push(args);}};
+    pane.observeConnection = callback => callback();
+    pane.unregisterBt = () => events.push('unregister');
+    pane.view = {dispose: () => events.push('view-dispose')};
+    pane.session = {dispose: () => events.push('scene-dispose')};
+    pane.api = {sessionChanged: () => events.push('api-changed')};
+    pane.teardown({preserveProgram: true});
+    assert.deepEqual(events, [[null, {preserveProgram: true}], 'unregister', 'clock-stop',
+        'view-dispose', 'scene-dispose', 'api-changed']);
+    assert.equal(pane.session, null);
+    events.length = 0;
+    pane.teardown();
+    assert.deepEqual(events[0], [null, {preserveProgram: false}]);
+});
+
+test('actual shipped loader forwards caller preservation without importing a replacement program', async () => {
+    const start = source.indexOf('    async openShipped (');
+    const end = source.indexOf('    /** The gallery', start);
+    const calls = [];
+    const shipped = new Function('fetch', 'modelKey', `return ({${source.slice(start, end)}}).openShipped`)(
+        async () => ({ok: true, text: async () => '0 model'}), entry => entry.id);
+    const pane = {lib: {MODELS: [{id: 'motorbench', file: 'motorbench.ldr'}], MODELS_BASE: '/models/'},
+        state: {}, async openText (...args) {calls.push(args);}, setState () {}, shippedModel: () => null};
+    await shipped.call(pane, 'motorbench', {preserveProgram: true});
+    assert.deepEqual(calls, [['0 model', 'motorbench.ldr', 'motorbench', {programLoading: false, preserveProgram: true}]]);
+});
+
+for (const preserveProgram of [true, false]) test(`actual model loader preserves caller=${preserveProgram} through async scene installation`, async () => {
+    const start = source.indexOf('    async openText (');
+    const end = source.indexOf('    /**\n     * One physics worker', start);
+    const openText = new Function(`return ({${source.slice(start, end)}}).openText`)();
+    const calls = [];
+    const session = {time: 0};
+    const pane = {measurementModels: new Map(), state: {},
+        lib: {CATALOG: {}, catalogFor: async () => {}, SimSession: {fromText: async () =>
+            ({session, issues: [], model: {}, runModel: {}})}, insightOf: () => ({blockers: []}),
+            createMeasurementReader: () => ({read: () => []}), measurementPresets: () => [],
+            fetchModelDrawing: async () => {throw new Error('no drawing context in source control');}},
+        clearReplay () {}, teardown (options) {calls.push(['teardown', options]);},
+        setState (value) {Object.assign(this.state, value);}, physicsClient: () => null,
+        registerBtBricks () {}, observeConnection: callback => callback(),
+        connections: {setScene: (...args) => calls.push(['scene', ...args])}, rcxHub: () => null,
+        t: (_key, {error}) => error};
+    await openText.call(pane, '0 model', 'model.ldr', null, {preserveProgram});
+    assert.deepEqual(calls, [['teardown', {preserveProgram}], ['scene', session, {preserveProgram}]]);
+    assert.equal(pane.state.status, 'ready');
+    assert.equal(pane.measurementRowsTime, 0, 'plots timestamp is preserved');
+});
+
+test('API caller preservation still cancels a pending toolbar Run without starting it later', async t => {
+    const {pane, scene, events} = fixture();
+    t.after(() => pane.connections.dispose());
+    await pane.connections.setScene(scene);
+    pane.selectConnection({route: 'bridge'});
+    const running = pane.connections.run();
+    const rejected = assert.rejects(running, error => error.name === 'AbortError');
+    await pane.connections.setScene(null, {preserveProgram: true});
+    await rejected;
+    assert.equal(events.includes('flag'), false);
+    assert.equal(events.includes('clock-start'), false);
+});
