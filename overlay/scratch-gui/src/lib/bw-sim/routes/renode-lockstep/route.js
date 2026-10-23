@@ -46,11 +46,12 @@ export {FirmwareProgramError};
  * @param {Function} [options.onProgramChange] the LockstepProgram's onChange
  */
 export const openLockstepRoute = async ({transport, hubState = null, backend = 'nuttx', topology = 'default',
-    program = null, manageSession = true, onProgramChange = () => {}}) => {
+    program = null, pythonSource = null, manageSession = true, onProgramChange = () => {}}) => {
     if (hubState?.configurationOwner) throw new Error('Hub configuration is owned by another session (the SPIKE arena?).');
-    if (program && backend !== 'nuttx') throw new Error('Only the NuttX firmware runs compiled block programs.');
+    if ((program !== null || pythonSource !== null) && backend !== 'nuttx') throw new Error('Only the NuttX firmware runs compiled block programs.');
     // Validates the program before anything starts: a program the ABI refuses starts no emulator.
-    const control = program ? new LockstepProgram({transport, program, topology, onChange: onProgramChange}) : null;
+    const control = program !== null || pythonSource !== null ?
+        new LockstepProgram({transport, program, pythonSource, topology, onChange: onProgramChange}) : null;
     const release = () => {
         if (hubState?.configurationOwner === driver) {
             hubState.configurationOwner = null;

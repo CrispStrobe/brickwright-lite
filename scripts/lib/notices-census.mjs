@@ -45,7 +45,11 @@ const SCOPED_BUNDLES = {
     spikeprime: 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js',
     'arrays-values': 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js',
     circuitplayground: 'overlay/scratch-vm/src/extensions/crispstrobe/circuitplayground/index.js',
-    wedo2unified: 'overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js'
+    wedo2unified: 'overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js',
+    ev3comprehensive: 'overlay/scratch-vm/src/extensions/crispstrobe/ev3comprehensive/index.js',
+    legoboostunified: 'overlay/scratch-vm/src/extensions/crispstrobe/legoboostunified/index.js',
+    legonxt: 'overlay/scratch-vm/src/extensions/crispstrobe/legonxt/index.js',
+    legopoweredup: 'overlay/scratch-vm/src/extensions/crispstrobe/legopoweredup/index.js'
 };
 
 /** Licence id from a LICENSE text or package.json `license` string. */
@@ -129,12 +133,13 @@ export const vendoredTrees = (root, owner) => {
             const header = JSON.parse(encoded[1]).split('\n').slice(0, 8).join('\n');
             const licence = licenceId(header);
             if (!licence) throw new Error(`Scoped pin ${name} has no readable source licence: ${evidence}`);
-            // This source declares its author in a By header, not a copyright
+            // These sources declare their authors in By headers, not copyright
             // notice. Retain that attribution without changing holderOf or
             // turning it into an own-code exemption.
-            const author = name === 'wedo2unified' ?
+            const needsAuthor = ['wedo2unified', 'ev3comprehensive', 'legoboostunified', 'legonxt', 'legopoweredup'].includes(name);
+            const author = needsAuthor ?
                 header.match(/^[ \t]*\/\/[ \t]*By:[ \t]*([^<\n]+)/m)?.[1].trim() : null;
-            if (name === 'wedo2unified' && !author) throw new Error(`Scoped pin ${name} has no readable source author: ${evidence}`);
+            if (needsAuthor && !author) throw new Error(`Scoped pin ${name} has no readable source author: ${evidence}`);
             out.push({kind:'vendored-tree', name, licence, holder:holderOf(header), author, evidence, pinned:true});
             continue;
         }

@@ -13,7 +13,11 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {upgradeMechanismV1} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
-import {MODELS, MODELS_BASE, prepareModel, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {SimSession, MODELS, MODELS_BASE, prepareModel, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+
+import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
+import {createRobotLabApi} from '../overlay/scratch-gui/src/lib/bw-sim/api/robot-lab-api.js';
+import {setMixerMotorPower} from '../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-motor-control.js';
 
 const J = await loadJolt();
 /** The same Jolt without the fork's RackMeshConstraint: the core falls back to RackAndPinionConstraint (world rates). */
@@ -59,6 +63,103 @@ const runBench = (Jx, spec, {v = [0, 0, 0], w = [0, 0, 0], turn = false} = {}) =
     core.destroy();
     return out;
 };
+
+test('a powered rack reaches its geometric limit before torque cutoff and reverses from either end',()=>{
+    const spec={pinionAxis:[0,1,0],rackAxis:[1,0,0],pinionAt:[0,0.01,0],rackAt:[0,0.01,0.006]};
+    const travel=0.012;
+    // The unchanged steering acceptance permits one degree at its pinion.
+    // Convert that same angular allowance through this fixture's pitch radius.
+    const positionAllowance=R*Math.PI/180;
+    for(const first of [1,-1]){
+        const mechanism=benchMechanism(spec);
+        mechanism.joints.find(j=>j.id==='jr').limits=[-travel,travel];
+        const core=createPhysicsCore(J,mechanism,{stepHz:HZ});
+        try{
+            for(const sign of [first,-first]){
+                core.setMotor('jp',{mode:'torque',torqueNm:sign*0.01,dampingNmsPerRad:0.001});
+                for(let i=0;i<2*HZ;i++)core.step(1/HZ);
+                const rack=core.jointState('jr');
+                assert.ok(Math.abs(rack.position-sign*travel)<positionAllowance,
+                    `direction ${sign}: rack ${rack.position} must reach its actual ${sign*travel} m limit`);
+                assert.ok(Math.abs(rack.velocity)<0.001,'the rack settles at the end rather than chattering');
+            }
+        }finally{core.destroy();}
+    }
+});
+
+test('a checkpoint during rack impact replays braking, settling and reversal exactly',()=>{
+    for(const sign of [1,-1]){
+        const mechanism=benchMechanism({pinionAxis:[0,1,0],rackAxis:[1,0,0],
+            pinionAt:[0,0.01,0],rackAt:[0,0.01,0.006]});
+        mechanism.joints.find(j=>j.id==='jr').limits=[-0.012,0.012];
+        const core=createPhysicsCore(J,mechanism,{stepHz:HZ});
+        try{
+            core.setMotor('jp',{mode:'torque',torqueNm:sign*0.01,dampingNmsPerRad:0.001});
+            let entered=false;
+            for(let i=0;i<2*HZ;i++){
+                core.step(1/HZ);
+                if(sign*core.jointState('jr').position>=0.012-0.0005){entered=true;break;}
+            }
+            assert.ok(entered,'the actual rack enters its impact band');
+            core.step(1/HZ); // record the first braking step, before final settling
+            core.checkpoint();
+            const trace=()=>{
+                const frames=[];
+                for(let i=0;i<2*HZ;i++){
+                    core.step(1/HZ);
+                    const frame=core.snapshot();
+                    frames.push([Array.from(frame.bodies),Array.from(frame.joints)]);
+                }
+                assert.ok(Math.abs(core.jointState('jr').position-sign*0.012)<R*Math.PI/180,
+                    'the replay also reaches the original geometric stop allowance');
+                return frames;
+            };
+            const original=trace();
+            core.rollback();
+            assert.deepEqual(trace(),original,'every actual body and joint frame replays from impact to rest');
+            core.setMotor('jp',{mode:'torque',torqueNm:-sign*0.01,dampingNmsPerRad:0.001});
+            for(let i=0;i<2*HZ;i++)core.step(1/HZ);
+            assert.ok(Math.abs(core.jointState('jr').position+sign*0.012)<R*Math.PI/180,
+                'reversal after replay reaches the opposite stop');
+        }finally{core.destroy();}
+    }
+});
+
+test('a loaded rack retains its Stop angle and replays learned support through reversal',async()=>{
+    const catalog=catalogFrom(JSON.parse(readFileSync(path.join(GUI,'src/lib/bw-sim/part-meta/parts.json'),'utf8')));
+    const {session,issues}=await SimSession.fromText(readFileSync(path.join(GUI,MODELS_BASE,'forklift.ldr'),'latin1'),
+        {hubState:new VirtualSpikeHubState(),catalog});
+    const api=createRobotLabApi({getSession:()=>session,getStatus:()=> 'running',locale:()=> 'en'});
+    const advance=async ms=>{const start=session.time;while(session.time-start<ms){session.tick(16);await session.idle();}};
+    try{
+        assert.deepEqual(issues,[]);
+        await advance(200);
+        assert.equal(setMixerMotorPower(api,'C',60).ok,true);
+        await advance(2000);
+        const held=api.encoder('C').angleDeg;
+        assert.equal(setMixerMotorPower(api,'C',0).ok,true);
+        await advance(1000);
+        assert.ok(Math.abs(api.encoder('C').angleDeg-held)<0.5,'retain the existing loaded-Stop allowance');
+        // Freeze the hub command: this replays the physical core and its actual
+        // constraint impulses, without advancing an uncheckpointed hub clock.
+        const core=session.core,joint=session.mechanism.actuators.find(a=>a.port==='C').joint;
+        core.checkpoint();
+        const trace=()=>{
+            const frames=[];
+            for(const reverse of [false,true]){
+                if(reverse)core.setMotor(joint,{mode:'torque',torqueNm:-0.01,dampingNmsPerRad:0.001});
+                for(let i=0;i<HZ;i++){
+                    core.step(1/HZ);const frame=core.snapshot();
+                    frames.push([Array.from(frame.bodies),Array.from(frame.joints)]);
+                }
+            }
+            return frames;
+        };
+        const original=trace();core.rollback();const replay=trace();
+        assert.equal(replay.length,original.length);
+        replay.forEach((frame,i)=>assert.deepEqual(frame,original[i],`loaded physical frame ${i} replays exactly`));
+    }finally{session.dispose();}
+});
 
 test('a rack on a turning chassis keeps its place on it: it moves only by r times the pinion\'s turn relative to the chassis', t => {
     // The chassis spins at 3 rad/s about the pinion's own axis (a steering pinion, vertical, as the car turns).
