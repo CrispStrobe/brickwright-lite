@@ -1097,3 +1097,11 @@ The class-result implementation passes all 27 complete focused source groups
 qualification remains pending; preserve the separate `this`, no-else If and
 Boolean/union frontier tasks in the capability document. This is no claim of
 full class or application compatibility.
+
+The refused-export observer must accommodate an idle earlier conversion report
+and a retained request after report dismissal. It holds their exact identities
+and requires a genuinely new request and report after the existing export,
+with unchanged owner/VM/revision and byte/schema checks. Constructor freshness
+is not assumed. The existing browser assertion remains a gate; unavailable
+capture does not identify the Array producer/writer failure. Diagnose only a
+complete current input/result bound to the actual tested build.

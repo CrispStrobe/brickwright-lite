@@ -138,9 +138,23 @@ test('clean export observer retains the actual mount before one action and retur
 
 test('clean export observation refuses stale preconditions and foreign or changed post-action ownership', async () => {
     const observe = await cleanExportObserver(), refused = reasonCode => ({captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode});
+    // An idle retained report is a prior identity, not evidence that the next
+    // actual export may be skipped or its result reused.
+    const prior = cleanExportFixture(), priorReport = {operation: 'export'};
+    prior.instance.state.conversionReport = priorReport;
+    const priorHeld = observe(prior.window, prior.element, {phase: 'before'});assert.equal(priorHeld.status, 'READY');
+    assert.strictEqual(priorHeld.report, priorReport);assert.strictEqual(priorHeld.request, null);
+    prior.publish();assert.notStrictEqual(prior.instance.state.conversionReport, priorReport);
+    assert.deepEqual(observe(prior.window, prior.element, {phase: 'after', held: priorHeld, visibleText: 'Unsupported: receiver'}), prior.observation);
+    assert.equal(prior.methods(), 0);
+    const retained = cleanExportFixture(), retainedRequest = {vm: retained.vm, revision: 7};
+    retained.instance._arcadeReportRequest = retainedRequest;
+    const retainedHeld = observe(retained.window, retained.element, {phase: 'before'});assert.equal(retainedHeld.status, 'READY');
+    assert.strictEqual(retainedHeld.request, retainedRequest);assert.strictEqual(retainedHeld.report, null);
+    retained.instance.state.conversionReport = {operation: 'export', unsupported: ['receiver'], observation: retained.observation};
+    assert.deepEqual(observe(retained.window, retained.element, {phase: 'after', held: retainedHeld, visibleText: 'Unsupported: receiver'}), refused('REQUEST_REUSED'));
+    assert.strictEqual(retained.instance._arcadeReportRequest, retainedRequest);assert.equal(retained.methods(), 0);
     for (const [edit,reason] of [
-        [f => { f.instance.state.conversionReport = {operation: 'export'}; },'PRE_REPORT_PRESENT'],
-        [f => { f.instance._arcadeReportRequest = {vm: f.vm, revision: 7}; },'PRE_REQUEST_ACTIVE'],
         [f => { f.instance.state.busy = true; },'COMPONENT_BUSY'], [f => { f.instance._unmounted = true; },'COMPONENT_DISPOSED']
     ]) {
         const f = cleanExportFixture();edit(f);assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), refused(reason));
@@ -244,4 +258,98 @@ test('own undefined and inherited request slots retain exact unavailable causes 
     const verifier = await fs.readFile(new URL('../scripts/verify-arcade-numeric-authoring-gui.mjs', import.meta.url), 'utf8');
     assert.match(verifier, /reasonCode:\s*observed\.reasonCode/, 'Node artifact retains the bounded unavailable reason');
     assert.match(verifier, /beforeReason:\s*observed\.beforeReason/, 'Node artifact retains the actual failed precondition reason');
+});
+
+
+const realReportTransitions = async fixture => {
+    const source = await fs.readFile(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
+    const extract = signature => {
+        const at = source.indexOf(signature);assert.ok(at >= 0, signature);
+        return balancedFrom(source, at + signature.length, '{', '}', signature).slice(1, -1);
+    };
+    assert.ok(source.includes('onClick={event => { event.stopPropagation(); this.setState({conversionReport: null}); }}'),
+        'actual report-dismiss handler changes the report state without replacing the request');
+    const begin = new Function(extract('beginArcadeReport ()'));
+    const publish = new Function('request', 'out', 'operation', 'outcome', extract('publishArcadeReport (request, out, operation, outcome)'));
+    let methods = 0;
+    fixture.instance.setState = function (patch) {
+        methods++;const update = typeof patch === 'function' ? patch(this.state) : patch;if (update) Object.assign(this.state, update);
+    };
+    const start = () => {methods++;return begin.call(fixture.instance);};
+    const finish = (request, operation = 'export') => {
+        methods++;publish.call(fixture.instance, request, {unsupported: ['receiver'], unsupportedDetails: [],
+            refusalEvidence: {ownedJsonObservation: fixture.observation}}, operation, 'actual extracted report publication');
+    };
+    return {start, finish, methods: () => methods};
+};
+
+test('an idle prior export run import or dismissed report is followed by the actual new request and report at the same revision', async () => {
+    const observe = await cleanExportObserver();
+    for (const kind of ['prior export', 'prior run', 'import report', 'dismissed report']) {
+        const f = cleanExportFixture(), transitions = await realReportTransitions(f);
+        if (kind === 'import report') {
+            f.instance.state.conversionReport = {direction: 'Code → Blocks', preserved: true, changed: [], unsupported: []};
+        } else {
+            const initial = transitions.start();transitions.finish(initial, kind === 'prior run' ? 'run' : 'export');
+            if (kind === 'dismissed report') {
+                assert.ok(f.instance.state.conversionReport);
+                f.instance.setState({conversionReport: null});
+                assert.strictEqual(f.instance._arcadeReportRequest, initial, 'the actual dismiss state update retains the prior request token');
+                assert.equal(f.instance.state.conversionReport, null);
+            }
+        }
+        const oldRequest = f.instance._arcadeReportRequest, oldReport = f.instance.state.conversionReport;
+        const revision = f.instance._arcadeReportRevision, instance = Object.getOwnPropertyDescriptors(f.instance), state = Object.getOwnPropertyDescriptors(f.instance.state);
+        const beforeMethods = transitions.methods(), held = observe(f.window, f.element, {phase: 'before'});
+        assert.equal(held.status, 'READY');assert.equal(held.revision, revision);
+        assert.strictEqual(held.request, oldRequest);assert.strictEqual(held.report, oldReport);
+        assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance), instance);assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance.state), state);
+        assert.equal(transitions.methods(), beforeMethods);assert.equal(f.methods(), 0);
+        const next = transitions.start();transitions.finish(next);
+        assert.notStrictEqual(next, oldRequest);assert.notStrictEqual(f.instance.state.conversionReport, oldReport);
+        assert.equal(f.instance._arcadeReportRevision, revision, 'begin/publish create new identities without inventing a revision change');
+        const afterMethods = transitions.methods(), afterInstance = Object.getOwnPropertyDescriptors(f.instance), afterState = Object.getOwnPropertyDescriptors(f.instance.state);
+        assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}), f.observation);
+        assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance), afterInstance);assert.deepEqual(Object.getOwnPropertyDescriptors(f.instance.state), afterState);
+        assert.equal(transitions.methods(), afterMethods, 'the observer calls no actual product transition');assert.equal(f.methods(), 0);
+    }
+});
+
+test('prior identity cannot substitute for a new request or new report and stale ownership still refuses', async () => {
+    const observe = await cleanExportObserver();
+    for (const reuse of ['request', 'report']) {
+        const f = cleanExportFixture(), transitions = await realReportTransitions(f);
+        const initial = transitions.start();transitions.finish(initial);
+        const oldReport = f.instance.state.conversionReport, held = observe(f.window, f.element, {phase: 'before'});assert.equal(held.status, 'READY');
+        if (reuse === 'request') transitions.finish(initial);
+        else {transitions.start();f.instance.state.conversionReport = oldReport;}
+        const methods = transitions.methods();
+        assert.deepEqual(observe(f.window, f.element, {phase: 'after', held, visibleText: 'Unsupported: receiver'}),
+            {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: reuse === 'request' ? 'REQUEST_REUSED' : 'REPORT_REUSED'});
+        assert.equal(transitions.methods(), methods);assert.equal(f.methods(), 0);
+    }
+    for (const [change, reasonCode] of [
+        [f => {f.instance._arcadeReportRequest.vm = {};}, 'PRE_REQUEST_INVALID'],
+        [f => {f.instance._arcadeReportRequest.revision++;}, 'PRE_REQUEST_INVALID'],
+        [f => {f.instance._unmounted = true;}, 'COMPONENT_DISPOSED'],
+        [f => {f.instance.state.busy = true;}, 'COMPONENT_BUSY']
+    ]) {
+        const f = cleanExportFixture(), transitions = await realReportTransitions(f);const initial = transitions.start();transitions.finish(initial);change(f);
+        const methods = transitions.methods();assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode});
+        assert.equal(transitions.methods(), methods);assert.equal(f.methods(), 0);
+    }
+    for (const report of [undefined, 7, 'prior report', []]) {
+        const f = cleanExportFixture();f.instance.state.conversionReport = report;
+        assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'PRE_REPORT_INVALID'});
+        assert.equal(f.methods(), 0);
+    }
+    for (const request of [7, 'prior request', function () {}]) {
+        const f = cleanExportFixture();f.instance._arcadeReportRequest = request;
+        assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'PRE_REQUEST_INVALID'});
+        assert.equal(f.methods(), 0);
+    }
+    const f = cleanExportFixture(), transitions = await realReportTransitions(f);const initial = transitions.start();transitions.finish(initial);
+    let reads = 0;Object.defineProperty(f.instance.state, 'conversionReport', {configurable: true, get () {reads++;throw new Error('prior report getter must not execute');}});
+    const methods = transitions.methods();assert.deepEqual(observe(f.window, f.element, {phase: 'before'}), {captureStatus: 'UNAVAILABLE_FRESHNESS', reasonCode: 'NON_DATA_STATE'});
+    assert.equal(reads, 0);assert.equal(transitions.methods(), methods);assert.equal(f.methods(), 0);
 });

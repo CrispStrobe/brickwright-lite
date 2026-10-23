@@ -98,16 +98,19 @@ const observeCleanExport = (element, {phase, held, visibleText}) => {
         if (requestDescriptor && !Object.hasOwn(requestDescriptor, 'value')) throw nonData;
         const request = requestDescriptor?.value, report = own(state, 'conversionReport');
         if (phase === 'before') {
-            if (report !== null) return unavailable('PRE_REPORT_PRESENT');
-            // The actual constructor has no request slot. Only begin creates
-            // its object; invalidation assigns null. A fresh absent slot has
-            // never begun a request and must not hide an inherited one.
+            if (report !== null && (!report || typeof report !== 'object' || Array.isArray(report))) return unavailable('PRE_REPORT_INVALID');
+            // Imports and completed/dismissed reports can leave an idle prior
+            // report or request. Hold their identities, not a completion guess.
+            // The next phase must prove a genuinely NEW request AND report.
             if (!requestDescriptor) {
                 if ('_arcadeReportRequest' in instance) return unavailable('PRE_REQUEST_INHERITED');
-            } else if (request !== null) {
-                return unavailable(request === undefined ? 'PRE_REQUEST_UNDEFINED' : 'PRE_REQUEST_ACTIVE');
+            } else if (request === undefined) {
+                return unavailable('PRE_REQUEST_UNDEFINED');
+            } else if (request !== null && (!request || typeof request !== 'object' ||
+                own(request, 'vm') !== vm || own(request, 'revision') !== revision)) {
+                return unavailable('PRE_REQUEST_INVALID');
             }
-            return {status: 'READY', instance, vm, revision};
+            return {status: 'READY', instance, vm, revision, request, report};
         }
         if (phase !== 'after') return unavailable('OBSERVATION_SHAPE');
         if (own(held, 'status') !== 'READY') return unavailable('HELD_NOT_READY', own(held, 'reasonCode'));
@@ -115,6 +118,8 @@ const observeCleanExport = (element, {phase, held, visibleText}) => {
         if (own(held, 'vm') !== vm) return unavailable('VM_CHANGED');
         if (own(held, 'revision') !== revision) return unavailable('REVISION_CHANGED');
         if (!requestDescriptor || !request || typeof request !== 'object' || own(request, 'vm') !== vm || own(request, 'revision') !== revision) return unavailable('REQUEST_INVALID');
+        if (request === own(held, 'request')) return unavailable('REQUEST_REUSED');
+        if (report === own(held, 'report')) return unavailable('REPORT_REUSED');
         if (own(report, 'operation') !== 'export') return unavailable('REPORT_OPERATION');
         const unsupported = own(report, 'unsupported');
         if (!Array.isArray(unsupported)) return unavailable('OBSERVATION_SHAPE');

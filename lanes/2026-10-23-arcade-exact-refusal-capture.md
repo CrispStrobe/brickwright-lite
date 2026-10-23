@@ -130,3 +130,25 @@ unavailable precondition's reason in the artifact. Nine complete diagnostic
 source groups preserve the seven preceding scenarios and add fresh-mount and
 reason controls. Source review is not actual GUI acceptance; require the next
 hosted artifact and COMPLETE bytes before diagnosing the Array refusal itself.
+
+## Idle previous-report ownership
+
+The later hosted observer reached its renderer anchor but declined capture
+because an earlier conversion report was already present. The actual component
+can keep that report, and dismissing it does not clear its previous Arcade
+request. An idle previous report or request does not establish a fresh export.
+
+The verifier now holds those exact baseline identities while the component is
+idle, retaining the current VM and revision. A prior request must be an own data
+slot with valid ownership, or the legitimate null/absent state. Undefined,
+inherited, accessor and foreign request states remain refused. The post-export
+check requires both a different own nonnull request and a different report,
+as well as the same component, VM and revision and the existing operation,
+visible text, schema and UTF-8 byte checks. The actual begin/publish methods
+allocate these new identities. No completion is inferred from a request shape.
+
+The observer still makes no extra export, click, serialization, state mutation
+or hook. The original application refusal assertion and later asset checks are
+unchanged. Complete exact input/result capture is still required before any
+semantic Array repair or completion claim. Source tests and the next actual
+browser result must qualify this continuation independently.
