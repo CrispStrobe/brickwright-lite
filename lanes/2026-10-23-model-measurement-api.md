@@ -38,5 +38,7 @@ Hosted acceptance now passes: the Vercel endpoint dispatched the pinned native
 worker, returned its encrypted report, and measured a 32.0136 mm passive stroke
 with 0.00192 mm maximum hinge closure error. Hosted missing-token, foreign-job
 ownership and allowed/denied-origin controls pass. A separate 811-idea catalogue
-audit, nine compact primary-domain queues and coordinator-only atomic claims
+audit, nine compact primary-domain queues and agent-owned atomic claims and task progress
 live in the private planning repository; no catalogue edits trigger app CI.
+
+Native pose reports now carry exact prepared placements after mat import, with a reusable read-only replay helper. A real hosted 316-frame, 5 ms recording reproduced the independent live semantic marker channel within one millionth of a millimetre; nine focused native/marker/replay controls pass. A separate primitive-envelope helper applies collider offsets/quaternions and checks real part metadata; its adversarial controls reject ignored end-cap offsets, flattened 3D distances, wrong metadata and scaled transforms. These observations grant no mesh or library admission.
