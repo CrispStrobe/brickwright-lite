@@ -100,9 +100,10 @@ async function prepareHistoryMachine (page) {
             null, {timeout: remaining()});
         const circuit = page.getByRole('tab', {name: /Circuit/});
         await circuit.click({timeout: remaining()});
-        await circuit.and(page.locator('[aria-selected="true"]')).waitFor({state: 'visible', timeout: remaining()});
         // The debugger panel mounts in response to media; it cannot be a
-        // prerequisite for delivering that media. The selected tab is committed.
+        // prerequisite for delivering that media. Wait for the selected tab,
+        // then use that committed state immediately to deliver the ROM.
+        await circuit.and(page.locator('[aria-selected="true"]')).waitFor({state: 'visible', timeout: remaining()});
         await page.evaluate(() => {
             if (!window.__bwDebugHistorySetup?.applied) throw new Error('Z80 applied-device acknowledgement missing');
             const detail = {rom: Uint8Array.of(0x3e, 0, 0x32, 0, 0x80, 0x3c, 0xc3, 2, 0),
