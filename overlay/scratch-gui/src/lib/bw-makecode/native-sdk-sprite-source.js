@@ -13,6 +13,50 @@ const bases=new Map([['Sprite',SDK_SPRITE_CLASS_NODES.find(node=>node.name==='Sp
 let descriptorExpired=false;
 const descriptorCurrent=()=>{if(!descriptorProof.isCurrent())descriptorExpired=true;return !descriptorExpired;};
 
+// The binding inspector deliberately does not snapshot every scalar literal.
+// Ordinary Image issuance additionally depends on the physical factory input.
+// Retain data descriptors, never execute getters or inspect function internals.
+const ordinarySourceCurrent=program=>{
+    const rows=[],seen=new WeakSet(),active=new WeakSet();let live=true;
+    const capture=value=>{
+        if(!value||typeof value!=='object')return true;
+        if(active.has(value)||rows.length>=20000)return false;
+        if(seen.has(value))return true;
+        const proto=Object.getPrototypeOf(value);
+        if(proto!==Object.prototype&&proto!==Array.prototype&&proto!==null)return false;
+        const keys=Reflect.ownKeys(value),descriptors=[];
+        for(const name of keys){
+            const descriptor=Object.getOwnPropertyDescriptor(value,name);
+            if(typeof name!=='string'||!descriptor||!Object.hasOwn(descriptor,'value'))return false;
+            descriptors.push(descriptor);
+        }
+        if(Array.isArray(value)){
+            const length=Object.getOwnPropertyDescriptor(value,'length')?.value;
+            if(!Number.isSafeInteger(length)||length>10000)return false;
+            for(let i=0;i<length;i++)if(!Object.hasOwn(value,String(i)))return false;
+        }
+        seen.add(value);active.add(value);rows.push({value,proto,keys,descriptors});
+        for(const descriptor of descriptors)if(!capture(descriptor.value))return false;
+        active.delete(value);return true;
+    };
+    try{live=capture(program);}catch{live=false;}
+    return ()=>{
+        if(live)try{
+            for(const row of rows){
+                const keys=Reflect.ownKeys(row.value);
+                if(Object.getPrototypeOf(row.value)!==row.proto||keys.length!==row.keys.length||keys.some((key,index)=>key!==row.keys[index])){live=false;break;}
+                for(let i=0;i<keys.length;i++){
+                    const actual=Object.getOwnPropertyDescriptor(row.value,keys[i]),before=row.descriptors[i];
+                    if(!actual||!Object.hasOwn(actual,'value')||!Object.is(actual.value,before.value)||
+                        actual.writable!==before.writable||actual.enumerable!==before.enumerable||actual.configurable!==before.configurable){live=false;break;}
+                }
+                if(!live)break;
+            }
+        }catch{live=false;}
+        return live;
+    };
+};
+
 // One operation's private issuer and actual lexical namespace classification.
 // Namespace recognition never admits an arbitrary member or callback API.
 export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
@@ -35,11 +79,13 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
     const ordinary=imageNamespaceClosed&&!nodes.some(node=>node.type==='Class')&&nodes.some(node=>
         node.type==='Member'&&node.object?.type==='Identifier'&&node.object.name==='sprites'&&
         node.name==='create'&&sdk.has(node)&&direct(node));
+    const sourceCurrent=ordinary?ordinarySourceCurrent(program):()=>true;
+    const ordinaryReady=ordinary&&sourceCurrent();
     const role=node=>{
         if(!closed||!descriptorCurrent()||node?.type!=='Member'||!sdk.has(node)||node.object?.type!=='Identifier')return null;
-        if(node.object.name==='SpriteKind'&&(node.name==='Player'||ordinary&&['Projectile','Food','Enemy'].includes(node.name)))return 'kind';
-        if(ordinary&&direct(node)&&node.object.name==='sprites'&&node.name==='create')return 'factory';
-        if(ordinary&&direct(node)&&node.object.name==='image'&&node.name==='create')return 'imageFactory';
+        if(node.object.name==='SpriteKind'&&(node.name==='Player'||ordinaryReady&&['Projectile','Food','Enemy'].includes(node.name)))return 'kind';
+        if(ordinaryReady&&direct(node)&&node.object.name==='sprites'&&node.name==='create')return 'factory';
+        if(ordinaryReady&&direct(node)&&node.object.name==='image'&&node.name==='create')return 'imageFactory';
         if(direct(node)&&node.object.name==='Math'&&node.name==='round')return 'round';
         if(!ordinary&&direct(node)&&node.object.name==='sprites'&&node.name==='allOfKind')return 'registry';
         return null;
@@ -57,7 +103,7 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
     };
     return {
         index:constant,
-        current:descriptorCurrent,
+        current:()=>descriptorCurrent()&&(!ordinaryReady||sourceCurrent()),
         base(name){
             if(!closed||!descriptorCurrent()||!bases.has(name))return null;
             const rootName=name.split('.')[0];
@@ -65,7 +111,7 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
             return bases.get(name);
         },
         role,
-        ordinary,
+        ordinary:ordinaryReady,
         factory(node){
             if(role(node?.callee)!=='imageFactory')return null;
             if(!factoryImages.has(node)){
@@ -74,7 +120,7 @@ export function nativeSdkSpriteSource(program,lexical,nodes,parents) {
             return factoryImages.get(node);
         },
         literal(node,scope){
-            if(!closed||!(selected||ordinary)||node?.type!=='Template'||node.tag!=='img')return null;
+            if(!closed||!(selected||ordinaryReady)||node?.type!=='Template'||node.tag!=='img')return null;
             if(!literalImages.has(node)){
                 try{literalImages.set(node,{kind:'sdkImage',proof:images.literal(node,scope)});}catch{return null;}
             }

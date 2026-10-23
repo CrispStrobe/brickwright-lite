@@ -642,7 +642,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             if(args.length!==2||!image.size||!kind.size||
                 ![...image].some(value=>value?.kind==='sdkImage')||
                 [...image].some(value=>value!=='Null'&&value!=='Undefined'&&value?.kind!=='sdkImage')||
-                [...kind].some(value=>value!=='Number'))mark(row);
+                [...kind].some(value=>value!=='Number'))poisonOrdinary();
         }
         for(const entries of ordinaryCalls.values())for(const [fn,args]of entries){
             // A populated formal from another caller cannot hide an omitted

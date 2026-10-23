@@ -413,3 +413,95 @@ test('raw recursive membership stages exact native helper calls without replacin
     const pixels = parse(image), pixel = walk(pixels).find(node => node.type === 'Call' && node.callee?.name === 'getPixel'); assert.ok(pixel);
     assert.equal(numericRecursiveNormalResults(pixels, profile).has(pixel), false); domainGood(image);
 });
+
+// Actual emitted drafts from the public synthetic return controls. These
+// source proofs supplement the unchanged native/SDK/Code/SB3 journeys.
+const emittedNumericCompositions = [
+`function __bwCompareLess(left: any, right: any): boolean { return left < right }
+function __bwBinaryAdd(left: any, right: any): any { let a: any = left; if (left !== null && typeof left === "object") { let array: any[] = left; a = array.join(",") }; let b: any = right; if (right !== null && typeof right === "object") { let array: any[] = right; b = array.join(",") }; return a + b }
+function __bwBinarySubtract(left: any, right: any): number { return left - right }
+function __bwCompareEqual(left: any, right: any): boolean { return left == right }
+function Game_fib (n: number): number {
+    if (__bwCompareLess(n, (0 + 2))) {
+        return n
+    }
+    return __bwBinaryAdd(Game_fib(__bwBinarySubtract(n, (0 + 1))), Game_fib(__bwBinarySubtract(n, (0 + 2))))
+}
+function Game_even (n: number): number {
+    if (__bwCompareEqual(n, (0 + 0))) {
+        return (0 + 1)
+    }
+    return Game_odd(__bwBinarySubtract(n, (0 + 1)))
+}
+function Game_odd (n: number): number {
+    if (__bwCompareEqual(n, (0 + 0))) {
+        return (0 + 0)
+    }
+    return Game_even(__bwBinarySubtract(n, (0 + 1)))
+}
+let result: number
+let parity: number
+    result = Game_fib((0 + 8))
+    parity = Game_even((0 + 12))
+`,
+`function __bwBinaryAdd(left: any, right: any): any { let a: any = left; if (left !== null && typeof left === "object") { let array: any[] = left; a = array.join(",") }; let b: any = right; if (right !== null && typeof right === "object") { let array: any[] = right; b = array.join(",") }; return a + b }
+function __bwUnaryAdd(value: any): number { return +value }
+function __bwCompareLessEqual(left: any, right: any): boolean { return left <= right }
+function __bwBinarySubtract(left: any, right: any): number { return left - right }
+function Game_bump (x_: number): number {
+    x_ = __bwBinaryAdd(x_, (0 + 3))
+    x_ = __bwBinaryAdd(__bwUnaryAdd(x_), (0 + 1))
+    return x_
+}
+function Game_descend (n: number): number {
+    if (__bwCompareLessEqual(n, (0 + 0))) {
+        return (0 + 0)
+    }
+    n = __bwBinarySubtract(n, (0 + 1))
+    return __bwBinaryAdd(Game_descend(n), (0 + 1))
+}
+let first: number
+let second: number
+let count: number
+    first = Game_bump((0 + 2))
+    second = Game_bump((0 + 8))
+    count = Game_descend((0 + 8))
+`
+];
+
+test('retained emitted numeric programs compose grouping comparisons subtraction and root assignments',()=>{
+    for(const [index,text]of emittedNumericCompositions.entries()){
+        const names=index===0?['Game_fib','Game_even','Game_odd']:['Game_bump','Game_descend'];
+        const {program,proof}=eligible(text,names);
+        assert.ok(walk(program).some(node=>node.type==='Binary'&&node.parenthesized===true),
+            'actual retained parser marker, not a manufactured Parenthesized node');
+        for(const node of calls(program,['__bwCompareLess','__bwCompareEqual','__bwCompareLessEqual']))
+            assert.equal(proof.has(node),false,'comparison normal results remain Boolean');
+        const consumer=inspectNativeArrayBinaryDomains(program,profile);
+        assert.equal(consumer.reason,null);assert.equal(consumer.helpers.size,1);
+    }
+});
+
+test('grouping metadata cannot issue a domain or hide malformed placement and observed edits',()=>{
+    const grouped='function fib(n:number){if(n<(0+2)){return n}return fib(n-(0+1))+fib(n-(0+2))}let result=fib((0+6));';
+    for(const change of [
+        p=>{walk(p).find(node=>node.type==='Binary'&&node.parenthesized===true).parenthesized=false;},
+        p=>{fn(p,'fib').parenthesized=true;},
+        p=>{fn(p,'fib').params.parenthesized=true;},
+        p=>{fn(p,'fib').body[0].parenthesized=true;},
+        p=>{const node=walk(p).find(node=>node.type==='Binary'&&node.parenthesized===true);
+            Object.setPrototypeOf(node,{parenthesized:true});delete node.parenthesized;},
+        p=>{const returned=fn(p,'fib').body[0].consequent[0];returned.value={type:'Object',props:[],parenthesized:true};}
+    ]){
+        const {program,selected}=eligible(grouped);change(program);
+        const fresh=numericRecursiveNormalResults(program,profile);
+        assert.equal(fresh.has(selected[0]),false,'fresh malformed grouping cannot borrow an earlier Number proof');
+    }
+    const {program,selected,proof}=eligible(grouped),node=walk(program).find(n=>n.type==='Binary'&&n.parenthesized===true);
+    node.parenthesized=false;assert.equal(proof.current(),false);node.parenthesized=true;
+    assert.equal(proof.current(),false);assert.equal(proof.has(selected[0]),false);
+    let reads=0;
+    Object.defineProperty(node,'parenthesized',{get(){reads++;throw Error('must not invoke grouping metadata getter')},configurable:true});
+    const fresh=numericRecursiveNormalResults(program,profile);
+    assert.equal(fresh.has(selected[0]),false);assert.equal(reads,0);
+});

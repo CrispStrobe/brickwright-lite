@@ -131,17 +131,24 @@ test('canonical procedure prototype and ordered formal identities are physical o
     ])freshNegative(edit,{canonical:false});
     // A genuine two-formal import makes order a real obligation rather than
     // calling a missing/duplicate single ID an ordering witness.
-    const two=source(text.replace('same(value:Box[])','same(value:Box[],unused:any)').replace('same(boxes)','same(boxes,0 as any)'));
+    // Both actual producer kinds are needed. An annotation/cast on the single
+    // Number argument does not establish an Any constraint after reimport.
+    const twoText=text.replace('same(value:Box[])','same(value:Box[],unused:any)')
+        .replace('same(boxes)','same(boxes,0)')+'\nsame(boxes,"second actual entry");';
+    const two=source(twoText);
     const first=projectJsonToArcade(JSON.stringify(two.project));clean(first);
     const imported=arcadeToPseudocode(first.files);clean(imported);const draft=parse(imported.code).project;
-    const baseline=createProjectJsonSnapshot(JSON.stringify(draft));accepted(baseline);
+    const baseline=createProjectJsonSnapshot(JSON.stringify(draft));
     const selected=all(baseline).find(({node})=>node.opcode===model.OPCODE&&node.fields.PARAMETER?.[0]==='value');assert.ok(selected);
     const current=model.prepare(selected.target),entry=current.procedures.get(selected.node.fields.PROCEDURE[0]);
     assert.equal(entry.ids.length,2);assert.deepEqual(entry.names,['value','unused']);
     assert.deepEqual([...entry.constraints.values()].map(x=>x.type),['Any','Any']);
+    accepted(baseline);
+    const baselineConsumerId=aliasMutation(baseline).id;
     const target=draft.targets.find(t=>Object.hasOwn(t.blocks,entry.prototypeId));assert.ok(target);
     target.blocks[entry.prototypeId].mutation.argumentids=JSON.stringify([...entry.ids].reverse());
     const changed=createProjectJsonSnapshot(JSON.stringify(draft)),actual=aliasMutation(changed);
+    assert.equal(actual.id,baselineConsumerId,'the ordering edit retains the actual alias consumer');
     assert.throws(()=>model.prepare(actual.target),/constraint/);
     assert.equal(createArrayReferenceExportAuthority(changed).validateInput(actual.target,actual.node).ok,false);
 });

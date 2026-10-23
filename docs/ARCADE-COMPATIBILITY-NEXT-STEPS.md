@@ -2,38 +2,42 @@
 
 ## Latest complete hosted result and current repair
 
-The current composition's complete four-unit set reports **12,197 passes,
-168 failures, 19 skips and 43 TODOs** across 12,427 tests. Five preceding failures
-are resolved and none is newly failing. The complete SDK32, 87 existing affected
-Array controls, 55 pure proof controls and six refusal-observer controls pass.
-Browser gates remain separate, and no application census is replaced. The identity module now
-passes **7/8**; the remaining failure is the positive two-formal baseline before
-the order-negative check. The next candidate retains that assertion and captures
-its actual project, consumer and single validation result on failure. Diagnose
-that graph before changing producer authority or the fixture's semantics.
+The [complete composed unit set](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39866817484)
+reports **12,208 passes, 167 failures, 19 skips and 43 TODOs** across 12,437 tests.
+Three preceding failure titles are resolved, including original Sprite forwarding;
+two new Sprite safety controls fail and remain blocking. Complete SDK32, the
+87 existing affected Array controls and the 59-control comparison/recursive
+source cohort pass. Original function-return cases improve to **10/12**; the
+recursive/mutual and parameter-writing exports still refuse their initial export.
+This is conformance-test progress, not an application census or full GUI parity.
 
-All three original function-return refusal captures are now retained from the
-[original shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39850339272/job/120080453419).
-The recursive and parameter-writing failures reject recursive Call operands
-with Opaque/Number domains and initialization false. Their actual drafts contain
-closed Boolean comparison helpers, which the Number-only function grammar
-rejects. [Amendment #1237](https://github.com/CrispStrobe/brickwright-lite/pull/1237)
-scopes their proper Boolean handling with actual Number arguments and unchanged
-binding/effect/currentness checks. The separate Sprite failure rejects the
-actual `sprite.x` Member in `Game_move`; this requires its own producer repair.
-The original twelve cases still report **9/12**. No later compile or saved-project
-stage is claimed for a refused export.
+The Sprite receiver module passes **12/14**. Its invalid extra factory site did
+not revoke other ordinary rows, and its source guard missed an edited Image
+width literal. The next candidate closes every factory-input obligation across
+the ordinary profile and binds issued Image facts to physical source descriptors,
+including literal values and Array/parameter metadata. Failed source checks stay
+revoked after restoration. Existing class and no-factory routes remain separate.
+Keep both original failing controls and the native/Code/MakeCode/SB3 Sprite test.
 
-The next source candidate implements that comparison amendment and adds four
-complete pure control groups, for an expected 59-control source cohort. Both
-production and test source have independent review; syntax checks pass. The new
-cohort and original native/SDK journeys await the next complete hosted set.
-The expanded local cohort is unqualified; no filtered replay or relaxed resource
-limit was used. The implementation recognizes complete comparison bodies and all direct
-calls, evaluates actual Number arguments and their dependencies, and retains a
-Boolean result. It does not classify a Boolean result as Number or bypass an
-arbitrary Boolean function. Source edits invalidate old facts; a valid changed
-body requires an independent fresh proof of its actual semantics.
+The identity module remains **7/8**. Its captured two-formal positive has actual
+constraints `Any/Number`, because the sole unused argument is a Number producer;
+a cast or annotation does not establish Any. The next fixture uses genuine Number
+and String call entries and asserts the actual reimported `Any/Any` schema before
+checking authority. Preserve the ordered-formal negative and actual alias consumer;
+do not admit typed prefixes to compensate for a mistaken fixture premise.
+
+Both remaining original return-export drafts are retained from the actual failing
+invocations. Closed comparison support is present, but the parser's grouping
+representation is another obstacle: expressions such as `(0 + 1)` carry
+`parenthesized: true`, which the recursive grammar rejects. The next candidate
+accepts that exact marker only on supported expressions, retaining the actual
+operator/operand tree, all Number/effect obligations and physical currentness.
+Two additional complete pure groups use the exact public synthetic emitted
+drafts and malformed-marker/currentness controls, for an expected **61** source
+controls. These additions and the Sprite/fixture repairs await complete hosted
+qualification; no later original journey is claimed from source review alone.
+
+### Earlier hosted checkpoints
 
 The preceding [published Array-prefix checkpoint](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39737626495)
 completed with **12,174 passes, 173 failures, 19 skips and 43 TODOs** across
@@ -255,8 +259,8 @@ intentional refusal, assets, edited-source invalidation and the original journey
 
 ### 4. Reconcile the remaining failures and remeasure applications
 
-The complete composed unit run has 168 failures and 12,197 passing tests;
-five prior failure titles are resolved and no new failure titles appeared.
+The latest complete composed unit run has 167 failures and 12,208 passing tests;
+three prior failure titles are resolved and two new receiver controls fail.
 The corrected identity controls pass seven of eight groups; the remaining
 positive two-formal baseline needs its actual project/refusal capture.
 147 failures carry native-addition diagnostics; these are not 147 applications. Group actual

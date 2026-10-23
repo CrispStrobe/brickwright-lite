@@ -10,7 +10,8 @@ export function numericRecursiveNormalResults(program,profile) {
     const slots=['type','kind','functionKind','whenUsed','name','body','params','decls','init','expr','value','op','callee','args',
         'left','right','argument','expression','test','consequent','alternate','prefix','isNew','constructorCall',
         'typeArguments','parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties',
-        'typeParameters','genericParams','parameterDefaultPrologue','restParam','async','generator','isAsync','isGenerator'];
+        'typeParameters','genericParams','parameterDefaultPrologue','restParam','async','generator','isAsync','isGenerator','parenthesized'];
+    const expressions=new Set(['Identifier','Number','Boolean','Parenthesized','Unary','Binary','Assignment','Update','Call']);
     const rows=[],seen=new WeakSet(),active=new WeakSet();
     const own=(value,key)=>{
         const d=value&&typeof value==='object'?Object.getOwnPropertyDescriptor(value,key):null;
@@ -34,6 +35,7 @@ export function numericRecursiveNormalResults(program,profile) {
         const absent=slots.filter(key=>!Object.hasOwn(value,key));
         if(absent.some(key=>key in value))return false;
         if(Array.isArray(value)){
+            if(Object.hasOwn(value,'parenthesized'))return false;
             const length=own(value,'length');if(!Number.isSafeInteger(length)||length>10000)return false;
             for(let i=0;i<length;i++)if(!Object.hasOwn(value,String(i)))return false;
         }
@@ -80,7 +82,14 @@ export function numericRecursiveNormalResults(program,profile) {
             'bwProcedureConstraintSource','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
         const keys=(node,allowed)=>{
             if(!node||typeof node!=='object'||Array.isArray(node))fail();
-            for(const key of Reflect.ownKeys(node))if(!allowed.includes(key)&&!metadata.has(key))fail();
+            for(const key of Reflect.ownKeys(node)){
+                // This is the parser's grouping marker, not a domain tag.
+                // The actual expression tree, operands and effects still run
+                // through the same grammar and Number obligations below.
+                if(key==='parenthesized'){
+                    if(!expressions.has(node.type)||own(node,key)!==true)fail();
+                }else if(!allowed.includes(key)&&!metadata.has(key))fail();
+            }
         };
         const noDefaults=fn=>{
             if(!list(fn.params)||fn.params.some(name=>typeof name!=='string'||!/^[A-Za-z_$][\w$]*$/.test(name)||['this','arguments'].includes(name))||new Set(fn.params).size!==fn.params.length)return false;

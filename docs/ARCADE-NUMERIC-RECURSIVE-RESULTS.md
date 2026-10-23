@@ -4,21 +4,26 @@
 
 The [merged claim](../lanes/2026-10-22-arcade-recursive-number-normal-results.md)
 owns a bounded proof for closed recursive and mutually recursive numeric
-functions. The preceding implementation's complete 55-control source cohort
-passes. A new closed-comparison amendment adds four groups and awaits hosted
-qualification; do not borrow that earlier result for the changed candidate. Native,
-SDK and visible authoring qualification remain pending. No application
-completion or editor acceptance follows from this document.
+functions. The complete hosted comparison/recursive cohort passes **59/59**.
+The original function-return module passes **10/12**: Sprite forwarding now passes,
+while Fibonacci/mutual calls and parameter writes still refuse initial export.
+Complete application and visible authoring acceptance remain separate.
 
-The existing complete function-return module has nine passing and three failing
-tests. Its recursive examples include Fibonacci, mutual even/odd calls and a
-descending counter with parameter writes. Those failures reach initial export
-after native/Code checks. Their actual captured drafts reject recursive Call
-operands with Opaque/Number domains and initialization false. They contain
-closed Boolean comparison helpers, which the previous Number-only ordinary
-function grammar rejects. The comparison amendment addresses that structural
-obstacle; later stages must still run. Sprite property/return forwarding rejects
-an actual `sprite.x` Member and remains a separate frontier.
+The retained failing drafts include closed Boolean helpers and grouped expressions
+such as `(0 + 1)`. The comparison amendment handles the former. The actual parser
+retains the latter as `parenthesized: true` on its expression node, which the old
+recursive grammar rejects despite supporting a different `Parenthesized` tag.
+The next source candidate accepts only the true grouping marker on supported
+expressions. It evaluates the original tree and every operand unchanged; metadata
+cannot create a Number, hide an opaque node or satisfy initialization. Arrays,
+statements, functions, malformed/accessor/inherited markers and stale proofs
+remain refused. The physical snapshot includes both present markers and their
+absence. No parser/profile, generic graph, emitted source or runtime is changed.
+
+Two new complete pure groups retain both actual public synthetic emitted drafts
+and negative/currentness controls. The expected whole cohort is **61** and awaits
+new hosted qualification. These are source-proof controls, not replacement native
+or SDK replays. No application completion follows from them.
 
 ## Closed comparison amendment
 
@@ -42,9 +47,9 @@ from its name or annotation.
 Four new complete groups cover all eight comparisons, native-addition
 integration, actual argument/binding/body/result negatives, finite return
 dependencies and source currentness. Production and tests have independent
-source review, and syntax checks pass. The expected whole source cohort is now
-59 controls; it has not been locally executed. Expanded local qualification
-remains unmeasured. Require the complete hosted source and original native/SDK journeys;
+source review, and syntax checks pass. The complete hosted comparison cohort passes
+59 controls. The newer grouping composition expands it to 61 and remains
+unqualified. Require the complete hosted source and original native/SDK journeys;
 do not filter, replay a held native module or increase the limit.
 
 ## What the proof must establish

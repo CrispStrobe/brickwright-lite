@@ -154,5 +154,11 @@ test('ordinary normal-result getters preserve original source and revoke permane
  const made=program.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='make');
  const write=made.body.find(node=>node.type==='ExpressionStatement'&&node.expr?.type==='Assignment'&&node.expr.left?.name==='art');
  assert.ok(write);const previous=write.expr.right.args[0];write.expr.right.args[0]={type:'Number',value:'5'};
- assert.equal(view.current(),false);write.expr.right.args[0]=previous;assert.equal(view.current(),false);
+ assert.equal(view.current(),false);
+ const fresh=nativeClassScalarView(program,profile);assert.equal(fresh.current(),true,'a new valid width is independently proved');
+ write.expr.right.args[0]=previous;assert.equal(view.current(),false);assert.equal(fresh.current(),false);
+ const literalView=nativeClassScalarView(program,profile);assert.equal(literalView.current(),true);
+ const oldValue=previous.value;previous.value='5';
+ assert.equal(literalView.current(),false,'changing a literal in place also revokes the issued Image dependency');
+ previous.value=oldValue;assert.equal(literalView.current(),false);
 });

@@ -155,11 +155,18 @@ initialization, bounds, termination or exact pixel/position value is inferred.
 The older subclass x-only/override and registry rules remain independent; mixed
 local-class/ordinary-factory programs still need a separately qualified extension.
 
-Six new complete pure groups preserve all eight prior receiver groups. Production
-and test source reviews are complete; fourteen-group execution and the original
-native/Code/MakeCode compile/export/reimport/fresh-SB3 journey remain pending
-hosted qualification. This candidate does not by itself establish GUI parity or
-reduce the application corpus's partial count.
+The complete hosted receiver module reports **12/14**, and the original Sprite
+forwarding native/Code/MakeCode/export/reimport/fresh-SB3 test passes. Two receiver
+controls remain blocking: an invalid additional allocation failed to revoke other
+ordinary rows, and changing a literal factory width failed to revoke source facts.
+The next repair poisons the ordinary profile for any unclosed factory site and
+checks complete physical source descriptors before publishing new ordinary facts.
+Literal replacement, in-place edits, descriptor changes and observed restoration
+cannot revive an old proof. Functions are retained by identity; their internals
+are not inspected or qualified. The existing no-class/no-factory and class routes
+remain independent. These repairs and stronger literal-currentness controls still
+need fresh hosted qualification. GUI parity and the application partial count
+are not established by the conformance results.
 
 The class-free no-factory route retains its original no-op behavior. A bounded
 data-descriptor syntax selection chooses full validation for possible factories
