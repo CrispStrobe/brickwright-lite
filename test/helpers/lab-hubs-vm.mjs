@@ -53,8 +53,7 @@ const {registerRobotLabBlePeripherals} = await import(path.join(LIB, 'virtual-hu
 const {Lwp3Peripheral, Wedo2Peripheral} = await import(path.join(LIB, 'virtual-hub', 'lab-ble-peripherals.js'));
 const {installVirtualFetch, registerVirtualHttp, clearVirtualHttpForTest} = await import(path.join(SIM, 'transports', 'virtual-http.js'));
 const {createVirtualBleBridge} = await import(path.join(SIM, 'transports', 'virtual-ble-bridge.js'));
-const {createLabVirtualTransports} = await import(path.join(SIM, 'transports', 'lab-virtual-transports.js'));
-const {createLabExtensionConnection} = await import(path.join(SIM, 'transports', 'lab-extension-connection.js'));
+const {guestCoordinator, startCoordinatedGuest} = await import('./coordinated-lab-guest.mjs');
 const {SimSession, catalogFrom} = await import(path.join(SIM, 'sim-session.js'));
 
 export const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta', 'parts.json'), 'utf8')));
@@ -132,6 +131,7 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
     const savedFetch = globalThis.fetch;
     let restoreFetch = null;
     let labConnection = null;
+    let labCoordinator = null;
     let primaryError = null;
     try {
         const built = await SimSession.fromText(text, {hubState: null, catalog: CATALOG, mat});
@@ -183,11 +183,11 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         if (useLabRouting) {
             if (transport !== 'bridge' || hub.protocol !== 'lwp3') throw new Error('the Lab HTTP route needs an LWP3 bridge program');
             globalThis.fetch = async url => { throw new TypeError(`fetch failed: nothing at ${url}`); };
-            const routing = createLabVirtualTransports({host: globalThis, navigatorHost: globalThis.navigator});
+            const routing = labCoordinator = guestCoordinator(() => vm, clock);
             restoreFetch = () => routing.dispose();
             const target = session.hubs.find(record => record.hub === hub);
             await routing.setScene(session, {hubId: target.id});
-            await routing.setEnabled(true);
+            await routing.select({route: 'http'});
             const routedFetch = globalThis.fetch;
             bridged = [];
             globalThis.fetch = (input, init) => {
@@ -195,8 +195,7 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
                 bridged.push(`${init?.method || 'GET'} ${url.pathname}`);
                 return routedFetch.call(globalThis, input, init);
             };
-            labConnection = createLabExtensionConnection({vm, extensionId, route: 'http',
-                isCurrent: () => !session._disposed, wait: ms => clock.advance(ms)});
+            labConnection = {ready: routing.connect(), cancel: () => routing.disconnect()};
         } else if (transport === 'bridge') {
             // The extension's own `set bridge URL` and connect; Web Bluetooth and Scratch Link take no part.
             const peripheral = hub.protocol === 'wedo2' ? new Wedo2Peripheral(hub) : new Lwp3Peripheral(hub);
@@ -225,7 +224,8 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         await clock.advance(500);
         const connectMs = clock.now - t0;
 
-        vm.greenFlag();
+        if (labCoordinator) await startCoordinatedGuest(labCoordinator, clock);
+        else vm.greenFlag();
         let frames = 0;
         const maxFrames = Math.ceil(timeLimitMs / FRAME_MS);
         for (; frames < maxFrames; frames++) {

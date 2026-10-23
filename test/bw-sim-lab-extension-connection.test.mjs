@@ -14,6 +14,9 @@ const fixture = (id, extra = {}) => {
     };
     const runtime = {_primitives: Object.fromEntries(Object.entries(methods).map(([opcode, fn]) =>
         [`${id}_${opcode}`, (...args) => { calls.push([opcode, args[0]]); return fn(...args); }]))};
+    if (id === 'spikeprime') runtime.peripheralExtensions = {spikeprime: {
+        portValues: Object.fromEntries('ABCDEF'.split('').map(port => [port, {type: 'unknown'}]))
+    }};
     return {vm: {runtime}, calls, start: options => createLabExtensionConnection({vm: {runtime}, extensionId: id, ...options})};
 };
 
@@ -147,4 +150,21 @@ test('cancel retains a producer cleanup failure already reported by the canceled
     release();
     await readyFailure;
     await canceled;
+});
+
+test('SPIKE waits for the actual complete port report and accepts legitimate zero distance', async () => {
+    const f = fixture('spikeprime');
+    const peripheral = f.vm.runtime.peripheralExtensions.spikeprime;
+    peripheral.portValues = {};
+    const waits = [];
+    const connection = f.start({route: 'bridge', wait: async ms => {
+        waits.push(ms);
+        if (waits.length === 1) peripheral.portValues = {A: {type: 'motor'}};
+        if (waits.length === 2) for (const port of 'BCDE') peripheral.portValues[port] = {type: 'unknown'};
+        if (waits.length === 3) peripheral.portValues.F = {type: 'distance', distance: 0};
+    }});
+    await connection.ready;
+    assert.deepEqual(waits, [50, 50, 50], 'transport open and a partial report cannot admit Run');
+    assert.equal(peripheral.portValues.F.distance, 0);
+    await connection.cancel();
 });

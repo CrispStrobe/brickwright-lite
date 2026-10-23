@@ -16,7 +16,7 @@ const planFor = (id, route) => {
         connect: ['connect', {URL: route === 'bridge' ? 'ws://localhost:8765' : ''}], close: 'disconnect', status: 'isConnected'
     };
     if (id === 'spikeprime' && route === 'bridge') return {
-        configure: [], connect: ['connectHubAt', {URL: 'localhost:8081'}], close: 'disconnectHub', status: 'isConnected'
+        configure: [], connect: ['connectHubAt', {URL: 'localhost:8081'}], close: 'disconnectHub', status: 'isConnected', portReport: true
     };
     if (['legopoweredup', 'legoboostunified'].includes(id) && route === 'http') return {
         configure: [['setConnectionType', {TYPE: 'bridge'}], ['setBridgeURL', {URL: 'http://localhost:8080'}]],
@@ -40,6 +40,8 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
     if (!runtime?._primitives) throw new TypeError('The program runtime is unavailable.');
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 30000) throw new TypeError('Invalid connection status wait.');
     const primitives = new Map();
+    const peripheral = plan.portReport ? runtime.peripheralExtensions?.[extensionId] : null;
+    if (plan.portReport && !peripheral) throw new Error('The SPIKE extension peripheral is unavailable.');
     for (const opcode of [plan.close, plan.connect[0], ...plan.configure.map(([op]) => op), plan.status].filter(Boolean)) {
         const fn = runtime._primitives[`${extensionId}_${opcode}`];
         if (typeof fn !== 'function') throw new Error(`The ${extensionId} extension is not loaded (${opcode}).`);
@@ -61,6 +63,7 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
     const ticket = {active: true, cancel: null};
     queue.ticket = ticket;
     const current = () => ticket.active && queue.ticket === ticket && isCurrent() &&
+        (!plan.portReport || runtime.peripheralExtensions?.[extensionId] === peripheral) &&
         [...primitives].every(([opcode, fn]) => runtime._primitives[`${extensionId}_${opcode}`] === fn);
     const invoke = async (opcode, args = {}) => {
         if (!current()) throw abort();
@@ -99,7 +102,16 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
                 let connected = false;
                 let elapsed = 0;
                 while (elapsed <= timeoutMs) {
-                    if (await invoke(plan.status) === true) { connected = true; break; }
+                    const transportConnected = await invoke(plan.status) === true;
+                    // SPIKE 2.x announces its port report after opening the
+                    // REPL. Until it arrives, sensor reporters return defaults
+                    // (including distance 0). Read the actual consumer cache;
+                    // a real zero reading is valid once the report exists.
+                    const ports = plan.portReport ? peripheral.portValues : null;
+                    if (!current()) throw abort();
+                    const reportReady = !plan.portReport || ['A', 'B', 'C', 'D', 'E', 'F']
+                        .every(port => Object.hasOwn(ports || {}, port) && typeof ports[port]?.type === 'string');
+                    if (transportConnected && reportReady) { connected = true; break; }
                     if (elapsed >= timeoutMs) break;
                     const step = Math.min(50, timeoutMs - elapsed);
                     await wait(step);

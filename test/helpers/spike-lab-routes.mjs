@@ -178,11 +178,11 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
         if (useLabRouting) {
             if (route !== 'bridge') throw new Error('the Lab stream controller test needs the bridge route');
             hub.setSimulationEnabled(true);
-            const {createLabVirtualTransports} = await import(path.join(SIM, 'transports', 'lab-virtual-transports.js'));
-            labRouting = createLabVirtualTransports({host: globalThis, navigatorHost: globalThis.navigator});
+            const {guestCoordinator} = await import('./coordinated-lab-guest.mjs');
+            labRouting = guestCoordinator(() => vm, clock);
             const target = session.hubs.find(record => record.profile === 'spike-prime');
             await labRouting.setScene(session, {hubId: target.id});
-            await labRouting.setEnabled(true);
+            await labRouting.select({route: 'bridge'});
             Installed = globalThis.WebSocket;
             globalThis.WebSocket = Recording;
         }
@@ -226,9 +226,7 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
         let settled = false;
         // The bridge has no chooser and no Scratch Link: the extension's own `connect to bridge at` block.
         if (useLabRouting) {
-            const {createLabExtensionConnection} = await import(path.join(SIM, 'transports', 'lab-extension-connection.js'));
-            labConnection = createLabExtensionConnection({vm, extensionId: 'spikeprime', route: 'bridge',
-                isCurrent: () => !session._disposed, wait: ms => clock.advance(ms)});
+            labConnection = {ready: labRouting.connect(), cancel: () => labRouting.disconnect()};
         }
         (labConnection ? labConnection.ready.catch(e => { connectError = e; }) : route === 'bridge' ? Promise.resolve(extension.connectHubAt({URL: 'localhost:8081'})).catch(e => { connectError = e; }) :
         connectVirtualHub({host: globalThis, extensionId: 'SPIKE', hubState: hub, timeoutMs: 10000,
@@ -263,7 +261,10 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
             return w.map((v, i) => v + pose.position[i]);
         };
         const track = [];
-        vm.greenFlag();
+        if (useLabRouting) {
+            const {startCoordinatedGuest} = await import('./coordinated-lab-guest.mjs');
+            await startCoordinatedGuest(labRouting, clock);
+        } else vm.greenFlag();
         const maxFrames = Math.ceil(timeLimitMs / FRAME_MS);
         let frames = 0;
         for (; frames < maxFrames; frames++) {

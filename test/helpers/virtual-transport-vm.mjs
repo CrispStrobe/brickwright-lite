@@ -120,10 +120,10 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
             return {receive: bytes => { traffic.bytesIn += bytes.length; inner.receive(bytes); }, close: () => inner.close && inner.close()};
         }};
         if (useLabRouting) {
-            const {createLabVirtualTransports} = await import(path.join(SIM, 'transports', 'lab-virtual-transports.js'));
-            labRouting = createLabVirtualTransports({host: globalThis, navigatorHost: globalThis.navigator});
+            const {guestCoordinator} = await import('./coordinated-lab-guest.mjs');
+            labRouting = guestCoordinator(() => vm, clock);
             await labRouting.setScene(session, {hubId: entry.id});
-            await labRouting.setEnabled(true);
+            await labRouting.select({route});
         } else if (route === 'http') {
             const handle = http.handlerOf(() => hub);
             registerVirtualHttp({host: http.host, port: http.port, handle: request => {
@@ -172,9 +172,7 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
         let done = false;
         let connecting;
         if (useLabRouting) {
-            const {createLabExtensionConnection} = await import(path.join(SIM, 'transports', 'lab-extension-connection.js'));
-            labConnection = createLabExtensionConnection({vm, extensionId, route, wait: ms => clock.advance(ms),
-                isCurrent: () => !session._disposed});
+            labConnection = {ready: labRouting.connect(), cancel: () => labRouting.disconnect()};
             connecting = labConnection.ready.then(() => true);
         } else connecting = connect(extension, {clock});
         const pending = Promise.resolve(connecting).then(v => { connected = v; }, e => { connectError = e; })
@@ -184,7 +182,10 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
         if (useLabRouting && connectError) throw connectError;
         await clock.advance(200);
 
-        vm.greenFlag();
+        if (useLabRouting) {
+            const {startCoordinatedGuest} = await import('./coordinated-lab-guest.mjs');
+            await startCoordinatedGuest(labRouting, clock);
+        } else vm.greenFlag();
         const track = [];
         const frames = Math.ceil(timeLimitMs / FRAME_MS);
         for (let frame = 0; frame < frames; frame++) {
