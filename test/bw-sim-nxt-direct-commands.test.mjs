@@ -336,3 +336,35 @@ test('the hub\'s state round-trips through the worker mirror', () => {
     assert.deepEqual(a.readDrives(), b.readDrives());
     assert.equal(a.s.outputs[0].angleDeg, b.s.outputs[0].angleDeg);
 });
+
+
+test('NXT Button IOMap: stock held/release offsets, unsigned module, bounds and explicit closed-slice refusals', () => {
+    const hub = brick();
+    const read = (module, offset, count, type = 1) => executeTelegram([type, 0x94, ...le32(module), offset & 255, offset >>> 8, count & 255, count >>> 8], hub);
+    for (let index = 0; index < 4; index++) {
+        hub.pressButton(index, true);
+        assert.deepEqual([...read(0x40001, 32 + index, 1).reply], [2, 0x94, 0, 1, 0, 4, 0, 1, 0, 128]);
+        assert.deepEqual([...read(0x40001, index * 8 + 4, 1).reply].slice(7), [1, 0, 0]);
+        hub.pressButton(index, false);
+        hub.pressButton(index, true);
+        hub.advanceTo(hub.nowMs() + 2100);
+        hub.pressButton(index, false);
+        assert.deepEqual([...read(0x40001, 32 + index, 1).reply].slice(7), [1, 0, 0]);
+        assert.deepEqual([...read(0x40001, index * 8 + 4, 1).reply].slice(7), [1, 0, 2]);
+        assert.equal(hub.readButton(index).count, 2, 'IOMap reads never reset counters');
+    }
+    assert.deepEqual([...read(0x40001, 36, 0).reply], [2, 0x94, 0, 1, 0, 4, 0, 0, 0]);
+    assert.deepEqual([...read(0xf0040001, 32, 1).reply], [2, 0x94, 0x90, 1, 0, 4, 240, 0, 0, 0]);
+    for (const [offset, count] of [[36, 1], [35, 2], [65535, 1], [0, 1], [3, 2]]) {
+        const result = read(0x40001, offset, count);
+        assert.equal(result.status, 0x91, 'out-of-range and unmodeled slices refuse');
+        assert.equal(u16(result.reply, 7), 0, 'no clipped partial success');
+    }
+    assert.equal(read(0x40001, 32, 1, 0x81).reply, null, 'no-reply system type stays silent');
+    for (let size = 2; size < 10; size++) {
+        const result = executeTelegram([1, 0x94, 1, 0, 4, 0, 32, 0, 1, 0].slice(0, size), hub);
+        assert.equal(result.status, 0x8a, 'short request is a declared model refusal');
+    }
+    for (let n = 0; n < 254; n++) { hub.pressButton(3, true); hub.pressButton(3, false); }
+    assert.equal(read(0x40001, 28, 1).reply[9], 0, 'combined count wraps at a byte');
+});
