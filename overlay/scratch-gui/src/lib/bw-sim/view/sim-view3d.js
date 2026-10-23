@@ -24,6 +24,7 @@ import {createCableAnchors} from './cable-anchors.js';
 import {VIEW_DIRECTIONS, applyCameraAction, cameraKeyAction, configureOrbitControls, framePosition} from './camera-nav.js';
 import {modelMeshBounds, cameraFollowBody} from './model-bounds.js';
 import {createDrawingPreview} from './drawing-preview.js';
+import {createMeasurementOverlay} from '../measurements/overlay.js';
 import {createGpuFrameQueue} from './gpu-frame-queue.js';
 
 export class WebGLUnavailableError extends Error {
@@ -92,6 +93,8 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     Object.assign(canvas.style, {width: '100%', height: '100%', display: 'block', borderRadius: '6px', touchAction: 'none',
         userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none'});
     container.appendChild(canvas);
+    const measurementOverlay = createMeasurementOverlay({container});
+    let measurementRows = null;
 
     const ldColors = parseLDConfig(config);
     const built = buildSimScene({model, mechanism, read, colors: ldColors, catalog});
@@ -369,7 +372,11 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const gpuFrames = createGpuFrameQueue(renderer.getContext());
     const render = (snapshot, {force = false} = {}) => {
         resize();
-        if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) return;
+        if (onDemand && !force && !dirty && !changed(snapshot, renderer.getSize(new Vector2()))) {
+            const size = renderer.getSize(new Vector2());
+            measurementOverlay.update(measurementRows ? measurementRows() : [], camera, size.x, size.y);
+            return;
+        }
         if (!force && gpuFrames.busy()) { dirty = true; return; }
         dirty = false;
         if (snapshot) applySnapshot(built, snapshot);
@@ -394,6 +401,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         camera.updateMatrixWorld();
         const size = renderer.getSize(new Vector2());
         insight.update(camera, size.x, size.y);
+        measurementOverlay.update(measurementRows ? measurementRows() : [], camera, size.x, size.y);
         renderer.render(built.scene, camera);
         gpuFrames.submitted();
     };
@@ -401,6 +409,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
     const dispose = () => {
         gpuFrames.dispose();
         insight.dispose();
+        measurementOverlay.dispose();
         if (simBelts) simBelts.dispose();
         if (drawingPreview) drawingPreview.dispose();
         if (pens) pens.dispose();
@@ -445,6 +454,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         /** How many pneumatic hoses are drawn (view/hose-layer.js), for the browser gate. */
         hoseCount: () => (simHoses ? simHoses.count : 0),
         /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
+        setMeasurements: read => { measurementRows = read; dirty = true; },
         sensorRays: () => (rays.visible ? lastRays.filter(Boolean).map(r => ({...r})) : []),
         /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
         view: name => { viewFrom(name); dirty = true; },
