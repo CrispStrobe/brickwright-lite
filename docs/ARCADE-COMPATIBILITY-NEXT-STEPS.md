@@ -2,6 +2,15 @@
 
 ## Current qualification — 23 October 2026
 
+The subsequent receiver shard confirms **14/14 Sprite receiver controls pass**.
+The capture/report modules and complete current matrix remain pending. A further
+actual refusal is now localized: canonical multiplication of a captured primitive
+inside `Game_left` is Number-producing, but its enclosing Call cannot use the
+existing Identifier-only capture exception. The
+[captured-operation result scope](ARCADE-CAPTURED-PRIMITIVE-OPERATIONS.md) has
+merged; its source candidate and eleven new pure groups require qualification.
+It preserves input initialization, all writers, effects and Array guards.
+
 The [current composed run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39899568550)
 confirms the **complete original function-return module passes 12/12**, including
 recursive/mutual calls, parameter writes and Sprite forwarding. Its complete

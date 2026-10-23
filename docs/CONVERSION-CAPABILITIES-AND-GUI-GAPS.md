@@ -5786,3 +5786,22 @@ clone/setImage, then export, compile in MakeCode, reimport and reopen a fresh SB
 Check actual positions, pixels, independent allocations, shared aliases and
 effect order. Display unsupported mixed-class/callback cases honestly rather
 than granting a Sprite type from annotations or hiding export refusals.
+
+## Captured primitive operation results — authoring acceptance
+
+See the self-contained [capability and acceptance contract](ARCADE-CAPTURED-PRIMITIVE-OPERATIONS.md).
+The source candidate composes exact canonical arithmetic/comparison results over
+captured primitive cells for the native-addition consumer. It leaves generic
+initialization and type cells unchanged. Eleven new complete source groups are
+pending qualification; they do not qualify editor or graphics behavior.
+
+Use existing global-variable, value-procedure and Arrays arithmetic blocks to
+build a procedure that updates a global trace with nested multiplication and
+addition. Call it after the declaration, edit its operand/operator through Code
+and Blocks, execute and inspect the actual value, save/reopen, export, compile
+in the selected MakeCode SDK and import the exact edited files. Include a
+controller event and a procedure result feeding a real sprite/image operation;
+preserve pixels and reference identity. Invalid writers and TDZ variants must
+remain visible refusals. Record each route separately before closing this GUI
+row or crediting an application. No new graphics acceptance follows from a
+Number normal-result proof.

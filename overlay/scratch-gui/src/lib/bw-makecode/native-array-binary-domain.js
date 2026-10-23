@@ -83,13 +83,19 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
+    let operationUsed=false,operationLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
-        const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
-        if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
-        if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
-        if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
-        return now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive)&&(!recursiveNormalTokens.size||recursiveLive);
+        if(operationUsed&&!operationLive)return false;
+        try{
+            const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
+            if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
+            if(imageNormalTokens.size&&(!now||!imageResults.current()))imageLive=false;
+            if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
+            const valid=now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive)&&(!recursiveNormalTokens.size||recursiveLive);
+            if(operationUsed&&(!valid||!operationAbsences.every(({object,key})=>!Object.hasOwn(object,key)&&!(key in object))))operationLive=false;
+            return valid&&(!operationUsed||operationLive);
+        }catch(error){if(operationUsed)operationLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -333,6 +339,116 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     if(unsupportedView)return {helpers:new Map(),current,reason:'native addition has no private shape model for this named mutator'};
     if(parsedValues.size){replacements=new WeakMap();model=rewrite(classView.program);graph=analyse(model);numberResultSets=numberResults(model);nodes.length=0;visit(model);}
 
+    // Only this consumer gains an operation's NORMAL primitive result. The
+    // original captured input can remain uninitialized in the general graph.
+    // Recognize source bodies and bindings, never helper names or annotations.
+    const operationCalls=new WeakMap(),operationRecords=[],badSlot=Symbol();
+    const operationSlot=(object,key)=>{
+        const descriptor=Object.getOwnPropertyDescriptor(object,key);
+        if(!descriptor){
+            if(key in object)return badSlot;
+            operationAbsences.push({object,key});return undefined;
+        }
+        return Object.hasOwn(descriptor,'value')?descriptor.value:badSlot;
+    };
+    const operationParameters=(fn,params)=>{
+        for(const object of [fn,params]){
+            for(const key of ['parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams']){
+                const value=operationSlot(object,key);
+                if(value===badSlot||value!==undefined&&(!Array.isArray(value)||value.length))return false;
+            }
+            for(const key of ['async','generator','isAsync','isGenerator']){
+                const value=operationSlot(object,key);if(value!==undefined&&value!==false)return false;
+            }
+            if(operationSlot(object,'restParam')!==undefined)return false;
+            const kind=operationSlot(object,'functionKind'),prologue=operationSlot(object,'parameterDefaultPrologue');
+            if(kind!==undefined&&kind!=='declaration'||prologue!==undefined&&typeof prologue!=='boolean')return false;
+        }
+        return true;
+    };
+    const operationPlainCall=(call,arity)=>{
+        if(operationSlot(call,'type')!=='Call')return false;
+        for(const key of ['isNew','constructorCall']){
+            const value=operationSlot(call,key);if(value!==undefined&&value!==false)return false;
+        }
+        const generics=operationSlot(call,'typeArguments'),args=operationSlot(call,'args');
+        return (generics===undefined||Array.isArray(generics)&&!generics.length)&&Array.isArray(args)&&args.length===arity&&
+            args.every(arg=>arg&&typeof arg==='object'&&typeof operationSlot(arg,'type')==='string'&&operationSlot(arg,'type')!=='Spread');
+    };
+    const operationInternal=(node,fn)=>{
+        for(let parent=bindings.parentOf(node);parent;parent=bindings.parentOf(parent))if(parent===fn)return true;
+        return false;
+    };
+    const operationBinary=['-','*','/','%','**','&','|','^','<<','>>','>>>'];
+    const operationComparisons=['<','<=','>','>=','==','!=','===','!=='];
+    for(const fn of classView.program.body||[]){
+        if(fn?.type!=='FunctionDeclaration'||!bindings.root(fn))continue;
+        const params=operationSlot(fn,'params');
+        if(!Array.isArray(params)||![1,2].includes(params.length)||!operationParameters(fn,params)||
+            params.some(name=>typeof name!=='string'||!/^[A-Za-z_$][\w$]*$/.test(name)||name===fn.name)||new Set(params).size!==params.length)continue;
+        let templateName='__bwPrimitiveOperation';while(params.includes(templateName))templateName+='_';
+        const names=new Map([[fn.name,templateName]]),a=params[0],b=params[1];
+        // A descriptor-only preselection avoids parsing/checking unrelated
+        // templates. Only the complete canonical match below issues a role.
+        const body=operationSlot(fn,'body');
+        if(!Array.isArray(body)||body.length!==1||operationSlot(body[0],'type')!=='Return')continue;
+        const returned=operationSlot(body[0],'value');if(!returned||typeof returned!=='object')continue;
+        const kind=operationSlot(returned,'type'),op=operationSlot(returned,'op');
+        let bodies=[];
+        if(params.length===2&&kind==='Binary'){
+            if(operationBinary.includes(op))bodies=[{expression:`${a} ${op} ${b}`,result:'number'}];
+            else if(operationComparisons.includes(op))bodies=[{expression:`${a} ${op} ${b}`,result:'boolean'}];
+        }else if(params.length===1){
+            if(kind==='Binary'&&op==='*')bodies=[{expression:`-1 * ${a}`,result:'number'}];
+            else if(kind==='Unary'&&['+','~','!'].includes(op))bodies=[{expression:`${op}${a}`,result:op==='!'?'boolean':'number'}];
+        }
+        const selected=bodies.find(body=>bindings.matches(fn,
+            `function ${templateName}(${params.map(name=>`${name}: any`).join(', ')}): ${body.result} { return ${body.expression} }`,names));
+        if(!selected)continue;
+        // Inspect optional fields before the existing call census reads them.
+        let safe=true;
+        for(const node of bindings.nodes)if(node.type==='Identifier'&&bindings.declarationAt(node)===fn&&!operationInternal(node,fn)){
+            const parent=bindings.parentOf(node);
+            if(!parent||operationSlot(parent,'callee')!==node||!operationPlainCall(parent,params.length)){safe=false;break;}
+        }
+        if(!safe)continue;
+        const calls=bindings.calls(fn,[params.length],new Set([fn]));
+        if(!calls?.length)continue;
+        const record={fn,arity:params.length,calls,dependencies:new Set()};operationRecords.push(record);
+        for(const call of calls)operationCalls.set(call,record);
+    }
+    const operationMemo=new WeakMap(),operationActive=new WeakSet();
+    const localPrimitiveOperation=node=>{
+        if(!node||typeof node!=='object')return false;
+        if(operationMemo.has(node))return operationMemo.get(node);
+        const record=operationCalls.get(node);if(!record||operationActive.has(node))return false;
+        // Parsed-value and normal-result views may have rebuilt the model.
+        // Join exact original children to the FINAL graph; never query a stale
+        // intermediate graph or infer an association from callee spelling.
+        const final=actual(node);
+        if(final?.type!=='Call'||final.callee!==actual(node.callee)||final.args?.length!==record.arity||
+            final.args.some((arg,index)=>arg!==actual(node.args[index]))||graph.immutableFunctionAt(final)!==actual(record.fn))return false;
+        operationActive.add(node);
+        const valid=node.args.every(arg=>{
+            if(primitiveValue(arg)||capturedScalarIdentifier(arg))return true;
+            const nested=operationCalls.get(arg);
+            if(!nested||!localPrimitiveOperation(arg))return false;
+            record.dependencies.add(nested);return true;
+        });
+        operationActive.delete(node);operationMemo.set(node,valid);return valid;
+    };
+    // Close every actual call to each used helper, including calls outside an
+    // addition operand. Local proofs descend finite argument trees; this
+    // dependency closure cannot manufacture a leaf from a helper cycle.
+    const closedOperations=new Set(operationRecords.filter(record=>record.calls.every(localPrimitiveOperation)));
+    let operationsChanged;
+    do{
+        operationsChanged=false;
+        for(const record of closedOperations)if([...record.dependencies].some(dependency=>!closedOperations.has(dependency))){
+            closedOperations.delete(record);operationsChanged=true;
+        }
+    }while(operationsChanged);
+    const normalPrimitiveOperation=node=>closedOperations.has(operationCalls.get(node))&&localPrimitiveOperation(node);
     const allTokens=new Set(),arrayHelpers=new Set();
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){
         const arg=call.args[position];
@@ -350,6 +466,8 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         let initialization='NOT_EVALUATED',capture='NOT_EVALUATED',domain='NOT_EVALUATED';
         const refused=!found.size||!(initialization=initialized(arg))&&!(capture=capturedScalarIdentifier(arg))||
             (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'));
+        // Existing successful paths remain independent of the new profile.
+        if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
         if(refused){
             const result={helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
             // Diagnostics must never replace the original refusal, including
