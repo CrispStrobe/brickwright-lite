@@ -1,6 +1,6 @@
 {
-  "consumer": "fac220748767894b2626a07d9f1cb5b3d3729f8c",
-  "frontend_run": 39904199183,
+  "consumer": "1574a5e3d35447777214a0637c6e9a32d5630450",
+  "frontend_run": 39951292779,
   "compile_pins": {
     "BW_RENODE_RESOURCE_EXECUTABLE": "renode/renode",
     "BW_RENODE_MICROPYTHON_RESOURCE_ROOT": "micropython",
