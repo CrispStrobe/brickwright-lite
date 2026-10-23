@@ -17,10 +17,11 @@ const git=a=>execFileSync('git',a,{cwd:root,encoding:'utf8',maxBuffer:64<<20}),h
 execFileSync('npm',['run','integrate'],{cwd:root,stdio:'inherit'});
 const generatedTranslations=['packages/scratch-gui/translations/messages/src/components/menu-bar/menu-bar.json','packages/scratch-gui/translations/messages/src/components/stage-header/stage-header.json','packages/scratch-gui/translations/messages/src/lib/libraries/extensions/index.json'];
 const translations=new Map(generatedTranslations.filter(p=>existsSync(join(root,p))).map(p=>[p,readFileSync(join(root,p))]));
+const identitySkipped=[];
 const identity=()=>{
  const files=git(['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean).sort();
  const sha=createHash('sha256');sha.update(git(['rev-parse','HEAD']));
- for(const p of files){if(generatedTranslations.includes(p))continue;sha.update(p+'\0');sha.update(!existsSync(join(root,p))?'MISSING':statSync(join(root,p)).isFile()?readFileSync(join(root,p)):git(['ls-tree','HEAD',p]));}
+ for(const p of files){if(generatedTranslations.includes(p)){identitySkipped.push(p);continue;}sha.update(p+'\0');sha.update(!existsSync(join(root,p))?'MISSING':statSync(join(root,p)).isFile()?readFileSync(join(root,p)):git(['ls-tree','HEAD',p]));}
  return sha.digest('hex');
 };
 const frozen=identity(),node=process.execPath,native=['--test','--import','./scripts/lib/register-gui-scope.mjs'];
@@ -50,5 +51,5 @@ const receipt=await executeQualification(steps,{directory:out,mode,identity:froz
  if(step.browser)for(const[p,stamp]of evidenceTree(artifactRoot))if(before.get(p)!==stamp){const dest=join(out,step.browser,relative(artifactRoot,p));mkdirSync(dirname(dest),{recursive:true});copyFileSync(p,dest);}
  return{code,log};
 }});
-writeFileSync(join(out,'candidate.json'),JSON.stringify({head:git(['rev-parse','HEAD']).trim(),sourceFingerprint:frozen,models,contracts,gitStatus:git(['status','--short']),scope:'Simulation qualification; no hardware or release/CI admission claim.'},null,2)+'\n');
+writeFileSync(join(out,'candidate.json'),JSON.stringify({head:git(['rev-parse','HEAD']).trim(),sourceFingerprint:frozen,identityExcludedPaths:[...new Set(identitySkipped)].sort(),models,contracts,gitStatus:git(['status','--short']),scope:'Simulation qualification; no hardware or release/CI admission claim.'},null,2)+'\n');
 console.log(JSON.stringify({status:receipt.status,admitted:receipt.admitted,receipt:join(out,'qualification.json')}));if(receipt.status==='FAIL')process.exitCode=1;
