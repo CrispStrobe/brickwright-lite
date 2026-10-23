@@ -39,6 +39,8 @@ export function admitPreprovisionedRuntime(packet) {
     for(const file of ['pw_run.sh','minibrowser-wpe/bin/MiniBrowser','minibrowser-wpe/bin/WPEWebProcess'])
         assert.equal(packet.files[file],true,'Complete cached headless WebKit runtime');
     assert.deepEqual(packet.missingDependencies,[],'Native runtime dependencies must resolve before input acquisition');
+    assert.equal(packet.processObserverAvailable,true,'Exact process observer command must work before input acquisition');
+    assert.deepEqual(packet.processObserverCommand,['ps','-eo','pid,ppid,pcpu,rss,comm']);
     return packet;
 }
 async function preflightRuntime() {
@@ -52,12 +54,15 @@ async function preflightRuntime() {
     const dependencies=execFileSync('ldd',[join(directory,'minibrowser-wpe/bin/WPEWebProcess')],{
         encoding:'utf8',timeout:10000,maxBuffer:65536,env:{...process.env,LD_LIBRARY_PATH:join(directory,'minibrowser-wpe/lib')}
     });
+    const processObserverCommand=['-eo','pid,ppid,pcpu,rss,comm'];
+    const processObserverOutput=execFileSync('ps',processObserverCommand,{encoding:'utf8',timeout:1000,maxBuffer:65536});
     const release=await readFile('/etc/os-release','utf8');
     const packet={image:process.env.BW_MODEL_WEBKIT_RUNTIME_IMAGE,platform:process.platform,arch:process.arch,
         distro:release.match(/^ID=([^\r\n]+)$/m)?.[1].replaceAll('"',''),
         ubuntu:release.match(/^VERSION_ID="([^"]+)"$/m)?.[1],node:process.version,playwright:require('playwright/package.json').version,
         webkit:{revision:registry[0].revision,browserVersion:registry[0].browserVersion},executable,files,
         missingDependencies:dependencies.split('\n').filter(line=>/=>\s*not found/.test(line)),dependencies,
+        processObserverAvailable:processObserverOutput.trim().length>0,processObserverCommand:['ps',...processObserverCommand],processObserverOutput,
         consumerHead:git(resolve(dirname(fileURLToPath(import.meta.url)),'..'),'rev-parse','HEAD'),candidateHead:git(root,'rev-parse','HEAD')};
     admitPreprovisionedRuntime(packet);assert.equal(packet.candidateHead,FROZEN.reviewedHeadSha);
     await writeFile(output,JSON.stringify(packet,null,2)+'\n',{flag:'wx'});

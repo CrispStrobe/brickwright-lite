@@ -76,12 +76,14 @@ test('workflow candidate checkout binds the same immutable reviewed source as ad
 
 const runtimePacket=()=>({image:RUNTIME_IMAGE,platform:'linux',arch:'x64',distro:'ubuntu',ubuntu:'24.04',node:'v22.23.4',playwright:'1.62.1',
     webkit:{revision:'2336',browserVersion:'26.5'},executable:'/ms-playwright/webkit-2336/pw_run.sh',
-    files:{'pw_run.sh':true,'minibrowser-wpe/bin/MiniBrowser':true,'minibrowser-wpe/bin/WPEWebProcess':true},missingDependencies:[]});
+    files:{'pw_run.sh':true,'minibrowser-wpe/bin/MiniBrowser':true,'minibrowser-wpe/bin/WPEWebProcess':true},missingDependencies:[],
+    processObserverAvailable:true,processObserverCommand:['ps','-eo','pid,ppid,pcpu,rss,comm']});
 test('preprovisioned admission requires the exact image, locked runtime and complete native dependency closure',()=>{
     assert.deepEqual(admitPreprovisionedRuntime(runtimePacket()),runtimePacket());
     for(const cut of [p=>p.image='mutable:latest',p=>p.platform='darwin',p=>p.arch='arm64',p=>p.distro='debian',p=>p.ubuntu='22.04',
         p=>p.node='v24.0.0',p=>p.playwright='1.64.0',p=>p.webkit.revision='other',p=>p.webkit.browserVersion='other',
-        p=>p.executable='/other/pw_run.sh',p=>delete p.files['minibrowser-wpe/bin/WPEWebProcess'],p=>p.missingDependencies=['libmissing.so => not found']]){
+        p=>p.executable='/other/pw_run.sh',p=>delete p.files['minibrowser-wpe/bin/WPEWebProcess'],p=>p.missingDependencies=['libmissing.so => not found'],
+        p=>p.processObserverAvailable=false,p=>p.processObserverCommand=['ps','-ef']]){
         const packet=runtimePacket();cut(packet);assert.throws(()=>admitPreprovisionedRuntime(packet));
     }
 });

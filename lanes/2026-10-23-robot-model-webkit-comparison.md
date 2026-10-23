@@ -72,7 +72,8 @@ The proposed new condition adds the explicit CI-only immutable linux/amd64
 image `mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac`
 (official Playwright 1.62.1 Noble). Application pins remain unchanged. A
 one-minute, non-browser preflight requires Ubuntu24.04, Node22.23.4, the
-locked Playwright1.62.1/WebKit2336 cache and native dependency resolution.
+locked Playwright1.62.1/WebKit2336 cache, native dependency resolution and the
+unchanged read-only process observer command (`ps -eo pid,ppid,pcpu,rss,comm`).
 Actual binary identities remain to be recorded and independently audited; no
 image or filesystem layer was pulled locally. The preflight and requested
 image identity are retained in the new condition's output.
