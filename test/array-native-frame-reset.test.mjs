@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
-import Creator from '../packages/scratch-gui/src/lib/sb3-creator-register-art.js';
-import {arcadeToPseudocode} from '../packages/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {projectJsonToArcade} from '../packages/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {createProjectJsonSnapshot,isProjectJsonSnapshot} from '../packages/scratch-gui/src/lib/bw-makecode/project-json-snapshot.js';
-import {createArrayReferenceExportAuthority} from '../packages/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js';
+import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {createProjectJsonSnapshot,isProjectJsonSnapshot} from '../overlay/scratch-gui/src/lib/bw-makecode/project-json-snapshot.js';
+import {createArrayReferenceExportAuthority} from '../overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js';
 import {numericAuthoringFiles} from './fixtures/arcade-numeric-authoring-game.mjs';
 
 const clean=value=>{for(const key of ['unsupported','warnings','errors','unparsed'])if(Object.hasOwn(value,key))assert.deepEqual(value[key],[],key);};

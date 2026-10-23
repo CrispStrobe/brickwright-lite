@@ -62,10 +62,11 @@ an owned JSON snapshot.
 `test/array-native-frame-reset.test.mjs` authors its input through the existing
 `numericAuthoringFiles` source fixture, `arcadeToPseudocode` and the real Creator.
 It does not embed a captured project or invent a runtime/compiler result.
-The module imports production code from `packages/scratch-gui/src/lib/`. Run the
-repository's normal integration step first so the integrated GUI resolves its
-actual production dependencies. Do not borrow another worktree's dependencies
-or substitute stubs, fake SDKs or policy exceptions for that prerequisite.
+The module imports owned production code from `overlay/scratch-gui/src/lib/`.
+The repository's normal root-test hook resolves declared GUI dependencies from
+the integrated GUI package. Keep the exact per-test dependency census current;
+do not bypass the hook, import generated production mirrors, borrow another
+worktree's dependencies or substitute stubs or fake SDKs.
 
 Its whole module covers:
 
