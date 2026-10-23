@@ -52,6 +52,7 @@
   },
   "jolt-physics/wasm-compat": {
     "tests": [
+      "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
       "test/bw-sim-belt.test.mjs",
       "test/bw-sim-bt-hubs-program.test.mjs",
@@ -455,6 +456,7 @@
   },
   "jolt-physics/wasm-simd-compat": {
     "tests": [
+      "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
       "test/bw-sim-belt.test.mjs",
       "test/bw-sim-bt-hubs-program.test.mjs",
