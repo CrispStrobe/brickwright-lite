@@ -28,8 +28,10 @@ claim before implementation and require all enabled exact-head checks before
 matched-head source merge.
 
 The browser gate now observes the latest applied-device event before media,
-awaits visible Circuit commit and shares the original 30-second setup budget.
+awaits the Circuit tab’s selected state and shares the original 30-second setup
+budget. The debugger panel mounts after media delivery and is awaited only then.
 Five page-protocol source controls pass; omitted ACK wait, late observer, wrong
-ACK admission, renewed timeout and latched readiness mutants are assertion-
-detected. Existing recording/running/checkpoint/reverse/fork checks remain.
+ACK admission, renewed timeout, latched readiness and omitted selected-tab
+commit mutants are assertion-detected. A lazy-panel control rejects waiting for
+the debugger panel before media delivery. Existing recording/running/checkpoint/reverse/fork checks remain.
 Final combined-source hosted browser qualification remains pending.

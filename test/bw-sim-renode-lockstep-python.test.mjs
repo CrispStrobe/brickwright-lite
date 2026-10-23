@@ -333,8 +333,11 @@ test('actual checkpoint window keeps every physical quantum and records availabl
     const source = readFileSync(new URL('../scripts/verify-sim-lab-python-guest.mjs', import.meta.url), 'utf8');
     const functions = source.slice(source.indexOf('async function step ('), source.indexOf('async function open ('));
     const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-    const checkpoint = await new AsyncFunction('assert', 'output', 'frameOf', `${functions};return windowCheckpoint;`)(
-        assert, frame => frame.lifecycle.nuttxProgramOutput, run => run.frame);
+    // The actual checkpoint's progress message belongs to this source control,
+    // not the test runner's binary stdout transport. Retain it for an assertion.
+    const progress = [];
+    const checkpoint = await new AsyncFunction('assert', 'output', 'frameOf', 'console', `${functions};return windowCheckpoint;`)(
+        assert, frame => frame.lifecycle.nuttxProgramOutput, run => run.frame, {log: line => progress.push(line)});
     for (const allAbsent of [false, true]) {
         let ticks = 0;
         const status = {state: 4, error: 0, positions: [0, 0], duties: [0, 0], publicationSeq: 12};
@@ -363,6 +366,7 @@ test('actual checkpoint window keeps every physical quantum and records availabl
             assert.equal(ticks, 60, 'output-only late marker is observed independently of absent status');
         }
     }
+    assert.deepEqual(progress, ['[own Python] window control: 100 steps, 200 ms simulated, state 4']);
 });
 
 test('COMMIT READY acknowledgement survives an unchanged prior COMPLETE at lockstep begin', async () => {

@@ -98,9 +98,11 @@ async function prepareHistoryMachine (page) {
         await page.getByTestId('bw-device-select').selectOption('z80', {timeout: remaining()});
         await page.waitForFunction(() => window.__bwDebugHistorySetup?.applied === true,
             null, {timeout: remaining()});
-        await page.getByRole('tab', {name: /Circuit/}).click({timeout: remaining()});
-        const panel = page.locator('[data-debug-panel]:visible').first();
-        await panel.waitFor({state: 'visible', timeout: remaining()});
+        const circuit = page.getByRole('tab', {name: /Circuit/});
+        await circuit.click({timeout: remaining()});
+        await circuit.and(page.locator('[aria-selected="true"]')).waitFor({state: 'visible', timeout: remaining()});
+        // The debugger panel mounts in response to media; it cannot be a
+        // prerequisite for delivering that media. The selected tab is committed.
         await page.evaluate(() => {
             if (!window.__bwDebugHistorySetup?.applied) throw new Error('Z80 applied-device acknowledgement missing');
             const detail = {rom: Uint8Array.of(0x3e, 0, 0x32, 0, 0x80, 0x3c, 0xc3, 2, 0),
@@ -108,6 +110,7 @@ async function prepareHistoryMachine (page) {
             window.__bwPendingMedia = {type: 'asm', detail};
             window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
         });
+        const panel = page.locator('[data-debug-panel]:visible').first();
         await panel.locator('[data-debug-record]:not([disabled])').waitFor({timeout: remaining()});
         return await page.evaluate(() => ({deviceApplied: window.__bwDebugHistorySetup.applied,
             events: window.__bwDebugHistorySetup.events}));

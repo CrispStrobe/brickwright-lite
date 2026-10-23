@@ -35,10 +35,10 @@ function control (mode = 'late', circuitDelay = 1000) {
         {detail: {key: 'bw-device-id', value}}));
     const timeout = options => {timeouts.push(options.timeout);assert.ok(options.timeout > 0 && options.timeout <= 30000);};
     const panel = {
-        async waitFor (options) {timeout(options);order.push('visible');visible = true;clock += 1000;},
+        async waitFor (options) {timeout(options);if (!media) throw new Error('debugger panel is created only after ROM delivery');order.push('panel-visible');},
         locator (selector) {
             assert.equal(selector, '[data-debug-record]:not([disabled])');
-            return {async waitFor (options) {timeout(options);order.push('record');}};
+            return {async waitFor (options) {timeout(options);assert.ok(media, 'Record panel cannot exist before media');order.push('record');}};
         }, first () {return this;}
     };
     const page = {
@@ -59,9 +59,18 @@ function control (mode = 'late', circuitDelay = 1000) {
         },
         getByRole (role) {
             assert.equal(role, 'tab');
-            return {async click (options) {timeout(options);order.push('circuit');clock += circuitDelay;if (mode === 'changed') emit('ev3');}};
+            return {
+                async click (options) {timeout(options);order.push('circuit');clock += circuitDelay;if (mode === 'changed') emit('ev3');},
+                and (selected) {
+                    assert.equal(selected, 'selected-tab-marker');
+                    return {async waitFor (options) {timeout(options);order.push('visible');visible = true;clock += 1000;}};
+                }
+            };
         },
-        locator (selector) {assert.equal(selector, '[data-debug-panel]:visible');return panel;}
+        locator (selector) {
+            if (selector === '[aria-selected="true"]') return 'selected-tab-marker';
+            assert.equal(selector, '[data-debug-panel]:visible');return panel;
+        }
     };
     return {prepare: () => prepare(page), order, timeouts, get media () {return media;},
         get listeners () {return listeners;}, window};
