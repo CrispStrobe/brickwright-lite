@@ -797,7 +797,7 @@ try {
             await resonanceLesson(german, opts, 'de');
             await german.close();
         }
-        const newModelIds = ['rise-ratio', 'rise-ratio-control', 'cascade', 'cascade-control', 'wavemaker', 'wavemaker-control', 'sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`) || (id==='rise-ratio-control' && runExample('rise-ratio.ldr')) || (id==='wavemaker-control' && runExample('wavemaker.ldr')) || (id==='cascade-control' && runExample('cascade.ldr')));
+        const newModelIds = ['cable-compass', 'cable-compass-control', 'rise-ratio', 'rise-ratio-control', 'cascade', 'cascade-control', 'wavemaker', 'wavemaker-control', 'sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`) || (id==='cable-compass-control' && runExample('cable-compass.ldr')) || (id==='rise-ratio-control' && runExample('rise-ratio.ldr')) || (id==='wavemaker-control' && runExample('wavemaker.ldr')) || (id==='cascade-control' && runExample('cascade.ldr')));
         if (newModelIds.length) {
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             page.on('pageerror', error => errors.push(error.stack || error.message));

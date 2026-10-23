@@ -35,7 +35,7 @@ export async function intakeRoundtrip(page,opts,id,judge){
    const r=window.__bwIntakeReopened={start:s.time,runModel:s.runModel,mechanism:m,issues:p.state.issues,unsupported:[],track:[]};
    const capture=()=>{
     if(!r.finishedAt&&s.time-r.start>1000&&!p.props.vm.runtime.threads.some(t=>t.status!==4))r.finishedAt=s.time;
-    r.track.push({t:s.time,bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),joints:Object.fromEntries(m.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,s.core.jointState(j.id)])),extra:{variables:Object.fromEntries(p.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables).map(v=>[v.name,v.value])))}});
+    r.track.push({t:s.time,bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),joints:Object.fromEntries(m.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,s.core.jointState(j.id)])),extra:{ropes:s.core.ropeState(),variables:Object.fromEntries(p.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables).map(v=>[v.name,v.value])))}});
    };
    window.__bwCaptureIntakeReopened=capture;s.onAdvance(capture);
   });

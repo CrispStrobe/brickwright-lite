@@ -294,6 +294,68 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "cable-compass.ldr": {
+        "pieces": 175,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two worm winches set four rope lengths and position a passive payload. Compare equal and unequal winding, independent Cartesian arrivals, load support and return. 175 rigid pieces plus four cords.",
+            "de": "Zwei Schneckenwinden bestimmen vier Seillängen und positionieren eine passive Last. Vergleiche gleiches und ungleiches Aufwickeln, kartesische Zielpositionen, Lastabstützung und Rückkehr. 175 feste Teile plus vier Schnüre."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cable-driven parallel robot — inverse kinematics",
+            "de": "Seilroboter — inverse Kinematik"
+        },
+        "keywords": [
+            "Cable-driven parallel robot — inverse kinematics",
+            "Seilroboter — inverse Kinematik",
+            "cable robot",
+            "two-winch positioner",
+            "parallel cable robot",
+            "circle intersection",
+            "trilateration",
+            "rope winding",
+            "Seillängensteuerung",
+            "Seilkinematik",
+            "Kreisschnitt"
+        ]
+    },
+    "cable-compass-control.ldr": {
+        "pieces": 174,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The left worm is physically removed while both motors execute the same route. Observe the loss of passive support and positioning despite successful motor arrivals. 174 rigid pieces plus four cords.",
+            "de": "Die linke Schnecke ist mechanisch entfernt; beide Motoren fahren dieselbe Folge. Beobachte den Verlust von Abstützung und Positionierung trotz erreichter Motorwinkel. 174 feste Teile plus vier Schnüre."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cable-driven parallel robot — inverse kinematics",
+            "de": "Seilroboter — inverse Kinematik"
+        },
+        "keywords": [
+            "Cable-driven parallel robot — inverse kinematics",
+            "Seilroboter — inverse Kinematik",
+            "cable robot",
+            "two-winch positioner",
+            "parallel cable robot",
+            "circle intersection",
+            "trilateration",
+            "rope winding",
+            "Seillängensteuerung",
+            "Seilkinematik",
+            "Kreisschnitt"
+        ]
+    },
     "rise-ratio.ldr": {
         "pieces": 182,
         "motors": 1,

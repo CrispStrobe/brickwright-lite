@@ -84,6 +84,22 @@
       "frameMs": 25,
       "frozenOutput": "top_fork_front",
       "physicalControl": "rise-ratio-control.ldr"
+    },
+    {
+      "id": "cable-compass",
+      "judge": "cable-winch-v1",
+      "nativeSuite": "cable-compass",
+      "parts": 175,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "payload_tie",
+      "physicalControl": "cable-compass-control.ldr"
     }
   ]
 }

@@ -242,6 +242,28 @@
         "rise-ratio",
         "rise-ratio-control"
       ]
+    },
+    {
+      "id": "cable-driven-parallel-robot",
+      "name": {
+        "en": "Cable-driven parallel robot — inverse kinematics",
+        "de": "Seilroboter — inverse Kinematik"
+      },
+      "aliases": [
+        "cable robot",
+        "two-winch positioner",
+        "parallel cable robot",
+        "circle intersection",
+        "trilateration",
+        "rope winding",
+        "Seillängensteuerung",
+        "Seilkinematik",
+        "Kreisschnitt"
+      ],
+      "models": [
+        "cable-compass",
+        "cable-compass-control"
+      ]
     }
   ]
 }

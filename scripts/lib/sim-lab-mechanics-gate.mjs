@@ -56,7 +56,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
                 const busy = {};
                 for (const a of m.actuators) busy[a.port] = pane.hub.motors.busy(a.port);
                 if (observeProgram && !record.finishedAt && s.time-record.start>1000 && !pane.props.vm.runtime.threads.some(t=>t.status!==4)) record.finishedAt=s.time;
-                const extra=observeProgram?{variables:Object.fromEntries(pane.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]))}:null;
+                const extra=observeProgram?{ropes:s.core.ropeState(),variables:Object.fromEntries(pane.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]))}:null;
                 record.track.push({t: s.time, bodies, joints, busy, ...(extra?{extra}: {})});
             };
             window.__bwCaptureMechanics = capture;
