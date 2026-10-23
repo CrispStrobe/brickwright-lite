@@ -21,7 +21,20 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         const card = gallery.locator(`[data-model="${keyFor(id)}"]`);
         assert.equal(await card.count(), 1);
         await card.getByRole('button', {name: /^Open model \+ program:/}).click();
-        await gallery.waitFor({state: 'hidden'});
+        try { await gallery.waitFor({state: 'hidden'}); }
+        catch (error) {
+            const state = await page.evaluate(() => {
+                const p = window.__bwSimLab?._pane;
+                return {status: window.__bwSimLab?.status, pane: p ? {status:p.state.status, message:p.state.message,
+                    info:p.state.info, modelFile:p.state.modelFile, shipped:p.state.shipped,
+                    programLoading:p.state.programLoading, view3d:p.state.view3d} : null,
+                    gallery:document.querySelector('[data-testid="bw-sim-examples"]')?.innerText,
+                    resources:performance.getEntriesByType('resource').filter(e=>/sim-lab|ldraw|worker/.test(e.name)).slice(-30).map(e=>({name:e.name,duration:e.duration,responseEnd:e.responseEnd}))};
+            });
+            writeFileSync(resolve(shotsDir, id+'-gallery-failure.json'),JSON.stringify(state,null,2)+'\n');
+            await page.screenshot({path:resolve(shotsDir,id+'-gallery-failure.png')}).catch(()=>{});
+            throw error;
+        }
         await page.waitForFunction(({file, key}) => window.__bwSimLab.status === 'ready' &&
             window.__bwSimLab._pane.state.modelFile === file && window.__bwSimLab._pane.state.shipped === key &&
             window.__bwSimLab._pane.session?.worker, {file: fileFor(id), key: keyFor(id)}, {timeout: 60000});
