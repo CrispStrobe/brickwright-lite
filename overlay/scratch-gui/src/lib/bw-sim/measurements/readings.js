@@ -3,6 +3,7 @@
 // Observers only: no forces, drives, timesteps or checkpoint state are changed here.
 import {lduToWorld} from '../contracts.js';
 import {MEASUREMENT_KINDS, measurementDefinitions} from './schema.js';
+import {sha256Text} from './binding-digest.js';
 
 const add = (a, b) => a.map((v, i) => v + b[i]);
 const sub = (a, b) => a.map((v, i) => v - b[i]);
@@ -17,9 +18,26 @@ const DEG = 180 / Math.PI;
 export const measurementText = row => row.available ? `${row.value.toFixed(row.unit === 'g' || row.unit === 'mm' || row.unit === '°' ? 1 : 3)} ${row.unit}` : '—';
 
 /** Bind generated joint ids to authored part memberships; a recompile must not silently retarget a reading. */
-export const jointBinding = (mechanism, joint) => JSON.stringify([joint.type, ...[joint.body1, joint.body2].map(id =>
-    mechanism.bodies.find(b => b.id === id)?.parts?.slice().sort() || [id])]);
-export const ropeBinding = rope => JSON.stringify(rope.parts || []);
+const jointIdentities = new WeakMap();
+const ropeIdentities = new WeakMap();
+const identity = (cache, key, legacy) => {
+    const previous = cache.get(key);
+    if (previous && previous.legacy === legacy) return previous;
+    const value = {legacy, compact: `sha256:${sha256Text(legacy)}`};
+    cache.set(key, value);
+    return value;
+};
+const jointIdentity = (mechanism, joint) => {
+    let cache = jointIdentities.get(mechanism);
+    if (!cache) { cache = new Map(); jointIdentities.set(mechanism, cache); }
+    const legacy = JSON.stringify([joint.type, ...[joint.body1, joint.body2].map(id =>
+        mechanism.bodies.find(b => b.id === id)?.parts?.slice().sort() || [id])]);
+    return identity(cache, joint.id, legacy);
+};
+const ropeIdentity = rope => identity(ropeIdentities, rope, JSON.stringify(rope.parts || []));
+const matches = (stored, actual) => stored === actual.compact || stored === actual.legacy;
+export const jointBinding = (mechanism, joint) => jointIdentity(mechanism, joint).compact;
+export const ropeBinding = rope => ropeIdentity(rope).compact;
 
 export const createMeasurementReader = session => {
     const {mechanism, core} = session;
@@ -28,6 +46,8 @@ export const createMeasurementReader = session => {
     const bodyOf = new Map();
     for (const b of mechanism.bodies) for (const id of b.parts || []) if (!bodyOf.has(id)) bodyOf.set(id, b);
     const ropes = (mechanism.couplings || []).filter(c => c.kind === 'rope');
+    const modelBodies = mechanism.bodies.filter(b => (b.parts || []).some(id => parts.has(id)));
+    const massAnchor = modelBodies.find(b => (mechanism.hubs || []).some(h => h.body === b.id)) || modelBodies[0];
     const onBody = (id, local = [0, 0, 0]) => {
         const p = core.bodyPose(id);
         return add(p.position, rotate(p.rotation, local));
@@ -44,7 +64,12 @@ export const createMeasurementReader = session => {
             const b = m.targets?.length ? bodyOf.get(m.targets[0]) : null;
             if (m.targets && (!b || m.targets.some(id => !parts.has(id) || !bodyOf.has(id)))) throw new Error('missing-target');
             let value;
-            if (['mass', 'weight', 'speed', 'angularSpeed', 'normalLoad'].includes(m.kind)) {
+            if (m.kind === 'modelMass') {
+                if (!massAnchor || modelBodies.some(body => !Number.isFinite(body.massKg) || body.massKg < 0)) throw new Error('unavailable');
+                value = modelBodies.reduce((sum, body) => sum + body.massKg, 0) * 1000;
+                row.points = [core.bodyPose(massAnchor.id).position];
+                row.source = 'configured-model-mass';
+            } else if (['mass', 'weight', 'speed', 'angularSpeed', 'normalLoad'].includes(m.kind)) {
                 row.points = [point(m.targets[0])];
                 if (m.kind === 'mass') { value = b.massKg * 1000; row.source = 'configured-mass'; }
                 if (m.kind === 'weight') {
@@ -82,12 +107,12 @@ export const createMeasurementReader = session => {
                 row.source = 'part-origins';
             } else if (spec.joint) {
                 const j = mechanism.joints.find(x => x.id === m.joint && x.type === spec.joint);
-                if (!j || jointBinding(mechanism, j) !== m.binding) throw new Error('missing-target');
+                if (!j || !matches(m.binding, jointIdentity(mechanism, j))) throw new Error('missing-target');
                 const state = core.jointState(j.id);
                 value = m.kind === 'travel' ? state.position * 1000 : (m.kind === 'jointSpeed' ? state.velocity : state.angle) * DEG;
                 row.points = [onBody(j.body2)]; row.source = 'jolt-joint';
             } else if (spec.rope) {
-                const index = ropes.findIndex(r => r.id === m.rope && ropeBinding(r) === m.binding);
+                const index = ropes.findIndex(r => r.id === m.rope && matches(m.binding, ropeIdentity(r)));
                 if (index < 0) throw new Error('missing-target');
                 const state = core.ropeState()[index];
                 if (!state) throw new Error('unavailable');
@@ -118,6 +143,7 @@ export const measurementPresets = session => {
         modelBodies.filter(b => b.motion === 'dynamic').reduce((a, b) => !a || b.massKg > a.massKg ? b : a, null) || modelBodies[0];
     const push = (kind, label, extra) => out.push({id: `preset-${out.length}`, kind, label, visible: true, ...extra});
     if (base) {
+        push('modelMass', 'modelMass', {});
         const targets = [representative(base)];
         push('mass', 'mass', {targets}); push('speed', 'speed', {targets});
     }

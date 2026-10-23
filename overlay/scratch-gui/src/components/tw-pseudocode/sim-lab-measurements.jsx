@@ -4,29 +4,30 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {MEASUREMENT_KINDS, MEASUREMENT_LIMIT} from '../../lib/bw-sim/measurements/schema.js';
 import {measurementText, jointBinding, ropeBinding} from '../../lib/bw-sim/measurements/readings.js';
+import {jointTargetContext} from '../../lib/bw-sim/measurements/target-context.js';
 
 export const measurementWords = locale => locale === 'de' ? {
     title: 'Messungen', close: 'Schließen', add: 'Messung hinzufügen', remove: 'Entfernen', presets: 'Auf empfohlene Messungen zurücksetzen',
-    show: 'Im Modell anzeigen', label: 'Name', kind: 'Messgröße', target: 'Teil', joint: 'Gelenk', rope: 'Seil',
+    show: 'Im Modell anzeigen', label: 'Name', kind: 'Messgröße', target: 'Teil', joint: 'Gelenk', rope: 'Seil', world: 'Boden',
     missing: 'Ziel fehlt im Modell', unavailable: 'Nicht verfügbar', coincident: 'Winkel braucht drei verschiedene Punkte',
     replay: 'Live-Messungen sind während der Positionswiedergabe ausgeblendet.', empty: 'Füge eine Messung hinzu oder wähle die empfohlenen Messungen.',
     help: 'Teile wählen ihre starre Baugruppe für Masse und Bewegung. Geschwindigkeit gilt am Schwerpunkt. Abstand und Winkel messen Teilursprünge (A–B–C: Scheitel B).',
     vectors: 'Pfeile: Geschwindigkeit × 0,1 s; Kräfte 20 mm/N.',
-    kinds: {mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe',
+    kinds: {modelMass: 'Modellmasse', mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe',
         distance: 'Abstand A–B', angle: 'Winkel A–B–C', jointAngle: 'Gelenkwinkel', jointSpeed: 'Gelenkdrehzahl', travel: 'Schieberweg', tension: 'Seilspannung', normalLoad: 'Rad-Normallast'},
-    sources: {'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
+    sources: {'configured-model-mass': 'Konfigurierte Modell-Baugruppen ohne Umgebung', 'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
         'jolt-angular-velocity': 'Jolt: Winkelgeschwindigkeit', 'part-origins': 'Teilursprünge', 'jolt-joint': 'Jolt: Gelenkkoordinate',
         'rope-constraint': 'Seil-Zwangsimpuls / Zeitschritt', 'rolling-load-estimate': 'Normallast-Schätzung des Rollmodells'}
 } : {
     title: 'Measurements', close: 'Close', add: 'Add measurement', remove: 'Remove', presets: 'Reset to recommended measurements',
-    show: 'Show in model', label: 'Name', kind: 'Quantity', target: 'Part', joint: 'Joint', rope: 'Rope',
+    show: 'Show in model', label: 'Name', kind: 'Quantity', target: 'Part', joint: 'Joint', rope: 'Rope', world: 'Ground',
     missing: 'Target missing from model', unavailable: 'Unavailable', coincident: 'Angle needs three distinct points',
     replay: 'Live measurements are hidden during pose replay.', empty: 'Add a measurement or choose the recommended measurements.',
     help: 'Parts select their rigid assembly for mass and motion. Speed is at its centre of mass. Distance and angle use part origins (A–B–C: vertex B).',
     vectors: 'Arrows: velocity × 0.1 s; forces 20 mm/N.',
-    kinds: {mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed',
+    kinds: {modelMass: 'Model mass', mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed',
         distance: 'Distance A–B', angle: 'Angle A–B–C', jointAngle: 'Joint angle', jointSpeed: 'Joint angular speed', travel: 'Slider travel', tension: 'Rope tension', normalLoad: 'Wheel normal load'},
-    sources: {'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
+    sources: {'configured-model-mass': 'Configured model assemblies, excluding scenery', 'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
         'jolt-angular-velocity': 'Jolt angular velocity', 'part-origins': 'Part origins', 'jolt-joint': 'Jolt joint coordinate',
         'rope-constraint': 'Rope constraint impulse / step', 'rolling-load-estimate': 'Rolling-model normal load estimate'}
 };
@@ -72,6 +73,8 @@ class SimLabMeasurements extends React.Component {
                         const row = rows.find(r => r.id === d.id);
                         const name = d.label === d.kind ? T.kinds[d.kind] : d.label;
                         const reason = row?.reason === 'missing-target' ? T.missing : row?.reason === 'coincident-points' ? T.coincident : T.unavailable;
+                        const selectedJoint = d.joint && mechanism.joints.find(j => j.id === d.joint);
+                        const target = d.targets ? d.targets.join(' → ') : selectedJoint ? `${d.joint} · ${jointTargetContext(selectedJoint, mechanism, T.world)}` : d.joint || d.rope;
                         return <li key={d.id} data-testid={`bw-sim-lab-measurement-${d.id}`} style={{borderTop: '1px solid #e2e8f0', padding: '5px 0'}}>
                             <label><input type="checkbox" checked={d.visible !== false} aria-label={`${T.show}: ${name}`}
                                 onChange={e => onChange(definitions.map(m => m.id === d.id ? {...m, visible: e.target.checked} : m))} />{name}</label>
@@ -79,6 +82,7 @@ class SimLabMeasurements extends React.Component {
                             <button type="button" style={{float: 'right'}} aria-label={`${T.remove}: ${name}`}
                                 onClick={() => onChange(definitions.filter(m => m.id !== d.id))}>×</button>
                             <small title={(d.targets || [d.joint || d.rope]).join(" → ")} style={{display: 'block'}}>{T.kinds[d.kind]} · {replaying ? T.replay : row?.available ? T.sources[row.source] : reason}</small>
+                            {target && <small style={{display: 'block'}}>{target}</small>}
                         </li>;
                     })}
                 </ul>
@@ -91,7 +95,7 @@ class SimLabMeasurements extends React.Component {
                         {parts.map(p => <option key={p.id} value={p.id}>{p.id} · {p.label}</option>)}
                     </select></label>)}
                     {spec.joint && <label>{T.joint} <select style={input} value={joint?.id || ''} onChange={e => this.setState({joint: e.target.value})}>
-                        {joints.map(j => <option key={j.id} value={j.id}>{j.motor?.port || j.id} · {j.id}</option>)}
+                        {joints.map(j => <option key={j.id} value={j.id}>{j.motor?.port || j.id} · {jointTargetContext(j, mechanism, T.world)}</option>)}
                     </select></label>}
                     {spec.rope && <label>{T.rope} <select style={input} value={rope?.id || ''} onChange={e => this.setState({rope: e.target.value})}>
                         {ropes.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}

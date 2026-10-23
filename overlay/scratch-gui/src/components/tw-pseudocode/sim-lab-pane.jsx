@@ -1404,7 +1404,8 @@ class SimLabPane extends React.Component {
         if (this.state.status === 'running') this.record();
         if (this.state.readings && this.api) this.sample();
         if (this.state.measurementsOpen && this.measurementReader && this.measurementSampleTime !== this.session.time) {
-            if (this.measurementSampleTime === null || Math.abs(this.session.time - this.measurementSampleTime) >= 100) {
+            if (this.measurementSampleTime === null || (this.state.status !== 'running' && this.state.status !== 'stopping') ||
+                Math.abs(this.session.time - this.measurementSampleTime) >= 100) {
                 this.measurementRows = this.measurementReader.read(this.measurements);
                 this.measurementSampleTime = this.session.time;
                 this.setState(s => ({measurementTick: s.measurementTick + 1}));

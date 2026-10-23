@@ -2,7 +2,8 @@
 
 In **Simulate → Show → Measurements**, add measurements, choose their targets,
 and enable **Show in model** to draw live labels, connecting lines and vectors.
-Each measurement can be hidden or removed independently. **Reset to recommended
+Joint choices identify the connected assembly parts (and the hub when present).
+The panel also shows each saved measurement's targets. Each measurement can be hidden or removed independently. **Reset to recommended
 measurements** restores structural presets: an assembly's mass and speed,
 motor angles, slider travel, and rope or wheel loads where the model supports
 them. A lift therefore offers travel; a wheeled robot offers a wheel load.
@@ -11,6 +12,7 @@ Custom measurements support:
 
 | Quantity | Target and units | Meaning |
 | --- | --- | --- |
+| Model mass | No part target, g | Configured masses of all simulated model assemblies, including clamped pieces; excludes the ground, mat and scenery |
 | Mass | One part, g | Configured mass of its rigid assembly, including joined parts |
 | Weight | One part, N | That configured mass multiplied by scene gravity |
 | Speed | One part, m/s | Jolt linear velocity at the assembly's centre of mass |
@@ -42,9 +44,19 @@ Standalone LDraw exports carry the model geometry; use a project save to retain
 measurement definitions. Recompilation checks joint/rope bindings and reports
 missing targets rather than silently attaching to a reused generated id.
 
-Pause retains readings. Pose replay hides live readings and overlays until the
+Pause refreshes the final readings, including a short worker update after the last regular sample. Running readings remain sampled every 100 ms of simulated time. Pose replay hides live readings and overlays until the
 view returns to the current simulation. Measurements never drive the model or
 change physics state, timesteps, solver settings or dependency versions.
 
 The implementation observes the existing Jolt simulation. No additional
 mechanism solver or third-party teaching library is required.
+
+
+Model mass counts physical assemblies once, including both mass shares of a
+split motor. Drawn-only decoration without a physical body contributes no mass.
+The total is configured simulation mass, distinct from any solver mass floor.
+
+Large assemblies use compact target identities without increasing the saved
+field-size limit. Existing project files with the earlier joint or rope identity
+format remain readable; changing the target assembly still makes a reading
+unavailable rather than silently selecting a different target.

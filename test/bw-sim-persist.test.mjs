@@ -19,10 +19,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import JSZip from 'jszip';
 import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
-import {catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
+import {catalogFrom, prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {
     SIM_LAB_STORAGE_KEY, simLabRecord, simLabRecordFromText, readSimLabStorage, isStorableName
 } from '../overlay/scratch-gui/src/lib/bw-sim/model/sim-lab-persist.js';
+
+import {jointBinding} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js';
 
 const bundle = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
 
@@ -209,6 +211,24 @@ test('fields a newer writer adds are dropped; the known ones keep a fixed order'
 
 test('custom live measurements survive the actual project bundle save/load boundary', async () => {
     const measurements = [{id: 'span', kind: 'distance', label: 'Axle span', targets: ['leftWheel', 'rightWheel'], visible: true}];
+    const record = simLabRecordFromText(DRIVING_BASE, {measurements});
+    const saved = await save({[SIM_LAB_STORAGE_KEY]: JSON.stringify(record)});
+    const {result, after} = await open(saved.bytes, {});
+    assert.equal(result.outcome, 'loaded');
+    assert.deepEqual(readSimLabStorage(after[SIM_LAB_STORAGE_KEY]).record.measurements, measurements);
+});
+
+
+test('old and compact joint bindings plus model mass round-trip unchanged through the real project bundle', async () => {
+    const {mechanism} = prepareModel(DRIVING_BASE, CATALOG);
+    const joint = mechanism.joints.find(j => j.type === 'hinge');
+    const legacy = JSON.stringify([joint.type, ...[joint.body1, joint.body2].map(id =>
+        mechanism.bodies.find(b => b.id === id)?.parts?.slice().sort() || [id])]);
+    const measurements = [
+        {id: 'old', kind: 'jointAngle', label: 'Existing angle', joint: joint.id, binding: legacy, visible: false},
+        {id: 'new', kind: 'jointAngle', label: 'Compact angle', joint: joint.id, binding: jointBinding(mechanism, joint), visible: true},
+        {id: 'total', kind: 'modelMass', label: 'Complete model', visible: true}
+    ];
     const record = simLabRecordFromText(DRIVING_BASE, {measurements});
     const saved = await save({[SIM_LAB_STORAGE_KEY]: JSON.stringify(record)});
     const {result, after} = await open(saved.bytes, {});
