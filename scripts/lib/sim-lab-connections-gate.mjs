@@ -278,14 +278,29 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         await controls.getByRole('button', {name: /^(Connect|Verbinden)$/}).click();
         await connected(page);
         const serial = await page.evaluate(async () => {
-            const ports = await navigator.serial.getPorts();
-            return ports.filter(port => port.session).map(port => ({baudRate: port.openOptions.baudRate}));
+            const ports = (await navigator.serial.getPorts()).filter(port => port.session);
+            window.__bwDisconnectedSerialPort = ports.length === 1 ? ports[0] : null;
+            return ports.map(port => ({baudRate: port.openOptions.baudRate}));
         });
         assert.deepEqual(serial, [{baudRate: 115200}], 'actual EV3 backend opened the selected virtual serial port');
         await controls.getByRole('button', {name: /^(Disconnect|Trennen)$/}).click();
         await page.waitForFunction(() => window.__bwSimLab.status === 'paused' &&
             window.__bwSimLab._pane.state.connection.status === 'idle');
+        await page.waitForFunction(() => {
+            const port = window.__bwDisconnectedSerialPort;
+            return port && port.session === null && port.readable === null && port.writable === null;
+        });
         assert.equal(await page.evaluate(async () => (await navigator.serial.getPorts()).every(port => !port.session)), true);
+        assert.equal(await page.evaluate(() => window.__bwConnectionControl.flags), 1);
+        // Close the pane with an active serial session as well as held input.
+        await controls.getByRole('button', {name: /^(Connect|Verbinden)$/}).click();
+        await connected(page);
+        const closingSerial = await page.evaluate(async () => {
+            const ports = (await navigator.serial.getPorts()).filter(port => port.session);
+            window.__bwCloseSerialPort = ports.length === 1 ? ports[0] : null;
+            return ports.map(port => ({baudRate: port.openOptions.baudRate}));
+        });
+        assert.deepEqual(closingSerial, [{baudRate: 115200}]);
         assert.equal(await page.evaluate(() => window.__bwConnectionControl.flags), 1);
         const held = page.getByTestId('bw-sim-lab-brick-buttons').locator('button[data-button="enter"]').first();
         await held.focus();
@@ -294,7 +309,18 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         await page.evaluate(() => {
             window.__bwUnmountedInputHub = window.__bwSimLab._pane.session.hubs.find(record => record.profile === 'ev3').hub;
         });
-        await page.locator('[title="Scratch Stage"], [title="Scratch-Bühne"]').click();
+        // Invoke the actual Stage control without a pointer-induced blur that
+        // would release Enter before pane unmount gets a chance to clean up.
+        const closing = await page.locator('[title="Scratch Stage"], [title="Scratch-Bühne"]').evaluate(element => {
+            const before = {
+                focused: Boolean(document.activeElement?.matches('[data-testid="bw-sim-lab-brick-buttons"] button[data-button="enter"]')),
+                held: window.__bwUnmountedInputHub.button(2),
+                serialOpen: Boolean(window.__bwCloseSerialPort?.session)
+            };
+            element.click();
+            return before;
+        });
+        assert.deepEqual(closing, {focused: true, held: true, serialOpen: true});
         await page.waitForFunction(() => !window.__bwSimLab);
         await page.keyboard.up('Enter');
         // Pane closure is synchronous; its real provider drain may finish
@@ -311,11 +337,14 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
             const after = Object.getOwnPropertyDescriptor(navigator, 'serial');
             const sameSerial = !before.serial && !after || Boolean(before.serial && after &&
                 ['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every(key => before.serial[key] === after[key]));
+            const port = window.__bwCloseSerialPort;
             return {fetch: window.fetch === before.fetch, socket: window.WebSocket === before.socket, serial: sameSerial,
+                serialClosed: Boolean(port && port.session === null && port.readable === null && port.writable === null),
                 held: window.__bwUnmountedInputHub.button(2), disposed: window.__bwConnectionControl.pane.disposed,
                 clock: Boolean(window.__bwConnectionControl.pane.clock?.installed), api: Boolean(window.__bwConnectionControl.vm.runtime.robotLab)};
         });
-        assert.deepEqual(closed, {fetch: true, socket: true, serial: true, held: false, disposed: true, clock: false, api: false});
+        assert.deepEqual(closed, {fetch: true, socket: true, serial: true, serialClosed: true,
+            held: false, disposed: true, clock: false, api: false});
         out.closed = closed;
         return out;
     } catch (error) {
