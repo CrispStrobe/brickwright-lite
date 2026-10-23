@@ -24,7 +24,7 @@ jobs:
       GIT_CONFIG_VALUE_0: '0'
       GIT_CONFIG_KEY_1: maintenance.auto
       GIT_CONFIG_VALUE_1: 'false'
-      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}/model-webkit
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.model-webkit
     steps:
       - name: Checkout exact comparison source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262

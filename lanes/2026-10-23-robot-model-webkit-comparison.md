@@ -39,8 +39,12 @@ binding, one bounded actual hosted comparison, affected qualification and all
 enabled exact-head checks. Use a normal matched-head merge and verify predicted
 and landed trees and parents. No release, hardware or physical-accuracy claim.
 
-Prepared admission/refusal controls: seven passing tests and three detected
+Prepared admission/refusal controls: eight passing tests and three detected
 source mutations. The existing CI-step census six groups pass, with this
 workflow registered at zero observations and no execution credit. Actual
 hosted comparison and every enabled exact-head gate remain required before
 landing; the original local WebKit failures remain unresolved evidence.
+
+Initial source workflow parsing refused the job-level runner context before
+any job or artifact acquisition. The cache now uses the allowed workspace
+context, with a regression rejecting runner-only context at job-env scope.

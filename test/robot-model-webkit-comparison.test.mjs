@@ -2,6 +2,7 @@
 // Copyright (c) 2026 CrispStrobe
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import {FROZEN,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
 const fixture=()=>({head:FROZEN.reviewedHeadSha,tree:FROZEN.treeSha,metadata:{job:{id:FROZEN.jobId},artifact:{id:FROZEN.artifactId,size_in_bytes:FROZEN.archiveBytes,digest:FROZEN.archiveDigest}}});
 test('comparison admits only the reviewed whole tree and frozen existing artifact',()=>{
@@ -49,4 +50,16 @@ test('observer errors remain bounded and distinct from the actual journey result
     assert.deepEqual(comparisonOutcome(1,[]),{journeyExit:1,status:'FAIL',observerErrors:[]});
     assert.deepEqual(comparisonOutcome(0,errors),{journeyExit:0,status:'UNQUALIFIED_OBSERVER_ERROR',observerErrors:errors});
     assert.equal(comparisonOutcome(1,errors).journeyExit,1);
+});
+
+test('job-level environment uses contexts available before runner assignment',()=>{
+    const text=readFileSync(new URL('../.github/workflows/robot-model-webkit-comparison.yml',import.meta.url),'utf8');
+    const admit=text=>{
+        const environment=text.match(/^    env:\n([\s\S]*?)^    steps:/m)?.[1];
+        assert.ok(environment,'Explicit job environment');
+        for(const expression of environment.matchAll(/\$\{\{\s*([A-Za-z_]\w*)\./g))
+            assert.ok(['github','needs','strategy','matrix','vars','secrets','inputs'].includes(expression[1]),'Context available to jobs.<job_id>.env');
+    };
+    admit(text);
+    assert.throws(()=>admit(text.replace('github.workspace','runner.temp')),/Context available/);
 });
