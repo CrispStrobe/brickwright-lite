@@ -42,10 +42,18 @@ export async function intakeRoundtrip(page,opts,id,judge){
   await reopened.waitForFunction(()=>{
    const p=window.__bwSimLab._pane;return p.session.time>1000&&!p.props.vm.runtime.threads.some(t=>t.status!==4);
   },null,{timeout:opts.timeout});
+  // Completion alone does not observe passive support after the motors stop.
+  // Keep the ordinary simulation advancing for the declared hold interval.
+  await reopened.waitForFunction(()=>{
+   const r=window.__bwIntakeReopened;
+   return Number.isFinite(r.finishedAt)&&r.track.at(-1)?.t-r.finishedAt>=1000;
+  },null,{timeout:opts.timeout});
   await reopened.evaluate(()=>window.__bwCaptureIntakeReopened());
   const r=await reopened.evaluate(()=>window.__bwIntakeReopened);
   writeFileSync(resolve(opts.shotsDir,id+'-reopened-track.json'),JSON.stringify(r));judge(id,r);
   assert.deepEqual(errors,[]);
+  // Capture the accepted final state after the full hold has been recorded.
+  if(await reopened.evaluate(()=>window.__bwSimLab.status==='running'))await reopened.getByTestId('bw-sim-lab-pause').click();
   await reopened.screenshot({path:resolve(opts.shotsDir,id+'-reopened.png')});
   console.log(`PASS ${id}: raw LDR/MPD, actual project save, fresh-context reopen and complete saved program`);
  }finally{await reopened.close();}
