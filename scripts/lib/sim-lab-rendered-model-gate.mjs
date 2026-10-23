@@ -19,6 +19,9 @@ export const renderedModelPixels = (page,png,box) => page.evaluate(async ({encod
 },{encoded:png.toString('base64'),box});
 
 export async function captureRenderedModel(page,path){
+ // Playwright waits for page fonts before capturing. Give that prerequisite
+ // its own bounded wait, so its latency cannot consume the WebGL paint budget.
+ await page.waitForFunction(()=>document.fonts.status==='loaded',null,{timeout:30000});
  const started=Date.now(),budgetMs=5000,attempts=[],stem=path.replace(/\.png$/,'');
  for(let attempt=1;;attempt++){
   const box=await page.getByTestId('bw-sim-lab-3d-canvas').boundingBox();assert.ok(box,'visible model canvas');
