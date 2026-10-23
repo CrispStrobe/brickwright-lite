@@ -18,8 +18,8 @@ The mechanical repair uses 447 real placements, shorter rails and spines,
 relocated crossbars, individual Technic feet and correctly engaged foundation
 studs. Ordinary and serialized strict native programs complete all fifteen
 input cells with every pin hinge retained, zero imported resistance and normal
-authored collision rules. The actual passive geometric mean error is below
-0.025 mm; observed base tilt is below 0.016 degrees and translation below
+authored collision rules. In the ordinary native run the actual passive
+geometric mean error is below 0.025 mm, base tilt below 0.016 degrees and translation below
 0.22 mm. A translated-machine negative control is rejected independently of
 relative geometry. All eight full-library construction checks pass.
 
