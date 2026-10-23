@@ -83,3 +83,15 @@ plus focused pin and real-extension transport controls. Other pins and the
 global bundle baseline remain fixed. Supplier review requirements remain in
 force; downstream pin movement follows qualified supplier merge. Keep existing
 owners and all original failures. No unrelated extension or vocabulary changes.
+
+## Existing radio button input
+
+The LWP3 Button property and WeDo Button characteristic currently always return
+unpressed. Within the same two radio-hub files, add owned input state behind
+those existing reads and their existing notification subscriptions, a strict
+single-button press/read capability, and worker state export/import. Default
+unpressed bytes and every unrelated command stay unchanged. Qualify real
+extension property/characteristic traffic, press/release and unsupported-input
+controls, notification ownership and worker replay. This models readable input;
+it does not model physical power, pairing or firmware button-event phases.
+Keep these source edits behind this amendment's merge as well.
