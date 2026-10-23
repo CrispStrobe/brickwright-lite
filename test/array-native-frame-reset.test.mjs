@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {writeFileSync} from 'node:fs';
 import Creator from '../packages/scratch-gui/src/lib/sb3-creator-register-art.js';
 import {arcadeToPseudocode} from '../packages/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectJsonToArcade} from '../packages/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -14,24 +15,53 @@ function checkedCode(creator,project=creator.project){
  const code=creator.decompile(project);assert.equal(typeof code,'string');assert.match(code,/DEVICE ARCADE/);
  assert.doesNotMatch(code,/^\s*# unsupported:/m,'Code feedback cannot silently erase an unsupported block');return code;
 }
+// Artwork remains associated with the exact serialized project, rather
+// than a visible sprite name or an asset ID shared by another fixture.
+const projectArtwork=new Map();
+function svgProvider(creator){
+ const assets=new Map([...creator.assets].filter(([,asset])=>asset.type==='svg'&&typeof asset.data==='string').map(([id,asset])=>[id,asset.data]));
+ return (_target,costume)=>assets.get(costume.assetId)??null;
+}
+function rememberArtwork(creator){projectArtwork.set(JSON.stringify(creator.project),svgProvider(creator));return creator;}
+function applyArtwork(creator,costumes){
+ for(const costume of costumes||[]){
+  assert.equal(typeof costume.sprite,'string');assert.equal(typeof costume.svg,'string');
+  const added=costume.mode==='add';
+  assert.equal(added?creator.addCustomSVGCostume(costume.sprite,costume.svg,costume.name):creator.applyCustomSVG(costume.sprite,costume.svg),true,'real imported artwork target');
+  const target=creator.project.targets.find(t=>!t.isStage&&t.name===costume.sprite);assert.ok(target);
+  if(!added&&costume.name)target.costumes[0].name=String(costume.name);
+  const installed=added?target.costumes.at(-1):target.costumes[0];
+  assert.equal(creator.assets.get(installed.assetId)?.data,costume.svg,'exact imported SVG bytes');
+ }
+ return creator;
+}
+function carryArtwork(previous,next){
+ const costumes=[];
+ for(const target of previous.project.targets.filter(t=>!t.isStage))for(const [index,costume]of target.costumes.entries()){
+  const asset=previous.assets.get(costume.assetId);
+  assert.ok(asset&&asset.type==='svg'&&typeof asset.data==='string','real previous Creator artwork');
+  costumes.push({sprite:target.name,name:costume.name,svg:asset.data,mode:index?'add':'replace'});
+ }
+ return rememberArtwork(applyArtwork(next,costumes));
+}
 function imported(files){
  const translated=arcadeToPseudocode(files);clean(translated);
- const creator=new Creator();creator.parse(translated.code);clean(creator);
+ const creator=new Creator();creator.parse(translated.code);clean(creator);applyArtwork(creator,translated.costumes);
  // The GUI's original export/reimport precedes its final From blocks ->
  // Code -> To blocks feedback. The real export emits local declarations;
  // their actual initializers must return through the public source importer.
- const exported=projectJsonToArcade(JSON.stringify(creator.project));clean(exported);
+ const exported=projectJsonToArcade(JSON.stringify(creator.project),{costumeSvg:svgProvider(creator)});clean(exported);
  assert.ok(exported.files&&typeof exported.files==='object'&&!Array.isArray(exported.files));
  assert.equal(typeof exported.files['main.ts'],'string');assert.ok(exported.files['main.ts'].length);
  for(const value of Object.values(exported.files))assert.equal(typeof value,'string');
  const reimported=arcadeToPseudocode(exported.files);clean(reimported);
  assert.doesNotMatch(reimported.code,/^\s*# unsupported:/m);
- const blocks=new Creator();blocks.parse(reimported.code);clean(blocks);
+ const blocks=new Creator();blocks.parse(reimported.code);clean(blocks);applyArtwork(blocks,reimported.costumes);
  const savedProject=JSON.parse(JSON.stringify(blocks.project));
  const code=new Creator().decompile(savedProject);
  assert.equal(typeof code,'string');assert.match(code,/DEVICE ARCADE/);
  assert.doesNotMatch(code,/^\s*# unsupported:/m);
- const feedback=new Creator();feedback.parse(code);clean(feedback);return feedback;
+ const feedback=new Creator();feedback.parse(code);clean(feedback);return carryArtwork(blocks,feedback);
 }
 const fullFiles=()=>numericAuthoringFiles({maximum:12,operation:'max',message:'PLAY'});
 function prefixFiles(prefix){const files=fullFiles();files['main.ts']=prefix+`
@@ -40,12 +70,23 @@ let saved = bwStringArraySettings.read("bw-owned-numeric-gui")[1]
 let pressed = 0
 controller.A.onEvent(ControllerButtonEvent.Pressed, function () { pressed += 1 })
 `;return files;}
+let failureSerial=0;
 const sourceProjects=new Map(),positiveInputs=new Set(),cleanExports=new Set();
 function fixture(files=fullFiles()){const key=JSON.stringify(files);if(!sourceProjects.has(key))sourceProjects.set(key,JSON.stringify(imported(files).project));return JSON.parse(sourceProjects.get(key));}
 function consumers(project){const found=rows(project).filter(({node})=>['arrays_mutateReference','arrays_referenceItem'].includes(node.opcode));assert.ok(found.some(r=>r.node.opcode==='arrays_mutateReference'));assert.ok(found.some(r=>r.node.opcode==='arrays_referenceItem'));return found;}
 function selected(project){const found=consumers(project).filter(({target,node})=>node.opcode==='arrays_mutateReference'&&literal(target,node,'VALUE')==='Ä');assert.equal(found.length,1,'real first Unicode Array push');return found[0];}
 function binding(project){const push=selected(project),read=push.target.blocks[push.node.inputs.ARRAY[1]];assert.equal(read?.opcode,'arcade_getLocal');const name=literal(push.target,read,'NAME');assert.equal(typeof name,'string');const stores=rows(project).filter(({target,node})=>target===push.target&&node.opcode==='arcade_setLocal'&&literal(target,node,'NAME')===name);assert.equal(stores.length,2,'actual entry reset and direct fresh overwrite');const reset=stores.find(({target,node})=>target.blocks[node.inputs.VALUE[1]]?.opcode==='arrays_specialValue');const overwrite=stores.find(({target,node})=>target.blocks[node.inputs.VALUE[1]]?.opcode==='arrays_createReference');assert.ok(reset);assert.ok(overwrite);assert.equal(reset.target.blocks[reset.node.inputs.VALUE[1]].fields.KIND[0],'null');return {target:push.target,push,read,name,reset,overwrite};}
-function accepted(draft,{exportClean=true}={}){const project=createProjectJsonSnapshot(JSON.stringify(draft));assert.equal(isProjectJsonSnapshot(project),true);binding(project);const proof=createArrayReferenceExportAuthority(project);for(const {target,node}of consumers(project))assert.equal(proof.validateInput(target,node).ok,true,node.opcode);const input=JSON.stringify(draft);if(exportClean&&!cleanExports.has(input)){clean(projectJsonToArcade(input));cleanExports.add(input);}positiveInputs.add(input);return {project,proof,push:selected(project)};}
+function accepted(draft,{exportClean=true}={}){const project=createProjectJsonSnapshot(JSON.stringify(draft));assert.equal(isProjectJsonSnapshot(project),true);binding(project);const proof=createArrayReferenceExportAuthority(project);for(const {target,id,node}of consumers(project)){
+ const decision=proof.validateInput(target,node);
+ // Optional failure-only source evidence; retain the original evaluated result
+ // without another producer query or any graph/asset normalization.
+ if(!decision.ok&&process.env.BW_NATIVE_FRAME_FAILURE_DIR){
+  try{writeFileSync(`${process.env.BW_NATIVE_FRAME_FAILURE_DIR}/frame-failure-${failureSerial++}.json`,
+   JSON.stringify({target:target.name,id,opcode:node.opcode,decision,project},null,2),{flag:'wx',mode:0o600});}
+  catch(_){console.warn('Native frame failure capture unavailable');}
+ }
+ assert.equal(decision.ok,true,node.opcode);
+ }const input=JSON.stringify(draft);if(exportClean&&!cleanExports.has(input)){const costumeSvg=projectArtwork.get(input);assert.equal(typeof costumeSvg,'function','artwork bound to this exact project');clean(projectJsonToArcade(input,{costumeSvg}));cleanExports.add(input);}positiveInputs.add(input);return {project,proof,push:selected(project)};}
 function refused(edit,files=fullFiles()){const draft=fixture(files);if(!positiveInputs.has(JSON.stringify(draft)))accepted(draft,{exportClean:false});const before=consumers(draft).map(r=>r.id),id=selected(draft).id;edit(draft,binding(draft));const owned=createProjectJsonSnapshot(JSON.stringify(draft));assert.deepEqual(consumers(owned).map(r=>r.id),before,'edits retain original actual Array consumers');const push=selected(owned);assert.equal(push.id,id);assert.equal(createArrayReferenceExportAuthority(owned).validateInput(push.target,push.node).ok,false,'fresh graph preserves reset obligation');return owned;}
 function insertBefore(row,newID,node){const {target,id}=row;assert.equal(Object.hasOwn(target.blocks,newID),false);const parents=Object.entries(target.blocks).filter(([,n])=>n.next===id);assert.equal(parents.length,1,'unique sequential predecessor');const [parentID,parent]=parents[0];parent.next=newID;target.blocks[newID]={...node,parent:parentID,next:id,shadow:false,topLevel:false};row.node.parent=newID;}
 const sprite='let hero = sprites.create(img`22\n22`, SpriteKind.Player)\nhero.setPosition(40, 60)';
@@ -67,7 +108,7 @@ test('each audited prefix and their composition keep an independent entry reset 
 
 test('alpha-renamed source bindings and genuine Code decompile/reparse keep the complete proof',()=>{
  const files=fullFiles();files['main.ts']=files['main.ts'].replace(/\bhero\b/g,'actor').replace(/\bcount\b/g,'ticks').replace(/\bpressed\b/g,'presses');const creator=imported(files);accepted(creator.project);
- const again=new Creator();again.parse(checkedCode(creator));clean(again);accepted(again.project);
+ const again=new Creator();again.parse(checkedCode(creator));clean(again);carryArtwork(creator,again);accepted(again.project);
 });
 
 test('a later capture is allowed, but the same genuine registration moved before overwrite is not',()=>{
