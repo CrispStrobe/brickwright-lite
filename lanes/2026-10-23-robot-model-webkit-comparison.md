@@ -1,6 +1,6 @@
 # Bounded Robot Lab WebKit environment comparison
 
-CLAIMED — qualification-only follow-on to the published model repair #1281.
+DONE (source prepared; qualification pending) — qualification-only follow-on to the published model repair #1281.
 Codex, owner-authorized continuation, 2026-10-23. Isolated branch
 `lane/robot-model-webkit-comparison-20261023`; base
 `75f37012e9f47bdb803227fae1575b7f7eeff703`.
@@ -38,3 +38,9 @@ Before landing: merged claim, focused admission/refusal controls and source
 binding, one bounded actual hosted comparison, affected qualification and all
 enabled exact-head checks. Use a normal matched-head merge and verify predicted
 and landed trees and parents. No release, hardware or physical-accuracy claim.
+
+Prepared admission/refusal controls: seven passing tests and three detected
+source mutations. The existing CI-step census six groups pass, with this
+workflow registered at zero observations and no execution credit. Actual
+hosted comparison and every enabled exact-head gate remain required before
+landing; the original local WebKit failures remain unresolved evidence.

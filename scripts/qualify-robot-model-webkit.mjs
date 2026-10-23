@@ -1,0 +1,172 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 CrispStrobe
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {createRequire} from 'node:module';
+import {readFile,writeFile,mkdir,appendFile,readdir,statfs} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+import {execFileSync,spawn} from 'node:child_process';
+import {resolve,dirname,join} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import os from 'node:os';
+
+export const FROZEN = Object.freeze({repository:'CrispStrobe/brickwright-lite',runId:39951811631,attempt:1,
+    runHeadSha:'d0efff3ea00688f2d2255bcaf6ed21b86d188991',reviewedHeadSha:'d0efff3ea00688f2d2255bcaf6ed21b86d188991',
+    checkoutSha:'a2bb91030a7a1c916f27541f446703a960ab2295',treeSha:'d5bd42ee8877d63958cd7e7ed027dc4fe3eb9319',
+    jobId:120418264040,artifactId:12502944200,archiveBytes:117527507,
+    archiveDigest:'sha256:bf950f37db40fe9a53e2e7f976560ac016105b93047a0bf5731e0a8f62953c72',
+    producerSha:'37bfe28760f60c836097854fb141fd114bbee518',arraysValuesSha:'4db2813d366af8a110fc79599afb55d1cd42d8df'});
+const sha = b=>createHash('sha256').update(b).digest('hex');
+const git = (root,...args)=>execFileSync('git',['-c','gc.auto=0','-c','maintenance.auto=false',...args],{cwd:root,encoding:'utf8'}).trim();
+export function admitComparisonSource({head,tree,metadata}) {
+    assert.equal(head,FROZEN.reviewedHeadSha,'Exact reviewed candidate');
+    assert.equal(tree,FROZEN.treeSha,'Complete candidate/producer tree equality');
+    assert.equal(metadata.job.id,FROZEN.jobId,'Exact retained producer');
+    assert.equal(metadata.artifact.id,FROZEN.artifactId,'Exact existing artifact');
+    assert.equal(metadata.artifact.size_in_bytes,FROZEN.archiveBytes,'Frozen original archive length');
+    assert.equal(metadata.artifact.digest,FROZEN.archiveDigest,'Frozen original archive digest');
+    return {...FROZEN};
+}
+export function boundedComparisonFetch(fetchImpl=fetch,{onArchiveBytes=()=>{}}={}) {
+    let calls=0;
+    return async (url,options={})=>{
+        assert.ok(++calls<=20,'Bounded metadata/archive request count');
+        const u=new URL(url),api=u.hostname==='api.github.com';
+        assert.equal(u.protocol,'https:');assert.equal(u.username+u.password,'');assert.equal(u.port,'');
+        assert.ok(api||/(?:\.blob\.core\.windows\.net|\.actions\.githubusercontent\.com|\.githubusercontent\.com)$/.test(u.hostname),'Admitted GitHub artifact host');
+        const response=await fetchImpl(url,{...options,signal:AbortSignal.timeout(90000)});
+        if(response.status===302){await response.body?.cancel();return {status:response.status,headers:response.headers};}
+        const limit=api?4*1024*1024:FROZEN.archiveBytes;
+        const length=response.headers.get('content-length');
+        try{if(length!==null){assert.match(length,/^[0-9]+$/);assert.ok(Number(length)<=limit,'Declared response bound before buffering');}}
+        catch(error){await response.body?.cancel();throw error;}
+        let cached;
+        const bytes=async()=>{
+            if(cached)return cached;
+            assert.ok(response.body,'Response stream required');const reader=response.body.getReader(),chunks=[];let total=0;
+            try{for(;;){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;
+                assert.ok(total<=limit,'Actual response bound before buffering');chunks.push(Buffer.from(value));}}
+            catch(error){await reader.cancel().catch(()=>{});throw error;}
+            cached=Buffer.concat(chunks,total);if(!api)onArchiveBytes(cached);return cached;
+        };
+        return {status:response.status,headers:response.headers,json:async()=>JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(await bytes())),arrayBuffer:bytes};
+    };
+}
+export async function observeSafely(collect,reportError) {
+    try{await collect();}
+    catch(error){try{await reportError(String(error).slice(0,1024));}catch{process.stderr.write('WEBKIT_OBSERVER_ERROR_RECORD_UNAVAILABLE\n');}}
+}
+export function comparisonOutcome(journeyExit,observerErrors) {
+    return observerErrors.length?{journeyExit,status:'UNQUALIFIED_OBSERVER_ERROR',observerErrors}: {journeyExit,status:journeyExit===0?'PASS':'FAIL',observerErrors:[]};
+}
+
+async function installReadonlyObserver() {
+    const root=process.env.BW_MODEL_WEBKIT_CANDIDATE,out=process.env.BW_MODEL_WEBKIT_OUTPUT;
+    assert.ok(root&&out,'Recorded observer output and candidate required');
+    const {webkit}=createRequire(join(root,'package.json'))('playwright'),launch=webkit.launch;
+    const record=value=>appendFile(join(out,'readonly-browser-observations.jsonl'),JSON.stringify({wallUTC:new Date().toISOString(),...value})+'\n');
+    const reportError=async message=>{
+        process.stderr.write('WEBKIT_OBSERVER_ERROR '+message+'\n');
+        await appendFile(join(out,'observer-errors.jsonl'),JSON.stringify({wallUTC:new Date().toISOString(),message})+'\n');
+    };
+    webkit.launch=async function(...args){
+        await observeSafely(async()=>assert.deepEqual(args,[{headless:true}],'Existing WebKit launch profile remains exact'),reportError);
+        const browser=await launch.apply(this,args);
+        await observeSafely(()=>record({event:'actual-launch',version:browser.version(),arguments:args}),reportError);
+        let busy=false;
+        const timer=setInterval(async()=>{
+            if(busy)return;busy=true;
+            try{await observeSafely(async()=>{for(const context of browser.contexts())for(const page of context.pages()){
+                const data=await page.evaluate(()=>{
+                    const p=window.__bwSimLab?._pane,s=p?.session,r=window.__bwMechanics,rr=window.__bwIntakeReopened;
+                    const variables={};for(const t of p?.props.vm.runtime.targets||[])for(const v of Object.values(t.variables||{}))if(['stage','cycle','completed','done','failed','fault'].includes(v.name))variables[v.name]=v.value;
+                    const canvas=p?.view?.canvas;
+                    return {model:p?.state.modelFile,status:p?.state.status,programLoading:p?.state.programLoading,simMs:s?.time,clockInstalled:p?.clock.installed,
+                        threads:(p?.props.vm.runtime.threads||[]).map(t=>t.status),variables,renderer:{implementation:'THREE.WebGLRenderer from frozen source',gpuDriver:'Unavailable through the existing read-only view API; no context requested'},
+                        viewport:{width:innerWidth,height:innerHeight},canvas:canvas?{width:canvas.width,height:canvas.height}:null,renderStats:p?.view?.renderStats?.(),
+                        mechanics:r?{frames:r.track.length,lastTime:r.track.at(-1)?.t,finishedAt:r.finishedAt}:null,
+                        reopened:rr?{frames:rr.track.length,lastTime:rr.track.at(-1)?.t,finishedAt:rr.finishedAt}:null};
+                }).catch(error=>({readError:String(error).slice(0,512)}));
+                const processes=execFileSync('ps',['-eo','pid,ppid,pcpu,rss,comm'],{encoding:'utf8',timeout:1000,maxBuffer:65536}).split('\n').filter(line=>/WebKit|WPEWeb|MiniBrowser/.test(line));
+                await record({event:'readonly-state',...data,load:os.loadavg(),browserProcesses:processes});
+            }},reportError);}finally{busy=false;}
+        },5000);timer.unref();browser.once('disconnected',()=>clearInterval(timer));return browser;
+    };
+}
+async function main() {
+    assert.equal(process.argv.length,4,'Use candidate-directory and new output-directory');
+    assert.equal(Number(process.versions.node.split('.')[0]),22,'Supported Node 22');
+    const root=resolve(process.argv[2]),out=resolve(process.argv[3]),harness=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+    assert.equal(process.env.GITHUB_REPOSITORY,FROZEN.repository,'Owned repository only');
+    assert.equal(process.env.GITHUB_EVENT_NAME,'pull_request','One automatic source PR qualification');
+    assert.equal(git(harness,'rev-parse','HEAD'),process.env.BW_MODEL_WEBKIT_CONSUMER_HEAD,'Exact consumer head');
+    assert.equal(git(root,'diff','--name-only'),'','Tracked candidate inputs unchanged');
+    assert.equal(git(root,'diff','--cached','--name-only'),'','Candidate index unchanged');
+    const head=git(root,'rev-parse','HEAD'),tree=git(root,'rev-parse','HEAD^{tree}');
+    assert.equal(head,FROZEN.reviewedHeadSha);assert.equal(tree,FROZEN.treeSha);
+    assert.ok(!existsSync(out),'Fresh output preserves old evidence');await mkdir(out,{recursive:false});
+    const save=(name,value)=>writeFile(join(out,name),JSON.stringify(value,null,2)+'\n',{flag:'wx'});
+    const require=createRequire(join(root,'package.json')),playwright=require('playwright');
+    const browserRoot=dirname(playwright.webkit.executablePath()),runtimeFiles={};
+    // Bind both Linux variants; the untouched launcher chooses the supported one.
+    for(const relative of ['pw_run.sh','protocol.json','minibrowser-wpe/bin/MiniBrowser','minibrowser-wpe/bin/WPEWebProcess','minibrowser-gtk/bin/MiniBrowser','minibrowser-gtk/bin/WebKitWebProcess']){
+        const file=join(browserRoot,relative);if(existsSync(file))runtimeFiles[relative]=sha(await readFile(file));
+    }
+    for(const variant of ['minibrowser-wpe','minibrowser-gtk']){
+        const directory=join(browserRoot,variant,'lib');if(!existsSync(directory))continue;
+        for(const entry of await readdir(directory,{withFileTypes:true}))if(entry.isFile()&&/^lib(?:WPEWebKit|webkit2gtk|JavaScriptCore|javascriptcoregtk).*\.so\./.test(entry.name))runtimeFiles[variant+'/lib/'+entry.name]=sha(await readFile(join(directory,entry.name)));
+    }
+    const packageLock=JSON.parse(await readFile(join(root,'package-lock.json'),'utf8'));
+    assert.equal(require('playwright/package.json').version,packageLock.packages['node_modules/playwright'].version,'Exact locked Playwright package');
+    const registryBytes=await readFile(join(dirname(require.resolve('playwright-core/package.json')),'browsers.json'));
+    const webkitRegistry=JSON.parse(registryBytes.toString()).browsers.filter(b=>b.name==='webkit');
+    assert.equal(webkitRegistry.length,1,'One pinned WebKit registry entry');
+    const disk=await statfs(out),cgroups={};
+    for(const name of ['cpu.max','memory.max']){
+        const file='/sys/fs/cgroup/'+name;if(existsSync(file))cgroups[name]=(await readFile(file,'utf8')).trim();
+    }
+    await save('environment.json',{consumerHead:git(harness,'rev-parse','HEAD'),consumerTree:git(harness,'rev-parse','HEAD^{tree}'),candidateHead:head,candidateTree:tree,
+        imageOS:process.env.ImageOS,imageVersion:process.env.ImageVersion,node:process.version,nodeExecutableSha256:sha(await readFile(process.execPath)),
+        playwright:require('playwright/package.json').version,webkitRegistry,browserRegistrySha256:sha(registryBytes),runtimeFiles,
+        platform:os.platform(),release:os.release(),cpus:os.cpus().map(c=>({model:c.model,speed:c.speed})),totalMemory:os.totalmem(),freeMemory:os.freemem(),load:os.loadavg(),
+        cgroups,diskAvailableBytes:disk.bavail*disk.bsize,qualificationScope:'Supported-environment qualification of the official source-identical build; compiled-byte equality to the local build is unproven, with no environment-causation, cold-cache, performance, hardware or physical-accuracy claim',frozen:FROZEN});
+    const helper=await import(pathToFileURL(join(root,'scripts/lib/official-gui-artifact.mjs')));
+    let originalBytes;
+    const fetchImpl=boundedComparisonFetch(fetch,{onArchiveBytes:bytes=>{originalBytes=bytes;}}),metadata=await helper.fetchGuiArtifactMetadata({...FROZEN,token:process.env.GITHUB_TOKEN,fetchImpl});
+    await save('original-metadata.json',metadata);
+    const expected=admitComparisonSource({head,tree,metadata}),admission=helper.admitGuiArtifactMetadata(metadata,expected);
+    await save('admission.json',admission);
+    const archivePath=join(out,'official-frontend.zip');
+    await save('original-acquisition-reservation.json',{owner:process.env.GITHUB_RUN_ID,admission,archivePath:'official-frontend.zip'});
+    let bytes;
+    try{bytes=await helper.acquireGuiArchive({admission,archivePath,token:process.env.GITHUB_TOKEN,fetchImpl});}
+    catch(error){
+        if(originalBytes&&!existsSync(archivePath))await writeFile(join(out,'rejected-original-frontend.zip'),originalBytes,{flag:'wx'});
+        await save('original-acquisition-failure.json',{message:String(error),retainedCompleteResponse:Boolean(originalBytes)});throw error;
+    }
+    const inspected=await helper.inspectGuiArchive(bytes,admission,expected),site=join(out,'site');
+    await helper.extractAdmittedGui(inspected,site);await save('frontend-receipt.json',inspected.receipt);
+    await save('original-build-stamp.json',JSON.parse(inspected.members.get('brickwright-build.json').toString('utf8')));
+    await save('compiled-build-scope.json',{sourceTreeEqualToReviewedCandidate:true,localCompiledByteEquality:'Not established; compare full retained inventories independently',
+        officialProducerBuild:{NODE_ENV:'production',BW_ENABLE_FPGA:'1',NODE_OPTIONS:'--max-old-space-size=2560',synthesisEndpointConfigured:true},
+        localOriginalBuild:{command:'npm run build:gui',CI:'1',BW_ENABLE_FPGA:'unset'},
+        retainedProducerLogSha256:'498fe04f09e07374b48cf9328a58faf809351d024d1c5ca4ea58f424ab82b52f',
+        interpretation:'A pass qualifies this immutable official build and environment; it cannot alone prove the cause of the original local failure.'});
+    const sourcePaths=['scripts/verify-sim-lab-browser.mjs','scripts/lib/sim-lab-mechanics-gate.mjs','scripts/lib/sim-lab-new-models-gate.mjs','scripts/lib/sim-lab-intake-roundtrip.mjs'];
+    await save('actual-source-controls.json',Object.fromEntries(await Promise.all(sourcePaths.map(async p=>[p,sha(await readFile(join(root,p)))]))));
+    const env={...process.env,BW_BUILD:site,BW_SIMLAB_BROWSER:'webkit',SIM_DEBUG:'1',BW_MODEL_WEBKIT_OBSERVE:'1',BW_MODEL_WEBKIT_CANDIDATE:root,BW_MODEL_WEBKIT_OUTPUT:out};
+    for(const key of ['BW_GUI_SCOPE_LOG','BW_INTEGRATED_ROOT','GITHUB_TOKEN','GH_TOKEN','ACTIONS_RUNTIME_TOKEN','ACTIONS_ID_TOKEN_REQUEST_TOKEN'])delete env[key];
+    const command=[process.execPath,'--import',fileURLToPath(import.meta.url),'scripts/verify-sim-lab-browser.mjs','--part=examples','--examples=sine-shuttle,quartermaster'];
+    await save('actual-command.json',{node:process.version,preload:'scripts/qualify-robot-model-webkit.mjs',script:'scripts/verify-sim-lab-browser.mjs',args:command.slice(4),unchangedOracles:true,newBuild:false});
+    assert.ok(!existsSync(join(root,'artifacts/sim-lab')),'Fresh browser outputs cannot inherit earlier evidence');
+    const child=spawn(command[0],command.slice(1),{cwd:root,env,stdio:'inherit'});
+    const code=await new Promise((done,reject)=>{child.once('error',reject);child.once('exit',c=>done(c??1));});
+    assert.equal(git(root,'rev-parse','HEAD'),head);assert.equal(git(root,'diff','--name-only'),'');
+    const errorFile=join(out,'observer-errors.jsonl'),observerErrors=existsSync(errorFile)?(await readFile(errorFile,'utf8')).trim().split('\n').filter(Boolean).map(line=>JSON.parse(line)):[];
+    const outcome=comparisonOutcome(code,observerErrors);
+    await save('comparison-result.json',{...outcome,candidateHead:head,candidateTree:tree,producerCheckout:FROZEN.checkoutSha,frontendArchiveSha256:sha(bytes),
+        originalFailuresPreserved:true,scope:'Unchanged WebKit journey for the official build in this recorded environment; no local compiled-byte-equivalence, environment-causation, full-run, cold-cache or performance admission override'});
+    process.exitCode=outcome.status==='PASS'?0:1;
+}
+if(process.env.BW_MODEL_WEBKIT_OBSERVE==='1')await installReadonlyObserver();
+else if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))await main();

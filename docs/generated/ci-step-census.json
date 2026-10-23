@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-22T23:42:03.756Z",
+  "generatedAt": "2026-10-23T15:56:05.837Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1953,6 +1953,7 @@
     "production-sw-probe.yml",
     "release.yml",
     "robot-lab-own-firmware.yml",
+    "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
@@ -7355,11 +7356,35 @@
         }
       },
       "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
+    },
+    "robot-model-webkit-comparison.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Checkout exact comparison source",
+        "Checkout frozen candidate",
+        "Install frozen Node inputs without package lifecycle scripts",
+        "Admission and resource refusal controls",
+        "Install supported WebKit runtime",
+        "Admit existing frontend and run unchanged WebKit examples",
+        "Preserve comparison originals"
+      ],
+      "inFileInNoRun": [
+        "Checkout exact comparison source",
+        "Checkout frozen candidate",
+        "Install frozen Node inputs without package lifecycle scripts",
+        "Admission and resource refusal controls",
+        "Install supported WebKit runtime",
+        "Admit existing frontend and run unchanged WebKit examples",
+        "Preserve comparison originals"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "robot-lab-own-firmware.yml",
-    "at": "2026-10-22T23:42:03.756Z",
-    "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
+    "workflow": "robot-model-webkit-comparison.yml",
+    "at": "2026-10-23T15:56:05.837Z",
+    "sourceSha": "working-tree"
   }
 }
