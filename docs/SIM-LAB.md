@@ -1,5 +1,11 @@
 # Robot Lab (beta) — LEGO® Technic models with physics
 
+Live physical readings are available in **Simulate → Show → Measurements**:
+model-derived presets and custom distances, angles, assembly masses, speeds and
+supported loads, with optional updating scene overlays. See
+[Live measurements](ROBOT-LAB-MEASUREMENTS.md) for targets, units, saving and
+reading provenance.
+
 The Robot Lab simulates a model built from real LEGO Technic parts and lets a program drive it through the **virtual SPIKE Prime hub**, the same hub the SPIKE arena uses. Scratch blocks, DEVICE SPIKE pseudocode and imported SPIKE 3 programs reach it unchanged: they cannot tell the hub is simulated.
 
 The code and its paths call it **Sim Lab** (`lib/bw-sim/`, `sim-lab-pane.jsx`); the learner sees the **Robot Lab** / **Roboter-Labor** tab.
