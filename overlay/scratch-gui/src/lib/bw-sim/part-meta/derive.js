@@ -1332,6 +1332,25 @@ export const deriveBucketColliders = (desc, verts) => {
     return out;
 };
 
+/** Cross blocks have a round perpendicular axle boss, not a rectangular web.
+ * Keep the pin row and measure the boss from the exposed lower-half mesh.
+ * A box around both regions fills the clear corners used by sliding followers.
+ */
+export const deriveCrossBlockColliders = (desc, verts, connectors) => {
+    if (!/^Technic Cross Block [23] x 2 \(Axle\/(?:Twin|Triple) Pin\)$/i.test(desc)) return null;
+    const axle = connectors.find(c => c.type === 'axlehole');
+    const holes = connectors.filter(c => c.type === 'pinhole');
+    if (!axle || holes.length < 2 || Math.abs(axle.axis[0]) < .999 ||
+        holes.some(c => Math.abs(c.position[1] - 20) > .01)) return null;
+    const exposed = verts.filter(v => v[1] <= 0);
+    if (!exposed.length) return null;
+    const radius = round(Math.max(...exposed.map(v => Math.hypot(v[1], v[2]))), .01);
+    const halfHeight = round(Math.max(...exposed.map(v => Math.abs(v[0]))), .01);
+    const row = fitBox(verts, v => v[1] >= (holes.length === 2 ? 8 : 10));
+    if (!row || !(radius > 0 && halfHeight > 0)) return null;
+    return [row, {shape: 'cylinder', radius, halfHeight, rotation: quatYTo([1, 0, 0])}];
+};
+
 // ---- names, categories --------------------------------------------------------
 
 /** Palette categories (editor/palette.js PALETTE_CATEGORIES) by the LDraw description. */
@@ -1469,6 +1488,8 @@ export const derivePart = (part, read) => {
     }
     const bucket = deriveBucketColliders(desc, found.verts);
     if (bucket) colliders = bucket;
+    const crossBlock = deriveCrossBlockColliders(desc, found.verts, connectors);
+    if (crossBlock) colliders = crossBlock;
     if (!colliders) problems.push('no colliders');
     const volumeLdu = meshVolume(found.tris);
     const massGrams = round(volumeLdu * LDU_CM ** 3 * ABS_DENSITY_G_PER_CM3, 0.01);

@@ -160,66 +160,9 @@ export function judgeEllipsa(r) {
     returnMm
   };
 }
-export function judgeOffsetOrbit(r) {
-  const {
-    o,
-    N,
-    Z,
-    project,
-    j
-  } = frame(r, 'offset-orbit');
-  const s = r.track.map(f => ({
-    t: f.t,
-    C: project(f, o.point(f, 'centre_marker')),
-    input: o.angle(f, 'input_guide_1', N, Z),
-    output: o.angle(f, 'output_shaft_hub', N, Z),
-    middle: o.angle(f, 'centre_marker', N, Z),
-    encoder: f.joints[j.id].angle,
-    gap: o.gap(f),
-    axis: o.axisGap(f)
-  }));
-  const input = unwrap(s.map(p => p.input)),
-    output = unwrap(s.map(p => p.output)),
-    orbit = unwrap(s.map(p => Math.atan2(p.C[1], p.C[0] - 8)));
-  const passiveAxisTilt = max(r.track.map(f => deg(Math.acos(Math.max(-1, Math.min(1, dot(o.vector(f, 'output_shaft_hub', N), N)))))));
-  assert.ok(passiveAxisTilt <= 2, 'passive output axis remains parallel');
-  const phaseError = max(s.map((p, i) => Math.abs(deg(output[i] - input[i])))),
-    markerError = max(s.map(p => norm(sub(p.C, [16 * Math.sin(p.input) ** 2, 16 * Math.sin(p.input) * Math.cos(p.input)])))),
-    radiusError = max(s.map(p => Math.abs(Math.hypot(p.C[0] - 8, p.C[1]) - 8))),
-    spans = [0, 1].map(k => span(s.map(p => p.C[k]))),
-    closure = max(s.map(p => p.gap)),
-    axis = max(s.map(p => p.axis));
-  assert.ok(phaseError <= 2 && markerError <= 1 && radiusError <= 1, JSON.stringify({
-    phaseError,
-    markerError,
-    radiusError
-  }));
-  assert.ok(spans.every(x => x >= 14) && closure <= .8 && axis <= 2, JSON.stringify({
-    spans,
-    closure,
-    axis
-  }));
-  const inputTravel = directions(input),
-    outputTravel = directions(output),
-    orbitTravel = directions(orbit);
-  for (const t of [inputTravel, outputTravel]) assert.ok(t.forward >= 700 && t.reverse >= 700, 'actual shaft turns');
-  assert.ok(orbitTravel.forward >= 1400 && orbitTravel.reverse >= 1400, 'twice-round middle orbit');
-  const encoderError = max(s.map(p => Math.abs(deg(wrap(p.input + p.encoder)))));
-  assert.ok(encoderError <= 1);
-  const returnMm = norm(sub(s.at(-1).C, s[0].C));
-  assert.ok(returnMm <= 1 && Math.abs(deg(s.at(-1).encoder)) <= 1.5);
-  return {
-    passiveAxisTiltDegrees: passiveAxisTilt,
-    phaseErrorDegrees: phaseError,
-    markerErrorMm: markerError,
-    radiusErrorMm: radiusError,
-    spansMm: spans,
-    inputTravel,
-    outputTravel,
-    orbitTravel,
-    hingeGapMm: closure,
-    axisErrorDegrees: axis,
-    returnMm
-  };
-}
+// The delivered Offset Orbit revision (24 mm shafts, a 12 mm centre orbit) is
+// measured by its own judge, which knows the new assembly's bodies.
+import {judgeOffsetOrbit} from './sim-lab-offset-orbit-judge.mjs';
+export {judgeOffsetOrbit};
+
 export const judgeOffsetEllipsa = (id, r) => id === 'ellipsa' ? judgeEllipsa(r) : judgeOffsetOrbit(r);

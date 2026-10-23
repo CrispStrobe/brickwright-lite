@@ -2,7 +2,7 @@
   "version": 1,
   "id": "ripple-relay",
   "language": "de",
-  "what": "Ein Motor dreht drei Wellen mit zwei Kardangelenken. Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer; der richtig ausgerichtete Ausgang dreht wieder gleichmäßig. Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke gleichen die Drehzahlschwankung der Zwischenwelle aus. Vergleiche alle drei Wellen.",
+  "what": "Kardan- / Kreuzgelenke. Ein Motor dreht drei Wellen mit zwei Kardangelenken. Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer; der richtig ausgerichtete Ausgang dreht wieder gleichmäßig. Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke gleichen die Drehzahlschwankung der Zwischenwelle aus. Vergleiche alle drei Wellen.",
   "try": [
     "Wähle Ripple Relay, setze zurück und starte. Vergleiche gelben Eingang, rote Zwischenwelle und blauen Ausgang während drei Vorwärtsdrehungen und Rückkehr.",
     "Vergleiche nach der langsamen Rückkehr jeden Zeiger mit seiner eigenen Startlage. Der Motor hält bei null.",

@@ -16,7 +16,7 @@ for(const m of MODELS){
  if(!p)throw Error(`No authored lesson for ${id}`);
  for(const language of ['en','de']){
   const src=p[language];
-  const data={version:1,id,language,...src,what:src.what+' '+MODEL_LESSONS[m.id||m.file].description[language],formula:typeof p.formula==='object'?p.formula[language]:p.formula,
+  const data={version:1,id,language,...src,what:(MODEL_LESSONS[m.id||m.file].mechanism ? MODEL_LESSONS[m.id||m.file].mechanism[language]+'. ' : '')+src.what+' '+MODEL_LESSONS[m.id||m.file].description[language],formula:typeof p.formula==='object'?p.formula[language]:p.formula,
    related:p.related.filter(k=>keys.has(k)&&k!==(m.id||m.file))};
   const text=JSON.stringify(data,null,2)+'\n',file=new URL(`${id}.${language}.json`,dir);
   if(process.argv.includes('--check')){if(readFileSync(file,'utf8')!==text)throw Error(`Stale lesson ${id}/${language}`);}else writeFileSync(file,text);

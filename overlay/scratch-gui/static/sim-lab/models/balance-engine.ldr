@@ -1,0 +1,660 @@
+0 Balance Engine — regenerated twin-piston shaking-force demonstrator
+0 Name: balance-engine.ldr
+0 Author: CrispStrobe
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE BSD-3-Clause
+0 // Regenerated replacement, not a byte-for-byte recovery of the lost original.
+0 // Two SPIKE medium motors A/B, one hub, passively centred orange carrier.
+0 // Crank radius40 LDU; rod160 LDU; piston stroke80 LDU (32mm).
+0 // Both saved cranks point +X. Run phases0/90/180 with matching encoder signs.
+0 // Standard LDraw part references; all supports and fasteners are physical.
+0 // Mount/guide stack derived from corrected BSD3 Quickstroke by CrispStrobe.
+0 // Two physical 33mm transverse rubber bands prevent free-slider drift.
+0 // BSD 3-Clause License
+0 //
+0 // Copyright (c) 2026, Christian Ströbele (CrispStrobe)
+0 //
+0 // Redistribution and use in source and binary forms, with or without
+0 // modification, are permitted provided that the following conditions are met:
+0 //
+0 // 1. Redistributions of source code must retain the above copyright notice,
+0 //    this list of conditions and the following disclaimer.
+0 //
+0 // 2. Redistributions in binary form must reproduce the above copyright notice,
+0 //    this list of conditions and the following disclaimer in the documentation
+0 //    and/or other materials provided with the distribution.
+0 //
+0 // 3. Neither the name of the copyright holder nor the names of its
+0 //    contributors may be used to endorse or promote products derived from
+0 //    this software without specific prior written permission.
+0 //
+0 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+0 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+0 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+0 // ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+0 // LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+0 // CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+0 // SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+0 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+0 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+0 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+0 // POSSIBILITY OF SUCH DAMAGE.
+0 Fixed base: three-piece longitudinal rails and lapped cross-members
+0 !BW ID base_rail_0_-220
+1 72 0 420 -220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_0_220
+1 72 0 420 220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_middle_0
+1 72 0 440 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_splice_0_-100
+1 0 0 430 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_splice_0_100
+1 0 0 430 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_rail_160_-220
+1 72 160 420 -220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_rail_160_220
+1 72 160 420 220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_middle_160
+1 72 160 440 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_splice_160_-100
+1 0 160 430 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_splice_160_100
+1 0 160 430 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_cross_-340
+1 72 40 440 -340 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_cross_340
+1 72 40 440 340 0 0 1 0 1 0 -1 0 0 32278.dat
+0 STEP
+0 Four fixed guide supports and their perpendicular feet
+0 !BW ID base_post_0_-320
+1 72 0 360 -320 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID base_post_pin_0_-320
+1 0 0 320 -310 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID base_foot_0_-320
+1 72 0 400 -340 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID base_foot_pin_0_-320
+1 1 0 420 -340 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID base_post_160_-320
+1 72 160 360 -320 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID base_post_pin_160_-320
+1 0 160 320 -310 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID base_foot_160_-320
+1 72 160 400 -340 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID base_foot_pin_160_-320
+1 1 160 420 -340 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID base_post_0_320
+1 72 0 360 320 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID base_post_pin_0_320
+1 0 0 320 310 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID base_foot_0_320
+1 72 0 400 340 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_foot_pin_0_320
+1 1 0 420 340 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID base_post_160_320
+1 72 160 360 320 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID base_post_pin_160_320
+1 0 160 320 310 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID base_foot_160_320
+1 72 160 400 340 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_foot_pin_160_320
+1 1 160 420 340 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID base_support_rail_-300
+1 72 80 320 -300 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID base_holder_pin_-60_-300
+1 0 -60 320 -290 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID base_holder_pin_220_-300
+1 0 220 320 -290 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID base_support_rail_300
+1 72 80 320 300 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID base_holder_pin_-60_300
+1 0 -60 320 290 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID base_holder_pin_220_300
+1 0 220 320 290 0 0 -1 0 1 0 1 0 0 2780.dat
+0 STEP
+0 Two retained 16L rails for the passively centred orange carrier
+0 !BW ID base_guide_-280
+1 4 80 300 -280 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID base_holder_-60_-280
+1 71 -60 300 -280 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID base_holder_220_-280
+1 71 220 300 -280 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID base_end_bush_-75_-280
+1 71 -75 300 -280 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID base_end_bush_235_-280
+1 71 235 300 -280 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID carrier_toggle_-280
+1 72 80 270 -280 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID carrier_slide_beam_-280
+1 25 80 260 -280 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID carrier_slide_pin_40_-280
+1 1 40 240 -280 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID carrier_slide_pin_120_-280
+1 0 120 250 -280 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID base_guide_280
+1 4 80 300 280 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID base_holder_-60_280
+1 71 -60 300 280 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID base_holder_220_280
+1 71 220 300 280 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID base_end_bush_-75_280
+1 71 -75 300 280 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID base_end_bush_235_280
+1 71 235 300 280 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID carrier_toggle_280
+1 72 80 270 280 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID carrier_slide_beam_280
+1 25 80 260 280 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID carrier_slide_pin_40_280
+1 0 40 250 280 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_slide_pin_120_280
+1 0 120 250 280 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 A: orange carrier rails and crossing beams
+0 !BW ID A_motor_base_-40
+1 25 -40 220 -220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID A_motor_base_40
+1 25 40 220 -220 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID A_guide_base_100
+1 25 100 220 -160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID A_guide_base_260
+1 25 260 220 -160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID A_base_cross_motor_rear
+1 25 0 240 -320 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID A_base_pin_motor_rear_-40
+1 25 -40 230 -320 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_base_pin_motor_rear_40
+1 25 40 230 -320 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_base_cross_guide_front
+1 25 160 240 -280 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID A_base_pin_guide_front_100
+1 25 100 230 -280 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_base_pin_guide_front_260
+1 25 260 230 -280 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_base_cross_guide_rear
+1 25 160 240 -40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID A_base_pin_guide_rear_100
+1 25 100 230 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_base_pin_guide_rear_260
+1 25 260 230 -40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 A: motor cradle, posts, mixed-thickness foot stacks
+0 !BW ID A_motor_side_-1
+1 72 -40 70 -240 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID A_motor_mount_-1_-140
+1 0 -30 70 -300 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID A_motor_mount_-1_-20
+1 0 -30 70 -180 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID A_motor_mount_-1_20
+1 1 -40 70 -140 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID A_motor_post_-1_-180
+1 72 -60 130 -340 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_motor_post_pin_-1_-180
+1 0 -50 70 -340 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_motor_foot_-1_-180
+1 72 -40 190 -340 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID A_motor_foot_pad_-1_-180
+1 72 -40 205 -360 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID A_motor_foot_pin_-1_-180
+1 1 -40 200 -340 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID A_motor_post_-1_20
+1 72 -60 130 -140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_motor_foot_-1_20
+1 72 -40 190 -140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID A_motor_foot_pad_-1_20
+1 72 -40 205 -160 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID A_motor_foot_pin_-1_20
+1 1 -40 200 -140 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID A_motor_side_1
+1 72 40 70 -240 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID A_motor_mount_1_-140
+1 0 30 70 -300 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_motor_mount_1_-20
+1 0 30 70 -180 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_motor_mount_1_20
+1 1 40 70 -140 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID A_motor_post_1_-180
+1 72 60 130 -340 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_motor_post_pin_1_-180
+1 0 50 70 -340 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_motor_foot_1_-180
+1 72 40 190 -340 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID A_motor_foot_pad_1_-180
+1 72 40 205 -360 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID A_motor_foot_pin_1_-180
+1 1 40 200 -340 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID A_motor_post_1_20
+1 72 60 130 -140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_motor_foot_1_20
+1 72 40 190 -140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID A_motor_foot_pad_1_20
+1 72 40 205 -160 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID A_motor_foot_pin_1_20
+1 1 40 200 -140 0 1 0 -1 0 0 0 0 1 6558.dat
+0 STEP
+0 A: upper guide support posts and rails
+0 !BW ID A_support_rail_60
+1 72 200 120 -220 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID A_holder_pin_20_60
+1 0 60 120 -210 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_holder_pin_300_60
+1 0 340 120 -210 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_support_rail_180
+1 72 200 120 -100 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID A_holder_pin_20_180
+1 0 60 120 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_holder_pin_300_180
+1 0 340 120 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_guide_post_100_40
+1 72 100 160 -240 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID A_guide_post_pin_100_40
+1 0 100 120 -230 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_guide_foot_100_40
+1 72 100 200 -260 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID A_guide_foot_pin_100_40
+1 0 100 210 -260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_guide_post_100_200
+1 72 100 160 -80 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID A_guide_post_pin_100_200
+1 0 100 120 -90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_guide_foot_100_200
+1 72 100 200 -60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID A_guide_foot_pin_100_200
+1 0 100 210 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_guide_post_260_40
+1 72 260 160 -240 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID A_guide_post_pin_260_40
+1 0 260 120 -230 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_guide_foot_260_40
+1 72 260 200 -260 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID A_guide_foot_pin_260_40
+1 0 260 210 -260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_guide_post_260_200
+1 72 260 160 -80 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID A_guide_post_pin_260_200
+1 0 260 120 -90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID A_guide_foot_260_200
+1 72 260 200 -60 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID A_guide_foot_pin_260_200
+1 0 260 210 -60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 A: two retained piston rails and antiroll carriage
+0 !BW ID A_guide_near
+1 4 200 100 -200 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID A_toggle_near
+1 72 200 70 -200 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID A_slider_long_near
+1 4 200 60 -200 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID A_slider_cross_pin_near
+1 0 200 50 -200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_guide_holder_near_20
+1 71 60 100 -200 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID A_guide_holder_near_300
+1 71 340 100 -200 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID A_guide_end_near_5
+1 71 45 100 -200 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID A_guide_end_near_315
+1 71 355 100 -200 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID A_guide_far
+1 4 200 100 -120 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID A_toggle_far
+1 72 200 70 -120 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID A_slider_long_far
+1 4 200 60 -120 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID A_slider_cross_pin_far
+1 0 200 50 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_guide_holder_far_20
+1 71 60 100 -120 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID A_guide_holder_far_300
+1 71 340 100 -120 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID A_guide_end_far_5
+1 71 45 100 -120 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID A_guide_end_far_315
+1 71 355 100 -120 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID A_slider_cross
+1 4 200 40 -160 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID A_slider_keyed
+1 4 200 20 -160 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID A_slider_keyed_pin_100
+1 0 200 30 -180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID A_slider_keyed_pin_140
+1 0 200 30 -140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 A: 40LDU crank, 160LDU connecting rod, retained pivots
+0 !BW ID A_drive_axle
+1 4 0 30 -160 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID A_drive_bush_upper
+1 71 0 5 -160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID A_drive_bush_lower
+1 71 0 25 -160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID A_crank
+1 14 0 15 -160 0 0 1 0 1 0 -1 0 0 6632.dat
+0 !BW ID A_crank_pin_axle
+1 4 40 -5 -160 0 1 0 1 0 0 0 0 -1 3705.dat
+0 !BW ID A_crank_pin_bush_upper
+1 71 40 -35 -160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID A_crank_pin_bush_middle
+1 71 40 0 -160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID A_crank_pin_bush_lower
+1 71 40 25 -160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID A_rod
+1 4 120 -20 -160 0 0 1 0 1 0 -1 0 0 40490.dat
+0 !BW ID A_slider_pivot_axle
+1 4 200 10 -160 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID A_slider_bush_-40
+1 71 200 -40 -160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID A_slider_bush_0
+1 71 200 0 -160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID A_slider_bush_60
+1 71 200 60 -160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID A_motor
+0 !BW PORT A
+1 15 0 90 -160 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 STEP
+0 B: orange carrier rails and crossing beams
+0 !BW ID B_motor_base_-40
+1 25 -40 220 100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID B_motor_base_40
+1 25 40 220 100 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID B_guide_base_100
+1 25 100 220 160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID B_guide_base_260
+1 25 260 220 160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID B_base_cross_motor_rear
+1 25 0 240 20 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID B_base_pin_motor_rear_-40
+1 25 -40 230 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_base_pin_motor_rear_40
+1 25 40 230 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_base_cross_guide_front
+1 25 160 240 40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID B_base_pin_guide_front_40
+1 25 40 230 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_base_pin_guide_front_100
+1 25 100 230 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_base_pin_guide_front_260
+1 25 260 230 40 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_base_cross_guide_rear
+1 25 160 240 280 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID B_base_pin_guide_rear_100
+1 25 100 230 280 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_base_pin_guide_rear_260
+1 25 260 230 280 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 B: motor cradle, posts, mixed-thickness foot stacks
+0 !BW ID B_motor_side_-1
+1 72 -40 70 80 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID B_motor_mount_-1_-140
+1 0 -30 70 20 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID B_motor_mount_-1_-20
+1 0 -30 70 140 -1 0 0 0 1 0 0 0 -1 2780.dat
+0 !BW ID B_motor_mount_-1_20
+1 1 -40 70 180 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID B_motor_post_-1_-180
+1 72 -60 130 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID B_motor_post_pin_-1_-180
+1 0 -50 70 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_motor_foot_-1_-180
+1 72 -40 190 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_motor_foot_pad_-1_-180
+1 72 -40 205 -40 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID B_motor_foot_pin_-1_-180
+1 1 -40 200 -20 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID B_motor_post_-1_20
+1 72 -60 130 180 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID B_motor_foot_-1_20
+1 72 -40 190 180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID B_motor_foot_pad_-1_20
+1 72 -40 205 160 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID B_motor_foot_pin_-1_20
+1 1 -40 200 180 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID B_motor_side_1
+1 72 40 70 80 0 1 0 -1 0 0 0 0 1 32525.dat
+0 !BW ID B_motor_mount_1_-140
+1 0 30 70 20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_motor_mount_1_-20
+1 0 30 70 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_motor_mount_1_20
+1 1 40 70 180 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID B_motor_post_1_-180
+1 72 60 130 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID B_motor_post_pin_1_-180
+1 0 50 70 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID B_motor_foot_1_-180
+1 72 40 190 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_motor_foot_pad_1_-180
+1 72 40 205 -40 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID B_motor_foot_pin_1_-180
+1 1 40 200 -20 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID B_motor_post_1_20
+1 72 60 130 180 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID B_motor_foot_1_20
+1 72 40 190 180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID B_motor_foot_pad_1_20
+1 72 40 205 160 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID B_motor_foot_pin_1_20
+1 1 40 200 180 0 1 0 -1 0 0 0 0 1 6558.dat
+0 STEP
+0 B: upper guide support posts and rails
+0 !BW ID B_support_rail_60
+1 72 200 120 100 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID B_holder_pin_20_60
+1 0 60 120 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_holder_pin_300_60
+1 0 340 120 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_support_rail_180
+1 72 200 120 220 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID B_holder_pin_20_180
+1 0 60 120 210 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_holder_pin_300_180
+1 0 340 120 210 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_guide_post_100_40
+1 72 100 160 80 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID B_guide_post_pin_100_40
+1 0 100 120 90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_guide_foot_100_40
+1 72 100 200 60 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID B_guide_foot_pin_100_40
+1 0 100 210 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_guide_post_100_200
+1 72 100 160 240 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID B_guide_post_pin_100_200
+1 0 100 120 230 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_guide_foot_100_200
+1 72 100 200 260 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID B_guide_foot_pin_100_200
+1 0 100 210 260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_guide_post_260_40
+1 72 260 160 80 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID B_guide_post_pin_260_40
+1 0 260 120 90 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_guide_foot_260_40
+1 72 260 200 60 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID B_guide_foot_pin_260_40
+1 0 260 210 60 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_guide_post_260_200
+1 72 260 160 240 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID B_guide_post_pin_260_200
+1 0 260 120 230 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID B_guide_foot_260_200
+1 72 260 200 260 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID B_guide_foot_pin_260_200
+1 0 260 210 260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 B: two retained piston rails and antiroll carriage
+0 !BW ID B_guide_near
+1 4 200 100 120 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID B_toggle_near
+1 72 200 70 120 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID B_slider_long_near
+1 1 200 60 120 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID B_slider_cross_pin_near
+1 0 200 50 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_guide_holder_near_20
+1 71 60 100 120 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID B_guide_holder_near_300
+1 71 340 100 120 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID B_guide_end_near_5
+1 71 45 100 120 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID B_guide_end_near_315
+1 71 355 100 120 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID B_guide_far
+1 4 200 100 200 1 0 0 0 1 0 0 0 1 50451.dat
+0 !BW ID B_toggle_far
+1 72 200 70 200 0 0 1 0 -1 0 1 0 0 48496.dat
+0 !BW ID B_slider_long_far
+1 1 200 60 200 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID B_slider_cross_pin_far
+1 0 200 50 200 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_guide_holder_far_20
+1 71 60 100 200 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID B_guide_holder_far_300
+1 71 340 100 200 1 0 0 0 1 0 0 0 1 6536.dat
+0 !BW ID B_guide_end_far_5
+1 71 45 100 200 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID B_guide_end_far_315
+1 71 355 100 200 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID B_slider_cross
+1 1 200 40 160 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID B_slider_keyed
+1 1 200 20 160 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID B_slider_keyed_pin_100
+1 0 200 30 140 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID B_slider_keyed_pin_140
+1 0 200 30 180 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 B: 40LDU crank, 160LDU connecting rod, retained pivots
+0 !BW ID B_drive_axle
+1 4 0 30 160 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID B_drive_bush_upper
+1 71 0 5 160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID B_drive_bush_lower
+1 71 0 25 160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID B_crank
+1 14 0 15 160 0 0 1 0 1 0 -1 0 0 6632.dat
+0 !BW ID B_crank_pin_axle
+1 4 40 -5 160 0 1 0 1 0 0 0 0 -1 3705.dat
+0 !BW ID B_crank_pin_bush_upper
+1 71 40 -35 160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID B_crank_pin_bush_middle
+1 71 40 0 160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID B_crank_pin_bush_lower
+1 71 40 25 160 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID B_rod
+1 1 120 -20 160 0 0 1 0 1 0 -1 0 0 40490.dat
+0 !BW ID B_slider_pivot_axle
+1 4 200 10 160 0 1 0 1 0 0 0 0 -1 3706.dat
+0 !BW ID B_slider_bush_-40
+1 71 200 -40 160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID B_slider_bush_0
+1 71 200 0 160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID B_slider_bush_60
+1 71 200 60 160 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID B_motor
+0 !BW PORT B
+1 15 0 90 160 -1 0 0 0 1 0 0 0 -1 54696p01.dat
+0 STEP
+0 Hub cradle joins the two engine carrier modules into one rigid frame
+0 !BW ID carrier_hub_rail_-200
+1 25 -200 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID carrier_hub_rail_-80
+1 25 -80 220 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID carrier_hub_cross_-100
+1 25 -60 240 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID carrier_hub_cross_pin_-40_-100
+1 0 -40 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_hub_cross_pin_40_-100
+1 0 40 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_hub_cross_100
+1 25 -60 240 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID carrier_hub_cross_pin_-40_100
+1 0 -40 230 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID carrier_hub_cross_pin_40_100
+1 0 40 230 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hub
+1 15 -140 210 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_pin_-200_-100
+1 1 -200 220 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-200_100
+1 1 -200 220 100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-80_-100
+1 1 -80 220 -100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID hub_pin_-80_100
+1 1 -80 220 100 0 1 0 1 0 0 0 0 -1 6558.dat
+0 STEP
+0 Two fixed transverse band anchors, keyed and retained above the base
+0 !BW ID band_fixed_cross_-120
+1 72 80 400 -120 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID band_fixed_cross_pin_0_-120
+1 1 0 420 -120 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID band_fixed_cross_pin_160_-120
+1 1 160 420 -120 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID band_fixed_keyed_-120
+1 72 80 380 -120 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID band_fixed_key_pin_60_-120
+1 0 60 390 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_fixed_key_pin_100_-120
+1 0 100 390 -120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_fixed_anchor_-120
+1 0 80 330 -120 0 1 0 1 0 0 0 0 -1 60485.dat
+0 !BW ID band_fixed_retainer_245_-120
+1 71 80 245 -120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_320_-120
+1 71 80 320 -120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_340_-120
+1 71 80 340 -120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_365_-120
+1 71 80 365 -120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_415_-120
+1 71 80 415 -120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_cross_120
+1 72 80 400 120 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID band_fixed_cross_pin_0_120
+1 1 0 420 120 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID band_fixed_cross_pin_160_120
+1 1 160 420 120 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID band_fixed_keyed_120
+1 72 80 380 120 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID band_fixed_key_pin_60_120
+1 0 60 390 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_fixed_key_pin_100_120
+1 0 100 390 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_fixed_anchor_120
+1 0 80 330 120 0 1 0 1 0 0 0 0 -1 60485.dat
+0 !BW ID band_fixed_retainer_245_120
+1 71 80 245 120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_320_120
+1 71 80 320 120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_340_120
+1 71 80 340 120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_365_120
+1 71 80 365 120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_fixed_retainer_415_120
+1 71 80 415 120 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 STEP
+0 One retained moving anchor and two real 33mm centring bands
+0 !BW ID band_carrier_bridge
+1 25 80 260 0 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID band_carrier_bridge_pin_-100
+1 0 80 250 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_carrier_bridge_pin_100
+1 0 80 250 100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_carrier_keyed
+1 25 80 280 0 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID band_carrier_key_pin_-20
+1 0 80 270 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_carrier_key_pin_20
+1 0 80 270 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID band_carrier_anchor
+1 0 80 330 0 0 1 0 1 0 0 0 0 -1 60485.dat
+0 !BW ID band_carrier_retainer_245
+1 71 80 245 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_carrier_retainer_295
+1 71 80 295 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_carrier_retainer_320
+1 71 80 320 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_carrier_retainer_340
+1 71 80 340 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID band_carrier_retainer_415
+1 71 80 415 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW BELT centring_band_-120 85546.dat band_carrier_anchor band_fixed_anchor_-120
+0 !BW BELT centring_band_120 85546.dat band_carrier_anchor band_fixed_anchor_120

@@ -86,6 +86,7 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
                                         display: 'flex', flexDirection: 'column', minWidth: 0}}>
                                     <h3 style={{fontSize: 15, margin: '0 0 6px'}}>{title}</h3>
                                     <span style={{fontSize: 12, color: '#6d28d9'}}>{EXAMPLE_TOPICS[d.topic][lang]}</span>
+                                    {d.mechanism && <span data-testid="bw-sim-example-mechanism" style={{fontSize: 12, marginTop: 4, fontWeight: 600}}>{d.mechanism[lang] || d.mechanism.en}</span>}
                                     <p style={{fontSize: 13, lineHeight: 1.45, flex: 1}}>{d.description[lang]}</p>
                                     <p style={{fontSize: 12, margin: '0 0 8px', color: '#475569'}}>{d.pieces} {T.pieces} · {d.motors} {T.motors} · {d.hubs.join(', ')}</p>
                                     <small style={{color: '#475569', marginBottom: 10}}>{d.author} · {d.license}</small>

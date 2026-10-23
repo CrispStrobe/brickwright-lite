@@ -2,7 +2,7 @@
   "version": 1,
   "id": "scale-echo",
   "language": "en",
-  "what": "A 148-piece pantograph has two motors: A turns the long arm at the fixed pivot, while B rides on that arm. A physical parallelogram copies the red marker path at twice its size at the blue marker. The caps are coloured markers, not ink pens. The frame rests freely on the floor. Two inputs and a parallelogram mechanically copy a marker path at twice its size. Compare both actual paths and displacement vectors.",
+  "what": "Pantograph. A 148-piece pantograph has two motors: A turns the long arm at the fixed pivot, while B rides on that arm. A physical parallelogram copies the red marker path at twice its size at the blue marker. The caps are coloured markers, not ink pens. The frame rests freely on the floor. Two inputs and a parallelogram mechanically copy a marker path at twice its size. Compare both actual paths and displacement vectors.",
   "try": [
     "Select Scale Echo in Examples. Its guarded native program loads into Blocks automatically. Reset to the saved pose and run the eight finite moves; both motors must start at zero.",
     "Watch motor B travel with the long arm. First A moves while B holds, then B moves while A holds. Compare the direction and distance of both coloured caps.",

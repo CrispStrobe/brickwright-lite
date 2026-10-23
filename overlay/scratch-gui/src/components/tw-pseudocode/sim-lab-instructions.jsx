@@ -54,12 +54,12 @@ class SimLabInstructions extends React.Component {
         this.dialog.current?.focus();
         const {lib, model} = this.props;
         const {buildSteps, fetchModelDrawing, parseLDConfig, createInstructionsView, createPartThumbnails, CATALOG, DEFAULT_COLOR} = lib;
-        this.plan = buildSteps(model, CATALOG);
-        if (!this.plan.steps.length) {
-            this.setState({status: 'empty'});
-            return;
-        }
         try {
+            this.plan = buildSteps(model, CATALOG);
+            if (!this.plan.steps.length) {
+                this.setState({status: 'empty'});
+                return;
+            }
             // The parts, the decoration (a cable's segments) and the model's own embedded parts.
             const {read} = await fetchModelDrawing(model, {withConfig: true});
             if (this.disposed) return;
@@ -116,9 +116,9 @@ class SimLabInstructions extends React.Component {
     }
 
     /** Callout or parts-list rows for some part ids, each with its picture in the part's colour. */
-    rows (ids) {
+    rows (ids, beltIds) {
         const {lib, model, locale} = this.props;
-        return lib.partsList(model, lib.CATALOG, ids).map(row => ({...row,
+        return lib.partsList(model, lib.CATALOG, ids, beltIds).map(row => ({...row,
             label: (locale === 'de' ? row.name.de : row.name.en) || row.name.en,
             thumb: this.thumbs ? this.thumbs.render(row.part, row.color) : null}));
     }
@@ -141,17 +141,18 @@ class SimLabInstructions extends React.Component {
         const cell = row => ({thumb: row.thumb, count: row.count, length: row.length, name: row.label, part: row.part});
         const steps = this.plan.steps.map((step, i) => ({
             image: this.view.image(i, PRINT_W, PRINT_H),
-            parts: this.rows(step.parts).map(cell),
+            parts: this.rows(step.parts, step.belts).map(cell),
             attach: step.attach.map(id => this.groupName(id)),
             subassembly: step.subassembly ? this.groupName(step.subassembly) : null,
             pins: Boolean(step.pins),
+            belts: Boolean(step.belts?.length),
             turned: turnedFrom(step, this.plan.steps[i - 1])
         }));
         const html = lib.instructionsPrintHtml({lang: locale === 'de' ? 'de' : 'en',
             title: fill(T.documentTitle, {name: this.props.title || T.title}),
             text: {step: T.step, partsNeeded: T.partsNeeded, partsList: T.partsList, total: T.total, attach: T.attach, subassembly: T.subassembly, pins: T.pins,
-                turned: T.turned},
-            steps, bom: this.rows(this.props.model.parts.map(p => p.id)).map(cell)});
+                turned: T.turned, belts: T.belts},
+            steps, bom: this.rows().map(cell)});
         win.document.open();
         win.document.write(html);
         win.document.close();
@@ -192,17 +193,18 @@ class SimLabInstructions extends React.Component {
             ...(step.subassembly ? [fill(T.subassembly, {name: this.groupName(step.subassembly)})] : []),
             ...step.attach.map(id => fill(T.attach, {name: this.groupName(id)})),
             ...(step.loose ? [step.parts.every(id => this.props.model.parts.find(p => p.id === id)?.load) ? T.payload : T.loose] : []),
-            ...(step.pins ? [T.pins] : [])
+            ...(step.pins ? [T.pins] : []),
+            ...(step.belts?.length ? [T.belts] : [])
         ];
         return (
             <div style={{display: 'flex', flexDirection: 'column', gap: 8, width: 200, flex: 'none'}}>
                 {notes.map(note => <div key={note} data-testid="bw-sim-instructions-note" style={{fontSize: 13, fontWeight: 600, color: '#1e3a8a'}}>{note}</div>)}
-                {step.parts.length > 0 && (
+                {(step.parts.length > 0 || step.belts?.length > 0) && (
                     <div data-testid="bw-sim-instructions-callout"
                         style={{background: '#e0f2fe', border: '2px solid #7dd3fc', borderRadius: 8, padding: 8,
                             display: 'flex', flexWrap: 'wrap', gap: 10}}>
                         <div style={{width: '100%', fontSize: 12, fontWeight: 600, color: '#075985'}}>{T.partsNeeded}</div>
-                        {this.rows(step.parts).map(row => this.renderPart(row, false))}
+                        {this.rows(step.parts, step.belts).map(row => this.renderPart(row, false))}
                     </div>
                 )}
             </div>
@@ -210,7 +212,7 @@ class SimLabInstructions extends React.Component {
     }
 
     renderPartsList () {
-        const rows = this.rows(this.props.model.parts.map(p => p.id));
+        const rows = this.rows();
         return (
             <div data-testid="bw-sim-instructions-bom" style={{flex: '1 1 auto', overflow: 'auto'}}>
                 <div style={{fontSize: 13, marginBottom: 8}}>{fill(this.text.total, {n: rows.reduce((n, r) => n + r.count, 0)})}</div>
