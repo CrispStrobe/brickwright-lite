@@ -10,6 +10,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 sys.dont_write_bytecode = True
@@ -255,6 +256,38 @@ class SourceBinding(unittest.TestCase):
         for path in ['apps/tauri/src-tauri/src/lib.rs', 'overlay/app.js', '.github/workflows/build.yml',
                      'package-lock.json', 'docs/runtime.js', 'LANES.md']:
             self.assertFalse(q.prose_only([path]), path)
+
+
+
+class RawJobLogTransport(unittest.TestCase):
+    def test_exact_log_endpoint_preserves_authored_ansi_bytes(self):
+        raw = b'checkout\n\x1b[33mauthored warning\x1b[0m\n'.decode('unicode_escape').encode('latin1')
+        expected = ['gh', 'api', 'repos/' + q.REPO + '/actions/jobs/43/logs', '--allow-escape-sequences']
+        with patch.object(q.subprocess, 'check_output', return_value=raw) as call:
+            self.assertEqual(q.api('actions/jobs/43/logs'), raw)
+        call.assert_called_once_with(expected, timeout=120)
+
+    def test_json_metadata_keeps_default_cli_handling(self):
+        raw = b'{"head_sha":"reviewed"}\n'
+        with patch.object(q.subprocess, 'check_output', return_value=raw) as call:
+            self.assertEqual(q.api('actions/runs/42'), raw)
+        call.assert_called_once_with(['gh', 'api', 'repos/' + q.REPO + '/actions/runs/42'], timeout=120)
+
+    def test_raw_option_is_not_enabled_for_other_or_near_match_endpoints(self):
+        for endpoint in ['actions/runs/42/logs', 'actions/jobs/0/logs', 'actions/jobs/-1/logs',
+                         'actions/jobs/43/logs/extra', 'actions/jobs/43/logs?raw=1',
+                         'actions/jobs/43/logs\n', 'actions/jobs/43', 'actions/jobs/43/logs.json']:
+            with self.subTest(endpoint=endpoint), patch.object(q.subprocess, 'check_output', return_value=b'raw') as call:
+                self.assertEqual(q.api(endpoint), b'raw')
+                call.assert_called_once_with(['gh', 'api', 'repos/' + q.REPO + '/' + endpoint], timeout=120)
+
+    def test_transport_failure_is_preserved_without_retry(self):
+        error = subprocess.CalledProcessError(1, ['gh', 'api'], output=b'original failure')
+        with patch.object(q.subprocess, 'check_output', side_effect=error) as call:
+            with self.assertRaises(subprocess.CalledProcessError) as caught:
+                q.api('actions/jobs/43/logs')
+        self.assertIs(caught.exception, error)
+        self.assertEqual(call.call_count, 1)
 
 
 if __name__ == '__main__':

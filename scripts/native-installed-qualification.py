@@ -202,7 +202,11 @@ def command(*args, cwd=None):
 
 
 def api(path):
-    return subprocess.check_output(['gh', 'api', 'repos/' + REPO + '/' + path], timeout=120)
+    command = ['gh', 'api', 'repos/' + REPO + '/' + path]
+    if re.fullmatch(r'actions/jobs/[1-9][0-9]*/logs', path):
+        # Preserve the official original in a captured byte stream, never a terminal.
+        command.append('--allow-escape-sequences')
+    return subprocess.check_output(command, timeout=120)
 
 
 def prepare(args):
