@@ -6,6 +6,11 @@ const master=Buffer.alloc(32,7),token='x'.repeat(43),other='y'.repeat(43),tokens
 test('typed file, time and measurement limits reject executable or oversized submissions',()=>{
  assert.equal(validateSubmission(input).model.name,'model.ldr');for(const v of [{model:{...model,name:'../x.ldr'}},{model:{...model,name:'x.js'}},{model:{...model,text:'x'.repeat(LIMITS.modelBytes+1)}},{...input,ref:'attacker'},{...input,settings:{programMs:LIMITS.programMs+1}},{...input,measurements:[{id:'x',kind:'torque',targets:['a']}]},{...input,program:{name:'x.bw',text:'DEVICE SPIKE\nIMPORT "https://example.com/evil.js"'}},{...input,program:{name:'x.bw',text:'DEVICE SPIKE\nWHEN flag clicked:\n  lab reset'}}])assert.throws(()=>validateSubmission(v));
 });
+test('physics-step capture has explicit short-run, reading and pose budgets without changing VM cadence',()=>{
+ const v=validateSubmission({...input,settings:{physicsSamples:true,programMs:12000,poseParts:['frame','gate','ball-a','ball-b']}});assert.equal(v.settings.sampleMs,5);assert.equal(v.settings.physicsSamples,true);
+ for(const settings of [{physicsSamples:true,programMs:15000},{physicsSamples:true,sampleMs:25},{physicsSamples:'true'},{poseParts:['a','b','c','d','e']},{poseParts:['a','a']}])assert.throws(()=>validateSubmission({...input,settings}));
+ assert.throws(()=>validateSubmission({...input,settings:{physicsSamples:true},measurements:Array.from({length:25},(_,i)=>({id:'r'+i,kind:'hingeGap'}))}));
+});
 test('tokens, authenticated encryption, ownership and expiry fail closed',()=>{
  assert.equal(authenticate(authorization,tokens),'a');assert.throws(()=>authenticate('Bearer '+other,[tokens[0]]));assert.throws(()=>authenticate(undefined,tokens));
  const e=seal(master,'request:id',{data:'hello'});assert.deepEqual(open(master,'request:id',e),{data:'hello'});assert.throws(()=>open(master,'request:other',e));const b=Buffer.from(e,'base64url');b[b.length-1]^=1;assert.throws(()=>open(master,'request:id',b.toString('base64url')));

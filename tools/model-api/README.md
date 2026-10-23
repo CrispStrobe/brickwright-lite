@@ -58,6 +58,31 @@ The body limit is 1 MiB, model 768 KiB, BW 64 KiB, encrypted/compressed dispatch
 wall time. Timing settings use multiples of 25 ms; internal physics stays 5 ms.
 Large recordings are downsampled, with the actual sample interval reported.
 
+For short contact-sensitive experiments use:
+
+```json
+{"programMs":12000,"coldMs":250,"afterMs":500,"sampleMs":5,
+ "physicsSamples":true,"poseParts":["hub","gate_main_axle","ball_direct","ball_fast"]}
+```
+
+This observes **every existing 5 ms bridge step** after physics and encoder
+updates. VM commands retain their original 25 ms timing; it does not change the
+controller, solver, collision settings or physical step. The dense profile has
+a 15 s **total** budget including cold/after, 24 scalar readings and 3,001 rows.
+It never silently downsamples physics-step recordings. Complete recorded poses
+still do not by themselves prove continuous contact clearance between steps.
+
+`poseParts` selects at most four semantic part IDs; targets on the same body
+share one recording. Unknown targets are refused. `poseRecording.bodyIds`
+defines the ordering of each frame's positions and quaternions. Positions are
+**metres** in actual Jolt world coordinates; rotations are `[x,y,z,w]`, at full
+native precision. Topology contains each body's initial position/rotation for
+reconstructing attached part geometry. Scalar point coordinates remain **mm**.
+Frame/part axes and the actual ground datum must be respected; do not assume
+the floor is world Y=0. Normal-profile pose captures use the reported sample
+interval and explicitly do not claim every physics step. Results above 4 MiB
+are refused with `recording-limit`, rather than silently dropping observations.
+
 Marker offsets are LDraw units. World coordinates use Jolt's axes; reference
 coordinates follow the current reference part's authored axes. Signed rotation
 is observed and unwrapped at 25 ms; native joint angle is preferable above that

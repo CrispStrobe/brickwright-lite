@@ -11,6 +11,16 @@ test('a submitted idler fixture exposes its actual inferred gear connections wit
  const r=await measureSubmission({model:{name:'idler.ldr',text},settings:{programMs:500,coldMs:0,afterMs:0,sampleMs:25}});
  assert.equal(r.couplings.count,2);assert.equal(r.couplings.truncated,false);assert.deepEqual(r.couplings.items.map(c=>c.parts.slice().sort()).sort(),[['gIdler','gIn'],['gIdler','gOut']]);assert.equal(r.qualification.status,'not-evaluated');
 });
+test('5 ms scalar and rigid-pose capture observes every existing physics step with identical 25 ms VM commands',async()=>{
+ const text=readFileSync(new URL('./fixtures/bw-sim/machines/gears-idler-24-24-24.ldr',import.meta.url),'utf8');
+ const input={model:{name:'idler.ldr',text},program:{name:'turn.bw',text:'DEVICE SPIKE\nWHEN flag clicked:\n  lab run motor A for 90 degrees at 90 degrees per second\n  lab stop motor A hold\n'},settings:{programMs:2500,coldMs:250,afterMs:250,sampleMs:25},measurements:[{id:'input',kind:'jointAngle',port:'A'},{id:'output',kind:'signedAngle',point:{part:'gOut'},reference:{part:'frame'},axis:'y',vectorLdu:[1,0,0]}]};
+ const regular=await measureSubmission(input),dense=await measureSubmission({...input,settings:{...input.settings,physicsSamples:true,sampleMs:5,poseParts:['frame','gIdler','gOut']}});
+ assert.equal(dense.runtime.vmFrameMs,25);assert.equal(dense.runtime.actualSampleMs,5);assert.deepEqual(dense.completion,regular.completion);assert.ok(dense.samples.length>regular.samples.length*4);assert.equal(dense.samples[0].timeMs,0);assert.equal(dense.samples.at(-1).timeMs,dense.completion.sceneTimeMs);
+ for(let i=1;i<dense.samples.length;i++)assert.equal(dense.samples[i].timeMs-dense.samples[i-1].timeMs,5);
+ const byTime=new Map(dense.samples.map(s=>[s.timeMs,s]));for(const s of regular.samples){const d=byTime.get(s.timeMs);assert.ok(d);for(let i=0;i<s.values.length;i++)assert.ok(Math.abs(d.values[i]-s.values[i])<1e-4,'read-only capture preserves actual native dynamics');}
+ assert.equal(dense.poseRecording.completePhysicsSteps,true);assert.equal(dense.poseRecording.frames.length,dense.samples.length);assert.equal(dense.poseRecording.bodyIds.length,3);assert.equal(dense.poseRecording.frames[0].positions.length,3);assert.ok(dense.topology.bodies.every(b=>b.initialPositionM.length===3&&b.initialRotationQuat.length===4));
+ await assert.rejects(()=>measureSubmission({...input,settings:{...input.settings,poseParts:['absent']}}),e=>e.code==='pose-target-unavailable');
+});
 test('the same uploaded root MPD produces the same bounded native output law',async()=>{
  const r=await measureSubmission({model:{name:'shuttle.mpd',text:'0 FILE shuttle.ldr\n'+text+'\n0 NOFILE\n'},settings:{programMs:500,coldMs:250,afterMs:0,sampleMs:25},measurements:[{id:'mass',kind:'mass',targets:['hub']} ]});assert.equal(r.status,'completed');assert.equal(r.topology.parts,105);assert.ok(r.summary[0].min>0);
 });

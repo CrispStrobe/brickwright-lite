@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
-export const LIMITS=Object.freeze({bodyBytes:1048576,modelBytes:786432,programBytes:65536,compressedBytes:45000,parts:2000,dynamicBodies:64,joints:256,measurements:64,programMs:120000,recordedSamples:2001,wallMs:180000});
+export const LIMITS=Object.freeze({bodyBytes:1048576,modelBytes:786432,programBytes:65536,compressedBytes:45000,parts:2000,dynamicBodies:64,joints:256,measurements:64,programMs:120000,recordedSamples:2001,physicsRecordingTotalMs:15000,physicsRecordingSamples:3001,physicsRecordingMeasurements:24,poseBodies:4,resultBytes:4*1024*1024,wallMs:180000});
 export const KINDS=Object.freeze(['mass','weight','speed','angularSpeed','distance','angle','jointAngle','jointSpeed','travel','tension','normalLoad','pointCoordinate','signedAngle','hingeGap','programVariable']);
 export class ApiError extends Error{constructor(status,code,message,details){super(message);this.status=status;this.code=code;if(details!==undefined)this.details=details;}}
 const bad=m=>{throw new ApiError(422,'invalid-submission',m);};
@@ -12,10 +12,13 @@ export function validateSubmission(input){
  object(input,['model','program','settings','measurements']);
  const file=(v,extension,max)=>{object(v,['name','text']);if(!text(v.name,128)||/[\\/]/.test(v.name)||v.name.includes('..')||!extension.test(v.name))bad('Invalid file name or extension');if(typeof v.text!=='string'||!v.text.trim()||Buffer.byteLength(v.text)>max||v.text.includes('\0'))bad('File is empty or too large');return{name:v.name,text:v.text};};
  const model=file(input.model,/\.(ldr|mpd)$/i,LIMITS.modelBytes),program=input.program===undefined?null:file(input.program,/\.bw$/i,LIMITS.programBytes);
- const settings=object(input.settings??{},['programMs','coldMs','afterMs','sampleMs']);
- const s={programMs:settings.programMs??10000,coldMs:settings.coldMs??250,afterMs:settings.afterMs??500,sampleMs:settings.sampleMs??50};
- if(s.programMs%25||s.coldMs%25||s.afterMs%25||!Number.isInteger(s.programMs)||!number(s.programMs,250,LIMITS.programMs)||!Number.isInteger(s.coldMs)||!number(s.coldMs,0,2000)||!Number.isInteger(s.afterMs)||!number(s.afterMs,0,30000)||s.programMs+s.afterMs>150000||!Number.isInteger(s.sampleMs)||!number(s.sampleMs,25,5000)||s.sampleMs%25)bad('Invalid simulation or sampling bounds');
- const measurements=input.measurements??[];if(!Array.isArray(measurements)||measurements.length>LIMITS.measurements)bad('Too many measurements');const ids=new Set();
+ const settings=object(input.settings??{},['programMs','coldMs','afterMs','sampleMs','physicsSamples','poseParts']);
+ if(settings.physicsSamples!==undefined&&typeof settings.physicsSamples!=='boolean')bad('physicsSamples must be boolean');
+ const s={programMs:settings.programMs??10000,coldMs:settings.coldMs??250,afterMs:settings.afterMs??500,sampleMs:settings.sampleMs??(settings.physicsSamples?5:50),physicsSamples:settings.physicsSamples??false,poseParts:settings.poseParts??[]};
+ if(!Array.isArray(s.poseParts)||s.poseParts.length>LIMITS.poseBodies||new Set(s.poseParts).size!==s.poseParts.length||!s.poseParts.every(id=>text(id,128)))bad('Choose at most four distinct pose part IDs');
+ if(s.programMs%25||s.coldMs%25||s.afterMs%25||!Number.isInteger(s.programMs)||!number(s.programMs,250,LIMITS.programMs)||!Number.isInteger(s.coldMs)||!number(s.coldMs,0,2000)||!Number.isInteger(s.afterMs)||!number(s.afterMs,0,30000)||s.programMs+s.afterMs>150000||!Number.isInteger(s.sampleMs)||!number(s.sampleMs,s.physicsSamples?5:25,5000)||s.sampleMs%(s.physicsSamples?5:25))bad('Invalid simulation or sampling bounds');
+ if(s.physicsSamples&&(s.sampleMs!==5||s.programMs+s.coldMs+s.afterMs>LIMITS.physicsRecordingTotalMs))bad('Physics-step recording requires 5 ms samples and at most 15 s total observation time');
+ const measurements=input.measurements??[];if(!Array.isArray(measurements)||measurements.length>(s.physicsSamples?LIMITS.physicsRecordingMeasurements:LIMITS.measurements))bad('Too many measurements');const ids=new Set();
  const normalized=measurements.map(m=>{
   object(m,['id','kind','label','targets','joint','port','rope','point','reference','axis','vectorLdu','variable']);
   if(!text(m.id,128)||ids.has(m.id)||!KINDS.includes(m.kind))bad('Invalid measurement id or kind');ids.add(m.id);
