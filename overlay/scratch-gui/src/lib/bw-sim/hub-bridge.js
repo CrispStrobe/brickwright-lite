@@ -77,7 +77,7 @@ export const hubBindings = (mechanism, hubId = null, index = 0, count = 1) => {
     const bindings = [
         // dcMotor: the DC model physics drives, so a hub's controller regulates the same motor.
         ...actuators.map(a => ({port: a.port, class: 'motor', ids: {...a.ids}, hub: a.hub, device: a.device, dcMotor: dcMotorFor(a)})),
-        ...devices.map(d => ({port: d.port, class: 'sensor', ids: {}, sensor: d.sensor, hub: d.hub, device: d.device}))
+        ...devices.map(d => ({port: d.port, class: 'sensor', ids: {...d.ids}, sensor: d.sensor, hub: d.hub, device: d.device}))
     ];
     return {actuators, sensors, bindings};
 };

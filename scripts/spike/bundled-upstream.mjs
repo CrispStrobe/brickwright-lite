@@ -65,11 +65,11 @@ export const MAP = {
     // working live implementation and the LMS compiler split between the
     // three; they are retired into ev3comprehensive and their ids resolve to
     // it. ev3dev stays — it is a different operating system on the brick.
-    ev3comprehensive: 'extensions/CrispStrobe/ev3_universal.js',
+    ev3comprehensive: {repo: 'CrispStrobe/extensions', pin: 'ev3comprehensive', path: 'extensions/CrispStrobe/ev3_universal.js'},
     ev3dev: 'extensions/CrispStrobe/ev3dev_py_transpile.js',
-    legoboostunified: 'extensions/CrispStrobe/legoboost_universal.js',
-    legonxt: 'extensions/CrispStrobe/legonxt_transpile_universal.js',
-    legopoweredup: 'extensions/CrispStrobe/lego_poweredup.js',
+    legoboostunified: {repo: 'CrispStrobe/extensions', pin: 'legoboostunified', path: 'extensions/CrispStrobe/legoboost_universal.js'},
+    legonxt: {repo: 'CrispStrobe/extensions', pin: 'legonxt', path: 'extensions/CrispStrobe/legonxt_transpile_universal.js'},
+    legopoweredup: {repo: 'CrispStrobe/extensions', pin: 'legopoweredup', path: 'extensions/CrispStrobe/lego_poweredup.js'},
     // The RCX, the oldest brick in the family. Its blocks transpile to NQC and
     // the NQC is compiled to an .rcx image — locally by `runtime.nqcCompile`
     // (lib/nqc-runtime-hook.js, which this vendoring is what finally gives a

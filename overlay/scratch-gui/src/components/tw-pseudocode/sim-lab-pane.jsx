@@ -652,7 +652,14 @@ class SimLabPane extends React.Component {
     async runRadioHub (hub, {greenFlag = true} = {}) {
         const vm = this.props.vm;
         this.stopClock();
-        this.setState({status: 'running'});
+        const session = this.session;
+        const request = this.runConnection = {};
+        const current = () => this.session === session && this.runConnection === request &&
+            this.state.status === 'running' && !this.state.manualOverride;
+        // A fast virtual connection can resolve before React flushes setState.
+        // Commit Run first; an intervening Stop or replacement still wins.
+        await new Promise(resolve => this.setState({status: 'running'}, resolve));
+        if (!current()) return;
         const id = this.hubExtension(hub);
         if (!id) {
             this.startClock();
@@ -664,10 +671,11 @@ class SimLabPane extends React.Component {
         try {
             await this.connectRadioHub(hub, id);
         } catch (error) {
+            if (!current()) return;
             this.setState({message: this.t('connectFailed', {error: error.message})});
             return;
         }
-        if (this.state.status === 'running') {
+        if (current()) {
             this.startClock();
             if (greenFlag) vm.greenFlag();
         }
@@ -1654,7 +1662,14 @@ class SimLabPane extends React.Component {
         const ids = profile === 'ev3' ? ['ev3comprehensive', 'ev3'] : ['legonxt'];
         const extensionId = ids.find(id => vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded(id));
         this.stopClock();
-        this.setState({status: 'running'});
+        const session = this.session;
+        const request = this.runConnection = {};
+        const current = () => this.session === session && this.runConnection === request &&
+            this.state.status === 'running' && !this.state.manualOverride;
+        // A fast virtual connection can resolve before React flushes setState.
+        // Commit Run first; an intervening Stop or replacement still wins.
+        await new Promise(resolve => this.setState({status: 'running'}, resolve));
+        if (!current()) return;
         if (!extensionId) {
             this.startClock();
             this.setState({info: this.t('noProgramBt', {brick})});
@@ -1666,9 +1681,10 @@ class SimLabPane extends React.Component {
                 peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID});
         } catch (error) {
             // Said, and the world still runs: the program's own connect block may yet reach the brick.
+            if (!current()) return;
             this.setState({message: this.t('connectFailed', {error: error.message})});
         }
-        if (this.state.status === 'running') {
+        if (current()) {
             this.startClock();
             if (greenFlag) vm.greenFlag();
         }
@@ -1708,7 +1724,14 @@ class SimLabPane extends React.Component {
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
         // just before the green flag, so the program's first `wait` starts on the world's clock.
         this.stopClock();
-        this.setState({status: 'running'});
+        const session = this.session;
+        const request = this.runConnection = {};
+        const current = () => this.session === session && this.runConnection === request &&
+            this.state.status === 'running' && !this.state.manualOverride;
+        // A fast virtual connection can resolve before React flushes setState.
+        // Commit Run first; an intervening Stop or replacement still wins.
+        await new Promise(resolve => this.setState({status: 'running'}, resolve));
+        if (!current()) return;
         const vm = this.props.vm;
         // Without a SPIKE or Robot Lab program the clock still runs (the arrows below drive the
         // motors), but say plainly why nothing moves on its own.
@@ -1737,10 +1760,11 @@ class SimLabPane extends React.Component {
                     await peripheral.scan();
                 }});
         } catch (error) {
+            if (!current()) return;
             this.setState({message: this.t('connectFailed', {error: error.message})});
             return;
         }
-        if (this.state.status === 'running') {
+        if (current()) {
             this.startClock();
             if (greenFlag) vm.greenFlag();
         }

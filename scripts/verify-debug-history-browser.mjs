@@ -74,6 +74,57 @@ const recordRequestFailure = request => {
     diagnostics.push(`requestfailed: ${request.method()} ${request.url()} ${reason}`);
 };
 
+
+// One original 30 s setup budget: device selection must finish applying before
+// a real ROM reaches the debugger. DOM change dispatch is not that acknowledgement.
+async function prepareHistoryMachine (page) {
+    const deadline = Date.now() + 30000;
+    const remaining = () => {
+        const ms = deadline - Date.now();
+        if (ms <= 0) throw new Error('debug history machine setup exceeded 30000 ms');
+        return ms;
+    };
+    await page.evaluate(() => {
+        const state = {applied: false, events: []};
+        state.listener = event => {
+            if (event.detail?.key !== 'bw-device-id') return;
+            if (state.events.length < 8) state.events.push(String(event.detail.value).slice(0, 64));
+            state.applied = event.detail.value === 'z80';
+        };
+        window.__bwDebugHistorySetup = state;
+        window.addEventListener('bw-settings-change', state.listener);
+    });
+    try {
+        await page.getByTestId('bw-device-select').selectOption('z80', {timeout: remaining()});
+        await page.waitForFunction(() => window.__bwDebugHistorySetup?.applied === true,
+            null, {timeout: remaining()});
+        const circuit = page.getByRole('tab', {name: /Circuit/});
+        await circuit.click({timeout: remaining()});
+        // The debugger panel mounts in response to media; it cannot be a
+        // prerequisite for delivering that media. Wait for the selected tab,
+        // then use that committed state immediately to deliver the ROM.
+        await circuit.and(page.locator('[aria-selected="true"]')).waitFor({state: 'visible', timeout: remaining()});
+        await page.evaluate(() => {
+            if (!window.__bwDebugHistorySetup?.applied) throw new Error('Z80 applied-device acknowledgement missing');
+            const detail = {rom: Uint8Array.of(0x3e, 0, 0x32, 0, 0x80, 0x3c, 0xc3, 2, 0),
+                target: 'z80', slotId: 'rom'};
+            window.__bwPendingMedia = {type: 'asm', detail};
+            window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        });
+        const panel = page.locator('[data-debug-panel]:visible').first();
+        await panel.locator('[data-debug-record]:not([disabled])').waitFor({timeout: remaining()});
+        return await page.evaluate(() => ({deviceApplied: window.__bwDebugHistorySetup.applied,
+            events: window.__bwDebugHistorySetup.events}));
+    } finally {
+        // Preserve the original setup error if its page has already closed.
+        await page.evaluate(() => {
+            const state = window.__bwDebugHistorySetup;
+            if (state) window.removeEventListener('bw-settings-change', state.listener);
+            delete window.__bwDebugHistorySetup;
+        }).catch(() => {});
+    }
+}
+
 try {
     if (!url) ({server, url} = await serveBuild());
     browser = await chromium.launch({headless: true});
@@ -93,19 +144,12 @@ try {
     });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
-    // The default Z80 machine boots its bundled BBC BASIC image locally and
-    // has a complete checkpoint contract. The 8086 pins bench intentionally
+    // The Z80 runner has a complete checkpoint contract. The 8086 pins bench intentionally
     // refuses recording because its live schematic input source is unlogged.
-    await page.getByTestId('bw-device-select').selectOption('z80');
-    await page.getByRole('tab', {name: /Circuit/}).click();
-    await page.evaluate(() => {
-        const detail = {rom: Uint8Array.of(0x3e, 0, 0x32, 0, 0x80, 0x3c, 0xc3, 2, 0),
-            target: 'z80', slotId: 'rom'};
-        window.__bwPendingMedia = {type: 'asm', detail};
-        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
-    });
+    const setup = await prepareHistoryMachine(page);
+    check('Z80 device is applied before debugger media delivery', setup.deviceApplied,
+        JSON.stringify(setup.events));
     const panel = page.locator('[data-debug-panel]:visible').first();
-    await panel.locator('[data-debug-record]:not([disabled])').waitFor({timeout: 30000});
 
     const pause = panel.getByRole('button', {name: /Pause/});
     // Record is enabled by the runner's capabilities, Pause only by the phase.

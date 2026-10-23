@@ -2332,6 +2332,62 @@ https://github.com/CrispStrobe/extensions/blob/5fe7033f8b320b2f5819c20860b10c05a
 and SHA-256. This notice covers that selected extension source. MPL-2.0 text:
 https://www.mozilla.org/en-US/MPL/2.0/.
 
+## ev3comprehensive — MPL-2.0
+
+The scoped `ev3comprehensive` pin selects LEGO EV3 Universal, authored by
+CrispStrobe from https://github.com/CrispStrobe/extensions. Its source declares
+MPL-2.0. The complete selected JavaScript source, including its original
+By and License headers, is retained as the JSON source string in
+`overlay/scratch-vm/src/extensions/crispstrobe/ev3comprehensive/index.js`;
+the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/ff74f1309b8807713508884048292182a369f8f5/extensions/CrispStrobe/ev3_universal.js.
+`vendor-pins.json` and the generated per-file bundle receipt record its commit,
+byte count and SHA-256. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
+## legoboostunified — MPL-2.0
+
+The scoped `legoboostunified` pin selects LEGO Boost Universal, authored by
+CrispStrobe from https://github.com/CrispStrobe/extensions. Its source declares
+MPL-2.0. The complete selected JavaScript source, including its original
+By and License headers, is retained as the JSON source string in
+`overlay/scratch-vm/src/extensions/crispstrobe/legoboostunified/index.js`;
+the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/ff74f1309b8807713508884048292182a369f8f5/extensions/CrispStrobe/legoboost_universal.js.
+`vendor-pins.json` and the generated per-file bundle receipt record its commit,
+byte count and SHA-256. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
+## legonxt — MPL-2.0
+
+The scoped `legonxt` pin selects LEGO NXT Universal, authored by
+CrispStrobe from https://github.com/CrispStrobe/extensions. Its source declares
+MPL-2.0. The complete selected JavaScript source, including its original
+By and License headers, is retained as the JSON source string in
+`overlay/scratch-vm/src/extensions/crispstrobe/legonxt/index.js`;
+the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/ff74f1309b8807713508884048292182a369f8f5/extensions/CrispStrobe/legonxt_transpile_universal.js.
+`vendor-pins.json` and the generated per-file bundle receipt record its commit,
+byte count and SHA-256. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
+## legopoweredup — MPL-2.0
+
+The scoped `legopoweredup` pin selects LEGO Powered Up, authored by
+CrispStrobe from https://github.com/CrispStrobe/extensions. Its source declares
+MPL-2.0. The complete selected JavaScript source, including its original
+By and License headers, is retained as the JSON source string in
+`overlay/scratch-vm/src/extensions/crispstrobe/legopoweredup/index.js`;
+the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/ff74f1309b8807713508884048292182a369f8f5/extensions/CrispStrobe/lego_poweredup.js.
+`vendor-pins.json` and the generated per-file bundle receipt record its commit,
+byte count and SHA-256. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
 ## arrays-values — MPL-2.0
 
 The scoped `arrays-values` pin selects the Arrays & Vectors extension authored
