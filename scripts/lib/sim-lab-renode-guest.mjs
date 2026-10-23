@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 // Shared real state-service transport for the Lab guest qualification scripts.
 import {spawn} from 'node:child_process';
+import {isDeepStrictEqual} from 'node:util';
 import {readFileSync} from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -138,6 +139,7 @@ export class StateServiceTransport {
         this.waiters = [];
         this.latest = null;
         this.next = 1;
+        this.closed = null;
         this.validated = {begin: 0, step: 0, end: 0, control: 0, packet: 0};
         /** One command at a time, as the native capability queue sends them. */
         this.tail = Promise.resolve();
@@ -148,12 +150,23 @@ export class StateServiceTransport {
     async connect () {
         this.socket = net.connect(this.port, '127.0.0.1');
         this.socket.setNoDelay(true);
+        const fail = error => {
+            if (!this.closed) this.closed = error;
+            this.waiters.splice(0).forEach(w => w());
+        };
+        this.socket.on('error', fail);
+        this.socket.on('end', () => fail(new Error('state service ended the stream')));
+        this.socket.on('close', () => fail(new Error('state service closed the stream')));
         let pending = '';
         this.socket.on('data', d => {
             pending += d.toString('utf8');
             let i;
             while ((i = pending.indexOf('\n')) >= 0) {
-                const line = JSON.parse(pending.slice(0, i));
+                let line;
+                try {line = JSON.parse(pending.slice(0, i));} catch (error) {
+                    fail(new Error(`state service sent invalid JSON: ${error.message}`));
+                    this.socket.destroy();return;
+                }
                 pending = pending.slice(i + 1);
                 if (line.type === 'snapshot') this.latest = line;
                 this.lines.push(line);
@@ -168,7 +181,8 @@ export class StateServiceTransport {
         const deadline = now() + timeoutMs;
         for (;;) {
             const i = this.lines.findIndex(match);
-            if (i >= 0) return this.lines.splice(0, i + 1).at(-1);
+            if (i >= 0) return this.lines.splice(i, 1)[0];
+            if (this.closed) throw this.closed;
             const left = deadline - now();
             if (left <= 0) throw new Error('state service reply timed out');
             await new Promise(resolve => {
@@ -185,8 +199,23 @@ export class StateServiceTransport {
         this.lines = this.lines.filter(l => l.type !== 'snapshot');
         this.socket.write(`${JSON.stringify({schemaVersion: 1, type: 'command', requestId, expectedSeq: seq, command, arguments: args})}\n`);
         const result = await this._take(l => l.type === 'result' && l.requestId === requestId, timeoutMs);
-        const snapshot = await this._take(l => l.type === 'snapshot' && l.seq > seq, timeoutMs);
-        if (!result.accepted) throw new Error(`${command} refused: ${result.error}`);
+        if (result.schemaVersion !== 1 || typeof result.accepted !== 'boolean' || !Number.isSafeInteger(result.seq)) {
+            throw new Error(`${command} returned an invalid command result (${requestId})`);
+        }
+        if (!result.accepted) throw new Error(`${command} refused (${requestId}): ${String(result.error).slice(0, 1000)}`);
+        const summary = {accepted: result.accepted, seq: result.seq,
+            data: result.data && {type: result.data.type, seq: result.data.seq, clockNs: result.data.clockNs}};
+        let snapshot;
+        try {snapshot = await this._take(l => l.type === 'snapshot' && l.seq > seq, timeoutMs);} catch (error) {
+            const queued = this.lines.filter(l => l.type === 'snapshot').slice(-3).map(l => ({seq: l.seq, clockNs: l.clockNs}));
+            throw new Error(`${command} missing fresh snapshot (${requestId}, expectedSeq=${seq}): ${error.message}; result=${JSON.stringify(summary)}; queued=${JSON.stringify(queued)}`, {cause: error});
+        }
+        if (result.seq !== seq || snapshot.schemaVersion !== 1 || snapshot.seq !== result.seq + 1) {
+            throw new Error(`${command} result/stream sequence mismatch (${requestId}): requested=${seq}, result=${result.seq}, snapshot=${snapshot.seq}`);
+        }
+        if (command.startsWith('lockstep.') && !isDeepStrictEqual(result.data, snapshot)) {
+            throw new Error(`${command} result data differs from its streamed snapshot (${requestId})`);
+        }
         return {result, snapshot};
     }
 

@@ -70,3 +70,13 @@ broken output pipe from `make --version | head` under pipefail. Version
 reporting now drains the complete bounded version output for both compiler
 and make, preserving their real exit status. The failed log and input receipt
 are retained; no guest result is inferred from that run.
+
+Original run 39874390028 built both sources and booted in about ten seconds,
+then received a matching first-step result without a fresh streamed snapshot.
+The original transport discarded the result's acceptance/error while waiting;
+its underlying refusal or stream failure remains unknown. The transport now
+reports refusals immediately, preserves bounded missing-frame reply details,
+and checks result/stream sequence and lockstep data agreement. Twenty-nine
+focused controls pass, including five synthetic protocol boundaries; prefix
+discard, omitted refusal handling and omitted stream agreement mutations are
+detected. These controls do not substitute for fresh hosted guest acceptance.

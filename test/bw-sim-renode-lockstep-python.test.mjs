@@ -12,7 +12,7 @@ import {once} from 'node:events';
 import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import path from 'node:path';
 import {prepareDotnetLauncher} from '../scripts/lib/sim-lab-dotnet-launcher.mjs';
-import {waitForRenodeStateService, stopRenodeChild} from '../scripts/lib/sim-lab-renode-guest.mjs';
+import {waitForRenodeStateService, stopRenodeChild, StateServiceTransport} from '../scripts/lib/sim-lab-renode-guest.mjs';
 const compiled = {version: 1, instructions: [[0, 0, 0, 0]]};
 let transportCalls = 0;
 const unused = {call () { transportCalls++;throw Error('must validate before transport'); }};
@@ -145,4 +145,47 @@ test('owned Runtime cleanup is idempotent and escalates a TERM-resistant child',
     } finally {
         if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
     }
+});
+
+// Synthetic protocol boundaries only. These never substitute for a real guest.
+const replyControl = respond => {
+    const transport = new StateServiceTransport(0);
+    transport.latest = {schemaVersion: 1, type: 'snapshot', seq: 0};
+    transport.socket = {write: raw => respond(transport, JSON.parse(raw))};
+    return transport;
+};
+const snapshotControl = seq => ({schemaVersion: 1, type: 'snapshot', seq, clockNs: 5000000});
+test('a refused command reports its actual error without waiting for a snapshot', async () => {
+    const t = replyControl((transport, request) => transport.lines.push({schemaVersion: 1,
+        type: 'result', requestId: request.requestId, seq: 0, accepted: false, error: 'expectedSeq mismatch control'}));
+    await assert.rejects(t.command('lockstep.step', {}, 30), /lockstep.step refused.*expectedSeq mismatch control/);
+});
+test('matching a result preserves an earlier unmatched snapshot', async () => {
+    const t = replyControl((transport, request) => {
+        const frame = snapshotControl(1);
+        transport.lines.push(frame, {schemaVersion: 1, type: 'result', requestId: request.requestId, seq: 0, accepted: true, data: structuredClone(frame)});
+    });
+    const reply = await t.command('lockstep.step', {}, 30);
+    assert.deepEqual(reply.result.data, reply.snapshot);
+});
+test('an accepted result cannot replace its missing stream frame, and diagnostics retain the reply', async () => {
+    const t = replyControl((transport, request) => transport.lines.push({schemaVersion: 1,
+        type: 'result', requestId: request.requestId, seq: 0, accepted: true, data: snapshotControl(1)}));
+    await assert.rejects(t.command('lockstep.step', {}, 30), /missing fresh snapshot.*expectedSeq=0.*result=.*"accepted":true.*"seq":1/);
+});
+test('lockstep result/stream disagreement and invalid sequences are refused', async () => {
+    for (const mode of ['data', 'result-seq', 'snapshot-seq']) {
+        const t = replyControl((transport, request) => transport.lines.push({schemaVersion: 1,
+            type: 'result', requestId: request.requestId, seq: mode === 'result-seq' ? 2 : 0,
+            accepted: true, data: {...snapshotControl(1), clockNs: mode === 'data' ? 99 : 5000000}},
+        snapshotControl(mode === 'snapshot-seq' ? 2 : 1)));
+        await assert.rejects(t.command('lockstep.step', {}, 30), /differs from its streamed snapshot|sequence mismatch/);
+    }
+});
+test('stream termination does not become an unrelated reply timeout', async () => {
+    const t = replyControl((transport, request) => {
+        transport.lines.push({schemaVersion: 1, type: 'result', requestId: request.requestId, seq: 0, accepted: true});
+        transport.closed = new Error('state service ended the stream control');
+    });
+    await assert.rejects(t.command('lockstep.step', {}, 30), /missing fresh snapshot.*ended the stream control/);
 });
