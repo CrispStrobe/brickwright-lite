@@ -29,8 +29,10 @@
         },
         "ev3comprehensive": {
             "path": "extensions/CrispStrobe/ev3_universal.js",
-            "sha256": "0934781766268e4577c96b3db6d554f29141b2da844a48f60cd37c21280bacff",
-            "bytes": 195552
+            "sha256": "77b01f2ec73b1fe852249a81c59560c186c30e8c7e4b2aef115e749e1742a6ff",
+            "bytes": 197199,
+            "repo": "CrispStrobe/extensions",
+            "commit": "ff74f1309b8807713508884048292182a369f8f5"
         },
         "ev3dev": {
             "path": "extensions/CrispStrobe/ev3dev_py_transpile.js",
@@ -39,18 +41,24 @@
         },
         "legoboostunified": {
             "path": "extensions/CrispStrobe/legoboost_universal.js",
-            "sha256": "ef1d8e2001ed6dee4faeb29ba914043795b98d8cd02b391f3cb2139c0679bd26",
-            "bytes": 97625
+            "sha256": "2e2398d98bd5cf48c3138ff98174de906abff21548ab389d377a7dfc3bc4113c",
+            "bytes": 100081,
+            "repo": "CrispStrobe/extensions",
+            "commit": "ff74f1309b8807713508884048292182a369f8f5"
         },
         "legonxt": {
             "path": "extensions/CrispStrobe/legonxt_transpile_universal.js",
-            "sha256": "a7f5e78ecdcdc5ba6d117c1198fe3d96cf6b47beb9035e36bdef2a6819300da5",
-            "bytes": 230033
+            "sha256": "4003811ffde27cc52d687ca060f5d5f0dcef7bbb110469e215c2b9aaa81911c5",
+            "bytes": 232231,
+            "repo": "CrispStrobe/extensions",
+            "commit": "ff74f1309b8807713508884048292182a369f8f5"
         },
         "legopoweredup": {
             "path": "extensions/CrispStrobe/lego_poweredup.js",
-            "sha256": "f3080b32b1c29949ba1f2b84e0c405c1f82f00ba7dc9f8083507efb3655386fb",
-            "bytes": 120013
+            "sha256": "723e04930f574f3da6d8f48f855a4ee2947f7b96a8771e464f4fb406e3c7f6e5",
+            "bytes": 122373,
+            "repo": "CrispStrobe/extensions",
+            "commit": "ff74f1309b8807713508884048292182a369f8f5"
         },
         "legorcx": {
             "path": "extensions/CrispStrobe/lego_rcx.js",

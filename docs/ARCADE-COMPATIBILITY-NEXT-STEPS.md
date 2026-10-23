@@ -975,3 +975,14 @@ reported as bundled extension source. Empty registered source is distinct from
 an unrecognized carrier. These are source-only scanner repairs; complete hosted
 modules retain their existing DOM and dependency prerequisites. Extracted pure
 scanner controls, if run separately, do not qualify the complete modules.
+
+## Current-main notice integration
+
+[Amendment #1252](https://github.com/CrispStrobe/brickwright-lite/pull/1252) merged
+before the current-main conflict resolution. The normal composition keeps both
+published histories and the already landed motor/Robot Lab adoption. Its only
+manual conflict preserves the union of scoped notice entries, with one entry per
+bundle and every existing author/licence requirement. The registered Arrays
+carrier, all original assertions and supplier identities are retained. This
+integration and the current grouping/receiver/fixture repairs require one new
+complete hosted set; successes from either parent cannot qualify the result.

@@ -93,4 +93,35 @@ if (!existsSync(missing)) {
             assert.ok(Math.abs(city - technic) <= 0.5, `City Hub ${city}° vs Technic Hub ${technic}°`);
         });
     }
+    // Essential's complete assembly is 67351c01.dat; 67351.dat is only its shell.
+    // It has been in the catalogue since the hub lane, so no metadata substitute is needed.
+    const essentialAngle = async (transport, degrees, part = '67351c01.dat') => {
+        const source = `WHEN flag clicked:\n  pup set motor A power to 50 %\n  pup set motor A stop action to brake\n  pup turn motor A on for ${degrees} degrees\n`;
+        const r = await runLabHubProgram(source, {modelText: cityBench(part), transport, timeLimitMs: 3000});
+        try {
+            assert.equal(r.extensionId, 'legopoweredup');
+            assert.equal(r.hub.profile.id, part === '67351c01.dat' ? 'spike-essential' : 'technic-hub');
+            assert.deepEqual(errorsBack(r.received), []);
+            assert.ok(r.written.some(b => b[2] === 0x81 && b[3] === 0 && b[5] === 0x0b),
+                'the extension sent StartSpeedForDegrees to Essential port A');
+            return r.hub.readPort('A').angleDeg;
+        } finally { r.session.dispose(); }
+    };
+    const fullTurn = angle => Math.abs(angle - 360) <= 5;
+    for (const transport of ['ble', 'scratchlink']) {
+        test(`legopoweredup drives the SPIKE Essential assembly one full turn over ${transport}`, async () => {
+            const angle = await essentialAngle(transport, 360);
+            assert.ok(fullTurn(angle), `Essential motor A at ${angle}°`);
+        });
+        test(`Essential over ${transport}: a half-turn fails the full-turn judge`, async () => {
+            const angle = await essentialAngle(transport, 180);
+            // As the City bench above, compare the free motor to the same
+            // motor on a Technic hub: it is not the pinned bench's endpoint.
+            const reference = await essentialAngle(transport, 180, '22127.dat');
+            assert.ok(Math.abs(angle - reference) <= 0.5, `Essential ${angle}° vs Technic ${reference}°`);
+            assert.ok(angle > 90, 'the control actually drove the motor');
+            assert.equal(fullTurn(angle), false);
+        });
+    }
+
 }

@@ -23,6 +23,7 @@
 //
 // The word table itself is robotLabDialect.js (one table for all of this).
 
+import MENU_ARGS from './extension-menu-table.js';
 import pythonToPseudocode, {Translator} from './sb3-creator-python.js';
 import javascriptToPseudocode from './sb3-creator-javascript.js';
 import {compileArcadeWord} from './arcadeDialect.js';
@@ -30,6 +31,9 @@ import {ROBOTLAB_RUNTIME, robotLabWordFor, robotLabWordsOf, robotLabCallToPseudo
 // The LEGO hub words (`pup …`, `boost …`, `wedo …`: legopoweredup, legoboostunified, wedo2unified) ride the
 // same door and the same machinery, from their own table (lib/legoHubsDialect.js).
 import {legoHubWordFor, legoHubWordsOf, isLegoHubText} from './legoHubsDialect.js';
+// Keep compiler acquisition at the registering door. Its Robot Lab layer is
+// hoisted below; the registered class is used only when a reader handles a call.
+import SB3Creator from './sb3-creator-register-art.js';
 
 /** The `lab` words, then the LEGO hub words, of the given kinds (table order is precedence within each). */
 const wordsOf = kinds => [...robotLabWordsOf(kinds), ...legoHubWordsOf(kinds)];
@@ -71,132 +75,134 @@ const isLabLine = text => /^(?:lab|when\s+lab)\s/i.test(text) || isLegoHubText(t
  * @param {Function} Base the registered SB3Creator class
  * @returns {Function} its subclass
  */
-export const withRobotLab = Base => class RobotLabCreator extends Base {
-    /** A `lab …` statement or `WHEN lab …:` hat as its block, or null (the vendored rules then read the line). */
-    parseLabCommand (line, target) {
-        let text = String(line).trim();
-        let hat = false;
-        if (/^when\b/i.test(text)) {
-            hat = /:\s*$/.test(text);
-            text = text.replace(/\s*:\s*$/, '');
-        }
-        if (!isLabLine(text)) return null;
-        const context = {target, extraBlocks: {}, parentId: null};
-        const read = s => {
-            // As the compiler's own statements: a reporter spread over the slots is refused by name.
-            if (typeof this.refuseSpilledReporter === 'function') this.refuseSpilledReporter(text, s, target);
-            return this.parseValue(s, context);
-        };
-        for (const entry of wordsOf(hat ? ['hat'] : ['command'])) {
-            const m = matchTopLevel(text, compileArcadeWord(entry).re);
-            if (!m) continue;
-            const {id, block} = this.createBlock(entry.op, entry.kind === 'hat' ? {topLevel: true} : {});
-            context.parentId = id;
-            const slots = this.arcadeSlots(entry, m, context, read);
-            if (!slots) continue;
-            Object.assign(block[id], slots);
-            return {block, extraBlocks: context.extraBlocks};
-        }
-        return null;
-    }
-
-    parseCommand (line, target, allowLoop = false) {
-        return this.parseLabCommand(line, target) || super.parseCommand(line, target, allowLoop);
-    }
-
-    /** `lab …` reporters, read whole: they hold no operator of their own. */
-    parseReporter (s, context) {
-        const text = String(s).trim();
-        if (/^lab\s/i.test(text) || isLegoHubText(text)) {
-            for (const entry of wordsOf(['reporter', 'boolean'])) {
+export function withRobotLab (Base) {
+    return class RobotLabCreator extends Base {
+        /** A `lab …` statement or `WHEN lab …:` hat as its block, or null (the vendored rules then read the line). */
+        parseLabCommand (line, target) {
+            let text = String(line).trim();
+            let hat = false;
+            if (/^when\b/i.test(text)) {
+                hat = /:\s*$/.test(text);
+                text = text.replace(/\s*:\s*$/, '');
+            }
+            if (!isLabLine(text)) return null;
+            const context = {target, extraBlocks: {}, parentId: null};
+            const read = s => {
+                // As the compiler's own statements: a reporter spread over the slots is refused by name.
+                if (typeof this.refuseSpilledReporter === 'function') this.refuseSpilledReporter(text, s, target);
+                return this.parseValue(s, context);
+            };
+            for (const entry of wordsOf(hat ? ['hat'] : ['command'])) {
                 const m = matchTopLevel(text, compileArcadeWord(entry).re);
                 if (!m) continue;
-                const id = this.pushBlock(context, entry.op);
-                const was = context.parentId;
+                const {id, block} = this.createBlock(entry.op, entry.kind === 'hat' ? {topLevel: true} : {});
                 context.parentId = id;
-                let slots;
-                try {
-                    slots = this.arcadeSlots(entry, m, context, t => this.parseValue(t, context));
-                } finally {
-                    context.parentId = was;
+                const slots = this.arcadeSlots(entry, m, context, read);
+                if (!slots) continue;
+                Object.assign(block[id], slots);
+                return {block, extraBlocks: context.extraBlocks};
+            }
+            return null;
+        }
+
+        parseCommand (line, target, allowLoop = false) {
+            return this.parseLabCommand(line, target) || super.parseCommand(line, target, allowLoop);
+        }
+
+        /** `lab …` reporters, read whole: they hold no operator of their own. */
+        parseReporter (s, context) {
+            const text = String(s).trim();
+            if (/^lab\s/i.test(text) || isLegoHubText(text)) {
+                for (const entry of wordsOf(['reporter', 'boolean'])) {
+                    const m = matchTopLevel(text, compileArcadeWord(entry).re);
+                    if (!m) continue;
+                    const id = this.pushBlock(context, entry.op);
+                    const was = context.parentId;
+                    context.parentId = id;
+                    let slots;
+                    try {
+                        slots = this.arcadeSlots(entry, m, context, t => this.parseValue(t, context));
+                    } finally {
+                        context.parentId = was;
+                    }
+                    if (!slots) { delete context.extraBlocks[id]; continue; }
+                    Object.assign(context.extraBlocks[id], slots);
+                    return this.valueOfBlock(id);
                 }
-                if (!slots) { delete context.extraBlocks[id]; continue; }
-                Object.assign(context.extraBlocks[id], slots);
-                return this.valueOfBlock(id);
             }
+            return super.parseReporter(s, context);
         }
-        return super.parseReporter(s, context);
-    }
 
-    /** A hub Boolean word (`nxt touch sensor S1 pressed`) is a condition as it stands. */
-    parseCondition (conditionStr, context) {
-        const text = this.stripOuterParens(String(conditionStr || '').trim());
-        if (isLegoHubText(text) && !/\s(?:and|or)\s|[<>=]/i.test(text)) {
-            for (const entry of legoHubWordsOf(['boolean'])) {
-                if (matchTopLevel(text, compileArcadeWord(entry).re)) return this.parseReporter(text, context)[1];
+        /** A hub Boolean word (`nxt touch sensor S1 pressed`) is a condition as it stands. */
+        parseCondition (conditionStr, context) {
+            const text = this.stripOuterParens(String(conditionStr || '').trim());
+            if (isLegoHubText(text) && !/\s(?:and|or)\s|[<>=]/i.test(text)) {
+                for (const entry of legoHubWordsOf(['boolean'])) {
+                    if (matchTopLevel(text, compileArcadeWord(entry).re)) return this.parseReporter(text, context)[1];
+                }
             }
+            return super.parseCondition(conditionStr, context);
         }
-        return super.parseCondition(conditionStr, context);
-    }
 
-    drep (b, blocks) {
-        const entry = b && wordFor(b.opcode);
-        if (entry && entry.kind !== 'command' && entry.kind !== 'hat') return this.spellArcade(entry, b, blocks);
-        return super.drep(b, blocks);
-    }
+        drep (b, blocks) {
+            const entry = b && wordFor(b.opcode);
+            if (entry && entry.kind !== 'command' && entry.kind !== 'hat') return this.spellArcade(entry, b, blocks);
+            return super.drep(b, blocks);
+        }
 
-    decompileHat (b, blocks) {
-        const entry = b && wordFor(b.opcode);
-        if (entry && entry.kind === 'hat') return this.spellArcade(entry, b, blocks);
-        return super.decompileHat(b, blocks);
-    }
+        decompileHat (b, blocks) {
+            const entry = b && wordFor(b.opcode);
+            if (entry && entry.kind === 'hat') return this.spellArcade(entry, b, blocks);
+            return super.decompileHat(b, blocks);
+        }
 
-    decompileStackBlock (b, blocks, level) {
-        const entry = b && wordFor(b.opcode);
-        if (entry && entry.kind === 'command') return [`${'  '.repeat(level)}${this.spellArcade(entry, b, blocks)}`];
-        return super.decompileStackBlock(b, blocks, level);
-    }
+        decompileStackBlock (b, blocks, level) {
+            const entry = b && wordFor(b.opcode);
+            if (entry && entry.kind === 'command') return [`${'  '.repeat(level)}${this.spellArcade(entry, b, blocks)}`];
+            return super.decompileStackBlock(b, blocks, level);
+        }
 
-    runtimeShim (extId, lang, mode = 'shim') {
-        if (extId === 'robotlab' && mode === 'simulator') return robotLabSimulatorDriver(lang);
-        return super.runtimeShim(extId, lang, mode);
-    }
+        runtimeShim (extId, lang, mode = 'shim') {
+            if (extId === 'robotlab' && mode === 'simulator') return robotLabSimulatorDriver(lang);
+            return super.runtimeShim(extId, lang, mode);
+        }
 
-    generatePython (project = this.project, opts = {}) {
-        return this.withLabHatArguments(super.generatePython(project, opts), project, 'py');
-    }
+        generatePython (project = this.project, opts = {}) {
+            return this.withLabHatArguments(super.generatePython(project, opts), project, 'py');
+        }
 
-    generateJavaScript (project = this.project, opts = {}) {
-        return this.withLabHatArguments(super.generateJavaScript(project, opts), project, 'js');
-    }
+        generateJavaScript (project = this.project, opts = {}) {
+            return this.withLabHatArguments(super.generateJavaScript(project, opts), project, 'js');
+        }
 
-    /**
-     * Events mode writes a runtime hat as `_robotlab.on("robotlab_whenTouch", handler)`, which
-     * loses the hat's own arguments (which part, touching what). They follow the handler here,
-     * so the readers can rebuild the hat. The emitter registers hats in its walk's order —
-     * the scripted targets in project order, each one's blocks in insertion order — and this
-     * walks the same order, so the k-th registration is the k-th robotlab hat.
-     */
-    withLabHatArguments (code, project, lang) {
-        if (typeof code !== 'string' || !code.includes('_robotlab.on(')) return code;
-        const targets = (project && project.targets) || [];
-        const hats = [];
-        for (const t of targets.filter(x => !x.isStage || Object.values(x.blocks || {}).some(b => b.topLevel))) {
-            for (const b of Object.values(t.blocks || {})) {
-                const entry = b.topLevel && robotLabWordFor(b.opcode);
-                if (entry && entry.kind === 'hat') hats.push({b, entry, blocks: t.blocks});
+        /**
+         * Events mode writes a runtime hat as `_robotlab.on("robotlab_whenTouch", handler)`, which
+         * loses the hat's own arguments (which part, touching what). They follow the handler here,
+         * so the readers can rebuild the hat. The emitter registers hats in its walk's order —
+         * the scripted targets in project order, each one's blocks in insertion order — and this
+         * walks the same order, so the k-th registration is the k-th robotlab hat.
+         */
+        withLabHatArguments (code, project, lang) {
+            if (typeof code !== 'string' || !code.includes('_robotlab.on(')) return code;
+            const targets = (project && project.targets) || [];
+            const hats = [];
+            for (const t of targets.filter(x => !x.isStage || Object.values(x.blocks || {}).some(b => b.topLevel))) {
+                for (const b of Object.values(t.blocks || {})) {
+                    const entry = b.topLevel && robotLabWordFor(b.opcode);
+                    if (entry && entry.kind === 'hat') hats.push({b, entry, blocks: t.blocks});
+                }
             }
+            let k = 0;
+            return code.replace(/_robotlab\.on\(("robotlab_\w+"), (\w+)\)/g, (whole, opcode, fn) => {
+                const hat = hats[k++];
+                if (!hat || JSON.parse(opcode) !== hat.b.opcode) return whole;
+                const val = key => (lang === 'py' ? this.pyVal(hat.b.inputs[key], hat.blocks) : this.jsVal(hat.b.inputs[key], hat.blocks));
+                const args = hat.entry.args.map(key => this.runtimeArg(hat.b, key, hat.blocks, val));
+                return `_robotlab.on(${[opcode, fn, ...args].join(', ')})`;
+            });
         }
-        let k = 0;
-        return code.replace(/_robotlab\.on\(("robotlab_\w+"), (\w+)\)/g, (whole, opcode, fn) => {
-            const hat = hats[k++];
-            if (!hat || JSON.parse(opcode) !== hat.b.opcode) return whole;
-            const val = key => (lang === 'py' ? this.pyVal(hat.b.inputs[key], hat.blocks) : this.jsVal(hat.b.inputs[key], hat.blocks));
-            const args = hat.entry.args.map(key => this.runtimeArg(hat.b, key, hat.blocks, val));
-            return `_robotlab.on(${[opcode, fn, ...args].join(', ')})`;
-        });
-    }
-};
+    };
+}
 
 /**
  * The robotlab 'simulator' driver: `_robotlab` IS the Robot Lab API (window.__bwSimLab.api)
@@ -247,6 +253,65 @@ const labRegistration = (translator, statement) => {
     return {fn: call.args[1].id, header};
 };
 
+// Reuse the compiler's registry and word spellings, including the unified SPIKE
+// registry installed at the registering door. No second method/argument table.
+const HUB_RUNTIMES = new Set(['spikeprime', 'ev3comprehensive', 'legopoweredup', 'legoboostunified', 'wedo2unified']);
+const asHub = node => {
+    if (node?.type !== 'Call' || node.func?.type !== 'Attribute' || node.func.value?.type !== 'Name') return null;
+    const runtime = node.func.value.id.slice(1);
+    return node.func.value.id.startsWith('_') && HUB_RUNTIMES.has(runtime) ?
+        {runtime, method: node.func.attr, args: node.args, keywords: node.keywords} : null;
+};
+
+/** A registry call is admitted only if its word recompiles with every argument intact. */
+const hubCallToPseudo = (translator, call, command) => {
+    const reg = SB3Creator.RUNTIME_EXTENSIONS[call.runtime];
+    const found = Object.entries(reg?.ops || {}).filter(([, op]) => op.method === call.method);
+    if (found.length !== 1 || call.keywords?.length) return null;
+    const [name, op] = found[0];
+    if ((op.kind === 'command') !== command || !['command', 'reporter', 'boolean'].includes(op.kind) ||
+        call.args.length !== (op.args || []).length) return null;
+    const opcode = `${call.runtime}_${name}`;
+    const args = call.args.map(arg => translator.expr(arg));
+    const block = {opcode, inputs: {}, fields: {}};
+    const blocks = {};
+    for (const [i, key] of (op.args || []).entries()) {
+        const text = args[i];
+        const quoted = /^"(?:[^"\\]|\\.)*"$/.test(text);
+        const numeric = /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(text);
+        const menu = MENU_ARGS[opcode]?.[key];
+        if (menu && !menu.startsWith('+') && !quoted && !numeric) return null;
+        if (quoted || numeric) block.fields[key] = [quoted ? JSON.parse(text) : text, null];
+        if (menu && quoted) {
+            const field = menu.replace(/^\+/, '');
+            blocks[key] = {opcode: `${call.runtime}_menu_${field}`, shadow: true, inputs: {},
+                fields: {[field]: [JSON.parse(text), null]}};
+            block.inputs[key] = [1, key];
+        } else if (quoted || numeric) block.inputs[key] = [1, [quoted ? 10 : 4, quoted ? JSON.parse(text) : text]];
+        else {
+            blocks[key] = {opcode: 'argument_reporter_string_number', inputs: {}, fields: {VALUE: [text, null]}};
+            block.inputs[key] = [1, key];
+        }
+    }
+    const creator = new SB3Creator();
+    const word = command ? creator.decompileStackBlock(block, blocks, 0).join('\n') : creator.drep(block, blocks);
+    // Unsupported spellings, invalid fixed menus and dropped/changed arguments
+    // are refused by name, rather than being accepted as a different program.
+    try {
+        const device = call.runtime === 'spikeprime' ? 'SPIKE' : call.runtime === 'ev3comprehensive' ? 'EV3' : null;
+        creator.parse(`${device ? `DEVICE ${device}\n` : ''}WHEN flag clicked:\n  ${command ? word : `say (${word})`}\n`);
+        const target = creator.project.targets.find(t => Object.values(t.blocks).some(b => b.opcode === opcode));
+        const candidates = Object.values(target?.blocks || {}).filter(b => b.opcode === opcode);
+        if (candidates.length !== 1) return null;
+        const normalize = text => creator.stripOuterParens(String(text).trim());
+        if (!(op.args || []).every((key, i) => normalize(creator.runtimeArg(candidates[0], key, target.blocks,
+            k => creator.dval(candidates[0].inputs[k], target.blocks))) === normalize(args[i]))) return null;
+    } catch { return null; }
+    if (call.runtime === 'ev3comprehensive') translator.hubDevices.add('EV3');
+    if (call.runtime === 'spikeprime') translator.hubDevices.add('SPIKE');
+    return word;
+};
+
 const LIFT = Symbol.for('brickwright.robotLabLift');
 
 /** Teaches the shared Translator the `_robotlab` calls, once (idempotent). */
@@ -255,6 +320,13 @@ export const installRobotLabReaders = () => {
     if (proto[LIFT]) return false;
     const {callExpr, exprStmt, program, resolveHat} = proto;
     proto.callExpr = function (node) {
+        const hub = asHub(node);
+        if (hub) {
+            const word = hubCallToPseudo(this, hub, false);
+            if (word) return `(${word})`;
+            this.warn(`unsupported _${hub.runtime}.${hub.method} in expression`);
+            return '""';
+        }
         const call = asLab(node);
         if (call) {
             const word = robotLabCallToPseudo(call.method, call.args.map(x => this.expr(x)));
@@ -266,6 +338,13 @@ export const installRobotLabReaders = () => {
     };
     proto.exprStmt = function (eRaw, indent) {
         const e = eRaw && eRaw.type === 'Await' ? eRaw.value : eRaw;
+        const hub = asHub(e);
+        if (hub) {
+            const word = hubCallToPseudo(this, hub, true);
+            if (word) return [this.pad(indent) + word];
+            this.warn(`unsupported _${hub.runtime}.${hub.method}`);
+            return [];
+        }
         const call = asLab(e);
         if (call) {
             const word = robotLabCallToPseudo(call.method, call.args.map(x => this.expr(x)));
@@ -278,14 +357,29 @@ export const installRobotLabReaders = () => {
     proto.program = function (ast) {
         // The hats' registrations are read first (the emitter writes them after the handlers).
         this.labHats = new Map();
+        this.hubDevices = new Set();
         const body = ast.body.filter(statement => {
+            const hub = statement.type === 'Expr' && asHub(statement.value);
+            if (hub) {
+                this.warn(`unsupported top-level _${hub.runtime}.${hub.method}`);
+                return false;
+            }
             const reg = labRegistration(this, statement);
             if (!reg) return true;
             if (reg.header) this.labHats.set(reg.fn, reg.header);
             else this.warn('unknown Robot Lab event');
             return false;
         });
-        return program.call(this, {...ast, body});
+        const text = program.call(this, {...ast, body});
+        // Native hub words require their DEVICE context. The runtime emitter
+        // names the extension but does not emit a scratch.device marker.
+        const declared = /^DEVICE\s+(\S+)/m.exec(text)?.[1].toUpperCase();
+        const devices = [...this.hubDevices];
+        if (devices.length > 1 || (declared && devices.length && devices[0] !== declared)) {
+            this.warn(`incompatible hub DEVICE contexts: ${[declared, ...devices].filter(Boolean).join(', ')}`);
+            return '\n';
+        }
+        return devices.length && !declared ? `DEVICE ${devices[0]}\n${text}` : text;
     };
     proto.resolveHat = function (name, args) {
         return (this.labHats && this.labHats.get(name)) || resolveHat.call(this, name, args);
