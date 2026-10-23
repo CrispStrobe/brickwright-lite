@@ -80,3 +80,16 @@ Changing an admitted source revokes its old proof. A fresh valid comparison can
 independently satisfy the Boolean contract, and an actual arithmetic body can
 only satisfy the ordinary Number rules. No helper spelling or annotation fixes
 the role of a changed body.
+
+## Hosted checkpoint and emitted grouping follow-up
+
+The complete composed hosted comparison/recursive cohort passes 59 controls.
+The original return module still has two export failures, with exact emitted
+drafts containing the parser's `parenthesized: true` expression marker. A
+source-proof correction in the same owned module accepts only that true marker
+on supported expressions, retaining the actual tree, Number arguments, effects
+and physical source snapshot. No parser/profile or generic graph is changed.
+Two supplemental complete pure groups retain the exact public synthetic drafts
+and malformed-placement/accessor/inherited/stale-proof controls. The resulting
+61-control cohort and original native/SDK journeys need fresh qualification;
+59 passing controls do not qualify the changed source.
