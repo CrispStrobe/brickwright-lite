@@ -10,7 +10,7 @@ const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
     simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false,
-    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false}) => {
+    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -41,7 +41,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         if (programMarker) await page.waitForFunction(marker => [...document.querySelectorAll('.cm-content')].some(el =>
             el.textContent.includes(marker)), programMarker(id), {timeout: 30000});
         await page.getByTestId('bw-sim-lab-3d-canvas').waitFor();
-        await page.screenshot({path: resolve(shotsDir, `${id}.png`)});
+        await (captureModel ? captureModel(page,resolve(shotsDir, `${id}.png`)) : page.screenshot({path: resolve(shotsDir, `${id}.png`)}));
         await page.evaluate(observeProgram => {
             const pane = window.__bwSimLab._pane;
             const s = pane.session;
@@ -90,7 +90,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         assert.deepEqual(await page.locator('[data-testid="bw-sim-lab-mixer-slider"], [data-testid="bw-sim-lab-mixer-jog"]').evaluateAll(es => es.map(e => e.dataset.port).sort()),
             r.mechanism.actuators.map(a => a.port).sort());
         for (const slider of await page.getByTestId('bw-sim-lab-mixer-slider').all()) assert.ok(await slider.isDisabled(), 'program control keeps manual sliders off');
-        await page.screenshot({path: resolve(shotsDir, `${id}-finished.png`)});
+        await (captureModel ? captureModel(page,resolve(shotsDir, `${id}-finished.png`)) : page.screenshot({path: resolve(shotsDir, `${id}-finished.png`)}));
         await mixer.click();
         console.log(`PASS motorised mechanics ${id}: ${JSON.stringify(results[id])}`);
     }
@@ -98,7 +98,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`, captureModel = null}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -169,7 +169,7 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
         }
         writeFileSync(resolve(shotsDir, `${id}-manual-capture-state.json`),JSON.stringify({before:fontState,
             after:await page.evaluate(()=>({fonts:document.fonts.status,simulation:window.__bwSimLab.status}))},null,2)+'\n');
-        await page.screenshot({path: resolve(shotsDir, `${id}-manual.png`)});
+        await (captureModel ? captureModel(page,resolve(shotsDir, `${id}-manual.png`)) : page.screenshot({path: resolve(shotsDir, `${id}-manual.png`)}));
         await toggle.click();
         console.log(`PASS manual motor controls ${id}: ${JSON.stringify(results[id])}`);
     }

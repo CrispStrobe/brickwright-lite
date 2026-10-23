@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {mechanicsInteractions,manualMechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
+import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
 import {intakeRoundtrip} from './sim-lab-intake-roundtrip.mjs';
 
 import {judgeBalance} from './sim-lab-balance-judge.mjs';
@@ -144,10 +145,10 @@ export async function newModelsInteractions(page, opts) {
     const results = {};
     for (const id of models) {
         Object.assign(results, await mechanicsInteractions(page, {
-            ...opts, models: [id], judge: judgeNewModel,
+            ...opts, models: [id], judge: judgeNewModel, captureModel:captureRenderedModel,
             simulatedMsFor: key => SPEC[key].simulatedMs, completeWhenPausedFor:key=>key==='root-bridge', speed: 4, observeProgram: true
         }));
-        await manualMechanicsInteractions(page,{...opts,models:[id]});
+        await manualMechanicsInteractions(page,{...opts,models:[id],captureModel:captureRenderedModel});
         await page.getByTestId('bw-sim-lab-instructions').click();
         await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
         const plan=await page.evaluate(()=>window.__bwSimLabInstructions.plan);

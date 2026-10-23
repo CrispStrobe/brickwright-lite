@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
 import {openFile} from './sim-lab-scale-gate.mjs';
 import {exportedProject} from './sim-lab-integral-gate.mjs';
 
@@ -54,7 +55,7 @@ export async function intakeRoundtrip(page,opts,id,judge){
   assert.deepEqual(errors,[]);
   // Capture the accepted final state after the full hold has been recorded.
   if(await reopened.evaluate(()=>window.__bwSimLab.status==='running'))await reopened.getByTestId('bw-sim-lab-pause').click();
-  await reopened.screenshot({path:resolve(opts.shotsDir,id+'-reopened.png')});
+  await captureRenderedModel(reopened,resolve(opts.shotsDir,id+'-reopened.png'));
   console.log(`PASS ${id}: raw LDR/MPD, actual project save, fresh-context reopen and complete saved program`);
  }finally{await reopened.close();}
 }
