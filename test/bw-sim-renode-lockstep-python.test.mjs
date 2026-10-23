@@ -364,3 +364,17 @@ test('actual checkpoint window keeps every physical quantum and records availabl
         }
     }
 });
+
+test('COMMIT READY acknowledgement survives an unchanged prior COMPLETE at lockstep begin', async () => {
+    const p = new LockstepProgram({pythonSource: 'pass', transport: {async call (op, args) {
+        const reply = new Uint8Array(20);reply.set([0x71, 1, args.bytes[2], 1, 1]);
+        return {target: {capabilities: ['nuttx-program-publication/v1']}, lifecycle: {
+            nuttxProgram: {publicationSeq: 10, state: 3, error: 0}, nuttxProgramReply: [...reply]}};
+    }}});
+    await p.upload();assert.equal(p.stateName, 'ready');
+    p.observe(coherentFrame());
+    assert.equal(p.stateName, 'ready', 'old COMPLETE cannot undo the real COMMIT READY acknowledgement');
+    assert.equal(p.stateFresh, false);
+    p.observe(coherentFrame({publication: 12, state: 1}));
+    assert.equal(p.stateName, 'ready');assert.equal(p.stateFresh, true);
+});

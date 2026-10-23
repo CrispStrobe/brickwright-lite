@@ -135,6 +135,12 @@ export class LockstepProgram {
         }
         this.uploaded = true;
         this.state = committed.state;
+        if (this.coherentPublications) {
+            // COMMIT also acknowledges before the status publication refreshes.
+            // Keep its real READY state across an unchanged begin snapshot.
+            this.stateFresh = false;
+            this.statusBarrier = {floor: this.lastPublication};
+        }
         this.lastReplyOp = PROGRAM_OP.COMMIT;
         this.onChange(this);
         return committed;
