@@ -22,12 +22,15 @@ bytes before concatenation/string/decryption, preserving CRC, authenticated
 encryption, ownership, request/source identities and original errors. No
 archive expansion, authentication or evidence assertion may be weakened.
 
-Add actual atomic per-agent and global queued/inflight admission through a
-reviewed durable backing store with finite records, retries and leases. An
+Add actual atomic per-agent and global accepted-nonterminal job admission
+through a reviewed private-repository GitHub Contents SHA-CAS store with finite
+bytes, records and retries. Refuse unset, public or unauthorized backing stores. An
 in-process counter in a serverless handler cannot establish a global limit.
 Refuse excess before dispatch; release terminal/failed-dispatch capacity exactly
-once and conservatively retain ambiguous dispatch reservations. Preserve safe
-retries, expiry and concurrent callers without inventing race-free quotas.
+once and conservatively retain ambiguous dispatch reservations. Expiry alone
+cannot free a possibly live accepted job; release requires trusted terminal
+observation or proved pre-dispatch refusal. Preserve safe retries and concurrent
+callers without inventing race-free quotas.
 Deployment must refuse missing/unqualified admission configuration.
 
 Require focused negative and concurrent controls, meaningful source mutations,
