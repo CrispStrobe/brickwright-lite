@@ -12,7 +12,7 @@ const frame = new Function('MAX_FRAME_MS', 'requestAnimationFrame', `return (${s
 const paneAt = (status, time) => {
     const pane = {last: null, clock: null, editView: null, view: null, challengeRun: null,
         session: {time, failed: null, tick () {throw new Error('observation advanced physics');}},
-        measurementSampleTime: 0, measurements: [], measurementRows: [{value: 'old'}], reads: 0,
+        measurementSampleTime: 0, measurementRowsTime: 0, measurements: [], measurementRows: [{value: 'old'}], reads: 0,
         state: {status, simMs: 0, readings: false, measurementsOpen: true, replayAt: null, measurementTick: 0},
         record () {}, setState (update) {Object.assign(this.state, typeof update === 'function' ? update(this.state) : update);}};
     pane.measurementReader = {read: () => {pane.reads++; return [{value: pane.session.time}];}};
@@ -23,7 +23,7 @@ test('a final short reply after Pause refreshes once without advancing physics o
     const pane = paneAt('paused', 50);
     frame.call(pane, 10);
     assert.equal(pane.reads, 1); assert.equal(pane.measurementRows[0].value, 50);
-    assert.equal(pane.measurementSampleTime, 50); assert.equal(pane.session.time, 50);
+    assert.equal(pane.measurementSampleTime, 50); assert.equal(pane.measurementRowsTime, 50); assert.equal(pane.session.time, 50);
     frame.call(pane, 20);
     assert.equal(pane.reads, 1, 'unchanged paused time is not sampled repeatedly');
     pane.session.time = 60; frame.call(pane, 30);
@@ -32,7 +32,7 @@ test('a final short reply after Pause refreshes once without advancing physics o
 
 test('running and stopping retain the existing simulated-time sampling interval', () => {
     for (const status of ['running', 'stopping']) {
-        const early = paneAt(status, 50); frame.call(early, 10); assert.equal(early.reads, 0);
-        const due = paneAt(status, 100); frame.call(due, 10); assert.equal(due.reads, 1);
+        const early = paneAt(status, 50); frame.call(early, 10); assert.equal(early.reads, 0); assert.equal(early.measurementRowsTime, 0);
+        const due = paneAt(status, 100); frame.call(due, 10); assert.equal(due.reads, 1); assert.equal(due.measurementRowsTime, 100);
     }
 });
