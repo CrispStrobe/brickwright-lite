@@ -1,6 +1,7 @@
 # Robot Lab live physical measurements
 
-CLAIMED — Codex, user-requested live measurement overlays; isolated branch
+Implementation DONE (source candidate) — Codex, user-requested live
+measurement overlays; isolated branch
 `lane/robot-lab-live-measurements-20261023`, base `1d9ed3ddd`.
 
 Own a read-only measurement layer over the existing Jolt-backed session:
@@ -29,3 +30,25 @@ all enabled exact-head hosted checks before matched-head landing. Diagnostics
 are simulation observations, with no hardware-accuracy claim. Evaluate proposed
 MIT/Apache teaching libraries independently; an additional solver is unnecessary
 for observing the current simulation.
+
+
+## Candidate controls
+
+The implementation observes native body velocities, relative joint readings,
+rope impulses and the existing rolling-load estimate through both execution
+routes. Saved definitions use authored part IDs and bound joint/rope identities.
+Missing targets, unavailable diagnostics and pose replay never publish invented
+zero values. The panel and SVG overlays remain separate from component/cable
+visibility; overlapping measurement labels are separated.
+
+48 focused controls pass, including real Jolt worker parity through batch redo,
+native wheel/rope loads, Robot Lab API behavior and actual project bundle save/load.
+Five source mutations are detected (units, target binding, unavailable zero,
+worker forwarding and persistence); original source bytes restored. Guarded
+frontend builds pass. The first full Chromium journey passed measurements,
+Reset and Build/Simulate, then exposed an existing Challenges test assumption
+about a button moved into More. Its original failure is retained; the same
+assertion now uses the existing overflow-aware toolbar reader without changing
+its deadline. Final full Chromium and focused WebKit journeys and every enabled
+exact-head hosted check remain required before landing. No dependency or solver
+change and no hardware-accuracy claim.

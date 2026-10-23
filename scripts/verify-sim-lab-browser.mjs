@@ -366,6 +366,7 @@ const want = part => PART === 'all' || PART === part;
 // A narrow replay of the loaded-motor stop regression; default UI coverage stays complete.
 const INSIGHT_ONLY = process.argv.includes('--ui-only=insight');
 const MIXER_ONLY = process.argv.includes('--ui-only=mixer');
+const MEASUREMENTS_ONLY = process.argv.includes('--ui-only=measurements');
 
 let browser;
 const errors = [];
@@ -1231,7 +1232,17 @@ try {
         await see.close();
     }
 
-    if (want('ui') && !MIXER_ONLY && !INSIGHT_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
+    if (want('ui') && MEASUREMENTS_ONLY) {
+        const page = await browser.newPage({viewport: {width: 1440, height: 900}, serviceWorkers: 'block'});
+        page.on('pageerror', error => errors.push(error.stack || error.message));
+        page.on('dialog', dialog => dialog.accept());
+        await openSimLab(page, {program: null});
+        await simulateUxInteractions(page, {shotsDir: artifacts});
+        console.log('PASS live measurements: custom distance/speed, independent overlays, replay, Reset and Build/Simulate');
+        await page.close();
+    }
+
+    if (want('ui') && !MIXER_ONLY && !INSIGHT_ONLY && !MEASUREMENTS_ONLY) { // the tab, its toolbar and camera; seeing the model, instructions, no-WebGL fallback
         // 15. The Robot Lab tab: icon toolbar (names, tooltips with shortcuts, every action by click and key)
         //     and the movable 3D view (orbit, pan, zoom by mouse and keys; part drags move parts), in English…
         const bar = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
