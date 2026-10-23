@@ -9,13 +9,16 @@ import {readFileSync} from 'node:fs';
 import {createBrickButtonInputs} from '../overlay/scratch-gui/src/lib/bw-sim/api/brick-button-inputs.js';
 import {createRobotLabApi} from '../overlay/scratch-gui/src/lib/bw-sim/api/robot-lab-api.js';
 import {Ev3VirtualHub} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/ev3-virtual-hub.js';
+import {ROBOT_LAB_EVENTS, robotLabActive} from '../overlay/scratch-gui/src/lib/robot-lab-events.js';
+import {setCircuitView} from '../overlay/scratch-gui/src/lib/bw-debug/debug-view.js';
+import {pickLocale, browserLocale} from '../overlay/scratch-gui/src/lib/bw-i18n.js';
 const requireGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
 // Use the modern DOM already pinned beneath the GUI sanitizer, rather than
 // the GUI's separate legacy jsdom 9 test dependency. No dependency is added.
 const {JSDOM} = createRequire(requireGui.resolve('isomorphic-dompurify'))('jsdom');
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {pretendToBeVisual: true, url: 'http://localhost/'});
 const globals = new Map();
-for (const [key, value] of Object.entries({window: dom.window, document: dom.window.document, navigator: dom.window.navigator, MessageChannel: dom.window.MessageChannel,
+for (const [key, value] of Object.entries({window: dom.window, document: dom.window.document, navigator: dom.window.navigator, MessageChannel: dom.window.MessageChannel, CustomEvent: dom.window.CustomEvent,
     requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window), cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window)})) {
     globals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
     Object.defineProperty(globalThis, key, {configurable: true, writable: true, value});
@@ -152,4 +155,56 @@ test('a pointer release does not cancel a simultaneous assistive pulse', async t
     assert.equal(f.pressed(), true, 'the assistive input still owns its pulse');
     await act(async () => {await new Promise(resolve => setTimeout(resolve, 200));});
     assert.equal(f.pressed(), false);
+});
+
+
+test('presentation changes keep the Lab mounted; the real arena handover unmounts held brick input', t => {
+    const current = scene();
+    const api = createRobotLabApi({getSession: () => current});
+    const container = document.createElement('div'); document.body.append(container);
+    const savedMarker = Object.getOwnPropertyDescriptor(window, '__bwSimLab');
+    // Controlled lazy-pane boundary: render the actual button panel, without
+    // claiming a full physics/VM pane or starting an arena in this DOM control.
+    const ControlledPane = () => React.createElement(Panel, {locale: 'en', api, scene: current, disabled: false});
+    const load = (name, imports) => {
+        const text = readFileSync(new URL(`../overlay/scratch-gui/src/components/tw-pseudocode/${name}.jsx`, import.meta.url), 'utf8');
+        const code = babel.transformSync(text, {filename: `${name}.jsx`, babelrc: false, configFile: false,
+            presets: [requireGui.resolve('@babel/preset-react')], plugins: [requireGui.resolve('@babel/plugin-transform-modules-commonjs')]}).code;
+        const loaded = {exports: {}};
+        new Function('require', 'module', 'exports', code)(name => imports[name] || requireGui(name), loaded, loaded.exports);
+        return loaded.exports.default;
+    };
+    const common = {'../../lib/robot-lab-events.js': {ROBOT_LAB_EVENTS, robotLabActive},
+        '../../lib/bw-i18n.js': {pickLocale, browserLocale}};
+    const Tab = load('robot-lab-tab', {...common, react: {...React, lazy: () => ControlledPane}});
+    let arenaMounts = 0;
+    const Simulator = load('spike-simulator-pane', {...common,
+        './spike-arena-pane.jsx': () => {arenaMounts++; return null;},
+        '../../lib/virtual-hub/shared-spike-hub.js': {sharedSpikeHubState: () => {throw new Error('controlled hub was not supplied');}}});
+    window.__bwSimLab = {controlledPane: true};
+    t.after(() => {
+        act(() => {ReactDOM.unmountComponentAtNode(container);});
+        api.dispose(); container.remove();
+        if (savedMarker) Object.defineProperty(window, '__bwSimLab', savedMarker);
+        else delete window.__bwSimLab;
+    });
+    act(() => ReactDOM.render(React.createElement(React.Fragment, null,
+        React.createElement(Tab, {vm: {}, isVisible: true, tabIndex: 4, locale: 'en'}),
+        React.createElement(Simulator, {vm: {}, locale: 'en', hubState: {backend: {cancel () {}}}})), container));
+    const button = container.querySelector('button[data-button="enter"]');
+    button.focus();
+    act(() => Simulate.keyDown(button, {key: 'Enter', repeat: false}));
+    assert.equal(current.hubs[0].hub.button(2), true);
+    act(() => setCircuitView({fullWidth: false, dock: 'top'}, {
+        storage: window.localStorage, eventTarget: window, EventClass: window.CustomEvent}));
+    assert.equal(button.isConnected, true, 'Stage/right-pane presentation does not close the persistent Lab tab');
+    assert.equal(current.hubs[0].hub.button(2), true);
+    assert.equal(document.activeElement, button);
+    const release = container.querySelector('[data-testid="bw-spike-simulator-use-arena"]');
+    assert.ok(release, 'actual arena ownership control is available');
+    act(() => release.click());
+    assert.equal(container.querySelector('[data-testid="bw-robot-lab-tab"]').getAttribute('data-state'), 'released');
+    assert.equal(button.isConnected, false);
+    assert.equal(current.hubs[0].hub.button(2), false, 'actual button unmount cleanup releases the held input');
+    assert.equal(arenaMounts, 0, 'no arena execution was substituted for the controlled pane boundary');
 });

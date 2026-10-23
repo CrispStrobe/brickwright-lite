@@ -31,7 +31,7 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
     page.on('dialog', dialog => dialog.accept());
     const out = {};
     try {
-        await openSimLab(page, {program: null});
+        await openSimLab(page, {program: null, via: 'arena'});
         await loadExample(page);
         await page.evaluate(() => {
             window.__bwConnectionHostBefore = {fetch: window.fetch, socket: window.WebSocket,
@@ -302,6 +302,9 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         });
         assert.deepEqual(closingSerial, [{baudRate: 115200}]);
         assert.equal(await page.evaluate(() => window.__bwConnectionControl.flags), 1);
+        const release = page.getByTestId('bw-spike-simulator-use-arena');
+        await release.waitFor({state: 'visible'});
+        assert.equal(await release.isEnabled(), true);
         const held = page.getByTestId('bw-sim-lab-brick-buttons').locator('button[data-button="enter"]').first();
         await held.focus();
         await page.keyboard.down('Enter');
@@ -309,9 +312,10 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         await page.evaluate(() => {
             window.__bwUnmountedInputHub = window.__bwSimLab._pane.session.hubs.find(record => record.profile === 'ev3').hub;
         });
-        // Invoke the actual Stage control without a pointer-induced blur that
-        // would release Enter before pane unmount gets a chance to clean up.
-        const closing = await page.locator('[title="Scratch Stage"], [title="Scratch-Bühne"]').evaluate(element => {
+        // The arena handover releases the persistent Lab tab. A Stage/right-pane
+        // presentation change deliberately leaves that tab mounted. Invoke the
+        // real handover without pointer blur releasing Enter before unmount.
+        const closing = await release.evaluate(element => {
             const before = {
                 focused: Boolean(document.activeElement?.matches('[data-testid="bw-sim-lab-brick-buttons"] button[data-button="enter"]')),
                 held: window.__bwUnmountedInputHub.button(2),
@@ -322,6 +326,7 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         });
         assert.deepEqual(closing, {focused: true, held: true, serialOpen: true});
         await page.waitForFunction(() => !window.__bwSimLab);
+        assert.equal(await page.getByTestId('bw-robot-lab-tab').getAttribute('data-state'), 'released');
         await page.keyboard.up('Enter');
         // Pane closure is synchronous; its real provider drain may finish
         // later. Observe wrapper restoration rather than assuming it is done.
