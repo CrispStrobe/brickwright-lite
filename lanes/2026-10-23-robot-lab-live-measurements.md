@@ -12,7 +12,8 @@ stable model part IDs, saved with the model. Optional updating overlays belong
 beside the existing component badges and cable visibility controls.
 
 Scope: new `lib/bw-sim/measurements/` modules, narrow integration in
-`sim-session.js`, `sim-worker-protocol.js` (read-only telemetry transport),
+`sim-session.js`, `sim-worker-protocol.js` and `physics/physics-{host,client}.js`
+(read-only telemetry transport and its existing message forwarding),
 `sim-lab.js`, `model/sim-lab-persist.js`,
 `view/sim-view3d.js`, `components/tw-pseudocode/sim-lab-pane.jsx`, a new
 measurement panel there, focused measurement tests/browser journey and usage
