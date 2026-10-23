@@ -2,8 +2,9 @@
 
 Status: implemented after claim #1283 merged. Independent source review and
 all 11 whole-module source controls passed at
-`4a5d5e6574d874b35c75fcaecaf711430677bf9b`. Exact captured-input source
-receiver check also passed. Final-head hosted/native/GUI qualification remains
+`3d1a6b74c27a8023cdb7c0b5e079342d87558d9b`, including four immutable
+built-in kind literals. The exact captured-input source receiver check passed
+at `4a5d5e6574d874b35c75fcaecaf711430677bf9b`. Final-head hosted/native/GUI qualification remains
 pending; no runtime, GUI or application completion is asserted.
 Owner: Arcade integration. Isolated branch:
 `lane/arcade-native-frame-reset-claim-20261023`.

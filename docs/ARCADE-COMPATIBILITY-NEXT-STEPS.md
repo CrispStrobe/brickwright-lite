@@ -18,10 +18,12 @@ claim.
 [Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md), claimed by merged
 [PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283) before code,
 now passes all **11 source-conversion regression groups** at
-`4a5d5e6574d874b35c75fcaecaf711430677bf9b`. The full owned game retains its
+`3d1a6b74c27a8023cdb7c0b5e079342d87558d9b`, including all four immutable
+built-in Sprite kinds. The full owned game retains its
 Sprite artwork, loop, Math, Array/settings operations and later capture through
 real MakeCode export/reimport and Code feedback. Unsafe controls remain refused.
-A separate exact captured-input source check accepts all three Array receivers;
+A separate exact captured-input source check at
+`4a5d5e6574d874b35c75fcaecaf711430677bf9b` accepts all three Array receivers;
 this does not relabel the original failed result or qualify the GUI.
 
 Continue with the final candidate's exact-head qualification in
@@ -32,7 +34,7 @@ remaining refusal independently; never remove a failing gate or borrow an
 older head's result.
 
 The next bounded source extension is documented in the frame-analysis guide:
-prove additional native Sprite-kind domains and complete multi-caller/frame
+prove custom/dynamic Sprite-kind domains and complete multi-caller/frame
 activation patterns with genuine positives and unsafe controls. Broader GUI
 acceptance remains Code/Blocks/pseudocode authoring, graphics, export/reimport
 and project save/reopen. Historical **147 translated / 36 partial / one

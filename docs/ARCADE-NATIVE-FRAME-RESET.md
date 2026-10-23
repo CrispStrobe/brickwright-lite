@@ -1,7 +1,8 @@
 # Native Arcade frame reset analysis
 
 Status: implemented after merged claim #1283. All 11 source-conversion
-regression groups pass at `4a5d5e6574d874b35c75fcaecaf711430677bf9b`.
+regression groups pass at `3d1a6b74c27a8023cdb7c0b5e079342d87558d9b`,
+including all four immutable built-in Sprite kinds.
 Affected final-head hosted/native/GUI qualification and corpus reassessment
 remain pending.
 
@@ -85,8 +86,9 @@ Code feedback rejects unsupported-block comments before parsing. This matters:
 omitting either the first export/reimport or artwork attachment tests a different
 program, and must not be corrected by inserting a reset or deleting the Sprite.
 
-A separate source check of the exact owned input retained from the failing
-numeric journey now accepts both mutation receivers and the item-read receiver.
+A separate source check at `4a5d5e6574d874b35c75fcaecaf711430677bf9b`
+of the exact owned input retained from the failing numeric journey accepts both
+mutation receivers and the item-read receiver.
 The original failed result remains preserved. These checks establish Array
 receiver analysis and clean source conversion for the owned regression; they do
 not establish an original SDK build, native execution, installed GUI behavior,
@@ -101,8 +103,10 @@ other source-start scripts only when they hide their own target, and permits a
 unique registered-button handler only after the overwrite. Visible monitors,
 unknown entries/effects and unrelated procedures remain refused. Other safe
 calling patterns need a complete caller/frame and activation proof, not a name
-exception. Sprite kind effects currently admit the native Player literal;
-other built-in and custom kinds need their actual domain/effect contract.
+exception. Sprite kind effects admit the exact native `Player`, `Projectile`, `Food` and
+`Enemy` literals. This is a numeric effect domain, not a claim about their
+particular integer IDs. Unknown, custom, dynamic, coercing and malformed kind
+inputs still refuse; additional domains need their actual effect contract.
 
 The existing ownership index deliberately excludes declaration prototypes.
 The new census therefore recognizes only the exact, physically linked and

@@ -8,11 +8,13 @@ diagnostic and original SDK Sprite receiver cohorts pass. These counts do not
 measure application completions or editor parity.
 
 [Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) now passes all
-11 source-conversion groups at `4a5d5e6574d874b35c75fcaecaf711430677bf9b`,
-including the complete owned numeric game with real artwork, MakeCode
+11 source-conversion groups at `3d1a6b74c27a8023cdb7c0b5e079342d87558d9b`,
+covering the four immutable built-in Sprite kinds and
+the complete owned numeric game with real artwork, MakeCode
 export/reimport, Code decompile/reparse, Array/settings operations and a later
 callback that captures the temporary. The exact input retained from an earlier
-failed GUI export also passes the separate three-receiver source check. The
+failed GUI export passes the separate three-receiver source check at
+`4a5d5e6574d874b35c75fcaecaf711430677bf9b`. The
 original failure stays preserved; official browser/controller qualification is
 still required. This proof discards only a proven dead entry reset, leaving
 actual allocation, every other writer and settings presence independent.
