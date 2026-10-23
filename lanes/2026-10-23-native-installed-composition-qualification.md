@@ -13,8 +13,19 @@ container from this candidate and the retained, independently verified own-NuttX
 resource profile. Preserve other owners' worktrees, caches, containers, previews,
 old inputs, original failures and qualification records.
 
-Scope is qualification orchestration, private build/test artifacts and this
-claim. No product implementation, firmware rebuild, supplier pin advance,
+The retained installed-qualification handoff requires heavy native builds on
+hosted CI. Existing Tauri jobs do not export the pinned own-NuttX native package.
+Own a narrowly scoped hosted build/admission producer if required:
+`.github/workflows/native-installed-qualification.yml`, its package/source
+admission helper and focused tests. Bind the exact consumer, official frontend,
+native source, compiler and retained resource profile; verify complete inputs
+before packaging and require independently readable output hashes. Do not
+mislabel a generic release bundle or stub-frontend test as this package.
+Hosted CI builds the native package; actual guest qualification uses the direct
+test host. Do not expose private operator inputs or introduce a firmware build.
+
+Remaining scope is qualification orchestration, private build/test artifacts and
+this claim. No product runtime implementation, firmware rebuild, supplier pin advance,
 global tool installation, system-app replacement, signing, release, TestFlight
 or hardware activation. Any product defect or missing owning-upstream input
 requires a separate source claim before implementation. Copy writable build
