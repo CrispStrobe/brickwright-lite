@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T18:25:30.696Z",
+  "generatedAt": "2026-10-23T19:59:22.285Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -7370,11 +7370,13 @@
         "Checkout frozen candidate",
         "Install frozen Node inputs without package lifecycle scripts",
         "Admission and resource refusal controls",
-        "Install supported WebKit runtime",
+        "Verify preprovisioned WebKit runtime",
         "Admit existing frontend and run unchanged WebKit examples",
         "Preserve comparison originals"
       ],
-      "inFileInNoRun": [],
+      "inFileInNoRun": [
+        "Verify preprovisioned WebKit runtime"
+      ],
       "steps": {
         "Checkout exact comparison source": {
           "existed": 1,
@@ -7477,12 +7479,13 @@
           "class": "always"
         }
       },
-      "sourceSha": "048a87646"
+      "sourceSha": "working-tree",
+      "declarationScope": "New CI-only preprovisioned-runtime declaration; Verify preprovisioned WebKit runtime has zero observations. Existing counts remain the retained048a run; no new-condition execution credit."
     }
   },
   "lastRefresh": {
     "workflow": "robot-model-webkit-comparison.yml",
-    "at": "2026-10-23T18:25:30.696Z",
-    "sourceSha": "048a87646"
+    "at": "2026-10-23T19:59:22.285Z",
+    "sourceSha": "working-tree"
   }
 }

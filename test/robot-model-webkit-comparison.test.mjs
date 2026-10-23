@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {FROZEN,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
+import {FROZEN,RUNTIME_IMAGE,admitPreprovisionedRuntime,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
 const fixture=()=>({head:FROZEN.reviewedHeadSha,tree:FROZEN.treeSha,metadata:{job:{id:FROZEN.jobId},artifact:{id:FROZEN.artifactId,size_in_bytes:FROZEN.archiveBytes,digest:FROZEN.archiveDigest}}});
 test('comparison admits only the reviewed whole tree and frozen existing artifact',()=>{
     assert.deepEqual(admitComparisonSource(fixture()),FROZEN);
@@ -61,7 +61,7 @@ test('job-level environment uses contexts available before runner assignment',()
             assert.ok(['github','needs','strategy','matrix','vars','secrets','inputs'].includes(expression[1]),'Context available to jobs.<job_id>.env');
     };
     admit(text);
-    assert.throws(()=>admit(text.replace('github.workspace','runner.temp')),/Context available/);
+    assert.throws(()=>admit(text.replace('PLAYWRIGHT_BROWSERS_PATH: /ms-playwright','PLAYWRIGHT_BROWSERS_PATH: ${{ runner.temp }}')),/Context available/);
 });
 
 
@@ -72,4 +72,22 @@ test('workflow candidate checkout binds the same immutable reviewed source as ad
     const admit=text=>assert.equal(text.match(/ref: ([0-9a-f]{40})/)?.[1],FROZEN.reviewedHeadSha);
     admit(candidate);
     assert.throws(()=>admit(candidate.replace(FROZEN.reviewedHeadSha,'0'.repeat(40))));
+});
+
+const runtimePacket=()=>({image:RUNTIME_IMAGE,platform:'linux',arch:'x64',distro:'ubuntu',ubuntu:'24.04',node:'v22.23.4',playwright:'1.62.1',
+    webkit:{revision:'2336',browserVersion:'26.5'},executable:'/ms-playwright/webkit-2336/pw_run.sh',
+    files:{'pw_run.sh':true,'minibrowser-wpe/bin/MiniBrowser':true,'minibrowser-wpe/bin/WPEWebProcess':true},missingDependencies:[]});
+test('preprovisioned admission requires the exact image, locked runtime and complete native dependency closure',()=>{
+    assert.deepEqual(admitPreprovisionedRuntime(runtimePacket()),runtimePacket());
+    for(const cut of [p=>p.image='mutable:latest',p=>p.platform='darwin',p=>p.arch='arm64',p=>p.distro='debian',p=>p.ubuntu='22.04',
+        p=>p.node='v24.0.0',p=>p.playwright='1.64.0',p=>p.webkit.revision='other',p=>p.webkit.browserVersion='other',
+        p=>p.executable='/other/pw_run.sh',p=>delete p.files['minibrowser-wpe/bin/WPEWebProcess'],p=>p.missingDependencies=['libmissing.so => not found']]){
+        const packet=runtimePacket();cut(packet);assert.throws(()=>admitPreprovisionedRuntime(packet));
+    }
+});
+test('workflow uses the reviewed preprovisioned image with the original job budget and explicit preflight',()=>{
+    const text=readFileSync(new URL('../.github/workflows/robot-model-webkit-comparison.yml',import.meta.url),'utf8');
+    assert.ok(text.includes('image: '+RUNTIME_IMAGE));assert.ok(text.includes('BW_MODEL_WEBKIT_RUNTIME_IMAGE: '+RUNTIME_IMAGE));
+    assert.ok(text.includes('timeout-minutes: 35'));assert.ok(text.includes('--preflight-runtime candidate test-results/runtime-preflight.json'));
+    assert.ok(!text.includes('playwright install'),'No apt/browser installation in the model journey budget');
 });

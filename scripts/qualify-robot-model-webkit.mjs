@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
-import {readFile,writeFile,mkdir,appendFile,readdir,statfs} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,appendFile,readdir,statfs,stat} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
 import {resolve,dirname,join} from 'node:path';
@@ -28,6 +28,40 @@ export const FROZEN = Object.freeze({
 });
 const sha = b=>createHash('sha256').update(b).digest('hex');
 const git = (root,...args)=>execFileSync('git',['-c','gc.auto=0','-c','maintenance.auto=false',...args],{cwd:root,encoding:'utf8'}).trim();
+export const RUNTIME_IMAGE = 'mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac';
+export const QUALIFICATION_CONDITION = 'preprovisioned-ubuntu24-amd64-playwright-1.62.1';
+export function admitPreprovisionedRuntime(packet) {
+    assert.equal(packet.image,RUNTIME_IMAGE,'Exact CI-only immutable amd64 runtime');
+    assert.equal(packet.platform,'linux');assert.equal(packet.arch,'x64');assert.equal(packet.distro,'ubuntu');assert.equal(packet.ubuntu,'24.04');
+    assert.equal(packet.node,'v22.23.4');assert.equal(packet.playwright,'1.62.1');
+    assert.deepEqual(packet.webkit,{revision:'2336',browserVersion:'26.5'});
+    assert.equal(packet.executable,'/ms-playwright/webkit-2336/pw_run.sh');
+    for(const file of ['pw_run.sh','minibrowser-wpe/bin/MiniBrowser','minibrowser-wpe/bin/WPEWebProcess'])
+        assert.equal(packet.files[file],true,'Complete cached headless WebKit runtime');
+    assert.deepEqual(packet.missingDependencies,[],'Native runtime dependencies must resolve before input acquisition');
+    return packet;
+}
+async function preflightRuntime() {
+    assert.equal(process.argv.length,5,'Use --preflight-runtime candidate-directory new-receipt');
+    const root=resolve(process.argv[3]),output=resolve(process.argv[4]);
+    const require=createRequire(join(root,'package.json')),playwright=require('playwright');
+    const registry=JSON.parse(await readFile(join(dirname(require.resolve('playwright-core/package.json')),'browsers.json'))).browsers.filter(b=>b.name==='webkit');
+    assert.equal(registry.length,1);const executable=playwright.webkit.executablePath(),directory=dirname(executable),files={};
+    for(const file of ['pw_run.sh','minibrowser-wpe/bin/MiniBrowser','minibrowser-wpe/bin/WPEWebProcess'])
+        files[file]=(await stat(join(directory,file))).isFile();
+    const dependencies=execFileSync('ldd',[join(directory,'minibrowser-wpe/bin/WPEWebProcess')],{
+        encoding:'utf8',timeout:10000,maxBuffer:65536,env:{...process.env,LD_LIBRARY_PATH:join(directory,'minibrowser-wpe/lib')}
+    });
+    const release=await readFile('/etc/os-release','utf8');
+    const packet={image:process.env.BW_MODEL_WEBKIT_RUNTIME_IMAGE,platform:process.platform,arch:process.arch,
+        distro:release.match(/^ID=([^\r\n]+)$/m)?.[1].replaceAll('"',''),
+        ubuntu:release.match(/^VERSION_ID="([^"]+)"$/m)?.[1],node:process.version,playwright:require('playwright/package.json').version,
+        webkit:{revision:registry[0].revision,browserVersion:registry[0].browserVersion},executable,files,
+        missingDependencies:dependencies.split('\n').filter(line=>/=>\s*not found/.test(line)),dependencies,
+        consumerHead:git(resolve(dirname(fileURLToPath(import.meta.url)),'..'),'rev-parse','HEAD'),candidateHead:git(root,'rev-parse','HEAD')};
+    admitPreprovisionedRuntime(packet);assert.equal(packet.candidateHead,FROZEN.reviewedHeadSha);
+    await writeFile(output,JSON.stringify(packet,null,2)+'\n',{flag:'wx'});
+}
 export function admitComparisonSource({head,tree,metadata}) {
     assert.equal(head,FROZEN.reviewedHeadSha,'Exact reviewed candidate');
     assert.equal(tree,FROZEN.treeSha,'Complete candidate/producer tree equality');
@@ -114,6 +148,9 @@ async function main() {
     assert.equal(git(root,'diff','--cached','--name-only'),'','Candidate index unchanged');
     const head=git(root,'rev-parse','HEAD'),tree=git(root,'rev-parse','HEAD^{tree}');
     assert.equal(head,FROZEN.reviewedHeadSha);assert.equal(tree,FROZEN.treeSha);
+    const preflight=JSON.parse(await readFile(resolve(process.env.BW_MODEL_WEBKIT_RUNTIME_PREFLIGHT),'utf8'));
+    admitPreprovisionedRuntime(preflight);assert.equal(preflight.consumerHead,git(harness,'rev-parse','HEAD'));
+    assert.equal(preflight.candidateHead,head);assert.equal(process.env.BW_MODEL_WEBKIT_RUNTIME_IMAGE,RUNTIME_IMAGE);
     assert.ok(!existsSync(out),'Fresh output preserves old evidence');await mkdir(out,{recursive:false});
     const save=(name,value)=>writeFile(join(out,name),JSON.stringify(value,null,2)+'\n',{flag:'wx'});
     const require=createRequire(join(root,'package.json')),playwright=require('playwright');
@@ -138,6 +175,7 @@ async function main() {
     await save('environment.json',{consumerHead:git(harness,'rev-parse','HEAD'),consumerTree:git(harness,'rev-parse','HEAD^{tree}'),candidateHead:head,candidateTree:tree,
         imageOS:process.env.ImageOS,imageVersion:process.env.ImageVersion,node:process.version,nodeExecutableSha256:sha(await readFile(process.execPath)),
         playwright:require('playwright/package.json').version,webkitRegistry,browserRegistrySha256:sha(registryBytes),runtimeFiles,
+        runtimeImage:RUNTIME_IMAGE,qualificationCondition:QUALIFICATION_CONDITION,
         platform:os.platform(),release:os.release(),cpus:os.cpus().map(c=>({model:c.model,speed:c.speed})),totalMemory:os.totalmem(),freeMemory:os.freemem(),load:os.loadavg(),
         cgroups,diskAvailableBytes:disk.bavail*disk.bsize,qualificationScope:'Supported-environment qualification of the official source-bound candidate build; no source or compiled-byte equality to the retained earlier local build is asserted, with no environment-causation, cold-cache, performance, hardware or physical-accuracy claim',frozen:FROZEN});
     const helper=await import(pathToFileURL(join(root,'scripts/lib/official-gui-artifact.mjs')));
@@ -147,7 +185,10 @@ async function main() {
     const expected=admitComparisonSource({head,tree,metadata}),admission=helper.admitGuiArtifactMetadata(metadata,expected);
     await save('admission.json',admission);
     const archivePath=join(out,'official-frontend.zip');
-    await save('original-acquisition-reservation.json',{owner:process.env.GITHUB_RUN_ID,admission,archivePath:'official-frontend.zip'});
+    await save('original-acquisition-reservation.json',{owner:process.env.GITHUB_RUN_ID,admission,archivePath:'official-frontend.zip',
+        qualificationCondition:QUALIFICATION_CONDITION,runtimeImage:RUNTIME_IMAGE,
+        priorInputCondition:{consumerHead:'dc250d461b7f161c7696504a054d1cc49ccac003',runId:40007060335,inputConsumed:true},
+        scope:'New declared runtime condition consumes the same immutable input for actual qualification; audit originals remain once-only.'});
     let bytes;
     try{bytes=await helper.acquireGuiArchive({admission,archivePath,token:process.env.GITHUB_TOKEN,fetchImpl});}
     catch(error){
@@ -179,4 +220,7 @@ async function main() {
     process.exitCode=outcome.status==='PASS'?0:1;
 }
 if(process.env.BW_MODEL_WEBKIT_OBSERVE==='1')await installReadonlyObserver();
-else if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))await main();
+else if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+    if(process.argv[2]==='--preflight-runtime')await preflightRuntime();
+    else await main();
+}

@@ -18,13 +18,19 @@ jobs:
       github.event.pull_request.head.ref == 'lane/robot-model-webkit-comparison-20261023'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    container:
+      # CI-only Ubuntu 24.04 / Playwright 1.62.1 runtime, immutable linux/amd64.
+      image: mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+      options: --init
     env:
       GIT_CONFIG_COUNT: '2'
       GIT_CONFIG_KEY_0: gc.auto
       GIT_CONFIG_VALUE_0: '0'
       GIT_CONFIG_KEY_1: maintenance.auto
       GIT_CONFIG_VALUE_1: 'false'
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.model-webkit
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      BW_MODEL_WEBKIT_RUNTIME_IMAGE: mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+      BW_MODEL_WEBKIT_RUNTIME_PREFLIGHT: test-results/runtime-preflight.json
     steps:
       - name: Checkout exact comparison source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -47,9 +53,11 @@ jobs:
       - name: Admission and resource refusal controls
         working-directory: harness
         run: node --test test/robot-model-webkit-comparison.test.mjs
-      - name: Install supported WebKit runtime
-        working-directory: candidate
-        run: npx --no-install playwright install --with-deps webkit
+      - name: Verify preprovisioned WebKit runtime
+        timeout-minutes: 1
+        run: |
+          mkdir -p test-results
+          node --max-old-space-size=512 harness/scripts/qualify-robot-model-webkit.mjs --preflight-runtime candidate test-results/runtime-preflight.json
       - name: Admit existing frontend and run unchanged WebKit examples
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -65,6 +73,7 @@ jobs:
           path: |
             test-results/webkit-comparison/
             !test-results/webkit-comparison/site/**
+            test-results/runtime-preflight.json
             candidate/artifacts/sim-lab/new-models/
           if-no-files-found: error
           retention-days: 30

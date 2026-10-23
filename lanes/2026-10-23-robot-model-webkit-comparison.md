@@ -61,3 +61,28 @@ tree `9c20b3aafe1f83e653c32f342c2f8f5e92ffbcb6`. The producer log and
 artifact metadata are independently joined; browser acceptance is pending.
 The retained pre-label CI refusal does not qualify the overall producer run
 or candidate PR. The existing full journey, viewport and deadlines are intact.
+
+The dc250 condition completed runtime provisioning in 25m56s; its original
+log records 117 MB fetched from the Ubuntu mirror in 25m23s at 76.8 kB/s.
+Sine completed, then the unchanged 35-minute outer budget canceled the
+remaining journey. Its input was consumed and retained; Quarter completion
+and the final result are absent. This is incomplete outer-timeout evidence.
+
+The proposed new condition adds the explicit CI-only immutable linux/amd64
+image `mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac`
+(official Playwright 1.62.1 Noble). Application pins remain unchanged. A
+one-minute, non-browser preflight requires Ubuntu24.04, Node22.23.4, the
+locked Playwright1.62.1/WebKit2336 cache and native dependency resolution.
+Actual binary identities remain to be recorded and independently audited; no
+image or filesystem layer was pulled locally. The preflight and requested
+image identity are retained in the new condition's output.
+
+This new runtime condition uses the same immutable bfb frontend for actual
+qualification, with input consumption explicitly recorded separately from
+once-only audit downloads. It preserves models, solver, launch options,
+viewport, the per-example deadlines and the 35-minute job budget. The new
+preflight census entry is registration-only with zero observations; all
+other workflow records, ordered runs and main provenance remain unchanged.
+The new condition remains unqualified until its full actual journey and all
+enabled checks pass. No performance or causal-resolution claim follows from
+this preparation.
