@@ -796,7 +796,7 @@ recovery plus final-head CI remain pending. Code-feedback generation remains ope
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 The scoped ownership claim is recorded in
-[the lane ledger](../LANES.md#spike-g03-sandbox-and-editor-ui-qualification--2026-10-15)
+[the lane ledger](../lanes/2026-10-15-spike-g03-sandbox-and-editor-ui-qualification.md)
 on `docs/spike-g03-ui-claim-20261015`. Implementation follows PR948, PR962 and
 G02's remaining acceptance review. The first pass records working rendered
 features and fixes only demonstrated gaps; shared project-world and unrelated
