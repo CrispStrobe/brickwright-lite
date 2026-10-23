@@ -163,6 +163,8 @@
   },
   "scratch-vm/src/util/bw-procedure-constraint-model.js": {
     "tests": [
+      "test/array-native-frame-reset.test.mjs",
+      "test/array-native-frame-custom-kind.test.mjs",
       "test/arcade-native-addition-refusal-details.test.mjs",
       "test/makecode-arcade-score-threshold-native.test.mjs",
       "test/arcade-static-fresh-animation-export.test.mjs",

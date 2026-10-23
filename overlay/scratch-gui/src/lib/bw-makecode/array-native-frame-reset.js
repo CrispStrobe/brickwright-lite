@@ -136,7 +136,19 @@ export function createArrayNativeFrameReset(context){
         for(const t of targets)for(const [id,row] of Object.entries(t.variables||{}))
             if(!safeName(id)||!isArray(row)||!safeName(row[0]))return false;
         const unknown=Symbol('unknown'),number=Symbol('number'),text=Symbol('string'),boolean=Symbol('boolean'),nil=Symbol('null');
-        const state=new Map();
+        const state=new Map(),kindNames=new Map();
+        const builtinKind=name=>name==='Player'||name==='Projectile'||name==='Food'||name==='Enemy';
+        const customKind=name=>safeName(name)&&/^[A-Za-z_]\w*$/.test(name)&&!builtinKind(name)&&name!=='Text'&&name!=='create';
+        // Registry facts share the primitive environment, so the existing loop
+        // join includes its zero-iteration path. Interning alone proves nothing.
+        const kindCell=name=>{if(!kindNames.has(name))kindNames.set(name,{});return kindNames.get(name);};
+        const kindName=(n,s)=>{
+            const v=input(n,'NAME',s.target),r=v?.raw;
+            if(r)return isArray(r)&&r.length===2&&r[0]===10&&typeof r[1]==='string'?r[1]:null;
+            const leaf=v?.node;
+            return leaf?.opcode==='text'&&leaf.shadow===true&&shape(leaf,s,[],['TEXT'])&&
+                typeof leaf.fields.TEXT[0]==='string'?leaf.fields.TEXT[0]:null;
+        };
         const global=(n,s)=>{
             const f=n.fields.VARIABLE;if(!isArray(f)||f.length!==2||!safeName(f[0])||!safeName(f[1]))return null;
             const declarations=targets.filter(t=>own(t.variables||{},f[1]));
@@ -160,13 +172,13 @@ export function createArrayNativeFrameReset(context){
             if(n.opcode==='arcade_mathBinary')return shape(n,s,['A','B'],['OP'])&&['min','max','randomRange'].includes(literal(n,'OP',s.target))&&numeric(['A','B'])?number:unknown;
             if(n.opcode==='arcade_randomNumber')return shape(n,s)?number:unknown;
             if(n.opcode==='arcade_percentChance')return shape(n,s,['PERCENTAGE'])&&numeric(['PERCENTAGE'])?boolean:unknown;
+            if(n.opcode==='arcade_createSpriteKind')return shape(n,s)?number:unknown;
             if(n.opcode==='arcade_spriteKindValue'){
                 if(!shape(n,s,['NAME']))return unknown;
-                const name=literal(n,'NAME',s.target);
-                // The native registry preserves these four original numeric
-                // bindings. This is only a private effect token; custom names
-                // need an ordered registry-state proof, not a name assertion.
-                return name==='Player'||name==='Projectile'||name==='Food'||name==='Enemy'?number:unknown;
+                const name=kindName(n,s);
+                // Only a real earlier numeric bind establishes a custom name.
+                // This token supplies no value/Array/initialized-input authority.
+                return builtinKind(name)||customKind(name)&&env.get(kindCell(name))===number?number:unknown;
             }
             if(n.opcode==='arcade_createSprite'){
                 if(!shape(n,s,['TEMPLATE','KIND','WIDTH','HEIGHT'])||typeof literal(n,'TEMPLATE',s.target)!=='string'||
@@ -188,6 +200,12 @@ export function createArrayNativeFrameReset(context){
                 if(!shape(n,s,op==='data_setvariableto'?['VALUE']:['NAME','VALUE'],op==='data_setvariableto'?['VARIABLE']:[]))return false;
                 const c=op==='data_setvariableto'?global(n,s):localCell(s,literal(n,'NAME',s.target));
                 if(!c||c===cell)return false;const v=read('VALUE');if(v===unknown)return false;env.set(c,v);return true;
+            }
+            if(op==='arcade_bindSpriteKind'){
+                if(!shape(n,s,['NAME','KIND']))return false;
+                const name=kindName(n,s);
+                if(!customKind(name)||read('KIND')!==number)return false;
+                env.set(kindCell(name),number);return true;
             }
             if(op==='arcade_setBackgroundColor')return shape(n,s,['COLOR'])&&read('COLOR')===number;
             if(op==='arcade_setSpritePosition'){
