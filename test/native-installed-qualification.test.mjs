@@ -6,7 +6,8 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 test('native qualification refuses foreign or changed source, artifacts and resource declarations', () => {
-    const result = spawnSync('python3', [fileURLToPath(new URL('./native-installed-qualification-controls.py', import.meta.url))],
+    // The Ubuntu qualification host's system interpreter is the explicit test input.
+    const result = spawnSync('/usr/bin/python3', [fileURLToPath(new URL('./native-installed-qualification-controls.py', import.meta.url))],
         {encoding: 'utf8', timeout: 30000});
     assert.equal(result.status, 0, `${result.error || ''}\n${result.stdout}\n${result.stderr}`);
     assert.match(result.stderr, /Ran \d+ tests/);
