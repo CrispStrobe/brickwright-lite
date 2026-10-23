@@ -6,8 +6,10 @@ The [current composed hosted run](https://github.com/CrispStrobe/brickwright-lit
 now passes the **complete original twelve-case function-return module (12/12)**.
 Recursive/mutual and parameter-write exports pass, together with the previously
 repaired Sprite forwarding case. Both new retained-draft grouping groups pass.
-The complete integration matrix, remaining source cohort and visible GUI
-acceptance are still pending. No application census is inferred.
+The complete expected source cohort now passes **61/61**. The integration
+matrix still has other failures: the separate Sprite source-restoration control
+and the visible clean-export Array refusals remain open. No application census
+is inferred.
 
 ### Earlier observed boundary and implemented repair
 

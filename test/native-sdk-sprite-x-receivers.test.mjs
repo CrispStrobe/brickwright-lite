@@ -156,9 +156,27 @@ test('ordinary normal-result getters preserve original source and revoke permane
  assert.ok(write);const previous=write.expr.right.args[0];write.expr.right.args[0]={type:'Number',value:'5'};
  assert.equal(view.current(),false);
  const fresh=nativeClassScalarView(program,profile);assert.equal(fresh.current(),true,'a new valid width is independently proved');
+ assert.notEqual(fresh.program,program,'fresh currentness accompanies actual issued getter facts');
+ assert.equal(fresh.program.body.find(node=>node.type==='Declaration'&&node.decls[0].name==='observed').decls[0].init.type,'Conditional');
  write.expr.right.args[0]=previous;assert.equal(view.current(),false);assert.equal(fresh.current(),false);
  const literalView=nativeClassScalarView(program,profile);assert.equal(literalView.current(),true);
+ assert.notEqual(literalView.program,program,'the restored source independently reissues actual getter facts');
+ assert.equal(literalView.program.body.find(node=>node.type==='Declaration'&&node.decls[0].name==='observed').decls[0].init.type,'Conditional');
  const oldValue=previous.value;previous.value='5';
  assert.equal(literalView.current(),false,'changing a literal in place also revokes the issued Image dependency');
  previous.value=oldValue;assert.equal(literalView.current(),false);
+ // Preserve an actual reflection error while revoking the ordinary facts.
+ // A subsequent successful reflection must not revive the observed failure.
+ let failReflection=false,reflectionReads=0;const reflectionFailure=new Error('source reflection failed');
+ write.expr.right.args[0]=new Proxy(previous,{getPrototypeOf(target){
+  reflectionReads++;if(failReflection)throw reflectionFailure;return Reflect.getPrototypeOf(target);
+ }});
+ try{
+  const throwingView=nativeClassScalarView(program,profile);assert.equal(throwingView.current(),true);
+  assert.equal(throwingView.program.body.find(node=>node.type==='Declaration'&&node.decls[0].name==='observed').decls[0].init.type,'Conditional');
+  failReflection=true;assert.throws(()=>throwingView.current(),error=>error===reflectionFailure);
+  const readsAfterFailure=reflectionReads;failReflection=false;assert.equal(throwingView.current(),false);
+  assert.equal(reflectionReads,readsAfterFailure,'a revoked view performs no later source reflection');
+ }finally{failReflection=false;write.expr.right.args[0]=previous;}
+
 });

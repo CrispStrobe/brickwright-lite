@@ -89,3 +89,19 @@ its parser frontier; a separate actual parameter-metadata control tests refusal.
 The class-free no-factory route retains its original no-op behavior. A bounded
 data-descriptor syntax selection chooses full validation for possible factories
 or uncertain shapes; it grants no namespace, argument, value or getter fact.
+
+## Observed source-restoration follow-up
+
+The complete composed hosted unit set qualifies 61 source controls, the original
+12 return cases, SDK32 and Array87, but this receiver module remains 13/14.
+Its invalid-factory negative now passes. The surviving restoration assertion
+shows that an outer nonsticky binding guard can short-circuit the inner sticky
+source guard, allowing an observed invalid ordinary view to revive.
+
+The narrow follow-up permanently revokes the combined ordinary-factory view
+when either currentness guard returns false or throws. Preserve the original
+first error, perform no later source reads from that revoked view, and leave
+legacy class/no-factory behavior unchanged. The complete original 14-group
+module retains its assertions and strengthens fresh-proof getter projection
+and reflection-error/read-count controls. Source review is not execution;
+require the next exact-head hosted qualification before claiming 14/14.

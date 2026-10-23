@@ -660,7 +660,21 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             [...get(args[0])].some(value=>kind==='fill'?value!=='Number':
                 value!=='Null'&&value!=='Undefined'&&value?.kind!=='sdkImage'))poisonOrdinary();
     }while(changed);
-    const current=()=>guard.isCurrent()&&sdk.current();
+    // The outer binding guard can fail before the SDK guard observes an edit.
+    // Ordinary facts must stay revoked even when that short circuit hides the
+    // changed source from the inner snapshot until after restoration.
+    let ordinaryLive=true;
+    const current=()=>{
+        if(!ordinaryLive)return false;
+        try{
+            const valid=guard.isCurrent()&&sdk.current();
+            if(sdk.ordinary&&!valid)ordinaryLive=false;
+            return valid;
+        }catch(error){
+            if(sdk.ordinary)ordinaryLive=false;
+            throw error;
+        }
+    };
     if(!current())return {program,current};
     const selected=new Map();
     for(const node of nodes)if(node.type==='Member'){

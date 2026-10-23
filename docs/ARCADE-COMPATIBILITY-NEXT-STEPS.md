@@ -5,23 +5,34 @@
 The [current composed run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39899568550)
 confirms the **complete original function-return module passes 12/12**, including
 recursive/mutual calls, parameter writes and Sprite forwarding. Its complete
-identity-constraint module passes **8/8**. The three retained completed unit shards
-report 8,939 passes, 121 failures, 11 skips and 27 TODOs across 9,098 tests; their
-failure-title comparison resolves three previous failures with zero new ones.
-The remaining shard and browser checks are pending. This is a partial matrix,
-not a green integration result or a new application census.
-
-Both new retained-draft grouping groups pass. Existing completed source controls
-remain observed separately; require the remaining shard before declaring the
-whole expected 61-control cohort qualified. Build, corpus and Arcade controller
-checks pass. The corpus check does not establish that a previously partial
-application now executes correctly. Historical **147 translated / 36 partial /
+identity-constraint module passes **8/8**. The complete four-shard unit set reports **12,335 passes, 163 failures, 19 skips
+and 37 TODOs across 12,554 tests**. Compared with the preceding composed run,
+four previous failure titles are resolved and none is newly failing.
+The complete 61-control source cohort, original 32-case SDK cohort and 87 existing
+Array controls all pass. Build, corpus and Arcade controller checks pass. These
+are conformance results; the corpus check does not establish that a previously
+partial application executes correctly. Historical **147 translated / 36 partial /
 one malformed** remains unremeasured.
+
+The separate Sprite receiver source module improves to **13/14**. Its remaining
+failure is a source-restoration bug: the outer nonsticky binding guard returns
+false before the inner sticky SDK guard can observe an edit. After restoration,
+the combined view can revive. The next source repair makes ordinary factory
+currentness permanently false after either observed false or an original thrown
+reflection error, while preserving that first error and legacy class behavior.
+The existing complete test retains both original restoration assertions and now
+requires genuine getter projections before fresh-proof positives. This repair
+requires new qualification; it is not covered by the preceding passing cohorts.
+
+The current numeric-authoring GUI still fails its original clean-export assertion
+with two Array producer refusals. Chromium setup succeeds, but four later
+journeys remain skipped. The exact failed project graph is still absent from
+the retained original log. No GUI or application completion is claimed.
 
 Continue in this order:
 
-1. Inspect the remaining SDK Sprite safety controls and the current numeric GUI
-   authoring result. Retain each completed original log once; preserve failures.
+1. Qualify the ordinary Sprite source-restoration repair with the complete
+   existing receiver module and affected source/SDK controls. Preserve failures.
 2. Land the [exact refusal-capture scope amendment](https://github.com/CrispStrobe/brickwright-lite/pull/1256)
    after its enabled exact-head checks pass. Follow its
    [self-contained contract](https://github.com/CrispStrobe/brickwright-lite/blob/0266e30e76bd36a39c4362328b60d8d7354f505c/lanes/2026-10-23-arcade-exact-refusal-capture.md)
