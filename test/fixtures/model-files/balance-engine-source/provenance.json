@@ -1,0 +1,11 @@
+{
+  "owner": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "adaptation": "User-owned CrispStrobe/BSD original. Shipping model removes only trailing comment whitespace; raw source bytes, program, geometry and physical bands remain unchanged.",
+  "files": {
+    "models/balance-engine.ldr": "f7215045c221d4e1a6d7b3c67774c4d8c454ba38637e138e6f83f5540e0c2e9c",
+    "programs/balance-engine.bw": "da0dd37ff84d9c32fe0ae66f41254c47056fe2ed4f62854a0f9ef41fa7f92973",
+    "LICENSE.txt": "ed121de3496066a2ddc8c11b30b48142165ab84bdb066fee351392ecaccf36ad",
+    "source/design-contract.json": "f454f1b2772cb142507d48dcd8483e807859b7aeec6945c2f36fc422df1dc7ef"
+  }
+}

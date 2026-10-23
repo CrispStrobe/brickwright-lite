@@ -1,0 +1,38 @@
+{
+  "model": "resonance-lab",
+  "author": "Christian Ströbele (CrispStrobe)",
+  "license": "BSD-3-Clause",
+  "sourceArchiveSha256": "34c3a00e565806dd4a4ff50b9f343cd64619bca9432960a05bcda27b455d09f3",
+  "sourceQualifiedRevision": "df32b7ff33595406ce7356d249ec61baec1fecf6",
+  "integrationBaseRevision": "c015fd7fcad8964c1266c182ca00bc7d163f7b28",
+  "originalCatalogEntries": 80,
+  "originalCatalogAssemblies": 72,
+  "originalRegistrySha256": "03746f19d6397cab91a82b31c9606b7bd00ffc3d3469a0c196329b0b29208ebc",
+  "shippedUnchanged": [
+    "models/resonance-lab.ldr",
+    "models/resonance-lab.mpd",
+    "programs/resonance-lab.bw",
+    "programs/resonance-lab-slow.bw",
+    "programs/resonance-lab-fast.bw",
+    "licenses/resonance-lab.txt"
+  ],
+  "sourceFiles": {
+    "models/resonance-lab.ldr": "0adcbb261ecdbdc3ccc26ba92573b3e7a453ed565ab624c5e10457105fabae72",
+    "models/resonance-lab.mpd": "8aff904d6aa9c8020e7047763601eb9f7d4b8c00dc54b5d478a5bf6c13fac45e",
+    "programs/resonance-lab.bw": "7f368813047e06be5667408c701aa9434679e549a0ccc68a4b7a0068c2b1735d",
+    "programs/resonance-lab-slow.bw": "13edb10e7a235061ed71c018a6aaaf9bb3145c5bf24efb6afe406cfafce786e3",
+    "programs/resonance-lab-fast.bw": "580a9071b78a84649aa96755b44c8fb998f5daa20a957ada4becf989238069d5",
+    "licenses/resonance-lab.txt": "ed121de3496066a2ddc8c11b30b48142165ab84bdb066fee351392ecaccf36ad",
+    "lessons/resonance-lab.en.json": "650678d1eaaeea00728fbe90f83e8f53aa096fbe8eeee81aabd4b488c57cd3ac",
+    "lessons/resonance-lab.de.json": "895eeb06b0de21ca665916ab4e73613188d1868780a565519efe2baeaca3c94d",
+    "assembly/BUILD-STEPS.md": "60cb530483d16c719ce614d5ee9934798577f2cf1052a0435486a53b4d582b4f",
+    "geometry.json": "36c87c07e410823ed81a2d9e1f8ff4e6ab18f7bcc2f87632413d13c010a0865a",
+    "parts.csv": "ee01aab2c76dc3cecf476f04ebd4f12172502cf9045a957f937ffc84f85b1a08",
+    "generate_model.py": "faf356ff60e8e00a1a8203f2adc5be02309a30fbb35c71e59da57bfd13356ad7",
+    "mechanism_geometry.py": "4512cbb0e943e7031e1192fa48b8e328cecea046bc45e81d082ec54c0f0fc515",
+    "LICENSE": "ed121de3496066a2ddc8c11b30b48142165ab84bdb066fee351392ecaccf36ad",
+    "THIRD-PARTY-NOTICES.md": "ceaeb99ba308a3c460b7b898021ba1ed41a5c77465879440a2212e0ecebf6055",
+    "SOURCES.txt": "b4a7d7d70ffa89293e3d6a35153d849838e7d79140fa843c155b5cf05ac5159c"
+  },
+  "scope": "Original model, programs, author grant, construction guide and lesson sources. Original frozen runtime evidence remains in the separate source release; it is not current-build or hardware qualification."
+}

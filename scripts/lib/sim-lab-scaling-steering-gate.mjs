@@ -17,7 +17,7 @@ export async function scalingSteeringInteractions(page,opts){
 export async function scalingSteeringLesson(page,opts,language){
  const {id}=opts;
  if(language==='de'){
-  await opts.openSimLab(page,{program:null});await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');await gallery.getByRole('searchbox').fill(id);await gallery.locator(`[data-model="${id}.ldr"]`).getByRole('button',{name:/Modell/}).click();await gallery.waitFor({state:'hidden'});
+  await opts.openSimLab(page,{program:null});await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');await gallery.getByRole('searchbox').fill(id);await gallery.locator(`[data-model="${id}.ldr"], [data-model="${id}"]`).getByRole('button',{name:/Modell/}).click();await gallery.waitFor({state:'hidden'});
  }
  await page.getByTestId('bw-sim-lab-lesson').click();const lesson=page.getByTestId('bw-sim-lesson');await page.waitForFunction(id=>document.querySelector('[data-testid="bw-sim-lesson"]')?.dataset.lesson===id,id);
  await lesson.getByRole('button',{name:language==='de'?'Erklärung zeigen':'Show explanation',exact:true}).click();assert.ok((await lesson.getByTestId('bw-sim-lesson-answer').textContent()).length>100);await lesson.screenshot({path:resolve(opts.shotsDir,id+'-lesson-'+language+'.png')});if(process.env.SIM_DEBUG) await page.evaluate(label=>{

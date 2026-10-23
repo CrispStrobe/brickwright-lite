@@ -1,0 +1,40 @@
+# Resonance Lab — fast finite spring-response experiment
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe)
+# RELOAD the saved model before each experiment. Do not inherit earlier ringing.
+# One motor drives the blue input; the weighted output is completely passive.
+# The input returns to zero and holds. The passive arm intentionally rings on.
+DEVICE SPIKE
+GLOBAL target = 0
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 0.5 THEN:
+    lab stop motor A hold
+    stop all
+  set target to 2
+  broadcast "rock input" and wait
+  REPEAT 4:
+    set target to -2
+    broadcast "rock input" and wait
+    set target to 2
+    broadcast "rock input" and wait
+  set target to 0
+  broadcast "rock input" and wait
+  lab stop motor A hold
+  wait 10 seconds
+  IF (abs of (0 - (lab motor A angle))) > 0.5 THEN:
+    lab stop motor A hold
+    stop all
+
+WHEN I receive "rock input":
+  IF (abs of (target - (lab motor A angle))) > 4.5 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (target - (lab motor A angle)) degrees at 80 degrees per second
+  lab stop motor A hold
+  IF (abs of (target - (lab motor A angle))) > 0.5 THEN:
+    lab stop motor A hold
+    stop all

@@ -22,7 +22,7 @@ const distance = (a, b) => Math.hypot(...a.map((v, i) => v - b[i]));
 
 test('Survey rover: three motors, sensor on the moving head, no loose parts or solid overlaps', () => {
     const entry = MODELS.find(m => m.file === 'survey-rover.ldr');
-    assert.deepEqual(entry.title, {en: 'Survey rover', de: 'Erkundungsrover'});
+    assert.deepEqual(entry.title, {en: 'Survey rover — gravity back-drives the sensor head', de: 'Erkundungsrover — Schwerkraft bewegt den Sensorkopf zurück'});
     assert.equal(entry.example, 'survey-rover.bw');
     const {model, mechanism, issues} = prepared();
     assert.deepEqual(issues, []);

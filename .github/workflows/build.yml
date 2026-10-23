@@ -1963,6 +1963,36 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
         run: npm run verify:sim-lab -- --part=examples --examples=echo-bridge
 
+      - name: Browser gate — Robot Lab resonance complete experiments
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=resonance-lab
+
+      - name: Browser gate — Robot Lab new model deliveries
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=cusp-lab,product-plotter,gimbal-lab,sky-courier
+
+      - name: Browser gate — Robot Lab SineShuttle and Quartermaster complete examples
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=sine-shuttle,quartermaster
+
+      - name: Browser gate — Robot Lab Watt Line and TwinTempo complete examples
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=watt-line,twin-tempo
+
+      - name: Browser gate — Robot Lab root-bridge complete example
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=root-bridge
+
+      - name: Browser gate — Robot Lab balance-engine complete example
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=balance-engine
+
       - name: Browser gate — Robot Lab linger complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
@@ -1993,6 +2023,11 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=crossglide
 
+      - name: Browser gate — Robot Lab Integral complete example
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=integral
+
       - name: Browser gate — Robot Lab bit-keeper complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
@@ -2002,6 +2037,12 @@ jobs:
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=offset-orbit
+
+      - name: Browser gate — Robot Lab circle-splitter complete example
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
+        run: npm run verify:sim-lab -- --part=examples --examples=circle-splitter
+
 
       - name: Browser gate — Robot Lab ellipsa complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)

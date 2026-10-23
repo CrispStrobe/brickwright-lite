@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "resonance-lab",
+  "language": "de",
+  "what": "Ein einziger Motor bewegt einen kurzen Eingangsarm hin und her. Zwei sicher geführte Gummibänder ziehen an einem getrennten, beschwerten Schwingarm. Der Ausgang besitzt ein eigenes Lager und keinen Motor. Er speichert Energie in seinen bewegten Massen und den gedehnten Bändern. Deshalb hängt seine Bewegung sowohl von der Größe als auch vom Rhythmus der Anregung ab.",
+  "try": [
+    "Importiere resonance-lab.ldr, lade die gespeicherte Ausgangslage neu, öffne resonance-lab.bw im Code-Editor, wähle To blocks und starte die grüne Flagge. A ist der einzige Motoranschluss. Das endliche Programm wechselt mehrmals zwischen kleinen Eingangswinkeln, kehrt auf null zurück und hält. Danach bleibt Zeit, das freie Ausschwingen zu beobachten.",
+    "Beobachte beide Arme gleichzeitig. Nahe dem natürlichen Rhythmus kann der passive Arm weiter ausschlagen als der angetriebene Eingang. Der Motor befiehlt diesen größeren Ausgangswinkel nicht direkt.",
+    "Lade das gespeicherte Modell vor jedem Vergleich neu. Starte resonance-lab-slow.bw und resonance-lab-fast.bw jeweils getrennt. Alle drei Dateien verwenden denselben kleinen Winkelbereich und dieselbe Zykluszahl, aber unterschiedliche ausdrücklich angegebene Motorgeschwindigkeiten. Durch das neue Laden beginnt kein Versuch mit der Restbewegung des vorherigen.",
+    "Vergleiche die letzten beiden angetriebenen Zyklen mit dem abschließenden Zeitraum bei gehaltenem Eingang. Zähle die Ausgangsschwingungen nach dem Anhalten. Erzwungene Schwingung und freies Ausschwingen beantworten unterschiedliche Fragen."
+  ],
+  "why": "Die beiden Bänder ziehen auf gegenüberliegenden Seiten des Ausgangsdrehpunkts. In der symmetrischen Ausgangslage heben sich ihre Vorspannmomente auf. Ein kleiner Winkelunterschied verändert die beiden Zugkräfte in entgegengesetzter Richtung und erzeugt ein rückstellendes Drehmoment. Die Trägheit verhindert, dass der beschwerte Arm jeder Änderung sofort folgt. Wiederholte Anregung nahe seinem natürlichen Rhythmus baut einen größeren Ausschlag auf; schnelle Anregungen werden durch die Trägheit zunehmend abgeschwächt.",
+  "matters": "Elastische Kupplungen können Schwingungen verstärken, ihre zeitliche Lage verändern und nach dem Anhalten eines Antriebs weiter schwingen. Das ist bei Maschinen, nachgiebigen Roboterantrieben, Federungen und Schwingungsisolierung wichtig. Ein Encoder am Motor beschreibt die Bewegung einer elastisch angekoppelten Last nicht vollständig.",
+  "question": "Erzeugt die Maschine Energie, wenn der passive Arm weiter schwingt als der Motor?",
+  "answer": "Nein. Der Motor führt über mehrere Zyklen Energie durch die beiden Bänder zu. Die größere Ausgangsbewegung speichert diese Energie als elastische potenzielle Energie und rotatorische Bewegungsenergie. Bei gehaltenem Eingang wird die gespeicherte Energie allmählich durch Verluste abgebaut. Verglichen wird eine endliche Anregung, kein verlustloser eingeschwungener Dauerbetrieb.",
+  "further": [
+    "Für kleine Winkel und gleiche Bänder lautet die Rückstellsteifigkeit K = 2kr². Dabei ist r der Abstand jedes Bandsitzes vom Drehpunkt und k die native Federsteifigkeit einer vollständigen Bandschlaufe. Die Lage der Massen wirkt über das Trägheitsmoment I; die Masse allein genügt nicht.",
+    "Die Eigenfrequenz für kleine Winkel ist fₙ = √(K/I)/(2π). Überlege, wie sich die Frequenz verändert, wenn dieselben Gewichte weiter vom Drehpunkt entfernt sitzen. Ein geändertes Modell benötigt eine eigene Konstruktions- und Simulationsprüfung; die mitgelieferten Nachweise gelten für die gelieferte Anordnung.",
+    "Die eingestellte Motorgeschwindigkeit ist nicht die gemessene Schwingungsfrequenz. Beschleunigungen, Zielerreichung und die Blockausführung beeinflussen die tatsächliche Zyklusdauer. Die Auswertung verwendet den gemessenen Eingang und die tatsächlichen nativen Zeitstempel.",
+    "Die Phase beschreibt die gemessene zeitliche Lage zur Grundschwingung des Eingangs in einem festgelegten späten Zeitfenster. Sie gehört zu diesem endlichen Versuch. Vier Zyklen belegen keinen mathematischen Frequenzgang im eingeschwungenen Zustand.",
+    "Das native Bandmodell kann nur Zugkräfte übertragen. Beide gelieferten Bänder bleiben im geprüften Bewegungsbereich gedehnt. Die Bandschlaufen sind ausdrücklich modellierte physische Elemente, keine unsichtbaren Gelenke oder versteckte Zahnradübersetzung.",
+    "Die geführte 3713-Nut besitzt einen nativen Befestigungsradius von 2,8 mm. Die Mittellinie des sichtbaren runden Bandes liegt wegen seiner gezeichneten Dicke bei 3,6 mm. Das native Federgesetz verwendet den ersten Radius, die Konstruktionszeichnung den zweiten. Daraus folgt kein gemessenes Materialgesetz für Gummi.",
+    "Die Standardteilmassen sowie die native Gummisteifigkeit und Dämpfung sind Schätzwerte. Echte Bänder unterscheiden sich unter anderem durch Größe, Alter, Temperatur und Vorspannung. Die nativen Versuche belegen das Simulationsergebnis; ein physischer Aufbau und die Messung der Materialwerte sind getrennte Arbeiten.",
+    "Vergleiche pendulum-array.ldr für durch Schwerkraft bestimmte Perioden und flywheel-differential.ldr für rotatorische Trägheit. Hier entsteht die passive Antwort durch eine elastische Übertragung zwischen zwei unabhängigen Wellen."
+  ],
+  "formula": "Drehpunktabstand D = 56 mm; zwei Bandsitzhebel r = 8 mm; zwei Bänder mit 33 mm Nenndurchmesser auf geführten 3713-Nuten mit nativem Radius 2,8 mm. Native Steifigkeit k = 100×15/33 = 45,454545 N/m je vollständiger Bandschlaufe; nativer Ruheabstand d₀ = π(33−2×2,8)/2 = 43,039819 mm. Vorspannung je Band = k(D−d₀) ≈ 0,589099 N. K₀ = 2kr² = 0,005818182 N·m/rad. Die 34 tatsächlichen passiven Teile besitzen 41,17 g Masse und das unabhängig berechnete Gierträgheitsmoment I = 0,0000842334536 kg·m². Daraus folgt die Kleinwinkelvorhersage fₙ = √(K₀/I)/(2π) ≈ 1,32273 Hz. Exakte nichtlineare Vorhersagen und native Ergebnisse sind getrennt dokumentiert.",
+  "related": [
+    "pendulum-array.ldr",
+    "flywheel-differential.ldr",
+    "clutch-bench.ldr"
+  ]
+}

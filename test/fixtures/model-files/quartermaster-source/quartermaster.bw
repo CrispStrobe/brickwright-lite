@@ -1,0 +1,150 @@
+# Quartermaster: real contact indexing, with a separately actuated physical latch.
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Finite eight-cycle experiment. See the package qualification record for the tested source and scope.
+# Only A drives the indexing contact. B opens/closes the real latch; no output pose is assigned.
+# Reload/reset the model before Run. Both unwrapped motor encoders must start near zero.
+# No intermediate active hold is issued to A. Relative moves use fresh encoder readings.
+# B holds its actual reached angle. A holds only after the complete sequence.
+# Four forward indexes and four reverse indexes return both unwrapped input encoders near zero.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL speedA = 60
+GLOBAL speedB = 90
+GLOBAL latchOpen = -45
+GLOBAL stage = 0
+GLOBAL cycle = 0
+GLOBAL cycleBase = 0
+GLOBAL direction = 1
+GLOBAL done = 0
+GLOBAL fault = 0
+
+WHEN flag clicked:
+  set done to 0
+  set fault to 0
+  set stage to 0
+  set cycle to 0
+  set cycleBase to 0
+  set direction to 1
+  set targetA to 0
+  set targetB to 0
+  set latchOpen to -45
+  IF (lab status) = "no-model" THEN:
+    set fault to 1
+    say "Load Quartermaster and reset its saved pose before running."
+    stop all
+  lab start
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set fault to 1
+    broadcast "Quartermaster fault" and wait
+    stop all
+  IF (abs of (lab motor B angle)) > 1 THEN:
+    set fault to 1
+    broadcast "Quartermaster fault" and wait
+    stop all
+  lab stop motor B hold
+  reset timer
+  broadcast "Quartermaster watchdog"
+  wait 0.25 seconds
+
+  # 4 forward driver turns.
+  set direction to 1
+  REPEAT 4:
+    change cycle by 1
+    set stage to ((cycle * 10) + 1)
+    set targetA to (cycleBase + 165)
+    set speedA to 60
+    broadcast "Quartermaster move A" and wait
+    set stage to ((cycle * 10) + 2)
+    set targetB to latchOpen
+    set speedB to 90
+    broadcast "Quartermaster move B" and wait
+    set stage to ((cycle * 10) + 3)
+    set targetA to (cycleBase + 280)
+    set speedA to 30
+    broadcast "Quartermaster move A" and wait
+    set stage to ((cycle * 10) + 4)
+    set targetB to 0
+    set speedB to 180
+    broadcast "Quartermaster move B" and wait
+    wait 0.6 seconds
+    set stage to ((cycle * 10) + 5)
+    set targetA to (cycleBase + 360)
+    set speedA to 60
+    broadcast "Quartermaster move A" and wait
+    set stage to ((cycle * 10) + 6)
+    wait 0.5 seconds
+    change cycleBase by 360
+
+  # 4 reverse driver turns.
+  set direction to -1
+  REPEAT 4:
+    change cycle by 1
+    set stage to ((cycle * 10) + 1)
+    set targetA to (cycleBase - 75)
+    set speedA to 60
+    broadcast "Quartermaster move A" and wait
+    set stage to ((cycle * 10) + 2)
+    set targetB to latchOpen
+    set speedB to 90
+    broadcast "Quartermaster move B" and wait
+    set stage to ((cycle * 10) + 3)
+    set targetA to (cycleBase - 190)
+    set speedA to 30
+    broadcast "Quartermaster move A" and wait
+    set stage to ((cycle * 10) + 4)
+    set targetB to 0
+    set speedB to 180
+    broadcast "Quartermaster move B" and wait
+    wait 0.6 seconds
+    set stage to ((cycle * 10) + 5)
+    set targetA to (cycleBase - 360)
+    set speedA to 60
+    broadcast "Quartermaster move A" and wait
+    set stage to ((cycle * 10) + 6)
+    wait 0.5 seconds
+    change cycleBase by -360
+
+  lab stop motor A hold
+  lab stop motor B hold
+  wait 0.25 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    set fault to 1
+    broadcast "Quartermaster fault" and wait
+    stop all
+  IF (abs of (lab motor B angle)) > 1 THEN:
+    set fault to 1
+    broadcast "Quartermaster fault" and wait
+    stop all
+  set stage to 99
+  set done to 1
+  say "Input sequence complete. Compare the independently observed wheel stations; reset before repeating."
+
+WHEN I receive "Quartermaster move A":
+  lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+  IF (abs of (targetA - (lab motor A angle))) > 1 THEN:
+    set fault to 1
+    broadcast "Quartermaster fault" and wait
+    stop all
+
+WHEN I receive "Quartermaster move B":
+  lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+  lab stop motor B hold
+  IF (abs of (targetB - (lab motor B angle))) > 1 THEN:
+    set fault to 1
+    broadcast "Quartermaster fault" and wait
+    stop all
+
+WHEN I receive "Quartermaster fault":
+  lab stop motor A brake
+  lab stop motor B hold
+  say "A motor missed its permitted pose or time. Inspect the mechanism and reset; the latch is not forced closed."
+
+WHEN I receive "Quartermaster watchdog":
+  REPEAT UNTIL (done = 1):
+    IF (timer) > 120 THEN:
+      set fault to 1
+      broadcast "Quartermaster fault" and wait
+      stop all
+    wait 0.05 seconds

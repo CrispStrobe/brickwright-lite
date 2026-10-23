@@ -12,11 +12,13 @@
 // The building instructions' "parts needed" callouts use the same pictures, each
 // in the colour the part has in the model (`render(part, color)`).
 
-import {Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, WebGLRenderer} from 'three';
+import {Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, TorusGeometry, WebGLRenderer} from 'three';
 import {partGeometry, partVisual} from './part-geometry.js';
 import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from './part-style.js';
 import {webglAvailable} from './sim-view3d.js';
 import {thumbnailCamera} from '../editor/palette.js';
+import {BANDS, BAND_RADIUS_LDU} from '../editor/belt-path.js';
+import {LDU_M} from '../contracts.js';
 
 /** Marks the thumbnail renderer's canvas (and, for scripts/verify-boot-payload.mjs, this module's chunk). */
 export const THUMBNAIL_TESTID = 'bw-sim-part-thumbnails';
@@ -25,6 +27,17 @@ export const THUMBNAIL_PX = 128;
 
 /** Pictures already drawn, by part and colour: survive the renderer (a Build session) for the page's life. */
 const drawn = new Map();
+
+/** Unstretched band thumbnail, drawn from the native diameter and section rather than external part geometry. */
+export const bandThumbnailGeometry = part => {
+    const band = BANDS.find(b => b.part === part);
+    if (!band) return null;
+    const geometry = new TorusGeometry(band.mm / 2000, BAND_RADIUS_LDU * LDU_M, 8, 64);
+    // The shared thumbnail mesh has an array of materials. Three draws that
+    // form only through geometry groups; a native torus starts without any.
+    geometry.addGroup(0, geometry.index.count, 0);
+    return geometry;
+};
 
 /**
  * @param {object} options
@@ -70,14 +83,15 @@ export const createPartThumbnails = ({read, colors, color, size = THUMBNAIL_PX})
             const info = colors.get(code) || colors.get(16);
             faces[0].color.set(info ? info.value : '#cccccc');
             const lines = linesFor(code);
-            const geometry = partGeometry(part, read, colors);
+            const ring = bandThumbnailGeometry(part);
+            const geometry = ring || partGeometry(part, read, colors);
             // No faces yet (a part from the LDraw catalogue whose files are still coming): no
             // picture, and nothing remembered, so it is drawn when asked again.
             if (!geometry.attributes.position) return null;
             if (!geometry.boundingBox) geometry.computeBoundingBox();
             const box = geometry.boundingBox;
             const mesh = new Mesh(geometry, faces);
-            addEdgeLines(mesh, partVisual(part, read, colors), lines);
+            if (!ring) addEdgeLines(mesh, partVisual(part, read, colors), lines);
             scene.add(mesh);
             const view = thumbnailCamera({min: box.min.toArray(), max: box.max.toArray()}, {fov: camera.fov, aspect: 1});
             camera.position.fromArray(view.position);
@@ -89,6 +103,7 @@ export const createPartThumbnails = ({read, colors, color, size = THUMBNAIL_PX})
             renderer.render(scene, camera);
             url = renderer.domElement.toDataURL('image/png');
             scene.remove(mesh); // the geometry is part-geometry.js's cache: not disposed here
+            if (ring) ring.dispose();
         } catch {
             url = null; // a part whose files are missing keeps its name only
         }

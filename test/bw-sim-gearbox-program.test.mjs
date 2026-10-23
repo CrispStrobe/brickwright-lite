@@ -42,7 +42,7 @@ const rate = (track, jointId, t0, t1) => {
 const bodyOf = (m, partId) => m.bodies.find(b => b.parts.includes(partId)).id;
 
 test('the gearbox and the differential are shipped with their programs, titled in English and German', () => {
-    for (const [file, de] of [['gearbox.ldr', 'Zweigang-Schaltgetriebe'], ['differential.ldr', 'Differenzialgetriebe']]) {
+    for (const [file, de] of [['gearbox.ldr', 'Zweigang-Schaltgetriebe — Schalten mit Schiebekupplung'], ['differential.ldr', 'Differenzialgetriebe — ein Abtrieb fest, der andere doppelt so schnell']]) {
         const {entry, program} = shipped(file);
         assert.equal(entry.title.de, de);
         assert.match(program, /^DEVICE SPIKE\s*$/m);
