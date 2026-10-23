@@ -2,6 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {catalogFrom, prepareModel} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {sha256Text} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/binding-digest.js';
 import {createMeasurementReader, measurementPresets, jointBinding, ropeBinding} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js';
 import {measurementDefinitions} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/schema.js';
@@ -50,6 +52,24 @@ test('350-part identity fits the original field bound without truncating target 
     assert.ok(reader.read([definition])[0].available);
     ids[349] = 'replacement-at-the-end';
     assert.equal(reader.read([definition])[0].reason, 'missing-target', 'the complete membership, including its last element, participates in identity');
+});
+
+test('shipped orbital loom admits measurement presets within the existing identity field bound', () => {
+    const gui = new URL('../overlay/scratch-gui/', import.meta.url);
+    const catalog = catalogFrom(JSON.parse(readFileSync(new URL('src/lib/bw-sim/part-meta/parts.json', gui), 'utf8')));
+    const {model, mechanism, issues} = prepareModel(readFileSync(new URL('static/sim-lab/models/orbital-loom.ldr', gui), 'utf8'), catalog);
+    assert.deepEqual(issues.filter(issue => issue.severity === 'error'), []);
+    const legacy = joint => JSON.stringify([joint.type, ...[joint.body1, joint.body2].map(id =>
+        mechanism.bodies.find(body => body.id === id)?.parts?.slice().sort() || [id])]);
+    const largeJoint = mechanism.joints.find(joint => legacy(joint).length > 4096);
+    assert.ok(largeJoint, 'the shipped model exercises the original oversized binding failure');
+    assert.throws(() => measurementDefinitions([{id: 'legacy', label: 'Angle', kind: 'jointAngle', joint: largeJoint.id, binding: legacy(largeJoint)}]), /joint binding/);
+    // Preset admission needs no physics sampling. The browser lesson gate covers the live worker.
+    const definitions = measurementPresets({model, mechanism, core: {rollingWheel: () => null}});
+    const angle = definitions.find(definition => definition.joint === largeJoint.id);
+    assert.ok(angle, 'the affected joint remains available instead of dropping its preset');
+    assert.equal(angle.binding, `sha256:${createHash('sha256').update(legacy(largeJoint)).digest('hex')}`);
+    assert.equal(angle.binding.length, 71);
 });
 
 test('legacy joint and rope bindings still read, and changed targets invalidate both formats', () => {
