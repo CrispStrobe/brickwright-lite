@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T19:59:22.285Z",
+  "generatedAt": "2026-10-23T20:31:48.356Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1935,6 +1935,18 @@
       "workflow": "robot-model-webkit-comparison.yml",
       "branch": "lane/robot-model-webkit-comparison-20261023",
       "sha": "048a87646"
+    },
+    {
+      "run": 40007060335,
+      "workflow": "robot-model-webkit-comparison.yml",
+      "branch": "lane/robot-model-webkit-comparison-20261023",
+      "sha": "dc250d461"
+    },
+    {
+      "run": 40018078929,
+      "workflow": "robot-model-webkit-comparison.yml",
+      "branch": "lane/robot-model-webkit-comparison-20261023",
+      "sha": "368bd55ae"
     }
   ],
   "workflowsInTree": [
@@ -7364,7 +7376,7 @@
       "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
     },
     "robot-model-webkit-comparison.yml": {
-      "runs": 1,
+      "runs": 3,
       "stepsInFile": [
         "Checkout exact comparison source",
         "Checkout frozen candidate",
@@ -7374,13 +7386,11 @@
         "Admit existing frontend and run unchanged WebKit examples",
         "Preserve comparison originals"
       ],
-      "inFileInNoRun": [
-        "Verify preprovisioned WebKit runtime"
-      ],
+      "inFileInNoRun": [],
       "steps": {
         "Checkout exact comparison source": {
-          "existed": 1,
-          "ran": 1,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7392,8 +7402,8 @@
           "class": "always"
         },
         "Checkout frozen candidate": {
-          "existed": 1,
-          "ran": 1,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7405,8 +7415,8 @@
           "class": "always"
         },
         "Install frozen Node inputs without package lifecycle scripts": {
-          "existed": 1,
-          "ran": 1,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7418,8 +7428,8 @@
           "class": "always"
         },
         "Admission and resource refusal controls": {
-          "existed": 1,
-          "ran": 1,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7431,8 +7441,8 @@
           "class": "always"
         },
         "Install supported WebKit runtime": {
-          "existed": 1,
-          "ran": 1,
+          "existed": 2,
+          "ran": 2,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7444,6 +7454,33 @@
           "class": "always"
         },
         "Admit existing frontend and run unchanged WebKit examples": {
+          "existed": 3,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 1,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "sometimes",
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
+        },
+        "Preserve comparison originals": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": "always()",
+          "class": "always"
+        },
+        "Verify preprovisioned WebKit runtime": {
           "existed": 1,
           "ran": 1,
           "existedMain": 0,
@@ -7455,37 +7492,24 @@
           ],
           "clause": null,
           "class": "always"
-        },
-        "Preserve comparison originals": {
-          "existed": 1,
-          "ran": 1,
-          "existedMain": 0,
-          "ranMain": 0,
-          "skippedInFailedRuns": 0,
-          "skippedInGreenRuns": 0,
-          "jobs": [
-            "compare"
-          ],
-          "clause": "always()",
-          "class": "always"
         }
       },
       "jobs": {
         "compare": {
-          "existed": 1,
-          "ran": 1,
+          "existed": 3,
+          "ran": 3,
           "existedMain": 0,
           "ranMain": 0,
           "class": "always"
         }
       },
-      "sourceSha": "working-tree",
-      "declarationScope": "New CI-only preprovisioned-runtime declaration; Verify preprovisioned WebKit runtime has zero observations. Existing counts remain the retained048a run; no new-condition execution credit."
+      "sourceSha": "368bd55ae",
+      "observationScope": "Retained 048a deadline failure, dc250 outer cancellation and 368 preinput diagnostic refusal. Counts record execution, not acceptance; corrected dependency probe remains unqualified."
     }
   },
   "lastRefresh": {
     "workflow": "robot-model-webkit-comparison.yml",
-    "at": "2026-10-23T19:59:22.285Z",
-    "sourceSha": "working-tree"
+    "at": "2026-10-23T20:31:48.356Z",
+    "sourceSha": "368bd55ae"
   }
 }

@@ -81,9 +81,20 @@ image identity are retained in the new condition's output.
 This new runtime condition uses the same immutable bfb frontend for actual
 qualification, with input consumption explicitly recorded separately from
 once-only audit downloads. It preserves models, solver, launch options,
-viewport, the per-example deadlines and the 35-minute job budget. The new
-preflight census entry is registration-only with zero observations; all
-other workflow records, ordered runs and main provenance remain unchanged.
+viewport, the per-example deadlines and the 35-minute job budget. The census now records the executed preflight refusal separately from
+acceptance; all other workflow records, ordered runs and main provenance
+remain unchanged.
 The new condition remains unqualified until its full actual journey and all
 enabled checks pass. No performance or causal-resolution claim follows from
 this preparation.
+
+Source 368 was refused before input: its dependency diagnostic supplied only
+WebKit's bundled `lib` directory and omitted `sys/lib`. The actual 2336
+launcher uses both. The original refusal is preserved, with no model
+journey or frontend consumption in that condition. The corrected diagnostic
+uses `lib:sys/lib` plus any inherited tail; actual browser launch and
+library selection remain unchanged. Cached2336 dependency controls reproduce
+the old two missing-library reports and resolve both with the launcher path.
+No package is installed, missing library ignored, pin moved or oracle changed.
+The three observed historical conditions record execution only; the corrected
+probe and full journey remain unqualified until their new source event.

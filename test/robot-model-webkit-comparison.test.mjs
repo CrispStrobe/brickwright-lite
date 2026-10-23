@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {FROZEN,RUNTIME_IMAGE,admitPreprovisionedRuntime,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
+import {FROZEN,RUNTIME_IMAGE,webkitDependencyLibraryPath,admitPreprovisionedRuntime,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
 const fixture=()=>({head:FROZEN.reviewedHeadSha,tree:FROZEN.treeSha,metadata:{job:{id:FROZEN.jobId},artifact:{id:FROZEN.artifactId,size_in_bytes:FROZEN.archiveBytes,digest:FROZEN.archiveDigest}}});
 test('comparison admits only the reviewed whole tree and frozen existing artifact',()=>{
     assert.deepEqual(admitComparisonSource(fixture()),FROZEN);
@@ -76,6 +76,7 @@ test('workflow candidate checkout binds the same immutable reviewed source as ad
 
 const runtimePacket=()=>({image:RUNTIME_IMAGE,platform:'linux',arch:'x64',distro:'ubuntu',ubuntu:'24.04',node:'v22.23.4',playwright:'1.62.1',
     webkit:{revision:'2336',browserVersion:'26.5'},executable:'/ms-playwright/webkit-2336/pw_run.sh',
+    inheritedDependencyLibraryPath:'',dependencyLibraryPath:webkitDependencyLibraryPath('/ms-playwright/webkit-2336'),
     files:{'pw_run.sh':true,'minibrowser-wpe/bin/MiniBrowser':true,'minibrowser-wpe/bin/WPEWebProcess':true},missingDependencies:[],
     processObserverAvailable:true,processObserverCommand:['ps','-eo','pid,ppid,pcpu,rss,comm']});
 test('preprovisioned admission requires the exact image, locked runtime and complete native dependency closure',()=>{
@@ -83,9 +84,14 @@ test('preprovisioned admission requires the exact image, locked runtime and comp
     for(const cut of [p=>p.image='mutable:latest',p=>p.platform='darwin',p=>p.arch='arm64',p=>p.distro='debian',p=>p.ubuntu='22.04',
         p=>p.node='v24.0.0',p=>p.playwright='1.64.0',p=>p.webkit.revision='other',p=>p.webkit.browserVersion='other',
         p=>p.executable='/other/pw_run.sh',p=>delete p.files['minibrowser-wpe/bin/WPEWebProcess'],p=>p.missingDependencies=['libmissing.so => not found'],
-        p=>p.processObserverAvailable=false,p=>p.processObserverCommand=['ps','-ef']]){
+        p=>p.processObserverAvailable=false,p=>p.processObserverCommand=['ps','-ef'],
+        p=>p.dependencyLibraryPath='/ms-playwright/webkit-2336/minibrowser-wpe/lib',p=>p.inheritedDependencyLibraryPath='/unrecorded-tail']){
         const packet=runtimePacket();cut(packet);assert.throws(()=>admitPreprovisionedRuntime(packet));
     }
+});
+test('native dependency probe includes the actual launcher lib and sys/lib plus any inherited tail',()=>{
+    assert.equal(webkitDependencyLibraryPath('/cache/webkit','/existing-tail'),
+        '/cache/webkit/minibrowser-wpe/lib:/cache/webkit/minibrowser-wpe/sys/lib:/existing-tail');
 });
 test('workflow uses the reviewed preprovisioned image with the original job budget and explicit preflight',()=>{
     const text=readFileSync(new URL('../.github/workflows/robot-model-webkit-comparison.yml',import.meta.url),'utf8');

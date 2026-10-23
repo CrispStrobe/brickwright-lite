@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import {readFile,writeFile,mkdir,appendFile,readdir,statfs,stat} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {execFileSync,spawn} from 'node:child_process';
-import {resolve,dirname,join} from 'node:path';
+import {resolve,dirname,join,posix} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import os from 'node:os';
 
@@ -30,12 +30,18 @@ const sha = b=>createHash('sha256').update(b).digest('hex');
 const git = (root,...args)=>execFileSync('git',['-c','gc.auto=0','-c','maintenance.auto=false',...args],{cwd:root,encoding:'utf8'}).trim();
 export const RUNTIME_IMAGE = 'mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac';
 export const QUALIFICATION_CONDITION = 'preprovisioned-ubuntu24-amd64-playwright-1.62.1';
+export function webkitDependencyLibraryPath(directory,tail='') {
+    const bundled=posix.join(directory,'minibrowser-wpe/lib')+':'+posix.join(directory,'minibrowser-wpe/sys/lib');
+    return tail ? bundled+':'+tail : bundled;
+}
 export function admitPreprovisionedRuntime(packet) {
     assert.equal(packet.image,RUNTIME_IMAGE,'Exact CI-only immutable amd64 runtime');
     assert.equal(packet.platform,'linux');assert.equal(packet.arch,'x64');assert.equal(packet.distro,'ubuntu');assert.equal(packet.ubuntu,'24.04');
     assert.equal(packet.node,'v22.23.4');assert.equal(packet.playwright,'1.62.1');
     assert.deepEqual(packet.webkit,{revision:'2336',browserVersion:'26.5'});
     assert.equal(packet.executable,'/ms-playwright/webkit-2336/pw_run.sh');
+    assert.equal(packet.dependencyLibraryPath,webkitDependencyLibraryPath('/ms-playwright/webkit-2336',packet.inheritedDependencyLibraryPath||''),
+        'Dependency probe must include the bundled launcher library paths and inherited tail');
     for(const file of ['pw_run.sh','minibrowser-wpe/bin/MiniBrowser','minibrowser-wpe/bin/WPEWebProcess'])
         assert.equal(packet.files[file],true,'Complete cached headless WebKit runtime');
     assert.deepEqual(packet.missingDependencies,[],'Native runtime dependencies must resolve before input acquisition');
@@ -51,8 +57,10 @@ async function preflightRuntime() {
     assert.equal(registry.length,1);const executable=playwright.webkit.executablePath(),directory=dirname(executable),files={};
     for(const file of ['pw_run.sh','minibrowser-wpe/bin/MiniBrowser','minibrowser-wpe/bin/WPEWebProcess'])
         files[file]=(await stat(join(directory,file))).isFile();
+    const inheritedDependencyLibraryPath=process.env.LD_LIBRARY_PATH||'';
+    const dependencyLibraryPath=webkitDependencyLibraryPath(directory,inheritedDependencyLibraryPath);
     const dependencies=execFileSync('ldd',[join(directory,'minibrowser-wpe/bin/WPEWebProcess')],{
-        encoding:'utf8',timeout:10000,maxBuffer:65536,env:{...process.env,LD_LIBRARY_PATH:join(directory,'minibrowser-wpe/lib')}
+        encoding:'utf8',timeout:10000,maxBuffer:65536,env:{...process.env,LD_LIBRARY_PATH:dependencyLibraryPath}
     });
     const processObserverCommand=['-eo','pid,ppid,pcpu,rss,comm'];
     const processObserverOutput=execFileSync('ps',processObserverCommand,{encoding:'utf8',timeout:1000,maxBuffer:65536});
@@ -61,6 +69,7 @@ async function preflightRuntime() {
         distro:release.match(/^ID=([^\r\n]+)$/m)?.[1].replaceAll('"',''),
         ubuntu:release.match(/^VERSION_ID="([^"]+)"$/m)?.[1],node:process.version,playwright:require('playwright/package.json').version,
         webkit:{revision:registry[0].revision,browserVersion:registry[0].browserVersion},executable,files,
+        inheritedDependencyLibraryPath,dependencyLibraryPath,
         missingDependencies:dependencies.split('\n').filter(line=>/=>\s*not found/.test(line)),dependencies,
         processObserverAvailable:processObserverOutput.trim().length>0,processObserverCommand:['ps',...processObserverCommand],processObserverOutput,
         consumerHead:git(resolve(dirname(fileURLToPath(import.meta.url)),'..'),'rev-parse','HEAD'),candidateHead:git(root,'rev-parse','HEAD')};
@@ -193,6 +202,8 @@ async function main() {
     await save('original-acquisition-reservation.json',{owner:process.env.GITHUB_RUN_ID,admission,archivePath:'official-frontend.zip',
         qualificationCondition:QUALIFICATION_CONDITION,runtimeImage:RUNTIME_IMAGE,
         priorInputCondition:{consumerHead:'dc250d461b7f161c7696504a054d1cc49ccac003',runId:40007060335,inputConsumed:true},
+        preinputRefusals:[{consumerHead:'368bd55aea021ac2922578200819b85938631dba',runId:40018078929,inputConsumed:false,
+            reason:'Dependency probe omitted bundled sys/lib; corrected to the launcher library search contract'}],
         scope:'New declared runtime condition consumes the same immutable input for actual qualification; audit originals remain once-only.'});
     let bytes;
     try{bytes=await helper.acquireGuiArchive({admission,archivePath,token:process.env.GITHUB_TOKEN,fetchImpl});}
