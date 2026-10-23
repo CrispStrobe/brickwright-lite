@@ -29,3 +29,13 @@ No protected physics/compiler/collision implementation, measurement UI, API
 gateway/resource work, unrelated supplier pins, firmware, app release tags or
 TestFlight work. A reproduced engine issue requires separate bounded ownership.
 Preserve all other model, renderer, native and circuit owners.
+
+Candidate implementation uses the same owner’s isolated
+`lane/six-technic-model-intakes-20261023`, preserving the separate frozen
+Cable Compass qualification. All six original native experiments were
+independently reproduced. Source-bound adapters retain the programs and
+physical limits. Construction review corrected four Rod Ratio pin collars,
+one Oblique roof brace and the stock suspension-arm fork representation;
+all supports, masses and connectors remain. The six named internal physical
+comparisons and Atlas Six exception are explicit reviewer-owned registrations.
+Final qualification of the composed candidate remains required.

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "oblique",
+  "language": "de",
+  "what": "Schiefer Ellipsenzirkel / Ellipsenzirkel des Archimedes. Ein Ellipsenzirkel mit zwei Motoren und verstellbarem Führungswinkel. Motor A fährt mit dem roten Schlitten und dreht einen blauen starren Balken zwischen zwei geführten Gelenken. Motor B sitzt am festen Rahmen. Über ein 20-Zähne-Ritzel und den 60-Zähne-Drehkranz schwenkt er die gelbe Führung. Bei einem Wechsel von 90° auf 60° zeichnet der orange Messpunkt eine andere Ellipse. Schlitten und Balken beruhen auf CrispStrobes unter BSD-3-Clause lizenziertem Modell Ellipsa. Ein Ellipsenzirkel mit zwei Motoren und verstellbarem Führungswinkel. Motor A fährt mit dem roten Schlitten und dreht einen blauen starren Balken zwischen zwei geführten Gelenken. Motor B sitzt am festen Rahmen. Über ein 20-Zähne-Ritzel und den 60-Zähne-Drehkranz schwenkt er die gelbe Führung. Bei einem Wechsel von 90° auf 60° zeichnet der orange Messpunkt eine andere Ellipse. Schlitten und Balken beruhen auf CrispStrobes unter BSD-3-Clause lizenziertem Modell Ellipsa.",
+  "try": [
+    "In Code die Datei programs/oblique.bw öffnen und To blocks wählen. Im Roboter-Labor Simulate und die Matte Plain wählen; anschließend über File → Open a model… die Datei models/oblique.ldr laden. Ohne manuelle Motorübersteuerung Pause → Reset → Run ausführen.",
+    "Bei 90° Führungswinkel eine volle Vorwärts- und Rückwärtsdrehung beobachten. Der orange Punkt sollte eine Ellipse mit 96×32 mm Hauptachs-Durchmessern beschreiben. Das sind geometrische Vorhersagen; die tatsächlich gemessenen nativen Werte stehen in validation/NATIVE-RESULTS.md.",
+    "Wenn der Balken wieder in Ausgangslage steht, schwenkt Motor B die Führung auf 60°. Der native Richtungsversuch ergibt dafür einen B-Encoder-Sollwert von −90°. Wegen der 3:1-Untersetzung dreht sich die Führung um 30°. Motor A hält währenddessen seine physische Ausgangslage.",
+    "Vorhersagen, ob die neue Ellipse breiter, höher, gedreht oder einfach größer wird. Beide vollständigen Umlaufrichtungen bei 60° beobachten. Die berechneten Hauptachs-Durchmesser sind 103,564×29,663 mm, die lange Achse liegt bei 66,949° zur festen X-Richtung. Ihr achsenparalleles Begrenzungsrechteck hat andere Maße.",
+    "Das endliche Programm bringt beide Eingänge zurück und hält sie. Bei Erfolg gelten completed=1 und failed=0. Vor einem neuen Lauf das gesamte Modell zurücksetzen. Ein alleiniger Encoder-Nullabgleich nach manuellem Drehen stellt die physische Ausgangslage nicht wieder her."
+  ],
+  "why": "A liegt auf der X-Führung, B auf einer Geraden mit Winkel α; ihr Abstand beträgt 32 mm. Für A−B=32(cosθ,−sinθ) gilt B=(32cotα sinθ,32sinθ) und A=(32cosθ+32cotα sinθ,0). Der Messpunkt liegt bei Q=A+1,5(B−A), also Q=(−16cosθ+32cotα sinθ,48sinθ). Bei 90° verschwindet der gemischte Term. Bei 60° schert er die Ellipse und verändert ihre Neigung und Hauptachsen. Diese Koordinaten müssen aus der wirklichen nativen Bewegung entstehen; dem Messpunkt wird keine Sollposition zugewiesen.",
+  "matters": "Derselbe starre Balken erzeugt unterschiedliche Bahnen, wenn sich eine Führungsbedingung ändert. Motor A bewegt den Mechanismus entlang seiner Bahn, Motor B verändert deren Geometrie. Das Beispiel zeigt außerdem, warum die Ausgangsbewegung unabhängig von den Encodern gemessen werden muss: Ein erreichter Motorwinkel beweist noch keine korrekte Schlitten- oder Markerbewegung.",
+  "question": "Wird die ideale Ellipsenfläche beim Wechsel von 90° auf 60° größer, weil die lange Hauptachse wächst?",
+  "answer": "Nein. Für die feste Markerposition lautet die Abbildungsmatrix H=[[-16,32cotα],[0,48]] in Millimetern. Ihre Determinante bleibt −768 mm². Daher beträgt die ideale Ellipsenfläche immer 768π mm². Die große Achse wächst, während die kleine schrumpft. Das ist eine analytische Eigenschaft und keine gesonderte physische Flächenmessung.",
+  "further": [
+    "In der Ausgangslage θ=0 sitzt das passive Gelenk für beide Winkel am Führungsschnittpunkt. Deshalb ändert das Programm den Führungswinkel erst nach der Rückkehr von A und wartet anschließend, bis B seine Lage hält.",
+    "Beide Schlitten haben reale Anschlaggrenzen bei ±40 mm. Ihr nomineller Gesamthub wächst von 64 mm bei 90° auf 73,9008 mm bei 60°. Dann bleiben ideal nur 3,0496 mm Abstand zu jedem Anschlag. Bei 53,1301° erreicht ein voller Umlauf die Anschläge; beliebige Führungswinkel sind durch den Versuch nicht freigegeben.",
+    "Die Welle von Motor B besitzt ein zusätzliches äußeres Lager und zwei volle Sicherungsbuchsen. Das 20-Zähne-Ritzel hat eine gespeicherte Zahnphase von 9°; das Achskreuz ist entsprechend ausgerichtet. Der umgedrehte Motor verwendet ROTOR -9. Bei Nullphase schneiden sich im Entwicklungsversuch die realen Zahngeometrien.",
+    "Der obere passive Schlitten und der untere Motorschlitten besitzen jeweils zwei getrennte glatte Führungen. Ihr Abstand wirkt der Verdrehung entgegen. Die native Schlittenführung wird nicht durch eine unsichtbare Zusatzstrebe begründet.",
+    "Der Hub sitzt erhöht, um die erforderlichen Wege der beiden 250 mm langen Motorleitungen zu verkürzen. Die A-Leitung erhält eine lockere Schleife außerhalb der Vorderseite; die B-Leitung läuft außen hinter dem gelben Träger. Flexible Leitungen und ein physischer Aufbau sind noch nicht erprobt.",
+    "Die mitgelieferte Qualifikation beobachtet echte körperfeste Messpunkte über den nativen Compiler, die VM, die Motorregler und Jolt. Sie passt eine Ellipse mit frei bestimmtem Mittelpunkt an und prüft Setzen, Gelenkschluss, Führungswinkel, Übersetzung, Rückhaltung und Rückkehr. Der negative Test mit eingefrorenem Ausgang muss scheitern. Browser-Import und Hardware bleiben getrennte Prüfebenen."
+  ],
+  "formula": "LDraw: 1 LDU=0,4 mm, +Y nach unten. L=32 mm, u=1,5. Qx=(1−u)L cosθ+L cotα sinθ=−16cosθ+32cotα sinθ; Qz=uL sinθ=48sinθ. Die Haupt-Halbachsen sind die Singulärwerte von H=[[-16,32cotα],[0,48]]. Jede Schlittenamplitude=L/|sinα|. B-Encoder-Sollwerte 0°/−90° wählen nominell 90°/60° Führungswinkel; das sind Eingaben, keine gemessenen Ausgaben.",
+  "related": [
+    "ellipsa.ldr",
+    "ellipse-engine.ldr"
+  ]
+}

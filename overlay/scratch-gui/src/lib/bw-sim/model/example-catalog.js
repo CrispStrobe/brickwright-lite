@@ -294,6 +294,177 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "rod-ratio.ldr": {
+        "pieces": 167,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns two equal-radius cranks on the same shaft through a 24:1 worm drive. A 40 mm rod and an 80 mm rod connect those cranks to two passive guided carriages. Both carriages have the same ideal 48 mm complete stroke, but they occupy different fractions of that stroke at the same crank angle. The finite experiment pauses every 45 degrees, completes one forward revolution, reverses through the same phases and returns home. The numerical values below are geometric predictions; see the packaged acceptance record for the separately measured results.",
+            "de": "Ein Motor dreht über einen Schneckenantrieb mit 24:1-Untersetzung zwei Kurbeln mit gleichem Radius auf derselben Welle. Ein 40 mm langer und ein 80 mm langer Pleuel verbinden die Kurbeln mit zwei passiven geführten Schlitten. Beide Schlitten haben ideal denselben Gesamthub von 48 mm, erreichen bei gleichem Kurbelwinkel aber unterschiedliche Zwischenpositionen. Das endliche Experiment hält alle 45 Grad an, fährt eine vollständige Umdrehung vorwärts und über dieselben Winkel zurück zur Ausgangslage. Die folgenden Zahlen sind geometrische Vorhersagen; die getrennt gemessenen Ergebnisse stehen im beiliegenden Prüfbericht."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Slider-crank linkage",
+            "de": "Schubkurbelgetriebe"
+        },
+        "keywords": [
+            "Slider-crank linkage",
+            "Schubkurbelgetriebe",
+            "slider crank",
+            "connecting rod ratio",
+            "connecting rod length",
+            "Pleuelstangenverhältnis",
+            "Schubkurbel"
+        ]
+    },
+    "vernier-drive.ldr": {
+        "pieces": 176,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor drives two real gear paths into a differential. One side follows the input at +1; the other turns oppositely at -27/25. The differential carrier follows their signed mean, -1/25. A separate equal gear pair reverses that slow motion, so the visible passive output pointer makes one positive turn for every 25 input turns. The finite experiment pauses at quarter turns, completes one output revolution, reverses and returns home. These ratios are geometric predictions; the packaged acceptance record separately reports what the exported model and program actually demonstrated.",
+            "de": "Ein Motor treibt zwei echte Zahnradwege an, die in ein Differenzial führen. Eine Seite folgt dem Eingang mit +1, die andere dreht gegenläufig mit -27/25. Der Differenzialträger folgt ihrem vorzeichenbehafteten Mittelwert, -1/25. Ein separates gleich großes Zahnradpaar kehrt diese langsame Bewegung um: Der sichtbare passive Ausgangszeiger macht eine positive Umdrehung je 25 Eingangsumdrehungen. Das endliche Experiment hält bei Vierteldrehungen an, durchläuft eine volle Ausgangsumdrehung und kehrt rückwärts zurück. Die Verhältnisse sind geometrische Vorhersagen; der beiliegende Prüfbericht beschreibt getrennt, was die exportierte Maschine mit ihrem Programm tatsächlich gezeigt hat."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Differential reduction through opposing gear ratios",
+            "de": "Differenzial-Untersetzung durch gegenläufige Übersetzungen"
+        },
+        "keywords": [
+            "Differential reduction through opposing gear ratios",
+            "Differenzial-Untersetzung durch gegenläufige Übersetzungen",
+            "differential reducer",
+            "vernier gear",
+            "mechanical subtraction",
+            "25:1",
+            "Verniergetriebe",
+            "Differenzialuntersetzung"
+        ]
+    },
+    "line-turner.ldr": {
+        "pieces": 145,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor moves a horizontal rack. A long bar is pinned to that slider at A, and a counterbalanced rocker pivots at fixed O. Its 32mm working arm OM reaches the long bar midpoint M and is exactly half the 64mm span AB. The rocker extends past O in the opposite direction to carry two real counterweight beams. In this planar mechanism the free tip B follows a perpendicular straight line, although it has no vertical guide. The same bar therefore carries three different paths: A on a horizontal line, M on a circular arc and B on a vertical line. The finite experiment visits seven positions and returns home. Exact straightness is an ideal geometric prediction; the packaged acceptance record separately reports the actual native motion.",
+            "de": "Ein Motor bewegt eine waagerechte Zahnstange. Am Schieber A ist ein langer Stab gelenkig befestigt; eine ausbalancierte Schwinge dreht sich um den festen Punkt O. Ihr 32mm langer Arbeitsarm OM reicht zum Stabmittelpunkt M und ist genau halb so lang wie die 64mm lange Strecke AB. Die Schwinge reicht auf der gegenüberliegenden Seite über O hinaus und trägt dort zwei echte Gegengewichtsbalken. In diesem ebenen Mechanismus folgt die freie Spitze B einer senkrechten Geraden, obwohl sie keine vertikale Führung besitzt. Ein und derselbe Stab trägt damit drei verschiedene Bahnen: A auf einer waagerechten Geraden, M auf einem Kreisbogen und B auf einer senkrechten Geraden. Das endliche Experiment fährt sieben Positionen an und kehrt zurück. Die exakte Geradführung ist eine ideale geometrische Vorhersage; der beiliegende Prüfbericht beschreibt getrennt die tatsächliche native Bewegung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scott–Russell straight-line linkage",
+            "de": "Scott-Russell-Geradführung"
+        },
+        "keywords": [
+            "Scott–Russell straight-line linkage",
+            "Scott-Russell-Geradführung",
+            "Scott Russell",
+            "Scott–Russell",
+            "right angle motion",
+            "straight line linkage",
+            "Geradführung",
+            "rechtwinklige Bewegung"
+        ]
+    },
+    "dune-strider.ldr": {
+        "pieces": 202,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor drives two Jansen-topology legs with their cranks half a turn apart. Yellow and orange rigid right-angle links combine three closed loops into a sweeping foot path. A real Technic stand supports the machine so that the complete path is visible. This is a gait laboratory; free walking on the floor is not claimed.",
+            "de": "Ein Motor treibt zwei Beine mit Jansen-Topologie an. Ihre Kurbeln sind um eine halbe Umdrehung versetzt. Gelbe und orangefarbene starre Winkelglieder verbinden drei geschlossene Gelenkschleifen zu einer schwingenden Fußbahn. Ein echtes Technic-Gestell trägt die Maschine und lässt die gesamte Bahn sichtbar. Dieses Modell ist ein Ganglabor; freies Gehen auf dem Boden wird nicht behauptet."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Jansen walking linkage",
+            "de": "Jansen-Laufmechanismus"
+        },
+        "keywords": [
+            "Jansen walking linkage",
+            "Jansen-Laufmechanismus",
+            "Theo Jansen",
+            "Jansen linkage",
+            "walking linkage",
+            "Strandbeest",
+            "gait",
+            "Beinmechanismus",
+            "Laufgetriebe"
+        ]
+    },
+    "atlas-six.ldr": {
+        "pieces": 676,
+        "motors": 6,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Six independently powered small linear actuators connect a free-standing Technic base to a raised open platform. Small stock towballs at both ends let each leg change direction. The six leg lengths jointly determine three translations and three rotations of the plate. Six colours identify physical legs A–F; their motor ports are F, B, D, A, E, C respectively.",
+            "de": "Sechs einzeln angetriebene kleine Linearaktuatoren verbinden einen frei stehenden Technic-Unterbau mit einer erhöhten offenen Plattform. Kleine originale Kugelgelenke an beiden Enden erlauben jedem Bein eine Richtungsänderung. Die sechs Beinlängen bestimmen gemeinsam drei Verschiebungen und drei Drehungen der Plattform. Die Farben kennzeichnen die physischen Beine A–F; ihre Motoranschlüsse sind in dieser Reihenfolge F, B, D, A, E, C."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Stewart platform / Gough–Stewart hexapod",
+            "de": "Stewart-Plattform / Gough-Stewart-Hexapod"
+        },
+        "keywords": [
+            "Stewart platform / Gough–Stewart hexapod",
+            "Stewart-Plattform / Gough-Stewart-Hexapod",
+            "Stewart platform",
+            "Gough Stewart",
+            "hexapod",
+            "parallel manipulator",
+            "six degrees of freedom",
+            "6DOF",
+            "Hexapod",
+            "Parallelkinematik"
+        ]
+    },
+    "oblique.ldr": {
+        "pieces": 291,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A two-motor adjustable-angle trammel. Motor A travels with the red carriage and turns a blue rigid bar between two guided pivots. Motor B stays on the gantry and drives a 20T pinion against a 60T turntable, rotating the yellow passive guide. The orange marker traces a different ellipse when that guide changes from 90° to 60°. The mechanism adapts CrispStrobe’s BSD-3-Clause-licensed Ellipsa carriage and bar assembly.",
+            "de": "Ein Ellipsenzirkel mit zwei Motoren und verstellbarem Führungswinkel. Motor A fährt mit dem roten Schlitten und dreht einen blauen starren Balken zwischen zwei geführten Gelenken. Motor B sitzt am festen Rahmen. Über ein 20-Zähne-Ritzel und den 60-Zähne-Drehkranz schwenkt er die gelbe Führung. Bei einem Wechsel von 90° auf 60° zeichnet der orange Messpunkt eine andere Ellipse. Schlitten und Balken beruhen auf CrispStrobes unter BSD-3-Clause lizenziertem Modell Ellipsa."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Oblique trammel / trammel of Archimedes",
+            "de": "Schiefer Ellipsenzirkel / Ellipsenzirkel des Archimedes"
+        },
+        "keywords": [
+            "Oblique trammel / trammel of Archimedes",
+            "Schiefer Ellipsenzirkel / Ellipsenzirkel des Archimedes",
+            "oblique trammel",
+            "trammel of Archimedes",
+            "ellipsograph",
+            "ellipse",
+            "Archimedes",
+            "Ellipsenzirkel",
+            "schiefe Führung"
+        ]
+    },
     "cable-compass.ldr": {
         "pieces": 175,
         "motors": 2,

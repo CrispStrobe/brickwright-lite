@@ -264,6 +264,117 @@
         "cable-compass",
         "cable-compass-control"
       ]
+    },
+    {
+      "id": "rod-ratio-principle",
+      "models": [
+        "rod-ratio"
+      ],
+      "name": {
+        "en": "Slider-crank linkage",
+        "de": "Schubkurbelgetriebe"
+      },
+      "aliases": [
+        "slider crank",
+        "connecting rod ratio",
+        "connecting rod length",
+        "Pleuelstangenverhältnis",
+        "Schubkurbel"
+      ]
+    },
+    {
+      "id": "vernier-drive-principle",
+      "models": [
+        "vernier-drive"
+      ],
+      "name": {
+        "en": "Differential reduction through opposing gear ratios",
+        "de": "Differenzial-Untersetzung durch gegenläufige Übersetzungen"
+      },
+      "aliases": [
+        "differential reducer",
+        "vernier gear",
+        "mechanical subtraction",
+        "25:1",
+        "Verniergetriebe",
+        "Differenzialuntersetzung"
+      ]
+    },
+    {
+      "id": "line-turner-principle",
+      "models": [
+        "line-turner"
+      ],
+      "name": {
+        "en": "Scott–Russell straight-line linkage",
+        "de": "Scott-Russell-Geradführung"
+      },
+      "aliases": [
+        "Scott Russell",
+        "Scott–Russell",
+        "right angle motion",
+        "straight line linkage",
+        "Geradführung",
+        "rechtwinklige Bewegung"
+      ]
+    },
+    {
+      "id": "dune-strider-principle",
+      "models": [
+        "dune-strider"
+      ],
+      "name": {
+        "en": "Jansen walking linkage",
+        "de": "Jansen-Laufmechanismus"
+      },
+      "aliases": [
+        "Theo Jansen",
+        "Jansen linkage",
+        "walking linkage",
+        "Strandbeest",
+        "gait",
+        "Beinmechanismus",
+        "Laufgetriebe"
+      ]
+    },
+    {
+      "id": "atlas-six-principle",
+      "models": [
+        "atlas-six"
+      ],
+      "name": {
+        "en": "Stewart platform / Gough–Stewart hexapod",
+        "de": "Stewart-Plattform / Gough-Stewart-Hexapod"
+      },
+      "aliases": [
+        "Stewart platform",
+        "Gough Stewart",
+        "hexapod",
+        "parallel manipulator",
+        "six degrees of freedom",
+        "6DOF",
+        "Hexapod",
+        "Parallelkinematik"
+      ]
+    },
+    {
+      "id": "oblique-principle",
+      "models": [
+        "oblique"
+      ],
+      "name": {
+        "en": "Oblique trammel / trammel of Archimedes",
+        "de": "Schiefer Ellipsenzirkel / Ellipsenzirkel des Archimedes"
+      },
+      "aliases": [
+        "oblique trammel",
+        "trammel of Archimedes",
+        "ellipsograph",
+        "ellipse",
+        "Archimedes",
+        "Ellipsenzirkel",
+        "schiefe Führung"
+      ]
     }
   ]
 }

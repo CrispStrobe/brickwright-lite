@@ -1,0 +1,19 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archiveSha256": "3fae33e072b1b2e3b500fa9b1a2ab9d301a7a0d2961e983a1c62b68ca8f4b101",
+  "files": {
+    "models/oblique.ldr": "a93c6df7ebbee37813229a254498f30a26eb47c0bc7ae730878a73a6699b4429",
+    "programs/oblique.bw": "0d0ed08ac7ef69319730205f6acc6c34df4f44cdaeee1b9fd0ddeb215578a560",
+    "validation/acceptance-contract.json": "c630b86f92d234a793d716cbbfedc2e18c245f7895093c136fb79289b1e7e733",
+    "LICENSE": "ed24a200606b724010d837027511981f9e3c5ed05f81d01a1f12dffb8b5d5c86",
+    "NOTICES.md": "2b961e18cddb03ec62181b6c6554192408964e523255373904b33c14da4ae6da",
+    "tools/qualify-native.mjs": "c58c143b8db11ca750444ec1b19cbd9430a6239c8508f6c452b9f9fdc7c399f3",
+    "tools/native-observation.mjs": "51c9cb016f7ceadcea9cca950383ea85f1e97b8c03f4a184b5be87d34457f55d",
+    "tools/judge-native.mjs": "679eaa3e9761b215e71e4c8cfbe4692389fc0880f92579f66a981f96c8180c1a",
+    "tools/judge-controls.mjs": "b022fc152c38633be97cb3e4ef31c7bbefe75ec36a3ea1cfe0716e4787681e4e",
+    "tools/catalog-native.mjs": "6b6c74d6f079e78d5e0bb9c1e52a7c5218e4ec221f8ae0b8a2fd32d64efd0123",
+    "tools/observe-oblique.mjs": "2251d68159e56daa7e233ebe59c2b4e5bc31b8ec16de675a5b9ba90c0f64453e"
+  },
+  "reviewScope": "Original inputs and observers retained unchanged; current native and full browser acceptance recorded separately."
+}

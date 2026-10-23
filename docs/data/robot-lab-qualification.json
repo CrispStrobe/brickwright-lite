@@ -100,6 +100,102 @@
       "frameMs": 25,
       "frozenOutput": "payload_tie",
       "physicalControl": "cable-compass-control.ldr"
+    },
+    {
+      "id": "rod-ratio",
+      "judge": "rod-ratio-v1",
+      "nativeSuite": "rod-ratio",
+      "parts": 167,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "short_slider",
+      "internalComparison": "two-connecting-rod-lengths"
+    },
+    {
+      "id": "vernier-drive",
+      "judge": "vernier-drive-v1",
+      "nativeSuite": "vernier-drive",
+      "parts": 176,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "output_pointer",
+      "internalComparison": "opposing-differential-branches"
+    },
+    {
+      "id": "line-turner",
+      "judge": "scott-russell-v1",
+      "nativeSuite": "line-turner",
+      "parts": 145,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 70000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "long_link",
+      "internalComparison": "perpendicular-input-output-lines"
+    },
+    {
+      "id": "dune-strider",
+      "judge": "paired-jansen-v1",
+      "nativeSuite": "dune-strider",
+      "parts": 202,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 90000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "near_toe",
+      "internalComparison": "opposed-jansen-legs"
+    },
+    {
+      "id": "atlas-six",
+      "judge": "stewart-platform-v1",
+      "nativeSuite": "atlas-six",
+      "parts": 676,
+      "ports": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 490000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "platform_row_-380_-350_0",
+      "internalComparison": "six-independent-platform-axes"
+    },
+    {
+      "id": "oblique",
+      "judge": "oblique-trammel-v1",
+      "nativeSuite": "oblique",
+      "parts": 291,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 98000,
+      "afterMs": 1100,
+      "frameMs": 25,
+      "frozenOutput": "marker_Q",
+      "internalComparison": "two-real-guide-settings"
     }
   ]
 }

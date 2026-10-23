@@ -4,13 +4,14 @@ import {openManualControls} from './sim-lab-manual-controls.mjs';
 import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {installBrowserMechanicsRecorder} from './sim-lab-browser-recorder.mjs';
 import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
-    simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false,
-    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null}) => {
+    simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false, completionHoldMsFor = () => null,
+    fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false, captureModel = null, extendedObservations = false}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
@@ -42,42 +43,24 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
             el.textContent.includes(marker)), programMarker(id), {timeout: 30000});
         await page.getByTestId('bw-sim-lab-3d-canvas').waitFor();
         await (captureModel ? captureModel(page,resolve(shotsDir, `${id}.png`)) : page.screenshot({path: resolve(shotsDir, `${id}.png`)}));
-        await page.evaluate(observeProgram => {
-            const pane = window.__bwSimLab._pane;
-            const s = pane.session;
-            const m = s.mechanism;
-            const record = window.__bwMechanics = {start: s.time, runModel:s.runModel, mechanism: m, hubId: s.bridge.hubBody,
-                issues: pane.state.issues, unsupported: [], track: []};
-            const capture = () => {
-                const bodies = {};
-                for (const b of m.bodies.filter(b => b.motion === 'dynamic')) bodies[b.id] = s.core.bodyPose(b.id);
-                const joints = {};
-                for (const j of m.joints.filter(j => j.type === 'hinge' || j.type === 'slider')) joints[j.id] = s.core.jointState(j.id);
-                const busy = {};
-                for (const a of m.actuators) busy[a.port] = pane.hub.motors.busy(a.port);
-                if (observeProgram && !record.finishedAt && s.time-record.start>1000 && !pane.props.vm.runtime.threads.some(t=>t.status!==4)) record.finishedAt=s.time;
-                const extra=observeProgram?{ropes:s.core.ropeState(),variables:Object.fromEntries(pane.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]))}:null;
-                record.track.push({t: s.time, bodies, joints, busy, ...(extra?{extra}: {})});
-            };
-            window.__bwCaptureMechanics = capture;
-            s.onAdvance(capture);
-        }, observeProgram);
+        await page.evaluate(installBrowserMechanicsRecorder,{recordKey:'__bwMechanics',captureKey:'__bwCaptureMechanics',extended:extendedObservations,observeProgram});
         await page.getByTestId('bw-sim-lab-speed').selectOption(String(speed));
         await page.getByTestId('bw-sim-lab-run').click();
         const simulatedForThis = simulatedMsFor(id);
         // The pane briefly drops its session while a model or program reloads; a
         // predicate that dereferences it then fails the whole gate with a TypeError
         // instead of waiting for the next frame.
-        await page.waitForFunction(({ms, paused}) => {
+        await page.waitForFunction(({ms, paused, holdMs}) => {
             const pane=window.__bwSimLab?._pane;if(!pane?.session)return false;
+            if(holdMs!==null)return Number.isFinite(window.__bwMechanics.finishedAt)&&pane.session.time-window.__bwMechanics.finishedAt>=holdMs;
             if(!paused)return pane.session.time-window.__bwMechanics.start>=ms;
             return pane.session.time-window.__bwMechanics.start>1000&&window.__bwSimLab.status==='paused'&&
                 !pane.props.vm.runtime.threads.some(t=>t.status!==4);
-        }, {ms:simulatedForThis,paused:completeWhenPausedFor(id)}, {timeout});
+        }, {ms:simulatedForThis,paused:completeWhenPausedFor(id),holdMs:completionHoldMsFor(id)}, {timeout});
         if(completeWhenPausedFor(id))await page.evaluate(()=>window.__bwCaptureMechanics());
         const r = await page.evaluate(() => window.__bwMechanics);
         if (observeProgram) writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
-        results[id] = judge(id, r);
+        results[id] = await judge(id, r);
         // Capture the measured final pose without racing a continuously redrawn
         // software WebGL surface. The next model selection starts a fresh run.
         if (await page.getByTestId('bw-sim-lab-pause').isVisible()) {

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "oblique",
+  "language": "en",
+  "what": "Oblique trammel / trammel of Archimedes. A two-motor adjustable-angle trammel. Motor A travels with the red carriage and turns a blue rigid bar between two guided pivots. Motor B stays on the gantry and drives a 20T pinion against a 60T turntable, rotating the yellow passive guide. The orange marker traces a different ellipse when that guide changes from 90° to 60°. The mechanism adapts CrispStrobe’s BSD-3-Clause-licensed Ellipsa carriage and bar assembly. A two-motor adjustable-angle trammel. Motor A travels with the red carriage and turns a blue rigid bar between two guided pivots. Motor B stays on the gantry and drives a 20T pinion against a 60T turntable, rotating the yellow passive guide. The orange marker traces a different ellipse when that guide changes from 90° to 60°. The mechanism adapts CrispStrobe’s BSD-3-Clause-licensed Ellipsa carriage and bar assembly.",
+  "try": [
+    "In Code, open programs/oblique.bw and press To blocks. In Robot Lab choose Simulate and the Plain mat, then File → Open a model… and load models/oblique.ldr. Use Pause → Reset → Run with manual motor overrides off.",
+    "Watch one forward and one reverse bar turn with the guides at 90°. The orange marker should trace an ellipse whose principal diameters are 96×32 mm. These are geometric predictions; validation/NATIVE-RESULTS.md records the actual native measurements.",
+    "When the bar is home, watch motor B turn the guide to 60°. The native direction probe establishes that this uses a −90° B encoder target. The guide turns only 30° because of its 3:1 reduction. Motor A holds its physical home angle during this change.",
+    "Predict whether the new ellipse becomes wider, taller, tilted or merely larger. Observe both complete drawing directions at 60°. Its predicted principal diameters are 103.564×29.663 mm, tilted 66.949° from the fixed X direction. Its bounding box is different from those principal axes.",
+    "The finite program returns both inputs home and holds them. On success completed=1 and failed=0. Reload/reset the complete model before another run; independently zeroing an encoder after a manual jog does not restore the physical datum."
+  ],
+  "why": "A lies on the X guide, B lies on a line at angle α, and their separation is 32 mm. If A−B=32(cosθ,−sinθ), B=(32cotα sinθ,32sinθ) and A=(32cosθ+32cotα sinθ,0). The marker is Q=A+1.5(B−A), so Q=(−16cosθ+32cotα sinθ,48sinθ). At 90° the mixed term vanishes. At 60° it shears the ellipse, changing its tilt and principal axes. The native mechanism must actually produce these coordinates; no marker pose is commanded.",
+  "matters": "The same rigid bar gives a family of output shapes when a guide constraint changes. This separates two jobs: motor A advances the mechanism around its path, while motor B changes the geometry of that path. It also shows why useful motor feedback requires independent output measurement: encoder arrival alone cannot prove that a carriage or marker moved correctly.",
+  "question": "When the guide changes from 90° to 60°, does the ideal enclosed ellipse area increase because the long principal axis gets longer?",
+  "answer": "No. For this fixed marker position the mapping matrix is H=[[-16,32cotα],[0,48]] in millimetres. Its determinant stays −768 mm², so the ideal ellipse area is always 768π mm². The major axis grows while the minor axis shrinks. This is an analytic invariant, not a separate physical area measurement.",
+  "further": [
+    "At home θ=0, the passive pivot is at the guide intersection for either setting. That is why the program changes guide angle only after A has returned home, then waits for B to hold before turning A again.",
+    "Both carriages have actual end-seat limits at ±40 mm. Their nominal full stroke grows from 64 mm at 90° to 73.9008 mm at 60°. The latter leaves only 3.0496 mm ideal clearance at each extreme. A full revolution reaches the stops at 53.1301°; the supplied experiment does not authorize arbitrary guide angles.",
+    "The motor-B shaft has a real external bearing and two full retaining bushes. Its 20T pinion is saved at a 9° key phase; the inverted motor uses ROTOR -9. Replacing that phase with zero causes stock-tooth interference in the development fixture.",
+    "The upper passive carriage uses two separate smooth guide rails, and the lower motor carriage also uses two. Their separation supplies physical resistance to roll; the native sliders are not justified by an invisible extra brace.",
+    "The saved hub is raised to shorten the paths for both 250 mm motor leads. Route A with a loose loop outside the front of the moving mechanism and B outside the rear of the yellow carrier. Flexible leads and a physical build are untested.",
+    "The packaged qualification observes actual body-carried markers in the real compiler/VM/controller/Jolt route, fits a free-centre ellipse to those observations, and checks cold settling, closures, guide angles, gearing, retention and return. The deliberately frozen-output negative case must fail. Browser import and physical hardware remain separate evidence scopes."
+  ],
+  "formula": "LDraw: 1 LDU=0.4 mm, +Y downward. L=32 mm, u=1.5. Qx=(1−u)L cosθ+L cotα sinθ=−16cosθ+32cotα sinθ; Qz=uL sinθ=48sinθ. Principal semiaxes are singular values of H=[[-16,32cotα],[0,48]]. Each carriage amplitude=L/|sinα|. B encoder targets 0°/−90° select nominal guide angles 90°/60°; these are inputs, not measured outputs.",
+  "related": [
+    "ellipsa.ldr",
+    "ellipse-engine.ldr"
+  ]
+}

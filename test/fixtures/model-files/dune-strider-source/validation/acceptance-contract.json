@@ -1,0 +1,183 @@
+{
+  "schema": "dune-strider-native-acceptance/v1",
+  "revision": 3,
+  "status": "frozen-before-full-native-qualification",
+  "physicalQuestion": "Can one motor drive two passive Jansen eight-bar legs in opposition, with native measured feet reproducing the designed stroke and lift while the free-standing chassis stays supported?",
+  "claimExclusions": [
+    "locomotion",
+    "foot traction",
+    "physical hardware",
+    "browser installation or rendering"
+  ],
+  "basePart": "hub",
+  "plane": {
+    "originLdu": [
+      0,
+      0,
+      0
+    ],
+    "uLdu": [
+      1,
+      0,
+      0
+    ],
+    "vLdu": [
+      0,
+      -1,
+      0
+    ]
+  },
+  "encoderToCrankSign": 1,
+  "legs": [
+    {
+      "name": "near",
+      "originLdu": [
+        0,
+        0,
+        85
+      ],
+      "crank": {
+        "part": "near_crank",
+        "local": [
+          0,
+          0,
+          40
+        ]
+      },
+      "foot": {
+        "part": "near_toe",
+        "local": [
+          0,
+          0,
+          60
+        ]
+      }
+    },
+    {
+      "name": "far",
+      "originLdu": [
+        0,
+        0,
+        255
+      ],
+      "crank": {
+        "part": "far_crank",
+        "local": [
+          0,
+          0,
+          40
+        ]
+      },
+      "foot": {
+        "part": "far_toe",
+        "local": [
+          0,
+          0,
+          60
+        ]
+      }
+    }
+  ],
+  "geometry": {
+    "units": "studs",
+    "studMm": 8,
+    "O": [
+      0,
+      0
+    ],
+    "A": [
+      -4,
+      0
+    ],
+    "OB": 2,
+    "AC": 4,
+    "AE": 4,
+    "AD": 4,
+    "BC": 5,
+    "BD": 5,
+    "EF": 5,
+    "DF": 4,
+    "DG": 5,
+    "upperAngleDeg": 90,
+    "lowerAngleDeg": 90,
+    "savedCrankPhasesDeg": [
+      0,
+      180
+    ]
+  },
+  "expectedDynamicBodies": 15,
+  "expectedHinges": 20,
+  "minSamples": 500,
+  "allowedIssueCodes": [],
+  "terminalVariables": {
+    "completed": 1,
+    "failed": 0,
+    "stage": 4
+  },
+  "programmedTargetsDeg": [
+    0,
+    720,
+    0
+  ],
+  "startup": {
+    "unpoweredObservationMs": 1000,
+    "maximumEncoderDriftAcceptedByProgramDeg": 180,
+    "homing": "bounded target-minus-fresh-encoder correction to saved zero; no encoder reset"
+  },
+  "timing": {
+    "frameMs": 33.333333333333336,
+    "physicsStepMs": 5,
+    "programWatchdogSeconds": 85,
+    "recorderTimeLimitMs": 90000,
+    "afterHoldObservationMs": 1000
+  },
+  "qualifiedEnvelopeDeg": [
+    -180,
+    722
+  ],
+  "physicalRetention": "Continuous rotary cranks and closed retained linkage pivots; no software target is presented as a physical stop. The full 360-degree geometric sweep must be cleared separately.",
+  "thresholds": {
+    "pathErrorMm": 0.5,
+    "crankRadiusErrorMm": 0.25,
+    "hingeGapMm": 0.5,
+    "axisMismatchDeg": 1,
+    "baseTiltDeg": 2,
+    "baseDriftMm": 2,
+    "returnMm": 1,
+    "returnEncoderDeg": 1.5,
+    "minFootSpanMm": 70,
+    "minFootLiftMm": 9.5,
+    "minForwardDeg": 718,
+    "minReverseDeg": 718,
+    "maxAngleStepDeg": 2,
+    "encoderErrorDeg": 1,
+    "maxEncoderAbsDeg": 722
+  },
+  "declaredAt": "2026-10-23T16:37:30.326466+00:00",
+  "revisionReason": "Eight friction-pin radial clocks now follow their own upper/lower ternary arms. Round bores permit these real placements; this prevents stock rectangular pin proxy corners from contacting the adjacent pivot. Stock metadata, native collision filters, program speed, and every numerical acceptance bound are unchanged from revision2.",
+  "requireAllModelBodiesDynamic": true,
+  "expectedCouplings": [
+    {
+      "kind": "gear",
+      "parts": [
+        "output_gear",
+        "motor_gear"
+      ],
+      "ratio": -1
+    }
+  ],
+  "finalMode": "hold",
+  "expectedInputHashes": {
+    "model": "f39a1a7a8326844c5bd41f5b282a7658e120c8d7eb94060f0580e59ab6190633",
+    "program": "9eb7273d208935de166bfd891b9f17a25c89f882a96486ec2f757ca56463b72f"
+  },
+  "phaseBasis": {
+    "method": "Source half-tooth/keyed-axle audit and a separate bounded native +30 degree phase probe before full qualification",
+    "savedMotorRotorDeg": -11.25,
+    "inputGearClockDeg": 11.25,
+    "outputGearClockDeg": 0,
+    "savedEncoderDeg": 0,
+    "nativeEncoderToCrankSign": 1,
+    "developmentProbe": "development-v2-phase-probe-summary.json"
+  }
+}

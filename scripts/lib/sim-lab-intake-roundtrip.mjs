@@ -3,6 +3,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {installBrowserMechanicsRecorder} from './sim-lab-browser-recorder.mjs';
+import {SIX_INTAKES} from './sim-lab-six-intake-contracts.mjs';
 import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
 import {openFile} from './sim-lab-scale-gate.mjs';
 import {exportedProject} from './sim-lab-integral-gate.mjs';
@@ -30,15 +32,7 @@ export async function intakeRoundtrip(page,opts,id,judge){
   await reopened.getByRole('tab',{name:/^(Robots|Robot Lab)$/}).click();
   await reopened.waitForFunction(count=>window.__bwSimLab?.status==='ready'&&window.__bwSimLab._pane.session.model.parts.length===count,expected.length);
   assert.deepEqual(await reopened.evaluate(()=>window.__bwSimLab.projectRecord),record);
-  await reopened.evaluate(()=>{
-   const p=window.__bwSimLab._pane,s=p.session,m=s.mechanism;
-   const r=window.__bwIntakeReopened={start:s.time,runModel:s.runModel,mechanism:m,issues:p.state.issues,unsupported:[],track:[]};
-   const capture=()=>{
-    if(!r.finishedAt&&s.time-r.start>1000&&!p.props.vm.runtime.threads.some(t=>t.status!==4))r.finishedAt=s.time;
-    r.track.push({t:s.time,bodies:Object.fromEntries(m.bodies.filter(b=>b.motion==='dynamic').map(b=>[b.id,s.core.bodyPose(b.id)])),joints:Object.fromEntries(m.joints.filter(j=>['hinge','slider'].includes(j.type)).map(j=>[j.id,s.core.jointState(j.id)])),extra:{ropes:s.core.ropeState(),variables:Object.fromEntries(p.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables).map(v=>[v.name,v.value])))}});
-   };
-   window.__bwCaptureIntakeReopened=capture;s.onAdvance(capture);
-  });
+  await reopened.evaluate(installBrowserMechanicsRecorder,{recordKey:'__bwIntakeReopened',captureKey:'__bwCaptureIntakeReopened',extended:SIX_INTAKES.includes(id),observeProgram:true});
   await reopened.getByTestId('bw-sim-lab-speed').selectOption('4');await reopened.getByTestId('bw-sim-lab-run').click();
   await reopened.waitForFunction(()=>{
    const p=window.__bwSimLab._pane;return p.session.time>1000&&!p.props.vm.runtime.threads.some(t=>t.status!==4);
@@ -51,7 +45,7 @@ export async function intakeRoundtrip(page,opts,id,judge){
   },null,{timeout:opts.timeout});
   await reopened.evaluate(()=>window.__bwCaptureIntakeReopened());
   const r=await reopened.evaluate(()=>window.__bwIntakeReopened);
-  writeFileSync(resolve(opts.shotsDir,id+'-reopened-track.json'),JSON.stringify(r));judge(id,r);
+  writeFileSync(resolve(opts.shotsDir,id+'-reopened-track.json'),JSON.stringify(r));await judge(id,r);
   assert.deepEqual(errors,[]);
   // Capture the accepted final state after the full hold has been recorded.
   if(await reopened.evaluate(()=>window.__bwSimLab.status==='running'))await reopened.getByTestId('bw-sim-lab-pause').click();
