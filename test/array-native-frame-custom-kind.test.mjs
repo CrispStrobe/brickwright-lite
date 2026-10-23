@@ -105,15 +105,40 @@ function orderedPrefix(project){
  const outer=sequence(root.target,root.node.next),index=outer.findIndex(r=>r.id===call.id);assert.ok(index>=0);
  return [...outer.slice(0,index),...sequence(definition.target,definition.node.next)];
 }
+function assertPhysicalCellInput(project,row,name){
+ const global=(cellName,id)=>{
+  assert.equal(typeof cellName,'string');assert.equal(typeof id,'string');
+  const declarations=project.targets.filter(target=>Object.hasOwn(target.variables||{},id));assert.equal(declarations.length,1,'unique actual variable ID');
+  const target=declarations[0],declaration=target.variables[id];assert.ok(Array.isArray(declaration));assert.equal(declaration[0],cellName,'actual declaration name agrees');
+  assert.equal(Object.values(target.variables).filter(value=>value?.[0]===cellName).length,1,'unique actual declaration name');
+  assert.ok(target===row.target||target.isStage,'physical variable is visible to its reader');
+  if(target!==row.target)assert.equal(Object.values(row.target.variables||{}).some(value=>value?.[0]===cellName),false,'no target name shadowing');
+ };
+ const raw=row.node.inputs[name][1];
+ if(Array.isArray(raw)){assert.equal(raw.length,3);assert.equal(raw[0],12,'actual inline variable tuple');global(raw[1],raw[2]);return;}
+ assert.equal(typeof raw,'string');assert.equal(Object.hasOwn(row.target.blocks,raw),true,'actual owned reporter ID');
+ const reader=row.target.blocks[raw];assert.equal(reader.parent,row.id);assert.equal(reader.next,null);assert.equal(reader.shadow,false);assert.equal(reader.topLevel,false);assert.ok(reader.mutation==null);
+ const incoming=Object.values(row.target.blocks).flatMap(node=>[node.next,...Object.values(node.inputs||{}).flatMap(input=>[input[1],input[2]])]).filter(id=>id===raw);
+ assert.equal(incoming.length,1,'one physical owner for actual cell reader');
+ if(reader.opcode==='data_variable'){
+  assert.deepEqual(Object.keys(reader.inputs),[]);assert.deepEqual(Object.keys(reader.fields),['VARIABLE']);
+  const field=reader.fields.VARIABLE;assert.ok(Array.isArray(field));assert.equal(field.length,2);global(field[0],field[1]);return;
+ }
+ assert.equal(reader.opcode,'arcade_getLocal');assert.deepEqual(Object.keys(reader.inputs),['NAME']);assert.deepEqual(Object.keys(reader.fields),[]);
+ const cellName=literal(row.target,reader,'NAME');assert.equal(typeof cellName,'string');
+ const root=node=>{const seen=new Set();while(node.parent){assert.equal(seen.has(node),false);seen.add(node);node=row.target.blocks[node.parent];assert.ok(node);}assert.equal(node.topLevel,true);return node;};
+ const owner=root(reader);assert.equal(owner.opcode,'procedures_definition','actual ordinary params frame');
+ assert.ok(Object.values(row.target.blocks).some(node=>node.opcode==='arcade_setLocal'&&literal(row.target,node,'NAME')===cellName&&root(node)===owner),'actual same-frame local writer');
+}
 
 test('actual namespace and variable kind producers retain the complete real source/artwork/export journey',()=>{
  for(const variant of ['namespace','variable','renamed']){
   const draft=fixture(variant),actual=rows(draft),create=rowOf(draft,'arcade_createSpriteKind'),sprite=rowOf(draft,'arcade_createSprite');
   assert.equal(Object.keys(create.node.inputs).length,0);assert.equal(Object.keys(create.node.fields).length,0);
-  const kind=sprite.target.blocks[sprite.node.inputs.KIND[1]];assert.ok(kind);assert.ok(['data_variable','arcade_getLocal'].includes(kind.opcode),'actual numeric kind cell reader');
+  assertPhysicalCellInput(draft,sprite,'KIND');
   if(variant!=='variable'){
    const binder=rowOf(draft,'arcade_bindSpriteKind');assert.equal(literal(binder.target,binder.node,'NAME'),variant==='renamed'?'Treasure':'Coin');
-   const operand=binder.target.blocks[binder.node.inputs.KIND[1]];assert.ok(operand);assert.ok(['data_variable','arcade_getLocal'].includes(operand.opcode));
+   assertPhysicalCellInput(draft,binder,'KIND');
   }
   for(const opcode of ['arcade_setBackgroundColor','arcade_setSpritePosition','arcade_sourceWhile','arcade_mathBinary','arcade_randomNumber','arcade_percentChance','arcade_settingsWrite','arcade_settingsRead','arcade_registerButtonHandler'])assert.ok(actual.some(r=>r.node.opcode===opcode),opcode);
   accepted(draft);
