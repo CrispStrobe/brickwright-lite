@@ -16,6 +16,7 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 import {tool} from './sim-lab-toolbar-gate.mjs';
+import {measurementPlotInteractions} from './sim-lab-measurement-plots-gate.mjs';
 
 const lab = (page, fn, arg) => page.evaluate(fn, arg);
 const simTime = page => lab(page, () => window.__bwSimLab._pane.session.time);
@@ -207,4 +208,5 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     assert.match(await span.locator('output').textContent(), /mm/, 'returning to the model restores its custom reading');
     assert.equal(await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).isChecked(), false);
     await panel.getByRole('button', {name: 'Close', exact: true}).click();
+    await measurementPlotInteractions(page, {shotsDir});
 };
