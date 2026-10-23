@@ -22,8 +22,8 @@ failures remain preserved as their own head.
 [PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283) and its
 same-owner custom-kind amendment, now has bounded source results: the original
 whole11 module passes all eleven groups at
-`2b43a10691edd0508710ab9a1b2e85a07f170abb`; the separate custom-kind
-module passes all four at `4977285c6915002e668688be4140f71e55bbf3b6`.
+`40f6434f0b5686032c5e5735708423d3335ef917`; the separate custom-kind
+module passes all four at `40f6434f0b5686032c5e5735708423d3335ef917`.
 The supported custom effect is fixed safe-name numeric binding and ordered
 lookup only after a real earlier binding; it grants no exact ID or Array/value
 certificate. The candidate source is not yet merged to main. These source

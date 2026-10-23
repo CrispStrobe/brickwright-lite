@@ -1,12 +1,14 @@
 # Native Arcade frame reset analysis
 
 Status: implemented under merged claims #1283 and #1296. The unchanged original
-module passed all 11 groups at `2b43a10691edd0508710ab9a1b2e85a07f170abb`.
+module passed all 11 groups at `40f6434f0b5686032c5e5735708423d3335ef917`.
 The separate custom-kind module passed all four groups at
-`4977285c6915002e668688be4140f71e55bbf3b6`, after correcting its fixture check
+`40f6434f0b5686032c5e5735708423d3335ef917`, after correcting its fixture check
 for Creator's actual inline variable tuple. These are source-conversion results;
 the final-head hosted qualification and visible authoring journey remain
-separate. The implementation candidate is not yet merged to main.
+separate. The implementation candidate is not yet merged to main. The current source
+checks include the normal composition with main `9d037ce7427ed21ceca1f67be5a050131a96b4e2`,
+including its shared Creator changes; earlier results remain separate.
 
 The proof now admits the exact zero-input native `arcade_createSpriteKind`
 operation as a private numeric effect; the fixed safe-name

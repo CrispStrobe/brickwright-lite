@@ -8,8 +8,8 @@ Base: `c5be666c2faf24dbc5711069b5b79f8b83267c07`.
 This is the same owner's merged claim #1283 and source continuation in
 [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128).
 The unchanged original source module passes at
-`2b43a10691edd0508710ab9a1b2e85a07f170abb`; the separate custom-kind
-module passes at `4977285c6915002e668688be4140f71e55bbf3b6`. These source results
+`40f6434f0b5686032c5e5735708423d3335ef917`; the separate custom-kind
+module passes at `40f6434f0b5686032c5e5735708423d3335ef917`. These source results
 do not mean the implementation is merged to main or qualify the full editor
 journey. Preserve the live PR head, originals and qualification; no takeover or
 duplicate hosted event.

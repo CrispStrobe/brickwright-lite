@@ -9,8 +9,8 @@ application completion or editor parity.
 
 [Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) has two bounded
 source results: the original whole11 groups pass at
-`2b43a10691edd0508710ab9a1b2e85a07f170abb`, and the separate custom-kind
-whole4 module passes at `4977285c6915002e668688be4140f71e55bbf3b6`. Native
+`40f6434f0b5686032c5e5735708423d3335ef917`, and the separate custom-kind
+whole4 module passes at `40f6434f0b5686032c5e5735708423d3335ef917`. Native
 SpriteKind creation, fixed safe-name numeric binding and ordered custom lookup
 are admitted only under the actual source/effect proof. This grants no exact
 numeric ID, Array or initialized-value certificate. The original eleven groups
