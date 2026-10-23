@@ -20,15 +20,16 @@ export const renderedModelPixels = (page,png,box) => page.evaluate(async ({encod
 
 export async function captureRenderedModel(page,path){
  // Playwright waits for page fonts before capturing. Give that prerequisite
- // its own bounded wait, so its latency cannot consume the WebGL paint budget.
- await page.waitForFunction(()=>document.fonts.status==='loaded',null,{timeout:30000});
- const started=Date.now(),budgetMs=5000,attempts=[],stem=path.replace(/\.png$/,'');
+ // its own bounded wait. Screenshot acquisition has a separate timeout;
+ // the retry budget and decoded-pixel requirements stay unchanged.
+ await page.waitForFunction(async()=>{await document.fonts.ready;return document.fonts.status==='loaded';},null,{timeout:30000});
+ const started=Date.now(),budgetMs=5000,screenshotTimeoutMs=30000,attempts=[],stem=path.replace(/\.png$/,'');
  for(let attempt=1;;attempt++){
   const box=await page.getByTestId('bw-sim-lab-3d-canvas').boundingBox();assert.ok(box,'visible model canvas');
-  const shot=await page.screenshot({timeout:budgetMs}),pixels=await renderedModelPixels(page,shot,box);
+  const shot=await page.screenshot({timeout:screenshotTimeoutMs}),pixels=await renderedModelPixels(page,shot,box);
   const elapsedMs=Date.now()-started,visible=pixels.colored>=1000&&pixels.dark>=500;
   attempts.push({attempt,elapsedMs,...pixels,visible});
-  writeFileSync(stem+'-paint.json',JSON.stringify({budgetMs,minimumColoredPixels:1000,minimumDarkPixels:500,attempts},null,2)+'\n');
+  writeFileSync(stem+'-paint.json',JSON.stringify({budgetMs,screenshotTimeoutMs,minimumColoredPixels:1000,minimumDarkPixels:500,attempts},null,2)+'\n');
   if(visible){writeFileSync(path,shot);return pixels;}
   writeFileSync(stem+'-blank-'+String(attempt).padStart(3,'0')+'.png',shot);
   assert.ok(elapsedMs<budgetMs,`model did not paint within ${budgetMs} ms: ${JSON.stringify(pixels)}`);
