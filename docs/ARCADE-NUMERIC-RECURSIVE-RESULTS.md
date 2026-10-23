@@ -2,6 +2,15 @@
 
 ## Scope and current qualification
 
+The [current composed hosted run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39899568550)
+now passes the **complete original twelve-case function-return module (12/12)**.
+Recursive/mutual and parameter-write exports pass, together with the previously
+repaired Sprite forwarding case. Both new retained-draft grouping groups pass.
+The complete integration matrix, remaining source cohort and visible GUI
+acceptance are still pending. No application census is inferred.
+
+### Earlier observed boundary and implemented repair
+
 The [merged claim](../lanes/2026-10-22-arcade-recursive-number-normal-results.md)
 owns a bounded proof for closed recursive and mutually recursive numeric
 functions. The complete hosted comparison/recursive cohort passes **59/59**.

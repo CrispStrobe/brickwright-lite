@@ -1,6 +1,43 @@
 # Arcade compatibility: integration and next steps
 
-## Latest complete hosted result and current repair
+## Current qualification — 23 October 2026
+
+The [current composed run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39899568550)
+confirms the **complete original function-return module passes 12/12**, including
+recursive/mutual calls, parameter writes and Sprite forwarding. Its complete
+identity-constraint module passes **8/8**. The three retained completed unit shards
+report 8,939 passes, 121 failures, 11 skips and 27 TODOs across 9,098 tests; their
+failure-title comparison resolves three previous failures with zero new ones.
+The remaining shard and browser checks are pending. This is a partial matrix,
+not a green integration result or a new application census.
+
+Both new retained-draft grouping groups pass. Existing completed source controls
+remain observed separately; require the remaining shard before declaring the
+whole expected 61-control cohort qualified. Build, corpus and Arcade controller
+checks pass. The corpus check does not establish that a previously partial
+application now executes correctly. Historical **147 translated / 36 partial /
+one malformed** remains unremeasured.
+
+Continue in this order:
+
+1. Inspect the remaining SDK Sprite safety controls and the current numeric GUI
+   authoring result. Retain each completed original log once; preserve failures.
+2. Land the [exact refusal-capture scope amendment](https://github.com/CrispStrobe/brickwright-lite/pull/1256)
+   after its enabled exact-head checks pass. Follow its
+   [self-contained contract](../lanes/2026-10-23-arcade-exact-refusal-capture.md)
+   before implementation. The existing GUI failure lacks the exact consumed
+   project, so an earlier project or matching visible code cannot explain it.
+3. Capture that input and the actual semantic result from the existing single
+   export invocation, then repair the demonstrated Array writer/initialization
+   boundary. Keep the original clean-export and later asset assertions.
+4. Qualify affected complete tests and visible authoring, then remeasure original
+   application cases through source, Code/Blocks, execution, exported MakeCode,
+   exact-file reimport and fresh saved projects before crediting a closure.
+
+No new full-CI label, duplicate dispatch, weakened assertion or private-input
+publication is needed. Current source is not merged while enabled checks fail.
+
+## Earlier complete hosted result and subsequent repair
 
 The [complete composed unit set](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39866817484)
 reports **12,208 passes, 167 failures, 19 skips and 43 TODOs** across 12,437 tests.
