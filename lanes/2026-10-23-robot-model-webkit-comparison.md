@@ -7,8 +7,15 @@ Codex, owner-authorized continuation, 2026-10-23. Isolated branch
 
 Own `.github/workflows/robot-model-webkit-comparison.yml`, the isolated
 `scripts/qualify-robot-model-webkit.mjs` consumer, its focused tests and this
-claim. This expands qualification plumbing only; the existing model repair
-owner retains #1281 and other lanes retain their scopes.
+claim. Also own only this workflow's required registration in
+`docs/generated/ci-step-census.json` and its explicit dated unobserved or
+unconfigured conditions in `CI-POINTERS.md`. Use the existing scoped census
+merge; preserve all other workflow records, ordered runs and default-branch
+provenance. A zero-reading bootstrap gives no execution credit, and later
+readings must refer to admitted actual runs. The measurement API owner retains
+its separate workflow record and pointers. This expands qualification plumbing
+only; the existing model repair owner retains #1281 and other lanes retain
+their scopes.
 
 Compare the already published candidate in a recorded supported hosted Ubuntu
 WebKit environment. Consume one admitted existing official frontend artifact;
