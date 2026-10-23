@@ -1,6 +1,7 @@
 # WeDo asynchronous send-failure follow-on to transport UI #1274
 
-ACTIVE — Codex transport/buttons owner. Own only the asynchronous send outcome
+SOURCE COMPLETE — final Lite hosted/browser qualification pending.
+Codex transport/buttons owner. Own only the asynchronous send outcome
 boundary in CrispStrobe/extensions `extensions/CrispStrobe/lego_wedo2_universal.js`
 and its focused producer controls. Real VM teardown exposes an unhandled rejected
 write after the virtual connection closes. Observe and report failed sends while
@@ -21,3 +22,12 @@ quota applies. No upstream contact, native changes, model ownership takeover or
 acceptance-bound changes. The transport UI claim, measurement seam and all
 other owners remain intact. Final Lite browser and exact-head qualification
 remain required before #1274 can merge.
+
+Supplier #66 merged normally after all seven enabled checks succeeded, with its
+one declared label skip. The landed source equals the reviewed and guest-tested
+candidate. Lite adopts only the scoped WeDo pin, canonical bundle and receipt;
+all unrelated pin/receipt values and the global baseline remain unchanged.
+The combined consumer/source set passes 358 tests with no failures; one named
+skip reports unavailable unrelated repository history. Retained producer and
+actual VM/Jolt mutation controls detect removal of the failure observer.
+The final combined-head hosted checks and built-browser results remain required.

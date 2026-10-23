@@ -15,7 +15,8 @@ Lab session through explicit virtual routing. Preserve physical fallthrough,
 other owners' wrappers and non-Lab requests. Dispose only owned endpoints and
 connections; stale sessions and asynchronous replies must not revive a closed
 or replaced scene. Supplier changes are limited to the send-failure amendment
-below; do not change native or firmware.
+below and the separately merged [WeDo follow-on claim](2026-10-23-wedo-send-failure.md);
+do not change native or firmware.
 
 Own WP5: `hubs/ev3/ev3-virtual-hub.js`, `ev3-direct-commands.js`, the button
 capability adapters for already-modelled bricks, and `api/robot-lab-api.js` for
@@ -51,32 +52,36 @@ inputs through the pane and dynamic Lab boundary. Qualified measurement parent
 measurement import, timestamps and panel props are preserved during normal
 composition and require the final combined-head qualification.
 
-Focused qualification: 230 controls pass with no failures or skips, including
-nine actual production-route VM/Jolt guests, WAIT_FOR_PRESS, nine main/worker
-sync cases, current/old provider ownership, API world pause, model/VM replacement,
-normal startup, execution-failure rollback and unchanged measurement controls.
-Fifteen additional ordering/peer mutations are detected with exact originals
-restored; prior component-cleanup and Run/feedback controls remain intact.
-Bluetooth and virtual providers retire in order across replacement panes.
-EV3/NXT peers capture their scene and refuse stale commands; partial registration
-and multi-peer teardown retain failures. Three actual queued Bluetooth guests
-preserve the existing stock EV3, ev3comprehensive and NXT physical judges. Failed state/clock/VM startup retires its owned effects,
-retains rollback/publication errors and permits recovery after clean rollback;
-stale failure cannot retire a newer Run. The canonical scoped
-Powered Up pin adopts qualified supplier #64; all other pins and the global
-baseline remain fixed. Supplier policy #65 replaces the inherited reviewer
-quota with owner-command authorization and the same technical gates.
+Fresh combined qualification: 358 controls pass with no failures. One named
+skip reports unavailable unrelated vendored-repository history; the previous-pin
+history and tracked-file checks run and pass. The set includes actual VM/Jolt
+transport guests and the complete Lab extension suite, unchanged physical
+movement/sensor/stop judges, WAIT_FOR_PRESS, nine main/worker sync cases,
+measurement preservation, and WeDo session/light/tone/identity controls.
 
-After normal composition of qualified plots #1272, 249 combined focused
-controls pass without failures or skips, including measurement history and
-teaching presets. The parent's measurement seam and both dependency-scope
-registrations are preserved. This is fresh combined source qualification;
-its built-browser and enabled exact-head hosted results remain pending.
+Original exact-head CI failures are retained. Their repairs add the exact SIMD
+test declaration, admit only the pure button facade in the API import boundary,
+read the serial port's actual open options, and preserve an API model loader's
+calling program while retiring old routes, clock, motors and pending Run intent.
+Ordinary UI model loads retain their existing stop behavior. Shipped fetches,
+HTTP feedback and title-callback continuations cannot replace a newer UI load
+or publish stale lesson/help text. Both newly reviewed races were reproduced
+before repair; five request/publication cuts and the earlier lifetime, feedback
+and ordering cuts are detected with exact source restored. EV3/NXT peers remain
+bound to their captured scene, and uncertain retirement blocks new execution.
 
-The existing hubs-bt browser part now includes the actual connection/button
-journey. Its first built-browser result and final exact-head hosted checks are
-still pending; this DONE status records the final implementation candidate,
-not a successful hosted run, merge, installed native or hardware qualification.
+Only the scoped Powered Up and WeDo pins advance, through qualified supplier
+[#64](https://github.com/CrispStrobe/extensions/pull/64) and
+[#66](https://github.com/CrispStrobe/extensions/pull/66). Canonical wrappers and
+receipts match the merged supplier bytes. Every other pin, receipt entry and
+the global baseline remain fixed. Supplier policy #65 recognizes owner-command
+authorization without an inherited reviewer quota.
+
+The hubs-bt browser part exercises the actual connection/button journey,
+model replacement, delayed real-provider return, serial traffic and pane closure.
+Final combined-head hosted checks and source-bound built-browser qualification
+remain required before merge. DONE records an implementation candidate, not
+hosted, installed-native or hardware qualification.
 See [usage and model limits](../docs/ROBOT-LAB-CONNECTIONS-AND-BUTTONS.md).
 
 Model PR1235/1236, native PR1224/1099/1100 and Arcade PR1128 remain with their
