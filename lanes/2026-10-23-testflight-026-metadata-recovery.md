@@ -14,7 +14,13 @@ Own only this claim, `.github/workflows/testflight-release-recovery.yml`,
 `scripts/testflight-release-recovery.mjs`,
 `scripts/lib/testflight-release-state.mjs`,
 `test/testflight-release-recovery.test.mjs`, and
-`docs/TESTFLIGHT-RECOVERY.md`. Do not modify mobile/release build workflows,
+`docs/TESTFLIGHT-RECOVERY.md`. The workflow census bootstrap additionally owns
+`scripts/gen-ci-steps.mjs`, `test/ci-step-census.test.mjs`, `CI-POINTERS.md`, and
+`docs/generated/ci-step-census.json`: allow a scoped, zero-run manual workflow
+declaration using the existing recorded source baseline, preserve unrelated
+workflow observations, and record explicitly that no live run has occurred.
+Do not manufacture successful-run evidence or weaken census checks.
+Do not modify mobile/release build workflows,
 existing writer implementations, dependencies, pins, native sources, signing
 policy, secrets or old tags. Coordinate a separate expansion if an actual
 writer defect requires repair. Other circuit/Robot Lab/native owners continue
