@@ -1,6 +1,6 @@
 # Arcade class lexical frontier and parser-shape results — claim
 
-DONE for source implementation; focused and hosted qualification pending. Owner: Arcade integration. Branch:
+DONE for source implementation; focused qualification passed, hosted qualification pending. Owner: Arcade integration. Branch:
 `lane/arcade-class-lexical-frontier-claim-20261023`.
 Base: `eb21e4fd14686045ac49735037934d644c1a36d8`.
 Merge this scope before implementation. Continue the same owner's lexical
@@ -160,8 +160,9 @@ evidence and remeasure complete applications before changing corpus counts.
 
 The three production paths, complete new eleven-group frontier module, precise
 three positive migrations in the existing class12 and task/editor documentation
-are written. Focused execution and final-head hosted/native/SDK/browser checks
-remain pending. Original Array/effect/TDZ and receiver-initialization assertions
+are written. All 38 complete focused groups pass without failures or skips
+(frontier11, class12, existing class4 and operation11). Final-head hosted/native/
+SDK/browser checks remain pending. Original Array/effect/TDZ and receiver-initialization assertions
 remain in place; no application completion is claimed.
 
 The context permission is held only by private record membership. Supplied AST

@@ -48,7 +48,9 @@ captures remain separately scoped. A method record with a forged name/kind or
 moved function tag cannot acquire instance ownership. Legacy records lacking a
 constructor role may retain their old no-this traversal, but gain no new role.
 
-This is source implementation pending focused and hosted qualification. It is
+All 38 complete focused source groups pass: frontier11, captured class12,
+existing class4 and captured-operation11, with no failures or skips. Hosted,
+native/SDK and browser qualification remain pending. This is
 not a claim of full class, runtime, editor or application compatibility.
 
 ## Qualification

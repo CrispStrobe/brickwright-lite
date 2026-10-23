@@ -37,8 +37,8 @@ A real failing class export still needs its exact current input and result captu
 
 The follow-up [class lexical frontier](ARCADE-CLASS-LEXICAL-FRONTIER.md)
 implements actual parser no-else If handling, nonstatic method-owned this syntax
-and correctly typed private Boolean carriers. Focused and hosted qualification
-of that follow-up are pending. Method entry frontiers remain empty; static,
+and correctly typed private Boolean carriers. The follow-up passes all 38 complete focused source groups; hosted/runtime/
+browser qualification remains pending. Method entry frontiers remain empty; static,
 field and nested receiver contexts still require independent work. No source
 annotation or guessed callback order supplies declaration readiness.
 

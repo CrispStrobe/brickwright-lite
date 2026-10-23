@@ -1115,3 +1115,9 @@ nested/field receiver, keyword-accessor grammar, Code/Blocks/pseudocode
 authoring, graphics/reference-field and export/reopen acceptance separately.
 Method entry seeds remain empty; no initialized input or Array producer is
 granted. Do not infer application completion from source acceptance.
+
+The class lexical frontier passes its complete 38-group source cohort without
+failures or skips. These results preserve constructor reentry, field/nested-this
+refusal, original receiver-uninitialized assertions and all surrounding Array
+and effect controls. Final-head native/SDK/browser and genuine application
+qualification remain pending.
