@@ -132,4 +132,75 @@ if (!existsSync(missing)) {
             globalThis.alert = savedAlert;
         }
     });
+    for (const admitted of [true, false]) {
+        test(`NXC compile then run: ${admitted ? 'exact recorded source drives and stops the bumper bot' : 'a different source is refused and cannot upload or run the fixture'}`, async () => {
+            const nxt = MODELS.find(m => m.file === 'nxt-bumper-bot.ldr');
+            const source = readFileSync(path.join(REPO, 'test/fixtures/nxt-rxe/touch-bumper.nxc'), 'utf8');
+            const rxe = readFileSync(path.join(REPO, 'test/fixtures/nxt-rxe/touch-bumper.rxe'));
+            const sentSource = admitted ? source : source.replace('OnFwd(OUT_BC, 60)', 'OnFwd(OUT_BC, 0)');
+            const requests = [];
+            const alerts = [];
+            const savedFetch = globalThis.fetch;
+            const savedAlert = globalThis.alert;
+            globalThis.alert = message => alerts.push(String(message));
+            globalThis.fetch = async (url, options = {}) => {
+                const body = JSON.parse(options.body);
+                requests.push({url: String(url), method: options.method, body});
+                // This fixture is a reply for exactly one recorded input, not
+                // an unconditional successful compiler for arbitrary programs.
+                const matches = String(url) === 'https://lego-compiler.vercel.app/compile' &&
+                    options.method === 'POST' && body.compiler === 'nxc' && body.code === source;
+                return {ok: true, status: 200, json: async () => matches ?
+                    {success: true, base64: rxe.toString('base64')} : {success: false, error: 'no recorded reply for this source'},
+                    text: async () => ''};
+            };
+            let workflow = null;
+            let finished = false;
+            let failure = null;
+            let stoppedAt = null;
+            try {
+                const {track, hub, connectError} = await runOnBtHub({project: projectOfBlocks({extensions: ['legonxt'], blocks: {}})}, {
+                    modelText: readFileSync(path.join(GUI, MODELS_BASE, nxt.file), 'utf8'), mat: nxt.mat,
+                    profile: 'nxt', extensionId: 'legonxt', timeLimitMs: 15000,
+                    stopWhen: (point, all, brick, {extension}) => {
+                        if (!workflow) workflow = (async () => {
+                            (extension._inst || extension).nxcCode = sentSource;
+                            await extension.compileToRXE();
+                            // Exercise the real upload/start blocks even on the
+                            // failure branch: unrecorded input cannot acquire fixture bytes.
+                            await extension.uploadToNXT({FILENAME: 'recorded.rxe'});
+                            await extension.startProgram({FILENAME: 'recorded.rxe'});
+                        })().then(() => { finished = true; }, e => { failure = e; finished = true; });
+                        if (stoppedAt === null && brick.events.some(e => e.kind === 'display' && e.text === 'bumped')) stoppedAt = point.t;
+                        return admitted ? stoppedAt !== null && point.t > stoppedAt + 800 : finished && point.t > 2000;
+                    }
+                });
+                assert.equal(connectError, null);
+                assert.equal(failure, null);
+                assert.ok(finished);
+                assert.equal(requests.length, 1);
+                assert.deepEqual(requests[0], {url: 'https://lego-compiler.vercel.app/compile', method: 'POST',
+                    body: {compiler: 'nxc', code: sentSource}});
+                if (admitted) {
+                    assert.deepEqual(hub.s.files['recorded.rxe'], Array.from(rxe));
+                    assert.ok(stoppedAt !== null, 'the recorded program reached its bumper condition');
+                    const last = track.at(-1);
+                    const before = track.find(p => p.t >= last.t - 500);
+                    assert.ok(last.position[0] < WALL.faceX);
+                    for (const port of ['B', 'C']) assert.ok(Math.abs(last.motors[port] - before.motors[port]) < 3, `${port} stopped`);
+                } else {
+                    assert.equal(hub.s.files['recorded.rxe'], undefined);
+                    assert.equal(stoppedAt, null);
+                    assert.ok(alerts.some(a => a.includes('no recorded reply for this source')));
+                    const first = track[0];
+                    const last = track.at(-1);
+                    for (const port of ['B', 'C']) assert.ok(Math.abs(last.motors[port] - first.motors[port]) < 3, `${port} never driven`);
+                }
+            } finally {
+                globalThis.fetch = savedFetch;
+                globalThis.alert = savedAlert;
+            }
+        });
+    }
+
 }
