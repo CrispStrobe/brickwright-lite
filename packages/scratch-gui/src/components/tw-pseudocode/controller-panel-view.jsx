@@ -1450,6 +1450,7 @@ class ControllerPanelView extends React.Component {
             const panel = this._getPanel();
             this._buttonInputs?.releaseAll();
             releaseMomentaryButtons(panel);
+            this._unbind();
             if (panel.mode === 'play' && this.props.board) {
                 this._bindToBoard(panel);
             }
