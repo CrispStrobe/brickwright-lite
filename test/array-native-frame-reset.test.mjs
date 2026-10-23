@@ -17,12 +17,20 @@ function checkedCode(creator,project=creator.project){
 function imported(files){
  const translated=arcadeToPseudocode(files);clean(translated);
  const creator=new Creator();creator.parse(translated.code);clean(creator);
- // Match the actual From blocks -> Code -> To blocks feedback boundary.
- // The initial import alone has no entry reset. Read its serialized project
- // through the public decompiler, then parse the genuine emitted Code again;
- // no reset block is manufactured or inserted by this fixture.
- const savedProject=JSON.parse(JSON.stringify(creator.project));
- const code=checkedCode(new Creator(),savedProject);
+ // The GUI's original export/reimport precedes its final From blocks ->
+ // Code -> To blocks feedback. The real export emits local declarations;
+ // their actual initializers must return through the public source importer.
+ const exported=projectJsonToArcade(JSON.stringify(creator.project));clean(exported);
+ assert.ok(exported.files&&typeof exported.files==='object'&&!Array.isArray(exported.files));
+ assert.equal(typeof exported.files['main.ts'],'string');assert.ok(exported.files['main.ts'].length);
+ for(const value of Object.values(exported.files))assert.equal(typeof value,'string');
+ const reimported=arcadeToPseudocode(exported.files);clean(reimported);
+ assert.doesNotMatch(reimported.code,/^\s*# unsupported:/m);
+ const blocks=new Creator();blocks.parse(reimported.code);clean(blocks);
+ const savedProject=JSON.parse(JSON.stringify(blocks.project));
+ const code=new Creator().decompile(savedProject);
+ assert.equal(typeof code,'string');assert.match(code,/DEVICE ARCADE/);
+ assert.doesNotMatch(code,/^\s*# unsupported:/m);
  const feedback=new Creator();feedback.parse(code);clean(feedback);return feedback;
 }
 const fullFiles=()=>numericAuthoringFiles({maximum:12,operation:'max',message:'PLAY'});
