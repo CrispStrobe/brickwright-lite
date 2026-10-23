@@ -52,6 +52,13 @@ piece-count filters. The mappings are:
 catalogue and lessons. Straight Eight’s exact inversion and Watt/Hoeken’s
 approximate straight segments remain distinct teaching claims.
 
-Local native tests and search controls pass. Full construction, production GUI,
-Chromium/WebKit, raw/project roundtrips and exact-head hosted qualification are
-the remaining delivery gates. This does not claim a release or TestFlight upload.
+All eight whole-library construction checks pass. Ten new native/collider checks
+pass, including original forced-stop bounds, actual controller hold, implemented
+opcodes, measured output laws and meaningful physical/observer negatives. The
+collider census records zero raw stdout bytes. Thirty-three current-main native
+regressions and thirty-eight catalogue/search/readiness controls pass. The normal
+production build passes. Chromium passes both new models and the repaired
+Integral/Root Bridge/Balance Engine import cases, complete saved programs,
+controls, instructions/BOM, EN/DE lessons and classical-name search. WebKit and
+exact-head hosted qualification remain pending at publication and are required
+before landing. This does not claim a release or TestFlight upload.

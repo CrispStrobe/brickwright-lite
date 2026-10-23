@@ -8,11 +8,11 @@ const ready=async(page,id)=>{
  return lesson;
 };
 // Exercise the actual dialog, including classical-name aliases in both locales.
-const mechanismSearch = async gallery => {
+const mechanismSearch = async (gallery, shotsDir, language) => {
  for (const [query, ids] of [
-  ['Hoeken', ['stride-lab.ldr']], ['Peaucellier Lipkin', ['straight-eight.ldr']],
-  ['Sarrus', ['sarrus-lift.ldr']], ['pantograph', ['amplify.ldr', 'pantograph-doubler.ldr', 'scale-studio.ldr', 'scale-echo.ldr']],
-  ['Oldham', ['offset-orbit.ldr', 'crossglide.ldr']], ['Kardangelenk', ['phase-bridge.ldr', 'phase-bridge-misphased.ldr', 'ripple-relay.ldr']],
+  ['Hoeken', ['stride-lab.ldr']], ['Peaucellier–Lipkin cell', ['straight-eight.ldr']],
+  ['Sarrus', ['sarrus-lift.ldr']], ['Pantographs', ['amplify.ldr', 'pantograph-doubler.ldr', 'scale-studio.ldr', 'scale-echo.ldr']],
+  ['Oldham couplings', ['offset-orbit.ldr', 'crossglide.ldr']], ['Kardangelenk', ['phase-bridge.ldr', 'phase-bridge-misphased.ldr', 'ripple-relay.ldr']],
   ['Watt linkage', ['watt-line.ldr']], ['3:1', ['twin-tempo.ldr']]
  ]) {
   await gallery.getByRole('searchbox').fill(query);
@@ -21,6 +21,7 @@ const mechanismSearch = async gallery => {
    await card.waitFor(); assert.ok((await card.getByTestId('bw-sim-example-mechanism').innerText()).length>4);
   }
   assert.equal(await gallery.locator('[data-model="line-follower.ldr"]').count(),0);
+  if(query==='Oldham couplings')await gallery.screenshot({path:resolve(shotsDir,`mechanism-search-oldham-${language}.png`)});
  }
  await gallery.getByRole('searchbox').fill('');
  console.log('PASS classical mechanism names and aliases in actual Examples dialog');
@@ -31,7 +32,7 @@ export const lessonInteractions=async(page,{openSimLab,shotsDir})=>{
  await openSimLab(page,{program:null});assert.equal(requests.length,0,'lessons stay out of initial loading');
  const before=await page.evaluate(()=>window.__bwSimLab._pane.state.shipped);
  await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');
- await mechanismSearch(gallery);
+ await mechanismSearch(gallery,shotsDir,'en');
  await gallery.getByRole('searchbox').fill('pulse-percussion');
  await gallery.getByRole('button',{name:/^Read lesson:/}).click();await gallery.waitFor({state:'hidden'});
  let lesson=await ready(page,'pulse-percussion');
@@ -79,7 +80,7 @@ export const lessonInteractions=async(page,{openSimLab,shotsDir})=>{
 export const germanLessonInteractions=async(page,{openSimLab,shotsDir})=>{
  await openSimLab(page,{program:null});
  await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');
- await mechanismSearch(gallery);
+ await mechanismSearch(gallery,shotsDir,'de');
  await gallery.getByRole('searchbox').fill('centrifugal-governor');
  await gallery.getByRole('button',{name:/^Lektion lesen:/}).click();await gallery.waitFor({state:'hidden'});
  const lesson=await ready(page,'centrifugal-governor');

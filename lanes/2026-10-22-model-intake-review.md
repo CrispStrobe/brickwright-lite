@@ -4,8 +4,7 @@ DONE — implementation and local qualification; owner: Robot Lab model delivery
 `lane/integral-library-20261022`, base `f925c08c9`. The user explicitly requests
 review of PR #1235, reuse of valid work and correction of incomplete deliveries.
 Preserve its original branch, commits and worktree; compose reviewed changes in
-the owner's existing isolated Integral lane. Draft #1236 remains held while the
-newly reproduced construction defect is corrected.
+the owner's existing isolated Integral lane. PR #1236 remains held for exact-head qualification before normal landing.
 
 Scope: source-archive comparison and deduplication for Circle Splitter, Cusp Lab,
 Offset Orbit revision, Gimbal Lab, Sky Courier, Product Plotter, Counterturn,

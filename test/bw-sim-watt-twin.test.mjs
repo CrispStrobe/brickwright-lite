@@ -9,6 +9,7 @@ import {runRobotLabProgram} from './helpers/robot-lab-direct-vm.mjs';
 import {adaptWattLine} from '../scripts/lib/watt-line-source.mjs';
 import {judgeWatt} from '../scripts/lib/sim-lab-watt-judge.mjs';
 import {judgeTwinTempo} from '../scripts/lib/sim-lab-twin-tempo-judge.mjs';
+import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8'),lab='overlay/scratch-gui/static/sim-lab/';
 const catalog=catalogFrom(JSON.parse(read('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 for(const [id,judge,parts,coldMs,frameMs,timeLimitMs,output] of [['watt-line',judgeWatt,148,2000,1000/60,45000,'coupler'],['twin-tempo',judgeTwinTempo,81,500,25,62000,'payload_fast']]){
@@ -19,11 +20,28 @@ for(const [id,judge,parts,coldMs,frameMs,timeLimitMs,output] of [['watt-line',ju
   assert.equal(source,id==='watt-line'?adaptWattLine(read(dir+'models/'+id+'.ldr')):read(dir+'models/'+id+'.ldr'));
   assert.equal(read(lab+'programs/'+id+'.bw'),read(dir+'programs/'+id+'.bw'));assert.match(source,/^0 Author:.*CrispStrobe/m);
   const a=prepareModel(source,catalog),b=prepareModel(source,catalog,{autoPorts:false});assert.deepEqual(a,b);assert.equal(a.model.parts.length,parts);assert.deepEqual(a.issues,[]);
+  const creator=new Creator();creator.parse(read(lab+'programs/'+id+'.bw'));assert.deepEqual(creator.errors||[],[]);assert.deepEqual(creator.warnings||[],[]);
+  assert.ok(a.mechanism.bodies.filter(b=>b.motion==='static').every(b=>b.id==='ground'),'only the floor is anchored');
+  if(id==='watt-line'){assert.equal(a.mechanism.bodies.filter(b=>b.motion==='dynamic').length,4);assert.equal(a.mechanism.joints.length,4);assert.ok(a.mechanism.joints.every(j=>j.type==='hinge'));assert.deepEqual(a.mechanism.couplings,[]);}
   assert.equal(a.mechanism.actuators.length,1);assert.equal(a.mechanism.actuators[0].port,'A');
  });
  for(const autoPorts of [undefined,false])test(`${id}: ${autoPorts===false?'strict':'ordinary'} actual VM, passive output law, frozen-output refusal`,async t=>{
+  const vmErrors=[];let hooked=false;
   const r=await runRobotLabProgram(read(lab+'programs/'+id+'.bw'),{modelText:read(lab+'models/'+id+'.ldr'),autoPorts,timeLimitMs,coldMs,frameMs,afterMs:1000,
-   observeFrame:({session,vm})=>({variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),rope:session.core.ropeState()})});
+   observeFrame:({session,vm,hub})=>{
+    if(!hooked){vm.runtime.on('ERROR',e=>vmErrors.push(String(e)));vm.runtime.on('BLOCKS_ERROR',e=>vmErrors.push(String(e)));hooked=true;}
+    const blocks=vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks));
+    const literal=b=>!(b.opcode in vm.runtime._primitives)&&Object.keys(b.fields||{}).length===1&&!Object.keys(b.inputs||{}).length;
+    const missing=blocks.filter(b=>!(b.opcode in vm.runtime._primitives)&&!(b.opcode in vm.runtime._hats)&&!literal(b)).map(b=>b.opcode);
+    assert.deepEqual(missing,[],'all actual compiler output opcodes are implemented or literal/menu shadows');
+    return {variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),rope:session.core.ropeState(),controllerMode:hub.motors._controllers[0].mode};
+   }});
+  assert.deepEqual(vmErrors,[]);
+  assert.equal(r.track.at(-1).busy.A,false);assert.equal(r.track.at(-1).extra.controllerMode,'hold');
+  if(id==='twin-tempo'){
+   const shifted=structuredClone(r);for(const pose of Object.values(shifted.track.at(-1).bodies))pose.position[0]+=.01;
+   assert.throws(()=>judge(shifted,{native:true}),/upright stationary chassis/,'a drifting foundation cannot pass through relative output geometry');
+  }
   const result=judge(r,{native:true});t.diagnostic(JSON.stringify({id,result:result.metrics||result}));
   const frozen=structuredClone(r),body=frozen.mechanism.bodies.find(b=>b.parts.includes(output));
   for(const f of frozen.track)f.bodies[body.id]=structuredClone(frozen.track[0].bodies[body.id]);assert.throws(()=>judge(frozen,{native:true}));
