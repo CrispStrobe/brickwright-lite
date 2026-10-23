@@ -1,8 +1,13 @@
 # Native Arcade frame reset analysis
 
 Status: implemented after merged claim #1283. All 11 source-conversion
-regression groups pass at `3d1a6b74c27a8023cdb7c0b5e079342d87558d9b`,
+regression groups pass at `41b8c0dce0e379bba7530a692b192c10689673c7`,
 including all four immutable built-in Sprite kinds.
+The owned-source import correction retains every test assertion. The original
+11 groups also pass in hosted unit shard 4 at
+`4089698bef96246f73500b62e94954faf7fd89f4`; that earlier head still fails its
+generated-import policy check. Declare the exact existing procedure-model
+dependency for the corrected test through the unchanged GUI scope census.
 Affected final-head hosted/native/GUI qualification and corpus reassessment
 remain pending.
 

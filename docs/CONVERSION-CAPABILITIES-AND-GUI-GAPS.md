@@ -8,7 +8,7 @@ diagnostic and original SDK Sprite receiver cohorts pass. These counts do not
 measure application completions or editor parity.
 
 [Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) now passes all
-11 source-conversion groups at `3d1a6b74c27a8023cdb7c0b5e079342d87558d9b`,
+11 source-conversion groups at `41b8c0dce0e379bba7530a692b192c10689673c7`,
 covering the four immutable built-in Sprite kinds and
 the complete owned numeric game with real artwork, MakeCode
 export/reimport, Code decompile/reparse, Array/settings operations and a later

@@ -9,6 +9,17 @@ passes with no new or resolved failing title. The frontier's 11 groups and the
 current class/operation/diagnostic, original SDK Sprite receiver and existing
 Array cohorts pass. These are unit-test results, not application completions.
 
+The subsequent [hosted run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39989932904)
+at `4089698bef96246f73500b62e94954faf7fd89f4` passes its original 11 native-frame
+groups. Shards 1 and 2 have unchanged failures. Shard 4 also finds a test import
+policy error: the new module imports generated GUI mirrors. The correction uses
+owned overlay source; all 11 groups, including the later four-kind coverage,
+pass separately at `41b8c0dce0e379bba7530a692b192c10689673c7`.
+Declare its exact existing procedure-model dependency through the normal GUI
+scope census, preserving the resolver and checker. Shard 3 stopped during npm
+installation with `ECONNRESET` and produced no test results; do not infer a full
+four-shard verdict. The official numeric journey remains pending.
+
 That older candidate's actual numeric journey still fails; its exact terminal
 output must remain separate from subsequent source qualification. Original
 captures and failed assertions are preserved. A complete input/result pair
@@ -18,7 +29,7 @@ claim.
 [Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md), claimed by merged
 [PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283) before code,
 now passes all **11 source-conversion regression groups** at
-`3d1a6b74c27a8023cdb7c0b5e079342d87558d9b`, including all four immutable
+`41b8c0dce0e379bba7530a692b192c10689673c7`, including all four immutable
 built-in Sprite kinds. The full owned game retains its
 Sprite artwork, loop, Math, Array/settings operations and later capture through
 real MakeCode export/reimport and Code feedback. Unsafe controls remain refused.
