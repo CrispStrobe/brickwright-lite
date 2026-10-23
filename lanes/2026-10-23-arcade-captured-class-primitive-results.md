@@ -1,6 +1,6 @@
 # Arcade captured class primitive normal results — claim
 
-DONE for source implementation; focused and hosted qualification pending. Owner: Arcade integration. Branch:
+DONE for source implementation; focused qualification passed, hosted qualification pending. Owner: Arcade integration. Branch:
 `lane/arcade-captured-class-primitive-results-claim-20261023`.
 Base: `bd5cb3043467702c225d4124a4963b4d72d574c4`.
 Merge this claim before implementation. Continue the same owner's class-scalar
@@ -144,7 +144,9 @@ original failures and pending work for the next agent.
 The issuer and consumer composition, complete new twelve-group pure module and
 capability/editor task documentation are written. Existing class-scalar four
 groups, captured-operation eleven groups and original SDK/native fixtures are
-unchanged. Focused execution and final-head hosted qualification remain pending.
+unchanged. All 27 complete focused groups pass: new class12, existing class4
+and captured-operation11, with no failures or skips. Final-head hosted, SDK,
+runtime and browser qualification remain pending.
 
 The issuer uses held membership/reflection intrinsics and indexed checks, watches
 its allocated carriers/prototypes and relevant realm aliases, and checks those

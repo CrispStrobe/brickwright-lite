@@ -1091,3 +1091,9 @@ no initialized receiver or Array authority is granted. Captured fields, real
 acceptance cases. The linked document scopes the remaining method-entry proof
 and visible Code/Blocks authoring, current export, save/reopen and runtime checks.
 No corpus completion is claimed from this source change.
+
+The class-result implementation passes all 27 complete focused source groups
+(new class12, existing class4, existing operation11). Hosted/runtime/editor
+qualification remains pending; preserve the separate `this`, no-else If and
+Boolean/union frontier tasks in the capability document. This is no claim of
+full class or application compatibility.

@@ -28,7 +28,9 @@ proof; restoration cannot revive it. The first reflection error is preserved.
 
 ## Deliberate remaining boundaries
 
-This is source implementation pending qualification, not full class compatibility
+All 27 focused source-analysis groups pass: the new twelve, existing four class
+groups and existing eleven captured-operation groups. Hosted, SDK, runtime and
+browser qualification remain pending. This is not full class compatibility
 or evidence of a completed corpus application. The original hosted failure drafts
 available during this work identify Math.idiv operands, not a class/getter operand.
 A real failing class export still needs its exact current input and result captured.
@@ -42,10 +44,10 @@ proof. No source annotation, output tag or guessed callback order supplies that 
 
 ## Next tasks and acceptance
 
-1. Qualify the complete new
+1. Retain the passing complete new
    `test/native-captured-class-primitive-results.test.mjs`, existing class-scalar,
-   captured-operation and SDK receiver controls, and all enabled final-head hosted
-   checks. Preserve original SDK/native roundtrip fixtures and assertions.
+   captured-operation controls. Qualify SDK receivers and all enabled final-head
+   hosted checks. Preserve original SDK/native roundtrip fixtures and assertions.
 2. Capture exact remaining class failures through the current export observation
    channels. Bind input bytes, source/build identity and result; unavailable capture
    remains unavailable. Do not infer the failed graph from an earlier saved file.
