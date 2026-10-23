@@ -17,7 +17,7 @@
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
-import {tool} from './sim-lab-toolbar-gate.mjs';
+import {tool, toolAttribute} from './sim-lab-toolbar-gate.mjs';
 
 const lab = (page, fn, arg) => page.evaluate(fn, arg);
 
@@ -90,7 +90,7 @@ const checks = async (page, {shotsDir}) => {
     await page.getByTestId('bw-sim-lab-challenges-close').click();
     await panel.waitFor({state: 'detached'});
     assert.equal(await panel.count(), 0, 'the panel is gone after ✕');
-    assert.equal(await page.getByTestId('bw-sim-lab-challenges').getAttribute('aria-checked'), 'false');
+    assert.equal(await toolAttribute(page, 'challenges', 'aria-checked'), 'false');
 
     // 4. The Drawing robot draws a square with its own program.
     await page.getByTestId('bw-sim-lab-model').selectOption('drawing-robot.ldr');

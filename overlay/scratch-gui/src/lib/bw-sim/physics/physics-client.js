@@ -147,7 +147,7 @@ export class PhysicsClient {
     async simLoad({ mechanism, hubs = [], stepMs }) {
         const reply = await this._request({ type: 'sim-load', mechanism, hubs, stepMs });
         if (reply.type !== 'sim-loaded') throw new Error(reply.message ?? 'sim load failed');
-        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, air: reply.air ?? [], readings: reply.readings ?? {} };
+        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, air: reply.air ?? [], linear: reply.linear, angular: reply.angular, rolling: reply.rolling, ropes: reply.ropes, readings: reply.readings ?? {} };
     }
 
     /**
