@@ -90,7 +90,7 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
                 let connected = false;
                 let elapsed = 0;
                 while (elapsed <= timeoutMs) {
-                    if (await invoke(plan.status)) { connected = true; break; }
+                    if (await invoke(plan.status) === true) { connected = true; break; }
                     if (elapsed >= timeoutMs) break;
                     const step = Math.min(50, timeoutMs - elapsed);
                     await wait(step);

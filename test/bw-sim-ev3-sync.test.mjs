@@ -39,19 +39,19 @@ for (const [turn, shares] of [[-200, [-1, 1]], [-150, [-0.5, 1]], [-100, [0, 1]]
 }
 
 test('shaft phase error slows the leading shaft and speeds the lagging shaft, including counter-rotation', () => {
-    for (const turn of [0, 50, 150, 200, -50, -150, -200]) {
+    for (const turn of [0, 50, 150, 200, -50, -150, -200]) for (const speed of [-40, 40]) {
         const hub = brick();
-        const guest = sync(hub, {turn, amount: 0});
+        const guest = sync(hub, {turn, speed, amount: 0});
         hub.advanceTo(5);
         const master = turn >= 0 ? hub.s.outputs[1] : hub.s.outputs[2];
         const follower = turn >= 0 ? hub.s.outputs[2] : hub.s.outputs[1];
         const before = [master.refDps, follower.refDps];
         const direction = Math.sign(before[1]);
         // The master advanced; the follower is ten degrees behind its ratio.
-        master.angleDeg = 30;
-        follower.angleDeg = 30 * before[1] / before[0] - direction * 10;
+        master.angleDeg = Math.sign(speed) * 30;
+        follower.angleDeg = master.angleDeg * before[1] / before[0] - direction * 10;
         hub.advanceTo(10);
-        assert.ok(master.refDps < before[0], `turn ${turn}: leading master must ease off`);
+        assert.ok(Math.sign(speed) * (master.refDps - before[0]) < 0, `turn ${turn}: leading master must ease off`);
         assert.ok(direction * (follower.refDps - before[1]) > 0, `turn ${turn}: lagging follower must recover`);
         assert.ok(Math.abs(master.refDps) <= 1050 && Math.abs(follower.refDps) <= 1050, 'bounded motor references');
         guest.link.close();

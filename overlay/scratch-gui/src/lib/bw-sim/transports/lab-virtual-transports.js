@@ -84,7 +84,9 @@ export const createLabVirtualTransports = ({host = globalThis,
             const streamRoutes = [[8080, 'binary', ev3], [8765, 'base64', nxt], [8081, 'text', spike]];
             for (const [port, framing, peripheral] of streamRoutes) {
                 add(() => registerVirtualBridge({port, framing, peripheral: guarded(peripheral),
-                    claimUnavailable: true, matches: bridgePath}));
+                    claimUnavailable: true, matches: bridgePath,
+                    onStatus: request => request?.command === 'status' ?
+                        {status: current() && peripheral.available() ? 'connected' : 'unavailable', virtual: true, id: peripheral.id} : null}));
             }
             // The HTTP producers connect devices[0]. Offer only the selected LWP3
             // brick (the pane's first radio brick when no target was specified).

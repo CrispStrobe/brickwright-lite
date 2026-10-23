@@ -233,3 +233,20 @@ test('an explicit target limits serial and HTTP discovery; the same scene can se
     }
     assert.throws(() => controller.setScene(source, {hubId: 'missing'}), /not in/);
 });
+
+test('the EV3 binary bridge answers its actual status control without routing it as bytecode', async t => {
+    const {controller, host} = fixture(t);
+    await controller.setScene(scene(record('ev3', new Ev3VirtualHub())));
+    await controller.setEnabled(true);
+    const socket = new host.WebSocket('ws://localhost:8080');
+    const replies = [];
+    socket.onmessage = event => replies.push(JSON.parse(event.data));
+    t.mock.timers.tick(0);
+    socket.send(JSON.stringify({command: 'status'}));
+    t.mock.timers.tick(0);
+    assert.deepEqual(replies, [{status: 'connected', virtual: true, id: 'brickwright-robot-lab-ev3'}]);
+    socket.send(JSON.stringify({command: 'status'}));
+    await controller.setScene(null);
+    t.mock.timers.tick(0);
+    assert.equal(replies.length, 1, 'late status cannot revive a closed scene');
+});

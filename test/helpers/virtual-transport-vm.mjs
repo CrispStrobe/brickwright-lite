@@ -79,7 +79,8 @@ NothingListening.dialled = [];
  * @param {string} [options.extensionDir] the bundled directory when it is not the extension id (ev3dev)
  */
 export async function runOverVirtualTransport (program, {modelText, mat = null, profile, extensionId, route, bridge = null,
-    grantedPort = false, connect, timeLimitMs, stopWhen = null, peripheralOf = null, http = null, extensionDir = null}) {
+    grantedPort = false, connect, timeLimitMs, stopWhen = null, peripheralOf = null, http = null, extensionDir = null,
+    useLabRouting = false}) {
     if (!globalThis.self) globalThis.self = globalThis;
     const clock = new FakeClock(1.7e12);
     clock.install();
@@ -101,6 +102,9 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
     let vm = null;
     let session = null;
     let restoreSerial = () => {};
+    let labRouting = null;
+    let labConnection = null;
+    let primaryError = null;
     try {
         const {session: made, issues} = await SimSession.fromText(modelText, {hubState: null, catalog: CATALOG, mat});
         if (!made) throw new Error(`the model does not compile: ${JSON.stringify(issues)}`);
@@ -115,7 +119,12 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
             const inner = base.open({send: bytes => { traffic.bytesOut += bytes.length; link.send(bytes); }, close: link.close});
             return {receive: bytes => { traffic.bytesIn += bytes.length; inner.receive(bytes); }, close: () => inner.close && inner.close()};
         }};
-        if (route === 'http') {
+        if (useLabRouting) {
+            const {createLabVirtualTransports} = await import(path.join(SIM, 'transports', 'lab-virtual-transports.js'));
+            labRouting = createLabVirtualTransports({host: globalThis, navigatorHost: globalThis.navigator});
+            await labRouting.setScene(session, {hubId: entry.id});
+            await labRouting.setEnabled(true);
+        } else if (route === 'http') {
             const handle = http.handlerOf(() => hub);
             registerVirtualHttp({host: http.host, port: http.port, handle: request => {
                 traffic.opens = 1;
@@ -161,10 +170,18 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
         let connected;
         let connectError = null;
         let done = false;
-        const pending = Promise.resolve(connect(extension, {clock})).then(v => { connected = v; }, e => { connectError = e; })
+        let connecting;
+        if (useLabRouting) {
+            const {createLabExtensionConnection} = await import(path.join(SIM, 'transports', 'lab-extension-connection.js'));
+            labConnection = createLabExtensionConnection({vm, extensionId, route, wait: ms => clock.advance(ms),
+                isCurrent: () => !session._disposed});
+            connecting = labConnection.ready.then(() => true);
+        } else connecting = connect(extension, {clock});
+        const pending = Promise.resolve(connecting).then(v => { connected = v; }, e => { connectError = e; })
             .finally(() => { done = true; });
         for (let i = 0; i < 400 && !done; i++) await clock.advance(25);
         await pending;
+        if (useLabRouting && connectError) throw connectError;
         await clock.advance(200);
 
         vm.greenFlag();
@@ -182,10 +199,21 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
             if (stopWhen && stopWhen(point, track, hub, {vm, extension})) break;
         }
         return {track, hub, session, vm, extension, connected, connectError, traffic, dialled: NothingListening.dialled.slice()};
+    } catch (error) {
+        primaryError = error;
+        throw error;
     } finally {
-        try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
+        const cleanupErrors = [];
+        if (useLabRouting) {
+            try { if (vm) vm.stopAll(); } catch (error) { cleanupErrors.push(error); }
+            try { if (labConnection) await labConnection.cancel(); } catch (error) { cleanupErrors.push(error); }
+            try { if (vm) vm.quit(); } catch (error) { cleanupErrors.push(error); }
+            try { if (labRouting) await labRouting.dispose(); } catch (error) { cleanupErrors.push(error); }
+        } else {
+            try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
+        }
         session?.dispose();
-        restoreSerial();
+        await restoreSerial();
         clearVirtualBridgesForTest();
         restoreBridge();
         clearVirtualHttpForTest();
@@ -194,5 +222,6 @@ export async function runOverVirtualTransport (program, {modelText, mat = null, 
         globalThis.WebSocket = savedWebSocket;
         if (!hadNavigator) delete globalThis.navigator;
         clock.uninstall();
+        if (cleanupErrors.length) throw new AggregateError([...(primaryError ? [primaryError] : []), ...cleanupErrors], 'Lab transport guest cleanup failed');
     }
 }

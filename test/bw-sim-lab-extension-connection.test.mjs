@@ -120,3 +120,14 @@ test('connection failure and cleanup failure remain visible, and unsupported pro
     assert.throws(() => f.start({route: 'serial'}), /does not support/);
     assert.throws(() => createLabExtensionConnection({vm: {_primitives: {}}, extensionId: 'wedo2', route: 'http'}), /does not support/);
 });
+
+test('a truthy status error cannot count as connected, and the final poll honors a partial deadline step', async () => {
+    const f = fixture('ev3comprehensive', {isConnected: () => 'connection error'});
+    const waits = [];
+    const connection = f.start({route: 'bridge', timeoutMs: 125, wait: async ms => { waits.push(ms); }});
+    await assert.rejects(connection.ready, /No connection/);
+    assert.deepEqual(waits, [50, 50, 25]);
+    assert.equal(f.calls.filter(([op]) => op === 'isConnected').length, 4);
+    assert.equal(f.calls.at(-1)[0], 'disconnect');
+    await connection.cancel();
+});

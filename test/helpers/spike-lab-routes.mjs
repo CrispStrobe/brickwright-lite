@@ -121,7 +121,8 @@ const quatRotate = ([x, y, z, w], v) => {
  *   holds after load (post-migration); connectedProtocol: the router's protocol ('spike3' | 'repl');
  *   sockets: every WebSocket the page opened ({url, by: the class that answered it})
  */
-export async function runSpikeProjectInLab (project, {route, modelText: text, mat = null, timeLimitMs, stopWhen = null}) {
+export async function runSpikeProjectInLab (project, {route, modelText: text, mat = null, timeLimitMs, stopWhen = null,
+    useLabRouting = false}) {
     if (!ROUTES.includes(route)) throw new Error(`unknown route ${route}`);
     const {model, runModel, mechanism, issues} = prepareModel(text, CATALOG, {mat});
     if (!mechanism) throw new Error(`the model does not compile: ${JSON.stringify(issues)}`);
@@ -141,6 +142,9 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
     let registration = null;
     let session = null;
     let removeClassicClaim = null;
+    let labRouting = null;
+    let labConnection = null;
+    let primaryError = null;
     try {
         let hub;
         ({hub, registration} = registerVirtualHub());
@@ -156,19 +160,32 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
         if (route === 'bridge') {
             hub.setFirmwareTarget('legacy-v2');
             clearVirtualBridgesForTest();
-            installVirtualBridge({host: globalThis});
-            registerVirtualBridge({port: 8081, framing: 'text', peripheral: spikeStreamPeripheral(hub)});
+            if (!useLabRouting) {
+                installVirtualBridge({host: globalThis});
+                registerVirtualBridge({port: 8081, framing: 'text', peripheral: spikeStreamPeripheral(hub)});
+            }
         }
         // Which sockets the page opened, and what answered each (a double's class, or the silent page socket).
-        const Installed = globalThis.WebSocket;
+        let Installed = globalThis.WebSocket;
         const Recording = function WebSocket (url, protocols) {
             const socket = protocols === undefined ? new Installed(url) : new Installed(url, protocols);
             sockets.push({url: String(url), by: socket && socket.constructor ? socket.constructor.name : typeof socket});
             return socket;
         };
         Object.assign(Recording, {CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3});
-        globalThis.WebSocket = Recording;
+        if (!useLabRouting) globalThis.WebSocket = Recording;
         session = new SimSession({hubState: hub, model, runModel, mechanism, catalog: CATALOG, mat, J});
+        if (useLabRouting) {
+            if (route !== 'bridge') throw new Error('the Lab stream controller test needs the bridge route');
+            hub.setSimulationEnabled(true);
+            const {createLabVirtualTransports} = await import(path.join(SIM, 'transports', 'lab-virtual-transports.js'));
+            labRouting = createLabVirtualTransports({host: globalThis, navigatorHost: globalThis.navigator});
+            const target = session.hubs.find(record => record.profile === 'spike-prime');
+            await labRouting.setScene(session, {hubId: target.id});
+            await labRouting.setEnabled(true);
+            Installed = globalThis.WebSocket;
+            globalThis.WebSocket = Recording;
+        }
 
         // The GUI's VM: the migration hook vm-manager-hoc.jsx installs, the bundled extension for the id asked.
         vm = new VM();
@@ -208,7 +225,12 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
         let connectError = null;
         let settled = false;
         // The bridge has no chooser and no Scratch Link: the extension's own `connect to bridge at` block.
-        (route === 'bridge' ? Promise.resolve(extension.connectHubAt({URL: 'localhost:8081'})).catch(e => { connectError = e; }) :
+        if (useLabRouting) {
+            const {createLabExtensionConnection} = await import(path.join(SIM, 'transports', 'lab-extension-connection.js'));
+            labConnection = createLabExtensionConnection({vm, extensionId: 'spikeprime', route: 'bridge',
+                isCurrent: () => !session._disposed, wait: ms => clock.advance(ms)});
+        }
+        (labConnection ? labConnection.ready.catch(e => { connectError = e; }) : route === 'bridge' ? Promise.resolve(extension.connectHubAt({URL: 'localhost:8081'})).catch(e => { connectError = e; }) :
         connectVirtualHub({host: globalThis, extensionId: 'SPIKE', hubState: hub, timeoutMs: 10000,
             wait: ms => clock.advance(ms),
             connected: () => vm.getPeripheralIsConnected('spikeprime'),
@@ -269,8 +291,19 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
             if (stopWhen && stopWhen(track)) { frames++; break; }
         }
         return {track, mechanism, hubId, issues, requested, loadedOpcodes, hub, calls, frames, connectedProtocol, sockets};
+    } catch (error) {
+        primaryError = error;
+        throw error;
     } finally {
-        try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
+        const cleanupErrors = [];
+        if (useLabRouting) {
+            try { if (vm) vm.stopAll(); } catch (error) { cleanupErrors.push(error); }
+            try { if (labConnection) await labConnection.cancel(); } catch (error) { cleanupErrors.push(error); }
+            try { if (vm) vm.quit(); } catch (error) { cleanupErrors.push(error); }
+            try { if (labRouting) await labRouting.dispose(); } catch (error) { cleanupErrors.push(error); }
+        } else {
+            try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
+        }
         try { if (registration) registration.unregister(); } catch { /* noop */ }
         try { if (removeClassicClaim) removeClassicClaim(); } catch { /* noop */ }
         delete globalThis.__brickwrightVirtualSpikeClassicClaim;
@@ -279,5 +312,6 @@ export async function runSpikeProjectInLab (project, {route, modelText: text, ma
         globalThis.WebSocket = savedWebSocket;
         session?.dispose();
         clock.uninstall();
+        if (cleanupErrors.length) throw new AggregateError([...(primaryError ? [primaryError] : []), ...cleanupErrors], 'Lab SPIKE guest cleanup failed');
     }
 }

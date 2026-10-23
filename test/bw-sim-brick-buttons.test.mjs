@@ -44,6 +44,15 @@ test('button calls distinguish no model, loading, disposed and firmware-owned in
     api.dispose();
 });
 
+test('a foreign brick exposing a SPIKE-shaped state does not inherit SPIKE button capability', () => {
+    const hub = new SpikeVirtualHub();
+    const {api} = setup(scene(record('foreign-brick', hub)));
+    assert.deepEqual(api.brickButtons(), []);
+    assert.equal(api.pressButton('foreign-brick', 'left', true).code, 'no-buttons');
+    assert.equal(hub.hubState.data.buttons.left, false);
+    api.dispose();
+});
+
 test('EV3 accepts six real inputs, refuses sentinels and publishes held-state changes', t => {
     const hub = new Ev3VirtualHub();
     const {api} = setup(scene(record('ev3', hub)));

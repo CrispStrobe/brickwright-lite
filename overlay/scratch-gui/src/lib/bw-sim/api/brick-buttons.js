@@ -17,7 +17,7 @@ const adapterFor = (record, session) => {
             read: i => Boolean(hub.readButton(i, false)?.pressed), write: (i, down) => hub.pressButton(i, down)};
     }
     const state = hub.hubState;
-    if (!session.lockstep && state?.data?.buttons && typeof state.changed === 'function') {
+    if (record.profile === 'spike-prime' && !session.lockstep && state?.data?.buttons && typeof state.changed === 'function') {
         const names = SPIKE.filter(name => typeof state.data.buttons[name] === 'boolean');
         if (names.length) return {owner: state, names, code: i => names[i],
             read: i => state.data.buttons[names[i]], write: (i, down) => {
