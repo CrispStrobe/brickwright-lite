@@ -1,20 +1,26 @@
 # Arcade native-frame custom kind effects — scope amendment
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration.
-Branch: `lane/arcade-native-frame-custom-kind-claim-20261023`.
+Status: IMPLEMENTED; source controls qualified, final-head hosted qualification
+pending. Owner: Arcade integration.
+Claim branch: `lane/arcade-native-frame-custom-kind-claim-20261023`.
+Implementation branch: `lane/arcade-native-frame-reset-source-20261023`.
 Base: `c5be666c2faf24dbc5711069b5b79f8b83267c07`.
-Continue the same owner's merged claim #1283 and source continuation in
+This is the same owner's merged claim #1283 and source continuation in
 [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128).
-Preserve its live head, originals and qualification; no takeover or duplicate
-hosted event. Existing source candidates are not asserted as landed on main.
+The unchanged original source module passes at
+`2b43a10691edd0508710ab9a1b2e85a07f170abb`; the separate custom-kind
+module passes at `4977285c6915002e668688be4140f71e55bbf3b6`. These source results
+do not mean the implementation is merged to main or qualify the full editor
+journey. Preserve the live PR head, originals and qualification; no takeover or
+duplicate hosted event.
 
-## Concrete missing behavior
+## Implemented behavior
 
-The frame effect interpreter recognizes four immutable built-in kind literals,
-but refuses the existing native kind allocator and ordered custom-name binder.
-The translator, runtime and exporter already support those operations. A game
-using a genuine custom kind before its later Array allocation therefore needs a
-proper effect proof, without inventing an Array or initialized-value fact.
+The frame effect interpreter now admits the existing native numeric kind
+allocator, fixed safe-name numeric binder and custom-name lookup after an actual
+earlier binding. The translator, runtime and exporter already supported those
+operations. The proof adds only an ordered numeric effect; it does not invent
+an Array or initialized-value fact.
 
 ## Exact source and test envelope
 
@@ -42,10 +48,14 @@ proper effect proof, without inventing an Array or initialized-value fact.
 
 No translator/parser, emitter, runtime, SDK, supplier, pin, workflow, policy
 checker/threshold or browser fixture changes. The exact dependency census
-addition repairs the hosted import-policy failure; it grants no new resolver
-capability and does not exempt either test. Read actual native kind allocation/binding/lookup and
-lifecycle implementations; do not execute SDK/reference code for this slice.
-Stop for a precise amendment if another production path is needed.
+addition repairs the hosted import-policy failure;
+it grants no new resolver capability and does not exempt either test. The source
+effect now admits the zero-input numeric allocator, fixed safe-name numeric
+binding and ordered custom lookup only after an actual earlier binding. It
+grants no exact kind ID, Array or initialized-value fact. Keep GUI authoring,
+kind dropdown/decompilation and complete save/reopen/export/reimport/controller
+behavior as open acceptance work. Do not execute SDK/reference code for this
+slice. Stop for a precise amendment if another production path is needed.
 
 ## Semantic requirements
 

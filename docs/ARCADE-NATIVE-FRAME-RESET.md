@@ -1,15 +1,22 @@
 # Native Arcade frame reset analysis
 
-Status: implemented after merged claim #1283. All 11 source-conversion
-regression groups pass at `41b8c0dce0e379bba7530a692b192c10689673c7`,
-including all four immutable built-in Sprite kinds.
-The owned-source import correction retains every test assertion. The original
-11 groups also pass in hosted unit shard 4 at
-`4089698bef96246f73500b62e94954faf7fd89f4`; that earlier head still fails its
-generated-import policy check. Declare the exact existing procedure-model
-dependency for the corrected test through the unchanged GUI scope census.
-Affected final-head hosted/native/GUI qualification and corpus reassessment
-remain pending.
+Status: implemented under merged claims #1283 and #1296. The unchanged original
+module passed all 11 groups at `2b43a10691edd0508710ab9a1b2e85a07f170abb`.
+The separate custom-kind module passed all four groups at
+`4977285c6915002e668688be4140f71e55bbf3b6`, after correcting its fixture check
+for Creator's actual inline variable tuple. These are source-conversion results;
+the final-head hosted qualification and visible authoring journey remain
+separate. The implementation candidate is not yet merged to main.
+
+The proof now admits the exact zero-input native `arcade_createSpriteKind`
+operation as a private numeric effect; the fixed safe-name
+`arcade_bindSpriteKind` operation only when its numeric kind operand is
+independently proved; and a custom-name `arcade_spriteKindValue` lookup only
+after a genuine earlier binding is established in the ordered execution prefix
+and survives the zero-iteration loop join. No exact kind ID, Array, source-cell
+or initialized-input certificate follows from these effects. Dynamic or
+coercing names, built-in/library collisions, malformed schemas and unproved
+binding paths remain refused.
 
 This task concerns Array export authority after an ordinary procedure's entry
 local reset. It does not add a runtime Array operation or infer an Array from a
@@ -109,10 +116,11 @@ other source-start scripts only when they hide their own target, and permits a
 unique registered-button handler only after the overwrite. Visible monitors,
 unknown entries/effects and unrelated procedures remain refused. Other safe
 calling patterns need a complete caller/frame and activation proof, not a name
-exception. Sprite kind effects admit the exact native `Player`, `Projectile`, `Food` and
-`Enemy` literals. This is a numeric effect domain, not a claim about their
-particular integer IDs. Unknown, custom, dynamic, coercing and malformed kind
-inputs still refuse; additional domains need their actual effect contract.
+exception. Sprite kind effects admit the four immutable built-in literals and
+the narrowly proved custom allocation/bind/lookup sequence described above.
+These are numeric effects, not claims about particular integer IDs. Dynamic or
+coercing names, built-in/library rebinds, malformed kind inputs and custom
+lookups without an actual earlier binding remain refused.
 
 The existing ownership index deliberately excludes declaration prototypes.
 The new census therefore recognizes only the exact, physically linked and

@@ -3,31 +3,27 @@
 ## Current measured boundary and open editor work — 23 October 2026
 
 The [completed unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39959713589)
-has 12,463 passes and 147 failures. Its current frontier, class, operation,
-diagnostic and original SDK Sprite receiver cohorts pass. These counts do not
-measure application completions or editor parity.
+has 12,463 passes and 147 failures. Its frontier, class, operation, diagnostic
+and original SDK Sprite receiver cohorts pass. These counts do not measure
+application completion or editor parity.
 
-[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) now passes all
-11 source-conversion groups at `41b8c0dce0e379bba7530a692b192c10689673c7`,
-covering the four immutable built-in Sprite kinds and
-the complete owned numeric game with real artwork, MakeCode
-export/reimport, Code decompile/reparse, Array/settings operations and a later
-callback that captures the temporary. The exact input retained from an earlier
-failed GUI export passes the separate three-receiver source check at
-`4a5d5e6574d874b35c75fcaecaf711430677bf9b`. The
-original failure stays preserved; official browser/controller qualification is
-still required. This proof discards only a proven dead entry reset, leaving
-actual allocation, every other writer and settings presence independent.
+[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) has two bounded
+source results: the original whole11 groups pass at
+`2b43a10691edd0508710ab9a1b2e85a07f170abb`, and the separate custom-kind
+whole4 module passes at `4977285c6915002e668688be4140f71e55bbf3b6`. Native
+SpriteKind creation, fixed safe-name numeric binding and ordered custom lookup
+are admitted only under the actual source/effect proof. This grants no exact
+numeric ID, Array or initialized-value certificate. The original eleven groups
+remain unchanged, and custom-kind tests run as their own complete module.
 
-The authoring acceptance task remains: create/edit the whole game in Code,
-pseudocode and Blocks, preserve graphics, export and reimport exact files, save
-and reopen the project, then repeat the real controller journey. Keep assets,
-clean-report assertions and behavior unchanged. These surfaces need readable
-local/capture/loop/Array/settings blocks and diagnostics. The current frame
-slice still refuses additional caller/entry patterns, visible monitors and
-unproved kind/effect domains; the frame guide scopes their proper extension.
-Source conversion support alone does not close those GUI rows or reduce the
-historical corpus partial count.
+The official 408 numeric-authoring job reports five successful journeys; its
+optional clean-export freshness observation is unavailable. This is not a
+freshness-complete capture or a whole-unit verdict. The exact Code/pseudocode/
+Blocks acceptance remains open: author namespace and variable kinds, edit
+native binding order and kind values, preserve and edit graphics, save/reopen,
+export, compile in MakeCode, reimport and verify actual controller/kind
+behavior. Source conversion does not close this visible journey or alter the
+historical 36 partial corpus count.
 
 ## Closed recursive Number results — planned authoring acceptance
 
@@ -4684,8 +4680,9 @@ are available in native blocks and pseudocode. Imported class aliases and
 arrays preserve one sprite identity. The retained original library supplies
 fonts and rendering; costume art is passed through the existing asset editor.
 A dedicated visual Text Sprite inspector, discoverability controls and complete
-GUI game-building acceptance remain to be qualified. Numeric SpriteKind IDs
-remain an explicit runtime/conversion gap.
+GUI game-building acceptance remain to be qualified. Numeric SpriteKind values
+remain distinct from friendly names; the native-frame source proof does not
+claim exact IDs or complete visible kind authoring.
 
 Asset factories distinguish image and tile galleries, genuine missing-kind null,
 fresh image allocation and shared tile identities. Zero-sized image sprite
@@ -4739,10 +4736,14 @@ Blocks edits, Pixel art, controller input, SB3 reopen and MakeCode roundtrips in
 CI. Its hosted result is pending. Do not mark graphics/authoring completeness
 from native opcode availability or original-simulator tests.
 
-Still required: numeric SpriteKind creation, dependency initializer ordering,
-kind display names separate from runtime IDs, captured event IDs, null/default
-kind semantics, and direct authoring of dynamic kinds. Also retain the open
-general object-coercion, class/callable and scheduler/debugger boundaries.
+The source effect proof now covers numeric SpriteKind creation, fixed safe-name
+numeric binding and ordered custom lookup under its exact control-flow
+preconditions. Still required in the visible editor: authoring and editing these
+namespace/variable kinds in Code, pseudocode and Blocks; readable names distinct
+from runtime IDs; safe binding-order diagnostics; and actual original Blockly
+decompilation and custom-kind dropdown behavior. Captured event IDs and
+null/default kind semantics remain separate. Also retain the open general
+object-coercion, class/callable and scheduler/debugger boundaries.
 
 ## Numeric kind and original library authoring: bounded integration
 
@@ -4755,11 +4756,13 @@ is inferred from a custom display name. Three full kind-program roundtrips pass
 original execution, native execution, Code, SB3 replacement/reopening, original
 export execution and prepared reimport.
 
-Remaining GUI acceptance: direct creation/editing of mutable custom kinds;
-readable names separately from numeric IDs; dynamic binding diagnostics; original
-MakeCode Blockly decompilation and custom kind dropdown behavior. The existing
-Text Sprite production IDE journey is still pending its hosted result. Numeric
-word availability does not close these authoring gaps.
+Remaining GUI acceptance: author and edit custom kind declarations and native
+binding order in Code, pseudocode and Blocks; preserve the graphics and source
+through save/reopen, MakeCode export/compile/reimport, and verify controller and
+kind behavior. Friendly names must remain separate from runtime IDs, with
+diagnostics for unsafe or late binding. Original MakeCode Blockly decompilation
+and custom kind dropdown behavior also remain open. Numeric source support does
+not close these authoring gaps.
 
 Exact older character-animation source/export now has controls. Twenty SDK Scene
 constants and primitive String compositions have typed source controls. Local
@@ -4780,8 +4783,8 @@ original compiler export/reimport. HUD controls include original pixels and
 saved-project/export checks. Ordinary source `score`/`lives` bindings retain
 their meaning through collision-safe renaming.
 
-User-facing gaps still required: direct raw flag writes; complete custom kind
-management and original Blockly decompilation; dedicated TextSprite editing;
+User-facing gaps still required: direct raw flag writes; complete visible custom
+kind management and original Blockly decompilation; dedicated TextSprite editing;
 dynamic layout/opaque dialog value handling; genuine splash/long-text original
 rendering and input. The
 [native dialog contract](compatibility/arcade-native-text-dialogs.md) requires

@@ -4,52 +4,45 @@
 
 The [completed four-unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39959713589)
 on `6df26f1d0e738f1228057671c350a221388f0988` reports **12,463 passes,
-147 failures, 19 skips and 37 TODOs**. Against its predecessor it adds 30
-passes with no new or resolved failing title. The frontier's 11 groups and the
-current class/operation/diagnostic, original SDK Sprite receiver and existing
-Array cohorts pass. These are unit-test results, not application completions.
+147 failures, 19 skips and 37 TODOs**. This remains a historical baseline:
+it adds 30 passes against its predecessor with no new or resolved failing
+title. Its frontier, class/operation/diagnostic, original SDK Sprite receiver
+and existing Array cohorts pass. These unit results do not measure application
+completion.
 
 The subsequent [hosted run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39989932904)
-at `4089698bef96246f73500b62e94954faf7fd89f4` passes its original 11 native-frame
-groups. Shards 1 and 2 have unchanged failures. Shard 4 also finds a test import
-policy error: the new module imports generated GUI mirrors. The correction uses
-owned overlay source; all 11 groups, including the later four-kind coverage,
-pass separately at `41b8c0dce0e379bba7530a692b192c10689673c7`.
-Declare its exact existing procedure-model dependency through the normal GUI
-scope census, preserving the resolver and checker. Shard 3 stopped during npm
-installation with `ECONNRESET` and produced no test results; do not infer a full
-four-shard verdict. The official numeric journey remains pending.
+at `4089698bef96246f73500b62e94954faf7fd89f4` reports five successful numeric
+authoring journeys. Its optional clean-export freshness observation is
+unavailable, so that result does not establish a fresh capture. Unit shard 3
+stopped during npm setup and yielded no test verdict; do not infer a new
+whole-unit or whole-four-unit result from it. The earlier 6df run's results and
+failures remain preserved as their own head.
 
-That older candidate's actual numeric journey still fails; its exact terminal
-output must remain separate from subsequent source qualification. Original
-captures and failed assertions are preserved. A complete input/result pair
-supplies physical graph evidence, not a private predicate trace or sole-cause
-claim.
+[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md), under merged
+[PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283) and its
+same-owner custom-kind amendment, now has bounded source results: the original
+whole11 module passes all eleven groups at
+`2b43a10691edd0508710ab9a1b2e85a07f170abb`; the separate custom-kind
+module passes all four at `4977285c6915002e668688be4140f71e55bbf3b6`.
+The supported custom effect is fixed safe-name numeric binding and ordered
+lookup only after a real earlier binding; it grants no exact ID or Array/value
+certificate. The candidate source is not yet merged to main. These source
+results do not qualify the visible editor journey or replace final-head checks.
 
-[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md), claimed by merged
-[PR #1283](https://github.com/CrispStrobe/brickwright-lite/pull/1283) before code,
-now passes all **11 source-conversion regression groups** at
-`41b8c0dce0e379bba7530a692b192c10689673c7`, including all four immutable
-built-in Sprite kinds. The full owned game retains its
-Sprite artwork, loop, Math, Array/settings operations and later capture through
-real MakeCode export/reimport and Code feedback. Unsafe controls remain refused.
-A separate exact captured-input source check at
-`4a5d5e6574d874b35c75fcaecaf711430677bf9b` accepts all three Array receivers;
-this does not relabel the original failed result or qualify the GUI.
+The current official numeric authoring result is separate from the source
+modules. Its five journeys pass, but the optional freshness observation remains
+unavailable. The actual Code/pseudocode/Blocks task must still author namespace
+and variable kinds, edit native binding order and kind values, preserve graphics,
+save and reopen, export to MakeCode, compile and reimport the files, and verify
+the resulting controller and kind behavior. Source conversion alone does not
+qualify that journey.
 
-Continue with the final candidate's exact-head qualification in
+Continue with exact-head qualification in
 [PR #1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128): run the
-unchanged numeric browser/controller journey, full affected unit cohorts and
-all enabled checks. Keep every original asset and assertion. Diagnose any
-remaining refusal independently; never remove a failing gate or borrow an
-older head's result.
-
-The next bounded source extension is documented in the frame-analysis guide:
-prove custom/dynamic Sprite-kind domains and complete multi-caller/frame
-activation patterns with genuine positives and unsafe controls. Broader GUI
-acceptance remains Code/Blocks/pseudocode authoring, graphics, export/reimport
-and project save/reopen. Historical **147 translated / 36 partial / one
-malformed** remains unremeasured.
+full affected unit cohorts and all enabled checks. Keep every original asset and
+assertion. Diagnose remaining refusals independently; never remove a failing
+gate or borrow another head's result. Historical **36 partial / one malformed**
+corpus classifications remain unremeasured.
 
 ## Earlier source-restoration checkpoint — 23 October 2026
 
