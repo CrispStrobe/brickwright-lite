@@ -13,6 +13,10 @@ observed rotation, hinge closure and explicitly labelled VM program variables.
 Responses contain sampled values, units, provenance, availability and
 min/max/mean/span/RMS summaries. Saved-pose solid overlaps include physical part IDs; this is a partial construction diagnostic, not full mesh/sweep/retention qualification. Force readings are existing rope tension and
 rolling-load estimates; there is no invented general contact force or torque.
+Reports echo the actual normalized measurement definitions and settings, so a
+reviewer can distinguish a world-frame observation from a relative coordinate
+that would hide foundation motion. Inferred couplings include their actual
+gear part/joint IDs and ratios, with an explicit truncation flag above 256.
 
 ## HTTP interface
 
