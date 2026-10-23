@@ -1,10 +1,20 @@
 name: Submitted model measurements
-run-name: model-measure:${{ inputs.request_id }}
+run-name: model-measure:${{ inputs.request_id }}:${{ inputs.request_tag }}
 on:
+  pull_request:
+    paths:
+      - 'tools/model-api/**'
+      - 'test/model-api-*.test.mjs'
+      - 'test/helpers/robot-lab-direct-vm.mjs'
+      - '.github/workflows/model-measurements.yml'
   workflow_dispatch:
     inputs:
       request_id:
         description: Server-generated request identity
+        required: true
+        type: string
+      request_tag:
+        description: Server-authenticated request/source correlation
         required: true
         type: string
       envelope:
@@ -16,34 +26,15 @@ permissions:
   actions: read
 jobs:
   measure:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       BW_LITE_DEPS_STORE: ${{ github.workspace }}/.model-api-deps
-    defaults:
-      run:
-        working-directory: runtime
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.sha }}
-          path: control
-          persist-credentials: false
-      - name: Read the trusted immutable runtime pin
-        id: runtime
-        working-directory: control
-        run: |
-          node --input-type=module - <<'JS'
-          import fs from 'node:fs';
-          const pin=JSON.parse(fs.readFileSync('runtime-source.json'));
-          if(pin.repository!=='CrispStrobe/brickwright-lite'||!/^[a-f0-9]{40}$/.test(pin.commit))throw Error('Invalid trusted runtime pin');
-          fs.appendFileSync(process.env.GITHUB_OUTPUT,'sha='+pin.commit+'\n');
-          JS
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          repository: CrispStrobe/brickwright-lite
-          ref: ${{ steps.runtime.outputs.sha }}
-          path: runtime
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -52,7 +43,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .model-api-deps
-          key: model-measure-deps-${{ runner.os }}-node22-${{ hashFiles('runtime/package-lock.json', 'runtime/packages/scratch-gui/package-lock.json', 'runtime/vendor-pins.json') }}
+          key: model-measure-deps-${{ runner.os }}-node22-${{ hashFiles('package-lock.json', 'packages/scratch-gui/package-lock.json', 'vendor-pins.json') }}
       - name: Prepare trusted runtime before reading submitted data
         run: node scripts/worktree-deps.mjs link
       - name: Decode the authenticated submission
@@ -65,9 +56,9 @@ jobs:
         id: native
         continue-on-error: true
         env:
-          MODEL_API_RUNTIME_REVISION: ${{ steps.runtime.outputs.sha }}
+          MODEL_API_RUNTIME_REVISION: ${{ github.sha }}
         run: |
-          timeout --signal=TERM --kill-after=10s 180s docker run --rm --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=128 --memory=2g --cpus=2 --user "$(id -u):$(id -g)" --tmpfs /tmp:rw,nosuid,size=256m --mount "type=bind,src=$GITHUB_WORKSPACE,dst=$GITHUB_WORKSPACE,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-in,dst=/input,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-out,dst=/output" --workdir "$GITHUB_WORKSPACE/runtime" --env "MODEL_API_RUNTIME_REVISION=$MODEL_API_RUNTIME_REVISION" docker.io/library/node@sha256:ea11b74b986d520137cdef9a5346e447a00f275ecc4abc0055b7151226231e09 node --max-old-space-size=1536 --import ./scripts/lib/register-gui-scope.mjs tools/model-api/worker.mjs /input/input.json /output/report.json > "$RUNNER_TEMP/model-api-out/worker.log" 2>&1
+          timeout --signal=TERM --kill-after=10s 180s docker run --rm --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=128 --memory=2g --cpus=2 --user "$(id -u):$(id -g)" --tmpfs /tmp:rw,nosuid,size=256m --mount "type=bind,src=$GITHUB_WORKSPACE,dst=$GITHUB_WORKSPACE,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-in,dst=/input,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-out,dst=/output" --workdir "$GITHUB_WORKSPACE" --env "MODEL_API_RUNTIME_REVISION=$MODEL_API_RUNTIME_REVISION" docker.io/library/node@sha256:ea11b74b986d520137cdef9a5346e447a00f275ecc4abc0055b7151226231e09 node --max-old-space-size=1536 --import ./scripts/lib/register-gui-scope.mjs tools/model-api/worker.mjs /input/input.json /output/report.json > "$RUNNER_TEMP/model-api-out/worker.log" 2>&1
       - name: Encrypt the report for its submitting agent
         if: ${{ always() }}
         env:
@@ -84,3 +75,54 @@ jobs:
       - name: Reflect native failure after preserving its report
         if: ${{ always() && steps.native.outcome != 'success' }}
         run: exit 1
+
+  qualify:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BW_LITE_DEPS_STORE: ${{ github.workspace }}/.model-api-deps
+      MODEL_API_QUALIFICATION_ONLY: '1'
+      MODEL_API_QUALIFICATION_SOURCE: ${{ github.event.pull_request.head.sha }}
+      MODEL_API_QUALIFICATION_KEY: d8cd4b561c1f644f3d6e919a17b9ca29a51b68444dc8174e2ac13b229741d8bf
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .model-api-deps
+          key: model-measure-deps-${{ runner.os }}-node22-${{ hashFiles('package-lock.json', 'packages/scratch-gui/package-lock.json', 'vendor-pins.json') }}
+      - name: Prepare exact-source canonical dependencies
+        run: |
+          node scripts/worktree-deps.mjs link
+          npm ci --prefix tools/model-api --ignore-scripts
+      - name: Exercise resource, atomic admission and real controller refusals
+        run: node --test --test-concurrency=1 test/model-api-resource.test.mjs test/model-api-admission.test.mjs test/model-api-github.test.mjs test/model-api-worker-protocol.test.mjs test/model-api-protocol.test.mjs
+      - name: Prepare fixed public fixture without production credentials
+        run: |
+          mkdir -p "$RUNNER_TEMP/model-api-qualification/in" "$RUNNER_TEMP/model-api-qualification/out"
+          node tools/model-api/qualification.mjs prepare "$RUNNER_TEMP/model-api-qualification"
+          node tools/model-api/dispatch-worker.mjs qualification-prepare "$RUNNER_TEMP/model-api-qualification/event.json" "$RUNNER_TEMP/model-api-qualification/in/input.json" "$RUNNER_TEMP/model-api-qualification/meta.json"
+      - name: Run real VM Jolt controls including observer parity without credentials or network
+        run: |
+          timeout --signal=TERM --kill-after=10s 180s docker run --rm --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=128 --memory=2g --cpus=2 --user "$(id -u):$(id -g)" --tmpfs /tmp:rw,nosuid,size=256m --mount "type=bind,src=$GITHUB_WORKSPACE,dst=$GITHUB_WORKSPACE,readonly" --workdir "$GITHUB_WORKSPACE" docker.io/library/node@sha256:ea11b74b986d520137cdef9a5346e447a00f275ecc4abc0055b7151226231e09 node --max-old-space-size=1536 --test --test-concurrency=1 --import ./scripts/lib/register-gui-scope.mjs test/model-api-native.test.mjs > "$RUNNER_TEMP/model-api-qualification/native-controls.log" 2>&1
+      - name: Execute fixed model in real bounded worker without credentials or network
+        run: |
+          timeout --signal=TERM --kill-after=10s 180s docker run --rm --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=128 --memory=2g --cpus=2 --user "$(id -u):$(id -g)" --tmpfs /tmp:rw,nosuid,size=256m --mount "type=bind,src=$GITHUB_WORKSPACE,dst=$GITHUB_WORKSPACE,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-qualification/in,dst=/input,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-qualification/out,dst=/output" --workdir "$GITHUB_WORKSPACE" --env "MODEL_API_RUNTIME_REVISION=$MODEL_API_QUALIFICATION_SOURCE" docker.io/library/node@sha256:ea11b74b986d520137cdef9a5346e447a00f275ecc4abc0055b7151226231e09 node --max-old-space-size=1536 --import ./scripts/lib/register-gui-scope.mjs tools/model-api/worker.mjs /input/input.json /output/report.json > "$RUNNER_TEMP/model-api-qualification/out/worker.log" 2>&1
+      - name: Seal and join exact input report and checkout identities
+        run: |
+          node tools/model-api/dispatch-worker.mjs qualification-seal "$RUNNER_TEMP/model-api-qualification/meta.json" "$RUNNER_TEMP/model-api-qualification/out/report.json" "$RUNNER_TEMP/model-api-qualification/result.enc"
+          node tools/model-api/qualification.mjs verify "$RUNNER_TEMP/model-api-qualification"
+      - name: Preserve qualification evidence including original failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: model-api-qualification-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/model-api-qualification
+          if-no-files-found: error
+          retention-days: 2

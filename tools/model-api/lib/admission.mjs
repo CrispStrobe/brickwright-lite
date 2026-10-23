@@ -61,14 +61,13 @@ export function createAdmission({master, store, ...options}) {
         if (expected.length !== bytes.length || !timingSafeEqual(expected, bytes)) throw unavailable();
         return {revision: value.revision, active};
     }
-    async function mutate(change, context = newContext(), onWrite = () => {}) {
+    async function mutate(change, context = newContext()) {
         for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
             remaining(context);
             const held = await store.read(context), value = decode(held.bytes);
             if (!change(value.active)) return false;
             value.active.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
             const next = encode(master, policy, value.revision + 1, value.active);
-            onWrite();
             const accepted = await store.write(held.sha, next, context);
             if (accepted === true) return true;
             if (accepted !== false) throw unavailable();
@@ -109,20 +108,16 @@ export function createAdmission({master, store, ...options}) {
         },
         async submit(job, submit, context = newContext()) {
             const held = Object.freeze(record(job));
-            let wrote = false;
-            try {
-                await mutate(active => {
-                    if (active.some(item => item.id === held.id)) throw new ApiError(409, 'already-admitted', 'Job is already admitted');
-                    if (active.length >= policy.global || active.filter(item => item.owner === held.owner).length >= policy.perOwner) {
-                        throw new ApiError(429, 'busy', 'The accepted job limit is reached');
-                    }
-                    active.push({...held}); return true;
-                }, context, () => { wrote = true; });
-            } catch (error) {
-                // No dispatch has been invoked on this path. Clean only our exact nonce after an uncertain CAS acknowledgement.
-                if (wrote && error.code !== 'admission-contention') await cleanup(held, error);
-                throw error;
-            }
+            // A losing duplicate caller must never clean a reservation won by another
+            // caller with the same identity. Unknown CAS acknowledgements retain
+            // capacity conservatively; no dispatch happens on this failure path.
+            await mutate(active => {
+                if (active.some(item => item.id === held.id)) throw new ApiError(409, 'already-admitted', 'Job is already admitted');
+                if (active.length >= policy.global || active.filter(item => item.owner === held.owner).length >= policy.perOwner) {
+                    throw new ApiError(429, 'busy', 'The accepted job limit is reached');
+                }
+                active.push({...held}); return true;
+            }, context);
             try { return await submit(); }
             catch (error) {
                 // Once a dispatch POST may have happened, even expiry/network failure retains the slot.

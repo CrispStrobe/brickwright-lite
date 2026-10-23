@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import {createRecordedPoseReader,sub,dot,unit} from '../tools/model-api/lib/rigid-poses.mjs';
-import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {measureSubmission} from '../tools/model-api/native-runner.mjs';
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+// Keep the import-only dependency control separate from real native execution.
+const measureSubmission=async(...args)=>(await import('../tools/model-api/native-runner.mjs')).measureSubmission(...args);
 const text=readFileSync(new URL('../overlay/scratch-gui/static/sim-lab/models/sine-shuttle.ldr',import.meta.url),'utf8');
 test('submitted LDR/BW executes in real VM/Jolt and records passive marker motion through the PR1255 reader',async t=>{
  const r=await measureSubmission({model:{name:'sine-shuttle.ldr',text},program:{name:'turn.bw',text:'DEVICE SPIKE\nGLOBAL stage = 1\nWHEN flag clicked:\n  set stage to 2\n  lab start\n  lab run motor A for 360 degrees at 90 degrees per second\n  lab stop motor A hold\n  set stage to 3\n'},settings:{programMs:7000,coldMs:250,afterMs:250,sampleMs:25},measurements:[{id:'x',kind:'pointCoordinate',point:{part:'yoke_end_-100'},reference:{part:'hub'},axis:'x'},{id:'angle',kind:'jointAngle',port:'A'},{id:'mass',kind:'mass',targets:['hub']},{id:'missing',kind:'distance',targets:['hub','absent']},{id:'closure',kind:'hingeGap'},{id:'stage',kind:'programVariable',variable:'stage'}]});
@@ -30,4 +32,31 @@ test('5 ms scalar and rigid-pose capture observes every existing physics step wi
 });
 test('the same uploaded root MPD produces the same bounded native output law',async()=>{
  const r=await measureSubmission({model:{name:'shuttle.mpd',text:'0 FILE shuttle.ldr\n'+text+'\n0 NOFILE\n'},settings:{programMs:500,coldMs:250,afterMs:0,sampleMs:25},measurements:[{id:'mass',kind:'mass',targets:['hub']} ]});assert.equal(r.status,'completed');assert.equal(r.topology.parts,105);assert.ok(r.summary[0].min>0);
+});
+
+
+test('native provider factory imports use the declared GUI boundary without starting physics',async()=>{
+ const providers=await Promise.all([import('jolt-physics/wasm-compat'),import('jolt-physics/wasm-simd-compat')]);
+ assert.ok(providers.every(provider=>typeof provider.default==='function'));
+ // No provider factory, world, worker, VM or simulation is constructed in this control.
+});
+
+test('optional setup observation preserves actual VM commands, 25ms cadence and every native snapshot',async()=>{
+ const {runRobotLabProgram}=await import('./helpers/robot-lab-direct-vm.mjs');
+ const modelText=readFileSync(new URL('../overlay/scratch-gui/static/sim-lab/models/compound-idler.ldr',import.meta.url),'utf8');
+ const source='DEVICE SPIKE\nWHEN flag clicked:\n  lab run motor A for 90 degrees at 90 degrees per second\n  lab stop motor A hold\n';
+ const options={modelText,timeLimitMs:2500,frameMs:25,coldMs:250,afterMs:250};
+ const baseline=await runRobotLabProgram(source,options),repeat=await runRobotLabProgram(source,options);
+ assert.deepEqual(repeat.track,baseline.track,'default native runs establish exact repeatability before attributing an observer difference');
+ assert.equal(repeat.finishedAt,baseline.finishedAt);let installed=0;const observations=[];
+ const observed=await runRobotLabProgram(source,{...options,observeSetup:({session,prepared})=>{
+  installed++;assert.equal(session.bridge.stepMs,5);const bridge=session.bridge,original=bridge.step.bind(bridge);
+  const body=prepared.mechanism.bodies.find(b=>b.motion==='dynamic'),joint=prepared.mechanism.joints.find(j=>j.type==='hinge'&&j.motor?.port==='A');assert.ok(body&&joint);
+  // The existing API's dense observer shape: one original step, only reads afterward, identical return value.
+  bridge.step=(...args)=>{const value=original(...args);assert.ok(observations.length<2048);observations.push({time:bridge.timeMs,pose:session.core.bodyPose(body.id),joint:session.core.jointState(joint.id)});return value;};
+ }});
+ assert.equal(installed,1);assert.ok(observations.length>observed.track.length*4,'the observer really sampled existing bridge steps');
+ for(let i=1;i<observations.length;i++)assert.equal(observations[i].time-observations[i-1].time,5);
+ assert.equal(observed.finishedAt,baseline.finishedAt);assert.deepEqual(observed.track,baseline.track,'no extra clock/VM/physics advancement or drive changes');
+ assert.ok(baseline.finishedAt>0);assert.ok(observations.some(r=>Math.abs(r.joint.angle)>0.01),'the same real commanded joint moved');
 });

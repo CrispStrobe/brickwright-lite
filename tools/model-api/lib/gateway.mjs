@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 CrispStrobe
 import {randomUUID, randomBytes} from 'node:crypto';
-import {ApiError, LIMITS, KINDS, validateSubmission} from './protocol.mjs';
-import {authenticate, ownerTag, seal, open, signJob, readJob} from './crypto.mjs';
+import {ApiError, LIMITS, KINDS, validateSubmission, submissionPayload} from './protocol.mjs';
+import {authenticate, ownerTag, seal, open, signJob, readJob, sha256} from './crypto.mjs';
 import {newContext} from './bounded-http.mjs';
 import {workerIdentity, dispatchTag} from './job-identity.mjs';
 export function createGateway({tokens, master, backend, admission, now = Date.now}) {
@@ -21,12 +21,13 @@ export function createGateway({tokens, master, backend, admission, now = Date.no
                 try { input = validateSubmission(typeof body === 'object' && !Buffer.isBuffer(body) ? body : JSON.parse(raw)); }
                 catch (error) { if (error instanceof SyntaxError) throw new ApiError(400, 'invalid-json', 'Invalid JSON'); throw error; }
                 if (!admission) throw new ApiError(503, 'configuration', 'Qualified private job admission is required');
-                const fields = {id: randomUUID(), owner: tag, nonce: randomBytes(16).toString('hex'), createdAt: now(), runId: null,
+                const normalized = submissionPayload(input);
+                const fields = {inputSha256: sha256(JSON.stringify(normalized)), id: randomUUID(), owner: tag, nonce: randomBytes(16).toString('hex'), createdAt: now(), runId: null,
                     repository: backend.repository, workflow: backend.workflow, workerRevision: backend.workerRevision};
                 workerIdentity(fields);
                 const job = Object.freeze({...fields, correlation: dispatchTag(master, fields)});
-                const envelope = seal(master, 'request:' + job.id, {owner: tag, nonce: job.nonce, workerRevision: job.workerRevision, repository: job.repository,
-                    workflow: job.workflow, correlation: job.correlation, submission: {model: input.model, ...(input.program ? {program: input.program} : {}), settings: input.settings, measurements: input.measurements}});
+                const envelope = seal(master, 'request:' + job.id, {owner: tag, nonce: job.nonce, createdAt: job.createdAt, inputSha256: job.inputSha256, workerRevision: job.workerRevision, repository: job.repository,
+                    workflow: job.workflow, correlation: job.correlation, submission: normalized});
                 if (Buffer.byteLength(envelope) > LIMITS.compressedBytes) throw new ApiError(413, 'compressed-too-large', 'Compressed submission exceeds the dispatch limit');
                 await admission.reconcile(backend, context);
                 const runId = await admission.submit(job, () => backend.submit(job, envelope, context), context);
@@ -40,7 +41,7 @@ export function createGateway({tokens, master, backend, admission, now = Date.no
                 if (admission) await admission.releaseTerminal(job, state, context);
                 if (match[2]) {
                     const envelope = await backend.result(job, context), result = open(master, 'result:' + job.id, envelope, LIMITS.resultBytes);
-                    if (result.requestId !== job.id || ['owner', 'nonce', 'workerRevision', 'repository', 'workflow', 'correlation'].some(key => result[key] !== job[key])) {
+                    if (result.requestId !== job.id || ['owner', 'nonce', 'createdAt', 'inputSha256', 'workerRevision', 'repository', 'workflow', 'correlation'].some(key => result[key] !== job[key])) {
                         throw new ApiError(404, 'not-found', 'Job result identity mismatch');
                     }
                     return {status: 200, body: result.report};

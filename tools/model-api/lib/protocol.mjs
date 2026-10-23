@@ -46,3 +46,6 @@ export function validateSubmission(input){
  }
  return{version:1,model,program,settings:s,measurements:normalized};
 }
+
+/** Stable normalized data packet shared by the trusted gateway/controller. */
+export const submissionPayload=input=>({model:input.model,...(input.program?{program:input.program}:{}),settings:input.settings,measurements:input.measurements});

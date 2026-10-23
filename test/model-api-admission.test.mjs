@@ -79,10 +79,11 @@ test('proved pre-dispatch refusal releases exact reservation; cleanup failure pr
  await assert.rejects(b.submit(job(2),async()=>{s2.failWrite=new Error('cleanup CAS failure');throw primary;}),e=>e===primary&&e.admissionCleanupError?.message==='cleanup CAS failure');
  assert.equal(JSON.parse(s2.bytes).active.length,1);
 });
-test('lost CAS acknowledgement before any dispatch cleans only our nonce and never submits',async()=>{
+test('lost CAS acknowledgement conservatively retains uncertain reservation and never submits',async()=>{
  const s=server();s.dropAck=true;let called=0;
  await assert.rejects(s.admission().submit(job(1),async()=>{called++;}),e=>e.message==='committed acknowledgement lost');
- assert.equal(called,0);assert.equal(JSON.parse(s.bytes).active.length,0);
+ assert.equal(called,0);assert.equal(JSON.parse(s.bytes).active.length,1);
+ await assert.rejects(s.admission().submit(job(1),async()=>assert.fail('uncertain accepted reservation cannot dispatch twice')),e=>e.status===409);
 });
 test('cold gateway restart cannot reset accepted work, and missing/changed epoch policy never auto-initializes',async()=>{
  const s=server({...policy,global:1,perOwner:1});await s.admission().submit(job(1),async()=>null);
@@ -105,4 +106,12 @@ test('persistent conflict exhaustion is finite and never dispatches or weakens q
 });
 test('returned admission records are detached/frozen and cannot mutate owner/bounds',async()=>{
  const s=server(),a=s.admission();await a.submit(job(1),async()=>null);const records=await a.acceptedJobs();assert.throws(()=>{records[0].owner='forged';},TypeError);records.length=0;assert.equal((await a.acceptedJobs()).length,1);
+});
+
+test('simultaneous duplicate identity cannot remove the reservation of the accepted caller',async()=>{
+ const s=server({...policy,global:1,perOwner:1}),j=job(1);let dispatched=0;
+ const results=await Promise.allSettled([s.admission().submit(j,async()=>{dispatched++;return 11;}),s.admission().submit(j,async()=>{dispatched++;return 12;})]);
+ assert.equal(results.filter(x=>x.status==='fulfilled').length,1);assert.equal(dispatched,1);
+ assert.equal(JSON.parse(s.bytes).active.length,1,'losing CAS/duplicate caller must not free the winning live job');
+ await assert.rejects(s.admission().submit(job(2),async()=>assert.fail('live duplicate reservation was lost')),e=>e.status===429);
 });

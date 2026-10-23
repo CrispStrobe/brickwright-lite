@@ -7,7 +7,7 @@ result for one day. Agents never receive a GitHub credential or choose worker
 code, repository, branch or executable scripts. GitHub Pages can host a static
 client, but cannot run this compute endpoint.
 
-The worker imports the live measurement reader from PR #1255. API extensions
+The worker imports the shipped Robot Lab measurement reader. API extensions
 add part-local marker coordinates, a current reference-part frame, signed
 observed rotation, hinge closure and explicitly labelled VM program variables.
 Responses contain sampled values, units, provenance, availability and
@@ -128,27 +128,62 @@ pinned JSZip decoder. Configure production environment variables:
 - `MODEL_API_GITHUB_TOKEN`: server-only credential with Actions write/read on
   the worker repository; agents receive separate service tokens.
 - `MODEL_API_REPOSITORY`: dedicated worker repository.
-- `MODEL_API_REF`: its trusted default branch, normally `main`.
+- `MODEL_API_REF`: a reviewed immutable lightweight tag name, with no same-name branch.
+- `MODEL_API_WORKER_REVISION`: the exact 40-character worker commit at that tag.
+- `MODEL_API_ADMISSION_REPOSITORY`: an explicitly configured private repository
+  owned by the worker repository owner; never a public repository.
+- `MODEL_API_ADMISSION_BRANCH`, `MODEL_API_ADMISSION_TOKEN` and
+  `MODEL_API_ADMISSION_EPOCH`: reviewed ledger branch, server-only Contents
+  write credential and stable policy epoch (16–128 alphanumeric/underscore/dash).
 
-The worker repository holds `worker-workflow.yml` as
-`.github/workflows/model-measurements.yml` plus a trusted `runtime-source.json`:
-`{"repository":"CrispStrobe/brickwright-lite","commit":"EXACT_RUNTIME_COMMIT"}`.
-Its repository secret `MODEL_API_MASTER_KEY` must match Vercel. The source and
-result envelopes are authenticated/encrypted even if workflow metadata becomes
-visible. The container receives no key, GitHub token, writeable code or network.
-The dedicated dispatcher pins canonical runtime code instead of copying its
-measurement implementation or sharing app release jobs.
+Production refuses missing admission configuration. An operator must separately
+review and initialize the signed `model-api-admission.json` on that private
+branch. The service only updates an existing file with its current blob SHA;
+there is no automatic creation, reset or deployment step. The branch must not be
+manually rolled back, force-updated or reset while jobs may still run. This
+protocol cannot protect against an administrator reverting accepted history.
+The pure `initialAdmissionDocument` helper prepares bytes without writing them.
+No private repository name or credential belongs in public configuration.
 
-The same workflow can run in the runtime repository using its tracked
-`.github/workflows/model-measurements.yml` after that file lands on its default
-branch. Do not run user-selected refs or scripts. Changes to pins/worker code
-are administrator actions; model submission has no such authority.
+The ledger admits at most eight accepted nonterminal jobs globally and two per
+agent, including queued/running jobs and uncertain dispatches. Simultaneous cold
+instances use GitHub's current-blob SHA update precondition; conflicts retry at
+most four times. Corrupt, public, unauthorized, missing or contended stores fail
+closed. Request/ledger/artifact bodies, record counts and network deadlines are
+bounded before whole-body allocation. The single `result.enc` ZIP layout is
+admitted before JSZip metadata parsing; native inflation has an 8 MiB output
+cap, followed by explicit CRC and UTF-8 checks.
 
-For local development, configure master key and token digests and run
-`node tools/model-api/dev-server.mjs`; choose `MODEL_API_PORT=0` for a free port.
-This mode supervises a child Node process, without the hosted Docker sandbox,
-and is only for trusted local callers. Its volatile job store is not a hosted
-queue. Real hosted Docker/Actions execution must be verified separately.
+A network error after dispatch may mean the worker accepted the job. Such slots
+stay occupied, including after token/job expiry. Only a trusted terminal run
+with matching repository, workflow, owner/nonce correlation and actual source,
+or a proved refusal before dispatch, releases capacity. Missing, foreign or
+expired run metadata never frees a slot. An uncertain slot can therefore block
+availability until independently resolved; resetting the ledger is unsafe.
+Revoked token owners retain their live reservations until trusted reconciliation.
+
+The tracked worker workflow and `worker-workflow.yml` template are identical.
+Production `workflow_dispatch` checks out the accepted source and uses only the
+configured production master key. Its encrypted request/result binds the exact
+normalized input, job nonce, owner and runtime revision. A tag preflight cannot
+prevent an administrator moving it during dispatch; observed source mismatch
+fails closed and retains capacity. Do not configure mutable refs.
+
+The automatic own-repository PR qualification is separate: a fixed public model
+and manufactured public key exercise real Docker/Jolt execution, real trusted
+prepare/seal and encrypted artifacts with source/input/report joins. The worker
+container receives neither key nor GitHub token. Qualification-only controller
+modes refuse production contexts/keys, and production never falls back to that
+key. Actual native controls compare repeated default VM/Jolt runs against the
+optional observer at the same 25 ms command cadence and unchanged 5 ms physics.
+They observe one original bridge step and read afterward. This qualification
+covers the model worker, not installed firmware, private-store operation,
+deployed service acceptance or physical accuracy. Those boundaries require a
+separate concrete deployment review before enabling service configuration.
+
+`dev-server.mjs` binds loopback and uses the same production handler and durable
+admission requirements. It does not bypass admission with a local child worker.
+The retained `lib/local-backend.mjs` is an unused prototype, not a hosted queue.
 
 ## Replaying native poses
 
