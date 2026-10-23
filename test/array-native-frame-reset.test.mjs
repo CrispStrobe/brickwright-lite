@@ -157,6 +157,11 @@ test('all writers, exact allocation and ordinary caller identity remain independ
   cell.target.blocks.__secondNullValue={...structuredClone(original),parent:'__secondNull',next:null};
   insertBefore(cell.push,'__secondNull',{opcode:'arcade_setLocal',inputs:{NAME:[1,[10,cell.name]],VALUE:[3,'__secondNullValue',[4,'0']]},fields:{}});
  });
+ refused(project=>{const prototype=rows(project).find(r=>r.node.opcode==='procedures_prototype');assert.ok(prototype);
+  prototype.target.blocks.__foreignPrototype={...structuredClone(prototype.node),parent:null,
+   mutation:{...structuredClone(prototype.node.mutation),proccode:'foreignUncalled'}};
+ });
+ refused(project=>{const prototype=rows(project).find(r=>r.node.opcode==='procedures_prototype');assert.ok(prototype);prototype.node.shadow=false;});
  refused(project=>{const call=rows(project).find(r=>r.node.opcode==='procedures_call');assert.ok(call);call.node.mutation.proccode='foreign';});
  refused(project=>{const root=rows(project).find(r=>r.node.opcode==='arcade_whenSourceStarts');root.node.opcode='event_whenflagclicked';});
 });

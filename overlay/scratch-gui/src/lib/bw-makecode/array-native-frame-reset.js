@@ -64,9 +64,11 @@ export function createArrayNativeFrameReset(context){
     const normal=scope=>{
         if(!scope?.proc||!safeName(scope.proc)||scope.invalid||scope.unknownEntry||scope.params.length||scope.ids.length)return false;
         const n=scope.root,p=child(n,'custom_block',scope.target),all=Object.values(scope.target.blocks);
-        if(!p||n.opcode!=='procedures_definition'||n.mutation!=null||keys(n.inputs).join('|')!=='custom_block'||keys(n.fields).length||
-            p.opcode!=='procedures_prototype'||p.next||keys(p.inputs).length||keys(p.fields).length||p.mutation?.proccode!==scope.proc||
-            p.mutation.warp!=='false')return false;
+        if(!p||n.opcode!=='procedures_definition'||scope.target.blocks[scope.id]!==n||n.topLevel!==true||n.shadow!==false||
+            n.mutation!=null||keys(n.inputs).join('|')!=='custom_block'||n.inputs.custom_block.length!==2||
+            n.inputs.custom_block[0]!==1||keys(n.fields).length||p.opcode!=='procedures_prototype'||
+            p.parent!==scope.id||p.shadow!==true||p.topLevel!==false||p.next||keys(p.inputs).length||
+            keys(p.fields).length||p.mutation?.proccode!==scope.proc||p.mutation.warp!=='false')return false;
         try{if(['argumentids','argumentnames','argumentdefaults'].some(k=>JSON.stringify(JSON.parse(p.mutation[k]))!=='[]'))return false;}
         catch(_){return false;}
         return all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',scope.target)?.mutation?.proccode===scope.proc).length===1&&
@@ -124,8 +126,12 @@ export function createArrayNativeFrameReset(context){
                 registrations.set(token,registrations.get(token)+1);
             }else return false;
         }
+        // The authority's owners index deliberately excludes declaration
+        // prototypes. Admit only this physically linked, fully checked zero-
+        // argument declaration; a prototype opcode or role flag is insufficient.
+        const declaration=child(scope.root,'custom_block',target);
         if([...registrations.values()].some(count=>count!==1)||
-            targets.some(t=>Object.values(t.blocks).some(n=>!owners.has(n)||invalid.has(n)))||
+            targets.some(t=>Object.values(t.blocks).some(n=>(!owners.has(n)&&n!==declaration)||invalid.has(n)))||
             project.monitors?.some(m=>m.visible))return false;
         for(const t of targets)for(const [id,row] of Object.entries(t.variables||{}))
             if(!safeName(id)||!isArray(row)||!safeName(row[0]))return false;
