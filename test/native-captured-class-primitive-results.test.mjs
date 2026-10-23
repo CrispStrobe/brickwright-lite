@@ -51,7 +51,16 @@ test('constructor aliases and actual startup entry retain receiver declaration r
     accept(program('class Counter {value="first"};let counter=new Counter();let alias=counter;function read(){return __bwBinaryAdd(alias.value,"!")}alias.value="next";read();'));
     const eof=program('class Counter {value=3};function start(){counter=new Counter();read()}function read(){return __bwBinaryAdd(counter.value,1)}let counter:any;start();');
     const receiver=member(eof).object,graph=analyseSourceValueProducers(eof,graphOptions);
-    assert.equal(graph.isInitializedAt(receiver),false);assert.equal(graph.isCapturedLexicalDeclarationReadyAt(receiver),true,'actual root declaration executes before the closed startup entry');
+    assert.equal(graph.isInitializedAt(receiver),false);
+    const canonical=eof.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='__bwBinaryAdd');
+    assert.ok(canonical);const branches=canonical.body.filter(node=>node.type==='If');assert.equal(branches.length,2);
+    for(const branch of branches){assert.equal(Object.hasOwn(branch,'alternate'),true);assert.equal(branch.alternate,null);}
+    assert.equal(graph.isCapturedLexicalDeclarationReadyAt(receiver),false,
+        'raw whole-program frontier rejects the canonical helper null-else shape; the consumer removes only this proved helper before its graph');
+    const frontier=parse('class Counter {value=3};function start(){counter=new Counter();read()}function read(){return counter.value+1}let counter:any;start();');
+    const frontierReceiver=member(frontier).object,frontierGraph=analyseSourceValueProducers(frontier,graphOptions);
+    assert.equal(frontierGraph.isInitializedAt(frontierReceiver),false);
+    assert.equal(frontierGraph.isCapturedLexicalDeclarationReadyAt(frontierReceiver),true,'actual root declaration executes before the closed startup entry in the independent helper-free graph');
     accept(eof);
     accept(program('class Counter {value=3};function outer(){let counter=new Counter();function read(){return __bwBinaryAdd(counter.value,1)}return read()}outer();'));
 });

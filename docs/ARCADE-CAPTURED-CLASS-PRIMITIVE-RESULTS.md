@@ -34,7 +34,8 @@ available during this work identify Math.idiv operands, not a class/getter opera
 A real failing class export still needs its exact current input and result captured.
 
 The existing lexical frontier conservatively refuses some class programs,
-including method bodies using `this` and certain Boolean/union carrier forms.
+including method bodies using `this`, parser no-else If forms whose alternate
+is explicitly null, and certain Boolean/union carrier forms.
 This change retains those refusals. A field on a receiver declared before a closed
 procedure entry is a separate case from a getter that requires a new method-entry
 proof. No source annotation, output tag or guessed callback order supplies that proof.
@@ -53,7 +54,10 @@ proof. No source annotation, output tag or guessed callback order supplies that 
    retain global/foreign reflection refusals, constructor reentry, early virtual
    calls, all entries and arguments. Prove receiver declaration completion before
    any captured read. Audit the parser/private-view Boolean representation at that
-   same boundary; do not relax all Boolean validation.
+   same boundary; do not relax all Boolean validation. For parser no-else If,
+   prove that an own explicit null alternate means an implicit empty branch and
+   preserves entry intersections. Do not turn missing, inherited or unsupported
+   statement shapes into empty bodies.
 4. Verify visible authoring independently. Create and initialize a Counter in Code
    and Blocks; read and edit its fields from a captured procedure and actual event
    callback; edit constructor values; save/reopen; inspect current exported source
