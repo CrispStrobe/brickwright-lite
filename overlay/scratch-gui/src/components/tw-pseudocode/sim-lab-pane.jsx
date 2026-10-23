@@ -32,6 +32,7 @@ import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
+import {teachingMeasurementPreset} from '../../lib/bw-sim/measurements/teaching-presets.js';
 import SimLabStats from './sim-lab-stats.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
@@ -393,6 +394,7 @@ class SimLabPane extends React.Component {
         this.measurementModels = new Map();
         this.measurementReader = null;
         this.measurementRows = [];
+        this.measurementRowsTime = null;
         this.session = null;
         this.view = null;
         this.frame = this.frame.bind(this);
@@ -1182,7 +1184,7 @@ class SimLabPane extends React.Component {
     async openText (text, name, shipped = null, {programLoading = false, measurements} = {}) {
         if (this.opened && this.measurementReader) this.measurementModels.set(this.opened.text, this.measurements);
         const savedMeasurements = measurements === undefined ? this.measurementModels.get(text) : measurements;
-        this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null;
+        this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null; this.measurementRowsTime = null;
         const token = this.loadToken = {};
         this.clearReplay();
         this.opened = {text, name};
@@ -1243,6 +1245,7 @@ class SimLabPane extends React.Component {
         this.measurementReader = this.lib.createMeasurementReader(session);
         this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
         this.measurementRows = this.measurementReader.read(this.measurements);
+        this.measurementRowsTime = this.session.time;
         // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
         if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
         if (this.api) this.api.sessionChanged();
@@ -1407,6 +1410,7 @@ class SimLabPane extends React.Component {
             if (this.measurementSampleTime === null || (this.state.status !== 'running' && this.state.status !== 'stopping') ||
                 Math.abs(this.session.time - this.measurementSampleTime) >= 100) {
                 this.measurementRows = this.measurementReader.read(this.measurements);
+                this.measurementRowsTime = this.session.time;
                 this.measurementSampleTime = this.session.time;
                 this.setState(s => ({measurementTick: s.measurementTick + 1}));
             }
@@ -1480,7 +1484,10 @@ class SimLabPane extends React.Component {
     }
 
     refreshMeasurements () {
-        if (this.measurementReader) this.measurementRows = this.measurementReader.read(this.measurements);
+        if (this.measurementReader) {
+            this.measurementRows = this.measurementReader.read(this.measurements);
+            this.measurementRowsTime = this.session.time;
+        }
         this.measurementSampleTime = null;
         this.setState(s => ({measurementTick: s.measurementTick + 1}));
         if (this.view && this.session) this.view.render(this.session.snapshot(), {force: true});
@@ -2984,6 +2991,9 @@ class SimLabPane extends React.Component {
                             <SimLabMeasurements locale={this.locale} definitions={this.measurements} rows={this.measurementRows}
                                 parts={this.measurementReader.partIds.map(id => ({id, label: this.partNameById(id)}))}
                                 mechanism={this.session.mechanism} shown={this.state.showMeasurements} replaying={this.state.replayAt !== null}
+                                session={this.session} sampleTime={this.measurementRowsTime} paused={this.state.status !== 'running' && this.state.status !== 'stopping'}
+                                teachingPreset={teachingMeasurementPreset(this.session, this.shippedModel()?.file, this.locale)}
+                                onSample={() => this.refreshMeasurements()}
                                 onChange={definitions => this.changeMeasurements(definitions)}
                                 onShown={shown => this.setState({showMeasurements: shown}, () => this.refreshMeasurements())}
                                 onPresets={() => this.changeMeasurements(this.lib.measurementPresets(this.session))}
