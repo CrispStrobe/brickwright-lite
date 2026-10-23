@@ -1,5 +1,8 @@
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 
+const dataDescriptor=Object.getOwnPropertyDescriptor,dataHasOwn=Object.hasOwn;
+const FrontierWeakSet=WeakSet,frontierHas=WeakSet.prototype.has,frontierAdd=WeakSet.prototype.add,frontierApply=Reflect.apply;
+
 // Internal graph construction only: no input flag, type hint or caller-owned
 // receipt can enroll a declaration. Readiness never changes value/type facts.
 export function lexicalDeclarationReadiness(program) {
@@ -12,7 +15,10 @@ export function lexicalDeclarationReadiness(program) {
         catch(error){expired=true;throw error;}
         return !expired;
     };
-    return Object.freeze({current,analyse:graph=>analyseReadiness(program,graph,current)});
+    return Object.freeze({current,analyse:graph=>{
+        try{return analyseReadiness(program,graph,current);}
+        catch(error){expired=true;throw error;}
+    }});
 }
 
 function analyseReadiness(program,graph,current) {
@@ -22,11 +28,43 @@ function analyseReadiness(program,graph,current) {
     const own=node=>{if(!node||typeof node!=='object'||seen.has(node)){valid=false;return false;}seen.add(node);return true;};
     // String evaluation/reflection can hide lexical writers from an ordinary
     // source edge census. Names here only REFUSE, never issue authority.
+    const badSlot=Symbol();
+    const required=(object,key)=>{
+        const descriptor=dataDescriptor(object,key);
+        return descriptor&&dataHasOwn(descriptor,'value')?descriptor.value:badSlot;
+    };
+    const optional=(object,key)=>{
+        const descriptor=dataDescriptor(object,key);
+        if(!descriptor)return key in object?badSlot:undefined;
+        return dataHasOwn(descriptor,'value')?descriptor.value:badSlot;
+    };
+    const absent=(object,key)=>!dataDescriptor(object,key)&&!(key in object);
+    const dense=array=>{
+        if(!Array.isArray(array))return false;
+        const length=required(array,'length');
+        if(!Number.isSafeInteger(length)||length<0)return false;
+        for(let index=0;index<length;index++)if(required(array,String(index))===badSlot)return false;
+        return true;
+    };
+    const alternatives=new WeakMap(),fieldInitializers=new WeakMap(),instanceRows=new FrontierWeakSet();
+    // Only the Class traversal creates this private context. It is a syntax
+    // role, never a receiver/type/initialization fact or an entry seed.
+    const instanceRole=(node,context,params)=>{
+        if(!context||!absent(node,'type')||required(node,'isStatic')!==false||params.some(name=>typeof name!=='string'||!name||name==='this'))return false;
+        if(context.constructor){
+            return required(context.owner,'ctor')===node&&absent(node,'name')&&absent(node,'kind');
+        }
+        const methods=required(context.owner,'methods'),kind=required(node,'kind'),name=required(node,'name');
+        return dense(methods)&&required(methods,String(context.index))===node&&typeof name==='string'&&name.length>0&&
+            name!=='constructor'&&['method','get','set'].includes(kind)&&
+            (kind!=='get'||params.length===0)&&(kind!=='set'||params.length===1);
+    };
     const reflectiveRoots=new Set(['eval','Function','Reflect','Proxy','globalThis','window','self','this']);
     const reflectiveKeys=new Set(['constructor','prototype','__proto__','eval','Function','getPrototypeOf','setPrototypeOf',
         'getOwnPropertyDescriptor','getOwnPropertyDescriptors','getOwnPropertyNames','getOwnPropertySymbols','defineProperty','defineProperties','ownKeys']);
-    const record=(node,kind)=>{
-        if(!Array.isArray(node.body)||!Array.isArray(node.params)){valid=false;return;}
+    const record=(node,kind,context=null)=>{
+        const body=required(node,'body'),params=required(node,'params');
+        if(!dense(body)||!dense(params)){valid=false;return;}
         // Defaults have their own pre-body execution boundary. This theorem
         // deliberately refuses them rather than deleting their expressions.
         // parseParams retains default expressions on a nonenumerable own
@@ -36,28 +74,31 @@ function analyseReadiness(program,graph,current) {
         // Optional signatures remain conservative too: their enumerable
         // callable copy survives private array cloning which may omit hidden
         // params default metadata. Never recover authority from that omission.
-        for(const defaults of [node.parameterDefaults,node.params.parameterDefaults,node.ordinaryParameterDefaultNames,
-            node.optionalParams,node.params.optionalParams])
-            if(defaults!==undefined&&(!Array.isArray(defaults)||defaults.length!==0))valid=false;
-        const row={node,kind};records.push(row);
+        for(const value of [node,params])for(const key of ['parameterDefaults','ordinaryParameterDefaultNames','optionalParams']){
+            const defaults=optional(value,key);
+            if(defaults!==undefined&&(!dense(defaults)||defaults.length!==0)){valid=false;return;}
+        }
+        const row={node,kind,body};records.push(row);
+        if(instanceRole(node,context,params))frontierApply(frontierAdd,instanceRows,[row]);
         if(kind==='hoisted'){
             const binding=graph.bindingOf(node);
             if(!binding||functions.has(binding)||graph.declarationCountAt(node)!==1)valid=false;
             functions.set(binding,row);
         }
-        statementList(node.body,row);
+        statementList(body,row);
     };
     const expression=(node,owner,parent=null,slot=null)=>{
         if(node===null||node===undefined)return;
         if(!own(node))return;expressions.add(node);
-        if(node.type==='Identifier'){if(reflectiveRoots.has(node.name))valid=false;references.push({node,parent,slot});return;}
+        if(typeof required(node,'type')!=='string'){valid=false;return;}
+        if(node.type==='Identifier'){const name=required(node,'name');if(typeof name!=='string'){valid=false;return;}if(reflectiveRoots.has(name)&&!(name==='this'&&owner&&frontierApply(frontierHas,instanceRows,[owner])))valid=false;references.push({node,parent,slot});return;}
         if(node.type==='Number'){
             if(typeof node.value!=='string'||!/^(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)$/.test(node.value))valid=false;
             return;
         }
         // ts-import stores raw token content (including escapes), not a quoted JSON token.
         if(node.type==='String'){if(typeof node.value!=='string')valid=false;return;}
-        if(node.type==='Boolean'){if(typeof node.value!=='boolean')valid=false;return;}
+        if(node.type==='Boolean'){if(typeof required(node,'value')!=='boolean')valid=false;return;}
         if(['Null','Undefined'].includes(node.type))return;
         if(node.type==='Template'){
             if(typeof node.value==='string'&&node.value.includes('${'))valid=false;
@@ -94,6 +135,7 @@ function analyseReadiness(program,graph,current) {
     };
     const statement=(node,owner)=>{
         if(!own(node))return;statements.add(node);
+        if(typeof required(node,'type')!=='string'){valid=false;return;}
         if(node.type==='Declaration'){
             if(!['let','const','var'].includes(node.kind)||!Array.isArray(node.decls)){valid=false;return;}
             for(const decl of node.decls){
@@ -108,18 +150,39 @@ function analyseReadiness(program,graph,current) {
         }
         if(node.type==='FunctionDeclaration'){record(node,'hoisted');return;}
         if(node.type==='Class'){
-            if(node.unsupported?.length)valid=false;
-            if(typeof node.base==='string'){
-                const parts=node.base.split('.');if(reflectiveRoots.has(parts[0])||parts.some(part=>reflectiveKeys.has(part)))valid=false;
+            const unsupported=optional(node,'unsupported'),base=optional(node,'base');
+            if(unsupported===badSlot||unsupported!=null&&(!dense(unsupported)||unsupported.length)||base===badSlot||base!=null&&typeof base!=='string'){valid=false;return;}
+            if(typeof base==='string'){
+                const parts=base.split('.');if(reflectiveRoots.has(parts[0])||parts.some(part=>reflectiveKeys.has(part)))valid=false;
                 references.push({node,name:parts[0],parent:null,slot:'heritage'});
             }
-            for(const field of node.fields||[])expression(field.init,owner,node,'field');
-            for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){
-                if(!own(method))continue;record(method,'method');
+            const fields=optional(node,'fields'),methods=optional(node,'methods'),ctor=optional(node,'ctor');
+            if(fields===badSlot||methods===badSlot||ctor===badSlot||
+                fields!=null&&!dense(fields)||methods!=null&&!dense(methods)){valid=false;return;}
+            const name=required(node,'name');
+            const owned=required(node,'type')==='Class'&&typeof name==='string'&&name.length>0&&
+                dense(required(node,'fields'))&&dense(required(node,'methods'))&&required(node,'ctor')!==badSlot&&ctor!==undefined;
+            // Validation context only: fields do not inherit an outer method's
+            // this permission, even for a Class nested inside that method.
+            // The later flow pass keeps the actual lexical owner unchanged.
+            for(const field of fields||[]){
+                if(!field||typeof field!=='object'){valid=false;return;}
+                const init=optional(field,'init');if(init===badSlot){valid=false;return;}
+                fieldInitializers.set(field,init);expression(init,null,node,'field');
+            }
+            if(ctor!=null){if(own(ctor))record(ctor,'method',owned?{owner:node,constructor:true}:null);}
+            for(let index=0;index<(methods?.length||0);index++){
+                const method=required(methods,String(index));
+                if(own(method))record(method,'method',owned?{owner:node,index,constructor:false}:null);
             }return;
         }
         if(node.type==='Block'){statementList(node.body,owner);return;}
-        if(node.type==='If'){expression(node.test,owner,node,'test');statementList(node.consequent,owner);statementList(node.alternate,owner);return;}
+        if(node.type==='If'){
+            const test=required(node,'test'),consequent=required(node,'consequent'),alternate=required(node,'alternate');
+            if(test===badSlot||!dense(consequent)||alternate!==null&&!dense(alternate)){valid=false;return;}
+            alternatives.set(node,alternate);expression(test,owner,node,'test');statementList(consequent,owner);
+            if(alternate!==null)statementList(alternate,owner);return;
+        }
         if(['For','ForOf','While'].includes(node.type)){
             if(node.init?.type==='Declaration')statement(node.init,owner);else expression(node.init,owner,node,'init');
             for(const key of ['test','iterable','update'])expression(node[key],owner,node,key);
@@ -131,7 +194,7 @@ function analyseReadiness(program,graph,current) {
         if(['Break','Continue','Interface'].includes(node.type))return;
         valid=false;
     };
-    const statementList=(list,owner)=>{if(!Array.isArray(list)){valid=false;return;}for(const node of list)statement(node,owner);};
+    const statementList=(list,owner)=>{if(!dense(list)){valid=false;return;}for(let index=0;index<list.length;index++)statement(required(list,String(index)),owner);};
     if(valid)statementList(program.body,program);
     const entries=new Map(records.map(row=>[row,[]])),closed=new Set();
     for(const [binding,row]of functions){
@@ -185,7 +248,8 @@ function analyseReadiness(program,graph,current) {
                 }else if(node.type==='Block')known=flow(node.body,known,owner);
                 else if(node.type==='If'){
                     known=expr(node.test,known,owner);
-                    const left=flow(node.consequent,new Set(known),owner),right=flow(node.alternate,new Set(known),owner);
+                    const alternate=alternatives.get(node);
+                    const left=flow(node.consequent,new Set(known),owner),right=alternate===null?new Set(known):flow(alternate,new Set(known),owner);
                     known=left===null?right:right===null?left:intersect([left,right]);
                 }else if(['For','ForOf','While'].includes(node.type)){
                     // Loop bodies may execute zero times. No loop declaration
@@ -197,11 +261,11 @@ function analyseReadiness(program,graph,current) {
                 else if(node.type==='Return'||node.type==='ThrowStatement'){
                     expr(node.type==='Return'?node.value:node.argument,known,owner);known=null;
                 }else if(node.type==='Break'||node.type==='Continue')known=null;
-                else if(node.type==='Class')for(const field of node.fields||[])expr(field.init,new Set(),owner);
+                else if(node.type==='Class')for(const field of node.fields||[])expr(fieldInitializers.get(field),new Set(),owner);
             }return known;
         };
         flow(program.body,new Set(),program);
-        for(const row of records)flow(row.node.body,new Set(seeds.get(row)),row);
+        for(const row of records)flow(row.body,new Set(seeds.get(row)),row);
         const next=new Map();
         for(const row of records){
             const sites=entries.get(row);

@@ -5817,3 +5817,13 @@ no initialized receiver or Array authority is granted. Captured fields, real
 acceptance cases. The linked document scopes the remaining method-entry proof
 and visible Code/Blocks authoring, current export, save/reopen and runtime checks.
 No corpus completion is claimed from this source change.
+
+## Class parser and lexical frontier continuation
+
+[Class lexical declaration readiness](ARCADE-CLASS-LEXICAL-FRONTIER.md) records
+the no-else If, genuine nonstatic this-context and Boolean carrier changes,
+with source/hosted qualification pending. It scopes remaining method-entry,
+nested/field receiver, keyword-accessor grammar, Code/Blocks/pseudocode
+authoring, graphics/reference-field and export/reopen acceptance separately.
+Method entry seeds remain empty; no initialized input or Array producer is
+granted. Do not infer application completion from source acceptance.

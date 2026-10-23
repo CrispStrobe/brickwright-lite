@@ -35,12 +35,12 @@ or evidence of a completed corpus application. The original hosted failure draft
 available during this work identify Math.idiv operands, not a class/getter operand.
 A real failing class export still needs its exact current input and result captured.
 
-The existing lexical frontier conservatively refuses some class programs,
-including method bodies using `this`, parser no-else If forms whose alternate
-is explicitly null, and certain Boolean/union carrier forms.
-This change retains those refusals. A field on a receiver declared before a closed
-procedure entry is a separate case from a getter that requires a new method-entry
-proof. No source annotation, output tag or guessed callback order supplies that proof.
+The follow-up [class lexical frontier](ARCADE-CLASS-LEXICAL-FRONTIER.md)
+implements actual parser no-else If handling, nonstatic method-owned this syntax
+and correctly typed private Boolean carriers. Focused and hosted qualification
+of that follow-up are pending. Method entry frontiers remain empty; static,
+field and nested receiver contexts still require independent work. No source
+annotation or guessed callback order supplies declaration readiness.
 
 ## Next tasks and acceptance
 
@@ -51,8 +51,7 @@ proof. No source annotation, output tag or guessed callback order supplies that 
 2. Capture exact remaining class failures through the current export observation
    channels. Bind input bytes, source/build identity and result; unavailable capture
    remains unavailable. Do not infer the failed graph from an earlier saved file.
-3. Scope class-method declaration readiness separately before changing
-   `lexical-declaration-readiness.js`: recognize a genuine method-owned `this`,
+3. Qualify the scoped class lexical frontier and preserve its remaining boundaries: recognize a genuine method-owned `this`,
    retain global/foreign reflection refusals, constructor reentry, early virtual
    calls, all entries and arguments. Prove receiver declaration completion before
    any captured read. Audit the parser/private-view Boolean representation at that

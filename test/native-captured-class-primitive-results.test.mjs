@@ -55,8 +55,8 @@ test('constructor aliases and actual startup entry retain receiver declaration r
     const canonical=eof.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='__bwBinaryAdd');
     assert.ok(canonical);const branches=canonical.body.filter(node=>node.type==='If');assert.equal(branches.length,2);
     for(const branch of branches){assert.equal(Object.hasOwn(branch,'alternate'),true);assert.equal(branch.alternate,null);}
-    assert.equal(graph.isCapturedLexicalDeclarationReadyAt(receiver),false,
-        'raw whole-program frontier rejects the canonical helper null-else shape; the consumer removes only this proved helper before its graph');
+    assert.equal(graph.isCapturedLexicalDeclarationReadyAt(receiver),true,
+        'raw whole-program frontier admits the genuine canonical helper null-else shape without initializing its captured receiver');
     const frontier=parse('class Counter {value=3};function start(){counter=new Counter();read()}function read(){return counter.value+1}let counter:any;start();');
     const frontierReceiver=member(frontier).object,frontierGraph=analyseSourceValueProducers(frontier,graphOptions);
     assert.equal(frontierGraph.isInitializedAt(frontierReceiver),false);
@@ -124,14 +124,14 @@ test('foreign getter effects escaped receivers methods callbacks and prototype s
     }
     refuse(program('let values=[1];class Counter {value=3;get result(){foreign();return 3}}let counter=new Counter();function read(){return __bwBinaryAdd(values,counter.result)}read();'));
     refuse(program('class Counter {value=3;constructor(){return {} as any}}let counter=new Counter();function read(){return __bwBinaryAdd(counter.value,1)}read();'));
-    // Existing issuer semantics can prove this-based results, while the
-    // unchanged declaration frontier intentionally cannot qualify their whole
-    // source. Preserve that named limit rather than bypassing its guard.
+    // Genuine this-based getter and method ownership now participates in
+    // the declaration frontier; the same existing issuer facts and programs
+    // must reach full consumer admission without relaxing surrounding effects.
     for(const expression of ['counter.value','counter.sample()']){
         const source=box+';let counter=new Box(3);function read(){return __bwBinaryAdd('+expression+',1)}read();';
         const view=nativeClassScalarView(parse(box+';let counter=new Box(3);let observed='+expression+';'),profile);
         assert.equal(has(view,carrier(view,expression.includes('sample')?'sample':'value')),true,'issuer alone still knows its exact primitive normal result');
-        refuse(program(source));
+        accept(program(source));
     }
     refuse(program('class Base {constructor(){this.sample()}sample(){return 1}}class Counter extends Base {value:any={};sample(){return this.value}}let counter=new Counter();function read(){return __bwBinaryAdd(counter.sample(),1)}read();'));
 });

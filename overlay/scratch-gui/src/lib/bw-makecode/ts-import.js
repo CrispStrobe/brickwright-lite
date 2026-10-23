@@ -713,6 +713,7 @@ class Parser {
                 const returnType = this.lastType;
                 const body = this.parseBlock();
                 if (member === 'constructor') {
+                    if (isStatic) node.unsupported.push('static constructor-named methods');
                     if (typeParameters.length) node.unsupported.push('generic class constructors');
                     // Parameter properties initialize instance fields before the constructor body.
                     // Retain their modifiers/types for later lowering and explicit diagnostics.
@@ -722,7 +723,7 @@ class Parser {
                         type: 'Assignment', op: '=', left: {type: 'Member', object: {type: 'Identifier', name: 'this'}, name},
                         right: {type: 'Identifier', name}
                     }}));
-                    node.ctor = {...(this.retainClassHeritage?{originalBody:body}:{}),params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, parameterProperties: properties,
+                    node.ctor = {...(this.retainClassHeritage?{originalBody:body}:{}),isStatic,params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, parameterProperties: properties,
                         body: [...this.defaultStatements(params), ...assignments, ...body]};
                 }
                 else {

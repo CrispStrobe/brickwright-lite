@@ -1105,3 +1105,13 @@ with unchanged owner/VM/revision and byte/schema checks. Constructor freshness
 is not assumed. The existing browser assertion remains a gate; unavailable
 capture does not identify the Array producer/writer failure. Diagnose only a
 complete current input/result bound to the actual tested build.
+
+## Class parser and lexical frontier continuation
+
+[Class lexical declaration readiness](ARCADE-CLASS-LEXICAL-FRONTIER.md) records
+the no-else If, genuine nonstatic this-context and Boolean carrier changes,
+with source/hosted qualification pending. It scopes remaining method-entry,
+nested/field receiver, keyword-accessor grammar, Code/Blocks/pseudocode
+authoring, graphics/reference-field and export/reopen acceptance separately.
+Method entry seeds remain empty; no initialized input or Array producer is
+granted. Do not infer application completion from source acceptance.

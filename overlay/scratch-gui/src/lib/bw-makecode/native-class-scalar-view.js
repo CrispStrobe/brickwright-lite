@@ -775,8 +775,8 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         });
     };
     const ownCarrier=node=>{watchCarrier(node);return node;};
-    const literal=type=>ownCarrier({type,...(type==='Number'?{value:'0'}:type==='String'?{value:'""'}:type==='Boolean'?{value:'false'}:{})});
-    const alternatives=types=>types.length===1?literal(types[0]):ownCarrier({type:'Conditional',test:ownCarrier({type:'Boolean',value:'false'}),consequent:literal(types[0]),alternate:alternatives(types.slice(1))});
+    const literal=type=>ownCarrier({type,...(type==='Number'?{value:'0'}:type==='String'?{value:'""'}:type==='Boolean'?{value:false}:{})});
+    const alternatives=types=>types.length===1?literal(types[0]):ownCarrier({type:'Conditional',test:ownCarrier({type:'Boolean',value:false}),consequent:literal(types[0]),alternate:alternatives(types.slice(1))});
     const rewrite=node=>{
         if(!node||typeof node!=='object')return node;
         if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
