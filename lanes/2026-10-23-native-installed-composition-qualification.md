@@ -41,3 +41,19 @@ Fresh installed observations, not source mocks or earlier packages, determine
 acceptance. Do not repeat an unchanged failed original or claim generic failure
 as proof of a specific refusal. Exact-head hosted checks and installed acceptance
 must both pass before the draft can normally merge at its matched head.
+
+Producer implementation: the separate workflow validates a complete reviewed
+request, admits the official same-consumer frontend and freezes every native
+source file before hosted compilation. It exports an executable and complete
+input receipt; private runtime assembly and installed acceptance remain separate.
+The associated workflow census declaration and execution pointer are necessary
+derived evidence for this new producer. Existing workflow observations remain
+unchanged; the introduction does not assert a completed run before one exists.
+The introducing source PR must pass its actual executable job before landing.
+
+Local evidence: 22 admission controls and 46 focused source/workflow checks pass.
+Removing consumer-head checking, archive digest checking or the closed compiler
+environment vocabulary makes its negative control fail by assertion. The actual
+candidate artifact was admitted: 7,920 frontend files and 182 native source files;
+its CI checkout and consumer have identical tracked trees. Actual hosted native
+compilation, private resource assembly and installed acceptance are still pending.

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-22T23:42:03.756Z",
+  "generatedAt": "2026-10-23T06:42:45.408Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1948,6 +1948,7 @@
     "i8086-execution.yml",
     "makecode-arcade-bases.yml",
     "mobile.yml",
+    "native-installed-qualification.yml",
     "nightly-corpus-differential.yml",
     "pascal-ack-image.yml",
     "production-sw-probe.yml",
@@ -7355,11 +7356,37 @@
         }
       },
       "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
+    },
+    "native-installed-qualification.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Exercise source, artifact and resource refusal controls",
+        "Check out the qualification producer",
+        "Validate the complete reviewed build request",
+        "Check out the exact reviewed consumer",
+        "Admit official frontend and freeze native source",
+        "Install native build dependencies",
+        "Compile the resource-bound native executable",
+        "Retain executable and complete build-input receipt"
+      ],
+      "inFileInNoRun": [
+        "Exercise source, artifact and resource refusal controls",
+        "Check out the qualification producer",
+        "Validate the complete reviewed build request",
+        "Check out the exact reviewed consumer",
+        "Admit official frontend and freeze native source",
+        "Install native build dependencies",
+        "Compile the resource-bound native executable",
+        "Retain executable and complete build-input receipt"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "robot-lab-own-firmware.yml",
-    "at": "2026-10-22T23:42:03.756Z",
-    "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
+    "workflow": "native-installed-qualification.yml",
+    "at": "2026-10-23T06:42:45.408Z",
+    "sourceSha": "working-tree"
   }
 }
