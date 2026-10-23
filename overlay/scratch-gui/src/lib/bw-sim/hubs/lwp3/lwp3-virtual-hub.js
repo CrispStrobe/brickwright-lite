@@ -93,6 +93,8 @@ export class Lwp3VirtualHub {
         this.plugged = false;
         // ---- protocol, main thread only ----
         this._sink = null;
+        this._buttonPressed = false;
+        this._buttonSubscribed = false;
         /** LWP3 port id → {mode, delta, notify, last} */
         this._formats = new Map();
         /** messages waiting for publish(): feedback of commands that completed during steps */
@@ -225,12 +227,13 @@ export class Lwp3VirtualHub {
     }
 
     exportState () {
-        return {timeMs: this.timeMs,
+        return {timeMs: this.timeMs, buttonPressed: this._buttonPressed,
             motors: [...this.motors].map(([port, st]) => [port, {...st, ctl: {...st.ctl}, buffered: st.buffered && structuredClone(st.buffered)}])};
     }
 
     importState (state) {
         this.timeMs = state.timeMs;
+        this._buttonPressed = state.buttonPressed === true;
         for (const [port, st] of state.motors) this.motors.set(port, {...st, ctl: {...st.ctl}, buffered: st.buffered && structuredClone(st.buffered)});
     }
 
@@ -307,8 +310,26 @@ export class Lwp3VirtualHub {
 
     /** The GATT peripheral's notification path; null on disconnect. */
     setSink (sink) {
+        const owner = {};
+        this._sinkOwner = owner;
         this._sink = typeof sink === 'function' ? sink : null;
-        if (!this._sink) this._formats.clear();
+        if (!this._sink) {
+            this._formats.clear();
+            this._buttonSubscribed = false;
+        }
+        const release = () => { if (this._sinkOwner === owner) this.setSink(null); };
+        release.isCurrent = () => this._sinkOwner === owner && this._sink !== null;
+        return release;
+    }
+
+    readButton (index) { return index === 0 ? {pressed: this._buttonPressed} : null; }
+
+    pressButton (index, down) {
+        if (index !== 0 || typeof down !== 'boolean') return false;
+        if (this._buttonPressed === down) return true;
+        this._buttonPressed = down;
+        if (this._buttonSubscribed) this._send(propertyUpdate(PROP.BUTTON, [down ? 1 : 0]));
+        return true;
     }
 
     _send (bytes) {
@@ -349,6 +370,10 @@ export class Lwp3VirtualHub {
     }
 
     _property ([property, op, ...data]) {
+        if (property === PROP.BUTTON) {
+            if (op === PROP_OP.ENABLE_UPDATES) this._buttonSubscribed = true;
+            else if (op === PROP_OP.DISABLE_UPDATES) this._buttonSubscribed = false;
+        }
         if (op === PROP_OP.SET || op === PROP_OP.RESET || op === PROP_OP.DISABLE_UPDATES) return;
         if (op !== PROP_OP.REQUEST_UPDATE && op !== PROP_OP.ENABLE_UPDATES) {
             this._send(errorMessage(MSG.HUB_PROPERTIES, ERROR_CODE.INVALID_USE));
@@ -357,7 +382,7 @@ export class Lwp3VirtualHub {
         const ascii = s => [...s].map(c => c.charCodeAt(0) & 0x7f);
         const payload = {
             [PROP.ADVERTISING_NAME]: () => ascii(this.type.advertisedName),
-            [PROP.BUTTON]: () => [0x00],
+            [PROP.BUTTON]: () => [this._buttonPressed ? 1 : 0],
             [PROP.FW_VERSION]: () => versionNumber(...this.firmwareVersion),
             [PROP.HW_VERSION]: () => versionNumber(0, 4, 0, 0),
             [PROP.RSSI]: () => [int8(-40) & 0xff],

@@ -1,0 +1,118 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Connect through the loaded extension's own block primitives. Requests for the
+// same provider are serialized, including cancellation cleanup, so a delayed
+// old connect cannot disconnect a newer Lab connection.
+const queues = new WeakMap();
+const abort = () => new DOMException('The Robot Lab connection request was replaced.', 'AbortError');
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+const planFor = (id, route) => {
+    if (id === 'ev3comprehensive' && ['serial', 'bridge'].includes(route)) return {
+        configure: [['setMode', {MODE: route}]],
+        connect: ['connect', {PARAM: route === 'bridge' ? 'ws://localhost:8080' : ''}], close: 'disconnect', status: 'isConnected'
+    };
+    if (id === 'legonxt' && ['serial', 'bridge'].includes(route)) return {
+        configure: [['setConnectionMode', {MODE: route === 'serial' ? 'direct' : 'bridge'}]],
+        connect: ['connect', {URL: route === 'bridge' ? 'ws://localhost:8765' : ''}], close: 'disconnect', status: 'isConnected'
+    };
+    if (id === 'spikeprime' && route === 'bridge') return {
+        configure: [], connect: ['connectHubAt', {URL: 'localhost:8081'}], close: 'disconnectHub', status: 'isConnected'
+    };
+    if (['legopoweredup', 'legoboostunified'].includes(id) && route === 'http') return {
+        configure: [['setConnectionType', {TYPE: 'bridge'}], ['setBridgeURL', {URL: 'http://localhost:8080'}]],
+        connect: ['connect', {}], close: 'disconnect', status: 'isConnected'
+    };
+    if (id === 'scratchtoev3' && route === 'http') return {
+        configure: [['setConnectionMode', {MODE: 'http', IP: '127.0.0.1', PORT: 8080}]],
+        connect: ['testConnection', {}], close: 'disableStreaming', status: null
+    };
+    throw new TypeError(`The ${id} extension does not support the selected Lab connection.`);
+};
+
+export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent = () => true,
+    host = globalThis, wait = sleep, timeoutMs = 15000} = {}) => {
+    const plan = planFor(extensionId, route);
+    const runtime = vm?.runtime;
+    if (!runtime?._primitives) throw new TypeError('The program runtime is unavailable.');
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 30000) throw new TypeError('Invalid connection deadline.');
+    const primitives = new Map();
+    for (const opcode of [plan.close, plan.connect[0], ...plan.configure.map(([op]) => op), plan.status].filter(Boolean)) {
+        const fn = runtime._primitives[`${extensionId}_${opcode}`];
+        if (typeof fn !== 'function') throw new Error(`The ${extensionId} extension is not loaded (${opcode}).`);
+        primitives.set(opcode, fn);
+    }
+    let byId = queues.get(runtime);
+    if (!byId) { byId = new Map(); queues.set(runtime, byId); }
+    if (!byId.has(extensionId)) byId.set(extensionId, {tail: Promise.resolve(), ticket: null, providerOwner: null});
+    const queue = byId.get(extensionId);
+    const enqueue = work => {
+        const result = queue.tail.then(work);
+        // Only the internal queue settles errors here. The caller's ready and
+        // cancel promises retain their rejection for visible error handling.
+        queue.tail = result.then(() => undefined, () => undefined);
+        return result;
+    };
+    const previousCleanup = queue.ticket ? queue.ticket.cancel() : Promise.resolve();
+    const previousResult = previousCleanup.then(() => null, error => ({error}));
+    const ticket = {active: true, cancel: null};
+    queue.ticket = ticket;
+    const current = () => ticket.active && queue.ticket === ticket && isCurrent() &&
+        [...primitives].every(([opcode, fn]) => runtime._primitives[`${extensionId}_${opcode}`] === fn);
+    const invoke = async (opcode, args = {}) => {
+        if (!current()) throw abort();
+        const result = await primitives.get(opcode)(args, {runtime});
+        if (!current()) throw abort();
+        return result;
+    };
+    const close = async () => {
+        if (queue.providerOwner !== ticket) return;
+        // Clear ownership first, including when the producer's close throws.
+        queue.providerOwner = null;
+        await primitives.get(plan.close)({}, {runtime});
+    };
+    let closing = null;
+    ticket.cancel = () => {
+        ticket.active = false;
+        if (queue.ticket === ticket) queue.ticket = null;
+        if (!closing) closing = enqueue(close);
+        return closing;
+    };
+    const ready = enqueue(async () => {
+        const previous = await previousResult;
+        if (previous) throw previous.error;
+        if (!current()) throw abort();
+        queue.providerOwner = ticket;
+        try {
+            await invoke(plan.close);
+            for (const [opcode, args] of plan.configure) await invoke(opcode, args);
+            await invoke(...plan.connect);
+            if (plan.status) {
+                let connected = false;
+                let elapsed = 0;
+                while (elapsed <= timeoutMs) {
+                    if (await invoke(plan.status)) { connected = true; break; }
+                    if (elapsed >= timeoutMs) break;
+                    const step = Math.min(50, timeoutMs - elapsed);
+                    await wait(step);
+                    elapsed += step;
+                    if (!current()) throw abort();
+                }
+                if (!connected) throw new Error(`No connection from ${extensionId} to its Lab brick.`);
+            } else {
+                // ev3dev's test block returns translated prose, not a Boolean.
+                // Check the owned endpoint's actual protocol response instead
+                // of treating any nonempty error string as success.
+                const response = await host.fetch('http://127.0.0.1:8080/');
+                const body = await response.json();
+                if (!current()) throw abort();
+                if (!response.ok || body.status !== 'ev3_bridge_active') throw new Error('The Lab EV3 HTTP connection failed.');
+            }
+            return {extensionId, route};
+        } catch (error) {
+            try { await close(); }
+            catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Lab connection and cleanup failed'); }
+            throw error;
+        }
+    });
+    return {ready, cancel: ticket.cancel};
+};

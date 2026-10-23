@@ -48,6 +48,12 @@ const radioQueue = () => {
     };
 };
 
+const requireConnection = peripheral => {
+    if (!peripheral.connected || !peripheral._releaseSink?.isCurrent()) {
+        throw new DOMException('The virtual radio connection is closed or has been replaced.', 'NetworkError');
+    }
+};
+
 /**
  * The LWP3 hub's GATT peripheral (LWP3 §3: one service 0x1623, one characteristic 0x1624, every
  * message both ways), advertising LEGO's manufacturer data (§2: company 0x0397, then button
@@ -72,32 +78,35 @@ export class Lwp3Peripheral {
 
     disconnect () {
         this.connected = false;
-        this.radio.clear();
-        this.hub.setSink(null);
+        this.setNotificationSink(null);
     }
 
     setNotificationSink (fn) {
-        if (!fn) {
-            this.hub.setSink(null);
-            return;
-        }
-        this.hub.setSink(bytes => {
+        this.radio.clear();
+        const release = this._releaseSink;
+        this._releaseSink = null;
+        if (release) release();
+        const owner = this._sinkOwner = {};
+        if (!fn) return;
+        this._releaseSink = this.hub.setSink(bytes => {
             const copy = Uint8Array.from(bytes);
-            this.radio.push(() => { if (this.connected) fn(LWP3_CHARACTERISTIC, copy); });
+            this.radio.push(() => { if (this.connected && this._sinkOwner === owner) fn(LWP3_CHARACTERISTIC, copy); });
         });
     }
 
     onStartNotifications (uuid) {
+        requireConnection(this);
         if (uuid === LWP3_CHARACTERISTIC) this.hub.announce();
     }
 
     onWrite (uuid, bytes) {
+        requireConnection(this);
         if (uuid !== LWP3_CHARACTERISTIC) throw new Error(`no characteristic ${uuid} on the LWP3 hub`);
         this.hub.receive(Uint8Array.from(bytes));
     }
 
     dispose () {
-        if (this.connected) this.disconnect();
+        this.disconnect();
     }
 }
 
@@ -119,35 +128,39 @@ export class Wedo2Peripheral {
 
     disconnect () {
         this.connected = false;
-        this.radio.clear();
-        this.hub.setSink(null);
+        this.setNotificationSink(null);
     }
 
     setNotificationSink (fn) {
-        if (!fn) {
-            this.hub.setSink(null);
-            return;
-        }
-        this.hub.setSink((uuid, bytes) => {
+        this.radio.clear();
+        const release = this._releaseSink;
+        this._releaseSink = null;
+        if (release) release();
+        const owner = this._sinkOwner = {};
+        if (!fn) return;
+        this._releaseSink = this.hub.setSink((uuid, bytes) => {
             const copy = Uint8Array.from(bytes);
-            this.radio.push(() => { if (this.connected) fn(uuid, copy); });
+            this.radio.push(() => { if (this.connected && this._sinkOwner === owner) fn(uuid, copy); });
         });
     }
 
     onStartNotifications (uuid) {
+        requireConnection(this);
         this.hub.startNotifications(uuid);
     }
 
     read (uuid) {
+        requireConnection(this);
         return this.hub.read(uuid);
     }
 
     onWrite (uuid, bytes) {
+        requireConnection(this);
         this.hub.onWrite(uuid, Uint8Array.from(bytes));
     }
 
     dispose () {
-        if (this.connected) this.disconnect();
+        this.disconnect();
     }
 }
 

@@ -53,6 +53,7 @@
       "test/bw-sim-arm-lift.test.mjs",
       "test/bw-sim-belt.test.mjs",
       "test/bw-sim-bt-hubs-program.test.mjs",
+      "test/bw-sim-brick-buttons-guest.test.mjs",
       "test/bw-sim-chain.test.mjs",
       "test/bw-sim-collisions.test.mjs",
       "test/bw-sim-colour-explorer-program.test.mjs",
