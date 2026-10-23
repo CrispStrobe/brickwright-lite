@@ -54,10 +54,10 @@ These exact adaptations are checked against frozen supplier bytes.
 ## Qualification boundary
 
 Native mechanics, construction, production-browser operation and physical
-hardware are separate evidence. The source is still a candidate until the final
-production GUI and exact-head hosted checks pass. Earlier supplier/browser
-receipts do not qualify a changed model or rebuilt application. No new native
-release or TestFlight delivery is implied.
+hardware are separate evidence. Local qualification of the final production
+candidate is complete; exact-head hosted checks and normal matched-head landing
+remain required. No physical hardware, new native release or TestFlight delivery
+is implied.
 
 The subsequent user request adds Balance Engine and Root Bridge. Their intake
 is tracked in the same lane; neither inherits the earlier models' qualification.
@@ -84,6 +84,16 @@ the inputs and pause. The actual passive output satisfies h = sqrt(a*b) within
 0.025 mm in the ordinary native run; this is simulation evidence, not hardware
 calibration. Both models have bilingual lessons and automatically loaded code.
 
-Library census is now 81 assemblies and 91 example choices. Actual production
-browser, connected instructions, export and hosted qualification remain pending
-until the candidate's corresponding checks finish.
+Library census is now 81 assemblies and 91 example choices. All eight existing
+whole-library construction checks pass. Chromium and WebKit pass every intake
+example's native worker program, all motor controls, EN/DE lessons and connected
+instructions/BOM. Integral, Root Bridge and Balance Engine also complete their
+saved programs after raw LDR/MPD imports and real GUI save/fresh-context project
+reopening. Resonance passes all three presets, real-band and printable-manual
+checks in both engines. The normal production build, native mechanism controls,
+metadata/lesson regeneration, dependency-scope and mirror checks pass.
+
+Both LDR and MPD exports reproduce every assembly's official-writer-precision
+placements and saved rotor angles. Programs, bilingual lessons, original
+component notices and required owned/posed sidecars accompany the export.
+Hosted qualification and normal source landing remain pending.

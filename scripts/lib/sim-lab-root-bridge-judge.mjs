@@ -12,6 +12,7 @@ export function measureRootBridge(r){
  const o=observeAddon(r,'foundation_0'),origin=o.initial('foundation_0',[10,-404,-10]);
  const X=unit(sub(o.initial('foundation_0',[10,-404,-9]),origin));
  const Z=unit(sub(o.initial('foundation_0',[9,-404,-10]),origin));
+ const initialFrame=r.track[0].bodies[o.base.id].position;
  const project=p=>[dot(sub(p,origin),X)*1000,dot(sub(p,origin),Z)*1000];
  return r.track.map(f=>{
   const A=project(o.point(f,'a_marker',[0,0,20])),B=project(o.point(f,'b_marker',[0,0,20])),C=project(o.point(f,'height_marker'));
@@ -22,6 +23,7 @@ export function measureRootBridge(r){
   });
   const stopOverrun=Math.max(0,...r.mechanism.joints.filter(j=>j.type==='slider'&&j.limits).flatMap(j=>[j.limits[0]-f.joints[j.id].position,f.joints[j.id].position-j.limits[1]]))*1000;
   return {t:f.t,variables:f.extra?.variables||f.extra||{},a,b,h,error:Math.abs(h-Math.sqrt(a*b)),gap:o.gap(f),axis:o.axisGap(f),stopOverrun,
+   tilt:o.tilt(f),frameTranslation:norm(sub(f.bodies[o.base.id].position,initialFrame))*1000,
    center:Math.max(Math.abs(C[0]),Math.abs(A[1]),Math.abs(B[1])),
    guideError:Math.max(...guides.map(g=>g.offset)),
    orthogonalError:Math.asin(Math.min(1,Math.abs(dot(guides[0].v,guides[1].v))/(norm(guides[0].v)*norm(guides[1].v))))*180/Math.PI};
@@ -43,6 +45,7 @@ export function judgeRootBridge(r){
  assert.ok(max('orthogonalError')<=1,`Physical right-angle error ${max('orthogonalError')} degrees`);
  assert.ok(max('gap')<=1&&max('axis')<=1,'Physical bearings remain closed and aligned');
  assert.ok(max('stopOverrun')<=.2,'Physical sliders respect the source half-LDU stop tolerance');
+ assert.ok(max('tilt')<=.1&&max('frameTranslation')<=1,'Stationary foundation stays upright and within 1 mm');
  const targets=[[24,24],[24,32],[24,40],[32,40],[40,40],[40,32],[40,24],[32,24],[32,32],[25.6,40],[40,25.6],[32,32],[24,40],[40,24],[32,32]];
  const cells=targets.map(([a,b],i)=>{
   const all=rows.filter(s=>Number(s.variables.phase)===i+1),end=all.at(-1)?.t;
@@ -53,5 +56,5 @@ export function judgeRootBridge(r){
  assert.ok(span(cells.map(s=>s.h))>=12,'The passive output covers the source working range');
  const last=rows.at(-1);assert.equal(Number(last.variables.completed),1);assert.equal(Number(last.variables.failed),0);
  assert.ok(Math.abs(last.a-32)<=.8&&Math.abs(last.b-32)<=.8,'Both inputs return to center');
- return {heightErrorMm:max('error'),guideErrorMm:max('guideError'),rightAngleErrorDeg:max('orthogonalError'),cells,finishedMs:r.finishedAt};
+ return {heightErrorMm:max('error'),guideErrorMm:max('guideError'),rightAngleErrorDeg:max('orthogonalError'),baseTiltDeg:max('tilt'),baseTranslationMm:max('frameTranslation'),cells,finishedMs:r.finishedAt};
 }

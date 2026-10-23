@@ -1,6 +1,6 @@
 # Review and finish the supplied mechanics intake
 
-CLAIMED — owner: Robot Lab model delivery; isolated implementation branch
+DONE — implementation and local qualification; owner: Robot Lab model delivery; isolated implementation branch
 `lane/integral-library-20261022`, base `f925c08c9`. The user explicitly requests
 review of PR #1235, reuse of valid work and correction of incomplete deliveries.
 Preserve its original branch, commits and worktree; compose reviewed changes in
@@ -34,3 +34,30 @@ compiler; no firmware, scheduler, package pin, signing or release-tag changes.
 Any discovered owning-upstream requirement needs its own normal supplier lane.
 New source must pass its affected existing checks and exact-head hosted CI before
 normal matched-head landing. Preserve all original failures and existing owners.
+
+
+The final candidate normally preserves and composes the original #1235 history,
+removes both Integral construction exemptions and repairs the 155-part fork.
+Root Bridge's working 447-part revision has shorter right rails, clear supports,
+unique occupied bores and individual studded feet. No protected core/filter/
+compiler changes or new import-rescue parameter were needed. Balance Engine is
+292 rigid placements plus two physical bands. All original failures are retained.
+
+All eight existing whole-library construction checks pass with every shipped
+assembly included. Native ordinary/strict programs, causal/frozen-output controls,
+part-deriver reproduction and relevant existing motor/arm/lift tests pass. The
+normal production build passes. Chromium and WebKit pass all intake examples,
+actual worker programs, motor controls, EN/DE lessons, connected instructions and
+BOMs; Integral, Root Bridge and Balance Engine also pass raw LDR/MPD imports and
+complete native programs after actual GUI project save/fresh-context reopen.
+Resonance passes its three presets, native bands, printable instructions and
+persistence in both engines. Root additionally rejects a moving foundation even
+if relative linkage geometry still looks correct.
+
+The verified export contains 81 assemblies in both formats and programs/lessons
+for 91 choices. Counterturn and the already fixed Bit Keeper are deduplicated;
+Offset Orbit replaces its earlier revision. All owner-supplied arrangements are
+CrispStrobe/BSD-3-Clause, with original referenced-part notices retained. Local
+qualification is complete; exact-head hosted CI, official artifact admission
+and normal matched-head merge remain the landing requirements. No physical
+hardware, release tag or new TestFlight build is claimed here.

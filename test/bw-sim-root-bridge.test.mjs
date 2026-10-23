@@ -37,4 +37,7 @@ for(const autoPorts of [undefined,false])test(`Root Bridge ${autoPorts===false?'
  const frozen=structuredClone(r),output=frozen.mechanism.bodies.find(b=>b.parts.includes('height_marker'));
  for(const frame of frozen.track)frame.bodies[output.id]=structuredClone(frozen.track[0].bodies[output.id]);
  assert.throws(()=>judgeRootBridge(frozen),'Frozen passive output must fail the same geometric test');
+ const translated=structuredClone(r);
+ for(const pose of Object.values(translated.track.at(-1).bodies))pose.position[0]+=.01;
+ assert.throws(()=>judgeRootBridge(translated),/Stationary foundation/,'Correct relative geometry cannot excuse a machine moving across the floor');
 });

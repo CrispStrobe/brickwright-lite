@@ -1,7 +1,7 @@
 # Integral friction-wheel integrator
 
 DONE — source candidate; owner: Robot Lab model delivery; isolated branch
-`lane/integral-model-20261022`, base `b056a20e6`.
+`lane/integral-library-20261022`, base `b056a20e6`.
 
 Integrate the supplied original BSD-3-Clause Integral model, two-motor program,
 English/German lessons, source attribution and model export. Own its new assets,
@@ -47,3 +47,13 @@ ordinary/strict native response and the frozen/zero-friction controls also pass.
 The bridge-only prototype stalled and is rejected. Earlier 154-part browser
 proofs do not qualify the revised assembly; production browser requalification
 is required. PR #1235 review and further inputs are claimed separately.
+
+
+Final 155-part production qualification now passes in Chromium and WebKit:
+automatic native Blocks/title, measured four-station passive output, both manual
+motors, EN/DE lessons, all 72 connected instruction pages/155-piece BOM, raw
+LDR/MPD imports and the complete saved program after a fresh-context GUI project
+reopen. Endpoint residual remains about 20 degrees; this demonstrates contact
+integration rather than calibrated angular accuracy. The final whole-library
+eight-check construction run also passes without exemptions. Hosted CI and
+normal landing remain separate from this local evidence.
