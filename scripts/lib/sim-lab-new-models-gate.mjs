@@ -18,9 +18,14 @@ import {judgeSky} from './sim-lab-sky-judge.mjs';
 import {judgeCusp} from './sim-lab-cusp-judge.mjs';
 import {judgeProduct,judgeGimbal} from './sim-lab-product-gimbal-judge.mjs';
 
+import {judgeWatt} from './sim-lab-watt-judge.mjs';
+import {judgeTwinTempo} from './sim-lab-twin-tempo-judge.mjs';
+
 const DEG = 180 / Math.PI;
 
 const SPEC = Object.freeze({
+    'watt-line': {simulatedMs: 22000},
+    'twin-tempo': {simulatedMs: 35000},
     'root-bridge': {simulatedMs:125000},
     'balance-engine': {simulatedMs: 80000},
     'cusp-lab': {simulatedMs: 80000, motors: 1, minimumRange: {A: 359}, marker: 'marker_r20', span: {}},
@@ -54,6 +59,8 @@ const quaternionAngle = (a, b) => {
 const bodyWithPart = (mechanism, part) => mechanism.bodies.find(body => (body.parts || []).includes(part));
 
 export const judgeNewModel = (id, record) => {
+    if(id==='watt-line')return judgeWatt(record).metrics;
+    if(id==='twin-tempo')return judgeTwinTempo(record);
     if(id==='root-bridge')return judgeRootBridge(record);
     if(id==='balance-engine')return judgeBalance(record);
     const spec = SPEC[id];
@@ -127,7 +134,7 @@ export async function newModelsInteractions(page, opts) {
         await page.getByTestId('bw-sim-lab-instructions').click();
         await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
         const plan=await page.evaluate(()=>window.__bwSimLabInstructions.plan);
-        const count={'root-bridge':447,'balance-engine':292,'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
+        const count={'watt-line':148,'twin-tempo':81,'root-bridge':447,'balance-engine':292,'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
         const bands=id==='balance-engine'?2:0;
         const placed=plan.steps.flatMap(s=>s.parts);
         assert.equal(plan.steps.flatMap(s=>s.belts||[]).length,bands);
@@ -139,7 +146,7 @@ export async function newModelsInteractions(page, opts) {
         await page.getByTestId('bw-sim-instructions').screenshot({path:resolve(opts.shotsDir,id+'-bom.png')});
         await page.keyboard.press('Escape');
         console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count+bands}-piece BOM`);
-        if(['root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,opts,id,judgeNewModel);
+        if(['watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,opts,id,judgeNewModel);
     }
     writeFileSync(resolve(opts.shotsDir, 'new-model-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
     return results;

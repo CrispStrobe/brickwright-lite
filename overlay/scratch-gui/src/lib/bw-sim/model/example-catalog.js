@@ -223,7 +223,20 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Eine Kurbel führt den Koppelpunkt eines Hoeken-Viergelenks durch einen fast geraden Arbeitshub und einen gekrümmten Rücklauf."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Hoeken linkage",
+            "de": "Hoeken-Getriebe"
+        },
+        "keywords": [
+            "Hoeken linkage",
+            "Hoeken-Getriebe",
+            "Hoeken",
+            "Hoecken",
+            "Höken",
+            "four-bar linkage",
+            "Viergelenk"
+        ]
     },
     "twinpoint.ldr": {
         "pieces": 117,
@@ -280,6 +293,62 @@ export const MODEL_LESSONS = Object.freeze({
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
+    },
+    "watt-line.ldr": {
+        "pieces": 148,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Watt’s four-bar linkage guides a passive coupler midpoint along an approximately straight path. Compare the measured sideways error with the exact circle-intersection geometry.",
+            "de": "Watts Viergelenk führt den passiven Koppelmittelpunkt auf einer annähernd geraden Bahn. Vergleiche den gemessenen Seitenfehler mit der exakten Kreisschnitt-Geometrie."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Watt linkage",
+            "de": "Watt-Getriebe"
+        },
+        "keywords": [
+            "Watt linkage",
+            "Watt-Getriebe",
+            "Watt",
+            "Watts linkage",
+            "Watt’s linkage",
+            "four-bar linkage",
+            "approximate straight line"
+        ]
+    },
+    "twin-tempo.ldr": {
+        "pieces": 81,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "An 8:24:24 gear train drives equal-radius drums and two independent suspended loads. Measure the 3:1 travel ratio and compare gear direction, cord support and return.",
+            "de": "Ein 8:24:24-Zahnradgetriebe treibt gleich große Trommeln und zwei getrennt aufgehängte Lasten. Miss das Wegverhältnis 3:1 und vergleiche Drehrichtung, Seilkräfte und Rückkehr."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Gear reduction and drum hoist",
+            "de": "Zahnraduntersetzung und Seilwinde"
+        },
+        "keywords": [
+            "Gear reduction and drum hoist",
+            "Zahnraduntersetzung und Seilwinde",
+            "gear ratio",
+            "3:1",
+            "three to one",
+            "idler gear",
+            "Übersetzung",
+            "Seilzug",
+            "Trommelwinde"
+        ]
     },
     "root-bridge.ldr": {
         "pieces": 447,
@@ -489,7 +558,19 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Motor treibt über zwei senkrecht zueinander stehende Schiebeführungen eine parallel versetzte Welle mit gleicher Drehbewegung an. Das schwimmende Kreuz dreht sich einmal, während sein Mittelpunkt pro Eingangsumdrehung zweimal umläuft."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Oldham coupling",
+            "de": "Oldham-Kupplung"
+        },
+        "keywords": [
+            "Oldham coupling",
+            "Oldham-Kupplung",
+            "Oldham",
+            "cross slider coupling",
+            "Kreuzschieberkupplung",
+            "parallel offset shafts"
+        ]
     },
     "circle-splitter.ldr": {
         "pieces": 136,
@@ -573,7 +654,22 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Motor bewegt den passiven Ausgang mit doppeltem Radius und doppelter Bahngeschwindigkeit. Acht Pausen zeigen die Punktgeometrie im Verhältnis 2:1."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit"
+        ]
     },
     "pantograph-doubler.ldr": {
         "pieces": 83,
@@ -587,7 +683,22 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Motor treibt einen passiven Pantografen: Aus einem 32-mm-Eingangskreis wird ein 64-mm-Ausgangskreis. Vergleiche Weg, Geschwindigkeit und Fläche."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit"
+        ]
     },
     "scale-studio.ldr": {
         "pieces": 101,
@@ -601,7 +712,22 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Vierteldrehungs-Pausen zeigen einen passiven 2:1-Pantografen. Vergleiche entsprechende Punkte der 32-mm- und 64-mm-Kreise."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit"
+        ]
     },
     "ripple-relay.ldr": {
         "pieces": 191,
@@ -615,7 +741,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke gleichen die Drehzahlschwankung der Zwischenwelle aus. Vergleiche alle drei Wellen."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Universal / Cardan joints",
+            "de": "Kardan- / Kreuzgelenke"
+        },
+        "keywords": [
+            "Universal / Cardan joints",
+            "Kardan- / Kreuzgelenke",
+            "universal joint",
+            "Cardan",
+            "Hooke joint",
+            "Hooke’s joint",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "double Cardan",
+            "Doppel-Kardan"
+        ]
     },
     "crossglide.ldr": {
         "pieces": 216,
@@ -629,7 +771,19 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Eine Oldham-Kupplung verbindet versetzte Wellen mit gleicher Drehzahl. Ihr Mittelschlitten gleitet in zwei Richtungen und umläuft zweimal pro Wellendrehung."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Oldham coupling",
+            "de": "Oldham-Kupplung"
+        },
+        "keywords": [
+            "Oldham coupling",
+            "Oldham-Kupplung",
+            "Oldham",
+            "cross slider coupling",
+            "Kreuzschieberkupplung",
+            "parallel offset shafts"
+        ]
     },
     "scale-echo.ldr": {
         "pieces": 148,
@@ -643,7 +797,22 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Zwei Antriebe und ein Parallelogramm kopieren eine Markerbahn mechanisch in doppelter Größe. Vergleiche beide Bahnen und Verschiebungsvektoren."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit"
+        ]
     },
     "turnwise.ldr": {
         "pieces": 127,
@@ -699,7 +868,18 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Zwei rechtwinklige Gelenkketten führen eine Plattform senkrecht. Vergleiche die Höhe mit dem Sinusgesetz und dem 24:1-Schneckenantrieb."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Sarrus linkage",
+            "de": "Sarrus-Getriebe"
+        },
+        "keywords": [
+            "Sarrus linkage",
+            "Sarrus-Getriebe",
+            "Sarrus",
+            "spatial six-bar linkage",
+            "räumliches Sechsgelenk"
+        ]
     },
     "magnetic-chess.ldr": {
         "pieces": 1208,
@@ -741,7 +921,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Gleiche Knickwinkel und richtig ausgerichtete Gabeln gleichen die Drehzahlschwankung zweier Kardangelenke aus. Vergleiche Zwischenwelle und Abtrieb."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Universal / Cardan joints",
+            "de": "Kardan- / Kreuzgelenke"
+        },
+        "keywords": [
+            "Universal / Cardan joints",
+            "Kardan- / Kreuzgelenke",
+            "universal joint",
+            "Cardan",
+            "Hooke joint",
+            "Hooke’s joint",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "double Cardan",
+            "Doppel-Kardan"
+        ]
     },
     "phase-bridge-misphased.ldr": {
         "pieces": 144,
@@ -755,7 +951,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Ausrichtungsfehler von einer Vierteldrehung verstärkt die Drehzahlschwankung beider Kardangelenke. Vergleiche mit der richtig ausgerichteten Brücke."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Universal / Cardan joints",
+            "de": "Kardan- / Kreuzgelenke"
+        },
+        "keywords": [
+            "Universal / Cardan joints",
+            "Kardan- / Kreuzgelenke",
+            "universal joint",
+            "Cardan",
+            "Hooke joint",
+            "Hooke’s joint",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "double Cardan",
+            "Doppel-Kardan"
+        ]
     },
     "axis-plotter.ldr": {
         "pieces": 256,
@@ -811,7 +1023,20 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Sieben bewegliche Glieder führen den roten Punkt geradlinig durch einen Kurbelbereich von ±60°, ohne Gleitführung."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Peaucellier–Lipkin linkage",
+            "de": "Peaucellier–Lipkin-Inversor"
+        },
+        "keywords": [
+            "Peaucellier–Lipkin linkage",
+            "Peaucellier–Lipkin-Inversor",
+            "Peaucellier",
+            "Lipkin",
+            "inversor",
+            "inversion",
+            "exact straight line"
+        ]
     },
     "pendulum-array.ldr": {
         "pieces": 54,

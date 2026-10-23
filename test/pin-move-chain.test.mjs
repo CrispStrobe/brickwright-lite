@@ -147,7 +147,7 @@ export const roleOf = file => {
     // as run receipts. Executable/model/JSON siblings remain current inputs.
     if (/^test\/fixtures\/model-files\/[^/]+-source\/README\.(txt|md)$/.test(file)) return 'receipt';
     // This imported source archive also records its capture's compiler pin.
-    if (file === 'test/fixtures/model-files/crossglide-source/SOURCES.txt') return 'receipt';
+    if (['test/fixtures/model-files/crossglide-source/SOURCES.txt', 'test/fixtures/model-files/resonance-lab-source/SOURCES.txt', 'test/helpers/resonance/original-inputs.json'].includes(file)) return 'receipt';
     if (/^docs\/.*\.md$/.test(file)) return 'docs-prose';
     // An example's prose cites where its circuit was generated and
     // bench-verified, e.g. "verified in bw-circuit-ui at revision <sha>". That
@@ -544,4 +544,17 @@ test('the captured Crossglide provenance still rejects a never-pinned supplier c
     const findings = judgeFile(file, `Registered compiler revision:\n${neverPin}`, k);
     assert.equal(findings.length, 1);
     assert.match(findings[0].was, /never a pin/);
+});
+
+
+test('captured Resonance source receipts preserve actual old pins but refuse invented supplier commits', () => {
+ const oldPin='7d3f8be7c13091a635d919c1af5c456230eed8fd',neverPin='f'.repeat(40);
+ const k={...known,history:new Map([...known.history,[neverPin,'sb3-creator']])};
+ for(const file of ['test/fixtures/model-files/resonance-lab-source/SOURCES.txt','test/helpers/resonance/original-inputs.json']){
+  assert.equal(roleOf(file),'receipt');assert.ok(previous.has(oldPin));
+  assert.deepEqual(judgeFile(file,readFileSync(path.join(ROOT,file),'utf8'),known),[]);
+  const findings=judgeFile(file,neverPin,k);assert.equal(findings.length,1);assert.match(findings[0].was,/never a pin/);
+ }
+ assert.equal(roleOf('test/helpers/resonance/active.json'),'code');
+ assert.equal(roleOf('test/fixtures/model-files/resonance-lab-source/active.json'),'code');
 });

@@ -2673,3 +2673,10 @@ Simulation parameters do not establish calibrated hardware rubber stiffness.
 Original model and program by Christian Ströbele (CrispStrobe), BSD-3-Clause.
 The repaired rails and supports preserve the input-only geometric-mean mechanism.
 Full license: `overlay/scratch-gui/static/sim-lab/licenses/root-bridge.txt`.
+
+### Watt’s Line and TwinTempo original models
+
+Copyright (c) 2026 Christian Ströbele (CrispStrobe), BSD-3-Clause.
+Models, programs and lessons are shipped with complete notices in
+`static/sim-lab/licenses/watt-line.txt` and `static/sim-lab/licenses/twin-tempo.txt`.
+External LDraw parts retain their existing separate attribution and licences.

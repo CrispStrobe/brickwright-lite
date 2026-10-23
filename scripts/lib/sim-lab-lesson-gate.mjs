@@ -7,12 +7,31 @@ const ready=async(page,id)=>{
  await page.waitForFunction(want=>document.querySelector('[data-testid="bw-sim-lesson"]')?.dataset.lesson===want,id);
  return lesson;
 };
+// Exercise the actual dialog, including classical-name aliases in both locales.
+const mechanismSearch = async gallery => {
+ for (const [query, ids] of [
+  ['Hoeken', ['stride-lab.ldr']], ['Peaucellier Lipkin', ['straight-eight.ldr']],
+  ['Sarrus', ['sarrus-lift.ldr']], ['pantograph', ['amplify.ldr', 'pantograph-doubler.ldr', 'scale-studio.ldr', 'scale-echo.ldr']],
+  ['Oldham', ['offset-orbit.ldr', 'crossglide.ldr']], ['Kardangelenk', ['phase-bridge.ldr', 'phase-bridge-misphased.ldr', 'ripple-relay.ldr']],
+  ['Watt linkage', ['watt-line.ldr']], ['3:1', ['twin-tempo.ldr']]
+ ]) {
+  await gallery.getByRole('searchbox').fill(query);
+  for (const id of ids) {
+   const card=gallery.locator(`[data-model="${id}"]`);
+   await card.waitFor(); assert.ok((await card.getByTestId('bw-sim-example-mechanism').innerText()).length>4);
+  }
+  assert.equal(await gallery.locator('[data-model="line-follower.ldr"]').count(),0);
+ }
+ await gallery.getByRole('searchbox').fill('');
+ console.log('PASS classical mechanism names and aliases in actual Examples dialog');
+};
 export const lessonInteractions=async(page,{openSimLab,shotsDir})=>{
  mkdirSync(shotsDir,{recursive:true});const requests=[];
  page.on('request',r=>{if(r.url().includes('/sim-lab/lessons/'))requests.push(r.url());});
  await openSimLab(page,{program:null});assert.equal(requests.length,0,'lessons stay out of initial loading');
  const before=await page.evaluate(()=>window.__bwSimLab._pane.state.shipped);
  await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');
+ await mechanismSearch(gallery);
  await gallery.getByRole('searchbox').fill('pulse-percussion');
  await gallery.getByRole('button',{name:/^Read lesson:/}).click();await gallery.waitFor({state:'hidden'});
  let lesson=await ready(page,'pulse-percussion');
@@ -60,6 +79,7 @@ export const lessonInteractions=async(page,{openSimLab,shotsDir})=>{
 export const germanLessonInteractions=async(page,{openSimLab,shotsDir})=>{
  await openSimLab(page,{program:null});
  await page.getByTestId('bw-sim-lab-examples').click();const gallery=page.getByTestId('bw-sim-examples');
+ await mechanismSearch(gallery);
  await gallery.getByRole('searchbox').fill('centrifugal-governor');
  await gallery.getByRole('button',{name:/^Lektion lesen:/}).click();await gallery.waitFor({state:'hidden'});
  const lesson=await ready(page,'centrifugal-governor');

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "twin-tempo",
+  "language": "en",
+  "what": "Gear reduction and drum hoist. One motor drives two equal-radius string drums, each carrying its own suspended payload. The fast drum turns with the motor. An 8-tooth driver, a 24-tooth idler and a 24-tooth output gear turn the second drum in the same direction at one third of that speed. Watch the two payloads move different distances during one shared input motion, pause, and return toward their starting heights. An 8:24:24 gear train drives equal-radius drums and two independent suspended loads. Measure the 3:1 travel ratio and compare gear direction, cord support and return.",
+  "try": [
+    "Choose TwinTempo in Examples: the model and its example blocks load together. The model has 81 LEGO parts and two separate cords. Motor A drives both drums through the real gear train; neither hanging tag has its own motor. Use Reset before retrying after manual movement.",
+    "Reset to the saved pose, then press Run. The program checks that motor A is near its saved encoder datum, commands two input turns, pauses for observation, and returns to zero. Measure each payload's vertical displacement relative to the frame, rather than treating the encoder target as proof that the payload moved.",
+    "Compare corresponding moving intervals and the held turnaround. With taut cords and equal effective drum radii, the fast payload should travel about three times as far. Check direction, smoothness, independent suspension and the final return; record any swing or slack separately.",
+    "Identify the middle 24-tooth gear. Count both external gear meshes. Each mesh reverses direction, so the output drum and fast drum rotate in the same direction. The middle gear changes the shaft spacing and restores direction; its tooth count cancels from the final speed ratio."
+  ],
+  "why": "For the external gear train, ωslow/ωfast = (−8/24) × (−24/24) = 1/3. A taut cord winding on a constant effective radius r moves by s = rθ, with θ in radians. Because the two drums have the same effective radius, their displacement ratio equals the shaft-angle ratio: sfast/sslow = 3. The middle gear transmits motion and reverses it a second time. It does not multiply the final reduction again. Each load hangs from a separate cord; neither payload is welded to the frame or driven by an additional motor.",
+  "matters": "A single drive can coordinate two different travel rates mechanically. The fast output covers more distance per motor turn; the reduction provides more ideal torque at the slow shaft. Actual lifting force also depends on the simultaneous loads, losses, cord behavior and motor limits. This experiment is a small demonstrator, not a rated lifting device. The simulator uses a fixed effective winding radius and does not certify a physical string winding or payload capacity.",
+  "question": "If the middle gear were replaced by another external idler, while retaining the 8-tooth driver, 24-tooth final gear and two meshes, would the final speed ratio change? If both drum radii doubled, what would happen to the two travel distances and their ratio?",
+  "answer": "An otherwise valid replacement idler would leave the final 3:1 ratio unchanged: its tooth count occurs once in a denominator and once in a numerator. The physical shaft spacing and clearances would need redesign and rechecking. Doubling both effective drum radii doubles both ideal travel distances, while their ratio remains three. Reversing the motor reverses both motions and should retrace their travel if the cords remain taut and the effective radii stay constant.",
+  "further": [
+    "Use the nominal native radius r = 7 LDU = 2.8 mm to predict the two-turn strokes: about 35.19 mm for the fast payload and 11.73 mm for the slow payload. Label these as predictions. Compare them with independent payload-position measurements from the actual exported model's run.",
+    "Explain why a physical cord may change the effective winding radius as it builds another layer. Preserve a single controlled winding layer and the specified retention bounds; do not enlarge the program's angle range without a new construction and clearance check.",
+    "Compare this mechanism with the rack shuttle. Both turn rotation into translation, but the rack is positively guided while a suspended cord can swing, slacken or stretch. An encoder returning to zero alone does not prove that a suspended payload returned to its original point."
+  ],
+  "formula": "Ideal constant-radius, taut-cord model: θslow = θfast/3; sfast = rθfast; sslow = rθfast/3. r = 7 LDU × 0.4 mm/LDU = 2.8 mm. For |θfast| = 720° = 4π rad: |sfast| = 35.1858 mm and |sslow| = 11.7286 mm. These are nominal native predictions, not measured results or a certified physical cord radius. The package defines winding direction and encoder sign.",
+  "related": [
+    "rack-shuttle.ldr",
+    "crane.ldr"
+  ]
+}

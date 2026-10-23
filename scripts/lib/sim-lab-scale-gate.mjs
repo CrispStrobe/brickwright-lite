@@ -33,10 +33,17 @@ export const clickWhenReady = async (page, testid, timeout = 120000) => {
 /** Open a model file through the pane's "Open…" file input; resolves with the wall time until it is ready. */
 export const openFile = async (page, {name, buffer, mimeType = 'application/octet-stream', timeout = 120000}) => {
     const started = Date.now();
+    await page.evaluate(() => {
+        const pane = window.__bwSimLab._pane;
+        window.__bwFileOpenPrior = {token: pane.loadToken, session: pane.session};
+    });
     await page.getByTestId('bw-sim-lab-file').setInputFiles({name, mimeType, buffer}, {timeout});
     await page.waitForFunction(n => {
         const lab = window.__bwSimLab;
-        return lab && lab._pane.state.modelFile === n && ['ready', 'failed'].includes(lab.status);
+        const prior = window.__bwFileOpenPrior;
+        return lab && lab._pane.loadToken !== prior.token &&
+            lab._pane.state.modelFile === n && ['ready', 'failed'].includes(lab.status) &&
+            (lab.status === 'failed' || (lab._pane.session && lab._pane.session !== prior.session));
     }, name.replace(/\.(io|lxf)$/i, '.ldr'), {timeout, polling: 250}); // not per animation frame: a big first frame may take long
     return Date.now() - started;
 };

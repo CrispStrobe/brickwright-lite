@@ -2,7 +2,7 @@
   "version": 1,
   "id": "stride-lab",
   "language": "de",
-  "what": "Ein Motor dreht eine 16-mm-Kurbel. Eine 40-mm-Koppel, eine 40-mm-Schwinge und zwei feste Drehpunkte mit 32 mm Abstand bestimmen die Bewegung einer verlängerten Spitze. Die Koppel reicht 40 mm über ihr Schwingengelenk hinaus. Dieses Hoeken-ähnliche Getriebe erzeugt einen nahezu geraden Arbeitshub und einen bogenförmigen Rücklauf. Eine Kurbel führt den Koppelpunkt eines Hoeken-Viergelenks durch einen fast geraden Arbeitshub und einen gekrümmten Rücklauf.",
+  "what": "Hoeken-Getriebe. Ein Motor dreht eine 16-mm-Kurbel. Eine 40-mm-Koppel, eine 40-mm-Schwinge und zwei feste Drehpunkte mit 32 mm Abstand bestimmen die Bewegung einer verlängerten Spitze. Die Koppel reicht 40 mm über ihr Schwingengelenk hinaus. Dieses Hoeken-ähnliche Getriebe erzeugt einen nahezu geraden Arbeitshub und einen bogenförmigen Rücklauf. Eine Kurbel führt den Koppelpunkt eines Hoeken-Viergelenks durch einen fast geraden Arbeitshub und einen gekrümmten Rücklauf.",
   "try": [
     "Setze das Modell zurück, lade stride-lab.bw und starte das Programm. Verfolge die markierte Spitze bei zwei langsamen Vorwärts- und zwei Rückwärtsumdrehungen.",
     "Vergleiche den langen, nahezu geraden Arbeitshub mit dem gekrümmten Rücklauf. Beobachte, wie sich die Kurbel weiterdreht, während die Spitze ihre Bewegungsrichtung ändert.",

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "watt-line",
+  "language": "de",
+  "what": "Watt-Getriebe. Ein Motor bewegt den Antriebshebel eines Watt-Gestänges hin und her. Zwei gleich lange Seitenhebel führen eine kurze Koppel, deren Mittelpunkt sich annähernd geradlinig bewegt. Keine Schiene führt diesen Mittelpunkt: Seine Bahn entsteht durch vier Drehgelenke und die gewählten Gliedlängen. Beobachte die mittlere Markierung P und vergleiche ihre Bahn mit dem Kreisbogen des angetriebenen Gelenkpunkts B. Watts Viergelenk führt den passiven Koppelmittelpunkt auf einer annähernd geraden Bahn. Vergleiche den gemessenen Seitenfehler mit der exakten Kreisschnitt-Geometrie.",
+  "try": [
+    "Wähle Watt’s Line unter Beispiele, um Modell und Blöcke gemeinsam zu laden, und drücke Start. Motor A durchläuft zweimal die begrenzte Folge 0, +20, -20 und 0 Grad und hält anschließend. An jedem Ziel gibt es eine Beobachtungspause; die Geschwindigkeiten sind Grad pro Sekunde. Setze nach manueller Bewegung vor einem erneuten Versuch zurück.",
+    "Beobachte den Mittelpunkt P der kurzen Koppel während der gesamten Bewegung. Miss sowohl seinen nutzbaren Weg als auch seine seitliche Abweichung von der Sollgeraden. Erreichte Motorwinkel allein belegen nicht, dass der passive Mittelpunkt der vorgesehenen Bahn folgt.",
+    "Vergleiche P mit dem Gelenkpunkt B am Ende des Antriebshebels. B beschreibt einen Kreisbogen. Am Mittelpunkt P gleichen sich die seitlichen Anteile der beiden Hebelbewegungen weitgehend aus. Verfolge die vier Gelenke und den Rahmen, der die beiden festen Drehpunkte trägt.",
+    "Begrenze manuelle Motorbefehle auf -20 bis +20 Grad bezogen auf den gespeicherten Encoder-Nullpunkt. Halte an und setze zurück, wenn das Gestänge klemmt. Die 21-Grad-Überwachung ist eine Fehlerschwelle und erlaubt keine Vergrößerung des Arbeitsbereichs."
+  ],
+  "why": "Das Watt-Gestänge ist ein Viergelenk aus Rahmen, zwei gleich langen Seitenhebeln und einer kurzen Koppel. In der gespeicherten waagerechten XZ-Ebene gelten O=(0,0), D=(80,32), B=(40,0) und C=(40,32), jeweils in Millimetern. OB und DC sind 40 mm lang, BC ist 32 mm lang. Der beobachtete Punkt P liegt genau zwischen B und C. Bei kleinen Antriebsschwenks haben die Seitenhebel entgegengesetzte seitliche Bewegungsanteile. Nahe der Ausgangslage gleichen sie sich am Mittelpunkt P weitgehend aus. P beschreibt deshalb einen annähernd geraden Abschnitt einer gekrümmten Koppelkurve; kein Schiebegelenk erzwingt eine exakte Gerade.",
+  "matters": "Der Mechanismus zeigt eine angenäherte Geradführung allein mit Drehgelenken. Bei idealen Abmessungen und geometrischen Antriebswinkeln von -20 bis +20 Grad beträgt der berechnete Mittelpunktweg etwa 27,382 mm. Seine größte seitliche Abweichung von der Ausgangsgeraden x=40 mm beträgt ungefähr 0,0718 mm. Das sind analytische Vorhersagen, keine gemessene Baugenauigkeit. Gelenkspiel, elastische Verformung, Montagefehler und Simulationsfehler können größer als diese ideale Abweichung sein.",
+  "question": "Bleibt die Bahn beim gleichen Motorprogramm annähernd gerade, wenn die Markierung vom Koppelmittelpunkt P zum angetriebenen Gelenkpunkt B versetzt wird? Ändert eine doppelte Motorgeschwindigkeit die ideale Bahn?",
+  "answer": "Am Punkt B beschreibt die Markierung einen Kreisbogen mit 40 mm Radius. Der Bewegungsausgleich am Koppelmittelpunkt entfällt. Eine höhere Geschwindigkeit verändert die Durchlaufzeit, während die ideale Geometrie starrer Glieder gleich bleibt. Tatsächliche Nachführung, Schwingungen und Gelenkbelastung können sich jedoch ändern; ein schnellerer Versuch benötigt deshalb eigene Messungen.",
+  "further": [
+    "Vergleiche mit den Kreis-Schnittgleichungen die berechneten Mittelpunktlagen bei geometrischen Antriebswinkeln von -20, -10, 0, +10 und +20 Grad. Ein rechnerischer Vergleich größerer Winkel erlaubt keinen Betrieb des gebauten Modells außerhalb seiner dokumentierten Grenzen.",
+    "Vergleiche mit Stride Lab: Beide Modelle nutzen einen passiven Punkt auf einem Viergelenk, aber die Geometrie und der brauchbare Abschnitt der Koppelkurve unterscheiden sich. Vergleiche mit Straight Eight und frage, ob eine gerade aussehende Bahn exakt oder nur annähernd gerade ist.",
+    "Trenne analytische Vorhersagen von gemessenen Körperlagen. Ein festgehaltener Mittelpunkt muss die Wegprüfung verfehlen, selbst wenn der Motorencoder alle Ziele erreicht. Physischer Aufbau und Ausführung auf echter Hardware benötigen eigene Nachweise."
+  ],
+  "formula": "Koordinaten in mm: O=(0,0), D=(80,32), B=(40 cos(theta),40 sin(theta)); |C-D|=40 und |C-B|=32 auf dem Lösungszweig C=(40,32) bei theta=0. P=(B+C)/2. Für theta zwischen -20 und +20 Grad reicht Pz ungefähr von 2,12519 bis 29,50728 mm; max |Px-40| beträgt etwa 0,07175 mm. theta ist der geometrische Antriebswinkel von der gespeicherten Richtung O nach B hin zu LDraw +Z. Im gelieferten Modell gilt theta=-A; A ist der fortlaufende Motorencoderwinkel in Grad. Das Vorzeichen wurde anhand tatsächlicher Hebellagen relativ zum Rahmen geprüft.",
+  "related": [
+    "stride-lab.ldr",
+    "straight-eight.ldr",
+    "quickstroke.ldr"
+  ]
+}

@@ -2,7 +2,7 @@
   "version": 1,
   "id": "ripple-relay",
   "language": "en",
-  "what": "One motor turns three shafts joined by two universal joints. The middle shaft speeds up and slows down twice per turn, while the correctly phased output recovers uniform rotation. Two equally bent, correctly phased universal joints cancel the intermediate shaft’s speed ripple. Compare all three shafts.",
+  "what": "Universal / Cardan joints. One motor turns three shafts joined by two universal joints. The middle shaft speeds up and slows down twice per turn, while the correctly phased output recovers uniform rotation. Two equally bent, correctly phased universal joints cancel the intermediate shaft’s speed ripple. Compare all three shafts.",
   "try": [
     "Select Ripple Relay, reset and run. Compare the yellow input, red middle and blue output pointers during the three forward turns and return.",
     "Pause after the slow approach home. Compare each pointer with its own saved orientation; the motor finishes holding at zero.",

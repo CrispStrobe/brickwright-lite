@@ -7,6 +7,8 @@ const root = new URL('../', import.meta.url);
 const catalog = catalogFrom(JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', root))));
 // The topic and challenge describe an observable physical effect, not just the model's shape.
 const lessons = {
+    'watt-line': ['linkages', 'Watt’s four-bar linkage guides a passive coupler midpoint along an approximately straight path. Compare the measured sideways error with the exact circle-intersection geometry.', 'Watts Viergelenk führt den passiven Koppelmittelpunkt auf einer annähernd geraden Bahn. Vergleiche den gemessenen Seitenfehler mit der exakten Kreisschnitt-Geometrie.'],
+    'twin-tempo': ['forces', 'An 8:24:24 gear train drives equal-radius drums and two independent suspended loads. Measure the 3:1 travel ratio and compare gear direction, cord support and return.', 'Ein 8:24:24-Zahnradgetriebe treibt gleich große Trommeln und zwei getrennt aufgehängte Lasten. Miss das Wegverhältnis 3:1 und vergleiche Drehrichtung, Seilkräfte und Rückkehr.'],
     'root-bridge': ['linkages', 'Two motors set positive input distances. Perpendicular sliding guides locate a passive output at their geometric mean; equal products give the same output.', 'Zwei Motoren stellen positive Eingangsstrecken ein. Senkrechte Schiebeführungen legen den passiven Ausgang auf ihr geometrisches Mittel fest; gleiche Produkte ergeben denselben Ausgang.'],
     'balance-engine': ['inertia', 'Two slider-cranks drive a passive spring-centred carrier. Compare 0°, 90° and 180° phasing: primary piston motions add or cancel, while finite rod length leaves a residual.', 'Zwei Schubkurbeltriebe bewegen einen passiven, durch Bänder zentrierten Träger. Vergleiche 0°, 90° und 180° Phasenversatz: Die primären Kolbenbewegungen addieren sich oder heben sich auf; die endliche Pleuellänge lässt einen Rest.'],
     'cusp-lab': ["linkages", "One motor rides a guided carriage as its pinion rolls along a fixed rack. A short pointer traces a cusped cycloid; a longer pointer reverses locally and traces a loop. Compare translation, rotation and their instantaneous velocity cancellation during one continuous forward turn and return.", "Ein Motor fährt auf einem geführten Schlitten, während sein Ritzel an einer festen Zahnstange abrollt. Ein kurzer Zeiger beschreibt eine Zykloide mit Spitze; ein längerer Zeiger läuft zeitweise rückwärts und bildet eine Schleife. Vergleiche Verschiebung, Drehung und ihre momentane Geschwindigkeitsaufhebung bei einer durchgehenden Vorwärtsdrehung und Rückfahrt."],
@@ -101,6 +103,7 @@ const lessons = {
     'boost-rover': ['motion', 'Two built-in wheel motors produce straight motion and rotation.', 'Zwei eingebaute Radmotoren erzeugen Geradeausfahrt und Drehung.'],
     'wedo-milo': ['sensing', 'Distance feedback stops a one-motor rover.', 'Eine Abstandsrückmeldung stoppt einen Rover mit einem Motor.']
 };
+const mechanisms = JSON.parse(readFileSync(new URL('docs/data/robot-lab-mechanisms.json', root))).mechanisms;
 const output = {};
 for (const entry of MODELS) {
     const key = entry.id || entry.file;
@@ -110,8 +113,11 @@ for (const entry of MODELS) {
     const [topic, en, de] = lessons[id];
     output[key] = {pieces: model.parts.length + (model.belts || []).length, motors: mechanism.actuators.length,
         hubs: [...new Set(mechanism.hubs.map(h => h.profile))], topic, description: {en, de},
-        author: /^(root-bridge|balance-engine|cusp-lab|gimbal-lab|product-plotter|sky-courier|resonance-lab|circle-splitter|integral|counterturn|snapgate|bit-keeper|echo-bridge|linger|crossline|offset-orbit|ellipsa|momentum-twins|bloom-gate|amplify|pantograph-doubler|scale-studio|ripple-relay|crossglide|scale-echo|turnwise|ellipse-engine|quickstroke|sarrus-lift|magnetic-chess|orbit-mixer|phase-bridge|axis-plotter|tilt-lab|tempo-loop|mean-machine|stepworks|stride-lab|twinpoint|butterfly|atlas-arm|switchback-lift|straight-eight|orbital-loom|tidal-trio|pulse-percussion|centrifugal-governor)/.test(id) ? 'CrispStrobe' : 'Brickwright contributors',
-        license: 'BSD-3-Clause'};
+        author: /^(watt-line|twin-tempo|root-bridge|balance-engine|cusp-lab|gimbal-lab|product-plotter|sky-courier|resonance-lab|circle-splitter|integral|counterturn|snapgate|bit-keeper|echo-bridge|linger|crossline|offset-orbit|ellipsa|momentum-twins|bloom-gate|amplify|pantograph-doubler|scale-studio|ripple-relay|crossglide|scale-echo|turnwise|ellipse-engine|quickstroke|sarrus-lift|magnetic-chess|orbit-mixer|phase-bridge|axis-plotter|tilt-lab|tempo-loop|mean-machine|stepworks|stride-lab|twinpoint|butterfly|atlas-arm|switchback-lift|straight-eight|orbital-loom|tidal-trio|pulse-percussion|centrifugal-governor)/.test(id) ? 'CrispStrobe' : 'Brickwright contributors',
+        license: 'BSD-3-Clause', ...(() => {
+            const m = mechanisms.find(m => m.models.includes(id));
+            return m ? {mechanism: m.name, keywords: [...Object.values(m.name), ...m.aliases]} : {};
+        })()};
 }
 const text = '// SPDX-License-Identifier: BSD-3-Clause\n// Generated by scripts/gen-robot-lab-catalog.mjs; counts come from the actual compiled models.\n' +
     `export const MODEL_LESSONS = Object.freeze(${JSON.stringify(output, null, 4)});\n`;
