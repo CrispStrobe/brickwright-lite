@@ -10,12 +10,22 @@ import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import os from 'node:os';
 
-export const FROZEN = Object.freeze({repository:'CrispStrobe/brickwright-lite',runId:39951811631,attempt:1,
-    runHeadSha:'d0efff3ea00688f2d2255bcaf6ed21b86d188991',reviewedHeadSha:'d0efff3ea00688f2d2255bcaf6ed21b86d188991',
-    checkoutSha:'a2bb91030a7a1c916f27541f446703a960ab2295',treeSha:'d5bd42ee8877d63958cd7e7ed027dc4fe3eb9319',
-    jobId:120418264040,artifactId:12502944200,archiveBytes:117527507,
-    archiveDigest:'sha256:bf950f37db40fe9a53e2e7f976560ac016105b93047a0bf5731e0a8f62953c72',
-    producerSha:'37bfe28760f60c836097854fb141fd114bbee518',arraysValuesSha:'4db2813d366af8a110fc79599afb55d1cd42d8df'});
+export const FROZEN = Object.freeze({
+    "repository": "CrispStrobe/brickwright-lite",
+    "runId": 39999619745,
+    "attempt": 1,
+    "runHeadSha": "bfb775501f20b96b793e759bee21766d10d93b96",
+    "reviewedHeadSha": "bfb775501f20b96b793e759bee21766d10d93b96",
+    "checkoutSha": "bc66cab7f1eeeab20b57987019717b7634d815c5",
+    "treeSha": "9c20b3aafe1f83e653c32f342c2f8f5e92ffbcb6",
+    "jobId": 120573107110,
+    "artifactId": 12523413892,
+    "archiveBytes": 117526665,
+    "archiveDigest": "sha256:9e0b4d5075a788d4d84ad232304e3cb60457a3b1cc6bedc9ce4f6c755b32e543",
+    "producerLogSha256": "cb2c8b53c97adfd37195d11ab544e2b658015b4c36db3266bb24b96b6c506847",
+    "producerSha": "37bfe28760f60c836097854fb141fd114bbee518",
+    "arraysValuesSha": "4db2813d366af8a110fc79599afb55d1cd42d8df"
+});
 const sha = b=>createHash('sha256').update(b).digest('hex');
 const git = (root,...args)=>execFileSync('git',['-c','gc.auto=0','-c','maintenance.auto=false',...args],{cwd:root,encoding:'utf8'}).trim();
 export function admitComparisonSource({head,tree,metadata}) {
@@ -129,7 +139,7 @@ async function main() {
         imageOS:process.env.ImageOS,imageVersion:process.env.ImageVersion,node:process.version,nodeExecutableSha256:sha(await readFile(process.execPath)),
         playwright:require('playwright/package.json').version,webkitRegistry,browserRegistrySha256:sha(registryBytes),runtimeFiles,
         platform:os.platform(),release:os.release(),cpus:os.cpus().map(c=>({model:c.model,speed:c.speed})),totalMemory:os.totalmem(),freeMemory:os.freemem(),load:os.loadavg(),
-        cgroups,diskAvailableBytes:disk.bavail*disk.bsize,qualificationScope:'Supported-environment qualification of the official source-identical build; compiled-byte equality to the local build is unproven, with no environment-causation, cold-cache, performance, hardware or physical-accuracy claim',frozen:FROZEN});
+        cgroups,diskAvailableBytes:disk.bavail*disk.bsize,qualificationScope:'Supported-environment qualification of the official source-bound candidate build; no source or compiled-byte equality to the retained earlier local build is asserted, with no environment-causation, cold-cache, performance, hardware or physical-accuracy claim',frozen:FROZEN});
     const helper=await import(pathToFileURL(join(root,'scripts/lib/official-gui-artifact.mjs')));
     let originalBytes;
     const fetchImpl=boundedComparisonFetch(fetch,{onArchiveBytes:bytes=>{originalBytes=bytes;}}),metadata=await helper.fetchGuiArtifactMetadata({...FROZEN,token:process.env.GITHUB_TOKEN,fetchImpl});
@@ -149,8 +159,8 @@ async function main() {
     await save('original-build-stamp.json',JSON.parse(inspected.members.get('brickwright-build.json').toString('utf8')));
     await save('compiled-build-scope.json',{sourceTreeEqualToReviewedCandidate:true,localCompiledByteEquality:'Not established; compare full retained inventories independently',
         officialProducerBuild:{NODE_ENV:'production',BW_ENABLE_FPGA:'1',NODE_OPTIONS:'--max-old-space-size=2560',synthesisEndpointConfigured:true},
-        localOriginalBuild:{command:'npm run build:gui',CI:'1',BW_ENABLE_FPGA:'unset'},
-        retainedProducerLogSha256:'498fe04f09e07374b48cf9328a58faf809351d024d1c5ca4ea58f424ab82b52f',
+        localOriginalBuild:{head:'d0efff3ea00688f2d2255bcaf6ed21b86d188991',command:'npm run build:gui',CI:'1',BW_ENABLE_FPGA:'unset'},
+        retainedProducerLogSha256:FROZEN.producerLogSha256,
         interpretation:'A pass qualifies this immutable official build and environment; it cannot alone prove the cause of the original local failure.'});
     const sourcePaths=['scripts/verify-sim-lab-browser.mjs','scripts/lib/sim-lab-mechanics-gate.mjs','scripts/lib/sim-lab-new-models-gate.mjs','scripts/lib/sim-lab-intake-roundtrip.mjs'];
     await save('actual-source-controls.json',Object.fromEntries(await Promise.all(sourcePaths.map(async p=>[p,sha(await readFile(join(root,p)))]))));

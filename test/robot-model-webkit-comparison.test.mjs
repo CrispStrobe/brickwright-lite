@@ -63,3 +63,13 @@ test('job-level environment uses contexts available before runner assignment',()
     admit(text);
     assert.throws(()=>admit(text.replace('github.workspace','runner.temp')),/Context available/);
 });
+
+
+test('workflow candidate checkout binds the same immutable reviewed source as admission',()=>{
+    const text=readFileSync(new URL('../.github/workflows/robot-model-webkit-comparison.yml',import.meta.url),'utf8');
+    const candidate=text.match(/- name: Checkout frozen candidate\n([\s\S]*?)      - uses:/)?.[1];
+    assert.ok(candidate,'Explicit frozen candidate checkout');
+    const admit=text=>assert.equal(text.match(/ref: ([0-9a-f]{40})/)?.[1],FROZEN.reviewedHeadSha);
+    admit(candidate);
+    assert.throws(()=>admit(candidate.replace(FROZEN.reviewedHeadSha,'0'.repeat(40))));
+});

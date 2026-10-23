@@ -40,11 +40,24 @@ enabled exact-head checks. Use a normal matched-head merge and verify predicted
 and landed trees and parents. No release, hardware or physical-accuracy claim.
 
 Prepared admission/refusal controls: eight passing tests and three detected
-source mutations. The existing CI-step census six groups pass, with this
-workflow registered at zero observations and no execution credit. Actual
-hosted comparison and every enabled exact-head gate remain required before
-landing; the original local WebKit failures remain unresolved evidence.
+source mutations. The initial CI-step census registered this workflow at zero observations.
+The retained completed run 39982918951 on source 048a87646 now supplies the
+scoped reading: Sine completed, while Quartermaster failed its unchanged
+deadline. This records execution, not acceptance. All other workflow records,
+ordered runs and main provenance are preserved. Six census groups pass.
+Fresh repaired-candidate comparison and every enabled exact-head gate remain
+required before landing; original local and hosted failures remain evidence.
 
 Initial source workflow parsing refused the job-level runner context before
 any job or artifact acquisition. The cache now uses the allowed workspace
 context, with a regression rejecting runner-only context at job-env scope.
+
+The repaired successor consumes reviewed candidate
+`bfb775501f20b96b793e759bee21766d10d93b96`, official producer run
+39999619745 / successful build job 120573107110, and sole Pages artifact
+12523413892. Its actual checkout
+`bc66cab7f1eeeab20b57987019717b7634d815c5` has the complete reviewed candidate
+tree `9c20b3aafe1f83e653c32f342c2f8f5e92ffbcb6`. The producer log and
+artifact metadata are independently joined; browser acceptance is pending.
+The retained pre-label CI refusal does not qualify the overall producer run
+or candidate PR. The existing full journey, viewport and deadlines are intact.

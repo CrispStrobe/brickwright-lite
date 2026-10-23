@@ -35,7 +35,7 @@ jobs:
       - name: Checkout frozen candidate
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: d0efff3ea00688f2d2255bcaf6ed21b86d188991
+          ref: bfb775501f20b96b793e759bee21766d10d93b96
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
