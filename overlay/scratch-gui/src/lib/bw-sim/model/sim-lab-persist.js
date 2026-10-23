@@ -21,9 +21,11 @@
 // name (it is written into the text's `0 Name:` line, so it is kept to make
 // the round trip byte-exact) and the selected mat id, when there is one.
 //
-// This module has NO imports on purpose: bw-project-bundle.js validates the
+// This module imports only the dependency-free measurement schema: bw-project-bundle.js validates the
 // section with it, and that file is on the first load. The LDraw parser and
 // the catalog stay in the lazily loaded Sim Lab chunk.
+
+import {measurementDefinitions} from '../measurements/schema.js';
 
 /** The localStorage key the bundle carries and the Sim Lab pane reads. */
 export const SIM_LAB_STORAGE_KEY = 'bw-sim-lab-model-v1';
@@ -59,7 +61,7 @@ export const simLabRecord = value => {
     if (value === null || typeof value !== 'object' || Array.isArray(value)) {
         throw new Error('simLab must be an object');
     }
-    const {ldraw, name, mat} = value;
+    const {ldraw, name, mat, measurements} = value;
     if (typeof ldraw !== 'string') throw new Error('simLab.ldraw must be a string');
     if (ldraw.includes('\u0000')) throw new Error('simLab.ldraw contains a NUL byte');
     if (!PART_LINE.test(ldraw)) throw new Error('simLab.ldraw places no part (no type-1 line)');
@@ -72,6 +74,7 @@ export const simLabRecord = value => {
     const record = {ldraw};
     if (name !== undefined) record.name = name;
     if (mat !== undefined) record.mat = mat;
+    if (measurements !== undefined) record.measurements = measurementDefinitions(measurements);
     if (utf8Size(JSON.stringify(record)) > SIM_LAB_LIMIT) {
         throw new Error(`simLab exceeds ${SIM_LAB_LIMIT} bytes`);
     }
@@ -86,11 +89,12 @@ export const simLabRecord = value => {
  * @param {{name?: string, mat?: string|null}} [options]
  * @returns {{ldraw: string, name?: string, mat?: string}|null}
  */
-export const simLabRecordFromText = (ldraw, {name, mat} = {}) => {
+export const simLabRecordFromText = (ldraw, {name, mat, measurements} = {}) => {
     if (typeof ldraw !== 'string' || !PART_LINE.test(ldraw)) return null;
     const value = {ldraw};
     if (isStorableName(name)) value.name = name;
     if (mat !== undefined && mat !== null) value.mat = mat;
+    if (measurements !== undefined) value.measurements = measurements;
     return simLabRecord(value);
 };
 

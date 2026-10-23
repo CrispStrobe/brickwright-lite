@@ -122,5 +122,77 @@ const checks = async (page, {shotsDir}) => {
     await page.waitForFunction(() => window.__bwSimLab.status === 'running' && window.__bwSimLab._pane.state.replayAt === null, null, {timeout: 10000});
     assert.equal(await page.getByTestId('bw-sim-lab-replay').count(), 0, 'the slider leaves while running');
     await tool(page, 'pause');
+    await measurementInteractions(page, {shotsDir});
     return out;
+};
+
+
+/** Custom measurements use real controls; the simulation is only observed or driven through its public API. */
+export const measurementInteractions = async (page, {shotsDir}) => {
+    const originalModel = await page.getByTestId('bw-sim-lab-model').inputValue();
+    await tool(page, 'measurements');
+    const panel = page.getByTestId('bw-sim-lab-measurements-panel');
+    await panel.waitFor();
+    await panel.getByTestId('bw-sim-lab-measurements-shown').check();
+    await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption('distance');
+    await panel.getByTestId('bw-sim-lab-measurement-target-0').selectOption('hub');
+    await panel.getByTestId('bw-sim-lab-measurement-target-1').selectOption('motorL');
+    await panel.getByRole('textbox', {name: 'Name', exact: true}).fill('Axle span');
+    await panel.getByTestId('bw-sim-lab-measurement-add').click();
+    const span = panel.getByTestId('bw-sim-lab-measurement-custom-1');
+    await span.waitFor();
+    assert.match(await span.textContent(), /mm/);
+    // Independent geometry through the existing public API, in centimetres -> millimetres.
+    const expected = await lab(page, () => {
+        const api = window.__bwSimLab.api;
+        return Math.hypot(...['x','y','z'].map(a => api.partPosition('hub', a) - api.partPosition('motorL', a))) * 10;
+    });
+    assert.ok(Math.abs(parseFloat(await span.locator('output').textContent()) - expected) < 0.1, 'distance matches the independently observed live part origins');
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab-measurement-overlay"] [data-measurement-id="custom-1"] text')?.textContent.includes('mm'));
+    await tool(page, 'show-ports');
+    assert.ok(await page.locator('[data-testid="bw-sim-lab-measurement-overlay"] [data-measurement-id="custom-1"]').count(), 'measurements remain independent of cables/component labels');
+    await tool(page, 'show-ports');
+    await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption('speed');
+    await panel.getByTestId('bw-sim-lab-measurement-target-0').selectOption('hub');
+    await panel.getByRole('textbox', {name: 'Name', exact: true}).fill('Chassis speed');
+    await panel.getByTestId('bw-sim-lab-measurement-add').click();
+    const speed = panel.getByTestId('bw-sim-lab-measurement-custom-2');
+    await tool(page, 'run');
+    await lab(page, () => Promise.all(['A','B'].map(p => window.__bwSimLab.api.setMotorSpeed(p, p === 'A' ? 180 : -180))));
+    await page.waitForFunction(() => parseFloat(document.querySelector('[data-testid="bw-sim-lab-measurement-custom-2"] output')?.textContent) > 0.01 && window.__bwSimLab._pane.state.replayFrames >= 2, null, {timeout: 10000});
+    const boxes = await page.locator('[data-testid="bw-sim-lab-measurement-overlay"] text').evaluateAll(nodes => nodes.map(n => {
+        const r = n.getBoundingClientRect(); return {x: r.x, y: r.y, right: r.right, bottom: r.bottom};
+    }));
+    for (let i = 0; i < boxes.length; i++) for (const b of boxes.slice(i + 1)) {
+        const a = boxes[i];
+        assert.ok(a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y, 'live measurement labels remain legible without overlap');
+    }
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-live-measurements.png')});
+    await tool(page, 'pause');
+    await page.getByTestId('bw-sim-lab-replay-slider').fill('0');
+    await page.waitForFunction(() => window.__bwSimLab._pane.state.replayAt === 0 && document.querySelectorAll('[data-testid="bw-sim-lab-measurement-overlay"] g').length === 0);
+    assert.match(await panel.textContent(), /hidden during pose replay/);
+    assert.equal(await speed.locator('output').textContent(), '—');
+    await tool(page, 'reset');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready');
+    assert.match(await span.locator('output').textContent(), /mm/);
+    await speed.getByRole('button', {name: 'Remove: Chassis speed', exact: true}).click();
+    assert.equal(await speed.count(), 0);
+    await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).uncheck();
+    await page.waitForFunction(() => !document.querySelector('[data-testid="bw-sim-lab-measurement-overlay"] [data-measurement-id="custom-1"]'));
+    await page.getByTestId('bw-sim-lab-mode-build').click();
+    await page.waitForFunction(() => window.__bwSimLab._pane.state.mode === 'build' && window.__bwSimLab.status === 'ready');
+    await page.getByTestId('bw-sim-lab-mode-simulate').click();
+    await page.waitForFunction(() => window.__bwSimLab._pane.state.mode === 'simulate' && window.__bwSimLab.status === 'ready');
+    assert.match(await span.locator('output').textContent(), /mm/, 'custom definitions survive Build/Simulate');
+    assert.equal(await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).isChecked(), false);
+    // A different example has its own definitions; returning restores this model's custom choice.
+    await page.getByTestId('bw-sim-lab-model').selectOption('forklift.ldr');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === 'forklift.ldr');
+    assert.equal(await span.count(), 0, 'custom readings do not leak into another model');
+    await page.getByTestId('bw-sim-lab-model').selectOption(originalModel);
+    await page.waitForFunction(key => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === key, originalModel);
+    assert.match(await span.locator('output').textContent(), /mm/, 'returning to the model restores its custom reading');
+    assert.equal(await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).isChecked(), false);
+    await panel.getByRole('button', {name: 'Close', exact: true}).click();
 };

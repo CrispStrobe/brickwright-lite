@@ -205,3 +205,13 @@ test('fields a newer writer adds are dropped; the known ones keep a fixed order'
     assert.equal(isStorableName('a\u0007b'), false);
     assert.deepEqual(simLabRecordFromText(DRIVING_BASE, {name: 'a\u0007b'}), {ldraw: DRIVING_BASE});
 });
+
+
+test('custom live measurements survive the actual project bundle save/load boundary', async () => {
+    const measurements = [{id: 'span', kind: 'distance', label: 'Axle span', targets: ['leftWheel', 'rightWheel'], visible: true}];
+    const record = simLabRecordFromText(DRIVING_BASE, {measurements});
+    const saved = await save({[SIM_LAB_STORAGE_KEY]: JSON.stringify(record)});
+    const {result, after} = await open(saved.bytes, {});
+    assert.equal(result.outcome, 'loaded');
+    assert.deepEqual(readSimLabStorage(after[SIM_LAB_STORAGE_KEY]).record.measurements, measurements);
+});
