@@ -20,12 +20,15 @@ import {judgeProduct,judgeGimbal} from './sim-lab-product-gimbal-judge.mjs';
 
 import {judgeWatt} from './sim-lab-watt-judge.mjs';
 import {judgeTwinTempo} from './sim-lab-twin-tempo-judge.mjs';
+import {judgeCascade} from './sim-lab-cascade-judge.mjs';
 import {judgeWaveMaker} from './sim-lab-wavemaker-judge.mjs';
 import {judgeSineShuttle,judgeQuartermaster} from './sim-lab-sine-quarter-judge.mjs';
 
 const DEG = 180 / Math.PI;
 
 const SPEC = Object.freeze({
+    'cascade': {simulatedMs: 20000},
+    'cascade-control': {simulatedMs: 20000},
     'wavemaker': {simulatedMs: 80000},
     'wavemaker-control': {simulatedMs: 80000},
     'sine-shuttle': {simulatedMs: 45000},
@@ -65,6 +68,7 @@ const quaternionAngle = (a, b) => {
 const bodyWithPart = (mechanism, part) => mechanism.bodies.find(body => (body.parts || []).includes(part));
 
 export const judgeNewModel = (id, record) => {
+    if(id==='cascade'||id==='cascade-control')return judgeCascade(record,{control:id.endsWith('control')});
     if(id==='wavemaker'||id==='wavemaker-control')return judgeWaveMaker(record,{control:id.endsWith('control')});
     if(id==='sine-shuttle')return judgeSineShuttle(record);
     if(id==='quartermaster')return judgeQuartermaster(record);
@@ -143,7 +147,7 @@ export async function newModelsInteractions(page, opts) {
         await page.getByTestId('bw-sim-lab-instructions').click();
         await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
         const plan=await page.evaluate(()=>window.__bwSimLabInstructions.plan);
-        const count={'wavemaker':298,'wavemaker-control':298,'sine-shuttle':105,'quartermaster':209,'watt-line':148,'twin-tempo':81,'root-bridge':447,'balance-engine':292,'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
+        const count={'cascade':70,'cascade-control':76,'wavemaker':298,'wavemaker-control':298,'sine-shuttle':105,'quartermaster':209,'watt-line':148,'twin-tempo':81,'root-bridge':447,'balance-engine':292,'cusp-lab':128,'product-plotter':301,'gimbal-lab':245,'sky-courier':251}[id];
         const bands=id==='balance-engine'?2:0;
         const placed=plan.steps.flatMap(s=>s.parts);
         assert.equal(plan.steps.flatMap(s=>s.belts||[]).length,bands);
@@ -155,7 +159,7 @@ export async function newModelsInteractions(page, opts) {
         await page.getByTestId('bw-sim-instructions').screenshot({path:resolve(opts.shotsDir,id+'-bom.png')});
         await page.keyboard.press('Escape');
         console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count+bands}-piece BOM`);
-        if(['wavemaker','wavemaker-control','sine-shuttle','quartermaster','watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,opts,id,judgeNewModel);
+        if(['cascade','cascade-control','wavemaker','wavemaker-control','sine-shuttle','quartermaster','watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,opts,id,judgeNewModel);
     }
     writeFileSync(resolve(opts.shotsDir, 'new-model-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
     return results;

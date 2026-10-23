@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "cascade-control",
+  "language": "de",
+  "what": "Serielles Doppelpendel und mechanische Versteifung. Die mechanische Kontrolle ergänzt das Doppelpendel mit 70 Teilen um sechs echte Versteifungs- und Stiftteile. Beide Glieder bilden einen starren Körper; das obere Gelenk bleibt frei. Derselbe Motorimpuls regt das versteifte Pendel an. Sechs echte Versteifungsteile sperren das Gelenk zwischen den Gliedern; das obere Lager bleibt frei. Beobachte beim gleichen Impuls eine bewegte Spitze ohne relativen Gelenkwinkel.",
+  "try": [
+    "Wähle Cascade-Kontrolle unter den Robot-Lab-Beispielen. Das Blockprogramm wird automatisch geladen. Setze vor jedem Versuch auf die gespeicherte Lage zurück und starte den Versuch.",
+    "Setze das Modell vor jedem neuen Lauf mit Zurücksetzen auf die gespeicherte Pose zurück. Zuerst hält das Programm Motor A und akzeptiert nur einen Geberwinkel innerhalb ±1° seiner Ausgangslage. Danach prüft es einen 0.5 s langen Halt, ohne Referenzfahrt oder Geber-Reset. Der absolute, nicht auf eine Umdrehung begrenzte Weg lautet A=0 → 90 → 0° bei 180 / 180°/s; die vorgesehenen Haltezeiten danach betragen 0.3 / 0 s.",
+    "Nach der aktuellen Zielprüfung bei A=90° hält das Programm Motor A für 0.3 s und prüft das Ziel vor der Rückfahrt erneut. Die passiven Glieder bleiben während dieses programmierten Halts frei; observing bleibt 0.",
+    "Beobachte nach der Rückkehr Stufe 3: observing=1 kennzeichnet das 12 s lange Beobachtungsfenster. supportHeld=1 bezeichnet ausschließlich den gehaltenen Motor. Das Programm prüft dessen aktuellen Geberfehler wiederholt gegen die Grenze 0.5°, mit jeweils 0.1 s Wartezeit zwischen den Prüfungen. Prüfe unabhängig davon die tatsächliche Position des oberen Drehpunkts relativ zum Gestell.",
+    "Verfolge upper_link und lower_link relativ zum Gestell. Verwende für beide dieselbe physische Gelenkachse und fortlaufende Winkel. Berechne zusätzlich den Ellenbogenwinkel als Untergliedwinkel minus Obergliedwinkel. Eine bewegte untere Spitze beweist allein kein bewegtes Ellenbogengelenk: Beide Glieder könnten gemeinsam wie ein starrer Körper schwingen.",
+    "Wähle Cascade-Kontrolle in den Beispielen, setze es zurück und starte dieselbe BW-Datei. Die Kontrolle erhält alle ursprünglichen Teilepositionen und ergänzt 6 reale Verstrebungs- und Pin-Teile. Vergleiche die relative Ellenbogenbewegung und prüfe zugleich die ruhende Aufhängung sowie den weiterhin freien oberen Drehpunkt. Der ursprüngliche elbow_pin bleibt eingebaut und kann um seine eigene Achse drehen; prüfe die Verriegelung anhand der beiden Glieder, nicht dieses Pins.",
+    "Lies gemessene Winkelbereiche, Richtungswechsel am Ellenbogen und Aufhängungsbewegungen aus den Qualifikationsdaten und der Trajektorien-CSV. Abgeschlossen sind der begrenzte Motorweg und das Beobachtungsfenster. Die Pendelglieder dürfen danach weiterlaufen; ihre Rückkehr oder ihr Stillstand ist keine Abschlussbedingung."
+  ],
+  "why": "Ein Motor kann einen passiven Mechanismus anregen, ohne dessen spätere Bewegung vorzuschreiben. Die Bewegung des oberen Drehpunkts verändert die Kräfte am Oberglied; das Ellenbogengelenk überträgt Kräfte zwischen beiden Gliedern. Bei gehaltener Aufhängung bestimmen Schwerkraft und Trägheit die beiden gekoppelten Winkelkoordinaten, während die im Modell angegebene Dämpfung Bewegung abbaut. Motorhalt fixiert den Eingang, nicht die freien Gelenke. Die reale Verstrebung unterbindet die relative Drehung am Ellenbogen; übrig bleibt eine am oberen Drehpunkt hängende Pendelbaugruppe.",
+  "matters": "Vergleiche zwei hintereinander angeordnete passive Gelenke mit den getrennt aufgehängten und elastisch gekoppelten Pendeln der Sammlung. Cascade untersucht, ob sich das Innere der Kette bei gehaltener Aufhängung weiter relativ bewegt. Die Verstrebung prüft diesen Freiheitsgrad direkt. Ihre zusätzlichen Teile verändern aber auch Masse und Trägheit; der Vergleich isoliert daher keine Periodenänderung bei gleicher Masse. Winkelkurven allein messen keinen Energieaustausch und belegen kein chaotisches Verhalten.",
+  "question": "Beweist eine bewegte untere Spitze, dass sich auch das Ellenbogengelenk bewegt?",
+  "answer": "Nein. In dieser Kontrolle schwingen beide Glieder gemeinsam um das obere Gelenk. Ihr relativer Winkel bleibt durch die echte Versteifung konstant. Die zusätzlichen Teile verändern auch Masse und Trägheit; der Versuch ist daher kein massengleicher Frequenzvergleich.",
+  "further": [
+    "Verwende die tatsächlich beobachteten Gliedorientierungen und körperfesten Drehpunkte. Prüfe Gelenkschluss und ruhende Aufhängung getrennt vom Erreichen des Geberziels; erfolgreiche Motorbefehle beweisen keine korrekte passive Bewegung.",
+    "Trenne Auswärtsbewegung und programmierten Halt, Rückkehrkorrektur und anschließendes Beobachtungsfenster. Der äußere Halt verändert den zeitlichen Ablauf der Anregung, während die Glieder frei bleiben; er unterscheidet sich von einer mechanisch erzeugten Rast. Falls der Prüfvertrag eine Wartezone am Messfensteranfang vorsieht, schließe sie aus der Auswertung aus.",
+    "80 mm und 48 mm sind Abstände zwischen Drehpunkten beziehungsweise vom Gelenk zum Endloch. Sie sind weder die gesamten Kunststofflängen noch Längen idealer Punktmassenpendel. Die Balken besitzen verteilte Masse und die Kette gekoppelte Koordinaten; eine einzelne Fadenpendelperiode beschreibt nicht die ganze Maschine.",
+    "Prüfe die genauen zusätzlichen Kontroll-IDs in catalog-proposal.json und der Teileliste. Reale Teile sperren das Ellenbogengelenk; kein Körper wird per Software festgesetzt und kein unsichtbares Gelenk hinzugefügt. Zusätzliche Masse und Trägheit gehören zum Vergleich.",
+    "Behalte geprüfte Geometrie, Motorweg und Bewegungsgrenzen bei. Setze das Modell vor einer Wiederholung zurück, statt während laufender Pendel neu zu starten. Andere Amplituden, Geschwindigkeiten, Zusatzgewichte oder Reibungspins erfordern eine neue Konstruktions- und Bereichsprüfung."
+  ],
+  "formula": "Kinematische Definitionen: q₁ und q₂ sind unabhängig beobachtete Gliedwinkel um die gemeinsame Gelenkachse; der relative Ellenbogenwinkel ist Δ=q₂−q₁. In idealer ebener Projektion gilt Spitze−Aufhängung = 80u(q₁)+48u(q₂) mm; u(q) ist der in dieser Ebene um q gedrehte, nach unten gerichtete Einheitsvektor. Die beiden Gliedlängen summieren sich zu 128 mm. Dies beschreibt Geometrie, keinen Zeitverlauf oder Energieumsatz. In der gespeicherten geraden Verstrebungskontrolle bleibt Δ konstant; der verbleibende Pendelwinkel kann weiter variieren.",
+  "related": [
+    "cascade.ldr",
+    "pendulum-array.ldr",
+    "echo-bridge.ldr",
+    "momentum-twins.ldr"
+  ]
+}

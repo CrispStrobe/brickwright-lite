@@ -294,6 +294,66 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "cascade.ldr": {
+        "pieces": 70,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor gives the support a finite pulse. Two passive pendulum links keep moving after the support returns and holds. Compare their relative elbow angle with a real brace.",
+            "de": "Ein Motor versetzt die Aufhängung einmal hin und zurück. Zwei passive Pendelglieder schwingen weiter, während die Aufhängung gehalten wird. Vergleiche den relativen Gelenkwinkel mit einer echten Versteifung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Serial double pendulum and physical bracing",
+            "de": "Serielles Doppelpendel und mechanische Versteifung"
+        },
+        "keywords": [
+            "Serial double pendulum and physical bracing",
+            "Serielles Doppelpendel und mechanische Versteifung",
+            "double pendulum",
+            "serial pendulum",
+            "Doppelpendel",
+            "coupled pendulums",
+            "two degrees of freedom",
+            "passive oscillation",
+            "Pendelkopplung",
+            "elbow brace"
+        ]
+    },
+    "cascade-control.ldr": {
+        "pieces": 76,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Six real brace pieces lock the elbow while the upper pivot remains free. Run the same pulse and observe a moving tip with no relative elbow motion.",
+            "de": "Sechs echte Versteifungsteile sperren das Gelenk zwischen den Gliedern; das obere Lager bleibt frei. Beobachte beim gleichen Impuls eine bewegte Spitze ohne relativen Gelenkwinkel."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Serial double pendulum and physical bracing",
+            "de": "Serielles Doppelpendel und mechanische Versteifung"
+        },
+        "keywords": [
+            "Serial double pendulum and physical bracing",
+            "Serielles Doppelpendel und mechanische Versteifung",
+            "double pendulum",
+            "serial pendulum",
+            "Doppelpendel",
+            "coupled pendulums",
+            "two degrees of freedom",
+            "passive oscillation",
+            "Pendelkopplung",
+            "elbow brace"
+        ]
+    },
     "wavemaker.ldr": {
         "pieces": 298,
         "motors": 1,

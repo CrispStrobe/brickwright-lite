@@ -54,6 +54,21 @@
       "frameMs": 25,
       "frozenOutput": "pointer_beam",
       "physicalControl": "wavemaker-control.ldr"
+    },
+    {
+      "id": "cascade",
+      "judge": "serial-pendulum-v1",
+      "nativeSuite": "cascade",
+      "parts": 70,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 32000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "lower_link",
+      "physicalControl": "cascade-control.ldr"
     }
   ]
 }

@@ -113,6 +113,8 @@ export const MODELS = Object.freeze([
     {file: 'butterfly.ldr', title: {en: 'Butterfly — flapping-wing automaton', de: 'Butterfly — Flügelschlagautomat'}, example: 'butterfly.bw', mat: 'plain'},
     {file: 'tempo-loop.ldr', title: {en: 'Tempo Loop — variable-speed double crank', de: 'Tempo Loop — ungleichförmige Doppelkurbel'}, example: 'tempo-loop.bw', mat: 'plain'},
     {file: 'tilt-lab.ldr', title: {en: 'Tilt Lab — two-axis marble maze', de: 'Tilt Lab — zweiachsiges Kugellabyrinth'}, example: 'tilt-lab.bw', mat: 'plain'},
+    {file: 'cascade.ldr', title: {en: 'Cascade — a free double pendulum', de: 'Cascade — ein freies Doppelpendel'}, example: 'cascade.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 90, stepDeg: 15, speedDps: 180}}},
+    {file: 'cascade-control.ldr', title: {en: 'Cascade Control — a real elbow brace', de: 'Cascade-Kontrolle — ein mechanisch versteiftes Gelenk'}, example: 'cascade.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 90, stepDeg: 15, speedDps: 180}}},
     {file: 'wavemaker.ldr', title: {en: 'WaveMaker — Cardan ripple and differential', de: 'WaveMaker — Kardanschwankung und Differenzial'}, example: 'wavemaker.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 1440, stepDeg: 90, speedDps: 30}}},
     {file: 'wavemaker-control.ldr', title: {en: 'WaveMaker Control — correctly phased Cardan joints', de: 'WaveMaker-Kontrolle — richtig ausgerichtete Kardangelenke'}, example: 'wavemaker.bw', mat: 'plain', manualJog: {A: {minDeg: 0, maxDeg: 1440, stepDeg: 90, speedDps: 30}}},
     {file: 'sine-shuttle.ldr', title: {en: 'SineShuttle — captured-block Scotch yoke', de: 'SineShuttle — Kurbelschleife mit gefangenem Gleitstein'}, example: 'sine-shuttle.bw', mat: 'plain',
