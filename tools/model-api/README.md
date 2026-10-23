@@ -80,6 +80,14 @@ Credentials stay out of query strings, source code, browser bundles and logs.
 Use `--settings=settings.json` for an explicit experiment budget. The client
 writes `<out>.job.json` immediately after submission so an interrupted caller
 can resume polling the retained job rather than submit duplicate work.
+Resume with `--resume=attempt-001.json.job.json --out=attempt-001.json` after a
+queue timeout or interrupted terminal. This mode never POSTs a new request.
+Transient GET failures receive bounded retries; submission POSTs are never
+automatically retried because their acceptance may already have dispatched work.
+Before submitting, the client also preserves `<out>.input.json` containing the
+exact model/program text and request settings. The saved job binds their hashes;
+a completed result with different input hashes is retained but refused. Preserve
+these snapshots when repairing a design so original failing inputs remain usable.
 
 ## Deployment
 
