@@ -407,7 +407,7 @@ test('actual shipped loader forwards caller preservation without importing a rep
     assert.deepEqual(calls, [['0 model', 'motorbench.ldr', 'motorbench', {programLoading: false, preserveProgram: true}]]);
 });
 
-for (const preserveProgram of [true, false]) test(`actual model loader preserves caller=${preserveProgram} through async scene installation`, async () => {
+const modelLoaderFixture = () => {
     const start = source.indexOf('    async openText (');
     const end = source.indexOf('    /**\n     * One physics worker', start);
     const openText = new Function(`return ({${source.slice(start, end)}}).openText`)();
@@ -423,6 +423,11 @@ for (const preserveProgram of [true, false]) test(`actual model loader preserves
         registerBtBricks () {}, observeConnection: callback => callback(),
         connections: {setScene: (...args) => calls.push(['scene', ...args])}, rcxHub: () => null,
         t: (_key, {error}) => error};
+    return {pane, calls, session, openText};
+};
+
+for (const preserveProgram of [true, false]) test(`actual model loader preserves caller=${preserveProgram} through async scene installation`, async () => {
+    const {pane, calls, session, openText} = modelLoaderFixture();
     await openText.call(pane, '0 model', 'model.ldr', null, {preserveProgram});
     assert.deepEqual(calls, [['teardown', {preserveProgram}], ['scene', session, {preserveProgram}]]);
     assert.equal(pane.state.status, 'ready');
@@ -440,4 +445,21 @@ test('API caller preservation still cancels a pending toolbar Run without starti
     await rejected;
     assert.equal(events.includes('flag'), false);
     assert.equal(events.includes('clock-start'), false);
+});
+
+
+test('a replaced asynchronous API load cannot install its scene or leak preservation into the UI successor', async () => {
+    const {pane, calls, session, openText} = modelLoaderFixture();
+    const pending = deferred();
+    const old = {dispose: () => calls.push('old-disposed')};
+    pane.lib.SimSession.fromText = text => text === 'API model' ? pending.promise :
+        Promise.resolve({session, issues: [], model: {}, runModel: {}});
+    const first = openText.call(pane, 'API model', 'api.ldr', null, {preserveProgram: true});
+    await Promise.resolve();
+    await openText.call(pane, 'UI model', 'ui.ldr');
+    pending.resolve({session: old});
+    await first;
+    assert.equal(pane.session, session);
+    assert.deepEqual(calls, [['teardown', {preserveProgram: true}], ['teardown', {preserveProgram: false}],
+        ['scene', session, {preserveProgram: false}], 'old-disposed']);
 });
