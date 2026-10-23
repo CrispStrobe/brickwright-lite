@@ -7,6 +7,14 @@ const primitive=new Set(['Number','String','Boolean','Null','Undefined']);
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType',
     'assertedType','ordinaryParameterDefaultNames','bwProcedureConstraintSource']);
 const dangerous=new Set(['constructor','prototype','__proto__']);
+const resultOwnKeys=Reflect.ownKeys,resultDescriptor=Object.getOwnPropertyDescriptor,resultPrototype=Object.getPrototypeOf;
+const resultApply=Reflect.apply,resultIs=Object.is,ResultWeakSet=WeakSet;
+const resultHas=WeakSet.prototype.has,resultAdd=WeakSet.prototype.add,resultRealm=globalThis;
+const resultRealmNames=['Object','Reflect','Array','WeakSet'];
+const resultRealmSlots=[];
+for(let index=0;index<resultRealmNames.length;index++)
+    resultRealmSlots[index]=resultDescriptor(resultRealm,resultRealmNames[index]);
+
 
 // Selection only: absence preserves the old class-free no-op. A possible
 // factory or an uncertain shape goes through the full source/lexical guards;
@@ -663,15 +671,51 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     // The outer binding guard can fail before the SDK guard observes an edit.
     // Ordinary facts must stay revoked even when that short circuit hides the
     // changed source from the inner snapshot until after restoration.
-    let ordinaryLive=true;
+    let ordinaryLive=true,resultUsed=false,resultLive=true;
+    const issued=new ResultWeakSet(),carriers=[];
+    const descriptorEqual=(a,b)=>{
+        if(!a||!b)return false;
+        const fields=['value','get','set','writable','enumerable','configurable'];
+        for(let index=0;index<fields.length;index++){
+            const x=resultDescriptor(a,fields[index]),y=resultDescriptor(b,fields[index]);
+            if(!!x!==!!y||x&&!resultIs(x.value,y.value))return false;
+        }
+        return true;
+    };
+    // Hold membership and reflection intrinsics: a changed public prototype
+    // cannot forge a minted node or disable the check which watches itself.
+    const carrierObjects=new ResultWeakSet();
+    const watchCarrier=object=>{
+        if(!object||resultApply(resultHas,carrierObjects,[object]))return;
+        resultApply(resultAdd,carrierObjects,[object]);
+        const keys=resultOwnKeys(object),proto=resultPrototype(object),descriptors=[];
+        for(let index=0;index<keys.length;index++)descriptors[index]=resultDescriptor(object,keys[index]);
+        carriers[carriers.length]={object,proto,keys,descriptors};watchCarrier(proto);
+    };
+    const realmCurrent=()=>{
+        for(let index=0;index<resultRealmNames.length;index++)
+            if(!descriptorEqual(resultDescriptor(resultRealm,resultRealmNames[index]),resultRealmSlots[index]))return false;
+        return true;
+    };
+    const carriersCurrent=()=>{
+        for(let row=0;row<carriers.length;row++){
+            const {object,proto,keys,descriptors}=carriers[row],now=resultOwnKeys(object);
+            if(resultPrototype(object)!==proto||now.length!==keys.length)return false;
+            for(let index=0;index<keys.length;index++)if(now[index]!==keys[index]||
+                !descriptorEqual(resultDescriptor(object,keys[index]),descriptors[index]))return false;
+        }
+        return true;
+    };
     const current=()=>{
-        if(!ordinaryLive)return false;
+        if(!ordinaryLive||resultUsed&&!resultLive)return false;
         try{
-            const valid=guard.isCurrent()&&sdk.current();
+            const valid=(!resultUsed||realmCurrent()&&carriersCurrent())&&guard.isCurrent()&&sdk.current();
             if(sdk.ordinary&&!valid)ordinaryLive=false;
+            if(resultUsed&&!valid)resultLive=false;
             return valid;
         }catch(error){
             if(sdk.ordinary)ordinaryLive=false;
+            if(resultUsed)resultLive=false;
             throw error;
         }
     };
@@ -698,17 +742,58 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         selected.set(node,[...types]);
     }
     if(!selected.size)return {program,current};
-    const literal=type=>({type,...(type==='Number'?{value:'0'}:type==='String'?{value:'""'}:type==='Boolean'?{value:'false'}:{})});
-    const alternatives=types=>types.length===1?literal(types[0]):{type:'Conditional',test:{type:'Boolean',value:'false'},consequent:literal(types[0]),alternate:alternatives(types.slice(1))};
+    const missingResultSlot=Symbol();
+    const resultSlot=(object,key)=>{
+        const descriptor=resultDescriptor(object,key);
+        if(!descriptor)return key in object?missingResultSlot:undefined;
+        return resultDescriptor(descriptor,'value')?descriptor.value:missingResultSlot;
+    };
+    const normalResultEligible=node=>{
+        if(node.type==='Member')return true;
+        if(node.type!=='Call')return false;
+        for(const key of ['isNew','constructorCall']){
+            const value=resultSlot(node,key);if(value!==undefined&&value!==false)return false;
+        }
+        const generics=resultSlot(node,'typeArguments'),args=resultSlot(node,'args');
+        if(generics!==undefined&&(!Array.isArray(generics)||generics.length)||!Array.isArray(args)||
+            args.some(arg=>arg?.type==='Spread'))return false;
+        const callees=get(cell(node.callee));
+        return callees.size>0&&[...callees].every(bound=>{
+            const fn=bound?.fn?.node,params=fn&&resultSlot(fn,'params');
+            if(!Array.isArray(params)||args.length!==params.length)return false;
+            for(const value of [fn,params]){
+                if(resultSlot(value,'restParam')!==undefined)return false;
+                for(const key of ['parameterDefaults','optionalParams','ordinaryParameterDefaultNames','parameterProperties','typeParameters','genericParams']){
+                    const entry=resultSlot(value,key);
+                    if(entry!==undefined&&(!Array.isArray(entry)||entry.length))return false;
+                }
+                for(const key of ['async','isAsync','generator','isGenerator']){
+                    const entry=resultSlot(value,key);if(entry!==undefined&&entry!==false)return false;
+                }
+            }
+            return true;
+        });
+    };
+    const ownCarrier=node=>{watchCarrier(node);return node;};
+    const literal=type=>ownCarrier({type,...(type==='Number'?{value:'0'}:type==='String'?{value:'""'}:type==='Boolean'?{value:'false'}:{})});
+    const alternatives=types=>types.length===1?literal(types[0]):ownCarrier({type:'Conditional',test:ownCarrier({type:'Boolean',value:'false'}),consequent:literal(types[0]),alternate:alternatives(types.slice(1))});
     const rewrite=node=>{
         if(!node||typeof node!=='object')return node;
         if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
         if(selected.has(node)){
             const types=selected.get(node);
             // Keep the actual getter or method call once in the private census.
-            return {type:'Conditional',test:node,consequent:literal(types[0]),alternate:alternatives(types)};
+            const result=ownCarrier({type:'Conditional',test:node,consequent:literal(types[0]),alternate:alternatives(types)});
+            if(normalResultEligible(node)){
+                watchCarrier(Array.prototype);watchCarrier(Object);watchCarrier(Reflect);
+                watchCarrier(ResultWeakSet.prototype);resultApply(resultAdd,issued,[result]);
+            }return result;
         }
         return Object.fromEntries(Object.entries(node).map(([name,value])=>[name,metadata.has(name)?value:rewrite(value)]));
     };
-    return {program:rewrite(program),current};
+    const rewritten=rewrite(program);
+    return {program:rewritten,current,hasNormalPrimitiveResult:node=>{
+        if(!resultApply(resultHas,issued,[node]))return false;
+        resultUsed=true;return current();
+    }};
 }

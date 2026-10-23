@@ -5806,3 +5806,14 @@ preserve pixels and reference identity. Invalid writers and TDZ variants must
 remain visible refusals. Record each route separately before closing this GUI
 row or crediting an application. No new graphics acceptance follows from a
 Number normal-result proof.
+
+## Captured class primitive result composition
+
+Source implementation and qualification boundaries are recorded in
+[Captured class primitive results](ARCADE-CAPTURED-CLASS-PRIMITIVE-RESULTS.md).
+Exact issued results can compose with independently proved receiver readiness;
+no initialized receiver or Array authority is granted. Captured fields, real
+`this`-based methods/getters, and Boolean/union frontier behavior remain distinct
+acceptance cases. The linked document scopes the remaining method-entry proof
+and visible Code/Blocks authoring, current export, save/reopen and runtime checks.
+No corpus completion is claimed from this source change.

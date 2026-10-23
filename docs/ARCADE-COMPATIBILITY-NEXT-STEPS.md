@@ -1080,3 +1080,14 @@ bundle and every existing author/licence requirement. The registered Arrays
 carrier, all original assertions and supplier identities are retained. This
 integration and the current grouping/receiver/fixture repairs require one new
 complete hosted set; successes from either parent cannot qualify the result.
+
+## Captured class primitive result composition
+
+Source implementation and qualification boundaries are recorded in
+[Captured class primitive results](ARCADE-CAPTURED-CLASS-PRIMITIVE-RESULTS.md).
+Exact issued results can compose with independently proved receiver readiness;
+no initialized receiver or Array authority is granted. Captured fields, real
+`this`-based methods/getters, and Boolean/union frontier behavior remain distinct
+acceptance cases. The linked document scopes the remaining method-entry proof
+and visible Code/Blocks authoring, current export, save/reopen and runtime checks.
+No corpus completion is claimed from this source change.

@@ -83,10 +83,10 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
     const classView=nativeClassScalarView(named.program,profile);
     const bindings=inspectGeneratedHelperBindings(classView.program,profile);
     let closureResults=null,closureLive=true,imageResults=null,imageLive=true;
-    let operationUsed=false,operationLive=true;const operationAbsences=[];
+    let operationUsed=false,operationLive=true,classResultUsed=false,classResultLive=true;const operationAbsences=[];
     const closureNormalTokens=new Set(),imageNormalTokens=new Set();
     const current=()=>{
-        if(operationUsed&&!operationLive)return false;
+        if(operationUsed&&!operationLive||classResultUsed&&!classResultLive)return false;
         try{
             const now=syntax.current()&&unaryProof.isCurrent()&&classView.current()&&bindings.isCurrent()&&graph.lexicalDeclarationReadinessCurrent();
             if(closureNormalTokens.size&&(!now||!closureResults.current()))closureLive=false;
@@ -94,8 +94,9 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             if(recursiveNormalTokens.size&&(!now||!recursiveResults.current()))recursiveLive=false;
             const valid=now&&(!closureNormalTokens.size||closureLive)&&(!imageNormalTokens.size||imageLive)&&(!recursiveNormalTokens.size||recursiveLive);
             if(operationUsed&&(!valid||!operationAbsences.every(({object,key})=>!Object.hasOwn(object,key)&&!(key in object))))operationLive=false;
-            return valid&&(!operationUsed||operationLive);
-        }catch(error){if(operationUsed)operationLive=false;throw error;}
+            if(classResultUsed&&!valid)classResultLive=false;
+            return valid&&(!operationUsed||operationLive)&&(!classResultUsed||classResultLive);
+        }catch(error){if(operationUsed)operationLive=false;if(classResultUsed)classResultLive=false;throw error;}
     };
     const domainHelpers=[...helpers.values()].map(helper=>({...helper,calls:[]}));
     const observed=new Set(),provedHelperResults=new WeakSet();
@@ -449,6 +450,41 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         }
     }while(operationsChanged);
     const normalPrimitiveOperation=node=>closedOperations.has(operationCalls.get(node))&&localPrimitiveOperation(node);
+    // This is a result-local composition, never an initialized receiver fact.
+    // Class selection already closes its value/effect/writer census. Entry
+    // readiness still belongs to the final generic graph, separately.
+    const classArgumentReady=node=>{
+        if(!node||typeof node!=='object')return true;
+        if(initialized(node)||capturedScalarIdentifier(node))return true;
+        if(Array.isArray(node))return node.every(classArgumentReady);
+        if(node.type==='Identifier')return false;
+        return Object.entries(node).every(([key,value])=>metadata.has(key)||classArgumentReady(value));
+    };
+    const classReceiverReady=node=>{
+        if(initialized(node))return true;
+        if(node?.type==='Identifier'){
+            const value=actual(node),kinds=graph.bindingKindsAt(value);
+            return graph.declarationCountAt(value)===1&&kinds.size===1&&kinds.has('variable')&&
+                graph.isCapturedLexicalDeclarationReadyAt(value);
+        }
+        // A nested field retains its original access and effects. Only its
+        // actual receiver may use the captured-object declaration frontier.
+        if(node?.type==='Member')return classReceiverReady(node.object);
+        return classArgumentReady(node);
+    };
+    const normalPrimitiveClass=node=>{
+        if(!classView.hasNormalPrimitiveResult||node?.type!=='Conditional')return false;
+        const final=actual(node),test=node.test,mapped=actual(test);
+        if(final?.type!=='Conditional'||final.test!==mapped||final.consequent!==actual(node.consequent)||
+            final.alternate!==actual(node.alternate))return false;
+        let ready=false;
+        if(test?.type==='Member')ready=mapped?.type==='Member'&&mapped.object===actual(test.object)&&classReceiverReady(test.object);
+        else if(test?.type==='Call'&&test.callee?.type==='Member')ready=mapped?.type==='Call'&&
+            mapped.callee===actual(test.callee)&&mapped.callee.object===actual(test.callee.object)&&
+            mapped.args?.length===test.args?.length&&mapped.args.every((arg,index)=>arg===actual(test.args[index]))&&
+            classReceiverReady(test.callee.object)&&test.args.every(classArgumentReady);
+        return ready&&classView.hasNormalPrimitiveResult(node);
+    };
     const allTokens=new Set(),arrayHelpers=new Set();
     for(const helper of domainHelpers)for(const call of helper.calls)for(let position=0;position<call.args.length;position++){
         const arg=call.args[position];
@@ -468,6 +504,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             (domain=[...found].some(type=>!primitive.has(type)&&type?.kind!=='Array'));
         // Existing successful paths remain independent of the new profile.
         if(refused&&normalPrimitiveOperation(arg)){operationUsed=true;continue;}
+        if(refused&&normalPrimitiveClass(arg)){classResultUsed=true;continue;}
         if(refused){
             const result={helpers:new Map(),current,reason:'native addition requires initialized primitive or proved flat Array operands'};
             // Diagnostics must never replace the original refusal, including
