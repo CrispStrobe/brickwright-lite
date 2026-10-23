@@ -1,9 +1,9 @@
 # Complete the missing NXT extension surface through standard protocols
 
-CLAIMED — Codex hub-coverage owner, isolated NXT API lane, base `f925c08c9`.
+DONE — Codex hub-coverage owner, isolated NXT API lane, base `f925c08c9`.
 Continuation of coverage closure #1230; the sync/buttons/listen cell still
-lacks actual legonxt blocks. Preserve the published motor-power supplier
-adoption #1226 and its existing methods; wait for it before Lite pin adoption.
+now has actual legonxt blocks. The motor-power supplier adoption #1226 landed
+first under its existing owner; its methods and pin chain are preserved.
 
 Own upstream boundary in CrispStrobe/extensions: new legonxt sync, read-only
 button state/counter and ultrasonic-mode/raw-event blocks, with strict reply
@@ -29,9 +29,11 @@ estimate; no hardware accuracy claim. No reset-counter API (read/reset race).
 Require all enabled final-head checks and affected clean real-extension guest
 qualification before normal matched-head merges and predicted-tree proof.
 
-Supplier source candidate: CrispStrobe/extensions#63. The five live blocks pass
-18 byte/error controls and five real-extension Lab probes through the canonical
-adapter, including zero-power and reversed-emitter controls. Existing motor
+Supplier CrispStrobe/extensions#63 merged at
+`428d440353120856620dac86a257e8e1b91d7348` after all seven enabled checks passed.
+The five live blocks pass 18 byte/error controls and eight real-extension Lab
+guests through the canonical adapter, including actual VM button/ultrasonic
+dispatch, zero-power and reversed-emitter controls. Existing motor
 method bodies are unchanged. Named NXC refusal preserves the prior compile
 subset without silently dropping a live block or uploading stale bytecode.
 
@@ -41,5 +43,9 @@ explicitly refused: this does not model the stock firmware's sampling phases.
 IOMAP reads never clear release counts. Existing 2000 ms button duration and
 ultrasonic event interpretation remain estimates.
 
-Downstream adoption remains pending the supplier's final checks/review and
-#1226's normal merge. No tracked wrapper or pin is moved in this model candidate.
+Lite adopts only the scoped `legonxt` pin, canonical wrapper and generated menu
+entries; other supplier pins and the global bundle baseline remain unchanged.
+The five live APIs are explicit learner exclusions; no new DSL words are claimed.
+Affected clean Lab guests and surface/pin controls must pass, along with every
+enabled final-head hosted check, before normal matched-head source merge.
+Preserve the independently retained supplier/model mutation proofs and originals.

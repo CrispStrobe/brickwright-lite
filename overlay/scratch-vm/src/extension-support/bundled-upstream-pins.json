@@ -48,10 +48,10 @@
         },
         "legonxt": {
             "path": "extensions/CrispStrobe/legonxt_transpile_universal.js",
-            "sha256": "4003811ffde27cc52d687ca060f5d5f0dcef7bbb110469e215c2b9aaa81911c5",
-            "bytes": 232231,
+            "sha256": "a052f360bed2ee0694d8ecccf3156ae13205f0b910204d821e864c3dfc3468f2",
+            "bytes": 243220,
             "repo": "CrispStrobe/extensions",
-            "commit": "ff74f1309b8807713508884048292182a369f8f5"
+            "commit": "428d440353120856620dac86a257e8e1b91d7348"
         },
         "legopoweredup": {
             "path": "extensions/CrispStrobe/lego_poweredup.js",

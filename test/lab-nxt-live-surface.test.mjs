@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runOnBtHub, projectOfBlocks} from './helpers/bt-hub-vm.mjs';
 import {REPO} from './helpers/bw-integrated.mjs';
+import {blocksBuilder} from './helpers/scratch-blocks-builder.mjs';
 
 const bot = readFileSync(`${REPO}/overlay/scratch-gui/static/sim-lab/models/nxt-bumper-bot.ldr`, 'utf8');
 const literal = value => [1, [typeof value === 'number' ? 4 : 10, String(value)]];
@@ -87,5 +88,66 @@ for (const facing of [true, false]) {
         assert.equal(error, undefined, String(error?.stack));
         assert.equal(done, true);
         assert.deepEqual(bytes, facing ? [1, 1] : [0, 0], '0/1 is the documented scene model estimate, not a hardware encoding claim');
+    });
+}
+
+// These programs exercise VM dispatch, reporter inputs and non-reporter menu
+// fields as saved by Scratch, in addition to the protocol observations above.
+const observerProgram = build => {
+    const b = blocksBuilder();
+    const variables = {};
+    const set = (name, reporter) => {
+        const id = `var-${name}`;
+        variables[id] = [name, 'not-read'];
+        const block = b.block('data_setvariableto', {blocksIn: {VALUE: reporter}});
+        b.blocks[block].fields.VARIABLE = [name, id];
+        b.blocks[block].inputs.VALUE = [3, reporter, [10, '']];
+        return block;
+    };
+    const phase = n => set('phase', b.num(n));
+    b.stack(b.block('event_whenflagclicked', {top: true}), ...build(b, set, phase));
+    const project = projectOfBlocks({extensions: ['legonxt'], blocks: b.blocks});
+    project.targets[1].variables = variables;
+    return project;
+};
+const valueOf = (vm, name) => vm.runtime.targets.find(t => !t.isStage)?.variables[`var-${name}`]?.value;
+
+test('NXT VM button reporters observe a real press and release through their saved block fields', async () => {
+    const project = observerProgram((b, set, phase) => {
+        const pressed = () => b.block('legonxt_buttonPressed', {fields: {BUTTON: 'enter'}});
+        const wait = () => b.block('control_wait', {values: {DURATION: 0.2}});
+        return [set('initial', pressed()), phase(1), wait(), set('held', pressed()), phase(2), wait(),
+            set('released', pressed()), set('releases', b.block('legonxt_buttonReleaseCount', {fields: {BUTTON: 'enter'}})), phase(3)];
+    });
+    let press = false, release = false, finished = false;
+    const r = await runOnBtHub({project}, {modelText: bot, profile: 'nxt', extensionId: 'legonxt', timeLimitMs: 1600,
+        stopWhen: (point, all, hub, {vm}) => {
+            const phase = Number(valueOf(vm, 'phase'));
+            if (phase === 1 && !press) {hub.pressButton(3, true);press = true;}
+            if (phase === 2 && !release) {hub.pressButton(3, false);release = true;}
+            finished = phase === 3 && !point.running;
+            return finished;
+        }});
+    assert.equal(r.connectError, null);assert.equal(finished, true);
+    assert.equal(press && release, true);
+    assert.deepEqual(['initial', 'held', 'released'].map(name => String(valueOf(r.vm, name))), ['false', 'true', 'false']);
+    assert.equal(valueOf(r.vm, 'releases'), 1);
+});
+
+for (const facing of [true, false]) {
+    test(`NXT VM ultrasonic blocks read the actual ${facing ? 'facing' : 'reversed'} emitter scene`, async () => {
+        const project = observerProgram((b, set, phase) => {
+            const menus = () => ({PORT: ['legonxt_menu_SENSOR_PORT', 'SENSOR_PORT', 'S4']});
+            return [b.block('legonxt_setUltrasonicMode', {menus: menus(), fields: {MODE: 'listen'}}),
+                set('event', b.block('legonxt_getUltrasonicEventByte', {menus: menus()})), phase(1)];
+        });
+        let finished = false;
+        const r = await runOnBtHub({project}, {modelText: sensorScene(facing), profile: 'nxt', extensionId: 'legonxt', timeLimitMs: 1000,
+            stopWhen: (point, all, hub, {vm}) => {
+                finished = Number(valueOf(vm, 'phase')) === 1 && !point.running;
+                return finished;
+            }});
+        assert.equal(r.connectError, null);assert.equal(finished, true);
+        assert.equal(valueOf(r.vm, 'event'), facing ? 1 : 0, 'the same VM reporter judge rejects the reversed scene');
     });
 }
