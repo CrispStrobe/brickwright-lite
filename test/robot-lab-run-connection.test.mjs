@@ -3,14 +3,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {serializeLabLegacyConnection, labProviderRetirementFailure} from '../overlay/scratch-gui/src/lib/bw-sim/transports/lab-extension-connection.js';
 const source=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx',import.meta.url),'utf8');
 const method=(start,end,name)=>new Function('window','HUB_EXTENSIONS',`return ({${source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)))}}).${name}`)({},{});
+const legacy=method('    connectLegacy (','    connectConnection (','connectLegacy');
 const methods={bt:method('    async runBt (','    /** A blocks example','runBt'),radio:method('    async runRadioHub (','    componentWillUnmount','runRadioHub'),spike:method('    async run ({','    /** Puts the current model','run')};
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject};};
 const fixture=(kind,connect=async()=>{})=>{
  const events=[],commits=[];let pending=false;
- const p={session:{},state:{status:'ready'},hub:{setSimulationEnabled(){}},spikeScene:()=>true,spikeLoaded:()=>true,
+ const p={connectLegacy:legacy,session:{},state:{status:'ready'},hub:{setSimulationEnabled(){}},spikeScene:()=>true,spikeLoaded:()=>true,
   robotLabLoaded:()=>false,rcxHub:()=>null,radioHub:()=>null,btProfile:()=>kind==='bt'?'ev3':null,
   hubExtension:()=> 'legopoweredup',stopClock(){events.push('stopClock')},startClock(){events.push('startClock')},
   props:{vm:{extensionManager:{isExtensionLoaded:()=>true},runtime:{peripheralExtensions:{}},greenFlag(){events.push('greenFlag')}}},
@@ -18,7 +20,7 @@ const fixture=(kind,connect=async()=>{})=>{
    pending=false;const batch=commits.splice(0);for(const {next}of batch)Object.assign(p.state,next);
    for(const {done}of batch)done?.();
   });}},
-  lib:{EV3_PERIPHERAL_ID:'virtual-ev3',async connectVirtualHub(){events.push('connect');await connect()},
+  lib:{serializeLabLegacyConnection,labProviderRetirementFailure,EV3_PERIPHERAL_ID:'virtual-ev3',async connectVirtualHub(){events.push('connect');await connect()},
    async connectVirtualSpike(){events.push('connect');await connect()}},
   async connectRadioHub(){events.push('connect');await connect()},
   text:{},t:(_key,{error}={})=>error};
@@ -61,8 +63,10 @@ for(const kind of ['bt','radio','spike']){
   const d=deferred();let calls=0;
   const {p,events,run}=fixture(kind,()=>++calls===1?d.promise:Promise.resolve()),old=run();
   await tick();await tick();p.setState({status:'paused'});await tick();
-  await run();await tick();assert.equal(events.filter(e=>e==='greenFlag').length,1);
-  d.resolve();await old;await tick();
+  let newerDone=false;const newer=run().then(()=>{newerDone=true});await tick();
+  assert.equal(newerDone,false,'the newest Run waits for older provider work to retire');
+  assert.equal(events.filter(e=>e==='greenFlag').length,0);
+  d.resolve();await old;await newer;await tick();
   assert.equal(events.filter(e=>e==='greenFlag').length,1);assert.equal(events.filter(e=>e==='startClock').length,1);
  });
  test(`${kind}: manual Drive cannot be replaced by a pending program connection`,async()=>{
@@ -76,3 +80,14 @@ for(const kind of ['bt','radio','spike']){
   assert.deepEqual(events,['stopClock']);
  });
 }
+
+for(const kind of ['bt','radio','spike'])test(`${kind}: VM replacement during a provider wait cannot start either VM`,async()=>{
+ const d=deferred(),{p,events,run}=fixture(kind,()=>d.promise),old=run();
+ await tick();await tick();assert.ok(events.includes('connect'));
+ const replacementFlags=[];
+ p.props.vm={runtime:{peripheralExtensions:{}},greenFlag(){replacementFlags.push('flag')}};
+ d.resolve();await old;await tick();
+ assert.ok(!events.includes('startClock'));
+ assert.ok(!events.includes('greenFlag'));
+ assert.deepEqual(replacementFlags,[]);
+});

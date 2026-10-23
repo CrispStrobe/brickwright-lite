@@ -38,6 +38,7 @@ export {SimSession, prepareModel, MODELS, MODELS_BASE, PROGRAMS_BASE} from './si
 export {SimLabClock} from './sim-clock.js';
 export {createRobotLabApi} from './api/robot-lab-api.js';
 export {createLabConnectionCoordinator, labConnectionRoutes} from './transports/lab-connection-coordinator.js';
+export {serializeLabLegacyConnection, labProviderRetirementFailure} from './transports/lab-extension-connection.js';
 export {isPortPart} from './contracts.js';
 export {fetchLDrawClosure, fetchModelDrawing, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';

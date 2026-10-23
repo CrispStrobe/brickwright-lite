@@ -31,6 +31,7 @@ const {SimSession, catalogFrom} = await import(path.join(SIM, 'sim-session.js'))
 const {registerVirtualClassicPeripheral, clearVirtualClassicPeripheralsForTest, installVirtualClassicScratchLink} =
     await import(path.join(LIB, 'virtual-hub', 'bt-classic-registry.js'));
 const {connectVirtualHub} = await import(path.join(LIB, 'virtual-hub', 'connect-virtual-hub.js'));
+const {serializeLabLegacyConnection} = await import(path.join(SIM, 'transports', 'lab-extension-connection.js'));
 const {ev3ClassicPeripheral, EV3_PERIPHERAL_ID} = await import(path.join(SIM, 'hubs', 'ev3', 'ev3-peripheral.js'));
 const {nxtClassicPeripheral, NXT_PERIPHERAL_ID} = await import(path.join(SIM, 'hubs', 'nxt', 'nxt-peripheral.js'));
 const Timer = createRequire(import.meta.url)(path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'util', 'timer.js'));
@@ -88,7 +89,7 @@ export const projectOfBlocks = program => ({
  * @param {boolean} [options.connect] false: leave the connection to the test
  * @returns {Promise<{track, hub, session, vm, extension, connectError}>}
  */
-export async function runOnBtHub (program, {modelText, mat = null, profile, extensionId, timeLimitMs, stopWhen = null, connect = true}) {
+export async function runOnBtHub (program, {modelText, mat = null, profile, extensionId, timeLimitMs, stopWhen = null, connect = true, useLabProviderQueue = false}) {
     // The stock extensions' base64 helper reads `self` (a browser's global).
     if (!globalThis.self) globalThis.self = globalThis;
     const clock = new FakeClock(1.7e12);
@@ -140,8 +141,10 @@ export async function runOnBtHub (program, {modelText, mat = null, profile, exte
         let connectError = null;
         if (connect) {
             try {
-                await connectVirtualHub({vm, extensionId, peripheralId: profile === 'ev3' ? EV3_PERIPHERAL_ID : NXT_PERIPHERAL_ID,
+                const open = () => connectVirtualHub({vm, extensionId, peripheralId: profile === 'ev3' ? EV3_PERIPHERAL_ID : NXT_PERIPHERAL_ID,
                     wait: ms => clock.advance(ms)});
+                if (useLabProviderQueue) await serializeLabLegacyConnection({vm, connect: open});
+                else await open();
             } catch (error) {
                 connectError = error;
             }

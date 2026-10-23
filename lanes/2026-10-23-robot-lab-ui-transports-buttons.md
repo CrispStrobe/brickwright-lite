@@ -47,15 +47,20 @@ reviewed/predicted/landed tree and parents agree. Keep raw evidence private.
 
 The candidate wires the production coordinator, connection selector and brick
 inputs through the pane and dynamic Lab boundary. Qualified measurement parent
-#1265 is normally composed. The #1272 plots owner's measurement import,
-timestamps and panel props are unchanged; its owner retains that merge.
+#1265 is normally composed. Qualified plots #1272 has now landed on main; its
+measurement import, timestamps and panel props are preserved during normal
+composition and require the final combined-head qualification.
 
-Focused qualification: 208 controls pass with no failures or skips, including
+Focused qualification: 230 controls pass with no failures or skips, including
 nine actual production-route VM/Jolt guests, WAIT_FOR_PRESS, nine main/worker
 sync cases, current/old provider ownership, API world pause, model/VM replacement,
 normal startup, execution-failure rollback and unchanged measurement controls.
-Nine component-cleanup and eight Run/feedback mutations are detected with exact
-originals restored. Failed state/clock/VM startup retires its owned effects,
+Fifteen additional ordering/peer mutations are detected with exact originals
+restored; prior component-cleanup and Run/feedback controls remain intact.
+Bluetooth and virtual providers retire in order across replacement panes.
+EV3/NXT peers capture their scene and refuse stale commands; partial registration
+and multi-peer teardown retain failures. Three actual queued Bluetooth guests
+preserve the existing stock EV3, ev3comprehensive and NXT physical judges. Failed state/clock/VM startup retires its owned effects,
 retains rollback/publication errors and permits recovery after clean rollback;
 stale failure cannot retire a newer Run. The canonical scoped
 Powered Up pin adopts qualified supplier #64; all other pins and the global

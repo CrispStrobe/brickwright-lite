@@ -3,6 +3,37 @@
 // same provider are serialized, including cancellation cleanup, so a delayed
 // old connect cannot disconnect a newer Lab connection.
 const queues = new WeakMap();
+const legacyQueues = new WeakMap();
+const legacyState = runtime => {
+    let state = legacyQueues.get(runtime);
+    if (!state) { state = {tail: Promise.resolve(), failure: null}; legacyQueues.set(runtime, state); }
+    return state;
+};
+
+export const labProviderRetirementFailure = vm => legacyQueues.get(vm?.runtime)?.failure || null;
+
+// Keep the existing Bluetooth helpers intact, but order their provider work
+// against virtual requests, including across replacement panes on the same VM.
+// Capture predecessors before publishing this operation to avoid wait cycles.
+export const serializeLabLegacyConnection = ({vm, connect, isCurrent = () => true}) => {
+    const runtime = vm?.runtime;
+    if (!runtime || typeof connect !== 'function') throw new TypeError('The program runtime is unavailable.');
+    const state = legacyState(runtime);
+    const previous = state.tail;
+    const retirements = [...(queues.get(runtime)?.values() || [])].map(queue =>
+        queue.ticket ? queue.ticket.cancel() : queue.tail);
+    const retired = Promise.all(retirements).catch(error => { if (!state.failure) state.failure = error; throw error; });
+    const ready = Promise.all([previous, retired]).then(async () => {
+        if (state.failure) throw state.failure;
+        if (!isCurrent()) throw abort();
+        const result = await connect();
+        if (!isCurrent()) throw abort();
+        return result;
+    });
+    state.tail = ready.then(() => undefined, () => undefined);
+    return ready;
+};
+
 const abort = () => new DOMException('The Robot Lab connection request was replaced.', 'AbortError');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -59,6 +90,8 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
         return result;
     };
     const previousCleanup = queue.ticket ? queue.ticket.cancel() : Promise.resolve();
+    const legacy = legacyState(runtime);
+    const previousLegacy = legacy.tail;
     const previousResult = previousCleanup.then(() => null, error => ({error}));
     const ticket = {active: true, cancel: null};
     queue.ticket = ticket;
@@ -80,7 +113,7 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
         // Clear ownership first, including when the producer's close throws.
         queue.providerOwner = null;
         try { await primitives.get(plan.close)({}, {runtime}); }
-        catch (error) { cleanupFailure = error; throw error; }
+        catch (error) { cleanupFailure = error; if (!legacy.failure) legacy.failure = error; throw error; }
     };
     let closing = null;
     ticket.cancel = () => {
@@ -91,7 +124,9 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
     };
     const ready = enqueue(async () => {
         const previous = await previousResult;
+        await previousLegacy;
         if (previous) throw previous.error;
+        if (legacy.failure) throw legacy.failure;
         if (!current()) throw abort();
         queue.providerOwner = ticket;
         try {

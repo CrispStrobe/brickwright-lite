@@ -29,7 +29,11 @@ the motor encoders and sensors that those blocks read.
 | `legopoweredup`, `legoboostunified` | HTTP bridge | `http://localhost:8080/`, LWP3 bridge requests |
 | `scratchtoev3` / ev3dev | HTTP bridge | `http://127.0.0.1:8080/`, ev3dev requests |
 
-Bluetooth retains the Lab's existing connection path. Stock Bluetooth-only
+Bluetooth retains the Lab's existing connection path, with provider operations
+ordered against the virtual routes on the same runtime. Changing models retires
+the old EV3/NXT Bluetooth peers and their discovery entries; an old peer cannot
+send commands into the replacement model or close a newer peer. Uncertain
+provider cleanup refuses further Lab connections until the runtime is replaced. Stock Bluetooth-only
 extensions do not gain serial or HTTP blocks from this selector. SPIKE firmware
 lockstep and the official-v3 profile do not expose a second native 2.x REPL.
 

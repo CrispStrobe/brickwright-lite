@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createLabExtensionConnection} from '../overlay/scratch-gui/src/lib/bw-sim/transports/lab-extension-connection.js';
+import {createLabExtensionConnection, serializeLabLegacyConnection} from '../overlay/scratch-gui/src/lib/bw-sim/transports/lab-extension-connection.js';
 
 const fixture = (id, extra = {}) => {
     const calls = [];
@@ -167,4 +167,96 @@ test('SPIKE waits for the actual complete port report and accepts legitimate zer
     assert.deepEqual(waits, [50, 50, 50], 'transport open and a partial report cannot admit Run');
     assert.equal(peripheral.portValues.F.distance, 0);
     await connection.cancel();
+});
+
+
+const deferredProvider = () => {let resolve; const promise = new Promise(done => {resolve = done;}); return {promise, resolve};};
+
+test('a virtual provider on the same runtime waits for an older Bluetooth helper from another pane', async () => {
+    const f = fixture('ev3comprehensive'); const gate = deferredProvider(); const entered = deferredProvider();
+    const legacy = serializeLabLegacyConnection({vm: {runtime: f.vm.runtime}, connect: async () => {entered.resolve(); await gate.promise;}});
+    await entered.promise;
+    const next = f.start({route: 'bridge'});
+    try {
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(f.calls, [], 'even initial disconnect must wait for the old helper');
+    } finally {gate.resolve(); await legacy; await next.ready; await next.cancel();}
+});
+
+for (const preCanceled of [false, true]) test(`Bluetooth waits for a ${preCanceled ? 'previously canceled' : 'pending'} virtual provider and its cleanup`, async () => {
+    const gate = deferredProvider(); const entered = deferredProvider(); let legacyEntered = false;
+    const f = fixture('ev3comprehensive', {connect: async () => {entered.resolve(); await gate.promise;}});
+    const old = f.start({route: 'bridge'}); const refused = assert.rejects(old.ready, {name: 'AbortError'});
+    await entered.promise;
+    const canceled = preCanceled ? old.cancel() : null;
+    const legacy = serializeLabLegacyConnection({vm: f.vm, connect: () => {
+        legacyEntered = true; f.calls.push(['legacy-start', {}]);
+    }});
+    try {
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(legacyEntered, false);
+    } finally {gate.resolve(); await refused; await canceled; await legacy;}
+    assert.equal(f.calls.at(-2)[0], 'disconnect');
+    assert.equal(f.calls.at(-1)[0], 'legacy-start');
+});
+
+test('an older Bluetooth error is retained without poisoning clean later provider work', async () => {
+    const f = fixture('ev3comprehensive'); const failure = new Error('Bluetooth helper failed');
+    await assert.rejects(serializeLabLegacyConnection({vm: f.vm, connect: () => {throw failure;}}), error => error === failure);
+    const next = f.start({route: 'bridge'}); await next.ready; await next.cancel();
+    assert.equal(f.calls.some(([name]) => name === 'connect'), true);
+});
+
+test('uncertain virtual cleanup also refuses Bluetooth and another Lab provider on that runtime', async () => {
+    const failure = new Error('provider cleanup uncertain'); let disconnects = 0;
+    const f = fixture('ev3comprehensive', {disconnect: () => {if (++disconnects > 1) throw failure;}});
+    const old = f.start({route: 'bridge'}); await old.ready;
+    await assert.rejects(old.cancel(), error => error === failure);
+    let legacyEntered = false;
+    await assert.rejects(serializeLabLegacyConnection({vm: f.vm, connect: () => {legacyEntered = true;}}), error => error === failure);
+    assert.equal(legacyEntered, false);
+    const other = fixture('legonxt'); Object.assign(f.vm.runtime._primitives, other.vm.runtime._primitives);
+    const next = createLabExtensionConnection({vm: f.vm, extensionId: 'legonxt', route: 'bridge'});
+    await assert.rejects(next.ready, error => error === failure);
+    assert.deepEqual(other.calls, []);
+    await next.cancel();
+});
+
+test('unrelated runtimes do not wait on one another legacy helper', async () => {
+    const gate = deferredProvider(); const entered = deferredProvider(); const f = fixture('ev3comprehensive'); const other = fixture('ev3comprehensive');
+    const old = serializeLabLegacyConnection({vm: f.vm, connect: async () => {entered.resolve(); await gate.promise;}});
+    await entered.promise;
+    let nextReady = false;
+    const next = serializeLabLegacyConnection({vm: other.vm, connect: () => {nextReady = true;}});
+    try {await new Promise(resolve => setImmediate(resolve)); assert.equal(nextReady, true);}
+    finally {gate.resolve(); await old; await next;}
+});
+
+test('Bluetooth helpers sharing a runtime serialize their chooser lifetimes', async () => {
+    const vm = {runtime: {}}; const events = []; const gate = deferredProvider(); const entered = deferredProvider();
+    const old = serializeLabLegacyConnection({vm, connect: async () => {entered.resolve(); await gate.promise; events.push('old-finished');}});
+    await entered.promise;
+    const next = serializeLabLegacyConnection({vm, connect: () => {events.push('next-started');}});
+    try {await new Promise(resolve => setImmediate(resolve)); assert.deepEqual(events, []);}
+    finally {gate.resolve(); await old; await next;}
+    assert.deepEqual(events, ['old-finished', 'next-started']);
+});
+
+
+test('a replaced queued Bluetooth request does not open its chooser', async () => {
+    const vm = {runtime: {}}; const gate = deferredProvider(); const entered = deferredProvider();
+    const old = serializeLabLegacyConnection({vm, connect: async () => {entered.resolve(); await gate.promise;}});
+    await entered.promise;
+    let active = true; let connected = false;
+    const next = serializeLabLegacyConnection({vm, isCurrent: () => active, connect: () => {connected = true;}});
+    const refused = assert.rejects(next, {name: 'AbortError'});
+    active = false; gate.resolve(); await old; await refused;
+    assert.equal(connected, false);
+});
+
+test('a replaced in-flight Bluetooth helper rejects its own waiter after returning', async () => {
+    const vm = {runtime: {}}; const gate = deferredProvider(); const entered = deferredProvider(); let active = true;
+    const old = serializeLabLegacyConnection({vm, isCurrent: () => active, connect: async () => {entered.resolve(); await gate.promise;}});
+    const refused = assert.rejects(old, {name: 'AbortError'});
+    await entered.promise; active = false; gate.resolve(); await refused;
 });

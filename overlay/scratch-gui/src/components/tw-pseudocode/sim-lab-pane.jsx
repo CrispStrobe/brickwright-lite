@@ -516,7 +516,6 @@ class SimLabPane extends React.Component {
         // The scene's radio hubs (LWP3: BOOST, Powered Up, Technic, SPIKE Essential; WeDo 2.0) as virtual BLE
         // peripherals, for the LEGO extensions to reach over Web Bluetooth or Scratch Link (virtual-hub/lab-ble-peripherals.js).
         this.unregisterBle = this.lib.registerRobotLabBlePeripherals(() => (this.session ? this.session.hubs.map(h => h.hub) : []));
-        this.registerBtBricks();
         this.installApi();
         this.installConnections();
         this.raf = requestAnimationFrame(this.frame);
@@ -607,6 +606,18 @@ class SimLabPane extends React.Component {
         };
         try { return Promise.resolve(action()).catch(failed); }
         catch (error) { failed(error); return Promise.resolve(); }
+    }
+
+    connectLegacy (vm, connect, isCurrent) {
+        return this.lib.serializeLabLegacyConnection({vm, connect, isCurrent}).catch(error => {
+            if (isCurrent() && this.lib.labProviderRetirementFailure(vm)) {
+                // The ordinary Bluetooth connection-error fallback must not
+                // start a script after provider retirement became uncertain.
+                this.runConnection = null;
+                this.observeConnection(() => Promise.reject(new AggregateError([error], error.message)));
+            }
+            throw error;
+        });
     }
 
     connectConnection ({run = false} = {}) {
@@ -747,7 +758,7 @@ class SimLabPane extends React.Component {
         this.stopClock();
         const session = this.session;
         const request = this.runConnection = {};
-        const current = () => this.session === session && this.runConnection === request &&
+        const current = () => !this.disposed && this.props.vm === vm && this.session === session && this.runConnection === request &&
             this.state.status === 'running' && !this.state.manualOverride;
         // A fast virtual connection can resolve before React flushes setState.
         // Commit Run first; an intervening Stop or replacement still wins.
@@ -762,7 +773,7 @@ class SimLabPane extends React.Component {
         }
         this.setState({info: ''});
         try {
-            await this.connectRadioHub(hub, id);
+            await this.connectLegacy(vm, () => this.connectRadioHub(hub, id), current);
         } catch (error) {
             if (!current()) return;
             this.setState({message: this.t('connectFailed', {error: error.message})});
@@ -1126,6 +1137,7 @@ class SimLabPane extends React.Component {
     teardown () {
         this.runConnection = null;
         if (this.connections) this.observeConnection(() => this.connections.setScene(null));
+        if (this.unregisterBt) this.observeConnection(() => this.unregisterBt());
         this.stopClock();
         if (this.unsubscribeDrawing) this.unsubscribeDrawing();
         this.unsubscribeDrawing = null;
@@ -1335,6 +1347,7 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        this.registerBtBricks();
         if (this.connections) this.observeConnection(() => this.connections.setScene(session));
         this.measurementReader = this.lib.createMeasurementReader(session);
         this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
@@ -1735,19 +1748,76 @@ class SimLabPane extends React.Component {
      * a brick over Scratch Link finds the Lab's, and its direct commands drive it.
      */
     registerBtBricks () {
-        if (this.unregisterBt) return;
-        const hubOf = profile => () => {
-            const h = this.session && this.session.hubs.find(x => x.profile === profile);
-            return h ? h.hub : null;
+        if (this.unregisterBt || !this.session || this.disposed) return;
+        const scene = this.session;
+        let active = true;
+        const peers = new Set();
+        const make = (profile, factory) => {
+            const record = scene.hubs.find(item => item.profile === profile);
+            const hub = record?.hub;
+            const currentHub = () => active && !this.disposed && this.session === scene && !scene._disposed &&
+                record && scene.hubs.includes(record) && record.hub === hub && record.profile === profile ? hub : null;
+            const peripheral = factory(currentHub);
+            return {...peripheral, open: link => {
+                if (!currentHub()) throw new DOMException('The Lab Bluetooth brick was replaced.', 'NetworkError');
+                const session = factory(currentHub).open(link);
+                let live = true;
+                let linkClosed = false;
+                const owner = {retire: closeLink => {
+                    const errors = [];
+                    if (live) {
+                        live = false;
+                        peers.delete(owner);
+                        try { session.close?.(); } catch (error) { errors.push(error); }
+                    }
+                    if (closeLink && !linkClosed) {
+                        linkClosed = true;
+                        try { link.close(); } catch (error) { errors.push(error); }
+                    }
+                    if (errors.length) throw new AggregateError(errors, 'Lab Bluetooth peer cleanup failed');
+                }};
+                peers.add(owner);
+                if (!currentHub()) {
+                    owner.retire(true);
+                    throw new DOMException('The Lab Bluetooth brick was replaced while opening.', 'NetworkError');
+                }
+                return {
+                    receive: bytes => {
+                        if (!live) throw new DOMException('The Lab Bluetooth connection is closed.', 'NetworkError');
+                        if (!currentHub()) {
+                            owner.retire(true);
+                            throw new DOMException('The Lab Bluetooth brick was replaced.', 'NetworkError');
+                        }
+                        return session.receive(bytes);
+                    },
+                    close: () => owner.retire(false)
+                };
+            }};
         };
-        const unregister = [
-            this.lib.registerVirtualClassicPeripheral(this.lib.ev3ClassicPeripheral(hubOf('ev3'))),
-            this.lib.registerVirtualClassicPeripheral(this.lib.nxtClassicPeripheral(hubOf('nxt')))
-        ];
-        this.unregisterBt = () => {
-            for (const fn of unregister) fn();
-            this.unregisterBt = null;
+        const unregister = [];
+        const release = () => {
+            if (!active) return;
+            active = false;
+            if (this.unregisterBt === release) this.unregisterBt = null;
+            const errors = [];
+            // Remove discovery first: callbacks from closing a peer cannot
+            // reacquire an endpoint being retired or remove a later owner.
+            for (const off of unregister) { try { off(); } catch (error) { errors.push(error); } }
+            for (const owner of [...peers]) { try { owner.retire(true); } catch (error) { errors.push(error); } }
+            if (errors.length) throw new AggregateError(errors, 'Lab Bluetooth retirement failed');
         };
+        try {
+            for (const [profile, factory] of [['ev3', this.lib.ev3ClassicPeripheral], ['nxt', this.lib.nxtClassicPeripheral]]) {
+                if (scene.hubs.some(record => record.profile === profile)) {
+                    unregister.push(this.lib.registerVirtualClassicPeripheral(make(profile, factory)));
+                }
+            }
+        } catch (error) {
+            try { release(); }
+            catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Lab Bluetooth registration and rollback failed'); }
+            throw error;
+        }
+        this.unregisterBt = release;
     }
 
     /**
@@ -1763,7 +1833,7 @@ class SimLabPane extends React.Component {
         this.stopClock();
         const session = this.session;
         const request = this.runConnection = {};
-        const current = () => this.session === session && this.runConnection === request &&
+        const current = () => !this.disposed && this.props.vm === vm && this.session === session && this.runConnection === request &&
             this.state.status === 'running' && !this.state.manualOverride;
         // A fast virtual connection can resolve before React flushes setState.
         // Commit Run first; an intervening Stop or replacement still wins.
@@ -1776,8 +1846,8 @@ class SimLabPane extends React.Component {
         }
         this.setState({info: ''});
         try {
-            await this.lib.connectVirtualHub({vm, extensionId,
-                peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID});
+            await this.connectLegacy(vm, () => this.lib.connectVirtualHub({vm, extensionId,
+                peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID}), current);
         } catch (error) {
             // Said, and the world still runs: the program's own connect block may yet reach the brick.
             if (!current()) return;
@@ -1827,6 +1897,7 @@ class SimLabPane extends React.Component {
         if (this.rcxHub()) { this.runRcx(); return; }
         if (this.radioHub()) { await this.runRadioHub(this.radioHub(), {greenFlag}); return; }
         if (this.btProfile()) { await this.runBt({greenFlag}); return; }
+        const vm = this.props.vm;
         const hubState = this.hub;
         hubState.setSimulationEnabled(true);
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
@@ -1834,13 +1905,12 @@ class SimLabPane extends React.Component {
         this.stopClock();
         const session = this.session;
         const request = this.runConnection = {};
-        const current = () => this.session === session && this.runConnection === request &&
+        const current = () => !this.disposed && this.props.vm === vm && this.session === session && this.runConnection === request &&
             this.state.status === 'running' && !this.state.manualOverride;
         // A fast virtual connection can resolve before React flushes setState.
         // Commit Run first; an intervening Stop or replacement still wins.
         await new Promise(resolve => this.setState({status: 'running'}, resolve));
         if (!current()) return;
-        const vm = this.props.vm;
         // Without a SPIKE or Robot Lab program the clock still runs (the arrows below drive the
         // motors), but say plainly why nothing moves on its own.
         const spike = this.spikeLoaded();
@@ -1860,13 +1930,13 @@ class SimLabPane extends React.Component {
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
         try {
             const {connectVirtualSpike} = this.lib;
-            await connectVirtualSpike({host: window, hubState,
+            await this.connectLegacy(vm, () => connectVirtualSpike({host: window, hubState,
                 connected: () => vm.getPeripheralIsConnected('spikeprime'),
                 disconnect: () => vm.disconnectPeripheral('spikeprime'),
                 connect: async () => {
                     if (typeof peripheral.setMode === 'function') peripheral.setMode('web-ble');
                     await peripheral.scan();
-                }});
+                }}), current);
         } catch (error) {
             if (!current()) return;
             this.setState({message: this.t('connectFailed', {error: error.message})});

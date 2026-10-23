@@ -5,6 +5,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createLabConnectionCoordinator, labConnectionRoutes} from '../overlay/scratch-gui/src/lib/bw-sim/transports/lab-connection-coordinator.js';
+import {connectVirtualHub} from '../overlay/scratch-gui/src/lib/virtual-hub/connect-virtual-hub.js';
+import {serializeLabLegacyConnection, createLabExtensionConnection, labProviderRetirementFailure} from '../overlay/scratch-gui/src/lib/bw-sim/transports/lab-extension-connection.js';
+import {Ev3VirtualHub} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/ev3-virtual-hub.js';
+import {ev3ClassicPeripheral} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/ev3-peripheral.js';
+import {nxtClassicPeripheral} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/nxt/nxt-peripheral.js';
 const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', import.meta.url), 'utf8');
 const method = (name, end, host, navigatorHost) => {
     const start = source.indexOf(`    ${name} (`);
@@ -26,12 +31,12 @@ const fixture = () => {
         ev3comprehensive_disconnect: () => { connected = false; }, ev3comprehensive_setMode () {},
         ev3comprehensive_connect: () => { connected = true; }, ev3comprehensive_isConnected: () => connected
     }}, stopAll: () => events.push('stop'), greenFlag: () => events.push('flag')};
-    const pane = {state: {status: 'ready'}, session: scene, props: {vm}, lib: {createLabConnectionCoordinator, labConnectionRoutes},
+    const pane = {state: {status: 'ready'}, session: scene, props: {vm}, lib: {createLabConnectionCoordinator, labConnectionRoutes, serializeLabLegacyConnection, labProviderRetirementFailure},
         stopClock: () => events.push('clock-stop'), startClock: () => events.push('clock-start'),
         setState (value, done) {Object.assign(this.state, value); done?.();},
         t: (_key, {error}) => error};
     for (const [name, end] of [
-        ['installConnections', '    observeConnection ('], ['observeConnection', '    connectConnection ('], ['connectConnection', '    selectConnection ('],
+        ['installConnections', '    observeConnection ('], ['observeConnection', '    connectLegacy ('], ['connectLegacy', '    connectConnection ('], ['connectConnection', '    selectConnection ('],
         ['selectConnection', '    disconnectConnection ('], ['disconnectConnection', '    /** loadModel'],
         ['apiStop', '    /** A motor was told']
     ]) pane[name] = method(name, end, host, navigatorHost);
@@ -171,4 +176,160 @@ test('a failed Run reports the paused world before a delayed provider finishes c
     } finally {
         gate.resolve(); await run; await pane.connections.dispose();
     }
+});
+
+
+test('switching from a delayed Bluetooth provider to the bridge waits for the old producer before admission', async () => {
+    const {pane, scene, vm, events} = fixture();
+    const gate = deferred(); const entered = deferred();
+    let mode = null; let provider = null; let nextReady = false; let next;
+    vm.extensionManager = {isExtensionLoaded: id => id === 'ev3comprehensive'};
+    vm.runtime._primitives.ev3comprehensive_disconnect = () => {provider = null;};
+    vm.runtime._primitives.ev3comprehensive_setMode = args => {mode = args.MODE;};
+    vm.runtime._primitives.ev3comprehensive_connect = async () => {
+        const admittedMode = mode;
+        if (admittedMode === 'scratchlink') {entered.resolve(); await gate.promise;}
+        provider = admittedMode;
+    };
+    vm.runtime._primitives.ev3comprehensive_isConnected = () => provider !== null;
+    pane.btProfile = () => 'ev3';
+    pane.lib.connectVirtualHub = connectVirtualHub;
+    pane.lib.EV3_PERIPHERAL_ID = 'virtual-ev3';
+    const start = source.indexOf('    async runBt (');
+    const end = source.indexOf('    /** A blocks example', start);
+    pane.runBt = new Function(`return ({${source.slice(start, end)}}).runBt`)();
+    await pane.connections.setScene(scene);
+    const old = pane.runBt();
+    try {
+        await entered.promise;
+        pane.selectConnection({route: 'bridge'});
+        next = pane.connectConnection().then(() => {nextReady = true;});
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(nextReady, false, 'a new connection cannot be admitted while an older provider can still mutate its backend');
+        gate.resolve(); await old; await next;
+        assert.equal(provider, 'bridge');
+        assert.equal(pane.state.connection.status, 'connected');
+        assert.equal(events.includes('flag'), false);
+    } finally {
+        gate.resolve(); await old; await next; await pane.connections.dispose();
+    }
+});
+
+
+const registeredFixture = () => {
+    const f = fixture(); const registrations = []; const released = [];
+    f.scene.hubs[0].hub = new Ev3VirtualHub();
+    f.scene.dispose = () => {f.scene._disposed = true;};
+    Object.assign(f.pane.lib, {ev3ClassicPeripheral, nxtClassicPeripheral,
+        registerVirtualClassicPeripheral: peripheral => {registrations.push(peripheral); return () => released.push(peripheral.id);}});
+    f.pane.registerBtBricks = method('registerBtBricks', '    /**\n     * Run with an EV3', {}, {});
+    f.pane.teardown = method('teardown', '    /** Opens a MODELS', {}, {});
+    f.pane.registerBtBricks();
+    return {...f, registrations, released};
+};
+const pressEnterPacket = Uint8Array.from([8, 0, 1, 0, 0x80, 0, 0, 0x83, 0x05, 2]);
+
+test('an old Bluetooth session cannot send its real direct command into a replacement scene', async () => {
+    const f = registeredFixture(); const old = f.registrations[0]; let closed = 0;
+    const peer = old.open({send () {}, close () {closed++;}});
+    const replacement = {hubs: [{id: 'brick', profile: 'ev3', hub: new Ev3VirtualHub()}]};
+    f.pane.session = replacement;
+    let refusal = null;
+    try {peer.receive(pressEnterPacket);} catch (error) {refusal = error;}
+    try {
+        assert.equal(replacement.hubs[0].hub.button(2), false, 'the old peer must not press Enter on the new brick');
+        assert.equal(refusal?.name, 'NetworkError');
+        assert.equal(closed, 1);
+        assert.equal(old.available(), false);
+        assert.throws(() => old.open({send () {}, close () {}}), {name: 'NetworkError'});
+    } finally {peer.close(); f.pane.unregisterBt?.(); await f.pane.connections.dispose();}
+});
+
+
+test('model teardown closes every owned Bluetooth link even when one link callback throws', async () => {
+    const f = registeredFixture(); const closed = []; const failure = new Error('link close callback failed');
+    const old = f.registrations[0];
+    const first = old.open({send () {}, close () {closed.push(1); throw failure;}});
+    const second = old.open({send () {}, close () {closed.push(2);}});
+    f.pane.teardown();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(closed, [1, 2]);
+    assert.equal(f.released.length, f.registrations.length);
+    assert.equal(f.pane.session, null);
+    assert.equal(old.available(), false);
+    assert.throws(() => first.receive(pressEnterPacket), {name: 'NetworkError'});
+    assert.throws(() => second.receive(pressEnterPacket), {name: 'NetworkError'});
+    assert.ok(f.pane.lastConnectionError instanceof AggregateError);
+    assert.equal(f.scene.hubs[0].hub.button(2), false);
+    await f.pane.connections.dispose();
+});
+
+test('a closed Bluetooth peer cannot close a later peer sharing the same link', async () => {
+    const f = registeredFixture(); let closes = 0;
+    const link = {send () {}, close () {closes++;}};
+    const old = f.registrations[0].open(link); old.close();
+    const next = f.registrations[0].open(link);
+    assert.throws(() => old.receive(pressEnterPacket), {name: 'NetworkError'});
+    assert.equal(closes, 0, 'the old closed session leaves the newer link owner alone');
+    next.receive(pressEnterPacket);
+    assert.equal(f.scene.hubs[0].hub.button(2), true);
+    f.pane.unregisterBt(); assert.equal(closes, 1);
+    await f.pane.connections.dispose();
+});
+
+test('failed second-family Bluetooth registration rolls back its own first registration', async () => {
+    const {pane, scene} = fixture();
+    const failure = new Error('NXT registration refused'); const released = [];
+    scene.hubs.push({id: 'nxt', profile: 'nxt', hub: {}});
+    Object.assign(pane.lib, {ev3ClassicPeripheral, nxtClassicPeripheral, registerVirtualClassicPeripheral: peripheral => {
+        if (peripheral.id.includes('nxt')) throw failure;
+        return () => released.push(peripheral.id);
+    }});
+    pane.registerBtBricks = method('registerBtBricks', '    /**\n     * Run with an EV3', {}, {});
+    assert.throws(() => pane.registerBtBricks(), error => error === failure);
+    assert.equal(released.length, 1);
+    assert.equal(pane.unregisterBt, undefined);
+    await pane.connections.dispose();
+});
+
+
+test('Bluetooth open rolls back its returned handle when opening retires the scene registration', async () => {
+    const {pane, scene} = fixture(); let closes = 0; const registrations = [];
+    scene.hubs[0].hub = new Ev3VirtualHub();
+    Object.assign(pane.lib, {nxtClassicPeripheral, ev3ClassicPeripheral: getHub => {
+        const real = ev3ClassicPeripheral(getHub);
+        return {...real, open: link => {
+            const peer = real.open(link);
+            pane.unregisterBt();
+            return peer;
+        }};
+    }, registerVirtualClassicPeripheral: peripheral => {registrations.push(peripheral); return () => {};}});
+    pane.registerBtBricks = method('registerBtBricks', '    /**\n     * Run with an EV3', {}, {});
+    pane.registerBtBricks();
+    assert.throws(() => registrations[0].open({send () {}, close () {closes++;}}), {name: 'NetworkError'});
+    assert.equal(closes, 1);
+    assert.equal(registrations[0].available(), false);
+    await pane.connections.dispose();
+});
+
+
+test('a Bluetooth Run refused by uncertain provider cleanup cannot fall through to a green flag', async () => {
+    const {pane, vm, events} = fixture(); let fail = false;
+    const failure = new Error('the old virtual provider did not retire');
+    const original = vm.runtime._primitives.ev3comprehensive_disconnect;
+    vm.runtime._primitives.ev3comprehensive_disconnect = () => {if (fail) throw failure; return original();};
+    const old = createLabExtensionConnection({vm, extensionId: 'ev3comprehensive', route: 'bridge'});
+    await old.ready; fail = true;
+    await assert.rejects(old.cancel(), error => error === failure);
+    vm.extensionManager = {isExtensionLoaded: () => true}; pane.btProfile = () => 'ev3';
+    pane.lib.connectVirtualHub = connectVirtualHub;
+    const start = source.indexOf('    async runBt ('); const end = source.indexOf('    /** A blocks example', start);
+    pane.runBt = new Function(`return ({${source.slice(start, end)}}).runBt`)();
+    await pane.runBt();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(events.includes('flag'), false, 'failed retirement refuses execution as well as another connection');
+    assert.equal(events.includes('clock-start'), false);
+    assert.equal(pane.state.status, 'paused');
+    assert.match(pane.state.message, /the old virtual provider did not retire/);
+    await pane.connections.dispose();
 });

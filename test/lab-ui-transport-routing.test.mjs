@@ -8,7 +8,7 @@ import {runLabHubProgram, modelText, programText} from './helpers/lab-hubs-vm.mj
 import {httpEndpointFor} from '../overlay/scratch-gui/src/lib/bw-sim/transports/virtual-http.js';
 import {bridgeEndpointFor} from '../overlay/scratch-gui/src/lib/bw-sim/transports/virtual-bridge.js';
 import {runOverVirtualTransport} from './helpers/virtual-transport-vm.mjs';
-import {projectOfBlocks} from './helpers/bt-hub-vm.mjs';
+import {projectOfBlocks, runOnBtHub} from './helpers/bt-hub-vm.mjs';
 import {blocksBuilder} from './helpers/scratch-blocks-builder.mjs';
 import {runSpikeProjectInLab, projectFromSource, FRAME_MS as SPIKE_FRAME_MS} from './helpers/spike-lab-routes.mjs';
 import {judgeWallStopRun, reportWallStop} from './helpers/wall-stop-lab-judge.mjs';
@@ -138,4 +138,52 @@ test('production Lab SPIKE text bridge executes the actual 2.x REPL wall-stop pr
     assert.ok(judged.settled, reportWallStop(judged));
     assert.deepEqual(judged.failures, [], reportWallStop(judged));
     assert.equal(judged.ok, true);
+});
+
+
+for (const stock of [false, true]) test(`serialized Lab Bluetooth preserves the actual ${stock ? 'stock EV3' : 'ev3comprehensive'} wall-stop program`, async () => {
+    let program = {bw: programText('ev3-wall-stopper.bw')};
+    if (stock) {
+        const b = blocksBuilder();
+        for (const port of ['B', 'C']) {
+            const menu = ['ev3_menu_motorPorts', 'motorPorts', 'ABCD'.indexOf(port)];
+            const flag = b.block('event_whenflagclicked', {top: true});
+            const power = b.block('ev3_motorSetPower', {menus: {PORT: menu}, values: {POWER: 30}});
+            const turn = b.block('ev3_motorTurnClockwise', {menus: {PORT: menu}, values: {TIME: 0.2}});
+            const distance = b.block('ev3_getDistance');
+            const lt = b.block('operator_lt', {blocksIn: {OPERAND1: distance}});
+            b.blocks[lt].inputs.OPERAND2 = [1, b.shadow('text', 'TEXT', '10', lt)];
+            const loop = b.block('control_repeat_until', {blocksIn: {CONDITION: lt, SUBSTACK: turn}});
+            const settle = b.block('control_wait', {values: {DURATION: {value: 0.5, op: 'math_positive_number'}}});
+            b.stack(flag, power, settle, loop);
+        }
+        program = {project: projectOfBlocks({extensions: ['ev3'], blocks: b.blocks})};
+    }
+    const result = await runOnBtHub(program, {modelText: modelText('ev3-wall-stopper.ldr'), mat: 'wall',
+        profile: 'ev3', extensionId: stock ? 'ev3' : 'ev3comprehensive', useLabProviderQueue: true, timeLimitMs: stock ? 8000 : 6000});
+    assert.equal(result.connectError, null);
+    const last = result.track.at(-1); const before = result.track.find(point => point.t >= last.t - 1000);
+    const cm = result.hub.readInput(0, 3, 0, 0, 'READY_SI').values[0];
+    assert.ok(last.position[0] - result.track[0].position[0] > 0.2);
+    assert.ok(cm > 2 && cm < (stock ? 25.4 : 15), `existing distance contract: ${cm} cm`);
+    assert.ok(Math.abs(last.position[0] - before.position[0]) < 0.005);
+    assert.equal(last.running, false);
+});
+
+test('serialized Lab Bluetooth preserves the actual NXT bumper program and stopped encoders', async () => {
+    let pressedAt = null;
+    const result = await runOnBtHub({project: projectOfBlocks(JSON.parse(programText('nxt-bumper-bot.blocks.json')))}, {
+        modelText: modelText('nxt-bumper-bot.ldr'), mat: 'wall', profile: 'nxt', extensionId: 'legonxt', useLabProviderQueue: true, timeLimitMs: 12000,
+        stopWhen: (point, all, hub) => {
+            if (pressedAt === null && hub.getInputValues(0).scaled === 1) pressedAt = point.t;
+            return pressedAt !== null && point.t > pressedAt + 1500;
+        }});
+    assert.equal(result.connectError, null);
+    const last = result.track.at(-1); const before = result.track.find(point => point.t >= last.t - 1000);
+    assert.ok(last.position[0] - result.track[0].position[0] > 0.1);
+    assert.equal(result.hub.getInputValues(0).scaled, 1);
+    for (const port of ['B', 'C']) {
+        assert.ok(last.motors[port] > 360);
+        assert.ok(Math.abs(last.motors[port] - before.motors[port]) < 3);
+    }
 });

@@ -169,9 +169,55 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         // Finally use Connect + Run for the unchanged shipped extension
         // program, measuring the actual world on each worker publication.
         await loadExample(page);
+        await controls.getByTestId('bw-sim-lab-connection-route').selectOption('bluetooth');
+        await page.evaluate(() => {
+            const pane = window.__bwSimLab._pane;
+            const original = pane.connectLegacy;
+            let release;
+            const gate = new Promise(resolve => {release = resolve;});
+            const control = window.__bwLegacyBridgeGate = {pane, original, release, scene: pane.session, completedRealConnect: false};
+            control.wrapper = function (vm, connect, isCurrent) {
+                return original.call(this, vm, async () => {
+                    const result = await connect();
+                    control.completedRealConnect = true;
+                    await gate;
+                    return result;
+                }, isCurrent);
+            };
+            pane.connectLegacy = control.wrapper;
+        });
+        await tool(page, 'run');
+        await page.waitForFunction(() => window.__bwLegacyBridgeGate.completedRealConnect);
+        assert.equal(await page.evaluate(async () => {
+            const runtime = window.__bwSimLab._pane.props.vm.runtime;
+            return await runtime._primitives.ev3comprehensive_isConnected({}, {runtime});
+        }), true, 'the held Bluetooth helper completed its actual producer connection');
+        await page.evaluate(() => window.__bwSimLab.api.loadModel('ev3-wall-stopper'));
+        await ready(page);
+        await page.waitForFunction(async () => {
+            const runtime = window.__bwSimLab._pane.props.vm.runtime;
+            return await runtime._primitives.ev3comprehensive_isConnected({}, {runtime}) === false;
+        });
+        const replacedLegacy = await page.evaluate(() => ({
+            replaced: window.__bwSimLab._pane.session !== window.__bwLegacyBridgeGate.scene,
+            disposed: window.__bwLegacyBridgeGate.scene._disposed,
+            flags: window.__bwConnectionControl.flags
+        }));
+        assert.deepEqual(replacedLegacy, {replaced: true, disposed: true, flags: 0});
+        out.legacyScene = replacedLegacy;
         await controls.getByTestId('bw-sim-lab-connection-route').selectOption('bridge');
         await controls.getByRole('button', {name: /^(Connect|Verbinden)$/}).click();
+        await page.waitForFunction(() => window.__bwSimLab._pane.state.connection.status === 'connecting');
+        const pendingLegacy = await page.evaluate(() => ({status: window.__bwSimLab._pane.state.connection.status,
+            flags: window.__bwConnectionControl.flags, clock: Boolean(window.__bwSimLab._pane.clock?.installed)}));
+        assert.deepEqual(pendingLegacy, {status: 'connecting', flags: 0, clock: false});
+        out.legacyBridge = pendingLegacy;
+        await page.evaluate(() => window.__bwLegacyBridgeGate.release());
         await connected(page);
+        await page.evaluate(() => {
+            const control = window.__bwLegacyBridgeGate;
+            if (control.pane.connectLegacy === control.wrapper) control.pane.connectLegacy = control.original;
+        });
         // Execute the real clock install, then fail only its return. A Run
         // that reached this boundary must roll back its actual VM/clock/routes
         // before a normal retry can run the unchanged shipped program.
@@ -277,6 +323,9 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         throw error;
     } finally {
         await page.evaluate(() => {
+            const legacy = window.__bwLegacyBridgeGate;
+            legacy?.release();
+            if (legacy && legacy.pane.connectLegacy === legacy.wrapper) legacy.pane.connectLegacy = legacy.original;
             const clock = window.__bwFailedClockInstall;
             if (clock && clock.pane.startClock === clock.wrapper) clock.pane.startClock = clock.original;
             window.__bwLabConnectionTrackStop?.();
