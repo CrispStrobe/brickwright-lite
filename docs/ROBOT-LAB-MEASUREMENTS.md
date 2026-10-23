@@ -60,3 +60,25 @@ Large assemblies use compact target identities without increasing the saved
 field-size limit. Existing project files with the earlier joint or rope identity
 format remain readable; changing the target assembly still makes a reading
 unavailable rather than silently selecting a different target.
+
+
+Each reading has a **Time plot** checkbox. Choose up to four plots to compare
+values over simulated time. A plot keeps at most 128 samples over the latest
+12.8 simulated seconds, with one regular sample every 100 simulated milliseconds.
+Pause refreshes the final point. The horizontal axis starts at the first retained
+sample; the value axis uses the reading's own unit. Current, minimum and maximum
+values are also available as text. Missing values leave gaps rather than zeroes.
+
+Plots are temporary observations: hiding or removing a reading stops its trace;
+Reset, a different model or a changed target clears its history. Pose replay hides
+live plots, and returning live starts a fresh window. Plot choices and samples are
+not stored in project files. Saved measurement definitions continue to work as
+before. These sampled traces do not establish peak forces or hardware accuracy.
+
+The shipped **Crank and rocker** and **Forklift** examples also offer **Apply lesson
+measurements**. The first compares input/output angles and rocker speed; the second
+shows input rotation, carriage travel and configured carriage weight. Applying a
+lesson set explicitly replaces the current definitions. The targets are checked
+against authored parts and current joint bindings; an unsupported or changed
+model keeps the existing structural recommendations instead of selecting another
+joint. Imported models retain custom measurements and structural recommendations.

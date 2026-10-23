@@ -1,6 +1,6 @@
 # Robot Lab teaching presets and bounded measurement plots
 
-CLAIMED — Codex educational-measurement continuation, requested by the user.
+Implementation DONE (source candidate) — Codex educational-measurement continuation, requested by the user.
 Isolated branch `lane/robot-lab-measurement-plots-20261023`, base
 `e3be735b3d6ac7a864491a46572ab29712bcf91f`. Merge this claim before implementation.
 Compose the qualified measurement successor PR1265 normally; its exact parent
@@ -51,3 +51,32 @@ missing resets, unavailable-as-zero and wrong targets. Preserve old failures and
 bounds. Every enabled final-head check and affected clean browser/guest evidence
 precede matched-head landing with reviewed/predicted/landed tree and parents.
 Keep raw evidence private; never duplicate an existing successful official run.
+
+
+## Candidate controls and integration
+
+The claim merged in PR1269 before implementation. Source branch `lane/robot-lab-measurement-plots-source-20261023` composes its main
+ancestry and PR1265's exact `d3babf0aa1` normally. Final landing remains dependent
+on PR1265 and every enabled final-head check; no automatic merge is requested.
+The measurement owner explicitly handed off the narrow pane sample-time/session
+identity/shipped-file integration. Each timestamp is assigned beside an actual
+reader call; arbitrary renders cannot retimestamp old rows.
+
+Local controls pass: 62 focused history, preset, measurement, UI, worker, rope,
+persistence and frame-queue tests; 17 dependency-scope and unused-module checks.
+Nine semantic source mutations are detected, including missing freshness,
+wall-clock substitution, missing bounds/reset/binding and fabricated zeroes.
+Both shipped models move under actual Jolt; SIMD and baseline Wasm readers pass
+(the baseline path uses a controlled capability-probe refusal, not hardware).
+The exact measured native-test redirects are declared in
+`scripts/lib/gui-scope-allowed.json`; no new dependency is installed or pinned.
+
+One clean production GUI build and actual Chromium/WebKit journeys pass, covering
+named presets, real motion/units, finite time plots, paused presentation, replay,
+Reset and model switching, with no page errors. A new helper is called from the
+existing measurement journey. Its first WebKit attempt exposed missing replay
+readiness; the corrected helper also waits for published replay frames and
+paused overlay/panel agreement, preserving the original deadlines and failure.
+These are bounded simulated observations, not physical-accuracy or peak-force
+qualification. History/plot choices stay temporary; existing saved definitions
+and structural recommendations remain intact.
