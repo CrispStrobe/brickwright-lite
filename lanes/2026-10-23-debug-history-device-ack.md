@@ -1,6 +1,6 @@
 # Wait for applied device before debugger browser media delivery
 
-CLAIMED — Codex hub-coverage owner, base `9a8d5df3f`, prerequisite for #1233
+SOURCE COMPLETE — Codex hub-coverage owner, base `9a8d5df3f`, prerequisite for #1233
 and the combined #1239 coverage candidate. Official heavy browser job
 120187108575 failed waiting for Record enablement after selecting Z80 and
 immediately injecting assembled media. The original screenshot shows Z80 idle,
@@ -26,3 +26,10 @@ Require meaningful absent/wrong/late acknowledgement controls and final hosted
 actual browser qualification; retain the official original once. Merge this
 claim before implementation and require all enabled exact-head checks before
 matched-head source merge.
+
+The browser gate now observes the latest applied-device event before media,
+awaits visible Circuit commit and shares the original 30-second setup budget.
+Five page-protocol source controls pass; omitted ACK wait, late observer, wrong
+ACK admission, renewed timeout and latched readiness mutants are assertion-
+detected. Existing recording/running/checkpoint/reverse/fork checks remain.
+Final combined-source hosted browser qualification remains pending.
