@@ -19,7 +19,7 @@ gates.
 
 The ordered acceptance contract is the upstream
 [circuit/instrument campaign](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md).
-`LANES.md` controls current ownership; the older priority tables below are dated
+`lanes/` controls current ownership; the older priority tables below are dated
 history, not reservations or evidence that their work is still pending.
 
 1. **Upstream LM741 CLI qualification: complete.** Six signed/phase-shifted
@@ -29,18 +29,19 @@ history, not reservations or evidence that their work is still pending.
    landed as `5cb83052330b400b48293315260cb4293b4f6bcf`, adopting CUI
    `1db1bb9ee565338672c7acfefec4cf94b27196e1`. Its qualified CLI and built-GUI
    checks do not prove a newer signed or installed release. PR1011's release
-   ownership claim is merged, not a delivery receipt. Finish the existing iOS
-   workflow-resource lane, actual combined-source unsigned and signed artifact
-   checks, aligned release metadata, upload, both TestFlight groups and Beta
-   App Review. Do not start a competing iOS workflow or release lane.
+   ownership claim is merged, not a delivery receipt. v0.1.26 has since been
+   signed and uploaded; its metadata wait failed and distribution was skipped.
+   Use [existing-release recovery](docs/TESTFLIGHT-RECOVERY.md) to audit actual
+   state and recover admitted notes/groups/review. Require internal and external
+   availability; do not blindly rebuild or upload.
 3. **Prepare, then run the stratified installed-consumer regression.** Harness
    preparation may proceed in parallel with release work; actual campaign
-   execution remains after TestFlight. The harness is not yet implemented and
-   none of its 312 planned parameter cases has run. The
+   execution remains after TestFlight. The fixed harness is in source
+   qualification; none of its 312 parameter cases has run. The
    [implementation handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) specifies 12
    topology templates, 264 direct ngspice cases, 48 analytic model cases, the
    bounded files, measurements, provenance and nonvacuous negative controls.
-   Claim fresh ownership in `LANES.md` before implementation. Preserve failed,
+   The merged dated claim owns this preparation. Preserve failed,
    refused and not-run cases rather than changing the denominator.
 4. **Fix demonstrated causes, not scores.** Preserve every failure and distinguish
    import loss, unavailable models, engine/instrument defects, exhausted work
@@ -51,10 +52,10 @@ history, not reservations or evidence that their work is still pending.
    captures or pretending to implement an ADC or analogue front end. Review the
    results and remaining limits before starting a further campaign.
 
-Status reconciliation: 2026-10-17. The regression and realism steps are scoped
-follow-ups, not completed features. The closing preparation session leaves no
-active implementation reservation; see `LANES.md` and refresh the linked PRs
-before taking over. The [handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) also
+Status reconciliation: 2026-10-23. Harness source controls are not a numerical
+campaign result. The regression execution, causal repairs and realism remain
+pending; consult `lanes/` before taking ownership. The
+[handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) also
 defines causal-repair and instrument-realism acceptance and stopping criteria.
 
 Shared engine, importer and instrument changes land upstream first. Lite adopts

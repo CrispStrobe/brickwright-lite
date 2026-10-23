@@ -6,21 +6,23 @@ Follow the [current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15
 and upstream [acceptance contract](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md):
 qualified LM741 source → installed-consumer adoption and TestFlight release →
 stratified measurement regression → demonstrated causal repairs → bounded
-instrument-realism proof. As reconciled on 2026-10-17, upstream qualification
+instrument-realism proof. As reconciled on 2026-10-23, upstream qualification
 and consumer adoption PR965 are complete; TestFlight delivery is not established.
-PR1011 is a merged ownership claim, not a released build. The existing iOS
-workflow-resource lane owns the remaining workflow integration.
+v0.1.26 signing/upload completed, but the original metadata wait failed and
+distribution was skipped. Audit/recover the existing release through
+[the bounded metadata workflow](docs/TESTFLIGHT-RECOVERY.md); do not count a
+successful writer or pending review as external availability.
 
 The [CLI instrument handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) scopes the
-unimplemented harness, 312 planned parameter cases across 12 templates,
+harness now in source qualification, 312 parameter cases across 12 templates,
 independent reference classes, causal repair triage and a bounded GUI realism
 follow-up. Harness preparation may proceed while release work continues, but
-the actual campaign remains after TestFlight. Claim ownership before coding;
-the preparation session is closing without reserving implementation. Later
+the actual campaign remains after TestFlight. The merged dated claim owns
+preparation; no campaign case has run. Later
 steps require their own installed identities, raw results and actual GUI
 qualification. Do not count
 historical corpus totals as a fresh sweep or parameter variants as distinct
-topologies. `LANES.md`, not historical session names below, controls ownership.
+topologies. `lanes/`, not historical session names below, controls ownership.
 
 The entries below retain dated measurements and rejected approaches. Their
 presence is not proof that a gap remains open; check current source before
