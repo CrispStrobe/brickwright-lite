@@ -51,6 +51,10 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         await connected(page);
         assert.equal(await page.evaluate(() => window.__bwConnectionControl.flags), 0, 'Connect does not start the program');
 
+        // Run the world through the public API, without a green flag.
+        await page.evaluate(() => window.__bwSimLab.api.start());
+        assert.equal(await page.evaluate(() => window.__bwConnectionControl.flags), 0);
+
         // An independently encoded WAIT_FOR_PRESS followed by a finite motor
         // command. No input, reply or motor implementation is replaced.
         const initial = await page.evaluate(async () => {
@@ -190,7 +194,8 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         out.program = program;
         if (shotsDir) await page.screenshot({path: resolve(shotsDir, 'sim-lab-connections.png')});
         await controls.getByRole('button', {name: /^(Disconnect|Trennen)$/}).click();
-        await ready(page);
+        await page.waitForFunction(() => window.__bwSimLab.status === 'paused' &&
+            window.__bwSimLab._pane.state.connection.status === 'idle');
         await controls.getByTestId('bw-sim-lab-connection-route').selectOption('serial');
         await controls.getByRole('button', {name: /^(Connect|Verbinden)$/}).click();
         await connected(page);
@@ -200,7 +205,8 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         });
         assert.deepEqual(serial, [{baudRate: 115200}], 'actual EV3 backend opened the selected virtual serial port');
         await controls.getByRole('button', {name: /^(Disconnect|Trennen)$/}).click();
-        await ready(page);
+        await page.waitForFunction(() => window.__bwSimLab.status === 'paused' &&
+            window.__bwSimLab._pane.state.connection.status === 'idle');
         assert.equal(await page.evaluate(async () => (await navigator.serial.getPorts()).every(port => !port.session)), true);
         assert.equal(await page.evaluate(() => window.__bwConnectionControl.flags), 1);
         const held = page.getByTestId('bw-sim-lab-brick-buttons').locator('button[data-button="enter"]').first();
@@ -213,6 +219,15 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         await page.locator('[title="Scratch Stage"], [title="Scratch-Bühne"]').click();
         await page.waitForFunction(() => !window.__bwSimLab);
         await page.keyboard.up('Enter');
+        // Pane closure is synchronous; its real provider drain may finish
+        // later. Observe wrapper restoration rather than assuming it is done.
+        await page.waitForFunction(() => {
+            const before = window.__bwConnectionHostBefore;
+            const after = Object.getOwnPropertyDescriptor(navigator, 'serial');
+            const sameSerial = !before.serial && !after || Boolean(before.serial && after &&
+                ['value', 'get', 'set', 'writable', 'enumerable', 'configurable'].every(key => before.serial[key] === after[key]));
+            return window.fetch === before.fetch && window.WebSocket === before.socket && sameSerial;
+        });
         const closed = await page.evaluate(() => {
             const before = window.__bwConnectionHostBefore;
             const after = Object.getOwnPropertyDescriptor(navigator, 'serial');

@@ -21,7 +21,7 @@ const fixture = (t, {connect = () => {}, disconnect = () => {}, prepareRun = () 
         ev3comprehensive_isConnected: () => connected
     }}, stopAll () { events.push('stop'); }, greenFlag () { state.flags++; }};
     const routing = createLabVirtualTransports({host, navigatorHost});
-    const coordinator = createLabConnectionCoordinator({getVM: () => vm, host, navigatorHost, routing,
+    const coordinator = createLabConnectionCoordinator({getVM: () => state.vm || vm, host, navigatorHost, routing,
         stopClock: () => { state.clock = false; events.push('clock-stop'); }, stopProgram: oldVM => oldVM?.stopAll(),
         startClock: () => { state.clock = true; if (startClock) startClock(coordinator); }, prepareRun,
         onState: value => { events.push(value.status); onState(value, coordinator); }});
@@ -86,6 +86,7 @@ test('Stop while the pane commits Run prevents a late clock install and green fl
     const cleanup = f.coordinator.disconnect();
     assert.equal(f.state.clock, false);
     gate.resolve(); await stopped; await cleanup;
+    assert.equal(f.state.clock, false, "late completion must not reinstall the stopped world clock");
     assert.equal(f.state.flags, 0);
     await f.coordinator.run(); assert.equal(f.state.flags, 1);
 });
@@ -159,4 +160,35 @@ test('failed producer cleanup remains visible and quarantines routes until the p
     await assert.rejects(f.coordinator.dispose(), error => error === failure);
     assert.notEqual(f.host.fetch, f.physicalFetch, 'late old requests retain virtual refusal instead of physical fallback');
     assert.equal((await f.host.fetch('http://localhost:8080/')).status, 503);
+});
+
+
+test('an API world pause during the running commit cancels startup without stopping the current program or losing the connection', async t => {
+    const gate = deferred(); const entered = deferred();
+    const f = fixture(t, {prepareRun: () => { entered.resolve(); return gate.promise; }});
+    t.after(() => gate.resolve());
+    await selected(f);
+    const run = f.coordinator.run();
+    const refused = assert.rejects(run, {name: 'AbortError'});
+    await entered.promise;
+    const stops = f.events.filter(event => event === 'stop').length;
+    f.coordinator.pauseRun();
+    assert.equal(f.state.clock, false);
+    assert.equal(f.events.filter(event => event === 'stop').length, stops);
+    gate.resolve(); await refused;
+    assert.equal(f.state.clock, false, "world pause survives the delayed running commit");
+    assert.equal(f.state.flags, 0);
+    assert.equal(f.coordinator.snapshot().status, 'connected');
+});
+
+
+test('VM replacement cannot transfer old-scene cleanup to the new VM', async t => {
+    const f = fixture(t);
+    await selected(f); await f.coordinator.connect();
+    const before = f.events.filter(event => event === 'stop').length;
+    let foreignStops = 0;
+    f.state.vm = {stopAll () {foreignStops++;}};
+    await f.coordinator.disconnect();
+    assert.equal(foreignStops, 0);
+    assert.equal(f.events.filter(event => event === 'stop').length, before + 1);
 });

@@ -30,6 +30,8 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
+import SimLabConnections from './sim-lab-connections.jsx';
+import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
 import SimLabStats from './sim-lab-stats.jsx';
@@ -376,6 +378,7 @@ class SimLabPane extends React.Component {
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
             controlsOpen: false, manualOverride: false, programLoading: false,
+            connection: {bricks: [], routes: [], hubId: null, route: 'bluetooth', status: 'idle', message: ''},
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             measurementsOpen: false, showMeasurements: false, measurementTick: 0, showSensors: false, readings: false, showStats: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
@@ -515,6 +518,7 @@ class SimLabPane extends React.Component {
         this.unregisterBle = this.lib.registerRobotLabBlePeripherals(() => (this.session ? this.session.hubs.map(h => h.hub) : []));
         this.registerBtBricks();
         this.installApi();
+        this.installConnections();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
     }
@@ -543,6 +547,81 @@ class SimLabPane extends React.Component {
         if (runtime) runtime.robotLab = this.api;
     }
 
+    /** The coordinator captures the old scene/VM before any asynchronous provider work. */
+    installConnections () {
+        this.connections = this.lib.createLabConnectionCoordinator({
+            getVM: () => this.props.vm,
+            stopClock: () => this.stopClock(),
+            stopProgram: (vm, scene) => {
+                if (!scene || scene.lockstep || !scene.hubs.some(record => this.lib.labConnectionRoutes(scene, record).length)) return;
+                const errors = [];
+                try { vm?.stopAll(); } catch (error) { errors.push(error); }
+                // Queued provider stop writes may outlive cancellation. Retire
+                // the actual old model motors now, while routes are tombstones.
+                for (const {hub} of scene.hubs || []) {
+                    if (typeof hub.directCommand !== 'function') continue;
+                    try { hub.hubState?.backend?.cancel(); } catch (error) { errors.push(error); }
+                    let ports = [];
+                    try { ports = hub.motorPortIds?.() || []; } catch (error) { errors.push(error); }
+                    for (const port of ports) {
+                        try {
+                            const result = hub.directCommand(port, {stop: 'brake'});
+                            if (result?.ok === false) throw new Error(result.message || 'Could not stop a Lab motor');
+                        } catch (error) { errors.push(error); }
+                    }
+                }
+                if (errors.length) throw new AggregateError(errors, 'Could not stop the old Lab program');
+            },
+            prepareRun: (scene, vm) => new Promise(resolve => {
+                if (this.disposed || this.session !== scene || this.props.vm !== vm) { resolve(); return; }
+                this.setState({status: 'running', message: '', info: ''}, resolve);
+            }),
+            startClock: (scene, vm) => {
+                if (!this.disposed && this.session === scene && this.props.vm === vm) this.startClock();
+            },
+            onState: connection => { if (!this.disposed) this.setState({connection}); },
+            host: window, navigatorHost: navigator
+        });
+    }
+
+    observeConnection (action, scene = this.session) {
+        const observation = this.connectionObservation = {};
+        const failed = error => {
+            this.lastConnectionError = error;
+            if (!this.disposed && this.session === scene && this.connectionObservation === observation && error.name !== 'AbortError') {
+                this.stopClock();
+                this.setState({status: 'paused', message: this.t('connectFailed', {error: error.message})});
+            }
+        };
+        try { return Promise.resolve(action()).catch(failed); }
+        catch (error) { failed(error); return Promise.resolve(); }
+    }
+
+    connectConnection ({run = false} = {}) {
+        return this.observeConnection(() => {
+            const selected = this.connections.snapshot();
+            const record = this.session?.hubs.find(brick => brick.id === selected.hubId);
+            // Expose the native REPL while paused too: Connect never installs
+            // the world clock or starts a program.
+            if (record?.profile === 'spike-prime') record.hub.hubState.setSimulationEnabled(true);
+            return run ? this.connections.run() : this.connections.connect();
+        });
+    }
+
+    selectConnection (selection) {
+        this.runConnection = null;
+        this.stopClock();
+        this.setState({status: 'paused'});
+        this.observeConnection(() => this.connections.select(selection));
+    }
+
+    disconnectConnection () {
+        this.runConnection = null;
+        this.stopClock();
+        this.setState({status: 'paused'});
+        this.observeConnection(() => this.connections.disconnect());
+    }
+
     /** loadModel from a block, a word or a call: a shipped model by id, or LDraw text. */
     async apiLoadModel (spec) {
         if (this.disposed || !this.lib) return {ok: false, code: 'no-model'};
@@ -569,6 +648,7 @@ class SimLabPane extends React.Component {
     /** stop from a block: pause the world, leave the program running (it may start it again). */
     apiStop () {
         if (!this.session) return;
+        this.connections?.pauseRun();
         if (this.session.lockstep) { this.pauseFirmware(); return; }
         this.stopClock();
         this.setState({status: 'paused'});
@@ -700,6 +780,7 @@ class SimLabPane extends React.Component {
         cancelAnimationFrame(this.raf);
         this.stopClock();
         this.teardown();
+        if (this.connections) this.observeConnection(() => this.connections.dispose());
         this.teardownEditor();
         if (this.unregisterRcx) this.unregisterRcx();
         if (this.unregisterBle) this.unregisterBle();
@@ -1031,6 +1112,8 @@ class SimLabPane extends React.Component {
     }
 
     teardown () {
+        this.runConnection = null;
+        if (this.connections) this.observeConnection(() => this.connections.setScene(null));
         this.stopClock();
         if (this.unsubscribeDrawing) this.unsubscribeDrawing();
         this.unsubscribeDrawing = null;
@@ -1240,6 +1323,7 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        if (this.connections) this.observeConnection(() => this.connections.setScene(session));
         this.measurementReader = this.lib.createMeasurementReader(session);
         this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
         this.measurementRows = this.measurementReader.read(this.measurements);
@@ -1719,6 +1803,15 @@ class SimLabPane extends React.Component {
         if (!this.session || this.state.programLoading) return;
         if (this.state.manualOverride) this.setManualOverride(false);
         if (this.session.lockstep) { await this.runFirmware(); return; }
+        if (this.connections && this.connections.snapshot().route !== 'bluetooth') {
+            // A Robot Lab start block is already executing: only resume its
+            // world. A toolbar Run owns a fresh provider/green-flag admission.
+            if (!greenFlag) { this.apiEnsureRunning(); return; }
+            this.runConnection = null;
+            this.hub.setSimulationEnabled(true);
+            await this.connectConnection({run: true});
+            return;
+        }
         if (this.rcxHub()) { this.runRcx(); return; }
         if (this.radioHub()) { await this.runRadioHub(this.radioHub(), {greenFlag}); return; }
         if (this.btProfile()) { await this.runBt({greenFlag}); return; }
@@ -1913,6 +2006,11 @@ class SimLabPane extends React.Component {
     pause () {
         if (!this.session) return;
         if (this.session.lockstep) { this.pauseFirmware(); return; }
+        this.runConnection = null;
+        if (this.connections && this.connections.snapshot().route !== 'bluetooth') {
+            this.disconnectConnection();
+            return;
+        }
         // Pause stops the program too (a Robot Lab program's next motor command would run the world again).
         if (this.spikeLoaded() || this.robotLabLoaded() || this.hubExtension()) {
             try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ }
@@ -2964,6 +3062,17 @@ class SimLabPane extends React.Component {
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
                 {this.renderBlockers()}
+                {simulate && this.session && !this.session.lockstep && <React.Fragment>
+                    <SimLabConnections locale={this.locale} {...this.state.connection}
+                        disabled={this.state.programLoading}
+                        onHub={hubId => this.selectConnection({hubId, route: 'bluetooth'})}
+                        onRoute={route => this.selectConnection({route})}
+                        onConnect={() => this.connectConnection()}
+                        onDisconnect={() => this.disconnectConnection()} />
+                    <SimLabBrickButtons locale={this.locale} api={this.api} scene={this.session}
+                        disabled={this.state.programLoading}
+                        onError={error => this.setState({message: error.message})} />
+                </React.Fragment>}
                 <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
                     {this.renderPalettePanel()}
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',

@@ -1,6 +1,7 @@
 # Robot Lab UI transports and brick interaction (WP9 / WP5)
 
-CLAIMED — Codex hub-coverage continuation, isolated branch
+DONE — implementation candidate; hosted/browser qualification pending, not merged.
+Codex hub-coverage continuation, isolated branch
 `lane/robot-lab-ui-transports-buttons-20261023`, base
 `0e11f66d5ae1a9c5788756986c715bf86049ff16`. User requests the recommended
 follow-on work after the 43-cell coverage closure. Preserve all existing owners.
@@ -44,6 +45,26 @@ and stale-owner controls, meaningful mutations, and affected clean browser/guest
 qualification. Merge only after every enabled exact-head check succeeds and
 reviewed/predicted/landed tree and parents agree. Keep raw evidence private.
 
+The candidate wires the production coordinator, connection selector and brick
+inputs through the pane and dynamic Lab boundary. Qualified measurement parent
+#1265 is normally composed. The #1272 plots owner's measurement import,
+timestamps and panel props are unchanged; its owner retains that merge.
+
+Focused qualification: 187 controls pass with no failures or skips, including
+nine actual production-route VM/Jolt guests, WAIT_FOR_PRESS, nine main/worker
+sync cases, current/old provider ownership, API world pause, model/VM replacement,
+normal startup and unchanged measurement controls. Seven new meaningful source
+mutations are detected with the exact originals restored. The canonical scoped
+Powered Up pin adopts qualified supplier #64; all other pins and the global
+baseline remain fixed. Supplier policy #65 replaces the inherited reviewer
+quota with owner-command authorization and the same technical gates.
+
+The existing hubs-bt browser part now includes the actual connection/button
+journey. Its first built-browser result and final exact-head hosted checks are
+still pending; this DONE status records the final implementation candidate,
+not a successful hosted run, merge, installed native or hardware qualification.
+See [usage and model limits](../docs/ROBOT-LAB-CONNECTIONS-AND-BUTTONS.md).
+
 Model PR1235/1236, native PR1224/1099/1100 and Arcade PR1128 remain with their
 existing owners. Review current failures and retained originals without duplicate
 acquisition or dispatch; carry their qualified composition through normal
@@ -80,8 +101,9 @@ Do not edit this supplier source until the amendment is merged.
 Carry only the directly affected scoped `legopoweredup` adoption through
 `vendor-pins.json`, its canonical generated wrapper and upstream-byte receipt,
 plus focused pin and real-extension transport controls. Other pins and the
-global bundle baseline remain fixed. Supplier review requirements remain in
-force; downstream pin movement follows qualified supplier merge. Keep existing
+global bundle baseline remain fixed. Owner-directed fork authorization and the
+supplier's technical qualification requirements apply; downstream pin movement
+follows qualified supplier merge. Keep existing
 owners and all original failures. No unrelated extension or vocabulary changes.
 
 ## Existing radio button input

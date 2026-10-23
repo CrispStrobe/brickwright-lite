@@ -31,6 +31,7 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
     host = globalThis, navigatorHost = typeof navigator === 'undefined' ? null : navigator,
     wait, routing = createLabVirtualTransports({host, navigatorHost})}) => {
     let scene = null;
+    let sceneVM = null;
     let hubId = null;
     let route = 'bluetooth';
     let status = 'idle';
@@ -78,7 +79,7 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
         const previous = request;
         request = null;
         if (previous) previous.active = false;
-        const oldVM = getVM();
+        const oldVM = previous?.vm || sceneVM;
         const oldScene = scene;
         // Tombstones precede host callbacks: late HTTP writes cannot discover
         // a replacement brick at the same loopback address or device ID.
@@ -183,6 +184,7 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
             const transition = invalidate();
             if (transition.stamp !== revision) return joined(transition.tasks);
             scene = next?._disposed ? null : next;
+            sceneVM = scene ? getVM() : null;
             const offered = bricks();
             const chosen = nextId === null ? offered[0] : offered.find(record => record.id === nextId);
             hubId = chosen?.id || null;
@@ -221,6 +223,12 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
             if (!admitted()) throw canceled();
             ticket.vm.greenFlag();
             if (!admitted()) throw canceled();
+        },
+        pauseRun () {
+            live();
+            ++runCalls;
+            runIntent = null;
+            stopClock?.(scene);
         },
         disconnect () {
             live();
