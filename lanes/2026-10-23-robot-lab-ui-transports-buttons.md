@@ -50,11 +50,14 @@ inputs through the pane and dynamic Lab boundary. Qualified measurement parent
 #1265 is normally composed. The #1272 plots owner's measurement import,
 timestamps and panel props are unchanged; its owner retains that merge.
 
-Focused qualification: 187 controls pass with no failures or skips, including
+Focused qualification: 208 controls pass with no failures or skips, including
 nine actual production-route VM/Jolt guests, WAIT_FOR_PRESS, nine main/worker
 sync cases, current/old provider ownership, API world pause, model/VM replacement,
-normal startup and unchanged measurement controls. Seven new meaningful source
-mutations are detected with the exact originals restored. The canonical scoped
+normal startup, execution-failure rollback and unchanged measurement controls.
+Nine component-cleanup and eight Run/feedback mutations are detected with exact
+originals restored. Failed state/clock/VM startup retires its owned effects,
+retains rollback/publication errors and permits recovery after clean rollback;
+stale failure cannot retire a newer Run. The canonical scoped
 Powered Up pin adopts qualified supplier #64; all other pins and the global
 baseline remain fixed. Supplier policy #65 replaces the inherited reviewer
 quota with owner-command authorization and the same technical gates.

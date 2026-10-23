@@ -172,6 +172,38 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         await controls.getByTestId('bw-sim-lab-connection-route').selectOption('bridge');
         await controls.getByRole('button', {name: /^(Connect|Verbinden)$/}).click();
         await connected(page);
+        // Execute the real clock install, then fail only its return. A Run
+        // that reached this boundary must roll back its actual VM/clock/routes
+        // before a normal retry can run the unchanged shipped program.
+        await page.evaluate(() => {
+            const pane = window.__bwSimLab._pane;
+            const original = pane.startClock;
+            const control = window.__bwFailedClockInstall = {pane, original, installed: false};
+            control.wrapper = function (...args) {
+                original.apply(this, args);
+                control.installed = Boolean(this.clock?.installed);
+                throw new Error('controlled failure after actual clock installation');
+            };
+            pane.startClock = control.wrapper;
+        });
+        await tool(page, 'run');
+        await page.waitForFunction(() => window.__bwSimLab.status === 'paused' &&
+            window.__bwSimLab._pane.state.connection.status === 'failed' &&
+            window.__bwSimLab._pane.lastConnectionError?.message.includes('controlled failure after actual clock installation'));
+        const failedRun = await page.evaluate(async () => ({
+            installed: window.__bwFailedClockInstall.installed,
+            clock: Boolean(window.__bwSimLab._pane.clock?.installed),
+            flags: window.__bwConnectionControl.flags,
+            route: (await fetch('http://localhost:8080/')).status
+        }));
+        assert.deepEqual(failedRun, {installed: true, clock: false, flags: 0, route: 503});
+        out.failedRun = failedRun;
+        await page.evaluate(() => {
+            const control = window.__bwFailedClockInstall;
+            if (control.pane.startClock === control.wrapper) control.pane.startClock = control.original;
+        });
+        await controls.getByRole('button', {name: /^(Connect|Verbinden)$/}).click();
+        await connected(page);
         await page.evaluate(() => {
             const session = window.__bwSimLab._pane.session;
             const record = session.hubs.find(hub => hub.profile === 'ev3');
@@ -245,6 +277,8 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         throw error;
     } finally {
         await page.evaluate(() => {
+            const clock = window.__bwFailedClockInstall;
+            if (clock && clock.pane.startClock === clock.wrapper) clock.pane.startClock = clock.original;
             window.__bwLabConnectionTrackStop?.();
             window.__bwButtonWireGuest?.socket.close();
             const connect = window.__bwDelayedLabConnect;

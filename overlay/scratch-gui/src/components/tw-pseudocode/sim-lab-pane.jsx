@@ -579,7 +579,11 @@ class SimLabPane extends React.Component {
             startClock: (scene, vm) => {
                 if (!this.disposed && this.session === scene && this.props.vm === vm) this.startClock();
             },
-            onState: connection => { if (!this.disposed) this.setState({connection}); },
+            onState: connection => {
+                if (!this.disposed) this.setState({connection, ...(connection.status === 'failed' ? {
+                    status: 'paused', message: this.t('connectFailed', {error: connection.message})
+                } : {})});
+            },
             host: window, navigatorHost: navigator
         });
     }
@@ -587,10 +591,18 @@ class SimLabPane extends React.Component {
     observeConnection (action, scene = this.session) {
         const observation = this.connectionObservation = {};
         const failed = error => {
-            this.lastConnectionError = error;
+            const errors = [error];
+            const remember = () => {
+                this.lastConnectionError = errors.length === 1 ? error : new AggregateError(errors,
+                    errors.map(cause => cause.message || String(cause)).join('; '));
+            };
+            remember();
             if (!this.disposed && this.session === scene && this.connectionObservation === observation && error.name !== 'AbortError') {
-                this.stopClock();
-                this.setState({status: 'paused', message: this.t('connectFailed', {error: error.message})});
+                try { this.stopClock(); } catch (cleanupError) { errors.push(cleanupError); }
+                remember();
+                try {
+                    this.setState({status: 'paused', message: this.t('connectFailed', {error: this.lastConnectionError.message})});
+                } catch (publicationError) { errors.push(publicationError); remember(); }
             }
         };
         try { return Promise.resolve(action()).catch(failed); }

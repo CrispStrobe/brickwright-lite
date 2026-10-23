@@ -10,6 +10,12 @@ serialized; the status-polling limit is not an overall connect or cleanup
 deadline. The pane stops its clock and detaches the old routes before waiting
 for that cleanup, so a delayed old provider cannot restart a replacement scene.
 
+If Run fails after setup begins, its current clock, program and routes are
+retired before the failure is returned. The pane reports the paused failure
+while provider cleanup drains. Operation, cleanup and feedback errors are
+retained together; uncertain cleanup refuses another connection. A newer Run
+keeps ownership when an older callback fails.
+
 The connection uses the extension's own blocks and protocol. The model supplies
 the motor encoders and sensors that those blocks read.
 

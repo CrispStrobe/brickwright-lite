@@ -192,3 +192,75 @@ test('VM replacement cannot transfer old-scene cleanup to the new VM', async t =
     assert.equal(foreignStops, 0);
     assert.equal(f.events.filter(event => event === 'stop').length, before + 1);
 });
+
+for (const stage of ['prepare', 'clock', 'greenFlag']) test(`a current ${stage} failure retires execution and routes before rejecting, then permits recovery`, async t => {
+    const failure = new Error(`${stage} failed after admission`);
+    let attempts = 0;
+    const f = fixture(t, {
+        prepareRun: stage === 'prepare' ? () => {if (++attempts === 1) throw failure;} : () => {},
+        startClock: stage === 'clock' ? () => {if (++attempts === 1) throw failure;} : null
+    });
+    await selected(f);
+    if (stage === 'greenFlag') {
+        f.vm.greenFlag = () => {f.state.flags++; f.state.program = true; if (++attempts === 1) throw failure;};
+        const original = f.vm.stopAll;
+        f.vm.stopAll = () => {f.state.program = false; original();};
+    }
+    await assert.rejects(f.coordinator.run(), error => error === failure);
+    assert.equal(f.state.clock, false, 'failure cannot leave a partially installed world clock');
+    assert.notEqual(f.state.program, true, 'a partially started script must be stopped');
+    assert.equal(f.coordinator.snapshot().status, 'failed');
+    assert.equal((await f.host.fetch('http://localhost:8080/')).status, 503, 'failed execution cannot expose its old route');
+    await f.coordinator.run();
+    assert.equal(f.state.clock, true);
+    assert.equal(f.coordinator.snapshot().status, 'connected');
+    assert.equal(f.state.flags, stage === 'greenFlag' ? 2 : 1);
+});
+
+test('execution and rollback failures are both retained, and uncertain cleanup blocks another admission', async t => {
+    const failure = new Error('clock installation failed');
+    const cleanup = new Error('program retirement failed');
+    let armed = false;
+    const f = fixture(t, {startClock: () => {armed = true; throw failure;}, autoCleanup: false});
+    await selected(f);
+    const original = f.vm.stopAll;
+    f.vm.stopAll = () => {original(); if (armed) throw cleanup;};
+    await assert.rejects(f.coordinator.run(), error => error instanceof AggregateError &&
+        error.errors.includes(failure) && error.errors.includes(cleanup));
+    assert.equal(f.state.clock, false);
+    assert.equal(f.coordinator.snapshot().status, 'failed');
+    const calls = f.state.calls;
+    await assert.rejects(f.coordinator.connect(), error => error === cleanup);
+    assert.equal(f.state.calls, calls, 'uncertain program cleanup refuses another producer');
+    armed = false;
+    await assert.rejects(f.coordinator.dispose(), error => error === cleanup);
+});
+
+test('failed execution publication cannot hide the original failure or bypass clock cleanup', async t => {
+    const failure = new Error('clock installation failed');
+    const publication = new Error('failure publication refused');
+    const f = fixture(t, {startClock: () => {throw failure;}, onState: value => {
+        if (value.status === 'failed') throw publication;
+    }});
+    await selected(f);
+    await assert.rejects(f.coordinator.run(), error => error instanceof AggregateError &&
+        error.errors.includes(failure) && error.errors.includes(publication));
+    assert.equal(f.state.clock, false);
+    assert.equal((await f.host.fetch('http://localhost:8080/')).status, 503);
+});
+
+test('a throwing older green flag cannot roll back a newer Run started inside its callback', async t => {
+    const failure = new Error('old green flag failed');
+    const f = fixture(t);
+    await selected(f);
+    let newer = null;
+    f.vm.greenFlag = () => {
+        f.state.flags++;
+        if (!newer) {newer = f.coordinator.run(); throw failure;}
+    };
+    await assert.rejects(f.coordinator.run(), error => error === failure);
+    await newer;
+    assert.equal(f.state.clock, true);
+    assert.equal(f.state.flags, 2);
+    assert.equal(f.coordinator.snapshot().status, 'connected');
+});

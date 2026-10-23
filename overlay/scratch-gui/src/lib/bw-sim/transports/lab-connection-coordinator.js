@@ -216,13 +216,30 @@ export const createLabConnectionCoordinator = ({getVM, stopClock, stopProgram,
             const ticket = request;
             await ready;
             const admitted = () => runIntent === intent && current(ticket);
-            if (!admitted()) throw canceled();
-            await prepareRun(ticket.scene, ticket.vm);
-            if (!admitted()) throw canceled();
-            startClock?.(ticket.scene, ticket.vm);
-            if (!admitted()) throw canceled();
-            ticket.vm.greenFlag();
-            if (!admitted()) throw canceled();
+            try {
+                if (!admitted()) throw canceled();
+                await prepareRun(ticket.scene, ticket.vm);
+                if (!admitted()) throw canceled();
+                startClock?.(ticket.scene, ticket.vm);
+                if (!admitted()) throw canceled();
+                ticket.vm.greenFlag();
+                if (!admitted()) throw canceled();
+            } catch (caught) {
+                // A failed callback may already have installed the clock or
+                // started a script. Retire those effects only while this Run
+                // still owns them; reentrant replacement belongs to its caller.
+                if (!admitted()) throw caught;
+                const errors = [caught];
+                const transition = invalidate();
+                if (transition.stamp === revision && !disposed) {
+                    status = 'failed'; error = caught;
+                    try { publish(); } catch (publicationError) { errors.push(publicationError); }
+                }
+                try { await joined(transition.tasks); }
+                catch (cleanupError) { errors.push(cleanupError); }
+                if (errors.length === 1) throw caught;
+                throw new AggregateError(errors, 'Lab execution and rollback failed');
+            }
         },
         pauseRun () {
             live();

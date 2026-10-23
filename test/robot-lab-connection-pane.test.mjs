@@ -121,3 +121,54 @@ test('the transport coordinator does not claim firmware or RCX program ownership
         await pane.connections.dispose();
     }
 });
+
+test('pane feedback preserves the operation and clock-cleanup errors without an unhandled rejection', async () => {
+    const {pane} = fixture();
+    const failure = new Error('run installation failed');
+    const cleanup = new Error('clock uninstall failed');
+    pane.stopClock = () => {throw cleanup;};
+    await pane.observeConnection(() => Promise.reject(failure));
+    assert.ok(pane.lastConnectionError instanceof AggregateError);
+    assert.ok(pane.lastConnectionError.errors.includes(failure));
+    assert.ok(pane.lastConnectionError.errors.includes(cleanup));
+    assert.equal(pane.state.status, 'paused');
+    assert.match(pane.state.message, /run installation failed/);
+    assert.match(pane.state.message, /clock uninstall failed/);
+    pane.stopClock = () => {};
+    await pane.connections.dispose();
+});
+
+test('pane feedback publication failures retain the original operation error', async () => {
+    const {pane} = fixture();
+    const failure = new Error('run failed');
+    const publication = new Error('feedback publication failed');
+    pane.setState = () => {throw publication;};
+    await pane.observeConnection(() => Promise.reject(failure));
+    assert.ok(pane.lastConnectionError instanceof AggregateError);
+    assert.deepEqual(pane.lastConnectionError.errors, [failure, publication]);
+    await pane.connections.dispose();
+});
+
+test('a failed Run reports the paused world before a delayed provider finishes cleanup', async () => {
+    const {pane, scene, vm} = fixture();
+    const gate = deferred(); const entered = deferred();
+    const failure = new Error('world clock refused installation');
+    let armed = false; let run;
+    await pane.connections.setScene(scene);
+    await pane.connections.select({route: 'bridge'});
+    const original = vm.runtime._primitives.ev3comprehensive_disconnect;
+    vm.runtime._primitives.ev3comprehensive_disconnect = async () => {
+        if (armed) {entered.resolve(); await gate.promise;}
+        return original();
+    };
+    pane.startClock = () => {armed = true; throw failure;};
+    try {
+        run = pane.connectConnection({run: true});
+        await entered.promise;
+        assert.equal(pane.state.connection.status, 'failed');
+        assert.equal(pane.state.status, 'paused', 'displayed execution must retire before slow provider cleanup');
+        assert.match(pane.state.message, /world clock refused installation/);
+    } finally {
+        gate.resolve(); await run; await pane.connections.dispose();
+    }
+});
