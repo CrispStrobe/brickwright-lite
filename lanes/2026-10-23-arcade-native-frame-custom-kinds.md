@@ -30,13 +30,20 @@ proper effect proof, without inventing an Array or initialized-value fact.
 - `test/array-native-frame-custom-kind.test.mjs`: new complete bounded module.
   Existing full frame controls are near their local CPU cap, so do not filter
   them, drop controls or increase limits to combine unrelated test cases.
+- `scripts/lib/gui-scope-allowed.json`: add only the exact existing
+  `scratch-vm/src/util/bw-procedure-constraint-model.js` dependency census rows
+  for the existing native-frame test and the new custom-kind test. Both tests
+  import owned overlay source and use the unchanged root GUI dependency hook.
+  Preserve the checker, all existing rows, supplier identity and thresholds.
 - Associated status and self-contained tasks in
   `docs/ARCADE-NATIVE-FRAME-RESET.md`,
   `docs/ARCADE-COMPATIBILITY-NEXT-STEPS.md`,
   `docs/CONVERSION-CAPABILITIES-AND-GUI-GAPS.md` and this claim.
 
-No translator/parser, emitter, runtime, SDK, supplier, pin, workflow, policy or
-browser fixture changes. Read actual native kind allocation/binding/lookup and
+No translator/parser, emitter, runtime, SDK, supplier, pin, workflow, policy
+checker/threshold or browser fixture changes. The exact dependency census
+addition repairs the hosted import-policy failure; it grants no new resolver
+capability and does not exempt either test. Read actual native kind allocation/binding/lookup and
 lifecycle implementations; do not execute SDK/reference code for this slice.
 Stop for a precise amendment if another production path is needed.
 
