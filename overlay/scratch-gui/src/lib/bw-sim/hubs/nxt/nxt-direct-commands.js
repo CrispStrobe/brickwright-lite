@@ -40,7 +40,7 @@ export const NXT_CMD = Object.freeze({
  */
 export const NXT_SYS = Object.freeze({OPEN_READ: 0x80, OPEN_WRITE: 0x81, READ: 0x82, WRITE: 0x83, CLOSE: 0x84,
     DELETE: 0x85, FIND_FIRST: 0x86, FIND_NEXT: 0x87, GET_FIRMWARE_VERSION: 0x88, OPEN_WRITE_LINEAR: 0x89,
-    GET_DEVICE_INFO: 0x9b});
+    READ_IO_MAP: 0x94, GET_DEVICE_INFO: 0x9b});
 /** A READ answers at most this many data bytes: what fits a 64-byte telegram after its 6-byte head (ours). */
 export const READ_MAX_BYTES = 58;
 
@@ -267,6 +267,19 @@ const systemCommand = (command, t, brick) => {
             return reply(command, r.status, found(r));
         }
         }
+    }
+    if (command === NXT_SYS.READ_IO_MAP) {
+        const d = t.subarray(2);
+        // Closed Button-module projection: held bits and total release bytes
+        // only. Short requests / unsupported slices are conservative model
+        // refusals, not claims about the stock loader's unchecked inputs.
+        const module = d.length >= 4 ? u32(d, 0) : 0;
+        const header = [ ...le32(module), 0, 0 ];
+        if (d.length !== 8) return reply(command, LOADER_UNDEFINED_ERROR, header);
+        const count = Math.min(u16(d, 6), 55); // this model's existing 64-byte cap
+        const result = module === 0x00040001 ? brick.readButtonIOMap(u16(d, 4), count) : {status: 0x90, data: []};
+        return reply(command, result.status, [...le32(module), ...le16(result.data.length),
+            ...result.data, ...Array(count - result.data.length).fill(0)]);
     }
     if (command === NXT_SYS.GET_FIRMWARE_VERSION) {
         const v = brick.versions();

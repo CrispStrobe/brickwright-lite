@@ -159,7 +159,12 @@ export async function runOnBtHub (program, {modelText, mat = null, profile, exte
             const point = {t: session.time, position: [...pose.position], rotation: [...pose.rotation],
                 motors: Object.fromEntries(hub.motorPortIds().map(p => [p, hub.readPort(p).angleDeg])), running: vm.runtime.threads.length > 0};
             track.push(point);
-            if (stopWhen && stopWhen(point, track, hub, {vm, extension})) break;
+            const shouldStop = stopWhen && stopWhen(point, track, hub, {vm, extension});
+            // A callback may start a real async extension call. Drain its send
+            // continuation before advancing simulated time to the reply timer,
+            // just as we already do for commands started by the VM above.
+            await settle();
+            if (shouldStop) break;
         }
         return {track, hub, session, vm, extension, connectError};
     } finally {
