@@ -29,7 +29,8 @@ Only these production paths under `overlay/scratch-gui/src/lib/bw-makecode/`:
 - `lexical-declaration-readiness.js`: exact own-data parser no-else If handling
   and context-bound instance-method/constructor this syntax recognition.
 - `ts-import.js`: retain an own Boolean `isStatic` on parsed constructors and
-  record an unsupported diagnostic for an illegal static constructor. Preserve
+  record an explicit unsupported diagnostic for a static constructor-named
+  method in this parser slice. Preserve
   every other parser option, parameter/body shape and language profile.
 - `native-class-scalar-view.js`: Boolean false values in its own private literal
   and alternative carriers; preserve their issued identity/currentness model.
