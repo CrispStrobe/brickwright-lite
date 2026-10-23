@@ -6,9 +6,9 @@ import {filterModelExamples} from '../overlay/scratch-gui/src/lib/bw-sim/model/e
 import {MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {MODEL_LESSONS} from '../overlay/scratch-gui/src/lib/bw-sim/model/example-catalog.js';
 for(const [query,ids] of [
- ['Hoeken',['stride-lab']],['Höken linkage',['stride-lab']],['Peaucellier Lipkin',['straight-eight']],['Peaucellier–Lipkin',['straight-eight']],
- ['Sarrus',['sarrus-lift']],['pantograph',['amplify','pantograph-doubler','scale-studio','scale-echo']],['Storchschnabel',['amplify','pantograph-doubler','scale-studio','scale-echo']],
- ['Oldham',['offset-orbit','crossglide']],['Kreuzschieberkupplung',['offset-orbit','crossglide']],['universal joint',['phase-bridge','phase-bridge-misphased','ripple-relay']],
+ ['Hoeken',['stride-lab']],['Höken linkage',['stride-lab']],['Peaucellier Lipkin',['straight-eight']],['Peaucellier–Lipkin cell',['straight-eight']],['Peaucellier–Lipkin',['straight-eight']],
+ ['Sarrus',['sarrus-lift']],['pantograph',['amplify','pantograph-doubler','scale-studio','scale-echo']],['Pantographs',['amplify','pantograph-doubler','scale-studio','scale-echo']],['Storchschnabel',['amplify','pantograph-doubler','scale-studio','scale-echo']],
+ ['Oldham',['offset-orbit','crossglide']],['Oldham couplings',['offset-orbit','crossglide']],['Kreuzschieberkupplung',['offset-orbit','crossglide']],['universal joint',['phase-bridge','phase-bridge-misphased','ripple-relay']],
  ['Kardangelenk',['phase-bridge','phase-bridge-misphased','ripple-relay']],['Cardan',['phase-bridge','phase-bridge-misphased','ripple-relay']],['Watt linkage',['watt-line']],['3:1',['twin-tempo']]
 ])for(const locale of ['en','de'])test(`Examples ${locale}: ${query} finds its actual mechanisms`,()=>{
  const found=filterModelExamples(MODELS,MODEL_LESSONS,{query,locale}).map(m=>(m.id||m.file).replace(/\.ldr$/,''));

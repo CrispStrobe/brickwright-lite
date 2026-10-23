@@ -30,7 +30,10 @@
         "Lipkin",
         "inversor",
         "inversion",
-        "exact straight line"
+        "exact straight line",
+        "Peaucellier–Lipkin cell",
+        "Peaucellier cell",
+        "Peaucellier-Lipkin-Zelle"
       ]
     },
     {
@@ -65,7 +68,8 @@
         "parallelogram linkage",
         "Storchschnabel",
         "homothety",
-        "Ähnlichkeit"
+        "Ähnlichkeit",
+        "pantographs"
       ]
     },
     {
@@ -81,7 +85,8 @@
         "Oldham",
         "cross slider coupling",
         "Kreuzschieberkupplung",
-        "parallel offset shafts"
+        "parallel offset shafts",
+        "Oldham couplings"
       ]
     },
     {

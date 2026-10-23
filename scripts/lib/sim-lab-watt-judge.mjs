@@ -39,8 +39,8 @@ export function judgeWatt(r,{native=false}={}){
   const error=Math.abs(rows.at(-1).encoderDeg-target);assert.ok(error<1,`stage ${i+1} arrival and settling`);
   return {stage:i+1,targetDeg:target,settledDeg:rows.at(-1).encoderDeg,errorDeg:error};
  });
- const metrics={finishedAtMs:r.finishedAt,programDurationMs:r.finishedAt-2000,samples:s.length,
-  programSamples:s.filter(x=>x.phase==='program').length,
+ const metrics={finishedAtMs:r.finishedAt,programDurationMs:r.finishedAt-(native?2000:0),samples:s.length,
+  programSamples:s.filter(x=>x.phase!=='cold'&&x.phase!=='after').length,
   longitudinalTravelMm:span(s.map(x=>x.P[1])),lateralDeviationMm:max(s,x=>Math.abs(x.P[0]-40)),
   predictionErrorMm:max(s,x=>x.predictionErrorMm),encoderSignErrorDeg:max(s,x=>Math.abs(x.thetaDeg+x.encoderDeg)),
   hingeGapMm:max(s,x=>x.hingeGapMm),axisMismatchDeg:max(s,x=>x.axisMismatchDeg),baseTiltDeg:max(s,x=>x.baseTiltDeg),

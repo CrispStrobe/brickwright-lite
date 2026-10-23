@@ -548,7 +548,7 @@ test('the captured Crossglide provenance still rejects a never-pinned supplier c
 
 
 test('captured Resonance source receipts preserve actual old pins but refuse invented supplier commits', () => {
- const oldPin='7d3f8be7c13091a635d919c1af5c456230eed8fd',neverPin='f'.repeat(40);
+ const oldPin=JSON.parse(readFileSync(path.join(ROOT,'test/helpers/resonance/original-inputs.json'),'utf8')).originalCompilerPin,neverPin='f'.repeat(40);
  const k={...known,history:new Map([...known.history,[neverPin,'sb3-creator']])};
  for(const file of ['test/fixtures/model-files/resonance-lab-source/SOURCES.txt','test/helpers/resonance/original-inputs.json']){
   assert.equal(roleOf(file),'receipt');assert.ok(previous.has(oldPin));

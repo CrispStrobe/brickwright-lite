@@ -569,7 +569,8 @@ export const MODEL_LESSONS = Object.freeze({
             "Oldham",
             "cross slider coupling",
             "Kreuzschieberkupplung",
-            "parallel offset shafts"
+            "parallel offset shafts",
+            "Oldham couplings"
         ]
     },
     "circle-splitter.ldr": {
@@ -668,7 +669,8 @@ export const MODEL_LESSONS = Object.freeze({
             "parallelogram linkage",
             "Storchschnabel",
             "homothety",
-            "Ähnlichkeit"
+            "Ähnlichkeit",
+            "pantographs"
         ]
     },
     "pantograph-doubler.ldr": {
@@ -697,7 +699,8 @@ export const MODEL_LESSONS = Object.freeze({
             "parallelogram linkage",
             "Storchschnabel",
             "homothety",
-            "Ähnlichkeit"
+            "Ähnlichkeit",
+            "pantographs"
         ]
     },
     "scale-studio.ldr": {
@@ -726,7 +729,8 @@ export const MODEL_LESSONS = Object.freeze({
             "parallelogram linkage",
             "Storchschnabel",
             "homothety",
-            "Ähnlichkeit"
+            "Ähnlichkeit",
+            "pantographs"
         ]
     },
     "ripple-relay.ldr": {
@@ -782,7 +786,8 @@ export const MODEL_LESSONS = Object.freeze({
             "Oldham",
             "cross slider coupling",
             "Kreuzschieberkupplung",
-            "parallel offset shafts"
+            "parallel offset shafts",
+            "Oldham couplings"
         ]
     },
     "scale-echo.ldr": {
@@ -811,7 +816,8 @@ export const MODEL_LESSONS = Object.freeze({
             "parallelogram linkage",
             "Storchschnabel",
             "homothety",
-            "Ähnlichkeit"
+            "Ähnlichkeit",
+            "pantographs"
         ]
     },
     "turnwise.ldr": {
@@ -1035,7 +1041,10 @@ export const MODEL_LESSONS = Object.freeze({
             "Lipkin",
             "inversor",
             "inversion",
-            "exact straight line"
+            "exact straight line",
+            "Peaucellier–Lipkin cell",
+            "Peaucellier cell",
+            "Peaucellier-Lipkin-Zelle"
         ]
     },
     "pendulum-array.ldr": {
