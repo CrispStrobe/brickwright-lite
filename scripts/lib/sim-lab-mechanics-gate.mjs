@@ -158,6 +158,17 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
         }
         await page.getByTestId('bw-sim-lab-mixer-stop-all').click();
         assert.ok((await sliders.evaluateAll(es => es.map(e => e.value))).every(v => v === '0'));
+        // Passive mechanisms may keep moving after their motor holds. As in the
+        // program capture above, pause only after proving every manual response,
+        // so WebKit captures a stable WebGL surface instead of racing its redraw.
+        const fontState = await page.evaluate(() => ({status:document.fonts.status,
+            faces:[...document.fonts].map(f=>({family:f.family,status:f.status}))}));
+        if (await page.getByTestId('bw-sim-lab-pause').isVisible()) {
+            await page.getByTestId('bw-sim-lab-pause').click();
+            await page.waitForFunction(() => window.__bwSimLab.status === 'paused');
+        }
+        writeFileSync(resolve(shotsDir, `${id}-manual-capture-state.json`),JSON.stringify({before:fontState,
+            after:await page.evaluate(()=>({fonts:document.fonts.status,simulation:window.__bwSimLab.status}))},null,2)+'\n');
         await page.screenshot({path: resolve(shotsDir, `${id}-manual.png`)});
         await toggle.click();
         console.log(`PASS manual motor controls ${id}: ${JSON.stringify(results[id])}`);
