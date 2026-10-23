@@ -327,6 +327,7 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
         assert.deepEqual(closing, {focused: true, held: true, serialOpen: true});
         await page.waitForFunction(() => !window.__bwSimLab);
         assert.equal(await page.getByTestId('bw-robot-lab-tab').getAttribute('data-state'), 'released');
+        await release.waitFor({state: 'hidden'});
         await page.keyboard.up('Enter');
         // Pane closure is synchronous; its real provider drain may finish
         // later. Observe wrapper restoration rather than assuming it is done.
