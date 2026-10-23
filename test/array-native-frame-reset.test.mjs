@@ -63,7 +63,8 @@ function imported(files){
  assert.doesNotMatch(code,/^\s*# unsupported:/m);
  const feedback=new Creator();feedback.parse(code);clean(feedback);return carryArtwork(blocks,feedback);
 }
-const fullFiles=()=>numericAuthoringFiles({maximum:12,operation:'max',message:'PLAY'});
+const builtinKinds=['Player','Projectile','Food','Enemy'];
+const fullFiles=(kind='Player')=>{const files=numericAuthoringFiles({maximum:12,operation:'max',message:'PLAY'});files['main.ts']=files['main.ts'].replace('SpriteKind.Player',`SpriteKind.${kind}`);return files;};
 function prefixFiles(prefix){const files=fullFiles();files['main.ts']=prefix+`
 bwStringArraySettings.write("bw-owned-numeric-gui", ["Ä", "PLAY"])
 let saved = bwStringArraySettings.read("bw-owned-numeric-gui")[1]
@@ -94,10 +95,13 @@ const loop='let count = 0\nwhile (count < 3) { count += 1 }';
 const math='let ordered = Math.max(1, 4)\nlet noise = Math.random()\nlet range = Math.randomRange(-3, -3)\nlet never = Math.percentChance(0)\nlet always = Math.percentChance(100)';
 
 test('whole owned numeric source prefix retains actual allocation, Unicode pushes and StringArray storage authority',()=>{
- const draft=fixture(),before=JSON.stringify(draft),{project}=accepted(draft),actual=rows(project),cell=binding(project);
+ for(const kind of builtinKinds){
+ const draft=fixture(fullFiles(kind)),before=JSON.stringify(draft),{project}=accepted(draft),actual=rows(project),cell=binding(project);
+ const kinds=actual.filter(r=>r.node.opcode==='arcade_spriteKindValue');assert.equal(kinds.length,1);assert.equal(literal(kinds[0].target,kinds[0].node,'NAME'),kind,'actual emitted/reimported builtin kind');
  for(const opcode of ['arcade_setBackgroundColor','arcade_createSprite','arcade_spriteKindValue','arcade_setSpritePosition','arcade_sourceWhile','arrays_valueCompare','arrays_valueBinary','arcade_mathBinary','arcade_randomNumber','arcade_percentChance','arcade_settingsWrite','arcade_settingsRead'])assert.ok(actual.some(r=>r.node.opcode===opcode),opcode);
  const registrations=actual.filter(r=>r.node.opcode==='arcade_registerButtonHandler');assert.equal(registrations.length,1);assert.ok(literal(registrations[0].target,registrations[0].node,'CAPTURES').split(',').map(s=>s.trim()).includes(cell.name),'the candidate really is captured later');
  assert.equal(JSON.stringify(draft),before,'proof and export do not rewrite source');
+ }
 });
 
 test('each audited prefix and their composition keep an independent entry reset separated from allocation',()=>{
@@ -143,6 +147,26 @@ test('operand schema, actual producer and native menu obligations are not replac
   project=>{const r=rows(project).find(r=>r.node.opcode==='arcade_percentChance');r.node.inputs.EXTRA=[1,[4,'0']];},
   project=>{const r=rows(project).find(r=>r.node.opcode==='arcade_randomNumber');r.node.inputs.VALUE=[1,[4,'0']];}
  ])refused(edit);
+ // Each edit starts from a genuine, fully converted builtin positive and
+ // retains its actual Array consumer IDs. A builtin numeric effect contract
+ // cannot lend registry initialization or dynamic/coercive-name authority.
+ for(const kind of builtinKinds){
+  const files=fullFiles(kind);
+  for(const name of ['UnknownKind','Coin','constructor','__proto__','1',''])refused(project=>{
+   const r=rows(project).find(r=>r.node.opcode==='arcade_spriteKindValue');assert.ok(r);
+   assert.equal(literal(r.target,r.node,'NAME'),kind);
+   const raw=r.node.inputs.NAME[1];
+   if(Array.isArray(raw)){assert.equal(raw[0],10);raw[1]=name;}
+   else{const leaf=r.target.blocks[raw];assert.equal(leaf.opcode,'text');leaf.fields.TEXT[0]=name;}
+  },files);
+ }
+ for(const edit of [
+  (r,project)=>{r.target.blocks.__dynamicKind={...structuredClone(binding(project).read),parent:r.id,next:null};r.node.inputs.NAME=[3,'__dynamicKind',[10,'Player']];},
+  r=>{r.node.inputs.NAME=[1,[4,'1']];},
+  r=>{r.node.inputs.EXTRA=[1,[10,'Player']];},
+  r=>{r.node.fields.EXTRA=['Player',null];},
+  r=>{r.node.mutation={kind:'Player'};}
+ ])refused(project=>{const r=rows(project).find(r=>r.node.opcode==='arcade_spriteKindValue');assert.ok(r);edit(r,project);});
 });
 
 test('loop bodies cannot read the reset, register its capture or invent a dominating overwrite',()=>{

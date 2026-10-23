@@ -160,7 +160,14 @@ export function createArrayNativeFrameReset(context){
             if(n.opcode==='arcade_mathBinary')return shape(n,s,['A','B'],['OP'])&&['min','max','randomRange'].includes(literal(n,'OP',s.target))&&numeric(['A','B'])?number:unknown;
             if(n.opcode==='arcade_randomNumber')return shape(n,s)?number:unknown;
             if(n.opcode==='arcade_percentChance')return shape(n,s,['PERCENTAGE'])&&numeric(['PERCENTAGE'])?boolean:unknown;
-            if(n.opcode==='arcade_spriteKindValue')return shape(n,s,['NAME'])&&literal(n,'NAME',s.target)==='Player'?number:unknown;
+            if(n.opcode==='arcade_spriteKindValue'){
+                if(!shape(n,s,['NAME']))return unknown;
+                const name=literal(n,'NAME',s.target);
+                // The native registry preserves these four original numeric
+                // bindings. This is only a private effect token; custom names
+                // need an ordered registry-state proof, not a name assertion.
+                return name==='Player'||name==='Projectile'||name==='Food'||name==='Enemy'?number:unknown;
+            }
             if(n.opcode==='arcade_createSprite'){
                 if(!shape(n,s,['TEMPLATE','KIND','WIDTH','HEIGHT'])||typeof literal(n,'TEMPLATE',s.target)!=='string'||
                     !numeric(['KIND','WIDTH','HEIGHT']))return unknown;
