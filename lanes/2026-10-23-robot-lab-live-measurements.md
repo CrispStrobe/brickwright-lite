@@ -62,3 +62,12 @@ claimed. The measurement-only diagnostic now invokes the measurement journey
 alone, while default UI coverage retains the full speed/readings/rays/replay
 journey. Its new model-switch check also waits for the actual replay control's
 published frame count before pausing; the initial fixture wait failure is retained.
+
+
+Exact-head CI then exposed three failures in the existing extracted-render GPU
+fixture: its scope did not bind the new measurement reader/overlay variables.
+The original failure is preserved and reproduced locally. The fixture now binds
+those observation boundaries, with every original GPU assertion unchanged, plus
+checks that labels follow submitted poses and can hide without a GPU redraw.
+All four controls pass; removing either measurement publication detects the cut.
+Production rendering/measurement bytes are unchanged by this correction.
