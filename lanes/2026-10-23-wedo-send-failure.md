@@ -27,7 +27,8 @@ Supplier #66 merged normally after all seven enabled checks succeeded, with its
 one declared label skip. The landed source equals the reviewed and guest-tested
 candidate. Lite adopts only the scoped WeDo pin, canonical bundle and receipt;
 all unrelated pin/receipt values and the global baseline remain unchanged.
-The combined consumer/source set passes 358 tests with no failures; one named
+Before the latest main composition, the combined consumer/source set passes
+358 tests with no failures; one named
 skip reports unavailable unrelated repository history. Retained producer and
 actual VM/Jolt mutation controls detect removal of the failure observer.
 The final combined-head hosted checks and built-browser results remain required.

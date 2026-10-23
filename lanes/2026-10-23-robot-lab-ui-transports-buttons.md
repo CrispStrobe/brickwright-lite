@@ -52,7 +52,7 @@ inputs through the pane and dynamic Lab boundary. Qualified measurement parent
 measurement import, timestamps and panel props are preserved during normal
 composition and require the final combined-head qualification.
 
-Fresh combined qualification: 358 controls pass with no failures. One named
+Before the latest current-main composition, 358 combined controls pass with no failures. One named
 skip reports unavailable unrelated vendored-repository history; the previous-pin
 history and tracked-file checks run and pass. The set includes actual VM/Jolt
 transport guests and the complete Lab extension suite, unchanged physical
@@ -79,6 +79,13 @@ authorization without an inherited reviewer quota.
 
 The hubs-bt browser part exercises the actual connection/button journey,
 model replacement, delayed real-provider return, serial traffic and pane closure.
+The close action is the arena ownership handover: Stage presentation changes
+intentionally leave the Lab tab mounted. Captured serial and focused/held input
+remain live before handover, then their cleanup is checked. Forty-nine affected
+DOM/transport controls pass, including a real tab/simulator handover control at
+a controlled lazy-child boundary; both source-copy handover mutations fail.
+The original built-browser close-action failure is retained. Current-main
+package changes require fresh exact-head dependency and browser qualification.
 Final combined-head hosted checks and source-bound built-browser qualification
 remain required before merge. DONE records an implementation candidate, not
 hosted, installed-native or hardware qualification.
