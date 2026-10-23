@@ -12,6 +12,7 @@ const quoted=s=>"'"+s.replaceAll("'","'\\''")+"'";
 function fixture(mode='ok'){
  const root=mkdtempSync(join(tmpdir(),'pyodide-setup-'));mkdirSync(join(root,'scripts'));mkdirSync(join(root,'bin'));
  const script=join(root,'scripts','probe-pyodide-packer.mjs');copyFileSync(new URL('../scripts/probe-pyodide-packer.mjs',import.meta.url),script);
+ mkdirSync(join(root,'scripts','lib'));copyFileSync(new URL('../scripts/lib/apycula-wheel.mjs',import.meta.url),join(root,'scripts','lib','apycula-wheel.mjs'));
  const log=join(root,'npm-args.json'),fake=join(root,'fake-npm.mjs');
  writeFileSync(fake,`import{writeFileSync,mkdirSync}from'node:fs';import{join}from'node:path';
  writeFileSync(process.env.BW_TEST_PYODIDE_NPM_LOG,JSON.stringify(process.argv.slice(2)));
