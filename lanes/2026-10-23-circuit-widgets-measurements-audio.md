@@ -66,3 +66,11 @@ npm lock generation is byte-stable. Current main's 26 affected measurement plot,
 history, preset and pane controls pass after normal composition. No solver
 limits or oracle tolerances are changed. Linux qualification runs on hosted
 Linux; original Mac failures at Linux-only OS APIs remain retained.
+
+The subsequent hosted VM-corpus failure exposed a verifier gap: generated
+reporter-menu shadows were checked as extension commands requiring same-named
+methods. Derive reporter menus from the extension's own `acceptReporters`
+metadata; preserve definition-plus-method checks for commands and refusal of
+unknown menus. Two executable instrument controls and the original organ row
+fail on the prior verifier; all 336 complete VM-corpus/menu controls pass after
+repair, with zero skips. No opcode ratchet allowance or product change is used.
