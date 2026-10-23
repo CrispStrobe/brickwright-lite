@@ -118,6 +118,13 @@ jobs:
         run: |
           node tools/model-api/dispatch-worker.mjs qualification-seal "$RUNNER_TEMP/model-api-qualification/meta.json" "$RUNNER_TEMP/model-api-qualification/out/report.json" "$RUNNER_TEMP/model-api-qualification/result.enc"
           node tools/model-api/qualification.mjs verify "$RUNNER_TEMP/model-api-qualification"
+      - name: Retain actual single-entry encrypted archive for independent transport admission
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: model-api-encrypted-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/model-api-qualification/result.enc
+          if-no-files-found: error
+          retention-days: 2
       - name: Preserve qualification evidence including original failures
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

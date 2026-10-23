@@ -78,6 +78,7 @@ test('automatic fixed-model qualification is isolated from production dispatch a
  assert.match(s,/if: \$\{\{ github.event_name == 'workflow_dispatch' \}\}/);
  assert.match(q,/github.event.pull_request.head.repo.full_name == github.repository/);assert.match(q,/ref: \$\{\{ github.event.pull_request.head.sha \}\}/);
  assert.ok(!/secrets\.|pull_request_target|MODEL_API_MASTER_KEY/.test(q));
+ assert.match(q,/name: model-api-encrypted-/);assert.match(q,/model-api-qualification\/result.enc/);
  assert.match(q,/qualification-prepare/);assert.match(q,/qualification-seal/);assert.match(q,/model-api-native.test.mjs/);assert.match(q,/qualification.mjs verify/);
  assert.match(q,/if: \$\{\{ always\(\) \}\}/);assert.match(q,/retention-days: 2/);
 });
