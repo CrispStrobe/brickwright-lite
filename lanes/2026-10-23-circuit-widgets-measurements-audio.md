@@ -74,3 +74,13 @@ metadata; preserve definition-plus-method checks for commands and refusal of
 unknown menus. Two executable instrument controls and the original organ row
 fail on the prior verifier; all 336 complete VM-corpus/menu controls pass after
 repair, with zero skips. No opcode ratchet allowance or product change is used.
+
+The next hosted light-browser failure comes from synthetic pointerdown events
+without an active browser pointer reaching native pointer capture. The faceplate
+gate now uses actual mouse down/up and distinct authored positions for its two
+previously overlapping test buttons. Its program, pattern counts, variable
+bindings, Save/Open/catalogue expectations and zero-page-error assertion remain
+unchanged. The full native-pointer gate passes against the qualified installed
+product runtime. No product capture errors are swallowed. A separate robotdraw2
+job failed during npm installation with ECONNRESET before any browser gate ran;
+retain that input failure and do not report its skipped gates as passing.
