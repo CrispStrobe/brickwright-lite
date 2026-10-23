@@ -15,7 +15,7 @@ expected = {
     'firmware': (firmware, '91cf0c07784441ac114b85a1705737327db2d9f8'),
     'nuttx': (firmware / 'nuttx', 'a67efb31cf4f236e456882589b91862f04594528'),
     'apps': (firmware / 'nuttx-apps', '55f0bc216565ccab8dee600a88f4485c7693bf8b'),
-    'runtime': (runtime, '26d9eb2b7e5b9ede70c95471f5b4b678ad30d8c0'),
+    'runtime': (runtime, '0ff9e15d5fdd0ba755e4cb1773ebc3d3e79e3b3f'),
     'infrastructure': (runtime / 'src/Infrastructure', '181d9d45567d9afc66a47b57255d34aa51b5ffdd'),
     'resources': (runtime / 'lib/resources', '14b80cde0a136b684f316eb7f6a31aeaae0684bf'),
 }

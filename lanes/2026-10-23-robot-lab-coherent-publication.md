@@ -52,3 +52,11 @@ acceptance. Fixed physical checkpoint windows retain all original quanta, record
 the observed sample time explicitly, and never replay that sample as the final
 missing observation. All six Python cases, physical assertions and bounds remain.
 Actual candidate qualification remains pending; the matrix is unchanged.
+
+Runtime #60 landed at `0ff9e15d5fdd0ba755e4cb1773ebc3d3e79e3b3f` after
+both enabled exact-head checks and real own-firmware acceptance passed. Reviewed,
+CI and landed source trees match; merge parents are the reviewed base/candidate.
+The proposed qualification input now selects this exact merge revision. A local
+COMMIT READY barrier also prevents begin from replaying prior COMPLETE; its
+previous-source failure and focused positive control are retained. The combined
+coverage/firmware candidate still requires fresh final-source qualification.
