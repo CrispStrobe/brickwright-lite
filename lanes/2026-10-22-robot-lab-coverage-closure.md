@@ -2,9 +2,10 @@
 
 Owner: Codex, isolated coverage-closure worktree; base `6db3cb1c3`.
 Status: PARTIALLY COMPLETE. WP1–WP3 and NXC have source-bound closure tests;
-NXT sync/button/listen APIs and WP6 remain open, requiring their dedicated
-source claims and qualification. Continue the coverage matrix gaps, WP1–WP4 and WP6 of
-`docs/HANDOFF-2026-10-21.md`, sequentially in bounded implementation PRs.
+WP6 is qualified through own NuttX and embedded Python. NXT sync/button/listen
+supplier adoption remains open, pending the required supplier reviews. The
+remaining step is WP4’s reviewed supplier adoption; the other matrix work is
+closed within `docs/HANDOFF-2026-10-21.md`’s stated boundaries.
 
 Scope: Code-tab hub-call readers in `robot-lab-pseudocode.js` and their tracked
 mirror; hub runtime round-trip and real-extension Lab tests; SPIKE Essential
@@ -28,6 +29,17 @@ on both routes after the separately claimed sensor-ID repair, exact-source NXC
 recorded reply and rejection controls. The full 22-test LDraw connector suite
 passes; the complete affected suite passes 140 tests with no skips or TODOs.
 Four reader mutations and the sensor identity mutation are detected. See the updated matrix/handoff for
-finite evidence and remaining boundaries. Final enabled exact-head hosted checks
-must pass before landing; no firmware, installed native or hardware closure is
-claimed by these tests.
+finite evidence and remaining boundaries. Enabled exact-head checks passed
+before landing; firmware qualification is supplied by the separate WP6 guest
+evidence. These source tests do not establish installed native or hardware closure.
+
+The reader now acquires its compiler through the registering entry point. Both
+fresh-process import orders and the unchanged registration/lazy-load guards
+pass. Final affected suite: 99 tests, plus CI-example manifest and lazy policies.
+The official earlier raw-import guard failure is retained; it is repaired at
+source without broadening its allow-list.
+
+Source composition landed in #1239 at 6da92497d2e8f51b2a75e137fab9e6946d3a3457 after all enabled
+exact-head checks passed. The matrix now records 42 green cells, one NXT partial
+and no gaps. The firmware cells use the dedicated real hosted qualification,
+not the source controls described above.

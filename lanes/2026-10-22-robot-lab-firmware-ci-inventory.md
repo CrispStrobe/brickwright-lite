@@ -1,6 +1,6 @@
 # Register hosted Lab firmware in the CI inventories
 
-CLAIMED — Codex hub-coverage owner, continuation of the merged own-firmware
+SOURCE COMPLETE — Codex hub-coverage owner, continuation of the merged own-firmware
 claim #1234 and implementation #1239. Base `fe73f8de7`.
 
 Amend that workflow's scope only for:
@@ -24,3 +24,20 @@ browser budget, dependency pin, firmware or native change is authorized here.
 This metadata cannot qualify the still-pending embedded Python guest run.
 All enabled exact-head checks and independent actual guest evidence remain
 required before the implementation merges.
+
+The existing census/scoped-merge APIs recorded the admitted original failed
+run 39862908482 at exact source c9512f12299c93213be42deb00fa349679e68ba7.
+Independent comparison preserved all 24 prior workflow objects, 320 ordered
+runs, main revision and newest-main-run identity. Python has zero completed
+observations in these readings; one dated pointer states that limit. The
+now-wired lockstep entry alone is removed from KNOWN_UNWIRED. All 20 complete
+census/gate controls pass, including the original mutation assertions.
+No guest success, new dispatch or broad census refresh is inferred.
+
+Later run 39884066925 at Lite `110435b9d23590dbefb1f9a3431c2df244694f5e`
+and Runtime `26d9eb2b7e5b9ede70c95471f5b4b678ad30d8c0` passed timed/degrees
+and all six real Python cases. Independent original admission verified the
+fixed source graph, source/compiled-output hashes and physical/terminal proofs.
+The pointer records this later result without rewriting the historical census's
+first failed original or its prior workflow/run observations. A subsequent
+consumer COMMIT READY barrier still needs final-source guest qualification.
