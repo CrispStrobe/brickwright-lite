@@ -12,7 +12,7 @@ import {once} from 'node:events';
 import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
 import path from 'node:path';
 import {prepareDotnetLauncher} from '../scripts/lib/sim-lab-dotnet-launcher.mjs';
-import {waitForRenodeStateService, stopRenodeChild, StateServiceTransport} from '../scripts/lib/sim-lab-renode-guest.mjs';
+import {waitForRenodeStateService, stopRenodeChild, StateServiceTransport, monitorCommand} from '../scripts/lib/sim-lab-renode-guest.mjs';
 const compiled = {version: 1, instructions: [[0, 0, 0, 0]]};
 let transportCalls = 0;
 const unused = {call () { transportCalls++;throw Error('must validate before transport'); }};
@@ -188,4 +188,44 @@ test('stream termination does not become an unrelated reply timeout', async () =
         transport.closed = new Error('state service ended the stream control');
     });
     await assert.rejects(t.command('lockstep.step', {}, 30), /missing fresh snapshot.*ended the stream control/);
+});
+
+// A real TCP boundary, not a firmware guest: AntShell redraws a reconnect's
+// empty command line only after Enter. Neither IAC nor a prompt proves Start.
+const monitorControl = async (t, answer) => {
+    const sockets = new Set();
+    const lines = [];
+    let connections = 0;
+    const server = net.createServer(socket => {
+        sockets.add(socket);socket.once('close', () => sockets.delete(socket));
+        if (++connections === 1) socket.write('(machine-0) ');
+        else socket.write(Buffer.from([255, 253, 0]));
+        let pending = '';
+        socket.on('data', data => {
+            pending += data.toString();
+            let i;
+            while ((i = pending.indexOf('\n')) !== -1) {
+                const line = pending.slice(0, i);pending = pending.slice(i + 1);
+                lines.push(line);
+                if (line === '') socket.write('(machine-0) ');
+                else answer(socket, line);
+            }
+        });
+    });
+    server.listen(0, '127.0.0.1');await once(server, 'listening');
+    t.after(async () => {for (const socket of sockets) socket.destroy();await new Promise(resolve => server.close(resolve));});
+    return {port: server.address().port, lines};
+};
+test('a monitor reconnect wakes the empty line and sends one real Start after its prompt', {timeout: 1000}, async t => {
+    const server = await monitorControl(t, (socket, line) => {
+        assert.equal(line, 'start');socket.write('Starting emulation\r\n(machine-0) ');
+    });
+    await monitorCommand(server.port, 'start');
+    await monitorCommand(server.port, 'start');
+    assert.deepEqual(server.lines, ['', 'start', '', 'start']);
+});
+test('a monitor prompt without the Start acknowledgement cannot report resumed execution', {timeout: 1000}, async t => {
+    const server = await monitorControl(t, socket => socket.end('(machine-0) '));
+    await assert.rejects(monitorCommand(server.port, 'start'), /closed before its start acknowledgement/);
+    assert.deepEqual(server.lines, ['', 'start']);
 });

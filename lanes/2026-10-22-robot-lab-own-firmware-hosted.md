@@ -80,3 +80,14 @@ and checks result/stream sequence and lockstep data agreement. Twenty-nine
 focused controls pass, including five synthetic protocol boundaries; prefix
 discard, omitted refusal handling and omitted stream agreement mutations are
 detected. These controls do not substitute for fresh hosted guest acceptance.
+
+Run 39876709958 passed real timed/degrees acceptance and its first embedded
+Python case, including computation, physical motor motion and retained restart.
+The next case failed before upload: the reconnected telnet monitor did not
+redraw a prompt, so the controller never sent Start. Matched AntShell source
+redraws the existing empty line on Enter without executing a command. The
+controller now sends one empty newline, waits for the prompt, then sends one
+Start and still requires its explicit acknowledgement and final prompt. The
+30-second limit is unchanged. Both real-TCP reconnect/refused-ack controls and
+omitted-wake/prompt-only-ack mutations distinguish this boundary. All 31
+focused controls pass; fresh combined-main guest qualification remains required.

@@ -116,14 +116,18 @@ export const monitorCommand = (port, command) => new Promise((resolve, reject) =
     const s = net.connect(port, '127.0.0.1');
     let out = '';
     let sent = false;
+    // AntShell keeps its empty command line across telnet reconnects. Enter
+    // executes no command and redraws its prompt; IAC negotiation is not ready.
+    s.once('connect', () => s.write('\n'));
     const timer = setTimeout(() => { s.destroy(); reject(new Error(`monitor '${command}' timed out: ${out}`)); }, 30000);
     s.on('data', d => {
-        out += d.toString('latin1').replace(/\x1b\[[0-9;]*m/g, '');
+        out = (out + d.toString('latin1').replace(/\x1b\[[0-9;]*m/g, '')).slice(-4000);
         // The state service may print between prompts (a probe connection it dropped): match, never anchor.
         if (!sent && /\(machine-0\)/.test(out)) { sent = true; out = ''; s.write(`${command}\n`); return; }
         if (sent && /Starting emulation[\s\S]*\(machine-0\)/.test(out)) { clearTimeout(timer); s.destroy(); resolve(out); }
     });
     s.on('error', e => { clearTimeout(timer); reject(e); });
+    s.on('close', () => { clearTimeout(timer); reject(new Error(`monitor '${command}' closed before its start acknowledgement: ${out}`)); });
 });
 
 /**
