@@ -53,7 +53,7 @@ export function createArrayNativeFrameReset(context){
         !invalid.has(node)&&!scope.invalid&&!scope.unknownEntry&&node.mutation==null&&
         own(node,'inputs')&&own(node,'fields')&&keys(node.inputs).length===inputs.length&&inputs.every(k=>own(node.inputs,k))&&
         keys(node.fields).length===fields.length&&fields.every(k=>own(node.fields,k)&&isArray(node.fields[k])&&
-            node.fields[k].length===2&&node.fields[k][1]===null);
+            node.fields[k].length===2&&(k==='VARIABLE'?typeof node.fields[k][0]==='string'&&typeof node.fields[k][1]==='string':node.fields[k][1]===null));
     const sequence=(scope,head)=>{
         const result=[],seen=new Set();let id=head;
         while(id){const n=block(scope.target,id);if(!n||seen.has(n)||!owned.has(n)||invalid.has(n)||owners.get(n)!==scope)return null;
@@ -133,7 +133,8 @@ export function createArrayNativeFrameReset(context){
         const state=new Map();
         const global=(n,s)=>{
             const f=n.fields.VARIABLE;if(!isArray(f)||f.length!==2||!safeName(f[0])||!safeName(f[1]))return null;
-            return globalCell(s.target,f[1]);
+            const declarations=targets.filter(t=>own(t.variables||{},f[1]));
+            return declarations.length===1&&declarations[0].variables[f[1]][0]===f[0]?globalCell(s.target,f[1]):null;
         };
         const value=(v,s,env,path=new Set())=>{
             if(!v)return unknown;if(v.cell)return env.get(v.cell)||unknown;
