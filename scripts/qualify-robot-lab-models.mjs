@@ -20,7 +20,7 @@ const translations=new Map(generatedTranslations.filter(p=>existsSync(join(root,
 const identity=()=>{
  const files=git(['ls-files','--cached','--others','--exclude-standard','-z']).split('\0').filter(Boolean).sort();
  const sha=createHash('sha256');sha.update(git(['rev-parse','HEAD']));
- for(const p of files){if(generatedTranslations.includes(p))continue;sha.update(p+'\0');sha.update(!existsSync(join(root,p))?'MISSING':statSync(join(root,p)).isFile()?readFileSync(join(root,p)):git(['ls-tree','HEAD',p]));}
+ for(const p of files){sha.update(p+'\0');sha.update(!existsSync(join(root,p))?'MISSING':statSync(join(root,p)).isFile()?readFileSync(join(root,p)):git(['ls-tree','HEAD',p]));}
  return sha.digest('hex');
 };
 const frozen=identity(),node=process.execPath,native=['--test','--import','./scripts/lib/register-gui-scope.mjs'];

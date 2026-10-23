@@ -1,0 +1,86 @@
+name: Submitted model measurements
+run-name: model-measure:${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      request_id:
+        description: Server-generated request identity
+        required: true
+        type: string
+      envelope:
+        description: Authenticated encrypted model-data envelope
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BW_LITE_DEPS_STORE: ${{ github.workspace }}/.model-api-deps
+    defaults:
+      run:
+        working-directory: runtime
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - name: Read the trusted immutable runtime pin
+        id: runtime
+        working-directory: control
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          const pin=JSON.parse(fs.readFileSync('runtime-source.json'));
+          if(pin.repository!=='CrispStrobe/brickwright-lite'||!/^[a-f0-9]{40}$/.test(pin.commit))throw Error('Invalid trusted runtime pin');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'sha='+pin.commit+'\n');
+          JS
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: CrispStrobe/brickwright-lite
+          ref: ${{ steps.runtime.outputs.sha }}
+          path: runtime
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Restore canonical worker dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .model-api-deps
+          key: model-measure-deps-${{ runner.os }}-node22-${{ hashFiles('runtime/package-lock.json', 'runtime/packages/scratch-gui/package-lock.json', 'runtime/vendor-pins.json') }}
+      - name: Prepare trusted runtime before reading submitted data
+        run: node scripts/worktree-deps.mjs link
+      - name: Decode the authenticated submission
+        env:
+          MODEL_API_MASTER_KEY: ${{ secrets.MODEL_API_MASTER_KEY }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/model-api-in" "$RUNNER_TEMP/model-api-out" "$RUNNER_TEMP/model-api-artifact"
+          node tools/model-api/dispatch-worker.mjs prepare "$GITHUB_EVENT_PATH" "$RUNNER_TEMP/model-api-in/input.json" "$RUNNER_TEMP/model-api-meta.json"
+      - name: Run bounded native simulation without credentials or network
+        id: native
+        continue-on-error: true
+        env:
+          MODEL_API_RUNTIME_REVISION: ${{ steps.runtime.outputs.sha }}
+        run: |
+          timeout --signal=TERM --kill-after=10s 180s docker run --rm --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=128 --memory=2g --cpus=2 --user "$(id -u):$(id -g)" --tmpfs /tmp:rw,nosuid,size=256m --mount "type=bind,src=$GITHUB_WORKSPACE,dst=$GITHUB_WORKSPACE,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-in,dst=/input,readonly" --mount "type=bind,src=$RUNNER_TEMP/model-api-out,dst=/output" --workdir "$GITHUB_WORKSPACE/runtime" --env "MODEL_API_RUNTIME_REVISION=$MODEL_API_RUNTIME_REVISION" docker.io/library/node@sha256:ea11b74b986d520137cdef9a5346e447a00f275ecc4abc0055b7151226231e09 node --max-old-space-size=1536 --import ./scripts/lib/register-gui-scope.mjs tools/model-api/worker.mjs /input/input.json /output/report.json > "$RUNNER_TEMP/model-api-out/worker.log" 2>&1
+      - name: Encrypt the report for its submitting agent
+        if: ${{ always() }}
+        env:
+          MODEL_API_MASTER_KEY: ${{ secrets.MODEL_API_MASTER_KEY }}
+        run: node tools/model-api/dispatch-worker.mjs seal "$RUNNER_TEMP/model-api-meta.json" "$RUNNER_TEMP/model-api-out/report.json" "$RUNNER_TEMP/model-api-artifact/result.enc"
+      - name: Retain encrypted result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: model-measure-${{ inputs.request_id }}
+          path: ${{ runner.temp }}/model-api-artifact/result.enc
+          if-no-files-found: error
+          retention-days: 1
+      - name: Reflect native failure after preserving its report
+        if: ${{ always() && steps.native.outcome != 'success' }}
+        run: exit 1

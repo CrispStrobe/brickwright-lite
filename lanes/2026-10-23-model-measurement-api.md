@@ -1,6 +1,6 @@
 # Token-protected Robot Lab measurement API
 
-CLAIMED — Robot Lab model-intake owner, user-requested REST submission service.
+DONE — Robot Lab model-intake owner, user-requested REST submission service.
 Isolated source branch `lane/model-measure-api-20261023` and worktree
 `wt-model-measure-api-20261023`; compose the qualified model harness and the
 public PR #1255 measurement implementation normally, preserving both ancestries.
@@ -22,3 +22,15 @@ attempts. GitHub Pages can host a static client; Vercel fronts compute jobs.
 No protected Jolt/compiler/collision edits, upstream pin changes, firmware,
 native release, TestFlight, other owner worktrees or active CI changes. Keep the
 existing immutable PR #1236 candidate and guarded landing untouched.
+
+Implemented the typed encrypted asynchronous gateway, PR1255-based worker,
+part-local/signed-rotation/VM-phase/closure adapters, dedicated-worker workflow,
+OpenAPI and agent client. Local auth/encryption/ownership/native and measurement
+cohorts pass; real localhost HTTP returned a measured 32.01 mm passive stroke.
+Initial server collision on another owner’s port was preserved and replaced
+with a dynamically allocated own port, without touching that listener. Hosted
+Docker/Actions and Vercel execution remain deployment acceptance requirements.
+The earlier model-candidate fingerprint SILENT-SKIP is corrected by including
+generated translations after their recorded build-side-effect restoration;
+all eleven gate-shape controls pass without any baseline/tolerance change.
+The private worker/planning repository will keep idea JSON edits off app CI.

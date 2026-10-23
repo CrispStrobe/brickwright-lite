@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 CrispStrobe
+import {test} from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {measureSubmission} from '../tools/model-api/native-runner.mjs';
+const text=readFileSync(new URL('../overlay/scratch-gui/static/sim-lab/models/sine-shuttle.ldr',import.meta.url),'utf8');
+test('submitted LDR/BW executes in real VM/Jolt and records passive marker motion through the PR1255 reader',async t=>{
+ const r=await measureSubmission({model:{name:'sine-shuttle.ldr',text},program:{name:'turn.bw',text:'DEVICE SPIKE\nGLOBAL stage = 1\nWHEN flag clicked:\n  set stage to 2\n  lab start\n  lab run motor A for 360 degrees at 90 degrees per second\n  lab stop motor A hold\n  set stage to 3\n'},settings:{programMs:7000,coldMs:250,afterMs:250,sampleMs:25},measurements:[{id:'x',kind:'pointCoordinate',point:{part:'yoke_end_-100'},reference:{part:'hub'},axis:'x'},{id:'angle',kind:'jointAngle',port:'A'},{id:'mass',kind:'mass',targets:['hub']},{id:'missing',kind:'distance',targets:['hub','absent']},{id:'closure',kind:'hingeGap'},{id:'stage',kind:'programVariable',variable:'stage'}]});
+ assert.equal(r.status,'completed');assert.equal(r.construction.overlapCount,0);assert.equal(r.qualification.status,'not-evaluated');assert.equal(r.topology.parts,105);assert.equal(r.completion.programFinished,true);assert.ok(r.samples.length>100);assert.ok(r.summary[0].span>31&&r.summary[0].span<33);assert.ok(r.summary[1].span>350);assert.ok(r.summary[2].min>0);assert.equal(r.summary[3].min,null);assert.equal(r.availability.find(x=>x.id==='missing').available,false);assert.ok(r.summary[4].max<.5);assert.equal(r.columns[0].unit,'mm');assert.equal(r.summary[5].min,1);assert.equal(r.summary[5].max,3);assert.ok(['cold','program','after'].every(p=>r.samples.some(s=>s.phase===p)));t.diagnostic(JSON.stringify({samples:r.samples.length,summary:r.summary}));
+});
+test('the same uploaded root MPD produces the same bounded native output law',async()=>{
+ const r=await measureSubmission({model:{name:'shuttle.mpd',text:'0 FILE shuttle.ldr\n'+text+'\n0 NOFILE\n'},settings:{programMs:500,coldMs:250,afterMs:0,sampleMs:25},measurements:[{id:'mass',kind:'mass',targets:['hub']} ]});assert.equal(r.status,'completed');assert.equal(r.topology.parts,105);assert.ok(r.summary[0].min>0);
+});
