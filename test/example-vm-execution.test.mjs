@@ -302,6 +302,38 @@ test('instrument: probing an extension reports its FULL opcode set', () => {
     }
 });
 
+test('instrument: conformance recognises declared menu reporters and refuses unknown opcodes', () => {
+    const project = {targets: [{blocks: {
+        menu: {opcode: 'controller_menu_WIDGETS', shadow: true},
+        unknownMenu: {opcode: 'controller_menu_MISSING', shadow: true},
+        command: {opcode: 'controller_setWidget'},
+        unknownCommand: {opcode: 'controller_missingCommand'}
+    }}]};
+    const result = conformance(project);
+    assert.deepEqual(result.errors, []);
+    assert.ok(result.provided.has('controller_menu_WIDGETS'));
+    assert.ok(result.provided.has('controller_setWidget'));
+    assert.deepEqual(result.missing.map(m => m.opcode).sort(),
+        ['controller_menu_MISSING', 'controller_missingCommand']);
+});
+
+test('instrument: menu discovery requires reporter metadata and does not invent command methods', () => {
+    class Extension {
+        getInfo () { return {id: 'control', blocks: [{opcode: 'unimplemented'}], menus: {
+            LIVE: {acceptReporters: true, items: ['one']},
+            FIELD: {items: ['one']},
+            FALSE: {acceptReporters: false, items: ['one']}
+        }}; }
+    }
+    const result = probeExtension(Extension, stubRuntime());
+    assert.equal(result.error, null);
+    assert.deepEqual([...result.menus], ['menu_LIVE']);
+    assert.ok(result.opcodes.has('unimplemented'));
+    assert.equal(result.methods.has('unimplemented'), false);
+    assert.equal(result.methods.has('menu_LIVE'), false,
+        'menu reporters are provided by the VM, not fake extension methods');
+});
+
 test('every board member a bundled extension guards on exists on the board', () => {
     // Every actuator in the `devices` extension has the shape
     //
