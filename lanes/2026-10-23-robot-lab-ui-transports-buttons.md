@@ -13,7 +13,8 @@ existing serial, bridge, ev3dev, BLE HTTP and SPIKE text routes to the current
 Lab session through explicit virtual routing. Preserve physical fallthrough,
 other owners' wrappers and non-Lab requests. Dispose only owned endpoints and
 connections; stale sessions and asynchronous replies must not revive a closed
-or replaced scene. Do not change supplier sources, pins, native or firmware.
+or replaced scene. Supplier changes are limited to the send-failure amendment
+below; do not change native or firmware.
 
 Own WP5: `hubs/ev3/ev3-virtual-hub.js`, `ev3-direct-commands.js`, the button
 capability adapters for already-modelled bricks, and `api/robot-lab-api.js` for
@@ -63,3 +64,22 @@ caller signatures. Qualify newer-owner preservation, idempotent disconnect and
 real extension traffic. This does not add notification multicast, a new radio
 protocol or a hardware connection-capacity claim. Do not edit those three paths
 until this amendment merges. Existing authorized transport work stays isolated.
+
+## Powered Up asynchronous send-failure amendment
+
+Actual real-extension teardown exposes unobserved rejections from motor-stop
+writes queued by `PROJECT_STOP_ALL`. Own the narrow producer boundary in
+CrispStrobe/extensions `extensions/CrispStrobe/lego_poweredup.js`: observe and
+report rejected sends while returning the original rejecting promise to awaiters.
+Keep command bytes, rate limiting, stop actions and dispatch order unchanged.
+Prove normal sends, awaited error identity, fire-and-forget stop reporting,
+limiter failures and no unhandled rejection with actual extension controls and
+meaningful mutants. No global rejection suppression or invented acknowledgement.
+Do not edit this supplier source until the amendment is merged.
+
+Carry only the directly affected scoped `legopoweredup` adoption through
+`vendor-pins.json`, its canonical generated wrapper and upstream-byte receipt,
+plus focused pin and real-extension transport controls. Other pins and the
+global bundle baseline remain fixed. Supplier review requirements remain in
+force; downstream pin movement follows qualified supplier merge. Keep existing
+owners and all original failures. No unrelated extension or vocabulary changes.
