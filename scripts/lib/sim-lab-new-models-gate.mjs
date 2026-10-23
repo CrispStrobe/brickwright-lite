@@ -193,6 +193,13 @@ export async function newModelLesson(page, {openSimLab, shotsDir}, id, language 
     assert.ok(answer.length > 100, `${id}: substantive ${language} explanation`);
     assert.ok(steps >= 3, `${id}: ${language} lesson has ${steps} steps`);
     mkdirSync(shotsDir, {recursive: true});
+    const frames = [];
+    for (const frame of page.frames()) frames.push(await frame.evaluate(() => ({
+        url: location.href, fonts: document.fonts.status,
+        faces: [...document.fonts].map(font => ({family: font.family, status: font.status})),
+        simulation: window.__bwSimLab?.status, view3d: window.__bwSimLab?.view3d
+    })));
+    writeFileSync(resolve(shotsDir, `${id}-lesson-${language}-capture-state.json`), JSON.stringify({frames}, null, 2));
     await lesson.screenshot({path: resolve(shotsDir, `${id}-lesson-${language}.png`)});
     await lesson.getByRole('button', {name: language === 'de' ? 'Lektion schließen' : 'Close lesson', exact: true}).click();
     console.log(`PASS ${id}: ${language.toUpperCase()} lesson (${steps} steps, ${answer.length} characters)`);

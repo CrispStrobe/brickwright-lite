@@ -804,14 +804,17 @@ try {
             page.on('dialog', dialog => dialog.accept());
             const opts = {openSimLab, shotsDir: resolve(artifacts, 'new-models'), timeout: wallBudget(140000), models: newModelIds};
             await newModelsInteractions(page, opts);
-            for (const id of newModelIds) await newModelLesson(page, opts, id, 'en');
             await page.close();
-            for (const id of newModelIds) {
-                const german = await browser.newPage({viewport: {width: 1600, height: 1050}, locale: 'de-DE', serviceWorkers: 'block'});
-                german.on('pageerror', error => errors.push(error.stack || error.message));
-                german.on('dialog', dialog => dialog.accept());
-                await newModelLesson(german, opts, id, 'de');
-                await german.close();
+            // Each language reads a freshly loaded example. Release the long
+            // physics/export context before static lesson capture, and give EN
+            // the same context isolation that DE already had.
+            for (const id of newModelIds) for (const language of ['en', 'de']) {
+                const lesson = await browser.newPage({viewport: {width: 1600, height: 1050},
+                    locale: language === 'de' ? 'de-DE' : 'en-US', serviceWorkers: 'block'});
+                lesson.on('pageerror', error => errors.push(error.stack || error.message));
+                lesson.on('dialog', dialog => dialog.accept());
+                try { await newModelLesson(lesson, opts, id, language); }
+                finally { await lesson.close(); }
             }
         }
         if (process.env.BW_SIMLAB_LIBRARY && runExample('fixed-machines.ldr')) {
