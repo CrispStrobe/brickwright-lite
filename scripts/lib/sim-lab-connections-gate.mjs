@@ -15,7 +15,14 @@ const loadExample = async page => {
     await exact.waitFor();
     await exact.getByRole('button').last().click();
     await ready(page);
-    await page.waitForFunction(() => window.__bwSimLab._pane.props.vm.extensionManager.isExtensionLoaded('ev3comprehensive'));
+    await page.waitForFunction(() => {
+        const pane = window.__bwSimLab?._pane;
+        if (!pane || pane.state.status !== 'ready' || pane.state.programLoading || pane.state.modelFile !== 'ev3-wall-stopper.ldr' ||
+            !pane.session?.hubs.some(record => record.profile === 'ev3') ||
+            !pane.props.vm.extensionManager.isExtensionLoaded('ev3comprehensive')) return false;
+        return pane.props.vm.runtime.targets.some(target => Object.values(target.blocks?._blocks || {})
+            .some(block => block.opcode.startsWith('ev3comprehensive_')));
+    }, null, {timeout: 60000});
 };
 
 export const connectionInteractions = async ({browser, errors, openSimLab, shotsDir}) => {
@@ -85,6 +92,16 @@ export const connectionInteractions = async ({browser, errors, openSimLab, shots
             `${port}: finite STEP_SPEED retains its existing target-to-target-plus-ten contract`);
         assert.equal(moved.held, false);
         out.buttonGuest = moved;
+        await page.evaluate(hubId => window.__bwSimLab.api.pressButton(hubId, 'up', true), initial.hubId);
+        await tool(page, 'pause');
+        await page.waitForFunction(() => window.__bwSimLab.status === 'paused');
+        await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab-brick-buttons"] button[data-button="up"]')
+            ?.getAttribute('aria-pressed') === 'true');
+        await page.evaluate(hubId => window.__bwSimLab.api.pressButton(hubId, 'up', false), initial.hubId);
+        await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab-brick-buttons"] button[data-button="up"]')
+            ?.getAttribute('aria-pressed') === 'false');
+        assert.equal(await page.evaluate(() => window.__bwSimLab.status), 'paused');
+        assert.equal(await page.evaluate(() => Boolean(window.__bwSimLab._pane.clock?.installed)), false);
 
         // Model replacement while a real UI pointer owns a hold releases the
         // old input and closes its actual socket, without touching the NXT.

@@ -5,6 +5,11 @@ connection. **Connect** connects the program's loaded extension to that model;
 **Run** starts the program. **Disconnect** closes that connection. Changing the
 model or connection cancels an outstanding connection request.
 
+Cancellation invalidates the request's result immediately. Provider cleanup is
+serialized; the status-polling limit is not an overall connect or cleanup
+deadline. The pane stops its clock and detaches the old routes before waiting
+for that cleanup, so a delayed old provider cannot restart a replacement scene.
+
 The connection uses the extension's own blocks and protocol. The model supplies
 the motor encoders and sensors that those blocks read.
 

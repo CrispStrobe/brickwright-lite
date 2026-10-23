@@ -29,12 +29,16 @@ const planFor = (id, route) => {
     throw new TypeError(`The ${id} extension does not support the selected Lab connection.`);
 };
 
+// timeoutMs bounds status polling only. Provider operations keep their own
+// lifetimes; cancellation fences their result and serializes cleanup. The pane
+// must stop clocks/invalidate routes immediately, without awaiting that cleanup
+// before displaying a replacement scene.
 export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent = () => true,
     host = globalThis, wait = sleep, timeoutMs = 15000} = {}) => {
     const plan = planFor(extensionId, route);
     const runtime = vm?.runtime;
     if (!runtime?._primitives) throw new TypeError('The program runtime is unavailable.');
-    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 30000) throw new TypeError('Invalid connection deadline.');
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 30000) throw new TypeError('Invalid connection status wait.');
     const primitives = new Map();
     for (const opcode of [plan.close, plan.connect[0], ...plan.configure.map(([op]) => op), plan.status].filter(Boolean)) {
         const fn = runtime._primitives[`${extensionId}_${opcode}`];
@@ -64,11 +68,16 @@ export const createLabExtensionConnection = ({vm, extensionId, route, isCurrent 
         if (!current()) throw abort();
         return result;
     };
+    let cleanupFailure = null;
     const close = async () => {
-        if (queue.providerOwner !== ticket) return;
+        if (queue.providerOwner !== ticket) {
+            if (cleanupFailure) throw cleanupFailure;
+            return;
+        }
         // Clear ownership first, including when the producer's close throws.
         queue.providerOwner = null;
-        await primitives.get(plan.close)({}, {runtime});
+        try { await primitives.get(plan.close)({}, {runtime}); }
+        catch (error) { cleanupFailure = error; throw error; }
     };
     let closing = null;
     ticket.cancel = () => {

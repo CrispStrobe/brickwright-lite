@@ -131,3 +131,20 @@ test('a truthy status error cannot count as connected, and the final poll honors
     assert.equal(f.calls.at(-1)[0], 'disconnect');
     await connection.cancel();
 });
+
+test('cancel retains a producer cleanup failure already reported by the canceled connect', async () => {
+    const failure = new Error('disconnect failed');
+    let entered;
+    let release;
+    let closes = 0;
+    const started = new Promise(resolve => { entered = resolve; });
+    const f = fixture('ev3comprehensive', {disconnect: () => { if (++closes > 1) throw failure; },
+        connect: () => { entered(); return new Promise(resolve => { release = resolve; }); }});
+    const connection = f.start({route: 'bridge'});
+    const readyFailure = assert.rejects(connection.ready, error => error instanceof AggregateError && error.errors.includes(failure));
+    await started;
+    const canceled = assert.rejects(connection.cancel(), error => error === failure);
+    release();
+    await readyFailure;
+    await canceled;
+});

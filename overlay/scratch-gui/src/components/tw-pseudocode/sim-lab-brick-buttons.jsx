@@ -26,11 +26,23 @@ class SimLabBrickButtons extends React.Component {
             this.perform(() => this.inputs.clear());
         };
         this.onVisibility = () => { if (document.hidden) this.releaseAll(); };
+        this.refresh = () => {
+            if (this.unmounted) return;
+            // Read-only view refresh also observes external API input while
+            // the world is paused. It never advances the simulation clock.
+            const signature = JSON.stringify(this.props.api?.brickButtons() || []);
+            if (signature !== this.inputSignature) {
+                this.inputSignature = signature;
+                this.forceUpdate();
+            }
+            if (!this.unmounted) this.inputFrame = requestAnimationFrame(this.refresh);
+        };
     }
 
     componentDidMount () {
         window.addEventListener('blur', this.releaseAll);
         document.addEventListener('visibilitychange', this.onVisibility);
+        this.inputFrame = requestAnimationFrame(this.refresh);
     }
 
     componentDidUpdate (previous) {
@@ -42,6 +54,7 @@ class SimLabBrickButtons extends React.Component {
         this.unmounted = true;
         window.removeEventListener('blur', this.releaseAll);
         document.removeEventListener('visibilitychange', this.onVisibility);
+        cancelAnimationFrame(this.inputFrame);
         this.releaseAll();
         this.perform(() => this.inputs.dispose());
     }

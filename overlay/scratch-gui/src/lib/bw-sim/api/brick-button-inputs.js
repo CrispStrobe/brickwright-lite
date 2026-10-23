@@ -10,7 +10,11 @@ export const createBrickButtonInputs = ({getApi, onChange = () => {}}) => {
         const entry = held.get(key);
         if (!entry) return;
         held.delete(key);
-        try { entry.release(); } finally { onChange(); }
+        const errors = [];
+        try { entry.release(); } catch (error) { errors.push(error); }
+        try { onChange(); } catch (error) { errors.push(error); }
+        if (errors.length === 1) throw errors[0];
+        if (errors.length) throw new AggregateError(errors, 'Brick input release and publication failed');
     };
     const clear = () => {
         if (releasing) return;
@@ -37,8 +41,21 @@ export const createBrickButtonInputs = ({getApi, onChange = () => {}}) => {
                 return {ok: false, code: 'scene-changed'};
             }
             held.set(key, result);
-            onChange();
-            if (disposed || request !== revision || held.get(key) !== result) return {ok: false, code: 'scene-changed'};
+            const undo = () => {
+                if (held.get(key) !== result) return;
+                held.delete(key);
+                result.release();
+            };
+            try { onChange(); }
+            catch (error) {
+                try { undo(); }
+                catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Brick input publication and rollback failed'); }
+                throw error;
+            }
+            if (disposed || request !== revision || held.get(key) !== result || getApi() !== api) {
+                undo();
+                return {ok: false, code: 'scene-changed'};
+            }
             return {ok: true};
         },
         release,

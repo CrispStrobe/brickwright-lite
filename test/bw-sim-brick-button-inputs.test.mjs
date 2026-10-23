@@ -74,3 +74,40 @@ test('an old UI release cannot lift the new scene button', t => {
     assert.equal(oldHub.button(2), false);
     assert.equal(newHub.button(2), true);
 });
+
+test('API replacement during publication releases the old acquired input', t => {
+    const oldHub = new Ev3VirtualHub();
+    const newHub = new Ev3VirtualHub();
+    const oldApi = setup(oldHub);
+    const newApi = setup(newHub);
+    let api = oldApi;
+    const inputs = createBrickButtonInputs({getApi: () => api, onChange: () => { api = newApi; }});
+    t.after(() => { inputs.dispose(); oldApi.dispose(); newApi.dispose(); });
+    assert.equal(inputs.hold('pointer', 'ev3-0', 'enter').ok, false);
+    assert.equal(oldHub.button(2), false);
+    assert.equal(newHub.button(2), false);
+});
+
+test('a failed UI publication rolls back its acquired API hold', t => {
+    const hub = new Ev3VirtualHub();
+    const api = setup(hub);
+    const failure = new Error('UI publication failed');
+    let fail = true;
+    const inputs = createBrickButtonInputs({getApi: () => api, onChange: () => { if (fail) throw failure; }});
+    t.after(() => { fail = false; inputs.dispose(); api.dispose(); });
+    assert.throws(() => inputs.hold('pointer', 'ev3-0', 'enter'), error => error === failure);
+    fail = false;
+    assert.equal(hub.button(2), false, 'failed pointer acquisition cannot remain held without pointer capture');
+});
+
+test('producer release and UI publication errors both survive cleanup', () => {
+    const producer = new Error('producer release failed');
+    const publication = new Error('release publication failed');
+    let changes = 0;
+    const api = {holdButton: () => ({ok: true, release () { throw producer; }})};
+    const inputs = createBrickButtonInputs({getApi: () => api, onChange: () => { if (++changes > 1) throw publication; }});
+    assert.equal(inputs.hold('pointer', 'hub', 'enter').ok, true);
+    assert.throws(() => inputs.release('pointer'), error => error instanceof AggregateError &&
+        error.errors.includes(producer) && error.errors.includes(publication));
+    inputs.dispose();
+});
