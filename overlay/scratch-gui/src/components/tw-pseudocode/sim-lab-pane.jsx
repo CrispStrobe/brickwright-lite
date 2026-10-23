@@ -30,6 +30,8 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
+import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
+import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
 import SimLabStats from './sim-lab-stats.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
@@ -376,7 +378,7 @@ class SimLabPane extends React.Component {
             controlsOpen: false, manualOverride: false, programLoading: false,
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
-            showSensors: false, readings: false, showStats: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
+            measurementsOpen: false, showMeasurements: false, measurementTick: 0, showSensors: false, readings: false, showStats: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
             examplesOpen: false, lessonKey: null, challengesOpen: false, challenge: null, challengeResult: null, challengeBest: readBest(),
             paneWidth: 0, menu: null, drawer: false, paletteDragging: false, infoOpen: false, route: 'scratch',
             paletteOpen: true, paletteShare: null, propsShare: null, propsDocked: true,
@@ -387,6 +389,10 @@ class SimLabPane extends React.Component {
         this.box = React.createRef();
         this.file = React.createRef();
         this.lib = null;
+        this.measurements = [];
+        this.measurementModels = new Map();
+        this.measurementReader = null;
+        this.measurementRows = [];
         this.session = null;
         this.view = null;
         this.frame = this.frame.bind(this);
@@ -934,7 +940,7 @@ class SimLabPane extends React.Component {
         // keep would make the reopened text differ, so such a name is not used at all.
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
         return simLabRecordFromText(this.lib.serializeModel(model, {name, title: MODEL_TITLE}),
-            {name, mat: this.state.mat});
+            {name, mat: this.state.mat, measurements: this.measurements});
     }
 
     /** Before a save reads the bundle's keys: write the model the pane shows. */
@@ -957,6 +963,8 @@ class SimLabPane extends React.Component {
             this.teardownEditor();
             this.setState({mode: 'simulate', placing: null, selection: []});
         }
+        this.measurementModels.clear();
+        this.measurementReader = null; this.measurements = [];
         await this.openStored();
     }
 
@@ -972,7 +980,7 @@ class SimLabPane extends React.Component {
         this.setState({mat: record && record.mat ? record.mat : null});
         if (record) {
             this.lastText = record.ldraw;
-            await this.openText(record.ldraw, record.name || 'my-model.ldr');
+            await this.openText(record.ldraw, record.name || 'my-model.ldr', null, {measurements: record.measurements});
         } else {
             await this.openShipped(modelKey(this.lib.MODELS[0]));
         }
@@ -985,7 +993,7 @@ class SimLabPane extends React.Component {
         this.lastText = text;
         this.teardownEditor();
         this.setState({mode: 'simulate', placing: null, selection: []});
-        await this.openText(text, 'my-model.ldr');
+        await this.openText(text, 'my-model.ldr', null, {measurements: this.measurements});
     }
 
     /** "Save as…": the model on show (built or simulated) as a .ldr, .mpd or .io file (lib/bw-sim/model/model-file.js). */
@@ -1171,7 +1179,10 @@ class SimLabPane extends React.Component {
         }
     }
 
-    async openText (text, name, shipped = null, {programLoading = false} = {}) {
+    async openText (text, name, shipped = null, {programLoading = false, measurements} = {}) {
+        if (this.opened && this.measurementReader) this.measurementModels.set(this.opened.text, this.measurements);
+        const savedMeasurements = measurements === undefined ? this.measurementModels.get(text) : measurements;
+        this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null;
         const token = this.loadToken = {};
         this.clearReplay();
         this.opened = {text, name};
@@ -1229,6 +1240,9 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        this.measurementReader = this.lib.createMeasurementReader(session);
+        this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
+        this.measurementRows = this.measurementReader.read(this.measurements);
         // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
         if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
         if (this.api) this.api.sessionChanged();
@@ -1254,6 +1268,8 @@ class SimLabPane extends React.Component {
             this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
             this.view.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
             this.view.setSensors(this.sensorRays(), this.state.showSensors);
+            this.view.setMeasurements(() => this.state.showMeasurements && this.state.replayAt === null && this.measurementReader ?
+                this.measurementReader.read(this.measurements).map(row => ({...row, label: row.label === row.kind ? measurementWords(this.locale).kinds[row.kind] : row.label})) : []);
             this.view.render(session.snapshot());
         } catch (error) {
             view3d = 'fallback';
@@ -1387,6 +1403,14 @@ class SimLabPane extends React.Component {
         }
         if (this.state.status === 'running') this.record();
         if (this.state.readings && this.api) this.sample();
+        if (this.state.measurementsOpen && this.measurementReader && this.measurementSampleTime !== this.session.time) {
+            if (this.measurementSampleTime === null || (this.state.status !== 'running' && this.state.status !== 'stopping') ||
+                Math.abs(this.session.time - this.measurementSampleTime) >= 100) {
+                this.measurementRows = this.measurementReader.read(this.measurements);
+                this.measurementSampleTime = this.session.time;
+                this.setState(s => ({measurementTick: s.measurementTick + 1}));
+            }
+        }
         if (this.challengeRun && this.state.status === 'running') this.judgeChallenge();
         const replayed = this.state.replayAt !== null && this.replay ? this.replay.frames[this.state.replayAt] : null;
         if (this.view) this.view.render(replayed ? replayed.snapshot : this.session.snapshot());
@@ -1447,6 +1471,19 @@ class SimLabPane extends React.Component {
             push(`sensor-${ref}`, typeof v === 'number' && v >= 0 ? v : null, now);
         }
         this.setState(s => ({readingsTick: s.readingsTick + 1}));
+    }
+
+    changeMeasurements (definitions) {
+        this.measurements = measurementDefinitions(definitions);
+        this.refreshMeasurements();
+        this.onBundleCollect();
+    }
+
+    refreshMeasurements () {
+        if (this.measurementReader) this.measurementRows = this.measurementReader.read(this.measurements);
+        this.measurementSampleTime = null;
+        this.setState(s => ({measurementTick: s.measurementTick + 1}));
+        if (this.view && this.session) this.view.render(this.session.snapshot(), {force: true});
     }
 
     /** The Readings panel's rows. */
@@ -2480,6 +2517,8 @@ class SimLabPane extends React.Component {
             speed: {id: 'speed', label: A.speed, pri: 1, pin: true, width: 84, render: inMenu => this.renderSpeed(inMenu)},
             'show-sensors': {id: 'show-sensors', label: A['show-sensors'], kind: 'switch', pressed: this.state.showSensors,
                 run: () => this.setOverlay({showSensors: !this.state.showSensors}), pri: 3},
+            measurements: {id: 'measurements', label: measurementWords(this.locale).title, icon: 'measure', kind: 'switch', pressed: this.state.measurementsOpen,
+                run: () => this.setState(s => ({measurementsOpen: !s.measurementsOpen})), pri: 2},
             readings: {id: 'readings', label: A.readings, kind: 'switch', pressed: this.state.readings,
                 run: () => this.setState(s => ({readings: !s.readings})), pri: 2},
             'show-stats': {id: 'show-stats', label: A['show-stats'], kind: 'switch', pressed: this.state.showStats,
@@ -2512,7 +2551,7 @@ class SimLabPane extends React.Component {
         return [
             pick('run', G.run, ['run', 'reset', 'speed', 'challenges']),
             pick('view', G.view, ['view-home', 'view-fit', 'view-top', 'view-front', 'view-side']),
-            pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings', 'show-stats']),
+            pick('show', G.show, ['show-ports', 'show-motion', 'show-sensors', 'readings', 'measurements', 'show-stats']),
             pick('file', G.file, ['file'])
         ];
     }
@@ -2940,6 +2979,15 @@ class SimLabPane extends React.Component {
                         {simulate && this.state.readings && (
                             <SimLabReadings text={{...this.text, close: this.text.readingsClose}} {...this.readingsRows()}
                                 onClose={() => this.setState({readings: false})} />
+                        )}
+                        {simulate && this.state.measurementsOpen && this.session && this.measurementReader && (
+                            <SimLabMeasurements locale={this.locale} definitions={this.measurements} rows={this.measurementRows}
+                                parts={this.measurementReader.partIds.map(id => ({id, label: this.partNameById(id)}))}
+                                mechanism={this.session.mechanism} shown={this.state.showMeasurements} replaying={this.state.replayAt !== null}
+                                onChange={definitions => this.changeMeasurements(definitions)}
+                                onShown={shown => this.setState({showMeasurements: shown}, () => this.refreshMeasurements())}
+                                onPresets={() => this.changeMeasurements(this.lib.measurementPresets(this.session))}
+                                onClose={() => this.setState({measurementsOpen: false})} />
                         )}
                         {simulate && this.state.challengesOpen && this.lib && this.renderChallenges()}
                         {simulate && this.renderReplay()}
