@@ -67,7 +67,7 @@ empty, extra, duplicate, reordered, malformed or contradictory terminal states
 and mismatched source/run/job/shard input. Permit only documented terminal
 values. Preserve skipped-in-green, wrong-shard/double-run, unassigned-gate,
 partition, real-earlier-failure and missing-record assertions. All old API,
-`--file`, direct identity/cache handling and six 10-second refusal behavior
+`--file`, direct identity/cache handling and six 10-second polls and refusal behavior
 remain held; the new mode never relabels incomplete API evidence as complete.
 
 Before source publication, require full manufactured workflow-context-to-CLI
