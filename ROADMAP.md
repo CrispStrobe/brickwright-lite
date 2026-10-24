@@ -19,8 +19,12 @@ The [CLI instrument result](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) now records
 312/312 comparable passes, independently recomputed across 87,488 checks;
 264 ngspice and 48 nominal analytic cases, with zero refusals or missing cases.
 There is no demonstrated numerical cause to patch in this fixed matrix.
-The next bounded item is scope acquisition/overrange/aliasing disclosure and
-actual built-GUI proof, preserving raw data and electrical behavior. Exact
+The bounded scope acquisition/overrange/aliasing disclosure is implemented in
+upstream [PR117](https://github.com/CrispStrobe/bw-circuit-ui/pull/117), qualified
+by all three checks and 71/71 actual browser scenarios. Lite's exact-pin
+adoption, built-GUI original-artifact audit and new-consumer numerical campaign
+remain in qualification; the fifth item closes only after those results.
+Raw data and electrical behavior are preserved. Exact
 historical package identities and source hashes remain attached to the original
 result; future adoption does not relabel it. This is not corpus-wide or physical
 accuracy. `lanes/`, not the older priority tables, controls current ownership.

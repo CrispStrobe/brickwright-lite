@@ -45,14 +45,19 @@ history, not reservations or evidence that their work is still pending.
 4. **Causal triage: complete for this matrix.** No numerical defect was
    demonstrated, so no model patch or tolerance change is justified. This does
    not close unrelated model/oracle work or establish physical-device accuracy.
-5. **Qualify a bounded instrument-realism improvement.** Recheck the actual GUI
-   and CLI; expose acquisition/overrange/aliasing limits without altering raw
-   captures or pretending to implement an ADC or analogue front end. Review the
-   results and remaining limits before starting a further campaign.
+5. **Upstream display implementation landed; consumer proof in qualification.**
+   CUI [PR117](https://github.com/CrispStrobe/bw-circuit-ui/pull/117) passed all
+   three checks and 71/71 actual browser scenarios. Lite adopts the qualified
+   source `420f3e15bd0064119416386853bd35713347c252` with an actual built-GUI
+   raw-CSV, metadata, warning/clear and HOLD/resume proof. The new consumer still
+   requires its exact-head checks, independent original-artifact audit and
+   numerical campaign before this fifth item closes. No ADC/analogue-front-end
+   behavior or newer signed TestFlight binary is claimed.
 
 Status reconciliation: 2026-10-24. Existing-release availability, the fixed
 regression and its causal triage are complete. Bounded scope-display realism
-remains; consult `lanes/` before taking ownership. The
+is implemented upstream and its consumer proof is in qualification; consult
+`lanes/` before taking ownership. The
 [handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) defines acceptance and stopping
 criteria. Stop after its actual built-consumer proof and report remaining limits.
 
