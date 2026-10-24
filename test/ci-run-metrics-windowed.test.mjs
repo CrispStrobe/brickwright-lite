@@ -116,3 +116,20 @@ test('workflow selects the explicit bounded profile and preserves single-request
     assert.match(legacy, /const MAX_STEPS = 200;/);
     assert.match(legacy, /steps\.length > MAX_STEPS/);
 });
+
+test('CLI bounds the actual file read before JSON parsing or writing a report', async () => {
+    const dir = await mkdtemp(join(process.cwd(), '.ci-metrics-input-cap-'));
+    try {
+        const runPath = join(dir, 'oversize.json'); const jobsPath = join(dir, 'jobs.json');
+        const outputPath = join(dir, 'report.json');
+        await writeFile(runPath, Buffer.alloc(LIMITS.inputBytes + 1, 32));
+        await writeFile(jobsPath, raw({total_count: 0, jobs: []}));
+        const result = spawnSync(process.execPath, ['scripts/report-ci-run-metrics-windowed.mjs',
+            '--run', runPath, '--jobs', jobsPath, '--output', outputPath],
+        {encoding: 'utf8', env: {...process.env, GITHUB_STEP_SUMMARY: ''}});
+        assert.notEqual(result.status, 0);
+        assert.match(result.stderr, /input exceeds byte bound/);
+        assert.equal(result.stdout, '');
+        await assert.rejects(readFile(outputPath), {code: 'ENOENT'});
+    } finally { await rm(dir, {recursive: true, force: true}); }
+});
