@@ -130,7 +130,7 @@ class SpikeArenaPane extends React.Component {
 
     componentWillUnmount () {
         this.disposed = true;
-        this.stopProgram().catch(() => {});
+        this.stopProgram().catch(() => {}).then(() => this.releaseDisposedFirmwareTopology());
         this.unitToken = null;
         window.removeEventListener('bw-spike-arena-select', this.onSelectEvent);
         window.removeEventListener('bw-project-bundle-loaded', this.onProjectLoaded);
@@ -139,6 +139,14 @@ class SpikeArenaPane extends React.Component {
         this.view3dToken = null;
         this.disposeView3D();
         if (window.__bwSpikeArena && window.__bwSpikeArena._pane === this) delete window.__bwSpikeArena;
+    }
+
+    // A disposed pane's Stop skips the topology teardown, but the hub outlives the
+    // pane: return port F unless a newer session already owns the hub configuration.
+    releaseDisposedFirmwareTopology () {
+        if (!['six-motors', 'dual-ultrasonic'].includes(this.arenaFirmwareTopology)) return;
+        this.arenaFirmwareTopology = null;
+        if (this.hubState && !this.hubState.configurationOwner) this.hubState.setPort('F', 'none');
     }
 
     onSelectEvent (event) {

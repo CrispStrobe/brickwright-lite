@@ -75,3 +75,48 @@ for (const action of ['pause', 'reset']) {
         });
     }
 }
+
+const extractPlain = name => {
+    const begin = source.indexOf(`    ${name} () {`);
+    assert.ok(begin >= 0, name);
+    const end = source.indexOf('\n    }\n', begin);
+    return source.slice(begin, end + 6).trim();
+};
+const disposalFixture = ({topology, owner = null}) => {
+    let release;
+    const teardown = new Promise(resolve => { release = resolve; });
+    const ports = [];
+    class Bridge { reset () {} }
+    const body = [extract('stopProgram'), extractPlain('componentWillUnmount'), extractPlain('releaseDisposedFirmwareTopology')].join(',\n');
+    const window = {removeEventListener () {}};
+    const pane = new Function('ArenaHubBridge', 'window', 'cancelAnimationFrame', `return ({${body}});`)(Bridge, window, () => {});
+    Object.assign(pane, {
+        disposed: false, state: {}, arenaFirmwareTopology: topology, firmwareSession: {stop: () => teardown},
+        bridge: new Bridge(), world: {}, clock: {uninstall () {}}, disposeView3D () {},
+        hubState: {configurationOwner: owner, backend: {cancel () {}}, setPort (port, kind) { ports.push([port, kind]); }},
+        setState () {}
+    });
+    return {pane, ports, release};
+};
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+
+test('closing the pane during a topology run returns port F once its teardown settles', async () => {
+    for (const topology of ['dual-ultrasonic', 'six-motors']) {
+        const f = disposalFixture({topology});
+        f.pane.componentWillUnmount();
+        await settle();
+        assert.deepEqual(f.ports, [], 'Port F stays with the running session until its teardown settles');
+        f.release(); await settle(); await settle();
+        assert.deepEqual(f.ports, [['F', 'none']], topology);
+        assert.equal(f.pane.arenaFirmwareTopology, null);
+    }
+});
+
+test('a disposed pane leaves the hub alone when a newer session owns it or no topology ran', async () => {
+    const owned = disposalFixture({topology: 'dual-ultrasonic', owner: {}});
+    owned.pane.componentWillUnmount(); owned.release(); await settle(); await settle();
+    assert.deepEqual(owned.ports, []);
+    const plain = disposalFixture({topology: null});
+    plain.pane.componentWillUnmount(); plain.release(); await settle(); await settle();
+    assert.deepEqual(plain.ports, []);
+});
