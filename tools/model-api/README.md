@@ -123,6 +123,8 @@ these snapshots when repairing a design so original failing inputs remain usable
 The Vercel project root is `tools/model-api`; its only package dependency is the
 pinned JSZip decoder. Configure production environment variables:
 
+- `NODEJS_HELPERS=0`: required in every supported Vercel deployment environment,
+  so the handler reads the raw request stream rather than the host body helper.
 - `MODEL_API_MASTER_KEY`: 32 random bytes as 64 hex characters.
 - `MODEL_API_AGENT_TOKENS`: JSON array of `{id,sha256}` token digests.
 - `MODEL_API_GITHUB_TOKEN`: server-only credential with Actions write/read on
@@ -135,6 +137,20 @@ pinned JSZip decoder. Configure production environment variables:
 - `MODEL_API_ADMISSION_BRANCH`, `MODEL_API_ADMISSION_TOKEN` and
   `MODEL_API_ADMISSION_EPOCH`: reviewed ledger branch, server-only Contents
   write credential and stable policy epoch (16–128 alphanumeric/underscore/dash).
+
+The supported host must pass the raw request stream to the handler. Vercel's
+body helper otherwise parses supported content types before this code can apply
+its stream limit and can throw while accessing malformed JSON. Disable helpers
+using the documented `NODEJS_HELPERS=0` environment setting; a Next.js-style
+`bodyParser` export is not evidence that Vercel helpers are disabled. See the
+[Vercel helper configuration](https://vercel.com/docs/functions/runtimes/node-js/advanced-node-configuration#disabling-helpers-for-nodejs).
+
+Before enabling a deployment, verify its exact source and helper configuration
+with actual hosted requests: unauthorized bodies must not reach a backend,
+oversized declared and chunked requests must be refused, and interrupted or
+stalled requests must remain bounded. The Node loopback handler checks do not
+qualify Vercel's transport, buffering, cancellation or cold-instance behavior.
+No deployed-service acceptance is implied by the worker or provider tests.
 
 Production refuses missing admission configuration. An operator must separately
 review and initialize the signed `model-api-admission.json` on that private

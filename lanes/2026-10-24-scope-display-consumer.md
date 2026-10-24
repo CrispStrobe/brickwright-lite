@@ -1,7 +1,7 @@
 # Scope display consumer adoption
 
-DONE — implementation candidate; exact-head consumer qualification is mandatory
-before landing. Codex circuit owner, exact Lite base
+DONE — qualified consumer adoption; the five-item sequence is complete.
+Codex circuit owner, exact Lite base
 `20f5ade6dda10616a3f51d5230496415c6e6b2f4`.
 
 The user requests completion through the fifth bounded circuit/instrument item.
@@ -104,3 +104,31 @@ entry is retained unchanged, with every non-CUI lock entry preserved. License
 bodies are unchanged; the canonical notice generator derives current source
 URLs from exact pinned Git license inputs. That metadata generation is not an
 installed-payload proof; hosted provenance and GUI checks remain mandatory.
+
+## Final result reconciliation
+
+[PR1334](https://github.com/CrispStrobe/brickwright-lite/pull/1334) completed
+consumer adoption after all enabled final-head checks passed. The single
+[campaign40077158320](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40077158320)
+qualifies head `75c95bea9b34b08d0dc1014c41df551c1451b10f` on its named lane
+branch: 312/312 cases and 87,488 independent checks, with all 240 waveform CSVs
+byte-identical to the preceding consumer. Actual built-browser originals from
+[Build40074942830](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40074942830)
+also pass independent audit: exact candidate tree, both installed package
+scopes, six acquisition/readout observations, three decoded canvas controls
+and byte-identical raw CSV before/after viewport changes.
+
+The earlier source-control failure remains recorded above; current hosted
+controls passed 67/67 without changing guest assertions or actual-execution
+guards. The [result handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md) records
+original identities and bounded follow-ups. No newer signed/native release,
+physical ADC/front-end accuracy or full-corpus qualification is claimed.
+Ownership is released; this sequence stops after its fifth item.
+
+Adoption landed as `b0b9b3d55eaac812484018f7856089c71bed775d`, with 34
+enabled candidate checks successful and the declared conditional skips. The
+main-race guard first stopped on a newer main; a complete Git-tree comparison
+then proved its 21 CI/reporting/native-qualification paths disjoint from this
+lane and all remaining tracked bytes unchanged. The actual merge parents/tree
+match that admitted composition. The browser proof remains bound to its
+original checkout; no native qualification or new measurement is inferred.

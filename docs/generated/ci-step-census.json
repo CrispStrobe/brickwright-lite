@@ -1931,12 +1931,6 @@
       "sha": "c9512f122"
     },
     {
-      "run": 39960513501,
-      "workflow": "model-measurements.yml",
-      "branch": "lane/model-api-resource-takeover-20261023",
-      "sha": "a11711d61"
-    },
-    {
       "run": 39982918951,
       "workflow": "robot-model-webkit-comparison.yml",
       "branch": "lane/robot-model-webkit-comparison-20261023",
@@ -1953,6 +1947,12 @@
       "workflow": "robot-model-webkit-comparison.yml",
       "branch": "lane/robot-model-webkit-comparison-20261023",
       "sha": "368bd55ae"
+    },
+    {
+      "run": 39960513501,
+      "workflow": "model-measurements.yml",
+      "branch": "lane/model-api-resource-takeover-20261023",
+      "sha": "a11711d61"
     }
   ],
   "workflowsInTree": [
@@ -7745,7 +7745,7 @@
     }
   },
   "lastRefresh": {
-    "workflow": "robot-model-webkit-comparison.yml",
+    "workflow": "testflight-release-audit.yml",
     "at": "2026-10-24T08:16:30.599Z",
     "sourceSha": "working-tree"
   }
