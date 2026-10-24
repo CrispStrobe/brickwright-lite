@@ -38,7 +38,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: gh api "repos/$REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" > jobs.json
       - name: Report runner cost and first debugger verdict
-        run: node scripts/report-ci-run-metrics.mjs --run run.json --jobs jobs.json --output ci-run-metrics.json
+        run: node scripts/report-ci-run-metrics-windowed.mjs --run run.json --jobs jobs.json --output ci-run-metrics.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ci-run-metrics-${{ github.event.workflow_run.id }}
