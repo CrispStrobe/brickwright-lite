@@ -31,7 +31,7 @@ const fixture = () => {
         ev3comprehensive_disconnect: () => { connected = false; }, ev3comprehensive_setMode () {},
         ev3comprehensive_connect: () => { connected = true; }, ev3comprehensive_isConnected: () => connected
     }}, stopAll: () => events.push('stop'), greenFlag: () => events.push('flag')};
-    const pane = {state: {status: 'ready'}, session: scene, props: {vm}, lib: {createLabConnectionCoordinator, labConnectionRoutes, serializeLabLegacyConnection, labProviderRetirementFailure},
+    const pane = {manualJogs: new Map(), manualPolicy: null, state: {status: 'ready'}, session: scene, props: {vm}, lib: {createLabConnectionCoordinator, labConnectionRoutes, serializeLabLegacyConnection, labProviderRetirementFailure},
         stopClock: () => events.push('clock-stop'), startClock: () => events.push('clock-start'),
         setState (value, done) {Object.assign(this.state, value); done?.();},
         t: (_key, {error}) => error};
@@ -386,7 +386,12 @@ test('actual pane teardown forwards caller preservation and still disposes old w
     pane.view = {dispose: () => events.push('view-dispose')};
     pane.session = {dispose: () => events.push('scene-dispose')};
     pane.api = {sessionChanged: () => events.push('api-changed')};
+    pane.manualJogs.set('A', 20);
+    pane.manualPolicy = {session: pane.session, available: true};
     pane.teardown({preserveProgram: true});
+    assert.equal(pane.manualJogs.size, 0);
+    assert.equal(pane.manualPolicy, null);
+    assert.equal(pane.runConnection, null);
     assert.deepEqual(events, [[null, {preserveProgram: true}], 'unregister', 'clock-stop',
         'view-dispose', 'scene-dispose', 'api-changed']);
     assert.equal(pane.session, null);
@@ -413,14 +418,16 @@ const modelLoaderFixture = () => {
     const openText = new Function(`return ({${source.slice(start, end)}}).openText`)();
     const calls = [];
     const session = {time: 0};
+    const manualPolicy = {available: false, manualJog: null};
     const pane = {measurementModels: new Map(), state: {},
+        resolveManualControlPolicy: async () => manualPolicy,
         lib: {CATALOG: {}, catalogFor: async () => {}, SimSession: {fromText: async () =>
             ({session, issues: [], model: {}, runModel: {}})}, insightOf: () => ({blockers: []}),
             createMeasurementReader: () => ({read: () => []}), measurementPresets: () => [],
             fetchModelDrawing: async () => {throw new Error('no drawing context in source control');}},
         clearReplay () {}, teardown (options) {calls.push(['teardown', options]);},
         setState (value) {Object.assign(this.state, value);}, physicsClient: () => null,
-        registerBtBricks () {}, observeConnection: callback => callback(),
+        registerBtBricks () {assert.equal(this.manualPolicy.session, this.session);}, observeConnection: callback => callback(),
         connections: {setScene: (...args) => calls.push(['scene', ...args])}, rcxHub: () => null,
         t: (_key, {error}) => error};
     return {pane, calls, session, openText};

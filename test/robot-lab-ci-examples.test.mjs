@@ -8,7 +8,9 @@ test('CI example groups cover every authored example branch exactly once',()=>{
  const robots=[...script.slice(script.indexOf('const EXAMPLES = ['),script.indexOf('const CPU_THROTTLE')).matchAll(/file: '([^']+)\.ldr'/g)].map(m=>m[1]);
  const loops=[...script.matchAll(/for \(const id of \[([^\]]+)\]\) if \(runExample\(id\+'\.ldr'\)\)/g)];
  assert.ok(loops.length);const extras=loops.flatMap(loop=>[...loop[1].matchAll(/'([^']+)'/g)].map(m=>m[1]));
- const expected=[...new Set([...named,...robots,...extras])].sort();
+ // The new-model gate filters its own id list rather than a runExample loop.
+ const newModels=[...script.matchAll(/const newModelIds = \[([^\]]+)\]/g)].flatMap(m=>[...m[1].matchAll(/'([^']+)'/g)].map(n=>n[1]));
+ const expected=[...new Set([...named,...robots,...extras,...newModels])].sort();
  const actual=[...workflow.matchAll(/run: npm run verify:sim-lab -- --part=examples --examples=([^\n]+)/g)].flatMap(m=>m[1].split(','));
  assert.equal(new Set(actual).size,actual.length,'no duplicate work between CI groups');assert.deepEqual(actual.sort(),expected);
 });

@@ -1,0 +1,11 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "scope": "Frozen supplier source; supplier acceptance and this application qualification are separate evidence.",
+  "files": {
+    "models/sky-courier-native.ldr": "33291483ef93402b51739a88025eda3440d634bb4c5c133022209ef42c5a6d2d",
+    "programs/sky-courier.bw": "3a0bf8baaccc3a59b60d6a59fc18eb65704342ba3533b91e057e9f0bc258abad",
+    "validation/native-acceptance-plan.json": "dd8d62b419a8240a3652d07f6f01cc1bff16c42d0962d8b82ef9993460ec1943",
+    "LICENSE": "8adfff8bee78ed213cffa22f5c09e40f875e870d2e34ffc49d859b21a13bfed0"
+  }
+}

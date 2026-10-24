@@ -2,7 +2,7 @@
   "version": 1,
   "id": "scale-studio",
   "language": "de",
-  "what": "Ein Motor dreht die orange Kurbel; ein passiver Pantograph bewegt die rote Spitze. Zwei lange Arme und zwei kurze Koppelglieder verdoppeln in der idealen ebenen Geometrie jede Verschiebung des Eingangspunkts. Aus einem Eingangskreis mit 32 mm Durchmesser wird ohne zweiten Motor ein Ausgangskreis mit 64 mm Durchmesser. Vierteldrehungs-Pausen zeigen einen passiven 2:1-Pantografen. Vergleiche entsprechende Punkte der 32-mm- und 64-mm-Kreise.",
+  "what": "Pantograf. Ein Motor dreht die orange Kurbel; ein passiver Pantograph bewegt die rote Spitze. Zwei lange Arme und zwei kurze Koppelglieder verdoppeln in der idealen ebenen Geometrie jede Verschiebung des Eingangspunkts. Aus einem Eingangskreis mit 32 mm Durchmesser wird ohne zweiten Motor ein Ausgangskreis mit 64 mm Durchmesser. Vierteldrehungs-Pausen zeigen einen passiven 2:1-Pantografen. Vergleiche entsprechende Punkte der 32-mm- und 64-mm-Kreise.",
   "try": [
     "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
     "Nutze die Draufsicht. Vergleiche jeden Punkt mit seinem eigenen Kreismittelpunkt: Beide durchlaufen pro Kurbelumdrehung genau einen Kreis, während die blauen Arme mit veränderlichem Winkel schwingen. Vergleiche die beiden Kreisdurchmesser.",

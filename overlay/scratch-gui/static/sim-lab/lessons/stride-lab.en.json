@@ -2,7 +2,7 @@
   "version": 1,
   "id": "stride-lab",
   "language": "en",
-  "what": "A single motor turns a 16 mm crank. A 40 mm coupler, a 40 mm rocker and two fixed pivots 32 mm apart constrain an extended tip. The coupler continues 40 mm beyond its rocker joint. This Hoeken-type linkage gives the tip a nearly straight working stroke and an arched return. One crank drives a Hoeken-type coupler tip through a nearly straight working stroke and curved return.",
+  "what": "Hoeken linkage. A single motor turns a 16 mm crank. A 40 mm coupler, a 40 mm rocker and two fixed pivots 32 mm apart constrain an extended tip. The coupler continues 40 mm beyond its rocker joint. This Hoeken-type linkage gives the tip a nearly straight working stroke and an arched return. One crank drives a Hoeken-type coupler tip through a nearly straight working stroke and curved return.",
   "try": [
     "Reset, load stride-lab.bw and Run. Follow the highlighted tip through two slow forward turns and two reverse turns.",
     "Compare the long, nearly straight working stroke with the curved return. Watch the crank keep turning while the tip changes direction.",

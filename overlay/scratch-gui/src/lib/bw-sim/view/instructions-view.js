@@ -28,6 +28,8 @@ import {WebGLUnavailableError, webglAvailable} from './sim-view3d.js';
 import {thumbnailCamera} from '../editor/palette.js';
 import {lduToWorld} from '../contracts.js';
 import {stepView} from '../instructions/steps.js';
+import {beltPoints} from '../editor/belt-path.js';
+import {createBeltLayer} from './belt-layer.js';
 
 /** Marks the instructions canvas (and, for scripts/verify-boot-payload.mjs, this module's chunk). */
 export const INSTRUCTIONS_TESTID = 'bw-sim-instructions-canvas';
@@ -191,6 +193,20 @@ export const createInstructionsView = ({container, model, plan, read, colors, ca
         if (!decorOf.has(near)) decorOf.set(near, []);
         decorOf.get(near).push(mesh);
     }
+    // Bands use the same saved-pose paths and tube section as Build/Simulate. They are
+    // separate physical pieces, fitted after the rigid parts on the final assembly page.
+    const beltLayer = createBeltLayer();
+    scene.add(beltLayer.group);
+    const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
+    beltLayer.draw((model.belts || []).map(belt => ({id: belt.id, band: belt.band, points: beltPoints(model, catalogMap, belt)})));
+    const bands = new Map();
+    for (const mesh of beltLayer.group.children) {
+        // The regular layer shares materials by band type. A page highlights each band
+        // separately, so its own material cannot recolor a band from an earlier step.
+        mesh.material = mesh.material.clone();
+        mesh.visible = false;
+        bands.set(mesh.userData.belt, {mesh, base: mesh.material.color.clone()});
+    }
     scene.updateMatrixWorld(true);
 
     let current = -1;
@@ -243,10 +259,19 @@ export const createInstructionsView = ({container, model, plan, read, colors, ca
      */
     const show = (n, {exploded = prefersReducedMotion(), animate = true} = {}) => {
         stopFlight();
-        const {built, fresh} = stepView(plan, n);
+        const {built, fresh, builtBelts, freshBelts} = stepView(plan, n);
         const moves = (plan.steps[n] && plan.steps[n].moves) || {};
         const builtSet = new Set(built);
         const freshSet = new Set(fresh);
+        const builtBandSet = new Set(builtBelts);
+        const freshBandSet = new Set(freshBelts);
+        for (const [id, entry] of bands) {
+            const isFresh = freshBandSet.has(id);
+            entry.mesh.visible = isFresh || builtBandSet.has(id);
+            entry.mesh.material.color.copy(entry.base).lerp(isFresh ? new Color(HIGHLIGHT) : GREY, isFresh ? 0.8 : GREY_MIX);
+            entry.mesh.material.emissive.set(isFresh ? HIGHLIGHT : GREY);
+            entry.mesh.material.emissiveIntensity = isFresh ? FRESH_GLOW : GREY_GLOW;
+        }
         for (const [id, entry] of parts) {
             const isFresh = freshSet.has(id);
             entry.mesh.visible = isFresh || builtSet.has(id);
@@ -272,6 +297,7 @@ export const createInstructionsView = ({container, model, plan, read, colors, ca
         }));
         scene.updateMatrixWorld(true);
         const freshBox = boxOf(fresh);
+        for (const id of freshBelts) if (bands.has(id)) freshBox.expandByObject(bands.get(id).mesh);
         // The frame holds the new parts where they go and where they start.
         if (flying.length) {
             flyTo(0);
@@ -279,6 +305,7 @@ export const createInstructionsView = ({container, model, plan, read, colors, ca
             freshBox.union(boxOf(flying.map(f => f.entry.mesh.name)));
         }
         const allBox = boxOf([...built, ...fresh]).union(freshBox);
+        for (const id of builtBelts) if (bands.has(id)) allBox.expandByObject(bands.get(id).mesh);
         if (!freshBox.isEmpty()) {
             const size = renderer.getSize(new Vector2());
             const aspect = size.x / Math.max(1, size.y);
@@ -297,6 +324,8 @@ export const createInstructionsView = ({container, model, plan, read, colors, ca
         }
         current = n;
         shown = {built: built.filter(id => parts.has(id)).length, fresh: fresh.filter(id => parts.has(id)).length,
+            builtBelts: builtBelts.filter(id => bands.has(id)).length, freshBelts: freshBelts.filter(id => bands.has(id)).length,
+            belts: [...bands.values()].filter(entry => entry.mesh.visible).length,
             moved: flying.length, exploded: Boolean(exploded && flying.length)};
         clearArrows();
         if (exploded) {
@@ -361,6 +390,8 @@ export const createInstructionsView = ({container, model, plan, read, colors, ca
         for (const m of [xrayMaterial, arrowLine, arrowHead]) m.dispose();
         for (const list of decorOf.values()) for (const mesh of list) mesh.material[0].dispose();
         for (const entry of parts.values()) for (const m of entry.faces) m.dispose();
+        for (const entry of bands.values()) entry.mesh.material.dispose();
+        beltLayer.dispose();
         for (const set of [highlightEdges, ...lineSets.values()]) for (const m of [...set.edges, ...set.conditional]) m.dispose();
         renderer.dispose();
         renderer.forceContextLoss();

@@ -52,6 +52,7 @@ import {buildGraph} from '../mech/graph.js';
 import {partHubProfile} from '../contracts.js';
 import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../kinds/chain.js';
 import {placedSpur, placedTooth} from '../kinds/tooth-parts.js';
+import {BANDS, beltPoints} from '../editor/belt-path.js';
 
 /** Parts per derived step the walk aims for, and the maximum per insertion page. */
 export const STEP_TARGET = 4;
@@ -60,9 +61,47 @@ export const STEP_MAX = 6;
 /** Catalog categories that fasten other parts together rather than being the structure. */
 const FASTENER_CATEGORIES = new Set(['pin', 'axle']);
 /** Order of the parts in a "parts needed" callout and the bill of materials (palette categories). */
-const CATEGORY_ORDER = ['hub', 'motor', 'sensor', 'beam', 'connector', 'axle', 'pin', 'gear', 'wheel', 'other'];
+const CATEGORY_ORDER = ['hub', 'motor', 'sensor', 'beam', 'connector', 'axle', 'pin', 'gear', 'wheel', 'band', 'other'];
 
 const metaOf = (catalog, part) => (catalog instanceof Map ? catalog.get(part) : catalog?.[part]) || null;
+
+/** Bands are physical pieces even though LDraw stores their paths separately from rigid placements. */
+const instructionBands = model => {
+    const ids = new Set(model.parts.map(p => p.id));
+    const seen = new Set();
+    return (model.belts || []).map(belt => {
+        const name = belt?.id || '(unnamed)';
+        const fail = reason => { throw new Error(`Rubber band '${name}': ${reason}`); };
+        if (!belt?.id || seen.has(belt.id)) fail('missing or duplicate band id');
+        seen.add(belt.id);
+        const band = BANDS.find(b => b.part === belt.band);
+        if (!band) fail(`unknown band part '${belt.band}'`);
+        if (!Array.isArray(belt.around) || new Set(belt.around).size < 2 || new Set(belt.around).size !== belt.around.length) {
+            fail('needs at least two distinct anchors');
+        }
+        const missing = belt.around.filter(id => !ids.has(id));
+        if (missing.length) fail(`unknown anchors ${missing.join(', ')}`);
+        return {belt, band};
+    });
+};
+
+/** Fit bands on the final assembly page, preserving every rigid insertion step and its order. */
+const withBelts = (plan, model, catalog) => {
+    const bands = instructionBands(model);
+    if (!bands.length) return plan;
+    let last = -1;
+    plan.steps.forEach((step, n) => { if (!step.subassembly) last = n; });
+    if (last < 0) throw new Error('Rubber bands need a completed main assembly');
+    const view = stepView(plan, last);
+    const assembled = new Set([...view.built, ...view.fresh]);
+    const map = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
+    for (const {belt} of bands) {
+        if (!belt.around.every(id => assembled.has(id))) throw new Error(`Rubber band '${belt.id}': an anchor is not assembled yet`);
+        if (!beltPoints(model, map, belt)) throw new Error(`Rubber band '${belt.id}': its anchors do not form a drawable band path`);
+    }
+    plan.steps[last].belts = bands.map(({belt}) => belt.id);
+    return plan;
+};
 
 /** True for a pin, an axle or a bush: it goes on with what it joins. */
 export const isFastener = meta => Boolean(meta) && FASTENER_CATEGORIES.has(meta.category);
@@ -695,11 +734,11 @@ const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
  * @param {object} model PlacedModel (model.steps: part ids per `0 STEP`, when the file had them)
  * @param {Map|object} catalog part catalog
  * @returns {{source: 'meta'|'auto', steps: Array<{parts: string[], attach: string[], subassembly: string|null, loose: boolean,
- *            pins: boolean, moves: object, view: number[]}>, groups: Array<{id: string, name: string, parts: string[]}>}}
+ *            pins: boolean, moves: object, view: number[], belts?: string[]}>, groups: Array<{id: string, name: string, parts: string[]}>}}
  *          `parts` are the parts new in a step; `attach` names sub-assemblies (groups) joined to the
  *          model in it; a step with `subassembly` builds that group on its own; `pins`: a step that
  *          only puts pins and axles in (pinsFirst); `moves`: which way each new part slides in;
- *          `view`: the corner the page looks from (stepCorner)
+ *          `view`: the corner the page looks from (stepCorner); `belts`: bands fitted after the rigid assembly
  */
 export const buildSteps = (model, catalog) => {
     const adjacency = partAdjacency(model, catalog);
@@ -721,8 +760,8 @@ export const buildSteps = (model, catalog) => {
         // Parts added since (in the editor) follow in derived steps.
         const rest = allIds.filter(id => !seen.has(id));
         if (rest.length) steps.push(...pinsFirst(deriveSteps({ids: rest, adjacency, metaOf: meta, index, built: seen, pairs}), adjacency, meta, []));
-        return withMoves({source: 'meta', steps: steps.map(s => ({pins: false, ...s})), groups: []}, insertDirections(model, catalog),
-            {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))});
+        return withBelts(withMoves({source: 'meta', steps: steps.map(s => ({pins: false, ...s})), groups: []}, insertDirections(model, catalog),
+            {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))}), model, catalog);
     }
 
     // Sub-assemblies: groups of two or more parts that hold together on their own.
@@ -732,8 +771,8 @@ export const buildSteps = (model, catalog) => {
     const subSteps = group => deriveSteps({ids: group.parts, adjacency, metaOf: meta, index, pairs})
         .map(step => ({...step, attach: [], subassembly: group.id, loose: false}));
     const steps = pinsFirst(deriveSteps({ids: allIds, adjacency, metaOf: meta, index, groups, subSteps, pairs}), adjacency, meta, groups);
-    return withMoves({source: 'auto', steps, groups}, insertDirections(model, catalog),
-        {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))});
+    return withBelts(withMoves({source: 'auto', steps, groups}, insertDirections(model, catalog),
+        {adjacency, positions: new Map(model.parts.map(p => [p.id, p.position]))}), model, catalog);
 };
 
 /**
@@ -741,20 +780,23 @@ export const buildSteps = (model, catalog) => {
  * (highlighted), and which assembly it is in (a sub-assembly is drawn alone).
  * @param {{steps: object[], groups: object[]}} plan from buildSteps
  * @param {number} n step index (0-based)
- * @returns {{built: string[], fresh: string[], scope: string|null}} scope: the sub-assembly's group id, or null
+ * @returns {{built: string[], fresh: string[], builtBelts: string[], freshBelts: string[], scope: string|null}}
+ *          scope: the sub-assembly's group id, or null; band ids are separate from rigid part ids
  */
 export const stepView = (plan, n) => {
     const step = plan.steps[n];
     const groupParts = id => plan.groups.find(g => g.id === id)?.parts || [];
     const built = [];
+    const builtBelts = [];
     for (let i = 0; i < n; i++) {
         const s = plan.steps[i];
         if (s.subassembly !== step.subassembly) continue;
         built.push(...s.parts);
+        builtBelts.push(...(s.belts || []));
         for (const g of s.attach) built.push(...groupParts(g));
     }
     const fresh = [...step.attach.flatMap(groupParts), ...step.parts];
-    return {built, fresh, scope: step.subassembly};
+    return {built, fresh, builtBelts, freshBelts: (step.belts || []).slice(), scope: step.subassembly};
 };
 
 /**
@@ -762,11 +804,15 @@ export const stepView = (plan, n) => {
  * one row per part number and colour, with its count.
  * @param {object} model PlacedModel
  * @param {Map|object} catalog
- * @param {string[]} [ids] the parts counted (default: all)
+ * @param {string[]} [ids] rigid part ids (default: all rigid parts and all bands)
+ * @param {string[]} [beltIds] band ids (default: none when a rigid id filter was supplied)
  * @returns {Array<{part: string, color: number, count: number, length: number|null, category: string, name: {en: string, de: string}}>}
  */
-export const partsList = (model, catalog, ids = model.parts.map(p => p.id)) => {
-    const want = new Set(ids);
+export const partsList = (model, catalog, ids, beltIds) => {
+    const all = ids === undefined;
+    const want = new Set(all ? model.parts.map(p => p.id) : ids);
+    const bands = instructionBands(model);
+    const wantBelts = new Set(beltIds === undefined ? (all ? bands.map(({belt}) => belt.id) : []) : beltIds);
     const rows = new Map();
     for (const placed of model.parts) {
         if (!want.has(placed.id)) continue;
@@ -777,6 +823,13 @@ export const partsList = (model, catalog, ids = model.parts.map(p => p.id)) => {
             rows.set(key, {part: placed.part, color, count: 0, length: partLength(meta), category: meta?.category || 'other',
                 name: {en: meta?.name || placed.part, de: meta?.nameDe || meta?.name || placed.part}});
         }
+        rows.get(key).count++;
+    }
+    for (const {belt, band} of bands) {
+        if (!wantBelts.has(belt.id)) continue;
+        const key = `${band.part}@${band.colour}`;
+        if (!rows.has(key)) rows.set(key, {part: band.part, color: band.colour, count: 0, length: null, category: 'band',
+            name: {en: `Round rubber band ${band.mm} mm`, de: `Rundgummiband ${band.mm} mm`}});
         rows.get(key).count++;
     }
     const rank = row => {

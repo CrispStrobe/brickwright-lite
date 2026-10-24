@@ -2,7 +2,7 @@
   "version": 1,
   "id": "phase-bridge-misphased",
   "language": "en",
-  "what": "One motor turns two bent universal joints. The intermediate shaft speeds up and slows down twice each revolution. With equal bends and correctly phased forks, the second joint cancels this ripple at the output. This file contains 144 explicit placements; add the two joint crosses, inferred by the simulator, for 146 physical pieces. A quarter-turn phasing error makes the two universal joints reinforce their speed ripple. Compare with the correctly phased bridge.",
+  "what": "Universal / Cardan joints. One motor turns two bent universal joints. The intermediate shaft speeds up and slows down twice each revolution. With equal bends and correctly phased forks, the second joint cancels this ripple at the output. This file contains 144 explicit placements; add the two joint crosses, inferred by the simulator, for 146 physical pieces. A quarter-turn phasing error makes the two universal joints reinforce their speed ripple. Compare with the correctly phased bridge.",
   "try": [
     "Choose Phase Bridge in Examples; the program loads into Blocks automatically. Press Run and compare the yellow middle indicator with the blue output through two turns and a reversal.",
     "Reset and choose Phase Bridge — misphased comparison. Run the same program: the output now speeds up and slows down more strongly. Only the second joint phasing changes.",

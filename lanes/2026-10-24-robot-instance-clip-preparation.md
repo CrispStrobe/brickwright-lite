@@ -1,6 +1,6 @@
 # Prepare Robot Lab line clip matrices per instance before attribute upload
 
-CLAIMED — Codex Robot Lab integration continuation, owner-authorized, 2026-10-24.
+DONE (source candidate; actual qualification pending) — Codex Robot Lab integration continuation, owner-authorized, 2026-10-24.
 Isolated claim branch `lane/robot-instance-clip-claim-20261024`, reviewed base
 `0bcff2c03cd0ffe2d1416e3aba36cc088eac9831`. Source will use a separately named
 normal continuation of frozen combined PR #1312; preserve all consumed sources.
@@ -44,3 +44,29 @@ All enabled exact-head checks and affected actual qualification precede normal
 matched-head merge and reviewed/predicted/landed tree and parent verification.
 No release, hardware, physical-accuracy or measured speed-gain claim follows
 from source preparation.
+
+## Source controls and remaining qualification
+
+Source continuation `lane/robot-instance-clip-source-20261024` normally includes
+the frozen combined source and merged claim #1321. Each line geometry owns its
+clip attribute, derived from the effective Float32 world-instance buffer and
+current camera/object matrices in the two existing early scene callbacks.
+The shaders consume that prepared matrix directly; face buffers and the
+conditional visibility predicate remain intact. Source review found no blocker.
+
+Eight focused controls pass against actual Three 0.186.1. They cover both real
+scene callbacks before material preparation, independent point projections,
+camera/projection/parent changes, shared geometry and materials, unchanged-frame
+upload stability, hide/unhide, conditional sides and disposal. The unfixed
+parent and ten authored source cuts are detected, including missing camera,
+world or instance transforms, reversed multiplication, shared clip storage,
+missing uploads, double-precision dirty comparisons, both omitted early hooks
+and a reversed conditional predicate. Product source was restored exactly.
+Controls remain in the existing registered suite without allowlist expansion.
+
+Reassociated CPU/GPU products are mathematically equivalent, not guaranteed
+bit-identical. A fresh official frontend, complete unchanged actual Sine and
+Quartermaster journeys, changed-frontend-bound native executable and affected
+installed handover remain required, as do all enabled final-head checks.
+The failed #1320 result and unlaunched intermediate native image stay separate
+finite evidence; no speed-gain, resolution or installed acceptance is inferred.

@@ -2254,12 +2254,12 @@
      "shape": "box",
      "halfExtents": [
       30,
-      32.75,
+      30,
       89.5
      ],
      "position": [
       0,
-      -2.75,
+      0,
       60.5
      ]
     },
@@ -2271,6 +2271,71 @@
       0,
       -42.75,
       0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      2.75,
+      50
+     ],
+     "position": [
+      0,
+      -32.75,
+      21
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      2.75,
+      9
+     ],
+     "position": [
+      10,
+      -32.75,
+      80
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      2.75,
+      11
+     ],
+     "position": [
+      0,
+      -32.75,
+      100
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      2.75,
+      9
+     ],
+     "position": [
+      10,
+      -32.75,
+      120
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      2.75,
+      10.5
+     ],
+     "position": [
+      0,
+      -32.75,
+      139.5
      ]
     }
    ],
@@ -23130,21 +23195,24 @@
      "shape": "box",
      "halfExtents": [
       19,
-      12,
+      10.5,
       10
      ],
      "position": [
       0,
-      20,
+      18.5,
       0
      ]
     },
     {
-     "shape": "box",
-     "halfExtents": [
-      10,
-      12,
-      10
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "rotation": [
+      0,
+      0,
+      -0.707106781187,
+      0.707106781187
      ]
     }
    ],
@@ -23497,13 +23565,24 @@
      "shape": "box",
      "halfExtents": [
       29,
-      19,
+      9,
       10
      ],
      "position": [
       0,
-      10,
+      20,
       0
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 9,
+     "halfHeight": 10,
+     "rotation": [
+      0,
+      0,
+      -0.707106781187,
+      0.707106781187
      ]
     }
    ],

@@ -1,0 +1,12 @@
+{
+  "owner": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "adaptation": "User-owned CrispStrobe/BSD original. Shorten and reposition the right rails, seats and supports to clear the other inputs and passive output; gallery owns reset. Input targets, guards and stop policy are unchanged.",
+  "files": {
+    "models/root-bridge.ldr": "bc21aac0bbd899b85acc974af60059586ad63d978dcd4aa7416ef5646c008357",
+    "root-bridge.bw": "79bb788101c85546fa6ebf538a6e7e6ec835e917d20676ac73ee12c791e76cae",
+    "source/model-contract.json": "65c1cd2c394226dedf3b906e6850f413b887dab95d5d5d44e73e350290bdd638",
+    "source/demo-plan.json": "35fa460788fae6b4f562c56d957218b522cbf940d97b2cc7af594d3146f38107",
+    "evidence/native-v1.pre-run.json": "43e3954cc6753b3a2816eb88b465a3052b5478bea6d52c2c922900a244f6606e"
+  }
+}

@@ -48,7 +48,7 @@ const prepared = () => prepareModel(MODEL_TEXT, CATALOG, {mat: ENTRY.mat});
 
 test('the Forklift is the shipped example with its program and mat, titled in English and German', () => {
     assert.ok(ENTRY, 'MODELS lists forklift.ldr');
-    assert.deepEqual(ENTRY.title, {en: 'Forklift', de: 'Gabelstapler'});
+    assert.deepEqual(ENTRY.title, {en: 'Forklift — rack-and-pinion lift', de: 'Gabelstapler — Zahnstangen-Hub'});
     assert.equal(ENTRY.mat, 'warehouse');
     assert.match(PROGRAM, /^DEVICE SPIKE\s*$/m);
     assert.match(PROGRAM, /run motor C clockwise 573 degrees/);

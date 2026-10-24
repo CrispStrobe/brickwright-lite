@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "cusp-lab",
+  "language": "en",
+  "what": "One motor rides a straight carriage and turns a 16-tooth pinion against a fixed rack. Two colored crossbars rotate with the same shaft. Follow their central holes: the yellow point is 8 mm from the shaft and the orange point is 16 mm away. The inner point traces a cycloid with a cusp; the outer point traces a prolate trochoid with a loop. Their motion comes from adding the carriage's translation to the arm's rotation. One motor rides a guided carriage as its pinion rolls along a fixed rack. A short pointer traces a cusped cycloid; a longer pointer reverses locally and traces a loop. Compare translation, rotation and their instantaneous velocity cancellation during one continuous forward turn and return.",
+  "try": [
+    "Open Cusp Lab in Examples; its program loads automatically. Reset and Run. The finite program drives encoder A to −360° and back to 0° at 10°/s, without pausing at either midstroke cusp.",
+    "Track the central hole of each colored crossbar, rather than an end of the blue arm or a crossbar. The two measured radii are 8 and 16 mm. The arm and colored markers occupy raised parallel layers so they can pass clear of the fixed rack.",
+    "Near half a turn, watch the yellow point slow almost to a stop while the motor and carriage keep moving. The fixed physical-phase window is 170–190 degrees. Ideal geometry predicts about 2.79 mm of carriage travel while the yellow point stays within a region whose bounding diagonal is only about 0.122 mm.",
+    "Watch the orange point between one-third and two-thirds of the forward turn, physical phase 120–240 degrees. Ideal geometry predicts about 10.96 mm backward travel in X while the carriage moves about 16.76 mm forward over that exact interval. On the return pass, both directions reverse and the point again opposes the carriage."
+  ],
+  "why": "The pinion's pitch radius is 8 mm. Each radian of rotation translates its centre by 8 mm. At the half-turn phase, the yellow point's rotational velocity is exactly opposite the carriage velocity in the ideal geometry, so the two cancel. The orange point is twice as far from the shaft, so its rotational velocity is twice as large and can outweigh the forward translation. The same rotating body therefore creates a cusp at one radius and a loop at the other.",
+  "matters": "A point on a moving machine can be nearly stationary, or move backward, even when its driving shaft and carriage continue steadily forward. Adding translation and rotation explains rolling contact, wheel-point motion and tool trajectories. The useful observation is the actual point path, not only the motor's encoder or the visible rotation of the arm.",
+  "question": "Does the yellow point's cusp require the program to pause the motor?",
+  "answer": "No. The ideal zero speed occurs at a single phase because two nonzero velocity vectors cancel. The program keeps turning through the cusp. To demonstrate it, the carriage must continue moving through the fixed window, the yellow point must slow markedly there, and both points must still complete their substantial paths over the full pass. A disconnected point that never moves would fail those checks.",
+  "further": [
+    "For a marker at radius r and pitch radius R, differentiate its coordinates: dX/dθ=R+r cosθ and dZ/dθ=r sinθ. Multiply by the actual angular rate to get velocity per second. At θ=180 degrees, the signed X-speed ratio is 1−r/R.",
+    "Predict the path of a point closer to the shaft than the pitch radius. Its rotational speed cannot cancel the carriage speed completely, so it produces a smooth curtate trochoid without a cusp or loop. This additional radius is a prediction exercise, not a third marker on this model.",
+    "The orange path crosses itself at physical phases about 71.396 and 288.604 degrees. These phases satisfy α=2 sinα with θ=π±α. Compare two actual point observations at those predeclared input phases instead of searching the trace for whichever pair happens to look closest.",
+    "One complete turn translates the centre by 2πR, about 50.265 mm. The point does not return to its starting place after that forward turn; the orange path contains a local loop within an overall translating path. The second motor command retraces the motion and returns the complete carriage.",
+    "Compare rack-shuttle.ldr for direct rack displacement, orbital-loom.ldr for coordinates on rotating paper, and ellipsa.ldr for an ellipse produced by perpendicular sliders. Cusp Lab demonstrates velocity cancellation from a rack-constrained rolling motion.",
+    "Read validation/RESULTS.md for the actual raw paths, slowdown, backward travel and geometric residuals. The plotted traces follow visible marker holes. Exact instantaneous zero speed is a mathematical prediction; finite simulation samples establish a strong slowdown. Physical ink, backlash and a hardware build require separate experiments."
+  ],
+  "formula": "Planar coordinates in LDU: C=(−64+20θ,0); P=C+(20 sinθ,−20 cosθ); Q=C+(40 sinθ,−40 cosθ), with θ in radians and 1 LDU=0.4 mm. R=20 LDU=8 mm. Physical θ is measured from the same-layer arm centre-to-radius-20 vector, θ=atan2(radial X,−radial Z), unwrapped from the saved −Z direction. The actual colored marker holes are the useful outputs. |vP|/|vC|=2|cos(θ/2)|; vQx/vCx=1+2 cosθ. Ideal cusp: θ=180 degrees, P=(−0.46725877,8) mm. Ideal outer backtracking: 120–240 degrees, 10.95765210 mm against 16.75516082 mm carriage travel. The finite physical sequence is 0→360→0 degrees.",
+  "related": [
+    "rack-shuttle.ldr",
+    "orbital-loom.ldr",
+    "ellipsa.ldr"
+  ]
+}

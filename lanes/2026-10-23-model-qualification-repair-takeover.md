@@ -1,8 +1,10 @@
 # Published Robot Lab model qualification repairs
 
-CLAIMED — Codex, owner-authorized takeover of the published PR #1236 repair
+DONE — source implementation of the owner-authorized published PR #1236 repairs.
+Candidate qualification and guarded landing remain pending.
+Codex, owner-authorized takeover of the published PR #1236 repair
 work, 2026-10-23. Isolated branch
-`lane/robot-model-repair-takeover-20261023`, base `eb21e4fd14686045ac49735037934d644c1a36d8`.
+`lane/robot-model-qualified-repair-20261023`, claim base `eb21e4fd14686045ac49735037934d644c1a36d8`.
 Preserve the existing model branches, pending intake work and original evidence.
 This records the repair-subset ownership transfer from the Watt/TwinTempo
 model-delivery claim; the measurement API continuation has its own owner.
@@ -33,3 +35,14 @@ after the qualified successor lands. Keep raw evidence private.
 Protected Jolt/compiler/collider, dependency pins, firmware, native signing and
 release remain outside this repair lane. New model intakes retain their existing
 claims and provenance requirements.
+
+Source controls: 234 complete instructions, manual-policy, runner, identity and
+GUI-governance tests pass without skips; the complete instructions and
+measurement pane/UI cohort passes 206 tests with the real declared GUI import
+boundary. Independent report-removal and exclusion-widening controls detect both
+defects. Scanner and baseline, hash input set and all supplied model bytes stay
+unchanged. Normal composition retains the session-bound manual policy and all
+qualified measurement initialization after the load-token/disposal fence.
+
+Fresh affected native/model, production Chromium/WebKit and official-consumer
+qualification and all final-head checks remain required before landing.
