@@ -57,3 +57,27 @@ all enabled exact-head hosted checks, and reviewed merge parents/tree before
 delivery. Original failed and cancelled qualifications remain evidence, never
 successful admission. Keep public descriptions free of private machine paths,
 credentials, session identifiers and raw private service payloads.
+
+## Delivery candidate progress
+
+Normal composition includes the renderer/native successor #1322, bounded API
+successor #1282, and the model owner's ten incoming primary experiments with
+their control variants. Renderer and native implementation bytes are retained;
+the API tools retain their reviewed source. Census resolution uses the canonical
+scoped merge helper and preserves unrelated workflow observations and main
+provenance. Session retirement and session-bound manual policy both remain.
+
+Focused composition controls pass: 103 renderer/manual/API controls, 16
+governance/identity controls, and 17 CI-partition controls. Atlas Six's source
+component passes its full Chromium and WebKit journeys after a real powered
+settling interval was added before completion; its original post-completion
+physical limits remain unchanged. This does not qualify a newly combined app.
+
+The candidate prepares version 0.1.27 and bilingual tester notes, without
+creating a tag. Three additional browser shards cover all ten incoming primary
+experiments and automatically selected controls exactly once, preserving the
+old eight-minute step and thirty-minute job budgets and all existing gates.
+The new release's independent readback is separately claimed in #1335;
+0.1.26 recovery stays frozen. Combined-source qualification, main landing,
+actual native release delivery, hosted-service parity and the fresh builder
+pilot remain active work in this claim.
