@@ -273,10 +273,13 @@ try {
     assert.ok(afterCsvBytes.equals(csvBytes), 'display scale must preserve every raw CSV byte');
 
     await stepCapture(10000);
-    await page.waitForFunction(root => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
-        ?.getAttribute('data-wrapped') === 'true', scopeElement);
-    const wrappedStart = await acq.getAttribute('data-start-time-ns');
     const wrappedCapture = await observeCapture();
+    await page.waitForFunction(({root, startTimeNs}) => {
+        const el = root.isConnected && root.querySelector('[data-testid="bw-scope-acquisition-0"]');
+        return !!el && el.getAttribute('data-wrapped') === 'true'
+            && el.getAttribute('data-start-time-ns') === startTimeNs;
+    }, {root: scopeElement, startTimeNs: wrappedCapture.startTimeNs});
+    const wrappedStart = await acq.getAttribute('data-start-time-ns');
     assert.equal(wrappedStart, wrappedCapture.startTimeNs);
     await retainObservation('wrapped', {...wrappedCapture, readoutStartTimeNs: wrappedStart,
         readout: await acq.textContent(), viewportWarning, clearedViewportWarnings});
@@ -317,9 +320,9 @@ try {
         .some(h => window.__board.getScopeData(h).capture === 'sample'));
     await stepCapture(20000);
     await page.waitForFunction(root => {
-        const el = root.querySelector('[data-testid="bw-scope-acquisition-0"]');
-        return el?.getAttribute('data-capture') === 'sample' && /Nyquist/.test(el.textContent)
-            && Number(el.getAttribute('data-retained')) > 0;
+        const el = root.isConnected && root.querySelector('[data-testid="bw-scope-acquisition-0"]');
+        return !!el && el.getAttribute('data-capture') === 'sample' && /Nyquist/.test(el.textContent)
+            && el.getAttribute('data-retained') === '500';
     }, scopeElement);
     assert.equal(await acq.getAttribute('data-retained'), '500', 'completed point capture must contain all 50ms samples');
     const pointText = await acq.textContent(), frequency = pointText.match(/Nyquist ([0-9.]+) (MHz|kHz|Hz)/);
