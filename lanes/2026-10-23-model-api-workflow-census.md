@@ -1,8 +1,8 @@
 # Register the model API workflow without inventing production execution
 
-CLAIMED — API owner, additive scope amendment to merged API takeover #1278.
+SOURCE COMPLETE — API owner, additive scope amendment to merged API takeover #1278.
 Base `75f37012e9f47bdb803227fae1575b7f7eeff703`; isolated branch
-`lane/model-api-census-claim-20261023`. Claim merges before implementation.
+`lane/model-api-census-claim-20261023`. Claim #1289 merged as `3a6da633a833c5c3d0fd81797501fae1869e3e75` before implementation.
 
 Own only this claim, the `model-measurements.yml` entry and its run/refresh
 metadata in `docs/generated/ci-step-census.json`, and exact dated pointers for
@@ -36,3 +36,7 @@ All enabled final-head checks and the separately qualified model parent remain
 required before a normal matched-head source merge and actual tree/parents proof.
 No actual API job, private Actions, secret creation, ledger reset or deployment
 is authorized by this census amendment.
+
+The existing census/scoped-merge APIs added the actual completed PR observation, preserving all previous workflow objects, ordered runs and main provenance. The seven production steps remain unobserved and `measure` remains zero executions; eight exact dated registration-only pointers retain that configuration/deployment hold. Complete unchanged census controls and independent delta audit precede publication; every enabled final-head check and qualified model parent still precede landing.
+
+All six unchanged census groups pass with no skips or TODOs. The independent exact-delta audit preserves 25 prior workflow objects, 321 ordered runs, main provenance and every prior pointer byte; eight observed qualification steps are source-bound to run 39960513501. Seven production steps remain unobserved and measure remains zero executions. Generator, judge, tests, classifier, conditions and runtime code are unchanged.
