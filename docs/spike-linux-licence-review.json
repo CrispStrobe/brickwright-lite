@@ -1,0 +1,155 @@
+{
+ "schemaVersion": 1,
+ "scope": "G05 Linux brickwright-tauri notice-obligation review; not a licence clearance",
+ "inventory": "docs/generated/spike-linux-crate-inventory.json",
+ "policy": "Accepted: MIT, BSD, Apache-2.0, MPL-2.0, LGPL; GPL only with a reviewed exception. Notice-retention permissive licences below are compatible with that policy as notice-retention obligations.",
+ "flaggedLicences": {
+  "Unicode-3.0": {
+   "kind": "permissive notice retention",
+   "obligation": "Retain copyright and permission notice in copies or documentation",
+   "policyCompatible": true,
+   "linked": [
+    "icu_collections@2.2.0",
+    "icu_locale_core@2.2.0",
+    "icu_normalizer@2.2.0",
+    "icu_normalizer_data@2.2.0",
+    "icu_properties@2.2.0",
+    "icu_properties_data@2.2.0",
+    "icu_provider@2.2.0",
+    "litemap@0.8.2",
+    "potential_utf@0.1.5",
+    "tinystr@0.8.3",
+    "unicode-ident@1.0.24",
+    "writeable@0.6.3",
+    "yoke@0.8.3",
+    "zerofrom@0.1.8",
+    "zerotrie@0.2.4",
+    "zerovec@0.11.6"
+   ]
+  },
+  "ISC": {
+   "kind": "permissive notice retention",
+   "obligation": "Retain copyright and permission notice",
+   "policyCompatible": true,
+   "linkedOnlyUnderIsc": [
+    "libloading@0.7.4",
+    "ring@0.17.14",
+    "rustls-webpki@0.103.13",
+    "untrusted@0.9.0"
+   ],
+   "note": "ring is Apache-2.0 AND ISC: both notices retained"
+  },
+  "Zlib": {
+   "kind": "permissive notice retention",
+   "obligation": "Do not misrepresent origin; retain notice in source distributions (binary acknowledgement appreciated, not required)",
+   "policyCompatible": true,
+   "linkedOnlyUnderZlib": [
+    "foldhash@0.2.0"
+   ]
+  },
+  "CC0-1.0": {
+   "kind": "public-domain dedication",
+   "obligation": "None; tiny-keccak is build-time only and not linked; dunce is taken under MIT-0/Apache-2.0 alternatives",
+   "policyCompatible": true,
+   "linkedOnlyUnderCc0": []
+  },
+  "CDLA-Permissive-2.0": {
+   "kind": "permissive data licence",
+   "obligation": "Provide the licence text (or a link) with distributed data",
+   "policyCompatible": true,
+   "linked": [
+    "webpki-roots@1.0.9"
+   ]
+  },
+  "MPL-2.0": {
+   "kind": "file-level weak copyleft",
+   "obligation": "Retain notices; inform recipients how to obtain the Source Code Form of the covered files (unmodified published crates below); modifications to covered files must be published under MPL-2.0",
+   "policyCompatible": true,
+   "linked": [
+    {
+     "crate": "cssparser@0.36.0",
+     "source": "https://crates.io/crates/cssparser/0.36.0",
+     "cargoLockChecksum": "dae61cf9c0abb83bd659dab65b7e4e38d8236824c85f0f804f173567bda257d2",
+     "modified": false
+    },
+    {
+     "crate": "dtoa-short@0.3.5",
+     "source": "https://crates.io/crates/dtoa-short/0.3.5",
+     "cargoLockChecksum": "cd1511a7b6a56299bd043a9c167a6d2bfb37bf84a6dfceaba651168adfb43c87",
+     "modified": false
+    },
+    {
+     "crate": "option-ext@0.2.0",
+     "source": "https://crates.io/crates/option-ext/0.2.0",
+     "cargoLockChecksum": "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d",
+     "modified": false
+    },
+    {
+     "crate": "selectors@0.36.1",
+     "source": "https://crates.io/crates/selectors/0.36.1",
+     "cargoLockChecksum": "c5d9c0c92a92d33f08817311cf3f2c29a3538a8240e94a6a3c622ce652d7e00c",
+     "modified": false
+    },
+    {
+     "crate": "serialport@4.9.0",
+     "source": "https://crates.io/crates/serialport/4.9.0",
+     "cargoLockChecksum": "a4d91116f97173694f1642263b2ff837f80d933aa837e2314969f6728f661df3",
+     "modified": false
+    }
+   ],
+   "buildTimeOnly": [
+    "cssparser-macros@0.6.1"
+   ]
+  },
+  "MIT OR GPL-3.0-only": {
+   "kind": "dual",
+   "obligation": "Taken under MIT",
+   "policyCompatible": true,
+   "linked": [
+    "unescaper@0.1.10"
+   ]
+  },
+  "Apache-2.0 OR BSL-1.0": {
+   "kind": "dual",
+   "obligation": "Taken under Apache-2.0",
+   "policyCompatible": true,
+   "linked": [
+    "ryu@1.0.23"
+   ]
+  }
+ },
+ "crateLicenceFilesAbsentReviewed": [
+  "alloc-stdlib@0.2.4",
+  "bluez-async@0.8.2",
+  "bluez-generated@0.4.0",
+  "custom_debug@0.6.2",
+  "dlopen2@0.8.2",
+  "libappindicator-sys@0.9.0",
+  "seahash@4.1.0",
+  "selectors@0.36.1",
+  "unic-char-property@0.9.0",
+  "unic-char-range@0.9.0",
+  "unic-common@0.9.0",
+  "unic-ucd-ident@0.9.0",
+  "unic-ucd-version@0.9.0"
+ ],
+ "crateLicenceFilesAbsentNote": "These published crate sources contain no top-level licence file. Their declared SPDX expression is recorded in the inventory, but no copyright-bearing licence text is shipped for them. Open gap: needs upstream licence text (repository at the pinned version) before any redistribution claim.",
+ "runtimeNoticesFlagged": {
+  "note": "Supplied Renode distribution notices whose text references LGPL/GPL or mixed terms. The installed renode is a single-file bundle; which of these components it actually embeds is not verified here.",
+  "lgplOrGplReferenced": [
+   "tlib-license (libqemu-derived, LGPL-2.1: source and relinking obligations apply; corresponding Renode source pointer not yet recorded)",
+   "AtkSharp-license",
+   "CairoSharp-license",
+   "GLibSharp-license",
+   "GdkSharp-license",
+   "GioSharp-license",
+   "GtkSharp-license",
+   "PangoSharp-license",
+   "NetMQ-license",
+   "Packet.Net-license",
+   "mcs-license (mixed MIT/GPL terms)",
+   "vendor-pip-19.2.3-py2.py3-none-any.whl-4-license"
+  ],
+  "status": "open: LGPL is within policy only once source availability is recorded; any GPL-only component would need a reviewed exception"
+ }
+}
