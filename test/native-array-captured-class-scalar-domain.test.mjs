@@ -45,6 +45,7 @@ test('alpha-renamed complete source and closed primitive branch writers acquire 
  for(const [from,to]of [['trace','history'],['mark','note'],['Base','Parent'],['Child','Descendant'],['virtual','visit'],['read','total'],['alias','reference'],['x','instance'],['p','parentValue'],['q','childValue']])renamed=renamed.replace(new RegExp('\\b'+from+'\\b','g'),to);
  const creator=parseImported(renamed),exported=exportCreator(creator);assert.match(exported.ts,/class Descendant extends Parent/);exportCreator(feedback(creator));
  good(core+tail);
+ good(core+'function setup(){let first:any=0;let second:any=0;first=0;second=new Child();first=second;let saved=first;saved.write("x")}let trace:any;trace="";setup();');
  good(core.replace('trace=__bwBinaryAdd(trace,v)','let choice:any=undefined;if(v){choice="a"}else{choice=undefined}trace=__bwBinaryAdd(trace,choice)')+tail);
 });
 
@@ -65,6 +66,8 @@ test('complete captured scalar closure refuses late nonprimitive writers, unknow
  bad(core+tail+'append();');
  bad(core+tail+'instance.write({});');
  bad('function detached(){return __bwBinaryAdd(this.value,1)}class Base {}let trace="";detached();');
+ for(const write of ['if(true){second=new Child()}','second=foreign()','second=first;first=second'])
+  bad(core+'function setup(){let first:any=0;let second:any=0;'+write+';first=second;let saved=first;saved.write("x")}let trace:any;trace="";setup();');
 });
 
 test('declaration readiness remains separate from domains across early construction, static effects and changed parents',()=>{
@@ -91,6 +94,10 @@ test('captured Identifier projection is privately issued and retains original op
  const receiverCarriers=nodesOf(receivers.program).filter(node=>node.type==='Conditional'&&receivers.hasOwnedReceiverResult?.(node));
  assert.equal(receiverCarriers.length,2,'actual owned this and super entries each issue a result-local proof');
  for(const entry of receiverCarriers){assert.equal(receivers.hasOwnedReceiverResult(structuredClone(entry)),false);assert.equal(other.hasOwnedReceiverResult?.(entry),false);}
+ const copies=nativeClassScalarView(parseMakeCodeTs('class Earlier {value=1}class Later {value="later"}function build(){let first:any=0;let second:any=0;second=new Earlier();first=second;second=new Later();let saved=first;return saved.value}let result=build();',profile),profile);
+ const savedRead=nodesOf(copies.program).filter(node=>node.type==='Conditional'&&node.test?.type==='Member'&&node.test.object?.name==='saved');
+ assert.equal(savedRead.length,1,'the actual saved alias read has a private scalar projection');
+ assert.equal(savedRead[0].consequent.type,'Number');assert.equal(savedRead[0].alternate.type,'Number','later source reassignment does not retarget the earlier copy');
  const originalRead=original.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='append').body[0].expr.right.left;
  assert.equal(originalRead.type,'Identifier');assert.equal(originalRead.name,'trace');assert.equal(carrier.test,originalRead,'the retained test is the exact original captured read, not its assignment destination');
  const saved=carrier.test;carrier.test={type:'Identifier',name:'trace'};assert.equal(view.hasNormalPrimitiveResult(carrier),false);carrier.test=saved;assert.equal(view.hasNormalPrimitiveResult(carrier),false,'restored identity cannot revive an observed edit');

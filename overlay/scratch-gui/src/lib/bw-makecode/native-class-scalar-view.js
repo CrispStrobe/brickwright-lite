@@ -217,12 +217,15 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         }
     }
     // Private occurrence refinement, not an all-writer or initialization grant.
-    // A single uncaptured local can have a stale primitive initializer in its
-    // binding union even after a direct, definite class-constructor overwrite.
-    // Only later direct alias-copy reads in this exact function body may use
-    // that actual RHS. Branches, captures, other writes and non-copy uses keep
-    // the ordinary complete binding union. No generated name selects this.
-    const overwrittenReads=new WeakMap();
+    // Refine only direct local alias-copy occurrences after an actual definite
+    // write in the same body. A reimport may add primitive resets and temporary
+    // copies before the constructor value reaches its destination. Keep every
+    // original binding writer/effect; the occurrence uses its nearest preceding
+    // RHS, never a future write or a generated temporary spelling.
+    const overwrittenReads=new WeakMap(),copyCandidates=new Map();
+    const inertPrimitive=node=>!node||primitive.has(node.type)||
+        node.type==='Unary'&&['+','-','!','~','typeof','void'].includes(node.op)&&inertPrimitive(node.argument)||
+        node.type==='Binary'&&inertPrimitive(node.left)&&inertPrimitive(node.right);
     for(const binding of lexical.bindings){
         const owner=binding.functionOwner,body=owner?.node?.body;
         if(binding.kind!=='local'||binding.scope!==owner||!Array.isArray(body)||
@@ -230,28 +233,52 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         const declarations=nodes.filter(node=>node.type==='Declaration'&&lexical.scopes.get(node)===binding.scope)
             .flatMap(node=>(node.decls||[]).filter(decl=>decl.name===binding.name).map(decl=>({statement:node,decl})));
         if(declarations.length!==1||declarations[0].decl!==binding.node||
-            declarations[0].statement.kind!=='let'||
-            declarations[0].decl.init&&!primitive.has(declarations[0].decl.init.type))continue;
+            declarations[0].statement.kind!=='let'||!inertPrimitive(declarations[0].decl.init))continue;
+        const declarationIndex=body.indexOf(declarations[0].statement);
+        if(declarationIndex<0)continue;
         const references=nodes.filter(node=>node.type==='Identifier'&&read(node)===binding);
         const writes=references.filter(node=>parents.get(node)?.type==='Assignment'&&parents.get(node).left===node||parents.get(node)?.type==='Update');
-        if(writes.length!==1)continue;
-        const assignment=parents.get(writes[0]),statement=parents.get(assignment),rhs=assignment.right;
-        const declarationIndex=body.indexOf(declarations[0].statement),assignmentIndex=body.indexOf(statement);
-        if(assignment.type!=='Assignment'||assignment.op!=='='||statement?.type!=='ExpressionStatement'||
-            statement.expr!==assignment||declarationIndex<0||assignmentIndex<=declarationIndex||
-            rhs?.type!=='Call'||!rhs.isNew||rhs.callee?.type!=='Identifier'||!classForBinding.has(read(rhs.callee)))continue;
-        const copies=[];let closed=true;
+        const rows=[];let closed=true;
+        for(const write of writes){
+            const assignment=parents.get(write),statement=parents.get(assignment),rhs=assignment.right,index=body.indexOf(statement);
+            const source=rhs?.type==='Identifier'&&read(rhs);
+            if(assignment.type!=='Assignment'||assignment.op!=='='||statement?.type!=='ExpressionStatement'||
+                statement.expr!==assignment||index<=declarationIndex||
+                !(inertPrimitive(rhs)||rhs?.type==='Call'&&rhs.isNew&&rhs.callee?.type==='Identifier'&&classForBinding.has(read(rhs.callee))||
+                    source?.kind==='local'&&source.scope===owner&&!lexical.functions.some(fn=>fn.captures.has(source)))){closed=false;break;}
+            rows.push({write,rhs,index});
+        }
+        if(!closed||!rows.length)continue;
+        const copies=[];
         for(const reference of references){
-            if(reference===writes[0])continue;
+            if(writes.includes(reference))continue;
             const parent=parents.get(reference),outer=parents.get(parent);
             const copyStatement=parent?.type==='Assignment'&&parent.op==='='&&parent.right===reference&&parent.left?.type==='Identifier'&&
                 outer?.type==='ExpressionStatement'&&outer.expr===parent?outer:
                 !parent?.type&&parent?.init===reference&&outer?.type==='Declaration'?outer:null;
-            if(!copyStatement||body.indexOf(copyStatement)<=assignmentIndex){closed=false;break;}
-            copies.push(reference);
+            const index=body.indexOf(copyStatement);
+            if(!copyStatement||index<=declarationIndex){closed=false;break;}
+            const preceding=rows.filter(row=>row.index<index).sort((a,b)=>b.index-a.index)[0];
+            if(preceding&&!inertPrimitive(preceding.rhs))copies.push({reference,rhs:preceding.rhs,index,writeIndex:preceding.index});
         }
-        if(closed&&copies.length)for(const reference of copies)overwrittenReads.set(reference,rhs);
+        if(closed)for(const copy of copies)copyCandidates.set(copy.reference,copy);
     }
+    const resolveCopy=(reference,active=new Set())=>{
+        if(overwrittenReads.has(reference))return true;
+        const entry=copyCandidates.get(reference);
+        if(!entry||active.has(reference))return false;
+        if(entry.rhs.type==='Identifier'){
+            const source=copyCandidates.get(entry.rhs);
+            // Resolve the source at this assignment, not its final binding
+            // union. Each alias dependency moves strictly backward in the
+            // same body, so a later write/cycle cannot bootstrap a value.
+            if(!source||source.index!==entry.writeIndex||source.index>=entry.index)return false;
+            active.add(reference);const valid=resolveCopy(entry.rhs,active);active.delete(reference);
+            if(!valid)return false;
+        }
+        overwrittenReads.set(reference,entry.rhs);return true;
+    };
+    for(const reference of copyCandidates.keys())resolveCopy(reference);
     const fnFor=node=>functions.get(node);
     const receivers=value=>[...get(value)].filter(type=>type?.kind==='instance');
     const call=(fn,args,result,receiver=null)=>{
