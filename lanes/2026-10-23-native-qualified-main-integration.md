@@ -42,3 +42,23 @@ controls, not firmware-guest or installed-app qualification.
 The successor remains held for its exact official frontend, the complete new
 producer request, fresh source-bound installed acceptance and every enabled
 final-head check. The existing consumer and producer branches remain preserved.
+
+## Combined-source request, 2026-10-24
+
+The frozen earlier consumer completed its finite 25-case installed campaign.
+It does not qualify the current combined installed application: merged Lab
+transport routing now shares the SPIKE connection provider. A separately named
+`lane/native-combined-producer-20261024` producer request binds combined product
+#1312 at `ab9023ef7c866801fdaf50b8da613a8b248fff87` and its successful official
+frontend Build 40050173167. The producer code, workflow and closed ten-field
+resource declarations are unchanged from the earlier producer #1287. Its
+existing prose-only checkout policy covers the two additional lane documents
+in actual frontend checkout `401c5723d0baa4e334e5b405711bc347943defb5`.
+The earlier executable and original failures remain retained.
+
+One new hosted executable build and independently bound installed assembly
+are required. Target actual Lab program activity, release of global routing
+and the shared provider, then own-NuttX cold completion, Stop and distinct
+recovery. Earlier component results remain finite evidence; this request
+does not prescribe replaying all 25 unchanged cases. All affected acceptance
+and exact-head checks remain required before the combined source lands.
