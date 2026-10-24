@@ -152,7 +152,34 @@ try {
     // it has never exposed the prose label "Add channel". Keep this selector
     // bilingual because production may inherit either supported GUI locale.
     await scope.getByRole('button', {name: /^\+ (?:channel|Kanal)$/}).click();
-    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    const scopeHandle = await page.evaluate(() => {
+        const handles = window.__board.getScopeChannels();
+        if (handles.length !== 1) throw new Error('ambiguous scope fixture');
+        return handles[0];
+    });
+    const stepCapture = async expectedCount => {
+        const control = designer.getByRole('button', {name: /Step one tick|Advance one 50/i});
+        const ready = async () => page.waitForFunction(button =>
+            !!button && button.isConnected && !button.disabled, await control.elementHandle());
+        await ready();
+        const before = await page.evaluate(() => String(window.__board.getTime()));
+        const target = String(BigInt(before) + 50000000n);
+        await control.click();
+        try {
+            await page.waitForFunction(({h, count, time}) => {
+                const b = window.__board;
+                return String(b.getTime()) === time && b.getScopeData(h).count === count;
+            }, {h: scopeHandle, count: expectedCount, time: target});
+            await ready();
+        } catch (error) {
+            const actual = await page.evaluate(h => {
+                try {return {time: String(window.__board.getTime()), count: window.__board.getScopeData(h).count};}
+                catch (e) {return {error: String(e)};}
+            }, scopeHandle);
+            throw new Error(`scope step expected time=${target}/count=${expectedCount}, actual=${JSON.stringify(actual)}: ${String(error).split('\n')[0]}`);
+        }
+    };
+    await stepCapture(5000);
     await page.waitForFunction(root => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
         ?.getAttribute('data-retained') === '5000', scopeElement);
     await page.waitForFunction(root => {
@@ -191,6 +218,7 @@ try {
         return {handle: handles[0], count: data.count, intervalNs: String(data.sampleIntervalNs),
             depth: data.samples.length / 2, capture: data.capture};
     });
+    assert.equal(prefix.handle, scopeHandle);
     assert.equal(prefix.count, 5000);
     assert.equal(await acq.getAttribute('data-capture'), prefix.capture);
     assert.equal(await acq.getAttribute('data-interval-ns'), prefix.intervalNs);
@@ -212,7 +240,7 @@ try {
         scope.getByTestId('bw-scope-trace-csv-download').click()]);
     assert.equal((await readDownload(afterDownload)).toString('utf8'), csv, 'display scale must preserve every raw CSV byte');
 
-    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    await stepCapture(10000);
     await page.waitForFunction(root => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
         ?.getAttribute('data-wrapped') === 'true', scopeElement);
     const wrappedStart = await acq.getAttribute('data-start-time-ns');
@@ -223,7 +251,7 @@ try {
     // This source repeats after a 50ms tick. A viewport change makes the
     // frozen-picture check sensitive even when two waveform phases coincide.
     await scope.getByTestId('bw-scope-center-0').fill('2');
-    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    await stepCapture(15000);
     assert.equal(await page.evaluate(h => window.__board.getScopeData(h).count, prefix.handle), 15000);
     assert.equal(await acq.textContent(), heldText, 'HOLD metadata must stay with its frozen picture');
     assert.equal(await scope.locator('canvas').evaluate(canvas => canvas.toDataURL()), heldPixels);
@@ -241,12 +269,13 @@ try {
     await scope.getByTestId('bw-scope-view-spectrum').click();
     await page.waitForFunction(() => window.__board.getScopeChannels()
         .some(h => window.__board.getScopeData(h).capture === 'sample'));
-    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    await stepCapture(20000);
     await page.waitForFunction(root => {
         const el = root.querySelector('[data-testid="bw-scope-acquisition-0"]');
         return el?.getAttribute('data-capture') === 'sample' && /Nyquist/.test(el.textContent)
             && Number(el.getAttribute('data-retained')) > 0;
     }, scopeElement);
+    assert.equal(await acq.getAttribute('data-retained'), '500', 'completed point capture must contain all 50ms samples');
     const pointText = await acq.textContent(), frequency = pointText.match(/Nyquist ([0-9.]+) (MHz|kHz|Hz)/);
     assert.ok(frequency, 'actual point record must disclose numeric Nyquist');
     const nyquistHz = Number(frequency[1]) * ({MHz: 1e6, kHz: 1e3, Hz: 1}[frequency[2]]);
