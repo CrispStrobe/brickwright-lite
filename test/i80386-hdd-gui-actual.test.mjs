@@ -213,38 +213,42 @@ def native_v5_refresh(files,expected,reference,originals,request=None):
     if 'native-font.stage.json' in files:
         value=D(files['native-font.stage.json']);value.update(requestSha256=expected['requestSha256'],referenceSha256=expected['nativeFontReferenceSha256'],eventSha256=H(files['event.original.json']));files['native-font.stage.json']=E(value)
 
-def finite_scope_fixture():
-    return {'basis':'selected-core-runtime-for-owned-v5-fontconfig','globalFontDiscovery':False,
+def finite_scope_fixture(version=4):
+    value={'basis':'selected-core-runtime-for-owned-v5-fontconfig','globalFontDiscovery':False,
       'historicalGlobalRosterQualified':False,'nativeLibraryClosureProved':False,
       'fontSelectionProved':False,'browserFontSelectionProved':False,'guestApproved':False}
+    if version==5:value['installedEmptyRegularScoped']=True
+    return value
 
-def finite_body_fixture(raw):
-    wrapper={'schema':'bw.gui-hdd.finite-inventory-transport.v1','sha256':H(raw),'templateBase64':base64.b64encode(raw).decode()}
-    return '<!-- BW_GUI_HDD_FINITE_INVENTORY_V4_BEGIN -->\n'+E(wrapper).decode()+'<!-- BW_GUI_HDD_FINITE_INVENTORY_V4_END -->'
+def finite_body_fixture(raw,version=4):
+    wrapper={'schema':'bw.gui-hdd.finite-inventory-transport.v5' if version==5 else 'bw.gui-hdd.finite-inventory-transport.v1',
+      'sha256':H(raw),'templateBase64':base64.b64encode(raw).decode()}
+    return '<!-- BW_GUI_HDD_FINITE_INVENTORY_V'+str(version)+'_BEGIN -->\n'+E(wrapper).decode()+'<!-- BW_GUI_HDD_FINITE_INVENTORY_V'+str(version)+'_END -->'
 
-def finite_guard_fixture(source,template_raw,event_raw,platform):
-    return {'schema':'bw.gui-hdd.finite-inventory-guard.v1','pass':True,'templateSha256':H(template_raw),'eventSha256':H(event_raw),'source':source,
+def finite_guard_fixture(source,template_raw,event_raw,platform,version=4):
+    return {'schema':'bw.gui-hdd.finite-inventory-guard.v5' if version==5 else 'bw.gui-hdd.finite-inventory-guard.v1',
+      'pass':True,'templateSha256':H(template_raw),'eventSha256':H(event_raw),'source':source,
       'platform':{key:platform.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
       'setupTrustBoundary':{'bootstrapGitTrusted':True,'packageInstallerTrusted':True,'completeRuntimeBeforeSetupProved':False},
       'fontSelectionProved':False,'browserFontSelectionProved':False,'guestApproved':False,'firstFailure':None,'secondary':[]}
 
-def use_finite_basis_fixture(request,expected):
+def use_finite_basis_fixture(request,expected,version=4):
     stage,_=r.native_font_layout(request['nativeFontAdmission']);runtime=copy.deepcopy(request['runtime']);runtime.pop('emptyPythonSources')
     runtime['files']={path:row for path,row in runtime['files'].items() if not path.startswith(str(stage)+'/')}
-    template={'schema':'bw.gui-hdd.inventory-template.v4','sourceHead':request['source']['head'],'scope':finite_scope_fixture(),
+    template={'schema':'bw.gui-hdd.inventory-template.v'+str(version),'sourceHead':request['source']['head'],'scope':finite_scope_fixture(version),
       **{key:runtime[key] for key in ('node','python','chromium','tools')},'emptyPythonSources':request['runtime']['emptyPythonSources'],
       'files':sorted(runtime['files']),'aliases':sorted(runtime['aliases']),'directoryAliases':sorted(runtime['directoryAliases']),
       'libraries':sorted(path for path in runtime['files'] if path.startswith('/usr/lib/') and path.endswith('.so'))}
     template_raw=E(template);prior=D(base64.b64decode(expected['inventoryOriginal']['base64']))
-    prior.update(schema='bw.gui-hdd.inventory-original.v4',runtime=runtime,installedFiles=copy.deepcopy(request['installedFiles']),
-      templateSha256=H(template_raw),scope=finite_scope_fixture(),libraries=template['libraries'],fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
-    prior['platform']['GITHUB_JOB']='finite-inventory-v4'
-    event=D(base64.b64decode(prior['event']['base64']));event['label']['name']='x86-hdd-gui-finite-inventory-v4';event['pull_request']['body']=finite_body_fixture(template_raw)
+    prior.update(schema='bw.gui-hdd.inventory-original.v'+str(version),runtime=runtime,installedFiles=copy.deepcopy(request['installedFiles']),
+      templateSha256=H(template_raw),scope=finite_scope_fixture(version),libraries=template['libraries'],fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
+    prior['platform']['GITHUB_JOB']='finite-inventory-five' if version==5 else 'finite-inventory-v'+str(version)
+    event=D(base64.b64decode(prior['event']['base64']));event['label']['name']='x86-hdd-gui-finite-inventory-v'+str(version);event['pull_request']['body']=finite_body_fixture(template_raw,version)
     event_raw=E(event);prior['event']=dict(ROW(event_raw),base64=base64.b64encode(event_raw).decode())
-    guard_raw=E(finite_guard_fixture(request['source'],template_raw,event_raw,prior['platform']));prior['guardAdmission']=dict(ROW(guard_raw),base64=base64.b64encode(guard_raw).decode())
+    guard_raw=E(finite_guard_fixture(request['source'],template_raw,event_raw,prior['platform'],version));prior['guardAdmission']=dict(ROW(guard_raw),base64=base64.b64encode(guard_raw).decode())
     prior_raw=E(prior);expected['inventoryTemplate']=dict(ROW(template_raw),base64=base64.b64encode(template_raw).decode());expected['inventoryOriginal']=dict(ROW(prior_raw),base64=base64.b64encode(prior_raw).decode())
-    request['inventoryAdmission']['schema']='bw.gui-hdd.actual-finite-inventory-reference.v1'
-    request['inventoryAdmission']['metadataAdmission'].update(schema='bw.gui-hdd.inventory-admission.v4',template=ROW(template_raw),original=ROW(prior_raw))
+    request['inventoryAdmission']['schema']='bw.gui-hdd.actual-finite-inventory-reference.v'+('2' if version==5 else '1')
+    request['inventoryAdmission']['metadataAdmission'].update(schema='bw.gui-hdd.inventory-admission.v'+str(version),template=ROW(template_raw),original=ROW(prior_raw))
 
 _FIXTURE_V5=None
 def fixture_v5():
@@ -635,7 +639,7 @@ class Originals(unittest.TestCase):
         self.assertIn('test "$(realpath -e "$parent")" = "$parent"',actual)
         self.assertNotIn('rm ',actual)
     @contextlib.contextmanager
-    def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None,event_transform=None,typed=False,finite=False):
+    def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None,event_transform=None,typed=False,finite=False,finite_version=4):
         faults=faults or {};events=[];request=D(self.files['request.original.json']);original_sha=c.sha
         class NodeBytes(bytes):
             def __len__(self):return 124827920
@@ -645,17 +649,17 @@ class Originals(unittest.TestCase):
           'tools':{'git':'/usr/bin/git','gh':'/usr/bin/gh'}}
         if typed:template.update(schema='bw.gui-hdd.inventory-template.v3',emptyPythonSources=self.empty_selection())
         if finite:
-            template.update(schema='bw.gui-hdd.inventory-template.v4',emptyPythonSources=self.empty_selection(),files=sorted(template['files']),libraries=['/usr/lib/libselected.so'],scope=finite_scope_fixture())
+            template.update(schema='bw.gui-hdd.inventory-template.v'+str(finite_version),emptyPythonSources=self.empty_selection(),files=sorted(template['files']),libraries=['/usr/lib/libselected.so'],scope=finite_scope_fixture(finite_version))
             request['installedFiles']['node_modules/bw-circuit-ui/package.json']=ROW(b'cui')
         raw=E(template);pin=H(raw);event=D(base64.b64decode(self.expected['inventoryOriginal']['base64']))['event']
         event=D(base64.b64decode(event['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+pin+' -->'
-        if finite:event['label']['name']='x86-hdd-gui-finite-inventory-v4';event['pull_request']['body']=finite_body_fixture(raw)
+        if finite:event['label']['name']='x86-hdd-gui-finite-inventory-v'+str(finite_version);event['pull_request']['body']=finite_body_fixture(raw,finite_version)
         event_raw=event_transform(event) if event_transform else E(event)
         env={'GITHUB_EVENT_PATH':'/event','GITHUB_RUN_ID':'90','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'inventory','GITHUB_REPOSITORY':c.REPOSITORY,
           'GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_WORKFLOW_REF':c.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/123/merge','GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','BW_EXPECTED_HEAD':'a'*40}
-        if finite:env['GITHUB_JOB']='finite-inventory-v4'
+        if finite:env['GITHUB_JOB']='finite-inventory-five' if finite_version==5 else 'finite-inventory-v'+str(finite_version)
         saved={}
-        if finite:saved['/checkout/gui-finite-inventory-v4/guard-admission.json']=E(finite_guard_fixture(request['source'],raw,event_raw,env))
+        if finite:saved['/checkout/gui-finite-inventory-v'+str(finite_version)+'/guard-admission.json']=E(finite_guard_fixture(request['source'],raw,event_raw,env,finite_version))
         def regular(path,cap):
             path=str(path);events.append(('read',path))
             if ('read',path) in faults:raise faults['read',path]
@@ -2944,6 +2948,308 @@ class Originals(unittest.TestCase):
         request['inventoryAdmission']['schema']='bw.gui-hdd.actual-inventory-reference.v1';raw=E(request)
         for module in (c,r):
             with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
+
+    def finite_v5_packet(self):
+        value,old_raw,expected,_=self.finite_inventory_fixture()
+        template=D(old_raw);template['schema']='bw.gui-hdd.inventory-template.v5';template['scope']=c.finite_v5_scope();raw=E(template)
+        wrapper={'schema':'bw.gui-hdd.finite-inventory-transport.v5','sha256':H(raw),
+          'templateBase64':base64.b64encode(raw).decode()}
+        event=D(base64.b64decode(value['event']['base64']))
+        event['label']['name']='x86-hdd-gui-finite-inventory-v5'
+        event['pull_request']['body']=c.FINITE_V5_BEGIN+'\n'+E(wrapper).decode()+c.FINITE_V5_END
+        event_raw=E(event)
+        value['schema']='bw.gui-hdd.inventory-original.v5';value['templateSha256']=H(raw)
+        value['scope']=c.finite_v5_scope();value['event']=dict(ROW(event_raw),base64=base64.b64encode(event_raw).decode())
+        value['platform']['GITHUB_JOB']='finite-inventory-five'
+        for name in c.INSTALLED_V5_CRITICAL:value['installedFiles'].setdefault(name,ROW(b'critical'))
+        value['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout']=ROW(b'')
+        guard=D(base64.b64decode(value['guardAdmission']['base64']))
+        guard.update(schema='bw.gui-hdd.finite-inventory-guard.v5',templateSha256=H(raw),eventSha256=H(event_raw))
+        guard['platform']['GITHUB_JOB']='finite-inventory-five'
+        guard_raw=E(guard);value['guardAdmission']=dict(ROW(guard_raw),base64=base64.b64encode(guard_raw).decode())
+        expected['schema']='bw.gui-hdd.inventory-admission.v5';expected['template']=ROW(raw);expected['original']=ROW(E(value))
+        return value,raw,expected
+    def test_finite_v5_connected_collector_wire_and_independent_reader(self):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
+        selected={name:ROW(b'critical') for name in c.INSTALLED_V5_CRITICAL}
+        selected['node_modules/bw-board/docs/receipts/zero.stdout']=ROW(b'')
+        def installed(root,prefix,failure,checkout_root):
+            self.assertEqual(root,checkout_root/prefix)
+            return {name.removeprefix(prefix+'/'):row for name,row in selected.items() if name.startswith(prefix+'/')}
+        with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',True),self.inventory_edges(paths,finite=True,finite_version=5) as (raw,pin,env,events),self.empty_source_edges(),patch.object(c,'installed_inventory_v5',side_effect=installed) as installed_call:
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-original.v5',value.get('firstFailure'))
+        expected={'schema':'bw.gui-hdd.inventory-admission.v5','source':D(self.files['source.before.json']),
+          'template':ROW(raw),'original':ROW(E(value)),'runId':90,'workflowSha':'d'*40}
+        self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v5')
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            folder=pathlib.Path(temporary)
+            for name,data in (('original',E(value)),('template',raw),('expected',E(expected))):
+                (folder/name).write_bytes(data)
+            arguments=['--inventory-original-v5','--original',str(folder/'original'),
+              '--template',str(folder/'template'),'--expected',str(folder/'expected')]
+            with contextlib.redirect_stdout(io.StringIO()) as output:self.assertEqual(r.main(arguments),0)
+            self.assertEqual(D(output.getvalue().encode())['schema'],'bw.gui-hdd.inventory-reader.v5')
+        self.assertEqual(installed_call.call_count,4)
+        self.assertEqual(sum(event[0]=='git' for event in events),2+len(c.SOURCE))
+        self.assertEqual(value['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout'],ROW(b''))
+        for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved'):self.assertIs(value[key],False)
+    def test_finite_v5_first_installed_failure_prefix_and_coherent_reader_cuts(self):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
+        source={}
+        with self.empty_source_edges():c.read_empty_python_source(c.EMPTY_PYTHON_PATH,self.empty_selection()[c.EMPTY_PYTHON_PATH],source)
+        def typed(path,selection,observed):observed.update(copy.deepcopy(source))
+        real_lstat=os.lstat
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary)
+            for name in c.INSTALLED_V5_CRITICAL:
+                path=checkout/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'critical')
+            receipt=checkout/'node_modules/bw-board/docs/receipts/zero.stdout'
+            receipt.parent.mkdir(parents=True,exist_ok=True);receipt.write_bytes(b'')
+            failed=checkout/'node_modules/bw-circuit-ui/src/current.js';failed.write_bytes(b'')
+            genuine=c.installed_inventory_v5
+            def installed(selected_root,prefix,failure,checkout_root):
+                self.assertEqual(selected_root,checkout_root/prefix)
+                self.assertTrue((checkout/prefix).exists(),(prefix,str(checkout)))
+                self.assertTrue((checkout/prefix).resolve(strict=True)==checkout.resolve(strict=True)/prefix,prefix)
+                return genuine(checkout/prefix,prefix,failure,checkout)
+            with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',True),self.inventory_edges(paths,finite=True,finite_version=5) as (raw,pin,env,events),patch.object(c,'read_empty_python_source',side_effect=typed),patch.object(c,'installed_inventory_v5',side_effect=installed):
+                faux_lstat=c.os.lstat
+                with patch.object(c.os,'lstat',side_effect=lambda path,*args,**kwargs:real_lstat(path,*args,**kwargs) if str(path).startswith(str(checkout)) else faux_lstat(path,*args,**kwargs)):
+                    value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-failure.v5')
+        self.assertEqual(value['firstFailure']['phase'],'inventory-installed',value['firstFailure'])
+        self.assertEqual(value['firstFailure']['path'],'node_modules/bw-circuit-ui/src/current.js')
+        self.assertEqual(value['installedProgress']['completedPrefixes'],['node_modules/bw-board'])
+        expected={'schema':'bw.gui-hdd.inventory-failure-expectation.v5','source':D(self.files['source.before.json']),
+          'template':ROW(raw),'failure':ROW(E(value)),'runId':90,'workflowSha':'d'*40}
+        result=r.verify_inventory_failure(E(value),raw,expected)
+        self.assertFalse(result['qualified']);self.assertTrue(result['gitSourceReached'])
+        for cut in ('path','prefix','bool','scope'):
+            changed=copy.deepcopy(value)
+            if cut=='path':changed['installedProgress']['path']='node_modules/bw-board/other'
+            elif cut=='prefix':changed['installedProgress']['completedPrefixes']=['node_modules/playwright']
+            elif cut=='bool':changed['installedProgress']['completedRows']=False
+            else:changed['scope']['installedEmptyRegularScoped']=False
+            selected_expected=copy.deepcopy(expected);selected_expected['failure']=ROW(E(changed))
+            with self.subTest(cut=cut),self.assertRaises(ValueError):
+                r.verify_inventory_failure(E(changed),raw,selected_expected)
+    def test_finite_v5_independent_full_packet_and_real_seven_token_cli(self):
+        value,raw,expected=self.finite_v5_packet()
+        self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v5')
+        self.assertEqual(value['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout'],ROW(b''))
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            folder=pathlib.Path(temporary)
+            for name,data in (('original',E(value)),('template',raw),('expected',E(expected))):
+                (folder/name).write_bytes(data)
+            args=['--inventory-original-v5','--original',str(folder/'original'),'--template',str(folder/'template'),'--expected',str(folder/'expected')]
+            with contextlib.redirect_stdout(io.StringIO()) as output:self.assertEqual(r.main(args),0)
+            self.assertEqual(D(output.getvalue().encode())['schema'],'bw.gui-hdd.inventory-reader.v5')
+            for bad in (args[:-1],args+['--extra'],args+['--original',str(folder/'original')]):
+                with self.assertRaises((ValueError,SystemExit)):r.main(bad)
+    def test_finite_v5_zero_scope_and_guard_refusals(self):
+        value,raw,expected=self.finite_v5_packet()
+        for cut in ('critical-zero','outside-zero','wrong-empty-sha','missing-cui','job','scope'):
+            changed=copy.deepcopy(value)
+            if cut=='critical-zero':changed['installedFiles']['node_modules/bw-board/src/index.js']=ROW(b'')
+            elif cut=='outside-zero':changed['installedFiles']['other/empty']=ROW(b'')
+            elif cut=='wrong-empty-sha':changed['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout']['sha256']='0'*64
+            elif cut=='missing-cui':del changed['installedFiles']['node_modules/bw-circuit-ui/package.json']
+            elif cut=='job':changed['platform']['GITHUB_JOB']='finite-inventory-v4'
+            else:changed['scope']['installedEmptyRegularScoped']=False
+            selected=copy.deepcopy(expected);selected['original']=ROW(E(changed))
+            with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
+        self.assertFalse(c.FINITE_INVENTORY_V5_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
+        with patch.object(c,'regular',side_effect=AssertionError('host read')):
+            for args in (['finite-inventory-v5-guard'],['finite-inventory-v5','--request','x','--expected-sha256','0'*64,'--output','x'],
+              ['actual-v6-guard'],['actual-v6-preflight'],['actual-v6']):
+                with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
+    def test_finite_v5_source_zero_and_critical_mutants_are_nonvacuous(self):
+        value,raw,expected=self.finite_v5_packet();rows=copy.deepcopy(value['installedFiles'])
+        wrong=copy.deepcopy(rows);wrong['node_modules/bw-board/docs/receipts/zero.stdout']['sha256']='0'*64
+        with self.assertRaisesRegex(ValueError,'zero installed'):c.installed_rows_v5(wrong)
+        source=(root/'scripts/run-i80386-hdd-gui-actual.py').read_text()
+        zero="need(row['byteLength']>0 or row['sha256']==EMPTY_SHA256,"
+        self.assertIn(zero,source)
+        mutant=source.replace(zero,"need(True,",1)
+        scope={'__name__':'v5_zero_mutant'};exec(compile(mutant,'v5-zero-mutant','exec'),scope)
+        self.assertEqual(scope['installed_rows_v5'](wrong),wrong)
+        critical=copy.deepcopy(rows);critical['node_modules/bw-board/src/index.js']=ROW(b'')
+        with self.assertRaises(ValueError):c.installed_rows_v5(critical)
+        exact="if name in INSTALLED_V5_CRITICAL:integer(row['byteLength'],1,FILE_CAP)"
+        self.assertIn(exact,source)
+        scope={'__name__':'v5_critical_mutant'}
+        exec(compile(source.replace(exact,'if name in INSTALLED_V5_CRITICAL:pass',1),'v5-critical-mutant','exec'),scope)
+        self.assertEqual(scope['installed_rows_v5'](critical),critical)
+    def test_finite_v5_real_installed_fd_zero_and_bounded_partial_failure(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary);progress={'package':None,'path':None,'entryStat':None,'file':None,
+              'completedPrefixes':[],'completedRows':0,'totalBytes':0};failure={'installedProgress':progress}
+            for prefix in c.INSTALLED_V5_ROOTS:
+                for name in c.INSTALLED_V5_CRITICAL:
+                    if name.startswith(prefix+'/'):
+                        path=checkout/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'critical')
+                if prefix=='node_modules/bw-board':
+                    path=checkout/prefix/'docs/receipts/empty.stdout';path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'')
+            selected={}
+            for prefix in c.INSTALLED_V5_ROOTS:
+                selected.update({prefix+'/'+name:row for name,row in c.installed_inventory_v5(checkout/prefix,prefix,failure,checkout).items()})
+            self.assertEqual(selected['node_modules/bw-board/docs/receipts/empty.stdout'],ROW(b''))
+            self.assertEqual(r.installed_rows_v5(selected),selected)
+            self.assertEqual(progress['completedPrefixes'],list(c.INSTALLED_V5_ROOTS))
+            with self.assertRaisesRegex(ValueError,'canonical bounded regular'):c.regular(checkout/'node_modules/bw-board/docs/receipts/empty.stdout',1)
+            critical=checkout/'node_modules/bw-board/src/index.js';critical.write_bytes(b'')
+            progress.update(package=None,path=None,entryStat=None,file=None,completedPrefixes=[],completedRows=0,totalBytes=0)
+            with self.assertRaisesRegex(ValueError,'nonempty source-fixed'):c.installed_inventory_v5(checkout/'node_modules/bw-board','node_modules/bw-board',failure,checkout)
+            self.assertEqual(progress['path'],'node_modules/bw-board/src/index.js')
+            r.installed_progress_v5(progress)
+            critical.write_bytes(b'critical')
+            (checkout/'node_modules/bw-board/docs/receipts/link').symlink_to('empty.stdout')
+            progress.update(package=None,path=None,entryStat=None,file=None,completedPrefixes=[],completedRows=0,totalBytes=0)
+            with self.assertRaisesRegex(ValueError,'symlink refused'):c.installed_inventory_v5(checkout/'node_modules/bw-board','node_modules/bw-board',failure,checkout)
+            self.assertEqual(progress['path'],'node_modules/bw-board/docs/receipts/link')
+            self.assertIsNotNone(progress['entryStat']);r.installed_progress_v5(progress)
+            outside=checkout.parent/'outside-installed-root'
+            with self.assertRaisesRegex(ValueError,'belongs to checkout'):
+                c.installed_inventory_v5(outside/'node_modules/bw-board','node_modules/bw-board',failure,checkout)
+    def test_finite_v5_read_and_close_failure_order(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            path=pathlib.Path(temporary)/'regular';path.write_bytes(b'content')
+            original_close=c.os.close
+            def broken_close(fd):original_close(fd);raise OSError('SECOND_CLOSE')
+            def progress():return {'stage':'not-started','namedBefore':None,'heldBefore':None,'heldAfter':None,
+              'namedAfter':None,'bytesRead':0,'sha256':H(b''),'eof':False,'complete':False,
+              'closeAttempted':False,'closeSucceeded':False}
+            first=progress()
+            with patch.object(c.os,'read',side_effect=OSError('FIRST_READ')),patch.object(c.os,'close',side_effect=broken_close):
+                with self.assertRaisesRegex(OSError,'FIRST_READ') as caught:c.installed_regular_v5(path,32,first)
+            self.assertEqual([str(x) for x in caught.exception.inventory_secondary],['SECOND_CLOSE'])
+            self.assertEqual(first['stage'],'read')
+            self.assertTrue(first['closeAttempted']);self.assertFalse(first['closeSucceeded']);self.assertFalse(first['complete'])
+            second=progress()
+            with patch.object(c.os,'close',side_effect=broken_close):
+                with self.assertRaisesRegex(OSError,'SECOND_CLOSE'):c.installed_regular_v5(path,32,second)
+            self.assertEqual(second['bytesRead'],7);self.assertTrue(second['eof']);self.assertFalse(second['complete'])
+            self.assertEqual(second['stage'],'close')
+            overflow=progress();path.write_bytes(b'123456')
+            with patch.object(c.os,'read',return_value=b'1234567'):
+                with self.assertRaisesRegex(ValueError,'stable installed original'):c.installed_regular_v5(path,6,overflow)
+            self.assertEqual(overflow['bytesRead'],7)
+            self.assertEqual(overflow['stage'],'readback')
+            self.assertEqual(overflow['sha256'],H(b'1234567'))
+            self.assertTrue(overflow['closeSucceeded'])
+            observed={'package':'node_modules/bw-board','path':'node_modules/bw-board/docs/receipts/overflow',
+              'entryStat':overflow['namedBefore'],'file':overflow,'completedPrefixes':[],'completedRows':0,'totalBytes':0}
+            r.installed_progress_v5(observed)
+            rejected=copy.deepcopy(observed);rejected['file']['bytesRead']=r.FILE_CAP+2
+            with self.assertRaises(ValueError):r.installed_progress_v5(rejected)
+
+    def actual_v6_packet(self):
+        files,expected,reference,originals=NativeV2Originals().fresh()
+        request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v6'
+        for name in c.INSTALLED_V5_CRITICAL:request['installedFiles'].setdefault(name,ROW(b'critical'))
+        request['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout']=ROW(b'')
+        for stage in ('before','after'):files['installed.'+stage+'.json']=E(request['installedFiles'])
+        use_finite_basis_fixture(request,expected,5)
+        git_rows={}
+        for path in sorted(c.NATIVE_FONT_SOURCE):
+            raw=('native-source:'+path).encode()
+            git_rows[path]={'mode':'100644','gitBlob':hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\x00'+raw).hexdigest(),
+                'bytes':len(raw),'sha256':H(raw)}
+        request['nativeSourceGit']={'observed':{'head':reference['source']['head'],'files':copy.deepcopy(git_rows)},
+            'finite':{'head':request['inventoryAdmission']['metadataAdmission']['source']['head'],'files':copy.deepcopy(git_rows)},
+            'current':{'head':request['source']['head'],'files':copy.deepcopy(git_rows)}}
+        expected.update(schema='bw.gui-hdd.actual-expectation.v6',nativeSourceGitSha256=H(E(request['nativeSourceGit'])))
+        native_v5_refresh(files,expected,reference,originals,request)
+        event=D(files['event.original.json']);event['label']['name']='x86-hdd-gui-actual-v6'
+        event['pull_request']['body']='<!-- BW_GUI_HDD_ACTUAL_V6_REQUEST_SHA256='+expected['requestSha256']+' -->'
+        files['event.original.json']=E(event)
+        stage=D(files['native-font.stage.json']);stage['eventSha256']=H(files['event.original.json']);files['native-font.stage.json']=E(stage)
+        prefix=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false',
+          '-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
+        for old in (len(r.SOURCE)+5,len(r.SOURCE)+6):
+            for suffix in ('stdout','stderr','process.json'):
+                files['git-'+str(old+10)+'.'+suffix]=files.pop('git-'+str(old)+'.'+suffix)
+        start=len(r.SOURCE)+2
+        for index,path in enumerate(sorted(git_rows)):
+            row=git_rows[path];raw=('native-source:'+path).encode()
+            for offset,args,out in ((0,['ls-tree','-z',request['source']['head'],'--',path],
+                ('100644 blob '+row['gitBlob']+'\t'+path+'\0').encode()),
+              (1,['cat-file','blob',request['source']['head']+':'+path],raw)):
+                role='git-'+str(start+2*index+offset)
+                files[role+'.stdout']=out;files[role+'.stderr']=b''
+                files[role+'.process.json']=E(proc(prefix+args,out))
+        files['native-source-git.before.json']=E({'schema':'bw.gui-hdd.native-source-git.v6',
+          'head':request['source']['head'],'tree':request['source']['tree'],'files':git_rows})
+        return files,expected
+
+    def test_actual_v6_request_and_full_independent_reader_packet(self):
+        files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
+        self.assertEqual(c.parse_request(files['request.original.json'],expected['requestSha256']),request)
+        self.assertEqual(r.parse_request(files['request.original.json'],expected['requestSha256']),request)
+        originals,selected=sealed(files,expected)
+        self.assertEqual(r.audit(originals,selected)['schema'],'bw.gui-hdd.reader.v6')
+        delivery={'artifact':packet(files),'expected':E(selected)}
+        with patch.object(r,'bounded_input',side_effect=lambda path,cap:delivery[path]),patch.object(r.sys,'stdout',io.StringIO()) as stream:
+            self.assertEqual(r.main(['artifact','expected']),0)
+            self.assertEqual(D(stream.getvalue().encode())['schema'],'bw.gui-hdd.reader.v6')
+        for cut in ('native-git-listing','native-git-blob','native-git-report','h0-a-row','native-external','empty-outside','empty-critical','event-label'):
+            changed=copy.deepcopy(files);chosen=copy.deepcopy(expected)
+            first=sorted(c.NATIVE_FONT_SOURCE)[0];role='git-'+str(len(r.SOURCE)+2)
+            if cut=='native-git-listing':
+                changed[role+'.stdout']=b'100644 blob '+b'0'*40+b'\t'+first.encode()+b'\x00'
+                item=D(changed[role+'.process.json']);item['streams']['stdout']=ROW(changed[role+'.stdout']);changed[role+'.process.json']=E(item)
+            elif cut=='native-git-blob':
+                role='git-'+str(len(r.SOURCE)+3);changed[role+'.stdout']=b'forged'
+                item=D(changed[role+'.process.json']);item['streams']['stdout']=ROW(changed[role+'.stdout']);changed[role+'.process.json']=E(item)
+            elif cut=='native-git-report':
+                item=D(changed['native-source-git.before.json']);item['files'][first]['bytes']+=1;changed['native-source-git.before.json']=E(item)
+            elif cut=='h0-a-row':
+                item=D(changed['request.original.json']);item['nativeSourceGit']['observed']['files'][first]['gitBlob']='0'*40
+                changed['request.original.json']=E(item);chosen['requestSha256']=H(changed['request.original.json'])
+            elif cut=='native-external':chosen['nativeSourceGitSha256']='0'*64
+            elif cut in ('empty-outside','empty-critical'):
+                item=D(changed['installed.before.json'])
+                if cut=='empty-outside':item['other/empty']=ROW(b'')
+                else:item['node_modules/bw-board/src/index.js']=ROW(b'')
+                changed['installed.before.json']=E(item)
+            else:
+                event=D(changed['event.original.json']);event['label']['name']='x86-hdd-gui-actual';changed['event.original.json']=E(event)
+            with self.subTest(cut=cut),self.assertRaises((ValueError,KeyError)):
+                r.audit(*sealed(changed,chosen))
+    def test_actual_v6_current_native_git_and_cross_head_mutants(self):
+        files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary)
+            for path in c.NATIVE_FONT_SOURCE:
+                selected=checkout/path;selected.parent.mkdir(parents=True,exist_ok=True)
+                selected.write_bytes(('native-source:'+path).encode())
+            class Git:
+                def __init__(self,selection):self.selection=selection;self.calls=[]
+                def git(self,args):
+                    self.calls.append(args);path=args[-1].split(':',1)[-1];row=self.selection['files'][path]
+                    return ('100644 blob '+row['gitBlob']+'\t'+path+'\x00').encode() if args[0]=='ls-tree' else ('native-source:'+path).encode()
+            class Output:
+                def __init__(self):self.files={}
+                def save(self,name,raw):self.files[name]=raw
+            edge=Git(request['nativeSourceGit']['current']);output=Output()
+            observed=c.observe_native_source_git_v6(request,checkout,edge,output)
+            self.assertEqual(observed['files'],request['nativeSourceGit']['current']['files'])
+            self.assertEqual(len(edge.calls),10)
+            self.assertEqual(D(output.files['native-source-git.before.json']),observed)
+            forged=copy.deepcopy(request);first=sorted(c.NATIVE_FONT_SOURCE)[0]
+            broken_h1=copy.deepcopy(request);broken_h1['nativeSourceGit']['finite']['files'][first]['gitBlob']='0'*40
+            for module in (c,r):
+                with self.assertRaisesRegex(ValueError,'H0/H1/A|H0, finite H1'):
+                    module.native_source_git_v6(broken_h1['nativeSourceGit'],broken_h1['nativeFontAdmission'],
+                                                broken_h1['inventoryAdmission'],broken_h1['source']['head'])
+            for label in ('observed','finite','current'):forged['nativeSourceGit'][label]['files'][first]['gitBlob']='0'*40
+            self.assertEqual(c.native_source_git_v6(forged['nativeSourceGit'],forged['nativeFontAdmission'],forged['inventoryAdmission'],forged['source']['head']),forged['nativeSourceGit'])
+            with self.assertRaisesRegex(ValueError,'current native source Git/live exact bytes'):
+                c.observe_native_source_git_v6(forged,checkout,Git(forged['nativeSourceGit']['current']),Output())
+            drift=checkout/first;drift.write_bytes(b'changed-current-file')
+            with self.assertRaisesRegex(ValueError,'admitted file changed'):
+                c.observe_native_source_git_v6(request,checkout,Git(request['nativeSourceGit']['current']),Output())
 
     def test_current_v5_build_whole_tree_and_current_head_are_live(self):
         for role in ('head','tree'):

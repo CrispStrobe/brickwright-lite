@@ -128,3 +128,8 @@ the declared branch snapshots from `2f3bbff0ea338c5ee2168532bae8b7208dc2d6a2`.
 They do not add files to the current workflow inventory or claim execution on
 the default branch. Existing run counts and failures are retained unchanged.
 The separately reviewed workflow files arrive only with their qualified source.
+
+- i80386-hdd-gui-actual.yml :: finite-inventory-five :: The new finite v5 job is source-only and guarded false. No V5 event or installed-runtime result exists; a completed exact-head source run must populate its skipped job census before any metadata event is selected. The older digit-bearing `finite-inventory-v4` ID was outside the existing census parser's declaration syntax and remains historical. 2026-10-24 Codex x86.
+- i80386-hdd-gui-actual.yml :: Admit finite v5 body, event and exact source before package acquisition :: New guarded-false V5 metadata source step; no official execution yet. Exact-head CI and a separate request/event admission are required. 2026-10-24 Codex x86.
+- i80386-hdd-gui-actual.yml :: Trusted finite v5 package and Chromium setup :: New guarded-false V5 job step; the consumed V4 inventory failure supplies no positive installed-file evidence. 2026-10-24 Codex x86.
+- i80386-hdd-gui-actual.yml :: Record finite v5 runtime and installed regular bytes without guest :: New guarded-false metadata step; no V5 original, browser, or guest result exists. 2026-10-24 Codex x86.
