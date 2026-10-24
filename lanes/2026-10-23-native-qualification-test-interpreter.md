@@ -1,7 +1,7 @@
 # Bind the native qualification test interpreter explicitly
 
-CLAIMED — Native qualification integration coordinator, isolated branch
-`lane/native-qualification-test-interpreter-claim-20261023`, base
+IMPLEMENTATION DONE (held producer candidate) — Native qualification integration coordinator, owned continuation
+`lane/native-qualified-main-producer-continuation-20261023`, claim base
 `6ed78045cb672acfd67271500a4eaf5ff9c82cb6`.
 
 Own only `test/native-installed-qualification.test.mjs` and this claim. Supplement
@@ -25,3 +25,11 @@ and finite installed-guest evidence remain separate from whole-PR qualification.
 
 No consumer, product, supplier, firmware, clock, timeout, acceptance threshold,
 release, deployment, signing or hardware change is included in this claim.
+
+The wrapper now names the Ubuntu system interpreter explicitly. Its existing
+Python controls pass, and focused negative controls detect a missing executable,
+a wrong executable and restoration of ambient lookup. The unchanged scanner
+checks the complete tracked test/scripts scope: AMBIENT-BINDING remains nine
+against baseline nine; the repaired wrapper has no findings. This binds the
+interpreter location, without claiming a pinned interpreter version or bytes.
+The producer remains held for its final consumer request and hosted checks.
