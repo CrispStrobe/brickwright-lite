@@ -1,11 +1,11 @@
 # Model measurement API takeover and bounded resource admission
 
-CLAIMED — Codex API takeover, explicitly approved by the user. Existing claim
+DONE implementation candidate — Codex API takeover, explicitly approved by the user. Existing claim
 PR #1261 (`lanes/2026-10-23-model-measurement-api.md`) is preserved. Take over its
 API service resource/authentication qualification in a new isolated branch
 `lane/model-api-resource-takeover-20261023`; preserve the previous source branch
 `lane/model-measure-api-20261023`, its commits and evidence. Reviewed starting
-source is `17b2338410fdf22a45a80707b6b2f129a378d0df`. Merge this claim before implementation.
+source is `17b2338410fdf22a45a80707b6b2f129a378d0df`. Claim PR #1278 merged before implementation.
 
 Own `tools/model-api/` gateway/backend/resource helpers, their API documentation
 and schemas, focused `test/model-api-*.test.mjs` controls and the bounded submitted
@@ -42,3 +42,12 @@ No deployment, pin/library change, private Actions, heavy local build/guest,
 upstream contact, credential publication, original re-download or consumed-event
 replay is authorized by this claim. Preserve all original failures and source
 branches; no force push or automatic merge.
+
+
+Implementation adds finite HTTP and pre-JSZip/native-inflate admission, signed
+private Contents SHA-CAS reservations and trusted terminal/source joins. 56 focused
+resource/admission/protocol controls and 33 governance controls pass; ten source
+mutations are detected. Original proposals and failures are
+preserved. Exact-head hosted controls and the isolated real Docker/Jolt encrypted
+fixture remain landing gates. This status does not authorize deployment or
+claim live private-store/service or installed-firmware acceptance.

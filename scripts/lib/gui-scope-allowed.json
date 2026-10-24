@@ -170,6 +170,7 @@
       "test/bw-sim-cusp.test.mjs",
       "test/bw-sim-balance-engine.test.mjs",
       "test/bw-sim-root-bridge.test.mjs",
+      "test/model-api-native.test.mjs",
       "test/bw-sim-qualification.test.mjs",
       "test/bw-sim-watt-twin.test.mjs"
     ],
@@ -577,6 +578,7 @@
       "test/bw-sim-cusp.test.mjs",
       "test/bw-sim-balance-engine.test.mjs",
       "test/bw-sim-root-bridge.test.mjs",
+      "test/model-api-native.test.mjs",
       "test/bw-sim-qualification.test.mjs",
       "test/bw-sim-watt-twin.test.mjs"
     ],

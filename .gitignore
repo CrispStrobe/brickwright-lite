@@ -52,7 +52,10 @@ packages/scratch-gui/src/lib/sdcc-wasm/dist/
 
 # SPIKE audit records and execution transcripts belong in the private evidence repository.
 /docs/independent-spike/evidence/
-/tools/
+/tools/*
+!/tools/model-api/
+/tools/model-api/node_modules/
+/tools/model-api/.env*
 
 # Private machine-specific Arcade agent handoff (never publish).
 /docs/ARCADE-AGENT-HANDOFF.local.md
