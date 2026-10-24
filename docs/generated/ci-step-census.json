@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T01:28:50.712Z",
+  "generatedAt": "2026-10-24T05:23:06.534Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1929,6 +1929,24 @@
       "workflow": "robot-lab-own-firmware.yml",
       "branch": "lane/robot-lab-firmware-coverage-20261022",
       "sha": "c9512f122"
+    },
+    {
+      "run": 40061993566,
+      "workflow": "i80386-native-font-selection.yml",
+      "branch": "lane/x86-gui-current-consumer-publish-20261024",
+      "sha": "289308756"
+    },
+    {
+      "run": 40052583855,
+      "workflow": "i80386-native-font-selection.yml",
+      "branch": "lane/i80386-native-font-selection-publish-20261024",
+      "sha": "23165828d"
+    },
+    {
+      "run": 40051869439,
+      "workflow": "i80386-native-font-selection.yml",
+      "branch": "lane/i80386-native-font-selection-publish-20261024",
+      "sha": "975ac14e7"
     }
   ],
   "workflowsInTree": [
@@ -1946,6 +1964,7 @@
     "deploy-watchdog.yml",
     "i80386-freedos-circuits-direct-actual.yml",
     "i80386-hdd-gui-actual.yml",
+    "i80386-native-font-selection.yml",
     "i8086-execution.yml",
     "makecode-arcade-bases.yml",
     "mobile.yml",
@@ -7391,11 +7410,55 @@
       "steps": {},
       "jobs": {},
       "sourceSha": "working-tree"
+    },
+    "i80386-native-font-selection.yml": {
+      "runs": 3,
+      "stepsInFile": [
+        "Pure source and independent reader controls",
+        "Refuse until selected font, tool, cache and event review",
+        "Retain bounded original only after separately reviewed activation"
+      ],
+      "inFileInNoRun": [
+        "Refuse until selected font, tool, cache and event review",
+        "Retain bounded original only after separately reviewed activation"
+      ],
+      "steps": {
+        "Pure source and independent reader controls": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "controls"
+          ],
+          "clause": null,
+          "class": "always"
+        }
+      },
+      "jobs": {
+        "controls": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "always"
+        },
+        "native-font-selection": {
+          "existed": 3,
+          "ran": 0,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "never"
+        }
+      },
+      "sourceSha": "289308756"
     }
   },
   "lastRefresh": {
-    "workflow": "circuit-instrument-regression.yml",
-    "at": "2026-10-24T01:28:50.712Z",
-    "sourceSha": "working-tree"
+    "workflow": "i80386-native-font-selection.yml",
+    "at": "2026-10-24T05:23:06.534Z",
+    "sourceSha": "289308756"
   }
 }

@@ -53,6 +53,10 @@ executed in 20 green main runs, five files recorded nowhere.
 
 ## Steps that run elsewhere
 
+- i80386-native-font-selection.yml :: native-font-selection :: This job is gated by the owner-only `x86-native-font-selection-v1` PR label, exact owner/repository/first-attempt conditions and a separately admitted immutable request. Three completed source-control runs, latest 40061993566 at PR1318 head 289308756, skipped this job. No native tool, font selection or guest execution is observed; never label merely to satisfy the census. 2026-10-24 Codex x86.
+- i80386-native-font-selection.yml :: Refuse until selected font, tool, cache and event review :: This step belongs to the unexecuted `native-font-selection` job under the owner-only `x86-native-font-selection-v1` PR label and separately admitted request. Three completed source-control runs, latest 40061993566, contain no execution of this step. No font or guest approval follows. 2026-10-24 Codex x86.
+- i80386-native-font-selection.yml :: Retain bounded original only after separately reviewed activation :: This step belongs to the unexecuted `native-font-selection` job under the owner-only `x86-native-font-selection-v1` PR label and separately admitted request. Three completed source-control runs, latest 40061993566, contain no execution of this step or original to retain. No font or guest approval follows. 2026-10-24 Codex x86.
+
 - testflight-release-recovery.yml :: * :: Manual-only metadata audit/recovery of the existing v0.1.26 release after exact-head qualification. Newly declared 2026-10-23 with zero completed runs; no Apple action or delivery is inferred. Never dispatch merely to populate this census.
 - circuit-instrument-regression.yml :: * :: Manual-only fixed 312-case authored instrument campaign; zero runs and zero measured cases at its 2026-10-24 declaration refresh. TestFlight audit 40048235422 is admitted; reuse its fixed categorical readback without retrieving the original log again. Preparation and pure controls are not execution. Never dispatch to populate the census or change its denominator.
 
