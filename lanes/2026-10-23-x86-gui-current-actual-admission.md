@@ -140,3 +140,15 @@ not a permanent request pin: regenerate and independently review head/tree,
 source-file, workflow, template/request SHA and Build bindings whenever the
 selected source changes. An unbound roster proposal is not an admitted body,
 variable, event or actual request.
+
+## Current-source composition checkpoint — 2026-10-24
+
+PR1318's native/GUI source head passed its exact-head source checks. The
+current composition retains every newer mainline workflow census and pointer
+row plus unrelated Robot Lab and Build workflow changes; its native five and
+GUI twenty-one selected source blobs remain byte-identical to that published
+head. This new head needs fresh exact-head CI and a separately bound current
+Build, including its actual checkout and installed graph, before metadata
+selection. The native and finite-inventory events are unselected, and the
+browser/guest actual guard remains false. Previous draft request SHAs do not
+authorize an event on the composed head.
