@@ -1,0 +1,434 @@
+# Cable Compass - two winches, four direct ropes, one passive payload.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Robot Lab: import matching LDR; select Mat > Plain (DE: Matte > Einfach).
+# Code > Pseudocode: paste all text, To blocks; Robot Lab Reset, then Run.
+# Reset/reload saved pose after manual movement or a fault. No encoder reset here.
+# Simulation program, not hardware firmware. Motor speeds are degrees/second.
+# Each motor drives a paired drum shaft through a 24:1 worm reduction.
+# Effective constant winding radius 2.8 mm; direct ropes share one tiepoint.
+# Winding signs are taken from build/program-settings.json; consult native evidence.
+# Both axes start under one broadcast and join before a measured-arrival dwell.
+# Nominal durations are matched; independent acceleration profiles can differ.
+# Software rope guards are not mechanical stops. See the geometry/contract record.
+DEVICE SPIKE
+GLOBAL directionA = 1
+GLOBAL directionB = 1
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL speedA = 30
+GLOBAL speedB = 30
+GLOBAL deltaA = 0
+GLOBAL deltaB = 0
+GLOBAL moveSeconds = 1
+GLOBAL stage = 0
+GLOBAL arrived = 0
+GLOBAL arrivedA = 0
+GLOBAL arrivedB = 0
+GLOBAL correctionsA = 0
+GLOBAL correctionsB = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+
+WHEN flag clicked:
+  set directionA to 1
+  set directionB to 1
+  set stage to 0
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set completed to 0
+  set failed to 0
+  set targetA to 0
+  set targetB to 0
+  set correctionsA to 0
+  set correctionsB to 0
+  reset timer
+  lab stop motor A hold
+  lab stop motor B hold
+  IF (abs of (lab motor A angle)) > 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Saved datum mismatch on A. Reset Cable Compass before retrying."
+    stop all
+  IF (abs of directionA) < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Winding direction must be the qualified sign, plus or minus one."
+    stop all
+  IF (abs of directionA) > 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Winding direction must be the qualified sign, plus or minus one."
+    stop all
+  IF (abs of (lab motor B angle)) > 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Saved datum mismatch on B. Reset Cable Compass before retrying."
+    stop all
+  IF (abs of directionB) < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Winding direction must be the qualified sign, plus or minus one."
+    stop all
+  IF (abs of directionB) > 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Winding direction must be the qualified sign, plus or minus one."
+    stop all
+  broadcast "Cable Compass watchdog"
+  # Stage 0: home, x=0 mm, up=0 mm.
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set stage to 0
+  set targetA to (directionA * 0)
+  set targetB to (directionB * 0)
+  set deltaA to (targetA - (lab motor A angle))
+  set deltaB to (targetB - (lab motor B angle))
+  set moveSeconds to ((abs of deltaA) / 720)
+  IF ((abs of deltaB) / 720) > moveSeconds THEN:
+    set moveSeconds to ((abs of deltaB) / 720)
+  IF moveSeconds < 0.001 THEN:
+    set moveSeconds to 0.001
+  set speedA to ((abs of deltaA) / moveSeconds)
+  set speedB to ((abs of deltaB) / moveSeconds)
+  IF speedA < 30 THEN:
+    set speedA to 30
+  IF speedB < 30 THEN:
+    set speedB to 30
+  broadcast "Cable Compass move" and wait
+  IF arrivedA < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A did not report measured arrival."
+    stop all
+  IF arrivedB < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B did not report measured arrival."
+    stop all
+  set arrived to 1
+  wait 3 seconds
+  # Stage 1: left, x=-16 mm, up=0 mm.
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set stage to 1
+  set targetA to (directionA * 3751.0452161867906)
+  set targetB to (directionB * -4500.476269579936)
+  set deltaA to (targetA - (lab motor A angle))
+  set deltaB to (targetB - (lab motor B angle))
+  set moveSeconds to ((abs of deltaA) / 720)
+  IF ((abs of deltaB) / 720) > moveSeconds THEN:
+    set moveSeconds to ((abs of deltaB) / 720)
+  IF moveSeconds < 0.001 THEN:
+    set moveSeconds to 0.001
+  set speedA to ((abs of deltaA) / moveSeconds)
+  set speedB to ((abs of deltaB) / moveSeconds)
+  IF speedA < 30 THEN:
+    set speedA to 30
+  IF speedB < 30 THEN:
+    set speedB to 30
+  broadcast "Cable Compass move" and wait
+  IF arrivedA < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A did not report measured arrival."
+    stop all
+  IF arrivedB < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B did not report measured arrival."
+    stop all
+  set arrived to 1
+  wait 3 seconds
+  # Stage 2: home, x=0 mm, up=0 mm.
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set stage to 2
+  set targetA to (directionA * 0)
+  set targetB to (directionB * 0)
+  set deltaA to (targetA - (lab motor A angle))
+  set deltaB to (targetB - (lab motor B angle))
+  set moveSeconds to ((abs of deltaA) / 720)
+  IF ((abs of deltaB) / 720) > moveSeconds THEN:
+    set moveSeconds to ((abs of deltaB) / 720)
+  IF moveSeconds < 0.001 THEN:
+    set moveSeconds to 0.001
+  set speedA to ((abs of deltaA) / moveSeconds)
+  set speedB to ((abs of deltaB) / moveSeconds)
+  IF speedA < 30 THEN:
+    set speedA to 30
+  IF speedB < 30 THEN:
+    set speedB to 30
+  broadcast "Cable Compass move" and wait
+  IF arrivedA < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A did not report measured arrival."
+    stop all
+  IF arrivedB < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B did not report measured arrival."
+    stop all
+  set arrived to 1
+  wait 3 seconds
+  # Stage 3: up, x=0 mm, up=16 mm.
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set stage to 3
+  set targetA to (directionA * 6301.949924448188)
+  set targetB to (directionB * 6301.949924448188)
+  set deltaA to (targetA - (lab motor A angle))
+  set deltaB to (targetB - (lab motor B angle))
+  set moveSeconds to ((abs of deltaA) / 720)
+  IF ((abs of deltaB) / 720) > moveSeconds THEN:
+    set moveSeconds to ((abs of deltaB) / 720)
+  IF moveSeconds < 0.001 THEN:
+    set moveSeconds to 0.001
+  set speedA to ((abs of deltaA) / moveSeconds)
+  set speedB to ((abs of deltaB) / moveSeconds)
+  IF speedA < 30 THEN:
+    set speedA to 30
+  IF speedB < 30 THEN:
+    set speedB to 30
+  broadcast "Cable Compass move" and wait
+  IF arrivedA < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A did not report measured arrival."
+    stop all
+  IF arrivedB < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B did not report measured arrival."
+    stop all
+  set arrived to 1
+  wait 3 seconds
+  # Stage 4: right, x=16 mm, up=0 mm.
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set stage to 4
+  set targetA to (directionA * -4500.476269579936)
+  set targetB to (directionB * 3751.0452161867906)
+  set deltaA to (targetA - (lab motor A angle))
+  set deltaB to (targetB - (lab motor B angle))
+  set moveSeconds to ((abs of deltaA) / 720)
+  IF ((abs of deltaB) / 720) > moveSeconds THEN:
+    set moveSeconds to ((abs of deltaB) / 720)
+  IF moveSeconds < 0.001 THEN:
+    set moveSeconds to 0.001
+  set speedA to ((abs of deltaA) / moveSeconds)
+  set speedB to ((abs of deltaB) / moveSeconds)
+  IF speedA < 30 THEN:
+    set speedA to 30
+  IF speedB < 30 THEN:
+    set speedB to 30
+  broadcast "Cable Compass move" and wait
+  IF arrivedA < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A did not report measured arrival."
+    stop all
+  IF arrivedB < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B did not report measured arrival."
+    stop all
+  set arrived to 1
+  wait 3 seconds
+  # Stage 5: home, x=0 mm, up=0 mm.
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set stage to 5
+  set targetA to (directionA * 0)
+  set targetB to (directionB * 0)
+  set deltaA to (targetA - (lab motor A angle))
+  set deltaB to (targetB - (lab motor B angle))
+  set moveSeconds to ((abs of deltaA) / 720)
+  IF ((abs of deltaB) / 720) > moveSeconds THEN:
+    set moveSeconds to ((abs of deltaB) / 720)
+  IF moveSeconds < 0.001 THEN:
+    set moveSeconds to 0.001
+  set speedA to ((abs of deltaA) / moveSeconds)
+  set speedB to ((abs of deltaB) / moveSeconds)
+  IF speedA < 30 THEN:
+    set speedA to 30
+  IF speedB < 30 THEN:
+    set speedB to 30
+  broadcast "Cable Compass move" and wait
+  IF arrivedA < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A did not report measured arrival."
+    stop all
+  IF arrivedB < 1 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B did not report measured arrival."
+    stop all
+  set arrived to 1
+  wait 3 seconds
+  IF (abs of (lab motor A angle)) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Return encoder check failed on A. Reset and inspect."
+    stop all
+  IF (abs of (lab motor B angle)) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Return encoder check failed on B. Reset and inspect."
+    stop all
+  lab stop motor A hold
+  lab stop motor B hold
+  set arrived to 0
+  set stage to 6
+  set completed to 1
+  say "Complete: compare equal winding with unequal winding. Home held."
+
+WHEN I receive "Cable Compass move":
+  set arrivedA to 0
+  set correctionsA to 0
+  IF (targetA * directionA) < -4500.486269579937 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A target outside the declared rope-length route."
+    stop all
+  IF (targetA * directionA) > 6301.959924448188 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A target outside the declared rope-length route."
+    stop all
+  IF (abs of (targetA - (lab motor A angle))) > 12766.852920190948 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Unexpected fresh encoder displacement on A. Reset before retrying."
+    stop all
+  IF speedA > 720.001 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Requested motor speed exceeded the declared limit."
+    stop all
+  IF (abs of (targetA - (lab motor A angle))) > 0.1 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+    lab stop motor A hold
+  REPEAT 2:
+    IF (abs of (targetA - (lab motor A angle))) > 0.5 THEN:
+      set correctionsA to (correctionsA + 1)
+      lab run motor A for (targetA - (lab motor A angle)) degrees at 120 degrees per second
+      lab stop motor A hold
+  wait 0.3 seconds
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Measured arrival failed on A. Inspect both winches and reset."
+    stop all
+  set arrivedA to 1
+
+WHEN I receive "Cable Compass move":
+  set arrivedB to 0
+  set correctionsB to 0
+  IF (targetB * directionB) < -4500.486269579937 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B target outside the declared rope-length route."
+    stop all
+  IF (targetB * directionB) > 6301.959924448188 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B target outside the declared rope-length route."
+    stop all
+  IF (abs of (targetB - (lab motor B angle))) > 8266.37665061101 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Unexpected fresh encoder displacement on B. Reset before retrying."
+    stop all
+  IF speedB > 720.001 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Requested motor speed exceeded the declared limit."
+    stop all
+  IF (abs of (targetB - (lab motor B angle))) > 0.1 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+    lab stop motor B hold
+  REPEAT 2:
+    IF (abs of (targetB - (lab motor B angle))) > 0.5 THEN:
+      set correctionsB to (correctionsB + 1)
+      lab run motor B for (targetB - (lab motor B angle)) degrees at 120 degrees per second
+      lab stop motor B hold
+  wait 0.3 seconds
+  IF (abs of (targetB - (lab motor B angle))) > 2 THEN:
+    set failed to 1
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Measured arrival failed on B. Inspect both winches and reset."
+    stop all
+  set arrivedB to 1
+
+WHEN I receive "Cable Compass watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 150 THEN:
+      set failed to 1
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Finite watchdog expired. Both winches held; reset before retrying."
+      stop all
+    IF ((lab motor A angle) * directionA) < -5482.689632661348 THEN:
+      set failed to 1
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Measured A winding left the declared rope-length guard."
+      stop all
+    IF ((lab motor A angle) * directionA) > 7284.163287529599 THEN:
+      set failed to 1
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Measured A winding left the declared rope-length guard."
+      stop all
+    IF ((lab motor B angle) * directionB) < -5482.689632661348 THEN:
+      set failed to 1
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Measured B winding left the declared rope-length guard."
+      stop all
+    IF ((lab motor B angle) * directionB) > 7284.163287529599 THEN:
+      set failed to 1
+      lab stop motor A hold
+      lab stop motor B hold
+      say "Measured B winding left the declared rope-length guard."
+      stop all
+    wait 0.02 seconds

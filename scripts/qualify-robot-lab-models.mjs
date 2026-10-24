@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';import {spawn,execFileSync} from 'node:child_process';
 import {createWriteStream,readFileSync,writeFileSync,existsSync,statSync,readdirSync,mkdirSync,copyFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';import {resolve,join,relative,dirname} from 'node:path';import {fileURLToPath} from 'node:url';import {tmpdir} from 'node:os';
-import {qualificationContracts} from './lib/robot-lab-qualification.mjs';import {executeQualification} from './lib/robot-lab-qualification-runner.mjs';
+import {qualificationContracts,QUALIFICATION_NATIVE_TESTS} from './lib/robot-lab-qualification.mjs';import {executeQualification} from './lib/robot-lab-qualification-runner.mjs';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const args=Object.fromEntries(process.argv.slice(2).map(a=>{const i=a.indexOf('=');assert.ok(a.startsWith('--')&&i>2,'Use --name=value');return[a.slice(2,i),a.slice(i+1)];}));
 assert.ok(Object.keys(args).every(k=>['models','mode','out'].includes(k)),'Unknown option');
@@ -30,7 +30,7 @@ const steps=[
  {id:'lessons-generated',args:['scripts/gen-robot-lab-lessons.mjs','--check']},
  {id:'registrations-lessons-search',args:[...native,'test/bw-sim-models.test.mjs','test/bw-sim-example-catalog.test.mjs','test/bw-sim-lazy-catalog.test.mjs','test/bw-sim-resonance-intake.test.mjs','test/bw-sim-lessons.test.mjs','test/robot-lab-mechanism-search.test.mjs','test/bw-sim-manual-policy.test.mjs']},
  {id:'construction',args:[...native,'test/bw-sim-models-solid.test.mjs','test/bw-sim-instructions.test.mjs']},
- {id:'native-motion-and-negatives',args:[...native,'test/bw-sim-qualification.test.mjs']},
+ {id:'native-motion-and-negatives',args:[...native,'test/bw-sim-qualification.test.mjs',...new Set(contracts.filter(c=>c.nativeSuite).map(c=>QUALIFICATION_NATIVE_TESTS[c.nativeSuite])),...(contracts.some(c=>QUALIFICATION_NATIVE_TESTS[c.nativeSuite]==='test/bw-sim-six-technic-intakes.test.mjs')?['test/sim-lab-six-source-binding.test.mjs','test/bw-sim-model-file.test.mjs','test/bw-sim-ldraw-model.test.mjs','test/bw-sim-persist.test.mjs']:[])]},
  {id:'mirrors',args:['scripts/check-mirrors.mjs']}
 ];
 if(mode==='full'){

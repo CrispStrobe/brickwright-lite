@@ -7,18 +7,6 @@
   "date": "2026-09-30"
  },
  "files": {
-  "CAlicense.txt": {
-   "sha256": "487265d3a122b2e54e460954cd2eca34ac2e545bcb1b2ac23cbda2a27e49a6c2"
-  },
-  "CAlicense4.txt": {
-   "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
-  },
-  "CAreadme.txt": {
-   "sha256": "c67a824bdab18e646337b5b26f7f039c84b0be71273c0c878e2749e648820497"
-  },
-  "LDConfig.ldr": {
-   "sha256": "0178cd14fba46acb9df049c835e60e223b134d178f7e928ace0be1dfbe78895d"
-  },
   "p/1-16chrd.dat": {
    "sha256": "e429dd760eb6f0cf460a74e6ebf52c023bedbdea82de7801efa1694b5a1a82e8",
    "release": "G Primitive UPDATE 2015-01",
@@ -5353,6 +5341,12 @@
    "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
    "author": "Lutz Uhlmann [El-Lutzo]"
   },
+  "parts/32195a.dat": {
+   "sha256": "514eeaf56eba562c039675aabe22e05a13206ccff941c3425762448b2f265385",
+   "release": "G Part UPDATE 2025-09",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "J.C. Tchang [tchang]"
+  },
   "parts/32198.dat": {
    "sha256": "07f4bc7d402aa310fed6e6fc7921006a49df84820cf04caf470ea02d24339c5f",
    "release": "G Part UPDATE 2026-07",
@@ -8011,6 +8005,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
   },
+  "parts/s/32195s01.dat": {
+   "sha256": "0be56d7e18466dd9b7dba138b0f0a24e6ecbb1cca975d589640f9ff140bd8772",
+   "release": "G Subpart UPDATE 2025-09",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "J.C. Tchang [tchang]"
+  },
   "parts/s/32198as01.dat": {
    "sha256": "c46e73396bff86622a27771a760865a0b373a0f1b8d04a46f97ff29bbe92fbed",
    "release": "G Subpart UPDATE 2026-07",
@@ -9516,6 +9516,18 @@
    "release": "G Part UPDATE 2022-03",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "LDConfig.ldr": {
+   "sha256": "0178cd14fba46acb9df049c835e60e223b134d178f7e928ace0be1dfbe78895d"
+  },
+  "CAreadme.txt": {
+   "sha256": "c67a824bdab18e646337b5b26f7f039c84b0be71273c0c878e2749e648820497"
+  },
+  "CAlicense.txt": {
+   "sha256": "487265d3a122b2e54e460954cd2eca34ac2e545bcb1b2ac23cbda2a27e49a6c2"
+  },
+  "CAlicense4.txt": {
+   "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
   }
  }
 }

@@ -1,0 +1,1272 @@
+{
+  "status": "FAIL",
+  "scope": "Exported native program through registered compiler, Scratch VM, Robot Lab API, SPIKE controller and native Jolt rope/worm physics; free chassis, ordinary contacts, no output posing",
+  "execution": "Fresh native execution",
+  "modelSha256": "5120c9ff97cdd25a92df3142dda13699521f39c2a8d1b430c87b39b6defb1c88",
+  "programSha256": "9211d9c1e3a2b43577f8565512fafe292a44574e463504f3ca04d0be985c7a4d",
+  "markersSha256": "a80a3a38cc4d875248331be60347518267246769099ecd8dd50eed7c1c46dc6f",
+  "contractSha256": "35b6d397ebbc8a272c69fc22787d2df4b73e9b01fdae67fecb22f6a6a5cafae1",
+  "checkSha256": "1aacebc16f6cf38ae56678e320266b0a1fd74311d1bb6d79374e27d9779bca7b",
+  "physicalHingeObserverSha256": "72f4ba6995f525053b1ebeb9d55d6c4727541d63bf77349531bc165c89c0ef65",
+  "forceObserverSha256": "a0e81b4ed655d874bdf33a57c10a99b5bbfd215397942401e4ddce213904dc08",
+  "nativeDefaults": {
+    "linearDampingPerSecond": 0.05000000074505806,
+    "angularDampingPerSecond": 0.05000000074505806,
+    "gravityFactor": 1
+  },
+  "runtime": {
+    "node": "v22.23.4",
+    "BW_INTEGRATED_ROOT": null,
+    "frameMs": 33.333333333333336,
+    "physicsStepMs": 5,
+    "coldMs": 1000,
+    "afterMs": 1000,
+    "timeLimitMs": 160000,
+    "autoPorts": false,
+    "rescueLoose": false,
+    "breakLoops": true
+  },
+  "topology": {
+    "dynamicModelBodies": 6,
+    "joints": [
+      {
+        "id": "j0",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b1",
+        "point": [
+          0,
+          0,
+          -0.064
+        ],
+        "axis": [
+          -1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j1",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b2",
+        "point": [
+          0,
+          -0.016,
+          -0.064
+        ],
+        "axis": [
+          0,
+          0,
+          -1
+        ],
+        "motor": {
+          "port": "A",
+          "maxTorqueNm": 0.10440000000000002,
+          "maxSpeedRadPerSec": 19.37315469713706,
+          "deviceId": 48
+        }
+      },
+      {
+        "id": "j2",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b4",
+        "point": [
+          0,
+          0,
+          0.064
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j3",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b5",
+        "point": [
+          0,
+          -0.016,
+          0.064
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "motor": {
+          "port": "B",
+          "maxTorqueNm": 0.10440000000000002,
+          "maxSpeedRadPerSec": 19.37315469713706,
+          "deviceId": 48
+        }
+      }
+    ],
+    "couplings": [
+      {
+        "wormJoint": "j1",
+        "wheelJoint": "j0",
+        "ratio": 0.041666666666666664,
+        "holdTorqueNm": 0.1,
+        "parts": [
+          "left_worm",
+          "left_wheel"
+        ],
+        "kind": "worm",
+        "id": "c0"
+      },
+      {
+        "wormJoint": "j3",
+        "wheelJoint": "j2",
+        "ratio": 0.041666666666666664,
+        "holdTorqueNm": 0.1,
+        "parts": [
+          "right_worm",
+          "right_wheel"
+        ],
+        "kind": "worm",
+        "id": "c1"
+      },
+      {
+        "drumJoint": "j0",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.057056369785794786,
+              0.09286583990980812,
+              -0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "left_drum_front",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c2"
+      },
+      {
+        "drumJoint": "j0",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.009056369785794785,
+              0.09286583990980812,
+              -0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "left_drum_rear",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c3"
+      },
+      {
+        "drumJoint": "j2",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.057056369785794786,
+              0.09286583990980812,
+              0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "right_drum_front",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c4"
+      },
+      {
+        "drumJoint": "j2",
+        "drumSign": 1,
+        "radiusM": 0.0028,
+        "points": [
+          {
+            "body": "b0",
+            "local": [
+              -0.009056369785794785,
+              0.09286583990980812,
+              0.064
+            ]
+          }
+        ],
+        "hook": {
+          "body": "b3",
+          "local": [
+            0,
+            0.015233027522935774,
+            0
+          ]
+        },
+        "lengthM": 0.1211280314378136,
+        "parts": [
+          "right_drum_rear",
+          "payload_tie"
+        ],
+        "kind": "rope",
+        "id": "c5"
+      }
+    ],
+    "bodyFriction": [
+      {
+        "id": "ground",
+        "friction": 0.8
+      },
+      {
+        "id": "b0",
+        "friction": 0.4
+      },
+      {
+        "id": "b1",
+        "friction": 0.4
+      },
+      {
+        "id": "b2",
+        "friction": 0.4
+      },
+      {
+        "id": "b3",
+        "friction": 0.4
+      },
+      {
+        "id": "b4",
+        "friction": 0.4
+      },
+      {
+        "id": "b5",
+        "friction": 0.4
+      }
+    ],
+    "noCollide": [
+      [
+        "b0",
+        "b1"
+      ],
+      [
+        "b0",
+        "b2"
+      ],
+      [
+        "b0",
+        "b4"
+      ],
+      [
+        "b0",
+        "b5"
+      ],
+      [
+        "b1",
+        "b2"
+      ],
+      [
+        "b4",
+        "b5"
+      ]
+    ],
+    "noCollideParts": [
+      [
+        "b0",
+        "b1",
+        [
+          [
+            "module_upper_frame_pin_-1_-1",
+            "left_drum_front"
+          ],
+          [
+            "module_upper_frame_pin_-1_1",
+            "left_drum_rear"
+          ],
+          [
+            "module_upper_tie_-1_-1",
+            "left_drum_front"
+          ],
+          [
+            "module_upper_tie_-1_1",
+            "left_drum_rear"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b0",
+        "b2",
+        [
+          [
+            "module_column_pin_-1_-1",
+            "left_motor"
+          ],
+          [
+            "module_column_pin_-1_1",
+            "left_motor"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b0",
+        "b4",
+        [
+          [
+            "module_upper_frame_pin_1_-1",
+            "right_drum_front"
+          ],
+          [
+            "module_upper_frame_pin_1_1",
+            "right_drum_rear"
+          ],
+          [
+            "module_upper_tie_1_-1",
+            "right_drum_front"
+          ],
+          [
+            "module_upper_tie_1_1",
+            "right_drum_rear"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b0",
+        "b5",
+        [
+          [
+            "module_column_pin_1_-1",
+            "right_motor"
+          ],
+          [
+            "module_column_pin_1_1",
+            "right_motor"
+          ]
+        ],
+        "collide"
+      ]
+    ],
+    "originalHingeInterfaces": [
+      {
+        "id": "left_frame_-1:h5|left_output_axle:a",
+        "a": {
+          "node": "left_frame_-1",
+          "part": "left_frame_-1",
+          "connector": "h5",
+          "body": "b0"
+        },
+        "b": {
+          "node": "left_output_axle",
+          "part": "left_output_axle",
+          "connector": "a",
+          "body": "b1"
+        },
+        "sameBody": false,
+        "pointLdu": [
+          40,
+          0,
+          160
+        ],
+        "axisLdu": [
+          -1,
+          0,
+          0
+        ],
+        "pointWorld": [
+          0.016,
+          0,
+          -0.064
+        ],
+        "axisWorld": [
+          -1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "left_frame_1:h5|left_output_axle:a",
+        "a": {
+          "node": "left_frame_1",
+          "part": "left_frame_1",
+          "connector": "h5",
+          "body": "b0"
+        },
+        "b": {
+          "node": "left_output_axle",
+          "part": "left_output_axle",
+          "connector": "a",
+          "body": "b1"
+        },
+        "sameBody": false,
+        "pointLdu": [
+          -40,
+          0,
+          160
+        ],
+        "axisLdu": [
+          -1,
+          0,
+          0
+        ],
+        "pointWorld": [
+          -0.016,
+          0,
+          -0.064
+        ],
+        "axisWorld": [
+          -1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "left_worm_bearing:h5|left_worm_axle:a",
+        "a": {
+          "node": "left_worm_bearing",
+          "part": "left_worm_bearing",
+          "connector": "h5",
+          "body": "b0"
+        },
+        "b": {
+          "node": "left_worm_axle",
+          "part": "left_worm_axle",
+          "connector": "a",
+          "body": "b2"
+        },
+        "sameBody": false,
+        "pointLdu": [
+          0,
+          40,
+          100
+        ],
+        "axisLdu": [
+          0,
+          0,
+          -1
+        ],
+        "pointWorld": [
+          0,
+          -0.016,
+          -0.04
+        ],
+        "axisWorld": [
+          0,
+          0,
+          1
+        ]
+      },
+      {
+        "id": "right_frame_-1:h5|right_output_axle:a",
+        "a": {
+          "node": "right_frame_-1",
+          "part": "right_frame_-1",
+          "connector": "h5",
+          "body": "b0"
+        },
+        "b": {
+          "node": "right_output_axle",
+          "part": "right_output_axle",
+          "connector": "a",
+          "body": "b4"
+        },
+        "sameBody": false,
+        "pointLdu": [
+          -40,
+          0,
+          -160
+        ],
+        "axisLdu": [
+          1,
+          0,
+          0
+        ],
+        "pointWorld": [
+          -0.016,
+          0,
+          0.064
+        ],
+        "axisWorld": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "right_frame_1:h5|right_output_axle:a",
+        "a": {
+          "node": "right_frame_1",
+          "part": "right_frame_1",
+          "connector": "h5",
+          "body": "b0"
+        },
+        "b": {
+          "node": "right_output_axle",
+          "part": "right_output_axle",
+          "connector": "a",
+          "body": "b4"
+        },
+        "sameBody": false,
+        "pointLdu": [
+          40,
+          0,
+          -160
+        ],
+        "axisLdu": [
+          1,
+          0,
+          0
+        ],
+        "pointWorld": [
+          0.016,
+          0,
+          0.064
+        ],
+        "axisWorld": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "right_worm_bearing:h5|right_worm_axle:a",
+        "a": {
+          "node": "right_worm_bearing",
+          "part": "right_worm_bearing",
+          "connector": "h5",
+          "body": "b0"
+        },
+        "b": {
+          "node": "right_worm_axle",
+          "part": "right_worm_axle",
+          "connector": "a",
+          "body": "b5"
+        },
+        "sameBody": false,
+        "pointLdu": [
+          0,
+          40,
+          -100
+        ],
+        "axisLdu": [
+          0,
+          0,
+          -1
+        ],
+        "pointWorld": [
+          0,
+          -0.016,
+          0.04
+        ],
+        "axisWorld": [
+          0,
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "issues": [],
+  "mechanismDiagnostics": [],
+  "hubId": "b0",
+  "markers": {
+    "basePart": "hub",
+    "coordinateFrame": {
+      "part": "left_frame_-1",
+      "horizontalLocal": [
+        0,
+        0,
+        1
+      ],
+      "downLocal": [
+        -1,
+        0,
+        0
+      ],
+      "depthLocal": [
+        0,
+        -1,
+        0
+      ]
+    },
+    "tiePoint": {
+      "part": "payload_tie",
+      "local": [
+        0,
+        0,
+        -29
+      ]
+    },
+    "anchors": [
+      {
+        "id": "rope_left_front",
+        "side": "left",
+        "depth": "front",
+        "part": "left_drum_front",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "rope_left_rear",
+        "side": "left",
+        "depth": "rear",
+        "part": "left_drum_rear",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "rope_right_front",
+        "side": "right",
+        "depth": "front",
+        "part": "right_drum_front",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "rope_right_rear",
+        "side": "right",
+        "depth": "rear",
+        "part": "right_drum_rear",
+        "local": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "physicalHingeInterfaces": [
+      "left_frame_-1:h5|left_output_axle:a",
+      "left_frame_1:h5|left_output_axle:a",
+      "left_worm_bearing:h5|left_worm_axle:a",
+      "right_frame_-1:h5|right_output_axle:a",
+      "right_frame_1:h5|right_output_axle:a",
+      "right_worm_bearing:h5|right_worm_axle:a"
+    ],
+    "approvedIssues": []
+  },
+  "literalUnsupportedFieldIsNotEvidence": true,
+  "lifecycleScope": "Fixed-session host only; browser/app installation, reset/load/stop lifecycle and physical hardware transport untested",
+  "failures": [
+    "Stage 0 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+    "Stage 0 vertical rope impulse supplies near-weight support within the preregistered band",
+    "Stage 1 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+    "Stage 1 vertical rope impulse supplies near-weight support within the preregistered band",
+    "Stage 2 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+    "Stage 2 vertical rope impulse supplies near-weight support within the preregistered band",
+    "Stage 2 both winch sides supply the preregistered minimum upward weight impulse",
+    "Stage 3 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+    "Stage 3 vertical rope impulse supplies near-weight support within the preregistered band",
+    "Stage 4 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+    "Stage 4 vertical rope impulse supplies near-weight support within the preregistered band",
+    "Stage 5 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+    "Stage 5 vertical rope impulse supplies near-weight support within the preregistered band",
+    "Stage 5 both winch sides supply the preregistered minimum upward weight impulse"
+  ],
+  "metrics": {
+    "frames": 2031,
+    "coldFrames": 31,
+    "programFrames": 1970,
+    "afterFrames": 30,
+    "finishedAtMs": 66666.66666666842,
+    "programDurationMs": 65666.66666666842,
+    "xRangeMm": [
+      -16.117490114470282,
+      16.13644702462443
+    ],
+    "downRangeMm": [
+      83.98292302821456,
+      100.4690520518424
+    ],
+    "depthRangeMm": [
+      -0.14470377756109054,
+      0.2538173605166963
+    ],
+    "maxLawErrorMm": 0.2639013396276568,
+    "maxWindingErrorMm": 0.00736536383628561,
+    "maxAnchorErrorMm": 0.0002860448291357491,
+    "maxRopeExtensionMm": 0.23169593475979866,
+    "maxRopeSlackMm": 0.034877218018252165,
+    "maxHingeGapMm": 0.001202334090815215,
+    "maxOriginalHingeGapMm": 0.001202334090815215,
+    "maxAxisMismatchDeg": 0.029369747374107476,
+    "maxBaseTiltDeg": 0.02444926063356567,
+    "coldDriftMm": 0.2418012912296002,
+    "returnErrorMm": 0.1872252564156028,
+    "finalEncoderADeg": -0.27840680818315844,
+    "finalEncoderBDeg": 0.27575109189564,
+    "stageOrder": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "stages": [
+      {
+        "stage": 0,
+        "frames": 16,
+        "endMs": 4400.000000000005,
+        "arrivedCoverageMs": 3000.000000000005,
+        "settledCoverageMs": 499.9999999999982,
+        "target": {
+          "xMm": 0,
+          "downMm": 100,
+          "depthMm": 0
+        },
+        "meanXmm": -0.01590460148018881,
+        "meanDownMm": 100.07119908171333,
+        "meanDepthMm": -0.0027925341368150694,
+        "maxPositionErrorMm": 0.2002364683494423,
+        "targetADeg": 0,
+        "targetBDeg": 0,
+        "maxMotorErrorDeg": 0.015494567611704908,
+        "minLeftPairTensionN": 0,
+        "minRightPairTensionN": 0,
+        "maxIndividualSlackMm": 0.020568524908455288
+      },
+      {
+        "stage": 1,
+        "frames": 16,
+        "endMs": 14600.000000000087,
+        "arrivedCoverageMs": 3000.0000000000546,
+        "settledCoverageMs": 500.0000000000091,
+        "target": {
+          "xMm": -16,
+          "downMm": 100,
+          "depthMm": 0
+        },
+        "meanXmm": -15.972675063728525,
+        "meanDownMm": 100.06632294067063,
+        "meanDepthMm": 0.02438247713808174,
+        "maxPositionErrorMm": 0.195527649845839,
+        "targetADeg": 3751.0452161867906,
+        "targetBDeg": -4500.476269579936,
+        "maxMotorErrorDeg": 0.28328076370416966,
+        "minLeftPairTensionN": 0,
+        "minRightPairTensionN": 0,
+        "maxIndividualSlackMm": 0.02803398267607804
+      },
+      {
+        "stage": 2,
+        "frames": 16,
+        "endMs": 24799.999999999814,
+        "arrivedCoverageMs": 2999.999999999891,
+        "settledCoverageMs": 499.9999999999818,
+        "target": {
+          "xMm": 0,
+          "downMm": 100,
+          "depthMm": 0
+        },
+        "meanXmm": -0.01685641132696715,
+        "meanDownMm": 100.07036739605904,
+        "meanDepthMm": -0.035490194382701075,
+        "maxPositionErrorMm": 0.20755797747609622,
+        "targetADeg": 0,
+        "targetBDeg": 0,
+        "maxMotorErrorDeg": 0.2807169862661546,
+        "minLeftPairTensionN": 0,
+        "minRightPairTensionN": 0,
+        "maxIndividualSlackMm": 0.030279054024589414
+      },
+      {
+        "stage": 3,
+        "frames": 16,
+        "endMs": 37499.99999999987,
+        "arrivedCoverageMs": 3000.0000000002183,
+        "settledCoverageMs": 500.0000000000364,
+        "target": {
+          "xMm": 0,
+          "downMm": 84,
+          "depthMm": 0
+        },
+        "meanXmm": -0.00419259641613122,
+        "meanDownMm": 84.02109910540159,
+        "meanDepthMm": -0.030869745122952097,
+        "maxPositionErrorMm": 0.13719915647929454,
+        "targetADeg": 6301.949924448188,
+        "targetBDeg": 6301.949924448188,
+        "maxMotorErrorDeg": 0.4074268557424148,
+        "minLeftPairTensionN": 0.05075869266875088,
+        "minRightPairTensionN": 0.05075859953649342,
+        "maxIndividualSlackMm": 0.03023643997568115
+      },
+      {
+        "stage": 4,
+        "frames": 16,
+        "endMs": 56433.33333333458,
+        "arrivedCoverageMs": 3000.0000000002183,
+        "settledCoverageMs": 500.0000000000364,
+        "target": {
+          "xMm": 16,
+          "downMm": 100,
+          "depthMm": 0
+        },
+        "meanXmm": 15.99286764217474,
+        "meanDownMm": 99.99783215465833,
+        "meanDepthMm": 0.032815411059219986,
+        "maxPositionErrorMm": 0.09640032901736863,
+        "targetADeg": -4500.476269579936,
+        "targetBDeg": 3751.0452161867906,
+        "maxMotorErrorDeg": 0.3113286769089427,
+        "minLeftPairTensionN": 0,
+        "minRightPairTensionN": 0.061528588412329555,
+        "maxIndividualSlackMm": 0.026395298798831845
+      },
+      {
+        "stage": 5,
+        "frames": 16,
+        "endMs": 66633.33333333509,
+        "arrivedCoverageMs": 2999.9999999999854,
+        "settledCoverageMs": 499.99999999992724,
+        "target": {
+          "xMm": 0,
+          "downMm": 100,
+          "depthMm": 0
+        },
+        "meanXmm": 0.04265788003523611,
+        "meanDownMm": 100.0232095815186,
+        "meanDepthMm": 0.004983272860055421,
+        "maxPositionErrorMm": 0.18248964557288946,
+        "targetADeg": 0,
+        "targetBDeg": 0,
+        "maxMotorErrorDeg": 0.2784913851349903,
+        "minLeftPairTensionN": 0,
+        "minRightPairTensionN": 0,
+        "maxIndividualSlackMm": 0.030384766550071163
+      }
+    ],
+    "finalVariables": {
+      "directionA": "1",
+      "directionB": "1",
+      "targetA": 0,
+      "targetB": 0,
+      "speedA": 720,
+      "speedB": 600.0853295409092,
+      "deltaA": 4500.2,
+      "deltaB": -3750.7,
+      "moveSeconds": 6.250277777777778,
+      "stage": "6",
+      "arrived": "0",
+      "arrivedA": "1",
+      "arrivedB": "1",
+      "correctionsA": "0",
+      "correctionsB": "0",
+      "completed": "1",
+      "failed": "0",
+      "Cable Compass watchdog": "Cable Compass watchdog",
+      "Cable Compass move": "Cable Compass move"
+    }
+  },
+  "negativeControl": {
+    "kind": "Altered recording with frozen payload; observer sensitivity test only, not a physical comparison",
+    "rejected": true,
+    "sensitivities": {
+      "waypoint": true,
+      "lateralExcursion": true,
+      "lift": true,
+      "ropeGeometry": true
+    },
+    "failures": [
+      "Actual tiepoint agrees with independent paid-out-length geometry within2mm throughout",
+      "No recorded rope exceeds its paid-out length by more than1mm",
+      "Stage 1 actual tiepoint reaches its Cartesian target within2mm",
+      "Stage 1 each rope has at most2mm geometric slack",
+      "Stage 3 actual tiepoint reaches its Cartesian target within2mm",
+      "Stage 4 actual tiepoint reaches its Cartesian target within2mm",
+      "Stage 4 each rope has at most2mm geometric slack",
+      "Useful signed left/right excursions are each at least14mm",
+      "Useful settled lift is at least14mm"
+    ]
+  },
+  "forceSupport": {
+    "failures": [
+      "Stage 0 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 0 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 1 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 1 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 2 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 2 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 2 both winch sides supply the preregistered minimum upward weight impulse",
+      "Stage 3 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 3 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 4 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 4 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 5 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 5 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 5 both winch sides supply the preregistered minimum upward weight impulse"
+    ],
+    "metrics": {
+      "physicsIntervals": 13533,
+      "physicsDurationMs": 67665,
+      "payloadBody": "b3",
+      "payloadMassKg": 0.010899999999999998,
+      "gravityMps2": [
+        0,
+        -9.81,
+        0
+      ],
+      "payloadWeightN": 0.10692899999999998,
+      "method": "Post-call observations of every unchanged native5ms step; pre-step real anchor/tie geometry, post-step Jolt impulse/dt, and actual world COM velocities",
+      "windowMs": 500,
+      "relativeResidualLimit": 0.05,
+      "verticalSupportRange": [
+        0.9,
+        1.1
+      ],
+      "minimumSideWeightFraction": 0.25,
+      "linearDampingPerSecond": 0.05000000074505806,
+      "zeroRunScope": "Diagnostic only; no continuous individual or side-pair positive-tension claim",
+      "stages": [
+        {
+          "stage": 0,
+          "steps": 100,
+          "startMs": 3900,
+          "endMs": 4400,
+          "durationMs": 500.00000000000034,
+          "ropeImpulseNs": [
+            -0.0009255899196087118,
+            0.03305911896968688,
+            0.0024563561880581474
+          ],
+          "gravityImpulseNs": [
+            0,
+            -0.053464500000000026,
+            0
+          ],
+          "dragImpulseNs": [
+            8.575327457491099e-10,
+            0.00001672961207948032,
+            6.987602747998271e-9
+          ],
+          "momentumChangeNs": [
+            -2.0017069764435288e-7,
+            -2.626780420541763e-7,
+            5.205138586461543e-7
+          ],
+          "residualNs": [
+            -0.0009253888913783216,
+            -0.020388388740191613,
+            0.0024558426618022495
+          ],
+          "weightImpulseNs": 0.053464500000000026,
+          "relativeResidual": 0.384490688654647,
+          "verticalSupportFraction": 0.618337756262321,
+          "sideUpwardWeightFractions": {
+            "left": 0.27336294679428585,
+            "right": 0.3449748094680354
+          },
+          "longestZeroRunMs": {
+            "left": 10,
+            "right": 10
+          }
+        },
+        {
+          "stage": 1,
+          "steps": 100,
+          "startMs": 14100,
+          "endMs": 14600,
+          "durationMs": 500.00000000000034,
+          "ropeImpulseNs": [
+            0.0004634426744017329,
+            0.03324073177823299,
+            0.003987833785496162
+          ],
+          "gravityImpulseNs": [
+            0,
+            -0.053464500000000026,
+            0
+          ],
+          "dragImpulseNs": [
+            -1.5801409159726028e-7,
+            0.000016575258282702808,
+            -1.217885036190935e-7
+          ],
+          "momentumChangeNs": [
+            0.000004230095073580741,
+            3.8680955767631525e-7,
+            -0.000004376803338527679
+          ],
+          "residualNs": [
+            0.0004590545652365549,
+            -0.020207579773042012,
+            0.003992088800331071
+          ],
+          "weightImpulseNs": 0.053464500000000026,
+          "relativeResidual": 0.3853631276360252,
+          "verticalSupportFraction": 0.6217346422061923,
+          "sideUpwardWeightFractions": {
+            "left": 0.3302291721451864,
+            "right": 0.29150547006100597
+          },
+          "longestZeroRunMs": {
+            "left": 10,
+            "right": 10
+          }
+        },
+        {
+          "stage": 2,
+          "steps": 100,
+          "startMs": 24300,
+          "endMs": 24800,
+          "durationMs": 500.00000000000034,
+          "ropeImpulseNs": [
+            -0.0016039289998861683,
+            0.032911252000707915,
+            -0.004241781215872163
+          ],
+          "gravityImpulseNs": [
+            0,
+            -0.053464500000000026,
+            0
+          ],
+          "dragImpulseNs": [
+            -1.4479401537055761e-9,
+            0.000016747506313397432,
+            -1.2531328346256757e-9
+          ],
+          "momentumChangeNs": [
+            -7.426979020237921e-7,
+            6.738916039466857e-7,
+            0.000002590509410947561
+          ],
+          "residualNs": [
+            -0.0016031877499242983,
+            -0.02053717438458266,
+            -0.004244372978415945
+          ],
+          "weightImpulseNs": 0.053464500000000026,
+          "relativeResidual": 0.39338938167142135,
+          "verticalSupportFraction": 0.6155720524966641,
+          "sideUpwardWeightFractions": {
+            "left": 0.3697277603286459,
+            "right": 0.24584429216801834
+          },
+          "longestZeroRunMs": {
+            "left": 10,
+            "right": 10
+          }
+        },
+        {
+          "stage": 3,
+          "steps": 100,
+          "startMs": 37000,
+          "endMs": 37500,
+          "durationMs": 500.00000000000034,
+          "ropeImpulseNs": [
+            -0.00001372795568167863,
+            0.04694997748312057,
+            -0.004183619861839956
+          ],
+          "gravityImpulseNs": [
+            0,
+            -0.053464500000000026,
+            0
+          ],
+          "dragImpulseNs": [
+            -5.672833016654914e-9,
+            0.000014934441699992479,
+            1.8053834005610488e-9
+          ],
+          "momentumChangeNs": [
+            -0.000007319932337850331,
+            4.1104098781943316e-7,
+            -5.486535839736461e-7
+          ],
+          "residualNs": [
+            -0.000006413696176844953,
+            -0.006499999116167284,
+            -0.004183069402872581
+          ],
+          "weightImpulseNs": 0.053464500000000026,
+          "relativeResidual": 0.1445761106567501,
+          "verticalSupportFraction": 0.8781523718190677,
+          "sideUpwardWeightFractions": {
+            "left": 0.4904051592807911,
+            "right": 0.38774721253827704
+          },
+          "longestZeroRunMs": {
+            "left": 0,
+            "right": 0
+          }
+        },
+        {
+          "stage": 4,
+          "steps": 100,
+          "startMs": 55930,
+          "endMs": 56430,
+          "durationMs": 500.00000000000034,
+          "ropeImpulseNs": [
+            -0.0005594036100103432,
+            0.04691440294779224,
+            -0.0002098472398829568
+          ],
+          "gravityImpulseNs": [
+            0,
+            -0.053464500000000026,
+            0
+          ],
+          "dragImpulseNs": [
+            4.618037262036469e-9,
+            0.000014400139435545518,
+            -1.680558456105718e-8
+          ],
+          "momentumChangeNs": [
+            -0.000006720886490074917,
+            3.231339137812483e-8,
+            0.000003103447378816781
+          ],
+          "residualNs": [
+            -0.0005526781054830063,
+            -0.006535729226163617,
+            -0.00021296749284633465
+          ],
+          "weightImpulseNs": 0.053464500000000026,
+          "relativeResidual": 0.12274522490374938,
+          "verticalSupportFraction": 0.8774869857156098,
+          "sideUpwardWeightFractions": {
+            "left": 0.3322386286805677,
+            "right": 0.545248357035042
+          },
+          "longestZeroRunMs": {
+            "left": 5,
+            "right": 0
+          }
+        },
+        {
+          "stage": 5,
+          "steps": 100,
+          "startMs": 66130,
+          "endMs": 66630,
+          "durationMs": 500.00000000000034,
+          "ropeImpulseNs": [
+            -0.0015927998936995306,
+            0.03327231122140593,
+            -0.004219550908991541
+          ],
+          "gravityImpulseNs": [
+            0,
+            -0.053464500000000026,
+            0
+          ],
+          "dragImpulseNs": [
+            2.8424998154375895e-10,
+            0.000016699094629359765,
+            -1.2908207746523302e-8
+          ],
+          "momentumChangeNs": [
+            -9.865242886007761e-7,
+            1.738184626418615e-8,
+            -0.0000027630864382444994
+          ],
+          "residualNs": [
+            -0.0015918130851609483,
+            -0.020175507065811005,
+            -0.0042168007307610425
+          ],
+          "weightImpulseNs": 0.053464500000000026,
+          "relativeResidual": 0.38666481843245665,
+          "verticalSupportFraction": 0.6223253041065737,
+          "sideUpwardWeightFractions": {
+            "left": 0.37275826490945263,
+            "right": 0.2495670391971214
+          },
+          "longestZeroRunMs": {
+            "left": 10,
+            "right": 10
+          }
+        }
+      ]
+    }
+  },
+  "zeroTensionControl": {
+    "kind": "Altered recording with zero rope tensions; observer sensitivity only, not a physical comparison",
+    "rejected": true,
+    "sensitivities": {
+      "momentumBalance": true,
+      "verticalSupport": true,
+      "bothSides": true
+    },
+    "failures": [
+      "Stage 0 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 0 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 0 both winch sides supply the preregistered minimum upward weight impulse",
+      "Stage 1 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 1 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 1 both winch sides supply the preregistered minimum upward weight impulse",
+      "Stage 2 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 2 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 2 both winch sides supply the preregistered minimum upward weight impulse",
+      "Stage 3 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 3 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 3 both winch sides supply the preregistered minimum upward weight impulse",
+      "Stage 4 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 4 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 4 both winch sides supply the preregistered minimum upward weight impulse",
+      "Stage 5 rope/gravity/drag impulse agrees with observed payload momentum within preregistered relative bound",
+      "Stage 5 vertical rope impulse supplies near-weight support within the preregistered band",
+      "Stage 5 both winch sides supply the preregistered minimum upward weight impulse"
+    ]
+  },
+  "noninterference": {
+    "status": "PASS",
+    "failures": [],
+    "reference": "evidence/development/native-r1/recording.json.gz",
+    "frames": 2031,
+    "tolerance": 1e-9,
+    "maxTimeDifferenceMs": 0,
+    "maxPositionDifferenceM": 0,
+    "maxQuaternionDifference": 0,
+    "maxJointDifference": 0,
+    "referenceRecordingSha256": "51649529f63fbbf5118a1870b2078135e56853eba9e230f387600e7f80f476ac"
+  },
+  "recordingSha256": "307b7c2d55b742494abb36bff6550fed899b9b5c431c0f6a8614c066270a718e"
+}

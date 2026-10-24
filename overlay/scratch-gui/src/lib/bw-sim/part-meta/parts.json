@@ -184004,6 +184004,248 @@
      ]
     }
    }
+  },
+  {
+   "part": "32195a.dat",
+   "name": "Technic suspension arm 2 x 6.5 type 2",
+   "nameDe": "Technic Suspension Arm 2 x 6,5 Typ 2",
+   "nameDeGenerated": true,
+   "category": "other",
+   "massGrams": 1.9100000000000001,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      -15,
+      0,
+      -30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      15,
+      0,
+      -30
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      -15,
+      0,
+      -10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      15,
+      0,
+      -10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      -15,
+      0,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      15,
+      0,
+      10
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      -15,
+      0,
+      50
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      15,
+      0,
+      50
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "bs0",
+     "type": "ballsocket",
+     "position": [
+      0,
+      2,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      10,
+      45
+     ],
+     "position": [
+      -15,
+      0,
+      5
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      5,
+      10,
+      45
+     ],
+     "position": [
+      15,
+      0,
+      5
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 10,
+     "halfHeight": 5,
+     "position": [
+      -15,
+      0,
+      50
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 10,
+     "halfHeight": 5,
+     "position": [
+      15,
+      0,
+      50
+     ],
+     "rotation": [
+      0,
+      0,
+      -0.7071067811865476,
+      0.7071067811865476
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      10,
+      4
+     ],
+     "position": [
+      0,
+      0,
+      22
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      8,
+      5
+     ],
+     "position": [
+      0,
+      0,
+      -45
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 10,
+     "halfHeight": 7.5,
+     "position": [
+      0,
+      -0.5,
+      -60
+     ]
+    }
+   ],
+   "derived": true,
+   "catalogue": true
   }
  ]
 }

@@ -294,6 +294,419 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "rod-ratio.ldr": {
+        "pieces": 167,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor turns two equal-radius cranks on the same shaft through a 24:1 worm drive.",
+            "de": "Ein Motor dreht über einen Schneckenantrieb mit 24:1-Untersetzung zwei Kurbeln mit gleichem Radius auf derselben Welle."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Slider-crank linkage",
+            "de": "Schubkurbelgetriebe"
+        },
+        "keywords": [
+            "Slider-crank linkage",
+            "Schubkurbelgetriebe",
+            "slider crank",
+            "connecting rod ratio",
+            "connecting rod length",
+            "Pleuelstangenverhältnis",
+            "Schubkurbel"
+        ]
+    },
+    "vernier-drive.ldr": {
+        "pieces": 176,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor drives two real gear paths into a differential.",
+            "de": "Ein Motor treibt zwei echte Zahnradwege an, die in ein Differenzial führen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Differential reduction through opposing gear ratios",
+            "de": "Differenzial-Untersetzung durch gegenläufige Übersetzungen"
+        },
+        "keywords": [
+            "Differential reduction through opposing gear ratios",
+            "Differenzial-Untersetzung durch gegenläufige Übersetzungen",
+            "differential reducer",
+            "vernier gear",
+            "mechanical subtraction",
+            "25:1",
+            "Verniergetriebe",
+            "Differenzialuntersetzung"
+        ]
+    },
+    "line-turner.ldr": {
+        "pieces": 145,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor moves a horizontal rack.",
+            "de": "Ein Motor bewegt eine waagerechte Zahnstange."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scott–Russell straight-line linkage",
+            "de": "Scott-Russell-Geradführung"
+        },
+        "keywords": [
+            "Scott–Russell straight-line linkage",
+            "Scott-Russell-Geradführung",
+            "Scott Russell",
+            "Scott–Russell",
+            "right angle motion",
+            "straight line linkage",
+            "Geradführung",
+            "rechtwinklige Bewegung"
+        ]
+    },
+    "dune-strider.ldr": {
+        "pieces": 202,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor drives two Jansen-topology legs with their cranks half a turn apart.",
+            "de": "Ein Motor treibt zwei Beine mit Jansen-Topologie an."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Jansen walking linkage",
+            "de": "Jansen-Laufmechanismus"
+        },
+        "keywords": [
+            "Jansen walking linkage",
+            "Jansen-Laufmechanismus",
+            "Theo Jansen",
+            "Jansen linkage",
+            "walking linkage",
+            "Strandbeest",
+            "gait",
+            "Beinmechanismus",
+            "Laufgetriebe"
+        ]
+    },
+    "atlas-six.ldr": {
+        "pieces": 676,
+        "motors": 6,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Six independently powered small linear actuators connect a free-standing Technic base to a raised open platform.",
+            "de": "Sechs einzeln angetriebene kleine Linearaktuatoren verbinden einen frei stehenden Technic-Unterbau mit einer erhöhten offenen Plattform."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Stewart platform / Gough–Stewart hexapod",
+            "de": "Stewart-Plattform / Gough-Stewart-Hexapod"
+        },
+        "keywords": [
+            "Stewart platform / Gough–Stewart hexapod",
+            "Stewart-Plattform / Gough-Stewart-Hexapod",
+            "Stewart platform",
+            "Gough Stewart",
+            "hexapod",
+            "parallel manipulator",
+            "six degrees of freedom",
+            "6DOF",
+            "Hexapod",
+            "Parallelkinematik"
+        ]
+    },
+    "oblique.ldr": {
+        "pieces": 291,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A two-motor adjustable-angle trammel.",
+            "de": "Ein Ellipsenzirkel mit zwei Motoren und verstellbarem Führungswinkel."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Oblique trammel / trammel of Archimedes",
+            "de": "Schiefer Ellipsenzirkel / Ellipsenzirkel des Archimedes"
+        },
+        "keywords": [
+            "Oblique trammel / trammel of Archimedes",
+            "Schiefer Ellipsenzirkel / Ellipsenzirkel des Archimedes",
+            "oblique trammel",
+            "trammel of Archimedes",
+            "ellipsograph",
+            "ellipse",
+            "Archimedes",
+            "Ellipsenzirkel",
+            "schiefe Führung"
+        ]
+    },
+    "cable-compass.ldr": {
+        "pieces": 175,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two worm winches set four rope lengths and position a passive payload. Compare equal and unequal winding, independent Cartesian arrivals, load support and return. 175 rigid pieces plus four cords.",
+            "de": "Zwei Schneckenwinden bestimmen vier Seillängen und positionieren eine passive Last. Vergleiche gleiches und ungleiches Aufwickeln, kartesische Zielpositionen, Lastabstützung und Rückkehr. 175 feste Teile plus vier Schnüre."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cable-driven parallel robot — inverse kinematics",
+            "de": "Seilroboter — inverse Kinematik"
+        },
+        "keywords": [
+            "Cable-driven parallel robot — inverse kinematics",
+            "Seilroboter — inverse Kinematik",
+            "cable robot",
+            "two-winch positioner",
+            "parallel cable robot",
+            "circle intersection",
+            "trilateration",
+            "rope winding",
+            "Seillängensteuerung",
+            "Seilkinematik",
+            "Kreisschnitt"
+        ]
+    },
+    "cable-compass-control.ldr": {
+        "pieces": 174,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The left worm is physically removed while both motors execute the same route. Observe the loss of passive support and positioning despite successful motor arrivals. 174 rigid pieces plus four cords.",
+            "de": "Die linke Schnecke ist mechanisch entfernt; beide Motoren fahren dieselbe Folge. Beobachte den Verlust von Abstützung und Positionierung trotz erreichter Motorwinkel. 174 feste Teile plus vier Schnüre."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cable-driven parallel robot — inverse kinematics",
+            "de": "Seilroboter — inverse Kinematik"
+        },
+        "keywords": [
+            "Cable-driven parallel robot — inverse kinematics",
+            "Seilroboter — inverse Kinematik",
+            "cable robot",
+            "two-winch positioner",
+            "parallel cable robot",
+            "circle intersection",
+            "trilateration",
+            "rope winding",
+            "Seillängensteuerung",
+            "Seilkinematik",
+            "Kreisschnitt"
+        ]
+    },
+    "rise-ratio.ldr": {
+        "pieces": 182,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A rack drives a scissor lift through equal horizontal steps. Measure the decreasing vertical increments, level deck and return; compare the disconnected-drive control.",
+            "de": "Eine Zahnstange treibt einen Scherenhubtisch in gleich großen waagerechten Schritten. Miss die abnehmenden Hubschritte, die waagerechte Plattform und die Rückkehr; vergleiche den getrennten Antrieb."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scissor lift — changing displacement ratio",
+            "de": "Scherenhubtisch — veränderliches Wegverhältnis"
+        },
+        "keywords": [
+            "Scissor lift — changing displacement ratio",
+            "Scherenhubtisch — veränderliches Wegverhältnis",
+            "scissor linkage",
+            "scissor mechanism",
+            "pantograph lift",
+            "Scherenmechanismus",
+            "Scherenheber",
+            "nonlinear motion ratio",
+            "virtual work"
+        ]
+    },
+    "rise-ratio-control.ldr": {
+        "pieces": 181,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "The pinion is physically removed. Motor A executes the same route while the supported scissor deck stays near its lower rest.",
+            "de": "Das Ritzel ist mechanisch entfernt. Motor A führt dieselbe Folge aus, während die abgestützte Scherenplattform nahe ihrer unteren Ruhelage bleibt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scissor lift — changing displacement ratio",
+            "de": "Scherenhubtisch — veränderliches Wegverhältnis"
+        },
+        "keywords": [
+            "Scissor lift — changing displacement ratio",
+            "Scherenhubtisch — veränderliches Wegverhältnis",
+            "scissor linkage",
+            "scissor mechanism",
+            "pantograph lift",
+            "Scherenmechanismus",
+            "Scherenheber",
+            "nonlinear motion ratio",
+            "virtual work"
+        ]
+    },
+    "cascade.ldr": {
+        "pieces": 70,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "One motor gives the support a finite pulse. Two passive pendulum links keep moving after the support returns and holds. Compare their relative elbow angle with a real brace.",
+            "de": "Ein Motor versetzt die Aufhängung einmal hin und zurück. Zwei passive Pendelglieder schwingen weiter, während die Aufhängung gehalten wird. Vergleiche den relativen Gelenkwinkel mit einer echten Versteifung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Serial double pendulum and physical bracing",
+            "de": "Serielles Doppelpendel und mechanische Versteifung"
+        },
+        "keywords": [
+            "Serial double pendulum and physical bracing",
+            "Serielles Doppelpendel und mechanische Versteifung",
+            "double pendulum",
+            "serial pendulum",
+            "Doppelpendel",
+            "coupled pendulums",
+            "two degrees of freedom",
+            "passive oscillation",
+            "Pendelkopplung",
+            "elbow brace"
+        ]
+    },
+    "cascade-control.ldr": {
+        "pieces": 76,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Six real brace pieces lock the elbow while the upper pivot remains free. Run the same pulse and observe a moving tip with no relative elbow motion.",
+            "de": "Sechs echte Versteifungsteile sperren das Gelenk zwischen den Gliedern; das obere Lager bleibt frei. Beobachte beim gleichen Impuls eine bewegte Spitze ohne relativen Gelenkwinkel."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Serial double pendulum and physical bracing",
+            "de": "Serielles Doppelpendel und mechanische Versteifung"
+        },
+        "keywords": [
+            "Serial double pendulum and physical bracing",
+            "Serielles Doppelpendel und mechanische Versteifung",
+            "double pendulum",
+            "serial pendulum",
+            "Doppelpendel",
+            "coupled pendulums",
+            "two degrees of freedom",
+            "passive oscillation",
+            "Pendelkopplung",
+            "elbow brace"
+        ]
+    },
+    "wavemaker.ldr": {
+        "pieces": 298,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Two bent, misphased Cardan joints create speed ripple. A differential reveals it as passive pointer motion. 298 placements plus two inferred crosses: 300 physical pieces.",
+            "de": "Zwei abgewinkelte, falsch ausgerichtete Kardangelenke erzeugen Drehzahlschwankungen. Ein Differenzial zeigt sie am passiven Zeiger. 298 Platzierungen plus zwei ergänzte Kreuze: 300 reale Teile."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cardan velocity ripple and differential subtraction",
+            "de": "Kardanschwankung und Differenzial-Subtraktion"
+        },
+        "keywords": [
+            "Cardan velocity ripple and differential subtraction",
+            "Kardanschwankung und Differenzial-Subtraktion",
+            "universal joint",
+            "double Cardan",
+            "Kardangelenk",
+            "fork phasing",
+            "Gabelausrichtung",
+            "angular velocity",
+            "differential",
+            "arithmetic mean",
+            "Doppel-Kardangelenk"
+        ]
+    },
+    "wavemaker-control.ldr": {
+        "pieces": 298,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "Correct phasing cancels the outer-shaft ripple; compare the same one-motor program with WaveMaker. 298 placements plus two inferred crosses: 300 physical pieces.",
+            "de": "Richtige Ausrichtung gleicht die Schwankung der äußeren Welle aus. Vergleiche dasselbe Einmotor-Programm mit WaveMaker. 298 Platzierungen plus zwei ergänzte Kreuze: 300 reale Teile."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Cardan velocity ripple and differential subtraction",
+            "de": "Kardanschwankung und Differenzial-Subtraktion"
+        },
+        "keywords": [
+            "Cardan velocity ripple and differential subtraction",
+            "Kardanschwankung und Differenzial-Subtraktion",
+            "universal joint",
+            "double Cardan",
+            "Kardangelenk",
+            "fork phasing",
+            "Gabelausrichtung",
+            "angular velocity",
+            "differential",
+            "arithmetic mean",
+            "Doppel-Kardangelenk"
+        ]
+    },
     "sine-shuttle.ldr": {
         "pieces": 105,
         "motors": 1,

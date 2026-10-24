@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {physicsAddonInteractions,addonLesson} from './lib/sim-lab-physics-addons-gate.mjs';
 import {resonanceInteractions, resonanceLesson} from './lib/sim-lab-resonance-gate.mjs';
+import {screenshotFontControls} from './lib/sim-lab-font-capture-gate.mjs';
 import {newModelsInteractions, newModelLesson} from './lib/sim-lab-new-models-gate.mjs';
 import {scalingSteeringInteractions,scalingSteeringLesson} from './lib/sim-lab-scaling-steering-gate.mjs';
 import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
@@ -798,21 +799,26 @@ try {
             await resonanceLesson(german, opts, 'de');
             await german.close();
         }
-        const newModelIds = ['sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`));
+        const newModelIds = ['rod-ratio', 'vernier-drive', 'line-turner', 'dune-strider', 'atlas-six', 'oblique', 'cable-compass', 'cable-compass-control', 'rise-ratio', 'rise-ratio-control', 'cascade', 'cascade-control', 'wavemaker', 'wavemaker-control', 'sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`) || (id==='cable-compass-control' && runExample('cable-compass.ldr')) || (id==='rise-ratio-control' && runExample('rise-ratio.ldr')) || (id==='wavemaker-control' && runExample('wavemaker.ldr')) || (id==='cascade-control' && runExample('cascade.ldr')));
         if (newModelIds.length) {
+            await screenshotFontControls(browser,resolve(artifacts,'font-capture'));
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             page.on('pageerror', error => errors.push(error.stack || error.message));
             page.on('dialog', dialog => dialog.accept());
-            const opts = {openSimLab, shotsDir: resolve(artifacts, 'new-models'), timeout: wallBudget(140000), models: newModelIds};
+            const opts = {openSimLab, shotsDir: resolve(artifacts, 'new-models'), timeout: wallBudget(140000),
+                timeoutFor: id => wallBudget(id === 'atlas-six' ? 490000 : 140000), models: newModelIds};
             await newModelsInteractions(page, opts);
-            for (const id of newModelIds) await newModelLesson(page, opts, id, 'en');
             await page.close();
-            for (const id of newModelIds) {
-                const german = await browser.newPage({viewport: {width: 1600, height: 1050}, locale: 'de-DE', serviceWorkers: 'block'});
-                german.on('pageerror', error => errors.push(error.stack || error.message));
-                german.on('dialog', dialog => dialog.accept());
-                await newModelLesson(german, opts, id, 'de');
-                await german.close();
+            // Each language reads a freshly loaded example. Release the long
+            // physics/export context before static lesson capture, and give EN
+            // the same context isolation that DE already had.
+            for (const id of newModelIds) for (const language of ['en', 'de']) {
+                const lesson = await browser.newPage({viewport: {width: 1600, height: 1050},
+                    locale: language === 'de' ? 'de-DE' : 'en-US', serviceWorkers: 'block'});
+                lesson.on('pageerror', error => errors.push(error.stack || error.message));
+                lesson.on('dialog', dialog => dialog.accept());
+                try { await newModelLesson(lesson, opts, id, language); }
+                finally { await lesson.close(); }
             }
         }
         if (process.env.BW_SIMLAB_LIBRARY && runExample('fixed-machines.ldr')) {

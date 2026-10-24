@@ -1,0 +1,1485 @@
+0 Atlas Six — six-axis Stewart platform
+0 Name: atlas-six.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/atlas-six.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // One SPIKE Prime hub; six real motor-driven small linear actuators A-F.
+0 // Stock 32195a small ball sockets use canonical external LDraw derivation.
+0 // All structure is physical; labels and groups create no constraints.
+0 // Assembly: base_socket_a_support
+0 !BW ID base_socket_a
+1 72 410 -60 -160 -1 0 0 0 0 -1 0 -1 0 32195a.dat
+0 !BW ID base_socket_a_insert
+1 0 410 -50 -160 0 -1 0 0 0 -1 1 0 0 32523.dat
+0 !BW ID base_socket_a_short_post
+1 71 380 -70 -160 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID base_socket_a_pin_30
+1 1 400 -30 -160 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID base_socket_a_pin_10
+1 1 400 -50 -160 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID base_post_a_bridge
+1 71 360 -50 -160 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID base_post_a
+1 71 340 110 -160 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID base_post_a_bridge_lock_110
+1 0 370 -110 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_post_a_bridge_lock_70
+1 0 370 -70 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_post_a_tower_lock_m30
+1 0 350 -30 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_post_a_tower_lock_p10
+1 0 350 10 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_foot_a
+1 72 360 190 -160 0 -1 0 0 0 1 -1 0 0 32526.dat
+0 !BW ID base_foot_a_lock_210
+1 0 350 210 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_foot_a_lock_250
+1 0 350 250 -160 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_foot_a_elbow_20
+1 72 380 270 -180 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID base_foot_a_elbow_40
+1 72 380 270 -200 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 STEP
+0 // Assembly: base_socket_b_support
+0 !BW ID base_socket_b
+1 72 410 -60 160 1 0 0 0 0 -1 0 1 0 32195a.dat
+0 !BW ID base_socket_b_insert
+1 0 410 -50 160 0 1 0 0 0 -1 -1 0 0 32523.dat
+0 !BW ID base_socket_b_short_post
+1 71 440 -70 160 0 -1 0 0 0 1 -1 0 0 32316.dat
+0 !BW ID base_socket_b_pin_30
+1 1 420 -30 160 -1 0 0 0 0 1 0 1 0 6558.dat
+0 !BW ID base_socket_b_pin_10
+1 1 420 -50 160 -1 0 0 0 0 1 0 1 0 6558.dat
+0 !BW ID base_post_b_bridge
+1 71 460 -50 160 0 -1 0 0 0 1 -1 0 0 32524.dat
+0 !BW ID base_post_b
+1 71 480 110 160 0 -1 0 0 0 1 -1 0 0 32278.dat
+0 !BW ID base_post_b_bridge_lock_110
+1 0 450 -110 160 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_post_b_bridge_lock_70
+1 0 450 -70 160 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_post_b_tower_lock_m30
+1 0 470 -30 160 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_post_b_tower_lock_p10
+1 0 470 10 160 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_foot_b
+1 72 460 190 160 0 1 0 0 0 1 1 0 0 32526.dat
+0 !BW ID base_foot_b_lock_210
+1 0 470 210 160 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_foot_b_lock_250
+1 0 470 250 160 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_foot_b_elbow_20
+1 72 440 270 180 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID base_foot_b_elbow_40
+1 72 440 270 200 1 0 0 0 1 0 0 0 1 15100.dat
+0 STEP
+0 // Assembly: base_socket_c_support
+0 !BW ID base_socket_c
+1 72 -70 -60 440 -1 0 0 0 0 -1 0 -1 0 32195a.dat
+0 !BW ID base_socket_c_insert
+1 0 -70 -50 440 0 -1 0 0 0 -1 1 0 0 32523.dat
+0 !BW ID base_socket_c_short_post
+1 71 -100 -70 440 0 1 0 0 0 1 1 0 0 32316.dat
+0 !BW ID base_socket_c_pin_30
+1 1 -80 -30 440 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID base_socket_c_pin_10
+1 1 -80 -50 440 1 0 0 0 0 1 0 -1 0 6558.dat
+0 !BW ID base_post_c_bridge
+1 71 -120 -50 440 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID base_post_c
+1 71 -140 110 440 0 1 0 0 0 1 1 0 0 32278.dat
+0 !BW ID base_post_c_bridge_lock_110
+1 0 -110 -110 440 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_post_c_bridge_lock_70
+1 0 -110 -70 440 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_post_c_tower_lock_m30
+1 0 -130 -30 440 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_post_c_tower_lock_p10
+1 0 -130 10 440 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_foot_c
+1 72 -120 190 440 0 -1 0 0 0 1 -1 0 0 32526.dat
+0 !BW ID base_foot_c_lock_210
+1 0 -130 210 440 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_foot_c_lock_250
+1 0 -130 250 440 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID base_foot_c_elbow_20
+1 72 -100 270 420 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID base_foot_c_elbow_40
+1 72 -100 270 400 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 STEP
+0 // Assembly: base_socket_d_support
+0 !BW ID base_socket_d
+1 72 -320 0 230 0 1 0 1 0 0 0 0 -1 32195a.dat
+0 !BW ID base_socket_d_insert
+1 0 -320 0 240 -1 0 0 0 1 0 0 0 -1 32523.dat
+0 !BW ID base_socket_d_horizontal_angle
+1 71 -320 30 260 1 0 0 0 -1 0 0 0 -1 32526.dat
+0 !BW ID base_socket_d_pin_30
+1 1 -320 10 260 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID base_socket_d_pin_10
+1 1 -320 10 240 0 1 0 -1 0 0 0 0 1 6558.dat
+0 !BW ID base_socket_d_turn_elbow_20
+1 72 -300 50 180 0 0 -1 -1 0 0 0 1 0 15100.dat
+0 !BW ID base_socket_d_turn_lock_20
+1 0 -300 50 190 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_socket_d_turn_elbow_40
+1 72 -280 50 180 0 0 -1 -1 0 0 0 1 0 15100.dat
+0 !BW ID base_socket_d_turn_lock_40
+1 0 -280 50 190 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_socket_d_vertical_angle
+1 71 -320 130 200 1 0 0 0 0 -1 0 1 0 32526.dat
+0 !BW ID base_post_d
+1 71 -320 170 220 -1 0 0 0 0 1 0 1 0 32525.dat
+0 !BW ID base_post_d_tower_lock_70
+1 0 -320 70 210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_post_d_tower_lock_110
+1 0 -320 110 210 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_foot_d
+1 72 -320 190 240 1 0 0 0 0 1 0 -1 0 32526.dat
+0 !BW ID base_foot_d_lock_210
+1 0 -320 210 230 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_foot_d_lock_250
+1 0 -320 250 230 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_foot_d_elbow_20
+1 72 -300 270 260 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_foot_d_elbow_40
+1 72 -280 270 260 0 0 1 0 1 0 -1 0 0 15100.dat
+0 STEP
+0 // Assembly: base_socket_e_support
+0 !BW ID base_socket_e
+1 72 -320 -60 -290 0 1 0 0 0 -1 -1 0 0 32195a.dat
+0 !BW ID base_socket_e_insert
+1 0 -320 -50 -290 -1 0 0 0 0 -1 0 -1 0 32523.dat
+0 !BW ID base_socket_e_short_post
+1 71 -320 -70 -320 -1 0 0 0 0 1 0 1 0 32316.dat
+0 !BW ID base_socket_e_pin_30
+1 1 -320 -30 -300 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID base_socket_e_pin_10
+1 1 -320 -50 -300 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID base_post_e_bridge
+1 71 -320 -50 -340 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID base_post_e
+1 71 -320 110 -360 -1 0 0 0 0 1 0 1 0 32278.dat
+0 !BW ID base_post_e_bridge_lock_110
+1 0 -320 -110 -330 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_post_e_bridge_lock_70
+1 0 -320 -70 -330 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_post_e_tower_lock_m30
+1 0 -320 -30 -350 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_post_e_tower_lock_p10
+1 0 -320 10 -350 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_foot_e
+1 72 -320 190 -340 1 0 0 0 0 1 0 -1 0 32526.dat
+0 !BW ID base_foot_e_lock_210
+1 0 -320 210 -350 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_foot_e_lock_250
+1 0 -320 250 -350 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID base_foot_e_elbow_20
+1 72 -300 270 -320 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID base_foot_e_elbow_40
+1 72 -280 270 -320 0 0 1 0 1 0 -1 0 0 15100.dat
+0 STEP
+0 // Assembly: base_socket_f_support
+0 !BW ID base_socket_f
+1 72 -70 -60 -440 1 0 0 0 0 -1 0 1 0 32195a.dat
+0 !BW ID base_socket_f_insert
+1 0 -70 -50 -440 0 1 0 0 0 -1 -1 0 0 32523.dat
+0 !BW ID base_socket_f_short_post
+1 71 -40 -70 -440 0 -1 0 0 0 1 -1 0 0 32316.dat
+0 !BW ID base_socket_f_pin_30
+1 1 -60 -30 -440 -1 0 0 0 0 1 0 1 0 6558.dat
+0 !BW ID base_socket_f_pin_10
+1 1 -60 -50 -440 -1 0 0 0 0 1 0 1 0 6558.dat
+0 !BW ID base_post_f_bridge
+1 71 -20 -50 -440 0 -1 0 0 0 1 -1 0 0 32524.dat
+0 !BW ID base_post_f
+1 71 0 110 -440 0 -1 0 0 0 1 -1 0 0 32278.dat
+0 !BW ID base_post_f_bridge_lock_110
+1 0 -30 -110 -440 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_post_f_bridge_lock_70
+1 0 -30 -70 -440 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_post_f_tower_lock_m30
+1 0 -10 -30 -440 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_post_f_tower_lock_p10
+1 0 -10 10 -440 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_foot_f
+1 72 -20 190 -440 0 1 0 0 0 1 1 0 0 32526.dat
+0 !BW ID base_foot_f_lock_210
+1 0 -10 210 -440 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_foot_f_lock_250
+1 0 -10 250 -440 -1 0 0 0 0 1 0 1 0 2780.dat
+0 !BW ID base_foot_f_elbow_20
+1 72 -40 270 -420 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID base_foot_f_elbow_40
+1 72 -40 270 -400 1 0 0 0 1 0 0 0 1 15100.dat
+0 STEP
+0 // Assembly: base_floor
+0 !BW ID floor_cross_m420_m300
+1 72 -300 290 -420 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m420_p0
+1 72 0 290 -420 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m420_p300
+1 72 300 290 -420 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m400_m280
+1 72 -280 290 -400 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m400_p20
+1 72 20 290 -400 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m400_p320
+1 72 320 290 -400 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m320_m300
+1 72 -300 290 -320 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m320_p0
+1 72 0 290 -320 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m320_p300
+1 72 300 290 -320 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m200_m280
+1 72 -280 290 -200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m200_p20
+1 72 20 290 -200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m200_p320
+1 72 320 290 -200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m180_m300
+1 72 -300 290 -180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m180_p0
+1 72 0 290 -180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m180_p300
+1 72 300 290 -180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m160_m280
+1 72 -280 290 -160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m160_p20
+1 72 20 290 -160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m160_p320
+1 72 320 290 -160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m140_m300
+1 72 -300 290 -140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m140_p0
+1 72 0 290 -140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m140_p300
+1 72 300 290 -140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m100_m280
+1 72 -280 290 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m100_p20
+1 72 20 290 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_m100_p320
+1 72 320 290 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p100_m300
+1 72 -300 290 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p100_p0
+1 72 0 290 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p100_p300
+1 72 300 290 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p140_m280
+1 72 -280 290 140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p140_p20
+1 72 20 290 140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p140_p320
+1 72 320 290 140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p160_m300
+1 72 -300 290 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p160_p0
+1 72 0 290 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p160_p300
+1 72 300 290 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p180_m280
+1 72 -280 290 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p180_p20
+1 72 20 290 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p180_p320
+1 72 320 290 180 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p200_m300
+1 72 -300 290 200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p200_p0
+1 72 0 290 200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p200_p300
+1 72 300 290 200 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p260_m280
+1 72 -280 290 260 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p260_p20
+1 72 20 290 260 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p260_p320
+1 72 320 290 260 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p400_m300
+1 72 -300 290 400 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p400_p0
+1 72 0 290 400 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p400_p300
+1 72 300 290 400 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p420_m280
+1 72 -280 290 420 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p420_p20
+1 72 20 290 420 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_cross_p420_p320
+1 72 320 290 420 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_skid_m300_m300
+1 71 -300 310 -300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m300_p0
+1 71 -300 310 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m300_p300
+1 71 -300 310 300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m280_m280
+1 71 -280 310 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m280_p20
+1 71 -280 310 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m280_p320
+1 71 -280 310 320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m160_m300
+1 71 -160 310 -300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m160_p0
+1 71 -160 310 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m160_p300
+1 71 -160 310 300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m140_m280
+1 71 -140 310 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m140_p20
+1 71 -140 310 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m140_p320
+1 71 -140 310 320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m100_m300
+1 71 -100 310 -300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m100_p0
+1 71 -100 310 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m100_p300
+1 71 -100 310 300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m60_m280
+1 71 -60 310 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m60_p20
+1 71 -60 310 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m60_p320
+1 71 -60 310 320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m40_m300
+1 71 -40 310 -300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m40_p0
+1 71 -40 310 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_m40_p300
+1 71 -40 310 300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p60_m280
+1 71 60 310 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p60_p20
+1 71 60 310 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p60_p320
+1 71 60 310 320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p140_m300
+1 71 140 310 -300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p140_p0
+1 71 140 310 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p140_p300
+1 71 140 310 300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p160_m280
+1 71 160 310 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p160_p20
+1 71 160 310 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p160_p320
+1 71 160 310 320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p380_m300
+1 71 380 310 -300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p380_p0
+1 71 380 310 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p380_p300
+1 71 380 310 300 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p440_m280
+1 71 440 310 -280 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p440_p20
+1 71 440 310 20 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_skid_p440_p320
+1 71 440 310 320 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_angle_m160_m240
+1 25 -160 270 -240 1 0 0 0 1 0 0 0 1 32526.dat
+0 !BW ID floor_angle_m160_p60
+1 25 -160 270 60 1 0 0 0 1 0 0 0 1 32526.dat
+0 !BW ID floor_angle_p140_m240
+1 25 140 270 -240 1 0 0 0 1 0 0 0 1 32526.dat
+0 !BW ID floor_angle_p140_p60
+1 25 140 270 60 1 0 0 0 1 0 0 0 1 32526.dat
+0 STEP
+0 // Assembly: base_hub
+0 !BW ID hub
+1 15 0 280 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 STEP
+0 // Assembly: base_floor
+0 !BW ID floor_pin_m300_m420
+1 0 -300 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_m400
+1 0 -300 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_m320
+1 1 -300 290 -320 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m300_m200
+1 0 -300 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_m180
+1 0 -300 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_m160
+1 0 -300 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_m140
+1 0 -300 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_m100
+1 0 -300 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_p100
+1 0 -300 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_p140
+1 0 -300 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_p160
+1 0 -300 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_p180
+1 0 -300 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_p200
+1 0 -300 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_p260
+1 1 -300 290 260 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m300_p400
+1 0 -300 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m300_p420
+1 0 -300 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_m420
+1 0 -280 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_m400
+1 0 -280 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_m320
+1 1 -280 290 -320 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m280_m200
+1 0 -280 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_m180
+1 0 -280 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_m160
+1 0 -280 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_m140
+1 0 -280 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_m100
+1 0 -280 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_p100
+1 0 -280 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_p140
+1 0 -280 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_p160
+1 0 -280 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_p180
+1 0 -280 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_p200
+1 0 -280 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_p260
+1 1 -280 290 260 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m280_p400
+1 0 -280 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m280_p420
+1 0 -280 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_m420
+1 0 -160 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_m400
+1 0 -160 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_m320
+1 0 -160 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_m200
+1 1 -160 290 -200 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m160_m180
+1 1 -160 290 -180 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m160_m160
+1 1 -160 290 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m160_m140
+1 0 -160 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_m100
+1 0 -160 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_p100
+1 1 -160 290 100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m160_p140
+1 1 -160 290 140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m160_p160
+1 0 -160 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_p180
+1 0 -160 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_p200
+1 0 -160 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_p260
+1 0 -160 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_p400
+1 0 -160 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m160_p420
+1 0 -160 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_m420
+1 0 -140 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_m400
+1 0 -140 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_m320
+1 0 -140 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_m200
+1 0 -140 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_m180
+1 0 -140 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_m160
+1 1 -140 290 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m140_m140
+1 0 -140 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_m100
+1 0 -140 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_p100
+1 0 -140 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_p140
+1 1 -140 290 140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m140_p160
+1 0 -140 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_p180
+1 0 -140 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_p200
+1 0 -140 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_p260
+1 0 -140 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_p400
+1 0 -140 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m140_p420
+1 0 -140 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m420
+1 0 -100 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m400
+1 0 -100 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m320
+1 0 -100 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m200
+1 0 -100 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m180
+1 0 -100 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m160
+1 0 -100 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m140
+1 0 -100 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_m100
+1 0 -100 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_p100
+1 0 -100 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_p140
+1 0 -100 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_p160
+1 0 -100 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_p180
+1 0 -100 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_p200
+1 0 -100 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_p260
+1 0 -100 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m100_p400
+1 1 -100 290 400 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m100_p420
+1 1 -100 290 420 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m60_m420
+1 0 -60 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_m400
+1 0 -60 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_m320
+1 0 -60 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_m200
+1 0 -60 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_m180
+1 0 -60 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_m160
+1 0 -60 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_m140
+1 0 -60 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_m100
+1 1 -60 290 -100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m60_p100
+1 1 -60 290 100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m60_p140
+1 0 -60 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_p160
+1 0 -60 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_p180
+1 0 -60 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_p200
+1 0 -60 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_p260
+1 0 -60 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_p400
+1 0 -60 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m60_p420
+1 0 -60 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_m420
+1 1 -40 290 -420 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m40_m400
+1 1 -40 290 -400 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_m40_m320
+1 0 -40 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_m200
+1 0 -40 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_m180
+1 0 -40 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_m160
+1 0 -40 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_m140
+1 0 -40 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_m100
+1 0 -40 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p100
+1 0 -40 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p140
+1 0 -40 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p160
+1 0 -40 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p180
+1 0 -40 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p200
+1 0 -40 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p260
+1 0 -40 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p400
+1 0 -40 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_m40_p420
+1 0 -40 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m420
+1 0 60 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m400
+1 0 60 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m320
+1 0 60 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m200
+1 0 60 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m180
+1 0 60 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m160
+1 0 60 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m140
+1 0 60 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_m100
+1 1 60 290 -100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p60_p100
+1 1 60 290 100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p60_p140
+1 0 60 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_p160
+1 0 60 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_p180
+1 0 60 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_p200
+1 0 60 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_p260
+1 0 60 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_p400
+1 0 60 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p60_p420
+1 0 60 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_m420
+1 0 140 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_m400
+1 0 140 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_m320
+1 0 140 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_m200
+1 1 140 290 -200 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p140_m180
+1 1 140 290 -180 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p140_m160
+1 1 140 290 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p140_m140
+1 0 140 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_m100
+1 0 140 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_p100
+1 1 140 290 100 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p140_p140
+1 1 140 290 140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p140_p160
+1 0 140 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_p180
+1 0 140 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_p200
+1 0 140 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_p260
+1 0 140 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_p400
+1 0 140 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p140_p420
+1 0 140 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_m420
+1 0 160 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_m400
+1 0 160 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_m320
+1 0 160 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_m200
+1 0 160 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_m180
+1 0 160 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_m160
+1 1 160 290 -160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p160_m140
+1 0 160 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_m100
+1 0 160 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_p100
+1 0 160 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_p140
+1 1 160 290 140 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p160_p160
+1 0 160 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_p180
+1 0 160 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_p200
+1 0 160 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_p260
+1 0 160 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_p400
+1 0 160 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p160_p420
+1 0 160 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_m420
+1 0 380 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_m400
+1 0 380 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_m320
+1 0 380 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_m200
+1 1 380 290 -200 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p380_m180
+1 1 380 290 -180 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p380_m160
+1 0 380 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_m140
+1 0 380 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_m100
+1 0 380 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p100
+1 0 380 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p140
+1 0 380 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p160
+1 0 380 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p180
+1 0 380 300 180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p200
+1 0 380 300 200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p260
+1 0 380 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p400
+1 0 380 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p380_p420
+1 0 380 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m420
+1 0 440 300 -420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m400
+1 0 440 300 -400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m320
+1 0 440 300 -320 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m200
+1 0 440 300 -200 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m180
+1 0 440 300 -180 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m160
+1 0 440 300 -160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m140
+1 0 440 300 -140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_m100
+1 0 440 300 -100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_p100
+1 0 440 300 100 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_p140
+1 0 440 300 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_p160
+1 0 440 300 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_p180
+1 1 440 290 180 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p440_p200
+1 1 440 290 200 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID floor_pin_p440_p260
+1 0 440 300 260 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_p400
+1 0 440 300 400 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID floor_pin_p440_p420
+1 0 440 300 420 0 -1 0 1 0 0 0 0 1 2780.dat
+0 STEP
+0 // Assembly: platform socket A
+0 !BW ID upper_socket_a
+1 4 450 -200 -220 -1 0 0 0 0 -1 0 -1 0 32195a.dat
+0 !BW ID upper_insert_a
+1 72 450 -190 -220 0 -1 0 0 0 -1 1 0 0 32523.dat
+0 !BW ID upper_post_a
+1 72 480 -250 -220 0 -1 0 0 0 -1 1 0 0 40490.dat
+0 !BW ID upper_socket_pin_a_0
+1 1 460 -170 -220 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID upper_socket_pin_a_1
+1 1 460 -190 -220 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID upper_elbow_a_0
+1 71 460 -290 -220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID upper_deck_pin_a_0
+1 0 460 -300 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID upper_elbow_a_1
+1 71 460 -330 -220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID upper_deck_pin_a_1
+1 0 460 -340 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly: platform socket B
+0 !BW ID upper_socket_b
+1 25 370 -200 220 1 0 0 0 0 -1 0 1 0 32195a.dat
+0 !BW ID upper_insert_b
+1 72 370 -190 220 0 1 0 0 0 -1 -1 0 0 32523.dat
+0 !BW ID upper_post_b
+1 72 340 -250 220 0 1 0 0 0 -1 -1 0 0 40490.dat
+0 !BW ID upper_socket_pin_b_0
+1 1 360 -170 220 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID upper_socket_pin_b_1
+1 1 360 -190 220 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID upper_elbow_b_0
+1 71 320 -290 220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID upper_deck_pin_b_0
+1 0 320 -300 220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID upper_elbow_b_1
+1 71 320 -330 220 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID upper_deck_pin_b_1
+1 0 320 -340 220 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly: platform socket C
+0 !BW ID upper_socket_c
+1 14 -50 -200 380 -1 0 0 0 0 -1 0 -1 0 32195a.dat
+0 !BW ID upper_insert_c
+1 72 -50 -190 380 0 -1 0 0 0 -1 1 0 0 32523.dat
+0 !BW ID upper_post_c
+1 72 -20 -250 380 0 -1 0 0 0 -1 1 0 0 40490.dat
+0 !BW ID upper_socket_pin_c_0
+1 1 -40 -170 380 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID upper_socket_pin_c_1
+1 1 -40 -190 380 -1 0 0 0 1 0 0 0 -1 6558.dat
+0 !BW ID upper_elbow_c_0
+1 71 0 -290 380 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID upper_deck_pin_c_0
+1 0 0 -300 380 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID upper_elbow_c_1
+1 71 0 -330 380 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID upper_deck_pin_c_1
+1 0 0 -340 380 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly: platform socket D
+0 !BW ID upper_socket_d
+1 10 -260 -200 330 0 1 0 0 0 -1 -1 0 0 32195a.dat
+0 !BW ID upper_insert_d
+1 72 -260 -190 330 -1 0 0 0 0 -1 0 -1 0 32523.dat
+0 !BW ID upper_post_d
+1 72 -260 -250 360 -1 0 0 0 0 -1 0 -1 0 40490.dat
+0 !BW ID upper_socket_pin_d_0
+1 1 -260 -170 340 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID upper_socket_pin_d_1
+1 1 -260 -190 340 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID upper_elbow_d_0
+1 71 -260 -290 380 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID upper_deck_pin_d_0
+1 0 -260 -300 380 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID upper_elbow_d_1
+1 71 -260 -330 380 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID upper_deck_pin_d_1
+1 0 -260 -340 380 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly: platform socket E
+0 !BW ID upper_socket_e
+1 1 -260 -200 -250 0 1 0 0 0 -1 -1 0 0 32195a.dat
+0 !BW ID upper_insert_e
+1 72 -260 -190 -250 -1 0 0 0 0 -1 0 -1 0 32523.dat
+0 !BW ID upper_post_e
+1 72 -260 -250 -220 -1 0 0 0 0 -1 0 -1 0 40490.dat
+0 !BW ID upper_socket_pin_e_0
+1 1 -260 -170 -240 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID upper_socket_pin_e_1
+1 1 -260 -190 -240 0 0 1 0 1 0 -1 0 0 6558.dat
+0 !BW ID upper_elbow_e_0
+1 71 -260 -290 -200 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID upper_deck_pin_e_0
+1 0 -260 -300 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID upper_elbow_e_1
+1 71 -260 -330 -200 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID upper_deck_pin_e_1
+1 0 -260 -340 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly: platform socket F
+0 !BW ID upper_socket_f
+1 22 -110 -200 -380 1 0 0 0 0 -1 0 1 0 32195a.dat
+0 !BW ID upper_insert_f
+1 72 -110 -190 -380 0 1 0 0 0 -1 -1 0 0 32523.dat
+0 !BW ID upper_post_f
+1 72 -140 -250 -380 0 1 0 0 0 -1 -1 0 0 40490.dat
+0 !BW ID upper_socket_pin_f_0
+1 1 -120 -170 -380 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID upper_socket_pin_f_1
+1 1 -120 -190 -380 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID upper_elbow_f_0
+1 71 -120 -290 -380 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID upper_deck_pin_f_0
+1 0 -120 -300 -380 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID upper_elbow_f_1
+1 71 -120 -330 -380 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID upper_deck_pin_f_1
+1 1 -120 -350 -380 0 0 1 1 0 0 0 1 0 6558.dat
+0 STEP
+0 // Assembly: platform decks
+0 !BW ID platform_row_-380_-310_0
+1 72 -20 -310 -380 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID platform_row_-380_-350_0
+1 72 -20 -350 -380 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID platform_row_-220_-310_0
+1 72 180 -310 -220 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID platform_row_-220_-310_1
+1 72 400 -310 -220 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID platform_row_splice_-220_-310_0
+1 71 320 -290 -220 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID platform_row_splice_pin_-220_-310_0_-40
+1 0 280 -300 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-220_-310_0_0
+1 0 320 -300 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-220_-310_0_20
+1 0 340 -300 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-220_-310_0_40
+1 0 360 -300 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_-220_-350_0
+1 72 180 -350 -220 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID platform_row_-220_-350_1
+1 72 400 -350 -220 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID platform_row_splice_-220_-350_0
+1 71 320 -370 -220 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID platform_row_splice_pin_-220_-350_0_-40
+1 0 280 -360 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-220_-350_0_0
+1 0 320 -360 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-220_-350_0_20
+1 0 340 -360 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-220_-350_0_40
+1 0 360 -360 -220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_-200_-310_0
+1 72 -160 -310 -200 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID platform_row_-200_-310_1
+1 72 20 -310 -200 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID platform_row_splice_-200_-310_0
+1 71 -60 -290 -200 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID platform_row_splice_pin_-200_-310_0_-40
+1 0 -100 -300 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-200_-310_0_0
+1 0 -60 -300 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-200_-310_0_20
+1 0 -40 -300 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-200_-310_0_40
+1 0 -20 -300 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_-200_-350_0
+1 72 -160 -350 -200 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID platform_row_-200_-350_1
+1 72 20 -350 -200 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID platform_row_splice_-200_-350_0
+1 71 -60 -370 -200 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID platform_row_splice_pin_-200_-350_0_-40
+1 0 -100 -360 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-200_-350_0_0
+1 0 -60 -360 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-200_-350_0_20
+1 0 -40 -360 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_splice_pin_-200_-350_0_40
+1 0 -20 -360 -200 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_row_220_-310_0
+1 72 180 -310 220 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID platform_row_220_-350_0
+1 72 180 -350 220 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID platform_row_380_-310_0
+1 72 -160 -310 380 0 0 1 0 1 0 -1 0 0 41239.dat
+0 !BW ID platform_row_380_-310_1
+1 72 40 -310 380 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID platform_row_380_-350_0
+1 72 -160 -350 380 0 0 1 0 1 0 -1 0 0 41239.dat
+0 !BW ID platform_row_380_-350_1
+1 72 40 -350 380 0 0 1 0 1 0 -1 0 0 32316.dat
+0 STEP
+0 // Assembly: platform rails
+0 !BW ID platform_rail_-80_0
+1 71 -80 -330 -360 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID platform_rail_-80_1
+1 71 -80 -330 -140 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID platform_rail_-80_2
+1 71 -80 -330 160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID platform_rail_-80_3
+1 71 -80 -330 360 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_-80_0
+1 72 -80 -310 -300 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_-80_0_-20
+1 0 -80 -320 -320 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_0_0
+1 0 -80 -320 -300 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_0_20
+1 0 -80 -320 -280 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_0_40
+1 0 -80 -320 -260 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_-80_1
+1 72 -80 -310 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_-80_1_-20
+1 0 -80 -320 -20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_1_0
+1 0 -80 -320 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_1_20
+1 0 -80 -320 20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_1_40
+1 0 -80 -320 40 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_-80_2
+1 72 -80 -310 300 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_-80_2_-20
+1 0 -80 -320 280 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_2_0
+1 0 -80 -320 300 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_2_20
+1 0 -80 -320 320 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_-80_2_40
+1 0 -80 -320 340 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_deck_join_-80_-380
+1 1 -80 -330 -380 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_-80_-200
+1 1 -80 -330 -200 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_-80_380
+1 1 -80 -330 380 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_rail_40_0
+1 71 40 -330 -360 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID platform_rail_40_1
+1 71 40 -330 -140 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID platform_rail_40_2
+1 71 40 -330 160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID platform_rail_40_3
+1 71 40 -330 360 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_40_0
+1 72 40 -310 -300 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_40_0_-20
+1 0 40 -320 -320 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_0_0
+1 0 40 -320 -300 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_0_20
+1 0 40 -320 -280 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_0_40
+1 0 40 -320 -260 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_40_1
+1 72 40 -310 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_40_1_-20
+1 0 40 -320 -20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_1_0
+1 0 40 -320 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_1_20
+1 0 40 -320 20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_1_40
+1 0 40 -320 40 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_40_2
+1 72 40 -310 300 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_40_2_-20
+1 0 40 -320 280 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_2_0
+1 0 40 -320 300 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_2_20
+1 0 40 -320 320 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_40_2_40
+1 0 40 -320 340 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_deck_join_40_-380
+1 1 40 -330 -380 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_40_-220
+1 1 40 -330 -220 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_40_-200
+1 1 40 -330 -200 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_40_220
+1 1 40 -330 220 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_40_380
+1 1 40 -330 380 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_rail_60_0
+1 71 60 -330 -360 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID platform_rail_60_1
+1 71 60 -330 -140 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID platform_rail_60_2
+1 71 60 -330 160 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID platform_rail_60_3
+1 71 60 -330 360 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_60_0
+1 72 60 -310 -300 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_60_0_-20
+1 0 60 -320 -320 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_0_0
+1 0 60 -320 -300 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_0_20
+1 0 60 -320 -280 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_0_40
+1 0 60 -320 -260 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_60_1
+1 72 60 -310 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_60_1_-20
+1 0 60 -320 -20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_1_0
+1 0 60 -320 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_1_20
+1 0 60 -320 20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_1_40
+1 0 60 -320 40 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_60_2
+1 72 60 -310 300 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID platform_rail_splice_pin_60_2_-20
+1 0 60 -320 280 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_2_0
+1 0 60 -320 300 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_2_20
+1 0 60 -320 320 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_rail_splice_pin_60_2_40
+1 0 60 -320 340 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_deck_join_60_-380
+1 1 60 -330 -380 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_60_-220
+1 1 60 -330 -220 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_60_-200
+1 1 60 -330 -200 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_60_220
+1 1 60 -330 220 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_deck_join_60_380
+1 1 60 -330 380 0 0 1 1 0 0 0 1 0 6558.dat
+0 STEP
+0 // Assembly: platform anti-racking braces
+0 !BW ID platform_corner_brace_north
+1 72 -80 -370 -300 -1 0 0 0 1 0 0 0 -1 32526.dat
+0 !BW ID platform_brace_spacer_north
+1 71 -80 -350 -340 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID platform_brace_rail_pin_north_0
+1 1 -80 -350 -340 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_brace_rail_pin_north_1
+1 1 -80 -350 -360 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_brace_row_pin_north_0
+1 0 -100 -360 -380 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_corner_brace_south
+1 72 60 -370 140 1 0 0 0 1 0 0 0 1 32526.dat
+0 !BW ID platform_brace_spacer_south
+1 71 60 -350 160 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID platform_brace_rail_pin_south_0
+1 1 60 -350 140 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_brace_rail_pin_south_1
+1 1 60 -350 180 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID platform_brace_row_pin_south_0
+1 0 80 -360 220 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID platform_brace_row_pin_south_1
+1 0 100 -360 220 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 // Assembly: leg_a_housing
+0 !BW ID leg_a_actuator_body
+1 71 411.654273388 10.68034811 -210.817963331 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 92693c01.dat
+0 STEP
+0 // Assembly: leg_a_drive
+0 !BW ID leg_a_actuator_spindle
+1 25 419.223817226 -17.730731158 -216.77720665 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 92695.dat
+0 STEP
+0 // Assembly: leg_a_rod
+0 !BW ID leg_a_actuator_rod
+1 72 450.661709355 -135.727860756 -241.527185332 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 92696.dat
+0 STEP
+0 // Assembly: leg_a_motor
+0 !BW ID leg_a_motor
+0 !BW PORT F
+1 15 391.468823152 86.443226157 -194.926647814 0.033085468 -0.252318128 0.967078546 0.213606962 0.947035976 0.239780997 -0.976359267 0.198641444 0.085230037 54696p01.dat
+0 STEP
+0 // Assembly: leg_a_drive
+0 !BW ID leg_a_drive_axle
+1 71 406.607910829 29.621067622 -206.845134452 0.252318128 0.967078546 -0.033085468 -0.947035976 0.239780997 -0.213606962 -0.198641444 0.085230037 0.976359267 4519.dat
+0 !BW ID leg_a_drive_half_bush
+1 71 405.346320189 34.3562475 -205.851927232 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 4265c.dat
+0 !BW ID leg_a_drive_joiner
+1 71 411.654273388 10.68034811 -210.817963331 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 6538a.dat
+0 STEP
+0 // Assembly: leg_a_housing
+0 !BW ID leg_a_motor_cheek_1
+1 4 397.673177083 74.978750322 -233.072051025 -0.967078546 0.033085468 0.252318128 -0.239780997 0.213606962 -0.947035976 -0.085230037 -0.976359267 -0.198641444 99773.dat
+0 !BW ID leg_a_motor_cheek_2
+1 4 398.00403176 77.114819944 -242.835643691 -0.967078546 0.033085468 0.252318128 -0.239780997 0.213606962 -0.947035976 -0.085230037 -0.976359267 -0.198641444 99773.dat
+0 !BW ID leg_a_spine
+1 4 403.546676335 61.378204865 -261.45386157 -0.967078546 0.033085468 0.252318128 -0.239780997 0.213606962 -0.947035976 -0.085230037 -0.976359267 -0.198641444 32524.dat
+0 !BW ID leg_a_body_adapter
+1 4 418.024054657 0.283907086 -253.845162876 -0.967078546 0.033085468 0.252318128 -0.239780997 0.213606962 -0.947035976 -0.085230037 -0.976359267 -0.198641444 32523.dat
+0 !BW ID leg_a_motor_lock_minus
+1 0 378.166178824 69.115095566 -229.894855433 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 2780.dat
+0 !BW ID leg_a_motor_lock_plus
+1 0 416.849320664 78.706335456 -226.485653951 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 2780.dat
+0 !BW ID leg_a_cheek_spine_lock_40
+1 0 403.215821658 59.242135243 -251.690268904 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 2780.dat
+0 !BW ID leg_a_cheek_spine_lock_20
+1 0 408.262184217 40.301415731 -255.663097783 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 2780.dat
+0 !BW ID leg_a_body_adapter_lock_0
+1 1 412.977692098 19.224626598 -249.872333996 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 6558.dat
+0 !BW ID leg_a_body_adapter_lock_20
+1 1 418.024054657 0.283907086 -253.845162876 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 6558.dat
+0 !BW ID leg_a_ball_seat_spacer
+1 4 423.112188413 -44.147694346 -186.577461198 -0.967078546 0.033085468 0.252318128 -0.239780997 0.213606962 -0.947035976 -0.085230037 -0.976359267 -0.198641444 32063.dat
+0 !BW ID leg_a_ball_seat_lock
+1 71 416.038926592 -12.532510646 -195.263606878 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 89678.dat
+0 !BW ID leg_a_lower_ball
+1 0 410.330854678 2.136069622 -171.763592666 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 6628.dat
+0 STEP
+0 // Assembly: leg_a_rod
+0 !BW ID leg_a_upper_ball
+1 0 450.330854678 -137.863930378 -231.763592666 0.033085468 0.967078546 0.252318128 0.213606962 0.239780997 -0.947035976 -0.976359267 0.085230037 -0.198641444 6628.dat
+0 STEP
+0 // Assembly: leg_b_housing
+0 !BW ID leg_b_actuator_body
+1 71 408.345726612 10.68034811 210.817963331 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 92693c01.dat
+0 STEP
+0 // Assembly: leg_b_drive
+0 !BW ID leg_b_actuator_spindle
+1 25 400.776182774 -17.730731158 216.77720665 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 92695.dat
+0 STEP
+0 // Assembly: leg_b_rod
+0 !BW ID leg_b_actuator_rod
+1 72 369.338290645 -135.727860756 241.527185332 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 92696.dat
+0 STEP
+0 // Assembly: leg_b_motor
+0 !BW ID leg_b_motor
+0 !BW PORT B
+1 15 428.531176848 86.443226157 194.926647814 -0.033085468 0.252318128 -0.967078546 0.213606962 0.947035976 0.239780997 0.976359267 -0.198641444 -0.085230037 54696p01.dat
+0 STEP
+0 // Assembly: leg_b_drive
+0 !BW ID leg_b_drive_axle
+1 71 413.392089171 29.621067622 206.845134452 -0.252318128 -0.967078546 0.033085468 -0.947035976 0.239780997 -0.213606962 0.198641444 -0.085230037 -0.976359267 4519.dat
+0 !BW ID leg_b_drive_half_bush
+1 71 414.653679811 34.3562475 205.851927232 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 4265c.dat
+0 !BW ID leg_b_drive_joiner
+1 71 408.345726612 10.68034811 210.817963331 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6538a.dat
+0 STEP
+0 // Assembly: leg_b_housing
+0 !BW ID leg_b_motor_cheek_1
+1 25 422.326822917 74.978750322 233.072051025 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 99773.dat
+0 !BW ID leg_b_motor_cheek_2
+1 25 421.99596824 77.114819944 242.835643691 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 99773.dat
+0 !BW ID leg_b_spine
+1 25 416.453323665 61.378204865 261.45386157 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 32524.dat
+0 !BW ID leg_b_body_adapter
+1 25 401.975945343 0.283907086 253.845162876 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 32523.dat
+0 !BW ID leg_b_motor_lock_minus
+1 0 441.833821176 69.115095566 229.894855433 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_b_motor_lock_plus
+1 0 403.150679336 78.706335456 226.485653951 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_b_cheek_spine_lock_40
+1 0 416.784178342 59.242135243 251.690268904 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_b_cheek_spine_lock_20
+1 0 411.737815783 40.301415731 255.663097783 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_b_body_adapter_lock_0
+1 1 407.022307902 19.224626598 249.872333996 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6558.dat
+0 !BW ID leg_b_body_adapter_lock_20
+1 1 401.975945343 0.283907086 253.845162876 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6558.dat
+0 !BW ID leg_b_ball_seat_spacer
+1 25 396.887811587 -44.147694346 186.577461198 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 32063.dat
+0 !BW ID leg_b_ball_seat_lock
+1 71 403.961073408 -12.532510646 195.263606878 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 89678.dat
+0 !BW ID leg_b_lower_ball
+1 0 409.669145322 2.136069622 171.763592666 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6628.dat
+0 STEP
+0 // Assembly: leg_b_rod
+0 !BW ID leg_b_upper_ball
+1 0 369.669145322 -137.863930378 231.763592666 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6628.dat
+0 STEP
+0 // Assembly: leg_c_housing
+0 !BW ID leg_c_actuator_body
+1 71 -80.978522172 8.316894237 389.934406056 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 92693c01.dat
+0 STEP
+0 // Assembly: leg_c_drive
+0 !BW ID leg_c_actuator_spindle
+1 25 -75.684576106 -20.553105836 383.729792381 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 92695.dat
+0 STEP
+0 // Assembly: leg_c_rod
+0 !BW ID leg_c_actuator_rod
+1 72 -54.391408869 -136.673242305 358.773762423 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 92696.dat
+0 STEP
+0 // Assembly: leg_c_motor
+0 !BW ID leg_c_motor
+0 !BW PORT D
+1 15 -95.095711683 85.303561097 406.480042524 -0.219570443 -0.176464869 0.959504544 0.166337885 0.962333336 0.215049434 -0.961311879 0.206820456 -0.181947164 54696p01.dat
+0 STEP
+0 // Assembly: leg_c_drive
+0 !BW ID leg_c_drive_axle
+1 71 -84.50781955 27.563560952 394.070815173 0.176464869 0.959504544 0.219570443 -0.962333336 0.215049434 -0.166337885 -0.206820456 -0.181947164 0.961311879 4519.dat
+0 !BW ID leg_c_drive_half_bush
+1 71 -85.390143894 32.375227631 395.104917452 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 4265c.dat
+0 !BW ID leg_c_drive_joiner
+1 71 -80.978522172 8.316894237 389.934406056 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 6538a.dat
+0 STEP
+0 // Assembly: leg_c_housing
+0 !BW ID leg_c_motor_cheek_1
+1 14 -99.251379826 71.878720348 368.697717646 -0.959504544 -0.219570443 0.176464869 -0.215049434 0.166337885 -0.962333336 0.181947164 -0.961311879 -0.206820456 99773.dat
+0 !BW ID leg_c_motor_cheek_2
+1 14 -101.44708426 73.542099195 359.084598858 -0.959504544 -0.219570443 0.176464869 -0.215049434 0.166337885 -0.962333336 0.181947164 -0.961311879 -0.206820456 99773.dat
+0 !BW ID leg_c_spine
+1 14 -101.211343535 56.790500751 340.528511558 -0.959504544 -0.219570443 0.176464869 -0.215049434 0.166337885 -0.962333336 0.181947164 -0.961311879 -0.206820456 32524.dat
+0 !BW ID leg_c_body_adapter
+1 14 -86.232042533 -4.276257089 347.345521785 -0.959504544 -0.219570443 0.176464869 -0.215049434 0.166337885 -0.962333336 0.181947164 -0.961311879 -0.206820456 32523.dat
+0 !BW ID leg_c_motor_lock_minus
+1 0 -117.343618493 66.746042247 377.143220326 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 2780.dat
+0 !BW ID leg_c_motor_lock_plus
+1 0 -78.963436724 75.348019601 369.865333755 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 2780.dat
+0 !BW ID leg_c_cheek_spine_lock_40
+1 0 -99.0156391 55.127121904 350.141630346 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 2780.dat
+0 !BW ID leg_c_cheek_spine_lock_20
+1 0 -95.486341723 35.880455189 346.005221229 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 2780.dat
+0 !BW ID leg_c_body_adapter_lock_0
+1 1 -89.76133991 14.970409626 351.481930901 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 6558.dat
+0 !BW ID leg_c_body_adapter_lock_20
+1 1 -86.232042533 -4.276257089 347.345521785 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 6558.dat
+0 !BW ID leg_c_ball_seat_spacer
+1 14 -64.470313208 -45.621598516 413.239299025 -0.959504544 -0.219570443 0.176464869 -0.215049434 0.166337885 -0.962333336 0.181947164 -0.961311879 -0.206820456 32063.dat
+0 !BW ID leg_c_ball_seat_lock
+1 71 -73.057815926 -14.256530173 405.024234517 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 89678.dat
+0 !BW ID leg_c_lower_ball
+1 0 -72.195704434 1.663378847 428.386881211 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 6628.dat
+0 STEP
+0 // Assembly: leg_c_rod
+0 !BW ID leg_c_upper_ball
+1 0 -52.195704434 -138.336621153 368.386881211 -0.219570443 0.959504544 0.176464869 0.166337885 0.215049434 -0.962333336 -0.961311879 -0.181947164 -0.206820456 6628.dat
+0 STEP
+0 // Assembly: leg_d_housing
+0 !BW ID leg_d_actuator_body
+1 71 -269.182036669 10.68034811 291.654273388 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 92693c01.dat
+0 STEP
+0 // Assembly: leg_d_drive
+0 !BW ID leg_d_actuator_spindle
+1 25 -263.22279335 -17.730731158 299.223817226 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 92695.dat
+0 STEP
+0 // Assembly: leg_d_rod
+0 !BW ID leg_d_actuator_rod
+1 72 -238.472814668 -135.727860756 330.661709355 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 92696.dat
+0 STEP
+0 // Assembly: leg_d_motor
+0 !BW ID leg_d_motor
+0 !BW PORT A
+1 15 -285.073352186 86.443226157 271.468823152 0.976359267 -0.198641444 -0.085230037 0.213606962 0.947035976 0.239780997 0.033085468 -0.252318128 0.967078546 54696p01.dat
+0 STEP
+0 // Assembly: leg_d_drive
+0 !BW ID leg_d_drive_axle
+1 71 -273.154865548 29.621067622 286.607910829 0.198641444 -0.085230037 -0.976359267 -0.947035976 0.239780997 -0.213606962 0.252318128 0.967078546 -0.033085468 4519.dat
+0 !BW ID leg_d_drive_half_bush
+1 71 -274.148072768 34.3562475 285.346320189 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 4265c.dat
+0 !BW ID leg_d_drive_joiner
+1 71 -269.182036669 10.68034811 291.654273388 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6538a.dat
+0 STEP
+0 // Assembly: leg_d_housing
+0 !BW ID leg_d_motor_cheek_1
+1 10 -246.927948975 74.978750322 277.673177083 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 99773.dat
+0 !BW ID leg_d_motor_cheek_2
+1 10 -237.164356309 77.114819944 278.00403176 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 99773.dat
+0 !BW ID leg_d_spine
+1 10 -218.54613843 61.378204865 283.546676335 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 32524.dat
+0 !BW ID leg_d_body_adapter
+1 10 -226.154837124 0.283907086 298.024054657 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 32523.dat
+0 !BW ID leg_d_motor_lock_minus
+1 0 -250.105144567 69.115095566 258.166178824 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_d_motor_lock_plus
+1 0 -253.514346049 78.706335456 296.849320664 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_d_cheek_spine_lock_40
+1 0 -228.309731096 59.242135243 283.215821658 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_d_cheek_spine_lock_20
+1 0 -224.336902217 40.301415731 288.262184217 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_d_body_adapter_lock_0
+1 1 -230.127666004 19.224626598 292.977692098 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6558.dat
+0 !BW ID leg_d_body_adapter_lock_20
+1 1 -226.154837124 0.283907086 298.024054657 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6558.dat
+0 !BW ID leg_d_ball_seat_spacer
+1 10 -293.422538802 -44.147694346 303.112188413 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 32063.dat
+0 !BW ID leg_d_ball_seat_lock
+1 71 -284.736393122 -12.532510646 296.038926592 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 89678.dat
+0 !BW ID leg_d_lower_ball
+1 0 -308.236407334 2.136069622 290.330854678 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6628.dat
+0 STEP
+0 // Assembly: leg_d_rod
+0 !BW ID leg_d_upper_ball
+1 0 -248.236407334 -137.863930378 330.330854678 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6628.dat
+0 STEP
+0 // Assembly: leg_e_housing
+0 !BW ID leg_e_actuator_body
+1 71 -269.182036669 10.68034811 -288.345726612 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 92693c01.dat
+0 STEP
+0 // Assembly: leg_e_drive
+0 !BW ID leg_e_actuator_spindle
+1 25 -263.22279335 -17.730731158 -280.776182774 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 92695.dat
+0 STEP
+0 // Assembly: leg_e_rod
+0 !BW ID leg_e_actuator_rod
+1 72 -238.472814668 -135.727860756 -249.338290645 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 92696.dat
+0 STEP
+0 // Assembly: leg_e_motor
+0 !BW ID leg_e_motor
+0 !BW PORT E
+1 15 -285.073352186 86.443226157 -308.531176848 0.976359267 -0.198641444 -0.085230037 0.213606962 0.947035976 0.239780997 0.033085468 -0.252318128 0.967078546 54696p01.dat
+0 STEP
+0 // Assembly: leg_e_drive
+0 !BW ID leg_e_drive_axle
+1 71 -273.154865548 29.621067622 -293.392089171 0.198641444 -0.085230037 -0.976359267 -0.947035976 0.239780997 -0.213606962 0.252318128 0.967078546 -0.033085468 4519.dat
+0 !BW ID leg_e_drive_half_bush
+1 71 -274.148072768 34.3562475 -294.653679811 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 4265c.dat
+0 !BW ID leg_e_drive_joiner
+1 71 -269.182036669 10.68034811 -288.345726612 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6538a.dat
+0 STEP
+0 // Assembly: leg_e_housing
+0 !BW ID leg_e_motor_cheek_1
+1 1 -246.927948975 74.978750322 -302.326822917 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 99773.dat
+0 !BW ID leg_e_motor_cheek_2
+1 1 -237.164356309 77.114819944 -301.99596824 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 99773.dat
+0 !BW ID leg_e_spine
+1 1 -218.54613843 61.378204865 -296.453323665 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 32524.dat
+0 !BW ID leg_e_body_adapter
+1 1 -226.154837124 0.283907086 -281.975945343 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 32523.dat
+0 !BW ID leg_e_motor_lock_minus
+1 0 -250.105144567 69.115095566 -321.833821176 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_e_motor_lock_plus
+1 0 -253.514346049 78.706335456 -283.150679336 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_e_cheek_spine_lock_40
+1 0 -228.309731096 59.242135243 -296.784178342 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_e_cheek_spine_lock_20
+1 0 -224.336902217 40.301415731 -291.737815783 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 2780.dat
+0 !BW ID leg_e_body_adapter_lock_0
+1 1 -230.127666004 19.224626598 -287.022307902 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6558.dat
+0 !BW ID leg_e_body_adapter_lock_20
+1 1 -226.154837124 0.283907086 -281.975945343 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6558.dat
+0 !BW ID leg_e_ball_seat_spacer
+1 1 -293.422538802 -44.147694346 -276.887811587 0.085230037 0.976359267 0.198641444 -0.239780997 0.213606962 -0.947035976 -0.967078546 0.033085468 0.252318128 32063.dat
+0 !BW ID leg_e_ball_seat_lock
+1 71 -284.736393122 -12.532510646 -283.961073408 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 89678.dat
+0 !BW ID leg_e_lower_ball
+1 0 -308.236407334 2.136069622 -289.669145322 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6628.dat
+0 STEP
+0 // Assembly: leg_e_rod
+0 !BW ID leg_e_upper_ball
+1 0 -248.236407334 -137.863930378 -249.669145322 0.976359267 -0.085230037 0.198641444 0.213606962 0.239780997 -0.947035976 0.033085468 0.967078546 0.252318128 6628.dat
+0 STEP
+0 // Assembly: leg_f_housing
+0 !BW ID leg_f_actuator_body
+1 71 -71.654273388 10.68034811 -389.182036669 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 92693c01.dat
+0 STEP
+0 // Assembly: leg_f_drive
+0 !BW ID leg_f_actuator_spindle
+1 25 -79.223817226 -17.730731158 -383.22279335 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 92695.dat
+0 STEP
+0 // Assembly: leg_f_rod
+0 !BW ID leg_f_actuator_rod
+1 72 -110.661709355 -135.727860756 -358.472814668 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 92696.dat
+0 STEP
+0 // Assembly: leg_f_motor
+0 !BW ID leg_f_motor
+0 !BW PORT C
+1 15 -51.468823152 86.443226157 -405.073352186 -0.033085468 0.252318128 -0.967078546 0.213606962 0.947035976 0.239780997 0.976359267 -0.198641444 -0.085230037 54696p01.dat
+0 STEP
+0 // Assembly: leg_f_drive
+0 !BW ID leg_f_drive_axle
+1 71 -66.607910829 29.621067622 -393.154865548 -0.252318128 -0.967078546 0.033085468 -0.947035976 0.239780997 -0.213606962 0.198641444 -0.085230037 -0.976359267 4519.dat
+0 !BW ID leg_f_drive_half_bush
+1 71 -65.346320189 34.3562475 -394.148072768 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 4265c.dat
+0 !BW ID leg_f_drive_joiner
+1 71 -71.654273388 10.68034811 -389.182036669 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6538a.dat
+0 STEP
+0 // Assembly: leg_f_housing
+0 !BW ID leg_f_motor_cheek_1
+1 22 -57.673177083 74.978750322 -366.927948975 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 99773.dat
+0 !BW ID leg_f_motor_cheek_2
+1 22 -58.00403176 77.114819944 -357.164356309 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 99773.dat
+0 !BW ID leg_f_spine
+1 22 -63.546676335 61.378204865 -338.54613843 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 32524.dat
+0 !BW ID leg_f_body_adapter
+1 22 -78.024054657 0.283907086 -346.154837124 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 32523.dat
+0 !BW ID leg_f_motor_lock_minus
+1 0 -38.166178824 69.115095566 -370.105144567 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_f_motor_lock_plus
+1 0 -76.849320664 78.706335456 -373.514346049 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_f_cheek_spine_lock_40
+1 0 -63.215821658 59.242135243 -348.309731096 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_f_cheek_spine_lock_20
+1 0 -68.262184217 40.301415731 -344.336902217 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 2780.dat
+0 !BW ID leg_f_body_adapter_lock_0
+1 1 -72.977692098 19.224626598 -350.127666004 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6558.dat
+0 !BW ID leg_f_body_adapter_lock_20
+1 1 -78.024054657 0.283907086 -346.154837124 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6558.dat
+0 !BW ID leg_f_ball_seat_spacer
+1 22 -83.112188413 -44.147694346 -413.422538802 0.967078546 -0.033085468 -0.252318128 -0.239780997 0.213606962 -0.947035976 0.085230037 0.976359267 0.198641444 32063.dat
+0 !BW ID leg_f_ball_seat_lock
+1 71 -76.038926592 -12.532510646 -404.736393122 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 89678.dat
+0 !BW ID leg_f_lower_ball
+1 0 -70.330854678 2.136069622 -428.236407334 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6628.dat
+0 STEP
+0 // Assembly: leg_f_rod
+0 !BW ID leg_f_upper_ball
+1 0 -110.330854678 -137.863930378 -368.236407334 -0.033085468 -0.967078546 -0.252318128 0.213606962 0.239780997 -0.947035976 0.976359267 -0.085230037 0.198641444 6628.dat

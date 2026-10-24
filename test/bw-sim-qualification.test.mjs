@@ -17,7 +17,7 @@ const run=async(c,modelText,autoPorts,label=autoPorts===false?'strict':'ordinary
   return{variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),sessionFailed:session.failed?String(session.failed):null};
  }});if(process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR){const dir=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;mkdirSync(dir,{recursive:true});writeFileSync(dir+'/'+c.id+'-'+label+'.json',JSON.stringify(r)+'\n');}assert.deepEqual(errors,[]);assert.ok(r.track.every(f=>!f.extra.sessionFailed));return r;
 };
-for(const c of qualificationContracts(selected)){
+for(const c of qualificationContracts(selected).filter(c=>!c.nativeSuite)){
  const source=read(lab+'models/'+c.id+'.ldr'),program=read(lab+'programs/'+c.id+'.bw'),judge=r=>QUALIFICATION_JUDGES[c.judge](r,{native:true});
  test(c.id+': exact source, licence, topology, compiler, unassisted equality and complete registration',()=>{
   const dir='test/fixtures/model-files/'+c.id+'-source/',provenance=JSON.parse(read(dir+'provenance.json'));

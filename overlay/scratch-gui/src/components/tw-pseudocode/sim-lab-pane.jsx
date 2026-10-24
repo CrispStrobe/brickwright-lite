@@ -1052,7 +1052,7 @@ class SimLabPane extends React.Component {
         // The name is written into the text's `0 Name:` line; one the record could not
         // keep would make the reopened text differ, so such a name is not used at all.
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
-        return simLabRecordFromText(this.lib.serializeModel(model, {name, title: MODEL_TITLE}),
+        return simLabRecordFromText(this.lib.serializeModel(model, {name, title: MODEL_TITLE, precision: 12}),
             {name, mat: this.state.mat, measurements: this.measurements});
     }
 
@@ -1102,7 +1102,7 @@ class SimLabPane extends React.Component {
 
     /** Back to simulation: compile what was built. */
     async exitBuild () {
-        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE});
+        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE, precision: 12});
         this.lastText = text;
         this.teardownEditor();
         this.setState({mode: 'simulate', placing: null, selection: []});
@@ -1998,7 +1998,7 @@ class SimLabPane extends React.Component {
     /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
     async setMat (mat) {
         if (!this.session) return;
-        const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
+        const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr', precision: 12});
         this.pause();
         const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
         if (challenge && challenge.mat !== (mat || 'plain')) this.endChallenge();
