@@ -1,6 +1,8 @@
 # Explicit aperture capture and audio supplier adoption
 
-CLAIMED — Codex circuit/performance owner; isolated circuit source worktree.
+DONE — implementation and installed qualification; hosted qualification and
+normal landing remain mandatory. Codex circuit/performance owner; isolated
+circuit source worktree.
 Base `9d037ce74`. Preserve other owners' claims, worktrees and previews.
 
 Own only canonical immutable adoption of the separately claimed and qualified
@@ -27,7 +29,7 @@ No scheduler/Robot Lab/native/hardware/settings/workflow change is included.
 Merge this claim before consumer implementation and require every enabled
 exact-head check before normal matched-head landing.
 
-## Source candidate — installed qualification pending
+## Implemented adoption and installed qualification
 
 Board #665 normally landed as `761153ff92d521c01107ee7b32922ba7adc10ee2`.
 CUI #118 normally landed as `91d8434a79d373cef2837c137ab356356f1a3b44`
@@ -47,6 +49,22 @@ receipts, input decks, equations and numerical tolerances retain their identity.
 A new installed-package guard checks authored pulse area versus genuinely missed
 point samples, shared replay/WAV processing, reset refusal, and each of the eight
 saved organ Widgets against actual envelope/mean captures, pitch and release.
-The preparatory source check passes nine controls; actual installed-package and
-fresh production-GUI qualification are still pending. Do not describe this source
-checkpoint as installed delivery or a physical acoustic acceptance.
+All 23 installed school-circuit and measurement controls pass without skips.
+The fresh production GUI passes all eight actual organ keys, measured replay
+and downloaded WAV pitch, the held-key scope trace, live capture and Build-mode
+cleanup in Chromium and WebKit. Actual pseudocode-to-blocks, tuning Save/fresh
+Open and the programmed eight-key sequence pass. Rating entry and native 1 kHz
+playback pass; two observed live underruns remain visible. Export/HOLD checks
+pass eight actual downloads and preserve raw CSV bytes across viewport changes.
+
+Both installed package scopes match the pinned source/npm-pack bytes, resolve
+one engine, and pass managed dependency verification. The broader local cohort
+retains five CLI process timeouts at unchanged deadlines; these controls still
+require positive hosted results. Physical acoustics and extensive manual/native
+Safari acceptance remain deferred.
+
+The first integrated hosted build, corpus, debugger and identity guards pass.
+Unit shard 3 caught the generated 8086 capability report's previous Board pin;
+the canonical generator corrects that one line without changing capability
+claims or historical receipts. The original failed verdict is retained. The
+repaired source must pass every enabled exact-head hosted check before landing.
