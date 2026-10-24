@@ -64,3 +64,16 @@ limited DOSBox `.conf`, raw HDD and floppy routes and honest ISO, ZIP, and VHD
 gaps. Use public repository paths and freely usable examples only. This new
 doc does not transfer ownership of any existing guide, media, Arcade source,
 supplier pin, or workflow outside the four source paths listed above.
+
+## V5 source candidate — 2026-10-24
+
+The four owned controller/reader/workflow/test paths now have a reviewed
+candidate for the separately admitted native Fontconfig original and finite
+current-job file readbacks, exact frontend source/tree and installed Circuit UI
+census. It stages only the selected Apache-licensed font and notice under an
+owned current-job configuration; browser font equivalence remains unproved.
+Historical readers and failures are held. Current actual guards remain false.
+Pure source controls and manufactured cross-contract originals are not a browser
+or guest result. Require final-head source CI and separately admitted current
+Build/runtime/inputs/resources/event before the existing real HDD-persistence
+and forward-debug scenarios. No QEMU adapter or supplier-pin change is included.
