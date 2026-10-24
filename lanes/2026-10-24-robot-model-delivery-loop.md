@@ -131,3 +131,9 @@ derive it from the entire original model, preserving the original count and
 full placement equality assertions. Include gate-shape and receipt controls
 in the early trusted preflight. Source, release and service delivery remain
 held for the corrected candidate's qualification.
+
+Current main also contains the qualified saved-measurement editor. Compose it
+normally, preserving its component and browser controls. Its app UI changes
+require a new combined production build and browser qualification; earlier
+model/native and partition receipts retain their original source identities.
+Dependency pins, physics, models and programs are unchanged by this merge.
