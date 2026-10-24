@@ -120,3 +120,14 @@ full journey, complete saved program, independent physical judges, full hold,
 raw imports, font controls and both lesson languages. No app physics, model
 or program change, no deadline increase. The actual original failure remains
 retained; the partitioned source requires fresh exact-head qualification.
+
+Both real browser engines pass the bounded Atlas capture and full saved-project
+replay; the ordinary unpartitioned Sine Shuttle journey also passes. The
+following correction binds the four physical comparisons to their registered
+shared primary programs while preserving each comparison's distinct geometry
+hash. Actual missing-program refusals remain retained. A separate hosted unit
+shard identified Cascade's literal array-prefix length as a gate-shape suspect:
+derive it from the entire original model, preserving the original count and
+full placement equality assertions. Include gate-shape and receipt controls
+in the early trusted preflight. Source, release and service delivery remain
+held for the corrected candidate's qualification.

@@ -8,13 +8,15 @@ import {resolve, dirname} from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const sharedPrograms = new Set(['cascade-control', 'rise-ratio-control', 'wavemaker-control', 'cable-compass-control']);
 export function intakeIdentity(id, buildDir) {
     assert.match(id, /^[a-z][a-z0-9-]+$/);
+    const program = sharedPrograms.has(id) ? id.replace(/-control$/, '') : id;
     return {
         source: execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim(),
         frontend: sha(readFileSync(resolve(buildDir, 'brickwright-build.json'))),
         model: sha(readFileSync(resolve(root, `overlay/scratch-gui/static/sim-lab/models/${id}.ldr`))),
-        program: sha(readFileSync(resolve(root, `overlay/scratch-gui/static/sim-lab/programs/${id}.bw`)))
+        program: sha(readFileSync(resolve(root, `overlay/scratch-gui/static/sim-lab/programs/${program}.bw`)))
     };
 }
 

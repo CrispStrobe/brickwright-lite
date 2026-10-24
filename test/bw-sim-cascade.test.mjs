@@ -16,7 +16,7 @@ for(const id of ['cascade','cascade-control']){
   const body=part=>p.mechanism.bodies.find(b=>b.parts.includes(part));assert.equal(body('upper_link').id===body('lower_link').id,control);
   for(const part of p.model.parts)assert.deepEqual(solidOverlaps(p.model,catalog,part),[],part.id);
   const plan=buildSteps(p.model,catalog),placed=plan.steps.flatMap(s=>s.parts);assert.equal(placed.length,count);assert.equal(new Set(placed).size,count);assert.ok(plan.steps.every(s=>!s.loose),'every authored building stage connects');
-  if(control){const original=prepareModel(read(lab+'models/cascade.ldr'),catalog).model.parts;assert.deepEqual(p.model.parts.slice(0,70),original,'the control preserves every original placement');assert.equal(p.model.parts.length-original.length,6);}
+  if(control){const original=prepareModel(read(lab+'models/cascade.ldr'),catalog).model.parts;assert.deepEqual(p.model.parts.slice(0,original.length),original,'the control preserves every original placement');assert.equal(p.model.parts.length-original.length,6);}
  });
  for(const autoPorts of [undefined,false])test(id+': '+(autoPorts===false?'strict':'ordinary')+' complete registered program, passive motion, hold and negative observers',async t=>{
   const r=await runRobotLabProgram(program,{modelText:source,autoPorts,frameMs:25,coldMs:500,afterMs:500,timeLimitMs:32000,observeFrame:({vm,session,hub})=>({variables:Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables||{}).map(v=>[v.name,v.value]))),modes:hub.motors._controllers.map(c=>c.mode),sessionFailed:session.failed?String(session.failed):null})});

@@ -5,7 +5,20 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
-import {writeIntakeReceipt,readIntakeReceipt,validateIntakeReceipt} from '../scripts/lib/sim-lab-intake-receipt.mjs';
+import {writeIntakeReceipt,readIntakeReceipt,validateIntakeReceipt,intakeIdentity} from '../scripts/lib/sim-lab-intake-receipt.mjs';
+
+test('each physical comparison binds its own model and the actual shared primary program',()=>{
+ const dir=mkdtempSync(resolve(tmpdir(),'intake-identity-'));
+ try{
+  writeFileSync(resolve(dir,'brickwright-build.json'),'{"commit":"fixture"}');
+  for(const primary of ['cascade','rise-ratio','wavemaker','cable-compass']){
+   const a=intakeIdentity(primary,dir),b=intakeIdentity(primary+'-control',dir);
+   assert.equal(a.source,b.source);assert.equal(a.frontend,b.frontend);
+   assert.equal(a.program,b.program,'comparison uses registered shared program');
+   assert.notEqual(a.model,b.model,'comparison still binds its distinct physical geometry');
+  }
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
 
 test('partition reopens the exact exported saved-state project and refuses stale or corrupted evidence',()=>{
  const dir=mkdtempSync(resolve(tmpdir(),'intake-receipt-'));
