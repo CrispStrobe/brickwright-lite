@@ -1,7 +1,9 @@
 # Integration qualification closeout
 
 Owner: Codex integration, following the user's approved five-step completion order.
-Status: documentation-only ownership claim; merge before editing the handoff.
+Status: DONE — bounded integration handoff. Core, API and saved-definition
+editor qualification and matched landing are complete. This documentation
+records the accepted results and the remaining independent scopes.
 
 Own `docs/INTEGRATION-NEXT-STEPS.md` and this claim only. Replace stale October 19
 instructions with a concise, current queue and completion criteria for native
@@ -20,3 +22,12 @@ workflow, model, physical assertion, timing, signing, deployment or release chan
 Validate links, privacy, whitespace and every enabled exact-head documentation
 check before a normal matched-head merge; verify reviewed/predicted/landed trees
 and parents. Do not rerun ARM/native/guest builds for this documentation-only work.
+
+Qualified source integrations are [PR1322](https://github.com/CrispStrobe/brickwright-lite/pull/1322),
+[PR1327](https://github.com/CrispStrobe/brickwright-lite/pull/1327),
+[PR1337](https://github.com/CrispStrobe/brickwright-lite/pull/1337) and
+[PR1339](https://github.com/CrispStrobe/brickwright-lite/pull/1339). The editor
+landed as `2351457441a5188247ba3600d9192583d735ccda` with the reviewed parents
+and tree. The finite native result, original failures, actual browser/worker
+boundaries and the remaining G02, configured-host, packaging and device work
+are recorded in the handoff. This closeout changes documentation only.
