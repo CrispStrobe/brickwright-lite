@@ -3144,6 +3144,25 @@ class Originals(unittest.TestCase):
             rejected=copy.deepcopy(observed);rejected['file']['bytesRead']=r.FILE_CAP+2
             with self.assertRaises(ValueError):r.installed_progress_v5(rejected)
 
+    def test_finite_v5_installed_digest_feeds_each_byte_once(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            path=pathlib.Path(temporary)/'regular';raw=b'A'*(384<<10);path.write_bytes(raw)
+            fed=[0];original=hashlib.sha256
+            class CountedDigest:
+                def __init__(self,initial=b''):
+                    fed[0]+=len(initial);self.value=original(initial)
+                def update(self,part):
+                    fed[0]+=len(part);self.value.update(part)
+                def hexdigest(self):return self.value.hexdigest()
+            progress={'stage':'not-started','namedBefore':None,'heldBefore':None,'heldAfter':None,
+              'namedAfter':None,'bytesRead':0,'sha256':original(b'').hexdigest(),'eof':False,
+              'complete':False,'closeAttempted':False,'closeSucceeded':False}
+            with patch.object(c.hashlib,'sha256',side_effect=CountedDigest):
+                self.assertEqual(c.installed_regular_v5(path,c.FILE_CAP,progress),raw)
+            self.assertEqual(fed[0],len(raw))
+            self.assertEqual(progress['sha256'],original(raw).hexdigest())
+            self.assertTrue(progress['complete']);self.assertTrue(progress['closeSucceeded'])
+
     def actual_v6_packet(self):
         files,expected,reference,originals=NativeV2Originals().fresh()
         request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v6'

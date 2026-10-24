@@ -735,6 +735,7 @@ def installed_regular_v5(path, cap, progress):
          0 <= before.st_size <= cap, 'canonical bounded installed regular original')
     fd = None; first = None; chunks = bytearray()
     try:
+        digest_state = hashlib.sha256()
         progress['stage'] = 'open'
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         progress['stage'] = 'held-before'
@@ -748,9 +749,10 @@ def installed_regular_v5(path, cap, progress):
             if not part:
                 progress['eof'] = True; break
             chunks.extend(part)
+            digest_state.update(part)
             progress['bytesRead'] = len(chunks)
-            progress['sha256'] = sha(chunks)
-        progress['bytesRead'] = len(chunks); progress['sha256'] = sha(chunks)
+            progress['sha256'] = digest_state.hexdigest()
+        progress['bytesRead'] = len(chunks); progress['sha256'] = digest_state.hexdigest()
         progress['stage'] = 'readback'
         held = os.fstat(fd); named = path.lstat()
         progress['heldAfter'] = {key:getattr(held,'st_'+key) for key in
