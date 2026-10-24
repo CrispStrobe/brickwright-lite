@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import JSZip from 'jszip';
+import {parseJobs} from './workflow-gates.mjs';
 
 export const GUI_MANIFEST = 'bw-gui-build-source.json';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -13,7 +14,7 @@ const id = value => assert.ok(Number.isSafeInteger(value) && value > 0, 'Officia
 // A dependent consumer can run while sibling jobs remain active. The producer
 // job, not the entire run, must have finished successfully. API head_sha is not
 // a PR merge checkout witness: that comes from the embedded source manifest.
-export function admitGuiArtifactMetadata({run, job, artifact, artifacts}, expected) {
+function admitGuiArtifactEnvelope({run, job, artifact, artifacts}, expected, admitSteps) {
     const {repository, runId, attempt, runHeadSha, checkoutSha, reviewedHeadSha, artifactId, jobId} = expected;
     assert.equal(repository, 'CrispStrobe/brickwright-lite', 'Only the owned repository is admitted');
     for (const value of [runId, attempt, artifactId, jobId]) id(value);
@@ -36,12 +37,7 @@ export function admitGuiArtifactMetadata({run, job, artifact, artifacts}, expect
     same(job.run_attempt, attempt, 'Producer attempt'); same(job.head_sha, runHeadSha, 'Producer run source');
     same(job.name, 'build', 'Sole Pages producer job'); same(job.status, 'completed', 'Producer completed');
     same(job.conclusion, 'success', 'Producer successful'); same(job.html_url, `${html}/job/${jobId}`, 'Official producer URL'); same(job.run_url, `${api}/runs/${runId}`, 'Producer API run');
-    for (const name of ['Build the editor', 'Write GUI build source manifest', 'Upload GUI Pages artifact']) {
-        const steps = job.steps?.filter(step => step.name === name) || [];
-        same(steps.length, 1, `Unique producer step ${name}`);
-        same(steps[0].status, 'completed', `Completed producer step ${name}`);
-        same(steps[0].conclusion, 'success', `Successful producer step ${name}`);
-    }
+    admitSteps(job);
     same(artifact.id, artifactId, 'Artifact identity'); same(artifact.name, 'github-pages', 'Artifact name');
     same(artifact.expired, false, 'Artifact must not be expired');
     same(artifact.url, `${api}/artifacts/${artifactId}`, 'Artifact API URL');
@@ -59,6 +55,132 @@ export function admitGuiArtifactMetadata({run, job, artifact, artifacts}, expect
     return Object.freeze({repository, runId, attempt, runHeadSha, checkoutSha, reviewedHeadSha, artifactId, jobId,
         archiveUrl: artifact.archive_download_url, archiveBytes: artifact.size_in_bytes, archiveDigest: artifact.digest || null,
         runUrl: html, jobUrl: job.html_url});
+}
+
+// The legacy route retains its exact required API step facts and assertion order.
+export function admitGuiArtifactMetadata(metadata, expected) {
+    return admitGuiArtifactEnvelope(metadata, expected, job => {
+    for (const name of ['Build the editor', 'Write GUI build source manifest', 'Upload GUI Pages artifact']) {
+        const steps = job.steps?.filter(step => step.name === name) || [];
+        same(steps.length, 1, `Unique producer step ${name}`);
+        same(steps[0].status, 'completed', `Completed producer step ${name}`);
+        same(steps[0].conclusion, 'success', `Successful producer step ${name}`);
+    }
+    });
+}
+
+export const GUI_RUNNER_ENV = 'BW_GUI_PRODUCER_RUNNER_V1';
+export const GUI_RUNNER_INPUT_CAP = 16 * 1024;
+export const GUI_RUNNER_RECEIPT_CAP = 32 * 1024;
+const GUI_RUNNER_SCHEMA = 'bw.gui.producer-runner.v1';
+const GUI_RUNNER_STEPS = Object.freeze([
+    ['build_editor', 'Build the editor'],
+    ['gui_build_manifest', 'Write GUI build source manifest'],
+    ['gui_pages_upload', 'Upload GUI Pages artifact']
+]);
+const GUI_RUNNER_HEADER = [GUI_RUNNER_SCHEMA, '${{ github.repository }}', '${{ github.run_id }}',
+    '${{ github.run_attempt }}', '${{ github.job }}', '${{ github.sha }}',
+    '${{ github.event.pull_request.head.sha || github.sha }}',
+    '${{ github.event.pull_request.head.sha || github.sha }}',
+    '${{ github.workflow_sha }}', '${{ github.workflow_ref }}'].join('\t');
+export const GUI_RUNNER_TEMPLATE = [GUI_RUNNER_HEADER, ...GUI_RUNNER_STEPS.map(([step]) =>
+    `${step}\t${'${{'} steps['${step}'].outcome }}\t${'${{'} steps['${step}'].conclusion }}`)].join('\n') + '\n';
+
+// This source profile is deliberately specific to the single existing build
+// dependency. It exports terminal scalars, never an action's outputs/context.
+export function guiRunnerProducerSource(workflowText) {
+    assert.ok(typeof workflowText === 'string' && Buffer.byteLength(workflowText) <= 1024 * 1024, 'Bounded producer workflow source');
+    const block = name => {
+        const matches = [...workflowText.matchAll(new RegExp(`^  ${name}:$`, 'gm'))];
+        same(matches.length, 1, `Unique producer source job ${name}`);
+        const rest = workflowText.slice(matches[0].index + matches[0][0].length);
+        return rest.split(/\n  [a-z][a-z-]*:\n/)[0];
+    };
+    const build = block('build'), consumer = block('arcade-numeric-authoring');
+    const jobs = parseJobs(workflowText), steps = jobs.get('build').steps;
+    const selected = GUI_RUNNER_STEPS.map(([stepId, name]) => {
+        const found = steps.filter(step => step.name === name);
+        same(found.length, 1, `Unique source producer step ${name}`);
+        same(found[0].id, stepId, `Source producer ID ${name}`);same(found[0].idCount, 1, 'Unique producer ID declaration');
+        same(steps.filter(step => step.id === stepId).length, 1, 'Producer ID assigned once');
+        const index = steps.indexOf(found[0]);
+        // Read this step's own source extent; a declared COE critical outcome
+        // remains outside this strict successful-producer profile.
+        const own = workflowText.split('\n').slice(found[0].line - 1).join('\n').split(/\n(?:      - |  [a-z][a-z-]*:)/)[0];
+        assert.ok(!/^        continue-on-error:/m.test(own), 'Critical producer continue-on-error unsupported');
+        return {id: stepId, name, index};
+    });
+    assert.ok(selected.every((step, i) => i === 0 || step.index > selected[i - 1].index), 'Producer source step order');
+    const expectedOutput = '    outputs:\n      gui_producer_runner_v1: |\n' + GUI_RUNNER_TEMPLATE.split('\n').filter(Boolean).map(line => `        ${line}\n`).join('');
+    same((build.match(/^    outputs:/gm) || []).length, 1, 'Unique producer outputs block');
+    assert.ok(build.includes(expectedOutput), 'Exact scalar producer output mapping');
+    const outputAt = build.indexOf('    outputs:\n');
+    same(build.slice(outputAt).split(/(?=^    [a-z][a-z-]*:)/m)[0], expectedOutput, 'Closed producer output keys');
+    assert.ok(/^    needs: build$/m.test(consumer), 'Exact same-workflow build dependency');
+    same([...consumer.matchAll(/^      (BW_GUI_PRODUCER_[A-Z0-9_]+):/gm)].map(match => match[1]).sort().join(','), [GUI_RUNNER_ENV, 'BW_GUI_PRODUCER_RESULT'].sort().join(','), 'Closed consumer producer inputs');
+    for (const [key, expression] of [[GUI_RUNNER_ENV, '${{ needs.build.outputs.gui_producer_runner_v1 }}'],
+        ['BW_GUI_PRODUCER_RESULT', '${{ needs.build.result }}']]) {
+        same((consumer.match(new RegExp(`^      ${key}:`, 'gm')) || []).length, 1, 'Unique consumer scalar mapping');
+        assert.ok(consumer.includes(`      ${key}: ${expression}\n`), 'Exact consumer scalar expression');
+    }
+    same((consumer.match(/--runner-producer-v1/g) || []).length, 1, 'Unique producer evidence selection');
+    assert.ok(consumer.includes('run: node scripts/admit-official-gui-artifact.mjs test-results/numeric-gui-admission --runner-producer-v1\n'), 'Exact producer evidence invocation');
+    return Object.freeze({schema: GUI_RUNNER_SCHEMA, workflowSha256: hash(Buffer.from(workflowText)), steps: selected});
+}
+
+export function guiRunnerProducerReceipt(wire, source, {expected, env}) {
+    assert.ok(typeof wire === 'string' && Buffer.byteLength(wire) <= GUI_RUNNER_INPUT_CAP && !wire.includes('\r') && wire.endsWith('\n'), 'Bounded LF producer scalar input');
+    assert.ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(wire), 'No scalar control characters');
+    const lines = wire.slice(0, -1).split('\n');same(lines.length, 4, 'Complete closed producer rows');
+    same(Object.keys(env).filter(key => key.startsWith('BW_GUI_PRODUCER_')).sort().join(','), [GUI_RUNNER_ENV, 'BW_GUI_PRODUCER_RESULT'].sort().join(','), 'Closed runtime producer input keys');
+    same(env[GUI_RUNNER_ENV], wire, 'Exact mapped consumer scalar bytes');
+    const fields = lines[0].split('\t');same(fields.length, 10, 'Closed producer header');
+    const [schema, repository, runId, attempt, job, checkoutSha, runHeadSha, reviewedHeadSha, workflowSha, workflowRef] = fields;
+    same(schema, GUI_RUNNER_SCHEMA, 'Producer evidence schema');same(source.schema, schema, 'Selected producer source schema');
+    same(repository, expected.repository, 'Producer scalar repository');same(repository, 'CrispStrobe/brickwright-lite', 'Owned producer scalar repository');
+    same(runId, String(expected.runId), 'Producer scalar run');same(attempt, String(expected.attempt), 'Producer scalar attempt');
+    same(job, 'build', 'Producer scalar logical job');same(checkoutSha, expected.checkoutSha, 'Producer scalar checkout');
+    same(runHeadSha, expected.runHeadSha, 'Producer scalar run head');same(reviewedHeadSha, expected.reviewedHeadSha, 'Producer scalar reviewed head');
+    for (const value of [checkoutSha, runHeadSha, reviewedHeadSha, workflowSha]) fullSha(value);
+    same(env.GITHUB_REPOSITORY, repository, 'Consumer repository');same(env.GITHUB_RUN_ID, runId, 'Consumer run');
+    same(env.GITHUB_RUN_ATTEMPT, attempt, 'Consumer attempt');same(env.GITHUB_SHA, checkoutSha, 'Consumer actual checkout');
+    same(env.GITHUB_JOB, 'arcade-numeric-authoring', 'Consumer logical job');same(env.BW_GUI_PRODUCER_RESULT, 'success', 'Successful build dependency result');
+    same(env.GITHUB_WORKFLOW_SHA, workflowSha, 'Same executing workflow source');same(env.GITHUB_WORKFLOW_REF, workflowRef, 'Same executing workflow reference');
+    assert.match(workflowRef, /^CrispStrobe\/brickwright-lite\/\.github\/workflows\/build\.yml@refs\/(?:pull\/[1-9][0-9]*\/merge|heads\/[^\s\t]+)$/, 'Official producer workflow reference');
+    const rows = lines.slice(1).map((line, i) => {
+        const parts = line.split('\t');same(parts.length, 3, 'Closed terminal producer row');
+        const [stepId, outcome, conclusion] = parts;const selected = source.steps[i];
+        same(stepId, selected.id, 'Ordered source producer ID');
+        same(outcome, 'success', 'Critical producer outcome must succeed');same(conclusion, 'success', 'Critical producer conclusion must succeed');
+        return {...selected, outcome, conclusion};
+    });
+    const receipt = {schema: GUI_RUNNER_SCHEMA, repository, runId: expected.runId, attempt: expected.attempt,
+        producerJob: job, consumerJob: env.GITHUB_JOB, checkoutSha, runHeadSha, reviewedHeadSha,
+        workflowSha, workflowRef, workflowSha256: source.workflowSha256, dependencyResult: 'success', rows,
+        inputBytes: Buffer.byteLength(wire), inputSha256: hash(Buffer.from(wire)), apiStepEvidenceRewritten: false};
+    assert.ok(Buffer.byteLength(JSON.stringify(receipt) + '\n') <= GUI_RUNNER_RECEIPT_CAP, 'Bounded complete producer receipt');
+    return Object.freeze(receipt);
+}
+
+export function admitGuiArtifactRunnerMetadata(metadata, expected, receipt) {
+    // The selected receipt is data from the separately checked scalar source;
+    // validate its exact successful shape again at the official metadata join.
+    same(receipt.schema, GUI_RUNNER_SCHEMA, 'Admitted runner receipt schema');
+    for (const key of ['repository', 'runId', 'attempt', 'checkoutSha', 'runHeadSha', 'reviewedHeadSha']) same(receipt[key], expected[key], `Runner official join ${key}`);
+    same(receipt.dependencyResult, 'success', 'Runner dependency admitted');same(receipt.rows.length, 3, 'Runner producer count');
+    return admitGuiArtifactEnvelope(metadata, expected, job => {
+        for (const [i, [stepId, name]] of GUI_RUNNER_STEPS.entries()) {
+            same(receipt.rows[i].id, stepId, 'Runner official producer ID');same(receipt.rows[i].name, name, 'Runner official producer name');
+            same(receipt.rows[i].outcome, 'success', 'Runner official producer outcome');same(receipt.rows[i].conclusion, 'success', 'Runner official producer conclusion');
+            const observed = (job.steps || []).filter(step => step.name === name);
+            assert.ok(observed.length <= 1, 'Unambiguous optional API producer observation');
+            for (const step of observed) {
+                assert.ok(['pending', 'queued', 'in_progress', 'completed'].includes(step.status), 'Known optional API producer state');
+                assert.ok(step.conclusion == null || step.conclusion === 'success', 'No conflicting API producer failure');
+                if (step.status === 'completed') same(step.conclusion, 'success', 'Matching terminal API producer observation');
+            }
+        }
+    });
 }
 
 export function safeGuiMember(name) {

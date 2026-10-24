@@ -898,6 +898,12 @@ jobs:
 
   build:
     needs: scope
+    outputs:
+      gui_producer_runner_v1: |
+        bw.gui.producer-runner.v1	${{ github.repository }}	${{ github.run_id }}	${{ github.run_attempt }}	${{ github.job }}	${{ github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.workflow_sha }}	${{ github.workflow_ref }}
+        build_editor	${{ steps['build_editor'].outcome }}	${{ steps['build_editor'].conclusion }}
+        gui_build_manifest	${{ steps['gui_build_manifest'].outcome }}	${{ steps['gui_build_manifest'].conclusion }}
+        gui_pages_upload	${{ steps['gui_pages_upload'].outcome }}	${{ steps['gui_pages_upload'].conclusion }}
     if: needs.scope.outputs.fast == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -1498,12 +1504,14 @@ jobs:
       # to have succeeded, so an artifact from a red run can be downloaded and
       # never published.
       - name: Write GUI build source manifest
+        id: gui_build_manifest
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         env:
           BW_GUI_GIT_EXECUTABLE: /usr/bin/git
           BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/write-gui-build-manifest.mjs packages/scratch-gui/build
       - name: Upload GUI Pages artifact
+        id: gui_pages_upload
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         with: { path: packages/scratch-gui/build }
@@ -4043,6 +4051,8 @@ jobs:
       actions: read
     env:
       BW_GUI_GIT_EXECUTABLE: /usr/bin/git
+      BW_GUI_PRODUCER_RUNNER_V1: ${{ needs.build.outputs.gui_producer_runner_v1 }}
+      BW_GUI_PRODUCER_RESULT: ${{ needs.build.result }}
       BW_GUI_RUN_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -4055,7 +4065,7 @@ jobs:
         id: admitted_gui
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/admit-official-gui-artifact.mjs test-results/numeric-gui-admission
+        run: node scripts/admit-official-gui-artifact.mjs test-results/numeric-gui-admission --runner-producer-v1
       - name: Bind compiler to admitted artifact SDK
         env:
           BW_ADMITTED_SITE: ${{ steps.admitted_gui.outputs.site }}

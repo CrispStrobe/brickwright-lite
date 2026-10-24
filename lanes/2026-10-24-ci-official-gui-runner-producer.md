@@ -1,6 +1,7 @@
 # Same-workflow official GUI producer evidence — claim amendment
 
-**CLAIM ONLY; merge before implementation.** Owner: Codex CI audit repair,
+**SOURCE CANDIDATE; hosted qualification pending.** Claim merged in
+[PR 1350](https://github.com/CrispStrobe/brickwright-lite/pull/1350). Owner: Codex CI audit repair,
 continuing the user-authorized narrow CI audit takeover in
 [the browser evidence claim](2026-10-24-ci-browser-runner-step-outcomes.md).
 Base: `97518e42cac77f146bbe79113a9e91dbaaec5342`. Public branch:
@@ -101,3 +102,24 @@ enabled final-head checks with declared skips only. Local manufactured inputs
 do not prove runner output availability or application qualification. Native
 helpers stay inactive pending fresh source qualification and rebinding. This
 claim selects no event, variable, label, archive GET, build or guest execution.
+
+
+## Local source candidate
+
+The new `--runner-producer-v1` route maps one explicit build-job scalar wire
+through `needs.build.outputs.gui_producer_runner_v1` and checks the separately
+mapped dependency result. Only the manifest/upload steps gain IDs. The wire
+contains public run/attempt/job/source/workflow identity and exactly three
+outcome/conclusion rows. Executing workflow identity is joined between producer
+and consumer and recorded separately from the inspected checkout, without
+claiming equality of their whole trees.
+
+The receipt is retained in the existing admission directory. Pending or absent
+REST critical-step observations are retained as such; a conflicting API failure
+or duplicate observation refuses. The completed-successful official job,
+artifact/source admission and sole original acquisition remain mandatory.
+New genuine CLI tests use authored Git/archive fixtures and mocked HTTP edges;
+no browser, application, native tool, guest, archive acquisition or API write
+runs locally. All existing artifact and completion tests remain unchanged.
+Fresh enabled exact-head CI and actual runner output availability remain
+unqualified; source tests do not authorize native or GUI event selection.
