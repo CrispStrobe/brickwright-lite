@@ -31,14 +31,17 @@ Own exactly these implementation paths after the claim merges:
   every other row and every historical census observation.
 - `lanes/2026-10-24-ci-browser-runner-step-outcomes.md` only.
 
-No new job or step name is proposed, so generated census definitions and
-historical readings remain unchanged. No classifier, shard reassignment,
-application, supplier/pin, native/GUI actual controller or guest change is owned.
+No new job or step name is proposed. The workflow source definition changes
+through the scoped IDs, scalar mapping and audit mode; stored census snapshots
+and their recorded definitions remain historical and byte-held. The narrow
+CI-POINTERS update records the evidence-mode change without inventing execution
+observations. No classifier, shard reassignment, application, supplier/pin,
+native/GUI actual controller or guest change is owned.
 
 Keep the audit inline, exactly once, `if: always()` and last in the browser
 job. Preserve every existing preceding command, condition, timeout, dependency,
 action pin, permission and existing step ID. Add deterministic unique IDs only
-where absent; the current source has242 preceding steps,22 existing IDs and220
+where absent; the current source has 242 preceding steps, 22 existing IDs and 220
 missing IDs, including unnamed setup/upload actions. Bind all preceding steps,
 not just the gates assigned to the current shard.
 
@@ -53,7 +56,7 @@ convert an unsuccessful gate outcome into successful evidence.
 
 A closed versioned scalar wire may carry exact ID/outcome/conclusion rows,
 with checked workflow names and order derived from the source. Bound input to
-64KiB and512 rows; retain at most128KiB of sanitized complete evidence in the
+64 KiB and 512 rows; retain at most 128 KiB of sanitized complete evidence in the
 existing job log. Refuse oversize rather than truncate or silently omit facts.
 Retain only the mapped fields, source/workflow fingerprint, run/attempt/job/
 shard identity and verdict. No new artifact family or transport is owned.
@@ -64,7 +67,7 @@ empty, extra, duplicate, reordered, malformed or contradictory terminal states
 and mismatched source/run/job/shard input. Permit only documented terminal
 values. Preserve skipped-in-green, wrong-shard/double-run, unassigned-gate,
 partition, real-earlier-failure and missing-record assertions. All old API,
-`--file`, direct identity/cache handling and six10-second refusal behavior
+`--file`, direct identity/cache handling and six 10-second refusal behavior
 remain held; the new mode never relabels incomplete API evidence as complete.
 
 Before source publication, require full manufactured workflow-context-to-CLI
