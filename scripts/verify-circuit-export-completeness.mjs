@@ -246,7 +246,8 @@ try {
     await writeFile(proofFile('scope-observed-circuit.json'),
         JSON.stringify(await page.evaluate(() => window.__circuit.toJSON()), null, 2) + '\n', {flag: 'wx'});
     await retainObservation('prefix', {...prefix, selectedNet: signalNet,
-        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), readout: await acq.textContent()});
+        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), readout: await acq.textContent(),
+        samplingLimits: await scope.getByTestId('bw-scope-sampling-limits').textContent()});
     assert.equal(await acq.getAttribute('data-capture'), prefix.capture);
     assert.equal(await acq.getAttribute('data-interval-ns'), prefix.intervalNs);
     assert.equal(await acq.getAttribute('data-depth'), String(prefix.depth));
@@ -259,10 +260,12 @@ try {
     await scope.getByTestId('bw-scope-center-0').fill('0');
     const warning = scope.getByTestId('bw-scope-overrange-0');
     await warning.filter({hasText: /Above viewport|Über dem Anzeigebereich/}).waitFor();
+    const viewportWarning = await warning.textContent();
     await warning.scrollIntoViewIfNeeded();
     await page.screenshot({path: proofFile('scope-viewport-warning.png'), fullPage: true});
     await scope.getByTestId('bw-scope-vdiv-0').selectOption('5');
     await warning.waitFor({state: 'detached'});
+    const clearedViewportWarnings = await warning.count();
     const [afterDownload] = await Promise.all([page.waitForEvent('download', {timeout: 10000}),
         scope.getByTestId('bw-scope-trace-csv-download').click()]);
     const afterCsvBytes = await readDownload(afterDownload);
@@ -276,7 +279,7 @@ try {
     const wrappedCapture = await observeCapture();
     assert.equal(wrappedStart, wrappedCapture.startTimeNs);
     await retainObservation('wrapped', {...wrappedCapture, readoutStartTimeNs: wrappedStart,
-        readout: await acq.textContent()});
+        readout: await acq.textContent(), viewportWarning, clearedViewportWarnings});
     await scope.getByTestId('bw-scope-hold').click();
     const heldText = await acq.textContent();
     const heldPixels = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
@@ -291,7 +294,7 @@ try {
     const heldAfterPixels = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
     const heldAfterImage = await retainCanvas('scope-held-after-step.png', heldAfterPixels);
     await retainObservation('held-after', {...await observeCapture(), readout: await acq.textContent(),
-        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), requestedViewportCenter: 2, image: heldAfterImage});
+        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), requestedViewportCenter: Number(await scope.getByTestId('bw-scope-center-0').inputValue()), image: heldAfterImage});
     assert.equal(await acq.textContent(), heldText, 'HOLD metadata must stay with its frozen picture');
     assert.equal(heldAfterPixels, heldPixels);
     const freshStart = await page.evaluate(h => String(window.__board.getScopeData(h).startTNs), prefix.handle);
