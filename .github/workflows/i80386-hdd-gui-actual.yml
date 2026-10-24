@@ -88,6 +88,9 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Future activation requires request v5: a separately reviewed native original
+  # plus exact selected font/tool/runtime file readback in this GUI job. The
+  # Chromium/Board JavaScript scenarios use no QEMU adapter. Both guards stay false.
   actual:
     if: >-
       ${{ false && github.event_name == 'pull_request' &&
@@ -145,6 +148,8 @@ jobs:
           set -euo pipefail
           npm ci --ignore-scripts --no-audit --no-fund
           node node_modules/playwright/cli.js install --with-deps chromium
+      # V5 preflight admits source/event/tools before one bounded font+notice
+      # acquisition into an exclusive owned root; actual reuses those bytes.
       - name: Install externally admitted request and refuse runtime/source drift
         timeout-minutes: 3
         env:

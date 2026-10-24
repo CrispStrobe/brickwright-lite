@@ -199,6 +199,91 @@ def fixture_v4():
         files[name]=E(value)
     refresh_v4_request(files,expected,request);return files,expected
 
+def native_v5_refresh(files,expected,reference,originals,request=None):
+    reference['originals']={key:ROW(raw) for key,raw in originals.items()}
+    expected['nativeFontOriginals']={key:dict(ROW(raw),base64=base64.b64encode(raw).decode()) for key,raw in originals.items()}
+    expected['nativeFontReferenceSha256']=H(E(reference))
+    request=D(files['request.original.json']) if request is None else request
+    request['nativeFontAdmission']=reference
+    refresh_v4_request(files,expected,request)
+    if 'native-font.stage.json' in files:
+        value=D(files['native-font.stage.json']);value.update(requestSha256=expected['requestSha256'],referenceSha256=expected['nativeFontReferenceSha256'],eventSha256=H(files['event.original.json']));files['native-font.stage.json']=E(value)
+
+_FIXTURE_V5=None
+def fixture_v5():
+    global _FIXTURE_V5
+    if _FIXTURE_V5 is not None:return copy.deepcopy(_FIXTURE_V5)
+    # External independent native review is the input boundary of this consumer.
+    # Manufactured bytes below test joins only; no native/font/browser executes.
+    files,expected=fixture_v4();request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v5'
+    native_files={'/usr/bin/fc-match':ROW(b'font-tool'),'/usr/lib/libfontconfig-selected.so':ROW(b'font-library'),
+      '/checkout/gui-inputs/native-font/fonts/selected.ttf':ROW(b'font'),'/checkout/gui-inputs/native-font/NOTICE':ROW(b'notice')}
+    request['runtime']['files'].update(native_files)
+    request['installedFiles']['node_modules/bw-circuit-ui/package.json']=ROW(b'current-cui-package')
+    request['installedFiles']['node_modules/bw-circuit-ui/src/current.js']=ROW(b'current-cui-source')
+    for stage in ('before','after'):files['installed.'+stage+'.json']=E(request['installedFiles'])
+    native_runtime={'files':{path:{'bytes':row['byteLength'],'sha256':row['sha256']} for path,row in native_files.items() if path in ('/usr/bin/fc-match','/usr/lib/libfontconfig-selected.so')},'aliases':{},'directoryAliases':{}}
+    source={'head':'e'*40,'tree':'f'*40,'files':{path:{'sha256':H(('native-source:'+path).encode())} for path in r.NATIVE_FONT_SOURCE}}
+    font={'url':'https://raw.githubusercontent.com/google/fonts/'+('9'*40)+'/apache/selected/font.ttf','bytes':4,'sha256':H(b'font'),'licenseUrl':'https://raw.githubusercontent.com/google/fonts/'+('9'*40)+'/apache/selected/NOTICE.txt','licenseBytes':6,'licenseSha256':H(b'notice'),'family':'Authored Fixture'}
+    tool={'path':'/usr/bin/fc-match','bytes':9,'sha256':H(b'font-tool')}
+    query={'pattern':'monospace:lang=en','format':'%{file}\t%{family}\t%{style}\t%{index}\n'}
+    native={'schema':'bw.gui-hdd.native-font-request.v1','repository':r.REPOSITORY,'pullRequest':124,'source':source,
+      'selection':{'font':font,'tool':tool,'query':query,'runtime':native_runtime},'limits':{}}
+    native_raw=E(native).rstrip(b'\n');repo={'full_name':r.REPOSITORY,'fork':False}
+    event={'action':'labeled','label':{'name':'x86-native-font-selection-v1'},'sender':{'login':'CrispStrobe'},'repository':repo,'number':124,
+      'pull_request':{'number':124,'state':'open','head':{'sha':source['head'],'repo':repo},'base':{'ref':'main','repo':repo},
+       'body':'<!-- BW_NATIVE_FONT_REQUEST_SHA256='+H(native_raw)+' -->'}}
+    event_raw=E(event).rstrip(b'\n');false_flags={key:False for key in ('nativeLibraryClosureProved','wholeHostAttested','browserFontSelectionProved','actualRequestSupported','guestApproved')}
+    native_observed={'schema':'bw.gui-hdd.native-font-original.v1','observationOnly':True,'systemFallbackExcluded':False,'request':{'bytes':len(native_raw),'sha256':H(native_raw)},
+      'event':{'bytes':len(event_raw),'sha256':H(event_raw)},'source':{path:{'bytes':len(('native-source:'+path).encode()),**row} for path,row in source['files'].items()},
+      'platform':{'GITHUB_RUN_ID':'300','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'native-font-selection','GITHUB_WORKFLOW_SHA':'d'*40},
+      'nativeRuntime':dict(copy.deepcopy(native_runtime),loadedLibraries=[],version=None,environment={},after=copy.deepcopy(native_runtime),selectedReadback=True),
+      'complete':True,'firstFailure':None,'secondary':[],'selectedNativeRuntimeReadbackProved':True,**false_flags}
+    original_raw=E(native_observed)
+    service_raw=E({'testOnly':True,'outsideService':'manufactured independently reviewed service original'})
+    prior={'schema':'bw.gui-hdd.native-font-expectation.v1','requestSha256':H(native_raw),'eventSha256':H(event_raw),
+      'originalSha256':H(original_raw),'originalBytes':len(original_raw),'runId':'300','jobId':301,'head':source['head'],'tree':source['tree'],
+      'workflowSha':'d'*40,'sourceFiles':source['files'],'conclusion':'success','serviceSha256':H(service_raw),'serviceBytes':len(service_raw)}
+    report={'schema':'bw.gui-hdd.native-font-reader.v1','nativeSelectionObserved':True,'sourceHead':source['head'],'runId':'300','jobId':301,
+      'selectedFontSha256':font['sha256'],'selectedNativeRuntimeReadbackProved':True,'nativeRuntimeFiles':native_runtime['files'],
+      'nativeRuntimeAliases':{},'nativeRuntimeDirectoryAliases':{},**false_flags}
+    run={'id':300,'run_attempt':1,'status':'completed','conclusion':'success','head_sha':source['head'],'event':'pull_request',
+      'repository':repo,'path':'.github/workflows/i80386-native-font-selection.yml','actor':{'login':'CrispStrobe'}}
+    job={'id':301,'run_id':300,'name':'native-font-selection','status':'completed','conclusion':'success','steps':[
+      {'name':name,'status':'completed','conclusion':'success'} for name in ('Refuse until selected font, tool, cache and event review','Retain bounded original only after separately reviewed activation')]}
+    artifact={'id':302,'name':'i80386-native-font-selection-300-1','expired':False,'size_in_bytes':1234,'workflow_run':{'id':300,'head_sha':source['head']},'digest':'sha256:'+'2'*64}
+    originals={'request':native_raw,'event':event_raw,'original':original_raw,'service':service_raw,'expectation':E(prior),'readerReport':E(report),'run':E(run),'job':E(job),'artifact':E(artifact)}
+    reference={'schema':'bw.gui-hdd.actual-native-font-reference.v1','source':source,'workflow':{'commit':'d'*40,'path':run['path'],'sha256':source['files'][run['path']]['sha256']},
+      'runId':300,'jobId':301,'artifactId':302,'artifactName':artifact['name'],'artifactBytes':1234,'artifactSha256':'2'*64,'originals':{},'files':native_files,
+      'font':{'url':font['url'],'path':'/checkout/gui-inputs/native-font/fonts/selected.ttf','byteLength':font['bytes'],'sha256':font['sha256'],
+        'licenseUrl':font['licenseUrl'],'licensePath':'/checkout/gui-inputs/native-font/NOTICE','licenseBytes':font['licenseBytes'],'licenseSha256':font['licenseSha256']},
+      'tool':{'path':tool['path'],'byteLength':tool['bytes'],'sha256':tool['sha256']}}
+    stage,config=r.native_font_layout(reference)
+    request['runtime']['files'].update({str(stage/'fontconfig.xml'):ROW(config),'/usr/bin/curl':ROW(b'curl')})
+    staged={}
+    for index,path in enumerate((reference['font']['path'],reference['font']['licensePath'],str(stage/'fontconfig.xml'))):
+        row=request['runtime']['files'][path]
+        staged[path]=dict(row,identity={'dev':4,'ino':20+index,'mode':stat.S_IFREG|0o444,'uid':1001,'gid':1001,'nlink':1,'size':row['byteLength'],'mtime_ns':123})
+    cache={'path':str(stage/'cache'),'identity':{'dev':4,'ino':23,'mode':stat.S_IFDIR|0o700,'uid':1001,'gid':1001,'nlink':2,'size':4096,'mtime_ns':123},
+      'entries':{},'totalBytes':0,'byteCap':8<<20,'entryCap':128,'quotaEnforced':False}
+    files['native-font.config.original.xml']=config
+    files['native-font.cache.before.json']=E(cache);files['native-font.cache.after.json']=E(cache)
+    native_stage={'schema':'bw.gui-hdd.native-font-stage.v1','requestSha256':'','referenceSha256':'','source':request['source'],'eventSha256':'','platform':{'GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual','GITHUB_REPOSITORY':r.REPOSITORY},'root':str(stage),
+      'files':staged,'fontUrl':font['url'],'licenseUrl':font['licenseUrl'],'cache':cache}
+    for role,raw,url,seconds in (('native-font.font',b'font',font['url'],30),('native-font.notice',b'notice',font['licenseUrl'],15)):
+        files[role+'.stdout']=raw;files[role+'.stderr']=b''
+        env={'LANG':'C.UTF-8','HOME':'/nonexistent','PATH':'/usr/bin:/bin','GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null','GIT_NO_LAZY_FETCH':'1','GIT_TERMINAL_PROMPT':'0'}
+        child=proc(r.native_font_fetch_argv(url,seconds,len(raw)),raw,env=env);child.update(startedNs=1 if role.endswith('font') else 1000000002,endedNs=1000000001 if role.endswith('font') else 2000000002);files[role+'.process.json']=E(child)
+    for scenario in r.SCENARIOS:
+        child=D(files[scenario+'.process.json']);child.update(startedNs=3000000000,endedNs=4000000000);child['environment'].update(FONTCONFIG_FILE=str(stage/'fontconfig.xml'),XDG_CACHE_HOME=str(stage/'cache'));files[scenario+'.process.json']=E(child)
+    expected['schema']='bw.gui-hdd.actual-expectation.v5'
+    for stage in ('before','after'):
+        value=D(files['runtime.'+stage+'.json']);value['schema']='bw.gui-hdd.runtime-observation.v5';value['nativeFontDirectories']={path:{'identity':dict(cache['identity'],ino=24+index,mode=stat.S_IFDIR|0o555),'names':names} for index,(path,names) in enumerate(((str(r.native_font_layout(reference)[0]),sorted(('fonts','cache','NOTICE','fontconfig.xml','staging.original.json'))),(str(r.native_font_layout(reference)[0]/'fonts'),['selected.ttf'])))};value['files']=copy.deepcopy(request['runtime']['files']);value['identities'].update({path:{'dev':row['identity']['dev'],'ino':row['identity']['ino']} for path,row in staged.items()});files['runtime.'+stage+'.json']=E(value)
+    native_v5_refresh(files,expected,reference,originals,request)
+    native_stage.update(requestSha256=expected['requestSha256'],referenceSha256=expected['nativeFontReferenceSha256'],eventSha256=H(files['event.original.json']));files['native-font.stage.json']=E(native_stage)
+    _FIXTURE_V5=copy.deepcopy((files,expected))
+    return files,expected
+
 class Originals(unittest.TestCase):
     @classmethod
     def setUpClass(cls):cls.files,cls.expected=fixture()
@@ -2468,6 +2553,215 @@ class Originals(unittest.TestCase):
                 observed=c.collect_font_bridge(request,H(request),pathlib.Path('/checkout'),platform,'/out/original.json')
             self.assertFalse(observed['complete'],cut);self.assertEqual(observed['firstFailure']['name'],'ValueError',cut);self.assertEqual(observed['sourceCommands'],[],cut)
             read.assert_not_called();hosted.assert_not_called();retained.assert_not_called()
+
+    def native_fresh(self):
+        files,expected=fixture_v5();reference=D(files['request.original.json'])['nativeFontAdmission']
+        originals={key:base64.b64decode(row['base64']) for key,row in expected['nativeFontOriginals'].items()}
+        return files,expected,reference,originals
+    def test_current_v5_native_original_and_current_job_readback_positive(self):
+        files,expected=fixture_v5();result=r.audit(*sealed(files,expected));self.assertTrue(result['pass']);self.assertEqual(result['schema'],'bw.gui-hdd.reader.v5')
+        self.assertEqual(c.parse_request(files['request.original.json'],expected['requestSha256']),r.parse_request(files['request.original.json'],expected['requestSha256']))
+        self.assertIs(c.ACTUAL_ENABLED,False);self.assertIs(r.ACTUAL_ENABLED,False)
+        self.assertLess(len(files['request.original.json']),r.JSON_CAP);self.assertLess(len(E(expected)),r.JSON_CAP)
+    def test_current_v5_requires_same_external_version_and_native_reference(self):
+        for mutation in ('missing','old-expectation','old-request'):
+            files,expected=fixture_v5();request=D(files['request.original.json'])
+            if mutation=='missing':del request['nativeFontAdmission']
+            elif mutation=='old-request':request['schema']='bw.gui-hdd.actual-request.v4'
+            else:expected['schema']='bw.gui-hdd.actual-expectation.v4'
+            refresh_v4_request(files,expected,request)
+            with self.assertRaises(ValueError):r.audit(files,expected)
+    def test_current_v5_native_reference_external_selection_survives_rehash(self):
+        files,expected,reference,originals=self.native_fresh();request=D(files['request.original.json']);request['nativeFontAdmission']['artifactSha256']='3'*64
+        refresh_v4_request(files,expected,request)
+        with self.assertRaisesRegex(ValueError,'independently selected native-font reference'):r.audit(files,expected)
+    def test_current_v5_rehashed_native_failures_and_metadata_refuse(self):
+        for role,key,value,match in (
+          ('original','complete',False,'complete finite native'),('original','firstFailure',{'phase':'native'},'complete finite native'),
+          ('original','selectedNativeRuntimeReadbackProved',False,'complete finite native'),
+          ('readerReport','selectedFontSha256','4'*64,'independent native-reader'),
+          ('readerReport','browserFontSelectionProved',True,'observation boundary'),
+          ('run','head_sha','4'*40,'official native run'),('job','run_id',999,'native producing job'),
+          ('artifact','expired',True,'native original artifact'),('artifact','id',True,'bounded integer')):
+            files,expected,reference,originals=self.native_fresh();changed=D(originals[role]);changed[key]=value;originals[role]=E(changed)
+            if role=='original':
+                prior=D(originals['expectation']);prior.update(originalSha256=H(originals[role]),originalBytes=len(originals[role]));originals['expectation']=E(prior)
+            native_v5_refresh(files,expected,reference,originals)
+            with self.assertRaisesRegex(ValueError,match):r.audit(files,expected)
+    def test_current_v5_native_official_steps_and_event_refuse_coherent_rehash(self):
+        for cut in ('step','event','workflow','source','native-file','report-map'):
+            files,expected,reference,originals=self.native_fresh()
+            if cut=='step':
+                value=D(originals['job']);value['steps'][0]['conclusion']='skipped';originals['job']=E(value)
+            elif cut=='event':
+                value=D(originals['event']);value['pull_request']['body']='no immutable marker';originals['event']=E(value)
+                prior=D(originals['expectation']);prior['eventSha256']=H(originals['event']);originals['expectation']=E(prior)
+                value=D(originals['original']);value['event']={'bytes':len(originals['event']),'sha256':H(originals['event'])};originals['original']=E(value)
+            elif cut=='workflow':reference['workflow']['commit']='5'*40
+            elif cut=='source':
+                value=D(originals['original']);next(iter(value['source'].values()))['sha256']='5'*64;originals['original']=E(value)
+            elif cut=='native-file':
+                value=D(originals['original']);value['nativeRuntime']['after']['files']['/usr/bin/fc-match']['sha256']='5'*64;originals['original']=E(value)
+            else:
+                value=D(originals['readerReport']);value['nativeRuntimeFiles']['/usr/bin/fc-match']['sha256']='5'*64;originals['readerReport']=E(value)
+            prior=D(originals['expectation']);prior.update(originalSha256=H(originals['original']),originalBytes=len(originals['original']));originals['expectation']=E(prior)
+            native_v5_refresh(files,expected,reference,originals)
+            with self.assertRaises(ValueError):r.audit(files,expected)
+    def test_current_v5_font_tool_library_current_job_bytes_before_after(self):
+        for stage in ('before','after'):
+            for path in ('/checkout/gui-inputs/native-font/fonts/selected.ttf','/usr/bin/fc-match','/usr/lib/libfontconfig-selected.so'):
+                files,expected=fixture_v5();value=D(files['runtime.'+stage+'.json']);value['files'][path]['sha256']='0'*64;files['runtime.'+stage+'.json']=E(value)
+                with self.assertRaisesRegex(ValueError,'runtime external graph'):r.audit(files,expected)
+    def test_current_v5_cannot_replace_held_runtime_rows_with_native_extension(self):
+        files,expected,reference,originals=self.native_fresh();request=D(files['request.original.json']);path='/usr/lib/libselected.so'
+        reference['files'][path]=ROW(b'changed');request['runtime']['files'][path]=ROW(b'changed')
+        native=D(originals['request']);native['selection']['runtime']['files'][path]={'bytes':7,'sha256':H(b'changed')};originals['request']=E(native)
+        # Reference parser accepts selected current rows; metadata join must still
+        # preserve the independently admitted old row rather than union overwrite.
+        request['nativeFontAdmission']=reference
+        with self.assertRaisesRegex(ValueError,'preserves held metadata'):
+            e=copy.deepcopy(expected);e['nativeFontOriginals']['request']=dict(ROW(originals['request']),base64=base64.b64encode(originals['request']).decode())
+            r.join_actual_typed_inventory(request,D(base64.b64decode(e['inventoryOriginal']['base64'])),e)
+    def staged_request(self,checkout):
+        files,expected=fixture_v5();request=D(E(D(files['request.original.json'])).replace(b'/checkout',str(checkout).encode()))
+        stage,config=c.native_font_layout(request['nativeFontAdmission']);request['runtime']['files'][str(stage/'fontconfig.xml')]=ROW(config)
+        return request
+    def staged_host(self,checkout,output,fault=None):
+        testcase=self
+        class Fake:
+            def __init__(self):
+                (checkout/'event.json').write_bytes(E({'testOnly':True}))
+                self.env={'GITHUB_WORKSPACE':str(checkout),'GITHUB_EVENT_PATH':str(checkout/'event.json'),'GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual','GITHUB_REPOSITORY':r.REPOSITORY};self.calls=[]
+            def run(self,role,argv,env,seconds,cap):
+                self.calls.append(role);raw=b'font' if role=='native-font.font' else b'notice'
+                if fault==role:raw=b'prefix'
+                output.save(role+'.stdout',raw);output.save(role+'.stderr',b'')
+                value=proc(argv,raw,env=env)
+                if fault==role:value.update(exitCode=1,firstFailure='manufactured GET failure')
+                output.save(role+'.process.json',E(value))
+                if fault==role:raise ValueError('manufactured GET failure')
+                testcase.assertEqual(argv,c.native_font_fetch_argv(argv[-1],seconds,len(raw)));testcase.assertEqual(cap,len(raw))
+                return raw
+        return Fake()
+    def test_current_v5_real_inline_stage_reuses_originals_without_second_get(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary);(checkout/'gui-inputs').mkdir();(checkout/'gui-setup').mkdir();request=self.staged_request(checkout);pin=H(E(request))
+            output=c.Originals(checkout/'gui-setup/preflight');host=self.staged_host(checkout,output)
+            stage=c.prepare_native_font(request,pin,checkout,host,output,True)
+            self.assertEqual(host.calls,['native-font.font','native-font.notice']);self.assertEqual((stage/'fonts/selected.ttf').read_bytes(),b'font')
+            self.assertEqual(stat.S_IMODE(stage.stat().st_mode),0o555);self.assertEqual(stat.S_IMODE((stage/'cache').stat().st_mode),0o700)
+            actual=c.Originals(checkout/'actual-font-originals');c.prepare_native_font(request,pin,checkout,host,actual,False)
+            self.assertEqual(host.calls,['native-font.font','native-font.notice']);self.assertEqual(output.files['native-font.stage.json'],actual.files['native-font.stage.json'])
+            with self.assertRaises(FileExistsError):c.prepare_native_font(request,pin,checkout,host,c.Originals(checkout/'duplicate'),True)
+            (stage/'fonts/selected.ttf').chmod(0o644);(stage/'fonts/selected.ttf').write_bytes(b'evil')
+            with self.assertRaisesRegex(ValueError,'readonly staged file identity'):c.prepare_native_font(request,pin,checkout,host,c.Originals(checkout/'changed'),False)
+    def test_current_v5_second_get_failure_keeps_first_and_partial_originals(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary);(checkout/'gui-inputs').mkdir();(checkout/'gui-setup').mkdir();request=self.staged_request(checkout)
+            output=c.Originals(checkout/'gui-setup/preflight');host=self.staged_host(checkout,output,'native-font.notice')
+            with self.assertRaisesRegex(ValueError,'manufactured GET failure'):c.prepare_native_font(request,H(E(request)),checkout,host,output,True)
+            self.assertEqual((output.root/'native-font.font.stdout').read_bytes(),b'font');self.assertEqual((output.root/'native-font.notice.stdout').read_bytes(),b'prefix')
+            self.assertFalse((checkout/'gui-inputs/native-font/staging.original.json').exists());self.assertEqual(len(host.calls),2)
+    def test_current_v5_source_event_tool_admission_precedes_any_font_get(self):
+        for fault in (None,'event','runtime','source'):
+            with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+                checkout=pathlib.Path(temporary);(checkout/'gui-inputs').mkdir();(checkout/'gui-setup').mkdir();request=self.staged_request(checkout);raw=E(request);pin=H(raw);order=[]
+                event={'action':'labeled','label':{'name':c.LABEL},'sender':{'login':'CrispStrobe'},'repository':{'full_name':c.REPOSITORY},'number':123,
+                  'pull_request':{'number':123,'state':'open','head':{'sha':'a'*40,'repo':{'full_name':c.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':c.REPOSITORY}},'body':'<!-- BW_GUI_HDD_REQUEST_SHA256='+pin+' -->'}}
+                if fault=='event':event['action']='synchronize'
+                (checkout/'event.json').write_bytes(E(event));env={'GITHUB_EVENT_PATH':str(checkout/'event.json'),'GITHUB_WORKSPACE':str(checkout),'GITHUB_REPOSITORY':c.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ATTEMPT':'1','GITHUB_RUN_ID':'200','GITHUB_JOB':'actual','BW_EXPECTED_HEAD':'a'*40}
+                original_regular=c.regular
+                def regular(path,cap):
+                    if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+                    return original_regular(path,cap)
+                def inventory(path,*args):
+                    prefix=str(path).removeprefix(str(checkout)+'/');order.append('installed:'+prefix)
+                    return {key.removeprefix(prefix+'/'):value for key,value in request['installedFiles'].items() if key.startswith(prefix+'/')}
+                def check_file(path,row):
+                    name=str(path).removeprefix(str(checkout)+'/')
+                    if name in request['source']['files']:
+                        order.append('source:'+name)
+                        return b'wrong' if fault=='source' else ('source:'+name).encode()
+                    return b'manufactured admitted critical file'
+                def runtime(value):
+                    order.append('runtime')
+                    if fault=='runtime':raise ValueError('manufactured tool drift')
+                    return {'testOnly':True}
+                class Fake:
+                    def __init__(self,root_,output,env_):self.env=env_;self.output=output
+                    def git(self,args):return (('a'*40 if args[1]=='HEAD' else 'b'*40)+'\n').encode() if args[0]=='rev-parse' else ('source:'+args[-1].split(':',1)[1]).encode()
+                def stage(request_,expected_,root_,host,output,preflight):
+                    order.append('font-stage');self.assertIn('runtime',order);self.assertIn('installed:node_modules/bw-circuit-ui',order)
+                    self.assertTrue(all('source:'+path in order for path in c.SOURCE));return checkout/'gui-inputs/native-font'
+                with patch.object(c,'regular',side_effect=regular),patch.object(c,'inventory',side_effect=inventory),patch.object(c,'check_file',side_effect=check_file),patch.object(c,'observe_python_startup',return_value=(b'manufactured startup',{})),patch.object(c,'observe_runtime',side_effect=runtime),patch.object(c,'prepare_native_font',side_effect=stage):
+                    status=c.execute(raw,pin,checkout,checkout/'gui-setup/preflight',env,factory=Fake,preflight=True)
+                self.assertEqual(status,0 if fault is None else 1)
+                self.assertEqual('font-stage' in order,fault is None)
+
+    def test_current_v5_owned_cache_empty_files_symlink_and_count_bounds(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            cache=pathlib.Path(temporary)/'cache';cache.mkdir(mode=0o700);self.assertEqual(c.native_font_cache(cache)['entries'],{})
+            (cache/'empty').write_bytes(b'');self.assertEqual(c.native_font_cache(cache)['entries']['empty']['byteLength'],0)
+            (cache/'alias').symlink_to('/must-not-read')
+            with self.assertRaisesRegex(ValueError,'no-link'):c.native_font_cache(cache)
+            (cache/'alias').unlink()
+            other=pathlib.Path(temporary)/'outside';other.write_bytes(b'owned but outside cache');os.link(other,cache/'hardlink')
+            with self.assertRaisesRegex(ValueError,'external hardlink'):c.native_font_cache(cache)
+            with self.assertRaisesRegex(ValueError,'bounded no-link staged'):c.staged_regular(cache/'hardlink',1024)
+            (cache/'hardlink').unlink()
+            for index in range(128):(cache/('item-'+str(index))).write_bytes(b'')
+            with self.assertRaisesRegex(ValueError,'128-entry') as caught:c.native_font_cache(cache)
+            partial=D(caught.exception.gui_cache_original);self.assertEqual(len(partial['entries']),128);self.assertFalse(partial['quotaEnforced'])
+    def test_current_v5_staging_original_and_real_browser_env_refuse_rehash(self):
+        for cut in ('config','url','get-body','env','cache-cap','cache-quota','cache-alias','cache-hardlink','directories','event','serial'):
+            files,expected=fixture_v5()
+            if cut=='config':files['native-font.config.original.xml']=b'<fontconfig><dir>/usr/share/fonts</dir></fontconfig>'
+            elif cut=='url':value=D(files['native-font.stage.json']);value['fontUrl']='https://example.invalid/font';files['native-font.stage.json']=E(value)
+            elif cut=='get-body':
+                files['native-font.font.stdout']=b'evil';value=D(files['native-font.font.process.json']);value['streams']['stdout']=ROW(b'evil');files['native-font.font.process.json']=E(value)
+            elif cut=='env':value=D(files['forward-debug.process.json']);value['environment']['FONTCONFIG_FILE']='/etc/fonts/fonts.conf';files['forward-debug.process.json']=E(value)
+            elif cut=='directories':
+                value=D(files['runtime.after.json']);next(iter(value['nativeFontDirectories'].values()))['names'].append('unreviewed.ttf');files['runtime.after.json']=E(value)
+            elif cut=='event':
+                value=D(files['native-font.stage.json']);value['platform']['GITHUB_RUN_ID']='201';files['native-font.stage.json']=E(value)
+            elif cut=='serial':
+                value=D(files['native-font.notice.process.json']);value['startedNs']=1;files['native-font.notice.process.json']=E(value)
+            else:
+                value=D(files['native-font.cache.after.json'])
+                if cut=='cache-hardlink':
+                    value['entries']['linked']={'kind':'file','identity':dict(value['identity'],mode=stat.S_IFREG|0o644,nlink=2,size=3),'byteLength':3,'sha256':H(b'abc')};value['totalBytes']=3
+                elif cut=='cache-cap':value['totalBytes']=8*1024*1024+1
+                elif cut=='cache-quota':value['quotaEnforced']=True
+                else:value['identity']['mode']=stat.S_IFLNK|0o700
+                files['native-font.cache.after.json']=E(value)
+            with self.assertRaises(ValueError):r.audit(files,expected)
+
+    def test_current_v5_build_whole_tree_and_current_head_are_live(self):
+        for role in ('head','tree'):
+            files,expected=fixture_v5();request=D(files['request.original.json'])
+            if role=='head':request['build']['head']='f'*40
+            else:request['build']['sourceAdmission']['checkoutTree']='f'*40
+            raw=E(request)
+            for module in (c,r):
+                with self.assertRaisesRegex(ValueError,'complete checkout tree'):module.parse_request(raw,H(raw))
+    def test_current_v5_installed_cui_before_after_and_missing_census(self):
+        for stage in ('before','after'):
+            files,expected=fixture_v5();value=D(files['installed.'+stage+'.json']);value['node_modules/bw-circuit-ui/src/current.js']['sha256']='0'*64;files['installed.'+stage+'.json']=E(value)
+            with self.assertRaisesRegex(ValueError,'installed graph original'):r.audit(files,expected)
+        files,expected=fixture_v5();request=D(files['request.original.json']);del request['installedFiles']['node_modules/bw-circuit-ui/package.json'];raw=E(request)
+        for module in (c,r):
+            with self.assertRaisesRegex(ValueError,'Circuit UI inventory'):module.parse_request(raw,H(raw))
+
+    def test_current_v5_font_identity_request_parser_mutant_is_detected(self):
+        files,expected=fixture_v5();request=D(files['request.original.json']);request['nativeFontAdmission']['files']['/usr/lib/libfontconfig-selected.so']['sha256']='0'*64
+        raw=E(request)
+        for module in (r,c):
+            with self.assertRaisesRegex(ValueError,'current GUI runtime readback'):module.parse_request(raw,H(raw))
+        text=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text()
+        old="need(encode(row)==encode(runtime['files'].get(path)),'native file joins current GUI runtime readback selection')"
+        self.assertIn(old,text);namespace={'__name__':'native_font_current_readback_mutant'}
+        exec(compile(text.replace(old,"need(True,'native file joins current GUI runtime readback selection')",1),'native-readback-mutant','exec'),namespace)
+        self.assertEqual(namespace['parse_request'](raw,H(raw)),request)
 
     def assert_noncurrent_board_refuses_actual_formats(self,noncurrent):
         self.assertNotEqual(noncurrent,r.BOARD)

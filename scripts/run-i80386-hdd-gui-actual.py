@@ -230,12 +230,73 @@ def actual_inventory_reference(reference):
     return selected
 
 
+# A separately reviewed native observation is a finite input, never a host lease
+# or browser-font equivalence proof. The current GUI job rereads its selected
+# files through the existing before/after runtime observer.
+NATIVE_FONT_SOURCE = frozenset((
+ 'scripts/i80386-native-font-selection/run.py',
+ 'scripts/i80386-native-font-selection/reader.py',
+ 'scripts/i80386-native-font-selection/controls.py',
+ 'scripts/i80386-native-font-selection/README.md',
+ '.github/workflows/i80386-native-font-selection.yml'))
+NATIVE_FONT_ROLES = frozenset(('request','event','original','service','expectation','readerReport','run','job','artifact'))
+
+
+def native_font_layout(reference):
+    font=Path(reference['font']['path']);stage=font.parent.parent
+    need(font.name=='selected.ttf' and font.parent.name=='fonts' and
+         reference['font']['licensePath']==str(stage/'NOTICE'),'fixed owned font input layout')
+    need(re.fullmatch(r'/[A-Za-z0-9_./-]+',str(stage)),'XML-safe selected owned font root')
+    raw=('<?xml version="1.0"?>\n<fontconfig>\n  <dir>'+str(stage/'fonts')+
+         '</dir>\n  <cachedir>'+str(stage/'cache')+'</cachedir>\n</fontconfig>\n').encode()
+    return stage,raw
+
+
+def native_font_fetch_argv(url,seconds,size):
+    return ['/usr/bin/curl','--fail','--silent','--show-error','--proto','=https',
+            '--max-time',str(seconds),'--max-filesize',str(size),'--url',url]
+
+
+def actual_native_font_reference(reference, runtime):
+    fields(reference,'schema source workflow runId jobId artifactId artifactName artifactBytes artifactSha256 originals files font tool')
+    need(reference['schema']=='bw.gui-hdd.actual-native-font-reference.v1','explicit separately reviewed native-font reference')
+    source=reference['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    need(type(source['files']) is dict and set(source['files'])==NATIVE_FONT_SOURCE,'exact separate native-font source closure')
+    for row in source['files'].values():fields(row,'sha256');digest(row['sha256'])
+    workflow=reference['workflow'];fields(workflow,'commit path sha256');digest(workflow['commit'],40);digest(workflow['sha256'])
+    need(workflow['path']=='.github/workflows/i80386-native-font-selection.yml' and workflow['sha256']==source['files'][workflow['path']]['sha256'],'native executing workflow/content selection')
+    for key in ('runId','jobId','artifactId'):integer(reference[key],1,2**63-1)
+    integer(reference['artifactBytes'],1,32<<20);digest(reference['artifactSha256'])
+    need(reference['artifactName']=='i80386-native-font-selection-'+str(reference['runId'])+'-1','new native-font original delivery identity')
+    need(type(reference['originals']) is dict and set(reference['originals'])==NATIVE_FONT_ROLES,'closed separately reviewed native original roles')
+    for row in reference['originals'].values():
+        fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
+    files=reference['files'];need(type(files) is dict and 3<=len(files)<=128,'finite selected native files')
+    for path,row in files.items():
+        runtime_path(path);fields(row,'byteLength sha256');integer(row['byteLength'],1,256<<20);digest(row['sha256'])
+        need(encode(row)==encode(runtime['files'].get(path)),'native file joins current GUI runtime readback selection')
+    font=reference['font'];fields(font,'url path byteLength sha256 licenseUrl licensePath licenseBytes licenseSha256')
+    runtime_path(font['path']);runtime_path(font['licensePath']);digest(font['licenseSha256']);integer(font['licenseBytes'],1,128<<10)
+    for key in ('url','licenseUrl'):
+        need(type(font[key]) is str and font[key].startswith('https://raw.githubusercontent.com/google/fonts/') and len(font[key])<=512,'immutable separately reviewed native font/notice source URL')
+    integer(font['byteLength'],1,16<<20);digest(font['sha256'])
+    need(files.get(font['path'])=={'byteLength':font['byteLength'],'sha256':font['sha256']} and
+         files.get(font['licensePath'])=={'byteLength':font['licenseBytes'],'sha256':font['licenseSha256']},'selected native font and separately reviewed notice bytes')
+    tool=reference['tool'];fields(tool,'path byteLength sha256');runtime_path(tool['path']);integer(tool['byteLength'],1,FILE_CAP);digest(tool['sha256'])
+    need(files.get(tool['path'])=={'byteLength':tool['byteLength'],'sha256':tool['sha256']},'selected native tool current-job identity')
+    stage,config=native_font_layout(reference)
+    need(runtime['files'].get(str(stage/'fontconfig.xml'))=={'byteLength':len(config),'sha256':sha(config)} and
+         '/usr/bin/curl' in runtime['files'],'selected current font config and acquisition tool graph')
+    need(not any(path==str(stage) or path.startswith(str(stage)+'/') for role in ('aliases','directoryAliases') for path in runtime[role]),'owned font input has no admitted aliases')
+    return reference
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    version=4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup')
+    version=5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5') else 3
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version==5 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
@@ -260,10 +321,13 @@ def parse_request(raw, expected):
     integer(prior['checkoutLog']['byteLength'],1,32<<20);digest(prior['checkoutLog']['sha256'])
     fields(prior['workflow'],'commit path sha256');digest(prior['workflow']['commit'],40);digest(prior['workflow']['sha256'])
     need(prior['workflow']['path']=='.github/workflows/build.yml','exact previously reviewed producer workflow')
+    if version==5:
+        need(build['head']==source['head'] and prior['checkoutTree']==source['tree'],'current Build head and complete checkout tree match selected GUI source')
     rows(request['installedFiles'])
+    if version==5:need('node_modules/bw-circuit-ui/package.json' in request['installedFiles'],'complete selected Circuit UI inventory required for current actual')
     need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
          any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
-    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources'+(' emptyPythonSources' if version==4 else ''))
+    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources'+(' emptyPythonSources' if version>=4 else ''))
     need(type(runtime['files']) is dict and 1 <= len(runtime['files']) <= 512, 'bounded independently admitted runtime graph')
     for name, item in runtime['files'].items():
         need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts, 'absolute runtime file')
@@ -287,9 +351,9 @@ def parse_request(raw, expected):
          'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},
          'perProcessCoreBytes':0,'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,
          'aggregateContainmentQualified':False}), 'fixed finite hosted envelope; no aggregate containment claim')
-    if version==4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
+    if version>=4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
     prior_inventory=request['inventoryAdmission']
-    if version==4:actual_inventory_reference(prior_inventory)
+    if version>=4:actual_inventory_reference(prior_inventory)
     else:
         fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
         need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
@@ -298,6 +362,7 @@ def parse_request(raw, expected):
         fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
         fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
         need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
+    if version==5:actual_native_font_reference(request['nativeFontAdmission'],runtime)
     fields(request['inputs'], 'floppy hdd bios vgaRom')
     input_paths={'floppy':'gui-inputs/floppy.img','hdd':'gui-inputs/hdd.img','bios':'gui-inputs/bios.bin','vgaRom':'gui-inputs/vga.bin'}
     for name, row in request['inputs'].items():
@@ -724,7 +789,9 @@ def observe_runtime(request):
     facts['availableCpus'] = sorted(os.sched_getaffinity(0))
     facts['rlimits'] = {str(key):list(resource.getrlimit(key)) for key in (resource.RLIMIT_CORE,resource.RLIMIT_FSIZE,resource.RLIMIT_NOFILE)}
     facts['aggregateContainmentQualified'] = False
-    if request.get('schema')=='bw.gui-hdd.actual-request.v4':observe_actual_empty_sources(request,facts)
+    if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5'):observe_actual_empty_sources(request,facts)
+    if request.get('schema')=='bw.gui-hdd.actual-request.v5':
+        stage,_=native_font_layout(request['nativeFontAdmission']);facts.update(schema='bw.gui-hdd.runtime-observation.v5',nativeFontDirectories=native_font_directories(stage))
     return facts
 
 
@@ -767,8 +834,139 @@ def admit_build_metadata(request, run, job, artifact):
          artifact.get('digest') == 'sha256:'+build['sha256'], 'artifact metadata admitted before one retrieval')
 
 
+def native_font_directories(stage):
+    out={}
+    for path,names in ((stage,{'fonts','cache','NOTICE','fontconfig.xml','staging.original.json'}),(stage/'fonts',{'selected.ttf'})):
+        before=path.lstat();need(path.resolve(strict=True)==path and before.st_mode==stat.S_IFDIR|0o555 and before.st_uid==os.geteuid(),'readonly exclusive font directory')
+        observed=[]
+        with os.scandir(path) as entries:
+            for item in entries:
+                need(len(observed)<len(names),'closed owned font directory entry cap');observed.append(item.name)
+        need(set(observed)==names and identity(path.lstat())==identity(before),'closed stable owned font directory census')
+        out[str(path)]={'identity':identity(before),'names':sorted(observed)}
+    return out
+
+
+def exclusive_stage_write(path,raw):
+    fd=None;first=None
+    try:
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o444)
+        need(os.write(fd,raw)==len(raw) and os.fstat(fd).st_size==len(raw),'complete exclusive staged input write')
+    except BaseException as error:first=error;raise
+    finally:
+        if fd is not None:
+            try:os.close(fd)
+            except BaseException as error:
+                if first is None:raise
+                first.gui_secondary=getattr(first,'gui_secondary',[])+[('staging-write-close',error)]
+
+
+def staged_regular(path,cap):
+    # Only owned staging/cache originals permit empty files; the generic positive
+    # runtime/original policy above remains unchanged.
+    path=Path(path);before=path.lstat();fd=None;first=None
+    need(path.resolve(strict=True)==path and stat.S_ISREG(before.st_mode) and before.st_nlink==1 and 0<=before.st_size<=cap,'bounded no-link staged original')
+    try:
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+        need(identity(os.fstat(fd))==identity(before),'held staged original identity')
+        raw=bytearray()
+        while len(raw)<=cap:
+            part=os.read(fd,min(65536,cap+1-len(raw)))
+            if not part:break
+            raw.extend(part)
+        need(len(raw)==before.st_size and identity(os.fstat(fd))==identity(before)==identity(path.lstat()),'stable staged original readback')
+        return bytes(raw)
+    except BaseException as error:first=error;raise
+    finally:
+        if fd is not None:
+            try:os.close(fd)
+            except BaseException as error:
+                if first is None:raise
+                first.gui_secondary=getattr(first,'gui_secondary',[])+[('staging-close',error)]
+
+
+def native_font_cache(path):
+    path=Path(path);root_info=path.lstat()
+    need(path.resolve(strict=True)==path and stat.S_ISDIR(root_info.st_mode) and
+         root_info.st_uid==os.geteuid() and stat.S_IMODE(root_info.st_mode)==0o700,'exclusive current-job font cache')
+    entries={};total=0
+    def walk(directory,depth):
+        nonlocal total
+        need(depth<=4,'font cache directory depth cap')
+        with os.scandir(directory) as iterator:
+            for entry in iterator:
+                need(len(entries)<128,'font cache 128-entry posthoc cap')
+                selected=Path(entry.path);name=str(selected.relative_to(path));info=selected.lstat()
+                need(not stat.S_ISLNK(info.st_mode) and info.st_uid==os.geteuid() and not info.st_mode&0o022,'owned no-link font cache member')
+                if stat.S_ISDIR(info.st_mode):
+                    entries[name]={'kind':'directory','identity':identity(info)};walk(selected,depth+1)
+                else:
+                    need(info.st_nlink==1,'cache file has no external hardlink')
+                    raw=staged_regular(selected,8<<20);need(identity(selected.lstat())==identity(info),'cache file/census identity');total+=len(raw)
+                    entries[name]={'kind':'file','identity':identity(info),'byteLength':len(raw),'sha256':sha(raw)}
+                    need(total<=8<<20,'font cache 8MiB aggregate posthoc cap')
+    value={'path':str(path),'identity':identity(root_info),'entries':entries,'totalBytes':0,
+           'byteCap':8<<20,'entryCap':128,'quotaEnforced':False}
+    try:
+        walk(path,0);value['totalBytes']=total
+        need(identity(path.lstat())==identity(root_info),'stable font cache census root');return value
+    except BaseException as error:
+        value['totalBytes']=total;error.gui_cache_original=encode(value);raise
+
+
+def prepare_native_font(request,expected,root,hosted,output,preflight):
+    reference=request['nativeFontAdmission'];stage,config=native_font_layout(reference);root=Path(root).absolute()
+    need(root.resolve(strict=True)==root and hosted.env.get('GITHUB_WORKSPACE')==str(root) and
+         stage==root/'gui-inputs/native-font' and (root/'gui-inputs').resolve(strict=True)==root/'gui-inputs',
+         'owned font root bound to admitted official current checkout')
+    receipt=stage/'staging.original.json'
+    roles=('native-font.font.stdout','native-font.font.stderr','native-font.font.process.json',
+           'native-font.notice.stdout','native-font.notice.stderr','native-font.notice.process.json')
+    if preflight:
+        stage.mkdir(mode=0o700);(stage/'fonts').mkdir(mode=0o700);(stage/'cache').mkdir(mode=0o700)
+        selected=[]
+        for role,path,url,row,seconds in (
+          ('native-font.font',Path(reference['font']['path']),reference['font']['url'],reference['files'][reference['font']['path']],30),
+          ('native-font.notice',Path(reference['font']['licensePath']),reference['font']['licenseUrl'],reference['files'][reference['font']['licensePath']],15)):
+            raw=hosted.run(role,native_font_fetch_argv(url,seconds,row['byteLength']),clean_env(),seconds,row['byteLength'])
+            need(len(raw)==row['byteLength'] and sha(raw)==row['sha256'],'one exact admitted font/notice input')
+            selected.append((path,raw))
+        selected.append((stage/'fontconfig.xml',config))
+        for path,raw in selected:
+            exclusive_stage_write(path,raw)
+            path.chmod(0o444);need(regular(path,FILE_CAP)==raw,'staged font input exact readback')
+        (stage/'fonts').chmod(0o555)
+        value={'schema':'bw.gui-hdd.native-font-stage.v1','requestSha256':expected,'referenceSha256':sha(encode(reference)),
+          'source':request['source'],'eventSha256':sha(regular(hosted.env['GITHUB_EVENT_PATH'],JSON_CAP)),
+          'platform':{key:hosted.env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY')},'root':str(stage),'files':{str(path):{'byteLength':len(raw),'sha256':sha(raw),'identity':identity(path.lstat())} for path,raw in selected},
+          'fontUrl':reference['font']['url'],'licenseUrl':reference['font']['licenseUrl'],'cache':native_font_cache(stage/'cache')}
+        need(value['cache']['entries']=={} and value['cache']['totalBytes']==0,'fresh empty owned font cache before browser')
+        exclusive_stage_write(receipt,encode(value))
+        receipt.chmod(0o444);(stage).chmod(0o555)
+    else:
+        # Preflight staged exactly once in this job. Reuse its originals; never GET again.
+        source=Path(root)/'gui-setup/preflight'
+        for role in roles:output.save(role,staged_regular(source/role,FILE_CAP))
+        value=decode(regular(receipt,JSON_CAP))
+    need(value['eventSha256']==sha(regular(hosted.env['GITHUB_EVENT_PATH'],JSON_CAP)) and
+         value['platform']=={key:hosted.env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY')},'staging original belongs to this producing event/job')
+    need(value['fontUrl']==reference['font']['url'] and value['licenseUrl']==reference['font']['licenseUrl'],'staged exact admitted source URLs')
+    native_font_directories(stage)
+    need(value['requestSha256']==expected and value['referenceSha256']==sha(encode(reference)) and
+         value['source']==request['source'] and value['root']==str(stage),'staged input source/request identity')
+    need(set(value['files'])=={reference['font']['path'],reference['font']['licensePath'],str(stage/'fontconfig.xml')},'closed staged input files')
+    for path,row in value['files'].items():
+        need(identity(Path(path).lstat())==row['identity'] and stat.S_IMODE(row['identity']['mode'])==0o444,'held readonly staged file identity')
+        check_file(path,{'byteLength':row['byteLength'],'sha256':row['sha256']})
+    need(stat.S_IMODE(stage.lstat().st_mode)==0o555 and stat.S_IMODE((stage/'fonts').lstat().st_mode)==0o555,'readonly exclusive font directories')
+    output.save('native-font.stage.json',encode(value));output.save('native-font.config.original.xml',config)
+    before=native_font_cache(stage/'cache');output.save('native-font.cache.before.json',encode(before))
+    need(before['entries']=={} and before['totalBytes']==0 and all(before['identity'][key]==value['cache']['identity'][key] for key in ('dev','ino','uid','gid','mode')),'retained fresh owned font cache before browser')
+    return stage
+
+
 def execute(request_raw, expected, root, output_path, env, factory=Hosted, preflight=False):
-    request = parse_request(request_raw, expected); output = Originals(output_path); first = None; secondary = []
+    request = parse_request(request_raw, expected); output = Originals(output_path); first = None; secondary = [];font_stage=None
     result = {'schema': 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
               'scenarios': [], 'firstFailure': None, 'secondary': secondary}
     def retain(error,phase):
@@ -786,7 +984,13 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         hosted = factory(root, output, env)
         event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP); bind_event(event_raw, request, expected, env)
         output.save('event.original.json', event_raw)
-        runtime_before=capture_actual_runtime(output,'before',request)
+        current_font=request['schema']=='bw.gui-hdd.actual-request.v5'
+        if current_font and preflight:
+            # Tool/runtime bytes and the exact source/event are admitted before GETs.
+            initial=decode(encode(request));initial['schema']='bw.gui-hdd.actual-request.v4';stage,config=native_font_layout(request['nativeFontAdmission'])
+            for path in (request['nativeFontAdmission']['font']['path'],request['nativeFontAdmission']['font']['licensePath'],str(stage/'fontconfig.xml')):initial['runtime']['files'].pop(path)
+            output.save('native-font.runtime-before-stage.json',encode(observe_runtime(initial)))
+        else:runtime_before=capture_actual_runtime(output,'before',request)
         need(hosted.git(['rev-parse', 'HEAD']).decode().strip() == request['source']['head'] and
              hosted.git(['rev-parse', 'HEAD^{tree}']).decode().strip() == request['source']['tree'], 'actual source HEAD/tree')
         observed_source={}
@@ -798,13 +1002,17 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         for path, row in request['criticalFiles'].items(): check_file(Path(root)/path, row)
         # Complete selected package census; expected rows originate outside this attempt.
         installed = {}
-        for prefix in ('node_modules/bw-board', 'node_modules/playwright', 'node_modules/playwright-core'):
+        prefixes=('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+ (('node_modules/bw-circuit-ui',) if request['schema']=='bw.gui-hdd.actual-request.v5' else ())
+        for prefix in prefixes:
             for path, row in inventory(Path(root)/prefix).items(): installed[prefix+'/'+path] = row
         need(encode(installed) == encode(request['installedFiles']), 'closed selected installed supplier/browser graph')
         pins = decode(regular(Path(root)/'vendor-pins.json', JSON_CAP))
         need({key: pins[key] for key in ('bw-board', 'bw-circuit-ui', 'sb3-creator')} ==
              {'bw-board': BOARD, 'bw-circuit-ui': CUI, 'sb3-creator': SB3}, 'held adopted dependency identities')
         output.save('installed.before.json', encode(installed))
+        if current_font:
+            font_stage=prepare_native_font(request,expected,root,hosted,output,preflight)
+            if preflight:runtime_before=capture_actual_runtime(output,'before',request)
         if preflight:
             result['schema']='bw.gui-hdd.preflight.v1';result['pass']=True
         else:
@@ -836,6 +1044,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
                 child_env = dict(clean_env(), PROOF_SCENARIO=scenario, PROOF_ADMISSION=str(output.root/'probe-admission.json'),
                     PROOF_OUTPUT=str(output.root/scenario), PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=request['runtime']['chromium'],
                     PROOF_BROWSER_SHA256=request['runtime']['files'][request['runtime']['chromium']]['sha256'])
+                if current_font:child_env.update(FONTCONFIG_FILE=str(font_stage/'fontconfig.xml'),XDG_CACHE_HOME=str(font_stage/'cache'))
                 hosted.run(scenario, [request['runtime']['node'], PROBE], child_env, seconds)
                 result['scenarios'].append(scenario)
             # Actual originals, not producer truthiness, are graded by the separate reader.
@@ -846,12 +1055,13 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
                 raw=check_file(Path(root)/path,row);observed_after[path]={'byteLength':len(raw),'sha256':sha(raw)}
             output.save('source.after.json',encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_after}))
             installed_after={}
-            for prefix in ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core'):
+            for prefix in prefixes:
                 for name,row in inventory(Path(root)/prefix).items():installed_after[prefix+'/'+name]=row
             need(installed_after==request['installedFiles'],'complete installed graph after both scenarios')
             output.save('installed.after.json', encode(installed_after)); runtime_after=capture_actual_runtime(output,'after',request)
-            if request['schema']=='bw.gui-hdd.actual-request.v4':
+            if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5'):
                 need(encode(runtime_before['emptyPythonSources'])==encode(runtime_after['emptyPythonSources']),'actual typed source before/after identity unchanged')
+            if current_font:output.save('native-font.cache.after.json',encode(native_font_cache(font_stage/'cache')))
             need(inventory(build_root) == build_files, 'served build changed after scenarios')
             for role, row in request['inputs'].items(): check_file(Path(root)/row['path'], row)
             result['pass'] = True
@@ -860,6 +1070,16 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         output.save('python-startup.after.json',encode(startup_after))
     except BaseException as error:
         retain(error,'attempt')
+        if hasattr(error,'gui_cache_original'):
+            try:output.save('native-font.cache.partial.json',error.gui_cache_original)
+            except BaseException as extra:retain(extra,'partial-cache-retention')
+        if font_stage is not None and not preflight and 'native-font.cache.after.json' not in output.files:
+            try:output.save('native-font.cache.after.json',encode(native_font_cache(font_stage/'cache')))
+            except BaseException as extra:
+                retain(extra,'font-cache-after-failure')
+                if hasattr(extra,'gui_cache_original') and 'native-font.cache.partial.json' not in output.files:
+                    try:output.save('native-font.cache.partial.json',extra.gui_cache_original)
+                    except BaseException as later:retain(later,'partial-cache-retention')
         for extra in getattr(error,'inventory_secondary',[]):retain(extra,'typed-source-close')
         for phase,extra in getattr(error,'gui_secondary',[]):retain(extra,phase)
     finally:
@@ -1801,6 +2021,8 @@ def main(argv=None):
     if args.mode=='inventory':
         result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output)
         return retain_inventory_observation(result,args.output)
+    current=parse_request(request_raw,args.expected_sha256)
+    need(current['schema']=='bw.gui-hdd.actual-request.v5','current actual entry requires independently reviewed native-font reference v5')
     return execute(request_raw,args.expected_sha256,Path.cwd(),args.output,env,preflight=args.mode=='preflight')
 
 
