@@ -1,6 +1,7 @@
 # CLI instrument regression
 
-Status reconciled 2026-10-23: **harness implementation in qualification; zero
+Status reconciled 2026-10-24: **existing TestFlight delivery verified; harness
+handoff correction in qualification; zero
 campaign cases executed**. This is a bounded follow-up to the qualified circuit CLI, not a
 report that the schematic corpus or physical instruments have been validated.
 Use [the lane protocol](../lanes/PROTOCOL.md) and dated claims for current ownership and the
@@ -16,12 +17,16 @@ The new harness contract was traced against Board
 consumer pin until its admission and manifest have been reviewed; it never
 substitutes a newer sibling or silently moves a dependency.
 
-1. **Release prerequisite.** v0.1.26 was signed and uploaded; its original run
-   failed while waiting for iOS metadata and skipped distribution. This is not
-   evidence of present TestFlight availability. Follow
-   [existing-release recovery](TESTFLIGHT-RECOVERY.md): audit first, recover
-   notes/groups/review only if admitted, and require actual availability for
-   both internal and external testing. Do not rebuild or upload blindly.
+1. **Release prerequisite: verified.** The read-only
+   [audit 40048235422](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40048235422)
+   observed v0.1.26 on both iOS and macOS: valid, unexpired, matching English and
+   German notes, both groups linked, review approved, and both internal/external
+   states `IN_BETA_TESTING`. Independent readback of the retained original
+   recomputed complete availability. This is the existing immutable release
+   `6d78f7e107752497ed96b30b03e985386916fc59`, not a new application build.
+   No recovery write or upload was needed; the earlier metadata-wait failure
+   remains preserved separately. This is a finite observation, not a continuing
+   distribution guarantee.
 2. **Harness implementation.** Preparation is permitted in parallel with release
    recovery. The [merged claim](../lanes/2026-10-23-circuit-instrument-regression.md)
    owns the bounded implementation below. Pure controls exercise transport,
@@ -61,16 +66,21 @@ manifest without installing, simulating or invoking an oracle. Pure controls:
 node --test test/circuit-instrument-regression.test.mjs
 ```
 
-After actual TestFlight completion, dispatch **Fixed CLI instrument regression**
-once, supplying the successful main recovery/audit run ID. It first admits that
-run's metadata, verifies its source is an ancestor, acquires its original log
-once and requires a unique complete release summary. A green metadata workflow,
-pending review or writer exit alone cannot open the campaign. This is a finite
-availability observation, not a continuing distribution guarantee.
+After harness qualification and merge, dispatch **Fixed CLI instrument regression**
+once with `release_run: 40048235422`. It checks that exact official run/attempt/
+job/source metadata and that the admitted release source is an ancestor.
+Its categorical release snapshot is bound to the independently read original:
+summary SHA-256 `5f3b7d92ede237ab656d79e2a1d9812474f33197e8dd337f0b95b143ce35510e`;
+original log SHA-256
+`734373adbf58a5763860f558e8568ac82b8a173ad90f00cbee8cc8da38502bdb`,
+24,622 bytes. The raw original was acquired once and retained; the campaign
+does not download it again or publish a raw-log copy. The snapshot contains no
+private resource IDs. A different observation requires a reviewed provenance
+update; an arbitrary successful run or pending review cannot open the gate.
 
 The manual workflow installs the locked consumer and ngspice on the hosted
 runner, fetches the two exact source commits, and invokes `--run` with explicit
-installed-root, source, release-run/log and fresh output paths. The runner
+installed-root, source, admitted release observation and fresh output paths. The runner
 itself never installs dependencies. Existing output directories are refused.
 Every original command/stdout/stderr, input, oracle deck/table, raw capture,
 work receipt, package proof and comparison is retained. Incomplete reports and

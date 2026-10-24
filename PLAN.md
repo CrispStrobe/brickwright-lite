@@ -25,15 +25,15 @@ history, not reservations or evidence that their work is still pending.
 1. **Upstream LM741 CLI qualification: complete.** Six signed/phase-shifted
    precision captures passed independent waveform, meter and work-receipt audits.
    This is a bounded nominal-model result, not vendor-model or hardware accuracy.
-2. **Consumer adoption: complete; TestFlight release: still pending.** PR965
+2. **Consumer adoption and existing TestFlight delivery: complete.** PR965
    landed as `5cb83052330b400b48293315260cb4293b4f6bcf`, adopting CUI
    `1db1bb9ee565338672c7acfefec4cf94b27196e1`. Its qualified CLI and built-GUI
    checks do not prove a newer signed or installed release. PR1011's release
-   ownership claim is merged, not a delivery receipt. v0.1.26 has since been
-   signed and uploaded; its metadata wait failed and distribution was skipped.
-   Use [existing-release recovery](docs/TESTFLIGHT-RECOVERY.md) to audit actual
-   state and recover admitted notes/groups/review. Require internal and external
-   availability; do not blindly rebuild or upload.
+   ownership claim is merged, not a delivery receipt. The read-only
+   [audit 40048235422](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40048235422)
+   independently verified existing v0.1.26 on iOS and macOS in both TestFlight
+   groups, with matching bilingual notes and approved reviews. No write or new
+   upload was required. The earlier metadata-wait failure remains preserved.
 3. **Prepare, then run the stratified installed-consumer regression.** Harness
    preparation may proceed in parallel with release work; actual campaign
    execution remains after TestFlight. The fixed harness is in source
@@ -52,7 +52,7 @@ history, not reservations or evidence that their work is still pending.
    captures or pretending to implement an ADC or analogue front end. Review the
    results and remaining limits before starting a further campaign.
 
-Status reconciliation: 2026-10-23. Harness source controls are not a numerical
+Status reconciliation: 2026-10-24. Harness source controls are not a numerical
 campaign result. The regression execution, causal repairs and realism remain
 pending; consult `lanes/` before taking ownership. The
 [handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) also

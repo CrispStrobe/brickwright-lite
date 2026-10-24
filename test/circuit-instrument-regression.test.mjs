@@ -1,12 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createManifest, createCases, TEMPLATE_COUNTS, canonicalJson, contentHash, sampleClock} from '../scripts/lib/instrument-regression-cases.mjs';
 import {close, passiveReference, lmReference, createAdpReference, compareSeries,
     readMeter, parseScopeCsv, reconcileResults, oracleDeck, oracleVectors, parseOracleTable,
     compareDc, parseCapture, compareCapture} from '../scripts/lib/instrument-regression-compare.mjs';
 import {admitReleaseRun, admitReleaseSummary, summaryFromOriginalLog, buildCliArgs,
-    retainedMutationChecks, REQUIRED_MUTATIONS, admitReleaseJob, releaseAcquisition,
-    verifyCaptureIdentity} from '../scripts/circuit-instrument-regression.mjs';
+    retainedMutationChecks, REQUIRED_MUTATIONS, admitReleaseJob, releaseObservation,
+    verifyCaptureIdentity, RELEASE_OBSERVATION, ADMITTED_RELEASE_SUMMARY} from '../scripts/circuit-instrument-regression.mjs';
 
 const manifest = createManifest();
 const cases = manifest.cases;
@@ -207,10 +208,11 @@ test('oracle reader binds vector names and full DC grid; nonzero current reversa
 
 const releaseSummary = () => ({action: 'audit', schemaVersion: 1, version: '0.1.26', tag: 'v0.1.26',
     releaseSource: '6d78f7e107752497ed96b30b03e985386916fc59', complete: true, iosPresent: true,
-    metadataVerified: true, pendingReview: false, reviewRecorded: true, builds: [{platform: 'IOS',
+    metadataVerified: true, pendingReview: false, reviewRecorded: true, recoveryEligible: true,
+    builds: ['IOS', 'MAC_OS'].map(platform => ({platform,
         processingState: 'VALID', expired: false, internalGroupLinked: true, externalGroupLinked: true,
         usesNonExemptEncryption: false, reviewState: 'APPROVED', localizedNotesPresent: {'en-US': true, 'de-DE': true},
-        localizedNotesMatch: {'en-US': true, 'de-DE': true}, internalBuildState: 'IN_BETA_TESTING', externalBuildState: 'IN_BETA_TESTING'}]});
+        localizedNotesMatch: {'en-US': true, 'de-DE': true}, internalBuildState: 'IN_BETA_TESTING', externalBuildState: 'IN_BETA_TESTING'}))});
 
 test('actual release gate refuses a mere successful workflow, pending review and missing iOS', () => {
     const run = {id: 123, run_attempt: 1, event: 'workflow_dispatch', status: 'completed', conclusion: 'success', head_branch: 'main',
@@ -231,10 +233,46 @@ test('actual release gate refuses a mere successful workflow, pending review and
     assert.equal(admitReleaseJob(run, jobs).id, 456);
     assert.throws(() => admitReleaseJob(run, {...jobs, jobs: [{...jobs.jobs[0], run_id: 122}]}));
     assert.throws(() => admitReleaseJob(run, {...jobs, jobs: [{...jobs.jobs[0], head_sha: 'b'.repeat(40)}]}));
-    assert.notEqual(releaseAcquisition(run, jobs, Buffer.from('one')).log.sha256,
-        releaseAcquisition(run, jobs, Buffer.from('other')).log.sha256);
     assert.deepEqual(summaryFromOriginalLog('2026-10-23T12:00:00.000Z ' + JSON.stringify(summary)), summary);
     assert.throws(() => summaryFromOriginalLog(JSON.stringify(summary) + '\n' + JSON.stringify(summary)), /one original/);
+});
+
+test('the admitted release summary is bound to its independently recorded original without reacquiring that log', () => {
+    const run = {id: 40048235422, run_attempt: 1, event: 'workflow_dispatch', status: 'completed', conclusion: 'success', head_branch: 'main',
+        path: '.github/workflows/testflight-release-recovery.yml', head_sha: 'dc0897cc4fdf1984752ed4ead0a3836bcd1d2385',
+        repository: {full_name: 'CrispStrobe/brickwright-lite'}};
+    const jobs = {total_count: 1, jobs: [{id: 120734738631, run_id: run.id, run_attempt: 1, head_sha: run.head_sha,
+        name: 'metadata', status: 'completed', conclusion: 'success',
+        steps: [{name: 'Audit or recover existing release metadata', status: 'completed', conclusion: 'success'}]}]};
+    const summary = releaseSummary();
+    assert.equal(contentHash(canonicalJson(summary)), '5f3b7d92ede237ab656d79e2a1d9812474f33197e8dd337f0b95b143ce35510e');
+    assert.deepEqual(ADMITTED_RELEASE_SUMMARY, summary);
+    assert.throws(() => { ADMITTED_RELEASE_SUMMARY.builds[0].reviewState = 'WAITING_FOR_REVIEW'; });
+    const observed = releaseObservation(run, jobs, summary);
+    assert.equal(observed.originalLogDownloadedByCampaign, false);
+    assert.deepEqual(observed.originalLog, {bytes: 24622, sha256: '734373adbf58a5763860f558e8568ac82b8a173ad90f00cbee8cc8da38502bdb'});
+    assert.equal(RELEASE_OBSERVATION.runId, run.id);
+    const substituted = structuredClone(summary);
+    substituted.builds[0].externalBuildState = 'READY_FOR_BETA_TESTING'; // Still available, but not this admitted observation.
+    admitReleaseSummary(substituted);
+    assert.throws(() => releaseObservation(run, jobs, substituted), /observation mismatch/);
+    assert.throws(() => releaseObservation({...run, id: run.id + 1},
+        {...jobs, jobs: [{...jobs.jobs[0], run_id: run.id + 1}]}, summary), /observation mismatch/);
+    assert.throws(() => releaseObservation(run, {...jobs, jobs: [{...jobs.jobs[0], id: 120734738632}]}, summary), /observation mismatch/);
+    assert.throws(() => releaseObservation({...run, head_sha: 'a'.repeat(40)},
+        {...jobs, jobs: [{...jobs.jobs[0], head_sha: 'a'.repeat(40)}]}, summary), /observation mismatch/);
+});
+
+test('the hosted campaign reads only run/job metadata and reuses the once-admitted release observation', () => {
+    const workflow = readFileSync(new URL('../.github/workflows/circuit-instrument-regression.yml', import.meta.url), 'utf8');
+    assert.match(workflow, /--admit-release-observation/);
+    const requests = workflow.split('\n').filter(line => /^\s*gh api /.test(line));
+    assert.equal(requests.length, 2, 'exactly two metadata reads; no official log retrieval');
+    assert(requests.some(line => line.includes('/actions/runs/$RELEASE_RUN" > release-evidence/run.json')));
+    assert(requests.some(line => line.includes('/attempts/$RELEASE_ATTEMPT/jobs?per_page=100')));
+    assert.doesNotMatch(workflow, /\/logs\b|\b(?:curl|wget)\b|gh run[^\n]*--log|actions\/download-artifact/);
+    assert.doesNotMatch(workflow, /--bind-release-log|--release-log/);
+    assert.match(workflow, /--release-observation release-evidence\/observation.json/);
 });
 
 test('CLI argv selects actual supported static/current and typed integer-time capture doors', () => {

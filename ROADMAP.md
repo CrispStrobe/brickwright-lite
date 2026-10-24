@@ -6,12 +6,13 @@ Follow the [current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15
 and upstream [acceptance contract](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md):
 qualified LM741 source → installed-consumer adoption and TestFlight release →
 stratified measurement regression → demonstrated causal repairs → bounded
-instrument-realism proof. As reconciled on 2026-10-23, upstream qualification
-and consumer adoption PR965 are complete; TestFlight delivery is not established.
-v0.1.26 signing/upload completed, but the original metadata wait failed and
-distribution was skipped. Audit/recover the existing release through
-[the bounded metadata workflow](docs/TESTFLIGHT-RECOVERY.md); do not count a
-successful writer or pending review as external availability.
+instrument-realism proof. As reconciled on 2026-10-24, upstream qualification
+and consumer adoption PR965 are complete. Existing v0.1.26 TestFlight delivery
+is now independently verified by read-only
+[audit 40048235422](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40048235422):
+iOS/macOS, both groups, matching bilingual notes and approved reviews. No new
+upload or metadata write was needed. The original failed metadata wait remains
+preserved; it did not describe the current Apple state.
 
 The [CLI instrument handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) scopes the
 harness now in source qualification, 312 parameter cases across 12 templates,

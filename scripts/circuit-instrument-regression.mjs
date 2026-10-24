@@ -4,11 +4,33 @@ import {readFileSync, writeFileSync, mkdirSync, existsSync, realpathSync, readdi
 import {resolve, join, dirname} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {spawnSync} from 'node:child_process';
-import {createManifest, CONTRACT_SOURCES, contentHash} from './lib/instrument-regression-cases.mjs';
+import {createManifest, CONTRACT_SOURCES, contentHash, canonicalJson} from './lib/instrument-regression-cases.mjs';
 import {oracleDeck, parseOracleTable, compareDc, parseCapture, parseScopeCsv, compareCapture,
     reconcileResults, close, compareSeries, passiveReference, lmReference, createAdpReference} from './lib/instrument-regression-compare.mjs';
 
 const RELEASE_SOURCE = '6d78f7e107752497ed96b30b03e985386916fc59';
+const deepFreeze = value => {
+    if (value && typeof value === 'object') { Object.values(value).forEach(deepFreeze); Object.freeze(value); }
+    return value;
+};
+export const ADMITTED_RELEASE_SUMMARY = deepFreeze({
+    action: 'audit', schemaVersion: 1, version: '0.1.26', tag: 'v0.1.26', releaseSource: RELEASE_SOURCE,
+    iosPresent: true, metadataVerified: true, complete: true, reviewRecorded: true,
+    recoveryEligible: true, pendingReview: false,
+    builds: ['IOS', 'MAC_OS'].map(platform => ({platform, processingState: 'VALID', expired: false,
+        localizedNotesPresent: {'en-US': true, 'de-DE': true}, localizedNotesMatch: {'en-US': true, 'de-DE': true},
+        usesNonExemptEncryption: false, internalGroupLinked: true, externalGroupLinked: true,
+        reviewState: 'APPROVED', internalBuildState: 'IN_BETA_TESTING', externalBuildState: 'IN_BETA_TESTING'}))
+});
+// Public identities of the independently read, already acquired original.
+// The campaign consumes its admitted categorical summary, never downloads the
+// same official log again and never claims a continuing availability lease.
+export const RELEASE_OBSERVATION = Object.freeze({
+    runId: 40048235422, runAttempt: 1, jobId: 120734738631,
+    headSha: 'dc0897cc4fdf1984752ed4ead0a3836bcd1d2385',
+    summarySha256: '5f3b7d92ede237ab656d79e2a1d9812474f33197e8dd337f0b95b143ce35510e',
+    originalLog: Object.freeze({bytes: 24622, sha256: '734373adbf58a5763860f558e8568ac82b8a173ad90f00cbee8cc8da38502bdb'})
+});
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const json = value => JSON.stringify(value, null, 2) + '\n';
 const save = (path, value) => writeFileSync(path, value, {flag: 'wx'});
@@ -34,11 +56,17 @@ export function admitReleaseJob(run, jobs) {
     return job;
 }
 
-export function releaseAcquisition(run, jobs, logBytes) {
+export function releaseObservation(run, jobs, summary = ADMITTED_RELEASE_SUMMARY) {
     const job = admitReleaseJob(run, jobs);
-    return {schemaVersion: 1, runId: run.id, runAttempt: run.run_attempt, headSha: run.head_sha, jobId: job.id,
-        endpoint: `repos/CrispStrobe/brickwright-lite/actions/jobs/${job.id}/logs`,
-        log: {bytes: logBytes.length, sha256: contentHash(logBytes)}};
+    admitReleaseSummary(summary);
+    if (run.id !== RELEASE_OBSERVATION.runId || run.run_attempt !== RELEASE_OBSERVATION.runAttempt ||
+        run.head_sha !== RELEASE_OBSERVATION.headSha || job.id !== RELEASE_OBSERVATION.jobId ||
+        contentHash(canonicalJson(summary)) !== RELEASE_OBSERVATION.summarySha256) {
+        throw new Error('Previously admitted release observation mismatch');
+    }
+    return {schemaVersion: 1, ...RELEASE_OBSERVATION, summary,
+        source: 'independent readback of the once-acquired official original',
+        originalLogDownloadedByCampaign: false};
 }
 
 export function admitReleaseSummary(summary) {
@@ -185,15 +213,16 @@ function command(executable, argv, cwd, prefix, timeout = 150000) {
     return {...outcome, text: stdout.toString('utf8')};
 }
 
-export async function runCampaign({output, installedRoot, boardSource, cuiSource, releaseRun, releaseLog}) {
+export async function runCampaign({output, installedRoot, boardSource, cuiSource, releaseRun, releaseObservationFile}) {
     if (process.versions.node.split('.')[0] !== '22') throw new Error('Campaign requires Node 22');
     if (process.env.BW_BOARD || process.env.NODE_PATH || process.env.NODE_OPTIONS) throw new Error('Runtime overrides refused');
     const run = admitReleaseRun(JSON.parse(readFileSync(releaseRun, 'utf8')));
-    const releaseBytes = readFileSync(releaseLog);
-    const jobs = JSON.parse(readFileSync(join(dirname(releaseLog), 'jobs.json'), 'utf8'));
-    const acquisition = JSON.parse(readFileSync(join(dirname(releaseLog), 'acquisition.json'), 'utf8'));
-    if (JSON.stringify(acquisition) !== JSON.stringify(releaseAcquisition(run, jobs, releaseBytes))) throw new Error('Original release acquisition mismatch');
-    const release = summaryFromOriginalLog(releaseBytes.toString('utf8'));
+    const jobs = JSON.parse(readFileSync(join(dirname(releaseObservationFile), 'jobs.json'), 'utf8'));
+    const observation = JSON.parse(readFileSync(releaseObservationFile, 'utf8'));
+    if (canonicalJson(observation) !== canonicalJson(releaseObservation(run, jobs, observation.summary))) {
+        throw new Error('Release observation identity mismatch');
+    }
+    const release = observation.summary;
     const ancestor = spawnSync('/usr/bin/git', ['merge-base', '--is-ancestor', run.head_sha, 'HEAD'], {cwd: repoRoot});
     if (ancestor.status !== 0) throw new Error('Release workflow source is not admitted ancestor');
     output = resolve(output);
@@ -202,8 +231,8 @@ export async function runCampaign({output, installedRoot, boardSource, cuiSource
     const manifest = createManifest(), results = manifest.cases.map(c => ({id: c.id, status: 'not-run', executed: false}));
     const mutations = [];
     save(join(output, 'manifest.json'), json(manifest));
-    save(join(output, 'release-admission.json'), json({run, acquisition, job: admitReleaseJob(run, jobs), summary: release,
-        originalLogSha256: contentHash(readFileSync(releaseLog)), observedFrom: 'single admitted official run log',
+    save(join(output, 'release-admission.json'), json({run, observation, job: admitReleaseJob(run, jobs), summary: release,
+        observedFrom: 'previously admitted single official original; no second download',
         limit: 'finite API observation at the release run; not a continuing availability guarantee'}));
     let preflight = null;
     try {
@@ -303,15 +332,11 @@ export async function main(argv = process.argv.slice(2)) {
     if (argv[0] === '--check-release-run' && argv.length === 2) {
         admitReleaseRun(JSON.parse(readFileSync(argv[1], 'utf8'))); return;
     }
-    if (argv[0] === '--check-release-job' && argv.length === 3) {
-        const job = admitReleaseJob(JSON.parse(readFileSync(argv[1], 'utf8')), JSON.parse(readFileSync(argv[2], 'utf8')));
-        console.log(job.id); return;
+    if (argv[0] === '--admit-release-observation' && argv.length === 4) {
+        save(argv[3], json(releaseObservation(JSON.parse(readFileSync(argv[1], 'utf8')),
+            JSON.parse(readFileSync(argv[2], 'utf8'))))); return;
     }
-    if (argv[0] === '--bind-release-log' && argv.length === 5) {
-        save(argv[4], json(releaseAcquisition(JSON.parse(readFileSync(argv[1], 'utf8')),
-            JSON.parse(readFileSync(argv[2], 'utf8')), readFileSync(argv[3])))); return;
-    }
-    const allowed = ['--output', '--installed-root', '--board-source', '--cui-source', '--release-run', '--release-log'];
+    const allowed = ['--output', '--installed-root', '--board-source', '--cui-source', '--release-run', '--release-observation'];
     if (argv[0] !== '--run' || argv.length !== 13) throw new Error('Use --plan or explicit bounded --run options');
     const options = {};
     for (let i = 1; i < argv.length; i += 2) {
@@ -321,7 +346,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (Object.keys(options).length !== allowed.length) throw new Error('Missing campaign option');
     const report = await runCampaign({output: options['--output'], installedRoot: options['--installed-root'],
         boardSource: options['--board-source'], cuiSource: options['--cui-source'],
-        releaseRun: options['--release-run'], releaseLog: options['--release-log']});
+        releaseRun: options['--release-run'], releaseObservationFile: options['--release-observation']});
     console.log(json({complete: report.complete, counts: report.counts, preflight: report.preflight}));
     if (!report.complete || report.preflight) process.exitCode = 1;
 }

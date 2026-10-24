@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_run:
-        description: Successful main TestFlight recovery/audit run reporting actual internal and external availability.
+        description: Admitted TestFlight audit run 40048235422; actual internal and external availability was independently verified.
         required: true
         type: string
 
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
-      - name: Admit release run metadata before acquiring its original log
+      - name: Admit release metadata and previously verified summary
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_RUN: ${{ inputs.release_run }}
@@ -41,10 +41,8 @@ jobs:
           git merge-base --is-ancestor "$RELEASE_HEAD" HEAD
           RELEASE_ATTEMPT=$(node -e 'console.log(require("./release-evidence/run.json").run_attempt)')
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RELEASE_RUN/attempts/$RELEASE_ATTEMPT/jobs?per_page=100" > release-evidence/jobs.json
-          RELEASE_JOB=$(node scripts/circuit-instrument-regression.mjs --check-release-job release-evidence/run.json release-evidence/jobs.json)
-          gh api "repos/$GITHUB_REPOSITORY/actions/jobs/$RELEASE_JOB/logs" > release-evidence/original.log
-          node scripts/circuit-instrument-regression.mjs --bind-release-log \
-            release-evidence/run.json release-evidence/jobs.json release-evidence/original.log release-evidence/acquisition.json
+          node scripts/circuit-instrument-regression.mjs --admit-release-observation \
+            release-evidence/run.json release-evidence/jobs.json release-evidence/observation.json
       - name: Read exact source pins
         run: |
           node --input-type=module - <<'JS'
@@ -86,7 +84,7 @@ jobs:
             --board-source admitted-sources/bw-board \
             --cui-source admitted-sources/bw-circuit-ui \
             --release-run release-evidence/run.json \
-            --release-log release-evidence/original.log
+            --release-observation release-evidence/observation.json
       - name: Preserve original results, including failures
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

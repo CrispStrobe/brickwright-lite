@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T23:49:18.323Z",
+  "generatedAt": "2026-10-24T01:28:50.712Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -7373,7 +7373,7 @@
     "circuit-instrument-regression.yml": {
       "runs": 0,
       "stepsInFile": [
-        "Admit release run metadata before acquiring its original log",
+        "Admit release metadata and previously verified summary",
         "Read exact source pins",
         "Install locked consumer and independent oracle",
         "Pure harness controls",
@@ -7381,7 +7381,7 @@
         "Preserve original results, including failures"
       ],
       "inFileInNoRun": [
-        "Admit release run metadata before acquiring its original log",
+        "Admit release metadata and previously verified summary",
         "Read exact source pins",
         "Install locked consumer and independent oracle",
         "Pure harness controls",
@@ -7395,7 +7395,7 @@
   },
   "lastRefresh": {
     "workflow": "circuit-instrument-regression.yml",
-    "at": "2026-10-23T23:49:18.323Z",
+    "at": "2026-10-24T01:28:50.712Z",
     "sourceSha": "working-tree"
   }
 }
