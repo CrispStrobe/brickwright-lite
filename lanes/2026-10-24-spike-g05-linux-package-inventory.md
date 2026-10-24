@@ -52,3 +52,32 @@ Open, and why:
   credentials. Firmware L11/Runtime must supply the inputs named in the G05
   contract. None of this is claimed.
 - No redistribution or licence clearance claim; `redistributionValidated` stays false.
+
+## Continuation — 2026-10-24 (second closure pass)
+
+Branch `lane/spike-g05-closure2-20261024`. Envelope adds
+`docs/notices/rust-crates-supplemental/`.
+
+Closed:
+- 13 crates without licence files now have reviewed texts with per-file digests and
+  origins. Upstream repository files are used where they exist; `custom_debug` and
+  `selectors` have none upstream, so they get the standard Apache-2.0 and MPL-2.0 texts
+  plus attribution notes. The builder copies them after a digest check and still
+  refuses any other gap or a stale entry. An offline run of the collection step: 651
+  files for all 365 linked crates.
+- Renode composition reviewed read-only. tlib, NetMQ, Packet.Net and a vendored pip
+  LGPL notice ship, and all their notices are present. Gtk# and mcs are not shipped
+  (not applicable).
+- Signed delivery recorded. macOS general app: release run 39680422030 (v0.1.26), App
+  Store identity, `productbuild` pkg, no notarization; it does not stage SPIKE Renode.
+
+Open, and why:
+- Corresponding-source binding for tlib, NetMQ and Packet.Net: the Renode runtime's
+  source commit and NuGet versions are not recorded in the runtime provenance. The
+  runtime producer must record them.
+- Full-build exercise: no hosted workflow runs `scripts/build-spike-linux-desktop.mjs`.
+  It needs a hosted packaging job, which is outside this envelope (no workflow added, no
+  local cargo build).
+- Windows signing is blocked: no Authenticode certificate. SPIKE on macOS needs
+  JIT/child-process entitlements and signed nested executables (contract only). There is
+  no Debian signing key.

@@ -1,0 +1,1 @@
+selectors 0.36.1 by The Servo Project Developers. Declared licence: MPL-2.0. Neither the crate nor the servo/stylo repository ships a licence file; LICENSE is the standard Mozilla Public License 2.0 text. Source Code Form: https://crates.io/crates/selectors/0.36.1 (unmodified).
