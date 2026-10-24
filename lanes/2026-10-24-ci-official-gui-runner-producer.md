@@ -101,3 +101,13 @@ enabled final-head checks with declared skips only. Local manufactured inputs
 do not prove runner output availability or application qualification. Native
 helpers stay inactive pending fresh source qualification and rebinding. This
 claim selects no event, variable, label, archive GET, build or guest execution.
+
+## Combined source qualification
+
+The browser and producer evidence repairs qualify together in a separate
+implementation PR. Its initial documentation checkpoint carries the full-CI
+label before executable source is published, so the final source head can
+receive one qualification set without a concurrent opening-label transition.
+Claim checks and this publication checkpoint establish no runner metadata,
+artifact admission, numeric GUI or native guest result. Preserve the original
+REST refusals; require the final source checks and affected consumers to pass.
