@@ -1,6 +1,6 @@
 # Current 386 GUI actual admission — 2026-10-23
 
-**CLAIM ONLY; implementation and actual qualification pending.** Owner: Codex x86 GUI, in the isolated `lane/x86-gui-current-actual-admission-20261023` worktree. Base: `2a06b2d1ea057835b6764bea8ea36cee9819efbd`. Merge this claim before changing implementation. This continues the bounded HDD persistence and forward-debug acceptance contract already recorded in this lane; it does not transfer Arcade, supplier, media, font-observation, or Board ownership.
+**ACTIVE: source preparation published; metadata and actual GUI qualification pending.** Owner: Codex x86 GUI, in the isolated `lane/x86-gui-current-actual-admission-20261023` worktree. Base: `2a06b2d1ea057835b6764bea8ea36cee9819efbd`. The claim was merged before implementation. This continues the bounded HDD persistence and forward-debug acceptance contract already recorded in this lane; it does not transfer Arcade, supplier, media, font-observation, or Board ownership.
 
 ## Owned paths and boundary
 
@@ -14,9 +14,9 @@ The base Board, Circuit UI, and SB3 selections are: `b5650092695643622a53bcc4000
 
 ## Admission before actual execution
 
-Freeze the final composed Lite source and exact frontend Build, installed Board/Circuit UI/SB3 graph, browser/runtime and native font selection, QEMU/tool availability and provenance, finite setup and guest resources, externally selected request and producing event, and closed original roles. Bind every selected source and original to its current head; earlier source controls, failed or consumed observations, and an old reader cannot qualify a new candidate. Independently review the original-only reader and official run/job/step/artifact joins before acquiring any selected original once. Preserve every first failure, cap, assertion, cleanup observation, and false conclusion.
+Freeze the final composed Lite source and exact frontend Build, installed Board/Circuit UI/SB3 graph, browser/runtime and native font selection, the tools actually used by this job, finite setup and guest resources, externally selected request and producing event, and closed original roles. Bind every selected source and original to its current head; earlier source controls, failed or consumed observations, and an old reader cannot qualify a new candidate. Independently review the original-only reader and official run/job/step/artifact joins before acquiring any selected original once. Preserve every first failure, cap, assertion, cleanup observation, and false conclusion.
 
-The selected QEMU setup-input inventory in Board is a separate dependency. Its claim or metadata-only result does not establish an installed QEMU tool, package transaction, service policy, or a successful guest. Wait for its independent admission and any required follow-on setup qualification. Arcade's owner exclusively handles open PR1128 and its current source/CI failures; coordinate after its qualified main composition. Do not edit its overlapping documentation or take over its events, runs, worktree, or supplier declarations.
+The selected QEMU setup-input inventory belongs to a separate Board runtime lane. It supplies no installed state to this Chromium/Board-JavaScript job and is not a prerequisite for its two existing scenarios. Arcade's owner retains PR1128, its reserved supplier hunks, events, worktree and documentation; the current canonical pins can be qualified separately. Any later composition needs new source, Build and affected guest bindings. Do not take over those other lanes.
 
 ## Required affected acceptance
 
@@ -26,8 +26,9 @@ Require meaningful positive and negative source controls, exact-head enabled CI 
 
 ## Current-source dependency clarification — 2026-10-24
 
-This claim remains a claim and has no new source, browser, guest, or performance
-result. At current Lite main, the controller and independent reader already
+Source preparation is published in the candidate described below; current
+browser/guest and performance qualification remain pending. At the recorded Lite main
+checkpoint, the controller and independent reader already
 select the same Board `b5650092695643622a53bcc40008133760e2d8a2`, Circuit
 UI `17fd4afb0bf27015b099ca67c9cca05919084654`, and SB3
 `1cbaeed325f5a890e43b78a4211acae8f801f2d2` as the canonical Board/Circuit
@@ -64,3 +65,65 @@ limited DOSBox `.conf`, raw HDD and floppy routes and honest ISO, ZIP, and VHD
 gaps. Use public repository paths and freely usable examples only. This new
 doc does not transfer ownership of any existing guide, media, Arcade source,
 supplier pin, or workflow outside the four source paths listed above.
+
+## Current finite inventory v4 bootstrap — 2026-10-24
+
+The [source candidate, PR1318](https://github.com/CrispStrobe/brickwright-lite/pull/1318),
+at [ac7703a8](https://github.com/CrispStrobe/brickwright-lite/commit/ac7703a8b74103e20ee468687472df121564a949),
+enables only the separately selected finite metadata path. The actual GUI
+source and workflow guards remain false. No template, variable or producing
+label is authorized merely by that source activation. This remains work in
+progress, not installed-browser or guest qualification.
+
+1. Independently select a **new finite core-runtime scope**: Node, Python,
+   Chromium, Git/gh/curl, explicit library files and aliases, the typed empty
+   Python source, and complete installed Board/Circuit UI/Playwright censuses.
+   Global font/config/cache inputs are outside this new scope; the font,
+   notice, configuration and cache used by v5 are staged later in an owned
+   root. Preserve the failed historical 306-file roster and its original
+   failures unchanged. They are neither repaired nor promoted to a successful
+   prior inventory. Unknown paths or aliases must refuse; do not substitute a
+   guessed library version or search for a fallback.
+2. Freeze the canonical `bw.gui-hdd.inventory-template.v4` at the final
+   selected source head. It has a 32 KiB cap and one canonical PR-body wrapper
+   between `BW_GUI_HDD_FINITE_INVENTORY_V4_BEGIN` and
+   `BW_GUI_HDD_FINITE_INVENTORY_V4_END`; the sole independently selected SHA
+   variable is `BW_GUI_HDD_FINITE_INVENTORY_V4_SHA256`. The wrapper transports
+   the selection; it does not approve it. Before any package/Chromium setup,
+   the guard binds the body/SHA, exact event, owned nonfork PR targeting main,
+   first attempt, and Git/live identity of all 21 tracked source files.
+3. Only after exact-head source qualification and separate event admission,
+   select **one** `x86-hdd-gui-finite-inventory-v4` event for the
+   `finite-inventory-v4` job. Trusted package/Chromium setup is an explicit
+   boundary. The collector then records the selected runtime bytes and the
+   complete Circuit UI census, and rechecks source/event identity across
+   setup. It performs no native font command, browser probe or guest run.
+   Its library-closure, font-selection, browser and guest approval flags stay
+   false. Admit official run/job/step/artifact metadata, acquire the selected
+   original once, and audit those retained bytes with the standalone reader;
+   never replay a successful or consumed observation to read it.
+4. Separately admit a successful native-font original and its outside-service
+   original from the exact five-file native producer source. That observation
+   covers the selected native query and file readbacks; complete native library
+   closure, browser font selection and guest approval remain unproved.
+   Admit the exact current frontend Build, actual checkout/full tree,
+   installed supplier/browser/runtime graph, free inputs, resources and
+   producing event. A run's head SHA alone does not identify a PR's synthetic
+   checkout; a different resulting tree requires a refreshed composition.
+5. After separate actual activation and request admission, v5 stages its exact
+   font/notice/configuration inputs, reuses those bytes without another GET,
+   and records current before/after runtime and owned-cache facts. Its
+   128-entry/8 MiB cache limits are post-run census bounds, not an enforced
+   quota. Qualify the **real current** FreeDOS HDD export/reload and authored
+   forward-debug scenarios with [the existing GUI probe](../scripts/verify-i80386-local-hdd-gui.mjs).
+   Metadata and source-control positives cannot replace those browser/guest
+   observations. These two scenarios have no Arcade or QEMU dependency.
+
+Use [the controller](../scripts/run-i80386-hdd-gui-actual.py),
+[standalone original reader](../scripts/read-i80386-hdd-gui-originals.py) and
+[workflow](../.github/workflows/i80386-hdd-gui-actual.yml) from the selected
+candidate, not an older reader or run. This candidate's head is a checkpoint,
+not a permanent request pin: regenerate and independently review head/tree,
+source-file, workflow, template/request SHA and Build bindings whenever the
+selected source changes. An unbound roster proposal is not an admitted body,
+variable, event or actual request.
