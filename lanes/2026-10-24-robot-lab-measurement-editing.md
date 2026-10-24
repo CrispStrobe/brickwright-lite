@@ -1,6 +1,6 @@
 # Edit saved Robot Lab measurements
 
-Implementation DONE (source candidate; qualification pending) — Codex,
+DONE — qualified implementation and normal merge — Codex,
 user-authorized measurement usability follow-up, 2026-10-24.
 Isolated branch `lane/robot-measurement-editor-claim-20261024`, claim base
 `835e96acb9557df07f8e7eb0797b895bded9592a`.
@@ -24,8 +24,8 @@ Generated GUI integration follows the established overlay mechanism.
 
 The live-measurement, refinement and plot implementations are already landed.
 The current renderer/native/model integration retains its separate owners and
-frozen qualification heads. This claim is prose only; implementation starts
-from their qualified main after that integration lands. No schema, persistence
+frozen qualification heads. The initial claim was prose only; implementation started
+from their qualified main after that integration landed. No schema, persistence
 format, physics, solver, native session, transport, dependency pin or workflow
 change is in this envelope.
 
@@ -38,9 +38,9 @@ new source-bound frontend, plus every enabled exact-head check. A matched-head
 merge requires reviewed/predicted/landed tree and parent equality. Keep prior
 failures and existing limits; no hardware-accuracy or release claim follows.
 
-## Candidate controls
+## Qualified implementation and controls
 
-Implementation starts from qualified joint main
+Implementation started from qualified joint main
 `1825cf0308d3ba0e217a3117fedefbe959cab8c8`, including the merged claim.
 The panel reuses the existing form and change callback. It preserves measurement
 identity and current visibility, checks current model and target identity at
@@ -60,7 +60,30 @@ browser journey now edits targets through controls, checks stable IDs and plot
 selection, independently checks the selected hinge binding, inspects the saved
 project sidecar and reopens the generated project. Untouched automatic names
 follow quantity and locale changes without becoming stale custom labels.
-Hosted execution of those controls and the new
-source-bound browser journey, plus every enabled exact-head check, remain
-required before landing. No package, schema, persistence format, physics or
-workflow change is included.
+All 19 affected actual React/Babel controls passed without failures, skips or
+TODOs on the corrected source. The original failed lesson-preset assertion is
+byte-for-byte unchanged and now passes, together with the new deferred callback
+control. The original 17-of-18 failure remains preserved.
+
+The source-bound official RobotLab job passed the real Jolt Edit/Save/Cancel
+journey, stable IDs and plots, fresh target binding, and downloaded-project CRC
+and sidecar checks before actual reopen. An independent reader admitted the
+retained successful log. The observed checkout `2fb2726d` joins to tree
+`7652ba23` through Git commit metadata and an independently computed merge tree.
+Successful JSON/SB3 files are not retained by the existing workflow; no separate
+independent audit of original saved-project bytes is claimed.
+
+[PR1339](https://github.com/CrispStrobe/brickwright-lite/pull/1339), reviewed head
+`e774a119d5f4603e17c735ae1980f7ae27ec6862`, merged normally as
+`2351457441a5188247ba3600d9192583d735ccda` after all 28 enabled checks passed,
+with seven declared skips and no external legacy statuses. The actual parents
+`176e88ea` and `e774a119`, and tree `f48b6757`, matched the reviewed prediction.
+The five editor entries match the reviewed candidate, every other current-main
+entry is preserved, and all 49 qualified API paths remain exact. Production GUI
+inputs match the accepted CI composition; the branch tree, CI tree and landed
+tree retain their distinct identities.
+
+The implementation and qualification scope is complete. This status update is
+prose only. No package, schema, persistence format, physics, workflow, new
+installed-native package, deployed API, release or hardware/physical-accuracy
+claim follows from this editor result.

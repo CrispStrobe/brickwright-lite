@@ -154,3 +154,19 @@ the existing observed-export helper and preserve the bounded archive CRC,
 actual sidecar-byte equality and real project reopen assertions. Retain both
 original failures; qualify the corrected Root Bridge and measurement journeys
 in both browser engines before the new source's hosted qualification.
+
+## Bounded pause/resume delivery consequence
+
+Own the simulation-only completed-program resume boundary in
+`overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx`, its canonical
+package mirror, and the existing focused/browser intake controls. Actual Root
+Bridge replay finishes with both input motors holding and no active VM threads;
+the public clock-start call leaves variables and threads intact but clears both
+holding commands. Trace and repair this boundary so resuming an existing paused
+simulation preserves its commands and scene. Preserve fresh Run admission,
+manual-override cancellation, route ownership, firmware/hardware semantics and
+all physical limits. Do not modify the engine, renderer, transport suppliers or
+other owners' controls. Require an actual saved-program replay and full physical
+continuation in both browser engines, plus meaningful command-preservation and
+fresh-Run negative controls. This is an expansion of the existing delivery lane,
+not a second implementation owner. Merge this claim before the bounded repair.
