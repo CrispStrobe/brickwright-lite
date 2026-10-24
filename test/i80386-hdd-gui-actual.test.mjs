@@ -25,7 +25,11 @@ PNG=b'\x89PNG\r\n\x1a\nmanufactured'
 def zip_(files):
     out=io.BytesIO()
     with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-        for name,raw in sorted(files.items()):archive.writestr(name,raw)
+        for name,raw in sorted(files.items()):
+            info=zipfile.ZipInfo(name,(1980,1,1,0,0,0))
+            info.compress_type=archive.compression
+            info.external_attr=((0o40775<<16)|0x10) if info.filename.endswith('/') else 0o600<<16
+            archive.writestr(info,raw)
     return out.getvalue()
 def packet(files):
     files={k:v for k,v in files.items() if k!='inventory.json'}
@@ -3040,6 +3044,28 @@ class NativeV2Originals(unittest.TestCase):
         self.assertEqual(D(stream.getvalue().encode()),verdict)
         self.assertFalse(c.ACTUAL_ENABLED);self.assertFalse(r.ACTUAL_ENABLED)
         self.assertLess(len(files['request.original.json']),r.JSON_CAP);self.assertLess(len(E(expected)),r.JSON_CAP)
+    def test_authored_zip_ignores_host_time_with_original_helper_counterfactual(self):
+        def legacy_zip(files):
+            out=io.BytesIO()
+            with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+                for name,raw in sorted(files.items()):archive.writestr(name,raw)
+            return out.getvalue()
+        files={'owned.txt':b'authored bytes','owned-dir/':b'','unicode-\u00e5.txt':b'authored UTF8 name'}
+        fixed=(1980,1,1,0,0,0,1,1,-1)
+        with patch.object(zipfile.time,'localtime',return_value=fixed):
+            self.assertEqual(zip_(files),legacy_zip(files),'only date selection changes: original compression/attributes/data remain exact')
+        early=(2026,10,24,0,0,0,5,297,-1);late=(2026,10,24,0,0,2,5,297,-1)
+        with patch.object(zipfile.time,'localtime',side_effect=[early]*len(files)+[late]*len(files)) as clock:
+            first=zip_(files);second=zip_(files);self.assertEqual(first,second);clock.assert_not_called()
+        with patch.object(zipfile.time,'localtime',side_effect=[early]*len(files)+[late]*len(files)):
+            before=legacy_zip(files);after=legacy_zip(files)
+        self.assertNotEqual(before,after);self.assertNotEqual(H(before),H(after))
+        for raw in (first,second,before,after):
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                self.assertEqual(archive.namelist(),sorted(files))
+                for info in archive.infolist():
+                    self.assertEqual(archive.read(info),files[info.filename]);self.assertEqual(info.compress_type,zipfile.ZIP_DEFLATED)
+                    self.assertEqual(info.external_attr,((0o40775<<16)|0x10) if info.filename.endswith('/') else 0o600<<16)
     def test_v2_identity_role_owner_and_outer_coherent_mutations(self):
         for cut in ('owner','gid','triplet','path','bytes','close','after','partial','outer-identity','outer-pid','outer-cgroup','inner','failure','current-runtime'):
             files,expected,ref,originals=self.fresh();observed=D(originals['original']);outer=D(originals['service'])
@@ -3122,7 +3148,7 @@ test('native v2 GUI join: complete packet, source-bound identity and coherent re
     assert.notEqual(selected,controls);
     const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
-    assert.deepEqual(readOriginalControlSummary(result.stdout),{controls:5,failures:0,errors:0});
+    assert.deepEqual(readOriginalControlSummary(result.stdout),{controls:6,failures:0,errors:0});
 });
 
 const probe=fs.readFileSync(new URL('../scripts/verify-i80386-local-hdd-gui.mjs',import.meta.url),'utf8');
