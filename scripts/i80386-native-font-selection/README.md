@@ -82,6 +82,19 @@ event. The expectation selects exact raw original byte length/hash and
 successful official conclusion. A failed original remains failed even if
 well formed.
 
+Before starting the service, `--retain-event` copies the genuine runner event
+to `native-font-originals/event.original.json` without parsing or normalizing
+its bytes. The source is a stable single-link regular file, at most 256 KiB.
+The destination uses an owned mode-0700 directory, an exclusive no-follow
+mode-0600 file, bounded write/readback and held/named identity checks. The
+service receives this retained file's absolute path as `GITHUB_EVENT_PATH`;
+the upload retains the same bytes required by the unchanged independent
+reader. Missing, oversized, aliased, changed or incompletely written input
+refuses before service startup, retaining any partial file and bounded
+`event-retention.stderr`. No metadata/API reconstruction substitutes for a
+missing genuine event. This repairs the unselected earlier source's omission;
+its hash-only event original could not supply the positive reader's raw input.
+
 ## Producer and original
 
 `run.py` enables the native metadata route only after its exact request, event,

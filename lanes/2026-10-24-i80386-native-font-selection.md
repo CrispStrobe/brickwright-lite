@@ -80,3 +80,10 @@ head that still needs its own exact-head checks. No native metadata event,
 or observed. The separate HDD actual route remains guarded false. Freeze a new
 request to the final composed head and independently review its selected tool,
 font, service, resource and official-event bindings before one metadata event.
+
+The pre-event retention repair copies the genuine bounded event bytes into
+the uploaded owned directory before service startup and passes that exact
+copy to the service. Earlier unselected source retained only an event hash,
+which was insufficient for the unchanged independent reader. New source,
+request and workflow hashes require fresh qualification and admission; no
+native event has been selected or replayed by this repair.

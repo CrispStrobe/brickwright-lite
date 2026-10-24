@@ -57,6 +57,9 @@ jobs:
           export BW_EXPECTED_TREE
           mkdir -m 700 native-font-originals
           /usr/bin/python3 -I -S -B -c 'import base64,hashlib,os,pathlib,re; raw=base64.b64decode(os.environ["BW_FONT_REQUEST_B64"],validate=True); pin=os.environ["BW_FONT_REQUEST_SHA256"]; assert len(raw)<=65536 and re.fullmatch("[0-9a-f]{64}",pin) and hashlib.sha256(raw).hexdigest()==pin; p=pathlib.Path("native-font-originals/request.json"); f=p.open("xb"); f.write(raw); f.close()'
+          NATIVE_EVENT="$GITHUB_WORKSPACE/native-font-originals/event.original.json"
+          /usr/bin/python3 -I -S -B scripts/i80386-native-font-selection/run.py --retain-event \
+            --event-out "$NATIVE_EVENT" 2> native-font-originals/event-retention.stderr
           SERVICE_UNIT="bw-native-font-${GITHUB_RUN_ID}-1.service"
           set +e
           /usr/bin/timeout --signal=TERM --kill-after=5s 130s \
@@ -75,7 +78,7 @@ jobs:
             --setenv="GITHUB_RUN_ID=$GITHUB_RUN_ID" \
             --setenv="GITHUB_WORKFLOW_SHA=$GITHUB_WORKFLOW_SHA" \
             --setenv="GITHUB_WORKFLOW_REF=$GITHUB_WORKFLOW_REF" \
-            --setenv="GITHUB_EVENT_PATH=$GITHUB_EVENT_PATH" \
+            --setenv="GITHUB_EVENT_PATH=$NATIVE_EVENT" \
             --setenv="BW_EXPECTED_HEAD=$BW_EXPECTED_HEAD" \
             --setenv="BW_EXPECTED_TREE=$BW_EXPECTED_TREE" \
             --setenv="RUNNER_TEMP=$RUNNER_TEMP" \

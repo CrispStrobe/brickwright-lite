@@ -893,10 +893,52 @@ def finalize_service(original_path, output_path, service_exit, env):
     return 0 if first is None else 1
 
 
+def retain_event(event_path, output_path):
+    """Retain one bounded byte-exact event before the service reads this copy."""
+    absolute(event_path);absolute(output_path)
+    need(Path(event_path).resolve(strict=True)==Path(event_path),'canonical runner event path')
+    output=Path(output_path)
+    need(output.name=='event.original.json' and output.parent.resolve(strict=True)==output.parent,
+         'canonical retained event destination')
+    raw=LiveOps({}).regular(event_path,256<<10)
+    directory=None;descriptor=None;first=None
+    try:
+        directory=os.open(output.parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        before=os.fstat(directory)
+        need(before.st_uid==os.geteuid() and before.st_mode==stat.S_IFDIR|0o700,
+             'exclusive owned event directory')
+        descriptor=os.open(output.name,os.O_RDWR|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW|os.O_CLOEXEC,
+                           0o600,dir_fd=directory)
+        need(os.write(descriptor,raw)==len(raw),'complete retained event write')
+        os.fsync(descriptor);written=os.fstat(descriptor)
+        need(written.st_mode==stat.S_IFREG|0o600 and written.st_uid==os.geteuid() and
+             written.st_nlink==1 and written.st_size==len(raw),'owned exact event file')
+        os.lseek(descriptor,0,os.SEEK_SET)
+        need(os.read(descriptor,(256<<10)+1)==raw,'retained event byte readback')
+        need(LiveOps.identity(written)==LiveOps.identity(os.fstat(descriptor))==
+             LiveOps.identity(os.stat(output.name,dir_fd=directory,follow_symlinks=False)),
+             'held and named retained event unchanged')
+        need(LiveOps.directory_identity(before)==LiveOps.directory_identity(os.fstat(directory))==
+             LiveOps.directory_identity(output.parent.lstat()) and
+             output.parent.resolve(strict=True)==output.parent,'retained event directory unchanged')
+        os.fsync(directory)
+    except BaseException as error:first=error
+    for descriptor_to_close in (descriptor,directory):
+        if descriptor_to_close is None:continue
+        try:os.close(descriptor_to_close)
+        except BaseException as error:
+            if first is None:first=error
+            else:first.native_secondary=getattr(first,'native_secondary',[])+[error_row(error,'event-close')]
+    if first is not None:raise first
+    return {'bytes':len(raw),'sha256':sha(raw)}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument('--observe', action='store_true')
     parser.add_argument('--finalize', action='store_true')
+    parser.add_argument('--retain-event', action='store_true')
+    parser.add_argument('--event-out')
     parser.add_argument('--request')
     parser.add_argument('--expected-sha256')
     parser.add_argument('--original')
@@ -904,6 +946,18 @@ def main(argv=None):
     parser.add_argument('--service-exit',type=int)
     args = parser.parse_args(argv)
     need(ENABLED is True,'disabled producer refuses before any IO')
+    if args.retain_event:
+        need(args.event_out and not any((args.observe,args.finalize,args.request,args.expected_sha256,
+             args.original,args.service_out,args.service_exit is not None)), 'exact event retention arguments')
+        try:retain_event(os.environ.get('GITHUB_EVENT_PATH',''),args.event_out)
+        except Exception as error:
+            diagnostic={'firstFailure':error_row(error,'event-retention'),
+                        'secondary':getattr(error,'native_secondary',[])}
+            wire=encode(diagnostic);need(len(wire)+1<=4096,'bounded event retention diagnostic')
+            sys.stderr.write(wire.decode()+'\n')
+            return 1
+        return 0
+    need(args.event_out is None,'event output only for pre-service retention')
     if args.finalize:
         need(not args.observe and args.original and args.service_out and
              args.service_exit is not None,'exact finalizer arguments')

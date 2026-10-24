@@ -2,9 +2,12 @@
 """Pure injected-edge controls; never run a native font command."""
 import copy
 import importlib.util
+import io
 import json
+import os
 import sys
 import stat
+import tempfile
 from types import SimpleNamespace
 import unittest
 from pathlib import Path
@@ -178,6 +181,94 @@ class Controls(unittest.TestCase):
         event_raw=fixture_event(pin);ops=FakeOps(event_raw,fault)
         raw=producer.collect(request_raw,pin,fixture_env(),ops)
         return raw,request_raw,event_raw,request,ops
+    def test_retained_event_exact_bytes_and_cap_boundary(self):
+        for raw in (b' {\r\n "not-normalized" : true }\r\n',b'x'*(256<<10)):
+            with tempfile.TemporaryDirectory(dir=DIRECTORY) as directory:
+                root=Path(directory);source=root/'source.json';source.write_bytes(raw)
+                out=root/'native-font-originals';out.mkdir(mode=0o700);target=out/'event.original.json'
+                with patch.object(producer.subprocess,'Popen',side_effect=AssertionError('native process')) as process:
+                    result=producer.retain_event(str(source),str(target))
+                process.assert_not_called();self.assertEqual(target.read_bytes(),raw)
+                self.assertEqual(result,{'bytes':len(raw),'sha256':producer.sha(raw)})
+                self.assertEqual(stat.S_IMODE(target.stat().st_mode),0o600)
+    def test_retained_event_missing_overflow_and_source_alias_refuse(self):
+        for case in ('missing','empty','overflow','symlink','hardlink','parent-alias'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory(dir=DIRECTORY) as directory:
+                root=Path(directory);source=root/'source.json';out=root/'owned';out.mkdir(mode=0o700)
+                if case!='missing':
+                    other=root/'other';other.write_bytes(b'held')
+                    if case=='symlink':source.symlink_to(other)
+                    elif case=='hardlink':os.link(other,source)
+                    elif case=='parent-alias':
+                        real=root/'real';real.mkdir();(real/'event.json').write_bytes(b'genuine')
+                        alias=root/'alias';alias.symlink_to(real,target_is_directory=True);source=alias/'event.json'
+                    else:source.write_bytes(b'' if case=='empty' else b'x'*((256<<10)+1))
+                with self.assertRaises((ValueError,OSError)):producer.retain_event(str(source),str(out/'event.original.json'))
+                self.assertFalse((out/'event.original.json').exists())
+    def test_retained_event_exclusive_destination_and_parent_policy(self):
+        for case in ('existing','symlink','parent-mode','parent-alias'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory(dir=DIRECTORY) as directory:
+                root=Path(directory);source=root/'source';source.write_bytes(b'genuine')
+                real=root/'owned';real.mkdir(mode=0o700);out=real
+                sentinel=root/'sentinel';sentinel.write_bytes(b'unchanged')
+                if case=='existing':(out/'event.original.json').write_bytes(b'first original')
+                elif case=='symlink':(out/'event.original.json').symlink_to(sentinel)
+                elif case=='parent-mode':out.chmod(0o755)
+                else:out=root/'alias';out.symlink_to(real,target_is_directory=True)
+                with self.assertRaises((ValueError,OSError)):producer.retain_event(str(source),str(out/'event.original.json'))
+                self.assertEqual(sentinel.read_bytes(),b'unchanged')
+                if case=='existing':self.assertEqual((out/'event.original.json').read_bytes(),b'first original')
+    def test_retained_event_short_write_and_first_secondary_are_retained(self):
+        actual_write=os.write;actual_close=os.close
+        for short in (True,False):
+            with tempfile.TemporaryDirectory(dir=DIRECTORY) as directory:
+                root=Path(directory);source=root/'source';source.write_bytes(b'genuine bytes')
+                out=root/'owned';out.mkdir(mode=0o700);target=out/'event.original.json';state={'writing':False,'closed':False}
+                def write(fd,raw):
+                    state['writing']=True
+                    if short:return actual_write(fd,raw[:4])
+                    raise OSError('primary event write')
+                def close(fd):
+                    actual_close(fd)
+                    if state['writing'] and not state['closed']:
+                        state['closed']=True;raise OSError('secondary event close')
+                with patch.object(producer.os,'write',side_effect=write),patch.object(producer.os,'close',side_effect=close):
+                    with self.assertRaisesRegex((ValueError,OSError),'complete retained event write' if short else 'primary event write') as seen:
+                        producer.retain_event(str(source),str(target))
+                self.assertEqual(target.read_bytes(),b'genu' if short else b'')
+                self.assertEqual(len(seen.exception.native_secondary),1)
+                self.assertEqual(seen.exception.native_secondary[0]['message'],'secondary event close')
+    def test_retained_event_different_readback_refuses(self):
+        write=os.write
+        with tempfile.TemporaryDirectory(dir=DIRECTORY) as directory:
+            root=Path(directory);source=root/'source';source.write_bytes(b'genuine bytes');out=root/'owned';out.mkdir(mode=0o700)
+            def changed(fd,raw):
+                count=write(fd,raw);os.lseek(fd,0,os.SEEK_SET);write(fd,b'!');return count
+            with patch.object(producer.os,'write',side_effect=changed),self.assertRaisesRegex(ValueError,'byte readback'):
+                producer.retain_event(str(source),str(out/'event.original.json'))
+            self.assertEqual((out/'event.original.json').read_bytes(),b'!enuine bytes')
+    def test_retained_event_cli_and_workflow_before_service(self):
+        with patch.dict(producer.os.environ,{'GITHUB_EVENT_PATH':'/genuine/event.json'}),patch.object(producer,'retain_event') as retain:
+            self.assertEqual(producer.main(['--retain-event','--event-out','/owned/event.original.json']),0)
+            retain.assert_called_once_with('/genuine/event.json','/owned/event.original.json')
+        with patch.object(producer,'ENABLED',False),patch.object(producer,'retain_event') as retain:
+            with self.assertRaisesRegex(ValueError,'disabled'):producer.main(['--retain-event','--event-out','/owned/event.original.json'])
+            retain.assert_not_called()
+        failure=OSError('first event write');failure.native_secondary=[producer.error_row(OSError('second close'),'event-close')]
+        with patch.object(producer,'retain_event',side_effect=failure),patch.object(producer.sys,'stderr',new_callable=io.StringIO) as stderr:
+            self.assertEqual(producer.main(['--retain-event','--event-out','/owned/event.original.json']),1)
+            diagnostic=json.loads(stderr.getvalue());self.assertEqual(diagnostic['firstFailure']['message'],'first event write')
+            self.assertEqual(diagnostic['secondary'][0]['message'],'second close')
+            self.assertLessEqual(len(stderr.getvalue().encode()),4096)
+        workflow=(ROOT/producer.WORKFLOW).read_text()
+        self.assertLess(workflow.index('--retain-event'),workflow.index('set +e'))
+        self.assertIn('NATIVE_EVENT="$GITHUB_WORKSPACE/native-font-originals/event.original.json"',workflow)
+        self.assertIn('--setenv="GITHUB_EVENT_PATH=$NATIVE_EVENT"',workflow)
+        self.assertNotIn('--setenv="GITHUB_EVENT_PATH=$GITHUB_EVENT_PATH"',workflow)
+    def test_independent_reader_refuses_reformatted_event_bytes(self):
+        raw,request_raw,event_raw,request,_=self.produce()
+        self.assertTrue(grade(raw,request_raw,event_raw,request)['nativeSelectionObserved'])
+        with self.assertRaises(reader.Refusal):grade(raw,request_raw,event_raw+b'\n',request)
     def test_disabled_refuses_before_every_provider_edge(self):
         class NoEdges:
             def __getattr__(self,name):raise AssertionError('disabled touched '+name)
