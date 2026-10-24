@@ -1,0 +1,36 @@
+# Cusp Lab — rolling gear, cusped cycloid and looping trochoid
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe)
+# Reload the saved model before starting. The full one-turn travel is finite:
+# physical theta 0 -> 360 -> 0 degrees. Do not run continuously off the rack.
+# The cycloid cusp and longer pointer's backward motion occur at midstroke;
+# the program does not pause there. All targets are unwrapped encoder degrees.
+DEVICE SPIKE
+GLOBAL target = 0
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  set target to -360
+  broadcast "move and observe" and wait
+  set target to 0
+  broadcast "move and observe" and wait
+  lab stop motor A hold
+
+WHEN I receive "move and observe":
+  IF (abs of (target - (lab motor A angle))) > 362 THEN:
+    lab stop motor A hold
+    stop all
+  lab run motor A for (target - (lab motor A angle)) degrees at 10 degrees per second
+  lab stop motor A hold
+  IF (abs of (target - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  IF (abs of (target - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all

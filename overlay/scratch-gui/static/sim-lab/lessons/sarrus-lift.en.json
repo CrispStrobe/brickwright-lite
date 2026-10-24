@@ -2,7 +2,7 @@
   "version": 1,
   "id": "sarrus-lift",
   "language": "en",
-  "what": "One motor and a 24:1 worm drive lift a platform through a spatial six-hinge linkage. Two chains have parallel hinge axes within each chain; the chains are perpendicular to each other. Their common platform moves vertically while remaining level. The adapted 144-piece design adds four clearance plates beneath the deck. Two orthogonal hinge chains constrain a platform to vertical translation. Compare measured height with the sine law and the 24:1 worm drive.",
+  "what": "Sarrus linkage. One motor and a 24:1 worm drive lift a platform through a spatial six-hinge linkage. Two chains have parallel hinge axes within each chain; the chains are perpendicular to each other. Their common platform moves vertically while remaining level. The adapted 144-piece design adds four clearance plates beneath the deck. Two orthogonal hinge chains constrain a platform to vertical translation. Compare measured height with the sine law and the 24:1 worm drive.",
   "try": [
     "Choose Sarrus Lift in Examples; the program loads into Blocks automatically. Press Run after resetting to the saved 45° pose. The linkage moves to 20°, returns to 45°, moves to 70°, then returns home.",
     "Compare motor A angles −600°, 0° and +600° with the platform height. The worm needs 24 input turns for one output turn. The input has no artificial angle wrap.",

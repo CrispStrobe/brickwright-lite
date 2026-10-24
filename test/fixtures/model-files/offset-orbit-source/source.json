@@ -1,8 +1,8 @@
 {
   "author": "CrispStrobe",
   "license": "BSD-3-Clause",
-  "archive": "offset-orbit-addon-20261021.zip",
-  "archiveSha256": "5fa780d1b9efd2656bb46682ca411b8fdfb94d76735425dbce43f89ae381b5b2",
-  "modelSha256": "d432f7b2c179e1a287bed0e085666dc5b83cdb4f5e2725ddccc41bc8eb24b709",
-  "programSha256": "a416aa577c43bbd971a30bc1490b8312c9bacb87d414bccf6cac519af4db8005"
+  "archive": "offset-orbit-addon.zip",
+  "archiveSha256": "7f8659d2c95dbd9cb68753459442fb835b98b92a52c36168340c330268d9728b",
+  "modelSha256": "58f39ec7a4940d9c8ce9e7d0080f051ecd732a446da8034257710234629c0407",
+  "programSha256": "589fc798123d03902c7cac96fe4f8be331f34e3de752c3e514fd51eaeaae909b"
 }
