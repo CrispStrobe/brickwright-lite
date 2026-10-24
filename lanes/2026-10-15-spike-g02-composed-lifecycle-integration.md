@@ -43,3 +43,16 @@ reference boot, rollback, distribution or licensing. This lane
 changes no native input, firmware/Runtime/model/dependency pin, workflow or budget
 relative to its main base. Do not merge the older draft sources independently
 as a substitute for composed qualification.
+
+### Continuation — disposed topology release, 2026-10-24
+
+Claude (operator-assigned) continues this claim on
+`lane/spike-g02-disposal-topology-20261024` (pane JSX and its teardown test).
+An installed pane-disposal case on current main (dual-ultrasonic NuttX run,
+then Scratch Stage closure and arena reopen) found port F still holding the
+second ultrasonic sensor in the shared hub state. Closing the pane sets
+`disposed`, so `stopProgram()` returns before its topology teardown; since the
+hub now outlives the pane, the stale sensor reached the next pane. The pane now
+returns port F after the disposed Stop settles, unless a newer session already
+owns the hub configuration. Two focused controls fail on the original source;
+removing the ownership guard or releasing before teardown settles is detected.
