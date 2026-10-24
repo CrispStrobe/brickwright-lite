@@ -20,7 +20,7 @@ import time
 import urllib.request
 from pathlib import Path, PurePosixPath
 
-ENABLED = False
+ENABLED = True
 SCHEMA = 'bw.gui-hdd.native-font-request.v1'
 ORIGINAL = 'bw.gui-hdd.native-font-original.v1'
 SERVICE_ORIGINAL = 'bw.gui-hdd.native-font-service.v1'
@@ -413,7 +413,7 @@ def collect(request_raw, expected_sha, env, ops):
 
 
 class LiveOps:
-    """Bounded selected host edges. This class is unreachable while ENABLED is false."""
+    """Bounded selected host edges behind the admitted event and source gates."""
     def __init__(self, env):
         self.env = dict(env)
         self.root = None

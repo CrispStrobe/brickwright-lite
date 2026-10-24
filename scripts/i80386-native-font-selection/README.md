@@ -1,7 +1,9 @@
 # Bounded native font selection source candidate
 
-This is an initially disabled metadata route. The producer, reader, workflow
-and source controls have no actual-run, browser-font, guest, package-install or
+This candidate activates the separately guarded metadata route for one future
+externally reviewed event. No request variable, label or event is supplied by
+this source change, and no native observation has run. The producer, reader,
+workflow and source controls have no browser-font, guest, package-install or
 release authority. The fixed font and notice are selected below; the hosted
 native tool and finite runtime graph still require external selection. The
 separate lane claim owns only this new directory, its workflow and a focused
@@ -82,11 +84,12 @@ well formed.
 
 ## Producer and original
 
-`run.py` keeps `ENABLED=False` and refuses before request, event, Git or host
-IO. The pure `collect(request_bytes, expected_sha256, environment, ops)` entry
-used by mocked controls accepts an injected provider. A live provider is
-implemented behind the literal false guard; it has not been executed or
-host qualified. Its provider must supply exact admitted source and selected
+`run.py` enables the native metadata route only after its exact request, event,
+source, service and input gates. The pure
+`collect(request_bytes, expected_sha256, environment, ops)` entry used by
+mocked controls accepts an injected provider. A live provider is implemented
+behind the labelled workflow gate; it has not been executed or host qualified.
+Its provider must supply exact admitted source and selected
 service, tool and runtime readbacks before requesting either font/notice URL;
 then font/notice
 byte witnesses, a new owned staged font and authored self-contained config,
@@ -140,6 +143,8 @@ partial/error packet. A positive metadata
 verdict is not native-rendering or GUI actual approval. The current actual
 controller and reader remain disabled and do not consume this v1 observation.
 
-The producer and workflow remain disabled. Hosted tool/runtime input review,
-aggregate disk resource admission, exact event admission and source qualification must precede
-any guard activation. Source qualification alone cannot dispatch an observation.
+This activation source is a candidate, not an admitted event. Hosted
+tool/runtime input review, aggregate disk resource admission, a frozen request,
+exact source checks and separately reviewed one-shot event are required before
+the first metadata observation. Source qualification alone cannot approve an
+actual GUI or guest run.

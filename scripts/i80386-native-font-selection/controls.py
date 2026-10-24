@@ -176,21 +176,21 @@ class Controls(unittest.TestCase):
     def produce(self,fault=None):
         request=fixture_request();request_raw=producer.encode(request);pin=producer.sha(request_raw)
         event_raw=fixture_event(pin);ops=FakeOps(event_raw,fault)
-        with patch.object(producer,'ENABLED',True):
-            raw=producer.collect(request_raw,pin,fixture_env(),ops)
+        raw=producer.collect(request_raw,pin,fixture_env(),ops)
         return raw,request_raw,event_raw,request,ops
     def test_disabled_refuses_before_every_provider_edge(self):
         class NoEdges:
             def __getattr__(self,name):raise AssertionError('disabled touched '+name)
-        with self.assertRaisesRegex(ValueError,'disabled'):
-            producer.collect(b'bad','0'*64,{},NoEdges())
-        with self.assertRaisesRegex(ValueError,'disabled'):
-            producer.main(['--observe'])
-        with self.assertRaisesRegex(ValueError,'disabled'):
-            producer.main(['--finalize'])
-    def test_workflow_outer_service_contract_is_disabled_and_bounded(self):
+        with patch.object(producer,'ENABLED',False):
+            with self.assertRaisesRegex(ValueError,'disabled'):
+                producer.collect(b'bad','0'*64,{},NoEdges())
+            with self.assertRaisesRegex(ValueError,'disabled'):
+                producer.main(['--observe'])
+            with self.assertRaisesRegex(ValueError,'disabled'):
+                producer.main(['--finalize'])
+    def test_workflow_outer_service_contract_is_gated_and_bounded(self):
         workflow=(ROOT/producer.WORKFLOW).read_text()
-        selected=('if: ${{ false && github.event.action == \'labeled\'',
+        selected=('if: ${{ github.event.action == \'labeled\'',
                   'timeout --signal=TERM --kill-after=5s 130s',
                   '--system --wait --pipe --quiet --same-dir',
                   '--property=CPUQuota=100%',
@@ -202,6 +202,7 @@ class Controls(unittest.TestCase):
                   '--property=KillMode=control-group',
                   '--service-exit "$SERVICE_EXIT"')
         for marker in selected:self.assertIn(marker,workflow)
+        self.assertNotIn('false && github.event.action',workflow)
         self.assertNotIn('--collect',workflow)
         self.assertLess(workflow.index('set +e'),workflow.index('systemd-run'))
         self.assertLess(workflow.index('SERVICE_EXIT=$?'),workflow.index('--finalize'))
