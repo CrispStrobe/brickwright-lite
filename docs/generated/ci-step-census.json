@@ -1979,6 +1979,28 @@
     "vendor-freshness.yml"
   ],
   "workflows": {
+    "circuit-instrument-regression.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Admit release metadata and previously verified summary",
+        "Read exact source pins",
+        "Install locked consumer and independent oracle",
+        "Pure harness controls",
+        "Run fixed authored campaign once",
+        "Preserve original results, including failures"
+      ],
+      "inFileInNoRun": [
+        "Admit release metadata and previously verified summary",
+        "Read exact source pins",
+        "Install locked consumer and independent oracle",
+        "Pure harness controls",
+        "Run fixed authored campaign once",
+        "Preserve original results, including failures"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
     "ack-z80-cpm.yml": {
       "runs": 12,
       "stepsInFile": [
@@ -7544,28 +7566,6 @@
       },
       "sourceSha": "working-tree",
       "observationScope": "New combined-source replacement declaration; historical048a/DC/368 execution records are retained, not acceptance of this replacement. Artifact fields remain unadmitted."
-    },
-    "circuit-instrument-regression.yml": {
-      "runs": 0,
-      "stepsInFile": [
-        "Admit release metadata and previously verified summary",
-        "Read exact source pins",
-        "Install locked consumer and independent oracle",
-        "Pure harness controls",
-        "Run fixed authored campaign once",
-        "Preserve original results, including failures"
-      ],
-      "inFileInNoRun": [
-        "Admit release metadata and previously verified summary",
-        "Read exact source pins",
-        "Install locked consumer and independent oracle",
-        "Pure harness controls",
-        "Run fixed authored campaign once",
-        "Preserve original results, including failures"
-      ],
-      "steps": {},
-      "jobs": {},
-      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
