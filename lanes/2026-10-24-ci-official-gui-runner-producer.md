@@ -123,3 +123,13 @@ no browser, application, native tool, guest, archive acquisition or API write
 runs locally. All existing artifact and completion tests remain unchanged.
 Fresh enabled exact-head CI and actual runner output availability remain
 unqualified; source tests do not authorize native or GUI event selection.
+
+## Combined source qualification
+
+The browser and producer evidence repairs qualify together in a separate
+implementation PR. Its initial documentation checkpoint carries the full-CI
+label before executable source is published, so the final source head can
+receive one qualification set without a concurrent opening-label transition.
+Claim checks and this publication checkpoint establish no runner metadata,
+artifact admission, numeric GUI or native guest result. Preserve the original
+REST refusals; require the final source checks and affected consumers to pass.
