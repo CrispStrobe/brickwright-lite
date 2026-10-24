@@ -1,0 +1,80 @@
+name: Robot model WebKit comparison
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - .github/workflows/robot-model-webkit-comparison.yml
+      - scripts/qualify-robot-model-webkit.mjs
+      - test/robot-model-webkit-comparison.test.mjs
+      - lanes/2026-10-23-robot-model-webkit-comparison.md
+permissions:
+  contents: read
+  actions: read
+jobs:
+  compare:
+    if: >-
+      github.repository == 'CrispStrobe/brickwright-lite' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'lane/robot-model-webkit-shader-20261024'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    container:
+      # CI-only Ubuntu 24.04 / Playwright 1.62.1 runtime, immutable linux/amd64.
+      image: mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+      options: --init
+    env:
+      GIT_CONFIG_COUNT: '2'
+      GIT_CONFIG_KEY_0: gc.auto
+      GIT_CONFIG_VALUE_0: '0'
+      GIT_CONFIG_KEY_1: maintenance.auto
+      GIT_CONFIG_VALUE_1: 'false'
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      BW_MODEL_WEBKIT_RUNTIME_IMAGE: mcr.microsoft.com/playwright@sha256:c091b21d9fae78c76e85cd4356431e9b018402f172a214fc7d7a5e9a7e29d8ac
+      BW_MODEL_WEBKIT_RUNTIME_PREFLIGHT: test-results/runtime-preflight.json
+    steps:
+      - name: Checkout exact comparison source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: harness
+          persist-credentials: false
+      - name: Checkout frozen candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 401c5723d0baa4e334e5b405711bc347943defb5
+          fetch-depth: 2
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.4
+      - name: Install frozen Node inputs without package lifecycle scripts
+        working-directory: candidate
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Admission and resource refusal controls
+        working-directory: harness
+        run: node --test test/robot-model-webkit-comparison.test.mjs
+      - name: Verify preprovisioned WebKit runtime
+        timeout-minutes: 1
+        run: |
+          mkdir -p test-results
+          node --max-old-space-size=512 harness/scripts/qualify-robot-model-webkit.mjs --preflight-runtime candidate test-results/runtime-preflight.json
+      - name: Admit existing frontend and run unchanged WebKit examples
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BW_MODEL_WEBKIT_CONSUMER_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mkdir -p test-results
+          node --max-old-space-size=2048 harness/scripts/qualify-robot-model-webkit.mjs candidate test-results/webkit-comparison
+      - name: Preserve comparison originals
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: model-webkit-comparison-${{ github.event.pull_request.head.sha }}
+          path: |
+            test-results/webkit-comparison/
+            !test-results/webkit-comparison/site/**
+            test-results/runtime-preflight.json
+            candidate/artifacts/sim-lab/new-models/
+          if-no-files-found: error
+          retention-days: 30
