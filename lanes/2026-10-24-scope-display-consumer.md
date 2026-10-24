@@ -14,6 +14,19 @@ After upstream qualification and landing, own only this claim,
 in `scripts/lib/instrument-regression-cases.mjs` and corresponding checkout
 identity in `.github/workflows/circuit-instrument-regression.yml`, plus the
 actual scope controls in `scripts/verify-circuit-export-completeness.mjs`.
+The measured dependency-reference closure additionally includes only the CUI
+SHA literals in `test/adp7118-limiter-package-adoption.test.mjs`,
+`test/adp7118-package-adoption.test.mjs`,
+`test/cli-op-kcl-package-adoption.test.mjs`,
+`test/lm324-package-adoption.test.mjs`, `test/lm741-package-adoption.test.mjs`,
+`test/lt1001-package-adoption.test.mjs`, `test/lt1763-package-adoption.test.mjs`,
+`test/scope-reset-package-adoption.test.mjs`, and the three current-package
+identity joins in `.github/workflows/i80386-freedos-circuits-direct-actual.yml`.
+These bind the consumer being checked, rather than historical measurements.
+Preserve every assertion, scenario, source/media policy, one-shot label, guest
+operation and workflow trigger/budget. This is a dependency-identity update,
+not a guest implementation or a new guest qualification receipt.
+
 Preserve Board and all other pins. Use canonical package pin generation; no
 source copy, dependency addition, unrelated migration or deployment claim.
 The fixed case-definition hash, equations, tolerances, input bytes and all old

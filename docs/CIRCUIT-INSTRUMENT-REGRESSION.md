@@ -1,8 +1,8 @@
 # CLI instrument regression
 
-Status reconciled 2026-10-24: **existing TestFlight delivery verified; harness
-handoff correction in qualification; zero
-campaign cases executed**. This is a bounded follow-up to the qualified circuit CLI, not a
+Status reconciled 2026-10-24: **existing TestFlight delivery verified; fixed
+312-case CLI campaign independently accepted; bounded scope-display consumer
+qualification in progress**. This is a bounded follow-up to the qualified circuit CLI, not a
 report that the schematic corpus or physical instruments have been validated.
 Use [the lane protocol](../lanes/PROTOCOL.md) and dated claims for current ownership and the
 [current plan](../PLAN.md#current-circuitinstrument-campaign--2026-10-15) for order.
@@ -244,13 +244,31 @@ the owning layer with a load-bearing negative control. Shared engine/importer/
 instrument behavior lands upstream first, then Lite adopts exact qualified
 packages; do not create a local fork or move thresholds to improve a score.
 
-The first realism lane should expose viewport overrange, actual acquisition
-mode/sample interval/depth, Nyquist and absent anti-alias-filter limits. Preserve
-raw samples, CSV, solver and electrical probe loading. Do not invent ADC noise,
-resolution, filtering or a hardware-accuracy claim. Refresh its actual source
-paths and publish a separate bounded claim. Acceptance needs real GUI controls
-for overrange, prefix/ring wrap and sampling/aliasing disclosures, alongside
-unchanged CLI/raw numerical records and affected built/installed-consumer proof.
+The bounded scope-display implementation is upstream
+[PR117](https://github.com/CrispStrobe/bw-circuit-ui/pull/117). It exposes actual
+capture mode, interval, capacity, retained/displayed counts, origin and ring wrap.
+Only point-sampled spectra receive a Nyquist value. Viewport-overrange warnings
+refer to the drawn range, not physical clipping; absence of an analogue
+anti-alias filter or ADC model is explicit. HOLD freezes the last drawn caption
+and picture while capture can continue. Raw samples, CSV, solver and electrical
+probe loading are unchanged. No ADC noise, resolution, filtering or hardware
+accuracy is invented.
+
+The upstream real-browser qualification passed all 71 scenarios, including
+actual vertical warning/clear controls with byte-identical CSV, prefix/wrap,
+HOLD with a changed requested viewport, visible redraw on RUN, and the separate
+sample-series metadata. An earlier proof failed because it inspected a queued
+Step before cooperative work completed. The forward evidence waits for the
+actual clock, capture count and ready state; it preserves the original failure
+and does not change production behavior, expected counts or timing budgets.
+
+Lite adoption remains separately qualified under the
+[consumer claim](../lanes/2026-10-24-scope-display-consumer.md). Its actual built
+GUI proof retains the two original CSV downloads, observed circuit, scalar
+capture/clock/readout records and HOLD/resume canvases in the collected browser
+artifact. A changed package identity requires a new numerical campaign; the
+historical result above keeps its original sources. Neither browser source nor
+web deployment evidence qualifies a newer signed TestFlight binary.
 
 Stop after these bounded tasks and report unresolved physics and evidence
 limits. Do not turn "fix failures" into implementing every device model or
