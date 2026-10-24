@@ -216,6 +216,7 @@ try {
     await page.waitForFunction(root => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
         ?.getAttribute('data-wrapped') === 'true', scopeElement);
     const wrappedStart = await acq.getAttribute('data-start-time-ns');
+    assert.equal(wrappedStart, await page.evaluate(h => String(window.__board.getScopeData(h).startTNs), prefix.handle));
     await scope.getByTestId('bw-scope-hold').click();
     const heldText = await acq.textContent();
     const heldPixels = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
@@ -226,11 +227,17 @@ try {
     assert.equal(await page.evaluate(h => window.__board.getScopeData(h).count, prefix.handle), 15000);
     assert.equal(await acq.textContent(), heldText, 'HOLD metadata must stay with its frozen picture');
     assert.equal(await scope.locator('canvas').evaluate(canvas => canvas.toDataURL()), heldPixels);
+    const freshStart = await page.evaluate(h => String(window.__board.getScopeData(h).startTNs), prefix.handle);
+    assert.notEqual(freshStart, wrappedStart, 'actual acquired record must advance during HOLD');
     await scope.getByTestId('bw-scope-hold').click();
-    await page.waitForFunction(({root, old}) => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
-        ?.getAttribute('data-start-time-ns') !== old, {root: scopeElement, old: wrappedStart});
-    await page.waitForFunction(({root, old}) => root.querySelector('canvas')?.toDataURL() !== old,
-        {root: scopeElement, old: heldPixels});
+    await page.waitForFunction(({root, expected}) => {
+        const el = root.isConnected && root.querySelector('[data-testid="bw-scope-acquisition-0"]');
+        return !!el && el.getAttribute('data-start-time-ns') === expected;
+    }, {root: scopeElement, expected: freshStart});
+    await page.waitForFunction(({root, old}) => {
+        const canvas = root.isConnected && root.querySelector('canvas');
+        return !!canvas && canvas.toDataURL() !== old;
+    }, {root: scopeElement, old: heldPixels});
     await scope.getByTestId('bw-scope-view-spectrum').click();
     await page.waitForFunction(() => window.__board.getScopeChannels()
         .some(h => window.__board.getScopeData(h).capture === 'sample'));
@@ -247,6 +254,8 @@ try {
     const scopeDisplay = {actualPrefix: prefix.count, ringWrap: true, viewportWarningAndClear: true,
         rawCsvByteIdentical: true, holdWhileAcquiring: true, holdDespiteViewportChange: true, resumeVisiblyRedraws: true, pointSampleNyquistHz: nyquistHz,
         analogAntiAliasModeled: false, physicalAccuracyClaim: false};
+
+    assert.equal(pageErrors.length, 0, 'the complete scope interaction must remain free of page errors');
 
     const assets = await page.locator('script[src],link[rel="stylesheet"][href]').evaluateAll(nodes =>
         nodes.map(node => node.getAttribute('src') || node.getAttribute('href'))
