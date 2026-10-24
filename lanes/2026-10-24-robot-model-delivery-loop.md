@@ -187,3 +187,7 @@ manager. Integration, one hundred focused production-pane/API/clock/manual
 controls and the mirror gate pass with that closure. Actual Root Bridge and
 measurement-editor journeys on the newly built app remain the next admission
 boundary; earlier app builds retain their original source identities.
+
+## User-requested checkpoint handoff
+
+The latest user instruction supersedes the earlier finish-every-delivery-stage condition: push the experimental integration and a precise continuation now. The checkpoint is handed off in `docs/ROBOT-LAB-CHECKPOINT-2026-10-24.md`. Existing source component evidence remains identified by its actual source; interrupted/failed full qualification is not admission. Native release, production API parity, private-kit publication and the fresh VPS model-builder trial remain unfinished. The user explicitly authorizes the receiving agent to continue this lane; no competing builder or automatic merger is running.

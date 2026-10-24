@@ -144,5 +144,35 @@ work; no currently running model builder owns it.
 
 ## Checkpoint app verification
 
-Production build and representative browser checks: pending the checkpoint
-verification below. Do not treat earlier component checks as new-model tests.
+The production build passes on source
+`9ac75abeca6517133f828719a24b17fe781b2f73`, after canonical integration and
+byte-for-byte identity checks for the five copied UI modules. All 104 focused
+checks pass. The initial standalone build had a stale copied gallery; that
+failed probe and build are retained, and the corrected build was produced
+without changing assertions or physical limits. Always run `npm run integrate`
+after the last UI/source edit and before `npm run build:gui`; a Git manifest
+alone does not establish that ignored package copies match the overlay.
+
+Installed Google Chrome 155.0.8059.85 passes the limited checkpoint smoke:
+
+- 109 default cards; enabling experimental examples gives 130 cards and 21 badges.
+- Vector Delta's card, draft lesson and public load API refuse the unsupported
+  source; the existing scene stays intact.
+- Vesper loads 91 recognized placements in the real physics worker, automatically
+  loads 285 Blocks, and passes the visible-model screenshot check.
+- All 42 new EN/DE lesson JSON files are served and structurally readable.
+- Returning to the established driving-base example succeeds; no page errors.
+
+Vesper's powered motion and mechanical law are **not** tested. The other twenty
+new models have no GUI load/render acceptance. German interactive journeys and
+new-checkpoint WebKit coverage remain unchecked. The packaged Chromium startup
+probe timed out locally; a read-only follow-up found it still loading without
+page errors. Installed Chrome reached ready with the real worker and passed the
+checks above. Preserve this distinction; no browser-parity claim or environmental
+cause has been established. The local preview and exact private receipts are in
+`CLAUDE.md`.
+
+The final checkpoint's follow-up changes only handoff/validation documentation;
+the app build and smoke retain their actual source identity above. It is a
+**pushed draft checkpoint**, not main landing, release admission, API deployment
+or certification of the 21 candidate mechanisms.

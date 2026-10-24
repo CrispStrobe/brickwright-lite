@@ -1267,14 +1267,43 @@
         "programWarnings": [],
         "blocked": false
       },
-      "nativeInitialization": "NOT_RUN",
+      "nativeInitialization": "GUI_WORKER_READY; no physics stepping acceptance",
       "poweredMotion": "NOT_RUN",
       "mechanicalLaw": "NOT_RUN",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": {
+        "status": "PASS",
+        "sourceCommit": "9ac75abeca6517133f828719a24b17fe781b2f73",
+        "browser": "system-chrome",
+        "version": "155.0.8059.85",
+        "recognizedPlacements": 91,
+        "physicsWorker": true,
+        "compiledBlocks": 285,
+        "renderedScreenshotChecked": true,
+        "scope": "Load, automatic program-to-Blocks and visible render; no program run or physical-law acceptance"
+      },
       "savedProjectReplay": "NOT_RUN"
     }
-  ]
+  ],
+  "appVerification": {
+    "sourceCommit": "9ac75abeca6517133f828719a24b17fe781b2f73",
+    "productionBuild": "PASS after canonical integration and byte identity of five UI modules",
+    "focusedControls": 104,
+    "browser": "system-chrome",
+    "browserVersion": "155.0.8059.85",
+    "checks": [
+      "109 default choices, 130 opted-in cards, 21 experimental badges",
+      "blocked card and lesson cannot load unsupported Vector Delta",
+      "public blocked-load refusal preserves existing scene",
+      "42 packaged EN/DE lesson JSONs served correctly; German UI journey not exercised",
+      "return to established model after experimental loading"
+    ],
+    "pageErrors": [],
+    "germanUiJourney": "NOT_RUN",
+    "webkitCheckpointJourney": "NOT_RUN",
+    "packagedChromiumProbe": "Initial readiness timed out; retained as inconclusive, not counted as passing",
+    "poweredNewModelQualification": "NOT_RUN"
+  }
 }
