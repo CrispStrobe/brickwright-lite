@@ -76,10 +76,18 @@ physical state remain untouched.
 Atlas Six loading continuation uses this existing owner’s model/program scope.
 Its reviewed program derivative factors the exact repeated travel-bound
 preparation into one joined receiver, reducing the generated saved graph from
-2,470 to 756 blocks. Original fixtures, all target stages, six concurrent motion
-receivers, correction limits, hold and watchdog remain unchanged. Fourteen
+2,470 to 757 blocks. Original fixtures, all target stages, six concurrent motion
+receivers, correction limits, hold and watchdog remain unchanged. Fifteen
 focused compaction, provenance, native two-cadence, frozen-output and source
 binding controls pass. Actual before/after import measurements and complete
 browser qualification remain required; block count alone is not a latency or
 combined-application acceptance claim. Integration and the separately claimed
 release/API follow-through preserve the other owners’ frozen successors.
+
+The first compacted browser run exceeded the original 0.100 mm final hold
+limit, at 0.10035 mm. Its failure remains preserved. Completion now follows
+one real powered settling second after the final hold commands; both native
+and browser observations require that interval on all six ports. The original
+one-second post-completion observation and its physical thresholds remain
+unchanged. Native observations at both cadences pass, including frozen-output
+rejection; complete browser qualification is still required for this revision.

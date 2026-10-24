@@ -12,7 +12,7 @@ import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw
 import {solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 import {adaptedTechnicProgram} from '../scripts/adapt-six-technic-models.mjs';
-import {compactAtlasProgram} from '../scripts/lib/sim-lab-atlas-program.mjs';
+import {compactAtlasProgram,assertAtlasFinalSettling,ATLAS_FINAL_SETTLING_MS} from '../scripts/lib/sim-lab-atlas-program.mjs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
 const selected=process.env.BW_MODEL_QUALIFY_MODELS?.split(','),catalog=catalogFrom(JSON.parse(intakeRead('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const counts={'rod-ratio':167,'vernier-drive':176,'line-turner':145,'dune-strider':202,'atlas-six':676,oblique:291};
@@ -52,6 +52,7 @@ for(const id of SIX_INTAKES.filter(id=>!selected||selected.includes(id))){
   const directory=process.env.BW_MODEL_QUALIFY_EVIDENCE_DIR;
   if(directory){mkdirSync(directory,{recursive:true});writeFileSync(directory+'/'+id+'-'+label+'.json.gz',gzipSync(Buffer.from(JSON.stringify(record))));}
   const metrics=await judgeReviewedIntake(id,record,{native:true,contract});t.diagnostic(JSON.stringify({id,label,metrics}));
+  if(id==='atlas-six')assertAtlasFinalSettling(record);
   assert.ok(record.track.every(f=>!f.extra.sessionFailed));assert.ok(Object.values(record.track.at(-1).extra.modes).every(mode=>mode==='hold'));
   // The original per-model observers also exercise physical internal comparisons.
   // Freeze every genuinely moving output body together in a copied observation:
@@ -81,6 +82,14 @@ if(!selected||selected.includes('atlas-six'))test('Atlas Six compaction preserve
  }
  assert.ok(counts[1]<=counts[0]/2,'The saved graph must contain at most half as many compiled blocks');
  t.diagnostic(JSON.stringify({originalBlocks:counts[0],compactedBlocks:counts[1]}));
+});
+if(!selected||selected.includes('atlas-six'))test('Atlas Six completion requires a real final settling second on every held port',()=>{
+ assert.equal(ATLAS_FINAL_SETTLING_MS,1000);
+ const events=[...'ABCDEF'].map((port,i)=>({name:'stopMotor',args:[port,'hold'],t:100+i*5}));
+ assert.doesNotThrow(()=>assertAtlasFinalSettling({apiEvents:events,finishedAt:1125}));
+ assert.throws(()=>assertAtlasFinalSettling({apiEvents:events,finishedAt:1100}),/settling second/);
+ assert.throws(()=>assertAtlasFinalSettling({apiEvents:events.slice(0,5),finishedAt:1125}),/six real motors/);
+ assert.throws(()=>assertAtlasFinalSettling({apiEvents:events.map(e=>({...e,args:[e.args[0],'coast']})),finishedAt:1125}),/six real motors/);
 });
 if(!selected||selected.includes('line-turner'))test('native API observer preserves every actual body and joint trajectory',async()=>{
  const {record}=await runReviewedIntake('line-turner',{frameMs:25,autoPorts:false});

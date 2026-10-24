@@ -422,6 +422,8 @@ WHEN flag clicked:
   lab stop motor D hold
   lab stop motor E hold
   lab stop motor F hold
+  # Keep the real motors holding while the passive platform settles.
+  wait 1 seconds
   set stage to 28
   set completed to 1
 

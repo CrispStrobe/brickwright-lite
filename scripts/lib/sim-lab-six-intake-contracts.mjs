@@ -28,7 +28,7 @@ export function reviewedIntakeContract(id,{frameMs}={}){
   contract.expectedExtraMetadata=Object.fromEntries(curatedStockAudit(['32195a.dat']).entries.map(e=>[e.part,e.metadataSha256]));
   const program=intakeRead('overlay/scratch-gui/static/sim-lab/programs/atlas-six.bw');
   assert.equal(program.toString(),adaptedTechnicProgram(id),'Atlas uses only its reviewed deterministic shared-preparation derivative');
-  contract.reviewedRuntime.programAdaptation={originalSha256:contract.expectedInputHashes.program,kind:'joined-shared-travel-preparation'};
+  contract.reviewedRuntime.programAdaptation={originalSha256:contract.expectedInputHashes.program,kind:'joined-shared-travel-preparation',finalPoweredSettlingMs:1000};
   contract.expectedInputHashes.program=intakeHash(program);
  }
  if(id==='oblique')contract.inputs.model={...contract.inputs.model,bytes:model.length,sha256:intakeHash(model)};

@@ -21,7 +21,10 @@ Atlas Six's supplied program remains immutable in the source fixtures. Its
 bundled derivative moves the identical travel-bound calculation from 27 stage
 copies into one joined receiver. The six concurrent motion receivers, targets,
 correction limits, final hold and watchdog remain unchanged. This reduces the
-generated saved graph from 2,470 to 756 blocks. Native qualification at both
+generated saved graph from 2,470 to 757 blocks. One actual powered settling
+second follows the final hold commands before completion is announced. The
+original full post-completion hold measurement and limits remain unchanged.
+Native qualification at both
 observation cadences retains the original physical and controller limits;
 loading latency and the complete browser journeys are qualified separately.
 

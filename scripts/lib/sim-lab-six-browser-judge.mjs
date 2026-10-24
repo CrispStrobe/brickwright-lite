@@ -10,6 +10,7 @@ import {curatedStockAudit} from './sim-lab-curated-stock-audit.mjs';
 import {judgeJansen} from '../../test/fixtures/model-files/dune-strider-source/tools/judge-native.mjs';
 import {judgeAtlas} from '../../test/fixtures/model-files/atlas-six-source/tools/judge-native.mjs';
 import {judgeNative as judgeOblique} from './sim-lab-oblique-native-judge.mjs';
+import {assertAtlasFinalSettling} from './sim-lab-atlas-program.mjs';
 
 // Browser observations cover the complete ordinary Run, actual API events,
 // passive output, finite completion and hold. Full unpowered startup and exact
@@ -56,6 +57,7 @@ export async function judgeSixBrowser(id,record){
  assert.equal(Number(variables.completed),1);assert.equal(Number(variables.failed),0);
  assert.ok(Object.values(last.busy).every(busy=>busy===false));
  assert.ok(Object.values(last.extra.modes).every(mode=>mode==='hold'),'every actual native motor holds at completion');
+ if(id==='atlas-six')assertAtlasFinalSettling(record);
  const {ordinary,unassisted,sourceBinding}=bindSixBrowserSource(id,record);
  const initialWorldErrorMm=Math.max(...record.mechanism.bodies.filter(b=>b.parts.length&&b.motion==='dynamic').map(b=>Math.hypot(...record.track[0].bodies[b.id].position.map((v,k)=>v-b.position[k]))*1000));
  assert.ok(initialWorldErrorMm<=.5,'initial saved world datum within0.5mm; the chassis remains free during the experiment');
