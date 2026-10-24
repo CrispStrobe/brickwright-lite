@@ -478,7 +478,8 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
         if(final?.type!=='Conditional'||final.test!==mapped||final.consequent!==actual(node.consequent)||
             final.alternate!==actual(node.alternate))return false;
         let ready=false;
-        if(test?.type==='Member')ready=mapped?.type==='Member'&&mapped.object===actual(test.object)&&classReceiverReady(test.object);
+        if(test?.type==='Identifier')ready=mapped?.type==='Identifier'&&classView.hasCapturedPrimitiveRead?.(node)===true;
+        else if(test?.type==='Member')ready=mapped?.type==='Member'&&mapped.object===actual(test.object)&&classReceiverReady(test.object);
         else if(test?.type==='Call'&&test.callee?.type==='Member')ready=mapped?.type==='Call'&&
             mapped.callee===actual(test.callee)&&mapped.callee.object===actual(test.callee.object)&&
             mapped.args?.length===test.args?.length&&mapped.args.every((arg,index)=>arg===actual(test.args[index]))&&

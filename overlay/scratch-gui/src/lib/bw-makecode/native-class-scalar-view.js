@@ -60,7 +60,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         prepareObjectClassStructure(program).unsupported.length)return {program,current:guard.isCurrent};
     const lexical=analyseCallableBindings(program),classes=new Map(),methods=new Map(),functions=new Map();
     const values=new Map(),parents=new WeakMap(),classForBinding=new Map(),methodForScope=new Map(),fields=new Map();
-    const unknown='Opaque',nodes=[],unsafe=new Set(),arrayRows=new WeakMap();let changed=false;
+    const unknown='Opaque',nodes=[],unsafe=new Set(),arrayRows=new WeakMap();let changed=false,scalarEffectsClosed=true;
     const key=()=>Symbol();
     const add=(cell,type)=>{if(!values.has(cell))values.set(cell,new Set());const set=values.get(cell);if(!set.has(type)){set.add(type);changed=true;}};
     const get=cell=>values.get(cell)||new Set();
@@ -95,7 +95,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             }else if(type.kind==='function'||type.kind==='boundFunction'||type.kind==='aggregatePush')poisonAll();
         }
     };
-    const poisonAll=()=>{for(const row of classes.values())mark(row);};
+    const poisonAll=()=>{scalarEffectsClosed=false;for(const row of classes.values())mark(row);};
     const scan=(node,parent=null)=>{
         if(!node||typeof node!=='object')return;
         if(Array.isArray(node)){for(const value of node)scan(value,parent);return;}
@@ -269,7 +269,12 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         const all=operands.map(get);
         if(all.some(set=>!set.size))return;
         if(all.some(set=>[...set].some(type=>!primitive.has(type)))){add(cell(node),unknown);return;}
-        add(cell(node),kind==='add'&&all.some(set=>set.has('String'))?'String':kind==='compare'?'Boolean':kind==='truth'?'Boolean':kind==='typeof'?'String':'Number');
+        if(kind==='add'){
+            // Cartesian primitive domains: a possible String does not exclude
+            // Number (e.g. Undefined + Undefined). No operand is re-evaluated.
+            if(all.some(set=>set.has('String')))add(cell(node),'String');
+            if(all.every(set=>[...set].some(type=>type!=='String')))add(cell(node),'Number');
+        }else add(cell(node),kind==='compare'||kind==='truth'?'Boolean':kind==='typeof'?'String':'Number');
     };
     const boundMethods=new Map();
     const bound=(fn,row)=>{
@@ -672,7 +677,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     // Ordinary facts must stay revoked even when that short circuit hides the
     // changed source from the inner snapshot until after restoration.
     let ordinaryLive=true,resultUsed=false,resultLive=true;
-    const issued=new ResultWeakSet(),carriers=[];
+    const issued=new ResultWeakSet(),capturedIssued=new ResultWeakSet(),carriers=[];
     const descriptorEqual=(a,b)=>{
         if(!a||!b)return false;
         const fields=['value','get','set','writable','enumerable','configurable'];
@@ -720,7 +725,91 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         }
     };
     if(!current())return {program,current};
+    // A separate closed scalar slice. Receiver safety by itself is never a
+    // captured binding certificate. Reject foreign calls, callable publication,
+    // dormant empty inputs and asynchronous/default/rest entries conservatively.
+    const closedParameters=fn=>{
+        if(!fn||!Array.isArray(fn.node.params))return false;
+        for(const value of [fn.node,fn.node.params]){
+            if(Object.hasOwn(value,'restParam'))return false;
+            for(const name of ['parameterDefaults','optionalParams','ordinaryParameterDefaultNames','typeParameters','genericParams'])
+                if(value[name]?.length)return false;
+        }
+        return !['async','isAsync','generator','isGenerator'].some(name=>fn.node[name]);
+    };
+    const inputsClosed=(fn,args)=>closedParameters(fn)&&args.length===fn.node.params.length&&
+        args.every(arg=>{const types=get(cell(arg));return types.size&&!types.has(unknown);});
+    const sourceConstructor=row=>row?.node.ctor?fnFor(row.node.ctor):row?.parent?sourceConstructor(row.parent):null;
+    let scalarClosed=scalarEffectsClosed&&classes.size>0&&[...classes.values()].every(row=>
+        !row.sdk&&!unsafe.has(row)&&row.lineage?.every(base=>!base.sdk&&!unsafe.has(base)))&&
+        lexical.functions.every(closedParameters)&&!nodes.some(node=>
+            ['FunctionExpression','Object','Spread','New','Index','Template'].includes(node.type)||
+            node.type==='Unary'&&!['+','-','~','!','typeof'].includes(node.op)||
+            node.type==='Assignment'&&!['=','+=','-=','*=','/=','%=','**=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op)||
+            node.type==='Update'&&!['++','--'].includes(node.op))&&
+        [...classes.values()].every(row=>(row.node.methods||[]).every(method=>!['get','set'].includes(method.kind)));
+    if(scalarClosed)for(const node of nodes){
+        const parent=parents.get(node);
+        if(node.type==='Identifier'&&node.name!=='super'&&!read(node)){scalarClosed=false;break;}
+        if(node.type==='Identifier'||node.type==='Member'){
+            const types=get(node.type==='Identifier'?variable(node):cell(node));
+            if([...types].some(type=>type?.kind==='function'||type?.kind==='boundFunction')&&
+                (parent?.type!=='Call'||parent.callee!==node||parent.isNew)){scalarClosed=false;break;}
+        }
+        if(node.type!=='Call')continue;
+        if(node.callee?.type==='Identifier'&&node.callee.name==='super'){
+            const fn=methodForScope.get(activeMethod(node)),row=fn?.row?.parent,ctor=sourceConstructor(row);
+            if(!row||fn.node!==fn.row.node.ctor||node.isNew||
+                (ctor?!inputsClosed(ctor,node.args):node.args.length!==0)){scalarClosed=false;break;}
+            continue;
+        }
+        const callees=get(cell(node.callee));
+        if(!callees.size||[...callees].some(type=>{
+            if(node.isNew){
+                if(type?.kind!=='class'||unsafe.has(type.row))return true;
+                const ctor=sourceConstructor(type.row);
+                return ctor?!inputsClosed(ctor,node.args):node.args.length!==0;
+            }
+            if(node.constructorCall||!['function','boundFunction'].includes(type?.kind))return true;
+            if(type.row&&unsafe.has(type.row))return true;
+            return !inputsClosed(type.fn||type,node.args);
+        })){scalarClosed=false;break;}
+    }
+    const inertLiteral=node=>!node||primitive.has(node.type)||
+        node.type==='Array'&&node.items.every(inertLiteral)||
+        node.type==='Unary'&&['+','-','!','~','typeof','void'].includes(node.op)&&inertLiteral(node.argument)||
+        node.type==='Binary'&&inertLiteral(node.left)&&inertLiteral(node.right);
+    const inertPrefix=node=>{
+        if(node.type==='FunctionDeclaration')return true;
+        if(node.type==='Declaration')return node.decls.every(decl=>inertLiteral(decl.init));
+        if(node.type!=='Class')return false;
+        const row=classForBinding.get(lexical.global.names.get(node.name));
+        return row?.node===node&&!row.sdk&&!unsafe.has(row)&&row.lineage?.every(base=>
+            !base.sdk&&!unsafe.has(base)&&!base.binding.written&&
+            !(base.node.fields||[]).some(field=>field.isStatic)&&
+            !(base.node.methods||[]).some(method=>method.isStatic));
+    };
+    const capturedReads=new Set();
+    if(scalarClosed)for(const node of nodes){
+        if(node.type!=='Identifier')continue;
+        const binding=read(node),owner=lexical.scopes.get(node)?.functionOwner,parent=parents.get(node);
+        if(binding?.kind!=='global'||binding.scope!==lexical.global||!owner||owner===lexical.global||
+            parent?.type==='Assignment'&&parent.left===node||parent?.type==='Update'||
+            parent?.type==='Call'&&parent.callee===node)continue;
+        const declarations=program.body.filter(statement=>statement.type==='Declaration')
+            .flatMap(statement=>statement.decls.filter(decl=>decl.name===binding.name).map(decl=>({statement,decl})));
+        if(declarations.length!==1||declarations[0].decl!==binding.node||declarations[0].statement.kind!=='let')continue;
+        const types=get(binding),occurrence=get(cell(node));
+        if(!types.size||!occurrence.size||[...types,...occurrence].some(type=>!primitive.has(type)))continue;
+        const at=program.body.indexOf(declarations[0].statement);
+        // Class declaration is not instance initialization. Every earlier
+        // statement must be inert under this actual owned lineage; no call or
+        // static effect can activate a read before the lexical declaration.
+        if(at<0||!program.body.slice(0,at).every(inertPrefix))continue;
+        capturedReads.add(node);
+    }
     const selected=new Map();
+    for(const node of capturedReads)selected.set(node,[...get(read(node))]);
     for(const node of nodes)if(node.type==='Member'){
         const parent=parents.get(node);
         if(parent?.type==='Assignment'&&parent.left===node||parent?.type==='Update'||parent?.type==='Call'&&parent.callee===node)continue;
@@ -784,9 +873,10 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             const types=selected.get(node);
             // Keep the actual getter or method call once in the private census.
             const result=ownCarrier({type:'Conditional',test:node,consequent:literal(types[0]),alternate:alternatives(types)});
-            if(normalResultEligible(node)){
+            if(capturedReads.has(node)||normalResultEligible(node)){
                 watchCarrier(Array.prototype);watchCarrier(Object);watchCarrier(Reflect);
                 watchCarrier(ResultWeakSet.prototype);resultApply(resultAdd,issued,[result]);
+                if(capturedReads.has(node))resultApply(resultAdd,capturedIssued,[result]);
             }return result;
         }
         return Object.fromEntries(Object.entries(node).map(([name,value])=>[name,metadata.has(name)?value:rewrite(value)]));
@@ -794,6 +884,9 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     const rewritten=rewrite(program);
     return {program:rewritten,current,hasNormalPrimitiveResult:node=>{
         if(!resultApply(resultHas,issued,[node]))return false;
+        resultUsed=true;return current();
+    },hasCapturedPrimitiveRead:node=>{
+        if(!resultApply(resultHas,capturedIssued,[node]))return false;
         resultUsed=true;return current();
     }};
 }
