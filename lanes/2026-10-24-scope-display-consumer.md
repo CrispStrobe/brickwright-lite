@@ -75,3 +75,11 @@ The implementation commit closes this ownership row; its enabled exact-head
 checks and original artifact audit are still prerequisites to landing. The new
 consumer's separate numerical campaign and final result reconciliation remain
 the last bounded steps of the five-item loop; old receipts keep old identities.
+
+A pre-qualification predicate audit found that a wrapped flag alone could admit
+an older throttled caption, and positive point count could admit an incomplete
+sample caption before the unchanged 500-point assertion. The forward evidence
+waits for the exact public wrapped origin and all 500 point samples, with
+explicit connected-element guards. Executable predicate controls reject stale,
+missing, disconnected and incomplete states and accept the exact states. No
+count, model, timeout or expectation is relaxed.
