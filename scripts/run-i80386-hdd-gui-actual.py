@@ -26,7 +26,7 @@ import zipfile
 
 ACTUAL_ENABLED = False
 INVENTORY_ENABLED = True
-FINITE_INVENTORY_ENABLED = False
+FINITE_INVENTORY_ENABLED = True
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = 'b5650092695643622a53bcc40008133760e2d8a2'

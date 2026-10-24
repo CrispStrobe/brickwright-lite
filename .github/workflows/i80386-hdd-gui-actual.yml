@@ -92,9 +92,10 @@ jobs:
   # and its failed originals are unchanged. No font selection/browser/guest runs.
   finite-inventory-v4:
     if: >-
-      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-finite-inventory-v4' && github.actor == 'CrispStrobe' &&
-          github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository }}
+          github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:

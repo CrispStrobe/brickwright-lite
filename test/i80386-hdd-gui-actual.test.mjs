@@ -2796,13 +2796,24 @@ class Originals(unittest.TestCase):
         self.assertEqual(sum(event[0]=='git' for event in events),2+len(c.SOURCE))
         self.assertLess(len(raw),32768);self.assertLess(len(E(value)),r.JSON_CAP)
     def test_finite_v4_flags_refuse_before_all_edges_and_legacy_entry_is_distinct(self):
-        self.assertIs(c.FINITE_INVENTORY_ENABLED,False);self.assertIs(c.ACTUAL_ENABLED,False)
-        with patch.object(c.Path,'cwd',side_effect=AssertionError('cwd')),patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'admit_finite_inventory_before_setup',side_effect=AssertionError('guard')):
+        self.assertIs(c.FINITE_INVENTORY_ENABLED,True);self.assertIs(c.ACTUAL_ENABLED,False)
+        with patch.object(c,'FINITE_INVENTORY_ENABLED',False),patch.object(c.Path,'cwd',side_effect=AssertionError('cwd')),patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'admit_finite_inventory_before_setup',side_effect=AssertionError('guard')):
             for args in (['finite-inventory-guard'],['finite-inventory','--request','none','--expected-sha256','0'*64,'--output','none']):
                 with self.assertRaisesRegex(ValueError,'finite v4 inventory disabled'):c.main(args)
         _,raw,_,_=self.finite_inventory_fixture()
         with patch.object(c,'regular',return_value=raw),patch.object(c,'inventory_observation',side_effect=AssertionError('old mode called new observer')):
             with self.assertRaisesRegex(ValueError,'distinct finite and historical'):c.main(['inventory','--request','selected','--expected-sha256',H(raw),'--output','selected-out'])
+    def test_finite_v4_enabled_cli_routes_only_admitted_metadata_no_installer_or_guest(self):
+        self.assertTrue(c.FINITE_INVENTORY_ENABLED);self.assertFalse(c.ACTUAL_ENABLED)
+        with patch.dict(c.os.environ,{},clear=True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.object(c,'regular',side_effect=AssertionError('unadmitted input read')),patch.object(c,'execute',side_effect=AssertionError('guest')):
+            with self.assertRaisesRegex(ValueError,'hexadecimal digest'):c.main(['finite-inventory-guard'])
+        with patch.dict(c.os.environ,{},clear=True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.object(c,'admit_finite_inventory_before_setup',return_value={'pass':True}) as guard,patch.object(c,'execute',side_effect=AssertionError('guest')),patch.object(c,'install_input',side_effect=AssertionError('input GET')):
+            self.assertEqual(c.main(['finite-inventory-guard']),0);guard.assert_called_once_with(pathlib.Path('/checkout'),{})
+        value,raw,_,_=self.finite_inventory_fixture();pin=H(raw)
+        with patch.dict(c.os.environ,{'BW_FINITE_INVENTORY_V4_SHA256':pin},clear=True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.object(c,'regular',return_value=raw),patch.object(c,'inventory_observation',return_value=value) as collect,patch.object(c,'retain_inventory_observation',return_value=0),patch.object(c,'execute',side_effect=AssertionError('guest')),patch.object(c,'install_input',side_effect=AssertionError('input GET')):
+            self.assertEqual(c.main(['finite-inventory','--request','/checkout/gui-finite-inventory-v4/runtime-template.json','--expected-sha256',pin,'--output','/checkout/gui-finite-inventory-v4/inventory-original.json']),0)
+            self.assertEqual(collect.call_count,1);self.assertEqual(collect.call_args.args[:2],(raw,pin))
+
     def test_finite_v4_scope_required_roles_body_transport_and_cap_cuts(self):
         _,raw,_,_=self.finite_inventory_fixture();template=D(raw)
         for module in (c,r):
@@ -2899,8 +2910,9 @@ class Originals(unittest.TestCase):
             with self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
     def test_finite_v4_workflow_guard_before_packages_and_v5_exact_basis(self):
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text();block=workflow.split('  finite-inventory-v4:',1)[1].split('  actual:',1)[0]
-        self.assertIn(chr(36)+'{{ false &&',block);self.assertIn('x86-hdd-gui-finite-inventory-v4',block)
+        self.assertIn(chr(36)+'{{ true &&',block);self.assertIn('x86-hdd-gui-finite-inventory-v4',block)
         self.assertLess(block.index('finite-inventory-guard'),block.index('actions/setup-node@'));self.assertLess(block.index('finite-inventory-guard'),block.index('npm ci'))
+        self.assertIn('github.event.pull_request.head.repo.fork == false',block);self.assertIn("github.event.pull_request.base.ref == 'main'",block)
         self.assertNotIn('install-input',block);self.assertNotIn('BW_TEMPLATE_BLOB',block)
         files,expected=fixture_v5();request=D(files['request.original.json']);self.assertEqual(request['inventoryAdmission']['schema'],'bw.gui-hdd.actual-finite-inventory-reference.v1')
         self.assertEqual(request['inventoryAdmission']['metadataAdmission']['schema'],'bw.gui-hdd.inventory-admission.v4');self.assertTrue(r.audit(files,expected)['pass'])
