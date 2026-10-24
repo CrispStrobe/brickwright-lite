@@ -84,7 +84,9 @@ test('captured Identifier projection is privately issued and retains original op
  const append=view.program.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='append');assert.ok(append);
  const candidates=nodesOf(append.body).filter(node=>node.type==='Conditional'&&node.test?.type==='Identifier'&&node.test.name==='trace');assert.ok(candidates.length>0,'actual captured read is projected');
  const carrier=candidates[0];assert.equal(view.hasNormalPrimitiveResult(carrier),true);assert.equal(view.hasNormalPrimitiveResult(structuredClone(carrier)),false,'copied carrier is not issued');
+ assert.equal(view.hasCapturedPrimitiveRead(carrier),true);assert.equal(view.hasCapturedPrimitiveRead(structuredClone(carrier)),false,'a copied capture cannot borrow its entry proof');
  const other=nativeClassScalarView(parseMakeCodeTs(source,profile),profile);assert.equal(other.hasNormalPrimitiveResult(carrier),false,'another view cannot lend membership');
+ assert.equal(other.hasCapturedPrimitiveRead(carrier),false,'another view cannot lend captured binding authority');
  const receivers=nativeClassScalarView(parseMakeCodeTs('class Base {value=1;read(){return this.value}}class Child extends Base {read(){return super.read()}}let object=new Child();object.read();',profile),profile);
  const receiverCarriers=nodesOf(receivers.program).filter(node=>node.type==='Conditional'&&receivers.hasOwnedReceiverResult?.(node));
  assert.equal(receiverCarriers.length,2,'actual owned this and super entries each issue a result-local proof');
