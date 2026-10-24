@@ -88,11 +88,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Distinct finite core-runtime observation. The historical global-font roster
-  # and its failed originals are unchanged. No font selection/browser/guest runs.
+  # Consumed finite v4 observation; preserve its original and reader without
+  # admitting a second execution. No font selection/browser/guest runs.
   finite-inventory-v4:
     if: >-
-      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-finite-inventory-v4' && github.actor == 'CrispStrobe' &&
           github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
@@ -145,11 +145,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # This distinct finite v5 route is source-only until its request, final-head
-  # checks and one producing event are externally admitted. V4 is consumed.
+  # This distinct finite v5 route is armed. Its new request, final-head checks
+  # and one event still require separate external admission. V4 is consumed.
   finite-inventory-five:
     if: >-
-      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-finite-inventory-v5' && github.actor == 'CrispStrobe' &&
           github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
