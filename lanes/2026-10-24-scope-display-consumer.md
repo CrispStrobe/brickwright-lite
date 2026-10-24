@@ -57,10 +57,10 @@ The merge parents and tree match the reviewed prediction. Lite adopts the
 qualified source `420f3e15bd0064119416386853bd35713347c252`, now on master by
 ancestry, while preserving Board and every other dependency pin.
 
-Canonical lock generation changes only CUI and its two lock entries. Eleven
-affected identity files differ only in the reviewed CUI SHA literals. Local
-pure/package/shape controls pass 45 tests with one declared unintegrated-GUI
-skip; the sparse checkout cannot run the repository-wide pin-history scanner,
+Canonical generation changes only CUI in the root and GUI manifests/locks;
+all other dependency entries remain unchanged. The original eleven identity
+files and the two newly exposed controller/reader declarations change only CUI
+SHA literals. The sparse checkout cannot run the repository-wide pin-history scanner,
 which fails closed on omitted tracked files. Full-checkout hosted qualification
 is mandatory; local setup failures are retained rather than counted as passes.
 
@@ -83,3 +83,24 @@ waits for the exact public wrapped origin and all 500 point samples, with
 explicit connected-element guards. Executable predicate controls reject stale,
 missing, disconnected and incomplete states and accept the exact states. No
 count, model, timeout or expectation is relaxed.
+
+The first consumer controls job exposed a sparse-checkout census omission:
+tracked GUI package/lock declarations and the current x86 GUI controller/reader
+still selected the old CUI pin. The dependency closure therefore also owns
+`packages/scratch-gui/package.json`, its lock, the two generated
+`static/licenses/bw-packages.sources.json` mirrors, and only the `CUI` constants
+in `scripts/run-i80386-hdd-gui-actual.py` and
+`scripts/read-i80386-hdd-gui-originals.py`. Derive declarations and notices from
+the canonical pin authority and exact pinned license inputs. Inspect the full
+Git index, not only materialized sparse files. Preserve the original failed
+control, all guest/reader assertions, media/source bounds and both disabled
+actual-execution guards. Historical originals retain their matching historical
+reader revision; they are not rewritten or relabeled as this consumer.
+
+The source/manufactured-original suite now passes all 67 controls, including
+its seven-way Board/CUI declaration agreement. GUI lock generation made one
+unrelated optional `fsevents` development-flag normalization; the preexisting
+entry is retained unchanged, with every non-CUI lock entry preserved. License
+bodies are unchanged; the canonical notice generator derives current source
+URLs from exact pinned Git license inputs. That metadata generation is not an
+installed-payload proof; hosted provenance and GUI checks remain mandatory.
