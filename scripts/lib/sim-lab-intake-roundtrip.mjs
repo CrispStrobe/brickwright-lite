@@ -9,6 +9,7 @@ import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
 import {openFile} from './sim-lab-scale-gate.mjs';
 import {exportedProject} from './sim-lab-integral-gate.mjs';
 import {intakeIdentity, writeIntakeReceipt, readIntakeReceipt} from './sim-lab-intake-receipt.mjs';
+import {continueCompletedIntake} from './sim-lab-intake-continuation.mjs';
 
 // Project import can reset the selected editor tab. Wait for the saved real
 // program and the loading overlay to finish before acting on the new GUI.
@@ -72,6 +73,8 @@ export async function replayIntakeProject(browser,opts,id,judge,receiptPath){
   await reopened.waitForFunction(()=>{
    const p=window.__bwSimLab._pane;return p.session.time>1000&&!p.props.vm.runtime.threads.some(t=>t.status!==4);
   },null,{timeout:opts.timeout});
+  const continuation=await reopened.evaluate(continueCompletedIntake);
+  writeFileSync(resolve(opts.shotsDir,id+'-continuation.json'),JSON.stringify(continuation,null,2)+'\n');
   // Completion alone does not observe passive support after the motors stop.
   // Keep the ordinary simulation advancing for the declared hold interval.
   await reopened.waitForFunction(()=>{

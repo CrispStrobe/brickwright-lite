@@ -137,3 +137,20 @@ normally, preserving its component and browser controls. Its app UI changes
 require a new combined production build and browser qualification; earlier
 model/native and partition receipts retain their original source identities.
 Dependency pins, physics, models and programs are unchanged by this merge.
+
+The current combined app passes all eleven local intake stages. Hosted checks
+then find a saved Root Bridge replay whose completed program intentionally
+pauses its world: no simulation tick remains to observe completion or the
+required physical continuation. A read-only reproduction confirms completed
+state, both motors holding, no active VM threads and a stationary clock.
+Explicitly read the completion boundary, then resume only the ordinary physics
+clock through the existing public API; retain the full continuation, original
+program, motor modes, variables, physical judge and all deadlines. Refuse a
+restart, unfinished program or changed commands.
+
+A separate WebKit measurement-editor check reaches project export but waits
+for an anchor download while the app uses its real system-share route. Reuse
+the existing observed-export helper and preserve the bounded archive CRC,
+actual sidecar-byte equality and real project reopen assertions. Retain both
+original failures; qualify the corrected Root Bridge and measurement journeys
+in both browser engines before the new source's hosted qualification.
