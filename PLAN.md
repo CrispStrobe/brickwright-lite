@@ -45,21 +45,22 @@ history, not reservations or evidence that their work is still pending.
 4. **Causal triage: complete for this matrix.** No numerical defect was
    demonstrated, so no model patch or tolerance change is justified. This does
    not close unrelated model/oracle work or establish physical-device accuracy.
-5. **Upstream display implementation landed; consumer proof in qualification.**
+5. **Bounded scope-display adoption and consumer proof: complete.**
    CUI [PR117](https://github.com/CrispStrobe/bw-circuit-ui/pull/117) passed all
-   three checks and 71/71 actual browser scenarios. Lite adopts the qualified
-   source `420f3e15bd0064119416386853bd35713347c252` with an actual built-GUI
-   raw-CSV, metadata, warning/clear and HOLD/resume proof. The new consumer still
-   requires its exact-head checks, independent original-artifact audit and
-   numerical campaign before this fifth item closes. No ADC/analogue-front-end
-   behavior or newer signed TestFlight binary is claimed.
+   three checks and 71/71 actual browser scenarios. Lite
+   [PR1334](https://github.com/CrispStrobe/brickwright-lite/pull/1334) adopts
+   `420f3e15bd0064119416386853bd35713347c252`. The new consumer passed the
+   separate [312-case campaign](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40077158320),
+   with 87,488 independent numerical checks and all 240 waveform CSVs
+   byte-identical to the preceding campaign. The exact built GUI passed actual
+   metadata, warning/clear, prefix/wrap and HOLD/resume checks; both raw CSV
+   downloads are byte-identical. Its tested tree equals the qualified candidate
+   tree. No ADC/analogue-front-end behavior or newer signed binary is claimed.
 
-Status reconciliation: 2026-10-24. Existing-release availability, the fixed
-regression and its causal triage are complete. Bounded scope-display realism
-is implemented upstream and its consumer proof is in qualification; consult
-`lanes/` before taking ownership. The
-[handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) defines acceptance and stopping
-criteria. Stop after its actual built-consumer proof and report remaining limits.
+Status reconciliation: 2026-10-24. All five bounded tasks are complete. The
+[handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) records separate release,
+CLI and built-browser evidence and scopes possible follow-ups. This sequence
+stops here; consult `lanes/` before claiming any further work.
 
 Shared engine, importer and instrument changes land upstream first. Lite adopts
 one reviewed full SHA with derived specifications, locks and provenance. A
