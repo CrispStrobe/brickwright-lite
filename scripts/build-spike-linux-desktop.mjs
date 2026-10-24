@@ -5,7 +5,7 @@
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {copyFile, cp, mkdir, readdir, readFile, realpath, lstat, writeFile, chmod} from 'node:fs/promises';
-import {dirname, join, resolve, relative, sep} from 'node:path';
+import {basename, dirname, join, resolve, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {freezeResourceProfile} from './lib/spike-resource-profile.mjs';
 import {requireStagingModes, normalizePackageModes} from './lib/spike-linux-package-modes.mjs';
@@ -25,7 +25,8 @@ if (!outputArg || process.platform !== 'linux' || process.arch !== 'x64') {
 }
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const support = await realpath(supportArg), runtime = await realpath(runtimeArg), frontend = await realpath(frontendArg);
-const output = resolve(outputArg);
+// Resolve the existing parent so a symlinked alias cannot place output inside an input or the repository.
+const output = join(await realpath(dirname(resolve(outputArg))), basename(resolve(outputArg)));
 if ([repo, support, runtime, frontend].some(root => output === root || output.startsWith(root + sep))) {
     throw new Error('Keep generated packages outside source and input directories');
 }
