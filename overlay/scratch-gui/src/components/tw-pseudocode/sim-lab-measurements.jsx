@@ -52,10 +52,17 @@ class SimLabMeasurements extends React.Component {
         const editor = this.state.editor;
         if (!editor) return;
         const propsChanged = previous.definitions !== this.props.definitions || previous.session !== this.props.session || previous.mechanism !== this.props.mechanism;
-        if (!propsChanged && editor.model === this.currentModel()) return;
-        if (editor.session !== this.props.session || editor.mechanism !== this.props.mechanism || editor.model !== this.currentModel() || !this.currentDefinitionMatches(editor)) {
-            if (this.state.editorStatus !== 'staleEdit') this.setState({editorStatus: 'staleEdit'});
+        const modelChanged = editor.model !== this.currentModel();
+        let nextEditor = editor;
+        if (previous.locale !== this.props.locale && editor.automaticLabel) {
+            nextEditor = {...editor, label: measurementWords(this.props.locale).kinds[editor.kind]};
         }
+        const stale = (propsChanged || modelChanged) &&
+            (editor.session !== this.props.session || editor.mechanism !== this.props.mechanism || modelChanged || !this.currentDefinitionMatches(editor));
+        const update = {};
+        if (nextEditor !== editor) update.editor = nextEditor;
+        if (stale && this.state.editorStatus !== 'staleEdit') update.editorStatus = 'staleEdit';
+        if (Object.keys(update).length) this.setState(update);
     }
     currentDefinitionMatches (editor) {
         const current = this.props.definitions.find(d => d.id === editor.id);
@@ -73,11 +80,12 @@ class SimLabMeasurements extends React.Component {
         const ropeDigest = rope && ropeBinding(rope);
         const jointValid = Boolean(joint && definition.binding === jointDigest);
         const ropeValid = Boolean(rope && definition.binding === ropeDigest);
-        const displayLabel = definition.label === definition.kind ? T.kinds[definition.kind] : definition.label;
+        const automaticLabel = definition.label === definition.kind;
+        const displayLabel = automaticLabel ? T.kinds[definition.kind] : definition.label;
         this.returnFocus = event?.currentTarget || null;
         this.setState({editor: {id: definition.id,
             snapshot: JSON.stringify([definition.id, definition.kind, definition.label, definition.targets, definition.joint, definition.rope, definition.binding]),
-            session: this.props.session, mechanism: this.props.mechanism, model: this.currentModel(), originalLabel: definition.label, initialDisplayLabel: displayLabel,
+            session: this.props.session, mechanism: this.props.mechanism, model: this.currentModel(), automaticLabel,
             kind: definition.kind, label: displayLabel, targets: [...(definition.targets || [])],
             joint: jointValid ? joint.id : '', rope: ropeValid ? rope.id : '', selectedBinding: jointValid ? jointDigest : ropeValid ? ropeDigest : '',
             status: !jointValid && spec.joint || !ropeValid && spec.rope ? 'chooseBinding' : ''}, editorStatus: ''}, () => {
@@ -99,6 +107,7 @@ class SimLabMeasurements extends React.Component {
         const rope = oldSpec.rope === nextSpec.rope ? (this.state.editor?.rope || this.state.rope) : '';
         if (this.state.editor) {
             const editor = {...this.state.editor, kind, targets, joint, rope,
+                label: this.state.editor.automaticLabel ? measurementWords(this.props.locale).kinds[kind] : this.state.editor.label,
                 selectedBinding: joint === this.state.editor.joint ? this.state.editor.selectedBinding : rope === this.state.editor.rope ? this.state.editor.selectedBinding : '',
                 status: nextSpec.joint && !joint || nextSpec.rope && !rope ? 'chooseBinding' : ''};
             this.setState({editor, editorStatus: ''});
@@ -112,6 +121,10 @@ class SimLabMeasurements extends React.Component {
             const targets = this.state.targets.slice(); targets[index] = value;
             this.setState({targets});
         }
+    }
+    changeLabel (value) {
+        if (this.state.editor) this.setState({editor: {...this.state.editor, label: value, automaticLabel: false}, editorStatus: ''});
+        else this.setState({label: value});
     }
     changeBinding (kind, id) {
         const editor = this.state.editor;
@@ -152,7 +165,7 @@ class SimLabMeasurements extends React.Component {
         }
         const labelInput = editor ? editor.label : this.state.label;
         const label = editor
-            ? (labelInput === editor.initialDisplayLabel && kind === this.props.definitions.find(d => d.id === editor.id)?.kind ? editor.originalLabel : labelInput.trim() || kind)
+            ? (editor.automaticLabel ? kind : labelInput.trim() || kind)
             : labelInput.trim() || T.kinds[kind];
         const updated = {id: editor?.id || '', kind, label,
             ...(spec.targets ? {targets} : {}), ...(spec.joint ? {joint: joint.id, binding} : {}), ...(spec.rope ? {rope: rope.id, binding} : {})};
@@ -242,7 +255,7 @@ class SimLabMeasurements extends React.Component {
                         {ropes.map(r => <option key={r.id} value={r.id}>{r.id}</option>)}
                     </select></label>}
                     <label>{T.label} <input ref={this.nameInput} style={input} maxLength={80} value={editor ? editor.label : this.state.label}
-                        onChange={e => editor ? this.setState({editor: {...editor, label: e.target.value}, editorStatus: ''}) : this.setState({label: e.target.value})} /></label>
+                        onChange={e => this.changeLabel(e.target.value)} /></label>
                     {editorStatus && <p role="status" data-testid="bw-sim-lab-measurement-editor-status">{T[editorStatus]}</p>}
                     {editor ? <div style={{display: 'flex', gap: 6}}>
                         <button type="submit" data-testid="bw-sim-lab-measurement-save">{T.save}</button>
