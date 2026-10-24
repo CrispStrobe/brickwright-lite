@@ -15,6 +15,9 @@
 
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
+import {createHash} from 'node:crypto';
+import {readFile, stat, writeFile} from 'node:fs/promises';
+import JSZip from 'jszip';
 import {tool} from './sim-lab-toolbar-gate.mjs';
 import {measurementPlotInteractions} from './sim-lab-measurement-plots-gate.mjs';
 
@@ -131,6 +134,7 @@ const checks = async (page, {shotsDir}) => {
 /** Custom measurements use real controls; the simulation is only observed or driven through its public API. */
 export const measurementInteractions = async (page, {shotsDir}) => {
     const originalModel = await page.getByTestId('bw-sim-lab-model').inputValue();
+    const editedEvidence = {version: 1, originalModel};
     await tool(page, 'measurements');
     const panel = page.getByTestId('bw-sim-lab-measurements-panel');
     await panel.waitFor();
@@ -157,6 +161,68 @@ export const measurementInteractions = async (page, {shotsDir}) => {
         return Math.hypot(...['x','y','z'].map(a => api.partPosition('hub', a) - api.partPosition('motorL', a))) * 10;
     });
     assert.ok(Math.abs(parseFloat(await span.locator('output').textContent()) - expected) < 0.1, 'distance matches the independently observed live part origins');
+    const beforeEdit = await lab(page, () => ({count: window.__bwSimLab._pane.measurements.length,
+        definition: window.__bwSimLab._pane.measurements.find(d => d.id === 'custom-1')}));
+    await span.getByTestId('bw-sim-measurement-plot-toggle-custom-1').check();
+    await span.getByTestId('bw-sim-lab-measurement-edit-custom-1').click();
+    const nameInput = panel.getByRole('textbox', {name: 'Name', exact: true});
+    assert.equal(await nameInput.evaluate(el => el === el.ownerDocument.activeElement), true, 'Edit focuses the existing name control');
+    const targetOptions = await panel.getByTestId('bw-sim-lab-measurement-target-1').locator('option').evaluateAll(options => options.map(option => option.value));
+    const retarget = await lab(page, ids => {
+        const pane = window.__bwSimLab._pane;
+        const physical = new Set(pane.session.mechanism.bodies.flatMap(body => body.parts || []));
+        return ids.find(id => id !== 'hub' && id !== 'motorL' && physical.has(id));
+    }, targetOptions);
+    assert.ok(retarget, 'the shipped robot offers another authored part');
+    await nameInput.fill('Edited axle span');
+    await panel.getByTestId('bw-sim-lab-measurement-target-1').selectOption(retarget);
+    await panel.getByTestId('bw-sim-lab-measurement-save').click();
+    const afterEdit = await lab(page, () => ({count: window.__bwSimLab._pane.measurements.length,
+        definition: window.__bwSimLab._pane.measurements.find(d => d.id === 'custom-1')}));
+    assert.equal(afterEdit.count, beforeEdit.count); assert.equal(afterEdit.definition.id, beforeEdit.definition.id);
+    assert.equal(afterEdit.definition.label, 'Edited axle span'); assert.deepEqual(afterEdit.definition.targets, ['hub', retarget]);
+    assert.equal(await span.getByTestId('bw-sim-measurement-plot-toggle-custom-1').isChecked(), true, 'editing retains the selected plot');
+    assert.equal(await span.getByTestId('bw-sim-lab-measurement-edit-custom-1').evaluate(el => el === el.ownerDocument.activeElement), true,
+        'Save returns focus to the stable row');
+    const editedDistance = await lab(page, target => {
+        const api = window.__bwSimLab.api;
+        return Math.hypot(...['x', 'y', 'z'].map(axis => api.partPosition('hub', axis) - api.partPosition(target, axis))) * 10;
+    }, retarget);
+    assert.ok(Math.abs(parseFloat(await span.locator('output').textContent()) - editedDistance) < 0.1, 'the edited target has a fresh live reading');
+    await span.getByTestId('bw-sim-lab-measurement-edit-custom-1').click();
+    await nameInput.fill('Do not save');
+    await panel.getByTestId('bw-sim-lab-measurement-target-1').selectOption('motorL');
+    await panel.getByTestId('bw-sim-lab-measurement-cancel').click();
+    const afterCancel = await lab(page, () => window.__bwSimLab._pane.measurements.find(d => d.id === 'custom-1'));
+    assert.deepEqual(afterCancel, afterEdit.definition, 'Cancel leaves the saved definition unchanged');
+    // Restore the original name so every existing visibility/Reset assertion below remains intact.
+    await span.getByTestId('bw-sim-lab-measurement-edit-custom-1').click();
+    await nameInput.fill('Axle span');
+    await panel.getByTestId('bw-sim-lab-measurement-save').click();
+    const jointBefore = await lab(page, () => {
+        const pane = window.__bwSimLab._pane;
+        return pane.measurements.find(d => d.kind === 'jointAngle' && pane.session.mechanism.joints.some(j => j.id === d.joint));
+    });
+    assert.ok(jointBefore, 'the shipped robot has a joint measurement to edit');
+    const jointRow = panel.getByTestId(`bw-sim-lab-measurement-${jointBefore.id}`);
+    await jointRow.getByTestId(`bw-sim-lab-measurement-edit-${jointBefore.id}`).click();
+    const otherJoint = await panel.getByTestId('bw-sim-lab-measurement-joint').locator('option').evaluateAll((options, old) =>
+        options.map(option => option.value).find(id => id && id !== old), jointBefore.joint);
+    assert.ok(otherJoint, 'the shipped robot offers a second hinge');
+    await panel.getByTestId('bw-sim-lab-measurement-joint').selectOption(otherJoint);
+    await nameInput.fill('Edited hinge');
+    await panel.getByTestId('bw-sim-lab-measurement-save').click();
+    const jointAfter = await lab(page, id => {
+        const pane = window.__bwSimLab._pane, mechanism = pane.session.mechanism;
+        const definition = pane.measurements.find(d => d.id === id), joint = mechanism.joints.find(j => j.id === definition.joint);
+        return {definition, identity: [joint.type, ...[joint.body1, joint.body2].map(body =>
+            mechanism.bodies.find(b => b.id === body)?.parts?.slice().sort() || [body])]};
+    }, jointBefore.id);
+    assert.equal(jointAfter.definition.id, jointBefore.id); assert.equal(jointAfter.definition.joint, otherJoint);
+    assert.equal(jointAfter.definition.binding, `sha256:${createHash('sha256').update(JSON.stringify(jointAfter.identity)).digest('hex')}`,
+        'the actual selected hinge has an independently computed fresh member binding');
+    editedEvidence.edit = {before: beforeEdit, after: afterEdit, afterCancel, expectedDistanceMm: editedDistance,
+        observedDistanceMm: parseFloat(await span.locator('output').textContent()), jointBefore, jointAfter};
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab-measurement-overlay"] [data-measurement-id="custom-1"] text')?.textContent.includes('mm'));
     await tool(page, 'show-ports');
     assert.ok(await page.locator('[data-testid="bw-sim-lab-measurement-overlay"] [data-measurement-id="custom-1"]').count(), 'measurements remain independent of cables/component labels');
@@ -207,6 +273,47 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     await page.waitForFunction(key => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.shipped === key, originalModel);
     assert.match(await span.locator('output').textContent(), /mm/, 'returning to the model restores its custom reading');
     assert.equal(await panel.getByRole('checkbox', {name: 'Show in model: Axle span', exact: true}).isChecked(), false);
+    const afterModelReturn = await lab(page, () => window.__bwSimLab._pane.measurements.find(d => d.id === 'custom-1'));
+    assert.deepEqual(afterModelReturn.targets, ['hub', retarget]);
+    editedEvidence.afterModelReturn = afterModelReturn;
     await panel.getByRole('button', {name: 'Close', exact: true}).click();
     await measurementPlotInteractions(page, {shotsDir});
+    // Save/reopen through the existing real project controls, after the old plot journey finishes.
+    const beforeProject = await lab(page, () => window.__bwSimLab.projectRecord);
+    assert.ok(beforeProject?.measurements?.some(d => d.id === 'custom-1'));
+    await page.getByText('File', {exact: true}).first().click();
+    const download = page.waitForEvent('download', {timeout: 30000});
+    await page.getByText('Save to your computer', {exact: true}).click();
+    const savedPath = resolve(shotsDir, 'sim-lab-measurement-edit.sb3');
+    await (await download).saveAs(savedPath);
+    const savedInfo = await stat(savedPath);
+    assert.ok(savedInfo.size > 0 && savedInfo.size <= 8 * 1024 * 1024, 'bounded generated project fixture');
+    const savedBytes = await readFile(savedPath);
+    const savedZip = await JSZip.loadAsync(savedBytes, {checkCRC32: true});
+    const sidecar = savedZip.file('brickwright/state.json');
+    assert.ok(sidecar, 'the downloaded project includes its actual Brickwright sidecar');
+    const sidecarText = await sidecar.async('text');
+    assert.ok(Buffer.byteLength(sidecarText) <= 2 * 1024 * 1024, 'bounded saved project metadata');
+    const savedBundle = JSON.parse(sidecarText);
+    assert.deepEqual(savedBundle.state.simLab, beforeProject, 'the downloaded bytes, not just localStorage, carry the edited definitions');
+    const oldSession = await page.evaluateHandle(() => window.__bwSimLab._pane.session);
+    try {
+        await page.getByText('File', {exact: true}).first().click();
+        await page.getByText('Load from your computer', {exact: true}).click();
+        await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(savedPath);
+        await page.waitForFunction(previous => window.__bwSimLab?.status === 'ready' &&
+            window.__bwSimLab._pane.session && window.__bwSimLab._pane.session !== previous, oldSession, {timeout: 90000});
+    } finally { await oldSession.dispose(); }
+    const afterProject = await lab(page, () => window.__bwSimLab.projectRecord);
+    assert.deepEqual(afterProject, beforeProject, 'the actual project save/open preserves the edited model and every definition');
+    assert.deepEqual(afterProject.measurements.find(d => d.id === 'custom-1'), afterModelReturn);
+    const digest = text => createHash('sha256').update(text).digest('hex');
+    editedEvidence.project = {before: beforeProject.measurements, after: afterProject.measurements,
+        saved: savedBundle.state.simLab.measurements,
+        modelBeforeSha256: digest(beforeProject.ldraw), modelAfterSha256: digest(afterProject.ldraw),
+        sb3: {file: 'sim-lab-measurement-edit.sb3', bytes: savedBytes.length, sha256: digest(savedBytes)}};
+    const report = JSON.stringify(editedEvidence, null, 2) + '\n';
+    assert.ok(Buffer.byteLength(report) <= 65536, 'bounded edit observation report');
+    await writeFile(resolve(shotsDir, 'sim-lab-measurement-edit.json'), report, {flag: 'wx'});
+    console.log('PASS saved measurements: real Edit/Save/Cancel, stable IDs and plots, fresh target bindings and project reopen');
 };

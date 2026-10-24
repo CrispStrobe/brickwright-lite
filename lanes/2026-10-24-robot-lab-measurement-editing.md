@@ -1,6 +1,7 @@
 # Edit saved Robot Lab measurements
 
-CLAIMED — Codex, user-authorized measurement usability follow-up, 2026-10-24.
+Implementation DONE (source candidate; qualification pending) — Codex,
+user-authorized measurement usability follow-up, 2026-10-24.
 Isolated branch `lane/robot-measurement-editor-claim-20261024`, claim base
 `835e96acb9557df07f8e7eb0797b895bded9592a`.
 
@@ -36,3 +37,30 @@ real browser/Jolt measurement journey and saved-model round trip against the
 new source-bound frontend, plus every enabled exact-head check. A matched-head
 merge requires reviewed/predicted/landed tree and parent equality. Keep prior
 failures and existing limits; no hardware-accuracy or release claim follows.
+
+## Candidate controls
+
+Implementation starts from qualified joint main
+`1825cf0308d3ba0e217a3117fedefbe959cab8c8`, including the merged claim.
+The panel reuses the existing form and change callback. It preserves measurement
+identity and current visibility, checks current model and target identity at
+Save, and requires explicit confirmation of a legacy or mismatched joint/rope
+binding. Opening or canceling an edit does not migrate saved definitions.
+
+Eleven local controls exercise the actual constructor and editor actions at a
+controlled state callback boundary. Three targeted callback/focus mutations are
+detected with all eleven controls running. The earlier seven edit-guard mutations
+and original failures are retained. Preset actions remain immediate when no draft
+is open; an active draft clears before a preset callback, with focus restored to
+its row. The existing lesson-preset assertion is unchanged.
+These controls do not qualify ReactDOM, browser behavior or guest physics.
+
+The existing real React UI controls are extended, and the real measurement
+browser journey now edits targets through controls, checks stable IDs and plot
+selection, independently checks the selected hinge binding, inspects the saved
+project sidecar and reopens the generated project. Untouched automatic names
+follow quantity and locale changes without becoming stale custom labels.
+Hosted execution of those controls and the new
+source-bound browser journey, plus every enabled exact-head check, remain
+required before landing. No package, schema, persistence format, physics or
+workflow change is included.
