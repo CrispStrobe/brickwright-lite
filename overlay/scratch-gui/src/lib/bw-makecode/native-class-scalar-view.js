@@ -835,7 +835,11 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             ![...receiver].some(type=>type?.kind==='instance')||
             [...receiver].some(type=>type!=='Null'&&type!=='Undefined'&&(type?.kind!=='instance'||unsafe.has(type.row)))||
             [...callees].some(bound=>bound?.kind!=='boundFunction'||unsafe.has(bound.row)||
-                bound.row.members.get(node.callee.name)?.method!==bound.fn.node))continue;
+                // super resolves on the lexical parent while retaining the
+                // concrete instance. Match the same lookup used by memberRead;
+                // a child override is not the target of super.method().
+                (node.callee.object.type==='Identifier'&&node.callee.object.name==='super'?
+                    superOwner(node.callee):bound.row)?.members.get(node.callee.name)?.method!==bound.fn.node))continue;
         selected.set(node,[...types]);
     }
     if(!selected.size)return {program,current};
