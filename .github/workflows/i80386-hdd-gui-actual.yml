@@ -88,6 +88,63 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Distinct finite core-runtime observation. The historical global-font roster
+  # and its failed originals are unchanged. No font selection/browser/guest runs.
+  finite-inventory-v4:
+    if: >-
+      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+          github.event.label.name == 'x86-hdd-gui-finite-inventory-v4' && github.actor == 'CrispStrobe' &&
+          github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      NODE_V8_COVERAGE: ''
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_FINITE_INVENTORY_V4_SHA256: ${{ vars.BW_GUI_HDD_FINITE_INVENTORY_V4_SHA256 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Admit finite v4 body, event, scope and exact source before package acquisition
+        run: |
+          set -euo pipefail
+          mkdir -m 0700 gui-finite-inventory-v4
+          /usr/bin/python3.12 -I -S -B scripts/run-i80386-hdd-gui-actual.py finite-inventory-guard \
+            > gui-finite-inventory-v4/guard.stdout 2> gui-finite-inventory-v4/guard.stderr
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Trusted finite inventory package and Chromium setup
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund \
+            > gui-finite-inventory-v4/npm.stdout 2> gui-finite-inventory-v4/npm.stderr
+          node node_modules/playwright/cli.js install --with-deps chromium \
+            > gui-finite-inventory-v4/chromium.stdout 2> gui-finite-inventory-v4/chromium.stderr
+      - name: Record finite v4 core runtime and installed CUI bytes without tool probes
+        timeout-minutes: 4
+        run: |
+          set -euo pipefail
+          /usr/bin/python3.12 -I -S -B scripts/run-i80386-hdd-gui-actual.py finite-inventory \
+            --request "$GITHUB_WORKSPACE/gui-finite-inventory-v4/runtime-template.json" \
+            --expected-sha256 "$BW_FINITE_INVENTORY_V4_SHA256" \
+            --output "$GITHUB_WORKSPACE/gui-finite-inventory-v4/inventory-original.json" \
+            > gui-finite-inventory-v4/controller.stdout 2> gui-finite-inventory-v4/controller.stderr
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: i80386-hdd-gui-finite-inventory-v4-${{ github.run_id }}-${{ github.run_attempt }}
+          path: gui-finite-inventory-v4
+          if-no-files-found: error
+          retention-days: 14
+
   # Future activation requires request v5: a separately reviewed native original
   # plus exact selected font/tool/runtime file readback in this GUI job. The
   # Chromium/Board JavaScript scenarios use no QEMU adapter. Both guards stay false.
