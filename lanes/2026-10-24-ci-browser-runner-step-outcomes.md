@@ -1,6 +1,6 @@
 # Browser audit runner step outcomes — claim, 2026-10-24
 
-**CLAIM ONLY; merge before implementation.** Owner: Codex CI audit repair,
+**IMPLEMENTED SOURCE CANDIDATE; hosted qualification pending.** Owner: Codex CI audit repair,
 explicitly authorized to take over this narrow CI boundary. Base:
 `5cb3c30b12055e22ddbd027163d4e8285cfd28b0`. Public branch:
 `lane/ci-browser-runner-step-outcomes-claim-20261024`. The isolated checkout
@@ -85,3 +85,43 @@ only. Fresh hosted use must show the runner supplies complete mapped terminal
 states; synthetic controls cannot establish that platform availability. Keep
 all retained failures, native event guards and unrelated ownership boundaries.
 This claim selects no native/GUI event, variable, label, original GET or guest.
+
+
+## Implementation boundary
+
+The claim merged at `f040ab0ee122fe1e72c34139fcfe77185e6ddc80`. The source
+keeps the final inline audit and adds 220 absent IDs while preserving all 22
+existing IDs and all 242 preceding commands, conditions and limits. The new
+`--runner-terminals-v1` mode reads three explicit scalar parts for the current
+100/100/42 rows, with the identity header in the first part. Each part is
+checked against its exact source expressions before complete ordered assembly;
+missing or extra parts refuse. Aggregate input remains 64 KiB and 512 rows.
+
+The parts also respect the runner's [expression constants](https://github.com/actions/runner/blob/main/src/Sdk/DTExpressions2/Expressions2/ExpressionConstants.cs)
+and [interpolated scalar construction](https://github.com/actions/runner/blob/main/src/Sdk/DTObjectTemplating/ObjectTemplating/TemplateReader.cs):
+a single field over the current rows exceeds the format-parameter and expression
+length bounds. Source controls check each compiled scalar stays within 255
+parameters and 21,000 characters. No whole-context or output value is exported.
+
+The auditor checks the workspace workflow against its current Git HEAD/blob,
+records its UTF-8 hash and source mapping, and matches the runner header to the
+current repository/run/attempt/job/shard and checkout SHA. The executing workflow
+SHA is recorded separately; no moving PR preview is consulted. A complete
+sanitized receipt is bounded at 128 KiB in the existing official job log.
+Unknown input or Git diagnostics are never echoed into failure receipts.
+
+The current browser body has no `continue-on-error` declaration. The documented
+failure/success pair is valid for a continued failure, but is explicitly outside
+this no-continuation profile, including on non-gate steps. Other differing pairs
+refuse as contradictions. A future declared continuation needs reviewed support;
+a failed gate is never recorded as successful evidence. Ordinary failed outcomes
+and earlier-red handling keep the old judge semantics and cannot produce the
+all-assigned-gates-succeeded flag.
+
+Pure controls render the actual scalar expressions through the genuine CLI for
+every current shard and exercise checked Git/source drift, full mapping, unsafe
+expressions, missing/extra/duplicate states and parts, wrong run/job/shard,
+continued failure, source/receipt caps and guard-deletion mutants. Legacy API
+functions and their refusal tests remain held. Actual runner field availability
+and every enabled final-head check still require fresh hosted qualification;
+manufactured context is not a hosted browser, native or guest result.
