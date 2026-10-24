@@ -158,17 +158,39 @@ export async function runSpikeUsbDirect (source, {onLine = () => {}} = {}) {
     }
 }
 
-export async function runSpikeUsbBridge (source, url, token) {
+// Same bound as the desktop app's native request (spike_usb.rs): a run may take
+// up to 60 s on the hub, so an unanswered bridge fails instead of staying busy.
+export const SPIKE_USB_BRIDGE_TIMEOUT_MS = 120000;
+
+export async function runSpikeUsbBridge (source, url, token, {timeoutMs = SPIKE_USB_BRIDGE_TIMEOUT_MS} = {}) {
     if (!/^https?:\/\//i.test(url)) throw new Error('Enter a full bridge URL, for example http://mac.local:8765');
     if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
         return window.__TAURI__.core.invoke('spike_usb_bridge_run', {url, token, source});
     }
     const endpoint = new URL('/run', url).href;
-    const response = await fetch(endpoint, {
-        method: 'POST', headers: {'Content-Type': 'application/json', 'X-Brickwright-Token': token},
-        body: JSON.stringify({source})
-    });
-    const result = await response.json();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response;
+    let result;
+    try {
+        response = await fetch(endpoint, {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-Brickwright-Token': token},
+            body: JSON.stringify({source}), signal: controller.signal
+        });
+        const text = await response.text();
+        try {
+            result = JSON.parse(text);
+        } catch {
+            throw new Error(`USB bridge returned ${response.status} without a JSON reply`);
+        }
+    } catch (error) {
+        if (controller.signal.aborted) {
+            throw new Error(`USB bridge did not answer within ${Math.round(timeoutMs / 1000)} s`);
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
+    }
     if (!response.ok) throw new Error(result.error || `USB bridge returned ${response.status}`);
     return result;
 }

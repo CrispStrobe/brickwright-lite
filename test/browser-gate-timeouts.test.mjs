@@ -131,8 +131,18 @@ test('the invariant can fail: the audit step without if: always() is reported', 
 });
 
 test('the invariant can fail: a browser step with its budget removed is reported by name', () => {
-    const mutated = yml.replace(/(- name: Browser gate — circuit UX\n)\s+timeout-minutes: \d+[^\n]*\n/, '$1');
+    const mutated = yml.replace(/(- name: Browser gate — circuit UX\n(?:        id: [A-Za-z_][A-Za-z0-9_-]*\n)?)\s+timeout-minutes: \d+[^\n]*\n/, '$1');
     assert.notEqual(mutated, yml, 'mutation anchor did not match — the fixture step or its budget moved');
     const missing = browserSteps(mutated).filter(s => s.timeout === null).map(s => s.name);
     assert.deepEqual(missing, ['Browser gate — circuit UX']);
+});
+
+test('the inline runner audit selects only its distinct bounded mode and preserves always-last', () => {
+    const holder = [...parseJobs(yml).values()].find(j => j.steps.some(s => isBrowserStep(s.name)));
+    const audit = holder.steps.at(-1);
+    assert.equal(audit.name, 'Audit — every browser gate ran');assert.equal(audit.ifs, 'always()');
+    const block = yml.split('      - name: Audit — every browser gate ran\n')[1].split('\n  corpus:')[0];
+    assert.equal((block.match(/--runner-terminals-v1/g) || []).length, 1);
+    assert.match(block, /run: node scripts\/audit-job-steps\.mjs --shard \$\{\{ matrix\.shard \}\} --runner-terminals-v1/);
+    assert.doesNotMatch(block, /--file|toJSON\s*\(\s*steps\s*\)|\.outputs\b|\|\|\s*['"](?:skipped|success)/i);
 });
