@@ -6,10 +6,12 @@ observation. Its unchanged default failed-reader mode grants no native or guest
 approval. The old workflow job is now disabled. Historical sections below describe
 that retained v1 contract; they do not authorize another v1 selection.
 
-The distinct v2 source and workflow guards start false. No v2 request, variables,
+The distinct v2 metadata source and workflow guards are enabled. No v2 request, variables,
 marker, label or event is selected by this source. The actual GUI guards remain
 false and finite-inventory-v4 remains unselected. All source qualification and
 separate one-shot admission still precede any future metadata observation.
+Enabling the route is source preparation only; it is not an admitted event or
+a native, GUI, guest or performance result.
 
 ## Closed request and external selection
 

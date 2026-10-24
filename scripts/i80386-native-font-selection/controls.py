@@ -387,7 +387,7 @@ class Controls(unittest.TestCase):
                   '--property=KillMode=control-group',
                   '--service-exit "$SERVICE_EXIT"')
         for marker in selected:self.assertIn(marker,workflow)
-        self.assertEqual(workflow.count('false && github.event.action'),2)
+        self.assertEqual(workflow.count('false && github.event.action'),1)
         self.assertIn('  native-font-selection-v2:',workflow)
         self.assertNotIn('--collect',workflow)
         self.assertLess(workflow.index('set +e'),workflow.index('systemd-run'))
@@ -913,19 +913,50 @@ class V2Controls(unittest.TestCase):
             self.assertTrue(reader.parse(wire,2<<20,lf=True)['complete'])
             report,_,_=self.grade((wire,raw,event,req));self.assertTrue(report['nativeSelectionObserved'])
     def test_v2_disabled_modes_refuse_before_all_factories_and_kernel_edges(self):
-        self.assertFalse(producer.V2_ENABLED)
+        self.assertTrue(producer.V2_ENABLED)
         class NoEdges:
             def __getattr__(self,name):raise AssertionError('inactive touched '+name)
-        with self.assertRaisesRegex(ValueError,'disabled'):
-            producer.collect(b'bad','0'*64,{},NoEdges(),2)
-        for mode in (['--observe'],['--finalize'],['--retain-event','--event-out','/mock/event']):
-            with patch.object(producer,'LiveOps') as factory,patch.object(producer.os,'open') as opened:
-                with self.assertRaisesRegex(ValueError,'disabled'):producer.main(mode+['--protocol-v2'])
-                factory.assert_not_called();opened.assert_not_called()
-    def test_workflow_v1_and_v2_are_separate_inactive_source_bound_routes(self):
+        with patch.object(producer,'V2_ENABLED',False):
+            with self.assertRaisesRegex(ValueError,'disabled'):
+                producer.collect(b'bad','0'*64,{},NoEdges(),2)
+            for mode in (['--observe'],['--finalize'],['--retain-event','--event-out','/mock/event']):
+                with patch.object(producer,'LiveOps') as factory,patch.object(producer.os,'open') as opened:
+                    with self.assertRaisesRegex(ValueError,'disabled'):producer.main(mode+['--protocol-v2'])
+                    factory.assert_not_called();opened.assert_not_called()
+    def test_active_v2_invalid_admission_precedes_source_tool_input_and_native_edges(self):
+        self.assertTrue(producer.V2_ENABLED)
+        request=fixture_request(2);raw=producer.encode(request);pin=producer.sha(raw)
+        for cut in ('label','marker','duplicate','head','sender','job','uid','gid','request-pin'):
+            event=json.loads(fixture_event(pin,2));env=fixture_env(2);selected=pin
+            if cut=='label':event['label']['name']='x86-native-font-selection-v1'
+            elif cut=='marker':event['pull_request']['body']='<!-- BW_NATIVE_FONT_REQUEST_SHA256='+pin+' -->'
+            elif cut=='duplicate':event['pull_request']['body']*=2
+            elif cut=='head':event['pull_request']['head']['sha']='d'*40
+            elif cut=='sender':event['sender']['login']='unselected-collaborator'
+            elif cut=='job':env['GITHUB_JOB']='native-font-selection'
+            elif cut=='uid':env['BW_NATIVE_V2_INVOKER_UID']='0'
+            elif cut=='gid':env['BW_NATIVE_V2_INVOKER_GID']='request-controlled'
+            else:selected='0'*64
+            class NoObservation:
+                calls=[];service_partial=None;cleanup_calls=0
+                def event(self):self.calls.append('event');return producer.encode(event)
+                def cleanup_partial(self):self.cleanup_calls+=1
+                def __getattr__(self,name):raise AssertionError('unadmitted edge '+name)
+            ops=NoObservation();wire=producer.collect(raw,selected,env,ops,2)
+            value=reader.parse(wire,2<<20,lf=True)
+            with self.subTest(cut=cut):
+                self.assertFalse(value['complete']);self.assertEqual(value['firstFailure']['name'],'ValueError')
+                self.assertEqual(ops.calls,[] if cut=='request-pin' else ['event'])
+                self.assertEqual(ops.cleanup_calls,1)
+                self.assertIsNone(value['source']);self.assertIsNone(value['input']);self.assertIsNone(value['process'])
+                self.assertEqual(value['service'],{'before':None,'after':None})
+    def test_workflow_v1_disabled_and_v2_separately_source_bound_metadata_route(self):
         text=(ROOT/producer.WORKFLOW).read_text();v1=text.split('  native-font-selection:\n',1)[1].split('  native-font-selection-v2:\n',1)[0]
         v2=text.split('  native-font-selection-v2:\n',1)[1]
-        for block in (v1,v2):self.assertIn('false && github.event.action',block)
+        self.assertIn('false && github.event.action',v1)
+        self.assertNotIn('false && github.event.action',v2)
+        self.assertIn("if: ${{ github.event.action == 'labeled' &&",v2)
+        self.assertTrue(producer.V2_ENABLED)
         self.assertIn("'x86-native-font-selection-v2'",v2)
         for marker in ('vars.BW_NATIVE_FONT_V2_REQUEST_SHA256','vars.BW_NATIVE_FONT_V2_REQUEST_B64',
                        'BW_NATIVE_V2_INVOKER_UID="$(/usr/bin/id -u)"',

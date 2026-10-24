@@ -1,6 +1,6 @@
 # Native font selection v2 and current GUI join — claim, 2026-10-24
 
-**INACTIVE SOURCE CANDIDATE; claim merged in PR1343.** Owner: Codex x86 native font
+**METADATA ACTIVATION CANDIDATE; claim merged in PR1343.** Owner: Codex x86 native font
 observation and current GUI admission. Base:
 `d7fde5bfa04920d1be83ef8f44f6eba0248cde8f`. The isolated checkout is recorded
 privately; public branch
@@ -80,11 +80,12 @@ new v2 event and acquires its official originals once. No source claim itself
 selects an input, label, event or native call.
 
 
-Inactive implementation composes PR1318 source850 normally with merged claim
+The reviewed inactive implementation composes PR1318 source850 normally with merged claim
 main e41ef4c3, preserving incoming qualified pins. Direct mocked OS-edge and
 full manufactured original controls cover the distinct v2 route and explicit
-GUI reference. Source/workflow v2 guards and actual GUI guards remain false;
-v1 is consumed and disabled; finite-v4 is unselected. Exact-head hosted source
+GUI reference. Only the metadata v2 source/workflow guards are now enabled;
+actual GUI guards remain false. V1 is consumed and disabled; finite-v4 is
+unselected. Exact-head hosted source
 qualification, current input review, an independently frozen request and one
 separately admitted event remain outstanding. This checkpoint is not native,
 GUI, guest, performance or release qualification.

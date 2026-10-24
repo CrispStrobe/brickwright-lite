@@ -21,7 +21,7 @@ import urllib.request
 from pathlib import Path, PurePosixPath
 
 ENABLED = True
-V2_ENABLED = False
+V2_ENABLED = True
 SCHEMA = 'bw.gui-hdd.native-font-request.v1'
 ORIGINAL = 'bw.gui-hdd.native-font-original.v1'
 SERVICE_ORIGINAL = 'bw.gui-hdd.native-font-service.v1'
