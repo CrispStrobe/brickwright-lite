@@ -1,6 +1,7 @@
 # Legacy scroller test-local wait clock — narrow CI takeover
 
-**CLAIM ONLY; merge before implementation.** Owner: Codex CI audit repair,
+**IMPLEMENTATION CANDIDATE; hosted qualification pending.** Claim merged in
+[PR 1352](https://github.com/CrispStrobe/brickwright-lite/pull/1352). Owner: Codex CI audit repair,
 under the user's explicit assignment to take over the CI audit repair.
 Base: `ae38c0099337220cd68f62d588945883d4f4d438`. Public branch:
 `lane/ci-legacy-scroller-clock-claim-20261024`. The isolated checkout and
@@ -73,3 +74,26 @@ only. Qualification remains separate from the earlier browser/producer evidence
 repairs; never borrow their prior head's checks. Preserve all original failures,
 native event holds and other guest/feature limits. This claim selects no native
 or GUI event, variable, label, artifact/log GET, guest or build operation.
+
+
+## Candidate clock boundary
+
+Only the opted-in scene fixture installs one test-owned time source before a
+fresh `greenFlag` generation. The existing `bwArcadeProgramClock` hook and the
+instance's Scratch `currentMSecs` clock reading use that same source; original
+instance descriptors are restored at cleanup. The actual wait primitive and
+scene/camera/scroller callbacks are unchanged. Native library version selection
+still occurs after fresh-generation setup. Other callers retain their defaults.
+
+The positive retains the original authored program and all original API/data
+assertions while explicitly progressing wait time under frozen `Date.now`.
+The counterfactual omits only elapsed-clock progress, keeps the same bounded
+physical steps, expects the original completion refusal, and observes a real
+40 ms stack timer still at zero elapsed time. It supplies no scene callback or
+program result. Cleanup stops the owned generation and restores both fixture
+and host clock bindings, including setup/refusal exits.
+
+Local source/clock-contract controls are separate from full Arcade execution.
+The complete affected module includes its existing original-reference browser
+helper; fresh hosted qualification remains mandatory. No local pure result
+establishes original/VM equivalence or closes an application/runtime defect.
