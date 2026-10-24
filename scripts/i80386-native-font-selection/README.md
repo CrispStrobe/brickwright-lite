@@ -1,13 +1,15 @@
 # Bounded native font selection source candidate
 
-This candidate activates the separately guarded metadata route for one future
-externally reviewed event. No request variable, label or event is supplied by
-this source change, and no native observation has run. The producer, reader,
-workflow and source controls have no browser-font, guest, package-install or
-release authority. The fixed font and notice are selected below; the hosted
-native tool and finite runtime graph still require external selection. The
-separate lane claim owns only this new directory, its workflow and a focused
-test. Historical font-discovery/chain/bridge originals and guards remain held.
+The v1 metadata label is consumed: [run40107222402](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40107222402)
+failed during its first service observation, before tool, font or native-process
+observation. Its unchanged default failed-reader mode grants no native or guest
+approval. The old workflow job is now disabled. Historical sections below describe
+that retained v1 contract; they do not authorize another v1 selection.
+
+The distinct v2 source and workflow guards start false. No v2 request, variables,
+marker, label or event is selected by this source. The actual GUI guards remain
+false and finite-inventory-v4 remains unselected. All source qualification and
+separate one-shot admission still precede any future metadata observation.
 
 ## Closed request and external selection
 
@@ -184,3 +186,51 @@ canonical event call or remove duplicate/overflow guards are detected. No
 native tool, package, browser, guest or official event runs in these controls.
 The old unselected transport is stale after this source change; regenerate
 source/request/body and executing-workflow admissions after final source CI.
+
+## Native v2 invoker identity and incomplete observations
+
+The closed v2 request retains the v1 fields and limits, using schema
+`bw.gui-hdd.native-font-request.v2`. Its separate route is job
+`native-font-selection-v2`, label `x86-native-font-selection-v2`, variables
+`BW_NATIVE_FONT_V2_REQUEST_SHA256` and `BW_NATIVE_FONT_V2_REQUEST_B64`, and
+body marker `<!-- BW_NATIVE_FONT_V2_REQUEST_SHA256=<sha256> -->`.
+The producer and standalone reader select this route explicitly with
+`--protocol-v2`; their default route remains historical v1. Request, original,
+service, expectation and reader schema suffixes are all `.v2`. An old job,
+marker, artifact or v1 schema cannot supply a v2 observation. The artifact is
+`i80386-native-font-selection-v2-<runId>-1`, retaining the same seven bounded
+roles, including exact raw event bytes. Regenerate source5 and source21,
+request and executing-workflow identities after final source changes.
+
+The workflow obtains numeric UID/GID from its actual invoker using fixed
+`/usr/bin/id` and configures that service User/Group. These identities are not
+request inputs. Before reading self-proc, the producer checks all actual real,
+effective and saved UID/GID values against those configured identities. Only
+`/proc/self/cgroup` accepts that unprivileged owner and group. The selected
+cgroup text endpoints remain root-owned, regular, finite, held/named stable
+objects under the exact source-selected service path. No other proc endpoint
+or user-owned cgroup file is admitted. The before/after originals retain actual
+process identities and exact self-proc bytes, identity and close witnesses.
+
+If observation fails, `servicePartial` retains its phase, selected unit, last
+endpoint, actual IDs and bounded self-proc prefix/identity/close facts already
+observed. The finalizer accepts a missing before snapshot as an incomplete
+observation, retains the native first error plus ordered secondary errors, and
+still attempts bounded outside cleanup. Finite cleanup requires independently
+retained terminal unit PID and descendant facts and successful attempted cleanup;
+an absent cgroup alone grants no native selection. The v2 failed reader derives
+that limited cleanup fact from the retained sidecar and grants no official,
+native-selection, actual or guest approval.
+
+The positive reader requires complete v2 service identity and outer witnesses.
+The current GUI's distinct `bw.gui-hdd.actual-native-font-reference.v2` joins
+that independently frozen result and its official request/event/source/job and
+artifact identities to current GUI runtime file bytes. It does not convert the
+prior job's inode into a current ownership lease. Library closure, browser font
+selection, whole-host attestation and actual/guest approval remain false.
+
+Pure source controls execute the actual service/proc and finalizer methods with
+OS and service-control edges mocked. Full native producer-to-reader and GUI
+original packets test owner/type, configured identity, bounded read and close,
+partial first/secondary failures, incomplete finalization and coherent v1/v2
+misbinding. Manufactured data is not an official original or a native run.

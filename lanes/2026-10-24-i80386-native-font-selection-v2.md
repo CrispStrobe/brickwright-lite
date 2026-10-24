@@ -1,13 +1,13 @@
 # Native font selection v2 and current GUI join — claim, 2026-10-24
 
-**CLAIM ONLY; merge before implementation.** Owner: Codex x86 native font
+**INACTIVE SOURCE CANDIDATE; claim merged in PR1343.** Owner: Codex x86 native font
 observation and current GUI admission. Base:
 `d7fde5bfa04920d1be83ef8f44f6eba0248cde8f`. The isolated checkout is recorded
 privately; public branch
 `lane/x86-native-font-selection-v2-claim-20261024`. This continues the merged
 [native observation](2026-10-24-i80386-native-font-selection.md) and
 [current GUI admission](2026-10-23-x86-gui-current-actual-admission.md) boundaries.
-This leaf must merge before coding; it selects no input or event.
+The claim merged at `e41ef4c3fc1e4f5ab406812775c8f585dbf2fe81`; this source selects no input or event.
 
 The five native implementation files are published on unmerged
 [PR1318](https://github.com/CrispStrobe/brickwright-lite/pull/1318) at source
@@ -78,3 +78,13 @@ Keep all previous thresholds, historical readers, failures and false approvals.
 Pass every enabled exact-head check before root separately admits at most one
 new v2 event and acquires its official originals once. No source claim itself
 selects an input, label, event or native call.
+
+
+Inactive implementation composes PR1318 source850 normally with merged claim
+main e41ef4c3, preserving incoming qualified pins. Direct mocked OS-edge and
+full manufactured original controls cover the distinct v2 route and explicit
+GUI reference. Source/workflow v2 guards and actual GUI guards remain false;
+v1 is consumed and disabled; finite-v4 is unselected. Exact-head hosted source
+qualification, current input review, an independently frozen request and one
+separately admitted event remain outstanding. This checkpoint is not native,
+GUI, guest, performance or release qualification.

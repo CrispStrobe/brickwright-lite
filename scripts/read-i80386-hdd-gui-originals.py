@@ -351,7 +351,8 @@ def native_font_fetch_argv(url,seconds,size):
 
 def actual_native_font_reference(reference, runtime):
     fields(reference,'schema source workflow runId jobId artifactId artifactName artifactBytes artifactSha256 originals files font tool')
-    need(reference['schema']=='bw.gui-hdd.actual-native-font-reference.v1','explicit separately reviewed native-font reference')
+    need(reference['schema'] in ('bw.gui-hdd.actual-native-font-reference.v1','bw.gui-hdd.actual-native-font-reference.v2'),'explicit separately reviewed native-font reference')
+    version=2 if reference['schema'].endswith('.v2') else 1
     source=reference['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
     need(type(source['files']) is dict and set(source['files'])==NATIVE_FONT_SOURCE,'exact separate native-font source closure')
     for row in source['files'].values():fields(row,'sha256');digest(row['sha256'])
@@ -359,7 +360,7 @@ def actual_native_font_reference(reference, runtime):
     need(workflow['path']=='.github/workflows/i80386-native-font-selection.yml' and workflow['sha256']==source['files'][workflow['path']]['sha256'],'native executing workflow/content selection')
     for key in ('runId','jobId','artifactId'):integer(reference[key],1,2**63-1)
     integer(reference['artifactBytes'],1,32<<20);digest(reference['artifactSha256'])
-    need(reference['artifactName']=='i80386-native-font-selection-'+str(reference['runId'])+'-1','new native-font original delivery identity')
+    need(reference['artifactName']==('i80386-native-font-selection-' if version==1 else 'i80386-native-font-selection-v2-')+str(reference['runId'])+'-1','new native-font original delivery identity')
     need(type(reference['originals']) is dict and set(reference['originals'])==NATIVE_FONT_ROLES,'closed separately reviewed native original roles')
     for row in reference['originals'].values():
         fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
@@ -566,10 +567,67 @@ def join_actual_typed_inventory(request,prior_inventory,expected):
     need(encode(template['emptyPythonSources'])==encode(request['runtime']['emptyPythonSources']),'actual typed selection joins independently pinned metadata template')
 
 
+def join_native_v2_identity(observed, service, reference):
+    """Join the externally reviewed v2 invoker/proc and terminal witnesses."""
+    platform=observed['platform'];identity=None
+    need(observed.get('servicePartial') is None,'complete v2 has no partial service observation')
+    unit='bw-native-font-v2-'+str(reference['runId'])+'-1.service';cg='/system.slice/'+unit
+    for phase in ('before','after'):
+        snapshot=observed.get('service',{}).get(phase)
+        need(type(snapshot) is dict and snapshot.get('unit')==unit and snapshot.get('cgroupPath')==cg,
+             'native v2 selected service observation')
+        selected=snapshot.get('processIdentity');fields(selected,'uid gid resuid resgid')
+        for name in ('uid','gid'):
+            integer(selected[name],1,2**31-1)
+            need(type(platform.get('BW_NATIVE_V2_INVOKER_'+name.upper())) is str and
+                 platform['BW_NATIVE_V2_INVOKER_'+name.upper()]==str(selected[name]) and
+                 selected['res'+name]==[selected[name]]*3 and
+                 all(type(x) is int for x in selected['res'+name]),'native v2 source-configured actual process identity')
+        if identity is None:identity=selected
+        need(selected==identity,'native v2 before/after invoker identity')
+        witness=snapshot.get('selfProc')
+        fields(witness,'path role before after named bytesRead prefixBytes prefixSha256 prefixBase64 closeAttempted closed complete')
+        raw=('0::'+cg+'\n').encode()
+        need(witness['path']=='/proc/self/cgroup' and witness['role']=='self-proc' and
+             witness['complete'] is True and witness['closeAttempted'] is True and witness['closed'] is True and
+             type(witness['bytesRead']) is int and witness['bytesRead']==len(raw) and
+             type(witness['prefixBytes']) is int and witness['prefixBytes']==len(raw) and
+             witness['prefixSha256']==sha(raw) and witness['prefixBase64']==base64.b64encode(raw).decode(),
+             'native v2 exact closed self-proc membership bytes')
+        first=witness['before'];fields(first,'dev ino mode uid gid')
+        for key in ('dev','ino','mode','uid','gid'):integer(first[key],0,2**63-1)
+        need(first==witness['after']==witness['named'] and stat.S_ISREG(first['mode']) and
+             first['uid']==identity['uid'] and first['gid']==identity['gid'],
+             'native v2 stable self-proc owner identity')
+    fields(service,'schema unit cgroupPath serviceExitCode originalPresent pre cleanup post outsideFiniteCleanupProved firstFailure secondary invokerIdentity innerComplete innerBeforeObserved innerFirstFailure')
+    need(service['schema']=='bw.gui-hdd.native-font-service.v2' and service['unit']==unit and
+         service['cgroupPath']==cg and type(service['serviceExitCode']) is int and service['serviceExitCode']==0 and
+         service['originalPresent'] is True and service['outsideFiniteCleanupProved'] is True and
+         service['firstFailure'] is None and service['secondary']==[] and service['invokerIdentity']==identity and
+         service['innerComplete'] is True and service['innerBeforeObserved'] is True and service['innerFirstFailure'] is None,
+         'native v2 complete independently reviewed outer original')
+    post=service.get('post');fields(post,'unit cgroup')
+    terminal=post['unit'];fields(terminal,'LoadState ActiveState SubState Result ExecMainCode ExecMainStatus ControlGroup MainPID ControlPID KillMode')
+    need(terminal['ActiveState']=='inactive' and terminal['LoadState'] in ('loaded','not-found') and
+         terminal['MainPID']=='0' and terminal['ControlPID']=='0' and terminal['ControlGroup'] in ('',cg),
+         'native v2 terminal process census')
+    census=post['cgroup'];fields(census,'exists populated procs threads nrDescendants nrDyingDescendants')
+    need(type(census['exists']) is bool and
+         (all(census[k] is None for k in census if k!='exists') if not census['exists'] else
+          type(census['populated']) is int and census['populated']==0 and census['procs']==[] and census['threads']==[] and
+          type(census['nrDescendants']) is int and census['nrDescendants']==0 and
+          type(census['nrDyingDescendants']) is int and census['nrDyingDescendants']==0),
+         'native v2 finite outside descendant census')
+
+
 def join_actual_native_font(request, expected):
     """Join an externally frozen independent native review; do not execute it."""
     reference=actual_native_font_reference(request['nativeFontAdmission'],request['runtime'])
     need(sha(encode(reference))==expected['nativeFontReferenceSha256'],'independently selected native-font reference')
+    version=2 if reference['schema'].endswith('.v2') else 1
+    suffix='.v'+str(version)
+    job_name='native-font-selection' if version==1 else 'native-font-selection-v2'
+    marker_name='BW_NATIVE_FONT_REQUEST_SHA256' if version==1 else 'BW_NATIVE_FONT_V2_REQUEST_SHA256'
     selected=expected['nativeFontOriginals']
     need(type(selected) is dict and set(selected)==NATIVE_FONT_ROLES,'closed external native original roles')
     originals={}
@@ -578,9 +636,9 @@ def join_actual_native_font(request, expected):
         need({'byteLength':len(raw),'sha256':sha(raw)}==reference['originals'][role],'external native original exact reference '+role)
         originals[role]=decode(raw)
     native=originals['request'];prior=originals['expectation'];observed=originals['original'];report=originals['readerReport']
-    need(native.get('schema')=='bw.gui-hdd.native-font-request.v1' and native.get('repository')==REPOSITORY and
+    need(native.get('schema')=='bw.gui-hdd.native-font-request'+suffix and native.get('repository')==REPOSITORY and
          encode(native.get('source'))==encode(reference['source']),'separate native request/source join')
-    source=reference['source'];need(prior.get('schema')=='bw.gui-hdd.native-font-expectation.v1' and
+    source=reference['source'];need(prior.get('schema')=='bw.gui-hdd.native-font-expectation'+suffix and
          prior.get('head')==source['head'] and prior.get('tree')==source['tree'] and
          encode(prior.get('sourceFiles'))==encode(source['files']) and prior.get('conclusion')=='success' and
          prior.get('workflowSha')==reference['workflow']['commit'] and prior.get('runId')==str(reference['runId']) and type(prior.get('jobId')) is int and prior['jobId']==reference['jobId'],
@@ -601,13 +659,13 @@ def join_actual_native_font(request, expected):
          tool=={'path':reference['tool']['path'],'bytes':reference['tool']['byteLength'],'sha256':reference['tool']['sha256']},
          'native selected font/license/tool joins current-job file identities')
     need(selection.get('query')=={'pattern':'monospace:lang=en','format':'%{file}\t%{family}\t%{style}\t%{index}\n'},'explicit native monospace query')
-    need(observed.get('schema')=='bw.gui-hdd.native-font-original.v1' and observed.get('observationOnly') is True and
+    need(observed.get('schema')=='bw.gui-hdd.native-font-original'+suffix and observed.get('observationOnly') is True and
          observed.get('systemFallbackExcluded') is False and observed.get('complete') is True and
          observed.get('firstFailure') is None and observed.get('secondary')==[] and
          observed.get('selectedNativeRuntimeReadbackProved') is True,'independently reviewed complete finite native observation')
     for key in ('nativeLibraryClosureProved','wholeHostAttested','browserFontSelectionProved','actualRequestSupported','guestApproved'):
         need(observed.get(key) is False and report.get(key) is False,'preserved native observation boundary '+key)
-    need(report.get('schema')=='bw.gui-hdd.native-font-reader.v1' and report.get('nativeSelectionObserved') is True and
+    need(report.get('schema')=='bw.gui-hdd.native-font-reader'+suffix and report.get('nativeSelectionObserved') is True and
          report.get('selectedNativeRuntimeReadbackProved') is True and report.get('sourceHead')==source['head'] and
          report.get('runId')==str(reference['runId']) and type(report.get('jobId')) is int and report['jobId']==reference['jobId'] and
          report.get('selectedFontSha256')==reference['font']['sha256'],'separately frozen independent native-reader result')
@@ -637,7 +695,7 @@ def join_actual_native_font(request, expected):
          run.get('status')=='completed' and run.get('conclusion')=='success' and
          run.get('actor',{}).get('login')=='CrispStrobe','separately admitted official native run')
     need(job.get('id')==reference['jobId'] and job.get('run_id')==reference['runId'] and
-         job.get('name')=='native-font-selection' and job.get('status')=='completed' and job.get('conclusion')=='success','official native producing job')
+         job.get('name')==job_name and job.get('status')=='completed' and job.get('conclusion')=='success','official native producing job')
     need(artifact.get('id')==reference['artifactId'] and artifact.get('name')==reference['artifactName'] and
          artifact.get('expired') is False and artifact.get('size_in_bytes')==reference['artifactBytes'] and
          artifact.get('digest')=='sha256:'+reference['artifactSha256'] and
@@ -650,9 +708,9 @@ def join_actual_native_font(request, expected):
         need(len(matches)==1,'unique successful official native producing step');positions.append(matches[0])
     need(positions==sorted(set(positions)),'native observation precedes original retention')
     event=originals['event'];pr=event.get('pull_request',{});platform=observed.get('platform',{})
-    marker='<!-- BW_NATIVE_FONT_REQUEST_SHA256='+reference['originals']['request']['sha256']+' -->'
-    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_NATIVE_FONT_REQUEST_SHA256=')==1 and pr['body'].count(marker)==1,'native immutable request event transport')
-    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-native-font-selection-v1' and
+    marker='<!-- '+marker_name+'='+reference['originals']['request']['sha256']+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- '+marker_name+'=')==1 and pr['body'].count(marker)==1,'native immutable request event transport')
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-native-font-selection-v'+str(version) and
          event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY and
          pr.get('head',{}).get('sha')==source['head'] and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
          pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
@@ -660,8 +718,11 @@ def join_actual_native_font(request, expected):
          type(event.get('number')) is int and type(pr.get('number')) is int and type(native.get('pullRequest')) is int and
          event['number']==pr['number']==native['pullRequest'] and
          platform.get('GITHUB_RUN_ID')==str(reference['runId']) and platform.get('GITHUB_RUN_ATTEMPT')=='1' and
-         platform.get('GITHUB_JOB')=='native-font-selection' and platform.get('GITHUB_WORKFLOW_SHA')==prior.get('workflowSha'),
+         platform.get('GITHUB_JOB')==job_name and platform.get('GITHUB_WORKFLOW_SHA')==prior.get('workflowSha'),
          'separate native event/source/platform join')
+
+    if version==2:
+        join_native_v2_identity(observed,originals['service'],reference)
 
 
 def expected_policy(expected):

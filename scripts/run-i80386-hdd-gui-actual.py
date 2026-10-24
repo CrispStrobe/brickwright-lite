@@ -364,7 +364,8 @@ def native_font_fetch_argv(url,seconds,size):
 
 def actual_native_font_reference(reference, runtime):
     fields(reference,'schema source workflow runId jobId artifactId artifactName artifactBytes artifactSha256 originals files font tool')
-    need(reference['schema']=='bw.gui-hdd.actual-native-font-reference.v1','explicit separately reviewed native-font reference')
+    need(reference['schema'] in ('bw.gui-hdd.actual-native-font-reference.v1','bw.gui-hdd.actual-native-font-reference.v2'),'explicit separately reviewed native-font reference')
+    version=2 if reference['schema'].endswith('.v2') else 1
     source=reference['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
     need(type(source['files']) is dict and set(source['files'])==NATIVE_FONT_SOURCE,'exact separate native-font source closure')
     for row in source['files'].values():fields(row,'sha256');digest(row['sha256'])
@@ -372,7 +373,7 @@ def actual_native_font_reference(reference, runtime):
     need(workflow['path']=='.github/workflows/i80386-native-font-selection.yml' and workflow['sha256']==source['files'][workflow['path']]['sha256'],'native executing workflow/content selection')
     for key in ('runId','jobId','artifactId'):integer(reference[key],1,2**63-1)
     integer(reference['artifactBytes'],1,32<<20);digest(reference['artifactSha256'])
-    need(reference['artifactName']=='i80386-native-font-selection-'+str(reference['runId'])+'-1','new native-font original delivery identity')
+    need(reference['artifactName']==('i80386-native-font-selection-' if version==1 else 'i80386-native-font-selection-v2-')+str(reference['runId'])+'-1','new native-font original delivery identity')
     need(type(reference['originals']) is dict and set(reference['originals'])==NATIVE_FONT_ROLES,'closed separately reviewed native original roles')
     for row in reference['originals'].values():
         fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])

@@ -11,6 +11,7 @@ import stat
 import tempfile
 from types import SimpleNamespace
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
@@ -37,9 +38,9 @@ CACHE_PATH=PATH+'/cache'
 CONFIG_PATH=PATH+'/fontconfig.xml'
 
 
-def fixture_request():
+def fixture_request(version=1):
     source={path:{'sha256':producer.sha((ROOT/path).read_bytes())} for path in producer.SOURCE}
-    return {'schema':producer.SCHEMA,'repository':producer.REPOSITORY,'pullRequest':1315,
+    return {'schema':producer.SCHEMA if version==1 else producer.SCHEMA_V2,'repository':producer.REPOSITORY,'pullRequest':1315,
         'source':{'head':HEAD,'tree':TREE,'files':source},
         'selection':{'font':{'url':producer.FONT_URL,'bytes':producer.FONT_BYTES,
             'sha256':producer.FONT_SHA,'licenseUrl':producer.LICENSE_URL,
@@ -53,21 +54,23 @@ def fixture_request():
         'limits':copy.deepcopy(producer.LIMITS)}
 
 
-def fixture_env():
-    return {'GITHUB_REPOSITORY':producer.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request',
-        'GITHUB_ACTOR':'CrispStrobe','GITHUB_JOB':'native-font-selection',
+def fixture_env(version=1):
+    result={'GITHUB_REPOSITORY':producer.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request',
+        'GITHUB_ACTOR':'CrispStrobe','GITHUB_JOB':'native-font-selection' if version==1 else 'native-font-selection-v2',
         'GITHUB_RUN_ATTEMPT':'1','GITHUB_RUN_ID':RUN,'GITHUB_WORKFLOW_SHA':WORKFLOW_SHA,
         'GITHUB_WORKFLOW_REF':producer.REPOSITORY+'/'+producer.WORKFLOW+'@refs/pull/1315/merge',
         'BW_EXPECTED_HEAD':HEAD,'BW_EXPECTED_TREE':TREE}
+    if version==2:result.update(BW_NATIVE_V2_INVOKER_UID='1001',BW_NATIVE_V2_INVOKER_GID='1002')
+    return result
 
 
-def fixture_event(pin):
-    return producer.encode({'action':'labeled','label':{'name':producer.LABEL},
+def fixture_event(pin,version=1):
+    return producer.encode({'action':'labeled','label':{'name':producer.LABEL if version==1 else 'x86-native-font-selection-v2'},
         'sender':{'login':'CrispStrobe'},'repository':{'full_name':producer.REPOSITORY},
         'number':1315,'pull_request':{'number':1315,'state':'open',
         'head':{'sha':HEAD,'repo':{'full_name':producer.REPOSITORY,'fork':False}},
         'base':{'ref':'main','repo':{'full_name':producer.REPOSITORY}},
-        'body':'<!-- BW_NATIVE_FONT_REQUEST_SHA256='+pin+' -->'}})
+        'body':'<!-- '+('BW_NATIVE_FONT_REQUEST_SHA256' if version==1 else 'BW_NATIVE_FONT_V2_REQUEST_SHA256')+'='+pin+' -->'}})
 
 
 class FakeOps:
@@ -372,7 +375,7 @@ class Controls(unittest.TestCase):
                 producer.main(['--finalize'])
     def test_workflow_outer_service_contract_is_gated_and_bounded(self):
         workflow=(ROOT/producer.WORKFLOW).read_text()
-        selected=('if: ${{ github.event.action == \'labeled\'',
+        selected=('if: ${{ false && github.event.action == \'labeled\'',
                   'timeout --signal=TERM --kill-after=5s 130s',
                   '--system --wait --pipe --quiet --same-dir',
                   '--property=CPUQuota=100%',
@@ -384,7 +387,8 @@ class Controls(unittest.TestCase):
                   '--property=KillMode=control-group',
                   '--service-exit "$SERVICE_EXIT"')
         for marker in selected:self.assertIn(marker,workflow)
-        self.assertNotIn('false && github.event.action',workflow)
+        self.assertEqual(workflow.count('false && github.event.action'),2)
+        self.assertIn('  native-font-selection-v2:',workflow)
         self.assertNotIn('--collect',workflow)
         self.assertLess(workflow.index('set +e'),workflow.index('systemd-run'))
         self.assertLess(workflow.index('SERVICE_EXIT=$?'),workflow.index('--finalize'))
@@ -628,8 +632,304 @@ class Controls(unittest.TestCase):
         with patch.object(producer,'ENABLED',True):raw=producer.collect(request_raw,pin,env,ops)
         self.assertNotIn('git',ops.events)
 
+
+class KernelV2:
+    """Only mocked selected kernel endpoints; no host proc/cgroup is read."""
+    UID=1001;GID=1002;PID=1234
+    def __init__(self,fault=None):
+        self.fault=fault;self.fds={};self.opens=[];self.reads=[];self.closes=[]
+        self.unit='bw-native-font-v2-'+RUN+'-1.service'
+        self.base='/sys/fs/cgroup/system.slice/'+self.unit
+        self.data={'/proc/self/cgroup':('0::/system.slice/'+self.unit+'\n').encode(),
+            **{self.base+'/'+k:v.encode() for k,v in {
+                'cpu.max':'100000 100000\n','memory.max':'1073741824\n',
+                'memory.swap.max':'0\n','pids.max':'64\n','memory.current':'1024\n',
+                'pids.current':'1\n','cgroup.events':'populated 1\nfrozen 0\n',
+                'memory.events':'oom_kill 0\n','pids.events':'max 0\n',
+                'cgroup.stat':'nr_descendants 0\nnr_dying_descendants 0\n',
+                'cgroup.procs':'1234\n','cgroup.threads':'1234\n'}.items()}}
+        if fault=='overflow':self.data['/proc/self/cgroup']=b'X'*4097
+    def info(self,path,after=False,named=False):
+        self_role=path=='/proc/self/cgroup';uid=self.UID if self_role else 0
+        gid=self.GID if self_role else 0;mode=stat.S_IFREG|0o444
+        if self_role and self.fault=='foreign-proc':uid+=1
+        if self_role and self.fault=='root-proc':uid=0
+        if self_role and self.fault=='foreign-gid':gid+=1
+        if self_role and self.fault=='nonregular':mode=stat.S_IFIFO|0o444
+        if not self_role and self.fault=='user-cgroup':uid=self.UID
+        ino=100+list(self.data).index(path)
+        if self_role and ((after and self.fault=='held-drift') or (named and self.fault=='named-drift')):ino+=1
+        return SimpleNamespace(st_dev=2 if self_role else 3,st_ino=ino,
+            st_mode=mode,st_uid=uid,st_gid=gid)
+    def open(self,path,flags):
+        assert path in self.data,'unexpected host endpoint '+str(path)
+        self.opens.append((path,flags));fd=40+len(self.opens)
+        self.fds[fd]={'path':path,'offset':0,'stats':0};return fd
+    def fstat(self,fd):
+        row=self.fds[fd];row['stats']+=1
+        return self.info(row['path'],after=row['stats']>1)
+    def read(self,fd,size):
+        row=self.fds[fd];path=row['path'];self.reads.append((path,size))
+        if path=='/proc/self/cgroup' and self.fault in ('read','read-close'):raise OSError('FIRST_READ')
+        data=self.data[path][row['offset']:row['offset']+size];row['offset']+=len(data);return data
+    def close(self,fd):
+        self.closes.append(fd)
+        if self.fds[fd]['path']=='/proc/self/cgroup' and self.fault in ('close','read-close'):raise OSError('SECOND_CLOSE')
+    def scandir(self,path):
+        assert str(path)==self.base,'unexpected directory census'
+        return SimpleNamespace(__enter__=lambda:iter(()))
+    def __enter__(self):
+        self.stack=ExitStack()
+        class EmptyScan:
+            def __enter__(self):return iter(())
+            def __exit__(self,*args):return False
+        def scan(path):assert str(path)==self.base;return EmptyScan()
+        patches={'open':self.open,'fstat':self.fstat,'read':self.read,
+            'lstat':lambda p:self.info(str(p),named=True),'close':self.close,
+            'getpid':lambda:self.PID,
+            'getresuid':lambda:(self.UID+1,)*3 if self.fault=='process-uid' else (self.UID,)*3,
+            'getresgid':lambda:(self.GID+1,)*3 if self.fault=='process-gid' else (self.GID,)*3,
+            'scandir':scan}
+        for name,value in patches.items():self.stack.enter_context(patch.object(producer.os,name,value))
+        return self
+    def __exit__(self,*args):return self.stack.__exit__(*args)
+
+class GenuineServiceV2Ops(FakeOps):
+    def __init__(self,event):
+        super().__init__(event);self.live=producer.LiveOps(fixture_env(2),2);self.service_partial=None
+    def service(self,phase):
+        self.events.append('service-'+phase)
+        try:return self.live.service(phase)
+        finally:self.service_partial=self.live.service_partial
+
+def finalized_v2(raw,service_exit=None,original_error=None,post_changes=None,census_error=None,cleanup_error=None):
+    """Real finalizer, fake syscall/control edges, captured canonical output."""
+    if service_exit is None:
+        body=reader.parse(raw,reader.LIMITS['originalBytes'],lf=True)
+        service_exit=0 if body['complete'] else 1
+    calls=[];writes=[]
+    selected=('LoadState','ActiveState','SubState','Result','ExecMainCode',
+              'ExecMainStatus','ControlGroup','MainPID','ControlPID','KillMode')
+    def command(argv,**kwargs):
+        assert argv[:3]==['/usr/bin/sudo','-n','/usr/bin/systemctl']
+        assert 'bw-native-font-v2-'+RUN+'-1.service' in argv
+        action=argv[3];calls.append(action)
+        if cleanup_error and action=='reset-failed':raise OSError('SECOND_CLEANUP')
+        values={key:'' for key in selected}
+        failed=service_exit!=0 and calls.count('show')==1
+        values.update(LoadState='loaded' if failed else 'not-found',
+            ActiveState='failed' if failed else 'inactive',SubState='failed' if failed else 'dead',
+            Result='exit-code' if failed else 'success',ExecMainCode='1' if failed else '0',
+            ExecMainStatus='1' if failed else '0',MainPID='0',ControlPID='0',KillMode='control-group')
+        if post_changes and action=='show' and calls.count('show')==2:values.update(post_changes)
+        return SimpleNamespace(returncode=0,stdout=(''.join(k+'='+values[k]+'\n' for k in selected).encode() if action=='show' else b''),stderr=b'')
+    with patch.object(producer,'V2_ENABLED',True),\
+         patch.object(producer.LiveOps,'regular',side_effect=original_error,return_value=raw),\
+         patch.object(producer.subprocess,'run',side_effect=command),\
+         patch.object(producer.os,'getresuid',return_value=(1001,)*3),\
+         patch.object(producer.os,'getresgid',return_value=(1002,)*3),\
+         patch.object(producer.os,'lstat',side_effect=census_error or FileNotFoundError),\
+         patch.object(producer.os,'open',return_value=99),\
+         patch.object(producer.os,'write',side_effect=lambda fd,b:(writes.append(b),len(b))[1]),\
+         patch.object(producer.os,'close') as closed:
+        rc=producer.finalize_service('/mock/original','/mock/service',service_exit,fixture_env(2),2)
+        closed.assert_called_once_with(99)
+    assert len(writes)==1
+    return writes[0],rc,calls
+
+class V2Controls(unittest.TestCase):
+    setUp=Controls.setUp
+    def produce(self,fault=None):
+        request=fixture_request(2);request_raw=producer.encode(request);pin=producer.sha(request_raw)
+        event=fixture_event(pin,2);ops=GenuineServiceV2Ops(event)
+        with patch.object(producer,'V2_ENABLED',True),KernelV2(fault) as kernel:
+            raw=producer.collect(request_raw,pin,fixture_env(2),ops,2)
+        return raw,request_raw,event,request,ops,kernel
+    def grade(self,values):
+        raw,request_raw,event,request,*_=values;service,rc,_=finalized_v2(raw);self.assertEqual(rc,0)
+        expected=expectation(raw,request_raw,event,request)
+        expected.update(schema=reader.EXPECTATION_V2,serviceBytes=len(service),serviceSha256=reader.sha(service))
+        return reader.original(raw,request_raw,event,expected,service,2),service,expected
+    def test_genuine_service_edges_full_v2_producer_finalizer_and_reader(self):
+        values=self.produce();raw,*_=values;packet=reader.parse(raw,2<<20,lf=True)
+        self.assertTrue(packet['complete']);self.assertIsNone(packet['servicePartial'])
+        self.assertEqual(packet['service']['before']['processIdentity']['resuid'],[1001]*3)
+        self.assertEqual(packet['service']['before']['selfProc']['before']['uid'],1001)
+        verdict,service,expected=self.grade(values)
+        self.assertEqual(verdict['schema'],'bw.gui-hdd.native-font-reader.v2')
+        self.assertTrue(verdict['nativeSelectionObserved']);self.assertFalse(verdict['guestApproved'])
+        self.assertEqual(values[4].events.count('process'),1)
+        self.assertEqual(len(values[5].opens),len(values[5].closes))
+        files={'original':raw,'request':values[1],'event':values[2],
+               'expected':reader.canonical(expected),'service':service}
+        def opened(path,*args,**kwargs):
+            self.assertIn(str(path),files);return io.BytesIO(files[str(path)])
+        stream=io.StringIO()
+        with patch('builtins.open',side_effect=opened),patch.object(sys,'stdout',stream):
+            reader.main(['--protocol-v2','--original','original','--request','request',
+                         '--event','event','--expected','expected','--service','service'])
+        self.assertEqual(json.loads(stream.getvalue()),verdict)
+    def test_exact_proc_owner_group_type_and_cgroup_owner_precede_reads(self):
+        for fault in ('foreign-proc','root-proc','foreign-gid','nonregular','user-cgroup'):
+            with self.subTest(fault=fault):
+                raw,*_,ops,kernel=self.produce(fault);packet=reader.parse(raw,2<<20,lf=True)
+                self.assertFalse(packet['complete']);self.assertIsNotNone(packet['servicePartial'])
+                self.assertNotIn('tool',ops.events);self.assertNotIn('input',ops.events)
+                forbidden='/proc/self/cgroup' if fault!='user-cgroup' else kernel.base+'/cpu.max'
+                self.assertEqual([p for p,n in kernel.reads if p==forbidden],[])
+                self.assertEqual(len(kernel.closes),len(kernel.opens))
+                sidecar,rc,_=finalized_v2(raw);self.assertEqual(rc,1)
+                report=reader.failed_attempt(raw,sidecar,2)
+                self.assertFalse(report['nativeSelectionObserved']);self.assertFalse(report['guestApproved'])
+    def test_configured_ids_are_checked_against_actual_process_before_open(self):
+        for fault in ('process-uid','process-gid'):
+            raw,*_,ops,kernel=self.produce(fault);packet=reader.parse(raw,2<<20,lf=True)
+            self.assertFalse(packet['complete']);self.assertEqual(kernel.opens,[])
+            self.assertNotIn('tool',ops.events)
+            self.assertIsNotNone(packet['servicePartial']['processIdentity'])
+    def test_read_close_drift_and_overflow_partial_is_truthful(self):
+        for fault in ('read','close','read-close','held-drift','named-drift','overflow'):
+            with self.subTest(fault=fault):
+                raw,*_,ops,kernel=self.produce(fault);p=reader.parse(raw,2<<20,lf=True)
+                self.assertFalse(p['complete']);self.assertNotIn('tool',ops.events)
+                witness=p['servicePartial']['selfProc'];self.assertTrue(witness['closeAttempted'])
+                self.assertEqual(len(kernel.closes),len(kernel.opens))
+                if fault=='read-close':
+                    self.assertIn('FIRST_READ',p['firstFailure']['message'])
+                    self.assertEqual(p['secondary'][0]['phase'],'pseudo-close')
+                    self.assertIn('SECOND_CLOSE',p['secondary'][0]['message'])
+                if fault=='overflow':
+                    self.assertEqual(witness['bytesRead'],4097)
+                    self.assertEqual(witness['prefixBytes'],4096)
+                    self.assertFalse(witness['complete'])
+                sidecar,rc,_=finalized_v2(raw);self.assertEqual(rc,1)
+                self.assertFalse(reader.failed_attempt(raw,sidecar,2)['nativeSelectionObserved'])
+    def test_missing_before_finalizer_retains_original_primary_and_finite_cleanup(self):
+        raw,*_=self.produce('foreign-proc');body=reader.parse(raw,2<<20,lf=True)
+        self.assertIsNone(body['service']['before'])
+        service,rc,calls=finalized_v2(raw);self.assertEqual(rc,1)
+        outside=reader.parse(service,65536,lf=True)
+        self.assertEqual(outside['firstFailure'],body['firstFailure'])
+        self.assertFalse(outside['innerBeforeObserved']);self.assertFalse(outside['innerComplete'])
+        self.assertTrue(outside['outsideFiniteCleanupProved']);self.assertEqual(calls,['show','reset-failed','show'])
+        self.assertNotEqual(outside['firstFailure']['name'],'TypeError')
+    def test_finalizer_missing_malformed_inner_and_secondary_failures_are_retained(self):
+        raw,*_=self.produce('foreign-proc');original=reader.parse(raw,2<<20,lf=True)
+        for wire,error in ((b'',FileNotFoundError('MISSING_ORIGINAL')),(b'not-json',None)):
+            outside,rc,calls=finalized_v2(wire,1,original_error=error)
+            value=reader.parse(outside,65536,lf=True)
+            self.assertEqual(rc,1);self.assertEqual(value['firstFailure']['phase'],'outside-original-join')
+            self.assertTrue(value['outsideFiniteCleanupProved']);self.assertEqual(calls,['show','reset-failed','show'])
+            self.assertFalse(value['innerBeforeObserved']);self.assertFalse(value['innerComplete'])
+            if not wire:
+                self.assertFalse(reader.failed_attempt(wire,outside,2)['nativeSelectionObserved'])
+        outside,rc,_=finalized_v2(raw,cleanup_error=True)
+        value=reader.parse(outside,65536,lf=True)
+        self.assertEqual(value['firstFailure'],original['firstFailure']);self.assertEqual(rc,1)
+        self.assertIn('SECOND_CLEANUP',value['secondary'][0]['message'])
+        self.assertFalse(value['outsideFiniteCleanupProved'])
+        self.assertFalse(reader.failed_attempt(raw,outside,2)['nativeSelectionObserved'])
+    def test_finalizer_terminal_pid_and_unknown_census_never_supply_cleanup(self):
+        raw,*_=self.produce('foreign-proc')
+        for kwargs in ({'post_changes':{'MainPID':'42'}},{'post_changes':{'ControlPID':'42'}},
+                       {'post_changes':{'ControlGroup':'/foreign'}},{'census_error':PermissionError('UNKNOWN_CGROUP')}):
+            outside,rc,_=finalized_v2(raw,**kwargs);value=reader.parse(outside,65536,lf=True)
+            self.assertEqual(rc,1);self.assertFalse(value['outsideFiniteCleanupProved'])
+            self.assertFalse(reader.failed_attempt(raw,outside,2)['nativeSelectionObserved'])
+            value['outsideFiniteCleanupProved']=True
+            with self.assertRaises(reader.Refusal):reader.failed_attempt(raw,reader.canonical(value)+b'\n',2)
+    def test_failed_reader_rederives_coherent_sidecar_truth_and_error_grammar(self):
+        raw,*_=self.produce('foreign-proc');service,_,_=finalized_v2(raw)
+        for cut in ('pid','populated','unknown','cleanup','failure'):
+            value=reader.parse(service,65536,lf=True)
+            if cut=='pid':value['post']['unit']['MainPID']='42'
+            elif cut=='populated':value['post']['cgroup']=dict(exists=True,populated=1,procs=[42],threads=[42],nrDescendants=1,nrDyingDescendants=0)
+            elif cut=='unknown':value['post']=None
+            elif cut=='cleanup':value['cleanup']['resetExitCode']=1
+            else:value['firstFailure']={'phase':'','name':'ValueError','message':'bad'}
+            with self.subTest(cut=cut),self.assertRaises(reader.Refusal):reader.failed_attempt(raw,reader.canonical(value)+b'\n',2)
+    def test_coherent_identity_and_v1_route_mutations_refuse(self):
+        values=self.produce();raw,request_raw,event,request,*_=values
+        verdict,service,expected=self.grade(values)
+        for mutate in ('owner','identity','role','schema','job','partial'):
+            packet=reader.parse(raw,2<<20,lf=True)
+            if mutate=='owner':packet['service']['before']['selfProc']['before']['uid']=9999
+            elif mutate=='identity':packet['service']['before']['processIdentity']['resuid']=[1002]*3
+            elif mutate=='role':packet['service']['before']['selfProc']['path']='/proc/1/cgroup'
+            elif mutate=='schema':packet['schema']=producer.ORIGINAL
+            elif mutate=='job':packet['platform']['GITHUB_JOB']='native-font-selection'
+            else:packet['servicePartial']={'invented':True}
+            bad=reader.canonical(packet)+b'\n';selected=dict(expected,originalBytes=len(bad),originalSha256=reader.sha(bad))
+            with self.subTest(mutation=mutate),self.assertRaises(reader.Refusal):
+                reader.original(bad,request_raw,event,selected,service,2)
+        bad=copy.deepcopy(request);bad['schema']=producer.SCHEMA
+        with self.assertRaises(ValueError):producer.admitted_request(producer.encode(bad),producer.sha(producer.encode(bad)),2)
+        old_event=fixture_event(producer.sha(request_raw),1)
+        with self.assertRaises(ValueError):producer.admitted_event(old_event,request,fixture_env(2),producer.sha(request_raw),2)
+    def test_owner_guard_mutants_have_observable_forbidden_read_effect(self):
+        real_need=producer.need
+        for fault,message in [('foreign-proc','self proc owner matches configured process identity'),
+                              ('user-cgroup','root-owned cgroup or proc text'),
+                              ('process-uid','actual service identities match configured unprivileged invoker')]:
+            def weakened(value,reason):
+                if reason!=message:real_need(value,reason)
+            live=producer.LiveOps(fixture_env(2),2)
+            with KernelV2(fault) as kernel,patch.object(producer,'need',side_effect=weakened):
+                observed=live.service('before')
+            forbidden=kernel.base+'/cpu.max' if fault=='user-cgroup' else '/proc/self/cgroup'
+            self.assertTrue(any(p==forbidden for p,n in kernel.reads))
+            if fault!='user-cgroup':
+                with self.assertRaises(ValueError):producer.service_snapshot(observed,'before',2)
+            else:
+                # Without the root-file guard, the same fabricated resource
+                # values pass the positive snapshot validator: the no-read
+                # negative controls are necessary, not a mirrored assertion.
+                producer.service_snapshot(observed,'before',2)
+    def test_v2_pseudo_scope_refuses_other_proc_and_user_selected_cgroups_before_open(self):
+        live=producer.LiveOps(fixture_env(2),2)
+        with KernelV2() as kernel:
+            live.service_partial={'phase':'before','unit':'bw-native-font-v2-'+RUN+'-1.service',
+                                  'processIdentity':live.process_identity(),'lastPath':None,'selfProc':None}
+            for path,role in (('/proc/1/cgroup','self-proc'),('/proc/self/status','self-proc'),
+                              ('/proc/self/cgroup','cgroup'),(kernel.base+'/cpu.stat','cgroup'),
+                              ('/sys/fs/cgroup/other/cpu.max','cgroup')):
+                with self.subTest(path=path),self.assertRaises(ValueError):live.pseudo(path,4096,role)
+            self.assertEqual(kernel.opens,[])
+    def test_v2_raw_pretty_event_joins_exact_bytes_without_v1_projection(self):
+        req=fixture_request(2);raw=producer.encode(req);pin=producer.sha(raw)
+        for event in (json.dumps(json.loads(fixture_event(pin,2)),indent=2).encode()+b'\n',
+                      b' \n'+fixture_event(pin,2)+b' \n'):
+            ops=GenuineServiceV2Ops(event)
+            with patch.object(producer,'V2_ENABLED',True),KernelV2():wire=producer.collect(raw,pin,fixture_env(2),ops,2)
+            self.assertTrue(reader.parse(wire,2<<20,lf=True)['complete'])
+            report,_,_=self.grade((wire,raw,event,req));self.assertTrue(report['nativeSelectionObserved'])
+    def test_v2_disabled_modes_refuse_before_all_factories_and_kernel_edges(self):
+        self.assertFalse(producer.V2_ENABLED)
+        class NoEdges:
+            def __getattr__(self,name):raise AssertionError('inactive touched '+name)
+        with self.assertRaisesRegex(ValueError,'disabled'):
+            producer.collect(b'bad','0'*64,{},NoEdges(),2)
+        for mode in (['--observe'],['--finalize'],['--retain-event','--event-out','/mock/event']):
+            with patch.object(producer,'LiveOps') as factory,patch.object(producer.os,'open') as opened:
+                with self.assertRaisesRegex(ValueError,'disabled'):producer.main(mode+['--protocol-v2'])
+                factory.assert_not_called();opened.assert_not_called()
+    def test_workflow_v1_and_v2_are_separate_inactive_source_bound_routes(self):
+        text=(ROOT/producer.WORKFLOW).read_text();v1=text.split('  native-font-selection:\n',1)[1].split('  native-font-selection-v2:\n',1)[0]
+        v2=text.split('  native-font-selection-v2:\n',1)[1]
+        for block in (v1,v2):self.assertIn('false && github.event.action',block)
+        self.assertIn("'x86-native-font-selection-v2'",v2)
+        for marker in ('vars.BW_NATIVE_FONT_V2_REQUEST_SHA256','vars.BW_NATIVE_FONT_V2_REQUEST_B64',
+                       'BW_NATIVE_V2_INVOKER_UID="$(/usr/bin/id -u)"',
+                       'BW_NATIVE_V2_INVOKER_GID="$(/usr/bin/id -g)"',
+                       '--property="User=$BW_NATIVE_V2_INVOKER_UID"',
+                       '--property="Group=$BW_NATIVE_V2_INVOKER_GID"',
+                       '--observe --protocol-v2','--finalize --protocol-v2','--retain-event --protocol-v2'):
+            self.assertIn(marker,v2)
+        self.assertNotIn('vars.BW_NATIVE_FONT_REQUEST_SHA256',v2)
+
 if __name__=='__main__':
-    result=unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(Controls))
+    result=unittest.TextTestRunner(verbosity=2).run(unittest.TestSuite([unittest.defaultTestLoader.loadTestsFromTestCase(Controls),
+        unittest.defaultTestLoader.loadTestsFromTestCase(V2Controls)]))
     if not result.wasSuccessful():sys.exit(1)
     print(json.dumps({'testOnly':True,'methods':result.testsRun,'nativeCalls':0,
                       'actualApproved':False,'pass':True},sort_keys=True))

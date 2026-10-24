@@ -2985,6 +2985,106 @@ class Originals(unittest.TestCase):
     def test_current_board_requires_current_admission_and_scenario_pins_v3_v4(self):
         self.assert_noncurrent_board_refuses_actual_formats('0'*40)
 
+class NativeV2Originals(unittest.TestCase):
+    def fresh(self):
+        files,expected=fixture_v5();request=D(files['request.original.json']);ref=request['nativeFontAdmission']
+        originals={k:base64.b64decode(v['base64']) for k,v in expected['nativeFontOriginals'].items()}
+        ref.update(schema='bw.gui-hdd.actual-native-font-reference.v2',artifactName='i80386-native-font-selection-v2-300-1')
+        native=D(originals['request']);native['schema']='bw.gui-hdd.native-font-request.v2';originals['request']=E(native).rstrip(b'\n')
+        event=D(originals['event']);event['label']['name']='x86-native-font-selection-v2'
+        event['pull_request']['body']='<!-- BW_NATIVE_FONT_V2_REQUEST_SHA256='+H(originals['request'])+' -->'
+        originals['event']=json.dumps(event,indent=2).encode()+b'\n'
+        identity={'uid':1001,'gid':1002,'resuid':[1001]*3,'resgid':[1002]*3}
+        unit='bw-native-font-v2-300-1.service';cg='/system.slice/'+unit;raw=('0::'+cg+'\n').encode()
+        file_identity={'dev':5,'ino':6,'mode':stat.S_IFREG|0o444,'uid':1001,'gid':1002}
+        witness={'path':'/proc/self/cgroup','role':'self-proc','before':file_identity,'after':file_identity,'named':file_identity,
+          'bytesRead':len(raw),'prefixBytes':len(raw),'prefixSha256':H(raw),'prefixBase64':base64.b64encode(raw).decode(),
+          'closeAttempted':True,'closed':True,'complete':True}
+        observed=D(originals['original']);observed.update(schema='bw.gui-hdd.native-font-original.v2',servicePartial=None,
+          service={phase:{'unit':unit,'cgroupPath':cg,'processIdentity':copy.deepcopy(identity),'selfProc':copy.deepcopy(witness)} for phase in ('before','after')})
+        observed['platform'].update(GITHUB_JOB='native-font-selection-v2',BW_NATIVE_V2_INVOKER_UID='1001',BW_NATIVE_V2_INVOKER_GID='1002')
+        terminal={'LoadState':'not-found','ActiveState':'inactive','SubState':'dead','Result':'success','ExecMainCode':'0',
+          'ExecMainStatus':'0','ControlGroup':'','MainPID':'0','ControlPID':'0','KillMode':'control-group'}
+        census={'exists':False,'populated':None,'procs':None,'threads':None,'nrDescendants':None,'nrDyingDescendants':None}
+        outer={'schema':'bw.gui-hdd.native-font-service.v2','unit':unit,'cgroupPath':cg,'serviceExitCode':0,'originalPresent':True,
+          'pre':{'unit':terminal,'cgroup':census},'post':{'unit':terminal,'cgroup':census},
+          'cleanup':{'stopAttempted':False,'stopExitCode':None,'resetAttempted':False,'resetExitCode':None},
+          'outsideFiniteCleanupProved':True,'firstFailure':None,'secondary':[],'invokerIdentity':identity,
+          'innerComplete':True,'innerBeforeObserved':True,'innerFirstFailure':None}
+        originals['original']=E(observed);originals['service']=E(outer)
+        prior=D(originals['expectation']);prior['schema']='bw.gui-hdd.native-font-expectation.v2';originals['expectation']=E(prior)
+        report=D(originals['readerReport']);report['schema']='bw.gui-hdd.native-font-reader.v2';originals['readerReport']=E(report)
+        job=D(originals['job']);job['name']='native-font-selection-v2';originals['job']=E(job)
+        artifact=D(originals['artifact']);artifact['name']=ref['artifactName'];originals['artifact']=E(artifact)
+        self.refresh(files,expected,ref,originals,request)
+        return files,expected,ref,originals
+    def refresh(self,files,expected,ref,originals,request=None):
+        observed=D(originals['original'])
+        for role in ('request','event'):observed[role]={'bytes':len(originals[role]),'sha256':H(originals[role])}
+        originals['original']=E(observed);prior=D(originals['expectation'])
+        for role in ('request','event','original','service'):prior[role+'Sha256']=H(originals[role])
+        prior.update(originalBytes=len(originals['original']),serviceBytes=len(originals['service']));originals['expectation']=E(prior)
+        native_v5_refresh(files,expected,ref,originals,request)
+    def test_full_v2_current_packet_producer_parser_and_standalone_reader(self):
+        files,expected,ref,originals=self.fresh()
+        request=c.parse_request(files['request.original.json'],expected['requestSha256'])
+        self.assertEqual(request,r.parse_request(files['request.original.json'],expected['requestSha256']))
+        complete,selected=sealed(files,expected);verdict=r.audit(complete,selected);self.assertTrue(verdict['pass'])
+        self.assertEqual(verdict['schema'],'bw.gui-hdd.reader.v5')
+        delivery=packet(files);inputs={'artifact':delivery,'expected':E(selected)}
+        def bounded(path,cap):
+            self.assertIn(path,inputs);self.assertLessEqual(len(inputs[path]),cap);return inputs[path]
+        stream=io.StringIO()
+        with patch.object(r,'bounded_input',side_effect=bounded),patch.object(r.sys,'stdout',stream):
+            self.assertEqual(r.main(['artifact','expected']),0)
+        self.assertEqual(D(stream.getvalue().encode()),verdict)
+        self.assertFalse(c.ACTUAL_ENABLED);self.assertFalse(r.ACTUAL_ENABLED)
+        self.assertLess(len(files['request.original.json']),r.JSON_CAP);self.assertLess(len(E(expected)),r.JSON_CAP)
+    def test_v2_identity_role_owner_and_outer_coherent_mutations(self):
+        for cut in ('owner','gid','triplet','path','bytes','close','after','partial','outer-identity','outer-pid','outer-cgroup','inner','failure','current-runtime'):
+            files,expected,ref,originals=self.fresh();observed=D(originals['original']);outer=D(originals['service'])
+            before=observed['service']['before'];w=before['selfProc']
+            if cut=='owner':
+                for name in ('before','after','named'):w[name]['uid']=0
+            elif cut=='gid':observed['platform']['BW_NATIVE_V2_INVOKER_GID']='1001'
+            elif cut=='triplet':before['processIdentity']['resuid']=[0,1001,1001]
+            elif cut=='path':w['path']='/proc/1/cgroup'
+            elif cut=='bytes':w['prefixSha256']=H(b'other')
+            elif cut=='close':w['closed']=False
+            elif cut=='after':observed['service']['after']['processIdentity']['gid']=1003
+            elif cut=='partial':observed['servicePartial']={'phase':'before'}
+            elif cut=='outer-identity':outer['invokerIdentity']['uid']=1003
+            elif cut=='outer-pid':outer['post']['unit']['MainPID']='42'
+            elif cut=='outer-cgroup':outer['post']['cgroup']=dict(exists=True,populated=1,procs=[42],threads=[42],nrDescendants=1,nrDyingDescendants=0)
+            elif cut=='inner':outer['innerComplete']=False
+            elif cut=='failure':observed['firstFailure']={'phase':'native-font-observation','name':'ValueError','message':'retained failure'}
+            else:
+                value=D(files['runtime.after.json']);value['files']['/usr/bin/fc-match']['sha256']='0'*64;files['runtime.after.json']=E(value)
+            originals['original']=E(observed);originals['service']=E(outer);self.refresh(files,expected,ref,originals)
+            with self.subTest(cut=cut),self.assertRaises(ValueError):r.audit(*sealed(files,expected))
+    def test_v1_v2_schema_job_marker_label_artifact_are_not_interchangeable(self):
+        for role,cut in (('request','schema'),('original','schema'),('service','schema'),('expectation','schema'),('readerReport','schema'),('job','name'),('event','marker'),('event','label'),('artifact','name')):
+            files,expected,ref,originals=self.fresh();value=D(originals[role])
+            if cut=='schema':value['schema']=value['schema'][:-1]+'1'
+            elif cut=='marker':value['pull_request']['body']=value['pull_request']['body'].replace('BW_NATIVE_FONT_V2_','BW_NATIVE_FONT_')
+            elif cut=='label':value['label']['name']='x86-native-font-selection-v1'
+            else:value[cut]='native-font-selection' if role=='job' else 'i80386-native-font-selection-300-1'
+            originals[role]=E(value);self.refresh(files,expected,ref,originals)
+            with self.subTest(role=role,cut=cut),self.assertRaises(ValueError):r.audit(*sealed(files,expected))
+        files,expected,ref,originals=self.fresh();ref['schema']='bw.gui-hdd.actual-native-font-reference.v1';self.refresh(files,expected,ref,originals)
+        for module in (c,r):
+            with self.assertRaises(ValueError):module.parse_request(files['request.original.json'],expected['requestSha256'])
+    def test_v2_identity_guard_removal_mutant_accepts_same_hostile_packet(self):
+        files,expected,ref,originals=self.fresh();observed=D(originals['original'])
+        for phase in ('before','after'):
+            for name in ('before','after','named'):observed['service'][phase]['selfProc'][name]['uid']=0
+        originals['original']=E(observed);self.refresh(files,expected,ref,originals)
+        selected=sealed(files,expected)
+        with self.assertRaisesRegex(ValueError,'native v2 stable self-proc owner'):r.audit(*selected)
+        with patch.object(r,'join_native_v2_identity',return_value=None):self.assertTrue(r.audit(*selected)['pass'])
+    def test_v1_manufactured_historical_admission_stays_distinct(self):
+        files,expected=fixture_v5();self.assertTrue(r.audit(*sealed(files,expected))['pass'])
+
 suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith('test_finite_v4'))
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
@@ -3014,6 +3114,15 @@ test('finite inventory v4: body-first guard, source-only producer and independen
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
     const summary=readOriginalControlSummary(result.stdout);
     assert.ok(summary.controls>=8);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+});
+
+test('native v2 GUI join: complete packet, source-bound identity and coherent refusals', () => {
+    const old="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith('test_finite_v4'))";
+    const selected=controls.replace(old,'suite=unittest.defaultTestLoader.loadTestsFromTestCase(NativeV2Originals)');
+    assert.notEqual(selected,controls);
+    const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+    assert.deepEqual(readOriginalControlSummary(result.stdout),{controls:5,failures:0,errors:0});
 });
 
 const probe=fs.readFileSync(new URL('../scripts/verify-i80386-local-hdd-gui.mjs',import.meta.url),'utf8');

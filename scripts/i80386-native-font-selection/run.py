@@ -21,9 +21,13 @@ import urllib.request
 from pathlib import Path, PurePosixPath
 
 ENABLED = True
+V2_ENABLED = False
 SCHEMA = 'bw.gui-hdd.native-font-request.v1'
 ORIGINAL = 'bw.gui-hdd.native-font-original.v1'
 SERVICE_ORIGINAL = 'bw.gui-hdd.native-font-service.v1'
+SCHEMA_V2 = 'bw.gui-hdd.native-font-request.v2'
+ORIGINAL_V2 = 'bw.gui-hdd.native-font-original.v2'
+SERVICE_ORIGINAL_V2 = 'bw.gui-hdd.native-font-service.v2'
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-native-font-selection-v1'
 WORKFLOW = '.github/workflows/i80386-native-font-selection.yml'
@@ -168,12 +172,13 @@ def runtime_selection(value):
          'disjoint runtime file and alias names')
 
 
-def admitted_request(raw, expected_sha):
+def admitted_request(raw, expected_sha, version=1):
     digest(expected_sha)
     need(sha(raw) == expected_sha, 'externally selected request SHA')
     value = parse(raw, 65536)
     keys(value, 'schema repository pullRequest source selection limits', 'request')
-    need(value['schema'] == SCHEMA and value['repository'] == REPOSITORY,
+    need(type(version) is int and version in (1,2), 'closed native protocol version')
+    need(value['schema'] == (SCHEMA if version==1 else SCHEMA_V2) and value['repository'] == REPOSITORY,
          'owned native-font request')
     integer(value['pullRequest'], 1, 2**31-1)
     source = value['source']; keys(source, 'head tree files', 'source')
@@ -205,11 +210,12 @@ def admitted_request(raw, expected_sha):
     return value
 
 
-def admitted_event(raw, request, env, expected_sha):
+def admitted_event(raw, request, env, expected_sha, version=1):
+    need(type(version) is int and version in (1,2), 'closed native event version')
     event = parse_event(raw)
     pr = event.get('pull_request', {})
     need(event.get('action') == 'labeled' and
-         event.get('label', {}).get('name') == LABEL and
+         event.get('label', {}).get('name') == (LABEL if version==1 else 'x86-native-font-selection-v2') and
          event.get('sender', {}).get('login') == 'CrispStrobe' and
          event.get('repository', {}).get('full_name') == REPOSITORY and
          type(event.get('number')) is int and event['number'] == request['pullRequest'] and
@@ -221,12 +227,13 @@ def admitted_event(raw, request, env, expected_sha):
          pr.get('base', {}).get('ref') == 'main' and
          pr['base'].get('repo', {}).get('full_name') == REPOSITORY,
          'owned first-attempt font event')
-    marker = '<!-- BW_NATIVE_FONT_REQUEST_SHA256='+expected_sha+' -->'
+    marker_name = 'BW_NATIVE_FONT_REQUEST_SHA256' if version==1 else 'BW_NATIVE_FONT_V2_REQUEST_SHA256'
+    marker = '<!-- '+marker_name+'='+expected_sha+' -->'
     body = pr.get('body')
-    need(type(body) is str and body.count('<!-- BW_NATIVE_FONT_REQUEST_SHA256=') == 1 and
+    need(type(body) is str and body.count('<!-- '+marker_name+'=') == 1 and
          body.count(marker) == 1, 'one selected request marker')
     fixed = {'GITHUB_REPOSITORY': REPOSITORY, 'GITHUB_EVENT_NAME': 'pull_request',
-             'GITHUB_ACTOR': 'CrispStrobe', 'GITHUB_JOB': 'native-font-selection',
+             'GITHUB_ACTOR': 'CrispStrobe', 'GITHUB_JOB': 'native-font-selection' if version==1 else 'native-font-selection-v2',
              'GITHUB_RUN_ATTEMPT': '1', 'BW_EXPECTED_HEAD': request['source']['head'],
              'BW_EXPECTED_TREE': request['source']['tree'],
              'GITHUB_WORKFLOW_REF': REPOSITORY+'/'+WORKFLOW+'@refs/pull/'+str(request['pullRequest'])+'/merge'}
@@ -235,6 +242,10 @@ def admitted_event(raw, request, env, expected_sha):
     need(type(env.get('GITHUB_RUN_ID')) is str and POSINT.fullmatch(env['GITHUB_RUN_ID']) and
          type(env.get('GITHUB_WORKFLOW_SHA')) is str and HEX40.fullmatch(env['GITHUB_WORKFLOW_SHA']),
          'actual run and workflow identity')
+    if version==2:
+        for name in ('BW_NATIVE_V2_INVOKER_UID','BW_NATIVE_V2_INVOKER_GID'):
+            need(type(env.get(name)) is str and POSINT.fullmatch(env[name]) and
+                 int(env[name])<2**31, 'source-configured unprivileged invoker identity')
     return event
 
 
@@ -297,9 +308,10 @@ def process_result(value, stage, selection):
     return {'file': parts[0], 'family': parts[1], 'style': parts[2], 'index': 0}
 
 
-def service_snapshot(value, phase):
-    keys(value, 'unit cgroupPath selfPid cpuMax memoryMax swapMax pidsMax memoryCurrent pidsCurrent populated frozen procs threads childCgroups nrDescendants nrDyingDescendants oomKill pidsLimitEvents', phase+' service')
-    need(type(value['unit']) is str and re.fullmatch(r'bw-native-font-[1-9][0-9]{0,19}-1\.service',value['unit']),
+def service_snapshot(value, phase, version=1):
+    keys(value, 'unit cgroupPath selfPid cpuMax memoryMax swapMax pidsMax memoryCurrent pidsCurrent populated frozen procs threads childCgroups nrDescendants nrDyingDescendants oomKill pidsLimitEvents'+(' processIdentity selfProc' if version==2 else ''), phase+' service')
+    prefix='bw-native-font-' if version==1 else 'bw-native-font-v2-'
+    need(type(value['unit']) is str and re.fullmatch(prefix+r'[1-9][0-9]{0,19}-1\.service',value['unit']),
          'selected transient service unit')
     need(type(value['cgroupPath']) is str and
          value['cgroupPath']=='/system.slice/'+value['unit'], 'selected service cgroup')
@@ -319,12 +331,33 @@ def service_snapshot(value, phase):
          'exclusive service process and no live/dying descendant cgroups')
     integer(value['oomKill'],0,2**63-1)
     integer(value['pidsLimitEvents'],0,2**63-1)
+    if version==2:
+        identity=value['processIdentity'];keys(identity,'uid gid resuid resgid','service process identity')
+        for name in ('uid','gid'):integer(identity[name],1,2**31-1)
+        need(identity['resuid']==[identity['uid']]*3 and identity['resgid']==[identity['gid']]*3,
+             'unprivileged process identity triplets')
+        witness=value['selfProc']
+        keys(witness,'path role before after named bytesRead prefixBytes prefixSha256 prefixBase64 closeAttempted closed complete','self proc witness')
+        need(witness['path']=='/proc/self/cgroup' and witness['role']=='self-proc' and
+             witness['complete'] is True and witness['closeAttempted'] is True and witness['closed'] is True,
+             'complete selected self proc read')
+        for row in (witness['before'],witness['after'],witness['named']):
+            keys(row,'dev ino mode uid gid','self proc object')
+            for item in row.values():integer(item,0,2**64-1)
+        need(witness['before']==witness['after']==witness['named'] and
+             stat.S_ISREG(witness['before']['mode']) and
+             witness['before']['uid']==identity['uid'] and witness['before']['gid']==identity['gid'],
+             'self proc owner is actual configured process')
+        raw=('0::'+value['cgroupPath']+'\n').encode()
+        need(witness['bytesRead']==witness['prefixBytes']==len(raw) and witness['prefixSha256']==sha(raw) and
+             witness['prefixBase64']==base64.b64encode(raw).decode(), 'exact self membership bytes')
 
 
-def collect(request_raw, expected_sha, env, ops):
+def collect(request_raw, expected_sha, env, ops, version=1):
     """Pure orchestration over injected edges; all source controls use fakes."""
-    need(ENABLED is True, 'native font producer disabled before any observation')
-    value = {'schema': ORIGINAL, 'request': None, 'event': None, 'platform': None,
+    need(type(version) is int and version in (1,2), 'closed native collector version')
+    need((ENABLED if version==1 else V2_ENABLED) is True, 'native font producer disabled before any observation')
+    value = {'schema': ORIGINAL if version==1 else ORIGINAL_V2, 'request': None, 'event': None, 'platform': None,
              'source': None, 'input': None, 'stage': None, 'config': None,
              'cacheBefore': None, 'process': None, 'cacheAfter': None,
              'selection': None, 'nativeRuntime': None, 'service':{'before':None,'after':None},
@@ -334,17 +367,21 @@ def collect(request_raw, expected_sha, env, ops):
              'selectedNativeRuntimeReadbackProved': False, 'wholeHostAttested': False,
              'browserFontSelectionProved': False, 'actualRequestSupported': False,
              'guestApproved': False}
+    if version==2:value['servicePartial']=None
     first = None; secondary = []; stage = None; child_uncertain = False
     try:
-        request = admitted_request(request_raw, expected_sha)
+        request = admitted_request(request_raw, expected_sha, version)
         value['request'] = {'bytes': len(request_raw), 'sha256': sha(request_raw)}
         event_raw = ops.event()
-        admitted_event(event_raw, request, env, expected_sha)
+        admitted_event(event_raw, request, env, expected_sha, version)
         value['event'] = {'bytes': len(event_raw), 'sha256': sha(event_raw)}
         value['platform'] = {name: env[name] for name in (
             'GITHUB_REPOSITORY','GITHUB_EVENT_NAME','GITHUB_ACTOR','GITHUB_JOB',
             'GITHUB_RUN_ATTEMPT','GITHUB_RUN_ID','GITHUB_WORKFLOW_SHA',
             'GITHUB_WORKFLOW_REF','BW_EXPECTED_HEAD','BW_EXPECTED_TREE')}
+        if version==2:
+            value['platform'].update({name:env[name] for name in
+                ('BW_NATIVE_V2_INVOKER_UID','BW_NATIVE_V2_INVOKER_GID')})
         need(ops.git() == {'head': request['source']['head'], 'tree': request['source']['tree']},
              'exact checkout source identity')
         observed = {}
@@ -355,7 +392,7 @@ def collect(request_raw, expected_sha, env, ops):
             observed[path] = {'bytes': len(raw), 'sha256': sha(raw)}
         value['source'] = observed
         value['service']['before'] = ops.service('before')
-        service_snapshot(value['service']['before'], 'before')
+        service_snapshot(value['service']['before'], 'before', version)
         tool = ops.tool('/usr/bin/fc-match', 8<<20)
         need(type(tool) is bytes and len(tool) == request['selection']['tool']['bytes'] and
              sha(tool) == request['selection']['tool']['sha256'], 'exact selected native tool before input GET')
@@ -411,7 +448,7 @@ def collect(request_raw, expected_sha, env, ops):
         cache_snapshot(value['cacheAfter'], 'after')
         need(value['cacheAfter']['root'] == stage['cacheDir'], 'same owned cache after process')
         value['service']['after'] = ops.service('after')
-        service_snapshot(value['service']['after'], 'after')
+        service_snapshot(value['service']['after'], 'after', version)
         need(value['service']['after']['cgroupPath']==value['service']['before']['cgroupPath'] and
              value['service']['after']['unit']==value['service']['before']['unit'] and
              value['service']['after']['selfPid']==value['service']['before']['selfPid'] and
@@ -423,6 +460,7 @@ def collect(request_raw, expected_sha, env, ops):
         secondary.extend(getattr(exc, 'native_secondary', []))
         child_uncertain = getattr(exc, 'native_child_uncertain', False)
         value['failurePartial']=getattr(exc,'native_partial',None)
+        if version==2:value['servicePartial']=getattr(ops,'service_partial',None)
     finally:
         if stage is not None and child_uncertain:
             secondary.append(error_row(ValueError('owned stage cleanup deferred: child lifetime unknown'),
@@ -451,11 +489,15 @@ def collect(request_raw, expected_sha, env, ops):
 
 class LiveOps:
     """Bounded selected host edges behind the admitted event and source gates."""
-    def __init__(self, env):
+    def __init__(self, env, version=1):
         self.env = dict(env)
+        need(type(version) is int and version in (1,2),'closed live native version')
+        self.version = version
         self.root = None
         self.root_identity = None
         self.owned = {}
+        self.service_partial = None
+        self.self_proc_witness = None
 
     @staticmethod
     def identity(info):
@@ -495,26 +537,74 @@ class LiveOps:
         absolute(path)
         return self.regular(path,256<<10)
 
-    def pseudo(self,path,cap=8192):
-        descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC)
-        first=None;parts=[];count=0
+    def process_identity(self):
+        """The reviewed workflow chooses these IDs; no request field supplies them."""
+        uid=self.env.get('BW_NATIVE_V2_INVOKER_UID');gid=self.env.get('BW_NATIVE_V2_INVOKER_GID')
+        need(type(uid) is str and POSINT.fullmatch(uid) and int(uid)<2**31 and
+             type(gid) is str and POSINT.fullmatch(gid) and int(gid)<2**31,
+             'source-bound numeric invoker identity')
+        resuid=list(os.getresuid());resgid=list(os.getresgid())
+        observed={'uid':int(uid),'gid':int(gid),'resuid':resuid,'resgid':resgid}
+        if self.service_partial is not None:self.service_partial['processIdentity']=observed
+        need(resuid==[int(uid)]*3 and resgid==[int(gid)]*3,
+             'actual service identities match configured unprivileged invoker')
+        return observed
+
+    def pseudo(self,path,cap=8192,role='cgroup'):
+        need(type(cap) is int and 0<cap<=8192,'finite pseudo text cap')
+        witness=None
+        if self.version==2:
+            need(role in ('self-proc','cgroup'),'closed pseudo text role')
+            if self.service_partial is not None:self.service_partial['lastPath']=path
+            if role=='self-proc':
+                need(path=='/proc/self/cgroup' and cap==4096 and self.service_partial is not None,
+                     'only exact selected self proc endpoint')
+                owner=self.service_partial['processIdentity']
+                need(owner is not None,'process identity precedes self proc')
+                witness={'path':path,'role':role,'before':None,'after':None,'named':None,
+                    'bytesRead':0,'prefixBytes':0,'prefixSha256':sha(b''),'prefixBase64':'',
+                    'closeAttempted':False,'closed':False,'complete':False}
+                self.self_proc_witness=witness;self.service_partial['selfProc']=witness
+            else:
+                run=self.env.get('GITHUB_RUN_ID','')
+                need(type(run) is str and POSINT.fullmatch(run),'selected cgroup run')
+                base='/sys/fs/cgroup/system.slice/bw-native-font-v2-'+run+'-1.service/'
+                need(path.startswith(base) and path[len(base):] in (
+                    'cpu.max','memory.max','memory.swap.max','pids.max','memory.current',
+                    'pids.current','cgroup.events','memory.events','pids.events',
+                    'cgroup.stat','cgroup.procs','cgroup.threads'), 'exact selected kernel cgroup text')
+        descriptor=None;first=None;parts=[];count=0
         try:
+            descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC)
             before=os.fstat(descriptor)
-            need(stat.S_ISREG(before.st_mode) and before.st_uid==0,
-                 'root-owned cgroup or proc text')
+            identity=lambda x:{key:getattr(x,'st_'+key) for key in ('dev','ino','mode','uid','gid')}
+            if witness is not None:witness['before']=identity(before)
+            need(stat.S_ISREG(before.st_mode),'regular cgroup or proc text')
+            if witness is not None:
+                need(before.st_uid==owner['uid'] and before.st_gid==owner['gid'],
+                     'self proc owner matches configured process identity')
+            else:need(before.st_uid==0,'root-owned cgroup or proc text')
             while True:
                 part=os.read(descriptor,min(4096,cap+1-count))
                 if not part:break
                 count+=len(part);need(count<=cap,'bounded cgroup text')
                 parts.append(part)
             after=os.fstat(descriptor);named=os.lstat(path)
+            if witness is not None:witness.update(after=identity(after),named=identity(named))
             stable=lambda x:(x.st_dev,x.st_ino,x.st_mode,x.st_uid,x.st_gid)
             need(stable(before)==stable(after)==stable(named),'same cgroup/proc text object')
         except BaseException as exc:first=exc
-        try:os.close(descriptor)
-        except BaseException as exc:
-            if first is None:first=exc
-            else:first.native_secondary=getattr(first,'native_secondary',[])+[error_row(exc,'pseudo-close')]
+        if descriptor is not None:
+            if witness is not None:witness['closeAttempted']=True
+            try:
+                os.close(descriptor)
+                if witness is not None:witness['closed']=True
+            except BaseException as exc:
+                if first is None:first=exc
+                else:first.native_secondary=getattr(first,'native_secondary',[])+[error_row(exc,'pseudo-close')]
+        if witness is not None:
+            raw=b''.join(parts);witness.update(bytesRead=count,prefixBytes=len(raw),prefixSha256=sha(raw),
+                prefixBase64=base64.b64encode(raw).decode(),complete=first is None)
         if first is not None:raise first
         return b''.join(parts).decode('ascii','strict')
 
@@ -522,8 +612,14 @@ class LiveOps:
         need(phase in ('before','after'),'finite service observation phase')
         run=self.env.get('GITHUB_RUN_ID','')
         need(type(run) is str and POSINT.fullmatch(run),'selected service run ID')
-        unit='bw-native-font-'+run+'-1.service'
-        lines=self.pseudo('/proc/self/cgroup',4096).splitlines()
+        unit=('bw-native-font-' if self.version==1 else 'bw-native-font-v2-')+run+'-1.service'
+        identity=None
+        if self.version==2:
+            self.service_partial={'phase':phase,'unit':unit,'processIdentity':None,
+                                  'lastPath':None,'selfProc':None}
+            identity=self.process_identity()
+        lines=self.pseudo('/proc/self/cgroup',4096,
+                          'cgroup' if self.version==1 else 'self-proc').splitlines()
         need(len(lines)==1 and lines[0].startswith('0::'),'unified service cgroup')
         path=lines[0][3:]
         need(path=='/system.slice/'+unit,'exact selected transient service cgroup')
@@ -550,7 +646,7 @@ class LiveOps:
         with os.scandir(base) as scan:
             child_cgroups=sorted(entry.name for entry in scan if entry.is_dir(follow_symlinks=False))
         need(len(child_cgroups)<=64,'finite child cgroup census')
-        return {'unit':unit,'cgroupPath':path,'selfPid':os.getpid(),
+        result={'unit':unit,'cgroupPath':path,'selfPid':os.getpid(),
             'cpuMax':[int(x) for x in cpu],'memoryMax':scalar('memory.max'),
             'swapMax':scalar('memory.swap.max'),'pidsMax':scalar('pids.max'),
             'memoryCurrent':scalar('memory.current'),'pidsCurrent':scalar('pids.current'),
@@ -559,6 +655,10 @@ class LiveOps:
             'childCgroups':child_cgroups,'nrDescendants':cstat.get('nr_descendants'),
             'nrDyingDescendants':cstat.get('nr_dying_descendants'),
             'oomKill':memory.get('oom_kill'),'pidsLimitEvents':pids.get('max')}
+        if self.version==2:
+            result.update(processIdentity=identity,selfProc=self.self_proc_witness)
+            self.service_partial=None
+        return result
 
     def git(self):
         clean={'LANG':'C.UTF-8','HOME':'/nonexistent','PATH':'/usr/bin:/bin'}
@@ -663,7 +763,7 @@ class LiveOps:
         need(type(run) is str and POSINT.fullmatch(run),'selected run before stage')
         parent=self.env.get('RUNNER_TEMP','')
         absolute(parent)
-        root=Path(parent)/('bw-native-font-'+run+'-1')
+        root=Path(parent)/(('bw-native-font-' if self.version==1 else 'bw-native-font-v2-')+run+'-1')
         os.mkdir(root,0o700);self.root=root
         self.root_identity=self.directory_identity(root.lstat())
         font_dir=root/'font';cache_dir=root/'cache'
@@ -803,18 +903,22 @@ class LiveOps:
         os.rmdir(self.root);self.root=None
 
 
-def finalize_service(original_path, output_path, service_exit, env):
+def finalize_service(original_path, output_path, service_exit, env, version=1):
     """Outside-service finite terminal facts; called once after systemd-run exits."""
-    need(ENABLED is True,'disabled service finalizer before any IO')
+    need(type(version) is int and version in (1,2),'closed finalizer version')
+    need((ENABLED if version==1 else V2_ENABLED) is True,'disabled service finalizer before any IO')
     integer(service_exit,0,255)
     run=env.get('GITHUB_RUN_ID','')
     need(type(run) is str and POSINT.fullmatch(run),'selected outside service run')
-    unit='bw-native-font-'+run+'-1.service';cgpath='/system.slice/'+unit
-    ops=LiveOps(env)
-    result={'schema':SERVICE_ORIGINAL,'unit':unit,'cgroupPath':cgpath,
+    unit=('bw-native-font-' if version==1 else 'bw-native-font-v2-')+run+'-1.service';cgpath='/system.slice/'+unit
+    ops=LiveOps(env,version)
+    result={'schema':SERVICE_ORIGINAL if version==1 else SERVICE_ORIGINAL_V2,'unit':unit,'cgroupPath':cgpath,
             'serviceExitCode':service_exit,'originalPresent':False,
             'pre':None,'cleanup':None,'post':None,
             'outsideFiniteCleanupProved':False,'firstFailure':None,'secondary':[]}
+    if version==2:
+        result.update(invokerIdentity=None,innerComplete=False,innerBeforeObserved=False,
+                      innerFirstFailure=None)
     first=None;secondary=[]
     def record(exc,phase):
         nonlocal first
@@ -823,15 +927,54 @@ def finalize_service(original_path, output_path, service_exit, env):
         else:secondary.append(row)
         secondary.extend(getattr(exc,'native_secondary',[]))
     try:
+        if version==2:
+            try:result['invokerIdentity']=ops.process_identity()
+            except BaseException as exc:record(exc,'outside-invoker-identity')
         try:
             original=ops.regular(original_path,LIMITS['originalBytes'])
             body=parse(original[:-1] if original.endswith(b'\n') else original,LIMITS['originalBytes'])
             result['originalPresent']=True
-            need(body['service']['before']['unit']==unit and
-                 body['service']['before']['cgroupPath']==cgpath,
-                 'outside selected original service join')
+            if version==1:
+                need(body['service']['before']['unit']==unit and
+                     body['service']['before']['cgroupPath']==cgpath,
+                     'outside selected original service join')
+            else:
+                need(result['invokerIdentity'] is not None and body.get('schema')==ORIGINAL_V2 and type(body.get('platform')) is dict and
+                     body['platform'].get('GITHUB_RUN_ID')==run and
+                     body['platform'].get('GITHUB_JOB')=='native-font-selection-v2' and
+                     body['platform'].get('BW_NATIVE_V2_INVOKER_UID')==str(result['invokerIdentity']['uid']) and
+                     body['platform'].get('BW_NATIVE_V2_INVOKER_GID')==str(result['invokerIdentity']['gid']) and
+                     type(body.get('service')) is dict and set(body['service'])=={'before','after'} and
+                     type(body.get('complete')) is bool, 'outside v2 original/platform join')
+                before=body['service']['before'];result['innerBeforeObserved']=before is not None
+                result['innerComplete']=body['complete'];result['innerFirstFailure']=body.get('firstFailure')
+                if before is not None:
+                    need(type(before) is dict and before.get('unit')==unit and
+                         before.get('cgroupPath')==cgpath and
+                         before.get('processIdentity')==result['invokerIdentity'],
+                         'outside v2 observed service identity')
+                if body.get('firstFailure') is not None:
+                    fact=body['firstFailure'];keys(fact,'phase name message','inner first failure')
+                    need(all(type(fact[k]) is str and len(fact[k])<=512 for k in fact),
+                         'bounded inner first failure')
+                    if first is not None:secondary.insert(0,first)
+                    first=dict(fact)
+                    need(type(body.get('secondary')) is list and len(body['secondary'])<=32,
+                         'bounded inner secondary')
+                    for fact in body['secondary']:
+                        keys(fact,'phase name message','inner secondary')
+                        need(all(type(fact[k]) is str and len(fact[k])<=512 for k in fact),
+                             'bounded inner secondary text')
+                        secondary.append(dict(fact))
+                else:
+                    need(body['complete'] is True and before is not None and
+                         body.get('secondary')==[], 'inner observation incomplete without retained failure')
+                if body['complete'] is False and first is None:
+                    raise ValueError('inner observation incomplete')
+                need((service_exit==0)==(body['complete'] is True),
+                     'inner completeness and service exit agree')
         except FileNotFoundError:
-            pass
+            if version==2:record(FileNotFoundError('v2 inner original absent'),'outside-original-join')
         except BaseException as exc:
             record(exc,'outside-original-join')
         def command(args):
@@ -899,7 +1042,12 @@ def finalize_service(original_path, output_path, service_exit, env):
                  cgroup['nrDescendants']==0 and cgroup['nrDyingDescendants']==0))
             need(terminal_cgroup and post_state['ActiveState']=='inactive' and
                  post_state['LoadState'] in ('not-found','loaded') and
-                 (stop_rc is None or stop_rc==0) and (reset_rc is None or reset_rc==0),
+                 (version==1 or (post_state['MainPID']=='0' and post_state['ControlPID']=='0' and
+                                  post_state['ControlGroup'] in ('',cgpath))) and
+                 ((stop_rc is None or stop_rc==0) if version==1 else
+                  (stop_rc==0 if stop_attempted else stop_rc is None)) and
+                 ((reset_rc is None or reset_rc==0) if version==1 else
+                  (reset_rc==0 if reset_attempted else reset_rc is None)),
                  'outside finite service and descendant terminal cleanup')
             result['outsideFiniteCleanupProved']=True
         except BaseException as exc:record(exc,'outside-after-census')
@@ -959,6 +1107,7 @@ def main(argv=None):
     parser.add_argument('--observe', action='store_true')
     parser.add_argument('--finalize', action='store_true')
     parser.add_argument('--retain-event', action='store_true')
+    parser.add_argument('--protocol-v2', action='store_true')
     parser.add_argument('--event-out')
     parser.add_argument('--request')
     parser.add_argument('--expected-sha256')
@@ -966,7 +1115,8 @@ def main(argv=None):
     parser.add_argument('--service-out')
     parser.add_argument('--service-exit',type=int)
     args = parser.parse_args(argv)
-    need(ENABLED is True,'disabled producer refuses before any IO')
+    version=2 if args.protocol_v2 else 1
+    need((ENABLED if version==1 else V2_ENABLED) is True,'disabled producer refuses before any IO')
     if args.retain_event:
         need(args.event_out and not any((args.observe,args.finalize,args.request,args.expected_sha256,
              args.original,args.service_out,args.service_exit is not None)), 'exact event retention arguments')
@@ -982,7 +1132,7 @@ def main(argv=None):
     if args.finalize:
         need(not args.observe and args.original and args.service_out and
              args.service_exit is not None,'exact finalizer arguments')
-        return finalize_service(args.original,args.service_out,args.service_exit,dict(os.environ))
+        return finalize_service(args.original,args.service_out,args.service_exit,dict(os.environ),version)
     need(args.observe and not args.finalize,'selected inner observer')
     need(args.request and args.expected_sha256, 'exact external request path and hash')
     digest(args.expected_sha256)
@@ -998,7 +1148,7 @@ def main(argv=None):
              LiveOps.identity(request_path.lstat()),
              'stable exact admitted request bytes')
     finally:os.close(descriptor)
-    original = collect(raw,args.expected_sha256,dict(os.environ),LiveOps(os.environ))
+    original = collect(raw,args.expected_sha256,dict(os.environ),LiveOps(os.environ,version),version)
     need(sys.stdout.buffer.write(original) == len(original), 'complete bounded original output')
     sys.stdout.buffer.flush()
     return 0 if parse(original[:-1],LIMITS['originalBytes'])['complete'] else 1
