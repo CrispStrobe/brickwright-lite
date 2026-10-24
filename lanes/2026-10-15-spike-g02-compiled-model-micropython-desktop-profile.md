@@ -70,3 +70,11 @@ runtime and its legacy support, the original script staged the pairing and the
 fixed script refuses it. This fixes packaging admission only; a compiled-support
 installed MicroPython UART/generation qualification remains required, and no
 installed guest result is claimed here.
+
+The hosted qualification producer had the same gap: its closed compile-pin
+vocabulary had no `BW_RENODE_MICROPYTHON_PROFILE_SHA256`, so it could only
+build legacy-overlay executables. The envelope adds
+`scripts/native-installed-qualification.py` and
+`test/native-installed-qualification-controls.py`: the profile pin is now an
+optional, complete lowercase SHA-256 passed to the compiler like the other
+pins. All other pins and admission rules are unchanged.
