@@ -46,7 +46,17 @@ if (!manifest || Array.isArray(manifest) || Object.keys(manifest).length!==names
     names.some(name=>!Object.hasOwn(manifest,name) || !/^[0-9a-f]{64}$/.test(manifest[name]))) {
     throw new Error('Support manifest must contain the closed MicroPython profile');
 }
-const runtimeSha256=digest(await readFile(runtime));
+const runtimeBytes=await readFile(runtime);
+const runtimeSha256=digest(runtimeBytes);
+// A runtime with compiled Prime models already defines the overlay's model
+// types. Renode then aborts the models.cs include ("assembly ... already
+// loaded"), the platform cannot resolve its peripherals, and no debugger
+// endpoint ever opens. Such a runtime needs the compiled support profile.
+// .NET metadata stores type names apart from namespaces, so match the bare
+// names of the overlay's port interface and its electrical-port command.
+if (!compiled && ['ILpf2Device','CreatePrimeElectricalPorts'].every(name=>runtimeBytes.includes(name))) {
+    throw new Error('Runtime already contains compiled Prime models; assemble compiled MicroPython support for it');
+}
 
 for (const name of names) {
     const file=await realpath(join(source,name)),meta=await stat(file);
