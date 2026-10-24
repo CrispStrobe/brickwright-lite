@@ -213,6 +213,9 @@ try {
     await scope.getByTestId('bw-scope-hold').click();
     const heldText = await acq.textContent();
     const heldPixels = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
+    // This source repeats after a 50ms tick. A viewport change makes the
+    // frozen-picture check sensitive even when two waveform phases coincide.
+    await scope.getByTestId('bw-scope-center-0').fill('2');
     await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
     assert.equal(await page.evaluate(h => window.__board.getScopeData(h).count, prefix.handle), 15000);
     assert.equal(await acq.textContent(), heldText, 'HOLD metadata must stay with its frozen picture');
@@ -220,6 +223,7 @@ try {
     await scope.getByTestId('bw-scope-hold').click();
     await page.waitForFunction(old => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
         ?.getAttribute('data-start-time-ns') !== old, wrappedStart);
+    await page.waitForFunction(old => document.querySelector('[data-scope-panel] canvas')?.toDataURL() !== old, heldPixels);
     await scope.getByTestId('bw-scope-view-spectrum').click();
     await page.waitForFunction(() => window.__board.getScopeChannels()
         .some(h => window.__board.getScopeData(h).capture === 'sample'));
@@ -234,7 +238,7 @@ try {
     const nyquistHz = Number(frequency[1]) * ({MHz: 1e6, kHz: 1e3, Hz: 1}[frequency[2]]);
     assert.equal(nyquistHz, 1e9 / Number(await acq.getAttribute('data-interval-ns')) / 2);
     const scopeDisplay = {actualPrefix: prefix.count, ringWrap: true, viewportWarningAndClear: true,
-        rawCsvByteIdentical: true, holdWhileAcquiring: true, pointSampleNyquistHz: nyquistHz,
+        rawCsvByteIdentical: true, holdWhileAcquiring: true, holdDespiteViewportChange: true, resumeVisiblyRedraws: true, pointSampleNyquistHz: nyquistHz,
         analogAntiAliasModeled: false, physicalAccuracyClaim: false};
 
     const assets = await page.locator('script[src],link[rel="stylesheet"][href]').evaluateAll(nodes =>
