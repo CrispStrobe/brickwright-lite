@@ -35,6 +35,20 @@ LICENSE_URL = ('https://raw.githubusercontent.com/google/fonts/'
                '90d7886db9000c893b9559828bf028aaed5f9c10/apache/robotomono/LICENSE.txt')
 LICENSE_BYTES = 11358
 LICENSE_SHA = 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30'
+GOOGLE_FONTS_RAW = 'https://raw.githubusercontent.com/google/fonts/'
+
+
+def google_fonts_raw_url(url):
+    need(type(url) is str and len(url)<=512 and url.startswith(GOOGLE_FONTS_RAW),
+         'fixed Google Fonts raw origin')
+    commit,separator,path=url[len(GOOGLE_FONTS_RAW):].partition('/')
+    need(separator=='/' and re.fullmatch(r'[0-9a-f]{40}',commit) is not None and path,
+         'full immutable Google Fonts commit and nonempty path')
+    need(all(part not in ('','.','..') and
+             re.fullmatch(r'(?:[A-Za-z0-9._~-]|%5[Bb]|%5[Dd])+',part) is not None
+             for part in path.split('/')),
+         'canonical safe Google Fonts path without query or traversal')
+    return url
 
 class Refusal(ValueError): pass
 
@@ -132,6 +146,7 @@ def request(raw):
     for item in s['files'].values():fields(item,'sha256','source file');hexhash(item['sha256'])
     fields(v['selection'],'font tool query runtime','selection')
     f=v['selection']['font'];fields(f,'url bytes sha256 licenseUrl licenseBytes licenseSha256 family','font')
+    google_fonts_raw_url(f['url']);google_fonts_raw_url(f['licenseUrl'])
     need(f=={'url':FONT_URL,'bytes':FONT_BYTES,'sha256':FONT_SHA,
              'licenseUrl':LICENSE_URL,'licenseBytes':LICENSE_BYTES,
              'licenseSha256':LICENSE_SHA,'family':'Roboto Mono'},'reviewed immutable font and notice')

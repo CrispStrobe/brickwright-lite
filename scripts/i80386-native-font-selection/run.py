@@ -52,6 +52,21 @@ LICENSE_URL = ('https://raw.githubusercontent.com/google/fonts/'
                'apache/robotomono/LICENSE.txt')
 LICENSE_BYTES = 11358
 LICENSE_SHA = 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30'
+GOOGLE_FONTS_RAW = 'https://raw.githubusercontent.com/google/fonts/'
+
+
+def google_fonts_raw_url(url):
+    need(type(url) is str and len(url)<=512 and url.startswith(GOOGLE_FONTS_RAW),
+         'fixed Google Fonts raw origin')
+    commit,separator,path=url[len(GOOGLE_FONTS_RAW):].partition('/')
+    need(separator=='/' and re.fullmatch(r'[0-9a-f]{40}',commit) is not None and path,
+         'full immutable Google Fonts commit and nonempty path')
+    need(all(part not in ('','.','..') and
+             re.fullmatch(r'(?:[A-Za-z0-9._~-]|%5[Bb]|%5[Dd])+',part) is not None
+             for part in path.split('/')),
+         'canonical safe Google Fonts path without query or traversal')
+    return url
+
 HEX40 = re.compile(r'[0-9a-f]{40}\Z')
 HEX64 = re.compile(r'[0-9a-f]{64}\Z')
 POSINT = re.compile(r'[1-9][0-9]{0,19}\Z')
@@ -149,6 +164,7 @@ def admitted_request(raw, expected_sha):
     selection = value['selection']; keys(selection, 'font tool query runtime', 'selection')
     font = selection['font']
     keys(font, 'url bytes sha256 licenseUrl licenseBytes licenseSha256 family', 'font')
+    google_fonts_raw_url(font['url']);google_fonts_raw_url(font['licenseUrl'])
     need(font['url']==FONT_URL and font['bytes']==FONT_BYTES and font['sha256']==FONT_SHA and
          font['licenseUrl']==LICENSE_URL and font['licenseBytes']==LICENSE_BYTES and
          font['licenseSha256']==LICENSE_SHA,
@@ -550,6 +566,7 @@ class LiveOps:
         return self.regular(str(Path.cwd()/path),1<<20)
 
     def input(self,path,cap):
+        google_fonts_raw_url(path)
         selected={FONT_URL:(FONT_BYTES,FONT_SHA),LICENSE_URL:(LICENSE_BYTES,LICENSE_SHA)}
         need(path in selected and cap == selected[path][0], 'one immutable selected font/notice URL')
         class NoRedirect(urllib.request.HTTPRedirectHandler):

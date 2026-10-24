@@ -228,6 +228,24 @@ class Controls(unittest.TestCase):
                        lambda x:x['selection']['font'].__setitem__('url','https://example.invalid/escape.ttf')):
             bad=copy.deepcopy(request);mutate(bad);candidate=producer.encode(bad)
             with self.assertRaises(ValueError):producer.admitted_request(candidate,producer.sha(candidate))
+    def test_google_fonts_urls_require_full_commit_and_safe_path_before_get(self):
+        for selected in (producer.FONT_URL,producer.LICENSE_URL):
+            self.assertEqual(producer.google_fonts_raw_url(selected),selected)
+            self.assertEqual(reader.google_fonts_raw_url(selected),selected)
+        root='https://raw.githubusercontent.com/google/fonts/'
+        bad=(root+'main/apache/robotomono/RobotoMono%5Bwght%5D.ttf',
+             root+'90d7886/apache/robotomono/RobotoMono%5Bwght%5D.ttf',
+             root+'A'*40+'/font.ttf',root+'a'*40+'/',
+             root+'a'*40+'/../font.ttf',root+'a'*40+'/%2e%2e/font.ttf',
+             root+'a'*40+'/font%2Fother.ttf',root+'a'*40+'/font\\name.ttf',
+             root+'a'*40+'/font.ttf?branch=main',root+'a'*40+'/font.ttf#part',
+             root+'a'*40+'/font\n.ttf')
+        with patch.object(producer.urllib.request,'build_opener') as network:
+            for url in bad:
+                with self.subTest(url=url),self.assertRaises(ValueError):producer.google_fonts_raw_url(url)
+                with self.subTest(url=url),self.assertRaises(reader.Refusal):reader.google_fonts_raw_url(url)
+                with self.subTest(url=url),self.assertRaises(ValueError):producer.LiveOps({}).input(url,1)
+            network.assert_not_called()
     def test_input_drift_before_stage_and_cleanup_failure_are_retained(self):
         raw,*_,ops=self.produce('font-drift')
         v=reader.parse(raw,reader.LIMITS['originalBytes'],lf=True)
