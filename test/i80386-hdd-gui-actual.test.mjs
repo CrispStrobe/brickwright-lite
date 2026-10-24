@@ -25,7 +25,11 @@ PNG=b'\x89PNG\r\n\x1a\nmanufactured'
 def zip_(files):
     out=io.BytesIO()
     with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-        for name,raw in sorted(files.items()):archive.writestr(name,raw)
+        for name,raw in sorted(files.items()):
+            info=zipfile.ZipInfo(name,(1980,1,1,0,0,0))
+            info.compress_type=archive.compression
+            info.external_attr=((0o40775<<16)|0x10) if info.filename.endswith('/') else 0o600<<16
+            archive.writestr(info,raw)
     return out.getvalue()
 def packet(files):
     files={k:v for k,v in files.items() if k!='inventory.json'}
@@ -198,6 +202,130 @@ def fixture_v4():
         value.update(schema='bw.gui-hdd.runtime-observation.v4',availableCpus=[0],rlimits={'4':[-1,-1],'1':[-1,-1],'7':[1024,1024]},emptyPythonSources={path:empty_v4_observation() for path in selected})
         files[name]=E(value)
     refresh_v4_request(files,expected,request);return files,expected
+
+def native_v5_refresh(files,expected,reference,originals,request=None):
+    reference['originals']={key:ROW(raw) for key,raw in originals.items()}
+    expected['nativeFontOriginals']={key:dict(ROW(raw),base64=base64.b64encode(raw).decode()) for key,raw in originals.items()}
+    expected['nativeFontReferenceSha256']=H(E(reference))
+    request=D(files['request.original.json']) if request is None else request
+    request['nativeFontAdmission']=reference
+    refresh_v4_request(files,expected,request)
+    if 'native-font.stage.json' in files:
+        value=D(files['native-font.stage.json']);value.update(requestSha256=expected['requestSha256'],referenceSha256=expected['nativeFontReferenceSha256'],eventSha256=H(files['event.original.json']));files['native-font.stage.json']=E(value)
+
+def finite_scope_fixture(version=4):
+    value={'basis':'selected-core-runtime-for-owned-v5-fontconfig','globalFontDiscovery':False,
+      'historicalGlobalRosterQualified':False,'nativeLibraryClosureProved':False,
+      'fontSelectionProved':False,'browserFontSelectionProved':False,'guestApproved':False}
+    if version==5:value['installedEmptyRegularScoped']=True
+    return value
+
+def finite_body_fixture(raw,version=4):
+    wrapper={'schema':'bw.gui-hdd.finite-inventory-transport.v5' if version==5 else 'bw.gui-hdd.finite-inventory-transport.v1',
+      'sha256':H(raw),'templateBase64':base64.b64encode(raw).decode()}
+    return '<!-- BW_GUI_HDD_FINITE_INVENTORY_V'+str(version)+'_BEGIN -->\n'+E(wrapper).decode()+'<!-- BW_GUI_HDD_FINITE_INVENTORY_V'+str(version)+'_END -->'
+
+def finite_guard_fixture(source,template_raw,event_raw,platform,version=4):
+    return {'schema':'bw.gui-hdd.finite-inventory-guard.v5' if version==5 else 'bw.gui-hdd.finite-inventory-guard.v1',
+      'pass':True,'templateSha256':H(template_raw),'eventSha256':H(event_raw),'source':source,
+      'platform':{key:platform.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
+      'setupTrustBoundary':{'bootstrapGitTrusted':True,'packageInstallerTrusted':True,'completeRuntimeBeforeSetupProved':False},
+      'fontSelectionProved':False,'browserFontSelectionProved':False,'guestApproved':False,'firstFailure':None,'secondary':[]}
+
+def use_finite_basis_fixture(request,expected,version=4):
+    stage,_=r.native_font_layout(request['nativeFontAdmission']);runtime=copy.deepcopy(request['runtime']);runtime.pop('emptyPythonSources')
+    runtime['files']={path:row for path,row in runtime['files'].items() if not path.startswith(str(stage)+'/')}
+    template={'schema':'bw.gui-hdd.inventory-template.v'+str(version),'sourceHead':request['source']['head'],'scope':finite_scope_fixture(version),
+      **{key:runtime[key] for key in ('node','python','chromium','tools')},'emptyPythonSources':request['runtime']['emptyPythonSources'],
+      'files':sorted(runtime['files']),'aliases':sorted(runtime['aliases']),'directoryAliases':sorted(runtime['directoryAliases']),
+      'libraries':sorted(path for path in runtime['files'] if path.startswith('/usr/lib/') and path.endswith('.so'))}
+    template_raw=E(template);prior=D(base64.b64decode(expected['inventoryOriginal']['base64']))
+    prior.update(schema='bw.gui-hdd.inventory-original.v'+str(version),runtime=runtime,installedFiles=copy.deepcopy(request['installedFiles']),
+      templateSha256=H(template_raw),scope=finite_scope_fixture(version),libraries=template['libraries'],fontSelectionProved=False,browserFontSelectionProved=False,guestApproved=False)
+    prior['platform']['GITHUB_JOB']='finite-inventory-five' if version==5 else 'finite-inventory-v'+str(version)
+    event=D(base64.b64decode(prior['event']['base64']));event['label']['name']='x86-hdd-gui-finite-inventory-v'+str(version);event['pull_request']['body']=finite_body_fixture(template_raw,version)
+    event_raw=E(event);prior['event']=dict(ROW(event_raw),base64=base64.b64encode(event_raw).decode())
+    guard_raw=E(finite_guard_fixture(request['source'],template_raw,event_raw,prior['platform'],version));prior['guardAdmission']=dict(ROW(guard_raw),base64=base64.b64encode(guard_raw).decode())
+    prior_raw=E(prior);expected['inventoryTemplate']=dict(ROW(template_raw),base64=base64.b64encode(template_raw).decode());expected['inventoryOriginal']=dict(ROW(prior_raw),base64=base64.b64encode(prior_raw).decode())
+    request['inventoryAdmission']['schema']='bw.gui-hdd.actual-finite-inventory-reference.v'+('2' if version==5 else '1')
+    request['inventoryAdmission']['metadataAdmission'].update(schema='bw.gui-hdd.inventory-admission.v'+str(version),template=ROW(template_raw),original=ROW(prior_raw))
+
+_FIXTURE_V5=None
+def fixture_v5():
+    global _FIXTURE_V5
+    if _FIXTURE_V5 is not None:return copy.deepcopy(_FIXTURE_V5)
+    # External independent native review is the input boundary of this consumer.
+    # Manufactured bytes below test joins only; no native/font/browser executes.
+    files,expected=fixture_v4();request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v5'
+    native_files={'/usr/bin/fc-match':ROW(b'font-tool'),'/usr/lib/libfontconfig-selected.so':ROW(b'font-library'),
+      '/checkout/gui-inputs/native-font/fonts/selected.ttf':ROW(b'font'),'/checkout/gui-inputs/native-font/NOTICE':ROW(b'notice')}
+    request['runtime']['files'].update(native_files)
+    request['installedFiles']['node_modules/bw-circuit-ui/package.json']=ROW(b'current-cui-package')
+    request['installedFiles']['node_modules/bw-circuit-ui/src/current.js']=ROW(b'current-cui-source')
+    for stage in ('before','after'):files['installed.'+stage+'.json']=E(request['installedFiles'])
+    native_runtime={'files':{path:{'bytes':row['byteLength'],'sha256':row['sha256']} for path,row in native_files.items() if path in ('/usr/bin/fc-match','/usr/lib/libfontconfig-selected.so')},'aliases':{},'directoryAliases':{}}
+    source={'head':'e'*40,'tree':'f'*40,'files':{path:{'sha256':H(('native-source:'+path).encode())} for path in r.NATIVE_FONT_SOURCE}}
+    font={'url':'https://raw.githubusercontent.com/google/fonts/'+('9'*40)+'/apache/selected/font.ttf','bytes':4,'sha256':H(b'font'),'licenseUrl':'https://raw.githubusercontent.com/google/fonts/'+('9'*40)+'/apache/selected/NOTICE.txt','licenseBytes':6,'licenseSha256':H(b'notice'),'family':'Authored Fixture'}
+    tool={'path':'/usr/bin/fc-match','bytes':9,'sha256':H(b'font-tool')}
+    query={'pattern':'monospace:lang=en','format':'%{file}\t%{family}\t%{style}\t%{index}\n'}
+    native={'schema':'bw.gui-hdd.native-font-request.v1','repository':r.REPOSITORY,'pullRequest':124,'source':source,
+      'selection':{'font':font,'tool':tool,'query':query,'runtime':native_runtime},'limits':{}}
+    native_raw=E(native).rstrip(b'\n');repo={'full_name':r.REPOSITORY,'fork':False}
+    event={'action':'labeled','label':{'name':'x86-native-font-selection-v1'},'sender':{'login':'CrispStrobe'},'repository':repo,'number':124,
+      'pull_request':{'number':124,'state':'open','head':{'sha':source['head'],'repo':repo},'base':{'ref':'main','repo':repo},
+       'body':'<!-- BW_NATIVE_FONT_REQUEST_SHA256='+H(native_raw)+' -->'}}
+    event_raw=E(event).rstrip(b'\n');false_flags={key:False for key in ('nativeLibraryClosureProved','wholeHostAttested','browserFontSelectionProved','actualRequestSupported','guestApproved')}
+    native_observed={'schema':'bw.gui-hdd.native-font-original.v1','observationOnly':True,'systemFallbackExcluded':False,'request':{'bytes':len(native_raw),'sha256':H(native_raw)},
+      'event':{'bytes':len(event_raw),'sha256':H(event_raw)},'source':{path:{'bytes':len(('native-source:'+path).encode()),**row} for path,row in source['files'].items()},
+      'platform':{'GITHUB_RUN_ID':'300','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'native-font-selection','GITHUB_WORKFLOW_SHA':'d'*40},
+      'nativeRuntime':dict(copy.deepcopy(native_runtime),loadedLibraries=[],version=None,environment={},after=copy.deepcopy(native_runtime),selectedReadback=True),
+      'complete':True,'firstFailure':None,'secondary':[],'selectedNativeRuntimeReadbackProved':True,**false_flags}
+    original_raw=E(native_observed)
+    service_raw=E({'testOnly':True,'outsideService':'manufactured independently reviewed service original'})
+    prior={'schema':'bw.gui-hdd.native-font-expectation.v1','requestSha256':H(native_raw),'eventSha256':H(event_raw),
+      'originalSha256':H(original_raw),'originalBytes':len(original_raw),'runId':'300','jobId':301,'head':source['head'],'tree':source['tree'],
+      'workflowSha':'d'*40,'sourceFiles':source['files'],'conclusion':'success','serviceSha256':H(service_raw),'serviceBytes':len(service_raw)}
+    report={'schema':'bw.gui-hdd.native-font-reader.v1','nativeSelectionObserved':True,'sourceHead':source['head'],'runId':'300','jobId':301,
+      'selectedFontSha256':font['sha256'],'selectedNativeRuntimeReadbackProved':True,'nativeRuntimeFiles':native_runtime['files'],
+      'nativeRuntimeAliases':{},'nativeRuntimeDirectoryAliases':{},**false_flags}
+    run={'id':300,'run_attempt':1,'status':'completed','conclusion':'success','head_sha':source['head'],'event':'pull_request',
+      'repository':repo,'path':'.github/workflows/i80386-native-font-selection.yml','actor':{'login':'CrispStrobe'}}
+    job={'id':301,'run_id':300,'name':'native-font-selection','status':'completed','conclusion':'success','steps':[
+      {'name':name,'status':'completed','conclusion':'success'} for name in ('Refuse until selected font, tool, cache and event review','Retain bounded original only after separately reviewed activation')]}
+    artifact={'id':302,'name':'i80386-native-font-selection-300-1','expired':False,'size_in_bytes':1234,'workflow_run':{'id':300,'head_sha':source['head']},'digest':'sha256:'+'2'*64}
+    originals={'request':native_raw,'event':event_raw,'original':original_raw,'service':service_raw,'expectation':E(prior),'readerReport':E(report),'run':E(run),'job':E(job),'artifact':E(artifact)}
+    reference={'schema':'bw.gui-hdd.actual-native-font-reference.v1','source':source,'workflow':{'commit':'d'*40,'path':run['path'],'sha256':source['files'][run['path']]['sha256']},
+      'runId':300,'jobId':301,'artifactId':302,'artifactName':artifact['name'],'artifactBytes':1234,'artifactSha256':'2'*64,'originals':{},'files':native_files,
+      'font':{'url':font['url'],'path':'/checkout/gui-inputs/native-font/fonts/selected.ttf','byteLength':font['bytes'],'sha256':font['sha256'],
+        'licenseUrl':font['licenseUrl'],'licensePath':'/checkout/gui-inputs/native-font/NOTICE','licenseBytes':font['licenseBytes'],'licenseSha256':font['licenseSha256']},
+      'tool':{'path':tool['path'],'byteLength':tool['bytes'],'sha256':tool['sha256']}}
+    stage,config=r.native_font_layout(reference)
+    request['runtime']['files'].update({str(stage/'fontconfig.xml'):ROW(config),'/usr/bin/curl':ROW(b'curl')})
+    staged={}
+    for index,path in enumerate((reference['font']['path'],reference['font']['licensePath'],str(stage/'fontconfig.xml'))):
+        row=request['runtime']['files'][path]
+        staged[path]=dict(row,identity={'dev':4,'ino':20+index,'mode':stat.S_IFREG|0o444,'uid':1001,'gid':1001,'nlink':1,'size':row['byteLength'],'mtime_ns':123})
+    cache={'path':str(stage/'cache'),'identity':{'dev':4,'ino':23,'mode':stat.S_IFDIR|0o700,'uid':1001,'gid':1001,'nlink':2,'size':4096,'mtime_ns':123},
+      'entries':{},'totalBytes':0,'byteCap':8<<20,'entryCap':128,'quotaEnforced':False}
+    files['native-font.config.original.xml']=config
+    files['native-font.cache.before.json']=E(cache);files['native-font.cache.after.json']=E(cache)
+    native_stage={'schema':'bw.gui-hdd.native-font-stage.v1','requestSha256':'','referenceSha256':'','source':request['source'],'eventSha256':'','platform':{'GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual','GITHUB_REPOSITORY':r.REPOSITORY},'root':str(stage),
+      'files':staged,'fontUrl':font['url'],'licenseUrl':font['licenseUrl'],'cache':cache}
+    for role,raw,url,seconds in (('native-font.font',b'font',font['url'],30),('native-font.notice',b'notice',font['licenseUrl'],15)):
+        files[role+'.stdout']=raw;files[role+'.stderr']=b''
+        env={'LANG':'C.UTF-8','HOME':'/nonexistent','PATH':'/usr/bin:/bin','GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null','GIT_NO_LAZY_FETCH':'1','GIT_TERMINAL_PROMPT':'0'}
+        child=proc(r.native_font_fetch_argv(url,seconds,len(raw)),raw,env=env);child.update(startedNs=1 if role.endswith('font') else 1000000002,endedNs=1000000001 if role.endswith('font') else 2000000002);files[role+'.process.json']=E(child)
+    for scenario in r.SCENARIOS:
+        child=D(files[scenario+'.process.json']);child.update(startedNs=3000000000,endedNs=4000000000);child['environment'].update(FONTCONFIG_FILE=str(stage/'fontconfig.xml'),XDG_CACHE_HOME=str(stage/'cache'));files[scenario+'.process.json']=E(child)
+    expected['schema']='bw.gui-hdd.actual-expectation.v5'
+    for stage in ('before','after'):
+        value=D(files['runtime.'+stage+'.json']);value['schema']='bw.gui-hdd.runtime-observation.v5';value['nativeFontDirectories']={path:{'identity':dict(cache['identity'],ino=24+index,mode=stat.S_IFDIR|0o555),'names':names} for index,(path,names) in enumerate(((str(r.native_font_layout(reference)[0]),sorted(('fonts','cache','NOTICE','fontconfig.xml','staging.original.json'))),(str(r.native_font_layout(reference)[0]/'fonts'),['selected.ttf'])))};value['files']=copy.deepcopy(request['runtime']['files']);value['identities'].update({path:{'dev':row['identity']['dev'],'ino':row['identity']['ino']} for path,row in staged.items()});files['runtime.'+stage+'.json']=E(value)
+    request['nativeFontAdmission']=reference
+    use_finite_basis_fixture(request,expected)
+    native_v5_refresh(files,expected,reference,originals,request)
+    native_stage.update(requestSha256=expected['requestSha256'],referenceSha256=expected['nativeFontReferenceSha256'],eventSha256=H(files['event.original.json']));files['native-font.stage.json']=E(native_stage)
+    _FIXTURE_V5=copy.deepcopy((files,expected))
+    return files,expected
 
 class Originals(unittest.TestCase):
     @classmethod
@@ -511,7 +639,7 @@ class Originals(unittest.TestCase):
         self.assertIn('test "$(realpath -e "$parent")" = "$parent"',actual)
         self.assertNotIn('rm ',actual)
     @contextlib.contextmanager
-    def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None,event_transform=None,typed=False):
+    def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None,event_transform=None,typed=False,finite=False,finite_version=4):
         faults=faults or {};events=[];request=D(self.files['request.original.json']);original_sha=c.sha
         class NodeBytes(bytes):
             def __len__(self):return 124827920
@@ -520,11 +648,18 @@ class Originals(unittest.TestCase):
           'aliases':aliases or [],'directoryAliases':directories or [],'node':'/node','python':'/usr/bin/python3.12','chromium':'/chrome',
           'tools':{'git':'/usr/bin/git','gh':'/usr/bin/gh'}}
         if typed:template.update(schema='bw.gui-hdd.inventory-template.v3',emptyPythonSources=self.empty_selection())
+        if finite:
+            template.update(schema='bw.gui-hdd.inventory-template.v'+str(finite_version),emptyPythonSources=self.empty_selection(),files=sorted(template['files']),libraries=['/usr/lib/libselected.so'],scope=finite_scope_fixture(finite_version))
+            request['installedFiles']['node_modules/bw-circuit-ui/package.json']=ROW(b'cui')
         raw=E(template);pin=H(raw);event=D(base64.b64decode(self.expected['inventoryOriginal']['base64']))['event']
-        event=D(base64.b64decode(event['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+pin+' -->';event_raw=event_transform(event) if event_transform else E(event)
+        event=D(base64.b64decode(event['base64']));event['pull_request']['body']='<!-- BW_GUI_HDD_INVENTORY_SHA256='+pin+' -->'
+        if finite:event['label']['name']='x86-hdd-gui-finite-inventory-v'+str(finite_version);event['pull_request']['body']=finite_body_fixture(raw,finite_version)
+        event_raw=event_transform(event) if event_transform else E(event)
         env={'GITHUB_EVENT_PATH':'/event','GITHUB_RUN_ID':'90','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'inventory','GITHUB_REPOSITORY':c.REPOSITORY,
           'GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_WORKFLOW_REF':c.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/123/merge','GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','BW_EXPECTED_HEAD':'a'*40}
+        if finite:env['GITHUB_JOB']='finite-inventory-five' if finite_version==5 else 'finite-inventory-v'+str(finite_version)
         saved={}
+        if finite:saved['/checkout/gui-finite-inventory-v'+str(finite_version)+'/guard-admission.json']=E(finite_guard_fixture(request['source'],raw,event_raw,env,finite_version))
         def regular(path,cap):
             path=str(path);events.append(('read',path))
             if ('read',path) in faults:raise faults['read',path]
@@ -2469,6 +2604,703 @@ class Originals(unittest.TestCase):
             self.assertFalse(observed['complete'],cut);self.assertEqual(observed['firstFailure']['name'],'ValueError',cut);self.assertEqual(observed['sourceCommands'],[],cut)
             read.assert_not_called();hosted.assert_not_called();retained.assert_not_called()
 
+    def native_fresh(self):
+        files,expected=fixture_v5();reference=D(files['request.original.json'])['nativeFontAdmission']
+        originals={key:base64.b64decode(row['base64']) for key,row in expected['nativeFontOriginals'].items()}
+        return files,expected,reference,originals
+    def test_current_v5_native_original_and_current_job_readback_positive(self):
+        files,expected=fixture_v5();result=r.audit(*sealed(files,expected));self.assertTrue(result['pass']);self.assertEqual(result['schema'],'bw.gui-hdd.reader.v5')
+        self.assertEqual(c.parse_request(files['request.original.json'],expected['requestSha256']),r.parse_request(files['request.original.json'],expected['requestSha256']))
+        self.assertIs(c.ACTUAL_ENABLED,False);self.assertIs(r.ACTUAL_ENABLED,False)
+        self.assertLess(len(files['request.original.json']),r.JSON_CAP);self.assertLess(len(E(expected)),r.JSON_CAP)
+    def test_current_v5_requires_same_external_version_and_native_reference(self):
+        for mutation in ('missing','old-expectation','old-request'):
+            files,expected=fixture_v5();request=D(files['request.original.json'])
+            if mutation=='missing':del request['nativeFontAdmission']
+            elif mutation=='old-request':request['schema']='bw.gui-hdd.actual-request.v4'
+            else:expected['schema']='bw.gui-hdd.actual-expectation.v4'
+            refresh_v4_request(files,expected,request)
+            with self.assertRaises(ValueError):r.audit(files,expected)
+    def test_current_v5_native_reference_external_selection_survives_rehash(self):
+        files,expected,reference,originals=self.native_fresh();request=D(files['request.original.json']);request['nativeFontAdmission']['artifactSha256']='3'*64
+        refresh_v4_request(files,expected,request)
+        with self.assertRaisesRegex(ValueError,'independently selected native-font reference'):r.audit(files,expected)
+    def test_current_v5_rehashed_native_failures_and_metadata_refuse(self):
+        for role,key,value,match in (
+          ('original','complete',False,'complete finite native'),('original','firstFailure',{'phase':'native'},'complete finite native'),
+          ('original','selectedNativeRuntimeReadbackProved',False,'complete finite native'),
+          ('readerReport','selectedFontSha256','4'*64,'independent native-reader'),
+          ('readerReport','browserFontSelectionProved',True,'observation boundary'),
+          ('run','head_sha','4'*40,'official native run'),('job','run_id',999,'native producing job'),
+          ('artifact','expired',True,'native original artifact'),('artifact','id',True,'bounded integer')):
+            files,expected,reference,originals=self.native_fresh();changed=D(originals[role]);changed[key]=value;originals[role]=E(changed)
+            if role=='original':
+                prior=D(originals['expectation']);prior.update(originalSha256=H(originals[role]),originalBytes=len(originals[role]));originals['expectation']=E(prior)
+            native_v5_refresh(files,expected,reference,originals)
+            with self.assertRaisesRegex(ValueError,match):r.audit(files,expected)
+    def test_current_v5_native_official_steps_and_event_refuse_coherent_rehash(self):
+        for cut in ('step','event','workflow','source','native-file','report-map'):
+            files,expected,reference,originals=self.native_fresh()
+            if cut=='step':
+                value=D(originals['job']);value['steps'][0]['conclusion']='skipped';originals['job']=E(value)
+            elif cut=='event':
+                value=D(originals['event']);value['pull_request']['body']='no immutable marker';originals['event']=E(value)
+                prior=D(originals['expectation']);prior['eventSha256']=H(originals['event']);originals['expectation']=E(prior)
+                value=D(originals['original']);value['event']={'bytes':len(originals['event']),'sha256':H(originals['event'])};originals['original']=E(value)
+            elif cut=='workflow':reference['workflow']['commit']='5'*40
+            elif cut=='source':
+                value=D(originals['original']);next(iter(value['source'].values()))['sha256']='5'*64;originals['original']=E(value)
+            elif cut=='native-file':
+                value=D(originals['original']);value['nativeRuntime']['after']['files']['/usr/bin/fc-match']['sha256']='5'*64;originals['original']=E(value)
+            else:
+                value=D(originals['readerReport']);value['nativeRuntimeFiles']['/usr/bin/fc-match']['sha256']='5'*64;originals['readerReport']=E(value)
+            prior=D(originals['expectation']);prior.update(originalSha256=H(originals['original']),originalBytes=len(originals['original']));originals['expectation']=E(prior)
+            native_v5_refresh(files,expected,reference,originals)
+            with self.assertRaises(ValueError):r.audit(files,expected)
+    def test_current_v5_font_tool_library_current_job_bytes_before_after(self):
+        for stage in ('before','after'):
+            for path in ('/checkout/gui-inputs/native-font/fonts/selected.ttf','/usr/bin/fc-match','/usr/lib/libfontconfig-selected.so'):
+                files,expected=fixture_v5();value=D(files['runtime.'+stage+'.json']);value['files'][path]['sha256']='0'*64;files['runtime.'+stage+'.json']=E(value)
+                with self.assertRaisesRegex(ValueError,'runtime external graph'):r.audit(files,expected)
+    def test_current_v5_font_urls_require_full_commit_and_safe_path_before_fetch(self):
+        selected='https://raw.githubusercontent.com/google/fonts/'+'9'*40+'/apache/robotomono/RobotoMono%5Bwght%5D.ttf'
+        for module in (c,r):
+            self.assertEqual(module.google_fonts_raw_url(selected),selected)
+            self.assertEqual(module.native_font_fetch_argv(selected,30,4)[-1],selected)
+        root='https://raw.githubusercontent.com/google/fonts/'
+        bad=(root+'main/apache/robotomono/font.ttf',root+'9'*7+'/font.ttf',
+             root+'A'*40+'/font.ttf',root+'9'*40+'/',root+'9'*40+'/../font.ttf',
+             root+'9'*40+'/%2e%2e/font.ttf',root+'9'*40+'/font%2Fother.ttf',
+             root+'9'*40+'/font\\name.ttf',root+'9'*40+'/font.ttf?branch=main',
+             root+'9'*40+'/font.ttf#part',root+'9'*40+'/font\n.ttf')
+        for module in (c,r):
+            for url in bad:
+                with self.subTest(module=module.__name__,url=url),self.assertRaises(ValueError):
+                    module.google_fonts_raw_url(url)
+                with self.subTest(module=module.__name__,url=url),self.assertRaises(ValueError):
+                    module.native_font_fetch_argv(url,30,4)
+                files,_=fixture_v5();request=D(files['request.original.json'])
+                reference=copy.deepcopy(request['nativeFontAdmission']);reference['font']['url']=url
+                with self.subTest(module=module.__name__,url=url),self.assertRaises(ValueError):
+                    module.actual_native_font_reference(reference,request['runtime'])
+    def test_current_v5_cannot_replace_held_runtime_rows_with_native_extension(self):
+        files,expected,reference,originals=self.native_fresh();request=D(files['request.original.json']);path='/usr/lib/libselected.so'
+        reference['files'][path]=ROW(b'changed');request['runtime']['files'][path]=ROW(b'changed')
+        native=D(originals['request']);native['selection']['runtime']['files'][path]={'bytes':7,'sha256':H(b'changed')};originals['request']=E(native)
+        # Reference parser accepts selected current rows; metadata join must still
+        # preserve the independently admitted old row rather than union overwrite.
+        request['nativeFontAdmission']=reference
+        with self.assertRaisesRegex(ValueError,'preserves held metadata'):
+            e=copy.deepcopy(expected);e['nativeFontOriginals']['request']=dict(ROW(originals['request']),base64=base64.b64encode(originals['request']).decode())
+            r.join_actual_typed_inventory(request,D(base64.b64decode(e['inventoryOriginal']['base64'])),e)
+    def staged_request(self,checkout):
+        files,expected=fixture_v5();request=D(E(D(files['request.original.json'])).replace(b'/checkout',str(checkout).encode()))
+        stage,config=c.native_font_layout(request['nativeFontAdmission']);request['runtime']['files'][str(stage/'fontconfig.xml')]=ROW(config)
+        return request
+    def staged_host(self,checkout,output,fault=None):
+        testcase=self
+        class Fake:
+            def __init__(self):
+                (checkout/'event.json').write_bytes(E({'testOnly':True}))
+                self.env={'GITHUB_WORKSPACE':str(checkout),'GITHUB_EVENT_PATH':str(checkout/'event.json'),'GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual','GITHUB_REPOSITORY':r.REPOSITORY};self.calls=[]
+            def run(self,role,argv,env,seconds,cap):
+                self.calls.append(role);raw=b'font' if role=='native-font.font' else b'notice'
+                if fault==role:raw=b'prefix'
+                output.save(role+'.stdout',raw);output.save(role+'.stderr',b'')
+                value=proc(argv,raw,env=env)
+                if fault==role:value.update(exitCode=1,firstFailure='manufactured GET failure')
+                output.save(role+'.process.json',E(value))
+                if fault==role:raise ValueError('manufactured GET failure')
+                testcase.assertEqual(argv,c.native_font_fetch_argv(argv[-1],seconds,len(raw)));testcase.assertEqual(cap,len(raw))
+                return raw
+        return Fake()
+    def test_current_v5_real_inline_stage_reuses_originals_without_second_get(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary);(checkout/'gui-inputs').mkdir();(checkout/'gui-setup').mkdir();request=self.staged_request(checkout);pin=H(E(request))
+            output=c.Originals(checkout/'gui-setup/preflight');host=self.staged_host(checkout,output)
+            stage=c.prepare_native_font(request,pin,checkout,host,output,True)
+            self.assertEqual(host.calls,['native-font.font','native-font.notice']);self.assertEqual((stage/'fonts/selected.ttf').read_bytes(),b'font')
+            self.assertEqual(stat.S_IMODE(stage.stat().st_mode),0o555);self.assertEqual(stat.S_IMODE((stage/'cache').stat().st_mode),0o700)
+            actual=c.Originals(checkout/'actual-font-originals');c.prepare_native_font(request,pin,checkout,host,actual,False)
+            self.assertEqual(host.calls,['native-font.font','native-font.notice']);self.assertEqual(output.files['native-font.stage.json'],actual.files['native-font.stage.json'])
+            with self.assertRaises(FileExistsError):c.prepare_native_font(request,pin,checkout,host,c.Originals(checkout/'duplicate'),True)
+            (stage/'fonts/selected.ttf').chmod(0o644);(stage/'fonts/selected.ttf').write_bytes(b'evil')
+            with self.assertRaisesRegex(ValueError,'readonly staged file identity'):c.prepare_native_font(request,pin,checkout,host,c.Originals(checkout/'changed'),False)
+    def test_current_v5_second_get_failure_keeps_first_and_partial_originals(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary);(checkout/'gui-inputs').mkdir();(checkout/'gui-setup').mkdir();request=self.staged_request(checkout)
+            output=c.Originals(checkout/'gui-setup/preflight');host=self.staged_host(checkout,output,'native-font.notice')
+            with self.assertRaisesRegex(ValueError,'manufactured GET failure'):c.prepare_native_font(request,H(E(request)),checkout,host,output,True)
+            self.assertEqual((output.root/'native-font.font.stdout').read_bytes(),b'font');self.assertEqual((output.root/'native-font.notice.stdout').read_bytes(),b'prefix')
+            self.assertFalse((checkout/'gui-inputs/native-font/staging.original.json').exists());self.assertEqual(len(host.calls),2)
+    def test_current_v5_source_event_tool_admission_precedes_any_font_get(self):
+        for fault in (None,'event','runtime','source'):
+            with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+                checkout=pathlib.Path(temporary);(checkout/'gui-inputs').mkdir();(checkout/'gui-setup').mkdir();request=self.staged_request(checkout);raw=E(request);pin=H(raw);order=[]
+                event={'action':'labeled','label':{'name':c.LABEL},'sender':{'login':'CrispStrobe'},'repository':{'full_name':c.REPOSITORY},'number':123,
+                  'pull_request':{'number':123,'state':'open','head':{'sha':'a'*40,'repo':{'full_name':c.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':c.REPOSITORY}},'body':'<!-- BW_GUI_HDD_REQUEST_SHA256='+pin+' -->'}}
+                if fault=='event':event['action']='synchronize'
+                (checkout/'event.json').write_bytes(E(event));env={'GITHUB_EVENT_PATH':str(checkout/'event.json'),'GITHUB_WORKSPACE':str(checkout),'GITHUB_REPOSITORY':c.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ATTEMPT':'1','GITHUB_RUN_ID':'200','GITHUB_JOB':'actual','BW_EXPECTED_HEAD':'a'*40}
+                original_regular=c.regular
+                def regular(path,cap):
+                    if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+                    return original_regular(path,cap)
+                def inventory(path,*args):
+                    prefix=str(path).removeprefix(str(checkout)+'/');order.append('installed:'+prefix)
+                    return {key.removeprefix(prefix+'/'):value for key,value in request['installedFiles'].items() if key.startswith(prefix+'/')}
+                def check_file(path,row):
+                    name=str(path).removeprefix(str(checkout)+'/')
+                    if name in request['source']['files']:
+                        order.append('source:'+name)
+                        return b'wrong' if fault=='source' else ('source:'+name).encode()
+                    return b'manufactured admitted critical file'
+                def runtime(value):
+                    order.append('runtime')
+                    if fault=='runtime':raise ValueError('manufactured tool drift')
+                    return {'testOnly':True}
+                class Fake:
+                    def __init__(self,root_,output,env_):self.env=env_;self.output=output
+                    def git(self,args):return (('a'*40 if args[1]=='HEAD' else 'b'*40)+'\n').encode() if args[0]=='rev-parse' else ('source:'+args[-1].split(':',1)[1]).encode()
+                def stage(request_,expected_,root_,host,output,preflight):
+                    order.append('font-stage');self.assertIn('runtime',order);self.assertIn('installed:node_modules/bw-circuit-ui',order)
+                    self.assertTrue(all('source:'+path in order for path in c.SOURCE));return checkout/'gui-inputs/native-font'
+                with patch.object(c,'regular',side_effect=regular),patch.object(c,'inventory',side_effect=inventory),patch.object(c,'check_file',side_effect=check_file),patch.object(c,'observe_python_startup',return_value=(b'manufactured startup',{})),patch.object(c,'observe_runtime',side_effect=runtime),patch.object(c,'prepare_native_font',side_effect=stage):
+                    status=c.execute(raw,pin,checkout,checkout/'gui-setup/preflight',env,factory=Fake,preflight=True)
+                self.assertEqual(status,0 if fault is None else 1)
+                self.assertEqual('font-stage' in order,fault is None)
+
+    def test_current_v5_owned_cache_empty_files_symlink_and_count_bounds(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            cache=pathlib.Path(temporary)/'cache';cache.mkdir(mode=0o700);self.assertEqual(c.native_font_cache(cache)['entries'],{})
+            (cache/'empty').write_bytes(b'');self.assertEqual(c.native_font_cache(cache)['entries']['empty']['byteLength'],0)
+            (cache/'alias').symlink_to('/must-not-read')
+            with self.assertRaisesRegex(ValueError,'no-link'):c.native_font_cache(cache)
+            (cache/'alias').unlink()
+            other=pathlib.Path(temporary)/'outside';other.write_bytes(b'owned but outside cache');os.link(other,cache/'hardlink')
+            with self.assertRaisesRegex(ValueError,'external hardlink'):c.native_font_cache(cache)
+            with self.assertRaisesRegex(ValueError,'bounded no-link staged'):c.staged_regular(cache/'hardlink',1024)
+            (cache/'hardlink').unlink()
+            for index in range(128):(cache/('item-'+str(index))).write_bytes(b'')
+            with self.assertRaisesRegex(ValueError,'128-entry') as caught:c.native_font_cache(cache)
+            partial=D(caught.exception.gui_cache_original);self.assertEqual(len(partial['entries']),128);self.assertFalse(partial['quotaEnforced'])
+    def test_current_v5_staging_original_and_real_browser_env_refuse_rehash(self):
+        for cut in ('config','url','get-body','env','cache-cap','cache-quota','cache-alias','cache-hardlink','directories','event','serial'):
+            files,expected=fixture_v5()
+            if cut=='config':files['native-font.config.original.xml']=b'<fontconfig><dir>/usr/share/fonts</dir></fontconfig>'
+            elif cut=='url':value=D(files['native-font.stage.json']);value['fontUrl']='https://example.invalid/font';files['native-font.stage.json']=E(value)
+            elif cut=='get-body':
+                files['native-font.font.stdout']=b'evil';value=D(files['native-font.font.process.json']);value['streams']['stdout']=ROW(b'evil');files['native-font.font.process.json']=E(value)
+            elif cut=='env':value=D(files['forward-debug.process.json']);value['environment']['FONTCONFIG_FILE']='/etc/fonts/fonts.conf';files['forward-debug.process.json']=E(value)
+            elif cut=='directories':
+                value=D(files['runtime.after.json']);next(iter(value['nativeFontDirectories'].values()))['names'].append('unreviewed.ttf');files['runtime.after.json']=E(value)
+            elif cut=='event':
+                value=D(files['native-font.stage.json']);value['platform']['GITHUB_RUN_ID']='201';files['native-font.stage.json']=E(value)
+            elif cut=='serial':
+                value=D(files['native-font.notice.process.json']);value['startedNs']=1;files['native-font.notice.process.json']=E(value)
+            else:
+                value=D(files['native-font.cache.after.json'])
+                if cut=='cache-hardlink':
+                    value['entries']['linked']={'kind':'file','identity':dict(value['identity'],mode=stat.S_IFREG|0o644,nlink=2,size=3),'byteLength':3,'sha256':H(b'abc')};value['totalBytes']=3
+                elif cut=='cache-cap':value['totalBytes']=8*1024*1024+1
+                elif cut=='cache-quota':value['quotaEnforced']=True
+                else:value['identity']['mode']=stat.S_IFLNK|0o700
+                files['native-font.cache.after.json']=E(value)
+            with self.assertRaises(ValueError):r.audit(files,expected)
+
+    def finite_inventory_fixture(self,failed=False):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']+(['/missing-library'] if failed else [])
+        faults={('lstat','/missing-library'):FileNotFoundError('FIRST_FINITE_LIBRARY')} if failed else {}
+        with patch.object(c,'FINITE_INVENTORY_ENABLED',True),self.inventory_edges(paths,faults=faults,finite=True) as (raw,pin,env,events),self.empty_source_edges() as typed:
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        expected={'schema':'bw.gui-hdd.inventory-failure-expectation.v4' if failed else 'bw.gui-hdd.inventory-admission.v4',
+          'source':D(self.files['source.before.json']),'template':ROW(raw),'runId':90,'workflowSha':'d'*40}
+        expected['failure' if failed else 'original']=ROW(E(value));return value,raw,expected,events
+    def test_finite_v4_real_collector_standalone_reader_without_probes(self):
+        value,raw,expected,events=self.finite_inventory_fixture()
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-original.v4',value.get('firstFailure'))
+        result=r.verify_inventory_original(E(value),raw,expected);self.assertEqual(result['schema'],'bw.gui-hdd.inventory-reader.v4')
+        self.assertIn(('installed','/checkout/node_modules/bw-circuit-ui'),events)
+        for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved'):self.assertIs(value[key],False)
+        self.assertFalse(value['scope']['globalFontDiscovery']);self.assertFalse(result['actualRequestSupported'])
+        self.assertEqual(sum(event[0]=='git' for event in events),2+len(c.SOURCE))
+        self.assertLess(len(raw),32768);self.assertLess(len(E(value)),r.JSON_CAP)
+    def test_finite_v4_flags_refuse_before_all_edges_and_legacy_entry_is_distinct(self):
+        self.assertIs(c.FINITE_INVENTORY_ENABLED,False);self.assertIs(c.ACTUAL_ENABLED,False)
+        with patch.object(c.Path,'cwd',side_effect=AssertionError('cwd')),patch.object(c,'regular',side_effect=AssertionError('read')),patch.object(c,'admit_finite_inventory_before_setup',side_effect=AssertionError('guard')):
+            for args in (['finite-inventory-guard'],['finite-inventory','--request','none','--expected-sha256','0'*64,'--output','none']):
+                with self.assertRaisesRegex(ValueError,'finite v4 inventory disabled'):c.main(args)
+        _,raw,_,_=self.finite_inventory_fixture()
+        with patch.object(c,'regular',return_value=raw),patch.object(c,'inventory_observation',side_effect=AssertionError('old mode called new observer')):
+            with self.assertRaisesRegex(ValueError,'distinct finite and historical'):c.main(['inventory','--request','selected','--expected-sha256',H(raw),'--output','selected-out'])
+    def test_finite_v4_enabled_cli_routes_only_admitted_metadata_no_installer_or_guest(self):
+        self.assertFalse(c.FINITE_INVENTORY_ENABLED);self.assertFalse(c.ACTUAL_ENABLED)
+        with patch.object(c,'FINITE_INVENTORY_ENABLED',True),patch.dict(c.os.environ,{},clear=True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.object(c,'regular',side_effect=AssertionError('unadmitted input read')),patch.object(c,'execute',side_effect=AssertionError('guest')):
+            with self.assertRaisesRegex(ValueError,'hexadecimal digest'):c.main(['finite-inventory-guard'])
+        with patch.object(c,'FINITE_INVENTORY_ENABLED',True),patch.dict(c.os.environ,{},clear=True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.object(c,'admit_finite_inventory_before_setup',return_value={'pass':True}) as guard,patch.object(c,'execute',side_effect=AssertionError('guest')),patch.object(c,'install_input',side_effect=AssertionError('input GET')):
+            self.assertEqual(c.main(['finite-inventory-guard']),0);guard.assert_called_once_with(pathlib.Path('/checkout'),{})
+        value,raw,_,_=self.finite_inventory_fixture();pin=H(raw)
+        with patch.object(c,'FINITE_INVENTORY_ENABLED',True),patch.dict(c.os.environ,{'BW_FINITE_INVENTORY_V4_SHA256':pin},clear=True),patch.object(c.Path,'cwd',return_value=pathlib.Path('/checkout')),patch.object(c,'regular',return_value=raw),patch.object(c,'inventory_observation',return_value=value) as collect,patch.object(c,'retain_inventory_observation',return_value=0),patch.object(c,'execute',side_effect=AssertionError('guest')),patch.object(c,'install_input',side_effect=AssertionError('input GET')):
+            self.assertEqual(c.main(['finite-inventory','--request','/checkout/gui-finite-inventory-v4/runtime-template.json','--expected-sha256',pin,'--output','/checkout/gui-finite-inventory-v4/inventory-original.json']),0)
+            self.assertEqual(collect.call_count,1);self.assertEqual(collect.call_args.args[:2],(raw,pin))
+
+    def test_finite_v4_scope_required_roles_body_transport_and_cap_cuts(self):
+        _,raw,_,_=self.finite_inventory_fixture();template=D(raw)
+        for module in (c,r):
+            self.assertEqual(module.finite_inventory_body_template(finite_body_fixture(raw),H(raw)),raw)
+            for path in ('/etc/fonts/fonts.conf','/usr/share/fontconfig/conf.avail/20.conf','/usr/share/fonts/selected.ttf','/usr/local/share/fonts/extra.otf','/var/cache/fontconfig/cache','/checkout/gui-inputs/native-font/fonts/selected.ttf'):
+                changed=copy.deepcopy(template);changed['files']=sorted(changed['files']+[path]);encoded=E(changed)
+                with self.assertRaisesRegex(ValueError,'excludes global'):module.finite_inventory_template(encoded,H(encoded))
+            for cut in ('curl','library','scope','guest','empty','duplicate'):
+                changed=copy.deepcopy(template)
+                if cut=='curl':changed['files'].remove('/usr/bin/curl')
+                elif cut=='library':changed['libraries']=['/not-selected.so']
+                elif cut=='scope':changed['scope']['globalFontDiscovery']=True
+                elif cut=='guest':changed['scope']['guestApproved']=True
+                elif cut=='empty':changed['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['byteLength']=1
+                else:changed['aliases']=[changed['files'][0]]
+                encoded=E(changed)
+                with self.assertRaises(ValueError):module.finite_inventory_template(encoded,H(encoded))
+            body=finite_body_fixture(raw)
+            for changed in (body+body,body.replace('END','BEGIN'),body.replace(H(raw),'0'*64),body.replace('templateBase64','unknown'),body.replace('"schema":','"schema" :')):
+                with self.assertRaises(ValueError):module.finite_inventory_body_template(changed,H(raw))
+            large=copy.deepcopy(template);large['files']=sorted(large['files']+['/selected/'+str(index)+'x'*330 for index in range(110)]);encoded=E(large)
+            self.assertGreater(len(encoded),32768);self.assertLess(len(encoded),65536)
+            with self.assertRaisesRegex(ValueError,'selected finite v4 template bytes'):module.finite_inventory_template(encoded,H(encoded))
+        text=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text();old='FINITE_INVENTORY_TEMPLATE_CAP = 32 << 10';self.assertIn(old,text)
+        namespace={'__name__':'finite_template_cap_mutant'};exec(compile(text.replace(old,'FINITE_INVENTORY_TEMPLATE_CAP = 64 << 10',1),'finite-cap-mutant','exec'),namespace)
+        self.assertEqual(namespace['finite_inventory_template'](encoded,H(encoded)),large)
+    def test_finite_v4_event_first_attempt_owner_body_and_source_cuts(self):
+        value,raw,_,_=self.finite_inventory_fixture();event_raw=base64.b64decode(value['event']['base64']);env=value['platform']
+        for module in (c,r):
+            self.assertEqual(module.bind_finite_inventory_event(event_raw,'a'*40,H(raw),env),raw)
+            for key,wrong in (('GITHUB_RUN_ATTEMPT','2'),('GITHUB_JOB','inventory'),('GITHUB_ACTOR','other'),('BW_EXPECTED_HEAD','f'*40)):
+                with self.assertRaises(ValueError):module.bind_finite_inventory_event(event_raw,'a'*40,H(raw),dict(env,**{key:wrong}))
+            for cut in ('label','fork','head','body'):
+                event=D(event_raw)
+                if cut=='label':event['label']['name']='x86-hdd-gui-inventory'
+                elif cut=='fork':event['pull_request']['head']['repo']['fork']=True
+                elif cut=='head':event['pull_request']['head']['sha']='f'*40
+                else:event['pull_request']['body']='missing wrapper'
+                with self.assertRaises(ValueError):module.bind_finite_inventory_event(E(event),'a'*40,H(raw),env)
+    def test_finite_v4_prepackage_guard_real_source_reads_and_no_url_transport(self):
+        _,template_raw,_,_=self.finite_inventory_fixture()
+        for fault in (None,'source','event','source-retention'):
+            with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+                checkout=pathlib.Path(temporary)
+                for path in c.SOURCE:
+                    target=checkout/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(('source:'+path).encode())
+                if fault in ('source','source-retention'):(checkout/sorted(c.SOURCE)[0]).write_bytes(b'wrong')
+                event={'action':'labeled','label':{'name':'x86-hdd-gui-finite-inventory-v4'},'sender':{'login':'CrispStrobe'},'repository':{'full_name':c.REPOSITORY},'number':123,
+                  'pull_request':{'number':123,'state':'open','head':{'sha':'a'*40,'repo':{'full_name':c.REPOSITORY,'fork':False}},'base':{'ref':'main','repo':{'full_name':c.REPOSITORY}},'body':finite_body_fixture(template_raw)}}
+                if fault=='event':event['label']['name']='old'
+                (checkout/'event.json').write_bytes(E(event));calls=[]
+                env={'GITHUB_WORKSPACE':str(checkout),'GITHUB_EVENT_PATH':str(checkout/'event.json'),'GITHUB_RUN_ID':'90','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'finite-inventory-v4',
+                  'GITHUB_REPOSITORY':c.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','BW_EXPECTED_HEAD':'a'*40,'BW_FINITE_INVENTORY_V4_SHA256':H(template_raw),'GITHUB_WORKFLOW_SHA':'d'*40,'GITHUB_WORKFLOW_REF':c.REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/123/merge'}
+                class GitOnly:
+                    def __init__(self,*args):pass
+                    def git(self,args):
+                        calls.append(args)
+                        return ((('a'*40 if args[1]=='HEAD' else 'b'*40)+'\n').encode() if args[0]=='rev-parse' else ('source:'+args[-1].split(':',1)[1]).encode())
+                if fault:
+                    with patch.object(c,'FINITE_INVENTORY_ENABLED',True),patch.object(c.Originals,'seal',side_effect=OSError('SECONDARY_SEAL')) if fault=='source-retention' else contextlib.nullcontext(),contextlib.redirect_stderr(io.StringIO()) as diagnostic:
+                        with self.assertRaises(ValueError) as caught:c.admit_finite_inventory_before_setup(checkout,env,factory=GitOnly)
+                    if fault=='source-retention':
+                        self.assertIn('SECONDARY_SEAL',diagnostic.getvalue());self.assertEqual(caught.exception.gui_secondary[-1][0],'finite-guard-retention')
+                    self.assertFalse((checkout/'gui-finite-inventory-v4/runtime-template.json').exists())
+                    if fault=='event':self.assertEqual(calls,[])
+                else:
+                    with patch.object(c,'FINITE_INVENTORY_ENABLED',True):result=c.admit_finite_inventory_before_setup(checkout,env,factory=GitOnly)
+                    self.assertTrue(result['pass']);self.assertEqual(len(calls),len(c.SOURCE)+2)
+                    selected=checkout/'gui-finite-inventory-v4/runtime-template.json';self.assertEqual(selected.read_bytes(),template_raw);self.assertEqual(stat.S_IMODE(selected.stat().st_mode),0o444)
+                    guard=(checkout/'gui-finite-inventory-v4/guard-admission.json').read_bytes();self.assertEqual(r.finite_inventory_guard_original(guard,template_raw,E(event),env),result)
+    def test_finite_v4_failed_original_is_preserved_without_promoting_legacy(self):
+        value,raw,expected,events=self.finite_inventory_fixture(True)
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-failure.v4');self.assertIn('FIRST_FINITE_LIBRARY',value['firstFailure']['message']);self.assertFalse(value['gitSource']['reached'])
+        result=r.verify_inventory_failure(E(value),raw,expected);self.assertFalse(result['qualified']);self.assertFalse(result['candidate'])
+        self.assertFalse(any(event[0]=='git' for event in events));self.assertIs(value['guestApproved'],False)
+        changed=copy.deepcopy(value);changed['guestApproved']=True
+        frame=copy.deepcopy(changed);frame.update(files={},emptyPythonSources={},aliases={},directoryAliases={},firstFailure=None,secondary=[],gitSource={'reached':False,'head':None,'tree':None,'files':{}},diagnostic={'pathBytes':0,'limitBytes':0,'complete':False})
+        changed['diagnostic']['limitBytes']=r.JSON_CAP-len(E(frame))-8192;selected=copy.deepcopy(expected);selected['failure']=ROW(E(changed))
+        with self.assertRaisesRegex(ValueError,'grants no font/browser/guest authority'):r.verify_inventory_failure(E(changed),raw,selected)
+    def test_finite_v4_coherent_source_guard_cui_and_authority_cuts(self):
+        value,raw,expected,_=self.finite_inventory_fixture()
+        for cut in ('cui','guard-source','guard-setup','guest','scope','event'):
+            changed=copy.deepcopy(value)
+            if cut=='cui':del changed['installedFiles']['node_modules/bw-circuit-ui/package.json']
+            elif cut.startswith('guard-'):
+                guard=D(base64.b64decode(changed['guardAdmission']['base64']))
+                if cut=='guard-source':guard['source']['tree']='f'*40
+                else:guard['setupTrustBoundary']['completeRuntimeBeforeSetupProved']=True
+                encoded=E(guard);changed['guardAdmission']=dict(ROW(encoded),base64=base64.b64encode(encoded).decode())
+            elif cut=='guest':changed['guestApproved']=True
+            elif cut=='scope':changed['scope']['historicalGlobalRosterQualified']=True
+            else:changed['platform']['GITHUB_JOB']='inventory'
+            selected=copy.deepcopy(expected);selected['original']=ROW(E(changed))
+            with self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
+    def test_finite_v4_workflow_guard_before_packages_and_v5_exact_basis(self):
+        workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text()
+        block=workflow.split('  finite-inventory-v4:',1)[1].split('  finite-inventory-five:',1)[0]
+        self.assertIn(chr(36)+'{{ false &&',block);self.assertIn('x86-hdd-gui-finite-inventory-v4',block)
+        self.assertLess(block.index('finite-inventory-guard'),block.index('actions/setup-node@'));self.assertLess(block.index('finite-inventory-guard'),block.index('npm ci'))
+        self.assertIn('github.event.pull_request.head.repo.fork == false',block);self.assertIn("github.event.pull_request.base.ref == 'main'",block)
+        self.assertNotIn('install-input',block);self.assertNotIn('BW_TEMPLATE_BLOB',block)
+        armed=workflow.split('  finite-inventory-five:',1)[1].split('  actual:',1)[0]
+        self.assertIn(chr(36)+'{{ true &&',armed);self.assertIn('x86-hdd-gui-finite-inventory-v5',armed)
+        self.assertLess(armed.index('finite-inventory-v5-guard'),armed.index('actions/setup-node@'))
+        files,expected=fixture_v5();request=D(files['request.original.json']);self.assertEqual(request['inventoryAdmission']['schema'],'bw.gui-hdd.actual-finite-inventory-reference.v1')
+        self.assertEqual(request['inventoryAdmission']['metadataAdmission']['schema'],'bw.gui-hdd.inventory-admission.v4');self.assertTrue(r.audit(files,expected)['pass'])
+        request['inventoryAdmission']['schema']='bw.gui-hdd.actual-inventory-reference.v1';raw=E(request)
+        for module in (c,r):
+            with self.assertRaises(ValueError):module.parse_request(raw,H(raw))
+
+    def finite_v5_packet(self):
+        value,old_raw,expected,_=self.finite_inventory_fixture()
+        template=D(old_raw);template['schema']='bw.gui-hdd.inventory-template.v5';template['scope']=c.finite_v5_scope();raw=E(template)
+        wrapper={'schema':'bw.gui-hdd.finite-inventory-transport.v5','sha256':H(raw),
+          'templateBase64':base64.b64encode(raw).decode()}
+        event=D(base64.b64decode(value['event']['base64']))
+        event['label']['name']='x86-hdd-gui-finite-inventory-v5'
+        event['pull_request']['body']=c.FINITE_V5_BEGIN+'\n'+E(wrapper).decode()+c.FINITE_V5_END
+        event_raw=E(event)
+        value['schema']='bw.gui-hdd.inventory-original.v5';value['templateSha256']=H(raw)
+        value['scope']=c.finite_v5_scope();value['event']=dict(ROW(event_raw),base64=base64.b64encode(event_raw).decode())
+        value['platform']['GITHUB_JOB']='finite-inventory-five'
+        for name in c.INSTALLED_V5_CRITICAL:value['installedFiles'].setdefault(name,ROW(b'critical'))
+        value['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout']=ROW(b'')
+        guard=D(base64.b64decode(value['guardAdmission']['base64']))
+        guard.update(schema='bw.gui-hdd.finite-inventory-guard.v5',templateSha256=H(raw),eventSha256=H(event_raw))
+        guard['platform']['GITHUB_JOB']='finite-inventory-five'
+        guard_raw=E(guard);value['guardAdmission']=dict(ROW(guard_raw),base64=base64.b64encode(guard_raw).decode())
+        expected['schema']='bw.gui-hdd.inventory-admission.v5';expected['template']=ROW(raw);expected['original']=ROW(E(value))
+        return value,raw,expected
+    def test_finite_v5_connected_collector_wire_and_independent_reader(self):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
+        selected={name:ROW(b'critical') for name in c.INSTALLED_V5_CRITICAL}
+        selected['node_modules/bw-board/docs/receipts/zero.stdout']=ROW(b'')
+        def installed(root,prefix,failure,checkout_root):
+            self.assertEqual(root,checkout_root/prefix)
+            return {name.removeprefix(prefix+'/'):row for name,row in selected.items() if name.startswith(prefix+'/')}
+        with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',True),self.inventory_edges(paths,finite=True,finite_version=5) as (raw,pin,env,events),self.empty_source_edges(),patch.object(c,'installed_inventory_v5',side_effect=installed) as installed_call:
+            value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-original.v5',value.get('firstFailure'))
+        expected={'schema':'bw.gui-hdd.inventory-admission.v5','source':D(self.files['source.before.json']),
+          'template':ROW(raw),'original':ROW(E(value)),'runId':90,'workflowSha':'d'*40}
+        self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v5')
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            folder=pathlib.Path(temporary)
+            for name,data in (('original',E(value)),('template',raw),('expected',E(expected))):
+                (folder/name).write_bytes(data)
+            arguments=['--inventory-original-v5','--original',str(folder/'original'),
+              '--template',str(folder/'template'),'--expected',str(folder/'expected')]
+            with contextlib.redirect_stdout(io.StringIO()) as output:self.assertEqual(r.main(arguments),0)
+            self.assertEqual(D(output.getvalue().encode())['schema'],'bw.gui-hdd.inventory-reader.v5')
+        self.assertEqual(installed_call.call_count,4)
+        self.assertEqual(sum(event[0]=='git' for event in events),2+len(c.SOURCE))
+        self.assertEqual(value['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout'],ROW(b''))
+        for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved'):self.assertIs(value[key],False)
+    def test_finite_v5_first_installed_failure_prefix_and_coherent_reader_cuts(self):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
+        source={}
+        with self.empty_source_edges():c.read_empty_python_source(c.EMPTY_PYTHON_PATH,self.empty_selection()[c.EMPTY_PYTHON_PATH],source)
+        def typed(path,selection,observed):observed.update(copy.deepcopy(source))
+        real_lstat=os.lstat
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary)
+            for name in c.INSTALLED_V5_CRITICAL:
+                path=checkout/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'critical')
+            receipt=checkout/'node_modules/bw-board/docs/receipts/zero.stdout'
+            receipt.parent.mkdir(parents=True,exist_ok=True);receipt.write_bytes(b'')
+            failed=checkout/'node_modules/bw-circuit-ui/src/current.js';failed.write_bytes(b'')
+            genuine=c.installed_inventory_v5
+            def installed(selected_root,prefix,failure,checkout_root):
+                self.assertEqual(selected_root,checkout_root/prefix)
+                self.assertTrue((checkout/prefix).exists(),(prefix,str(checkout)))
+                self.assertTrue((checkout/prefix).resolve(strict=True)==checkout.resolve(strict=True)/prefix,prefix)
+                return genuine(checkout/prefix,prefix,failure,checkout)
+            with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',True),self.inventory_edges(paths,finite=True,finite_version=5) as (raw,pin,env,events),patch.object(c,'read_empty_python_source',side_effect=typed),patch.object(c,'installed_inventory_v5',side_effect=installed):
+                faux_lstat=c.os.lstat
+                with patch.object(c.os,'lstat',side_effect=lambda path,*args,**kwargs:real_lstat(path,*args,**kwargs) if str(path).startswith(str(checkout)) else faux_lstat(path,*args,**kwargs)):
+                    value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
+        self.assertEqual(value['schema'],'bw.gui-hdd.inventory-failure.v5')
+        self.assertEqual(value['firstFailure']['phase'],'inventory-installed',value['firstFailure'])
+        self.assertEqual(value['firstFailure']['path'],'node_modules/bw-circuit-ui/src/current.js')
+        self.assertEqual(value['installedProgress']['completedPrefixes'],['node_modules/bw-board'])
+        expected={'schema':'bw.gui-hdd.inventory-failure-expectation.v5','source':D(self.files['source.before.json']),
+          'template':ROW(raw),'failure':ROW(E(value)),'runId':90,'workflowSha':'d'*40}
+        result=r.verify_inventory_failure(E(value),raw,expected)
+        self.assertFalse(result['qualified']);self.assertTrue(result['gitSourceReached'])
+        for cut in ('path','prefix','bool','scope'):
+            changed=copy.deepcopy(value)
+            if cut=='path':changed['installedProgress']['path']='node_modules/bw-board/other'
+            elif cut=='prefix':changed['installedProgress']['completedPrefixes']=['node_modules/playwright']
+            elif cut=='bool':changed['installedProgress']['completedRows']=False
+            else:changed['scope']['installedEmptyRegularScoped']=False
+            selected_expected=copy.deepcopy(expected);selected_expected['failure']=ROW(E(changed))
+            with self.subTest(cut=cut),self.assertRaises(ValueError):
+                r.verify_inventory_failure(E(changed),raw,selected_expected)
+    def test_finite_v5_independent_full_packet_and_real_seven_token_cli(self):
+        value,raw,expected=self.finite_v5_packet()
+        self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v5')
+        self.assertEqual(value['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout'],ROW(b''))
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            folder=pathlib.Path(temporary)
+            for name,data in (('original',E(value)),('template',raw),('expected',E(expected))):
+                (folder/name).write_bytes(data)
+            args=['--inventory-original-v5','--original',str(folder/'original'),'--template',str(folder/'template'),'--expected',str(folder/'expected')]
+            with contextlib.redirect_stdout(io.StringIO()) as output:self.assertEqual(r.main(args),0)
+            self.assertEqual(D(output.getvalue().encode())['schema'],'bw.gui-hdd.inventory-reader.v5')
+            for bad in (args[:-1],args+['--extra'],args+['--original',str(folder/'original')]):
+                with self.assertRaises((ValueError,SystemExit)):r.main(bad)
+    def test_finite_v5_zero_scope_and_guard_refusals(self):
+        value,raw,expected=self.finite_v5_packet()
+        for cut in ('critical-zero','outside-zero','wrong-empty-sha','missing-cui','job','scope'):
+            changed=copy.deepcopy(value)
+            if cut=='critical-zero':changed['installedFiles']['node_modules/bw-board/src/index.js']=ROW(b'')
+            elif cut=='outside-zero':changed['installedFiles']['other/empty']=ROW(b'')
+            elif cut=='wrong-empty-sha':changed['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout']['sha256']='0'*64
+            elif cut=='missing-cui':del changed['installedFiles']['node_modules/bw-circuit-ui/package.json']
+            elif cut=='job':changed['platform']['GITHUB_JOB']='finite-inventory-v4'
+            else:changed['scope']['installedEmptyRegularScoped']=False
+            selected=copy.deepcopy(expected);selected['original']=ROW(E(changed))
+            with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
+        self.assertTrue(c.FINITE_INVENTORY_V5_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
+        with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
+            for args in (['finite-inventory-v5-guard'],['finite-inventory-v5','--request','x','--expected-sha256','0'*64,'--output','x'],
+              ['actual-v6-guard'],['actual-v6-preflight'],['actual-v6']):
+                with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
+    def test_finite_v5_source_zero_and_critical_mutants_are_nonvacuous(self):
+        value,raw,expected=self.finite_v5_packet();rows=copy.deepcopy(value['installedFiles'])
+        wrong=copy.deepcopy(rows);wrong['node_modules/bw-board/docs/receipts/zero.stdout']['sha256']='0'*64
+        with self.assertRaisesRegex(ValueError,'zero installed'):c.installed_rows_v5(wrong)
+        source=(root/'scripts/run-i80386-hdd-gui-actual.py').read_text()
+        zero="need(row['byteLength']>0 or row['sha256']==EMPTY_SHA256,"
+        self.assertIn(zero,source)
+        mutant=source.replace(zero,"need(True,",1)
+        scope={'__name__':'v5_zero_mutant'};exec(compile(mutant,'v5-zero-mutant','exec'),scope)
+        self.assertEqual(scope['installed_rows_v5'](wrong),wrong)
+        critical=copy.deepcopy(rows);critical['node_modules/bw-board/src/index.js']=ROW(b'')
+        with self.assertRaises(ValueError):c.installed_rows_v5(critical)
+        exact="if name in INSTALLED_V5_CRITICAL:integer(row['byteLength'],1,FILE_CAP)"
+        self.assertIn(exact,source)
+        scope={'__name__':'v5_critical_mutant'}
+        exec(compile(source.replace(exact,'if name in INSTALLED_V5_CRITICAL:pass',1),'v5-critical-mutant','exec'),scope)
+        self.assertEqual(scope['installed_rows_v5'](critical),critical)
+    def test_finite_v5_real_installed_fd_zero_and_bounded_partial_failure(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary);progress={'package':None,'path':None,'entryStat':None,'file':None,
+              'completedPrefixes':[],'completedRows':0,'totalBytes':0};failure={'installedProgress':progress}
+            for prefix in c.INSTALLED_V5_ROOTS:
+                for name in c.INSTALLED_V5_CRITICAL:
+                    if name.startswith(prefix+'/'):
+                        path=checkout/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'critical')
+                if prefix=='node_modules/bw-board':
+                    path=checkout/prefix/'docs/receipts/empty.stdout';path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'')
+            selected={}
+            for prefix in c.INSTALLED_V5_ROOTS:
+                selected.update({prefix+'/'+name:row for name,row in c.installed_inventory_v5(checkout/prefix,prefix,failure,checkout).items()})
+            self.assertEqual(selected['node_modules/bw-board/docs/receipts/empty.stdout'],ROW(b''))
+            self.assertEqual(r.installed_rows_v5(selected),selected)
+            self.assertEqual(progress['completedPrefixes'],list(c.INSTALLED_V5_ROOTS))
+            with self.assertRaisesRegex(ValueError,'canonical bounded regular'):c.regular(checkout/'node_modules/bw-board/docs/receipts/empty.stdout',1)
+            critical=checkout/'node_modules/bw-board/src/index.js';critical.write_bytes(b'')
+            progress.update(package=None,path=None,entryStat=None,file=None,completedPrefixes=[],completedRows=0,totalBytes=0)
+            with self.assertRaisesRegex(ValueError,'nonempty source-fixed'):c.installed_inventory_v5(checkout/'node_modules/bw-board','node_modules/bw-board',failure,checkout)
+            self.assertEqual(progress['path'],'node_modules/bw-board/src/index.js')
+            r.installed_progress_v5(progress)
+            critical.write_bytes(b'critical')
+            (checkout/'node_modules/bw-board/docs/receipts/link').symlink_to('empty.stdout')
+            progress.update(package=None,path=None,entryStat=None,file=None,completedPrefixes=[],completedRows=0,totalBytes=0)
+            with self.assertRaisesRegex(ValueError,'symlink refused'):c.installed_inventory_v5(checkout/'node_modules/bw-board','node_modules/bw-board',failure,checkout)
+            self.assertEqual(progress['path'],'node_modules/bw-board/docs/receipts/link')
+            self.assertIsNotNone(progress['entryStat']);r.installed_progress_v5(progress)
+            outside=checkout.parent/'outside-installed-root'
+            with self.assertRaisesRegex(ValueError,'belongs to checkout'):
+                c.installed_inventory_v5(outside/'node_modules/bw-board','node_modules/bw-board',failure,checkout)
+    def test_finite_v5_read_and_close_failure_order(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            path=pathlib.Path(temporary)/'regular';path.write_bytes(b'content')
+            original_close=c.os.close
+            def broken_close(fd):original_close(fd);raise OSError('SECOND_CLOSE')
+            def progress():return {'stage':'not-started','namedBefore':None,'heldBefore':None,'heldAfter':None,
+              'namedAfter':None,'bytesRead':0,'sha256':H(b''),'eof':False,'complete':False,
+              'closeAttempted':False,'closeSucceeded':False}
+            first=progress()
+            with patch.object(c.os,'read',side_effect=OSError('FIRST_READ')),patch.object(c.os,'close',side_effect=broken_close):
+                with self.assertRaisesRegex(OSError,'FIRST_READ') as caught:c.installed_regular_v5(path,32,first)
+            self.assertEqual([str(x) for x in caught.exception.inventory_secondary],['SECOND_CLOSE'])
+            self.assertEqual(first['stage'],'read')
+            self.assertTrue(first['closeAttempted']);self.assertFalse(first['closeSucceeded']);self.assertFalse(first['complete'])
+            second=progress()
+            with patch.object(c.os,'close',side_effect=broken_close):
+                with self.assertRaisesRegex(OSError,'SECOND_CLOSE'):c.installed_regular_v5(path,32,second)
+            self.assertEqual(second['bytesRead'],7);self.assertTrue(second['eof']);self.assertFalse(second['complete'])
+            self.assertEqual(second['stage'],'close')
+            overflow=progress();path.write_bytes(b'123456')
+            with patch.object(c.os,'read',return_value=b'1234567'):
+                with self.assertRaisesRegex(ValueError,'stable installed original'):c.installed_regular_v5(path,6,overflow)
+            self.assertEqual(overflow['bytesRead'],7)
+            self.assertEqual(overflow['stage'],'readback')
+            self.assertEqual(overflow['sha256'],H(b'1234567'))
+            self.assertTrue(overflow['closeSucceeded'])
+            observed={'package':'node_modules/bw-board','path':'node_modules/bw-board/docs/receipts/overflow',
+              'entryStat':overflow['namedBefore'],'file':overflow,'completedPrefixes':[],'completedRows':0,'totalBytes':0}
+            r.installed_progress_v5(observed)
+            rejected=copy.deepcopy(observed);rejected['file']['bytesRead']=r.FILE_CAP+2
+            with self.assertRaises(ValueError):r.installed_progress_v5(rejected)
+
+    def test_finite_v5_installed_digest_feeds_each_byte_once(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            path=pathlib.Path(temporary)/'regular';raw=b'A'*(384<<10);path.write_bytes(raw)
+            fed=[0];original=hashlib.sha256
+            class CountedDigest:
+                def __init__(self,initial=b''):
+                    fed[0]+=len(initial);self.value=original(initial)
+                def update(self,part):
+                    fed[0]+=len(part);self.value.update(part)
+                def hexdigest(self):return self.value.hexdigest()
+            progress={'stage':'not-started','namedBefore':None,'heldBefore':None,'heldAfter':None,
+              'namedAfter':None,'bytesRead':0,'sha256':original(b'').hexdigest(),'eof':False,
+              'complete':False,'closeAttempted':False,'closeSucceeded':False}
+            with patch.object(c.hashlib,'sha256',side_effect=CountedDigest):
+                self.assertEqual(c.installed_regular_v5(path,c.FILE_CAP,progress),raw)
+            self.assertEqual(fed[0],len(raw))
+            self.assertEqual(progress['sha256'],original(raw).hexdigest())
+            self.assertTrue(progress['complete']);self.assertTrue(progress['closeSucceeded'])
+
+    def actual_v6_packet(self):
+        files,expected,reference,originals=NativeV2Originals().fresh()
+        request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v6'
+        for name in c.INSTALLED_V5_CRITICAL:request['installedFiles'].setdefault(name,ROW(b'critical'))
+        request['installedFiles']['node_modules/bw-board/docs/receipts/zero.stdout']=ROW(b'')
+        for stage in ('before','after'):files['installed.'+stage+'.json']=E(request['installedFiles'])
+        use_finite_basis_fixture(request,expected,5)
+        git_rows={}
+        for path in sorted(c.NATIVE_FONT_SOURCE):
+            raw=('native-source:'+path).encode()
+            git_rows[path]={'mode':'100644','gitBlob':hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\x00'+raw).hexdigest(),
+                'bytes':len(raw),'sha256':H(raw)}
+        request['nativeSourceGit']={'observed':{'head':reference['source']['head'],'files':copy.deepcopy(git_rows)},
+            'finite':{'head':request['inventoryAdmission']['metadataAdmission']['source']['head'],'files':copy.deepcopy(git_rows)},
+            'current':{'head':request['source']['head'],'files':copy.deepcopy(git_rows)}}
+        expected.update(schema='bw.gui-hdd.actual-expectation.v6',nativeSourceGitSha256=H(E(request['nativeSourceGit'])))
+        native_v5_refresh(files,expected,reference,originals,request)
+        event=D(files['event.original.json']);event['label']['name']='x86-hdd-gui-actual-v6'
+        event['pull_request']['body']='<!-- BW_GUI_HDD_ACTUAL_V6_REQUEST_SHA256='+expected['requestSha256']+' -->'
+        files['event.original.json']=E(event)
+        stage=D(files['native-font.stage.json']);stage['eventSha256']=H(files['event.original.json']);files['native-font.stage.json']=E(stage)
+        prefix=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false',
+          '-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
+        for old in (len(r.SOURCE)+5,len(r.SOURCE)+6):
+            for suffix in ('stdout','stderr','process.json'):
+                files['git-'+str(old+10)+'.'+suffix]=files.pop('git-'+str(old)+'.'+suffix)
+        start=len(r.SOURCE)+2
+        for index,path in enumerate(sorted(git_rows)):
+            row=git_rows[path];raw=('native-source:'+path).encode()
+            for offset,args,out in ((0,['ls-tree','-z',request['source']['head'],'--',path],
+                ('100644 blob '+row['gitBlob']+'\t'+path+'\0').encode()),
+              (1,['cat-file','blob',request['source']['head']+':'+path],raw)):
+                role='git-'+str(start+2*index+offset)
+                files[role+'.stdout']=out;files[role+'.stderr']=b''
+                files[role+'.process.json']=E(proc(prefix+args,out))
+        files['native-source-git.before.json']=E({'schema':'bw.gui-hdd.native-source-git.v6',
+          'head':request['source']['head'],'tree':request['source']['tree'],'files':git_rows})
+        return files,expected
+
+    def test_actual_v6_request_and_full_independent_reader_packet(self):
+        files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
+        self.assertEqual(c.parse_request(files['request.original.json'],expected['requestSha256']),request)
+        self.assertEqual(r.parse_request(files['request.original.json'],expected['requestSha256']),request)
+        originals,selected=sealed(files,expected)
+        self.assertEqual(r.audit(originals,selected)['schema'],'bw.gui-hdd.reader.v6')
+        delivery={'artifact':packet(files),'expected':E(selected)}
+        with patch.object(r,'bounded_input',side_effect=lambda path,cap:delivery[path]),patch.object(r.sys,'stdout',io.StringIO()) as stream:
+            self.assertEqual(r.main(['artifact','expected']),0)
+            self.assertEqual(D(stream.getvalue().encode())['schema'],'bw.gui-hdd.reader.v6')
+        for cut in ('native-git-listing','native-git-blob','native-git-report','h0-a-row','native-external','empty-outside','empty-critical','event-label'):
+            changed=copy.deepcopy(files);chosen=copy.deepcopy(expected)
+            first=sorted(c.NATIVE_FONT_SOURCE)[0];role='git-'+str(len(r.SOURCE)+2)
+            if cut=='native-git-listing':
+                changed[role+'.stdout']=b'100644 blob '+b'0'*40+b'\t'+first.encode()+b'\x00'
+                item=D(changed[role+'.process.json']);item['streams']['stdout']=ROW(changed[role+'.stdout']);changed[role+'.process.json']=E(item)
+            elif cut=='native-git-blob':
+                role='git-'+str(len(r.SOURCE)+3);changed[role+'.stdout']=b'forged'
+                item=D(changed[role+'.process.json']);item['streams']['stdout']=ROW(changed[role+'.stdout']);changed[role+'.process.json']=E(item)
+            elif cut=='native-git-report':
+                item=D(changed['native-source-git.before.json']);item['files'][first]['bytes']+=1;changed['native-source-git.before.json']=E(item)
+            elif cut=='h0-a-row':
+                item=D(changed['request.original.json']);item['nativeSourceGit']['observed']['files'][first]['gitBlob']='0'*40
+                changed['request.original.json']=E(item);chosen['requestSha256']=H(changed['request.original.json'])
+            elif cut=='native-external':chosen['nativeSourceGitSha256']='0'*64
+            elif cut in ('empty-outside','empty-critical'):
+                item=D(changed['installed.before.json'])
+                if cut=='empty-outside':item['other/empty']=ROW(b'')
+                else:item['node_modules/bw-board/src/index.js']=ROW(b'')
+                changed['installed.before.json']=E(item)
+            else:
+                event=D(changed['event.original.json']);event['label']['name']='x86-hdd-gui-actual';changed['event.original.json']=E(event)
+            with self.subTest(cut=cut),self.assertRaises((ValueError,KeyError)):
+                r.audit(*sealed(changed,chosen))
+    def test_actual_v6_current_native_git_and_cross_head_mutants(self):
+        files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary)
+            for path in c.NATIVE_FONT_SOURCE:
+                selected=checkout/path;selected.parent.mkdir(parents=True,exist_ok=True)
+                selected.write_bytes(('native-source:'+path).encode())
+            class Git:
+                def __init__(self,selection):self.selection=selection;self.calls=[]
+                def git(self,args):
+                    self.calls.append(args);path=args[-1].split(':',1)[-1];row=self.selection['files'][path]
+                    return ('100644 blob '+row['gitBlob']+'\t'+path+'\x00').encode() if args[0]=='ls-tree' else ('native-source:'+path).encode()
+            class Output:
+                def __init__(self):self.files={}
+                def save(self,name,raw):self.files[name]=raw
+            edge=Git(request['nativeSourceGit']['current']);output=Output()
+            observed=c.observe_native_source_git_v6(request,checkout,edge,output)
+            self.assertEqual(observed['files'],request['nativeSourceGit']['current']['files'])
+            self.assertEqual(len(edge.calls),10)
+            self.assertEqual(D(output.files['native-source-git.before.json']),observed)
+            forged=copy.deepcopy(request);first=sorted(c.NATIVE_FONT_SOURCE)[0]
+            broken_h1=copy.deepcopy(request);broken_h1['nativeSourceGit']['finite']['files'][first]['gitBlob']='0'*40
+            for module in (c,r):
+                with self.assertRaisesRegex(ValueError,'H0/H1/A|H0, finite H1'):
+                    module.native_source_git_v6(broken_h1['nativeSourceGit'],broken_h1['nativeFontAdmission'],
+                                                broken_h1['inventoryAdmission'],broken_h1['source']['head'])
+            for label in ('observed','finite','current'):forged['nativeSourceGit'][label]['files'][first]['gitBlob']='0'*40
+            self.assertEqual(c.native_source_git_v6(forged['nativeSourceGit'],forged['nativeFontAdmission'],forged['inventoryAdmission'],forged['source']['head']),forged['nativeSourceGit'])
+            with self.assertRaisesRegex(ValueError,'current native source Git/live exact bytes'):
+                c.observe_native_source_git_v6(forged,checkout,Git(forged['nativeSourceGit']['current']),Output())
+            drift=checkout/first;drift.write_bytes(b'changed-current-file')
+            with self.assertRaisesRegex(ValueError,'admitted file changed'):
+                c.observe_native_source_git_v6(request,checkout,Git(request['nativeSourceGit']['current']),Output())
+
+    def test_current_v5_build_whole_tree_and_current_head_are_live(self):
+        for role in ('head','tree'):
+            files,expected=fixture_v5();request=D(files['request.original.json'])
+            if role=='head':request['build']['head']='f'*40
+            else:request['build']['sourceAdmission']['checkoutTree']='f'*40
+            raw=E(request)
+            for module in (c,r):
+                with self.assertRaisesRegex(ValueError,'complete checkout tree'):module.parse_request(raw,H(raw))
+    def test_current_v5_installed_cui_before_after_and_missing_census(self):
+        for stage in ('before','after'):
+            files,expected=fixture_v5();value=D(files['installed.'+stage+'.json']);value['node_modules/bw-circuit-ui/src/current.js']['sha256']='0'*64;files['installed.'+stage+'.json']=E(value)
+            with self.assertRaisesRegex(ValueError,'installed graph original'):r.audit(files,expected)
+        files,expected=fixture_v5();request=D(files['request.original.json']);del request['installedFiles']['node_modules/bw-circuit-ui/package.json'];raw=E(request)
+        for module in (c,r):
+            with self.assertRaisesRegex(ValueError,'Circuit UI inventory'):module.parse_request(raw,H(raw))
+
+    def test_current_v5_font_identity_request_parser_mutant_is_detected(self):
+        files,expected=fixture_v5();request=D(files['request.original.json']);request['nativeFontAdmission']['files']['/usr/lib/libfontconfig-selected.so']['sha256']='0'*64
+        raw=E(request)
+        for module in (r,c):
+            with self.assertRaisesRegex(ValueError,'current GUI runtime readback'):module.parse_request(raw,H(raw))
+        text=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text()
+        old="need(encode(row)==encode(runtime['files'].get(path)),'native file joins current GUI runtime readback selection')"
+        self.assertIn(old,text);namespace={'__name__':'native_font_current_readback_mutant'}
+        exec(compile(text.replace(old,"need(True,'native file joins current GUI runtime readback selection')",1),'native-readback-mutant','exec'),namespace)
+        self.assertEqual(namespace['parse_request'](raw,H(raw)),request)
+
     def assert_noncurrent_board_refuses_actual_formats(self,noncurrent):
         self.assertNotEqual(noncurrent,r.BOARD)
         for factory in (fixture,fixture_v4):
@@ -2486,7 +3318,129 @@ class Originals(unittest.TestCase):
     def test_current_board_requires_current_admission_and_scenario_pins_v3_v4(self):
         self.assert_noncurrent_board_refuses_actual_formats('0'*40)
 
-suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)
+class NativeV2Originals(unittest.TestCase):
+    def fresh(self):
+        files,expected=fixture_v5();request=D(files['request.original.json']);ref=request['nativeFontAdmission']
+        originals={k:base64.b64decode(v['base64']) for k,v in expected['nativeFontOriginals'].items()}
+        ref.update(schema='bw.gui-hdd.actual-native-font-reference.v2',artifactName='i80386-native-font-selection-v2-300-1')
+        native=D(originals['request']);native['schema']='bw.gui-hdd.native-font-request.v2';originals['request']=E(native).rstrip(b'\n')
+        event=D(originals['event']);event['label']['name']='x86-native-font-selection-v2'
+        event['pull_request']['body']='<!-- BW_NATIVE_FONT_V2_REQUEST_SHA256='+H(originals['request'])+' -->'
+        originals['event']=json.dumps(event,indent=2).encode()+b'\n'
+        identity={'uid':1001,'gid':1002,'resuid':[1001]*3,'resgid':[1002]*3}
+        unit='bw-native-font-v2-300-1.service';cg='/system.slice/'+unit;raw=('0::'+cg+'\n').encode()
+        file_identity={'dev':5,'ino':6,'mode':stat.S_IFREG|0o444,'uid':1001,'gid':1002}
+        witness={'path':'/proc/self/cgroup','role':'self-proc','before':file_identity,'after':file_identity,'named':file_identity,
+          'bytesRead':len(raw),'prefixBytes':len(raw),'prefixSha256':H(raw),'prefixBase64':base64.b64encode(raw).decode(),
+          'closeAttempted':True,'closed':True,'complete':True}
+        observed=D(originals['original']);observed.update(schema='bw.gui-hdd.native-font-original.v2',servicePartial=None,
+          service={phase:{'unit':unit,'cgroupPath':cg,'processIdentity':copy.deepcopy(identity),'selfProc':copy.deepcopy(witness)} for phase in ('before','after')})
+        observed['platform'].update(GITHUB_JOB='native-font-selection-v2',BW_NATIVE_V2_INVOKER_UID='1001',BW_NATIVE_V2_INVOKER_GID='1002')
+        terminal={'LoadState':'not-found','ActiveState':'inactive','SubState':'dead','Result':'success','ExecMainCode':'0',
+          'ExecMainStatus':'0','ControlGroup':'','MainPID':'0','ControlPID':'0','KillMode':'control-group'}
+        census={'exists':False,'populated':None,'procs':None,'threads':None,'nrDescendants':None,'nrDyingDescendants':None}
+        outer={'schema':'bw.gui-hdd.native-font-service.v2','unit':unit,'cgroupPath':cg,'serviceExitCode':0,'originalPresent':True,
+          'pre':{'unit':terminal,'cgroup':census},'post':{'unit':terminal,'cgroup':census},
+          'cleanup':{'stopAttempted':False,'stopExitCode':None,'resetAttempted':False,'resetExitCode':None},
+          'outsideFiniteCleanupProved':True,'firstFailure':None,'secondary':[],'invokerIdentity':identity,
+          'innerComplete':True,'innerBeforeObserved':True,'innerFirstFailure':None}
+        originals['original']=E(observed);originals['service']=E(outer)
+        prior=D(originals['expectation']);prior['schema']='bw.gui-hdd.native-font-expectation.v2';originals['expectation']=E(prior)
+        report=D(originals['readerReport']);report['schema']='bw.gui-hdd.native-font-reader.v2';originals['readerReport']=E(report)
+        job=D(originals['job']);job['name']='native-font-selection-v2';originals['job']=E(job)
+        artifact=D(originals['artifact']);artifact['name']=ref['artifactName'];originals['artifact']=E(artifact)
+        self.refresh(files,expected,ref,originals,request)
+        return files,expected,ref,originals
+    def refresh(self,files,expected,ref,originals,request=None):
+        observed=D(originals['original'])
+        for role in ('request','event'):observed[role]={'bytes':len(originals[role]),'sha256':H(originals[role])}
+        originals['original']=E(observed);prior=D(originals['expectation'])
+        for role in ('request','event','original','service'):prior[role+'Sha256']=H(originals[role])
+        prior.update(originalBytes=len(originals['original']),serviceBytes=len(originals['service']));originals['expectation']=E(prior)
+        native_v5_refresh(files,expected,ref,originals,request)
+    def test_full_v2_current_packet_producer_parser_and_standalone_reader(self):
+        files,expected,ref,originals=self.fresh()
+        request=c.parse_request(files['request.original.json'],expected['requestSha256'])
+        self.assertEqual(request,r.parse_request(files['request.original.json'],expected['requestSha256']))
+        complete,selected=sealed(files,expected);verdict=r.audit(complete,selected);self.assertTrue(verdict['pass'])
+        self.assertEqual(verdict['schema'],'bw.gui-hdd.reader.v5')
+        delivery=packet(files);inputs={'artifact':delivery,'expected':E(selected)}
+        def bounded(path,cap):
+            self.assertIn(path,inputs);self.assertLessEqual(len(inputs[path]),cap);return inputs[path]
+        stream=io.StringIO()
+        with patch.object(r,'bounded_input',side_effect=bounded),patch.object(r.sys,'stdout',stream):
+            self.assertEqual(r.main(['artifact','expected']),0)
+        self.assertEqual(D(stream.getvalue().encode()),verdict)
+        self.assertFalse(c.ACTUAL_ENABLED);self.assertFalse(r.ACTUAL_ENABLED)
+        self.assertLess(len(files['request.original.json']),r.JSON_CAP);self.assertLess(len(E(expected)),r.JSON_CAP)
+    def test_authored_zip_ignores_host_time_with_original_helper_counterfactual(self):
+        def legacy_zip(files):
+            out=io.BytesIO()
+            with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+                for name,raw in sorted(files.items()):archive.writestr(name,raw)
+            return out.getvalue()
+        files={'owned.txt':b'authored bytes','owned-dir/':b'','unicode-\u00e5.txt':b'authored UTF8 name'}
+        fixed=(1980,1,1,0,0,0,1,1,-1)
+        with patch.object(zipfile.time,'localtime',return_value=fixed):
+            self.assertEqual(zip_(files),legacy_zip(files),'only date selection changes: original compression/attributes/data remain exact')
+        early=(2026,10,24,0,0,0,5,297,-1);late=(2026,10,24,0,0,2,5,297,-1)
+        with patch.object(zipfile.time,'localtime',side_effect=[early]*len(files)+[late]*len(files)) as clock:
+            first=zip_(files);second=zip_(files);self.assertEqual(first,second);clock.assert_not_called()
+        with patch.object(zipfile.time,'localtime',side_effect=[early]*len(files)+[late]*len(files)):
+            before=legacy_zip(files);after=legacy_zip(files)
+        self.assertNotEqual(before,after);self.assertNotEqual(H(before),H(after))
+        for raw in (first,second,before,after):
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                self.assertEqual(archive.namelist(),sorted(files))
+                for info in archive.infolist():
+                    self.assertEqual(archive.read(info),files[info.filename]);self.assertEqual(info.compress_type,zipfile.ZIP_DEFLATED)
+                    self.assertEqual(info.external_attr,((0o40775<<16)|0x10) if info.filename.endswith('/') else 0o600<<16)
+    def test_v2_identity_role_owner_and_outer_coherent_mutations(self):
+        for cut in ('owner','gid','triplet','path','bytes','close','after','partial','outer-identity','outer-pid','outer-cgroup','inner','failure','current-runtime'):
+            files,expected,ref,originals=self.fresh();observed=D(originals['original']);outer=D(originals['service'])
+            before=observed['service']['before'];w=before['selfProc']
+            if cut=='owner':
+                for name in ('before','after','named'):w[name]['uid']=0
+            elif cut=='gid':observed['platform']['BW_NATIVE_V2_INVOKER_GID']='1001'
+            elif cut=='triplet':before['processIdentity']['resuid']=[0,1001,1001]
+            elif cut=='path':w['path']='/proc/1/cgroup'
+            elif cut=='bytes':w['prefixSha256']=H(b'other')
+            elif cut=='close':w['closed']=False
+            elif cut=='after':observed['service']['after']['processIdentity']['gid']=1003
+            elif cut=='partial':observed['servicePartial']={'phase':'before'}
+            elif cut=='outer-identity':outer['invokerIdentity']['uid']=1003
+            elif cut=='outer-pid':outer['post']['unit']['MainPID']='42'
+            elif cut=='outer-cgroup':outer['post']['cgroup']=dict(exists=True,populated=1,procs=[42],threads=[42],nrDescendants=1,nrDyingDescendants=0)
+            elif cut=='inner':outer['innerComplete']=False
+            elif cut=='failure':observed['firstFailure']={'phase':'native-font-observation','name':'ValueError','message':'retained failure'}
+            else:
+                value=D(files['runtime.after.json']);value['files']['/usr/bin/fc-match']['sha256']='0'*64;files['runtime.after.json']=E(value)
+            originals['original']=E(observed);originals['service']=E(outer);self.refresh(files,expected,ref,originals)
+            with self.subTest(cut=cut),self.assertRaises(ValueError):r.audit(*sealed(files,expected))
+    def test_v1_v2_schema_job_marker_label_artifact_are_not_interchangeable(self):
+        for role,cut in (('request','schema'),('original','schema'),('service','schema'),('expectation','schema'),('readerReport','schema'),('job','name'),('event','marker'),('event','label'),('artifact','name')):
+            files,expected,ref,originals=self.fresh();value=D(originals[role])
+            if cut=='schema':value['schema']=value['schema'][:-1]+'1'
+            elif cut=='marker':value['pull_request']['body']=value['pull_request']['body'].replace('BW_NATIVE_FONT_V2_','BW_NATIVE_FONT_')
+            elif cut=='label':value['label']['name']='x86-native-font-selection-v1'
+            else:value[cut]='native-font-selection' if role=='job' else 'i80386-native-font-selection-300-1'
+            originals[role]=E(value);self.refresh(files,expected,ref,originals)
+            with self.subTest(role=role,cut=cut),self.assertRaises(ValueError):r.audit(*sealed(files,expected))
+        files,expected,ref,originals=self.fresh();ref['schema']='bw.gui-hdd.actual-native-font-reference.v1';self.refresh(files,expected,ref,originals)
+        for module in (c,r):
+            with self.assertRaises(ValueError):module.parse_request(files['request.original.json'],expected['requestSha256'])
+    def test_v2_identity_guard_removal_mutant_accepts_same_hostile_packet(self):
+        files,expected,ref,originals=self.fresh();observed=D(originals['original'])
+        for phase in ('before','after'):
+            for name in ('before','after','named'):observed['service'][phase]['selfProc'][name]['uid']=0
+        originals['original']=E(observed);self.refresh(files,expected,ref,originals)
+        selected=sealed(files,expected)
+        with self.assertRaisesRegex(ValueError,'native v2 stable self-proc owner'):r.audit(*selected)
+        with patch.object(r,'join_native_v2_identity',return_value=None):self.assertTrue(r.audit(*selected)['pass'])
+    def test_v1_manufactured_historical_admission_stays_distinct(self):
+        files,expected=fixture_v5();self.assertTrue(r.audit(*sealed(files,expected))['pass'])
+
+suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith('test_finite_v4'))
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
 sys.exit(not result.wasSuccessful())
@@ -2506,6 +3460,24 @@ test('standalone original reader: complete manufactured packet and coherent nega
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
     const summary=readOriginalControlSummary(result.stdout);
     assert.ok(summary.controls>=25); assert.equal(summary.failures,0); assert.equal(summary.errors,0);
+});
+
+test('finite inventory v4: body-first guard, source-only producer and independent original controls', () => {
+    const selected = controls.replace("if not name.startswith('test_finite_v4')", "if name.startswith('test_finite_v4')");
+    assert.notEqual(selected, controls);
+    const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+    const summary=readOriginalControlSummary(result.stdout);
+    assert.ok(summary.controls>=8);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+});
+
+test('native v2 GUI join: complete packet, source-bound identity and coherent refusals', () => {
+    const old="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith('test_finite_v4'))";
+    const selected=controls.replace(old,'suite=unittest.defaultTestLoader.loadTestsFromTestCase(NativeV2Originals)');
+    assert.notEqual(selected,controls);
+    const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+    assert.deepEqual(readOriginalControlSummary(result.stdout),{controls:6,failures:0,errors:0});
 });
 
 const probe=fs.readFileSync(new URL('../scripts/verify-i80386-local-hdd-gui.mjs',import.meta.url),'utf8');

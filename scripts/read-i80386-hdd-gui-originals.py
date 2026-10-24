@@ -107,6 +107,83 @@ def rows(value, *, required=(), count=16384, total=BUILD_CAP, file_cap=FILE_CAP)
     return value
 
 
+INSTALLED_V5_ROOTS = ('node_modules/bw-board','node_modules/bw-circuit-ui',
+                      'node_modules/playwright','node_modules/playwright-core')
+EMPTY_SHA256 = hashlib.sha256(b'').hexdigest()
+INSTALLED_V5_CRITICAL = frozenset((
+ 'node_modules/bw-board/package.json','node_modules/bw-board/src/index.js',
+ 'node_modules/bw-circuit-ui/package.json','node_modules/bw-circuit-ui/src/current.js',
+ 'node_modules/playwright/package.json','node_modules/playwright-core/package.json'))
+
+
+def installed_rows_v5(value):
+    need(type(value) is dict and 0<len(value)<=16384 and
+         INSTALLED_V5_CRITICAL<=set(value),'complete finite v5 installed rows')
+    sizes={prefix:0 for prefix in INSTALLED_V5_ROOTS}
+    for name,row in value.items():
+        relative(name);fields(row,'byteLength sha256')
+        matching=[root for root in INSTALLED_V5_ROOTS if name.startswith(root+'/')]
+        need(len(matching)==1 and name!=matching[0],
+             'installed-only finite v5 regular row')
+        integer(row['byteLength'],0,FILE_CAP);digest(row['sha256'])
+        need(row['byteLength']>0 or row['sha256']==EMPTY_SHA256,
+             'zero installed original has exact empty digest')
+        if name in INSTALLED_V5_CRITICAL:
+            integer(row['byteLength'],1,FILE_CAP)
+        sizes[matching[0]]+=row['byteLength']
+    need(all(sizes.values()) and all(size<=BUILD_CAP for size in sizes.values()),
+         'bounded four-package installed census')
+    return value
+
+
+def installed_progress_v5(value):
+    fields(value,'package path entryStat file completedPrefixes completedRows totalBytes')
+    completed=value['completedPrefixes']
+    need(type(completed) is list and completed==list(INSTALLED_V5_ROOTS[:len(completed)]),
+         'ordered completed installed package prefix')
+    integer(value['completedRows'],0,16384)
+    integer(value['totalBytes'],0,4*BUILD_CAP)
+    package=value['package'];path=value['path'];file=value['file']
+    need(package is None or package in INSTALLED_V5_ROOTS,'attempted fixed package')
+    need(path is None or (type(path) is str and package is not None and path.startswith(package+'/') and
+         relative(path)==path),'attempted canonical installed path')
+    need(file is None or (path is not None and type(file) is dict),'attempted file facts')
+    if value['entryStat'] is not None:
+        fields(value['entryStat'],'dev ino mode uid gid nlink size mtime_ns')
+        for name,number in value['entryStat'].items():
+            integer(number,-2**63 if name=='mtime_ns' else 0,
+                    2**63-1 if name=='mtime_ns' else 2**64-1)
+    if file is None:return
+    fields(file,'stage namedBefore heldBefore heldAfter namedAfter bytesRead sha256 eof complete closeAttempted closeSucceeded')
+    need(file['stage'] in ('not-started','lstat','open','held-before','read','readback','close','complete'),
+         'bounded installed read phase')
+    for key in ('namedBefore','heldBefore','heldAfter','namedAfter'):
+        row=file[key]
+        if row is None:continue
+        fields(row,'dev ino mode uid gid nlink size mtime_ns')
+        for name,number in row.items():
+            integer(number,-2**63 if name=='mtime_ns' else 0,
+                    2**63-1 if name=='mtime_ns' else 2**64-1)
+    # A failed read may retain the single byte used to detect growth past cap.
+    integer(file['bytesRead'],0,FILE_CAP+1);digest(file['sha256'])
+    for name in ('eof','complete','closeAttempted','closeSucceeded'):
+        need(type(file[name]) is bool,'strict installed partial boolean')
+    need(file['closeSucceeded'] is False or file['closeAttempted'] is True,
+         'close success requires attempt')
+    if file['complete']:
+        need(file['bytesRead']<=FILE_CAP,'accepted installed file cap')
+        need(file['stage']=='complete' and all(file[name] is not None for name in
+             ('namedBefore','heldBefore','heldAfter','namedAfter')) and
+             file['eof'] is True and file['closeAttempted'] is True and
+             file['closeSucceeded'] is True and
+             file['bytesRead']==file['namedBefore']['size'] and
+             all(file[name]==file['namedBefore'] for name in ('heldBefore','heldAfter','namedAfter')),
+             'complete installed file exact held/named readback')
+        need(value['entryStat']==file['namedBefore'],
+             'complete installed entry/file identity')
+    if file['bytesRead']==0:need(file['sha256']==EMPTY_SHA256,'empty prefix digest')
+
+
 def runtime_path(value):
     need(type(value) is str and 1<len(value)<=512 and re.fullmatch('/[A-Za-z0-9_./@+-]+',value) and
          not value.startswith('//') and str(Path(value))==value and '..' not in Path(value).parts,'canonical selected absolute runtime path')
@@ -198,16 +275,206 @@ def validate_startup(snapshot, installed, mode, arguments):
     return snapshot
 
 
+FINITE_INVENTORY_TEMPLATE_CAP = 32 << 10
+FINITE_INVENTORY_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V4_BEGIN -->'
+FINITE_INVENTORY_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V4_END -->'
+
+
+def finite_inventory_scope():
+    return {'basis':'selected-core-runtime-for-owned-v5-fontconfig','globalFontDiscovery':False,
+      'historicalGlobalRosterQualified':False,'nativeLibraryClosureProved':False,
+      'fontSelectionProved':False,'browserFontSelectionProved':False,'guestApproved':False}
+
+
+def finite_inventory_path(path):
+    runtime_path(path)
+    roots=('/etc/fonts','/usr/share/fontconfig','/usr/share/fonts','/usr/local/share/fonts','/var/cache/fontconfig')
+    need(not any(path==prefix or path.startswith(prefix+'/') for prefix in roots) and
+         '/gui-inputs/native-font' not in path and not path.lower().endswith(('.ttf','.otf','.ttc')),
+         'finite v4 core scope excludes global and later staged font/config/cache inputs')
+
+
+def finite_inventory_template(raw,expected):
+    digest(expected);need(type(raw) is bytes and 0<len(raw)<=FINITE_INVENTORY_TEMPLATE_CAP and sha(raw)==expected,'selected finite v4 template bytes')
+    template=decode(raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources libraries scope')
+    need(encode(template)==raw and template['schema']=='bw.gui-hdd.inventory-template.v4' and
+         encode(template['scope'])==encode(finite_inventory_scope()),'explicit canonical finite v4 scope; no historical success promotion')
+    digest(template['sourceHead'],40)
+    for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
+        roster=template[role];need(type(roster) is list and len(roster)<=cap and roster==sorted(set(roster)),'finite sorted unique selected '+role)
+        for path in roster:finite_inventory_path(path)
+    need(1<=len(template['files']) and len(template['aliases'])+len(template['directoryAliases'])<=256 and
+         len(set(template['files']+template['aliases']+template['directoryAliases']))==sum(len(template[key]) for key in ('files','aliases','directoryAliases')),'disjoint finite core runtime roles')
+    fields(template['tools'],'git gh');need(template['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'},'selected finite bootstrap tools')
+    need(template['python']==PYTHON_EXECUTABLE and all(path in template['files'] for path in
+         (template['node'],template['python'],template['chromium'],'/usr/bin/git','/usr/bin/gh','/usr/bin/curl')),'selected Node/Python/Chromium/Git/gh/curl core files')
+    libraries=template['libraries'];need(type(libraries) is list and 1<=len(libraries)<=128 and libraries==sorted(set(libraries)) and
+         set(libraries)<=set(template['files']),'explicit finite selected library role; no complete loader closure claim')
+    empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
+    return template
+
+
+def finite_inventory_body_template(body,expected):
+    need(type(body) is str and body.count(FINITE_INVENTORY_BEGIN)==body.count(FINITE_INVENTORY_END)==1,'one immutable finite v4 body wrapper')
+    begin=body.index(FINITE_INVENTORY_BEGIN)+len(FINITE_INVENTORY_BEGIN);end=body.index(FINITE_INVENTORY_END)
+    need(begin<end,'ordered finite v4 body wrapper')
+    raw=body[begin:end].encode();need(raw.startswith(b'\n'),'canonical finite v4 wrapper separator')
+    wrapper=decode(raw[1:]);fields(wrapper,'schema sha256 templateBase64')
+    need(encode(wrapper)==raw[1:] and wrapper['schema']=='bw.gui-hdd.finite-inventory-transport.v1' and wrapper['sha256']==expected,'canonical externally pinned finite v4 transport')
+    encoded=wrapper['templateBase64'];need(type(encoded) is str and encoded.isascii() and 0<len(encoded)<=4*((FINITE_INVENTORY_TEMPLATE_CAP+2)//3),'bounded finite v4 template encoding')
+    template=base64.b64decode(encoded,validate=True)
+    need(base64.b64encode(template).decode()==encoded,'canonical finite v4 template encoding')
+    finite_inventory_template(template,expected);return template
+
+
+def bind_finite_inventory_event(raw,head,expected,env):
+    need(type(raw) is bytes and 0<len(raw)<=256<<10,'finite v4 exact event original cap')
+    digest(head,40);digest(expected);event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-finite-inventory-v4' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,'owned distinct finite v4 inventory event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own finite v4 source event')
+    template=finite_inventory_body_template(pr.get('body'),expected)
+    need(decode(template)['sourceHead']==head,'finite v4 body source head join')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and
+         env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and
+         env.get('GITHUB_JOB')=='finite-inventory-v4' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first official finite v4 platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','finite v4 executing workflow/event reference')
+    return template
+
+
+def finite_inventory_guard_original(raw,template_raw,event_raw,env):
+    value=decode(raw);fields(value,'schema pass templateSha256 eventSha256 source platform setupTrustBoundary fontSelectionProved browserFontSelectionProved guestApproved firstFailure secondary')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.finite-inventory-guard.v1' and value['pass'] is True and
+         value['templateSha256']==sha(template_raw) and value['eventSha256']==sha(event_raw) and
+         value['firstFailure'] is None and value['secondary']==[] and
+         all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),'successful finite pre-setup source/event admission only')
+    need(value['platform']=={key:env.get(key) for key in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},'same finite pre/post-setup producing platform')
+    need(value['setupTrustBoundary']=={'bootstrapGitTrusted':True,'packageInstallerTrusted':True,'completeRuntimeBeforeSetupProved':False},'explicit bootstrap/setup trust boundary')
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40);rows(source['files'])
+    need(source['head']==decode(template_raw)['sourceHead'] and set(source['files'])==SOURCE,'finite guard exact source21 at selected head')
+    return value
+
+
+FINITE_V5_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V5_BEGIN -->'
+FINITE_V5_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V5_END -->'
+
+
+def finite_v5_scope():
+    return dict(finite_inventory_scope(),installedEmptyRegularScoped=True)
+
+
+def finite_v5_template(raw,expected):
+    digest(expected)
+    need(type(raw) is bytes and 0<len(raw)<=FINITE_INVENTORY_TEMPLATE_CAP and sha(raw)==expected,
+         'selected finite v5 template bytes')
+    template=decode(raw)
+    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources libraries scope')
+    need(encode(template)==raw and template['schema']=='bw.gui-hdd.inventory-template.v5' and
+         encode(template['scope'])==encode(finite_v5_scope()),'explicit canonical finite v5 scope')
+    digest(template['sourceHead'],40)
+    for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
+        roster=template[role]
+        need(type(roster) is list and len(roster)<=cap and roster==sorted(set(roster)),
+             'finite v5 sorted unique '+role)
+        for path in roster:finite_inventory_path(path)
+    need(1<=len(template['files']) and len(template['aliases'])+len(template['directoryAliases'])<=256 and
+         len(set(template['files']+template['aliases']+template['directoryAliases']))==
+         sum(len(template[k]) for k in ('files','aliases','directoryAliases')),
+         'disjoint finite v5 core runtime roles')
+    fields(template['tools'],'git gh')
+    need(template['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
+         template['python']==PYTHON_EXECUTABLE and
+         all(path in template['files'] for path in
+         (template['node'],template['python'],template['chromium'],'/usr/bin/git','/usr/bin/gh','/usr/bin/curl')),
+         'selected v5 bootstrap and executable files')
+    libraries=template['libraries']
+    need(type(libraries) is list and 1<=len(libraries)<=128 and libraries==sorted(set(libraries)) and
+         set(libraries)<=set(template['files']),'selected v5 library subset')
+    empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
+    return template
+
+
+def finite_v5_body_template(body,expected):
+    need(type(body) is str and body.count(FINITE_V5_BEGIN)==body.count(FINITE_V5_END)==1,
+         'one immutable finite v5 body wrapper')
+    begin=body.index(FINITE_V5_BEGIN)+len(FINITE_V5_BEGIN);end=body.index(FINITE_V5_END)
+    need(begin<end,'ordered finite v5 body wrapper')
+    raw=body[begin:end].encode();need(raw.startswith(b'\n'),'canonical finite v5 wrapper separator')
+    wrapper=decode(raw[1:]);fields(wrapper,'schema sha256 templateBase64')
+    need(encode(wrapper)==raw[1:] and wrapper['schema']=='bw.gui-hdd.finite-inventory-transport.v5' and
+         wrapper['sha256']==expected,'canonical externally pinned finite v5 transport')
+    encoded=wrapper['templateBase64']
+    need(type(encoded) is str and encoded.isascii() and 0<len(encoded)<=4*((FINITE_INVENTORY_TEMPLATE_CAP+2)//3),
+         'bounded finite v5 template encoding')
+    template=base64.b64decode(encoded,validate=True)
+    need(base64.b64encode(template).decode()==encoded,'canonical finite v5 template encoding')
+    finite_v5_template(template,expected)
+    return template
+
+
+def bind_finite_v5_event(raw,head,expected,env):
+    need(type(raw) is bytes and 0<len(raw)<=INVENTORY_FAILURE_EVENT_CAP,'finite v5 exact event original cap')
+    digest(head,40);digest(expected);event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-finite-inventory-v5' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,
+         'owned distinct finite v5 inventory event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own finite v5 source event')
+    template=finite_v5_body_template(pr.get('body'),expected)
+    need(decode(template)['sourceHead']==head,'finite v5 body source head join')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and
+         env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and
+         env.get('GITHUB_JOB')=='finite-inventory-five' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first official finite v5 platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge',
+         'finite v5 executing workflow/event reference')
+    return template
+
+
+def finite_v5_guard_original(raw,template_raw,event_raw,env):
+    value=decode(raw)
+    fields(value,'schema pass templateSha256 eventSha256 source platform setupTrustBoundary fontSelectionProved browserFontSelectionProved guestApproved firstFailure secondary')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.finite-inventory-guard.v5' and value['pass'] is True and
+         value['templateSha256']==sha(template_raw) and value['eventSha256']==sha(event_raw) and
+         value['firstFailure'] is None and value['secondary']==[] and
+         all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
+         'successful finite v5 pre-setup admission only')
+    need(value['platform']=={key:env.get(key) for key in
+         ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
+         'same finite v5 pre/post-setup producing platform')
+    need(value['setupTrustBoundary']=={'bootstrapGitTrusted':True,'packageInstallerTrusted':True,
+         'completeRuntimeBeforeSetupProved':False},'explicit v5 setup trust boundary')
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files'])
+    need(source['head']==decode(template_raw)['sourceHead'] and set(source['files'])==SOURCE,
+         'finite v5 guard exact source21')
+    return value
+
+
 def actual_inventory_reference(reference):
     """External prior-observation reference, never an automatic metadata approval."""
     fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
-    need(reference['schema']=='bw.gui-hdd.actual-inventory-reference.v1','explicit actual typed inventory reference')
+    finite=reference['schema'] in ('bw.gui-hdd.actual-finite-inventory-reference.v1',
+                                   'bw.gui-hdd.actual-finite-inventory-reference.v2')
+    need(finite or reference['schema']=='bw.gui-hdd.actual-inventory-reference.v1','explicit versioned actual inventory reference')
+    selected_version=5 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v2' else 4 if finite else 3
     for name in ('jobId','artifactId'):integer(reference[name],1,2**63-1)
     digest(reference['artifactSha256']);fields(reference['workflow'],'commit path sha256')
     digest(reference['workflow']['commit'],40);digest(reference['workflow']['sha256'])
     need(reference['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior metadata producer workflow')
     selected=reference['metadataAdmission'];fields(selected,'schema source template original runId workflowSha')
-    need(selected['schema']=='bw.gui-hdd.inventory-admission.v3','unchanged metadata v3 descriptor shape')
+    need(selected['schema']=='bw.gui-hdd.inventory-admission.v'+str(selected_version),
+         'versioned independently selected metadata descriptor')
     integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
     source=selected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
     rows(source['files']);need(set(source['files'])==SOURCE,'separately reviewed prior metadata source21')
@@ -218,12 +485,113 @@ def actual_inventory_reference(reference):
     return selected
 
 
+# A separately reviewed native observation is a finite input, never a host lease
+# or browser-font equivalence proof. The current GUI job rereads its selected
+# files through the existing before/after runtime observer.
+NATIVE_FONT_SOURCE = frozenset((
+ 'scripts/i80386-native-font-selection/run.py',
+ 'scripts/i80386-native-font-selection/reader.py',
+ 'scripts/i80386-native-font-selection/controls.py',
+ 'scripts/i80386-native-font-selection/README.md',
+ '.github/workflows/i80386-native-font-selection.yml'))
+NATIVE_FONT_ROLES = frozenset(('request','event','original','service','expectation','readerReport','run','job','artifact'))
+
+
+def native_font_layout(reference):
+    font=Path(reference['font']['path']);stage=font.parent.parent
+    need(font.name=='selected.ttf' and font.parent.name=='fonts' and
+         reference['font']['licensePath']==str(stage/'NOTICE'),'fixed owned font input layout')
+    need(re.fullmatch(r'/[A-Za-z0-9_./-]+',str(stage)),'XML-safe selected owned font root')
+    raw=('<?xml version="1.0"?>\n<fontconfig>\n  <dir>'+str(stage/'fonts')+
+         '</dir>\n  <cachedir>'+str(stage/'cache')+'</cachedir>\n</fontconfig>\n').encode()
+    return stage,raw
+
+
+GOOGLE_FONTS_RAW = 'https://raw.githubusercontent.com/google/fonts/'
+
+
+def google_fonts_raw_url(url):
+    need(type(url) is str and len(url)<=512 and url.startswith(GOOGLE_FONTS_RAW),
+         'fixed Google Fonts raw origin')
+    commit,separator,path=url[len(GOOGLE_FONTS_RAW):].partition('/')
+    need(separator=='/' and re.fullmatch(r'[0-9a-f]{40}',commit) is not None and path,
+         'full immutable Google Fonts commit and nonempty path')
+    need(all(part not in ('','.','..') and
+             re.fullmatch(r'(?:[A-Za-z0-9._~-]|%5[Bb]|%5[Dd])+',part) is not None
+             for part in path.split('/')),
+         'canonical safe Google Fonts path without query or traversal')
+    return url
+
+
+def native_font_fetch_argv(url,seconds,size):
+    google_fonts_raw_url(url)
+    return ['/usr/bin/curl','--fail','--silent','--show-error','--proto','=https',
+            '--max-time',str(seconds),'--max-filesize',str(size),'--url',url]
+
+
+def actual_native_font_reference(reference, runtime):
+    fields(reference,'schema source workflow runId jobId artifactId artifactName artifactBytes artifactSha256 originals files font tool')
+    need(reference['schema'] in ('bw.gui-hdd.actual-native-font-reference.v1','bw.gui-hdd.actual-native-font-reference.v2'),'explicit separately reviewed native-font reference')
+    version=2 if reference['schema'].endswith('.v2') else 1
+    source=reference['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    need(type(source['files']) is dict and set(source['files'])==NATIVE_FONT_SOURCE,'exact separate native-font source closure')
+    for row in source['files'].values():fields(row,'sha256');digest(row['sha256'])
+    workflow=reference['workflow'];fields(workflow,'commit path sha256');digest(workflow['commit'],40);digest(workflow['sha256'])
+    need(workflow['path']=='.github/workflows/i80386-native-font-selection.yml' and workflow['sha256']==source['files'][workflow['path']]['sha256'],'native executing workflow/content selection')
+    for key in ('runId','jobId','artifactId'):integer(reference[key],1,2**63-1)
+    integer(reference['artifactBytes'],1,32<<20);digest(reference['artifactSha256'])
+    need(reference['artifactName']==('i80386-native-font-selection-' if version==1 else 'i80386-native-font-selection-v2-')+str(reference['runId'])+'-1','new native-font original delivery identity')
+    need(type(reference['originals']) is dict and set(reference['originals'])==NATIVE_FONT_ROLES,'closed separately reviewed native original roles')
+    for row in reference['originals'].values():
+        fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
+    files=reference['files'];need(type(files) is dict and 3<=len(files)<=128,'finite selected native files')
+    for path,row in files.items():
+        runtime_path(path);fields(row,'byteLength sha256');integer(row['byteLength'],1,256<<20);digest(row['sha256'])
+        need(encode(row)==encode(runtime['files'].get(path)),'native file joins current GUI runtime readback selection')
+    font=reference['font'];fields(font,'url path byteLength sha256 licenseUrl licensePath licenseBytes licenseSha256')
+    runtime_path(font['path']);runtime_path(font['licensePath']);digest(font['licenseSha256']);integer(font['licenseBytes'],1,128<<10)
+    for key in ('url','licenseUrl'):
+        google_fonts_raw_url(font[key])
+    integer(font['byteLength'],1,16<<20);digest(font['sha256'])
+    need(files.get(font['path'])=={'byteLength':font['byteLength'],'sha256':font['sha256']} and
+         files.get(font['licensePath'])=={'byteLength':font['licenseBytes'],'sha256':font['licenseSha256']},'selected native font and separately reviewed notice bytes')
+    tool=reference['tool'];fields(tool,'path byteLength sha256');runtime_path(tool['path']);integer(tool['byteLength'],1,FILE_CAP);digest(tool['sha256'])
+    need(files.get(tool['path'])=={'byteLength':tool['byteLength'],'sha256':tool['sha256']},'selected native tool current-job identity')
+    stage,config=native_font_layout(reference)
+    need(runtime['files'].get(str(stage/'fontconfig.xml'))=={'byteLength':len(config),'sha256':sha(config)} and
+         '/usr/bin/curl' in runtime['files'],'selected current font config and acquisition tool graph')
+    need(not any(path==str(stage) or path.startswith(str(stage)+'/') for role in ('aliases','directoryAliases') for path in runtime[role]),'owned font input has no admitted aliases')
+    return reference
+
+
+def native_source_git_v6(value,reference,inventory_reference,current_head):
+    fields(value,'observed finite current')
+    for label,head in (('observed',reference['source']['head']),
+                       ('finite',inventory_reference['metadataAdmission']['source']['head']),
+                       ('current',current_head)):
+        selected=value[label];fields(selected,'head files')
+        need(selected['head']==head,'native Git source head binding')
+        manifest=selected['files']
+        need(type(manifest) is dict and set(manifest)==NATIVE_FONT_SOURCE,
+             'exact five native Git source files')
+        for name,row in manifest.items():
+            fields(row,'mode gitBlob bytes sha256')
+            need(row['mode']=='100644','fixed regular native Git source mode')
+            digest(row['gitBlob'],40);integer(row['bytes'],1,FILE_CAP);digest(row['sha256'])
+            if label=='observed':
+                need(row['sha256']==reference['source']['files'][name]['sha256'],
+                     'native observation/Git source bytes join')
+    need(value['observed']['files']==value['finite']['files']==value['current']['files'],
+         'five native Git mode/blob/bytes/SHA unchanged across H0/H1/A')
+    return value
+
+
 def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    version=4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup')
+    version=6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version==6 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
@@ -248,10 +616,13 @@ def parse_request(raw, expected):
     integer(prior['checkoutLog']['byteLength'],1,32<<20);digest(prior['checkoutLog']['sha256'])
     fields(prior['workflow'],'commit path sha256');digest(prior['workflow']['commit'],40);digest(prior['workflow']['sha256'])
     need(prior['workflow']['path']=='.github/workflows/build.yml','exact previously reviewed producer workflow')
-    rows(request['installedFiles'])
+    if version>=5:
+        need(build['head']==source['head'] and prior['checkoutTree']==source['tree'],'current Build head and complete checkout tree match selected GUI source')
+    installed_rows_v5(request['installedFiles']) if version==6 else rows(request['installedFiles'])
+    if version>=5:need('node_modules/bw-circuit-ui/package.json' in request['installedFiles'],'complete selected Circuit UI inventory required for current actual')
     need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
          any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
-    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources'+(' emptyPythonSources' if version==4 else ''))
+    runtime = request['runtime']; fields(runtime, 'files aliases directoryAliases node python chromium tools resources'+(' emptyPythonSources' if version>=4 else ''))
     need(type(runtime['files']) is dict and 1 <= len(runtime['files']) <= 512, 'bounded independently admitted runtime graph')
     for name, item in runtime['files'].items():
         need(type(name) is str and name.startswith('/') and '..' not in Path(name).parts, 'absolute runtime file')
@@ -275,9 +646,11 @@ def parse_request(raw, expected):
          'scenarioSeconds':{'freedos-hdd-persistence':1250,'forward-debug':180},
          'perProcessCoreBytes':0,'perProcessFileBytes':FILE_CAP,'perProcessOpenFiles':256,
          'aggregateContainmentQualified':False}), 'fixed finite hosted envelope; no aggregate containment claim')
-    if version==4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
+    if version>=4:empty_python_policy(runtime['emptyPythonSources'],runtime['files'],runtime['aliases'],runtime['directoryAliases'])
     prior_inventory=request['inventoryAdmission']
-    if version==4:actual_inventory_reference(prior_inventory)
+    if version>=4:
+        actual_inventory_reference(prior_inventory)
+        need(prior_inventory['schema']==('bw.gui-hdd.actual-finite-inventory-reference.v2' if version==6 else 'bw.gui-hdd.actual-finite-inventory-reference.v1' if version==5 else 'bw.gui-hdd.actual-inventory-reference.v1'),'distinct finite and historical actual inventory bases')
     else:
         fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
         need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
@@ -286,6 +659,9 @@ def parse_request(raw, expected):
         fields(prior_inventory['original'],'byteLength sha256');integer(prior_inventory['original']['byteLength'],1,JSON_CAP);digest(prior_inventory['original']['sha256'])
         fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
         need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
+    if version>=5:actual_native_font_reference(request['nativeFontAdmission'],runtime)
+    if version==6:native_source_git_v6(request['nativeSourceGit'],request['nativeFontAdmission'],
+                                       request['inventoryAdmission'],source['head'])
     fields(request['inputs'], 'floppy hdd bios vgaRom')
     input_paths={'floppy':'gui-inputs/floppy.img','hdd':'gui-inputs/hdd.img','bios':'gui-inputs/bios.bin','vgaRom':'gui-inputs/vga.bin'}
     for name, row in request['inputs'].items():
@@ -316,7 +692,10 @@ def bind_inventory_event(raw, head, expected, env):
 
 def bind_event(raw, request, expected, env):
     event = decode(raw); pr = event.get('pull_request', {}); repo = event.get('repository', {})
-    need(event.get('action') == 'labeled' and event.get('label', {}).get('name') == LABEL and
+    v6=request['schema']=='bw.gui-hdd.actual-request.v6'
+    selected_label='x86-hdd-gui-actual-v6' if v6 else LABEL
+    selected_marker='BW_GUI_HDD_ACTUAL_V6_REQUEST_SHA256' if v6 else 'BW_GUI_HDD_REQUEST_SHA256'
+    need(event.get('action') == 'labeled' and event.get('label', {}).get('name') == selected_label and
          event.get('sender', {}).get('login') == 'CrispStrobe' and repo.get('full_name') == REPOSITORY,
          'owned operator labeled event')
     need(type(event.get('number')) is int and event['number'] == request['pullRequest'] and
@@ -326,8 +705,8 @@ def bind_event(raw, request, expected, env):
          pr.get('head', {}).get('repo', {}).get('fork') is False and
          pr.get('base', {}).get('repo', {}).get('full_name') == REPOSITORY and
          pr.get('base', {}).get('ref') == 'main', 'exact own PR source event')
-    marker = '<!-- BW_GUI_HDD_REQUEST_SHA256='+expected+' -->'
-    need(type(pr.get('body')) is str and pr['body'].count('<!-- BW_GUI_HDD_REQUEST_SHA256=') == 1 and
+    marker = '<!-- '+selected_marker+'='+expected+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- '+selected_marker+'=') == 1 and
          pr['body'].count(marker) == 1, 'immutable event request pin transport')
     need(env.get('GITHUB_REPOSITORY') == REPOSITORY and env.get('GITHUB_EVENT_NAME') == 'pull_request' and
          env.get('GITHUB_ACTOR') == 'CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT') == '1' and
@@ -372,17 +751,197 @@ def join_actual_typed_inventory(request,prior_inventory,expected):
     # reference and actual request authorize this new mapping.
     verify_inventory_original(prior_raw,template_raw,metadata)
     template=decode(template_raw)
-    need(encode(prior_inventory['installedFiles'])==encode(request['installedFiles']),'actual installed graph joins reviewed prior observation')
+    installed=prior_inventory['installedFiles']
+    if request['schema']=='bw.gui-hdd.actual-request.v5' and metadata['schema']=='bw.gui-hdd.inventory-admission.v3':
+        # The separately frozen current request extends the historical census
+        # with the complete installed CUI package. No held package row changes.
+        selected={path:row for path,row in request['installedFiles'].items() if path.startswith('node_modules/bw-circuit-ui/')}
+        for path,row in selected.items():need(path not in installed or encode(installed[path])==encode(row),'current CUI extension preserves prior installed rows')
+        installed=dict(installed,**selected)
+    need(encode(installed)==encode(request['installedFiles']),'actual installed graph joins reviewed prior observation')
     for role in ('files','aliases','directoryAliases','node','python','chromium','tools','resources'):
-        need(encode(prior_inventory['runtime'][role])==encode(request['runtime'][role]),'actual positive runtime graph joins reviewed metadata '+role)
+        current=request['runtime'][role];prior=prior_inventory['runtime'][role]
+        if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6') and role in ('files','aliases','directoryAliases'):
+            native=decode(expected_embedded_original(expected['nativeFontOriginals']['request']))['selection']['runtime'][role]
+            extension=dict(request['nativeFontAdmission']['files']) if role=='files' else native
+            if role=='files':
+                stage,_=native_font_layout(request['nativeFontAdmission'])
+                for path in (str(stage/'fontconfig.xml'),'/usr/bin/curl'):extension[path]=current[path]
+            for path,row in extension.items():
+                need(path not in prior or encode(prior[path])==encode(row),'native extension preserves held metadata '+role)
+            prior=dict(prior,**extension)
+        need(encode(prior)==encode(current),'actual positive runtime graph joins reviewed metadata '+role)
     need(encode(template['emptyPythonSources'])==encode(request['runtime']['emptyPythonSources']),'actual typed selection joins independently pinned metadata template')
 
 
+def join_native_v2_identity(observed, service, reference):
+    """Join the externally reviewed v2 invoker/proc and terminal witnesses."""
+    platform=observed['platform'];identity=None
+    need(observed.get('servicePartial') is None,'complete v2 has no partial service observation')
+    unit='bw-native-font-v2-'+str(reference['runId'])+'-1.service';cg='/system.slice/'+unit
+    for phase in ('before','after'):
+        snapshot=observed.get('service',{}).get(phase)
+        need(type(snapshot) is dict and snapshot.get('unit')==unit and snapshot.get('cgroupPath')==cg,
+             'native v2 selected service observation')
+        selected=snapshot.get('processIdentity');fields(selected,'uid gid resuid resgid')
+        for name in ('uid','gid'):
+            integer(selected[name],1,2**31-1)
+            need(type(platform.get('BW_NATIVE_V2_INVOKER_'+name.upper())) is str and
+                 platform['BW_NATIVE_V2_INVOKER_'+name.upper()]==str(selected[name]) and
+                 selected['res'+name]==[selected[name]]*3 and
+                 all(type(x) is int for x in selected['res'+name]),'native v2 source-configured actual process identity')
+        if identity is None:identity=selected
+        need(selected==identity,'native v2 before/after invoker identity')
+        witness=snapshot.get('selfProc')
+        fields(witness,'path role before after named bytesRead prefixBytes prefixSha256 prefixBase64 closeAttempted closed complete')
+        raw=('0::'+cg+'\n').encode()
+        need(witness['path']=='/proc/self/cgroup' and witness['role']=='self-proc' and
+             witness['complete'] is True and witness['closeAttempted'] is True and witness['closed'] is True and
+             type(witness['bytesRead']) is int and witness['bytesRead']==len(raw) and
+             type(witness['prefixBytes']) is int and witness['prefixBytes']==len(raw) and
+             witness['prefixSha256']==sha(raw) and witness['prefixBase64']==base64.b64encode(raw).decode(),
+             'native v2 exact closed self-proc membership bytes')
+        first=witness['before'];fields(first,'dev ino mode uid gid')
+        for key in ('dev','ino','mode','uid','gid'):integer(first[key],0,2**63-1)
+        need(first==witness['after']==witness['named'] and stat.S_ISREG(first['mode']) and
+             first['uid']==identity['uid'] and first['gid']==identity['gid'],
+             'native v2 stable self-proc owner identity')
+    fields(service,'schema unit cgroupPath serviceExitCode originalPresent pre cleanup post outsideFiniteCleanupProved firstFailure secondary invokerIdentity innerComplete innerBeforeObserved innerFirstFailure')
+    need(service['schema']=='bw.gui-hdd.native-font-service.v2' and service['unit']==unit and
+         service['cgroupPath']==cg and type(service['serviceExitCode']) is int and service['serviceExitCode']==0 and
+         service['originalPresent'] is True and service['outsideFiniteCleanupProved'] is True and
+         service['firstFailure'] is None and service['secondary']==[] and service['invokerIdentity']==identity and
+         service['innerComplete'] is True and service['innerBeforeObserved'] is True and service['innerFirstFailure'] is None,
+         'native v2 complete independently reviewed outer original')
+    post=service.get('post');fields(post,'unit cgroup')
+    terminal=post['unit'];fields(terminal,'LoadState ActiveState SubState Result ExecMainCode ExecMainStatus ControlGroup MainPID ControlPID KillMode')
+    need(terminal['ActiveState']=='inactive' and terminal['LoadState'] in ('loaded','not-found') and
+         terminal['MainPID']=='0' and terminal['ControlPID']=='0' and terminal['ControlGroup'] in ('',cg),
+         'native v2 terminal process census')
+    census=post['cgroup'];fields(census,'exists populated procs threads nrDescendants nrDyingDescendants')
+    need(type(census['exists']) is bool and
+         (all(census[k] is None for k in census if k!='exists') if not census['exists'] else
+          type(census['populated']) is int and census['populated']==0 and census['procs']==[] and census['threads']==[] and
+          type(census['nrDescendants']) is int and census['nrDescendants']==0 and
+          type(census['nrDyingDescendants']) is int and census['nrDyingDescendants']==0),
+         'native v2 finite outside descendant census')
+
+
+def join_actual_native_font(request, expected):
+    """Join an externally frozen independent native review; do not execute it."""
+    reference=actual_native_font_reference(request['nativeFontAdmission'],request['runtime'])
+    need(sha(encode(reference))==expected['nativeFontReferenceSha256'],'independently selected native-font reference')
+    version=2 if reference['schema'].endswith('.v2') else 1
+    suffix='.v'+str(version)
+    job_name='native-font-selection' if version==1 else 'native-font-selection-v2'
+    marker_name='BW_NATIVE_FONT_REQUEST_SHA256' if version==1 else 'BW_NATIVE_FONT_V2_REQUEST_SHA256'
+    selected=expected['nativeFontOriginals']
+    need(type(selected) is dict and set(selected)==NATIVE_FONT_ROLES,'closed external native original roles')
+    originals={}
+    for role,row in selected.items():
+        raw=expected_embedded_original(row)
+        need({'byteLength':len(raw),'sha256':sha(raw)}==reference['originals'][role],'external native original exact reference '+role)
+        originals[role]=decode(raw)
+    native=originals['request'];prior=originals['expectation'];observed=originals['original'];report=originals['readerReport']
+    need(native.get('schema')=='bw.gui-hdd.native-font-request'+suffix and native.get('repository')==REPOSITORY and
+         encode(native.get('source'))==encode(reference['source']),'separate native request/source join')
+    source=reference['source'];need(prior.get('schema')=='bw.gui-hdd.native-font-expectation'+suffix and
+         prior.get('head')==source['head'] and prior.get('tree')==source['tree'] and
+         encode(prior.get('sourceFiles'))==encode(source['files']) and prior.get('conclusion')=='success' and
+         prior.get('workflowSha')==reference['workflow']['commit'] and prior.get('runId')==str(reference['runId']) and type(prior.get('jobId')) is int and prior['jobId']==reference['jobId'],
+         'independent native expectation/source/official identity')
+    for role,key in (('request','requestSha256'),('event','eventSha256'),('original','originalSha256')):
+        need(prior.get(key)==reference['originals'][role]['sha256'],'native independent expectation original join')
+    need(type(prior.get('originalBytes')) is int and prior['originalBytes']==reference['originals']['original']['byteLength'],'native original byte count')
+    need(type(prior.get('serviceBytes')) is int and prior['serviceBytes']==reference['originals']['service']['byteLength'] and prior.get('serviceSha256')==reference['originals']['service']['sha256'],'native outside service original exact reference')
+    for role in ('request','event'):
+        need(observed.get(role)=={'bytes':reference['originals'][role]['byteLength'],'sha256':reference['originals'][role]['sha256']},'native original input bytes '+role)
+    observed_source=observed.get('source');need(type(observed_source) is dict and set(observed_source)==NATIVE_FONT_SOURCE,'native original separate source roster')
+    for path,row in observed_source.items():
+        fields(row,'bytes sha256');integer(row['bytes'],1,1<<20)
+        need(row['sha256']==source['files'][path]['sha256'],'native original separate source digest')
+    selection=native.get('selection',{});font=selection.get('font',{});tool=selection.get('tool',{})
+    need(all(font.get(key)==reference['font'][key] for key in ('url','sha256','licenseUrl','licenseBytes','licenseSha256')) and
+         type(font.get('bytes')) is int and font['bytes']==reference['font']['byteLength'] and
+         tool=={'path':reference['tool']['path'],'bytes':reference['tool']['byteLength'],'sha256':reference['tool']['sha256']},
+         'native selected font/license/tool joins current-job file identities')
+    need(selection.get('query')=={'pattern':'monospace:lang=en','format':'%{file}\t%{family}\t%{style}\t%{index}\n'},'explicit native monospace query')
+    need(observed.get('schema')=='bw.gui-hdd.native-font-original'+suffix and observed.get('observationOnly') is True and
+         observed.get('systemFallbackExcluded') is False and observed.get('complete') is True and
+         observed.get('firstFailure') is None and observed.get('secondary')==[] and
+         observed.get('selectedNativeRuntimeReadbackProved') is True,'independently reviewed complete finite native observation')
+    for key in ('nativeLibraryClosureProved','wholeHostAttested','browserFontSelectionProved','actualRequestSupported','guestApproved'):
+        need(observed.get(key) is False and report.get(key) is False,'preserved native observation boundary '+key)
+    need(report.get('schema')=='bw.gui-hdd.native-font-reader'+suffix and report.get('nativeSelectionObserved') is True and
+         report.get('selectedNativeRuntimeReadbackProved') is True and report.get('sourceHead')==source['head'] and
+         report.get('runId')==str(reference['runId']) and type(report.get('jobId')) is int and report['jobId']==reference['jobId'] and
+         report.get('selectedFontSha256')==reference['font']['sha256'],'separately frozen independent native-reader result')
+    # Exact selected files are a finite trusted-loader boundary. A different job
+    # inode, native cache result or a report Boolean cannot supply current bytes.
+    native_runtime=selection.get('runtime');need(type(native_runtime) is dict,'selected finite native runtime')
+    witnessed=observed.get('nativeRuntime');fields(witnessed,'files aliases directoryAliases loadedLibraries version environment after selectedReadback')
+    need(witnessed['selectedReadback'] is True and witnessed['loadedLibraries']==[] and witnessed['version'] is None and
+         encode(witnessed['after'])==encode(native_runtime),'finite native readback preserves unknown loader/version boundary')
+    for role in ('files','aliases','directoryAliases'):
+        value=native_runtime.get(role);need(type(value) is dict,'finite selected native runtime '+role)
+        need(encode(witnessed[role])==encode(value),'native before/after selected runtime '+role)
+        report_key={'files':'nativeRuntimeFiles','aliases':'nativeRuntimeAliases','directoryAliases':'nativeRuntimeDirectoryAliases'}[role]
+        need(encode(report.get(report_key))==encode(value),'independent native report finite runtime '+role)
+        for path,row in value.items():
+            if role=='files':
+                fields(row,'bytes sha256');integer(row['bytes'],1,256<<20);digest(row['sha256'])
+                row={'byteLength':row['bytes'],'sha256':row['sha256']}
+            need(encode(request['runtime'][role].get(path))==encode(row),'native selected runtime joins current-job '+role)
+    merged={path:{'byteLength':row['bytes'],'sha256':row['sha256']} for path,row in native_runtime['files'].items()}
+    for path in (reference['font']['path'],reference['font']['licensePath'],reference['tool']['path']):merged[path]=reference['files'][path]
+    need(encode(merged)==encode(reference['files']),'exact native finite file reference without omissions')
+    run,job,artifact=(originals[key] for key in ('run','job','artifact'));typed_metadata(run,job,artifact)
+    need(run.get('id')==reference['runId'] and run.get('run_attempt')==1 and run.get('event')=='pull_request' and
+         run.get('head_sha')==source['head'] and run.get('repository',{}).get('full_name')==REPOSITORY and
+         run.get('path')=='.github/workflows/i80386-native-font-selection.yml' and
+         run.get('status')=='completed' and run.get('conclusion')=='success' and
+         run.get('actor',{}).get('login')=='CrispStrobe','separately admitted official native run')
+    need(job.get('id')==reference['jobId'] and job.get('run_id')==reference['runId'] and
+         job.get('name')==job_name and job.get('status')=='completed' and job.get('conclusion')=='success','official native producing job')
+    need(artifact.get('id')==reference['artifactId'] and artifact.get('name')==reference['artifactName'] and
+         artifact.get('expired') is False and artifact.get('size_in_bytes')==reference['artifactBytes'] and
+         artifact.get('digest')=='sha256:'+reference['artifactSha256'] and
+         artifact.get('workflow_run',{}).get('id')==reference['runId'] and artifact.get('workflow_run',{}).get('head_sha')==source['head'],
+         'official new native original artifact')
+    steps=job.get('steps');need(type(steps) is list and len(steps)<=64,'bounded native official steps')
+    positions=[]
+    for name in ('Refuse until selected font, tool, cache and event review','Retain bounded original only after separately reviewed activation'):
+        matches=[i for i,step in enumerate(steps) if step.get('name')==name and step.get('status')=='completed' and step.get('conclusion')=='success']
+        need(len(matches)==1,'unique successful official native producing step');positions.append(matches[0])
+    need(positions==sorted(set(positions)),'native observation precedes original retention')
+    event=originals['event'];pr=event.get('pull_request',{});platform=observed.get('platform',{})
+    marker='<!-- '+marker_name+'='+reference['originals']['request']['sha256']+' -->'
+    need(type(pr.get('body')) is str and pr['body'].count('<!-- '+marker_name+'=')==1 and pr['body'].count(marker)==1,'native immutable request event transport')
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-native-font-selection-v'+str(version) and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('sha')==source['head'] and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY and pr.get('state')=='open' and
+         type(event.get('number')) is int and type(pr.get('number')) is int and type(native.get('pullRequest')) is int and
+         event['number']==pr['number']==native['pullRequest'] and
+         platform.get('GITHUB_RUN_ID')==str(reference['runId']) and platform.get('GITHUB_RUN_ATTEMPT')=='1' and
+         platform.get('GITHUB_JOB')==job_name and platform.get('GITHUB_WORKFLOW_SHA')==prior.get('workflowSha'),
+         'separate native event/source/platform join')
+
+    if version==2:
+        join_native_v2_identity(observed,originals['service'],reference)
+
+
 def expected_policy(expected):
-    version=4 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v4' else 3
-    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact'+(' schema inventoryTemplate inventoryReferenceSha256' if version==4 else ''))
-    if version==4:
+    version=6 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v6' else 5 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v5' else 4 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v4' else 3
+    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact'+(' schema inventoryTemplate inventoryReferenceSha256' if version>=4 else '')+(' nativeFontReferenceSha256 nativeFontOriginals' if version>=5 else '')+(' nativeSourceGitSha256' if version==6 else ''))
+    if version>=4:
         digest(expected['inventoryReferenceSha256']);expected_embedded_original(expected['inventoryTemplate'])
+    if version>=5:
+        digest(expected['nativeFontReferenceSha256'])
+        need(type(expected['nativeFontOriginals']) is dict and set(expected['nativeFontOriginals'])==NATIVE_FONT_ROLES,'externally selected native original roles')
+        for row in expected['nativeFontOriginals'].values():expected_embedded_original(row)
+    if version==6:digest(expected['nativeSourceGitSha256'])
     for name in ('requestSha256','buildSourceAdmissionSha256','artifactSha256'):digest(expected[name])
     digest(expected['sourceHead'],40)
     for name in ('runId','jobId','artifactId'):integer(expected[name],1,2**63-1)
@@ -397,12 +956,14 @@ def expected_policy(expected):
 
 def allowed_role(name):
     top={'python-startup.original.txt','python-startup.before.json','python-startup.after.json','inventory.json','result.json','request.original.json','event.original.json','source.before.json','source.after.json',
-      'runtime.before.json','runtime.after.json','installed.before.json','installed.after.json','build-run.original.json',
+      'runtime.before.json','runtime.after.json','installed.before.json','installed.after.json','native-source-git.before.json','build-run.original.json',
       'build-job.original.json','build-artifact.original.json','frontend.original.zip','frontend.partial.zip',
       'frontend.members.json','build.inventory.json','probe-admission.json','frontend-acquisition.stderr','frontend-acquisition.process.json'}
     if name in top:return True
+    if name in {'native-font.stage.json','native-font.config.original.xml','native-font.cache.before.json','native-font.cache.after.json','native-font.cache.partial.json'}:return True
+    if name in {'native-font.'+role+'.'+suffix for role in ('font','notice') for suffix in ('stdout','stderr','process.json')}:return True
     if re.fullmatch(r'git-[0-9]+\.(stdout|stderr|process\.json)',name):
-        number=int(name.split('-')[1].split('.')[0]);return 0<=number<=len(SOURCE)+6
+        number=int(name.split('-')[1].split('.')[0]);return 0<=number<=len(SOURCE)+16
     for scenario in SCENARIOS:
         if name in {scenario+'.stdout',scenario+'.stderr',scenario+'.process.json'}:return True
     parts=name.split('/')
@@ -513,8 +1074,15 @@ def process_original(files,role,argv,seconds):
 def tracked_source_originals(files,request):
     arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[
         ['cat-file','blob',request['source']['head']+':'+name] for name in sorted(SOURCE)]
+    version=6 if request['schema']=='bw.gui-hdd.actual-request.v6' else 5 if request['schema']=='bw.gui-hdd.actual-request.v5' else 4 if request['schema']=='bw.gui-hdd.actual-request.v4' else 3
+    initial=len(arguments)
+    if version==6:
+        for path in sorted(NATIVE_FONT_SOURCE):
+            arguments.extend((['ls-tree','-z',request['source']['head'],'--',path],
+                              ['cat-file','blob',request['source']['head']+':'+path]))
     arguments+=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]
-    indices=list(range(len(SOURCE)+2))+[len(SOURCE)+5,len(SOURCE)+6]
+    shift=10 if version==6 else 0
+    indices=list(range(initial+shift))+[len(SOURCE)+5+shift,len(SOURCE)+6+shift]
     prefix=['/usr/bin/git','--no-replace-objects','-c','gc.auto=0','-c','maintenance.auto=false',
         '-c','core.fsmonitor=false','-c','core.hooksPath=/dev/null']
     expected_roles={f'git-{index}.{suffix}' for index in indices for suffix in ('stdout','stderr','process.json')}
@@ -522,16 +1090,34 @@ def tracked_source_originals(files,request):
     for position,(index,args) in enumerate(zip(indices,arguments)):
         role='git-'+str(index);process_original(files,role,prefix+args,15);raw=files[role+'.stdout']
         if args[0]=='rev-parse':need(raw.decode().strip()==request['source']['head' if args[1]=='HEAD' else 'tree'],'original Git source head/tree')
+        elif args[0]=='ls-tree':
+            path=args[-1];row=request['nativeSourceGit']['current']['files'][path]
+            need(raw==('100644 blob '+row['gitBlob']+'\t'+path+'\0').encode(),
+                 'current native Git tree mode/blob/path original')
+        elif position>=initial:
+            path=args[-1].split(':',1)[1];row=request['nativeSourceGit']['current']['files'][path]
+            need(len(raw)==row['bytes'] and sha(raw)==row['sha256'] and
+                 hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\x00'+raw).hexdigest()==row['gitBlob'],
+                 'current native Git blob bytes original')
         else:
             row=request['source']['files'][sorted(SOURCE)[position-2]]
             need(len(raw)==row['byteLength'] and sha(raw)==row['sha256'],'original tracked source blob extent/hash')
+    if version==6:
+        current=request['nativeSourceGit']['current']
+        need(decode(files['native-source-git.before.json'])=={'schema':'bw.gui-hdd.native-source-git.v6',
+             'head':current['head'],'tree':request['source']['tree'],'files':current['files']},
+             'current native source Git/live file readback')
 
 
 def official_joins(request, originals, expected):
     prior_inventory=expected_policy(expected)
-    version=4 if request['schema']=='bw.gui-hdd.actual-request.v4' else 3
-    need((version==4)==(expected.get('schema')=='bw.gui-hdd.actual-expectation.v4'),'explicit request/reader expectation version agreement')
-    if version==4:join_actual_typed_inventory(request,prior_inventory,expected)
+    version=6 if request['schema']=='bw.gui-hdd.actual-request.v6' else 5 if request['schema']=='bw.gui-hdd.actual-request.v5' else 4 if request['schema']=='bw.gui-hdd.actual-request.v4' else 3
+    need(expected.get('schema')=='bw.gui-hdd.actual-expectation.v'+str(version) if version>=4 else expected.get('schema') is None,'explicit request/reader expectation version agreement')
+    if version>=5:join_actual_native_font(request,expected)
+    if version==6:
+        need(sha(encode(request['nativeSourceGit']))==expected['nativeSourceGitSha256'],
+             'externally selected immutable Native2/current-Git identity projection')
+    if version>=4:join_actual_typed_inventory(request,prior_inventory,expected)
     else:
         need(sha(encode(prior_inventory))==request['inventoryAdmission']['original']['sha256'] and
              len(encode(prior_inventory))==request['inventoryAdmission']['original']['byteLength'],'externally reviewed prior inventory identity')
@@ -698,9 +1284,77 @@ def check_forward(files):
     return {'instructions':2,'breakpoint':hit['breakpointAddress'],'physicalBytes':len(expected)}
 
 
+def verify_gui_font_stage(files,request,checkout,expected):
+    reference=request['nativeFontAdmission'];stage,config=native_font_layout(reference)
+    need(stage==Path(checkout)/'gui-inputs/native-font','font stage bound to actual current checkout')
+    value=decode(files['native-font.stage.json']);fields(value,'schema requestSha256 referenceSha256 source eventSha256 platform root files fontUrl licenseUrl cache')
+    need(value['schema']=='bw.gui-hdd.native-font-stage.v1' and value['requestSha256']==expected['requestSha256'] and
+         value['referenceSha256']==expected['nativeFontReferenceSha256'] and value['source']==request['source'] and
+         value['root']==str(stage) and value['fontUrl']==reference['font']['url'] and value['licenseUrl']==reference['font']['licenseUrl'],
+         'current staged font source/request/URL identity')
+    need(value['eventSha256']==sha(files['event.original.json']) and value['platform']=={'GITHUB_RUN_ID':str(expected['runId']),'GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual','GITHUB_REPOSITORY':REPOSITORY},'staged font current producing event/job')
+    directory_roster={str(stage):sorted(('fonts','cache','NOTICE','fontconfig.xml','staging.original.json')),str(stage/'fonts'):['selected.ttf']}
+    before_dirs=decode(files['runtime.before.json'])['nativeFontDirectories'];after_dirs=decode(files['runtime.after.json'])['nativeFontDirectories']
+    need(encode(before_dirs)==encode(after_dirs) and type(before_dirs) is dict and set(before_dirs)==set(directory_roster),'owned font directory before/after identity')
+    for path,row in before_dirs.items():
+        fields(row,'identity names');need(row['names']==directory_roster[path],'closed owned font directory census')
+        info=row['identity'];fields(info,'dev ino mode uid gid nlink size mtime_ns')
+        for key in info:integer(info[key],0,2**63-1)
+        need(info['ino']>0 and info['mode']==stat.S_IFDIR|0o555,'readonly owned font directory type')
+    need(files['native-font.config.original.xml']==config,'standalone expected owned fontconfig semantic template')
+    paths={reference['font']['path'],reference['font']['licensePath'],str(stage/'fontconfig.xml')}
+    need(type(value['files']) is dict and set(value['files'])==paths,'closed font/notice/config staged roster')
+    for path,row in value['files'].items():
+        fields(row,'byteLength sha256 identity');need({key:row[key] for key in ('byteLength','sha256')}==request['runtime']['files'][path],'staged input/runtime file join')
+        info=row['identity'];fields(info,'dev ino mode uid gid nlink size mtime_ns')
+        for key in info:integer(info[key],0,2**63-1)
+        need(info['ino']>0 and info['nlink']==1 and info['size']==row['byteLength'] and info['mode']==stat.S_IFREG|0o444,'exclusive readonly staged file identity')
+        for phase in ('before','after'):
+            need(decode(files['runtime.'+phase+'.json'])['identities'].get(path)=={'dev':info['dev'],'ino':info['ino']},'actual staged file inode before/after readback')
+    acquisitions=[]
+    for role,url,row,seconds in (
+      ('native-font.font',reference['font']['url'],reference['files'][reference['font']['path']],30),
+      ('native-font.notice',reference['font']['licenseUrl'],reference['files'][reference['font']['licensePath']],15)):
+        child=process_original(files,role,native_font_fetch_argv(url,seconds,row['byteLength']),seconds);acquisitions.append(child)
+        need({'byteLength':len(files[role+'.stdout']),'sha256':sha(files[role+'.stdout'])}==row,'one staged immutable font/notice body')
+        need(child['environment']=={'LANG':'C.UTF-8','HOME':'/nonexistent','PATH':'/usr/bin:/bin',
+             'GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null','GIT_NO_LAZY_FETCH':'1','GIT_TERMINAL_PROMPT':'0'},'closed font acquisition environment')
+    first_browser=decode(files[SCENARIOS[0]+'.process.json'])
+    need(acquisitions[0]['endedNs']<=acquisitions[1]['startedNs'] and acquisitions[1]['endedNs']<first_browser['startedNs'],'font inputs acquired serially before browser')
+    def cache(row):
+        fields(row,'path identity entries totalBytes byteCap entryCap quotaEnforced')
+        need(row['path']==str(stage/'cache') and type(row['entries']) is dict and len(row['entries'])<=128 and
+             type(row['byteCap']) is int and row['byteCap']==8<<20 and type(row['entryCap']) is int and row['entryCap']==128 and
+             row['quotaEnforced'] is False,'owned bounded cache census; no quota claim')
+        info=row['identity'];fields(info,'dev ino mode uid gid nlink size mtime_ns')
+        for key in info:integer(info[key],0,2**63-1)
+        need(info['ino']>0 and info['mode']==stat.S_IFDIR|0o700,'owned writable cache directory')
+        total=0
+        for path,item in row['entries'].items():
+            relative(path);need(len(PurePosixPath(path).parts)<=5,'cache depth bound')
+            need(type(item) is dict and item.get('kind') in ('directory','file'),'typed cache entry')
+            fields(item,'kind identity'+(' byteLength sha256' if item['kind']=='file' else ''))
+            selected=item['identity'];fields(selected,'dev ino mode uid gid nlink size mtime_ns')
+            for key in selected:integer(selected[key],0,2**63-1)
+            need(selected['uid']==info['uid'] and selected['ino']>0 and not selected['mode']&0o022,'owned cache entry identity')
+            if item['kind']=='file':
+                integer(item['byteLength'],0,8<<20);digest(item['sha256']);total+=item['byteLength']
+                need(stat.S_ISREG(selected['mode']) and selected['size']==item['byteLength'] and selected['nlink']==1,'regular bounded cache file')
+            else:need(stat.S_ISDIR(selected['mode']),'cache directory type')
+        integer(row['totalBytes'],0,8<<20);need(total==row['totalBytes'],'font cache aggregate posthoc extent')
+        return row
+    original=cache(value['cache']);before=cache(decode(files['native-font.cache.before.json']));after=cache(decode(files['native-font.cache.after.json']))
+    need(original['entries']==before['entries']=={} and original['totalBytes']==before['totalBytes']==0,'font cache fresh and empty before scenarios')
+    for key in ('dev','ino','uid','gid','mode'):
+        need(original['identity'][key]==before['identity'][key]==after['identity'][key],'retained owned cache root identity')
+    need('native-font.cache.partial.json' not in files,'positive packet has no partial cache failure')
+
+
 def audit(files, expected):
     expected_policy(expected);request = parse_request(files['request.original.json'], expected['requestSha256']);official_joins(request,files,expected)
     tracked_source_originals(files,request)
+    if request['schema'] not in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):need(not any(name.startswith('native-font.') for name in files),'historical native original roles remain closed')
+    if request['schema']!='bw.gui-hdd.actual-request.v6':need('native-source-git.before.json' not in files,'historical native Git original role remains closed')
     role_policy(set(files));need(not any('failure' in name or name=='frontend.partial.zip' for name in files),'no hidden failed original in positive packet')
     result = decode(files['result.json']);fields(result,'schema pass requestSha256 scenarios firstFailure secondary')
     need(result['schema'] == 'bw.gui-hdd.result.v1' and result['pass'] is True and result['firstFailure'] is None and
@@ -712,8 +1366,8 @@ def audit(files, expected):
         runtime = decode(files['runtime.'+stage+'.json']);need(runtime['files'] == request['runtime']['files'] and
              runtime['aliases'] == request['runtime']['aliases'] and runtime['directoryAliases']==request['runtime']['directoryAliases'] and runtime['resources'] == request['runtime']['resources'] and
              runtime['aggregateContainmentQualified'] is False, 'runtime external graph/caps and honest containment boundary')
-        if request['schema']=='bw.gui-hdd.actual-request.v4':
-            fields(runtime,'schema files aliases directoryAliases directoryIdentities identities resources availableCpus rlimits aggregateContainmentQualified emptyPythonSources')
+        if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):
+            fields(runtime,'schema files aliases directoryAliases directoryIdentities identities resources availableCpus rlimits aggregateContainmentQualified emptyPythonSources'+(' nativeFontDirectories' if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6') else ''))
             for role in ('files','aliases','directoryAliases','resources'):
                 need(encode(runtime[role])==encode(request['runtime'][role]),'strict actual v4 runtime external graph/cap types')
             cpus=runtime['availableCpus'];need(type(cpus) is list and cpus,'observed nonempty CPU affinity list')
@@ -723,7 +1377,7 @@ def audit(files, expected):
             for pair in runtime['rlimits'].values():
                 need(type(pair) is list and len(pair)==2,'observed rlimit pair')
                 for limit in pair:integer(limit,-1,2**64-1)
-            need(runtime.get('schema')=='bw.gui-hdd.runtime-observation.v4','explicit typed actual runtime observation v4')
+            need(runtime.get('schema')==('bw.gui-hdd.runtime-observation.v5' if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6') else 'bw.gui-hdd.runtime-observation.v4'),'explicit typed actual runtime observation version')
             selected=runtime.get('emptyPythonSources');need(type(selected) is dict and set(selected)==set(request['runtime']['emptyPythonSources']),'runtime typed roster joins independent actual request')
             for row in selected.values():
                 fields(row,'attempted status source');need(row['attempted'] is True and row['status']=='observed','actual typed source observed')
@@ -733,7 +1387,7 @@ def audit(files, expected):
         for target,row in runtime['directoryIdentities'].items():
             fields(row,'dev ino mode');integer(row['dev'],0,2**63-1);integer(row['ino'],1,2**63-1);integer(row['mode'],0,2**32-1)
             need(stat.S_ISDIR(row['mode']),'observed selected directory target is directory')
-    if request['schema']=='bw.gui-hdd.actual-request.v4':
+    if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):
         need(encode(decode(files['runtime.before.json'])['emptyPythonSources'])==encode(decode(files['runtime.after.json'])['emptyPythonSources']),'actual typed source before/after identity unchanged')
     build = request['build'];run = decode(files['build-run.original.json']);job = decode(files['build-job.original.json']);artifact = decode(files['build-artifact.original.json']);typed_metadata(run,job,artifact)
     need(run.get('id') == build['runId'] and run.get('run_attempt') == 1 and run.get('repository',{}).get('full_name')==REPOSITORY and run.get('head_sha') == build['head'] and
@@ -763,6 +1417,7 @@ def audit(files, expected):
     startup_arguments=['--request',checkout+'/gui-inputs/request.json','--expected-sha256',expected['requestSha256'],'--output',checkout+'/gui-originals/originals']
     for stage in ('before','after'):validate_startup(decode(files['python-startup.'+stage+'.json']),installed,'actual',startup_arguments)
     need(files['python-startup.before.json']==files['python-startup.after.json'],'unchanged startup observations across both scenarios')
+    if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):verify_gui_font_stage(files,request,checkout,expected)
     need(checkout!=build_root and admission['inputPaths']=={name:checkout+'/'+row['path'] for name,row in request['inputs'].items()},
          'fixed controller input path delivery')
     need(decode(files['frontend.members.json'])==observed_members and
@@ -782,13 +1437,16 @@ def audit(files, expected):
         need(files[scenario+'.stderr']==b'', 'scenario stderr refusal')
         env=child['environment'];need(env['PROOF_ADMISSION']==checkout+'/gui-originals/originals/probe-admission.json' and env['PROOF_OUTPUT']==checkout+'/gui-originals/originals/'+scenario and env['PROOF_SCENARIO']==scenario and env['PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH']==request['runtime']['chromium'] and
              env['PROOF_BROWSER_SHA256']==request['runtime']['files'][request['runtime']['chromium']]['sha256'],'selected real browser delivery')
+        if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):
+            stage,_=native_font_layout(request['nativeFontAdmission'])
+            need(env.get('FONTCONFIG_FILE')==str(stage/'fontconfig.xml') and env.get('XDG_CACHE_HOME')==str(stage/'cache'),'selected staged fontconfig and owned cache reach actual browser parent')
         launch=decode(files[scenario+'/browser-launch.json']);need(launch['executablePath']==request['runtime']['chromium'] and
              launch['sha256']==env['PROOF_BROWSER_SHA256'] and launch['byteLength']==request['runtime']['files'][request['runtime']['chromium']]['byteLength'],
              'admitted browser launch executable witness')
         identity_before=decode(files['runtime.before.json'])['identities'][request['runtime']['chromium']]
         need(any(item.get('executable')==request['runtime']['chromium'] and item.get('executableIdentity')==identity_before
              for sample in child['descendantSamples'] for item in sample['descendants']), 'actual observed browser process executable identity')
-    return {'pass':True,'schema':'bw.gui-hdd.reader.v'+('4' if request['schema']=='bw.gui-hdd.actual-request.v4' else '3'),'sourceHead':request['source']['head'],
+    return {'pass':True,'schema':'bw.gui-hdd.reader.v'+('6' if request['schema']=='bw.gui-hdd.actual-request.v6' else '5' if request['schema']=='bw.gui-hdd.actual-request.v5' else '4' if request['schema']=='bw.gui-hdd.actual-request.v4' else '3'),'sourceHead':request['source']['head'],
         'hdd':check_hdd(files),'forwardDebug':check_forward(files),'aggregateContainmentQualified':False,
         'fullOsQualified':False,'physicalTimingQualified':False,'reverseExecutionQualified':False}
 
@@ -826,7 +1484,7 @@ INVENTORY_FAILURE_EVENT_CAP=256<<10
 
 def inventory_failure_expected(expected):
     fields(expected,'schema source template failure runId workflowSha')
-    need(expected['schema'] in ('bw.gui-hdd.inventory-failure-expectation.v2','bw.gui-hdd.inventory-failure-expectation.v3'),'explicit externally selected failure audit policy')
+    need(expected['schema'] in ('bw.gui-hdd.inventory-failure-expectation.v2','bw.gui-hdd.inventory-failure-expectation.v3','bw.gui-hdd.inventory-failure-expectation.v4','bw.gui-hdd.inventory-failure-expectation.v5'),'explicit externally selected failure audit policy')
     integer(expected['runId'],1,2**63-1);digest(expected['workflowSha'],40)
     source=expected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
     rows(source['files']);need(set(source['files'])==SOURCE,'separately selected source21')
@@ -843,16 +1501,18 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     inventory_failure_expected(expected)
     for raw,name in ((failure_raw,'failure'),(template_raw,'template')):
         need(type(raw) is bytes and len(raw)==expected[name]['byteLength'] and sha(raw)==expected[name]['sha256'],'independently selected '+name+' original')
-    version=3 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v3' else 2
-    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version==3 else ''))
+    version=5 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v4' else 3 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v3' else 2
+    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version>=3 else '')+(' libraries scope' if version>=4 else ''))
     need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version) and template['sourceHead']==expected['source']['head'],'retained canonical template/source binding')
     for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
         roster=template[role];need(type(roster) is list and len(roster)<=cap and len(set(roster))==len(roster),'bounded unique selected failure roster')
         for path in roster:runtime_path(path)
     need(template['files'] and len(template['aliases'])+len(template['directoryAliases'])<=256 and
          len(set(template['files']+template['aliases']+template['directoryAliases']))==sum(len(template[k]) for k in ('files','aliases','directoryAliases')),'disjoint complete selected failure roles')
-    if version==3:empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
-    value=decode(failure_raw);fields(value,'schema observationOnly candidate qualified template event platform diagnostic files aliases directoryAliases gitSource firstFailure secondary'+(' emptyPythonSources' if version==3 else ''))
+    if version>=3:empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
+    if version==4:finite_inventory_template(template_raw,expected['template']['sha256'])
+    if version==5:finite_v5_template(template_raw,expected['template']['sha256'])
+    value=decode(failure_raw);fields(value,'schema observationOnly candidate qualified template event platform diagnostic files aliases directoryAliases gitSource firstFailure secondary'+(' emptyPythonSources' if version>=3 else '')+(' scope fontSelectionProved browserFontSelectionProved guestApproved' if version>=4 else '')+(' installedProgress' if version==5 else ''))
     need(encode(value)==failure_raw and value['schema']=='bw.gui-hdd.inventory-failure.v'+str(version) and value['observationOnly'] is True and value['candidate'] is False and value['qualified'] is False and value['firstFailure'] is not None,'explicit canonical failure-only original')
     selected=value['template'];fields(selected,'byteLength sha256 expectedSha256 sourceHead bindingVerified')
     need(selected==dict(expected['template'],expectedSha256=expected['template']['sha256'],sourceHead=expected['source']['head'],bindingVerified=True),'failure retains independently selected template identity')
@@ -863,16 +1523,20 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     need(len(event_raw)==event['byteLength'] and sha(event_raw)==event['sha256'] and base64.b64encode(event_raw).decode()==original['base64'],'exact raw event byte extent/hash/encoding')
     platform=value['platform'];fields(platform,'GITHUB_RUN_ID GITHUB_RUN_ATTEMPT GITHUB_JOB GITHUB_REPOSITORY GITHUB_WORKFLOW_SHA GITHUB_WORKFLOW_REF GITHUB_EVENT_NAME GITHUB_ACTOR BW_EXPECTED_HEAD')
     need(platform['GITHUB_RUN_ID']==str(expected['runId']) and platform['GITHUB_WORKFLOW_SHA']==expected['workflowSha'],'independent run/workflow producing context')
-    bind_inventory_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)
+    if version==4:need(bind_finite_inventory_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)==template_raw,'finite failure event/template join')
+    elif version==5:need(bind_finite_v5_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)==template_raw,'finite v5 failure event/template join')
+    else:bind_inventory_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)
     pr=decode(event_raw)['pull_request']
     need(platform['GITHUB_WORKFLOW_REF']==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','raw event/executing workflow ref join')
     diagnostic=value['diagnostic'];fields(diagnostic,'pathBytes limitBytes complete');integer(diagnostic['pathBytes'],0,JSON_CAP);integer(diagnostic['limitBytes'],1,JSON_CAP)
     need(diagnostic['complete'] is True and diagnostic['pathBytes']<=diagnostic['limitBytes'],'complete bounded failure path observations, no hidden truncation')
     frame=decode(encode(value));frame.update(files={},aliases={},directoryAliases={},firstFailure=None,secondary=[],gitSource={'reached':False,'head':None,'tree':None,'files':{}},diagnostic={'pathBytes':0,'limitBytes':0,'complete':False})
-    if version==3:frame['emptyPythonSources']={}
+    if version>=3:frame['emptyPythonSources']={}
+    if version==5:frame['installedProgress']={'package':None,'path':None,'file':None,'completedPrefixes':[],
+      'entryStat':None,'completedRows':0,'totalBytes':0}
     need(diagnostic['limitBytes']==JSON_CAP-len(encode(frame))-8192,'independent event/frame reservation before path diagnostic budget')
     errors=[];counts={};path_cost=0
-    roles=('files','emptyPythonSources','aliases','directoryAliases') if version==3 else ('files','aliases','directoryAliases')
+    roles=('files','emptyPythonSources','aliases','directoryAliases') if version>=3 else ('files','aliases','directoryAliases')
     for role in roles:
         observed=value[role];need(type(observed) is dict and set(observed)==set(template[role]),'entire selected failure roster retained');counts[role]={}
         for path in template[role]:
@@ -897,13 +1561,21 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
                 error=row['error'];need(error.get('path')==path and error.get('phase')==('inventory-empty-python-source' if role=='emptyPythonSources' else 'inventory-file' if role=='files' else 'inventory-alias'),'path error provenance');errors.append(error)
             path_cost+=len(encode({path:row}))+len(encode(row.get('error')))+32
     need(path_cost==diagnostic['pathBytes'],'independent path budget accounting')
+    if version==4:
+        need(encode(value['scope'])==encode(finite_inventory_scope()) and all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),'finite failure grants no font/browser/guest authority')
+    if version==5:
+        need(encode(value['scope'])==encode(finite_v5_scope()) and all(value[key] is False for key in
+             ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
+             'finite v5 failure grants no font/browser/guest authority')
+        installed_progress_v5(value['installedProgress'])
     need(type(value['secondary']) is list and len(value['secondary'])<=770,'bounded secondary failure observations')
     all_errors=[value['firstFailure']]+value['secondary']
     for error in all_errors:
         need(type(error) is dict and {'phase','name','message'}<=set(error)<=set('phase name message path'.split()),'closed retained error observation')
         for name,cap in (('phase',128),('name',128),('message',1024)):need(type(error[name]) is str and error[name].isascii() and len(error[name])<=cap,'capped error fact')
-        if 'path' in error:runtime_path(error['path'])
-    if version==3:
+        if 'path' in error:
+            (relative if version==5 and error['phase'].startswith('inventory-installed') else runtime_path)(error['path'])
+    if version>=3:
         path_errors=[error for error in all_errors if error['phase'] in ('inventory-file','inventory-empty-python-source','inventory-alias')]
         need(path_errors==errors and (not errors or all_errors[0]==errors[0]),'typed first path refusal and ordered secondary observations preserved')
     else:need(all_errors[:len(errors)]==errors,'first selected-path error and ordered secondary observations preserved')
@@ -912,6 +1584,13 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     else:
         for name in ('head','tree'):need(source[name] is None or source[name]==expected['source'][name],'reported source identity joins external selection')
         need(set(source['files'])<=SOURCE and all(row==expected['source']['files'][path] for path,row in source['files'].items()),'reported partial source file identities')
+    if version==5:
+        progress=value['installedProgress']
+        installed_errors=[row for row in all_errors if row['phase']=='inventory-installed']
+        need(not installed_errors or (source['reached'] is True and
+             installed_errors[0].get('path')==progress['path'] and
+             progress['package'] is not None),
+             'finite v5 first installed error binds attempted package/path')
     return {'schema':'bw.gui-hdd.inventory-failure-reader.v'+str(version),'failureObserved':True,'eventJoined':True,'candidate':False,'qualified':False,
       'templateSha256':expected['template']['sha256'],'sourceHead':expected['source']['head'],'runId':expected['runId'],'counts':counts,
       'gitSourceReached':source['reached'],'firstFailure':value['firstFailure']}
@@ -919,32 +1598,45 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
 
 def inventory_admission_expected(expected):
     fields(expected,'schema source template original runId workflowSha')
-    need(expected['schema']=='bw.gui-hdd.inventory-admission.v3','external metadata admission v3; no actual authority')
-    inventory_failure_expected({'schema':'bw.gui-hdd.inventory-failure-expectation.v3','source':expected['source'],
+    version=5 if expected['schema']=='bw.gui-hdd.inventory-admission.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-admission.v4' else 3
+    need(expected['schema']=='bw.gui-hdd.inventory-admission.v'+str(version),'versioned external metadata admission; no actual authority')
+    inventory_failure_expected({'schema':'bw.gui-hdd.inventory-failure-expectation.v'+str(version),'source':expected['source'],
       'template':expected['template'],'failure':expected['original'],'runId':expected['runId'],'workflowSha':expected['workflowSha']})
 
 
 def verify_inventory_original(original_raw,template_raw,expected):
     """Validate externally pinned metadata only, never create approval or actual input."""
-    inventory_admission_expected(expected)
+    inventory_admission_expected(expected);version=5 if expected['schema']=='bw.gui-hdd.inventory-admission.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-admission.v4' else 3
     for raw,name in ((original_raw,'original'),(template_raw,'template')):
         need(type(raw) is bytes and len(raw)==expected[name]['byteLength'] and sha(raw)==expected[name]['sha256'],'independently selected '+name+' original')
-    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources')
-    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v3' and template['sourceHead']==expected['source']['head'],'explicit canonical metadata template v3')
+    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources'+(' libraries scope' if version>=4 else ''))
+    need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version) and template['sourceHead']==expected['source']['head'],'explicit canonical metadata template v3')
+    if version==4:finite_inventory_template(template_raw,expected['template']['sha256'])
+    if version==5:finite_v5_template(template_raw,expected['template']['sha256'])
     for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
         roster=template[role];need(type(roster) is list and len(roster)<=cap and len(set(roster))==len(roster),'bounded selected metadata roster')
         for path in roster:runtime_path(path)
     need(template['files'] and len(template['aliases'])+len(template['directoryAliases'])<=256 and
          len(set(template['files']+template['aliases']+template['directoryAliases']))==sum(len(template[k]) for k in ('files','aliases','directoryAliases')),'disjoint metadata role roster')
     empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
-    value=decode(original_raw);fields(value,'schema observationOnly templateSha256 source installedFiles runtime event commands platform emptyPythonSources')
-    need(encode(value)==original_raw and value['schema']=='bw.gui-hdd.inventory-original.v3' and value['observationOnly'] is True and
+    value=decode(original_raw);fields(value,'schema observationOnly templateSha256 source installedFiles runtime event commands platform emptyPythonSources'+(' scope libraries guardAdmission fontSelectionProved browserFontSelectionProved guestApproved' if version>=4 else ''))
+    need(encode(value)==original_raw and value['schema']=='bw.gui-hdd.inventory-original.v'+str(version) and value['observationOnly'] is True and
          value['templateSha256']==expected['template']['sha256'] and encode(value['source'])==encode(expected['source']),'externally selected canonical metadata/source original')
+    if version==4:
+        need(encode(value['scope'])==encode(finite_inventory_scope()) and value['libraries']==template['libraries'] and
+             all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),'finite original grants no font/browser/guest authority')
+    if version==5:
+        need(encode(value['scope'])==encode(finite_v5_scope()) and value['libraries']==template['libraries'] and
+             all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
+             'finite v5 original grants no font/browser/guest authority')
     runtime=value['runtime'];fields(runtime,'files aliases directoryAliases node python chromium tools resources')
     for role in ('files','aliases','directoryAliases'):need(type(runtime[role]) is dict and set(runtime[role])==set(template[role]),'positive runtime roster joins selected template')
     for path,row in runtime['files'].items():
         fields(row,'byteLength sha256');integer(row['byteLength'],1,256<<20);digest(row['sha256'])
     runtime_alias_policy(runtime)
+    if version>=4:
+        for role in ('aliases','directoryAliases'):
+            for row in runtime[role].values():finite_inventory_path(row['target'])
     for key in ('node','python','chromium'):need(runtime[key]==template[key] and runtime[key] in runtime['files'],'positive selected executable')
     need(runtime['files'][runtime['node']]=={'byteLength':124827920,'sha256':'fde6a4bf8d0562f7751d1a2d6cb9b417c4cfe107bbcb0aa3e9a24e125e348f48'},'held independently admitted Node identity')
     need(runtime['tools']==template['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and all(path in runtime['files'] for path in runtime['tools'].values()),'held positive bootstrap tool closure')
@@ -954,14 +1646,26 @@ def verify_inventory_original(original_raw,template_raw,expected):
     for row in selected.values():
         fields(row,'attempted status source');need(row['attempted'] is True and row['status']=='observed','typed source actually observed')
         verify_empty_python_source(row['source'])
-    rows(value['installedFiles'])
+    installed_rows_v5(value['installedFiles']) if version==5 else rows(value['installedFiles'])
+    if version==4:need(all(prefix+'/package.json' in value['installedFiles'] for prefix in ('node_modules/bw-board','node_modules/bw-circuit-ui','node_modules/playwright','node_modules/playwright-core')),'finite original includes complete selected supplier/browser/CUI census')
     event=value['event'];fields(event,'byteLength sha256 base64');integer(event['byteLength'],1,JSON_CAP);digest(event['sha256'])
     need(type(event['base64']) is str and len(event['base64'])==4*((event['byteLength']+2)//3),'bounded exact event original')
     raw=base64.b64decode(event['base64'],validate=True)
     need(len(raw)==event['byteLength'] and sha(raw)==event['sha256'] and base64.b64encode(raw).decode()==event['base64'],'raw metadata event identity')
     platform=value['platform'];fields(platform,'GITHUB_RUN_ID GITHUB_RUN_ATTEMPT GITHUB_JOB GITHUB_REPOSITORY GITHUB_WORKFLOW_SHA GITHUB_WORKFLOW_REF GITHUB_EVENT_NAME GITHUB_ACTOR BW_EXPECTED_HEAD')
     need(platform['GITHUB_RUN_ID']==str(expected['runId']) and platform['GITHUB_WORKFLOW_SHA']==expected['workflowSha'],'external metadata run/workflow join')
-    bind_inventory_event(raw,expected['source']['head'],expected['template']['sha256'],platform)
+    if version==4:
+        need(bind_finite_inventory_event(raw,expected['source']['head'],expected['template']['sha256'],platform)==template_raw,'finite original immutable body/template identity')
+        guard_raw=expected_embedded_original(value['guardAdmission']);guard=finite_inventory_guard_original(guard_raw,template_raw,raw,platform)
+        need(encode(guard['source'])==encode(expected['source']),'finite pre/post-setup exact source closure')
+    elif version==5:
+        need(bind_finite_v5_event(raw,expected['source']['head'],expected['template']['sha256'],platform)==template_raw,
+             'finite v5 original immutable body/template identity')
+        guard_raw=expected_embedded_original(value['guardAdmission'])
+        guard=finite_v5_guard_original(guard_raw,template_raw,raw,platform)
+        need(encode(guard['source'])==encode(expected['source']),
+             'finite v5 pre/post-setup exact source closure')
+    else:bind_inventory_event(raw,expected['source']['head'],expected['template']['sha256'],platform)
     need(platform['GITHUB_WORKFLOW_REF']==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(decode(raw)['pull_request']['number'])+'/merge','metadata event/workflow ref join')
     commands=value['commands'];need(type(commands) is list and len(commands)==2+len(SOURCE),'finite read-only source command observations')
     arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[['cat-file','blob',expected['source']['head']+':'+path] for path in sorted(SOURCE)]
@@ -971,7 +1675,7 @@ def verify_inventory_original(original_raw,template_raw,expected):
         fields(command,'argv stdout stderr exitCode')
         need(command['argv']==prefix+args and type(command['exitCode']) is int and command['exitCode']==0 and command['stdout']==out and
              command['stderr']=={'byteLength':0,'sha256':EMPTY_PYTHON_SHA256},'fixed successful source command output observations')
-    return {'schema':'bw.gui-hdd.inventory-reader.v3','observationOnly':True,'candidate':False,'qualified':False,
+    return {'schema':'bw.gui-hdd.inventory-reader.v'+str(version),'observationOnly':True,'candidate':False,'qualified':False,
       'sourceHead':expected['source']['head'],'runId':expected['runId'],'emptyPythonSources':len(selected),'actualRequestSupported':False}
 
 
@@ -2001,6 +2705,29 @@ def verify_font_bridge_delivery(archive_raw,request_raw,expected,metadata,workfl
 
 def main(argv=None):
     raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1] in (['--inventory-original-v5'],['--inventory-failure-v5']):
+        mode=raw_args[0]
+        parser=argparse.ArgumentParser(description='Independent finite v5 installed original audit',allow_abbrev=False)
+        parser.add_argument(mode,action='store_true')
+        for name in ('original','template','expected'):parser.add_argument('--'+name,required=True)
+        need(len(raw_args)==7 and raw_args.count(mode)==1 and
+             all(raw_args.count('--'+name)==1 for name in ('original','template','expected')),
+             'exact finite v5 seven-token audit inputs')
+        args=parser.parse_args(raw_args)
+        expected=decode(bounded_input(args.expected,JSON_CAP))
+        if mode=='--inventory-original-v5':
+            inventory_admission_expected(expected)
+            need(expected['schema']=='bw.gui-hdd.inventory-admission.v5','distinct finite v5 positive expectation')
+            original=bounded_input(args.original,expected['original']['byteLength'])
+            template=bounded_input(args.template,expected['template']['byteLength'])
+            verdict=verify_inventory_original(original,template,expected)
+        else:
+            inventory_failure_expected(expected)
+            need(expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v5','distinct finite v5 failure expectation')
+            original=bounded_input(args.original,expected['failure']['byteLength'])
+            template=bounded_input(args.template,expected['template']['byteLength'])
+            verdict=verify_inventory_failure(original,template,expected)
+        print(encode(verdict).decode(),end='');return 0
     if raw_args[:1] in (['--font-bridge-delivery'],['--font-bridge-metadata']):
         mode=raw_args[0];parser=argparse.ArgumentParser(description='Independent bridge official metadata/delivery admission',allow_abbrev=False)
         names=('request','expected','run','job','artifact','workflow-proof','workflow')
