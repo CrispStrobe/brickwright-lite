@@ -70,6 +70,12 @@ interval; that remains a mandatory native check. Source-binding comparisons
 allow only numerical roundoff between JavaScript engines, independently of
 the unchanged physical tolerances.
 
+Fixed-period hold checks compare integer tick spans at exact sampled boundaries,
+so subtraction of late floating timestamps cannot turn one allowed frame into a
+false failure. Non-grid observations keep the direct comparison; short-hold
+negative controls retain the original one-frame allowance. Immutable supplied
+oracles remain in the fixtures alongside the reviewed numerical correction.
+
 The qualification runner produces a source-bound receipt for these checks.
 Simulation qualification does not certify a physical build, friction, wear, cable routing
 or LEGO motor load capacity.

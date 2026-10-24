@@ -50,3 +50,17 @@ test('actual LDR, MPD and Studio file exports retain precise authored placement 
   assert.deepEqual(prepared.model,expected.model);
  }
 });
+
+test('sampled hold boundaries use integer ticks without admitting a physically short hold',async()=>{
+ const {withinSampledFrame}=await import('../scripts/lib/sim-lab-sampled-time.mjs');
+ const frame=1000/30;
+ for(const start of [0,1000,40000,1000000])for(const required of [500,1000,1500]){
+  const ticks=Math.round(required/frame)-1,end=start+ticks*frame;
+  assert.equal(withinSampledFrame(start,end,frame,required),true,'exact one-frame boundary');
+  assert.equal(withinSampledFrame(start,end-.000001,frame,required),false,'one nanosecond below the boundary');
+  assert.equal(withinSampledFrame(start,end-5,frame,required),false,'one actual physics step short');
+  assert.equal(withinSampledFrame(start,end-frame,frame,required),false,'one more observation frame short');
+ }
+ assert.equal(withinSampledFrame(0,475,25,500),true);
+ assert.equal(withinSampledFrame(0,470,25,500),false);
+});

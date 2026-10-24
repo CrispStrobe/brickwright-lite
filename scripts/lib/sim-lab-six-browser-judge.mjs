@@ -9,7 +9,7 @@ import {reviewedIntakeContract,intakeRead} from './sim-lab-six-intake-contracts.
 import {curatedStockAudit} from './sim-lab-curated-stock-audit.mjs';
 import {judgeJansen} from '../../test/fixtures/model-files/dune-strider-source/tools/judge-native.mjs';
 import {judgeAtlas} from '../../test/fixtures/model-files/atlas-six-source/tools/judge-native.mjs';
-import {judgeNative as judgeOblique} from '../../test/fixtures/model-files/oblique-source/tools/judge-native.mjs';
+import {judgeNative as judgeOblique} from './sim-lab-oblique-native-judge.mjs';
 
 // Browser observations cover the complete ordinary Run, actual API events,
 // passive output, finite completion and hold. Full unpowered startup and exact

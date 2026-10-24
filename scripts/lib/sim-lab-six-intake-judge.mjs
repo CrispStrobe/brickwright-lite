@@ -6,7 +6,7 @@ import {evaluateVernierDrive} from './sim-lab-vernier-drive-judge.mjs';
 import {evaluateLineTurner} from './sim-lab-line-turner-judge.mjs';
 import {judgeJansen} from '../../test/fixtures/model-files/dune-strider-source/tools/judge-native.mjs';
 import {judgeAtlas} from '../../test/fixtures/model-files/atlas-six-source/tools/judge-native.mjs';
-import {judgeNative as judgeOblique} from '../../test/fixtures/model-files/oblique-source/tools/judge-native.mjs';
+import {judgeNative as judgeOblique} from './sim-lab-oblique-native-judge.mjs';
 import {reviewedIntakeContract,intakeHash} from './sim-lab-six-intake-contracts.mjs';
 
 export async function evaluateReviewedIntake(id,record,{native=true,contract=reviewedIntakeContract(id,{frameMs:record.timing?.frameMs})}={}){

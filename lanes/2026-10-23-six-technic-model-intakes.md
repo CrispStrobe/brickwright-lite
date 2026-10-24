@@ -46,3 +46,9 @@ now request twelve decimals; the standalone serializer's default stays intact.
 The original Vernier marker check rejects the old output and accepts the precise
 output. Browser source binding accepts only the exact reviewed model or its
 canonical save derivative, while retaining compiled-geometry and physical limits.
+
+Oblique's browser run also exposed cancellation at the exact one-frame hold
+boundary. Reviewed oracle extracts retain the supplied physical gates and raw
+timestamps, comparing aligned hold spans as integer clock ticks. The original
+oracles and failed receipt remain; one-nanosecond and one-physics-step short-hold
+controls must still fail. No time, pose, solver or motion tolerance is increased.
