@@ -1,6 +1,7 @@
 # Robot Lab UI transports and brick interaction (WP9 / WP5)
 
-DONE — implementation candidate; hosted/browser qualification pending, not merged.
+DONE — merged in [#1274](https://github.com/CrispStrobe/brickwright-lite/pull/1274).
+All enabled exact-head checks and source-bound built-browser qualification passed.
 Codex hub-coverage continuation, isolated branch
 `lane/robot-lab-ui-transports-buttons-20261023`, base
 `0e11f66d5ae1a9c5788756986c715bf86049ff16`. User requests the recommended
@@ -84,11 +85,17 @@ intentionally leave the Lab tab mounted. Captured serial and focused/held input
 remain live before handover, then their cleanup is checked. Forty-nine affected
 DOM/transport controls pass, including a real tab/simulator handover control at
 a controlled lazy-child boundary; both source-copy handover mutations fail.
-The original built-browser close-action failure is retained. Current-main
-package changes require fresh exact-head dependency and browser qualification.
-Final combined-head hosted checks and source-bound built-browser qualification
-remain required before merge. DONE records an implementation candidate, not
-hosted, installed-native or hardware qualification.
+The original built-browser close-action failure and the subsequent gate-shape
+audit failure are retained. The handover gate now proves the same arena control
+appears before release and disappears afterward; the audit baseline is unchanged.
+All 31 enabled exact-head checks passed across four workflows, with six declared
+conditional job skips. The source-bound built-browser job ran all ten assigned
+Robot Lab gates with zero skips. API-driven model/motor calls, radio-hub guests
+and EV3/NXT guests passed. After real handover, the captured serial port is closed,
+held input is released, the pane is disposed, its clock and API are removed, and
+host wrappers are restored. The landed merge parents and tree exactly match the
+prediction. This closes this transport claim; installed-native, all-VM ABA,
+all-profile Reset and hardware qualification remain separate.
 See [usage and model limits](../docs/ROBOT-LAB-CONNECTIONS-AND-BUTTONS.md).
 
 Model PR1235/1236, native PR1224/1099/1100 and Arcade PR1128 remain with their
