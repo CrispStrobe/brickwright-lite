@@ -66,3 +66,71 @@ test('installed aperture capture retains authored triangle area beside unchanged
     assert.throws(() => scopeAudio(board.getScopeData(mean), {bandwidthHz: 4000}),
         /sample|capture|data/i, 'reset cannot replay an old ring');
 });
+
+for (let key = 1; key <= 8; key++) {
+    test(`installed organ Widget key${key} retains actual pulses in audio means and releases`, async () => {
+        const {readFileSync} = await import('node:fs');
+        const {Circuit} = await loadCircuitModel(root);
+        const boardModule = file => import(path.join(root, 'node_modules/bw-board/src', file));
+        const {ControllerPanel} = await boardModule('controller.js');
+        const {ControllerExtension} = await boardModule('controller-extension.js');
+        const {bindPanelToBoard} = await boardModule('controller-binding.js');
+        const fixture = path.join(root, 'overlay/scratch-gui/examples/school-miniorgan-107056');
+        const circuit = Circuit.fromJSON(JSON.parse(readFileSync(path.join(fixture, 'circuit.json'))));
+        const panel = ControllerPanel.fromJSON(JSON.parse(readFileSync(path.join(fixture, 'controller.json'))));
+        const extension = new ControllerExtension(); extension.setPanel(panel);
+        const binding = bindPanelToBoard(panel, circuit.board);
+        try {
+            const board = circuit.board, speaker = circuit.parts.find(p => p.label === 'LS-8ohm');
+            const signal = board.getNets().find(n => n.terminals.some(t =>
+                t.part === speaker.id && t.terminal === 'a')).id;
+            board.addScopeChannel({type: 'voltage', netId: signal,
+                capture: 'sample', sampleRateHz: 10000, depth: 16000});
+            const envelope = board.addScopeChannel({type: 'voltage', netId: signal,
+                capture: 'envelope', sampleRateHz: 100000, depth: 16000});
+            const mean = board.addScopeChannel({type: 'voltage', netId: signal,
+                capture: 'average', sampleRateHz: 100000, depth: 16000});
+            extension.setWidget({NAME: `key${key}`, VALUE: 1});
+            assert.equal(board.getControl(panel.getWidget(`key${key}`).binding.partId), 1);
+            for (let ms = 1; ms <= 90; ms++) circuit.advanceTo(BigInt(ms) * 1000000n);
+            const data = board.getScopeData(mean), peaks = board.getScopeData(envelope);
+            assert.equal(data.apertureNs, 10000n);
+            assert.equal(data.count, 9000);
+            const means = Array.from({length: data.count}, (_, i) => data.samples[i * 2]);
+            const tail = means.slice(2001), low = Math.min(...tail), high = Math.max(...tail);
+            assert.ok(high > low);
+            const edges = (values, threshold) => {
+                const found = [];
+                for (let i = 2001; i < values.length; i++) {
+                    if (values[i - 1] < threshold && values[i] >= threshold) found.push(i * .00001);
+                }
+                return found;
+            };
+            const captured = edges(means, low + (high - low) * .35);
+            const reference = edges(Array.from({length: peaks.count}, (_, i) => peaks.samples[i * 2 + 1]), 4);
+            assert.ok(captured.length >= 8);
+            assert.ok(Math.abs(captured.length - reference.length) <= 1,
+                `${captured.length} mean pulses versus ${reference.length} actual envelope pulses`);
+            const frequency = points => (points.length - 1) / (points.at(-1) - points[0]);
+            assert.ok(Math.abs(frequency(captured) - frequency(reference)) < 1);
+            const target = [261.625565, 293.664768, 329.627557, 349.228231,
+                391.995436, 440, 493.883301, 523.251131][key - 1];
+            assert.ok(Math.abs(1200 * Math.log2(frequency(captured) / target)) < 5);
+            const {scopeAudio} = await consumer('audio/scope-audio.js');
+            const audio = scopeAudio(data, {bandwidthHz: 8000});
+            assert.equal(audio.sampleRateHz, 100000);
+            assert.equal(audio.capture, 'average');
+            assert.equal(audio.bandwidthHz, 8000);
+            assert.ok(audio.samples.every(Number.isFinite));
+            assert.ok(audio.samples.some(value => Math.abs(value) > .00001));
+            extension.setWidget({NAME: `key${key}`, VALUE: 0});
+            assert.equal(board.getControl(panel.getWidget(`key${key}`).binding.partId), 0);
+            for (let ms = 91; ms <= 115; ms++) circuit.advanceTo(BigInt(ms) * 1000000n);
+            assert.ok(Math.abs(board.nodeVoltage(signal)) < .001, 'released key settles');
+            assert.equal(board.transientAnalysisStatus().accuracyMet, true);
+            assert.equal(board.transientAnalysisStatus().failure, null);
+        } finally {
+            binding.dispose();
+        }
+    });
+}
