@@ -502,6 +502,9 @@ def failed_attempt(raw,service_raw,version=1):
     if raw==b'':
         need(s['schema']==selected_service and s['originalPresent'] is False and
              s['serviceExitCode']!=0,'empty original only for failed service start')
+        if version==2:
+            need(s['innerComplete'] is False and s['innerBeforeObserved'] is False and
+                 s['innerFirstFailure'] is None,'empty v2 original has no inner observation')
         return {'schema':'bw.gui-hdd.native-font-failed-reader.v1' if version==1 else 'bw.gui-hdd.native-font-failed-reader.v2',
                 'originalSha256':sha(raw),'serviceSha256':sha(service_raw),
                 'originalFirstFailure':None,'originalSecondary':[],

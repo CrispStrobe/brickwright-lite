@@ -838,6 +838,15 @@ class V2Controls(unittest.TestCase):
             self.assertFalse(reader.failed_attempt(raw,outside,2)['nativeSelectionObserved'])
             value['outsideFiniteCleanupProved']=True
             with self.assertRaises(reader.Refusal):reader.failed_attempt(raw,reader.canonical(value)+b'\n',2)
+    def test_empty_original_v2_sidecar_cannot_claim_inner_observation(self):
+        service,rc,_=finalized_v2(b'',1,original_error=FileNotFoundError('MISSING_ORIGINAL'))
+        self.assertEqual(rc,1)
+        self.assertFalse(reader.failed_attempt(b'',service,2)['nativeSelectionObserved'])
+        for key,value in (('innerComplete',True),('innerBeforeObserved',True),
+                          ('innerFirstFailure',{'phase':'native-font-observation','name':'ValueError','message':'invented inner failure'})):
+            sidecar=reader.parse(service,65536,lf=True);sidecar[key]=value
+            with self.subTest(key=key),self.assertRaisesRegex(reader.Refusal,'no inner observation'):
+                reader.failed_attempt(b'',reader.canonical(sidecar)+b'\n',2)
     def test_failed_reader_rederives_coherent_sidecar_truth_and_error_grammar(self):
         raw,*_=self.produce('foreign-proc');service,_,_=finalized_v2(raw)
         for cut in ('pid','populated','unknown','cleanup','failure'):
