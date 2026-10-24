@@ -6,6 +6,48 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## G02 current-main installed matrix — 2026-10-24
+
+Installed Linux qualification of current main (`d7fde5bf`, with the compiled
+MicroPython support that matches the packaged runtime), each case run once in
+a fresh owned container (2 CPU, 2 GiB, no network, unchanged 120 s startup):
+
+- **MicroPython startup root cause.** Legacy source-overlay support paired with
+  a compiled-model runtime aborted the model include, so the debugger endpoint
+  never opened (`rsp-connect unavailable` after 60 s). Pin preparation now
+  refuses that pairing and the native producer accepts the compiled profile pin
+  ([PR1349](https://github.com/CrispStrobe/brickwright-lite/pull/1349)). With
+  compiled support, startup attaches at 32.6 s.
+- **MicroPython matrix:** raw-REPL completion and guest error with six motors,
+  Stop during final sampling, ownership release and distinct fresh recovery
+  across UART generations 1–6, with native wrong-caller-generation refusal.
+  An independent reader accepted all six cases.
+- **NuttX cases:** dual Stop (source and Python), active cancellation,
+  storage, Python storage, Python cancellation, app-restart storage (source and
+  Python), backend switch and view switch pass. The first app-restart attempt
+  failed because the controller's one-shot Code-tab click after restart did not
+  select the tab; a revision that retries the click until the tab is selected
+  passed. That failure is retained.
+- **Pane disposal:** found a real defect. Closing the arena during a
+  dual-ultrasonic run left port F's sensor in the shared hub for the next pane.
+  [PR1355](https://github.com/CrispStrobe/brickwright-lite/pull/1355) returns
+  port F after the disposed Stop settles unless a newer session owns the hub;
+  the installed case passes on an executable built from that head.
+- **Selected-image races:** a real native selection of the operator image, with
+  only its return delayed, is published normally and is ignored as stale after
+  Reset or arena closure.
+- **Generation process census:** a host-side collector sampled the app's
+  process tree every 100 ms during the six-generation MicroPython matrix:
+  2,177 samples, largest gap 132 ms (limit 250 ms), six distinct Renode
+  processes, never more than one at a time, none after the app exited. A first
+  run at a 200 ms period missed the 250 ms limit once (252.7 ms); it is
+  retained and the collector, not the limit, was changed.
+- **Late polls:** the session's poll fence is shared by every backend; NuttX
+  late-error adversaries (PR936) and the MicroPython final-sampling Stop cover it.
+
+These are finite installed Linux results for the named sources. They make no
+physical, reference-firmware, performance, release or licence claim.
+
 ## Current integration checkpoint — 2026-10-17
 
 The newer [integration handoff](INTEGRATION-NEXT-STEPS.md) scopes the remaining
