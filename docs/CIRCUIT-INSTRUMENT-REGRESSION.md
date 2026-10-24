@@ -275,3 +275,28 @@ limits. Do not turn "fix failures" into implementing every device model or
 automatically starting another corpus-wide campaign. Check existing owners
 before taking a follow-up; release, runtime and other simulator lanes remain
 independently owned.
+
+## Work beyond this bounded endpoint
+
+These are follow-ups, not evidence that the fixed matrix covers them. Refresh
+ownership and source state before claiming one; do not begin another campaign
+as an automatic continuation of this five-item sequence.
+
+- **Imported-corpus measurements:** select a frozen, licensed inventory and a
+  stratified set of supported circuits with meaningful probe locations. Record
+  actual attempted/comparable/refused denominators and explicit model assumptions.
+  Retain input decks, raw captures and independent SPICE results. Acceptance is
+  per supported topology and measurement; it is not a count of files that parse.
+- **Part-specific model accuracy:** choose one actual op-amp or regulator and a
+  lawful independent reference. Specify rails, loading, temperature, startup and
+  bandwidth limits before measurement. The 48 nominal analytic cases establish
+  agreement with their stated approximations, not vendor or hardware accuracy.
+  Repair only a demonstrated cause upstream, then adopt one reviewed pin batch.
+- **Physical instrument behavior:** separately scope probe loading, bandwidth,
+  anti-alias filtering or ADC behavior with explicit parameters and independent
+  time-domain expectations. Preserve the ideal/raw acquisition path and identify
+  each modeled effect in CLI receipts and GUI labels. Disclosure alone does not
+  implement these effects, and invented noise cannot serve as validation.
+- **Aperture/audio acquisition:** respect the existing upstream aperture/audio
+  and Lite supplier-adoption claims. Their sampling, filtering and playback work
+  is separate from the additive display metadata in this lane.
