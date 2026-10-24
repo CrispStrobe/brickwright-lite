@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync} from 'node:fs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -14,7 +14,13 @@ import {INHERITANCE_CAPTURED_SOURCE} from './fixtures/arcade-inheritance-capture
 const profile=GENERATED_HELPER_PROFILES.ordinary,helper=nativeArrayAddHelperSource('__bwBinaryAdd',true,true);
 const clean=value=>{for(const key of ['unsupported','warnings','errors','unparsed'])if(Object.hasOwn(value,key))assert.deepEqual(value[key],[],key);};
 function parseImported(files){const imported=arcadeToPseudocode(files);clean(imported);assert.doesNotMatch(imported.code,/^\s*# unsupported:/m);const creator=new Creator();creator.parse(imported.code);clean(creator);return creator;}
-function exportCreator(creator){const before=JSON.stringify(creator.project),exported=projectToArcade(creator.project);clean(exported);assert.equal(JSON.stringify(creator.project),before,'direct export preserves the actual parsed project');assert.equal(typeof exported.ts,'string');assert.equal(exported.files['main.ts'],exported.ts);return exported;}
+let failureSerial=0;
+function exportCreator(creator){const before=JSON.stringify(creator.project),exported=projectToArcade(creator.project);
+ if(exported.unsupported?.length&&process.env.BW_NATIVE_FRAME_FAILURE_DIR){
+  try{writeFileSync(`${process.env.BW_NATIVE_FRAME_FAILURE_DIR}/class-export-failure-${failureSerial++}.json`,JSON.stringify({project:JSON.parse(before),result:exported},null,2),{flag:'wx',mode:0o600});}
+  catch(_){console.warn('Class captured export failure capture unavailable');}
+ }
+ clean(exported);assert.equal(JSON.stringify(creator.project),before,'direct export preserves the actual parsed project');assert.equal(typeof exported.ts,'string');assert.equal(exported.files['main.ts'],exported.ts);return exported;}
 function feedback(creator){const code=creator.decompile();assert.match(code,/DEVICE ARCADE/);assert.doesNotMatch(code,/^\s*# unsupported:/m);const next=new Creator();next.parse(code);clean(next);return next;}
 const core='function append(s:any){trace=__bwBinaryAdd(trace,s)}class Base {}class Child extends Base {constructor(){super();append("b")}write(v:any){trace=__bwBinaryAdd(trace,v)}}';
 const tail='let trace:any;trace="";let instance=new Child();instance.write("x");append("s");';
