@@ -247,7 +247,11 @@ throw Error('Unassigned mocked API URL');};\n`);
 
 test('source and identity guard mutants accept the coherent hostile fixture only when those guards are removed', async () => {
     const file = path.join(root, 'scripts/lib/official-gui-artifact.mjs');
-    const code = (await readFile(file, 'utf8')).replace("'./workflow-gates.mjs'", JSON.stringify(pathToFileURL(path.join(root, 'scripts/lib/workflow-gates.mjs')).href));
+    const jszip = import.meta.resolve('jszip');
+    assert.equal(new URL(jszip).protocol, 'file:', 'resolve the approved package from this normal file context');
+    const code = (await readFile(file, 'utf8'))
+        .replace("'./workflow-gates.mjs'", JSON.stringify(pathToFileURL(path.join(root, 'scripts/lib/workflow-gates.mjs')).href))
+        .replace("'jszip'", JSON.stringify(jszip));
     const load = async body => import('data:text/javascript;base64,' + Buffer.from(body).toString('base64'));
     const wrong = workflow.replace("steps['gui_pages_upload'].outcome", "steps['build_editor'].outcome");
     assert.notEqual(wrong, workflow); assert.throws(() => guiRunnerProducerSource(wrong));

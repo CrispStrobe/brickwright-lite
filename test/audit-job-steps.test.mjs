@@ -587,3 +587,25 @@ test('runner: source duplicate gate/shard and unassigned gate cannot become a sc
     const unassigned = rows.join('\n'), context = runnerContext(unassigned, shard);
     assert.throws(() => runnerTerminalReceipt(renderRunnerContext(unassigned, context, env, shard), runnerSource(unassigned, env), {env, shard}), /source shard partition/);
 });
+
+test('only the full direct module entry executes CLI; same-basename file and data imports stay inert', () => {
+    const directory = runnerFs.mkdtempSync(path.join(RUNNER_ROOT, '.runner-main-identity-'));
+    try {
+        const wrapper = path.join(directory, 'audit-job-steps.mjs');
+        const source = readFileSync(RUNNER_SCRIPT, 'utf8').replace("'./lib/workflow-gates.mjs'",
+            JSON.stringify(pathToFileURL(path.join(RUNNER_ROOT, 'scripts/lib/workflow-gates.mjs')).href));
+        const imported = [pathToFileURL(RUNNER_SCRIPT).href, 'data:text/javascript;base64,' + Buffer.from(source).toString('base64')];
+        const args = ['--import', 'data:text/javascript,globalThis.fetch=async()=>{throw Error("network must stay unreachable")}',
+            wrapper, '--runner-terminals-v1', '--shard', 'light'];
+        for (const url of imported) {
+            runnerFs.writeFileSync(wrapper, `import {judge} from ${JSON.stringify(url)};\nif(typeof judge!=='function')throw Error('missing pure export');\nconsole.log('imported-without-cli');\n`);
+            const result = spawnSync(process.execPath, args, {cwd: RUNNER_ROOT, env: {}, encoding: 'utf8', timeout: 5000, maxBuffer: 65536});
+            assert.equal(result.status, 0, result.stderr); assert.equal(result.stdout, 'imported-without-cli\n');
+            assert.equal(result.stderr, '', 'an imported same-basename module must not emit CLI evidence');
+        }
+        const direct = spawnSync(process.execPath, [RUNNER_SCRIPT, '--runner-terminals-v1', '--shard', 'light'],
+            {cwd: RUNNER_ROOT, env: {}, encoding: 'utf8', timeout: 5000, maxBuffer: 65536});
+        assert.equal(direct.status, 1, 'the actual entry must execute and refuse absent runner context');
+        assert.match(direct.stderr, /browser-runner-evidence-v1 .*RunnerEvidenceRefusal/);
+    } finally {runnerFs.rmSync(directory, {recursive: true, force: true});}
+});

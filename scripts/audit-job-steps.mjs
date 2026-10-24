@@ -43,6 +43,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {lstatSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
 import {parseJobs, partition, isBrowserStep, AUDIT_STEP} from './lib/workflow-gates.mjs';
 
 const RED = new Set(['failure', 'cancelled', 'timed_out']);
@@ -445,7 +446,7 @@ export const runnerTerminalCLI = (args, env = process.env, cwd = process.cwd(), 
     }
 };
 
-const isMain = process.argv[1] && new URL(import.meta.url).pathname.endsWith(process.argv[1].split('/').pop());
+const isMain = !!process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain && process.argv.includes('--runner-terminals-v1')) process.exitCode = runnerTerminalCLI(process.argv.slice(2));
 if (isMain && !process.argv.includes('--runner-terminals-v1')) {
     const fileArg = process.argv.indexOf('--file');
