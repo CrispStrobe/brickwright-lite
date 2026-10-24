@@ -23,3 +23,44 @@ The selected QEMU setup-input inventory in Board is a separate dependency. Its c
 The existing browser scenario script already specifies two distinct observations. The FreeDOS persistence case boots the free floppy with an owned 306×4×17 HDD, writes and reads a guest marker, pauses, downloads exact image and JSON, reloads the exported image in a fresh session, and checks that the original paused session remains unchanged. The forward-debug case uses an authored free boot disk and the real GUI to pause, set and hit a code breakpoint, step instructions, inspect full-width registers and read-only physical memory, resume, and retain the pane. Admit the exact free inputs and installed browser before either run; do not replace a guest observation with manufactured controls or a source-only result.
 
 Require meaningful positive and negative source controls, exact-head enabled CI success with only declared skips, and fresh affected clean browser/guest qualification before source merge. Land only through a guarded normal matched-head merge after verifying the resulting tree and parents. This claim authorizes no actual-run label or dispatch, original download, guest replay, pin movement, hardware flashing, physical timing, general DOSBox, full-OS, or release claim.
+
+## Current-source dependency clarification — 2026-10-24
+
+This claim remains a claim and has no new source, browser, guest, or performance
+result. At current Lite main, the controller and independent reader already
+select the same Board `b5650092695643622a53bcc40008133760e2d8a2`, Circuit
+UI `17fd4afb0bf27015b099ca67c9cca05919084654`, and SB3
+`1cbaeed325f5a890e43b78a4211acae8f801f2d2` as the canonical Board/Circuit
+UI package and lock declarations and SB3 vendor selection. The selected Board
+commit and Board master `bcf63ea46dc85b42a31d42f96124e22bcf797e67`
+have identical complete `src` trees at this checkpoint. An independently selected Build
+and installed browser/guest acceptance for these *current* pins can therefore
+proceed without waiting for unrelated Arcade PR1128 or moving a supplier pin.
+The Arcade owner retains both reserved SB3 consumer hunks, supplier declarations,
+events, and worktree. Any later Arcade composition must refreeze its source,
+Build, installed graph, request, reader, and affected guest evidence; an earlier
+current-source result cannot be carried forward as its qualification.
+
+The two existing Playwright HDD-persistence and forward-debug scenarios execute
+installed Board JavaScript in Chromium. Their controller, reader, and probe do
+not invoke QEMU. The earlier QEMU-wait language applies to a separate QEMU
+runtime lane, not to this browser-JavaScript acceptance. Admit the tools this
+job actually uses, native font selection, the current frontend Build, installed
+supplier/browser/runtime graph, finite resources, free inputs, and official
+source/event/original joins. Board's QEMU setup metadata belongs to another
+hosted job and cannot supply installed state to this job. A future GUI case
+that actually invokes QEMU needs a separately claimed per-job setup adapter
+and its own source, policy, original, and reader admission; this claim does not
+authorize one. Preserve all current actual false guards, caps, assertions,
+first-failure/cleanup evidence, and exact-head source plus affected browser/
+guest qualification before any activation or merge.
+
+This amendment also claims the **new** `docs/I80386-CLI-GUI-MEDIA.md` for a
+portable current-source usage guide, to be written only after this amendment
+merges. It will distinguish the direct `.COM`/`.EXE` DOS-service shim from the
+386 AT raw-disk console and its BIOS/free-input/hash requirements; show Code >
+Manage machines, Controller/Widgets, Debugger, and Full screen; describe the
+limited DOSBox `.conf`, raw HDD and floppy routes and honest ISO, ZIP, and VHD
+gaps. Use public repository paths and freely usable examples only. This new
+doc does not transfer ownership of any existing guide, media, Arcade source,
+supplier pin, or workflow outside the four source paths listed above.
