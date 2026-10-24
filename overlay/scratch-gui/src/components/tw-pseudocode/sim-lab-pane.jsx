@@ -674,6 +674,17 @@ class SimLabPane extends React.Component {
     /** start from a block: run the world (never the green flag: the program asking is already running). */
     async apiStart () {
         if (!this.session || this.state.status === 'running') return;
+        // Resume an already connected virtual SPIKE world without admitting a
+        // new provider. Reconnecting disconnects that hub and clears its holds.
+        const virtual = this.hub.data;
+        if (this.state.status === 'paused' && !this.session.lockstep && !this.state.manualOverride &&
+            virtual.simulationEnabled && virtual.connected && this.spikeLoaded() &&
+            !this.rcxHub() && !this.radioHub() && !this.btProfile() &&
+            this.props.vm.getPeripheralIsConnected('spikeprime')) {
+            this.startClock();
+            this.setState({status: 'running'});
+            return;
+        }
         await this.run({greenFlag: false});
     }
 

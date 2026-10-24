@@ -170,3 +170,20 @@ other owners' controls. Require an actual saved-program replay and full physical
 continuation in both browser engines, plus meaningful command-preservation and
 fresh-Run negative controls. This is an expansion of the existing delivery lane,
 not a second implementation owner. Merge this claim before the bounded repair.
+
+The bounded claim has landed separately before implementation. A subsequent
+actual call trace identifies the clearing operation: legacy virtual SPIKE
+reconnection disconnects its previous provider, which stops both motors.
+For a paused simulation with its virtual SPIKE and VM provider both still
+connected, public Start now resumes its clock without provider reconnection.
+Fresh Run, disconnected providers, manual override, other brick families and
+firmware retain ordinary admission. Forty-four focused continuation, recorder
+and production-pane controls pass. Current circuit changes are composed from
+main with their exact supplier pins; the combined build and affected real
+browser journeys still require qualification before publication and landing.
+
+The composed supplier closure is now verified by the canonical dependency
+manager. Integration, one hundred focused production-pane/API/clock/manual
+controls and the mirror gate pass with that closure. Actual Root Bridge and
+measurement-editor journeys on the newly built app remain the next admission
+boundary; earlier app builds retain their original source identities.
