@@ -30,7 +30,7 @@
 
 import {
     BufferGeometry, Color, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedBufferGeometry,
-    InstancedMesh, LineSegments, MeshStandardMaterial, ShaderMaterial
+    InstancedMesh, LineSegments, Matrix4, MeshStandardMaterial, ShaderMaterial
 } from 'three';
 import {PART_SURFACE} from './part-style.js';
 
@@ -52,13 +52,14 @@ const pageOverride = () => (typeof window !== 'undefined' && typeof window.__bwS
 export const useInstancing = (count, instancing = pageOverride()) => (instancing === 'auto' ? count >= INSTANCE_FROM : Boolean(instancing));
 
 const LINE_VERTEX = /* glsl */`
+    uniform mat4 clipFromModel;
     attribute mat4 iMatrix;
     attribute vec3 iTint;
     attribute vec3 color;
     varying vec3 vColor;
     void main () {
         vColor = color * iTint;
-        gl_Position = projectionMatrix * modelViewMatrix * iMatrix * vec4(position, 1.0);
+        gl_Position = clipFromModel * (iMatrix * vec4(position, 1.0));
     }`;
 const LINE_FRAGMENT = /* glsl */`
     varying vec3 vColor;
@@ -68,6 +69,7 @@ const LINE_FRAGMENT = /* glsl */`
     }`;
 // part-style.js's conditional-line rule, per instance.
 const CONDITIONAL_VERTEX = /* glsl */`
+    uniform mat4 clipFromModel;
     attribute mat4 iMatrix;
     attribute vec3 iTint;
     attribute vec3 control0;
@@ -78,7 +80,7 @@ const CONDITIONAL_VERTEX = /* glsl */`
     varying vec3 vColor;
     void main () {
         vColor = color * iTint;
-        mat4 mvp = projectionMatrix * modelViewMatrix * iMatrix;
+        mat4 mvp = clipFromModel * iMatrix;
         vec4 c0 = mvp * vec4(control0, 1.0);
         vec4 c1 = mvp * vec4(control1, 1.0);
         vec4 p0 = mvp * vec4(position, 1.0);
@@ -99,6 +101,21 @@ const CONDITIONAL_FRAGMENT = /* glsl */`
         gl_FragColor = vec4(vColor, 1.0);
         #include <colorspace_fragment>
     }`;
+
+// Camera and model-view are invariant within a draw. Compute their product once,
+// rather than multiplying two uniform matrices in every line vertex. Three calls
+// material.onBeforeRender after refreshing the actual object's modelViewMatrix.
+const lineShaderMaterial = (vertexShader, fragmentShader) => {
+    const material = new ShaderMaterial({vertexShader, fragmentShader,
+        uniforms: {clipFromModel: {value: new Matrix4()}}});
+    material.onBeforeRender = (renderer, scene, camera, geometry, object) => {
+        material.uniforms.clipFromModel.value.multiplyMatrices(camera.projectionMatrix, object.modelViewMatrix);
+        // Line batches share this material. The next object needs its current
+        // matrix even when Three reuses the same program and material.
+        material.uniformsNeedUpdate = true;
+    };
+    return material;
+};
 
 const groupRange = (geometry, index) => geometry.groups.find(g => g.materialIndex === index) || null;
 
@@ -137,8 +154,8 @@ export const createInstancedParts = ({colors}) => {
     const ownMaterial = alpha => shared(`own:${alpha}`, () => new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE,
         transparent: alpha < 1, opacity: alpha, depthWrite: alpha >= 1}));
     const fixedMaterial = () => shared('fixed', () => new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE, vertexColors: true}));
-    const lineMaterial = () => shared('lines', () => new ShaderMaterial({vertexShader: LINE_VERTEX, fragmentShader: LINE_FRAGMENT}));
-    const conditionalMaterial = () => shared('conditional', () => new ShaderMaterial({vertexShader: CONDITIONAL_VERTEX, fragmentShader: CONDITIONAL_FRAGMENT}));
+    const lineMaterial = () => shared('lines', () => lineShaderMaterial(LINE_VERTEX, LINE_FRAGMENT));
+    const conditionalMaterial = () => shared('conditional', () => lineShaderMaterial(CONDITIONAL_VERTEX, CONDITIONAL_FRAGMENT));
 
     /**
      * Register a placed part.
