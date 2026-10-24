@@ -147,7 +147,10 @@ test('the Robot Lab API reaches the scene only through the session: no physics, 
     const via = closure([api]);
     const reached = [...via.keys()].map(rel);
     assert.ok(reached.includes('bw-sim/contracts.js'), `the scan follows the API's imports: ${reached.join(', ')}`);
-    const bad = [...via.keys()].filter(f => f !== api && (/^bw-sim\/(physics|mech)\//.test(rel(f)) || isHubOrRoute(f))).map(f => chain(via, f));
+    const buttonApi = path.join(LIB, 'bw-sim/api/brick-buttons.js');
+    assert.ok(via.has(buttonApi), 'the scan follows the facade into its pure button capability helper');
+    const facade = new Set([api, buttonApi]);
+    const bad = [...via.keys()].filter(f => !facade.has(f) && (/^bw-sim\/(physics|mech)\//.test(rel(f)) || isHubOrRoute(f))).map(f => chain(via, f));
     assert.deepEqual(bad, [], `the API reaches:\n${bad.join('\n')}`);
 });
 
