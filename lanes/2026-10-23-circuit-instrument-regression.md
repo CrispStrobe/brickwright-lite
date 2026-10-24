@@ -1,8 +1,9 @@
 # Fixed CLI instrument regression campaign
 
-CLAIMED — Codex circuit owner, branch
-`lane/circuit-instrument-regression-20261023`, exact base
-`2a06b2d1ea057835b6764bea8ea36cee9819efbd`.
+DONE — bounded harness source implementation, Codex circuit owner, branch
+`lane/circuit-instrument-regression-source-20261023`, source base
+`09c324eaecbfcc209b45e6a32122e7094fbee969` after the merged claim.
+Numerical execution and the later upstream repair/display lanes are not done.
 
 The user authorizes preparing the harness alongside existing-release recovery.
 Numerical campaign execution remains after the TestFlight prerequisite with
@@ -60,3 +61,34 @@ removed combinations or unsupported-physics success claims.
 Merge this claim before implementation. Require focused controls, canonical
 derived checks and every enabled exact-head check before landing source.
 Release preparation and later campaign execution need separate honest receipts.
+
+Implementation: deterministic case manifest, independent passive/loaded-LM741/
+piecewise-ADP equations, strict SI/clock/CSV/whole-work readers, installed package
+and runtime identity, manual-only hosted runner and preserved per-case outcomes.
+Twenty-six pure controls pass without skips; they cover all nine required
+retained-record perturbations on explicitly synthetic fixtures. They do not
+establish circuit agreement. The first ADP reference closure defect and the
+independent review's watch/JSON conflict were fixed before qualification.
+Hosted Node 22 qualification remains required; no numerical case, Apple action,
+dependency installation, model change or pin move occurred in preparation.
+
+The release source landed through PR1309; the implementation preserves its
+canonical generator rather than copying another parser. Its census bootstrap supports this workflow's zero-run
+declaration while retaining all 321 prior run observations and 26 workflow
+records. The scoped pointer records six unobserved named steps, not fake runs.
+The source PR targets main after the release parent landed; preserve source
+identity and qualify any noncommuting change.
+
+Forward handoff correction (2026-10-24): the existing release is now verified by
+read-only audit 40048235422 on main `dc0897cc4fdf1984752ed4ead0a3836bcd1d2385`.
+The original was acquired/read once. The campaign must consume the admitted
+categorical snapshot with fixed run/job/source/summary/original hashes, rather
+than downloading that official original again. The source predecessor `c59f1c4`
+is held for this correction; its passing checks do not qualify the replacement.
+No circuit definition, reference equation, tolerance or dependency moves.
+The correction has 90 combined focused/source-policy controls passing without
+skips. Independent comparison with the retained actual summary also accepted
+the fixed observation, without another original-log download or Apple request.
+Publish this forward head only after the predecessor's running children finish;
+normal push to the existing PR preserves its label and yields one synchronize
+qualification event. The replacement needs its own exact-head hosted checks.

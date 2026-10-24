@@ -6,21 +6,24 @@ Follow the [current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15
 and upstream [acceptance contract](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md):
 qualified LM741 source → installed-consumer adoption and TestFlight release →
 stratified measurement regression → demonstrated causal repairs → bounded
-instrument-realism proof. As reconciled on 2026-10-17, upstream qualification
-and consumer adoption PR965 are complete; TestFlight delivery is not established.
-PR1011 is a merged ownership claim, not a released build. The existing iOS
-workflow-resource lane owns the remaining workflow integration.
+instrument-realism proof. As reconciled on 2026-10-24, upstream qualification
+and consumer adoption PR965 are complete. Existing v0.1.26 TestFlight delivery
+is now independently verified by read-only
+[audit 40048235422](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40048235422):
+iOS/macOS, both groups, matching bilingual notes and approved reviews. No new
+upload or metadata write was needed. The original failed metadata wait remains
+preserved; it did not describe the current Apple state.
 
 The [CLI instrument handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) scopes the
-unimplemented harness, 312 planned parameter cases across 12 templates,
+harness now in source qualification, 312 parameter cases across 12 templates,
 independent reference classes, causal repair triage and a bounded GUI realism
 follow-up. Harness preparation may proceed while release work continues, but
-the actual campaign remains after TestFlight. Claim ownership before coding;
-the preparation session is closing without reserving implementation. Later
+the actual campaign remains after TestFlight. The merged dated claim owns
+preparation; no campaign case has run. Later
 steps require their own installed identities, raw results and actual GUI
 qualification. Do not count
 historical corpus totals as a fresh sweep or parameter variants as distinct
-topologies. `LANES.md`, not historical session names below, controls ownership.
+topologies. `lanes/`, not historical session names below, controls ownership.
 
 The entries below retain dated measurements and rejected approaches. Their
 presence is not proof that a gap remains open; check current source before
