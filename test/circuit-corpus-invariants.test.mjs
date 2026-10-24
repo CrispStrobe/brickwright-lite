@@ -229,7 +229,11 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // ATtinys, and disp-rgb-light's NeoPixel off every non-8051 board).
     // Three analog school circuits extend the cohort; every endpoint above remains checked.
     for (const id of ["school-intercom-101455", "school-led-people-dog", "school-miniorgan-107056"]) assert.ok(files.includes(id + '/circuit.json'), id);
-    assert.equal(files.length, 1512, 'the gate must cover the complete vendored corpus');
+    // Four separately saved AA/NiMH variants extend 1512 to 1516 circuits.
+    for (const suffix of ['2aa', '2nimh', '3aa-220', '3nimh']) {
+        assert.ok(files.includes(`school-led-people-dog-${suffix}/circuit.json`), suffix);
+    }
+    assert.equal(files.length, 1516, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 

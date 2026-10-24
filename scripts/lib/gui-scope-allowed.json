@@ -56,6 +56,7 @@
       "test/bw-sim-arm-lift.test.mjs",
       "test/bw-sim-belt.test.mjs",
       "test/bw-sim-bt-hubs-program.test.mjs",
+      "test/bw-sim-brick-buttons-guest.test.mjs",
       "test/bw-sim-chain.test.mjs",
       "test/bw-sim-collisions.test.mjs",
       "test/bw-sim-colour-explorer-program.test.mjs",
@@ -151,6 +152,7 @@
       "test/bw-sim-virtual-transports-ev3.test.mjs",
       "test/bw-sim-virtual-ev3dev.test.mjs",
       "test/lab-hubs-bridge.test.mjs",
+      "test/lab-ui-transport-routing.test.mjs",
       "test/bw-sim-spike-bridge.test.mjs",
       "test/bw-sim-virtual-transports-nxt.test.mjs",
       "test/bw-sim-momentum-bloom-amplify.test.mjs",
@@ -168,9 +170,9 @@
       "test/bw-sim-cusp.test.mjs",
       "test/bw-sim-balance-engine.test.mjs",
       "test/bw-sim-root-bridge.test.mjs",
-      "test/model-api-native.test.mjs",
       "test/bw-sim-qualification.test.mjs",
-      "test/bw-sim-watt-twin.test.mjs"
+      "test/bw-sim-watt-twin.test.mjs",
+      "test/model-api-native.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },
@@ -457,6 +459,7 @@
   },
   "jolt-physics/wasm-simd-compat": {
     "tests": [
+      "test/bw-sim-brick-buttons-guest.test.mjs",
       "test/bw-sim-teaching-presets.test.mjs",
       "test/bw-sim-arm-lift.test.mjs",
       "test/bw-sim-belt.test.mjs",
@@ -557,6 +560,7 @@
       "test/bw-sim-virtual-transports-ev3.test.mjs",
       "test/bw-sim-virtual-ev3dev.test.mjs",
       "test/lab-hubs-bridge.test.mjs",
+      "test/lab-ui-transport-routing.test.mjs",
       "test/bw-sim-spike-bridge.test.mjs",
       "test/bw-sim-virtual-transports-nxt.test.mjs",
       "test/bw-sim-momentum-bloom-amplify.test.mjs",
@@ -574,9 +578,9 @@
       "test/bw-sim-cusp.test.mjs",
       "test/bw-sim-balance-engine.test.mjs",
       "test/bw-sim-root-bridge.test.mjs",
-      "test/model-api-native.test.mjs",
       "test/bw-sim-qualification.test.mjs",
-      "test/bw-sim-watt-twin.test.mjs"
+      "test/bw-sim-watt-twin.test.mjs",
+      "test/model-api-native.test.mjs"
     ],
     "why": "SIMD-capable physical controls use the qualified optional single-thread Jolt variant through the same GUI dependency boundary; the explicitly listed baseline callers also exercise its supported variant"
   }

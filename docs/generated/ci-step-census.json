@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T16:24:18.185Z",
+  "generatedAt": "2026-10-24T03:49:44.099Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1931,6 +1931,24 @@
       "sha": "c9512f122"
     },
     {
+      "run": 39982918951,
+      "workflow": "robot-model-webkit-comparison.yml",
+      "branch": "lane/robot-model-webkit-comparison-20261023",
+      "sha": "048a87646"
+    },
+    {
+      "run": 40007060335,
+      "workflow": "robot-model-webkit-comparison.yml",
+      "branch": "lane/robot-model-webkit-comparison-20261023",
+      "sha": "dc250d461"
+    },
+    {
+      "run": 40018078929,
+      "workflow": "robot-model-webkit-comparison.yml",
+      "branch": "lane/robot-model-webkit-comparison-20261023",
+      "sha": "368bd55ae"
+    },
+    {
       "run": 39960513501,
       "workflow": "model-measurements.yml",
       "branch": "lane/model-api-resource-takeover-20261023",
@@ -1945,6 +1963,7 @@
     "basic-oracle.yml",
     "build.yml",
     "ci-metrics.yml",
+    "circuit-instrument-regression.yml",
     "cycle-core-qualification.yml",
     "debugger.yml",
     "deploy-daily.yml",
@@ -1955,17 +1974,42 @@
     "makecode-arcade-bases.yml",
     "mobile.yml",
     "model-measurements.yml",
+    "native-installed-qualification.yml",
     "nightly-corpus-differential.yml",
     "pascal-ack-image.yml",
     "production-sw-probe.yml",
     "release.yml",
     "robot-lab-own-firmware.yml",
+    "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
+    "testflight-release-recovery.yml",
     "vendor-freshness.yml"
   ],
   "workflows": {
+    "circuit-instrument-regression.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Admit release metadata and previously verified summary",
+        "Read exact source pins",
+        "Install locked consumer and independent oracle",
+        "Pure harness controls",
+        "Run fixed authored campaign once",
+        "Preserve original results, including failures"
+      ],
+      "inFileInNoRun": [
+        "Admit release metadata and previously verified summary",
+        "Read exact source pins",
+        "Install locked consumer and independent oracle",
+        "Pure harness controls",
+        "Run fixed authored campaign once",
+        "Preserve original results, including failures"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
     "ack-z80-cpm.yml": {
       "runs": 12,
       "stepsInFile": [
@@ -7363,6 +7407,175 @@
       },
       "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
     },
+    "testflight-release-recovery.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Audit or recover existing release metadata"
+      ],
+      "inFileInNoRun": [
+        "Audit or recover existing release metadata"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
+    "native-installed-qualification.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Exercise source, artifact and resource refusal controls",
+        "Check out the qualification producer",
+        "Validate the complete reviewed build request",
+        "Check out the exact reviewed consumer",
+        "Admit official frontend and freeze native source",
+        "Install native build dependencies",
+        "Compile the resource-bound native executable",
+        "Retain executable and complete build-input receipt"
+      ],
+      "inFileInNoRun": [
+        "Exercise source, artifact and resource refusal controls",
+        "Check out the qualification producer",
+        "Validate the complete reviewed build request",
+        "Check out the exact reviewed consumer",
+        "Admit official frontend and freeze native source",
+        "Install native build dependencies",
+        "Compile the resource-bound native executable",
+        "Retain executable and complete build-input receipt"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
+    "robot-model-webkit-comparison.yml": {
+      "runs": 3,
+      "stepsInFile": [
+        "Checkout exact comparison source",
+        "Checkout frozen candidate",
+        "Install frozen Node inputs without package lifecycle scripts",
+        "Admission and resource refusal controls",
+        "Verify preprovisioned WebKit runtime",
+        "Admit existing frontend and run unchanged WebKit examples",
+        "Preserve comparison originals"
+      ],
+      "inFileInNoRun": [],
+      "steps": {
+        "Checkout exact comparison source": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Checkout frozen candidate": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Install frozen Node inputs without package lifecycle scripts": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Admission and resource refusal controls": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Install supported WebKit runtime": {
+          "existed": 2,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Admit existing frontend and run unchanged WebKit examples": {
+          "existed": 3,
+          "ran": 2,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 1,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "sometimes",
+          "why": "upstream failure — skipped only in runs where an earlier job failed"
+        },
+        "Preserve comparison originals": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": "always()",
+          "class": "always"
+        },
+        "Verify preprovisioned WebKit runtime": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "compare"
+          ],
+          "clause": null,
+          "class": "always"
+        }
+      },
+      "jobs": {
+        "compare": {
+          "existed": 3,
+          "ran": 3,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "always"
+        }
+      },
+      "sourceSha": "working-tree",
+      "observationScope": "New combined-source replacement declaration; historical048a/DC/368 execution records are retained, not acceptance of this replacement. Artifact fields remain unadmitted."
+    },
     "model-measurements.yml": {
       "runs": 1,
       "stepsInFile": [
@@ -7517,8 +7730,8 @@
     }
   },
   "lastRefresh": {
-    "workflow": "model-measurements.yml",
-    "at": "2026-10-23T16:24:18.185Z",
-    "sourceSha": "a11711d61"
+    "workflow": "robot-model-webkit-comparison.yml",
+    "at": "2026-10-24T03:49:44.099Z",
+    "sourceSha": "working-tree"
   }
 }

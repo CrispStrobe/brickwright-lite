@@ -51,3 +51,19 @@ mutations are detected. Original proposals and failures are
 preserved. Exact-head hosted controls and the isolated real Docker/Jolt encrypted
 fixture remain landing gates. This status does not authorize deployment or
 claim live private-store/service or installed-firmware acceptance.
+
+## Qualified-main continuation
+
+The retained PR1282 head `2b19a0765d3aedea01817dac6888f8913e8f0fd4`
+continues in the isolated branch `lane/model-api-qualified-core-20261024`.
+It normally composes qualified main
+`1825cf0308d3ba0e217a3117fedefbe959cab8c8`, preserves every existing workflow
+record and ordered observation, and adds only the API's historical registration
+and matching native-test registrations. The API host documentation now states
+the raw-stream helper contract and the separate configured-host acceptance.
+
+A new Ready successor PR will qualify the final composed source with one fresh
+fixed-model worker result and every enabled exact-head check. Preserve PR1282's
+branch and originals; close it only after qualified successor inclusion is
+verified on main. Source qualification does not establish deployed-service,
+production-dispatch, installed-firmware or physical-device acceptance.

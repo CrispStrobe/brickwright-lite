@@ -115,10 +115,17 @@ export const census = (runs, yamlAtSha) => {
 // A workflow introduced on a branch does not exist at the newest main run.
 // Read its own newest completed run instead of feeding an empty file to the
 // parser. Prefer main evidence when this workflow has any.
-export const workflowSource = (runs, workflow, fallback) => {
+export const workflowSource = (runs, workflow, fallback, recordedMainSha) => {
     const own = runs.filter(run => run.workflow === workflow)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return own.find(run => run.branch === 'main') || own[0] || fallback;
+    const observed = own.find(run => run.branch === 'main') || own[0] || fallback;
+    if (observed || recordedMainSha === undefined) return observed;
+    if (typeof recordedMainSha !== 'string' || !/^[0-9a-f]{7,40}$/.test(recordedMainSha)) {
+        throw new Error('Recorded declaration source must be a commit SHA');
+    }
+    // A scoped new workflow has no run to supply a declaration. This baseline
+    // supplies source only; it never enters runs or becomes a new observation.
+    return {sha: recordedMainSha};
 };
 
 export const mergeWorkflowReadings = (previous, fresh, workflow) => {
@@ -133,7 +140,7 @@ export const mergeWorkflowReadings = (previous, fresh, workflow) => {
     };
 };
 
-const fetchAll = (selectedWorkflow) => {
+const fetchAll = (selectedWorkflow, recordedMainSha) => {
     const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
     const inTree = readdirSync(path.join(ROOT, '.github/workflows')).filter(f => f.endsWith('.yml'));
     if (selectedWorkflow && !inTree.includes(selectedWorkflow)) throw new Error(`Unknown workflow: ${selectedWorkflow}`);
@@ -167,7 +174,7 @@ const fetchAll = (selectedWorkflow) => {
     const yamlAtSha = {};
     const sourceShas = {};
     for (const wf of wfs) {
-        const source = workflowSource(runs, wf, newestMain);
+        const source = workflowSource(runs, wf, newestMain, selectedWorkflow ? recordedMainSha : undefined);
         if (!source) throw new Error(`No completed run can supply ${wf}`);
         sourceShas[wf] = source.sha;
         try {
@@ -200,15 +207,19 @@ if (isMain) {
         const selectedWorkflow = option('--workflow');
         const baselineRef = option('--baseline-ref');
         if (baselineRef && !selectedWorkflow) throw new Error('--baseline-ref requires --workflow');
-        const previous = selectedWorkflow ? JSON.parse(baselineRef
+        const previousText = selectedWorkflow ? (baselineRef
             ? execFileSync('git', ['show', `${baselineRef}:docs/generated/ci-step-census.json`], {cwd: ROOT, encoding: 'utf8'})
             : readFileSync(READINGS, 'utf8')) : null;
-        const {repo, runs, newestMain, yamlAtSha, sourceShas, wfs} = fetchAll(selectedWorkflow);
+        const previous = previousText ? JSON.parse(previousText) : null;
+        const {repo, runs, newestMain, yamlAtSha, sourceShas, wfs} = fetchAll(selectedWorkflow, previous?.headSha);
         const workflows = census(runs, yamlAtSha);
         for (const wf of wfs) workflows[wf].sourceSha = sourceShas[wf];
         const fresh = {generatedAt: new Date().toISOString(), repo, headSha: newestMain?.sha, newestMainRun: newestMain?.run, runs: runs.map(r => ({run: r.run, workflow: r.workflow, branch: r.branch, sha: r.sha})), workflowsInTree: wfs, workflows};
         const body = selectedWorkflow ? mergeWorkflowReadings(previous, fresh, selectedWorkflow) : fresh;
-        writeFileSync(READINGS, JSON.stringify(body, null, 1) + '\n');
+        // A scoped refresh preserves the existing presentation as well as the
+        // observations; changing one declaration must not reindent every row.
+        const indentation = previousText?.match(/\n([ \t]+)"/)?.[1] || 1;
+        writeFileSync(READINGS, JSON.stringify(body, null, indentation) + '\n');
         // `--fetch` REWRITES A TRACKED FILE. It reads like a read-only flag and is
         // not one: brickwright-lite-ea ran it inside a lane worktree on 2026-09-07,
         // `git add -A` swept 143 lines of readings into an unrelated source commit,

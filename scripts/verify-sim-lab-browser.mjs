@@ -168,6 +168,7 @@ import {penInteractions} from './lib/sim-lab-pen-gate.mjs';
 import {apiInteractions, DEGREES_TOLERANCE} from './lib/sim-lab-api-gate.mjs';
 import {hubsInteractions, HUB_DEGREES_TOLERANCE} from './lib/sim-lab-hubs-gate.mjs';
 import {hubsBtInteractions} from './lib/sim-lab-hubs-bt-gate.mjs';
+import {connectionInteractions} from './lib/sim-lab-connections-gate.mjs';
 import {openRobotLabTab, tool, toolbarInteractions} from './lib/sim-lab-toolbar-gate.mjs';
 import {scaleInteractions, OPEN_BUDGET_MS, DRAW_CALL_BUDGET, BUILD_OPEN_BUDGET_MS, IDLE_FRAME_BUDGET_MS, POINTER_MOVE_BUDGET_MS,
     DRAG_LINK_BUDGET, UNDO_DRAW_BUDGET, UNDO_SHOT_BUDGET_MS} from './lib/sim-lab-scale-gate.mjs';
@@ -1510,6 +1511,8 @@ try {
 
     if (want('hubs-bt')) { // the EV3 and NXT, their extensions over Scratch Link to the Lab's bricks
         const r = await hubsBtInteractions({browser, errors, openSimLab, wallBudget});
+        const connections = await connectionInteractions({browser, errors, openSimLab, shotsDir: artifacts});
+        console.log('PASS Lab connection controls, cancellation, brick buttons and real transport guests', connections);
         console.log(`PASS NXT bumper bot (Load example program, Run): legonxt over Scratch Link turns B and C to TachoCount ` +
             `${r.nxt.tacho.join(' and ')} for 360° (±${DEGREES_TOLERANCE}), then drives until the bumper is pressed (${r.nxt.pressedAtMs} ms) and stops`);
         console.log(`PASS EV3 wall stopper with stock Scratch EV3 blocks: drove ${r.ev3.travelled.toFixed(3)} m and stopped ${r.ev3.cm} cm from the wall`);

@@ -50,6 +50,8 @@ export class RenodeArenaSession {
         const fresh = JSON.parse(await this.call('state.read'));
         if (this.closed) throw new Error('NuttX session is closed');
         this.acceptFrame(fresh);
+        // A hub observer can Stop synchronously while accepting the frame.
+        if (this.closed) throw new Error('NuttX session is closed');
         this.latestFrame = fresh;
     }
     call (operation, args = {}) {
@@ -364,6 +366,8 @@ export class RenodeArenaSession {
             await this.tail;
             if (this.closed) throw new Error('NuttX session is closed');
             await this.verifyDualFrame();
+            // A queued observer Stop can run before this continuation resumes.
+            if (this.closed) throw new Error('NuttX session is closed');
             const reply = await this.programClient[operation]();
             if (this.closed) throw new Error('NuttX session is closed');
             if (operation === 'load') { this.loaded = true; this.retainedProgram = true; }
@@ -391,9 +395,11 @@ export class RenodeArenaSession {
                 if (this.closed) throw new Error('NuttX session is closed');
                 requireSixMotorFrame(fresh);
                 this.acceptFrame(fresh);
+                if (this.closed) throw new Error('NuttX session is closed');
                 this.latestFrame = fresh;
             }
             await this.verifyDualFrame();
+            if (this.closed) throw new Error('NuttX session is closed');
             await this.programClient.stop();
             if (this.closed) throw new Error('NuttX session is closed');
             this.program = program; this.source = source; this.loaded = false; this.completed = false;
@@ -458,6 +464,7 @@ export class RenodeArenaSession {
             if (this.closed) throw new Error('NuttX session is closed');
             requireCurrentStart();
             if (operation === 'start') await this.verifyDualFrame();
+            if (this.closed) throw new Error('NuttX session is closed');
             requireCurrentStart();
             const reply = await this.programClient[operation]();
             if (this.closed) throw new Error('NuttX session is closed');

@@ -713,6 +713,24 @@ claiming adoption. Doable now with the documented build prerequisites.
 
 ### G02 — Preserve lifecycle correctness under concurrent GUI actions
 
+A new source candidate on `lane/spike-g02-dual-preflight-stop-20261019` fences
+Stop during preflight frame observation and the awaiting continuation. Previously,
+a dual-ultrasonic observer could Stop and still allow SAVE, LOAD or START; upload
+could send an additional STOP, and dual/six-motor preflight could publish a frame
+after closure. Checks after frame acceptance and after the awaited validation
+prevent those effects. Fifteen controls use the real session, bridge and program
+client with authored native frames: ten baseline failures, five live controls,
+74 passing session tests and five detected guard mutations. This source is not
+installed-qualified; require the final tested package, affected own-guest cases,
+normal recovery and every enabled final-head check before merging it.
+
+The separately retained installed two-UI-Stop case passed on source
+`f7b3bf03b1468a81e26228d052c4164d7081dc73`. It does not qualify this newer source.
+The native-interface late-UART diagnostic failed during debugger attachment
+before submitting the test program, so generation/late-return acceptance remains
+open. Preserve that failure and the held process collector's original assertions;
+new source controls and older successful packages do not close the full G02 matrix.
+
 **Owner:** Lite. **Start:** `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
 `renode-arena-session.js` in that directory,
 `overlay/scratch-gui/src/components/tw-pseudocode/`,
@@ -796,7 +814,7 @@ recovery plus final-head CI remain pending. Code-feedback generation remains ope
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 The scoped ownership claim is recorded in
-[the lane ledger](../LANES.md#spike-g03-sandbox-and-editor-ui-qualification--2026-10-15)
+[the lane ledger](../lanes/2026-10-15-spike-g03-sandbox-and-editor-ui-qualification.md)
 on `docs/spike-g03-ui-claim-20261015`. Implementation follows PR948, PR962 and
 G02's remaining acceptance review. The first pass records working rendered
 features and fixes only demonstrated gaps; shared project-world and unrelated
@@ -1246,3 +1264,36 @@ firmware compatibility or complete distribution licensing. The adoption
    selected-component provenance/notices review before a release claim. Run CPU
    qualification through the authorized direct-server route; private Actions and
    Kaggle are not the test route for this work.
+
+## G02 terminal debugger startup reason — 2026-10-19
+
+Candidate in the existing merged native-startup diagnostic envelope, branch
+`lane/spike-g02-rsp-terminal-reason-20261019`. The frontend's original startup
+error retains only `operation-failed`; native phase observations end at debugger
+connection. Emit one closed native reason for the terminal RSP error after existing
+retries. Unknown or decorated error strings map to `other`; backend text is never
+echoed. Preserve original error propagation, retry timing, teardown and public
+redaction. `unavailable` still combines connection, socket setup and closed-socket
+failures; it does not establish TCP refusal, child-exit cause or a startup fix.
+
+Source tests cover all declared reasons and hostile/decorated text. Candidate only:
+require every enabled exact-head native CI check and fresh source-bound installed
+cold-start, Stop/reset/closure and distinct recovery qualification before merge.
+The retained installed failure does not exercise this new diagnostic. No pin,
+firmware, model, timeout, workflow, broker policy or public error change; broader
+G02 and release gates remain open.
+
+## Current-main source composition of the two native candidates — 2026-10-22
+
+The PR repair sweep composes the published preflight-cancellation and terminal
+reason candidates with current main in `lane/native-pr-current-main-repair-20261022`.
+The migrated claim files and short LANES header remain unchanged; the legacy
+monolithic ledger is not restored. The original cancellation guards,
+their complete session controls, and the closed native diagnostic are retained.
+
+All 74 session controls and six claim/migration controls pass together with no
+skips or TODOs. Both existing terminal-reason tests also pass when compiled from
+the actual composed Rust function and test bodies. This is source qualification,
+not a full native-crate or installed-app result. Every enabled final-head check
+and fresh installed own-NuttX startup, Stop/cancel, normal-operation and recovery
+acceptance remain required; the successor remains a draft until those gates pass.
