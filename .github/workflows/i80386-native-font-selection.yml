@@ -1,0 +1,99 @@
+name: 386 bounded native font selection source
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    paths:
+      - 'scripts/i80386-native-font-selection/**'
+      - '.github/workflows/i80386-native-font-selection.yml'
+      - 'test/i80386-native-font-selection.test.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-font-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+jobs:
+  controls:
+    if: ${{ github.event.action != 'labeled' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Pure source and independent reader controls
+        run: /usr/bin/python3 -I -S -B scripts/i80386-native-font-selection/controls.py
+
+  # Source-only proposal. No input selection or native call is admitted.
+  native-font-selection:
+    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'x86-native-font-selection-v1' && github.actor == 'CrispStrobe' && github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      BW_FONT_REQUEST_SHA256: ${{ vars.BW_NATIVE_FONT_REQUEST_SHA256 }}
+      BW_FONT_REQUEST_B64: ${{ vars.BW_NATIVE_FONT_REQUEST_B64 }}
+      PYTHONPATH: ''
+      PYTHONHOME: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Refuse until selected font, tool, cache and event review
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git --no-replace-objects -c gc.auto=0 -c maintenance.auto=false rev-parse HEAD)" = "$BW_EXPECTED_HEAD"
+          git diff --quiet
+          git diff --cached --quiet
+          BW_EXPECTED_TREE="$(git --no-replace-objects -c gc.auto=0 -c maintenance.auto=false rev-parse 'HEAD^{tree}')"
+          export BW_EXPECTED_TREE
+          mkdir -m 700 native-font-originals
+          /usr/bin/python3 -I -S -B -c 'import base64,hashlib,os,pathlib,re; raw=base64.b64decode(os.environ["BW_FONT_REQUEST_B64"],validate=True); pin=os.environ["BW_FONT_REQUEST_SHA256"]; assert len(raw)<=65536 and re.fullmatch("[0-9a-f]{64}",pin) and hashlib.sha256(raw).hexdigest()==pin; p=pathlib.Path("native-font-originals/request.json"); f=p.open("xb"); f.write(raw); f.close()'
+          SERVICE_UNIT="bw-native-font-${GITHUB_RUN_ID}-1.service"
+          set +e
+          /usr/bin/timeout --signal=TERM --kill-after=5s 130s \
+            sudo -n /usr/bin/systemd-run --system --wait --pipe --quiet --same-dir \
+            --unit="$SERVICE_UNIT" --service-type=exec \
+            --property="User=$(id -un)" --property=CPUQuota=100% \
+            --property=CPUQuotaPeriodSec=100ms \
+            --property=MemoryMax=1073741824 --property=MemorySwapMax=0 \
+            --property=TasksMax=64 --property=RuntimeMaxSec=90s \
+            --property=KillMode=control-group --property=CPUAccounting=yes \
+            --property=MemoryAccounting=yes --property=TasksAccounting=yes \
+            --setenv="GITHUB_REPOSITORY=$GITHUB_REPOSITORY" \
+            --setenv="GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME" \
+            --setenv="GITHUB_ACTOR=$GITHUB_ACTOR" --setenv="GITHUB_JOB=$GITHUB_JOB" \
+            --setenv="GITHUB_RUN_ATTEMPT=$GITHUB_RUN_ATTEMPT" \
+            --setenv="GITHUB_RUN_ID=$GITHUB_RUN_ID" \
+            --setenv="GITHUB_WORKFLOW_SHA=$GITHUB_WORKFLOW_SHA" \
+            --setenv="GITHUB_WORKFLOW_REF=$GITHUB_WORKFLOW_REF" \
+            --setenv="GITHUB_EVENT_PATH=$GITHUB_EVENT_PATH" \
+            --setenv="BW_EXPECTED_HEAD=$BW_EXPECTED_HEAD" \
+            --setenv="BW_EXPECTED_TREE=$BW_EXPECTED_TREE" \
+            --setenv="RUNNER_TEMP=$RUNNER_TEMP" \
+            /usr/bin/python3 -I -S -B scripts/i80386-native-font-selection/run.py --observe \
+              --request native-font-originals/request.json --expected-sha256 "$BW_FONT_REQUEST_SHA256" \
+              > native-font-originals/original.json 2> native-font-originals/controller.stderr
+          SERVICE_EXIT=$?
+          set -e
+          /usr/bin/python3 -I -S -B scripts/i80386-native-font-selection/run.py --finalize \
+            --original native-font-originals/original.json \
+            --service-out native-font-originals/service.json --service-exit "$SERVICE_EXIT" \
+            2> native-font-originals/finalizer.stderr
+          test "$SERVICE_EXIT" -eq 0
+      - name: Retain bounded original only after separately reviewed activation
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: i80386-native-font-selection-${{ github.run_id }}-${{ github.run_attempt }}
+          path: native-font-originals/
+          if-no-files-found: error
+          retention-days: 1
