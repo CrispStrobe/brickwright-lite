@@ -13,10 +13,10 @@ async function pulseBench () {
             v1: 0, v2: 4, td: .000025, tr: .000001, tf: .000001, pw: 0, per: .001}},
         {id: 'load', kind: 'resistor', params: {ohms: 1000}},
         {id: 'ground', kind: 'gnd', params: {}}
-    ], nets: [
-        {id: 'signal', terminals: [{part: 'pulse', terminal: 'pos'}, {part: 'load', terminal: 'a'}]},
-        {id: 'ground', terminals: [{part: 'pulse', terminal: 'neg'}, {part: 'load', terminal: 'b'},
-            {part: 'ground', terminal: 'gnd'}]}
+    ], wires: [
+        {from: {part: 'pulse', terminal: 'pos'}, to: {part: 'load', terminal: 'a'}},
+        {from: {part: 'pulse', terminal: 'neg'}, to: {part: 'ground', terminal: 'gnd'}},
+        {from: {part: 'load', terminal: 'b'}, to: {part: 'ground', terminal: 'gnd'}}
     ]});
     assert.equal(circuit.netlistError, null);
     circuit.setPower(true);
