@@ -6,6 +6,49 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## G02 current-main installed matrix — 2026-10-24
+
+Installed Linux qualification of current main (`d7fde5bf`, with the compiled
+MicroPython support that matches the packaged runtime), each case run once in
+a fresh owned container (2 CPU, 2 GiB, no network, unchanged 120 s startup):
+
+- **MicroPython startup root cause.** Legacy source-overlay support paired with
+  a compiled-model runtime aborted the model include, so the debugger endpoint
+  never opened (`rsp-connect unavailable` after 60 s). Pin preparation now
+  refuses that pairing and the native producer accepts the compiled profile pin
+  ([PR1349](https://github.com/CrispStrobe/brickwright-lite/pull/1349)). With
+  compiled support, startup attaches at 32.6 s.
+- **MicroPython matrix:** raw-REPL completion and guest error with six motors,
+  Stop during final sampling, ownership release and distinct fresh recovery
+  across UART generations 1–6, with native wrong-caller-generation refusal.
+  An independent reader accepted all six cases.
+- **NuttX cases:** dual Stop (source and Python), active cancellation,
+  storage, Python storage, Python cancellation, app-restart storage (source and
+  Python), backend switch and view switch pass. The first app-restart attempt
+  failed because the controller's one-shot Code-tab click after restart did not
+  select the tab; a revision that retries the click until the tab is selected
+  passed. That failure is retained.
+- **Pane disposal:** found a real defect. Closing the arena during a
+  dual-ultrasonic run left port F's sensor in the shared hub for the next pane.
+  [PR1355](https://github.com/CrispStrobe/brickwright-lite/pull/1355) returns
+  port F after the disposed Stop settles unless a newer session owns the hub;
+  the installed case passes on an executable built from that head (merged as
+  `b06ad7c6`).
+- **Selected-image races:** a real native selection of the operator image, with
+  only its return delayed, is published normally and is ignored as stale after
+  Reset or arena closure.
+- **Generation process census:** a host-side collector sampled the app's
+  process tree every 100 ms during the six-generation MicroPython matrix:
+  2,177 samples, largest gap 132 ms (limit 250 ms), six distinct Renode
+  processes, never more than one at a time, none after the app exited. A first
+  run at a 200 ms period missed the 250 ms limit once (252.7 ms); it is
+  retained and the collector, not the limit, was changed.
+- **Late polls:** the session's poll fence is shared by every backend; NuttX
+  late-error adversaries (PR936) and the MicroPython final-sampling Stop cover it.
+
+These are finite installed Linux results for the named sources. They make no
+physical, reference-firmware, performance, release or licence claim.
+
 ## Current integration checkpoint — 2026-10-17
 
 The newer [integration handoff](INTEGRATION-NEXT-STEPS.md) scopes the remaining
@@ -877,8 +920,10 @@ platform/signing tests require their build environment and credentials.
 
 **Linux status (2026-10-24):** the linked crate set is generated and bound to
 `Cargo.lock`, flagged licences are reviewed, the builder enforces seven Renode/.NET/LLVM
-notices and installs crate notices, and an installed-layout check exists. Thirteen
-crates without licence files and the LGPL/GPL-referencing Renode notices stay open. See
+notices and installs crate notices (including reviewed texts for the 13 crates that publish
+none), and an installed-layout check exists. Renode composition is reviewed: tlib, NetMQ and
+Packet.Net ship, and their source binding stays open because the runtime source revision
+is unrecorded. Gtk# and mcs are not shipped. No hosted workflow runs the Linux builder yet. See
 [SPIKE-LINUX-DESKTOP.md](SPIKE-LINUX-DESKTOP.md#licence-review-of-the-linked-crate-set-2026-10-24).
 
 **Separate contracts, not met by Linux evidence:**
@@ -888,12 +933,23 @@ crates without licence files and the LGPL/GPL-referencing Renode notices stay op
   platform with its native-library and notice closure, resource-path checks for the
   platform's Tauri resource directory, its own refusal tests, and an installed-app
   layout check run on that OS.
-- *Signed installers and update channels:* need signing credentials (Apple Developer
-  ID plus notarization, Windows Authenticode, a Debian repository key) held outside
-  this repository. Evidence required: signature verification of the exact artifact
-  digest, notarization/stapling receipts where they apply, update-manifest signature
-  checks, and installed tests of the signed artifact. Signing must not change the
-  recorded resource bytes.
+- *Signed installers and update channels:* signing material lives in repository
+  secrets, never in this repository. **macOS (exists, general app):** `.github/workflows/release.yml`
+  signs on `macos-latest` with a Mac App Store identity and builds a `productbuild` `.pkg`
+  (no notarization). Release run 39680422030 (tag v0.1.26) logs `Brickwright.app: valid on
+  disk`, `satisfies its Designated Requirement`, and `productbuild: Wrote product ...
+  Brickwright.pkg`. That delivery does **not** stage the SPIKE Renode runtime, which is
+  Linux-only today. **Windows:** blocked. No Authenticode certificate exists. **Debian:**
+  no repository signing key or update channel. Evidence still required for any SPIKE
+  installer: signature verification of the exact artifact digest, notarization receipts
+  where they apply, update-manifest signature checks, and installed tests of the signed
+  artifact. Signing must not change the recorded resource bytes.
+- *SPIKE runtime on macOS (separate contract, not implemented):* Renode and .NET under the
+  App Sandbox need JIT (`com.apple.security.cs.allow-jit`) and child-process/inheritance
+  entitlements. Every nested executable and native library must be signed. A macOS Renode
+  distribution needs its own notice closure, a crate inventory for the macOS target, and
+  an installed test on macOS. The release workflow is owned by the model-delivery lane;
+  this lane does not dispatch it.
 - *Firmware L11 / Runtime inputs Lite depends on:* the NuttX/guest staged profile
   manifest and file list in `scripts/lib/spike-resource-profile.mjs` (including the
   licence files it requires), `state-config.json` `identity.firmware` and

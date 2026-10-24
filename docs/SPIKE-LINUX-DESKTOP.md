@@ -201,18 +201,30 @@ licence/notice files, the repository `LICENSE`, `THIRD-PARTY-NOTICES.md`, the
 inventory and the review into `usr/share/doc/brickwright/`. Thirteen linked
 crates publish no licence file in their crate source (`alloc-stdlib`,
 `bluez-async`, `bluez-generated`, `custom_debug`, `dlopen2`,
-`libappindicator-sys`, `seahash`, `selectors`, five `unic-*`). The builder
-refuses any gap not on that reviewed list. Those thirteen remain an **open**
-notice gap until upstream licence texts are added; `selectors` is MPL-2.0 and
-needs the MPL text shipped. Locally, 352 of the 365 linked crate sources carry
-licence files (offline registry, read-only check).
+`libappindicator-sys`, `seahash`, `selectors`, five `unic-*`). Reviewed texts for
+them are in [`docs/notices/rust-crates-supplemental/`](notices/rust-crates-supplemental/provenance.json),
+with per-file SHA-256 and origin. Where the upstream repository has licence files,
+those are used (at a recorded default-branch commit, not necessarily the release).
+`custom_debug` and `selectors` have none upstream, so they get the standard
+Apache-2.0 and MPL-2.0 texts respectively, plus attribution notes. The builder
+copies them after a digest check and refuses any other gap or a stale entry. An
+offline run of the collection step against the local registry installed 651 notice
+files for all 365 linked crates.
 
-Supplied Renode notices whose text refers to LGPL/GPL are flagged and not
-cleared: `tlib-license` (libqemu-derived, LGPL-2.1: source availability and
-relinking obligations; no corresponding Renode source pointer recorded yet),
-the Gtk#/Atk#/Cairo#/GLib#/Gdk#/Gio#/Pango# bindings, `NetMQ`, `Packet.Net`,
-`mcs` (mixed MIT/GPL terms) and one vendored pip wheel notice. This review does
-not establish which of them the single-file `renode` bundle actually embeds.
+Renode composition, from a read-only scan of the installed bundle:
+
+| Component | Shipped | Licence | Status |
+|---|---|---|---|
+| tlib (`Antmicro.Renode.translate-*.so`) | yes | LGPL-2.1 | Notice present. Source: `renode-infrastructure-spike-prime` submodule `src/Emulator/Cores/tlib`. **Open**: the Renode source revision of this binary is not recorded, only its SHA-256 |
+| NetMQ | yes | LGPL-3.0 with static-link exception | Notice present. **Open**: NuGet version not recorded |
+| Packet.Net (`PacketDotNet.dll`) | yes | LGPL-3.0 | Notice present. Source: `renode-spike-prime` submodule `lib/Packet.Net`. **Open**: same revision gap |
+| pip 19.2.3 vendored module | yes | LGPL-2.1 notice | Notice present. Source pip 19.2.3 on PyPI. The covered module is not identified |
+| Gtk# bindings | no | — | Not applicable (only gir.core GLib/GObject/Gst, MIT) |
+| mcs | no | — | Not applicable |
+
+LGPL is within policy. Each shipped item needs notice retention (done) and
+corresponding source. Binding the source requires the Renode runtime producer to
+record its source commit in the runtime provenance.
 
 ### Installed layout check
 

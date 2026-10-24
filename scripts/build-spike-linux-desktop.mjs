@@ -65,7 +65,6 @@ const lockText = await readFile(join(repo, 'apps/tauri/src-tauri/Cargo.lock'), '
 const crateInventoryText = await readFile(join(repo, 'docs/generated/spike-linux-crate-inventory.json'), 'utf8');
 const crateInventory = JSON.parse(crateInventoryText);
 requireInventoryForLock(crateInventory, lockText);
-const licenceReview = JSON.parse(await readFile(join(repo, 'docs/spike-linux-licence-review.json'), 'utf8'));
 for (const name of notices.sort()) {
     const item = await regular(runtime, `licenses/${name}`, 1024 * 1024);
     nativeFiles.push({name: `licenses/${name}`, ...item});
@@ -178,7 +177,8 @@ const metadata = JSON.parse(execFileSync('cargo', METADATA_ARGS, {cwd: join(desk
 if (renderCrateInventory(buildInventory(metadata, lockText)) !== crateInventoryText) throw new Error('Linked crate set differs from the checked-in inventory');
 const docRoot = join(packageRoot, 'usr/share/doc/brickwright');
 const crateNotices = await collectCrateNotices({packages: metadata.packages, inventory: crateInventory,
-    destination: join(docRoot, 'rust-crates'), reviewedAbsent: licenceReview.crateLicenceFilesAbsentReviewed});
+    destination: join(docRoot, 'rust-crates'), supplementalRoot: join(repo, 'docs/notices/rust-crates-supplemental'),
+    supplemental: JSON.parse(await readFile(join(repo, 'docs/notices/rust-crates-supplemental/provenance.json'), 'utf8')).crates});
 for (const name of ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'docs/generated/spike-linux-crate-inventory.json', 'docs/spike-linux-licence-review.json']) {
     await copyFile(join(repo, name), join(docRoot, basename(name)));
 }
@@ -194,5 +194,5 @@ const deb = join(output, `brickwright_${version}_amd64.deb`);
 execFileSync('dpkg-deb', ['--build', '--root-owner-group', '--threads-max=2', packageRoot, deb], {stdio: 'inherit'});
 await writeFile(join(output, 'package-receipt.json'), JSON.stringify({schemaVersion: 1,
     sha256: digest(await readFile(deb)), binarySha256: digest(await readFile(binary)),
-    runtimeSha256: pins.BW_RENODE_SHA256, crateNoticeFiles: crateNotices.copied.length, crateLicenceFilesAbsent: crateNotices.absent, firmwareBundled: Object.keys(profiles).length > 0, sourceBuiltFirmwareProfiles: Object.keys(profiles), externallySuppliedFirmwareBundled: false, redistributionValidated: false}, null, 2) + '\n');
+    runtimeSha256: pins.BW_RENODE_SHA256, crateNoticeFiles: crateNotices.copied.length, crateLicenceFilesSupplemented: crateNotices.supplemented, firmwareBundled: Object.keys(profiles).length > 0, sourceBuiltFirmwareProfiles: Object.keys(profiles), externallySuppliedFirmwareBundled: false, redistributionValidated: false}, null, 2) + '\n');
 console.log(`Local package assembled at ${deb}. Source-built profiles: ${Object.keys(profiles).join(', ') || 'none'}. External firmware is supplied separately through the native chooser.`);
