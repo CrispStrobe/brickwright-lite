@@ -136,14 +136,24 @@ try {
     await designer.getByRole('button', {name: /Scope$/}).click({force: true});
     const scope = designer.locator('[data-scope-module]');
     await scope.waitFor({state: 'visible', timeout: 10000});
+    // A deterministic capture: display controls must not silently advance it.
+    await designer.getByRole('button', {name: /Pause simulation/i}).press('Enter');
+    await designer.getByRole('button', {name: /Resume simulation/i}).waitFor();
+    await scope.getByTestId('bw-scope-record').selectOption('100000');
     const netSelect = scope.locator('select').last();
     const options = await netSelect.locator('option').count();
     if (options < 2) throw new Error('scope has no solved net to export');
-    await netSelect.selectOption({index: 1});
+    const signalNet = await page.evaluate(() => window.__board.getNets().find(net =>
+        net.terminals.some(t => t.part === 'fg1' && t.terminal === 'pos'))?.id);
+    assert.ok(signalNet, 'named RC example must expose its actual source net');
+    await netSelect.selectOption(signalNet);
     // ScopePanel's visible contract is deliberately compact ("+ channel" / "+ Kanal");
     // it has never exposed the prose label "Add channel". Keep this selector
     // bilingual because production may inherit either supported GUI locale.
     await scope.getByRole('button', {name: /^\+ (?:channel|Kanal)$/}).click();
+    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
+        ?.getAttribute('data-retained') === '5000');
     await page.waitForFunction(root => {
         const canvas = root.querySelector('canvas');
         if (!canvas) return false;
@@ -167,12 +177,72 @@ try {
     const numericRows = csv.split('\n').filter(line => /^\d+(?:\.\d+)?,(?:NaN|-?\d)/.test(line));
     if (!numericRows.length) throw new Error('scope CSV has no numeric measurement row');
 
+    const acq = scope.getByTestId('bw-scope-acquisition-0');
+    const prefix = await page.evaluate(() => {
+        const board = window.__board, handles = board.getScopeChannels();
+        if (handles.length !== 1) throw new Error('ambiguous scope fixture');
+        const data = board.getScopeData(handles[0]);
+        return {handle: handles[0], count: data.count, intervalNs: String(data.sampleIntervalNs),
+            depth: data.samples.length / 2, capture: data.capture};
+    });
+    assert.equal(prefix.count, 5000);
+    assert.equal(await acq.getAttribute('data-capture'), prefix.capture);
+    assert.equal(await acq.getAttribute('data-interval-ns'), prefix.intervalNs);
+    assert.equal(await acq.getAttribute('data-depth'), String(prefix.depth));
+    assert.ok(!/Nyquist/.test(await acq.textContent()), 'an envelope cannot claim a point Nyquist');
+    const signalValues = numericRows.flatMap(line => line.split(',').slice(1).map(Number));
+    assert.ok(Math.max(...signalValues) > Math.min(...signalValues), 'the selected source capture must actually vary');
+    assert.match(await scope.getByTestId('bw-scope-sampling-limits').textContent(),
+        /no analog anti-alias filter|kein analoger Anti-Aliasing-Filter/i);
+    await scope.getByTestId('bw-scope-vdiv-0').selectOption('0.05');
+    await scope.getByTestId('bw-scope-center-0').fill('0');
+    const warning = scope.getByTestId('bw-scope-overrange-0');
+    await warning.filter({hasText: /Above viewport|Über dem Anzeigebereich/}).waitFor();
+    await warning.scrollIntoViewIfNeeded();
+    await page.screenshot({path: path.join(outDir, 'scope-viewport-warning.png'), fullPage: true});
+    await scope.getByTestId('bw-scope-vdiv-0').selectOption('5');
+    await warning.waitFor({state: 'detached'});
+    const [afterDownload] = await Promise.all([page.waitForEvent('download', {timeout: 10000}),
+        scope.getByTestId('bw-scope-trace-csv-download').click()]);
+    assert.equal((await readDownload(afterDownload)).toString('utf8'), csv, 'display scale must preserve every raw CSV byte');
+
+    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
+        ?.getAttribute('data-wrapped') === 'true');
+    const wrappedStart = await acq.getAttribute('data-start-time-ns');
+    await scope.getByTestId('bw-scope-hold').click();
+    const heldText = await acq.textContent();
+    const heldPixels = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
+    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    assert.equal(await page.evaluate(h => window.__board.getScopeData(h).count, prefix.handle), 15000);
+    assert.equal(await acq.textContent(), heldText, 'HOLD metadata must stay with its frozen picture');
+    assert.equal(await scope.locator('canvas').evaluate(canvas => canvas.toDataURL()), heldPixels);
+    await scope.getByTestId('bw-scope-hold').click();
+    await page.waitForFunction(old => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
+        ?.getAttribute('data-start-time-ns') !== old, wrappedStart);
+    await scope.getByTestId('bw-scope-view-spectrum').click();
+    await page.waitForFunction(() => window.__board.getScopeChannels()
+        .some(h => window.__board.getScopeData(h).capture === 'sample'));
+    await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+    await page.waitForFunction(() => {
+        const el = document.querySelector('[data-testid="bw-scope-acquisition-0"]');
+        return el?.getAttribute('data-capture') === 'sample' && /Nyquist/.test(el.textContent)
+            && Number(el.getAttribute('data-retained')) > 0;
+    });
+    const pointText = await acq.textContent(), frequency = pointText.match(/Nyquist ([0-9.]+) (MHz|kHz|Hz)/);
+    assert.ok(frequency, 'actual point record must disclose numeric Nyquist');
+    const nyquistHz = Number(frequency[1]) * ({MHz: 1e6, kHz: 1e3, Hz: 1}[frequency[2]]);
+    assert.equal(nyquistHz, 1e9 / Number(await acq.getAttribute('data-interval-ns')) / 2);
+    const scopeDisplay = {actualPrefix: prefix.count, ringWrap: true, viewportWarningAndClear: true,
+        rawCsvByteIdentical: true, holdWhileAcquiring: true, pointSampleNyquistHz: nyquistHz,
+        analogAntiAliasModeled: false, physicalAccuracyClaim: false};
+
     const assets = await page.locator('script[src],link[rel="stylesheet"][href]').evaluateAll(nodes =>
         nodes.map(node => node.getAttribute('src') || node.getAttribute('href'))
             .filter(value => /\.[a-f0-9]{8,32}\.(?:js|css)/.test(value)));
-    assert.equal(downloadNames.length, 7, 'three File saves plus three TeX exports and scope CSV');
+    assert.equal(downloadNames.length, 8, 'three File saves plus three TeX exports and two unchanged scope CSV exports');
     result = {url: proofUrl, fileMenu, example: '50-rc-scope', views: 3, downloads: downloadNames.length, downloadNames, bytes: artifacts[0].length,
-        sha256: hashes[0], scopeRows: numericRows.length, pageErrors, assets};
+        sha256: hashes[0], scopeRows: numericRows.length, scopeDisplay, pageErrors, assets};
     await page.screenshot({path: path.join(outDir, 'circuit-export-board-view.png'), fullPage: true});
     await writeFile(path.join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
     console.log(JSON.stringify(result));
