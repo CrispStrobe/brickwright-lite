@@ -340,7 +340,24 @@ def native_font_layout(reference):
     return stage,raw
 
 
+GOOGLE_FONTS_RAW = 'https://raw.githubusercontent.com/google/fonts/'
+
+
+def google_fonts_raw_url(url):
+    need(type(url) is str and len(url)<=512 and url.startswith(GOOGLE_FONTS_RAW),
+         'fixed Google Fonts raw origin')
+    commit,separator,path=url[len(GOOGLE_FONTS_RAW):].partition('/')
+    need(separator=='/' and re.fullmatch(r'[0-9a-f]{40}',commit) is not None and path,
+         'full immutable Google Fonts commit and nonempty path')
+    need(all(part not in ('','.','..') and
+             re.fullmatch(r'(?:[A-Za-z0-9._~-]|%5[Bb]|%5[Dd])+',part) is not None
+             for part in path.split('/')),
+         'canonical safe Google Fonts path without query or traversal')
+    return url
+
+
 def native_font_fetch_argv(url,seconds,size):
+    google_fonts_raw_url(url)
     return ['/usr/bin/curl','--fail','--silent','--show-error','--proto','=https',
             '--max-time',str(seconds),'--max-filesize',str(size),'--url',url]
 
@@ -366,7 +383,7 @@ def actual_native_font_reference(reference, runtime):
     font=reference['font'];fields(font,'url path byteLength sha256 licenseUrl licensePath licenseBytes licenseSha256')
     runtime_path(font['path']);runtime_path(font['licensePath']);digest(font['licenseSha256']);integer(font['licenseBytes'],1,128<<10)
     for key in ('url','licenseUrl'):
-        need(type(font[key]) is str and font[key].startswith('https://raw.githubusercontent.com/google/fonts/') and len(font[key])<=512,'immutable separately reviewed native font/notice source URL')
+        google_fonts_raw_url(font[key])
     integer(font['byteLength'],1,16<<20);digest(font['sha256'])
     need(files.get(font['path'])=={'byteLength':font['byteLength'],'sha256':font['sha256']} and
          files.get(font['licensePath'])=={'byteLength':font['licenseBytes'],'sha256':font['licenseSha256']},'selected native font and separately reviewed notice bytes')

@@ -2654,6 +2654,27 @@ class Originals(unittest.TestCase):
             for path in ('/checkout/gui-inputs/native-font/fonts/selected.ttf','/usr/bin/fc-match','/usr/lib/libfontconfig-selected.so'):
                 files,expected=fixture_v5();value=D(files['runtime.'+stage+'.json']);value['files'][path]['sha256']='0'*64;files['runtime.'+stage+'.json']=E(value)
                 with self.assertRaisesRegex(ValueError,'runtime external graph'):r.audit(files,expected)
+    def test_current_v5_font_urls_require_full_commit_and_safe_path_before_fetch(self):
+        selected='https://raw.githubusercontent.com/google/fonts/'+'9'*40+'/apache/robotomono/RobotoMono%5Bwght%5D.ttf'
+        for module in (c,r):
+            self.assertEqual(module.google_fonts_raw_url(selected),selected)
+            self.assertEqual(module.native_font_fetch_argv(selected,30,4)[-1],selected)
+        root='https://raw.githubusercontent.com/google/fonts/'
+        bad=(root+'main/apache/robotomono/font.ttf',root+'9'*7+'/font.ttf',
+             root+'A'*40+'/font.ttf',root+'9'*40+'/',root+'9'*40+'/../font.ttf',
+             root+'9'*40+'/%2e%2e/font.ttf',root+'9'*40+'/font%2Fother.ttf',
+             root+'9'*40+'/font\\name.ttf',root+'9'*40+'/font.ttf?branch=main',
+             root+'9'*40+'/font.ttf#part',root+'9'*40+'/font\n.ttf')
+        for module in (c,r):
+            for url in bad:
+                with self.subTest(module=module.__name__,url=url),self.assertRaises(ValueError):
+                    module.google_fonts_raw_url(url)
+                with self.subTest(module=module.__name__,url=url),self.assertRaises(ValueError):
+                    module.native_font_fetch_argv(url,30,4)
+                files,_=fixture_v5();request=D(files['request.original.json'])
+                reference=copy.deepcopy(request['nativeFontAdmission']);reference['font']['url']=url
+                with self.subTest(module=module.__name__,url=url),self.assertRaises(ValueError):
+                    module.actual_native_font_reference(reference,request['runtime'])
     def test_current_v5_cannot_replace_held_runtime_rows_with_native_extension(self):
         files,expected,reference,originals=self.native_fresh();request=D(files['request.original.json']);path='/usr/lib/libselected.so'
         reference['files'][path]=ROW(b'changed');request['runtime']['files'][path]=ROW(b'changed')
