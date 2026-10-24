@@ -18,7 +18,22 @@
 // The bytes are routed to a peripheral record ({id, name, available(), open(link) => {receive, close}}),
 // the same records the BT-classic registry serves, so the brick behind the bridge is the scene's.
 
+import {createHostPropertyLeases} from './host-property-lease.js';
+
 const endpoints = [];
+const acquireBridge = createHostPropertyLeases();
+
+const removeEndpoint = entry => {
+    if (!entry.active) return;
+    entry.active = false;
+    const i = endpoints.indexOf(entry);
+    if (i >= 0) endpoints.splice(i, 1);
+    const errors = [];
+    for (const socket of [...entry.sockets]) {
+        try { socket.close(); } catch (error) { errors.push(error); }
+    }
+    if (errors.length) throw new AggregateError(errors, 'virtual bridge session cleanup failed');
+};
 
 const loopback = host => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host);
 
@@ -31,25 +46,33 @@ export const registerVirtualBridge = endpoint => {
     if (!endpoint || !Number.isInteger(endpoint.port)) throw new TypeError('a virtual bridge needs a port');
     if (!['binary', 'base64', 'text'].includes(endpoint.framing)) throw new TypeError(`unknown bridge framing ${endpoint.framing}`);
     if (!endpoint.peripheral || typeof endpoint.peripheral.open !== 'function') throw new TypeError('a virtual bridge needs a peripheral');
-    endpoints.push(endpoint);
-    return () => {
-        const i = endpoints.indexOf(endpoint);
-        if (i >= 0) endpoints.splice(i, 1);
-    };
+    if (endpoint.matches !== undefined && typeof endpoint.matches !== 'function') throw new TypeError('a virtual bridge path matcher must be a function');
+    const entry = {endpoint, active: true, sockets: new Set()};
+    endpoints.push(entry);
+    return () => removeEndpoint(entry);
 };
 
-export const clearVirtualBridgesForTest = () => { endpoints.length = 0; };
+export const clearVirtualBridgesForTest = () => {
+    const errors = [];
+    for (const entry of [...endpoints]) {
+        try { removeEndpoint(entry); } catch (error) { errors.push(error); }
+    }
+    if (errors.length) throw new AggregateError(errors, 'virtual bridge endpoint cleanup failed');
+};
 
 /** The endpoint a ws:// URL reaches, or null. */
-export const bridgeEndpointFor = value => {
+const bridgeEntryFor = value => {
     let url;
     try { url = new URL(String(value)); } catch { return null; }
     if (!['ws:', 'wss:'].includes(url.protocol)) return null;
     const port = Number(url.port || (url.protocol === 'wss:' ? 443 : 80));
-    return endpoints.find(e => e.port === port &&
+    return endpoints.find(({endpoint: e}) => e.port === port &&
         (e.host ? e.host === url.hostname : loopback(url.hostname)) &&
-        (typeof e.peripheral.available !== 'function' || e.peripheral.available())) || null;
+        (!e.matches || e.matches(url)) &&
+        (e.claimUnavailable === true || typeof e.peripheral.available !== 'function' || e.peripheral.available())) || null;
 };
+
+export const bridgeEndpointFor = value => bridgeEntryFor(value)?.endpoint || null;
 
 const toBytes = data => {
     if (data instanceof Uint8Array) return data.slice();
@@ -67,7 +90,7 @@ const base64Decode = text => Uint8Array.from(atob(text), c => c.charCodeAt(0));
 
 /** The WebSocket-shaped end of a virtual relay. */
 export class VirtualBridgeSocket {
-    constructor (url, endpoint) {
+    constructor (url, endpoint, owner = null) {
         this.url = String(url);
         this.endpoint = endpoint;
         this.readyState = 0;
@@ -81,13 +104,33 @@ export class VirtualBridgeSocket {
         this.session = null;
         this._decoder = new TextDecoder();
         this._encoder = new TextEncoder();
+        this._owner = owner;
+        if (owner) owner.sockets.add(this);
         setTimeout(() => {
             if (this.readyState !== 0) return;
-            this.readyState = 1;
-            this.session = endpoint.peripheral.open({
-                send: bytes => setTimeout(() => this._deliver(bytes), 0),
-                close: () => this.close()
-            });
+            if (owner && !owner.active) { this.close(); return; }
+            try {
+                const session = endpoint.peripheral.open({
+                    send: bytes => {
+                        const packet = new Uint8Array(bytes);
+                        setTimeout(() => this._deliver(packet), 0);
+                    },
+                    close: () => this.close()
+                });
+                // An open callback may synchronously close or unregister itself.
+                if (this.readyState !== 0 || (owner && !owner.active)) {
+                    if (session && typeof session.close === 'function') session.close();
+                    this.close();
+                    return;
+                }
+                if (!session || typeof session.receive !== 'function') throw new TypeError('a virtual bridge session needs receive()');
+                this.session = session;
+                this.readyState = 1;
+            } catch (error) {
+                try { this._emit('error', {type: 'error', error}); }
+                finally { this.close(1006, 'Virtual brick unavailable'); }
+                return;
+            }
             this._emit('open', {type: 'open'});
         }, 0);
     }
@@ -142,8 +185,12 @@ export class VirtualBridgeSocket {
         this.readyState = 3;
         const session = this.session;
         this.session = null;
-        if (session && typeof session.close === 'function') session.close();
-        setTimeout(() => this._emit('close', {type: 'close', code, reason, wasClean: opened}), 0);
+        if (this._owner) this._owner.sockets.delete(this);
+        try {
+            if (session && typeof session.close === 'function') session.close();
+        } finally {
+            setTimeout(() => this._emit('close', {type: 'close', code, reason, wasClean: opened}), 0);
+        }
     }
 }
 
@@ -152,16 +199,20 @@ export class VirtualBridgeSocket {
  * URL the WebSocket that was there before (which may itself be the Scratch Link wrapper). Returns a restore.
  */
 export const installVirtualBridge = ({host = typeof window === 'undefined' ? globalThis : window} = {}) => {
-    const Before = host.WebSocket;
-    if (Before && Before.__brickwrightVirtualBridge) return () => {};
-    const Wrapped = function WebSocket (url, protocols) {
-        const endpoint = bridgeEndpointFor(url);
-        if (endpoint) return new VirtualBridgeSocket(url, endpoint);
-        if (typeof Before !== 'function') throw new Error('no WebSocket');
-        return protocols === undefined ? new Before(url) : new Before(url, protocols);
-    };
-    if (Before) Wrapped.prototype = Before.prototype;
-    Object.assign(Wrapped, {CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3, __brickwrightVirtualBridge: true});
-    host.WebSocket = Wrapped;
-    return () => { if (host.WebSocket === Wrapped) host.WebSocket = Before; };
+    return acquireBridge(host, 'WebSocket', (Before, active) => {
+        const Wrapped = function WebSocket (url, protocols) {
+            const entry = active() ? bridgeEntryFor(url) : null;
+            if (entry) return new VirtualBridgeSocket(url, entry.endpoint, entry);
+            if (typeof Before !== 'function') throw new Error('no WebSocket');
+            return protocols === undefined ? new Before(url) : new Before(url, protocols);
+        };
+        if (Before) {
+            Wrapped.prototype = Before.prototype;
+            Object.setPrototypeOf(Wrapped, Before);
+        }
+        for (const [key, value] of Object.entries({CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3, __brickwrightVirtualBridge: true})) {
+            Object.defineProperty(Wrapped, key, {value, configurable: true, writable: true, enumerable: true});
+        }
+        return Wrapped;
+    });
 };

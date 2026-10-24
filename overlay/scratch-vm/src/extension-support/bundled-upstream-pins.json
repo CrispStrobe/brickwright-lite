@@ -55,10 +55,10 @@
         },
         "legopoweredup": {
             "path": "extensions/CrispStrobe/lego_poweredup.js",
-            "sha256": "723e04930f574f3da6d8f48f855a4ee2947f7b96a8771e464f4fb406e3c7f6e5",
-            "bytes": 122373,
+            "sha256": "b43783baccca7948563c29d3ca997a61ec4157b4642978ae90b88bf6c829b85d",
+            "bytes": 122718,
             "repo": "CrispStrobe/extensions",
-            "commit": "ff74f1309b8807713508884048292182a369f8f5"
+            "commit": "817f01ac3c8edbc4bf3e4a19af6b1cc3bf3c22ec"
         },
         "legorcx": {
             "path": "extensions/CrispStrobe/lego_rcx.js",
@@ -114,10 +114,10 @@
         },
         "wedo2unified": {
             "path": "extensions/CrispStrobe/lego_wedo2_universal.js",
-            "sha256": "2135e2353554d5fb9f2f608ba01b2f0c77e4dfa9e0e42f666c6f31f431282b29",
-            "bytes": 71123,
+            "sha256": "7c641d639436c6ef4605d2204a75fb68fa2f7e5bdd788d135dda1622c8677d17",
+            "bytes": 71392,
             "repo": "CrispStrobe/extensions",
-            "commit": "98eca46ed343ffe186e737062fdc68716f28ca6c"
+            "commit": "a6950fac246c28c6299b31a708f6071fd7b8e388"
         },
         "bitops": {
             "path": "extensions/CrispStrobe/bitops.js",

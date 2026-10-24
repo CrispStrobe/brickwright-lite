@@ -10,7 +10,19 @@
 // (overlay/scratch-vm/src/extensions/crispstrobe/adapter.js), so the double is installed on the host's
 // `fetch`. It honours an AbortSignal (ev3dev's fetchWithTimeout aborts after its timeout).
 
+import {createHostPropertyLeases} from './host-property-lease.js';
+
 const endpoints = [];
+const acquireFetch = createHostPropertyLeases();
+const abortError = () => new DOMException('The virtual connection was closed.', 'AbortError');
+
+const removeEndpoint = entry => {
+    if (!entry.active) return;
+    entry.active = false;
+    const i = endpoints.indexOf(entry);
+    if (i >= 0) endpoints.splice(i, 1);
+    for (const cancel of [...entry.pending]) cancel();
+};
 
 const loopback = host => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(host);
 
@@ -25,23 +37,26 @@ export const registerVirtualHttp = endpoint => {
     if (!endpoint || !Number.isInteger(endpoint.port) || typeof endpoint.handle !== 'function') {
         throw new TypeError('a virtual HTTP endpoint needs a port and handle()');
     }
-    endpoints.push(endpoint);
-    return () => {
-        const i = endpoints.indexOf(endpoint);
-        if (i >= 0) endpoints.splice(i, 1);
-    };
+    if (endpoint.matches !== undefined && typeof endpoint.matches !== 'function') {
+        throw new TypeError('a virtual HTTP endpoint path matcher must be a function');
+    }
+    const entry = {endpoint, active: true, pending: new Set()};
+    endpoints.push(entry);
+    return () => removeEndpoint(entry);
 };
 
-export const clearVirtualHttpForTest = () => { endpoints.length = 0; };
+export const clearVirtualHttpForTest = () => { for (const entry of [...endpoints]) removeEndpoint(entry); };
 
-export const httpEndpointFor = value => {
+const httpEntryFor = value => {
     let url;
     try { url = new URL(String(value)); } catch { return null; }
     if (!['http:', 'https:'].includes(url.protocol)) return null;
     const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
-    return endpoints.find(e => e.port === port && (e.host ? e.host === url.hostname : loopback(url.hostname)) &&
-        (!e.protocols || e.protocols.includes(url.protocol.slice(0, -1)))) || null;
+    return endpoints.find(({endpoint: e}) => e.port === port && (e.host ? e.host === url.hostname : loopback(url.hostname)) &&
+        (!e.protocols || e.protocols.includes(url.protocol.slice(0, -1))) && (!e.matches || e.matches(url))) || null;
 };
+
+export const httpEndpointFor = value => httpEntryFor(value)?.endpoint || null;
 
 const headersOf = headers => {
     if (!headers) return {};
@@ -60,46 +75,49 @@ const bodyText = body => {
     return String(body);
 };
 
-const abortError = () => {
-    const e = new Error('The operation was aborted.');
-    e.name = 'AbortError';
-    return e;
-};
-
 /** Wraps host.fetch. Returns a restore. */
 export const installVirtualFetch = ({host = typeof window === 'undefined' ? globalThis : window} = {}) => {
-    const before = host.fetch;
-    if (before && before.__brickwrightVirtualHttp) return () => {};
-    const wrapped = async function fetch (input, init = {}) {
-        const href = typeof input === 'string' || input instanceof URL ? String(input) : input && input.url;
-        const endpoint = httpEndpointFor(href);
-        if (!endpoint) {
-            if (typeof before !== 'function') throw new TypeError('fetch failed');
-            return before.call(host, input, init);
-        }
-        const signal = init && init.signal;
-        if (signal && signal.aborted) throw abortError();
-        const url = new URL(href);
-        const body = bodyText(init && init.body);
-        const request = {
-            method: String((init && init.method) || 'GET').toUpperCase(),
-            url, path: url.pathname, query: url.searchParams, headers: headersOf(init && init.headers), body,
-            json: () => (body ? JSON.parse(body) : null)
+    return acquireFetch(host, 'fetch', (before, active) => {
+        const wrapped = async function fetch (input, init = {}) {
+            const href = typeof input === 'string' || input instanceof URL ? String(input) : input && input.url;
+            const entry = active() ? httpEntryFor(href) : null;
+            if (!entry) {
+                if (typeof before !== 'function') throw new TypeError('fetch failed');
+                return before.call(host, input, init);
+            }
+            const endpoint = entry.endpoint;
+            const signal = init && init.signal;
+            if (signal && signal.aborted) throw abortError();
+            const url = new URL(href);
+            const body = bodyText(init && init.body);
+            const request = {
+                method: String((init && init.method) || 'GET').toUpperCase(),
+                url, path: url.pathname, query: url.searchParams, headers: headersOf(init && init.headers), body,
+                json: () => (body ? JSON.parse(body) : null)
+            };
+            let cancel;
+            const closed = new Promise((resolve, reject) => { cancel = () => reject(abortError()); });
+            entry.pending.add(cancel);
+            if (signal) signal.addEventListener('abort', cancel, {once: true});
+            let reply;
+            try {
+                const answer = Promise.resolve().then(() => {
+                    if (!entry.active || signal?.aborted) throw abortError();
+                    return endpoint.handle(request);
+                });
+                reply = await Promise.race([answer, closed]);
+                if (!entry.active || signal?.aborted) throw abortError();
+            } finally {
+                entry.pending.delete(cancel);
+                if (signal) signal.removeEventListener('abort', cancel);
+            }
+            const status = (reply && reply.status) || 200;
+            if (reply && reply.json !== undefined) {
+                return new Response(JSON.stringify(reply.json), {status, headers: {'content-type': 'application/json'}});
+            }
+            return new Response(reply && reply.body !== undefined ? reply.body : null, {status});
         };
-        const answer = Promise.resolve().then(() => endpoint.handle(request));
-        const reply = await (signal ? new Promise((resolve, reject) => {
-            const onAbort = () => reject(abortError());
-            signal.addEventListener('abort', onAbort, {once: true});
-            answer.then(v => { signal.removeEventListener('abort', onAbort); resolve(v); },
-                e => { signal.removeEventListener('abort', onAbort); reject(e); });
-        }) : answer);
-        const status = (reply && reply.status) || 200;
-        if (reply && reply.json !== undefined) {
-            return new Response(JSON.stringify(reply.json), {status, headers: {'content-type': 'application/json'}});
-        }
-        return new Response(reply && reply.body !== undefined ? reply.body : null, {status});
-    };
-    wrapped.__brickwrightVirtualHttp = true;
-    host.fetch = wrapped;
-    return () => { if (host.fetch === wrapped) host.fetch = before; };
+        wrapped.__brickwrightVirtualHttp = true;
+        return wrapped;
+    });
 };

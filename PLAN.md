@@ -19,43 +19,42 @@ gates.
 
 The ordered acceptance contract is the upstream
 [circuit/instrument campaign](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md).
-`LANES.md` controls current ownership; the older priority tables below are dated
+`lanes/` controls current ownership; the older priority tables below are dated
 history, not reservations or evidence that their work is still pending.
 
 1. **Upstream LM741 CLI qualification: complete.** Six signed/phase-shifted
    precision captures passed independent waveform, meter and work-receipt audits.
    This is a bounded nominal-model result, not vendor-model or hardware accuracy.
-2. **Consumer adoption: complete; TestFlight release: still pending.** PR965
+2. **Consumer adoption and existing TestFlight delivery: complete.** PR965
    landed as `5cb83052330b400b48293315260cb4293b4f6bcf`, adopting CUI
    `1db1bb9ee565338672c7acfefec4cf94b27196e1`. Its qualified CLI and built-GUI
    checks do not prove a newer signed or installed release. PR1011's release
-   ownership claim is merged, not a delivery receipt. Finish the existing iOS
-   workflow-resource lane, actual combined-source unsigned and signed artifact
-   checks, aligned release metadata, upload, both TestFlight groups and Beta
-   App Review. Do not start a competing iOS workflow or release lane.
-3. **Prepare, then run the stratified installed-consumer regression.** Harness
-   preparation may proceed in parallel with release work; actual campaign
-   execution remains after TestFlight. The harness is not yet implemented and
-   none of its 312 planned parameter cases has run. The
-   [implementation handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) specifies 12
-   topology templates, 264 direct ngspice cases, 48 analytic model cases, the
-   bounded files, measurements, provenance and nonvacuous negative controls.
-   Claim fresh ownership in `LANES.md` before implementation. Preserve failed,
-   refused and not-run cases rather than changing the denominator.
-4. **Fix demonstrated causes, not scores.** Preserve every failure and distinguish
-   import loss, unavailable models, engine/instrument defects, exhausted work
-   budgets and oracle/harness mistakes. Require minimal reproductions and
-   load-bearing negative controls; unsupported physics is not a numeric pass.
+   ownership claim is merged, not a delivery receipt. The read-only
+   [audit 40048235422](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40048235422)
+   independently verified existing v0.1.26 on iOS and macOS in both TestFlight
+   groups, with matching bilingual notes and approved reviews. No write or new
+   upload was required. The earlier metadata-wait failure remains preserved.
+3. **Fixed installed-consumer regression: complete.**
+   [Run 40057471489](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40057471489)
+   executed all 312 authored parameter cases across 12 topologies: 264 ngspice
+   and 48 explicitly nominal analytic comparisons. Independent original readers
+   agreed on all cases and 87,488 numerical checks; no failed, refused,
+   noncomparable or missing case was removed. The
+   [handoff and result](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) record exact
+   package identities, original hashes, measured coverage and remaining limits.
+4. **Causal triage: complete for this matrix.** No numerical defect was
+   demonstrated, so no model patch or tolerance change is justified. This does
+   not close unrelated model/oracle work or establish physical-device accuracy.
 5. **Qualify a bounded instrument-realism improvement.** Recheck the actual GUI
    and CLI; expose acquisition/overrange/aliasing limits without altering raw
    captures or pretending to implement an ADC or analogue front end. Review the
    results and remaining limits before starting a further campaign.
 
-Status reconciliation: 2026-10-17. The regression and realism steps are scoped
-follow-ups, not completed features. The closing preparation session leaves no
-active implementation reservation; see `LANES.md` and refresh the linked PRs
-before taking over. The [handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) also
-defines causal-repair and instrument-realism acceptance and stopping criteria.
+Status reconciliation: 2026-10-24. Existing-release availability, the fixed
+regression and its causal triage are complete. Bounded scope-display realism
+remains; consult `lanes/` before taking ownership. The
+[handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) defines acceptance and stopping
+criteria. Stop after its actual built-consumer proof and report remaining limits.
 
 Shared engine, importer and instrument changes land upstream first. Lite adopts
 one reviewed full SHA with derived specifications, locks and provenance. A
