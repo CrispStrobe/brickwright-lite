@@ -1,32 +1,36 @@
-# CLI instrument regression: implementation handoff
+# CLI instrument regression
 
-Status reconciled 2026-10-17: **designed, not implemented; zero campaign cases
-executed**. This is a bounded follow-up to the qualified circuit CLI, not a
+Status reconciled 2026-10-24: **existing TestFlight delivery verified; harness
+handoff correction in qualification; zero
+campaign cases executed**. This is a bounded follow-up to the qualified circuit CLI, not a
 report that the schematic corpus or physical instruments have been validated.
-Use [LANES.md](../LANES.md) for current ownership and the
+Use [the lane protocol](../lanes/PROTOCOL.md) and dated claims for current ownership and the
 [current plan](../PLAN.md#current-circuitinstrument-campaign--2026-10-15) for order.
 
 ## What is complete and what remains
 
 The upstream nominal LM741 six-case CLI proof and Lite adoption
 [PR965](https://github.com/CrispStrobe/brickwright-lite/pull/965) are complete.
-The adopted CUI revision is `1db1bb9ee565338672c7acfefec4cf94b27196e1`; the
-adoption preserved Board `b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8` and
-sb3-creator `c9be966fc6cf2f4343ca96c1a4477c91e05854ee`. Refresh actual pins before
-working: these are the adoption identities, not permission to ignore later main.
+The new harness contract was traced against Board
+`b5650092695643622a53bcc40008133760e2d8a2` and CUI
+`17fd4afb0bf27015b099ca67c9cca05919084654`. The runner refuses a different
+consumer pin until its admission and manifest have been reviewed; it never
+substitutes a newer sibling or silently moves a dependency.
 
-1. **Release prerequisite, existing owner.** PR1011 merged the release contract;
-   it did not submit TestFlight. PR1042 covers connecting the existing packaging
-   helper to the three direct iOS workflow paths. Preserve its owner and finish
-   actual final-source unsigned app and signed IPA inspection, embedded offline
-   frontend proof, frameworks/privacy/icons/signatures, release metadata, upload,
-   Internal and External groups, and Beta App Review. An old component build or
-   source CI is not final combined-package qualification. Do not move an old tag.
-2. **Harness implementation, available for a fresh claim.** Preparation is
-   permitted in parallel with release work. PR1043 records the scope, but this
-   closing session leaves no active implementation reservation. Inspect its
-   actual merge/check state and other claims; publish a fresh explicit takeover
-   claim before editing code. No implementation exists to resume or assume.
+1. **Release prerequisite: verified.** The read-only
+   [audit 40048235422](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40048235422)
+   observed v0.1.26 on both iOS and macOS: valid, unexpired, matching English and
+   German notes, both groups linked, review approved, and both internal/external
+   states `IN_BETA_TESTING`. Independent readback of the retained original
+   recomputed complete availability. This is the existing immutable release
+   `6d78f7e107752497ed96b30b03e985386916fc59`, not a new application build.
+   No recovery write or upload was needed; the earlier metadata-wait failure
+   remains preserved separately. This is a finite observation, not a continuing
+   distribution guarantee.
+2. **Harness implementation.** Preparation is permitted in parallel with release
+   recovery. The [merged claim](../lanes/2026-10-23-circuit-instrument-regression.md)
+   owns the bounded implementation below. Pure controls exercise transport,
+   independent equations and false-success cases; they are not an engine run.
 3. **Campaign execution, after TestFlight.** Run once on the admitted installed
    consumer with the fixed manifest, independent references and original outputs.
    A clean harness unit suite is not a measurement-campaign result.
@@ -38,18 +42,56 @@ working: these are the adoption identities, not permission to ignore later main.
 
 ## Bounded implementation
 
-The proposed eight paths are `LANES.md`, `PLAN.md`,
+The eleven owned paths are the dated claim, campaign sections of `PLAN.md` and
+`ROADMAP.md`,
 `.github/workflows/circuit-instrument-regression.yml`,
 `scripts/circuit-instrument-regression.mjs`,
 `scripts/lib/instrument-regression-cases.mjs`,
 `scripts/lib/instrument-regression-compare.mjs`,
-`test/circuit-instrument-regression.test.mjs`, and this document.
+`test/circuit-instrument-regression.test.mjs`, this document, `CI-POINTERS.md`
+and the workflow's scoped `docs/generated/ci-step-census.json` entry.
 The case and comparator modules are pure; neither imports a test module or
 launches a process on import. Keep the workflow manual-only. Do not dispatch
 the campaign while preparing the harness. No production model, GUI, existing
 workflow, dependency, lock, pin or private corpus input belongs in this lane.
-`ROADMAP.md` was updated for this documentation closeout, not added to the
-future executable boundary. Coordinate any necessary expansion first.
+The pointer/census follow the release workflow's canonical bootstrap; this
+lane does not change the generator or unrelated observations.
+
+## Commands and evidence
+
+`node scripts/circuit-instrument-regression.mjs --plan` prints the deterministic
+manifest without installing, simulating or invoking an oracle. Pure controls:
+
+```sh
+node --test test/circuit-instrument-regression.test.mjs
+```
+
+After harness qualification and merge, dispatch **Fixed CLI instrument regression**
+once with `release_run: 40048235422`. It checks that exact official run/attempt/
+job/source metadata and that the admitted release source is an ancestor.
+Its categorical release snapshot is bound to the independently read original:
+summary SHA-256 `5f3b7d92ede237ab656d79e2a1d9812474f33197e8dd337f0b95b143ce35510e`;
+original log SHA-256
+`734373adbf58a5763860f558e8568ac82b8a173ad90f00cbee8cc8da38502bdb`,
+24,622 bytes. The raw original was acquired once and retained; the campaign
+does not download it again or publish a raw-log copy. The snapshot contains no
+private resource IDs. A different observation requires a reviewed provenance
+update; an arbitrary successful run or pending review cannot open the gate.
+
+The manual workflow installs the locked consumer and ngspice on the hosted
+runner, fetches the two exact source commits, and invokes `--run` with explicit
+installed-root, source, admitted release observation and fresh output paths. The runner
+itself never installs dependencies. Existing output directories are refused.
+Every original command/stdout/stderr, input, oracle deck/table, raw capture,
+work receipt, package proof and comparison is retained. Incomplete reports and
+missing prerequisites fail. The default and unit-test paths never run this job.
+
+Ngspice retains its adaptive raw table for meter-window integration, then
+produces a separately labelled equidistant reference with `linearize`. This
+oracle interpolation does not alter CLI samples. The comparison rejects shifted
+or incomplete time grids. Output columns use the documented
+[ngspice table controls](https://ngspice.sourceforge.io/docs/ngspice-manual.pdf),
+16-digit output, a single scale and explicit vector names.
 
 Use Node 22 and the installed `bw-circuit-ui` CLI, not a sibling checkout's CLI
 or engine override. Before numerical work, use the existing package-provenance
@@ -74,23 +116,37 @@ read-only; the runner must not silently install dependencies or move a pin.
 Total: **312 parameter cases, 12 authored topology templates**; **264 direct
 ngspice cases and 48 analytic model cases**, reported separately. These are not
 312 distinct imported schematics or a fresh count of the historical corpus.
-Finalize the remaining concrete values, initial conditions, selectors, clock
-grids and per-quantity absolute/relative tolerances in the executable manifest
-before its first numerical run. The table is not that executable frozen manifest.
+The executable manifest freezes the concrete values, initial conditions,
+selectors, integer clock grids and per-quantity tolerances before observation.
+It contains **72 static DC cases and 240 waveform cases**. Its definition hash
+identifies all 312 cases, not just this summary table.
 Do not fit thresholds to output or silently remove refused combinations.
 
 RC/RL proposals use 100 observations over eight time constants with the exact
 same finite source ramp and zero-state assumptions in both systems. Verify
 integer-nanosecond admission rather than promising all combinations succeed.
-LM741 stays within 20us / 2MHz and uses a loaded, phase-aware nominal reference,
+Resistive sources rise over 10us in a 100us capture. Reactive sources rise over
+one tenth of a sample interval. LM741 uses ±10mV, delays of 10000/10033/10067ns,
+1ns rise and 2k/10k/100k/1M loads. It stays within 20us / 2MHz and uses a loaded, phase-aware nominal reference,
 not ideal unity gain. ADP7118 stays within 1.2ms / 100kHz and must include current
-limit entry and release witnesses. If a chosen case never enters a required
+limit entry and release witnesses. Its loads are 100/1000/10000 ohms,
+capacitances 1/10/47/100uF and input rails 6/8V. The 47uF cases require entry
+and release; 100uF requires entry, without claiming release inside this window.
+Those witnesses use interval currents recovered from actual prefix integrals,
+not an inaccessible internal region flag. If a chosen case never enters a required
 branch, do not count it as covering that branch.
 
 For diode/NPN comparisons, match every relevant model field and the fixed
 thermal point: VT=0.02585 V, TEMP and TNOM both 26.826793442075882 C. Unsupported
 breakdown, temperature, charge or other physics is not a numerical pass. Do not
 substitute generic transistor defaults or a current-source surrogate.
+
+Fixed absolute/relative gates are: passive waveform 100uV/0.1%, passive means
+1uV/0.01% or 1nA/0.01%; static voltage 10uV/0.1% and current 1nA/0.1%; LM741
+waveform 100uV and means 2uV (current allowance 2uV/load + 1pA); ADP waveform
+0.5uV, voltage/current means 1uV/1uA and package KCL 0.1nA. LM/ADP relative
+allowances are zero. These gates are frozen before the first circuit output;
+failure is a diagnosis input, never permission to fit the gate.
 
 ## Measurements and comparisons
 

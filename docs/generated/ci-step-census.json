@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T22:13:28.336Z",
+  "generatedAt": "2026-10-24T01:28:50.712Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1939,6 +1939,7 @@
     "basic-oracle.yml",
     "build.yml",
     "ci-metrics.yml",
+    "circuit-instrument-regression.yml",
     "cycle-core-qualification.yml",
     "debugger.yml",
     "deploy-daily.yml",
@@ -7368,11 +7369,33 @@
       "steps": {},
       "jobs": {},
       "sourceSha": "working-tree"
+    },
+    "circuit-instrument-regression.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Admit release metadata and previously verified summary",
+        "Read exact source pins",
+        "Install locked consumer and independent oracle",
+        "Pure harness controls",
+        "Run fixed authored campaign once",
+        "Preserve original results, including failures"
+      ],
+      "inFileInNoRun": [
+        "Admit release metadata and previously verified summary",
+        "Read exact source pins",
+        "Install locked consumer and independent oracle",
+        "Pure harness controls",
+        "Run fixed authored campaign once",
+        "Preserve original results, including failures"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "testflight-release-recovery.yml",
-    "at": "2026-10-23T22:13:28.336Z",
+    "workflow": "circuit-instrument-regression.yml",
+    "at": "2026-10-24T01:28:50.712Z",
     "sourceSha": "working-tree"
   }
 }
