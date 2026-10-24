@@ -215,16 +215,31 @@ Renode composition, from a read-only scan of the installed bundle:
 
 | Component | Shipped | Licence | Status |
 |---|---|---|---|
-| tlib (`Antmicro.Renode.translate-*.so`) | yes | LGPL-2.1 | Notice present. Source: `renode-infrastructure-spike-prime` submodule `src/Emulator/Cores/tlib`. **Open**: the Renode source revision of this binary is not recorded, only its SHA-256 |
-| NetMQ | yes | LGPL-3.0 with static-link exception | Notice present. **Open**: NuGet version not recorded |
-| Packet.Net (`PacketDotNet.dll`) | yes | LGPL-3.0 | Notice present. Source: `renode-spike-prime` submodule `lib/Packet.Net`. **Open**: same revision gap |
+| tlib (`Antmicro.Renode.translate-*.so`) | yes | LGPL-2.1 | Notice present. Source: `renode-infrastructure-spike-prime` at `1253d925`, submodule `src/Emulator/Cores/tlib` = `antmicro/tlib@d50c868f` |
+| NetMQ | yes | LGPL-3.0 with static-link exception | Notice present. NuGet `NetMQ` 4.0.1.12 (embedded dependency record) |
+| Packet.Net (`PacketDotNet.dll`) | yes | LGPL-3.0 | Notice present. Source: `renode-spike-prime` at `41338096`, submodule `lib/Packet.Net`; NuGet `PacketDotNet` 1.0.0 |
 | pip 19.2.3 vendored module | yes | LGPL-2.1 notice | Notice present. Source pip 19.2.3 on PyPI. The covered module is not identified |
 | Gtk# bindings | no | — | Not applicable (only gir.core GLib/GObject/Gst, MIT) |
 | mcs | no | — | Not applicable |
 
 LGPL is within policy. Each shipped item needs notice retention (done) and
-corresponding source. Binding the source requires the Renode runtime producer to
-record its source commit in the runtime provenance.
+corresponding source. The runtime's informational versions embed its source
+commits: Renode `renode-spike-prime@41338096`, infrastructure
+`renode-infrastructure-spike-prime@1253d925` (the same pair the compiled
+MicroPython profile records) and upstream `antmicro/renode@33e5ab24`; the
+runtime's private build record names the same commits plus resources
+`14b80cde`. All named sources are public repositories.
+
+### Full-build exercise — 2026-10-24
+
+The builder on main `f51ec8c2` assembled a complete package locally
+(`brickwright_0.1.26_amd64.deb`; Rust compile in an owned network-less
+container, 9 min 21 s). The frontend input came from main `4ae82377`, the newest
+published build at the time; the exercise covers packaging and notices, not that
+frontend. Installed with a normal dpkg policy, the layout check passes all 36
+checks, including 655 notice files. Ubuntu container base images exclude
+`/usr/share/doc/*`; under that policy the doc checks fail, as they should, and
+the crate-notice check now counts only directories that hold a file.
 
 ### Installed layout check
 

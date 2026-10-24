@@ -81,3 +81,19 @@ Open, and why:
 - Windows signing is blocked: no Authenticode certificate. SPIKE on macOS needs
   JIT/child-process entitlements and signed nested executables (contract only). There is
   no Debian signing key.
+
+## Continuation — 2026-10-24 (third pass: source binding and full build)
+
+Closed:
+- Corresponding source for tlib, NetMQ and Packet.Net, from the runtime's
+  embedded informational versions and its build record: `renode-spike-prime@41338096`,
+  `renode-infrastructure-spike-prime@1253d925` (tlib `antmicro/tlib@d50c868f`),
+  NetMQ 4.0.1.12, PacketDotNet 1.0.0.
+- Full-build exercise: a complete local package from main `f51ec8c2` installs and
+  passes all 36 layout checks. The run also showed the crate-notice check counted
+  directories, which dpkg creates even when its exclude policy drops their files;
+  it now counts directories holding a non-empty file. Under the container doc
+  exclusion it fails as it should; with normal dpkg policy it passes.
+
+Still not claimed: Windows signing (no Authenticode certificate), SPIKE runtime on
+macOS (contract only), Debian package signing (no key), redistribution clearance.
