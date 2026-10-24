@@ -68,3 +68,20 @@ Unit shard 3 caught the generated 8086 capability report's previous Board pin;
 the canonical generator corrects that one line without changing capability
 claims or historical receipts. The original failed verdict is retained. The
 repaired source must pass every enabled exact-head hosted check before landing.
+
+A subsequent hosted unit shard caught the older lesson guard's exact count of
+three scope acquisition sites. The independent audio tap is valid; the guard
+now checks every site's explicit cadence and the FFT's point-capture default.
+An additional timed tap is accepted, while omission mutations on every actual
+tap and a changed FFT default are refused. All 23 Wave 6 lesson tests pass,
+with the RC/RL calculations, sample records and numerical bounds unchanged.
+The original hosted failure is retained and the repaired head still requires
+complete exact-head qualification.
+
+The browser UX guard likewise assumed exactly two open channels. It now
+verifies the envelope, point FFT and independent mean roles through the public
+rate picker. The complete built-GUI journey passes, preserving the exact
+5,000-point readings, timestamps and clock-yield budgets. Its additional
+5,000-mean check bounds floating-point time-coordinate roundoff analytically
+from machine epsilon, elapsed time and aperture duration; no pre-existing
+numerical tolerance changes. The original browser failure remains recorded.

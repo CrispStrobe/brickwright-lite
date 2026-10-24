@@ -675,18 +675,20 @@ try {
         const acquisitionState = () => scopePage.evaluate(() => {
             const b = window.__board;
             return {clock: String(b.getTime()), circuitBoardMatches: b === window.__circuit?.board,
+                fftRate: document.querySelector('[data-testid="bw-scope-fft-rate"]')?.value,
                 uiChannelRows: document.querySelectorAll('[data-testid="bw-scope-scale-0"]').length,
                 channels: b.getScopeChannels().map(handle => {
                     const d = b.getScopeData(handle);
                     return {handle, capture: d.capture, interval: String(d.sampleIntervalNs),
+                        aperture: d.apertureNs === undefined ? null : String(d.apertureNs),
                         count: d.count, start: String(d.startTNs)};
                 })};
         });
         console.log('scope acquisition before spectrum:', JSON.stringify(await acquisitionState()));
         await scope.getByTestId('bw-scope-view-spectrum').click();
         // Let the spectrum effect open its default tap before changing rate.
-        // Exercise a native keyboard interaction, not a synthetic select event;
-        // both the displayed selection and engine acquisition must agree.
+        // Drive the learner-facing picker and require the engine acquisition
+        // to agree; do not create a replacement tap or change its clock here.
         await scopePage.waitForFunction(() => {
             const b = window.__board;
             return b.getScopeChannels().some(h => {
@@ -695,16 +697,18 @@ try {
             });
         });
         const fftRate = scope.getByTestId('bw-scope-fft-rate');
-        await fftRate.focus();
-        await fftRate.press('Home');
-        await fftRate.press('Enter');
+        await fftRate.selectOption('100000');
         try { await scopePage.waitForFunction(() => {
             const b = window.__board, hs = b.getScopeChannels();
+            const data = hs.map(h => b.getScopeData(h));
+            const point = data.find(d => d.capture === 'sample');
+            const audio = data.find(d => d.capture === 'average');
             return document.querySelector('[data-testid="bw-scope-fft-rate"]')?.value === '100000'
-                && hs.length === 2 && hs.some(h => {
-                const d = b.getScopeData(h);
-                return d.capture === 'sample' && d.sampleIntervalNs === 10000n && d.count === 0;
-            });
+                // Retain the original envelope and point FFT; the independent
+                // audio mean is a third acquisition, with its own cadence.
+                && data.map(d => d.capture).sort().join('|') === 'average|envelope|sample'
+                && point.sampleIntervalNs === 10000n && point.count === 0
+                && audio.sampleIntervalNs === 10000n && audio.apertureNs === 10000n && audio.count === 0;
         }); } catch (error) {
             console.log('scope acquisition refused spectrum readiness:',
                 JSON.stringify(await acquisitionState()));
@@ -720,9 +724,19 @@ try {
             const b = window.__board;
             const h = b.getScopeChannels().find(h => b.getScopeData(h).capture === 'sample');
             const d = b.getScopeData(h);
+            const audioHandle = b.getScopeChannels().find(h => b.getScopeData(h).capture === 'average');
+            const audio = b.getScopeData(audioHandle);
+            const means = [...audio.samples.slice(0, 10000)];
             return {clock: String(b.getTime()), capture: d.capture, interval: String(d.sampleIntervalNs),
                 start: String(d.startTNs), count: d.count,
                 oneVolt: [...d.samples.slice(0, 10000)].every(v => v === 1),
+                audio: {capture: audio.capture, interval: String(audio.sampleIntervalNs),
+                    aperture: String(audio.apertureNs), count: audio.count,
+                    finite: means.every(Number.isFinite), maxErrorV: Math.max(...means.map(v => Math.abs(v - 1))),
+                    // Integrating subtracts floating-point endpoint times. Bound
+                    // their roundoff relative to the aperture, at one volt;
+                    // the original point readings above remain bit-exact.
+                    roundoffBoundV: 4 * Number.EPSILON * Number(b.getTime()) / Number(audio.apertureNs)},
                 ...window.__bwScopeResetReceipt};
         });
         check('installed spectrum point capture retains all5000 exact one-volt samples',
@@ -731,6 +745,11 @@ try {
             // the envelope bucket's start: 50ms + one10us sample interval.
             && pointReceipt.interval === '10000' && pointReceipt.start === '50010000'
             && pointReceipt.count === 5000 && pointReceipt.oneVolt, JSON.stringify(pointReceipt));
+        check('installed independent audio mean retains all5000 one-volt apertures within time-coordinate roundoff',
+            pointReceipt.audio.capture === 'average' && pointReceipt.audio.interval === '10000'
+            && pointReceipt.audio.aperture === '10000' && pointReceipt.audio.count === 5000
+            && pointReceipt.audio.finite && pointReceipt.audio.maxErrorV <= pointReceipt.audio.roundoffBoundV,
+            JSON.stringify(pointReceipt.audio));
         check('installed reactive point-sample clock yields within sixteen10us sample quanta',
             pointReceipt.partialReceipts > 0 && BigInt(pointReceipt.maxSpanNs) > 0n
             && BigInt(pointReceipt.maxSpanNs) <= 160000n
