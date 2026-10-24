@@ -47,3 +47,12 @@ normal merge parents/tree precede operational use. After the qualified new
 release upload, retain actual audit/readback receipts and report partial
 states honestly. No source, upload or TestFlight approval claim follows from
 the pure fixtures or a successfully queued audit.
+
+Implementation prepared: a separate frozen-descriptor reader and manual audit
+bind the actual release checkout, tag, commit, version and bundle before API use.
+The transport refuses writes; complete delivery requires both iOS and macOS.
+The original v0.1.26 defaults and recovery path remain locked. Focused audit,
+legacy recovery, census and claim controls pass (79, none skipped). The workflow
+has declaration-only registration with zero observed runs; existing observations
+and recorded main provenance are preserved. Combined-source hosted qualification
+and an actual new-release readback remain required before operational admission.
