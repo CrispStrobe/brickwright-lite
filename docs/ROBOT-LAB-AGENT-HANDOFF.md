@@ -1,5 +1,7 @@
 # Robot Lab: fresh-agent handoff
 
+For the current experimental checkpoint and explicit unchecked work, start with [the 24 October checkpoint](ROBOT-LAB-CHECKPOINT-2026-10-24.md).
+
 Updated 2026-10-21. This is the public entry point for continuing Robot Lab work (the
 `lib/bw-sim/` simulator, the virtual hubs, the Robot Lab tab) without chat history.
 It records what landed, how work lands here, what is in flight and — scoped so a new

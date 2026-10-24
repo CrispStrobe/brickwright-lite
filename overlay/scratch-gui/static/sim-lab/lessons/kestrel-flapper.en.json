@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "kestrel-flapper",
+  "language": "en",
+  "what": "Experimental source: intended motion has not been independently checked. Compare crank rotation with the alternating motion of the passive wings.",
+  "why": "Compare crank rotation with the alternating motion of the passive wings.",
+  "try": [
+    "Inspect the frame, shaft supports and passive output before running.",
+    "Reset, then try the finite example program. Stop if the structure becomes unstable.",
+    "Record the passive output, foundation motion and final hold; check the full travel."
+  ],
+  "matters": "A measured passive output and a physical comparison are needed before this example can demonstrate the intended principle.",
+  "question": "What passive output do you predict, and which physical change would test the proposed transmission?",
+  "answer": "Compare crank rotation with the alternating motion of the passive wings. This checkpoint does not yet establish that the supplied model achieves it.",
+  "further": [
+    "Measure a real physical control under the same drive conditions.",
+    "Check actual connector engagement, clearances, support and saved-project replay."
+  ],
+  "related": []
+}

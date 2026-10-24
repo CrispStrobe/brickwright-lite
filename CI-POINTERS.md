@@ -120,3 +120,5 @@ the declared branch snapshots from `2f3bbff0ea338c5ee2168532bae8b7208dc2d6a2`.
 They do not add files to the current workflow inventory or claim execution on
 the default branch. Existing run counts and failures are retained unchanged.
 The separately reviewed workflow files arrive only with their qualified source.
+
+- testflight-release-audit.yml :: * :: Manual read-only audit of an operator-admitted immutable release tag and exact source; observes both iOS and macOS notes, groups and beta states. No build, upload or writer. Zero runs at declaration (2026-10-24); pure controls and a queued audit do not establish tester availability.

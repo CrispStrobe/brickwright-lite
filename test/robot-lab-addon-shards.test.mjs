@@ -37,9 +37,23 @@ test('the published addon gates remain unique with their exact commands and acce
     assert.equal(assigned.size,11,'No omitted or duplicated published gate');
 });
 test('additional addon shards use the existing Robot Lab scope predicate',()=>{
-    for(const shard of ['robotaddon5','robotaddon6']){
+    for(const shard of ['robotaddon5','robotaddon6','robotaddon7','robotaddon8','robotaddon9']){
         assert.equal(job.shards.filter(s=>s===shard).length,1,'Unique matrix registration');
         const exclusion="          - shard: ${{ needs.scope.outputs.robotlab != 'true' && '"+shard+"' || 'none' }}";
         assert.equal(lines.filter(line=>line===exclusion).length,1,'Same existing path-scope predicate');
+    }
+});
+
+test('all newly delivered primary experiments have one complete journey with unchanged budgets',()=>{
+    const deliveries={robotaddon7:['wavemaker','cascade','rise-ratio','cable-compass'],
+        robotaddon8:['rod-ratio','vernier-drive','line-turner','dune-strider','oblique'],robotaddon9:['atlas-six']};
+    const selectors=[...workflow.matchAll(/--part=examples --examples=([^\s]+)/g)].flatMap(m=>m[1].split(','));
+    for(const [shard,models]of Object.entries(deliveries))for(const id of models){
+        assert.equal(selectors.filter(value=>value===id).length,1,'No omitted or duplicated selector: '+id);
+        const steps=job.steps.filter(s=>s.name==='Browser gate — Robot Lab '+id+' intake');assert.equal(steps.length,1,id);
+        const step=steps[0];assert.deepEqual(shardsOf(step),[shard]);assert.equal(step.timeout,8);
+        assert.equal(step.ifs,"${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == '"+shard+"' }}");
+        const at=job.steps.indexOf(step),end=job.steps[at+1]?.line-1||lines.length,body=lines.slice(step.line-1,end).join('\n');
+        assert.deepEqual([...body.matchAll(/^        run: (.*)$/gm)].map(m=>m[1]),['npm run verify:sim-lab -- --part=examples --examples='+id+(id==='atlas-six'?' --intake-capture=atlas-six':'')]);
     }
 });

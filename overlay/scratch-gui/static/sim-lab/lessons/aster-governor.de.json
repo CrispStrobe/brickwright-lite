@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "aster-governor",
+  "language": "de",
+  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Beobachte die passiven Gewichte bei wechselnder Drehzahl; Fliehkrafteffekte wachsen mit dem Quadrat der Winkelgeschwindigkeit, während die Schwerkraft nach unten wirkt.",
+  "why": "Beobachte die passiven Gewichte bei wechselnder Drehzahl; Fliehkrafteffekte wachsen mit dem Quadrat der Winkelgeschwindigkeit, während die Schwerkraft nach unten wirkt.",
+  "try": [
+    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
+    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
+    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+  ],
+  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
+  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
+  "answer": "Beobachte die passiven Gewichte bei wechselnder Drehzahl; Fliehkrafteffekte wachsen mit dem Quadrat der Winkelgeschwindigkeit, während die Schwerkraft nach unten wirkt. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "further": [
+    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
+    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+  ],
+  "related": []
+}

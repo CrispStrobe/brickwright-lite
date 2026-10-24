@@ -1,0 +1,568 @@
+# Atlas Six — CrispStrobe, BSD-3-Clause.
+# Reset to the saved model pose before running. Do not zero encoders after load.
+# Robot Lab speeds are degrees/second. Every stage joins six real VM receivers.
+# Targets are inverse-kinematic inputs; observed platform pose is measured separately.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL correctionA = 0
+GLOBAL targetB = 0
+GLOBAL correctionB = 0
+GLOBAL targetC = 0
+GLOBAL correctionC = 0
+GLOBAL targetD = 0
+GLOBAL correctionD = 0
+GLOBAL targetE = 0
+GLOBAL correctionE = 0
+GLOBAL targetF = 0
+GLOBAL correctionF = 0
+GLOBAL stage = 0
+GLOBAL settled = 0
+GLOBAL completed = 0
+GLOBAL failed = 0
+GLOBAL travelBound = 0
+GLOBAL speedA = 6
+GLOBAL speedB = 6
+GLOBAL speedC = 6
+GLOBAL speedD = 6
+GLOBAL speedE = 6
+GLOBAL speedF = 6
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set stage to 0
+  set settled to 0
+  reset timer
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  lab stop motor D hold
+  lab stop motor E hold
+  lab stop motor F hold
+  IF (abs of (lab motor A angle)) > 10 THEN:
+    broadcast "fail all" and wait
+    say "Reset the complete model to its saved pose before running."
+    stop all
+  IF (abs of (lab motor B angle)) > 10 THEN:
+    broadcast "fail all" and wait
+    say "Reset the complete model to its saved pose before running."
+    stop all
+  IF (abs of (lab motor C angle)) > 10 THEN:
+    broadcast "fail all" and wait
+    say "Reset the complete model to its saved pose before running."
+    stop all
+  IF (abs of (lab motor D angle)) > 10 THEN:
+    broadcast "fail all" and wait
+    say "Reset the complete model to its saved pose before running."
+    stop all
+  IF (abs of (lab motor E angle)) > 10 THEN:
+    broadcast "fail all" and wait
+    say "Reset the complete model to its saved pose before running."
+    stop all
+  IF (abs of (lab motor F angle)) > 10 THEN:
+    broadcast "fail all" and wait
+    say "Reset the complete model to its saved pose before running."
+    stop all
+  broadcast "watchdog"
+  # Stage 1: saved datum
+  set settled to 0
+  set stage to 1
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 2: translation X positive
+  set settled to 0
+  set stage to 2
+  set targetA to 239.826764405
+  set targetB to -145.403343890
+  set targetC to -145.403343890
+  set targetD to 88.945872912
+  set targetE to 239.826764405
+  set targetF to 163.418202896
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 3: home after translation X positive
+  set settled to 0
+  set stage to 3
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 4: translation X negative
+  set settled to 0
+  set stage to 4
+  set targetA to -223.425794932
+  set targetB to 163.418202896
+  set targetC to 163.418202896
+  set targetD to -69.485306218
+  set targetE to -223.425794932
+  set targetF to -145.403343890
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 5: home after translation X negative
+  set settled to 0
+  set stage to 5
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 6: translation Y down positive
+  set settled to 0
+  set stage to 6
+  set targetA to -538.911908373
+  set targetB to -538.911908373
+  set targetC to -538.911908373
+  set targetD to -553.413044254
+  set targetE to -538.911908373
+  set targetF to -538.911908373
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 7: home after translation Y down positive
+  set settled to 0
+  set stage to 7
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 8: translation Y down negative
+  set settled to 0
+  set stage to 8
+  set targetA to 542.389048581
+  set targetB to 542.389048581
+  set targetC to 542.389048581
+  set targetD to 556.121477189
+  set targetE to 542.389048581
+  set targetF to 542.389048581
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 9: home after translation Y down negative
+  set settled to 0
+  set stage to 9
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 10: translation Z positive
+  set settled to 0
+  set stage to 10
+  set targetA to 163.418202896
+  set targetB to 239.826764405
+  set targetC to 239.826764405
+  set targetD to -229.329556385
+  set targetE to 163.418202896
+  set targetF to -223.425794932
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 11: home after translation Z positive
+  set settled to 0
+  set stage to 11
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 12: translation Z negative
+  set settled to 0
+  set stage to 12
+  set targetA to -145.403343890
+  set targetB to -223.425794932
+  set targetC to -223.425794932
+  set targetD to 246.000807223
+  set targetE to -145.403343890
+  set targetF to 239.826764405
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 13: home after translation Z negative
+  set settled to 0
+  set stage to 13
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 14: rotation X positive
+  set settled to 0
+  set stage to 14
+  set targetA to 935.772658391
+  set targetB to 627.295576188
+  set targetC to -1056.439694173
+  set targetD to 1108.757212424
+  set targetE to -701.846673369
+  set targetF to -629.652071427
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 15: home after rotation X positive
+  set settled to 0
+  set stage to 15
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 16: rotation X negative
+  set settled to 0
+  set stage to 16
+  set targetA to -932.371707017
+  set targetB to -629.652071427
+  set targetC to 1082.143091796
+  set targetD to -1085.748452827
+  set targetE to 713.112821318
+  set targetF to 627.295576188
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 17: home after rotation X negative
+  set settled to 0
+  set stage to 17
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 18: rotation Y (vertical) positive
+  set settled to 0
+  set stage to 18
+  set targetA to 510.296445413
+  set targetB to -477.142157515
+  set targetC to 376.860520638
+  set targetD to 104.772562797
+  set targetE to -49.592132375
+  set targetF to 327.561441656
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 19: home after rotation Y (vertical) positive
+  set settled to 0
+  set stage to 19
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 20: rotation Y (vertical) negative
+  set settled to 0
+  set stage to 20
+  set targetA to -462.931349714
+  set targetB to 527.036159272
+  set targetC to -324.861201757
+  set targetD to -46.361641348
+  set targetE to 101.607510095
+  set targetF to -257.568050373
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 21: home after rotation Y (vertical) negative
+  set settled to 0
+  set stage to 21
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 22: rotation Z positive
+  set settled to 0
+  set stage to 22
+  set targetA to 737.333813378
+  set targetB to -1036.322906510
+  set targetC to 310.807852587
+  set targetD to 145.593573751
+  set targetE to 737.333813378
+  set targetF to -1268.604117625
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 23: home after rotation Z positive
+  set settled to 0
+  set stage to 23
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 24: rotation Z negative
+  set settled to 0
+  set stage to 24
+  set targetA to -722.774182261
+  set targetB to 1057.268463372
+  set targetC to -311.984136162
+  set targetD to -144.864682086
+  set targetE to -722.774182261
+  set targetF to 1278.422794214
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 25: home after rotation Z negative
+  set settled to 0
+  set stage to 25
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 26: combined translation and rotation
+  set settled to 0
+  set stage to 26
+  set targetA to 350.967078170
+  set targetB to 339.475468854
+  set targetC to -63.764141449
+  set targetD to 294.892757012
+  set targetE to -118.186839893
+  set targetF to 294.160040892
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  # Stage 27: final home
+  set settled to 0
+  set stage to 27
+  set targetA to 0.000000000
+  set targetB to 0.000000000
+  set targetC to 0.000000000
+  set targetD to 0.000000000
+  set targetE to 0.000000000
+  set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  lab stop motor D hold
+  lab stop motor E hold
+  lab stop motor F hold
+  # Keep the real motors holding while the passive platform settles.
+  wait 1 seconds
+  set stage to 28
+  set completed to 1
+
+WHEN I receive "prepare all six":
+  set travelBound to 0.4
+  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetA - (lab motor A angle)))
+  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetB - (lab motor B angle)))
+  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetC - (lab motor C angle)))
+  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetD - (lab motor D angle)))
+  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetE - (lab motor E angle)))
+  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
+    set travelBound to (abs of (targetF - (lab motor F angle)))
+
+WHEN I receive "move all six":
+  set correctionA to 0
+  REPEAT UNTIL ((abs of (targetA - (lab motor A angle))) < 0.4) OR (correctionA = 3):
+    set speedA to 6
+    IF (correctionA) = 0 THEN:
+      set speedA to ((60 * (abs of (targetA - (lab motor A angle)))) / travelBound)
+      IF (speedA) > 60 THEN:
+        set speedA to 60
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+    lab stop motor A hold
+    wait 0.05 seconds
+    change correctionA by 1
+  IF (abs of (targetA - (lab motor A angle))) > 1.5 THEN:
+    broadcast "fail all" and wait
+    say "Axis A did not reach its target. Inspect the model and reset."
+    stop all
+  lab stop motor A hold
+
+WHEN I receive "move all six":
+  set correctionB to 0
+  REPEAT UNTIL ((abs of (targetB - (lab motor B angle))) < 0.4) OR (correctionB = 3):
+    set speedB to 6
+    IF (correctionB) = 0 THEN:
+      set speedB to ((60 * (abs of (targetB - (lab motor B angle)))) / travelBound)
+      IF (speedB) > 60 THEN:
+        set speedB to 60
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+    lab stop motor B hold
+    wait 0.05 seconds
+    change correctionB by 1
+  IF (abs of (targetB - (lab motor B angle))) > 1.5 THEN:
+    broadcast "fail all" and wait
+    say "Axis B did not reach its target. Inspect the model and reset."
+    stop all
+  lab stop motor B hold
+
+WHEN I receive "move all six":
+  set correctionC to 0
+  REPEAT UNTIL ((abs of (targetC - (lab motor C angle))) < 0.4) OR (correctionC = 3):
+    set speedC to 6
+    IF (correctionC) = 0 THEN:
+      set speedC to ((60 * (abs of (targetC - (lab motor C angle)))) / travelBound)
+      IF (speedC) > 60 THEN:
+        set speedC to 60
+    lab run motor C for (targetC - (lab motor C angle)) degrees at speedC degrees per second
+    lab stop motor C hold
+    wait 0.05 seconds
+    change correctionC by 1
+  IF (abs of (targetC - (lab motor C angle))) > 1.5 THEN:
+    broadcast "fail all" and wait
+    say "Axis C did not reach its target. Inspect the model and reset."
+    stop all
+  lab stop motor C hold
+
+WHEN I receive "move all six":
+  set correctionD to 0
+  REPEAT UNTIL ((abs of (targetD - (lab motor D angle))) < 0.4) OR (correctionD = 3):
+    set speedD to 6
+    IF (correctionD) = 0 THEN:
+      set speedD to ((60 * (abs of (targetD - (lab motor D angle)))) / travelBound)
+      IF (speedD) > 60 THEN:
+        set speedD to 60
+    lab run motor D for (targetD - (lab motor D angle)) degrees at speedD degrees per second
+    lab stop motor D hold
+    wait 0.05 seconds
+    change correctionD by 1
+  IF (abs of (targetD - (lab motor D angle))) > 1.5 THEN:
+    broadcast "fail all" and wait
+    say "Axis D did not reach its target. Inspect the model and reset."
+    stop all
+  lab stop motor D hold
+
+WHEN I receive "move all six":
+  set correctionE to 0
+  REPEAT UNTIL ((abs of (targetE - (lab motor E angle))) < 0.4) OR (correctionE = 3):
+    set speedE to 6
+    IF (correctionE) = 0 THEN:
+      set speedE to ((60 * (abs of (targetE - (lab motor E angle)))) / travelBound)
+      IF (speedE) > 60 THEN:
+        set speedE to 60
+    lab run motor E for (targetE - (lab motor E angle)) degrees at speedE degrees per second
+    lab stop motor E hold
+    wait 0.05 seconds
+    change correctionE by 1
+  IF (abs of (targetE - (lab motor E angle))) > 1.5 THEN:
+    broadcast "fail all" and wait
+    say "Axis E did not reach its target. Inspect the model and reset."
+    stop all
+  lab stop motor E hold
+
+WHEN I receive "move all six":
+  set correctionF to 0
+  REPEAT UNTIL ((abs of (targetF - (lab motor F angle))) < 0.4) OR (correctionF = 3):
+    set speedF to 6
+    IF (correctionF) = 0 THEN:
+      set speedF to ((60 * (abs of (targetF - (lab motor F angle)))) / travelBound)
+      IF (speedF) > 60 THEN:
+        set speedF to 60
+    lab run motor F for (targetF - (lab motor F angle)) degrees at speedF degrees per second
+    lab stop motor F hold
+    wait 0.05 seconds
+    change correctionF by 1
+  IF (abs of (targetF - (lab motor F angle))) > 1.5 THEN:
+    broadcast "fail all" and wait
+    say "Axis F did not reach its target. Inspect the model and reset."
+    stop all
+  lab stop motor F hold
+
+WHEN I receive "fail all":
+  set failed to 1
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  lab stop motor D hold
+  lab stop motor E hold
+  lab stop motor F hold
+
+WHEN I receive "watchdog":
+  REPEAT UNTIL (completed = 1):
+    IF (timer) > 480 THEN:
+      broadcast "fail all" and wait
+      say "The six-axis experiment timed out. Inspect the model and reset."
+      stop all
+    wait 0.1 seconds

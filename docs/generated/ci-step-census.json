@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T03:49:44.099Z",
+  "generatedAt": "2026-10-24T08:16:30.599Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1984,6 +1984,7 @@
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
+    "testflight-release-audit.yml",
     "testflight-release-recovery.yml",
     "vendor-freshness.yml"
   ],
@@ -7727,11 +7728,25 @@
         }
       },
       "sourceSha": "a11711d61"
+    },
+    "testflight-release-audit.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Read back admitted iOS and macOS tester availability",
+        "Retain categorical release readback"
+      ],
+      "inFileInNoRun": [
+        "Read back admitted iOS and macOS tester availability",
+        "Retain categorical release readback"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "robot-model-webkit-comparison.yml",
-    "at": "2026-10-24T03:49:44.099Z",
+    "workflow": "testflight-release-audit.yml",
+    "at": "2026-10-24T08:16:30.599Z",
     "sourceSha": "working-tree"
   }
 }

@@ -1,0 +1,16 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "archiveSha256": "db3d47cd9f965c0bd2e5265c799cc7a37046ad0cb00a122341256b0c8383f804",
+  "files": {
+    "models/rod-ratio.ldr": "d8416177934cf547a4865d4ffa73d5f9c3c392167e2622b865d3e744df02f9f3",
+    "programs/rod-ratio.bw": "f9bf1cea0f3c198475cb9d16bcc207802080bf89da3d7e3341da2e3760d4d65e",
+    "markers.json": "b3966be17203bccbe582f36eed709539cb38a3df7dbda09cb9a1ec4c9d059952",
+    "docs/contract.json": "c456d34aead5131c69f60b3b2d482e1e380ded12a81d5c191ba25cd96f6f847a",
+    "LICENSE.txt": "3d6c769648e8f873ea4d997e7e85bae30ab2d85b5ea6bbc7da0ac9d48671d4ae",
+    "checks/physical-guide-observer.mjs": "c31771031de7b3ed237cf92a6af5ac7ed069abd55d0ee535e7912cef37e36c8f",
+    "checks/run-native.mjs": "ae8ee6952958404fa35b52b01e8630a925b27b911235a13e2069e9f2eeb9c9f5",
+    "checks/physical-hinge-observer.mjs": "72f4ba6995f525053b1ebeb9d55d6c4727541d63bf77349531bc165c89c0ef65"
+  },
+  "reviewScope": "Original inputs and observers retained unchanged; current native and full browser acceptance recorded separately."
+}

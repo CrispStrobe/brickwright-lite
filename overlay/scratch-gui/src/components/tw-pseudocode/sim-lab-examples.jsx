@@ -3,7 +3,9 @@
 import PropTypes from 'prop-types';
 import React, {useEffect, useRef, useState} from 'react';
 import {MODEL_LESSONS} from '../../lib/bw-sim/model/example-catalog.js';
+import {EXPERIMENTAL_MODEL_DETAILS} from '../../lib/bw-sim/model/experimental-models.js';
 import {EXAMPLE_TOPICS, filterModelExamples} from '../../lib/bw-sim/model/example-browser.js';
+const EXAMPLE_DETAILS = Object.freeze({...MODEL_LESSONS, ...EXPERIMENTAL_MODEL_DETAILS});
 
 export const EXAMPLES_TEXT = {
     en: {title: 'Robot Lab examples', search: 'Search models and physics', topics: 'Physics topic', all: 'All topics',
@@ -25,6 +27,7 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
     const [query, setQuery] = useState('');
     const [topic, setTopic] = useState('');
     const [size, setSize] = useState('');
+    const [includeExperimental, setIncludeExperimental] = useState(false);
     const [pending, setPending] = useState(null);
     const [error, setError] = useState('');
     const search = useRef(null);
@@ -49,7 +52,7 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
     };
-    const filtered = filterModelExamples(models, MODEL_LESSONS, {query, topic, size, locale: lang});
+    const filtered = filterModelExamples(models.filter(m => includeExperimental || !m.experimental), EXAMPLE_DETAILS, {query, topic, size, locale: lang});
     return (
         <div style={{position: 'absolute', inset: 0, zIndex: 30, background: 'rgba(15,23,42,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8}}>
             <section ref={dialog} role="dialog" aria-modal="true" aria-label={T.title} data-testid="bw-sim-examples" onKeyDown={keyboard}
@@ -69,6 +72,10 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
                     <select aria-label={T.size} value={size} onChange={e => setSize(e.target.value)} style={{...button, minWidth: 0, flex: '1 1 170px'}}>
                         <option value="">{T.anySize}</option><option value="large">{T.large}</option><option value="small">{T.small}</option>
                     </select>
+                    <label style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: 12}}>
+                        <input type="checkbox" checked={includeExperimental} onChange={e => setIncludeExperimental(e.target.checked)} />
+                        {lang === 'de' ? 'Experimentelle Modelle anzeigen' : 'Include experimental'} ({models.filter(m => m.experimental).length})
+                    </label>
                 </div>
                 <p style={{fontSize: 12, color: '#475569', padding: '0 12px', margin: '0 0 10px'}}>{T.hint}</p>
                 <div role="status" style={{padding: '0 12px 8px', fontSize: 13}}>{T.count.replace('{n}', filtered.length)}</div>
@@ -78,24 +85,27 @@ const SimLabExamples = ({models, locale, selected, onChoose, onLesson, onClose})
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 12}}>
                         {filtered.map(entry => {
                             const key = entry.id || entry.file;
-                            const d = MODEL_LESSONS[key];
+                            const d = EXAMPLE_DETAILS[key];
                             const title = entry.title[lang] || entry.title.en;
                             return (
                                 <article key={key} data-testid="bw-sim-example-card" data-model={key}
                                     style={{background: '#fff', border: `2px solid ${selected === key ? '#7c3aed' : '#e2e8f0'}`, borderRadius: 8, padding: 12,
                                         display: 'flex', flexDirection: 'column', minWidth: 0}}>
                                     <h3 style={{fontSize: 15, margin: '0 0 6px'}}>{title}</h3>
+                                    {entry.experimental && <strong data-testid="bw-sim-example-experimental" style={{fontSize: 12, color: '#92400e', marginBottom: 6}}>
+                                        {lang === 'de' ? 'Experimentell · Bewegung ungeprüft' : 'Experimental · motion unchecked'}
+                                    </strong>}
                                     <span style={{fontSize: 12, color: '#6d28d9'}}>{EXAMPLE_TOPICS[d.topic][lang]}</span>
                                     {d.mechanism && <span data-testid="bw-sim-example-mechanism" style={{fontSize: 12, marginTop: 4, fontWeight: 600}}>{d.mechanism[lang] || d.mechanism.en}</span>}
                                     <p style={{fontSize: 13, lineHeight: 1.45, flex: 1}}>{d.description[lang]}</p>
-                                    <p style={{fontSize: 12, margin: '0 0 8px', color: '#475569'}}>{d.pieces} {T.pieces} · {d.motors} {T.motors} · {d.hubs.join(', ')}</p>
+                                    <p style={{fontSize: 12, margin: '0 0 8px', color: '#475569'}}>{d.pieces} {entry.experimental ? (lang === 'de' ? 'Platzierungen' : 'placements') : T.pieces} · {d.motors} {T.motors} · {d.hubs.join(', ')}</p>
                                     <small style={{color: '#475569', marginBottom: 10}}>{d.author} · {d.license}</small>
                                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
                                         <button type="button" style={button} disabled={Boolean(pending)} onClick={() => onLesson(key)} aria-label={`${T.lesson}: ${title}`}>{T.lesson}</button>
-                                        {!entry.example && <button type="button" style={button} disabled={Boolean(pending)} onClick={() => choose(key, false)} aria-label={`${T.open}: ${title}`}>
+                                        {!entry.example && <button type="button" style={button} disabled={Boolean(pending) || entry.blocked} onClick={() => choose(key, false)} aria-label={`${T.open}: ${title}`}>
                                             {pending === key ? T.loading : T.open}
                                         </button>}
-                                        {entry.example && <button type="button" style={{...button, background: '#ede9fe'}} disabled={Boolean(pending)}
+                                        {entry.example && <button type="button" style={{...button, background: '#ede9fe'}} disabled={Boolean(pending) || entry.blocked}
                                             onClick={() => choose(key, true)} aria-label={`${T.program}: ${title}`}>{pending === key ? T.loading : (lang === 'de' ? 'Öffnen' : 'Open')}</button>}
                                     </div>
                                 </article>

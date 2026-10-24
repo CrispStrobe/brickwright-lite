@@ -1,0 +1,190 @@
+{
+  "basePart": "hub",
+  "coordinateFrame": {
+    "part": "front_D",
+    "horizontalLocal": [
+      0,
+      0,
+      1
+    ],
+    "downLocal": [
+      1,
+      0,
+      0
+    ],
+    "depthLocal": [
+      0,
+      1,
+      0
+    ]
+  },
+  "rotationMarkers": {
+    "input": {
+      "part": "input_gear",
+      "pivotLocal": [
+        0,
+        0,
+        0
+      ],
+      "tipLocal": [
+        10,
+        0,
+        0
+      ],
+      "axisLocal": [
+        0,
+        0,
+        1
+      ]
+    },
+    "left": {
+      "part": "side_left",
+      "pivotLocal": [
+        0,
+        0,
+        0
+      ],
+      "tipLocal": [
+        10,
+        0,
+        0
+      ],
+      "axisLocal": [
+        0,
+        0,
+        1
+      ]
+    },
+    "compound_j": {
+      "part": "J_drive12",
+      "pivotLocal": [
+        0,
+        0,
+        0
+      ],
+      "tipLocal": [
+        10,
+        0,
+        0
+      ],
+      "axisLocal": [
+        0,
+        0,
+        1
+      ]
+    },
+    "compound_k": {
+      "part": "K_drive36",
+      "pivotLocal": [
+        0,
+        0,
+        0
+      ],
+      "tipLocal": [
+        10,
+        0,
+        0
+      ],
+      "axisLocal": [
+        0,
+        0,
+        1
+      ]
+    },
+    "right": {
+      "part": "side_right",
+      "pivotLocal": [
+        0,
+        0,
+        0
+      ],
+      "tipLocal": [
+        10,
+        0,
+        0
+      ],
+      "axisLocal": [
+        0,
+        0,
+        -1
+      ]
+    },
+    "carrier": {
+      "part": "differential_housing",
+      "pivotLocal": [
+        0,
+        0,
+        -30
+      ],
+      "tipLocal": [
+        20,
+        0,
+        -30
+      ],
+      "axisLocal": [
+        0,
+        0,
+        1
+      ]
+    },
+    "output": {
+      "part": "output_pointer",
+      "pivotLocal": [
+        0,
+        0,
+        -30
+      ],
+      "tipLocal": [
+        0,
+        0,
+        30
+      ],
+      "axisLocal": [
+        0,
+        1,
+        0
+      ]
+    },
+    "spider": {
+      "part": "spider",
+      "pivotLocal": [
+        0,
+        0,
+        0
+      ],
+      "tipLocal": [
+        10,
+        0,
+        0
+      ],
+      "axisLocal": [
+        0,
+        0,
+        1
+      ],
+      "relativeTo": "differential_housing"
+    }
+  },
+  "developmentSupportParts": [
+    "front_D"
+  ],
+  "physicalHingeInterfaces": [
+    "differential_housing:h0|left_shaft:a",
+    "differential_housing:h1|right_shaft:a",
+    "front_D:h0|output_shaft:a",
+    "front_D:h2|left_shaft:a",
+    "front_J:h0|output_shaft:a",
+    "front_J:h3|shaft_J:a",
+    "front_K:h2|shaft_K:a0",
+    "front_mount_L:h5|left_shaft:a",
+    "front_mount_spacer:h1|left_shaft:a",
+    "output_forward_frame:y4|output_pointer_shaft:a",
+    "rear_D:h2|right_shaft:a",
+    "rear_K:h2|shaft_K:a0",
+    "rear_mount_L:h5|right_shaft:a",
+    "rear_mount_spacer:h1|right_shaft:a",
+    "spider:c|differential_housing:q0"
+  ],
+  "approvedIssues": [],
+  "physicalGuideInterfaces": []
+}

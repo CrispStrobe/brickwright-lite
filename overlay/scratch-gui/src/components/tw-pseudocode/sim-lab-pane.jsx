@@ -657,12 +657,13 @@ class SimLabPane extends React.Component {
     /** loadModel from a block, a word or a call: a shipped model by id, or LDraw text. */
     async apiLoadModel (spec) {
         if (this.disposed || !this.lib) return {ok: false, code: 'no-model'};
+        const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
+        if (entry?.blocked) return {ok: false, code: 'experimental-blocked', message: entry.intro[this.locale] || entry.intro.en};
         if (this.state.status === 'running') this.apiStop();
         if (this.editor) {
             this.teardownEditor();
             this.setState({mode: 'simulate', placing: null, selection: []});
         }
-        const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
         if (entry) await this.openShipped(modelKey(entry), {preserveProgram: true});
         else {
             this.lastText = spec;
@@ -674,6 +675,17 @@ class SimLabPane extends React.Component {
     /** start from a block: run the world (never the green flag: the program asking is already running). */
     async apiStart () {
         if (!this.session || this.state.status === 'running') return;
+        // Resume an already connected virtual SPIKE world without admitting a
+        // new provider. Reconnecting disconnects that hub and clears its holds.
+        const virtual = this.hub.data;
+        if (this.state.status === 'paused' && !this.session.lockstep && !this.state.manualOverride &&
+            virtual.simulationEnabled && virtual.connected && this.spikeLoaded() &&
+            !this.rcxHub() && !this.radioHub() && !this.btProfile() &&
+            this.props.vm.getPeripheralIsConnected('spikeprime')) {
+            this.startClock();
+            this.setState({status: 'running'});
+            return;
+        }
         await this.run({greenFlag: false});
     }
 
@@ -1052,7 +1064,7 @@ class SimLabPane extends React.Component {
         // The name is written into the text's `0 Name:` line; one the record could not
         // keep would make the reopened text differ, so such a name is not used at all.
         const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
-        return simLabRecordFromText(this.lib.serializeModel(model, {name, title: MODEL_TITLE}),
+        return simLabRecordFromText(this.lib.serializeModel(model, {name, title: MODEL_TITLE, precision: 12}),
             {name, mat: this.state.mat, measurements: this.measurements});
     }
 
@@ -1102,7 +1114,7 @@ class SimLabPane extends React.Component {
 
     /** Back to simulation: compile what was built. */
     async exitBuild () {
-        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE});
+        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE, precision: 12});
         this.lastText = text;
         this.teardownEditor();
         this.setState({mode: 'simulate', placing: null, selection: []});
@@ -1166,6 +1178,7 @@ class SimLabPane extends React.Component {
         if (includeProgram && this.session) this.pause();
         const entry = this.lib.MODELS.find(m => modelKey(m) === key);
         if (!entry) return;
+        if (entry.blocked) { this.setState({message: entry.intro[this.locale] || entry.intro.en}); return; }
         const file = entry.file;
         const response = await fetch(`${this.lib.MODELS_BASE}${file}`);
         if (this.disposed || this.shippedRequest !== request) return;
@@ -1200,6 +1213,7 @@ class SimLabPane extends React.Component {
     async openGalleryExample (key, includeProgram) {
         const entry = this.lib.MODELS.find(m => modelKey(m) === key);
         if (!entry) throw new Error(this.text.failed);
+        if (entry.blocked) throw new Error(entry.intro[this.locale] || entry.intro.en);
         if (this.state.status === 'running') this.pause();
         if (this.editor) this.teardownEditor();
         await new Promise(resolve => this.setState({mode: 'simulate', placing: null, selection: [],
@@ -1998,7 +2012,7 @@ class SimLabPane extends React.Component {
     /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
     async setMat (mat) {
         if (!this.session) return;
-        const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
+        const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr', precision: 12});
         this.pause();
         const challenge = this.state.challenge && this.lib.CHALLENGES.find(c => c.id === this.state.challenge);
         if (challenge && challenge.mat !== (mat || 'plain')) this.endChallenge();
@@ -3056,7 +3070,7 @@ class SimLabPane extends React.Component {
                 <label style={labelled} title={T.model}>{icon('build')}
                     <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''} aria-label={T.model} style={field}
                         onChange={e => e.target.value && this.openShipped(e.target.value, {includeProgram: true, updateTitle: true})}>
-                        {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
+                        {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)} disabled={m.blocked}>{m.title[this.locale] || m.title.en}{m.experimental ? (this.locale === 'de' ? ' (experimentell)' : ' (experimental)') : ''}</option>)}
                         {modelFile && !shipped && <option value="">{modelFile}</option>}
                     </select>
                 </label>

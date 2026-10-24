@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "helios-transmission",
+  "language": "de",
+  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die Relativdrehzahlen, wenn ein anderes Glied angetrieben, gehalten oder freigegeben wird.",
+  "why": "Vergleiche die Relativdrehzahlen, wenn ein anderes Glied angetrieben, gehalten oder freigegeben wird.",
+  "try": [
+    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
+    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
+    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+  ],
+  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
+  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
+  "answer": "Vergleiche die Relativdrehzahlen, wenn ein anderes Glied angetrieben, gehalten oder freigegeben wird. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "further": [
+    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
+    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+  ],
+  "related": []
+}

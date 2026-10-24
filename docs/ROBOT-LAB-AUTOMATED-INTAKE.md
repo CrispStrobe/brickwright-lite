@@ -31,7 +31,7 @@ admission. `candidate.json` binds the source fingerprint, Git head, contracts
 and worktree status. Local admission is separate from exact-head hosted CI and
 normal PR landing; it does not upload a release or grant hardware acceptance.
 
-The first registered contracts cover SineShuttle and Quartermaster. Unknown
+Registered contracts cover SineShuttle, Quartermaster, WaveMaker with its correctly phased physical control, and Cascade with a real six-piece elbow brace. WaveMaker has 298 explicit placements and two required inferred crosses (300 physical pieces); its native suite checks the independently derived Cardan/differential laws, speed change, reversal, physical cancellation, anchor closure and world-space frame stability. Cascade checks independently moving links, elbow freedom/locking, the complete held-support observation, original hinge closure and world-space feet/pivot stability. Unknown
 model IDs and unknown principles are refused. This is an initial reusable
 qualification runner, not automatic support for every existing or future model.
 

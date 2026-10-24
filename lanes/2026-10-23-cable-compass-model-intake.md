@@ -27,5 +27,14 @@ and publication require their own repository ownership checks first.
 
 Preserve other model/measurement/rendering owners, protected core/compiler/
 collision files, API gateway/resource scope, firmware and release ownership.
-No TestFlight, release tags or installer publishing. CrispStrobe/BSD-3-Clause
+No application TestFlight, app release tags or installer publishing.
+Qualified supplier-only engine publication remains in the immutable adoption scope. CrispStrobe/BSD-3-Clause
 for our model work; retain external MIT notices.
+
+Candidate: the retained native impulse getter is qualified and published as
+Jolt bw.7. All 26 affected native/rope/pin checks and all 215 construction
+checks pass. Payload-law error is 0.304 mm; settled vertical support is
+99.96–99.97% of weight. Identical observed/plain runs preserve every body
+and joint trajectory. The single-worm-removal comparison completes both
+motor programs but fails payload positioning. Original failed receipts remain.
+Current full browser, replay, lesson and export qualification is pending.
