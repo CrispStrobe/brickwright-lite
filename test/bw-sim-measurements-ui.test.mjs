@@ -157,6 +157,17 @@ const bindingFixture = () => ({
     couplings: [{id: 'r0', kind: 'rope', parts: ['a', 'b']}, {id: 'r1', kind: 'rope', parts: ['a', 'c']}]
 });
 
+test('the unchanged Add controls still allocate new IDs and preserve existing definitions', () => {
+    const f = editorFixture();
+    f.name('New span'); f.submit();
+    assert.deepEqual(f.changes[0], [...props.definitions,
+        {id: 'custom-1', kind: 'distance', label: 'New span', targets: ['a', 'b'], visible: true}]);
+    const name = findElement(f.panel.render(), e => e.type === 'input' && e.props.maxLength === 80);
+    assert.equal(name.props.value, '');
+    f.name('Another span'); f.submit();
+    assert.deepEqual(f.changes[1].map(d => d.id), ['span', 'custom-1', 'custom-2']);
+});
+
 test('editing replaces one stable row and preserves latest visibility, other rows and plot selection', () => {
     const definitions = [{id: 'other', kind: 'mass', label: 'Other', targets: ['a'], visible: true},
         {...props.definitions[0], targets: ['a', 'b']}];

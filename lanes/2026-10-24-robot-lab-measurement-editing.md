@@ -47,8 +47,8 @@ identity and current visibility, checks current model and target identity at
 Save, and requires explicit confirmation of a legacy or mismatched joint/rope
 binding. Opening or canceling an edit does not migrate saved definitions.
 
-Eight local controls exercise the actual constructor and editor actions at a
-controlled state callback boundary. Six source mutations are detected, covering
+Ten local controls exercise the actual constructor and editor actions at a
+controlled state callback boundary. Seven source mutations are detected, covering
 ID replacement, missing session/binding fences, implicit target fallback and
 stale focus restoration. The initial focus-control failure is retained; preset
 actions now cancel drafts and restore row focus only when an edit was active.
@@ -56,8 +56,10 @@ These controls do not qualify ReactDOM, browser behavior or guest physics.
 
 The existing real React UI controls are extended, and the real measurement
 browser journey now edits targets through controls, checks stable IDs and plot
-selection, independently checks the selected hinge binding, and saves/reopens
-the generated project. Hosted execution of those controls and the new
+selection, independently checks the selected hinge binding, inspects the saved
+project sidecar and reopens the generated project. Untouched automatic names
+follow quantity and locale changes without becoming stale custom labels.
+Hosted execution of those controls and the new
 source-bound browser journey, plus every enabled exact-head check, remain
 required before landing. No package, schema, persistence format, physics or
 workflow change is included.
