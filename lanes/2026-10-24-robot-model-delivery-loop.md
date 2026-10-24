@@ -97,3 +97,13 @@ coverage test. Add only the two observed dependency callers. The model harness
 now checks canonical catalogue metadata and CI example/budget coverage before
 browsers and audits actual test dependency redirects with the existing scope
 validator. No physical limit, engine setting, control or CI budget is relaxed.
+
+A later full unit shard passed all 3,455 assertions but its import audit found
+three additional model-native suites missing from the SIMD dependency manifest.
+The complete ten-model native cohort then passed all 88 assertions and the
+unchanged audit rejected those same exact callers. The correction declares
+only the observed model suites for the supported engine capability paths;
+actual baseline imports were recorded separately. No test implementation,
+model, program, solver, dependency pin or acceptance limit changed. The failed
+CI and preflight receipts remain retained; the updated source still requires
+all enabled exact-head hosted checks before landing and release.
