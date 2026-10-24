@@ -1,0 +1,498 @@
+{
+  "status": "FRESH_REBUILD_DRAFT",
+  "description": "New standard-part Root Bridge geometry; no earlier artifact identity or validation inherited.",
+  "model": "models/root-bridge.ldr",
+  "controlModel": "controls/root-bridge-decoupled.ldr",
+  "chassisPartId": "foundation_0",
+  "originInChassisLocalLdu": [
+    10,
+    -404,
+    0
+  ],
+  "aMarker": {
+    "partId": "a_marker",
+    "localPoint": [
+      0,
+      0,
+      20
+    ]
+  },
+  "bMarker": {
+    "partId": "b_marker",
+    "localPoint": [
+      0,
+      0,
+      20
+    ]
+  },
+  "outputMarker": {
+    "partId": "height_marker",
+    "localPoint": [
+      0,
+      0,
+      0
+    ]
+  },
+  "leftGuide": {
+    "partId": "left_key",
+    "originLocalPoint": [
+      0,
+      0,
+      0
+    ],
+    "directionLocalPoint": [
+      20,
+      0,
+      0
+    ]
+  },
+  "rightGuide": {
+    "partId": "right_key",
+    "originLocalPoint": [
+      0,
+      0,
+      0
+    ],
+    "directionLocalPoint": [
+      20,
+      0,
+      0
+    ]
+  },
+  "dimensions": {
+    "aDomainLdu": [
+      60,
+      100
+    ],
+    "bDomainLdu": [
+      60,
+      100
+    ],
+    "savedInputsLdu": [
+      80,
+      80
+    ],
+    "factorBudgetLdu": [
+      58,
+      102
+    ],
+    "positiveHeightIntervalLdu": [
+      40,
+      120
+    ],
+    "cornerWorldLdu": [
+      0,
+      0,
+      80
+    ]
+  },
+  "drives": {
+    "A": {
+      "motorPartId": "motor_A",
+      "crankPartId": "a_crank",
+      "rodPartId": "a_rod",
+      "carriagePartId": "a_drive_arm",
+      "radiusLdu": 60,
+      "rodLengthLdu": 100,
+      "distanceOffsetLdu": 160,
+      "savedCrankAngleDeg": 90,
+      "inwardDirectionWorld": [
+        1,
+        0,
+        0
+      ],
+      "sideDirectionWorld": [
+        0,
+        0,
+        -1
+      ],
+      "motorCenterWorldLdu": [
+        -200,
+        110,
+        -160
+      ],
+      "crankCenter": {
+        "partId": "a_crank",
+        "localPoint": [
+          0,
+          0,
+          0
+        ]
+      },
+      "crankEnd": {
+        "partId": "a_crank",
+        "localPoint": [
+          0,
+          0,
+          -60
+        ]
+      },
+      "rodStart": {
+        "partId": "a_rod",
+        "localPoint": [
+          0,
+          0,
+          -60
+        ]
+      },
+      "rodEnd": {
+        "partId": "a_rod",
+        "localPoint": [
+          0,
+          0,
+          40
+        ]
+      },
+      "carriagePoint": {
+        "partId": "a_drive_arm",
+        "localPoint": [
+          0,
+          0,
+          -100
+        ]
+      },
+      "inputMarker": {
+        "partId": "a_marker",
+        "localPoint": [
+          0,
+          0,
+          20
+        ]
+      }
+    },
+    "B": {
+      "motorPartId": "motor_B",
+      "crankPartId": "b_crank",
+      "rodPartId": "b_rod",
+      "carriagePartId": "b_drive_arm",
+      "radiusLdu": 60,
+      "rodLengthLdu": 100,
+      "distanceOffsetLdu": 160,
+      "savedCrankAngleDeg": 90,
+      "inwardDirectionWorld": [
+        -1,
+        0,
+        0
+      ],
+      "sideDirectionWorld": [
+        0,
+        0,
+        -1
+      ],
+      "motorCenterWorldLdu": [
+        200,
+        30,
+        -160
+      ],
+      "crankCenter": {
+        "partId": "b_crank",
+        "localPoint": [
+          0,
+          0,
+          0
+        ]
+      },
+      "crankEnd": {
+        "partId": "b_crank",
+        "localPoint": [
+          0,
+          0,
+          -60
+        ]
+      },
+      "rodStart": {
+        "partId": "b_rod",
+        "localPoint": [
+          0,
+          0,
+          -60
+        ]
+      },
+      "rodEnd": {
+        "partId": "b_rod",
+        "localPoint": [
+          0,
+          0,
+          40
+        ]
+      },
+      "carriagePoint": {
+        "partId": "b_drive_arm",
+        "localPoint": [
+          0,
+          0,
+          -100
+        ]
+      },
+      "inputMarker": {
+        "partId": "b_marker",
+        "localPoint": [
+          0,
+          0,
+          20
+        ]
+      }
+    }
+  },
+  "sliders": [
+    {
+      "role": "left",
+      "railPartIds": [
+        "left_rail_-20",
+        "left_rail_20"
+      ],
+      "togglePartIds": [
+        "left_toggle_-20",
+        "left_toggle_20"
+      ],
+      "marker": {
+        "partId": "left_marker",
+        "localPoint": [
+          0,
+          0,
+          0
+        ]
+      },
+      "savedAxisWorld": [
+        -0.7071067811865476,
+        0,
+        -0.7071067811865476
+      ],
+      "savedCenterCoordinateLdu": -6.862915010152392,
+      "physicalCenterIntervalLdu": [
+        -60,
+        40
+      ],
+      "originWorldLdu": [
+        -84.8528137423857,
+        0,
+        -4.852813742385706
+      ],
+      "group": "left_carriage",
+      "railGroup": "corner"
+    },
+    {
+      "role": "right",
+      "railPartIds": [
+        "right_rail_-20",
+        "right_rail_20"
+      ],
+      "togglePartIds": [
+        "right_toggle_-20",
+        "right_toggle_20"
+      ],
+      "marker": {
+        "partId": "right_marker",
+        "localPoint": [
+          0,
+          0,
+          0
+        ]
+      },
+      "savedAxisWorld": [
+        0.7071067811865476,
+        0,
+        -0.7071067811865476
+      ],
+      "savedCenterCoordinateLdu": -6.862915010152392,
+      "physicalCenterIntervalLdu": [
+        -60,
+        40
+      ],
+      "originWorldLdu": [
+        84.8528137423857,
+        0,
+        -4.852813742385706
+      ],
+      "group": "right_carriage",
+      "railGroup": "corner"
+    },
+    {
+      "role": "a",
+      "railPartIds": [
+        "a_rail_-20",
+        "a_rail_20"
+      ],
+      "togglePartIds": [
+        "a_toggle_-20",
+        "a_toggle_20"
+      ],
+      "marker": {
+        "partId": "a_marker",
+        "localPoint": [
+          0,
+          0,
+          0
+        ]
+      },
+      "savedAxisWorld": [
+        1,
+        0,
+        0
+      ],
+      "savedCenterCoordinateLdu": 0,
+      "physicalCenterIntervalLdu": [
+        -60,
+        60
+      ],
+      "originWorldLdu": [
+        -80,
+        0,
+        -40
+      ],
+      "group": "a_carriage",
+      "railGroup": "chassis"
+    },
+    {
+      "role": "b",
+      "railPartIds": [
+        "b_rail_-20",
+        "b_rail_20"
+      ],
+      "togglePartIds": [
+        "b_toggle_-20",
+        "b_toggle_20"
+      ],
+      "marker": {
+        "partId": "b_marker",
+        "localPoint": [
+          0,
+          0,
+          0
+        ]
+      },
+      "savedAxisWorld": [
+        1,
+        0,
+        0
+      ],
+      "savedCenterCoordinateLdu": 0,
+      "physicalCenterIntervalLdu": [
+        -60,
+        60
+      ],
+      "originWorldLdu": [
+        80,
+        0,
+        -40
+      ],
+      "group": "b_carriage",
+      "railGroup": "chassis"
+    },
+    {
+      "role": "height",
+      "railPartIds": [
+        "height_rail_-20",
+        "height_rail_20"
+      ],
+      "togglePartIds": [
+        "height_toggle_-20",
+        "height_toggle_20"
+      ],
+      "marker": {
+        "partId": "height_marker",
+        "localPoint": [
+          0,
+          0,
+          0
+        ]
+      },
+      "savedAxisWorld": [
+        0,
+        0,
+        1
+      ],
+      "savedCenterCoordinateLdu": 0,
+      "physicalCenterIntervalLdu": [
+        -40,
+        40
+      ],
+      "originWorldLdu": [
+        0,
+        0,
+        80
+      ],
+      "group": "height_carriage",
+      "railGroup": "chassis"
+    }
+  ],
+  "removedSwivelPartId": "b_swivel",
+  "control": {
+    "removedPartIds": [
+      "b_swivel"
+    ],
+    "addedPartIds": [],
+    "unchangedPartRecords": true
+  },
+  "fixedFloor": {
+    "partIds": [
+      "foundation_tie_-200",
+      "foundation_tie_280"
+    ],
+    "planeY_Ldu": 420
+  },
+  "assemblySteps": [
+    {
+      "step": 1,
+      "title": "Retained perpendicular guide rails",
+      "pieces": 88
+    },
+    {
+      "step": 2,
+      "title": "Blue and green input sliders",
+      "pieces": 84
+    },
+    {
+      "step": 3,
+      "title": "Passive positive-branch height slider and corner bearing",
+      "pieces": 58
+    },
+    {
+      "step": 4,
+      "title": "Two real slider-crank drives",
+      "pieces": 20
+    },
+    {
+      "step": 5,
+      "title": "Input rail frame supports",
+      "pieces": 43
+    },
+    {
+      "step": 6,
+      "title": "Height rail frame supports",
+      "pieces": 36
+    },
+    {
+      "step": 7,
+      "title": "Separated motor housing mounts",
+      "pieces": 68
+    },
+    {
+      "step": 8,
+      "title": "Physical SPIKE hub support",
+      "pieces": 37
+    },
+    {
+      "step": 9,
+      "title": "Connected studded foundation",
+      "pieces": 9
+    }
+  ],
+  "physicalAccessoriesNotPlacements": [
+    {
+      "part": "45610",
+      "quantity": 1,
+      "description": "Required SPIKE hub rechargeable battery; not a separate rigid placement."
+    }
+  ],
+  "integral_cables": {
+    "quantity": 2,
+    "description": "Integral motor leads to hub A and B, routed clear of guides and rods."
+  },
+  "model_sha256": "bc21aac0bbd899b85acc974af60059586ad63d978dcd4aa7416ef5646c008357",
+  "control_sha256": "1903a15edb2b0efb2b8591e19388abd6fe3616ffb8554c098e5a781cc69d6653",
+  "physicalPieces": 443,
+  "controlPieces": 442,
+  "hubCount": 1,
+  "motorCount": 2
+}

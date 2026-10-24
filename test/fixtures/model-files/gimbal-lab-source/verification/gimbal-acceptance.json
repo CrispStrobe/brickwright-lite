@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "status": "predeclared-before-final-qualification",
+  "model": "Gimbal Lab",
+  "expectedPorts": ["A", "B", "C"],
+  "dynamicBodies": 4,
+  "motorHinges": 3,
+  "allowedIssues": [],
+  "vmFrameMs": 33.333333333333336,
+  "nativeStepMs": 5,
+  "coldMs": 10000,
+  "afterMs": 1000,
+  "timeLimitMs": 180000,
+  "minimumNativeSamples": 2500,
+  "minimumSamplesPerDisplayStage": 20,
+  "displayStages": {
+    "regular": 10,
+    "regularA": 11,
+    "regularC": 12,
+    "oblique": 20,
+    "obliqueA": 21,
+    "obliqueC": 22,
+    "locked": 30,
+    "lockedA": 31,
+    "lockedC": 32,
+    "cancelled": 33,
+    "returned": 40,
+    "complete": 99
+  },
+  "limits": {
+    "orientationErrorDeg": 1,
+    "regularAxisDot": 0.02,
+    "lockedAxisDot": 0.999,
+    "jacobianCosineError": 0.02,
+    "returnAngleDeg": 1,
+    "closureMm": 0.15,
+    "baseTravelMm": 1,
+    "baseTiltDeg": 0.5,
+    "coldJointDeg": 1,
+    "displayTargetDeg": 1,
+    "minimumExcursionDeg": 15,
+    "cancellationOrientationDeg": 1,
+    "singleAxisCrossTalkDeg": 1
+  },
+  "notes": [
+    "All thresholds apply to actual native body poses, hinge states and real program completion.",
+    "The physical pose is never driven from an analytical equation.",
+    "Display-stage middle angles are compared by magnitude: 0, 60 and 90 degrees. The documented native signs come from the developmental cardinal-axis probe.",
+    "Any known importer warning must be added as an exact justified issue before final qualification, never silently filtered by a broad code category.",
+    "The final program must publish display stage only after its moves have completed and provide enough settled dwell samples. Movement stages may use other numbers.",
+    "The API-only probe is developmental and does not satisfy this actual-VM contract."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "archive": "TwinTempo-Technic-Addon.zip",
+  "files": {
+    "models/twin-tempo.ldr": "ed13713938c71e3f1b5f5b358b8a74eb7edea0c18bec0546cd8f36b35f8ae500",
+    "programs/twin-tempo.bw": "ef935670756e2f502c9eddcfb05cd79c324eaf841772c5b51f45ee2b8cf58aa4",
+    "LICENSE.txt": "b31de25a5a005b87ffe417656d47b3dbb0b18fd7a40bd788aa44ba9bc5930376"
+  }
+}

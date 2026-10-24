@@ -68,7 +68,7 @@ const rotate = (v, k, t) => {
 
 test('the Crane is a shipped example with its program, titled in English and German', () => {
     assert.ok(ENTRY, 'MODELS lists crane.ldr');
-    assert.deepEqual(ENTRY.title, {en: 'Crane', de: 'Kran'});
+    assert.deepEqual(ENTRY.title, {en: 'Crane — linear-actuator boom and geared slew', de: 'Kran — Spindelausleger und Zahnkranz-Schwenkung'});
     assert.match(PROGRAM, /^DEVICE SPIKE\s*$/m);
     for (const port of 'AB') assert.match(PROGRAM, new RegExp(`run motor ${port} `), `the program drives ${port}`);
 });

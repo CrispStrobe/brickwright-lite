@@ -223,7 +223,20 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Eine Kurbel führt den Koppelpunkt eines Hoeken-Viergelenks durch einen fast geraden Arbeitshub und einen gekrümmten Rücklauf."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Hoeken linkage",
+            "de": "Hoeken-Getriebe"
+        },
+        "keywords": [
+            "Hoeken linkage",
+            "Hoeken-Getriebe",
+            "Hoeken",
+            "Hoecken",
+            "Höken",
+            "four-bar linkage",
+            "Viergelenk"
+        ]
     },
     "twinpoint.ldr": {
         "pieces": 117,
@@ -277,6 +290,220 @@ export const MODEL_LESSONS = Object.freeze({
         "description": {
             "en": "Two nested motor axes tilt a maze tray beneath a free ball. Explore slope, gravity, inertia and wall contacts; use ±6° on A and ±10° on B.",
             "de": "Zwei verschachtelte Motorachsen neigen eine Labyrinthschale unter einer freien Kugel. Untersuche Neigung, Schwerkraft, Trägheit und Wandkontakte; nutze ±6° an A und ±10° an B."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "sine-shuttle.ldr": {
+        "pieces": 105,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A captured transverse block projects a 16 mm crank circle into two perpendicular 32 mm slider strokes. Compare sinusoidal position, speed, acceleration and reverse return.",
+            "de": "Ein gefangener Quergleitstein zerlegt den Kurbelkreis mit 16 mm Radius in zwei rechtwinklige Schieberhübe von 32 mm. Vergleiche sinusförmige Lage, Geschwindigkeit, Beschleunigung und Rücklauf."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Scotch yoke",
+            "de": "Kurbelschleife"
+        },
+        "keywords": [
+            "Scotch yoke",
+            "Kurbelschleife",
+            "Scotch yoke",
+            "captured block",
+            "harmonic motion",
+            "sinusoidal motion",
+            "Kurbelschleife",
+            "harmonische Bewegung",
+            "Doppelschieber"
+        ]
+    },
+    "quartermaster.ldr": {
+        "pieces": 209,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A retained roller advances a passive four-slot wheel by quarter turns. A second motor opens and closes the physical latch: compare engagement, dwell and reverse indexing.",
+            "de": "Eine gehaltene Rolle schaltet ein passives Rad mit vier Schlitzen in Vierteldrehungen weiter. Ein zweiter Motor öffnet und schließt die mechanische Sperre: Vergleiche Eingriff, Rast und Rückschaltung."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Contact indexer with dwell latch",
+            "de": "Schrittgetriebe mit Rastsperre"
+        },
+        "keywords": [
+            "Contact indexer with dwell latch",
+            "Schrittgetriebe mit Rastsperre",
+            "contact indexer",
+            "indexing wheel",
+            "quarter turn",
+            "intermittent motion",
+            "dwell latch",
+            "Schrittgetriebe",
+            "Rastgetriebe",
+            "Vierteldrehung",
+            "Rastsperre"
+        ]
+    },
+    "watt-line.ldr": {
+        "pieces": 148,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Watt’s four-bar linkage guides a passive coupler midpoint along an approximately straight path. Compare the measured sideways error with the exact circle-intersection geometry.",
+            "de": "Watts Viergelenk führt den passiven Koppelmittelpunkt auf einer annähernd geraden Bahn. Vergleiche den gemessenen Seitenfehler mit der exakten Kreisschnitt-Geometrie."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Watt linkage",
+            "de": "Watt-Getriebe"
+        },
+        "keywords": [
+            "Watt linkage",
+            "Watt-Getriebe",
+            "Watt",
+            "Watts linkage",
+            "Watt’s linkage",
+            "four-bar linkage",
+            "approximate straight line"
+        ]
+    },
+    "twin-tempo.ldr": {
+        "pieces": 81,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "An 8:24:24 gear train drives equal-radius drums and two independent suspended loads. Measure the 3:1 travel ratio and compare gear direction, cord support and return.",
+            "de": "Ein 8:24:24-Zahnradgetriebe treibt gleich große Trommeln und zwei getrennt aufgehängte Lasten. Miss das Wegverhältnis 3:1 und vergleiche Drehrichtung, Seilkräfte und Rückkehr."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Gear reduction and drum hoist",
+            "de": "Zahnraduntersetzung und Seilwinde"
+        },
+        "keywords": [
+            "Gear reduction and drum hoist",
+            "Zahnraduntersetzung und Seilwinde",
+            "gear ratio",
+            "3:1",
+            "three to one",
+            "idler gear",
+            "Übersetzung",
+            "Seilzug",
+            "Trommelwinde"
+        ]
+    },
+    "root-bridge.ldr": {
+        "pieces": 447,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Two motors set positive input distances. Perpendicular sliding guides locate a passive output at their geometric mean; equal products give the same output.",
+            "de": "Zwei Motoren stellen positive Eingangsstrecken ein. Senkrechte Schiebeführungen legen den passiven Ausgang auf ihr geometrisches Mittel fest; gleiche Produkte ergeben denselben Ausgang."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "balance-engine.ldr": {
+        "pieces": 294,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Two slider-cranks drive a passive spring-centred carrier. Compare 0°, 90° and 180° phasing: primary piston motions add or cancel, while finite rod length leaves a residual.",
+            "de": "Zwei Schubkurbeltriebe bewegen einen passiven, durch Bänder zentrierten Träger. Vergleiche 0°, 90° und 180° Phasenversatz: Die primären Kolbenbewegungen addieren sich oder heben sich auf; die endliche Pleuellänge lässt einen Rest."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "cusp-lab.ldr": {
+        "pieces": 128,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor rides a guided carriage as its pinion rolls along a fixed rack. A short pointer traces a cusped cycloid; a longer pointer reverses locally and traces a loop. Compare translation, rotation and their instantaneous velocity cancellation during one continuous forward turn and return.",
+            "de": "Ein Motor fährt auf einem geführten Schlitten, während sein Ritzel an einer festen Zahnstange abrollt. Ein kurzer Zeiger beschreibt eine Zykloide mit Spitze; ein längerer Zeiger läuft zeitweise rückwärts und bildet eine Schleife. Vergleiche Verschiebung, Drehung und ihre momentane Geschwindigkeitsaufhebung bei einer durchgehenden Vorwärtsdrehung und Rückfahrt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "gimbal-lab.ldr": {
+        "pieces": 245,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Three motorized nested axes reveal an orientation singularity. Compare yaw and roll at 0°, 60° and 90° middle pitch; near 90°, two moving motors nearly cancel at the marker while every bearing remains free.",
+            "de": "Drei motorisierte, verschachtelte Achsen zeigen eine Orientierungssingularität. Vergleiche Gieren und Rollen bei 0°, 60° und 90° mittlerer Neigung: Nahe 90° heben sich zwei Motorbewegungen am Marker fast auf, während alle Lager beweglich bleiben."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "resonance-lab.ldr": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A small motor-driven input excites a separate weighted arm through two rubber bands. Compare the near-resonant finite burst with fresh slow and fast experiments, then observe passive ringdown.",
+            "de": "Ein kleiner motorisierter Eingang regt über zwei Gummibänder einen getrennten, beschwerten Arm an. Vergleiche die resonanznahe endliche Anregung mit frisch geladenen langsamen und schnellen Versuchen und beobachte danach das freie Ausschwingen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "resonance-lab-slow": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same ±2° input and four cycles at 5 degrees per second. Compare the passive arm with the near-resonant and fast presets; each selection restores the saved pose.",
+            "de": "Derselbe Eingang von ±2° und vier Zyklen bei 5 Grad pro Sekunde. Vergleiche den passiven Arm mit den resonanznahen und schnellen Varianten; jede Auswahl lädt die gespeicherte Ausgangslage neu."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "resonance-lab-fast": {
+        "pieces": 144,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same ±2° input and four cycles at 80 degrees per second. Observe how inertia changes the passive response, then hold the input and compare the remaining oscillation.",
+            "de": "Derselbe Eingang von ±2° und vier Zyklen bei 80 Grad pro Sekunde. Beobachte, wie die Trägheit die passive Antwort verändert, und vergleiche danach das Ausschwingen bei gehaltenem Eingang."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
@@ -337,6 +564,20 @@ export const MODEL_LESSONS = Object.freeze({
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
+    "product-plotter.ldr": {
+        "pieces": 301,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Motor A tilts a straight guide and the blue carriage displays the first factor. Motor B moves the green output rail to set the second factor. The orange carriage has no motor: similar triangles make its displacement equal their product divided by a fixed reference length.",
+            "de": "Motor A neigt eine gerade Führung; der blaue Schlitten zeigt den ersten Faktor. Motor B verschiebt die grüne Ausgangsführung und stellt den zweiten Faktor ein. Der orange Schlitten hat keinen Motor: Ähnliche Dreiecke machen seinen Weg zum Produkt der beiden Faktoren, geteilt durch eine feste Bezugslänge."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
     "snapgate.ldr": {
         "pieces": 205,
         "motors": 1,
@@ -366,7 +607,7 @@ export const MODEL_LESSONS = Object.freeze({
         "license": "BSD-3-Clause"
     },
     "offset-orbit.ldr": {
-        "pieces": 141,
+        "pieces": 191,
         "motors": 1,
         "hubs": [
             "spike-prime"
@@ -375,6 +616,47 @@ export const MODEL_LESSONS = Object.freeze({
         "description": {
             "en": "One motor drives a parallel offset shaft at the same angular motion through two perpendicular sliders. The floating middle cross rotates once while its centre orbits twice per input turn.",
             "de": "Ein Motor treibt über zwei senkrecht zueinander stehende Schiebeführungen eine parallel versetzte Welle mit gleicher Drehbewegung an. Das schwimmende Kreuz dreht sich einmal, während sein Mittelpunkt pro Eingangsumdrehung zweimal umläuft."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Oldham coupling",
+            "de": "Oldham-Kupplung"
+        },
+        "keywords": [
+            "Oldham coupling",
+            "Oldham-Kupplung",
+            "Oldham",
+            "cross slider coupling",
+            "Kreuzschieberkupplung",
+            "parallel offset shafts",
+            "Oldham couplings"
+        ]
+    },
+    "circle-splitter.ldr": {
+        "pieces": 136,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor turns a carrier whose two moving 8T gears orbit a fixed 16T sun. The planet counterrotates, so two equal-radius markers trace perpendicular 80 mm straight strokes while their shaft follows a circle of radius 20 mm. Compare two speeds and reversal, then remove only the stationary sun gear.",
+            "de": "Ein Motor dreht einen Träger mit zwei beweglichen 8T-Rädern um ein festes 16T-Sonnenrad. Der Planet dreht entgegengesetzt: Zwei gleich weit entfernte Markierungen folgen senkrechten 80-mm-Geradenhüben, ihre Welle einem 20-mm-Kreis. Vergleiche zwei Geschwindigkeiten und Umkehr, entferne dann nur das feste Sonnenrad."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause"
+    },
+    "integral.ldr": {
+        "pieces": 155,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A continuously rotating tiled disk drives a free rubber wheel. Move the wheel through the center to vary its speed and reverse its direction. Gravity supplies contact pressure; the wheel is not motorized. The native recording measures finite-width slip.",
+            "de": "Eine gleichmäßig rotierende, geflieste Scheibe treibt ein freies Gummirad an. Verschiebe das Rad über die Mitte, um seine Geschwindigkeit und Drehrichtung zu verändern. Schwerkraft erzeugt den Anpressdruck; das Rad besitzt keinen Motor. Die native Aufzeichnung misst den Schlupf."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause"
@@ -433,7 +715,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Motor bewegt den passiven Ausgang mit doppeltem Radius und doppelter Bahngeschwindigkeit. Acht Pausen zeigen die Punktgeometrie im Verhältnis 2:1."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit",
+            "pantographs"
+        ]
     },
     "pantograph-doubler.ldr": {
         "pieces": 83,
@@ -447,7 +745,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Motor treibt einen passiven Pantografen: Aus einem 32-mm-Eingangskreis wird ein 64-mm-Ausgangskreis. Vergleiche Weg, Geschwindigkeit und Fläche."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit",
+            "pantographs"
+        ]
     },
     "scale-studio.ldr": {
         "pieces": 101,
@@ -461,7 +775,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Vierteldrehungs-Pausen zeigen einen passiven 2:1-Pantografen. Vergleiche entsprechende Punkte der 32-mm- und 64-mm-Kreise."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit",
+            "pantographs"
+        ]
     },
     "ripple-relay.ldr": {
         "pieces": 191,
@@ -475,7 +805,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke gleichen die Drehzahlschwankung der Zwischenwelle aus. Vergleiche alle drei Wellen."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Universal / Cardan joints",
+            "de": "Kardan- / Kreuzgelenke"
+        },
+        "keywords": [
+            "Universal / Cardan joints",
+            "Kardan- / Kreuzgelenke",
+            "universal joint",
+            "Cardan",
+            "Hooke joint",
+            "Hooke’s joint",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "double Cardan",
+            "Doppel-Kardan"
+        ]
     },
     "crossglide.ldr": {
         "pieces": 216,
@@ -489,7 +835,20 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Eine Oldham-Kupplung verbindet versetzte Wellen mit gleicher Drehzahl. Ihr Mittelschlitten gleitet in zwei Richtungen und umläuft zweimal pro Wellendrehung."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Oldham coupling",
+            "de": "Oldham-Kupplung"
+        },
+        "keywords": [
+            "Oldham coupling",
+            "Oldham-Kupplung",
+            "Oldham",
+            "cross slider coupling",
+            "Kreuzschieberkupplung",
+            "parallel offset shafts",
+            "Oldham couplings"
+        ]
     },
     "scale-echo.ldr": {
         "pieces": 148,
@@ -503,7 +862,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Zwei Antriebe und ein Parallelogramm kopieren eine Markerbahn mechanisch in doppelter Größe. Vergleiche beide Bahnen und Verschiebungsvektoren."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Pantograph",
+            "de": "Pantograf"
+        },
+        "keywords": [
+            "Pantograph",
+            "Pantograf",
+            "pantograph",
+            "pantograf",
+            "pantographen",
+            "parallelogram linkage",
+            "Storchschnabel",
+            "homothety",
+            "Ähnlichkeit",
+            "pantographs"
+        ]
     },
     "turnwise.ldr": {
         "pieces": 127,
@@ -559,7 +934,18 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Zwei rechtwinklige Gelenkketten führen eine Plattform senkrecht. Vergleiche die Höhe mit dem Sinusgesetz und dem 24:1-Schneckenantrieb."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Sarrus linkage",
+            "de": "Sarrus-Getriebe"
+        },
+        "keywords": [
+            "Sarrus linkage",
+            "Sarrus-Getriebe",
+            "Sarrus",
+            "spatial six-bar linkage",
+            "räumliches Sechsgelenk"
+        ]
     },
     "magnetic-chess.ldr": {
         "pieces": 1208,
@@ -601,7 +987,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Gleiche Knickwinkel und richtig ausgerichtete Gabeln gleichen die Drehzahlschwankung zweier Kardangelenke aus. Vergleiche Zwischenwelle und Abtrieb."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Universal / Cardan joints",
+            "de": "Kardan- / Kreuzgelenke"
+        },
+        "keywords": [
+            "Universal / Cardan joints",
+            "Kardan- / Kreuzgelenke",
+            "universal joint",
+            "Cardan",
+            "Hooke joint",
+            "Hooke’s joint",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "double Cardan",
+            "Doppel-Kardan"
+        ]
     },
     "phase-bridge-misphased.ldr": {
         "pieces": 144,
@@ -615,7 +1017,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Ein Ausrichtungsfehler von einer Vierteldrehung verstärkt die Drehzahlschwankung beider Kardangelenke. Vergleiche mit der richtig ausgerichteten Brücke."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Universal / Cardan joints",
+            "de": "Kardan- / Kreuzgelenke"
+        },
+        "keywords": [
+            "Universal / Cardan joints",
+            "Kardan- / Kreuzgelenke",
+            "universal joint",
+            "Cardan",
+            "Hooke joint",
+            "Hooke’s joint",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "double Cardan",
+            "Doppel-Kardan"
+        ]
     },
     "axis-plotter.ldr": {
         "pieces": 256,
@@ -671,7 +1089,23 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Sieben bewegliche Glieder führen den roten Punkt geradlinig durch einen Kurbelbereich von ±60°, ohne Gleitführung."
         },
         "author": "CrispStrobe",
-        "license": "BSD-3-Clause"
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Peaucellier–Lipkin linkage",
+            "de": "Peaucellier–Lipkin-Inversor"
+        },
+        "keywords": [
+            "Peaucellier–Lipkin linkage",
+            "Peaucellier–Lipkin-Inversor",
+            "Peaucellier",
+            "Lipkin",
+            "inversor",
+            "inversion",
+            "exact straight line",
+            "Peaucellier–Lipkin cell",
+            "Peaucellier cell",
+            "Peaucellier-Lipkin-Zelle"
+        ]
     },
     "pendulum-array.ldr": {
         "pieces": 54,
@@ -923,6 +1357,20 @@ export const MODEL_LESSONS = Object.freeze({
             "de": "Motor A hebt den Ausleger über eine Spindel; C schwenkt ihn mit 8:28-Untersetzung. Vergleiche Umdrehungen, Hub und Höhe."
         },
         "author": "Brickwright contributors",
+        "license": "BSD-3-Clause"
+    },
+    "sky-courier.ldr": {
+        "pieces": 251,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two 24:1 worm drives wind cords onto flanged drums. Changing both lengths moves the suspended gondola through a small workspace; the finite program visits top, left, right and home with both motors and fresh encoder readings.",
+            "de": "Zwei 24:1-Schneckengetriebe wickeln Schnüre auf Bundtrommeln. Ändern sich beide Längen, bewegt sich die schwebende Gondel in einem kleinen Arbeitsraum; das endliche Programm fährt oben, links, rechts und zurück mit beiden Motoren und frischen Drehgeberwerten."
+        },
+        "author": "CrispStrobe",
         "license": "BSD-3-Clause"
     },
     "pivot-rover.ldr": {
