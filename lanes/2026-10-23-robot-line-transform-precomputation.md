@@ -55,3 +55,16 @@ measured speed gain or resolution is inferred from this source change.
 
 The new controls are included in the existing registered instancing suite; no
 GUI import allowlist or dependency permission is broadened.
+
+The integration candidate normally composes qualified transport PR1274 and the
+existing SPIKE lifecycle source from PR1279. The shared Lab pane retains both
+session-bound manual state cleanup and transport registration/retirement. Its
+focused connection controls pass (63), as do the native-session controls (74).
+The qualified main adoption includes WeDo `a6950fac` and Powered Up `817f01ac`;
+these are retained explicitly in the composition.
+
+The frozen PR1279 installed campaign remains separate component evidence.
+Lab routing now shares SPIKE's provider and port 8081, so the final combined
+frontend/native package still requires actual Lab-to-native handover and distinct
+own-NuttX recovery, plus complete Sine/Quartermaster browser qualification.
+No combined installed or model success is inferred from the earlier package.
