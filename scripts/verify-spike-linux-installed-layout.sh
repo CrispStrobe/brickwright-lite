@@ -27,5 +27,7 @@ check dir-modes "[ -z \"\$(find $R -type d ! -perm 755 -print -quit)\" ]"
 check root-owned "[ -z \"\$(find $R /usr/bin/brickwright-tauri ! -user root -print -quit)\" ]"
 check desktop-entry "[ -s /usr/share/applications/brickwright.desktop ]"
 for n in LICENSE THIRD-PARTY-NOTICES.md spike-linux-crate-inventory.json spike-linux-licence-review.json; do check "doc-$n" "[ -s $D/$n ]"; done
-check rust-crate-notices "[ \"\$(find $D/rust-crates -mindepth 1 -maxdepth 1 -type d | wc -l)\" -gt 300 ]"
+# Count crates whose notice directory holds a non-empty file: dpkg creates the
+# directories even when a path-exclude policy drops every file inside them.
+check rust-crate-notices "[ \"\$(find $D/rust-crates -mindepth 2 -type f -size +0 -printf '%h\\n' | sort -u | wc -l)\" -gt 300 ]"
 exit $fail

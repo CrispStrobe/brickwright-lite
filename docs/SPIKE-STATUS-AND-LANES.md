@@ -956,8 +956,8 @@ is unrecorded. Gtk# and mcs are not shipped. No hosted workflow runs the Linux b
   `identity.imageSha256`, the 8192-byte `initial-flash.bin` geometry, and the
   MicroPython support `manifest.json` digests. Those owners must provide source pins,
   complete notice sets for every staged binary, and corresponding-source pointers for
-  Apache/BSD/MIT firmware parts. Renode upstream must provide the source pointer
-  for LGPL `tlib` in the pinned distribution.
+  Apache/BSD/MIT firmware parts. The LGPL `tlib` source pointer is recorded
+  (`antmicro/tlib@d50c868f` via `renode-infrastructure-spike-prime@1253d925`).
 
 ### G06 — Improve model fidelity and unchanged-image bringup
 
