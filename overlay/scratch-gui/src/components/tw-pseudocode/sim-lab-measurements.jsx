@@ -85,8 +85,11 @@ class SimLabMeasurements extends React.Component {
             this.nameInput.current?.focus?.();
         });
     }
-    cancelEdit () {
-        this.setState({editor: null, editorStatus: ''}, () => this.returnFocus?.focus?.());
+    cancelEdit (afterCancel) {
+        this.setState({editor: null, editorStatus: ''}, () => {
+            this.returnFocus?.focus?.();
+            afterCancel?.();
+        });
     }
     changeKind (kind) {
         const oldSpec = MEASUREMENT_KINDS[this.state.editor?.kind || this.state.kind], nextSpec = MEASUREMENT_KINDS[kind];
@@ -139,6 +142,10 @@ class SimLabMeasurements extends React.Component {
         }
         const validTargets = !spec.targets || targets.length === spec.targets && targets.every(id => this.props.parts.some(part => part.id === id));
         const selectedBinding = !spec.joint && !spec.rope || Boolean(binding && (!editor || editor.selectedBinding === binding));
+        if (editor && binding && !selectedBinding) {
+            this.setState({editor: {...editor, ...(spec.joint ? {joint: ''} : {rope: ''}), selectedBinding: '', status: 'chooseBinding'}, editorStatus: 'chooseBinding'});
+            return;
+        }
         if (!validTargets || spec.joint && !joint || spec.rope && !rope || !selectedBinding || (!editor && this.props.definitions.length >= MEASUREMENT_LIMIT)) {
             if (editor) this.setState({editorStatus: !validTargets ? 'chooseTarget' : 'chooseBinding'});
             return;
@@ -244,9 +251,9 @@ class SimLabMeasurements extends React.Component {
                 </form>
                 <p style={{fontSize: 10}}>{de ? 'Bis zu 4 Diagramme mit je 128 echten Simulationszeitwerten. Lücken bedeuten: nicht verfügbar.' : 'Up to 4 plots, each with 128 actual simulation-time samples. Gaps mean unavailable.'}</p>
                 {this.props.teachingPreset && <button type="button" data-testid="bw-sim-measurement-teaching-preset"
-                    onClick={() => onChange(this.props.teachingPreset.definitions)} style={{marginTop: 6}}>
+                            onClick={() => this.cancelEdit(() => onChange(this.props.teachingPreset.definitions))} style={{marginTop: 6}}>
                     {de ? 'Lektionsmessungen anwenden' : 'Apply lesson measurements'}: {this.props.teachingPreset.title}</button>}
-                <button type="button" onClick={onPresets} style={{marginTop: 6}}>{T.presets}</button>
+                <button type="button" onClick={() => this.cancelEdit(onPresets)} style={{marginTop: 6}}>{T.presets}</button>
             </section>
         );
     }
