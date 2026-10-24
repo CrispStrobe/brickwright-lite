@@ -40,6 +40,44 @@ substitutes a newer sibling or silently moves a dependency.
    the display-only scope improvement below and report remaining limits before
    proposing another campaign.
 
+## Executed campaign — 2026-10-24
+
+[Run 40057471489](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40057471489)
+executed the fixed manifest at Lite `20f5ade6dda10616a3f51d5230496415c6e6b2f4`,
+Board `b5650092695643622a53bcc40008133760e2d8a2` and CUI
+`17fd4afb0bf27015b099ca67c9cca05919084654`, using Node 22.23.3 and ngspice 42.
+All **312 attempted, executed and comparable cases passed**: **264 ngspice**
+and **48 nominal analytic**, with zero failed, refused, noncomparable or not-run
+cases. The nine required retained-record perturbations were detected without
+replaying an original experiment. These are 12 authored topologies, not 312
+imported schematics or validation of the historical corpus.
+
+Independent readers checked all **4,448 retained files** and recomputed
+**87,488 numerical checks**, agreeing on all 312 cases. Observed coverage was
+**2,024 measurement locations**, **704 waveform channels / 68,480 waveform
+points**, **960 static observations** and **26,760 meter-window observations**.
+All 240 waveform receipts and 72 static command records join the admitted
+installed package identities. Independently reconstructed source fingerprints
+match the recorded CLI/engine fingerprints. This matrix uses JavaScript MNA;
+package-byte checks of unrelated Wasm payloads do not establish native execution.
+Transitive dependencies were not independently reconstructed; this is not a
+hermetic-execution certificate.
+
+The official original archive SHA-256 is
+`1456d0437b78c55b06b90dfa0b2b8ef60992a7ebd729184e6f08624d691a9828`.
+Input definitions and tolerances remained frozen at definition SHA-256
+`063ee3e41c26a30ae2fbf9e6435d0423215c62a8b738e5b4c8385f233c6a0304`.
+The archive and job log were acquired once; independent audit did not rerun
+CLI, engine or oracle. No model defect was demonstrated in this matrix, so no
+numerical patch or tolerance change is justified. Existing unrelated producer
+and audio work remains separately scoped. The remaining ordered task is the
+bounded scope-display improvement and actual built-consumer proof below.
+
+This result does not establish physical LM741/ADP7118 accuracy, missing device
+physics, analog front-end/ADC fidelity, hardware behavior, or a newer signed
+TestFlight application. Later package adoption must preserve this historical
+receipt rather than relabel it with unmeasured sources.
+
 ## Bounded implementation
 
 The eleven owned paths are the dated claim, campaign sections of `PLAN.md` and
