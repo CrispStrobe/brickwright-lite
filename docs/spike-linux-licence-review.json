@@ -118,38 +118,71 @@
    ]
   }
  },
- "crateLicenceFilesAbsentReviewed": [
-  "alloc-stdlib@0.2.4",
-  "bluez-async@0.8.2",
-  "bluez-generated@0.4.0",
-  "custom_debug@0.6.2",
-  "dlopen2@0.8.2",
-  "libappindicator-sys@0.9.0",
-  "seahash@4.1.0",
-  "selectors@0.36.1",
-  "unic-char-property@0.9.0",
-  "unic-char-range@0.9.0",
-  "unic-common@0.9.0",
-  "unic-ucd-ident@0.9.0",
-  "unic-ucd-version@0.9.0"
- ],
- "crateLicenceFilesAbsentNote": "These published crate sources contain no top-level licence file. Their declared SPDX expression is recorded in the inventory, but no copyright-bearing licence text is shipped for them. Open gap: needs upstream licence text (repository at the pinned version) before any redistribution claim.",
  "runtimeNoticesFlagged": {
-  "note": "Supplied Renode distribution notices whose text references LGPL/GPL or mixed terms. The installed renode is a single-file bundle; which of these components it actually embeds is not verified here.",
-  "lgplOrGplReferenced": [
-   "tlib-license (libqemu-derived, LGPL-2.1: source and relinking obligations apply; corresponding Renode source pointer not yet recorded)",
-   "AtkSharp-license",
-   "CairoSharp-license",
-   "GLibSharp-license",
-   "GdkSharp-license",
-   "GioSharp-license",
-   "GtkSharp-license",
-   "PangoSharp-license",
-   "NetMQ-license",
-   "Packet.Net-license",
-   "mcs-license (mixed MIT/GPL terms)",
-   "vendor-pip-19.2.3-py2.py3-none-any.whl-4-license"
+  "method": "Read-only inspection of the installed reference image (package 0.1.26): assembly and native-library names in the single-file renode bundle (string scan) plus the installed native .so list. A name absent from the scan is reported as not found, which is strong but not conclusive for a compressed bundle.",
+  "renodeSha256": "a6fae8ec00321a4b3502465842564466275fbe92b044535925b1f730125c5278",
+  "components": {
+   "tlib": {
+    "shipped": true,
+    "evidence": "Antmicro.Renode.translate-<arch>.so libraries embedded in the bundle",
+    "licence": "LGPL-2.1 (libqemu-derived), notice tlib-license present",
+    "obligations": "Retain notice; make corresponding source of the LGPL library available; allow replacement/relinking of the library",
+    "sourcePointer": "https://github.com/CrispStrobe/renode-infrastructure-spike-prime submodule src/Emulator/Cores/tlib (upstream antmicro/tlib)",
+    "status": "open: the Renode source revision of this binary is not recorded in package provenance (only its SHA-256), so the corresponding tlib commit cannot be bound. Relinking is practical because the translation libraries are separate shared objects inside the bundle; this is not verified."
+   },
+   "NetMQ": {
+    "shipped": true,
+    "evidence": "NetMQ.dll in the bundle",
+    "licence": "LGPL-3.0 with the NetMQ static-linking exception, notice NetMQ-license present",
+    "obligations": "Retain notice; provide corresponding source of NetMQ (unmodified NuGet package source)",
+    "sourcePointer": "upstream zeromq/netmq at the NuGet version used by the Renode build",
+    "status": "open: NuGet version not recorded in package provenance"
+   },
+   "Packet.Net": {
+    "shipped": true,
+    "evidence": "PacketDotNet.dll in the bundle",
+    "licence": "LGPL-3.0, notice Packet.Net-license present",
+    "obligations": "Retain notice; provide corresponding source; allow replacement of the assembly",
+    "sourcePointer": "https://github.com/CrispStrobe/renode-spike-prime submodule lib/Packet.Net",
+    "status": "open: same unrecorded Renode source revision"
+   },
+   "pip-vendored (pip 19.2.3 wheel, LGPL-2.1 notice index 4)": {
+    "shipped": true,
+    "evidence": "pip-19.2.3 / pip/_vendor strings in the bundle (Python standard-library payload)",
+    "licence": "LGPL-2.1 (a vendored pip dependency), notice present",
+    "obligations": "Retain notice; corresponding source is the published pip 19.2.3 sdist",
+    "sourcePointer": "https://pypi.org/project/pip/19.2.3/",
+    "status": "notice present; which vendored module the LGPL notice covers is not identified"
+   },
+   "Gtk# (GtkSharp, AtkSharp, CairoSharp, GLibSharp, GdkSharp, GioSharp, PangoSharp)": {
+    "shipped": false,
+    "evidence": "no GtkSharp/gtk-sharp/atk-sharp assembly names found; the GLib-2.0/GObject-2.0/Gst assemblies present belong to gir.core (MIT notice present)",
+    "status": "not applicable on the evidence of the scan"
+   },
+   "mcs (Mono C# compiler)": {
+    "shipped": false,
+    "evidence": "no Mono.CSharp or mcs assembly found; the only mcs strings are Python metaclass source",
+    "status": "not applicable on the evidence of the scan"
+   }
+  }
+ },
+ "crateLicenceFilesSupplemented": {
+  "crates": [
+   "alloc-stdlib@0.2.4",
+   "bluez-async@0.8.2",
+   "bluez-generated@0.4.0",
+   "custom_debug@0.6.2",
+   "dlopen2@0.8.2",
+   "libappindicator-sys@0.9.0",
+   "seahash@4.1.0",
+   "selectors@0.36.1",
+   "unic-char-property@0.9.0",
+   "unic-char-range@0.9.0",
+   "unic-common@0.9.0",
+   "unic-ucd-ident@0.9.0",
+   "unic-ucd-version@0.9.0"
   ],
-  "status": "open: LGPL is within policy only once source availability is recorded; any GPL-only component would need a reviewed exception"
+  "provenance": "docs/notices/rust-crates-supplemental/provenance.json",
+  "note": "The published sources of these crates have no licence file. The builder installs reviewed texts: upstream repository licence files where they exist (at a recorded default-branch commit, not necessarily the release), otherwise the standard text of the declared licence plus an attribution note taken from the published Cargo.toml. Copyright lines are only as complete as those upstream sources."
  }
 }

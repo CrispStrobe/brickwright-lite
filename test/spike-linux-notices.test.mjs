@@ -8,6 +8,8 @@ import {mkdtemp, mkdir, writeFile, readFile, readdir, rm, symlink} from 'node:fs
 import {readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 import {lockPackages, LOCK_PATH, INVENTORY_PATH} from '../scripts/gen-spike-linux-crate-inventory.mjs';
 import {REQUIRED_RUNTIME_NOTICES, requireRuntimeNotices, requireInventoryForLock, collectCrateNotices, lockDigest}
     from '../scripts/lib/spike-linux-notices.mjs';
@@ -15,6 +17,8 @@ import {REQUIRED_RUNTIME_NOTICES, requireRuntimeNotices, requireInventoryForLock
 const lockText = readFileSync(LOCK_PATH, 'utf8');
 const inventory = JSON.parse(readFileSync(INVENTORY_PATH, 'utf8'));
 const review = JSON.parse(readFileSync(new URL('../docs/spike-linux-licence-review.json', import.meta.url), 'utf8'));
+const supplementalRoot = fileURLToPath(new URL('../docs/notices/rust-crates-supplemental/', import.meta.url));
+const supplementalProvenance = JSON.parse(readFileSync(join(supplementalRoot, 'provenance.json'), 'utf8'));
 const key = row => `${row.name}@${row.version}`;
 
 test('inventory is bound to the current Cargo.lock and partitions every locked crate', () => {
@@ -38,7 +42,8 @@ test('a crate added to Cargo.lock without an inventory update is detected', () =
 
 test('licence review names only linked or build-time crates and records MPL sources', () => {
     const linked = new Set(inventory.linked.map(key)), build = new Set(inventory.buildTimeOnly.map(key));
-    for (const crate of review.crateLicenceFilesAbsentReviewed) assert.ok(linked.has(crate), crate);
+    for (const crate of review.crateLicenceFilesSupplemented.crates) assert.ok(linked.has(crate), crate);
+    assert.deepEqual(Object.keys(supplementalProvenance.crates).sort(), [...review.crateLicenceFilesSupplemented.crates].sort());
     const mpl = review.flaggedLicences['MPL-2.0'];
     assert.deepEqual(mpl.linked.map(e => e.crate).sort(), inventory.linked.filter(r => /MPL/.test(r.license)).map(key).sort());
     for (const entry of mpl.linked) assert.match(entry.cargoLockChecksum, /^[0-9a-f]{64}$/);
@@ -56,6 +61,25 @@ test('required Renode/.NET/LLVM notices are enforced', () => {
     }
 });
 
+test('every supplemental crate licence text exists with its recorded digest and provenance', () => {
+    for (const [crate, entry] of Object.entries(supplementalProvenance.crates)) {
+        assert.equal(entry.directory, crate.replace('@', '-'));
+        assert.ok(Object.keys(entry.files).some(name => /^LICEN[CS]E/.test(name)), `${crate} needs a licence text`);
+        for (const [name, meta] of Object.entries(entry.files)) {
+            const digest = createHash('sha256').update(readFileSync(join(supplementalRoot, entry.directory, name))).digest('hex');
+            assert.equal(digest, meta.sha256, `${crate}/${name}`);
+            assert.match(meta.origin, /\S/);
+        }
+    }
+});
+
+test('runtime notice review marks each flagged component shipped or not applicable', () => {
+    for (const [name, item] of Object.entries(review.runtimeNoticesFlagged.components)) {
+        assert.equal(typeof item.shipped, 'boolean', name);
+        if (item.shipped) for (const field of ['licence', 'obligations', 'sourcePointer', 'status']) assert.match(item[field], /\S/, `${name}.${field}`);
+    }
+});
+
 async function crates () {
     const root = await mkdtemp(join(tmpdir(), 'bw-crate-notices-'));
     const make = async (name, files) => {
@@ -67,25 +91,24 @@ async function crates () {
     const packages = [await make('a', {'LICENSE-MIT': 'mit a', 'LICENSE-APACHE': 'apache a', 'README.md': 'no'}),
         await make('b', {'COPYING': 'isc b'}), await make('c', {})];
     const inv = {linked: packages.map(p => ({name: p.name, version: p.version}))};
-    return {root, packages, inv};
+    const supplementalRoot = join(root, 'supplemental');await mkdir(join(supplementalRoot, 'c-1.0.0'), {recursive: true});
+    await writeFile(join(supplementalRoot, 'c-1.0.0/LICENSE'), 'mit c');
+    const supplemental = {'c@1.0.0': {directory: 'c-1.0.0', files: {LICENSE: {sha256: createHash('sha256').update('mit c').digest('hex')}}}};
+    return {root, packages, inv, supplemental, supplementalRoot};
 }
 
-test('crate notices are copied, and unreviewed licence-file gaps refuse the package', async () => {
-    const {root, packages, inv} = await crates();
+test('crate notices are copied, supplemental texts are digest-checked, and gaps refuse the package', async () => {
+    const {root, packages, inv, supplemental, supplementalRoot} = await crates();
+    const call = (destination, extra = {}) => collectCrateNotices({packages, inventory: inv, destination: join(root, destination), supplemental, supplementalRoot, ...extra});
     try {
-        const destination = join(root, 'out');
-        const result = await collectCrateNotices({packages, inventory: inv, destination, reviewedAbsent: ['c@1.0.0']});
-        assert.deepEqual(result.copied.sort(), ['a-1.0.0/LICENSE-APACHE', 'a-1.0.0/LICENSE-MIT', 'b-1.0.0/COPYING']);
-        assert.deepEqual(result.absent, ['c@1.0.0']);
-        assert.equal(await readFile(join(destination, 'b-1.0.0/COPYING'), 'utf8'), 'isc b');
-        assert.deepEqual((await readdir(destination)).sort(), ['a-1.0.0', 'b-1.0.0']);
-        await assert.rejects(collectCrateNotices({packages, inventory: inv, destination: join(root, 'o2'), reviewedAbsent: []}), /c@1.0.0/);
-        await assert.rejects(collectCrateNotices({packages, inventory: inv, destination: join(root, 'o3'), reviewedAbsent: ['c@1.0.0', 'a@1.0.0']}), /a@1.0.0/);
-        await assert.rejects(collectCrateNotices({packages: packages.slice(1), inventory: inv, destination: join(root, 'o4'), reviewedAbsent: ['c@1.0.0']}), /no local source/);
-        await writeFile(join(root, 'outside'), 'foreign');
-        await symlink(join(root, 'outside'), join(root, 'src/c-1.0.0/LICENSE'));
-        // A link is not a regular licence file: c stays absent, so the reviewed list still holds.
-        const linked = await collectCrateNotices({packages, inventory: inv, destination: join(root, 'o5'), reviewedAbsent: ['c@1.0.0']});
-        assert.deepEqual(linked.absent, ['c@1.0.0']);
+        const result = await call('out');
+        assert.deepEqual(result.copied.sort(), ['a-1.0.0/LICENSE-APACHE', 'a-1.0.0/LICENSE-MIT', 'b-1.0.0/COPYING', 'c-1.0.0/LICENSE']);
+        assert.deepEqual(result.supplemented, ['c@1.0.0']);
+        assert.equal(await readFile(join(root, 'out/c-1.0.0/LICENSE'), 'utf8'), 'mit c');
+        await assert.rejects(call('o2', {supplemental: {}}), /c@1.0.0/);
+        await assert.rejects(call('o3', {supplemental: {...supplemental, 'a@1.0.0': supplemental['c@1.0.0']}}), /a@1.0.0/);
+        await assert.rejects(call('o4', {packages: packages.slice(1)}), /no local source/);
+        await writeFile(join(supplementalRoot, 'c-1.0.0/LICENSE'), 'tampered');
+        await assert.rejects(call('o5'), /digest mismatch c@1.0.0/);
     } finally { await rm(root, {recursive: true, force: true}); }
 });

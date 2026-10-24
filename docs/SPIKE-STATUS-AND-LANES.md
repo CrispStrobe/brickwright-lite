@@ -877,8 +877,10 @@ platform/signing tests require their build environment and credentials.
 
 **Linux status (2026-10-24):** the linked crate set is generated and bound to
 `Cargo.lock`, flagged licences are reviewed, the builder enforces seven Renode/.NET/LLVM
-notices and installs crate notices, and an installed-layout check exists. Thirteen
-crates without licence files and the LGPL/GPL-referencing Renode notices stay open. See
+notices and installs crate notices (including reviewed texts for the 13 crates that publish
+none), and an installed-layout check exists. Renode composition is reviewed: tlib, NetMQ and
+Packet.Net ship, and their source binding stays open because the runtime source revision
+is unrecorded. Gtk# and mcs are not shipped. No hosted workflow runs the Linux builder yet. See
 [SPIKE-LINUX-DESKTOP.md](SPIKE-LINUX-DESKTOP.md#licence-review-of-the-linked-crate-set-2026-10-24).
 
 **Separate contracts, not met by Linux evidence:**
@@ -888,12 +890,23 @@ crates without licence files and the LGPL/GPL-referencing Renode notices stay op
   platform with its native-library and notice closure, resource-path checks for the
   platform's Tauri resource directory, its own refusal tests, and an installed-app
   layout check run on that OS.
-- *Signed installers and update channels:* need signing credentials (Apple Developer
-  ID plus notarization, Windows Authenticode, a Debian repository key) held outside
-  this repository. Evidence required: signature verification of the exact artifact
-  digest, notarization/stapling receipts where they apply, update-manifest signature
-  checks, and installed tests of the signed artifact. Signing must not change the
-  recorded resource bytes.
+- *Signed installers and update channels:* signing material lives in repository
+  secrets, never in this repository. **macOS (exists, general app):** `.github/workflows/release.yml`
+  signs on `macos-latest` with a Mac App Store identity and builds a `productbuild` `.pkg`
+  (no notarization). Release run 39680422030 (tag v0.1.26) logs `Brickwright.app: valid on
+  disk`, `satisfies its Designated Requirement`, and `productbuild: Wrote product ...
+  Brickwright.pkg`. That delivery does **not** stage the SPIKE Renode runtime, which is
+  Linux-only today. **Windows:** blocked. No Authenticode certificate exists. **Debian:**
+  no repository signing key or update channel. Evidence still required for any SPIKE
+  installer: signature verification of the exact artifact digest, notarization receipts
+  where they apply, update-manifest signature checks, and installed tests of the signed
+  artifact. Signing must not change the recorded resource bytes.
+- *SPIKE runtime on macOS (separate contract, not implemented):* Renode and .NET under the
+  App Sandbox need JIT (`com.apple.security.cs.allow-jit`) and child-process/inheritance
+  entitlements. Every nested executable and native library must be signed. A macOS Renode
+  distribution needs its own notice closure, a crate inventory for the macOS target, and
+  an installed test on macOS. The release workflow is owned by the model-delivery lane;
+  this lane does not dispatch it.
 - *Firmware L11 / Runtime inputs Lite depends on:* the NuttX/guest staged profile
   manifest and file list in `scripts/lib/spike-resource-profile.mjs` (including the
   licence files it requires), `state-config.json` `identity.firmware` and

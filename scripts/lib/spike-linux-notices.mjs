@@ -3,8 +3,8 @@
 // G05 notice gates for the offline Linux package builder. Notice retention only;
 // these checks do not establish licence clearance or redistribution validation.
 import {createHash} from 'node:crypto';
-import {copyFile, lstat, mkdir, readdir, realpath} from 'node:fs/promises';
-import {dirname, join, sep} from 'node:path';
+import {lstat, mkdir, readdir, readFile, realpath, writeFile} from 'node:fs/promises';
+import {dirname, join, relative, sep} from 'node:path';
 
 // Supplied Renode distribution notices that cover the native files the builder installs.
 export const REQUIRED_RUNTIME_NOTICES = Object.freeze({
@@ -35,31 +35,43 @@ const LICENCE_FILE = /^(LICEN[CS]E|COPYING|COPYRIGHT|NOTICE|UNLICENSE)([-._][A-Z
 /**
  * Copy each linked crate's own top-level licence/notice files into
  * destination/<name>-<version>/. Crates without such files must be exactly the
- * reviewed list; any other gap refuses the package.
+ * crates in the supplemental provenance; their reviewed texts are copied after
+ * a digest check. Any other gap, or a stale supplemental entry, refuses the package.
  */
-export async function collectCrateNotices ({packages, inventory, destination, reviewedAbsent}) {
+export async function collectCrateNotices ({packages, inventory, destination, supplemental, supplementalRoot}) {
     const byKey = new Map(packages.map(p => [`${p.name}@${p.version}`, p]));
     const absent = [], copied = [];
+    const copyChecked = async (root, name, key, target, expectedSha) => {
+        const source = join(root, name), info = await lstat(source);
+        if (!info.isFile() || info.size === 0 || info.size > 1024 * 1024) throw new Error(`Invalid crate notice ${key}/${name}`);
+        if (!(await realpath(source)).startsWith(root + sep)) throw new Error(`Crate notice escaped its source ${key}`);
+        const bytes = await readFile(source);
+        if (expectedSha && createHash('sha256').update(bytes).digest('hex') !== expectedSha) throw new Error(`Supplemental notice digest mismatch ${key}/${name}`);
+        await writeFile(join(target, name), bytes);
+        copied.push(`${relative(destination, target)}/${name}`);
+    };
     for (const crate of inventory.linked) {
         const key = `${crate.name}@${crate.version}`, pkg = byKey.get(key);
         if (!pkg?.manifest_path) throw new Error(`Linked crate ${key} has no local source`);
         const root = await realpath(dirname(pkg.manifest_path));
         const files = (await readdir(root, {withFileTypes: true}))
             .filter(entry => entry.isFile() && LICENCE_FILE.test(entry.name)).map(entry => entry.name).sort();
-        if (!files.length) { absent.push(key); continue; }
         const target = join(destination, `${crate.name}-${crate.version}`);
-        await mkdir(target, {recursive: true});
-        for (const name of files) {
-            const source = join(root, name), info = await lstat(source);
-            if (!info.isFile() || info.size === 0 || info.size > 1024 * 1024) throw new Error(`Invalid crate notice ${key}/${name}`);
-            if (!(await realpath(source)).startsWith(root + sep)) throw new Error(`Crate notice escaped its source ${key}`);
-            await copyFile(source, join(target, name));
-            copied.push(`${crate.name}-${crate.version}/${name}`);
+        if (!files.length) {
+            absent.push(key);
+            const entry = supplemental[key];
+            if (!entry) continue;
+            const dir = await realpath(join(supplementalRoot, entry.directory));
+            await mkdir(target, {recursive: true});
+            for (const [name, meta] of Object.entries(entry.files)) await copyChecked(dir, name, key, target, meta.sha256);
+            continue;
         }
+        await mkdir(target, {recursive: true});
+        for (const name of files) await copyChecked(root, name, key, target, null);
     }
-    const expected = [...reviewedAbsent].sort(), actual = absent.sort();
+    const expected = Object.keys(supplemental).sort(), actual = absent.sort();
     if (JSON.stringify(expected) !== JSON.stringify(actual)) {
-        throw new Error(`Crates without licence files differ from the reviewed list: ${actual.filter(k => !expected.includes(k)).concat(expected.filter(k => !actual.includes(k))).join(', ')}`);
+        throw new Error(`Crates without licence files differ from the supplemental list: ${actual.filter(k => !expected.includes(k)).concat(expected.filter(k => !actual.includes(k))).join(', ')}`);
     }
-    return {copied, absent: actual};
+    return {copied, supplemented: actual};
 }
