@@ -68,3 +68,12 @@ new observation while newest-main-run and all unrelated readings stay fixed.
 The composed head still needs exact-head CI. Regenerate both offline requests
 against that final head before separate metadata-event admission; source-only
 controls and a successful Build cannot approve a native, browser or guest run.
+
+The next mainline composition also retains the unrelated Robot Lab model,
+renderer and native-debugger changes at `ab7c288f`, including added browser
+shards in `build.yml`. None changes the selected native five or GUI twenty-one
+source files, package manifests, lockfile or supplier pins. A future current
+Build must bind this newer workflow and its actual checkout/tree; the earlier
+Build's success does not qualify the composed head. Full exact-head source CI
+and separate metadata admission remain required before a guarded native or GUI
+observation.
