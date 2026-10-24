@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T03:49:44.099Z",
+  "generatedAt": "2026-10-24T07:09:12.308Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1947,6 +1947,12 @@
       "workflow": "robot-model-webkit-comparison.yml",
       "branch": "lane/robot-model-webkit-comparison-20261023",
       "sha": "368bd55ae"
+    },
+    {
+      "run": 40066212220,
+      "workflow": "i80386-native-font-selection.yml",
+      "branch": "lane/x86-gui-current-consumer-publish-20261024",
+      "sha": "4cb17e5d8"
     },
     {
       "run": 40061993566,
@@ -7587,7 +7593,7 @@
       "observationScope": "New combined-source replacement declaration; historical048a/DC/368 execution records are retained, not acceptance of this replacement. Artifact fields remain unadmitted."
     },
     "i80386-native-font-selection.yml": {
-      "runs": 3,
+      "runs": 4,
       "stepsInFile": [
         "Pure source and independent reader controls",
         "Refuse until selected font, tool, cache and event review",
@@ -7599,8 +7605,8 @@
       ],
       "steps": {
         "Pure source and independent reader controls": {
-          "existed": 3,
-          "ran": 3,
+          "existed": 4,
+          "ran": 4,
           "existedMain": 0,
           "ranMain": 0,
           "skippedInFailedRuns": 0,
@@ -7614,26 +7620,26 @@
       },
       "jobs": {
         "controls": {
-          "existed": 3,
-          "ran": 3,
+          "existed": 4,
+          "ran": 4,
           "existedMain": 0,
           "ranMain": 0,
           "class": "always"
         },
         "native-font-selection": {
-          "existed": 3,
+          "existed": 4,
           "ran": 0,
           "existedMain": 0,
           "ranMain": 0,
           "class": "never"
         }
       },
-      "sourceSha": "289308756"
+      "sourceSha": "4cb17e5d8"
     }
   },
   "lastRefresh": {
-    "workflow": "robot-model-webkit-comparison.yml",
-    "at": "2026-10-24T03:49:44.099Z",
-    "sourceSha": "working-tree"
+    "workflow": "i80386-native-font-selection.yml",
+    "at": "2026-10-24T07:09:12.308Z",
+    "sourceSha": "4cb17e5d8"
   }
 }

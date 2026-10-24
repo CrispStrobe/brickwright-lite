@@ -2,16 +2,17 @@
 
 Owner: Codex, x86 native font and current GUI lane.
 Base: `48bf48a242808b81c15f45c503df3aee60ed2b40`.
-Status: claim merged in PR1329. Scoped source repair is prepared in PR1318's
-branch; final exact-head CI and normal merge remain pending. No native job or
-actual font event has run.
+Status: claim merged in PR1329. Scoped source repair passed exact-head CI at
+PR1318 head `4cb17e5d807f81e839f28bc410d25e72471e2896`; the current-main
+composition is a new source candidate requiring its own checks before merge
+or event selection. No native job or actual font event has run.
 
 ## Exact scope
 
 - `docs/generated/ci-step-census.json`: add only the scoped
   `i80386-native-font-selection.yml` workflow and its actual completed source
   controls runs, including the latest run at PR1318 head
-  `289308756e3be34a63dba3f2ce48535bc6df8dfb`. Preserve every other
+  `4cb17e5d807f81e839f28bc410d25e72471e2896`. Preserve every other
   workflow row, run, date, main source revision and newest-main-run identity.
 - `CI-POINTERS.md`: add dated, explicit rows only if the refreshed verdict
   requires them for the guarded `native-font-selection` job and its two named
@@ -52,3 +53,18 @@ unchanged generator check and all seven focused census tests, including their
 mutation cases, pass locally under Node 22.23.2. Hosted exact-head CI still
 must qualify the final combined source. The previous native and GUI offline
 requests bind older source heads and cannot authorize an event.
+
+## Current-main composition checkpoint — 2026-10-24
+
+PR1318 head `4cb17e5d8` completed 30 enabled checks successfully with eight
+declared conditional skips. A subsequent mainline advance changed unrelated
+workflow census and pointer history. This composition keeps every newer main
+row and the native workflow's four genuine completed source-control runs,
+latest `40066212220`. All four skipped the guarded native job. The 5-file
+native and 21-file GUI source rosters, guards, pins and runtime code remain
+byte-identical to `4cb17e5d8`. The scoped generator refreshed only the native
+workflow; its generated timestamp and last-refresh descriptor identify this
+new observation while newest-main-run and all unrelated readings stay fixed.
+The composed head still needs exact-head CI. Regenerate both offline requests
+against that final head before separate metadata-event admission; source-only
+controls and a successful Build cannot approve a native, browser or guest run.
