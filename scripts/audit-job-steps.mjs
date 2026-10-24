@@ -40,6 +40,9 @@
  */
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {lstatSync} from 'node:fs';
 import {parseJobs, partition, isBrowserStep, AUDIT_STEP} from './lib/workflow-gates.mjs';
 
 const RED = new Set(['failure', 'cancelled', 'timed_out']);
@@ -270,8 +273,181 @@ export const run = async (loadJobs, {jobName, attempt, shard = null, workflowTex
     return 0;
 };
 
+// A separate runner-scalar input boundary. The legacy API/file path above is
+// deliberately retained, including its complete-record and six-poll refusal.
+export const RUNNER_WIRE_ENV = 'BW_BROWSER_RUNNER_TERMINALS_V1';
+export const RUNNER_INPUT_CAP = 64 * 1024;
+export const RUNNER_RECEIPT_CAP = 128 * 1024;
+const RUNNER_WORKFLOW_CAP = 1024 * 1024;
+const RUNNER_SCHEMA = 'bw.browser.runner-terminals.v1';
+const RUNNER_HEADER = [RUNNER_SCHEMA, '${{ github.repository }}', '${{ github.run_id }}', '${{ github.run_attempt }}',
+    '${{ github.job }}', '${{ matrix.shard }}', '${{ github.sha }}', '${{ github.workflow_sha }}', '${{ github.workflow_ref }}'].join('\t');
+const RUNNER_STATES = new Set(['success', 'failure', 'cancelled', 'skipped']);
+const RUNNER_PREFIX = 'browser-runner-evidence-v1 ';
+const RUNNER_ROWS_PER_SCALAR = 100;
+class RunnerRefusal extends Error {}
+const runnerNeed = (ok, reason) => { if (!ok) throw new RunnerRefusal(reason); };
+const runnerSha = bytes => createHash('sha256').update(bytes).digest('hex');
+
+/** Bound GitHub's interpolated format expression as well as the rendered TSV. */
+export const runnerScalarExpressionBounds = value => {
+    let format = '', offset = 0;
+    const args = [], escape = text => text.replaceAll("'", "''").replaceAll('{', '{{').replaceAll('}', '}}');
+    for (const match of value.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)) {
+        format += escape(value.slice(offset, match.index))+'{'+args.length+'}';
+        args.push(match[1].trim());offset = match.index + match[0].length;
+    }
+    format += escape(value.slice(offset));
+    const expression = "format('"+format+"'"+args.map(arg => ', '+arg).join('')+')';
+    return {parameters: args.length + 1, characters: expression.length};
+};
+
+/** Source-derived IDs, names and order, including unnamed setup/actions. */
+export const runnerSourceMap = workflowText => {
+    runnerNeed(typeof workflowText === 'string' && Buffer.byteLength(workflowText) <= RUNNER_WORKFLOW_CAP, 'bounded checked workflow');
+    const holders = [...parseJobs(workflowText).values()].filter(j => j.steps.some(s => isBrowserStep(s.name)));
+    runnerNeed(holders.length === 1 && holders[0].id === 'browser', 'one browser source job');
+    const job = holders[0], audit = job.steps.filter(s => s.name === AUDIT_STEP);
+    runnerNeed(job.shards.length > 0 && new Set(job.shards).size === job.shards.length, 'distinct current source shards');
+    runnerNeed(audit.length === 1 && job.steps.at(-1) === audit[0] && audit[0].ifs === 'always()', 'one always-last audit source step');
+    const steps = job.steps.slice(0, -1);
+    runnerNeed(steps.length > 0 && steps.length <= 512, 'bounded complete preceding source steps');
+    const gateNames = steps.filter(step => isBrowserStep(step.name)).map(step => step.name);
+    runnerNeed(new Set(gateNames).size === gateNames.length, 'one source browser gate record per name');
+    const ids = new Set();
+    for (const step of steps) {
+        runnerNeed(typeof step.id === 'string' && /^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(step.id) && step.idCount === 1 && !ids.has(step.id), 'one unique declared ID per preceding step');
+        ids.add(step.id);
+        runnerNeed(typeof step.name === 'string' && Buffer.byteLength(step.name) <= 512 && !/[\x00-\x1f\x7f]/.test(step.name), 'bounded source step name');
+    }
+    const lines = workflowText.split('\n');
+    // This profile covers the current browser body, which declares no COE.
+    // A future declared non-gate continuation needs an explicit reviewed policy.
+    runnerNeed(!lines.slice(job.steps[0].line - 1, audit[0].line - 1).some(line => /^        continue-on-error:/.test(line)), 'runner profile requires browser source without continue-on-error');
+    const nextJob = lines.findIndex((line, index) => index >= audit[0].line && /^  [a-z][a-z-]*:$/.test(line));
+    const block = lines.slice(audit[0].line - 1, nextJob < 0 ? undefined : nextJob);
+    runnerNeed(block.includes('          GH_TOKEN: ${{ github.token }}') && block.includes('          BW_JOB_NAME: browser (${{ matrix.shard }})') &&
+        block.includes('        run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }} --runner-terminals-v1') &&
+        block.filter(line => /^        run:/.test(line)).length === 1, 'exact safe final audit invocation and identity scalars');
+    const stepLines = steps.map(s => s.id+"\t${{ steps['"+s.id+"'].outcome }}\t${{ steps['"+s.id+"'].conclusion }}");
+    const scalars = [];
+    for (let offset = 0; offset < steps.length; offset += RUNNER_ROWS_PER_SCALAR) {
+        const number = scalars.length + 1, key = RUNNER_WIRE_ENV+(number === 1 ? '' : '_'+number);
+        const expected = stepLines.slice(offset, offset + RUNNER_ROWS_PER_SCALAR);
+        if (number === 1) expected.unshift(RUNNER_HEADER);
+        scalars.push({key, lines: expected});
+    }
+    const envKeys = block.map(line => /^          ([A-Za-z_][A-Za-z0-9_]*):/.exec(line)?.[1]).filter(Boolean);
+    runnerNeed(JSON.stringify(envKeys) === JSON.stringify(['GH_TOKEN', 'BW_JOB_NAME', ...scalars.map(s => s.key)]), 'closed sanitized audit environment mapping');
+    for (const scalar of scalars) {
+        const headers = block.map((line, index) => line === '          '+scalar.key+': |' ? index : -1).filter(i => i >= 0);
+        runnerNeed(headers.length === 1, 'one explicit scalar part source');
+        const declared = [];
+        for (let i = headers[0] + 1; i < block.length && block[i].startsWith('            '); i++) declared.push(block[i].slice(12));
+        runnerNeed(declared.length === scalar.lines.length && declared.every((row, index) => row === scalar.lines[index]), 'exact scalar ID/outcome/conclusion source mapping');
+        const limits = runnerScalarExpressionBounds(scalar.lines.join('\n')+'\n');
+        runnerNeed(limits.parameters <= 255 && limits.characters <= 21000, 'bounded compiled GitHub scalar expression');
+    }
+    return {job, steps, scalars, mappingSha256: runnerSha([RUNNER_HEADER, ...stepLines].join('\n')+'\n'), workflowSha256: runnerSha(workflowText)};
+};
+
+/** Offline Git reads only: bind the file actually checked out, not a PR preview. */
+export const checkedRunnerWorkflow = (workflowFile, env = process.env, cwd = process.cwd()) => {
+    runnerNeed(typeof env.GITHUB_WORKSPACE === 'string' && path.resolve(env.GITHUB_WORKSPACE) === path.resolve(cwd) &&
+        path.resolve(workflowFile) === path.join(path.resolve(cwd), '.github/workflows/build.yml'), 'checked workspace workflow path');
+    let raw, head, meta, blob;
+    try {
+        const info = lstatSync(workflowFile);
+        runnerNeed(info.isFile() && info.nlink === 1 && info.size > 0 && info.size <= RUNNER_WORKFLOW_CAP, 'regular bounded checked workflow');
+        raw = readFileSync(workflowFile);
+        runnerNeed(raw.length === info.size && raw.length <= RUNNER_WORKFLOW_CAP, 'complete bounded checked workflow read');
+        const git = (args, cap) => execFileSync('/usr/bin/git', ['--no-replace-objects', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false', '-C', cwd, ...args], {
+            timeout: 5000, maxBuffer: cap, encoding: null, stdio: ['ignore', 'pipe', 'pipe'],
+            env: {LANG: 'C.UTF-8', HOME: '/nonexistent', PATH: '/usr/bin:/bin', GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_NO_LAZY_FETCH: '1', GIT_TERMINAL_PROMPT: '0'}
+        });
+        head = git(['rev-parse', 'HEAD'], 128).toString('ascii');
+        meta = git(['ls-tree', '-z', 'HEAD', '--', '.github/workflows/build.yml'], 256).toString('ascii');
+        blob = git(['cat-file', 'blob', 'HEAD:.github/workflows/build.yml'], RUNNER_WORKFLOW_CAP + 1);
+    } catch (error) {
+        if (error instanceof RunnerRefusal) throw error;
+        throw new RunnerRefusal('checked workflow Git read refused');
+    }
+    runnerNeed(/^[0-9a-f]{40}\n$/.test(head) && head.trim() === env.GITHUB_SHA, 'checked HEAD matches current runner SHA');
+    const match = /^100644 blob ([0-9a-f]{40})\t\.github\/workflows\/build\.yml\x00$/.exec(meta);
+    runnerNeed(match && raw.equals(blob) && createHash('sha1').update(Buffer.concat([Buffer.from('blob '+raw.length+'\0'), raw])).digest('hex') === match[1], 'checked workflow Git blob bytes');
+    let text;
+    try { text = new TextDecoder('utf-8', {fatal: true}).decode(raw); } catch { throw new RunnerRefusal('checked workflow UTF-8'); }
+    return {text, checkoutHead: head.trim(), gitBlob: match[1], sha256: runnerSha(raw)};
+};
+
+export const runnerTerminalReceipt = (wire, source, {env = process.env, shard} = {}) => {
+    runnerNeed(typeof wire === 'string' && Buffer.byteLength(wire) > 0 && Buffer.byteLength(wire) <= RUNNER_INPUT_CAP && wire.endsWith('\n') && !wire.includes('\r'), 'bounded LF scalar terminal wire');
+    const mapping = runnerSourceMap(source.text), job = mapping.job;
+    const sourceBytes = Buffer.from(source.text);
+    runnerNeed(source.sha256 === mapping.workflowSha256 && /^[0-9a-f]{40}$/.test(source.gitBlob || '') &&
+        source.gitBlob === createHash('sha1').update(Buffer.concat([Buffer.from('blob '+sourceBytes.length+'\0'), sourceBytes])).digest('hex'), 'exact checked source fingerprint');
+    const partitioned = expectedForShard(source.text, shard);
+    runnerNeed(partitioned.ok && typeof shard === 'string' && job.shards.includes(shard), 'complete source shard partition');
+    runnerNeed(env.GITHUB_REPOSITORY === 'CrispStrobe/brickwright-lite' && env.GITHUB_JOB === job.id && env.BW_JOB_NAME === job.id+' ('+shard+')', 'current runner repository/job/shard identity');
+    runnerNeed(typeof env.GITHUB_RUN_ID === 'string' && /^[1-9][0-9]{0,19}$/.test(env.GITHUB_RUN_ID) &&
+        typeof env.GITHUB_RUN_ATTEMPT === 'string' && /^[1-9][0-9]{0,8}$/.test(env.GITHUB_RUN_ATTEMPT), 'current runner run/attempt identity');
+    runnerNeed(/^[0-9a-f]{40}$/.test(env.GITHUB_SHA || '') && source.checkoutHead === env.GITHUB_SHA &&
+        /^[0-9a-f]{40}$/.test(env.GITHUB_WORKFLOW_SHA || '') && typeof env.GITHUB_WORKFLOW_REF === 'string' &&
+        env.GITHUB_WORKFLOW_REF.length <= 512 && /^CrispStrobe\/brickwright-lite\/\.github\/workflows\/build\.yml@refs\/(?:heads|pull)\/[A-Za-z0-9_./-]+$/.test(env.GITHUB_WORKFLOW_REF), 'current checked source/workflow identity');
+    const lines = wire.slice(0, -1).split('\n');
+    const header = [RUNNER_SCHEMA, env.GITHUB_REPOSITORY, env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT, env.GITHUB_JOB, shard, env.GITHUB_SHA, env.GITHUB_WORKFLOW_SHA, env.GITHUB_WORKFLOW_REF].join('\t');
+    runnerNeed(lines[0] === header && lines.length === mapping.steps.length + 1, 'exact scalar run/source header and row count');
+    const rows = mapping.steps.map((step, index) => {
+        const fields = lines[index + 1].split('\t');
+        runnerNeed(fields.length === 3 && fields[0] === step.id && RUNNER_STATES.has(fields[1]) && RUNNER_STATES.has(fields[2]), 'ordered source IDs and closed terminal state fields');
+        // failure/success is a documented valid COE pair, but this current
+        // no-COE profile cannot admit it, whether on a gate or another step.
+        runnerNeed(!(fields[1] === 'failure' && fields[2] === 'success'), 'valid continued failure is outside the current browser profile');
+        runnerNeed(fields[1] === fields[2], 'outcome/conclusion contradiction; continued failure is not positive evidence');
+        return {ordinal: index + 1, id: step.id, name: step.name, outcome: fields[1], conclusion: fields[2]};
+    });
+    const verdict = judge(rows.map(row => ({...row, status: 'completed'})), AUDIT_STEP, {shard, mine: partitioned.mine, others: partitioned.others});
+    const exitCode = ['ok', 'skipped-after-red'].includes(verdict.verdict) ? 0 : 1;
+    const receipt = {schema: RUNNER_SCHEMA, evidenceMode: 'runner-scalars', complete: true,
+        identity: {repository: env.GITHUB_REPOSITORY, runId: env.GITHUB_RUN_ID, attempt: env.GITHUB_RUN_ATTEMPT, job: env.GITHUB_JOB, jobName: env.BW_JOB_NAME, shard,
+            checkoutHead: source.checkoutHead, executingWorkflowSha: env.GITHUB_WORKFLOW_SHA, workflowRef: env.GITHUB_WORKFLOW_REF},
+        source: {path: '.github/workflows/build.yml', gitBlob: source.gitBlob, sha256: source.sha256, mappingSha256: mapping.mappingSha256},
+        steps: rows, verdict, auditExitCode: exitCode,
+        allAssignedGatesSucceeded: verdict.verdict === 'ok' && partitioned.mine.every(name => rows.filter(row => row.name === name).length === 1 && rows.find(row => row.name === name).outcome === 'success')};
+    runnerNeed(Buffer.byteLength(RUNNER_PREFIX + JSON.stringify(receipt) + '\n') <= RUNNER_RECEIPT_CAP, 'complete sanitized receipt byte cap');
+    return receipt;
+};
+
+export const runnerTerminalCLI = (args, env = process.env, cwd = process.cwd(), out = console) => {
+    try {
+        const options = new Map();
+        for (let index = 0; index < args.length; index++) {
+            const flag = args[index];
+            runnerNeed(['--runner-terminals-v1', '--shard', '--workflow'].includes(flag) && !options.has(flag), 'exact runner terminal CLI flags');
+            if (flag === '--runner-terminals-v1') options.set(flag, true);
+            else { runnerNeed(index + 1 < args.length && !args[index + 1].startsWith('--'), 'runner terminal CLI value'); options.set(flag, args[++index]); }
+        }
+        runnerNeed(options.get('--runner-terminals-v1') === true && options.has('--shard'), 'explicit runner terminal mode and shard');
+        const workflowFile = options.get('--workflow') || path.join(path.dirname(new URL(import.meta.url).pathname), '..', '.github/workflows/build.yml');
+        const source = checkedRunnerWorkflow(workflowFile, env, cwd);
+        const mapping = runnerSourceMap(source.text), keys = mapping.scalars.map(s => s.key);
+        runnerNeed(JSON.stringify(Object.keys(env).filter(k => k === RUNNER_WIRE_ENV || k.startsWith(RUNNER_WIRE_ENV+'_')).sort()) === JSON.stringify([...keys].sort()), 'exact runner scalar part keys');
+        runnerNeed(keys.every(key => typeof env[key] === 'string' && env[key].endsWith('\n') && Buffer.byteLength(env[key]) <= RUNNER_INPUT_CAP), 'complete bounded runner scalar parts');
+        const receipt = runnerTerminalReceipt(keys.map(key => env[key]).join(''), source, {env, shard: options.get('--shard')});
+        out.log(RUNNER_PREFIX + JSON.stringify(receipt));
+        if (receipt.auditExitCode !== 0) out.error('::error::runner browser audit finding: '+receipt.verdict.verdict);
+        return receipt.auditExitCode;
+    } catch (error) {
+        const reason = error instanceof RunnerRefusal ? error.message : 'unexpected runner terminal audit failure';
+        // Never echo unvalidated input, environment, outputs, Git stderr or a stack.
+        out.error(RUNNER_PREFIX + JSON.stringify({schema: RUNNER_SCHEMA, complete: false, firstFailure: {name: 'RunnerEvidenceRefusal', reason}}));
+        return 1;
+    }
+};
+
 const isMain = process.argv[1] && new URL(import.meta.url).pathname.endsWith(process.argv[1].split('/').pop());
-if (isMain) {
+if (isMain && process.argv.includes('--runner-terminals-v1')) process.exitCode = runnerTerminalCLI(process.argv.slice(2));
+if (isMain && !process.argv.includes('--runner-terminals-v1')) {
     const fileArg = process.argv.indexOf('--file');
     const loadJobs = fileArg >= 0
         ? async () => JSON.parse(readFileSync(process.argv[fileArg + 1], 'utf8')).jobs

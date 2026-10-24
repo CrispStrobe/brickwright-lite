@@ -298,3 +298,292 @@ test('duplicate gate records remain unauditable even if both claim success', asy
     {log, error, sleep: async () => {}});
     assert.equal(code, 1); assert.match(out.errors.join('\n'), /2 records/);
 });
+
+// Distinct runner-scalar mode: all input rows come from the actual workflow
+// expressions. Only runner context and network/Git fixture boundaries are fake.
+import {runnerSourceMap, runnerTerminalReceipt, runnerTerminalCLI, runnerScalarExpressionBounds, RUNNER_WIRE_ENV, RUNNER_INPUT_CAP, RUNNER_RECEIPT_CAP} from '../scripts/audit-job-steps.mjs';
+import {shardsOf} from '../scripts/lib/workflow-gates.mjs';
+import * as runnerFs from 'node:fs';
+import {createHash} from 'node:crypto';
+import {execFileSync, spawnSync} from 'node:child_process';
+import {pathToFileURL} from 'node:url';
+const RUNNER_ROOT = path.resolve(import.meta.dirname, '..');
+const RUNNER_WORKFLOW = readFileSync(path.join(RUNNER_ROOT, '.github/workflows/build.yml'), 'utf8');
+const RUNNER_SCRIPT = path.join(RUNNER_ROOT, 'scripts/audit-job-steps.mjs');
+const runnerHash = (raw, kind = 'sha256') => createHash(kind).update(raw).digest('hex');
+const runnerBlob = text => runnerHash(Buffer.concat([Buffer.from('blob '+Buffer.byteLength(text)+'\0'), Buffer.from(text)]), 'sha1');
+const runnerEnvironment = (shard, head = 'a'.repeat(40), workspace = RUNNER_ROOT) => ({
+    GITHUB_REPOSITORY: 'CrispStrobe/brickwright-lite', GITHUB_RUN_ID: '40113882924', GITHUB_RUN_ATTEMPT: '1',
+    GITHUB_JOB: 'browser', BW_JOB_NAME: 'browser ('+shard+')', GITHUB_SHA: head,
+    GITHUB_WORKFLOW_SHA: 'b'.repeat(40), GITHUB_WORKFLOW_REF: 'CrispStrobe/brickwright-lite/.github/workflows/build.yml@refs/pull/900/merge',
+    GITHUB_WORKSPACE: workspace, GH_TOKEN: 'authored-private-token-fixture',
+    UNRELATED_STEP_OUTPUT: 'authored-private-output-fixture'
+});
+const runnerSource = (text, env) => ({text, checkoutHead: env.GITHUB_SHA, gitBlob: runnerBlob(text), sha256: runnerHash(text)});
+const runnerContext = (text, shard) => Object.fromEntries(runnerSourceMap(text).steps.map(step => {
+    const assigned = shardsOf(step), state = assigned.length && !assigned.includes(shard) ? 'skipped' : 'success';
+    return [step.id, {outcome: state, conclusion: state}];
+}));
+const runnerDeclaredLines = text => {
+    const block = text.slice(text.indexOf('      - name: '+AUDIT));
+    const rows = block.split('\n');
+    const result = [];
+    for (let at = 0; at < rows.length; at++) {
+        if (!new RegExp('^          '+RUNNER_WIRE_ENV+'(?:_[2-6])?: \\|$').test(rows[at])) continue;
+        for (let i = at + 1; rows[i]?.startsWith('            '); i++) result.push(rows[i].slice(12));
+    }
+    assert.ok(result.length > 0);return result;
+};
+const renderRunnerContext = (text, context, env, shard) => {
+    const github = {repository: env.GITHUB_REPOSITORY, run_id: env.GITHUB_RUN_ID, run_attempt: env.GITHUB_RUN_ATTEMPT,
+        job: env.GITHUB_JOB, sha: env.GITHUB_SHA, workflow_sha: env.GITHUB_WORKFLOW_SHA, workflow_ref: env.GITHUB_WORKFLOW_REF};
+    return runnerDeclaredLines(text).map(line => line.replace(/\$\{\{\s*([^}]+?)\s*\}\}/g, (whole, expression) => {
+        const property = expression.trim();
+        if (property === 'matrix.shard') return shard;
+        if (/^github\.[a-z_]+$/.test(property)) { assert.ok(Object.hasOwn(github, property.slice(7))); return github[property.slice(7)]; }
+        const m = /^steps\['([A-Za-z_][A-Za-z0-9_-]*)'\]\.(outcome|conclusion)$/.exec(property);
+        assert.ok(m, 'only explicit scalar terminal references are rendered');
+        return context[m[1]]?.[m[2]] ?? '';
+    })).join('\n')+'\n';
+};
+let runnerFixture;
+const getRunnerFixture = () => {
+    if (runnerFixture) return runnerFixture;
+    const directory = runnerFs.mkdtempSync(path.join(RUNNER_ROOT, '.runner-audit-controls-'));
+    runnerFs.mkdirSync(path.join(directory, '.github/workflows'), {recursive: true});
+    runnerFs.mkdirSync(path.join(directory, 'scripts/lib'), {recursive: true});
+    runnerFs.writeFileSync(path.join(directory, '.github/workflows/build.yml'), RUNNER_WORKFLOW);
+    runnerFs.copyFileSync(path.join(RUNNER_ROOT, 'scripts/lib/workflow-gates.mjs'), path.join(directory, 'scripts/lib/workflow-gates.mjs'));
+    const git = args => execFileSync('/usr/bin/git', ['-C', directory, ...args], {stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000,
+        env: {...process.env, GIT_AUTHOR_NAME: 'Authored source control', GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+            GIT_COMMITTER_NAME: 'Authored source control', GIT_COMMITTER_EMAIL: 'fixture@example.invalid'}});
+    git(['init', '-q']);git(['add', '.github/workflows/build.yml']);git(['commit', '-q', '-m', 'Authored workflow fixture']);
+    runnerFixture = {directory, git, head: git(['rev-parse', 'HEAD']).toString().trim()};
+    return runnerFixture;
+};
+test.after(() => { if (runnerFixture) runnerFs.rmSync(runnerFixture.directory, {recursive: true, force: true}); });
+const runnerCLI = (shard, wire, envChanges = {}, args = []) => {
+    const fixture = getRunnerFixture(), parts = {}, rows = wire.match(/[^\n]*\n/g) || [];
+    let offset = 0;
+    for (const scalar of runnerSourceMap(RUNNER_WORKFLOW).scalars) {
+        parts[scalar.key] = rows.slice(offset, offset + scalar.lines.length).join('');offset += scalar.lines.length;
+    }
+    const env = {...process.env, ...runnerEnvironment(shard, fixture.head, fixture.directory), ...parts, ...envChanges};
+    // A regression into the API route must never make a real API call here.
+    return spawnSync(process.execPath, ['--import', 'data:text/javascript,globalThis.fetch=async()=>{throw new Error("forbidden network fixture")}', RUNNER_SCRIPT,
+        '--shard', shard, '--workflow', path.join(fixture.directory, '.github/workflows/build.yml'), '--runner-terminals-v1', ...args],
+    {cwd: fixture.directory, env, encoding: 'utf8', timeout: 5000, maxBuffer: 256 * 1024});
+};
+const receiptFrom = result => {
+    assert.equal(result.error, undefined, result.error?.message);
+    const lines = result.stdout.trimEnd().split('\n');assert.equal(lines.length, 1);
+    assert.ok(lines[0].startsWith('browser-runner-evidence-v1 '));
+    return JSON.parse(lines[0].slice('browser-runner-evidence-v1 '.length));
+};
+
+test('runner: every current shard traverses actual workflow expressions, checked Git and genuine CLI', () => {
+    const fixture = getRunnerFixture(), mapping = runnerSourceMap(RUNNER_WORKFLOW);
+    assert.ok(mapping.steps.length > 200);assert.ok(mapping.steps.some(s => s.name === ''));
+    for (const shard of mapping.job.shards) {
+        const env = runnerEnvironment(shard, fixture.head, fixture.directory), context = runnerContext(RUNNER_WORKFLOW, shard);
+        const wire = renderRunnerContext(RUNNER_WORKFLOW, context, env, shard), result = runnerCLI(shard, wire);
+        assert.equal(result.status, 0, result.stderr);assert.equal(result.stderr, '');
+        const receipt = receiptFrom(result), expected = expectedForShard(RUNNER_WORKFLOW, shard);
+        assert.equal(receipt.schema, 'bw.browser.runner-terminals.v1');assert.equal(receipt.evidenceMode, 'runner-scalars');
+        assert.equal(receipt.complete, true);assert.equal(receipt.allAssignedGatesSucceeded, true);
+        assert.equal(receipt.verdict.verdict, 'ok');assert.equal(receipt.verdict.ran, expected.mine.length);
+        assert.deepEqual(receipt.steps.map(s => [s.id, s.name]), mapping.steps.map(s => [s.id, s.name]));
+        assert.equal(receipt.identity.checkoutHead, fixture.head);assert.equal(receipt.source.gitBlob, runnerBlob(RUNNER_WORKFLOW));
+        assert.equal(receipt.source.sha256, runnerHash(RUNNER_WORKFLOW));
+        assert.notEqual(receipt.identity.executingWorkflowSha, receipt.identity.checkoutHead, 'executing W is recorded separately');
+        assert.ok(Buffer.byteLength(wire) < RUNNER_INPUT_CAP && Buffer.byteLength(result.stdout) <= RUNNER_RECEIPT_CAP);
+        assert.doesNotMatch(result.stdout, /authored-private|outputs|GH_TOKEN|GITHUB_WORKSPACE/);
+    }
+});
+
+test('runner: real CLI preserves skipped-in-green, wrong-shard and real earlier-red behavior', () => {
+    const fixture = getRunnerFixture(), mapping = runnerSourceMap(RUNNER_WORKFLOW), shard = mapping.job.shards[0];
+    const expected = expectedForShard(RUNNER_WORKFLOW, shard), env = runnerEnvironment(shard, fixture.head, fixture.directory);
+    const own = mapping.steps.find(s => s.name === expected.mine[0]).id, other = mapping.steps.find(s => s.name === expected.others[0]).id;
+    for (const cut of ['own-skip', 'other-run', 'earlier-red', 'gate-failed']) {
+        const context = runnerContext(RUNNER_WORKFLOW, shard);
+        if (cut === 'own-skip') context[own] = {outcome: 'skipped', conclusion: 'skipped'};
+        if (cut === 'other-run') context[other] = {outcome: 'success', conclusion: 'success'};
+        if (cut === 'earlier-red') {
+            context[mapping.steps[0].id] = {outcome: 'failure', conclusion: 'failure'};
+            for (const name of expected.mine) context[mapping.steps.find(s => s.name === name).id] = {outcome: 'skipped', conclusion: 'skipped'};
+        }
+        if (cut === 'gate-failed') context[own] = {outcome: 'failure', conclusion: 'failure'};
+        const result = runnerCLI(shard, renderRunnerContext(RUNNER_WORKFLOW, context, env, shard)), receipt = receiptFrom(result);
+        assert.equal(result.status, ['own-skip', 'other-run'].includes(cut) ? 1 : 0, result.stderr);
+        assert.equal(receipt.verdict.verdict, { 'own-skip': 'skipped-in-green', 'other-run': 'ran-in-wrong-shard', 'earlier-red': 'skipped-after-red', 'gate-failed': 'ok'}[cut]);
+        assert.equal(receipt.allAssignedGatesSucceeded, false);
+        if (cut === 'gate-failed') assert.ok(receipt.verdict.failedEarlier.includes(expected.mine[0]));
+    }
+});
+
+test('runner: documented continued failure differs from malformed contradiction, neither is positive', () => {
+    const mapping = runnerSourceMap(RUNNER_WORKFLOW), shard = mapping.job.shards[0], env = runnerEnvironment(shard);
+    const own = mapping.steps.find(s => s.name === expectedForShard(RUNNER_WORKFLOW, shard).mine[0]);
+    assert.doesNotMatch(RUNNER_WORKFLOW.slice(RUNNER_WORKFLOW.indexOf('\n  browser:\n'), RUNNER_WORKFLOW.indexOf('\n  corpus:\n')), /^        continue-on-error:/m);
+    for (const selected of [mapping.steps[0], own]) {
+        const context = runnerContext(RUNNER_WORKFLOW, shard);context[selected.id] = {outcome: 'failure', conclusion: 'success'};
+        const wire = renderRunnerContext(RUNNER_WORKFLOW, context, env, shard);
+        assert.throws(() => runnerTerminalReceipt(wire, runnerSource(RUNNER_WORKFLOW, env), {env, shard}), /valid continued failure is outside/);
+    }
+    const context = runnerContext(RUNNER_WORKFLOW, shard);context[own.id] = {outcome: 'success', conclusion: 'failure'};
+    assert.throws(() => runnerTerminalReceipt(renderRunnerContext(RUNNER_WORKFLOW, context, env, shard), runnerSource(RUNNER_WORKFLOW, env), {env, shard}), /contradiction/);
+    const changed = RUNNER_WORKFLOW.replace('        id: '+mapping.steps[0].id, '        id: '+mapping.steps[0].id+'\n        continue-on-error: true');
+    assert.throws(() => runnerSourceMap(changed), /source without continue-on-error/, 'a future declared non-gate continuation needs reviewed profile support');
+});
+
+test('runner: missing empty extra duplicate reordered and malformed state rows refuse coherently', () => {
+    const mapping = runnerSourceMap(RUNNER_WORKFLOW), shard = mapping.job.shards[0], env = runnerEnvironment(shard);
+    const good = renderRunnerContext(RUNNER_WORKFLOW, runnerContext(RUNNER_WORKFLOW, shard), env, shard), lines = good.trimEnd().split('\n');
+    const cuts = [lines.slice(0, -1).join('\n')+'\n', good+lines[1]+'\n', good.replace(lines[2], lines[1]),
+        [lines[0], lines[2], lines[1], ...lines.slice(3)].join('\n')+'\n', good.replace(lines[1], lines[1].split('\t')[0]+'\t\tsuccess'),
+        good.replace(lines[1], lines[1].split('\t')[0]+'\tcompleted\tsuccess'),good.replace(lines[1], lines[1]+'\textra'),
+        good.replace(lines[1], 'foreign_step\tsuccess\tsuccess'),good.slice(0, -1),good.replaceAll('\n', '\r\n'),'x'.repeat(RUNNER_INPUT_CAP + 1)];
+    for (const wire of cuts) assert.throws(() => runnerTerminalReceipt(wire, runnerSource(RUNNER_WORKFLOW, env), {env, shard}));
+    const context = runnerContext(RUNNER_WORKFLOW, shard);delete context[mapping.steps[0].id];
+    assert.throws(() => runnerTerminalReceipt(renderRunnerContext(RUNNER_WORKFLOW, context, env, shard), runnerSource(RUNNER_WORKFLOW, env), {env, shard}));
+});
+
+test('runner: run source attempt job shard and Git byte drift refuse through the real CLI', () => {
+    const fixture = getRunnerFixture(), mapping = runnerSourceMap(RUNNER_WORKFLOW), shard = mapping.job.shards[0], env = runnerEnvironment(shard, fixture.head, fixture.directory);
+    const good = renderRunnerContext(RUNNER_WORKFLOW, runnerContext(RUNNER_WORKFLOW, shard), env, shard);
+    for (const changes of [{GITHUB_RUN_ID: '999'}, {GITHUB_RUN_ATTEMPT: '2'}, {GITHUB_JOB: 'unit'}, {BW_JOB_NAME: 'browser (foreign)'},
+        {GITHUB_SHA: 'c'.repeat(40)}, {GITHUB_WORKFLOW_SHA: 'c'.repeat(40)}, {GITHUB_WORKFLOW_REF: 'foreign/workflow@refs/heads/main'}, {GITHUB_REPOSITORY: 'other/repo'}]) {
+        const result = runnerCLI(shard, good, changes);assert.equal(result.status, 1);assert.doesNotMatch(result.stderr, /authored-private|outputs|token-fixture/);
+        assert.ok(result.stderr.includes('"complete":false'));
+    }
+    const file = path.join(fixture.directory, '.github/workflows/build.yml');
+    try { runnerFs.appendFileSync(file, '\n# uncommitted source drift\n');assert.equal(runnerCLI(shard, good).status, 1); }
+    finally { runnerFs.writeFileSync(file, RUNNER_WORKFLOW); }
+    for (const args of [['--runner-terminals-v1'], ['--file', 'none'], ['--shard', shard]]) assert.equal(runnerCLI(shard, good, {}, args).status, 1);
+});
+
+let runnerMutantNumber = 0;
+const runnerMutant = async (old, replacement) => {
+    const text = readFileSync(RUNNER_SCRIPT, 'utf8');assert.equal(text.split(old).length, 2, 'one actual guard mutation');
+    const fixture = getRunnerFixture(), target = path.join(fixture.directory, 'scripts/audit-mutant-'+(++runnerMutantNumber)+'.mjs');
+    runnerFs.writeFileSync(target, text.replace(old, replacement));
+    return import(pathToFileURL(target).href);
+};
+test('runner: actual mapping and extra-row guard deletion mutants accept the same hostile inputs', async () => {
+    const mapping = runnerSourceMap(RUNNER_WORKFLOW), shard = mapping.job.shards[0], env = runnerEnvironment(shard);
+    const first = mapping.steps[0].id, second = mapping.steps[1].id;
+    const changed = RUNNER_WORKFLOW.replace("steps['"+first+"'].outcome", "steps['"+second+"'].outcome");
+    const wire = renderRunnerContext(changed, runnerContext(RUNNER_WORKFLOW, shard), env, shard);
+    assert.throws(() => runnerTerminalReceipt(wire, runnerSource(changed, env), {env, shard}), /exact scalar/);
+    const mutant = await runnerMutant('declared.every((row, index) => row === scalar.lines[index])', 'true');
+    assert.equal(mutant.runnerTerminalReceipt(wire, runnerSource(changed, env), {env, shard}).allAssignedGatesSucceeded, true);
+    const good = renderRunnerContext(RUNNER_WORKFLOW, runnerContext(RUNNER_WORKFLOW, shard), env, shard), extra = good+first+'\tsuccess\tsuccess\n';
+    assert.throws(() => runnerTerminalReceipt(extra, runnerSource(RUNNER_WORKFLOW, env), {env, shard}), /row count/);
+    const countMutant = await runnerMutant('lines.length === mapping.steps.length + 1', 'lines.length >= mapping.steps.length + 1');
+    assert.equal(countMutant.runnerTerminalReceipt(extra, runnerSource(RUNNER_WORKFLOW, env), {env, shard}).allAssignedGatesSucceeded, true);
+});
+
+test('runner: the legacy six-poll absence guard remains a nonvacuous independent boundary', async () => {
+    const partial = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy.map(s => s.name === 'Browser gate — editor' ? {name: s.name, status: 'pending', conclusion: null} : s)}];
+    const where = {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: SYNTH_YML};
+    const quiet = {log() {}, error() {}, sleep: async () => {}};
+    assert.equal(await run(async () => partial, where, quiet), 1);
+    const mutant = await runnerMutant('if (mine.length === 1 && unreported(mine[0]).length) {', 'if (false) {');
+    assert.equal(await mutant.run(async () => partial, where, quiet), 0, 'same partial evidence turns green if the old refusal is removed');
+});
+
+test('runner: explicit scalar parts respect compiled GitHub format limits and refuse partial delivery', () => {
+    const mapping = runnerSourceMap(RUNNER_WORKFLOW), fixture = getRunnerFixture(), shard = mapping.job.shards[0];
+    assert.equal(mapping.scalars.length, 3);
+    for (const part of mapping.scalars) {
+        const bounds = runnerScalarExpressionBounds(part.lines.join('\n')+'\n');
+        assert.ok(bounds.parameters <= 255 && bounds.characters <= 21000, JSON.stringify(bounds));
+    }
+    const single = runnerScalarExpressionBounds(mapping.scalars.flatMap(p => p.lines).join('\n')+'\n');
+    assert.ok(single.parameters > 255 && single.characters > 21000, 'one field over all current rows would exceed platform expression limits');
+    const env = runnerEnvironment(shard, fixture.head, fixture.directory), wire = renderRunnerContext(RUNNER_WORKFLOW, runnerContext(RUNNER_WORKFLOW, shard), env, shard);
+    for (const changes of [{[RUNNER_WIRE_ENV+'_2']: undefined}, {[RUNNER_WIRE_ENV+'_2']: ''}, {[RUNNER_WIRE_ENV+'_2']: 'not-terminal'},
+        {[RUNNER_WIRE_ENV+'_4']: 'extra\n'}, {[RUNNER_WIRE_ENV+'_2']: 'x'.repeat(RUNNER_INPUT_CAP + 1)}]) {
+        const result = runnerCLI(shard, wire, changes);assert.equal(result.status, 1);
+        assert.ok(result.stderr.includes('"complete":false'));assert.doesNotMatch(result.stderr, /authored-private/);
+    }
+});
+
+const sizedRunnerWorkflow = count => {
+    const entries = Array.from({length: count}, (_, index) => ({id: 'bounded_'+String(index).padStart(4, '0'),
+        name: index < count - 3 ? ('Authored setup '+index+' ').padEnd(500, 'x') : index === count - 3 ? 'Serve the built app' :
+            'Browser gate — '+(index === count - 2 ? 'heavy' : 'light'),
+        shard: index === count - 2 ? 'heavy' : index === count - 1 ? 'light' : null}));
+    const lines = ['jobs:', '  browser:', '    name: browser (${{ matrix.shard }})', '    timeout-minutes: 30', '    strategy:', '      matrix:', '        shard: [heavy, light]', '    steps:'];
+    for (const row of entries) {
+        lines.push('      - name: '+row.name, '        id: '+row.id);
+        if (row.shard) lines.push("        if: ${{ matrix.shard == '"+row.shard+"' }}");
+        lines.push('        run: echo authored fixture only');
+    }
+    lines.push('      - name: '+AUDIT, '        if: always()', '        env:', '          GH_TOKEN: ${{ github.token }}', '          BW_JOB_NAME: browser (${{ matrix.shard }})');
+    for (let offset = 0; offset < entries.length; offset += 100) {
+        const n = offset / 100 + 1;
+        lines.push('          '+RUNNER_WIRE_ENV+(n === 1 ? '' : '_'+n)+': |');
+        if (n === 1) lines.push('            '+runnerDeclaredLines(RUNNER_WORKFLOW)[0]);
+        for (const row of entries.slice(offset, offset + 100)) lines.push('            '+row.id+"\t${{ steps['"+row.id+"'].outcome }}\t${{ steps['"+row.id+"'].conclusion }}");
+    }
+    lines.push('        run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }} --runner-terminals-v1', '');
+    return lines.join('\n');
+};
+
+test('runner: complete source, row and receipt bounds refuse without truncation; cap mutant is detected', async () => {
+    const sourceText = sizedRunnerWorkflow(512), env = runnerEnvironment('heavy');
+    assert.equal(runnerSourceMap(sourceText).steps.length, 512);
+    const wire = renderRunnerContext(sourceText, runnerContext(sourceText, 'heavy'), env, 'heavy');
+    assert.ok(Buffer.byteLength(wire) < RUNNER_INPUT_CAP);
+    assert.throws(() => runnerTerminalReceipt(wire, runnerSource(sourceText, env), {env, shard: 'heavy'}), /complete sanitized receipt byte cap/);
+    const mutant = await runnerMutant('runnerNeed(Buffer.byteLength(RUNNER_PREFIX + JSON.stringify(receipt) + \'\\n\') <= RUNNER_RECEIPT_CAP, \'complete sanitized receipt byte cap\');', '');
+    const oversized = mutant.runnerTerminalReceipt(wire, runnerSource(sourceText, env), {env, shard: 'heavy'});
+    assert.ok(Buffer.byteLength(JSON.stringify(oversized)) > RUNNER_RECEIPT_CAP && oversized.steps.length === 512);
+    assert.throws(() => runnerSourceMap(sizedRunnerWorkflow(513)), /bounded complete preceding source steps/);
+    assert.throws(() => runnerSourceMap(RUNNER_WORKFLOW+'#'.repeat(1024 * 1024)), /bounded checked workflow/);
+    const mapping = runnerSourceMap(RUNNER_WORKFLOW), shard = mapping.job.shards[0], currentEnv = runnerEnvironment(shard), good = renderRunnerContext(RUNNER_WORKFLOW, runnerContext(RUNNER_WORKFLOW, shard), currentEnv, shard);
+    assert.equal(runnerTerminalReceipt(good, runnerSource(RUNNER_WORKFLOW, currentEnv), {env: currentEnv, shard}).allAssignedGatesSucceeded, true);
+    for (const change of [{sha256: '0'.repeat(64)}, {gitBlob: '0'.repeat(40)}, {checkoutHead: '0'.repeat(40)}]) {
+        assert.throws(() => runnerTerminalReceipt(good, {...runnerSource(RUNNER_WORKFLOW, currentEnv), ...change}, {env: currentEnv, shard}));
+    }
+});
+
+test('runner: Git-bound workflow rejects symlink, hardlink and workspace substitution', () => {
+    const fixture = getRunnerFixture(), mapping = runnerSourceMap(RUNNER_WORKFLOW), shard = mapping.job.shards[0], env = runnerEnvironment(shard, fixture.head, fixture.directory);
+    const wire = renderRunnerContext(RUNNER_WORKFLOW, runnerContext(RUNNER_WORKFLOW, shard), env, shard);
+    const file = path.join(fixture.directory, '.github/workflows/build.yml'), other = path.join(fixture.directory, 'authored-alias');
+    try { runnerFs.linkSync(file, other);assert.equal(runnerCLI(shard, wire).status, 1); }
+    finally { runnerFs.unlinkSync(other); }
+    try { runnerFs.renameSync(file, other);runnerFs.symlinkSync(other, file);assert.equal(runnerCLI(shard, wire).status, 1); }
+    finally { runnerFs.unlinkSync(file);runnerFs.renameSync(other, file); }
+    assert.equal(runnerCLI(shard, wire, {GITHUB_WORKSPACE: path.join(fixture.directory, 'other')}).status, 1);
+    assert.equal(runnerCLI(shard, wire).status, 0);
+});
+
+test('runner: legacy file CLI remains independently selectable without runner input', () => {
+    const fixture = getRunnerFixture(), file = path.join(fixture.directory, 'legacy-jobs.json'), workflow = path.join(fixture.directory, 'legacy-workflow.yml');
+    runnerFs.writeFileSync(file, JSON.stringify({jobs: [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy}]}));
+    runnerFs.writeFileSync(workflow, SYNTH_YML);
+    const env = {...process.env, BW_JOB_NAME: 'browser (heavy)', GITHUB_RUN_ATTEMPT: '1'};
+    delete env[RUNNER_WIRE_ENV];
+    const result = spawnSync(process.execPath, ['--import', 'data:text/javascript,globalThis.fetch=async()=>{throw new Error("forbidden network fixture")}',
+        RUNNER_SCRIPT, '--file', file, '--shard', 'heavy', '--workflow', workflow], {cwd: fixture.directory, env, encoding: 'utf8', timeout: 5000, maxBuffer: 65536});
+    assert.equal(result.status, 0, result.stderr);assert.match(result.stdout, /audit-job-steps: every browser gate ran/);
+});
+
+test('runner: source duplicate gate/shard and unassigned gate cannot become a scalar green', () => {
+    const mapping = runnerSourceMap(RUNNER_WORKFLOW), gates = mapping.steps.filter(s => isGate(s.name)), shard = mapping.job.shards[0], env = runnerEnvironment(shard);
+    const duplicate = RUNNER_WORKFLOW.replace('      - name: '+gates[1].name+'\n', '      - name: '+gates[0].name+'\n');
+    assert.throws(() => runnerSourceMap(duplicate), /one source browser gate record/);
+    const browserAt = RUNNER_WORKFLOW.indexOf('\n  browser:\n');
+    const repeatedShard = RUNNER_WORKFLOW.slice(0, browserAt)+RUNNER_WORKFLOW.slice(browserAt).replace('        shard: [', '        shard: ['+shard+', ');
+    assert.throws(() => runnerSourceMap(repeatedShard), /distinct current source shards/);
+    const rows = RUNNER_WORKFLOW.split('\n'), at = gates[0].line - 1;
+    const end = rows.findIndex((line, index) => index > at && line.startsWith('      - '));
+    const condition = rows.slice(at, end).findIndex(line => line.startsWith('        if:'));
+    assert.ok(condition >= 0);rows.splice(at + condition, 1);
+    const unassigned = rows.join('\n'), context = runnerContext(unassigned, shard);
+    assert.throws(() => runnerTerminalReceipt(renderRunnerContext(unassigned, context, env, shard), runnerSource(unassigned, env), {env, shard}), /source shard partition/);
+});
