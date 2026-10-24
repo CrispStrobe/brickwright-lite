@@ -677,7 +677,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     // Ordinary facts must stay revoked even when that short circuit hides the
     // changed source from the inner snapshot until after restoration.
     let ordinaryLive=true,resultUsed=false,resultLive=true;
-    const issued=new ResultWeakSet(),capturedIssued=new ResultWeakSet(),carriers=[];
+    const issued=new ResultWeakSet(),capturedIssued=new ResultWeakSet(),receiverIssued=new ResultWeakSet(),carriers=[];
     const descriptorEqual=(a,b)=>{
         if(!a||!b)return false;
         const fields=['value','get','set','writable','enumerable','configurable'];
@@ -793,14 +793,22 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     if(scalarClosed)for(const node of nodes){
         if(node.type!=='Identifier')continue;
         const binding=read(node),owner=lexical.scopes.get(node)?.functionOwner,parent=parents.get(node);
-        if(binding?.kind!=='global'||binding.scope!==lexical.global||!owner||owner===lexical.global||
+        if(!binding||!owner||owner===lexical.global||
             parent?.type==='Assignment'&&parent.left===node||parent?.type==='Update'||
             parent?.type==='Call'&&parent.callee===node)continue;
+        const types=get(binding),occurrence=get(cell(node));
+        if(!types.size||!occurrence.size||[...types,...occurrence].some(type=>!primitive.has(type)))continue;
+        // A formal is initialized by this actual closed invocation. This is
+        // distinct from a module capture's declaration frontier: neither an
+        // annotation nor an uncalled/empty input can supply its domain.
+        if(binding.kind==='parameter'&&binding.scope===owner&&
+            owner.names.get(binding.name)===binding&&owner.node.params.includes(binding.name)){
+            capturedReads.add(node);continue;
+        }
+        if(binding.kind!=='global'||binding.scope!==lexical.global)continue;
         const declarations=program.body.filter(statement=>statement.type==='Declaration')
             .flatMap(statement=>statement.decls.filter(decl=>decl.name===binding.name).map(decl=>({statement,decl})));
         if(declarations.length!==1||declarations[0].decl!==binding.node||declarations[0].statement.kind!=='let')continue;
-        const types=get(binding),occurrence=get(cell(node));
-        if(!types.size||!occurrence.size||[...types,...occurrence].some(type=>!primitive.has(type)))continue;
         const at=program.body.indexOf(declarations[0].statement);
         // Class declaration is not instance initialization. Every earlier
         // statement must be inert under this actual owned lineage; no call or
@@ -863,6 +871,17 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             return true;
         });
     };
+    const ownedReceiverResult=node=>{
+        if(!scalarClosed)return false;
+        const receiver=node.type==='Member'?node.object:node.type==='Call'&&node.callee?.type==='Member'?node.callee.object:null;
+        if(receiver?.type!=='Identifier')return false;
+        const scope=activeMethod(receiver),fn=methodForScope.get(scope),binding=scope?.names.get('this');
+        if(!fn?.row||binding?.kind!=='receiver'||binding.scope!==scope||
+            !(receiver.name==='this'&&read(receiver)===binding||receiver.name==='super'&&fn.row.parent))return false;
+        const types=get(cell(receiver));
+        return types.size>0&&[...types].every(type=>type?.kind==='instance'&&!unsafe.has(type.row)&&
+            type.row.lineage?.includes(fn.row));
+    };
     const ownCarrier=node=>{watchCarrier(node);return node;};
     const literal=type=>ownCarrier({type,...(type==='Number'?{value:'0'}:type==='String'?{value:'""'}:type==='Boolean'?{value:false}:{})});
     const alternatives=types=>types.length===1?literal(types[0]):ownCarrier({type:'Conditional',test:ownCarrier({type:'Boolean',value:false}),consequent:literal(types[0]),alternate:alternatives(types.slice(1))});
@@ -877,6 +896,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
                 watchCarrier(Array.prototype);watchCarrier(Object);watchCarrier(Reflect);
                 watchCarrier(ResultWeakSet.prototype);resultApply(resultAdd,issued,[result]);
                 if(capturedReads.has(node))resultApply(resultAdd,capturedIssued,[result]);
+                if(ownedReceiverResult(node))resultApply(resultAdd,receiverIssued,[result]);
             }return result;
         }
         return Object.fromEntries(Object.entries(node).map(([name,value])=>[name,metadata.has(name)?value:rewrite(value)]));
@@ -887,6 +907,9 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
         resultUsed=true;return current();
     },hasCapturedPrimitiveRead:node=>{
         if(!resultApply(resultHas,capturedIssued,[node]))return false;
+        resultUsed=true;return current();
+    },hasOwnedReceiverResult:node=>{
+        if(!resultApply(resultHas,receiverIssued,[node]))return false;
         resultUsed=true;return current();
     }};
 }

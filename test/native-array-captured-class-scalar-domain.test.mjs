@@ -62,6 +62,9 @@ test('complete captured scalar closure refuses late nonprimitive writers, unknow
  bad(core+tail+'trace=true?"still primitive":{};');
  bad(core+tail+'unknownAmbient;');
  bad(core+tail+'trace=void 0;');
+ bad(core+tail+'append();');
+ bad(core+tail+'instance.write({});');
+ bad('function detached(){return __bwBinaryAdd(this.value,1)}class Base {}let trace="";detached();');
 });
 
 test('declaration readiness remains separate from domains across early construction, static effects and changed parents',()=>{
@@ -82,6 +85,10 @@ test('captured Identifier projection is privately issued and retains original op
  const candidates=nodesOf(append.body).filter(node=>node.type==='Conditional'&&node.test?.type==='Identifier'&&node.test.name==='trace');assert.ok(candidates.length>0,'actual captured read is projected');
  const carrier=candidates[0];assert.equal(view.hasNormalPrimitiveResult(carrier),true);assert.equal(view.hasNormalPrimitiveResult(structuredClone(carrier)),false,'copied carrier is not issued');
  const other=nativeClassScalarView(parseMakeCodeTs(source,profile),profile);assert.equal(other.hasNormalPrimitiveResult(carrier),false,'another view cannot lend membership');
+ const receivers=nativeClassScalarView(parseMakeCodeTs('class Base {value=1;read(){return this.value}}class Child extends Base {read(){return super.read()}}let object=new Child();object.read();',profile),profile);
+ const receiverCarriers=nodesOf(receivers.program).filter(node=>node.type==='Conditional'&&receivers.hasOwnedReceiverResult?.(node));
+ assert.equal(receiverCarriers.length,2,'actual owned this and super entries each issue a result-local proof');
+ for(const entry of receiverCarriers){assert.equal(receivers.hasOwnedReceiverResult(structuredClone(entry)),false);assert.equal(other.hasOwnedReceiverResult?.(entry),false);}
  const originalRead=original.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='append').body[0].expr.right.left;
  assert.equal(originalRead.type,'Identifier');assert.equal(originalRead.name,'trace');assert.equal(carrier.test,originalRead,'the retained test is the exact original captured read, not its assignment destination');
  const saved=carrier.test;carrier.test={type:'Identifier',name:'trace'};assert.equal(view.hasNormalPrimitiveResult(carrier),false);carrier.test=saved;assert.equal(view.hasNormalPrimitiveResult(carrier),false,'restored identity cannot revive an observed edit');

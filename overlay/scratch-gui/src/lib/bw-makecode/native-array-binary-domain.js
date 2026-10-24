@@ -479,11 +479,12 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             final.alternate!==actual(node.alternate))return false;
         let ready=false;
         if(test?.type==='Identifier')ready=mapped?.type==='Identifier'&&classView.hasCapturedPrimitiveRead?.(node)===true;
-        else if(test?.type==='Member')ready=mapped?.type==='Member'&&mapped.object===actual(test.object)&&classReceiverReady(test.object);
+        else if(test?.type==='Member')ready=mapped?.type==='Member'&&mapped.object===actual(test.object)&&
+            (classReceiverReady(test.object)||classView.hasOwnedReceiverResult?.(node)===true);
         else if(test?.type==='Call'&&test.callee?.type==='Member')ready=mapped?.type==='Call'&&
             mapped.callee===actual(test.callee)&&mapped.callee.object===actual(test.callee.object)&&
             mapped.args?.length===test.args?.length&&mapped.args.every((arg,index)=>arg===actual(test.args[index]))&&
-            classReceiverReady(test.callee.object)&&test.args.every(classArgumentReady);
+            (classReceiverReady(test.callee.object)||classView.hasOwnedReceiverResult?.(node)===true)&&test.args.every(classArgumentReady);
         return ready&&classView.hasNormalPrimitiveResult(node);
     };
     const allTokens=new Set(),arrayHelpers=new Set();
