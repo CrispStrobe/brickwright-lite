@@ -49,3 +49,45 @@ test('SPIKE USB WLAN route hands the source and token to the native app', async 
         globalThis.window = previous;
     }
 });
+
+test('SPIKE USB browser bridge fails after its deadline instead of staying busy', {timeout: 2000}, async () => {
+    const previous = globalThis.fetch;
+    let aborted = false;
+    globalThis.fetch = (url, {signal}) => new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => {
+            aborted = true;
+            reject(Object.assign(new Error('aborted'), {name: 'AbortError'}));
+        });
+    });
+    try {
+        await assert.rejects(runSpikeUsbBridge('', 'http://mac.local:8765', 'secret', {timeoutMs: 20}),
+            /did not answer within/);
+        assert.equal(aborted, true);
+    } finally {
+        globalThis.fetch = previous;
+    }
+});
+
+test('SPIKE USB browser bridge reports a non-JSON reply with its status', async () => {
+    const previous = globalThis.fetch;
+    globalThis.fetch = async () => ({ok: false, status: 502, text: async () => '<html>Bad Gateway</html>'});
+    try {
+        await assert.rejects(runSpikeUsbBridge('', 'http://mac.local:8765', 'secret'),
+            /USB bridge returned 502 without a JSON reply/);
+    } finally {
+        globalThis.fetch = previous;
+    }
+});
+
+test('SPIKE USB browser bridge still returns a normal reply', async () => {
+    const previous = globalThis.fetch;
+    const reply = {firmware: '3.2.36', ports: {A: 48}, lines: []};
+    globalThis.fetch = async () => ({ok: true, status: 200,
+        json: async () => reply, text: async () => JSON.stringify(reply)});
+    try {
+        const result = await runSpikeUsbBridge('', 'http://mac.local:8765', 'secret');
+        assert.equal(result.ports.A, 48);
+    } finally {
+        globalThis.fetch = previous;
+    }
+});

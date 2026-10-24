@@ -31,3 +31,31 @@ implementation and require all enabled exact-head checks before integration.
 The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
+
+### Continuation — 2026-10-24
+
+Owner handover: no G03 implementation landed after the 2026-10-15 claim, and the
+G02 prerequisites named above have since landed. Claude (operator-assigned) now
+continues this claim on `lane/spike-g03-usb-bridge-deadline-20261024`. The
+envelope adds `overlay/scratch-gui/src/lib/spike-usb-stream.js` and
+`test/spike-usb-stream.test.mjs`, which are the actual Identify A–F path behind
+"Read USB ports".
+
+Rendered inventory of the deployed main build (Chromium, 1024–1280 px):
+- Working: starter "Control LEGO" opens the SPIKE lesson after the replace
+  confirmation; the SPIKE arena dock reflows inside a 355–520 px stage pane
+  with no clipped controls; Free sandbox, Challenges, course/level selectors,
+  Start/Step/Reset, backend selector, 2D⇄3D toggle with one shared world,
+  orbit camera, drive pad, paint/size/grip and mat Save/Open/Empty are present
+  and keyboard-focusable.
+- Below 1024 px the page scrolls horizontally because of the app-wide Scratch
+  `min-width: 1024px`; no SPIKE control is clipped. Changing that minimum is
+  shared app layout outside this envelope and is not changed here.
+- Identify A–F direct USB already bounds each REPL read (3 s). The browser
+  WLAN-bridge route had no deadline: an unanswered bridge kept the toolbar on
+  "Reading USB hub ports…" indefinitely, and a non-JSON error page surfaced a
+  JSON parse error. Fixed: the browser request uses the desktop app's 120 s
+  bound, then reports a bounded failure; a non-JSON reply reports its status.
+
+Remaining G03 items (EN/DE labels, touch, long conversion reports, 50–75 %
+right pane, save/reopen) stay open for later passes under this claim.
