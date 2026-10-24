@@ -92,3 +92,10 @@ the fixed observation, without another original-log download or Apple request.
 Publish this forward head only after the predecessor's running children finish;
 normal push to the existing PR preserves its label and yields one synchronize
 qualification event. The replacement needs its own exact-head hosted checks.
+
+Executed result: source PR1311 merged as20f5ade6d after29SUCCESS/6declared
+skips. Run40057471489 executed312/312 comparable passes; independent original
+readers agree on87488 checks, with264ngspice and48nominal cases reported
+separately. All4448 retained files reconcile; no case or tolerance changed.
+No numerical cause was demonstrated to repair. Task5 scope display and actual
+consumer proof follow under their own upstream/consumer claims, not this lane.

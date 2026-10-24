@@ -14,16 +14,16 @@ iOS/macOS, both groups, matching bilingual notes and approved reviews. No new
 upload or metadata write was needed. The original failed metadata wait remains
 preserved; it did not describe the current Apple state.
 
-The [CLI instrument handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) scopes the
-harness now in source qualification, 312 parameter cases across 12 templates,
-independent reference classes, causal repair triage and a bounded GUI realism
-follow-up. Harness preparation may proceed while release work continues, but
-the actual campaign remains after TestFlight. The merged dated claim owns
-preparation; no campaign case has run. Later
-steps require their own installed identities, raw results and actual GUI
-qualification. Do not count
-historical corpus totals as a fresh sweep or parameter variants as distinct
-topologies. `lanes/`, not historical session names below, controls ownership.
+The [CLI instrument result](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) now records
+[run 40057471489](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40057471489):
+312/312 comparable passes, independently recomputed across 87,488 checks;
+264 ngspice and 48 nominal analytic cases, with zero refusals or missing cases.
+There is no demonstrated numerical cause to patch in this fixed matrix.
+The next bounded item is scope acquisition/overrange/aliasing disclosure and
+actual built-GUI proof, preserving raw data and electrical behavior. Exact
+historical package identities and source hashes remain attached to the original
+result; future adoption does not relabel it. This is not corpus-wide or physical
+accuracy. `lanes/`, not the older priority tables, controls current ownership.
 
 The entries below retain dated measurements and rejected approaches. Their
 presence is not proof that a gap remains open; check current source before
