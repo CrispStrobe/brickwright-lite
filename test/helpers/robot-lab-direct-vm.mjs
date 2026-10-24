@@ -12,7 +12,7 @@ import {loadJolt} from '../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-co
 import {createRobotLabApi} from '../../overlay/scratch-gui/src/lib/bw-sim/api/robot-lab-api.js';
 const CATALOG=catalogFrom(JSON.parse(readFileSync(new URL('../../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',import.meta.url))));
 const Timer=createRequire(import.meta.url)(VM_SRC+'/util/timer.js');
-export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=CATALOG,autoPorts,frameMs=1000/30,observeFrame,coldMs=0,afterMs=0,withSpike=false}){
+export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=CATALOG,autoPorts,frameMs=1000/30,observeFrame,observeSetup,coldMs=0,afterMs=0,withSpike=false}){
  const p=prepareModel(modelText,catalog,{mat:'plain',...(autoPorts===undefined?{}:{autoPorts})}),J=await loadJolt(),clock=new FakeClock(1.7e12);
  let clockInstalled=false;if(withSpike){clock.install();clockInstalled=true;}
  const registered=withSpike?registerVirtualHub():null,hub=registered?.hub||new HubState();hub.setSimulationEnabled(true);
@@ -36,6 +36,7 @@ export async function runRobotLabProgram(source,{modelText,timeLimitMs,catalog=C
    await clock.advance(200);
    if(session.hubs[0].hub.hubState!==registered.hub||registered.registration.peripheral.hubState!==registered.hub)throw Error('SPIKE transport/session hub identity differs');
   }
+  if(observeSetup)observeSetup({session,vm,hub,prepared:p});
   if(coldMs){snapshot('cold');for(let ms=0;ms<coldMs;ms+=frameMs){await clock.advance(frameMs);session.tick(frameMs);await session.idle();snapshot('cold');}}
   vm.greenFlag();
   for(let i=0;i<Math.ceil(timeLimitMs/frameMs);i++){
