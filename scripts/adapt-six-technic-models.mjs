@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import {compactAtlasProgram} from './lib/sim-lab-atlas-program.mjs';
 const root=new URL('../',import.meta.url),ids=['rod-ratio','vernier-drive','line-turner','dune-strider','atlas-six','oblique'];
 export function adaptedTechnicModel(id){
  assert.ok(ids.includes(id));
@@ -22,8 +23,17 @@ export function adaptedTechnicModel(id){
  }
  return source;
 }
+export function adaptedTechnicProgram(id){
+ assert.ok(ids.includes(id));
+ const fixture=new URL('test/fixtures/model-files/'+id+'-source/',root),file='programs/'+id+'.bw';
+ const original=readFileSync(new URL(file,fixture)),provenance=JSON.parse(readFileSync(new URL('provenance.json',fixture)));
+ assert.equal(createHash('sha256').update(original).digest('hex'),provenance.files[file]);
+ return id==='atlas-six'?compactAtlasProgram(original.toString()):original.toString();
+}
 if(process.argv[1]===fileURLToPath(import.meta.url))for(const id of ids){
  const file=new URL('overlay/scratch-gui/static/sim-lab/models/'+id+'.ldr',root),source=adaptedTechnicModel(id);
  if(process.argv.includes('--check'))assert.equal(readFileSync(file,'utf8'),source,id);else writeFileSync(file,source);
  console.log(id+': exact source adaptation verified');
+ const programFile=new URL('overlay/scratch-gui/static/sim-lab/programs/'+id+'.bw',root),program=adaptedTechnicProgram(id);
+ if(process.argv.includes('--check'))assert.equal(readFileSync(programFile,'utf8'),program,id+' program');else writeFileSync(programFile,program);
 }

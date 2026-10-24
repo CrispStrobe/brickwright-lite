@@ -74,19 +74,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -99,19 +87,7 @@ WHEN flag clicked:
   set targetD to 88.945872912
   set targetE to 239.826764405
   set targetF to 163.418202896
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -124,19 +100,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -149,19 +113,7 @@ WHEN flag clicked:
   set targetD to -69.485306218
   set targetE to -223.425794932
   set targetF to -145.403343890
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -174,19 +126,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -199,19 +139,7 @@ WHEN flag clicked:
   set targetD to -553.413044254
   set targetE to -538.911908373
   set targetF to -538.911908373
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -224,19 +152,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -249,19 +165,7 @@ WHEN flag clicked:
   set targetD to 556.121477189
   set targetE to 542.389048581
   set targetF to 542.389048581
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -274,19 +178,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -299,19 +191,7 @@ WHEN flag clicked:
   set targetD to -229.329556385
   set targetE to 163.418202896
   set targetF to -223.425794932
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -324,19 +204,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -349,19 +217,7 @@ WHEN flag clicked:
   set targetD to 246.000807223
   set targetE to -145.403343890
   set targetF to 239.826764405
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -374,19 +230,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -399,19 +243,7 @@ WHEN flag clicked:
   set targetD to 1108.757212424
   set targetE to -701.846673369
   set targetF to -629.652071427
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -424,19 +256,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -449,19 +269,7 @@ WHEN flag clicked:
   set targetD to -1085.748452827
   set targetE to 713.112821318
   set targetF to 627.295576188
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -474,19 +282,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -499,19 +295,7 @@ WHEN flag clicked:
   set targetD to 104.772562797
   set targetE to -49.592132375
   set targetF to 327.561441656
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -524,19 +308,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -549,19 +321,7 @@ WHEN flag clicked:
   set targetD to -46.361641348
   set targetE to 101.607510095
   set targetF to -257.568050373
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -574,19 +334,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -599,19 +347,7 @@ WHEN flag clicked:
   set targetD to 145.593573751
   set targetE to 737.333813378
   set targetF to -1268.604117625
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -624,19 +360,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -649,19 +373,7 @@ WHEN flag clicked:
   set targetD to -144.864682086
   set targetE to -722.774182261
   set targetF to 1278.422794214
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -674,19 +386,7 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -699,19 +399,7 @@ WHEN flag clicked:
   set targetD to 294.892757012
   set targetE to -118.186839893
   set targetF to 294.160040892
-  set travelBound to 0.4
-  IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetA - (lab motor A angle)))
-  IF (abs of (targetB - (lab motor B angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetB - (lab motor B angle)))
-  IF (abs of (targetC - (lab motor C angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetC - (lab motor C angle)))
-  IF (abs of (targetD - (lab motor D angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetD - (lab motor D angle)))
-  IF (abs of (targetE - (lab motor E angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetE - (lab motor E angle)))
-  IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
-    set travelBound to (abs of (targetF - (lab motor F angle)))
+  broadcast "prepare all six" and wait
   broadcast "move all six" and wait
   set settled to 1
   wait 0.5 seconds
@@ -724,6 +412,20 @@ WHEN flag clicked:
   set targetD to 0.000000000
   set targetE to 0.000000000
   set targetF to 0.000000000
+  broadcast "prepare all six" and wait
+  broadcast "move all six" and wait
+  set settled to 1
+  wait 0.5 seconds
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  lab stop motor D hold
+  lab stop motor E hold
+  lab stop motor F hold
+  set stage to 28
+  set completed to 1
+
+WHEN I receive "prepare all six":
   set travelBound to 0.4
   IF (abs of (targetA - (lab motor A angle))) > (travelBound) THEN:
     set travelBound to (abs of (targetA - (lab motor A angle)))
@@ -737,17 +439,6 @@ WHEN flag clicked:
     set travelBound to (abs of (targetE - (lab motor E angle)))
   IF (abs of (targetF - (lab motor F angle))) > (travelBound) THEN:
     set travelBound to (abs of (targetF - (lab motor F angle)))
-  broadcast "move all six" and wait
-  set settled to 1
-  wait 0.5 seconds
-  lab stop motor A hold
-  lab stop motor B hold
-  lab stop motor C hold
-  lab stop motor D hold
-  lab stop motor E hold
-  lab stop motor F hold
-  set stage to 28
-  set completed to 1
 
 WHEN I receive "move all six":
   set correctionA to 0

@@ -11,6 +11,9 @@ import {SIX_INTAKES,intakeRead,intakeHash} from '../scripts/lib/sim-lab-six-inta
 import {catalogFrom,prepareModel,MODELS} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {solidOverlaps} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {adaptedTechnicProgram} from '../scripts/adapt-six-technic-models.mjs';
+import {compactAtlasProgram} from '../scripts/lib/sim-lab-atlas-program.mjs';
+import Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
 const selected=process.env.BW_MODEL_QUALIFY_MODELS?.split(','),catalog=catalogFrom(JSON.parse(intakeRead('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json')));
 const counts={'rod-ratio':167,'vernier-drive':176,'line-turner':145,'dune-strider':202,'atlas-six':676,oblique:291};
 for(const id of SIX_INTAKES.filter(id=>!selected||selected.includes(id))){
@@ -22,7 +25,7 @@ for(const id of SIX_INTAKES.filter(id=>!selected||selected.includes(id))){
   if(id==='rod-ratio')for(const x of [100,300])for(const y of [60,80])expected=expected.replace(`0 !BW ID long_post_pin_${x}_${y}\n1 1 ${x} ${y} 185 0 1 0 0 0 1 1 0 0 6558.dat`,`0 !BW ID long_post_pin_${x}_${y}\n1 1 ${x} ${y} 190 0 1 0 0 0 1 1 0 0 6558.dat`);
   if(id==='oblique')expected=expected.replace('1 72 -160 -280 -120 0 0 1 0 1 0 -1 0 0 32524.dat','1 72 -170 -275 -120 0 0 1 0 1 0 -1 0 0 32063.dat');
   assert.equal(source,expected,'only the declared pin-collar, brace and licence-pointer adaptations');
-  assert.equal(intakeRead('overlay/scratch-gui/static/sim-lab/programs/'+id+'.bw').toString(),intakeRead(prefix+'programs/'+id+'.bw').toString());
+  assert.equal(intakeRead('overlay/scratch-gui/static/sim-lab/programs/'+id+'.bw').toString(),adaptedTechnicProgram(id),'Only the declared program adaptation is admitted');
   const ordinary=prepareModel(source,catalog),strict=prepareModel(source,catalog,{autoPorts:false});assert.deepEqual(ordinary,strict);assert.deepEqual(strict.issues,[]);assert.equal(strict.model.parts.length,counts[id]);
   const ports=id==='atlas-six'?[...'ABCDEF']:id==='oblique'?['A','B']:['A'];assert.deepEqual(strict.mechanism.actuators.map(a=>a.port).sort(),ports);
   for(const part of strict.model.parts)assert.deepEqual(solidOverlaps(strict.model,catalog,part),[],part.id);
@@ -63,6 +66,22 @@ for(const id of SIX_INTAKES.filter(id=>!selected||selected.includes(id))){
   assert.ok(changed>0,'actual moving bodies were observed');await assert.rejects(()=>judgeReviewedIntake(id,frozen,{native:true,contract}));
  });
 }
+if(!selected||selected.includes('atlas-six'))test('Atlas Six compaction preserves original stages and motion receivers while halving compiled blocks',async t=>{
+ const original=intakeRead('test/fixtures/model-files/atlas-six-source/programs/atlas-six.bw').toString(),compacted=adaptedTechnicProgram('atlas-six');
+ assert.throws(()=>compactAtlasProgram(original.replace('targetA to 239.826764405','targetA to 239.826764406')),/reviewed original/);
+ assert.equal(compacted.slice(compacted.indexOf('WHEN I receive "move all six":')),original.slice(original.indexOf('WHEN I receive "move all six":')),'All six feedback receivers, fail-all and watchdog remain byte-identical');
+ const stages=source=>[...source.matchAll(/^  set (?:stage|target[A-F]|settled|completed|failed) to .+$/gm)].map(m=>m[0]);
+ assert.deepEqual(stages(compacted),stages(original),'Every ordered stage, target, join/settled and terminal assignment remains');
+ assert.equal((compacted.match(/^  broadcast "prepare all six" and wait$/gm)||[]).length,27);
+ const counts=[];
+ for(const source of [original,compacted]){
+  const creator=new Creator();creator.parse(source);await creator.generateSB3();
+  assert.equal(creator.validate().isValid,true);assert.deepEqual(creator.warnings||[],[]);assert.deepEqual(creator.unparsed||[],[]);
+  counts.push(creator.project.targets.reduce((n,target)=>n+Object.keys(target.blocks||{}).length,0));
+ }
+ assert.ok(counts[1]<=counts[0]/2,'The saved graph must contain at most half as many compiled blocks');
+ t.diagnostic(JSON.stringify({originalBlocks:counts[0],compactedBlocks:counts[1]}));
+});
 if(!selected||selected.includes('line-turner'))test('native API observer preserves every actual body and joint trajectory',async()=>{
  const {record}=await runReviewedIntake('line-turner',{frameMs:25,autoPorts:false});
  const plain=await runRobotLabProgram(intakeRead('overlay/scratch-gui/static/sim-lab/programs/line-turner.bw').toString(),{

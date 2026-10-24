@@ -17,6 +17,14 @@ English and German lessons explain the experiment, equations and limits.
 Classical names and aliases are searchable in Examples. Reset before a repeat
 or after manual movement; these programs use their saved encoder datum.
 
+Atlas Six's supplied program remains immutable in the source fixtures. Its
+bundled derivative moves the identical travel-bound calculation from 27 stage
+copies into one joined receiver. The six concurrent motion receivers, targets,
+correction limits, final hold and watchdog remain unchanged. This reduces the
+generated saved graph from 2,470 to 756 blocks. Native qualification at both
+observation cadences retains the original physical and controller limits;
+loading latency and the complete browser journeys are qualified separately.
+
 Manual controls use bounded angle requests. Atlas Six's individual jogs are
 deliberately small; its coordinated program demonstrates the larger six-axis
 experiment. The jog limits are software requests, not physical end stops.

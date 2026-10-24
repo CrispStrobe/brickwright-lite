@@ -33,8 +33,8 @@ Preserve all other model, renderer, native and circuit owners.
 Candidate implementation uses the same owner’s isolated
 `lane/six-technic-model-intakes-20261023`, preserving the separate frozen
 Cable Compass qualification. All six original native experiments were
-independently reproduced. Source-bound adapters retain the programs and
-physical limits. Construction review corrected four Rod Ratio pin collars,
+independently reproduced. Source-bound adapters preserve the original fixtures
+and physical limits. Construction review corrected four Rod Ratio pin collars,
 one Oblique roof brace and the stock suspension-arm fork representation;
 all supports, masses and connectors remain. The six named internal physical
 comparisons and Atlas Six exception are explicit reviewer-owned registrations.
@@ -72,3 +72,14 @@ after capture. External bypass flags are refused, real pending fonts remain
 blocking, and blank-image negatives and all pixel thresholds stay unchanged.
 Controlled browser fixtures cover those guards; application DOM/fonts and
 physical state remain untouched.
+
+Atlas Six loading continuation uses this existing owner’s model/program scope.
+Its reviewed program derivative factors the exact repeated travel-bound
+preparation into one joined receiver, reducing the generated saved graph from
+2,470 to 756 blocks. Original fixtures, all target stages, six concurrent motion
+receivers, correction limits, hold and watchdog remain unchanged. Fourteen
+focused compaction, provenance, native two-cadence, frozen-output and source
+binding controls pass. Actual before/after import measurements and complete
+browser qualification remain required; block count alone is not a latency or
+combined-application acceptance claim. Integration and the separately claimed
+release/API follow-through preserve the other owners’ frozen successors.
