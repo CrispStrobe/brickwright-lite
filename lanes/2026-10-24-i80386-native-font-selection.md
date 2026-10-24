@@ -87,3 +87,13 @@ copy to the service. Earlier unselected source retained only an event hash,
 which was insufficient for the unchanged independent reader. New source,
 request and workflow hashes require fresh qualification and admission; no
 native event has been selected or replayed by this repair.
+
+
+The raw-event admission repair uses separate bounded UTF-8 JSON decoders in
+the producer and standalone reader. They accept genuine runner formatting
+without canonicalizing retained bytes, reject duplicate and nonfinite nested
+values, and preserve all canonical request/original rules and raw hash joins.
+The prior exact-byte retention source assumed a canonical event representation;
+no event was selected under that source. New source/request/workflow identities
+require fresh qualification and admission; actual GUI and guest authority stay
+false.

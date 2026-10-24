@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pure injected-edge controls; never run a native font command."""
 import copy
+import ast
 import importlib.util
 import io
 import json
@@ -176,11 +177,101 @@ class Controls(unittest.TestCase):
             for name,value in (('FONT_BYTES',len(FONT)),('FONT_SHA',producer.sha(FONT)),
                                ('LICENSE_BYTES',len(NOTICE)),('LICENSE_SHA',producer.sha(NOTICE))):
                 selected=patch.object(module,name,value);selected.start();self.addCleanup(selected.stop)
-    def produce(self,fault=None):
+    def produce(self,fault=None,event_transform=None):
         request=fixture_request();request_raw=producer.encode(request);pin=producer.sha(request_raw)
-        event_raw=fixture_event(pin);ops=FakeOps(event_raw,fault)
+        event_raw=fixture_event(pin)
+        if event_transform is not None:event_raw=event_transform(event_raw)
+        ops=FakeOps(event_raw,fault)
         raw=producer.collect(request_raw,pin,fixture_env(),ops)
         return raw,request_raw,event_raw,request,ops
+    def test_raw_event_formats_traverse_real_producer_and_independent_reader(self):
+        def reverse(value):
+            if isinstance(value,dict):return {key:reverse(item) for key,item in reversed(list(value.items()))}
+            return value
+        formats=(lambda raw:json.dumps(json.loads(raw),indent=2).encode()+b'\n',
+            lambda raw:b' \r\n'+json.dumps(reverse(json.loads(raw)),ensure_ascii=True).encode()+b'\r\n\t ',
+            lambda raw:raw+b'\n',
+            lambda raw:raw+b' '*((256<<10)-len(raw)))
+        for transform in formats:
+            with self.subTest(format=transform):
+                raw,request_raw,event_raw,request,ops=self.produce(event_transform=transform)
+                self.assertNotEqual(event_raw,producer.encode(json.loads(event_raw)))
+                verdict=grade(raw,request_raw,event_raw,request)
+                self.assertTrue(verdict['nativeSelectionObserved'])
+                value=reader.parse(raw,reader.LIMITS['originalBytes'],lf=True)
+                self.assertEqual(value['event'],{'bytes':len(event_raw),'sha256':producer.sha(event_raw)})
+                self.assertEqual(ops.events.count('process'),1)
+                self.assertFalse(verdict['browserFontSelectionProved']);self.assertFalse(verdict['guestApproved'])
+                with self.assertRaises(reader.Refusal):
+                    grade(raw,request_raw,producer.encode(json.loads(event_raw)),request)
+
+    def test_raw_event_parser_bounds_duplicates_numbers_and_types_independently(self):
+        good=b' \r\n{ "nested": {"finite": [0.25, -12, 1e2]}, "label": "test" }\n'
+        parsed=json.loads(good)
+        invalid=(b'',b'[]',b'null',b'true',b'"text"',b'{}{}',b'{bad}',b'{"x":1,}',
+            b'\xff',b'\xef\xbb\xbf{}',b'{"x":1,"x":2}',b'{"x":1,"\\u0078":2}',
+            b'{"nested":{"x":1,"x":2}}',b'{"nested":[{"x":1,"x":2}]}',
+            b'{"nested":[NaN]}',b'{"nested":{"x":Infinity}}',b'{"nested":-Infinity}',
+            b'{"nested":[1e999]}',b'{"nested":{"x":-1e999}}',
+            b'{"nested":'+b'['*20+b'0'+b']'*19+b'}',
+            b'{}'+b' '*((256<<10)-1))
+        for parse in (producer.parse_event,reader.event_json):
+            self.assertEqual(parse(good),parsed)
+            self.assertEqual(parse(b'{}'+b' '*((256<<10)-2)),{})
+            for raw in invalid:
+                with self.subTest(parser=parse.__name__,raw=raw[:50]),self.assertRaises(ValueError):parse(raw)
+            for raw in ('{}',bytearray(b'{}'),None):
+                with self.assertRaises(ValueError):parse(raw)
+
+    def test_invalid_raw_events_stop_before_source_tool_or_input(self):
+        for transform in (lambda raw:raw[:-1]+b',"nested":{"x":1,"x":2}}',
+                          lambda raw:raw[:-1]+b',"nested":[1e999]}'):
+            raw,request_raw,event_raw,request,ops=self.produce(event_transform=transform)
+            value=reader.parse(raw,reader.LIMITS['originalBytes'],lf=True)
+            self.assertFalse(value['complete']);self.assertIsNotNone(value['firstFailure'])
+            self.assertEqual(ops.events,['event'])
+            with self.assertRaises(reader.Refusal):grade(raw,request_raw,event_raw,request)
+
+    def test_canonical_request_original_and_service_policies_unchanged(self):
+        raw,request_raw,event_raw,request,_=self.produce()
+        pretty_request=json.dumps(json.loads(request_raw),indent=2).encode()+b'\n'
+        pretty_original=json.dumps(json.loads(raw),indent=2).encode()+b'\n'
+        with self.assertRaises(ValueError):producer.admitted_request(pretty_request,producer.sha(pretty_request))
+        with self.assertRaises(reader.Refusal):reader.request(pretty_request)
+        with self.assertRaises(reader.Refusal):grade(pretty_original,request_raw,event_raw,request)
+        service=json.dumps(json.loads(service_fixture(raw)),indent=2).encode()+b'\n'
+        expected=expectation(raw,request_raw,event_raw,request)
+        expected.update(serviceBytes=len(service),serviceSha256=producer.sha(service))
+        with self.assertRaises(reader.Refusal):reader.original(raw,request_raw,event_raw,expected,service)
+
+    def test_raw_event_source_mutants_are_nonvacuous(self):
+        def mutated(module,name,change):
+            tree=ast.parse(Path(module.__file__).read_text())
+            node=next(row for row in tree.body if isinstance(row,ast.FunctionDef) and row.name==name)
+            source=ast.get_source_segment(Path(module.__file__).read_text(),node)
+            rewritten=change(source);self.assertNotEqual(source,rewritten)
+            space=dict(module.__dict__);exec(compile(rewritten,'<inert-event-parser-mutant>','exec'),space)
+            return space[name]
+        request=fixture_request();request_raw=producer.encode(request);pin=producer.sha(request_raw)
+        raw=json.dumps(json.loads(fixture_event(pin)),indent=2).encode()+b'\n';env=fixture_env()
+        producer.admitted_event(raw,request,env,pin);reader.selected_event(raw,request,pin,env)
+        # Replacing the new event-only entry with the old canonical parser kills
+        # a valid raw event in each real admission function.
+        old_producer=mutated(producer,'admitted_event',lambda s:s.replace('event = parse_event(raw)','event = parse(raw, 256 << 10)'))
+        old_reader=mutated(reader,'selected_event',lambda s:s.replace('e=event_json(raw)','e=parse(raw,256<<10)'))
+        with self.assertRaises(ValueError):old_producer(raw,request,env,pin)
+        with self.assertRaises(reader.Refusal):old_reader(raw,request,pin,env)
+        for module,name,duplicate_hook,float_hook in (
+                (producer,'parse_event','object_pairs_hook=pairs,','parse_float=finite,'),
+                (reader,'event_json','object_pairs_hook=unique,','parse_float=number,')):
+            parse=getattr(module,name)
+            for token,bad in ((duplicate_hook,b'{"nested":{"x":1,"x":2}}'),
+                              (float_hook,b'{"nested":[1e999]}')):
+                with self.subTest(module=module.__name__,guard=token):
+                    with self.assertRaises(ValueError):parse(bad)
+                    mutant=mutated(module,name,lambda s:s.replace(token,''))
+                    self.assertIsInstance(mutant(bad),dict)
+
     def test_retained_event_exact_bytes_and_cap_boundary(self):
         for raw in (b' {\r\n "not-normalized" : true }\r\n',b'x'*(256<<10)):
             with tempfile.TemporaryDirectory(dir=DIRECTORY) as directory:

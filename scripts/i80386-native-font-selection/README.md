@@ -161,3 +161,26 @@ tool/runtime input review, aggregate disk resource admission, a frozen request,
 exact source checks and separately reviewed one-shot event are required before
 the first metadata observation. Source qualification alone cannot approve an
 actual GUI or guest run.
+
+
+## Raw runner event admission
+
+The retained `event.original.json` is the runner's exact UTF-8 JSON bytes,
+bounded at 256 KiB. Its event-only parser accepts ordinary key order, JSON
+whitespace and a final newline. Producer and standalone reader independently
+reject duplicate fields at every object depth, malformed/nonobject JSON,
+multiple documents, invalid UTF-8, nonfinite literals and finite-number
+overflow such as `1e999`. Canonical no-LF request bytes and canonical original
+and service records keep their existing rules. Neither event parser rewrites
+the original: retained length/hash and the separately supplied raw event bytes
+must still agree exactly. Reformatting an already captured event changes its
+identity and refuses the reader.
+
+Pure controls traverse the real injected producer and independent reader with
+pretty, reordered and whitespace/LF events, including the 256 KiB boundary.
+They also reject nested duplicates and numeric overflow before source, input
+or tool-provider operations. In-memory source mutants that restore the old
+canonical event call or remove duplicate/overflow guards are detected. No
+native tool, package, browser, guest or official event runs in these controls.
+The old unselected transport is stale after this source change; regenerate
+source/request/body and executing-workflow admissions after final source CI.

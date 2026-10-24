@@ -75,6 +75,27 @@ def parse(raw, cap, lf=False):
     need(type(obj) is dict and canonical(obj)==body,'canonical JSON object')
     return obj
 
+def event_json(raw):
+    """Independently parse a bounded raw event; its bytes remain the identity."""
+    need(type(raw) is bytes and 0<len(raw)<=262144,'bounded raw event original')
+    def unique(items):
+        result={}
+        for key,value in items:
+            need(key not in result,'duplicate event field');result[key]=value
+        return result
+    def number(token):
+        result=float(token)
+        need(-float('inf')<result<float('inf'),'finite event number')
+        return result
+    try:
+        value=json.loads(raw.decode('utf-8'),object_pairs_hook=unique,parse_float=number,
+            parse_constant=lambda _:need(False,'nonfinite event number'))
+    except (ValueError,UnicodeError,RecursionError) as error:
+        raise Refusal('invalid raw event original') from error
+    need(type(value) is dict,'raw event JSON object')
+    return value
+
+
 def fields(value,names,role):
     need(type(value) is dict and set(value)==set(names.split()),'closed '+role)
 
@@ -163,7 +184,7 @@ def request(raw):
     return v
 
 def selected_event(raw,req,request_sha,platform):
-    e=parse(raw,256<<10);p=e.get('pull_request',{})
+    e=event_json(raw);p=e.get('pull_request',{})
     marker='<!-- BW_NATIVE_FONT_REQUEST_SHA256='+request_sha+' -->'
     body=p.get('body')
     need(e.get('action')=='labeled' and e.get('label',{}).get('name')=='x86-native-font-selection-v1' and

@@ -100,6 +100,27 @@ def parse(raw, cap):
     return value
 
 
+def parse_event(raw):
+    """Decode exact runner bytes without imposing request canonicalization."""
+    need(type(raw) is bytes and 0<len(raw)<=256<<10,'bounded raw event bytes')
+    def pairs(rows):
+        value={}
+        for key,item in rows:
+            need(key not in value,'duplicate raw event key');value[key]=item
+        return value
+    def finite(token):
+        value=float(token)
+        need(-float('inf')<value<float('inf'),'finite raw event number')
+        return value
+    try:
+        value=json.loads(raw.decode('utf-8'),object_pairs_hook=pairs,parse_float=finite,
+            parse_constant=lambda _:need(False,'nonfinite raw event number'))
+    except (ValueError,UnicodeError,RecursionError) as error:
+        raise ValueError('invalid raw event JSON') from error
+    need(type(value) is dict,'raw event object')
+    return value
+
+
 def keys(value, expected, name):
     need(type(value) is dict and set(value) == set(expected.split()), 'closed '+name)
 
@@ -185,7 +206,7 @@ def admitted_request(raw, expected_sha):
 
 
 def admitted_event(raw, request, env, expected_sha):
-    event = parse(raw, 256 << 10)
+    event = parse_event(raw)
     pr = event.get('pull_request', {})
     need(event.get('action') == 'labeled' and
          event.get('label', {}).get('name') == LABEL and
