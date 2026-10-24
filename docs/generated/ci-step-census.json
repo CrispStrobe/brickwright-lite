@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T07:55:03.123Z",
+  "generatedAt": "2026-10-24T08:16:30.599Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1931,6 +1931,12 @@
       "sha": "c9512f122"
     },
     {
+      "run": 39960513501,
+      "workflow": "model-measurements.yml",
+      "branch": "lane/model-api-resource-takeover-20261023",
+      "sha": "a11711d61"
+    },
+    {
       "run": 39982918951,
       "workflow": "robot-model-webkit-comparison.yml",
       "branch": "lane/robot-model-webkit-comparison-20261023",
@@ -1947,12 +1953,6 @@
       "workflow": "robot-model-webkit-comparison.yml",
       "branch": "lane/robot-model-webkit-comparison-20261023",
       "sha": "368bd55ae"
-    },
-    {
-      "run": 39960513501,
-      "workflow": "model-measurements.yml",
-      "branch": "lane/model-api-resource-takeover-20261023",
-      "sha": "a11711d61"
     }
   ],
   "workflowsInTree": [
@@ -1974,11 +1974,13 @@
     "makecode-arcade-bases.yml",
     "mobile.yml",
     "model-measurements.yml",
+    "native-installed-qualification.yml",
     "nightly-corpus-differential.yml",
     "pascal-ack-image.yml",
     "production-sw-probe.yml",
     "release.yml",
     "robot-lab-own-firmware.yml",
+    "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
@@ -7743,8 +7745,8 @@
     }
   },
   "lastRefresh": {
-    "workflow": "testflight-release-audit.yml",
-    "at": "2026-10-24T07:55:03.123Z",
+    "workflow": "robot-model-webkit-comparison.yml",
+    "at": "2026-10-24T08:16:30.599Z",
     "sourceSha": "working-tree"
   }
 }
