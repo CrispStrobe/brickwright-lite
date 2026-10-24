@@ -78,3 +78,7 @@ build legacy-overlay executables. The envelope adds
 `test/native-installed-qualification-controls.py`: the profile pin is now an
 optional, complete lowercase SHA-256 passed to the compiler like the other
 pins. All other pins and admission rules are unchanged.
+The producer's reviewed default had expired: its official frontend artifact was
+no longer available, so every producer PR check failed before compiling. The
+default now names main `d7fde5bf` with its successful Build 40106657493, and the
+current runtime with its compiled MicroPython support pins.
