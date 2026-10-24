@@ -53,6 +53,7 @@ const {registerRobotLabBlePeripherals} = await import(path.join(LIB, 'virtual-hu
 const {Lwp3Peripheral, Wedo2Peripheral} = await import(path.join(LIB, 'virtual-hub', 'lab-ble-peripherals.js'));
 const {installVirtualFetch, registerVirtualHttp, clearVirtualHttpForTest} = await import(path.join(SIM, 'transports', 'virtual-http.js'));
 const {createVirtualBleBridge} = await import(path.join(SIM, 'transports', 'virtual-ble-bridge.js'));
+const {guestCoordinator, startCoordinatedGuest} = await import('./coordinated-lab-guest.mjs');
 const {SimSession, catalogFrom} = await import(path.join(SIM, 'sim-session.js'));
 
 export const CATALOG = catalogFrom(JSON.parse(readFileSync(path.join(SIM, 'part-meta', 'parts.json'), 'utf8')));
@@ -120,7 +121,7 @@ const settle = async () => { for (let i = 0; i < 4; i++) await new Promise(resol
  * @returns {Promise<{session, hub, extension, extensionId, frames, connectMs, written, received}>}
  */
 export async function runLabHubProgram (source, {modelText: text, mat = null, transport = 'ble', timeLimitMs, stopWhen = null, onFrame = null,
-    firmware = null}) {
+    firmware = null, useLabRouting = false}) {
     const clock = new FakeClock(1.7e12);
     clock.install();
     let vm = null;
@@ -129,6 +130,9 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
     const savedWebSocket = globalThis.WebSocket;
     const savedFetch = globalThis.fetch;
     let restoreFetch = null;
+    let labConnection = null;
+    let labCoordinator = null;
+    let primaryError = null;
     try {
         const built = await SimSession.fromText(text, {hubState: null, catalog: CATALOG, mat});
         session = built.session;
@@ -176,7 +180,23 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         const t0 = clock.now;
         let connectError = null;
         let bridged = null;
-        if (transport === 'bridge') {
+        if (useLabRouting) {
+            if (transport !== 'bridge' || hub.protocol !== 'lwp3') throw new Error('the Lab HTTP route needs an LWP3 bridge program');
+            globalThis.fetch = async url => { throw new TypeError(`fetch failed: nothing at ${url}`); };
+            const routing = labCoordinator = guestCoordinator(() => vm, clock);
+            restoreFetch = () => routing.dispose();
+            const target = session.hubs.find(record => record.hub === hub);
+            await routing.setScene(session, {hubId: target.id});
+            await routing.select({route: 'http'});
+            const routedFetch = globalThis.fetch;
+            bridged = [];
+            globalThis.fetch = (input, init) => {
+                const url = new URL(typeof input === 'string' ? input : input.url);
+                bridged.push(`${init?.method || 'GET'} ${url.pathname}`);
+                return routedFetch.call(globalThis, input, init);
+            };
+            labConnection = {ready: routing.connect(), cancel: () => routing.disconnect()};
+        } else if (transport === 'bridge') {
             // The extension's own `set bridge URL` and connect; Web Bluetooth and Scratch Link take no part.
             const peripheral = hub.protocol === 'wedo2' ? new Wedo2Peripheral(hub) : new Lwp3Peripheral(hub);
             clearVirtualHttpForTest();
@@ -187,7 +207,7 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
             registerVirtualHttp({port: 8080, handle: request => { bridged.push(`${request.method} ${request.path}`); return handle(request); }});
             extension.setBridgeURL({URL: 'http://localhost:8080'});
         }
-        const connecting = transport === 'bridge' ?
+        const connecting = labConnection ? labConnection.ready.catch(e => { connectError = e; }) : transport === 'bridge' ?
             Promise.resolve(extension.connect()).catch(e => { connectError = e; }) :
             connectVirtualHub({host: globalThis, extensionId, hubState: hub,
             connected: () => Boolean(extension.isConnected()),
@@ -204,7 +224,8 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         await clock.advance(500);
         const connectMs = clock.now - t0;
 
-        vm.greenFlag();
+        if (labCoordinator) await startCoordinatedGuest(labCoordinator, clock);
+        else vm.greenFlag();
         let frames = 0;
         const maxFrames = Math.ceil(timeLimitMs / FRAME_MS);
         for (; frames < maxFrames; frames++) {
@@ -222,17 +243,28 @@ export async function runLabHubProgram (source, {modelText: text, mat = null, tr
         const received = hub.log.filter(e => e.dir === 'up').map(e => e.bytes);
         const log = hub.log.slice();
         return {session, hub, extension, extensionId, frames, connectMs, written, received, vm, log, bridged};
+    } catch (error) {
+        primaryError = error;
+        throw error;
     } finally {
-        try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
-        try { if (unregister) unregister(); } catch { /* noop */ }
+        const cleanupErrors = [];
+        if (useLabRouting) {
+            try { if (vm) vm.stopAll(); } catch (error) { cleanupErrors.push(error); }
+            try { if (labConnection) await labConnection.cancel(); } catch (error) { cleanupErrors.push(error); }
+            try { if (vm) vm.quit(); } catch (error) { cleanupErrors.push(error); }
+        } else {
+            try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
+        }
+        try { if (unregister) unregister(); } catch (error) { if (useLabRouting) cleanupErrors.push(error); }
         globalThis.__brickwrightChooseVirtualBluetooth = undefined;
         globalThis.WebSocket = savedWebSocket;
         if (restoreFetch) {
-            restoreFetch();
+            try { await restoreFetch(); } catch (error) { cleanupErrors.push(error); }
             clearVirtualHttpForTest();
             globalThis.fetch = savedFetch;
         }
         clock.uninstall();
+        if (cleanupErrors.length) throw new AggregateError([...(primaryError ? [primaryError] : []), ...cleanupErrors], 'Lab guest cleanup failed');
     }
 }
 

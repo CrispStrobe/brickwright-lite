@@ -41,6 +41,7 @@
 // return neutral values; nothing here throws at a program.
 
 import {portRefOf, partMotorJoint, partSensor, lduToWorld, upgradeMechanismV1} from '../contracts.js';
+import {createBrickButtonControls} from './brick-buttons.js';
 
 const DEG = 180 / Math.PI;
 
@@ -71,7 +72,13 @@ const MESSAGES = {
         'no-part': 'There is no part "{ref}" in this model.',
         'hub-program': 'Motor {port} belongs to the {hub}, whose own program drives it. Change that program, or choose the Scratch-blocks route.',
         'bad-model': 'There is no model "{ref}" (models: {list}).',
-        'bad-command': 'That is not a motor command: {why}'
+        'bad-command': 'That is not a motor command: {why}',
+        'no-brick': 'There is no hub "{ref}" in this model.',
+        'no-buttons': 'Hub {hub} has no simulated button input for this route.',
+        'bad-button': 'There is no button "{ref}" on hub {hub} (buttons: {list}).',
+        'bad-button-state': 'A button state must be true or false.',
+        'buttons-unavailable': 'Button input is being released.',
+        'scene-changed': 'The Robot Lab model changed before the button press.'
     },
     de: {
         'no-model': 'Im Robot Lab ist noch kein Modell geladen.',
@@ -81,7 +88,13 @@ const MESSAGES = {
         'no-part': 'In diesem Modell gibt es kein Teil „{ref}“.',
         'hub-program': 'Motor {port} gehört zum {hub}, dessen eigenes Programm ihn steuert. Ändere dieses Programm oder wähle den Weg über Scratch-Blöcke.',
         'bad-model': 'Es gibt kein Modell „{ref}“ (Modelle: {list}).',
-        'bad-command': 'Das ist kein Motorbefehl: {why}'
+        'bad-command': 'Das ist kein Motorbefehl: {why}',
+        'no-brick': 'In diesem Modell gibt es keinen Hub „{ref}“.',
+        'no-buttons': 'Hub {hub} unterstützt für diesen Ausführungsweg keine simulierten Tasten.',
+        'bad-button': 'Hub {hub} hat keine Taste „{ref}“ (Tasten: {list}).',
+        'bad-button-state': 'Ein Tastenzustand muss true oder false sein.',
+        'buttons-unavailable': 'Die Tasteneingabe wird gerade freigegeben.',
+        'scene-changed': 'Das Robot-Lab-Modell wurde vor dem Tastendruck gewechselt.'
     }
 };
 
@@ -356,6 +369,7 @@ export const createRobotLabApi = (host) => {
         return w;
     };
 
+    const buttons = createBrickButtonControls({getSession: session, noSession, refuse, ensureRunning: host.ensureRunning});
     const api = {
         version: ROBOT_LAB_API_VERSION,
 
@@ -397,6 +411,9 @@ export const createRobotLabApi = (host) => {
         motors: () => (scene()?.motors || []).map(({owner, joint, ...m}) => ({...m, direct: Boolean(owner && owner.hub && owner.hub.directCommand)})),
         sensors: () => (scene()?.sensors || []).map(({owner, ...x}) => x),
         parts: () => (scene()?.parts || []).map(p => ({...p})),
+        brickButtons: buttons.list,
+        pressButton: buttons.press,
+        holdButton: buttons.hold,
 
         // ---- direct control and reads ---------------------------------------------------
         setMotor,
@@ -475,13 +492,15 @@ export const createRobotLabApi = (host) => {
 
         /** The host tells the API its session changed: waits end, cached lists and contacts are dropped. */
         sessionChanged () {
-            cache = null;
-            const waiting = gone;
-            gone = [];
-            for (const resolve of waiting) resolve();
-            for (const w of watches.values()) { w.touching = false; w.latched = false; }
-            watched = undefined;
-            follow();
+            try { buttons.releaseAll(); } finally {
+                cache = null;
+                const waiting = gone;
+                gone = [];
+                for (const resolve of waiting) resolve();
+                for (const w of watches.values()) { w.touching = false; w.latched = false; }
+                watched = undefined;
+                follow();
+            }
         },
         dispose () {
             if (unsubscribe) unsubscribe();

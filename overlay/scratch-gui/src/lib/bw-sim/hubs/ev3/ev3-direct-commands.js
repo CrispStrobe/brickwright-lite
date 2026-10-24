@@ -262,7 +262,7 @@ const button = name => ({name, args: [['in', T8], ['out', T8]], run: (brick, [b]
 defSub(OP.UI_BUTTON, 'opUI_BUTTON', {
     0x01: button('SHORTPRESS'),
     0x02: button('LONGPRESS'),
-    // "Wait for press": the reply waits until a button is pressed (the Lab has none to press yet).
+    // "Wait for press": the reply waits until a button input is pressed.
     0x03: {name: 'WAIT_FOR_PRESS', args: [], run: brick => (brick.anyButton() ? undefined : {block: true})},
     0x04: {name: 'FLUSH', args: [], run: brick => brick.flushButtons()},
     0x05: {name: 'PRESS', args: ins(T8), run: (brick, [b]) => brick.pressButton(b, true)},
