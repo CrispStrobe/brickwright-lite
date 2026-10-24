@@ -1,58 +1,33 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-## Current qualification — 23 October 2026
+## Current qualification — 24 October 2026
 
-The [current composed run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39899568550)
-confirms the **complete original function-return module passes 12/12**, including
-recursive/mutual calls, parameter writes and Sprite forwarding. Its complete
-identity-constraint module passes **8/8**. The complete four-shard unit set reports **12,335 passes, 163 failures, 19 skips
-and 37 TODOs across 12,554 tests**. Compared with the preceding composed run,
-four previous failure titles are resolved and none is newly failing.
-The complete 61-control source cohort, original 32-case SDK cohort and 87 existing
-Array controls all pass. Build, corpus and Arcade controller checks pass. These
-are conformance results; the corpus check does not establish that a previously
-partial application executes correctly. Historical **147 translated / 36 partial /
-one malformed** remains unremeasured.
+Start with [the current results and task order](ARCADE-COMPATIBILITY-NEXT-STEPS.md)
+and [captured class primitive work](ARCADE-CLASS-CAPTURED-PRIMITIVES.md).
+Older sections below retain historical results; they do not describe the current
+candidate or authorize reusing another head's test results.
 
-The separate Sprite receiver source module improves to **13/14**. Its remaining
-failure is a source-restoration bug: the outer nonsticky binding guard returns
-false before the inner sticky SDK guard can observe an edit. After restoration,
-the combined view can revive. The next source repair makes ordinary factory
-currentness permanently false after either observed false or an original thrown
-reflection error, while preserving that first error and legacy class behavior.
-The existing complete test retains both original restoration assertions and now
-requires genuine getter projections before fresh-proof positives. This repair
-requires new qualification; it is not covered by the preceding passing cohorts.
+The completed four-shard baseline has **12,463 passes, 147 failures, 19 skips
+and 37 TODOs**. The later hosted numeric-authoring job passes five journeys;
+its optional clean-export freshness observation is unavailable. Source controls
+for native-frame reset and custom-kind binding pass eleven and four groups
+respectively. These results cover different heads and boundaries.
 
-The current numeric-authoring GUI still fails its original clean-export assertion
-with two Array producer refusals. Chromium setup succeeds, but four later
-journeys remain skipped. The exact failed project graph is still absent from
-the retained original log. No GUI or application completion is claimed.
+The [current class candidate](ARCADE-CLASS-CAPTURED-PRIMITIVES.md) corrects
+primitive addition unions and proves captured reads from actual producers and
+writers. Its complete six-group module passes at
+`7f08e871ad3c76929282787092270b1b09158744`, including the full inheritance
+export/reimport and Code feedback journey. Actual method entry, formal input and
+source-order temporary alias proofs remain private and separate from global
+capture declaration readiness. The separate complete class-scalar, lineage and
+union run passes fourteen groups at that same source head. Remaining affected cohorts, mutations and
+hosted runtime qualification remain pending. Keep the original failed runs
+and program.
 
-Continue in this order:
-
-1. Qualify the ordinary Sprite source-restoration repair with the complete
-   existing receiver module and affected source/SDK controls. Preserve failures.
-2. Qualify the implementation of the [merged refusal-capture scope](https://github.com/CrispStrobe/brickwright-lite/pull/1256).
-   Follow its
-   [self-contained contract](https://github.com/CrispStrobe/brickwright-lite/blob/0266e30e76bd36a39c4362328b60d8d7354f505c/lanes/2026-10-23-arcade-exact-refusal-capture.md)
-   before implementation. The existing GUI failure lacks the exact consumed
-   project, so an earlier project or matching visible code cannot explain it.
-   The source candidate now adds exact input/result capture to the existing
-   invocation, with an 8 MiB combined UTF-8 bound and explicit unavailable states.
-   Its readonly browser observer requires the same idle pre-click component and
-   current post-click report; no extra export or VM serialization occurs.
-   Inspect the next actual artifact's observation status before diagnosing a
-   semantic producer. Source review and syntax checks are not GUI qualification.
-3. Capture that input and the actual semantic result from the existing single
-   export invocation, then repair the demonstrated Array writer/initialization
-   boundary. Keep the original clean-export and later asset assertions.
-4. Qualify affected complete tests and visible authoring, then remeasure original
-   application cases through source, Code/Blocks, execution, exported MakeCode,
-   exact-file reimport and fresh saved projects before crediting a closure.
-
-No new full-CI label, duplicate dispatch, weakened assertion or private-input
-publication is needed. Current source is not merged while enabled checks fail.
+Historical **147 translated / 36 partial / one malformed** application counts
+remain unremeasured. No component result, passing corpus guard or source-only
+conversion changes those counts. Final composed hosted checks, actual MakeCode
+execution and visible authoring journeys remain required.
 
 ## Recursive Number capability — complete source controls pass
 

@@ -1,5 +1,12 @@
 # Arcade compatibility: integration and next steps
 
+The active [captured-class primitive task](ARCADE-CLASS-CAPTURED-PRIMITIVES.md)
+records the current source changes, observed failures and next acceptance steps.
+All six complete source groups pass at `7f08e871ad3c76929282787092270b1b09158744`,
+including actual emitted-file reimport and Code feedback for the full inheritance
+example. Broader regression, runtime and visible editor qualification remain
+open; these source controls do not reclassify applications.
+
 ## Latest measured boundary and current candidate — 23 October 2026
 
 The [completed four-unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39959713589)
