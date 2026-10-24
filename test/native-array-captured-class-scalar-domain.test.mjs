@@ -68,6 +68,7 @@ test('complete captured scalar closure refuses late nonprimitive writers, unknow
  bad('function detached(){return __bwBinaryAdd(this.value,1)}class Base {}let trace="";detached();');
  for(const write of ['if(true){second=new Child()}','second=foreign()','second=first;first=second'])
   bad(core+'function setup(){let first:any=0;let second:any=0;'+write+';first=second;let saved=first;saved.write("x")}let trace:any;trace="";setup();');
+ bad(core+'function setup(){let temporary:any=0;let observed=temporary;temporary=new Child();let saved=temporary;saved.write("x")}let trace:any;trace="";setup();');
 });
 
 test('declaration readiness remains separate from domains across early construction, static effects and changed parents',()=>{

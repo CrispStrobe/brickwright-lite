@@ -259,7 +259,11 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             const index=body.indexOf(copyStatement);
             if(!copyStatement||index<=declarationIndex){closed=false;break;}
             const preceding=rows.filter(row=>row.index<index).sort((a,b)=>b.index-a.index)[0];
-            if(preceding&&!inertPrimitive(preceding.rhs))copies.push({reference,rhs:preceding.rhs,index,writeIndex:preceding.index});
+            // Preserve the original refusal for any observation before the
+            // constructor/copy overwrite. A later definite value cannot lend
+            // this occurrence-only profile to an earlier primitive read.
+            if(!preceding||inertPrimitive(preceding.rhs)){closed=false;break;}
+            copies.push({reference,rhs:preceding.rhs,index,writeIndex:preceding.index});
         }
         if(closed)for(const copy of copies)copyCandidates.set(copy.reference,copy);
     }
