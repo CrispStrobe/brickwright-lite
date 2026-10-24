@@ -28,6 +28,7 @@ import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../overlay/scratch-gui/src
 import {placedSpur, placedTooth} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/tooth-parts.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
 import {buildSteps, stepCorner, VIEWS, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {BANDS, BAND_RADIUS_LDU} from '../overlay/scratch-gui/src/lib/bw-sim/editor/belt-path.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(ROOT, 'overlay/scratch-gui');
@@ -119,12 +120,19 @@ const stepIndex = plan => {
 };
 
 for (const {name, text} of MODELS_UNDER_TEST) {
-    test(`${name}: derived steps place every part once, each step buildable, fasteners with what they join`, () => {
+    test(`${name}: authored or derived steps place every part once and follow their construction rules`, () => {
         const model = load(text);
         const plan = buildSteps(model, CATALOG);
-        assert.equal(plan.source, 'auto');
+        const authored = Boolean(model.steps?.length);
+        assert.equal(plan.source, authored ? 'meta' : 'auto');
         const at = stepIndex(plan);
         assert.deepEqual([...at.keys()].sort(), model.parts.map(p => p.id).sort(), 'every part exactly once');
+        if (authored) {
+            // Authored assembly stages deliberately have their own grouping and order.
+            // The derived manual's hub-first/6-piece/fastener page rules do not rewrite them.
+            assert.deepEqual(plan.steps.map(step => step.parts), model.steps, 'every authored stage is preserved exactly');
+            return;
+        }
         assertBuildable(name, model, plan);
         // The hub comes first, as on page 1 of a SPIKE manual; a model with no hub (the motor bench,
         // driven by the Robot Lab itself) starts from its motor.
@@ -190,19 +198,31 @@ for (const {name, text} of MODELS_UNDER_TEST) {
     test(`${name}: the bill of materials counts what the model holds`, () => {
         const model = load(text);
         const bom = partsList(model, CATALOG);
-        assert.equal(bom.reduce((n, row) => n + row.count, 0), model.parts.length);
+        const total = model.parts.length + (model.belts || []).length;
+        assert.equal(bom.reduce((n, row) => n + row.count, 0), total);
         const counted = new Map();
         for (const p of model.parts) counted.set(`${p.part}@${p.color}`, (counted.get(`${p.part}@${p.color}`) || 0) + 1);
+        for (const belt of model.belts || []) {
+            const band = BANDS.find(b => b.part === belt.band);
+            const key = `${belt.band}@${band.colour}`;
+            counted.set(key, (counted.get(key) || 0) + 1);
+        }
         assert.deepEqual(new Map(bom.map(row => [`${row.part}@${row.color}`, row.count])), counted);
         for (const row of bom) {
             assert.ok(row.name.en && row.name.de, `${row.part}: EN and DE names`);
+            if (row.category === 'band') {
+                const mm = BANDS.find(b => b.part === row.part).mm;
+                assert.match(row.name.en, new RegExp(`${mm} mm`));
+                assert.match(row.name.de, new RegExp(`${mm} mm`));
+                continue;
+            }
             assert.equal(row.name.en, CATALOG.get(row.part).name);
             assert.equal(row.name.de, CATALOG.get(row.part).nameDe);
         }
         // Each step's callout counts that step's new parts.
         const plan = buildSteps(model, CATALOG);
-        const sum = plan.steps.reduce((n, s) => n + partsList(model, CATALOG, s.parts).reduce((k, row) => k + row.count, 0), 0);
-        assert.equal(sum, model.parts.length);
+        const sum = plan.steps.reduce((n, s) => n + partsList(model, CATALOG, s.parts, s.belts).reduce((k, row) => k + row.count, 0), 0);
+        assert.equal(sum, total);
     });
 }
 
@@ -382,6 +402,112 @@ test('the print page has one picture per step, in order, then the parts list; na
     assert.ok(html.indexOf('data-bom') > html.lastIndexOf('class="shot"'), 'the parts list comes after the steps');
     assert.match(html, /14 Teile/);
     assert.match(html, /Technic-Achse 4/);
+});
+
+for (const [file, rigidCount, bandCount] of [['echo-bridge.ldr', 108, 2], ['bit-keeper.ldr', 133, 1], ['resonance-lab.ldr', 142, 2]]) {
+    test(`${file}: rubber bands keep every rigid page, appear after their anchors, and complete the BOM`, () => {
+        const model = load(read(`overlay/scratch-gui/static/sim-lab/models/${file}`));
+        assert.equal(model.parts.length, rigidCount);
+        assert.equal(model.belts.length, bandCount);
+        const rigidModel = {...model};
+        delete rigidModel.belts;
+        const rigidPlan = buildSteps(rigidModel, CATALOG);
+        const plan = buildSteps(model, CATALOG);
+        assert.deepEqual({...plan, steps: plan.steps.map(({belts, ...step}) => step)}, rigidPlan,
+            'the complete rigid sequence, moves, views and subassemblies are unchanged');
+        const scheduled = plan.steps.flatMap(step => step.belts || []);
+        assert.deepEqual(scheduled, model.belts.map(b => b.id), 'each physical band is fitted exactly once');
+        for (let n = 0; n < plan.steps.length; n++) {
+            const view = stepView(plan, n);
+            const assembled = new Set([...view.built, ...view.fresh]);
+            for (const id of view.freshBelts) {
+                const belt = model.belts.find(b => b.id === id);
+                assert.ok(belt.around.every(anchor => assembled.has(anchor)), `${id}: every anchor is on the page`);
+            }
+            assert.equal(view.freshBelts.length, n === plan.steps.length - 1 ? bandCount : 0);
+        }
+        const bom = partsList(model, CATALOG);
+        assert.equal(bom.reduce((n, row) => n + row.count, 0), rigidCount + bandCount);
+        assert.deepEqual(bom.filter(row => row.category === 'band').map(row => [row.part, row.color, row.count]),
+            [['85546.dat', 15, bandCount]]);
+        const callouts = plan.steps.map(step => partsList(model, CATALOG, step.parts, step.belts));
+        assert.equal(callouts.flat().reduce((n, row) => n + row.count, 0), rigidCount + bandCount);
+        assert.equal(partsList(model, CATALOG, model.parts.map(p => p.id)).reduce((n, row) => n + row.count, 0), rigidCount,
+            'an explicit rigid-only filter does not add all bands to every callout');
+        const missingOne = {...model, belts: model.belts.slice(1)};
+        assert.equal(partsList(missingOne, CATALOG).reduce((n, row) => n + row.count, 0), rigidCount + bandCount - 1,
+            'removing one physical band changes the complete count');
+        if (file === 'resonance-lab.ldr') {
+            assert.equal(plan.source, 'meta');
+            assert.deepEqual(plan.steps.map(step => step.parts.length), [49, 25, 16, 36, 16]);
+            assert.equal(callouts.at(-1).reduce((n, row) => n + row.count, 0), 18, 'stage 5 fits 16 rigid pieces and both bands');
+        }
+    });
+}
+
+test('rubber band instructions refuse missing anchors, unsupported bands, duplicate ids and impossible paths by name', () => {
+    const model = load(read('overlay/scratch-gui/static/sim-lab/models/resonance-lab.ldr'));
+    const first = model.belts[0];
+    const missing = {...model, belts: [{...first, around: [first.around[0], 'missing_anchor']}]};
+    assert.throws(() => buildSteps(missing, CATALOG), /unknown anchors missing_anchor/);
+    assert.throws(() => partsList(missing, CATALOG), /unknown anchors missing_anchor/);
+    const unsupported = {...model, belts: [{...first, band: 'unsupported-band.dat'}]};
+    assert.throws(() => buildSteps(unsupported, CATALOG), /unknown band part 'unsupported-band.dat'/);
+    assert.throws(() => partsList(unsupported, CATALOG), /unknown band part 'unsupported-band.dat'/);
+    assert.throws(() => buildSteps({...model, belts: [first, first]}, CATALOG), /duplicate band id/);
+    assert.throws(() => buildSteps({...model, belts: [{...first, around: [first.around[0], first.around[0]]}]}, CATALOG), /distinct anchors/);
+    const coincident = structuredClone(model);
+    const [a, b] = first.around.map(id => coincident.parts.find(p => p.id === id));
+    b.position = a.position.slice();
+    b.rotation = a.rotation.slice();
+    assert.throws(() => buildSteps(coincident, CATALOG), /anchors do not form a drawable band path/);
+});
+
+test('rubber band thumbnails use native unstretched diameters and section, without external geometry', async () => {
+    const {bandThumbnailGeometry} = await import('../overlay/scratch-gui/src/lib/bw-sim/view/part-thumbnails.js');
+    for (const band of BANDS) {
+        const geometry = bandThumbnailGeometry(band.part);
+        assert.ok(geometry.attributes.position.count > 0);
+        geometry.computeBoundingBox();
+        const radius = band.mm / 2000 + BAND_RADIUS_LDU * 0.0004;
+        assert.ok(Math.abs(geometry.boundingBox.max.x - radius) < 1e-8);
+        assert.ok(Math.abs(geometry.boundingBox.max.y - radius) < 1e-8);
+        assert.ok(Math.abs(geometry.boundingBox.max.z - BAND_RADIUS_LDU * 0.0004) < 1e-8);
+        geometry.dispose();
+    }
+    assert.equal(bandThumbnailGeometry('unsupported-band.dat'), null, 'unknown parts are not drawn as generic bands');
+});
+
+test('rubber band thumbnails expose every face to the shared material-array renderer', async () => {
+    const {bandThumbnailGeometry} = await import('../overlay/scratch-gui/src/lib/bw-sim/view/part-thumbnails.js');
+    for (const band of BANDS) {
+        const geometry = bandThumbnailGeometry(band.part);
+        assert.ok(geometry.index.count > 0, 'band has indexed faces');
+        // WebGLRenderer visits only these groups when a mesh has an array of
+        // materials. Vertices alone can otherwise produce a completely blank PNG.
+        assert.deepEqual(geometry.groups, [{start: 0, count: geometry.index.count, materialIndex: 0}],
+            `${band.part}: every face uses the normal, non-vertex-colour material`);
+        geometry.dispose();
+    }
+});
+
+test('rubber band print pages include the fitting note and all 144 Resonance pieces in both languages', async () => {
+    const {instructionsPrintHtml} = await import('../overlay/scratch-gui/src/lib/bw-sim/instructions/print-page.js');
+    const {INSTRUCTIONS_TEXT} = await import('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-instructions-text.js');
+    const model = load(read('overlay/scratch-gui/static/sim-lab/models/resonance-lab.ldr'));
+    const plan = buildSteps(model, CATALOG);
+    for (const lang of ['en', 'de']) {
+        const cell = row => ({...row, name: row.name[lang], thumb: null});
+        const html = instructionsPrintHtml({lang, title: 'Resonance Lab', text: INSTRUCTIONS_TEXT[lang],
+            steps: plan.steps.map((s, i) => ({image: `data:image/png;base64,STEP${i}`, parts: partsList(model, CATALOG, s.parts, s.belts).map(cell),
+                attach: [], subassembly: null, belts: Boolean(s.belts?.length)})), bom: partsList(model, CATALOG).map(cell)});
+        assert.equal((html.match(/class="page step"/g) || []).length, 5);
+        assert.ok(html.includes(INSTRUCTIONS_TEXT[lang].belts));
+        assert.ok(html.includes(INSTRUCTIONS_TEXT[lang].total.replace('{n}', '144')));
+        assert.ok(html.includes(lang === 'en' ? 'Round rubber band 33 mm' : 'Rundgummiband 33 mm'));
+        const last = html.slice(html.indexOf('class="page step" data-step="5"'), html.indexOf('class="page bom"'));
+        assert.ok(last.includes('<div class="count">2×</div>'), 'final-stage callout includes both bands');
+    }
 });
 
 test('pins first, and which way each new part slides in: the driving base step by step', () => {

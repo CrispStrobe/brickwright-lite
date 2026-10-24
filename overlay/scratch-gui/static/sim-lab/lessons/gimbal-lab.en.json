@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "gimbal-lab",
+  "language": "en",
+  "what": "Motor A turns the orange yaw cradle. Motor B rides on it and tilts the blue pitch frame. Motor C rides on that frame and turns a green attitude cross with yellow and white tips. The retained azure wheels balance the pitch assembly. Three motorized nested axes reveal an orientation singularity. Compare yaw and roll at 0°, 60° and 90° middle pitch; near 90°, two moving motors nearly cancel at the marker while every bearing remains free.",
+  "try": [
+    "Open Gimbal Lab in Examples; the program loads automatically. Reset, then Run. The finite demonstration finishes holding all three motors at home; reset before repeating.",
+    "At the 0° middle-pitch stage, compare yaw alone with roll alone. Follow the two perpendicular motor-axis lines and the marker tips.",
+    "At the 60° stage, predict whether the outer and inner axes are already identical. They approach one another but still give three independent instantaneous rotation directions.",
+    "Near the 90° stage, watch A move to +20° and C to −20°. The frames and encoders move while their effects on marker orientation nearly cancel. The ideal cancellation is exact at precisely 90°.",
+    "For slow manual exploration, keep native A and C within ±30° and B between −5° and +95°. Return or reset before running the script; do not repeatedly wind motor leads around an axis."
+  ],
+  "why": "The inner axis moves with both outer frames. In this model the geometric angles are a=A, b=B and c=−C, giving R=Ry(a)Rx(b)Rz(c). At b=90°, the first and third axis lines coincide. Two joint inputs then produce the same instantaneous orientation direction, so their effects can cancel. The bearings do not jam and all motors can still turn. Moving B away from 90° restores three independent directions.",
+  "matters": "Robot wrists and orientation stages must account for changing joint-axis geometry. Near a singularity, some desired changes of orientation need increasingly large coordinated joint rates. This machine makes the geometry visible; it does not demonstrate gyroscopic stabilization.",
+  "question": "At exactly B=90°, A increases by 20° while C decreases by 20°. Must every part stay still because the marker has the same final orientation?",
+  "answer": "No. The yaw cradle and pitch assembly move, and the C rotor moves relative to its housing. Their combined effect on the marker orientation cancels: native A=+20°, B=90°, C=−20° corresponds to Ry(20°)Rx(90°)Rz(20°)=Rx(90°). The finite-tolerance demonstration approaches this ideal and measures the remaining orientation difference.",
+  "further": [
+    "Predict the same A+20°/C−20° combination at B=0° before trying it within the manual envelope. The two axis directions are perpendicular there, so the effects do not cancel.",
+    "Let J contain the three unit rotation-axis vectors. Compare |det J|=|cos b|: 1 at 0°, 0.5 at 60°, and 0 at 90°. This dimensionless determinant describes local independence, not a gear ratio.",
+    "At B=95° the determinant magnitude is positive again. Why can the mechanism recover a third independent orientation direction by changing its configuration?",
+    "Compare Tilt Lab: it uses nested axes to change gravity on a free ball. Gimbal Lab uses a rigid marker to inspect the orientation geometry itself."
+  ],
+  "formula": "Geometric a=A, b=B, c=−C; R=Ry(a)Rx(b)Rz(c); |det J|=|cos b| for three unit axis columns. At B=90°, native A=+δ and C=−δ cancel ideally. Angles are degrees; lab speeds are degrees/s.",
+  "related": [
+    "tilt-lab.ldr",
+    "positioning-arm.ldr",
+    "atlas-arm.ldr"
+  ]
+}

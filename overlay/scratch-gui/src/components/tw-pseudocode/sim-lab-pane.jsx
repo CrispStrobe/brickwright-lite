@@ -47,7 +47,8 @@ import SimLabProperties from './sim-lab-properties.jsx';
 import SimLabShortcuts from './sim-lab-shortcuts.jsx';
 import SimLabCoach from './sim-lab-coach.jsx';
 import SimLabMotorMixer, {MIXER_OPEN_KEY} from './sim-lab-motor-mixer.jsx';
-import {setMixerMotorPower} from './sim-lab-motor-control.js';
+import {setMixerMotorPower, setMixerMotorJog, manualDriveAllowed} from './sim-lab-motor-control.js';
+import {createManualPolicyResolver} from './sim-lab-manual-policy.js';
 import PaneDivider from '../gui/pane-divider.jsx';
 import {Icon, Popup, Separator, ToolButton, splitToolbar, toolStyles, tooltipOf} from './sim-lab-toolbar.jsx';
 import {TOOLBAR_TEXT} from './sim-lab-toolbar-text.js';
@@ -399,6 +400,10 @@ class SimLabPane extends React.Component {
         this.measurementRows = [];
         this.measurementRowsTime = null;
         this.session = null;
+        // Synchronous tokens also reject a second click before React has rendered the busy state.
+        this.manualJogs = new Map();
+        this.manualPolicy = null;
+        this.manualPolicyResolver = null;
         this.view = null;
         this.frame = this.frame.bind(this);
         this.onBundleCollect = this.onBundleCollect.bind(this);
@@ -1139,6 +1144,8 @@ class SimLabPane extends React.Component {
     }
 
     teardown ({preserveProgram = false} = {}) {
+        this.manualJogs.clear();
+        this.manualPolicy = null;
         this.runConnection = null;
         if (this.connections) this.observeConnection(() => this.connections.setScene(null, {preserveProgram}));
         if (this.unregisterBt) this.observeConnection(() => this.unregisterBt());
@@ -1215,6 +1222,30 @@ class SimLabPane extends React.Component {
         return this.lib?.MODELS.find(m => modelKey(m) === this.state.shipped) || null;
     }
 
+    /** Controls follow the saved assembly, without assigning gallery identity or loading a program. */
+    manualControlPolicy () {
+        return this.manualPolicy?.session === this.session ? this.manualPolicy : {available: false, manualJog: null};
+    }
+
+    async resolveManualControlPolicy (model, text) {
+        try {
+            // Do not recognize an import after the parser refused additional geometry or malformed input.
+            if (this.lib.parseModel(text).refusals.length) return {available: true, manualJog: null};
+            if (!this.manualPolicyResolver) this.manualPolicyResolver = createManualPolicyResolver({
+                models: this.lib.MODELS, parseModel: this.lib.parseModel,
+                loadText: async file => {
+                    const response = await fetch(`${this.lib.MODELS_BASE}${file}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.text();
+                }
+            });
+            return {available: true, manualJog: await this.manualPolicyResolver(model)};
+        } catch {
+            // Unknown policy must not silently turn a failed reference fetch into continuous controls.
+            return {available: false, manualJog: null};
+        }
+    }
+
     /** A shipped model's own short story (MODELS `intro`, EN/DE) before `text`, when it has one. */
     withIntro (text) {
         const intro = this.shippedModel()?.intro;
@@ -1285,7 +1316,7 @@ class SimLabPane extends React.Component {
         }
         if (this.disposed) return;
         this.lastText = opened.text;
-        await this.openText(opened.text, opened.name);
+        await this.openText(opened.text, opened.name, this.state.shipped);
         if (opened.refusals.length && !this.disposed) {
             this.setState(s => ({issues: this.lib.mergeImportIssues(opened.refusals, s.issues)}));
         }
@@ -1354,8 +1385,11 @@ class SimLabPane extends React.Component {
                 message: this.t('failed', {error: issues.at(-1)?.message || ''})});
             return;
         }
+        const manualPolicy = await this.resolveManualControlPolicy(model, text);
+        if (token !== this.loadToken || this.disposed) { session.dispose(); return; }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        this.manualPolicy = {session, ...manualPolicy};
         this.registerBtBricks();
         if (this.connections) this.observeConnection(() => this.connections.setScene(session, {preserveProgram}));
         this.measurementReader = this.lib.createMeasurementReader(session);
@@ -1424,7 +1458,7 @@ class SimLabPane extends React.Component {
         const opened = this.opened;
         if (this.state.status === 'running') this.pause();
         this.setState({route}, () => {
-            if (opened) this.openText(opened.text, opened.name);
+            if (opened) this.openText(opened.text, opened.name, this.state.shipped);
         });
     }
 
@@ -2064,6 +2098,9 @@ class SimLabPane extends React.Component {
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
     drive (direction) {
         if (!this.session || !this.session.bridge || !this.spikeScene()) return;
+        // Also guard stale pointer/keyboard events after a model or movement-pair change.
+        const policy = this.manualControlPolicy();
+        if (direction !== 'stop' && (!policy.available || !manualDriveAllowed(policy.manualJog, this.hub.movementPair))) return;
         const enablingOverride = direction !== 'stop' && !this.state.manualOverride;
         if (enablingOverride) this.setManualOverride(true);
         const hub = this.hub;
@@ -2126,8 +2163,10 @@ class SimLabPane extends React.Component {
     }
 
     setManualOverride (enabled) {
+        if (enabled && !this.manualControlPolicy().available) return;
         if (enabled) this.pause();
         for (const motor of this.api?.motors() || []) if (motor.direct) setMixerMotorPower(this.api, motor.id, 0);
+        this.manualJogs.clear();
         this.setState({manualOverride: enabled, mixer: {session: this.session, power: {}}});
     }
 
@@ -2137,31 +2176,70 @@ class SimLabPane extends React.Component {
         const s = this.session;
         const power = this.state.mixer.session === s ? this.state.mixer.power : {};
         const lang = this.locale === 'de' ? 'de' : 'en';
+        const {available, manualJog} = this.manualControlPolicy();
         const motors = this.api.motors().map(m => {
             const enc = this.api.encoder(m.id);
             return {id: m.id, port: m.port, hub: m.hub, direct: m.direct,
                 hubName: (m.profile && m.profile.name && (m.profile.name[lang] || m.profile.name.en)) || m.hub || '',
+                manualJog: manualJog?.[m.port], jogBusy: this.manualJogs.get(m.id)?.session === s,
                 angleDeg: enc && enc.ok ? enc.angleDeg : null};
         });
         const setPower = (id, pct) => {
-            if (!this.state.manualOverride) return;
+            if (!this.state.manualOverride || this.session !== s) return;
+            const motor = this.api.motors().find(m => m.id === id);
+            // A stale slider event must not bypass a port's finite manual controls.
+            const policy = this.manualControlPolicy();
+            if (pct !== 0 && (!policy.available || policy.manualJog?.[motor?.port] !== undefined)) return;
             const r = setMixerMotorPower(this.api, id, pct);
             if (r && r.ok === false) return;
+            this.manualJogs.delete(id);
             this.setState(st => ({mixer: {session: s, power: {...(st.mixer.session === s ? st.mixer.power : {}), [id]: pct}}}));
+        };
+        const jog = (id, direction) => {
+            if (this.disposed || this.session !== s || !this.state.manualOverride || this.state.status === 'failed') return;
+            const busy = this.manualJogs.get(id)?.session === s;
+            if (busy) return;
+            const policy = this.manualControlPolicy();
+            if (!policy.available) return;
+            const motor = this.api.motors().find(m => m.id === id);
+            const limits = policy.manualJog?.[motor?.port];
+            const token = {session: s};
+            this.manualJogs.set(id, token);
+            const refresh = () => {
+                if (!this.disposed && this.session === s) this.setState(st => ({mixer: {...st.mixer}}));
+            };
+            const finished = () => {
+                // An interrupted command from an old scene must not unlock a newer command.
+                if (this.manualJogs.get(id) !== token) return;
+                this.manualJogs.delete(id);
+                refresh();
+            };
+            const result = setMixerMotorJog(this.api, id, limits, direction, {enabled: this.state.manualOverride, busy});
+            if (!result?.ok) { finished(); return; }
+            if (!result.done || typeof result.done.then !== 'function') {
+                // A finite command without completion feedback cannot safely accept another jog.
+                setMixerMotorPower(this.api, id, 0);
+                finished();
+                return;
+            }
+            result.done.then(finished, finished);
+            refresh();
         };
         return (
             <SimLabMotorMixer motors={motors} power={power} open={this.state.mixerOpen} locale={this.locale} button={button}
+                available={available}
                 override={this.state.manualOverride} onOverride={enabled => this.setManualOverride(enabled)}
-                drive={this.session.bridge && this.spikeScene() ? this.renderDrive(button) : null}
+                drive={available && this.session.bridge && this.spikeScene() && manualDriveAllowed(manualJog, this.hub.movementPair) ? this.renderDrive(button) : null}
                 onClose={() => { if (this.state.manualOverride) this.setManualOverride(false); if (this.driving) this.drive('stop'); this.setState({controlsOpen: false}); }}
                 onToggle={() => this.setState(st => {
                     try { localStorage.setItem(MIXER_OPEN_KEY, st.mixerOpen ? '0' : '1'); } catch { /* private window: this session only */ }
                     return {mixerOpen: !st.mixerOpen};
                 })}
-                onPower={setPower} onStop={id => setPower(id, 0)}
+                onPower={setPower} onJog={jog} onStop={id => setPower(id, 0)}
                 onStopAll={() => {
                     this.props.vm.stopAll();
                     motors.filter(m => m.direct).forEach(m => setMixerMotorPower(this.api, m.id, 0));
+                    this.manualJogs.clear();
                     this.setState({mixer: {session: s, power: {}}});
                 }} />
         );

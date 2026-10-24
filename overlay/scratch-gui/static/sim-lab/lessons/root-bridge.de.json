@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "root-bridge",
+  "language": "de",
+  "what": "Dieses waagerechte Gestänge berechnet ein geometrisches Mittel mit zwei motorisierten Eingängen und einem passiven Ausgang. Die Ausgangsstrecke liegt quer über der Basis; sie ist kein senkrechter Hub. Zwei Motoren stellen positive Eingangsstrecken ein. Senkrechte Schiebeführungen legen den passiven Ausgang auf ihr geometrisches Mittel fest; gleiche Produkte ergeben denselben Ausgang.",
+  "try": [
+    "Öffne Root Bridge unter Beispiele. Zurücksetzen und Ausführen; das passende Programm lädt automatisch. Beobachte fünfzehn Paare positiver Eingangsstrecken.",
+    "Vergleiche gleiche Eingänge von 24, 32 und 40 mm. Der orange Ausgang sollte jeweils dieselbe Strecke anzeigen.",
+    "Vergleiche (32,32), (25,6,40) und (40,25,6) mm. Sage den Ausgang bei gleichem Produkt voraus.",
+    "Pausiere und aktiviere die manuelle Steuerung. Verändere einen Eingang mit den begrenzten A/B-Schritten; setze vor dem nächsten vollständigen Versuch zurück."
+  ],
+  "why": "Die Führungen stehen senkrecht aufeinander. Für A = (−a,0), B = (b,0) und C = (0,h) ergibt das Skalarprodukt (A−C)·(B−C) = h²−ab = 0. Der gehaltene positive Ast legt den passiven Schieber daher auf √(ab). Das Programm berechnet nur die Winkel der beiden Eingangskurbeln und steuert den Ausgang niemals direkt.",
+  "matters": "Mechanische Zwangsbedingungen können nichtlineare Funktionen unmittelbar berechnen. Das zeigt geometrische Mittel, Analogrechner und den Unterschied zwischen Antrieb und passiv berechneter Koordinate.",
+  "question": "Warum ergeben (32,32) und (25,6,40) mm denselben Ausgang?",
+  "answer": "Beide Produkte sind 1024 mm²; der ideale positive Ausgang ist daher √1024 = 32 mm. Ungleiche Eingänge ergeben hier keinen arithmetischen Mittelwert.",
+  "further": [
+    "Vergleiche Mean Machine für den arithmetischen Mittelwert und Product Plotter für die Multiplikation.",
+    "Kürzere rechte Eingangsführungen und versetzte Stützen schaffen Platz für das bewegte Gestänge. Der Bereich 24–40 mm ist ein Simulationsbereich und keine Kalibrierung eines echten Aufbaus."
+  ],
+  "formula": "h² = ab; h = √(ab), a,b > 0.",
+  "related": [
+    "mean-machine.ldr",
+    "product-plotter.ldr",
+    "integral.ldr"
+  ]
+}

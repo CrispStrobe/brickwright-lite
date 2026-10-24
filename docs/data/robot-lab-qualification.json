@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "models": [
+    {"id":"sine-shuttle","judge":"scotch-yoke-v1","parts":105,"ports":["A"],"coldMs":500,"timeLimitMs":92000,"afterMs":500,"frameMs":25,"frozenOutput":"yoke_end_-100","disconnect":["crank_pin","crank_pin_cap","crank_pivot_bush_-35.5","crank_pivot_bush_-4.5"]},
+    {"id":"quartermaster","judge":"latched-indexer-v1","parts":209,"ports":["A","B"],"coldMs":1000,"timeLimitMs":122000,"afterMs":1000,"frameMs":25,"frozenOutput":"output_spine_Z","disconnect":["drive_roller_axle","drive_roller","drive_roller_spacer","drive_roller_retainer"]}
+  ]
+}
