@@ -59,3 +59,64 @@ Rendered inventory of the deployed main build (Chromium, 1024–1280 px):
 
 Remaining G03 items (EN/DE labels, touch, long conversion reports, 50–75 %
 right pane, save/reopen) stay open for later passes under this claim.
+
+### Continuation — 2026-10-24 (remaining items)
+
+Branch `lane/spike-g03-remaining-20261024`. Each item was first exercised on the
+deployed main build in Chromium (Playwright); only the touch item showed a defect.
+
+- **EN/DE labels — verified working.** With the browser locale `de-DE` the
+  starter, toolbar ("Auf SPIKE über USB ausführen", "SPIKE-Arena") and every
+  arena control, option, tooltip, `aria-label` and status line render in German
+  in mission, sandbox and 3D modes (Freie Arena, Aufgaben, Schritt,
+  Zurücksetzen, 3D-/2D-Ansicht, camera modes, drive pad, edit tools, colours,
+  Radkontakt, Matte speichern/öffnen, Bereit, readouts). No English-only SPIKE
+  string was found. Readout numbers keep a decimal point ("0.0 s") while
+  challenge prose uses a comma; recorded, not changed.
+- **Touch — one defect fixed.** With a touch context, taps on Free sandbox,
+  the drive pad (rover drove and turned), Start, Step (paused), Reset, the
+  2D⇄3D toggle and paint/wall/crate/start placement all work, and a touch drag
+  orbits the 3D camera (its canvas already has `touch-action: none`). A touch
+  drag with the Move tool on the 2D mat did nothing: the canvas had
+  `touch-action: auto`, so the browser took the gesture for scrolling and sent
+  `pointercancel`, which drops the drag (mouse drag moved the same patch). The
+  2D canvas now sets `touch-action: none` while a sandbox editing tool is
+  active and keeps `auto` for missions and "View only", so the page still
+  scrolls there. Test `sandbox editing tools keep touch drags on the 2D mat` in
+  `test/spike-arena-pane-units.test.mjs` fails before the change and passes after.
+- **Long conversion/error reports — verified working.** 120 long unsupported
+  pseudocode lines converted with ⇦: the status line stays one ellipsized line
+  with ×; expanded it is capped at 72 px and scrolls. The conversion report
+  starts collapsed with ×; expanded it is capped at 180 px and scrolls. Toolbar
+  and run buttons stay at the top, the page does not scroll, and both close.
+- **Right pane at 50–75 % — verified working.** Dragging the existing
+  "Drag to resize" divider to 50, 60 and 75 % at 1280, 1600 and 1920 px gives
+  exactly those fractions. The 2D canvas resizes with its backing store
+  (e.g. 924 px wide at 1280/75 %), the 3D canvas is equally wide, no arena control
+  is clipped and there is no horizontal scroll. At 75 % the editor column is 277–437 px
+  wide and wraps its toolbar but stays usable; the readouts below a large
+  canvas are reached by scrolling the pane.
+- **Reset/edit/save/reopen — verified working.** Empty mat, then a paint patch,
+  wall, crate and new rover start; Save mat downloads `spike-sandbox.json`;
+  Empty mat, Start and Reset; Open mat with that file restores the same shapes,
+  walls, objects and start, which also survive a page reload.
+- **Identify A–F** — the bounded WLAN-bridge failure from the earlier pass is
+  on main; `test/spike-usb-stream.test.mjs` passes 7/7.
+
+- **Import actions, undo, image selection — present.** The Code tab's "⋯"
+  menu ("Open, save, import, examples and reference") lists Open, Save,
+  MakeCode…, Load example…, reference and Custom sprite art; the menu bar has an
+  undo icon ("Undo (code)"); the arena shows "Choose image…" for the MicroPython
+  backend, and the Backdrops tab stays available.
+
+The app-wide `min-width: 1024px` below 1024 px is unchanged (shared layout,
+outside this envelope).
+
+Status: every acceptance item listed in this claim has now been checked on the
+rendered UI; the touch drag was the only defect found and it is fixed. One
+adjacent item stays **open**: `docs/SPIKE-STATUS-AND-LANES.md` asks G03 to
+reproduce the saved-Python-view → empty-Pseudocode transition. That transition
+lives in `pseudocode-importer.jsx` outside the SPIKE toolbar/report slice, so it
+waits for that file's current owner or a widened envelope. It was not
+reproduced or changed here. Until then, G03 is complete except for that
+transition. No physical-hub, installed-desktop or performance claim is made.

@@ -837,6 +837,12 @@ show a bounded error rather than an indefinite ellipsis.
 one world and cannot start an unavailable backend. Doable now; this lane first
 records already working features and fixes only demonstrated gaps.
 
+**Status (2026-10-24):** the rendered-UI pass recorded in the lane ledger
+checked EN/DE labels, touch, long conversion reports, a 50–75 % right pane,
+mat save/reopen and bounded Identify. It fixed one defect: a touch drag with
+the Move tool was cancelled as a page scroll. Still open: the
+saved-Python → empty-Pseudocode transition, which belongs to the importer owner.
+
 ### G04 — Extend API/topology parity through declared capabilities
 
 **Owners:** firmware L01/L02/L05/L06/L09, Runtime, then Lite. **Start:**
