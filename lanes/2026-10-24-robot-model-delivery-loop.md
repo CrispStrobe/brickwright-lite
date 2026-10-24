@@ -81,3 +81,19 @@ The new release's independent readback is separately claimed in #1335;
 0.1.26 recovery stays frozen. Combined-source qualification, main landing,
 actual native release delivery, hosted-service parity and the fresh builder
 pilot remain active work in this claim.
+
+The combined component completed all eleven local stages on its recorded source,
+including both browsers, all fourteen selected examples/comparisons, lessons,
+construction, real save/reopen and exports. Hosted source qualification then
+found three integration omissions: the newly catalogued fork lacked its derived
+editor mirror record, two actual native callers lacked exact GUI dependency
+scope declarations, and the CI coverage oracle did not expand automatic paired
+controls. Original failure logs are retained.
+
+Use the canonical geometry generator for mirror data; every non-mirror part
+field and all ninety-nine compiled mechanisms remain identical. Preserve the
+actual automatic control journeys and detect duplicate control work in the CI
+coverage test. Add only the two observed dependency callers. The model harness
+now checks canonical catalogue metadata and CI example/budget coverage before
+browsers and audits actual test dependency redirects with the existing scope
+validator. No physical limit, engine setting, control or CI budget is relaxed.

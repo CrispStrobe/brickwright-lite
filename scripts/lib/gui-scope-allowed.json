@@ -580,7 +580,9 @@
       "test/bw-sim-root-bridge.test.mjs",
       "test/model-api-native.test.mjs",
       "test/bw-sim-qualification.test.mjs",
-      "test/bw-sim-watt-twin.test.mjs"
+      "test/bw-sim-watt-twin.test.mjs",
+      "test/bw-sim-cascade.test.mjs",
+      "test/bw-sim-rise-ratio.test.mjs"
     ],
     "why": "SIMD-capable physical controls use the qualified optional single-thread Jolt variant through the same GUI dependency boundary; the explicitly listed baseline callers also exercise its supported variant"
   }
