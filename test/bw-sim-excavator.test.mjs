@@ -75,7 +75,7 @@ const turnAbout = (q, q0, k) => {
 
 test('the Excavator is a shipped example with its program, titled in English and German', () => {
     assert.ok(ENTRY, 'MODELS lists excavator.ldr');
-    assert.deepEqual(ENTRY.title, {en: 'Excavator', de: 'Bagger'});
+    assert.deepEqual(ENTRY.title, {en: 'Excavator — screw actuators and slewing frame', de: 'Bagger — Spindelantriebe und Drehgestell'});
     assert.match(PROGRAM, /^DEVICE SPIKE\s*$/m);
     for (const port of 'CDEF') assert.match(PROGRAM, new RegExp(`run motor ${port} `), `the program drives ${port}`);
 });

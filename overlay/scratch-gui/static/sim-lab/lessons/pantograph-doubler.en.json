@@ -2,7 +2,7 @@
   "version": 1,
   "id": "pantograph-doubler",
   "language": "en",
-  "what": "Pantograph Doubler uses one motor to move input point C around a small circle. Four passive bars carry the free endpoint E around a circle with twice the diameter. Viewed from above, at every position the planar vector from the fixed pivot O to E is twice the vector from O to C. The moving points demonstrate a trajectory; the model does not claim physical pen or ink contact. A single motor drives a passive pantograph: a 32 mm input circle becomes a 64 mm output circle. Compare displacement, speed and enclosed area.",
+  "what": "Pantograph. Pantograph Doubler uses one motor to move input point C around a small circle. Four passive bars carry the free endpoint E around a circle with twice the diameter. Viewed from above, at every position the planar vector from the fixed pivot O to E is twice the vector from O to C. The moving points demonstrate a trajectory; the model does not claim physical pen or ink contact. A single motor drives a passive pantograph: a 32 mm input circle becomes a 64 mm output circle. Compare displacement, speed and enclosed area.",
   "try": [
     "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
     "Watch the input joint C and the free endpoint E through a quarter-turn. Compare their directions and distances from the fixed pivot O: in the top view O, C and E stay on one line, with E twice as far from O.",

@@ -1,6 +1,6 @@
 # Preserve float32 instance bytes without redundant uploads
 
-CLAIMED — bounded Robot Lab rendering repair, Codex, owner-authorized model
+DONE — bounded Robot Lab rendering repair, Codex, owner-authorized model
 qualification continuation, 2026-10-23. Base
 `7acf95cc1d223d82301690f7419d43d052065f0c`; isolated source branch
 `lane/robot-instanced-upload-20261023`.
@@ -33,3 +33,10 @@ deadlines, and require every enabled exact-head check to succeed. Use a normal
 matched-head merge and verify predicted/landed trees and parents. Retain the
 original failures and bounded diagnostic; no shortened diagnostic PASS,
 performance, hardware or physical-accuracy claim.
+
+The source compares cached matrices and colors at float32 precision. Actual
+Three.js controls preserve identical attribute bytes on no-op and below-ULP
+updates while genuine movement, color, visibility, emissive, dim and forced
+uploads remain live. Nine private behaviors and four actual-source mutation
+controls passed. Affected browser qualification and every enabled final-head
+check remain required; retained WebKit failures are unresolved.

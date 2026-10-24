@@ -2,7 +2,7 @@
   "version": 1,
   "id": "crossglide",
   "language": "en",
-  "what": "One motor turns the red input rotor and the blue output rotor about parallel axes 16 mm apart. Two perpendicular sliding interfaces let the yellow intermediate carriage move sideways while transmitting the same angle to the output. Watch its centre carefully: it travels around an 8 mm radius circle twice during each full shaft turn, although the yellow body's own orientation turns only once. An Oldham coupling joins offset shafts at equal speed. Its middle carriage slides in two directions and orbits twice per shaft turn.",
+  "what": "Oldham coupling. One motor turns the red input rotor and the blue output rotor about parallel axes 16 mm apart. Two perpendicular sliding interfaces let the yellow intermediate carriage move sideways while transmitting the same angle to the output. Watch its centre carefully: it travels around an 8 mm radius circle twice during each full shaft turn, although the yellow body's own orientation turns only once. An Oldham coupling joins offset shafts at equal speed. Its middle carriage slides in two directions and orbits twice per shaft turn.",
   "try": [
     "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
     "Compare the red and blue rotor orientations at each pause. Then track the centre hole of the middle yellow crossbar. Positive motor angles turn opposite to positive geometric XZ angles: the first +45° motor target predicts the centre at (8, −8) mm in X/Z. How often does that point return before a shaft completes one revolution?",

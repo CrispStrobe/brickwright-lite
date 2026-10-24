@@ -2,7 +2,7 @@
   "version": 1,
   "id": "crossglide",
   "language": "de",
-  "what": "Ein Motor dreht den roten Antrieb und den blauen Abtrieb um parallele Achsen mit 16 mm Abstand. Zwei rechtwinklige Gleitführungen lassen den gelben Zwischenrahmen seitlich wandern und übertragen dabei denselben Winkel auf den Abtrieb. Beobachte seine Mitte genau: Sie durchläuft je voller Wellenumdrehung zweimal einen Kreis mit 8 mm Radius, obwohl sich die Orientierung des gelben Körpers nur einmal dreht. Eine Oldham-Kupplung verbindet versetzte Wellen mit gleicher Drehzahl. Ihr Mittelschlitten gleitet in zwei Richtungen und umläuft zweimal pro Wellendrehung.",
+  "what": "Oldham-Kupplung. Ein Motor dreht den roten Antrieb und den blauen Abtrieb um parallele Achsen mit 16 mm Abstand. Zwei rechtwinklige Gleitführungen lassen den gelben Zwischenrahmen seitlich wandern und übertragen dabei denselben Winkel auf den Abtrieb. Beobachte seine Mitte genau: Sie durchläuft je voller Wellenumdrehung zweimal einen Kreis mit 8 mm Radius, obwohl sich die Orientierung des gelben Körpers nur einmal dreht. Eine Oldham-Kupplung verbindet versetzte Wellen mit gleicher Drehzahl. Ihr Mittelschlitten gleitet in zwei Richtungen und umläuft zweimal pro Wellendrehung.",
   "try": [
     "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
     "Vergleiche bei jedem Halt die Ausrichtung des roten und des blauen Rahmens. Verfolge dann das mittlere Loch der gelben Querstrebe. Positive Motorwinkel laufen entgegengesetzt zu positiven geometrischen XZ-Winkeln: Das erste Motorziel +45° ergibt den Mittelpunkt (8, −8) mm in X/Z. Wie oft kehrt er vor einer vollen Wellenumdrehung zurück?",

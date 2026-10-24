@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "watt-line",
+  "language": "en",
+  "what": "Watt linkage. One motor rocks the input arm of a Watt linkage. Two equal side arms guide a short coupler whose midpoint moves almost along a straight line. No rail guides that midpoint: its path comes from four rotary joints and the chosen link lengths. Watch the centre marker P, then compare its path with the circular arc of input pivot B. Watt’s four-bar linkage guides a passive coupler midpoint along an approximately straight path. Compare the measured sideways error with the exact circle-intersection geometry.",
+  "try": [
+    "Choose Watt’s Line in Examples to load the model and its blocks together, then press Run. Motor A makes two bounded cycles: 0 to +20 to -20 to 0 degrees, then holds. Each target has a short observation pause; program speeds are degrees per second. Reset before retrying after manual movement.",
+    "Rotate the view above the linkage to see its moving bars. Observe the midpoint P of the short coupler through the whole sweep. Measure both its useful travel and its sideways departure from the nominal line. Reaching the motor targets alone does not show that the passive midpoint followed the intended path.",
+    "Compare midpoint P with pivot B at the driven arm's end. B follows a circular arc, while the two arm motions nearly cancel sideways movement at P. Trace the four pivots and the frame that supports both fixed pivots.",
+    "Keep manual motor commands within -20 to +20 degrees relative to the saved encoder datum. Stop and reset if the mechanism binds. The program's 21-degree guard is an error threshold, not permission to enlarge the working range."
+  ],
+  "why": "A Watt linkage is a four-bar mechanism: the frame, two equal side arms and one short coupler. In the saved horizontal XZ plane, O=(0,0), D=(80,32), B=(40,0) and C=(40,32), all in millimetres. OB and DC are 40 mm; BC is 32 mm. The observed point P is halfway from B to C. When the input rocks a little, the side arms move in opposite lateral senses. Near the saved pose their sideways effects nearly cancel at P. The midpoint therefore follows an approximately straight segment of a curved coupler path; no sliding joint makes it exactly straight.",
+  "matters": "The mechanism shows how rotary joints can provide approximate straight-line guidance without a rail. For the ideal dimensions and geometric input angles from -20 to +20 degrees, the predicted midpoint travel is about 27.382 mm and its maximum sideways departure from the datum line x=40 mm is about 0.0718 mm. These are analytical predictions, not measured build accuracy. Joint play, part flex, assembly errors and simulation error can be larger than that ideal departure.",
+  "question": "If the marker moves from the coupler midpoint P to the driven pivot B, will the same motor program still draw an almost straight path? Does doubling the motor speed change the ideal path?",
+  "answer": "At B the marker follows a 40 mm radius circular arc, so the cancellation at the midpoint is lost. Changing speed changes how quickly the mechanism traces its path, while the ideal rigid-link geometry remains the same. Actual tracking, vibration and joint loading can change with speed, so a faster experiment would need its own measurements.",
+  "further": [
+    "Use the circle-intersection equations to compare the predicted midpoint at geometric input angles -20, -10, 0, +10 and +20 degrees. A mathematical wider-angle comparison does not authorize running the assembled model beyond its documented limits.",
+    "Compare with Stride Lab: both use a passive point on a four-bar linkage, but the chosen geometry and useful part of the coupler curve differ. Compare with Straight Eight to ask whether a straight-looking trace is exact or approximate.",
+    "Keep analytical predictions separate from measured body poses. A frozen midpoint should fail the travel check even when the motor encoder completes every target. Physical building and hardware execution need their own evidence."
+  ],
+  "formula": "Coordinates in mm: O=(0,0), D=(80,32), B=(40 cos(theta),40 sin(theta)); |C-D|=40 and |C-B|=32, on the branch C=(40,32) at theta=0. P=(B+C)/2. For theta in [-20,+20] degrees, Pz spans approximately 2.12519 to 29.50728 mm; max |Px-40| approximately 0.07175 mm. theta is the geometric input angle from the saved O-to-B direction toward LDraw +Z. In the delivered model theta=-A, where A is the unwrapped motor encoder angle in degrees; the sign was checked from actual chassis-relative arm poses.",
+  "related": [
+    "stride-lab.ldr",
+    "straight-eight.ldr",
+    "quickstroke.ldr"
+  ]
+}

@@ -262,6 +262,18 @@ Step before cooperative work completed. The forward evidence waits for the
 actual clock, capture count and ready state; it preserves the original failure
 and does not change production behavior, expected counts or timing budgets.
 
+The first consumer source-controls job
+[40072171188](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40072171188)
+reported 66/67: the tracked GUI manifests and current x86 browser
+controller/reader still selected the preceding CUI pin. An initial census of
+materialized sparse files had omitted them. The forward repair derives the
+complete dependency closure from the Git index, updates only current identity
+bindings, regenerates GUI metadata and notice source URLs, and preserves every
+guest/reader assertion and disabled actual-execution guard. All 67 local source
+controls pass; the original failure is retained and the final exact head still
+requires hosted qualification. Historical originals keep their original reader
+revision and measured sources.
+
 Lite adoption remains separately qualified under the
 [consumer claim](../lanes/2026-10-24-scope-display-consumer.md). Its actual built
 GUI proof retains the two original CSV downloads, observed circuit, scalar

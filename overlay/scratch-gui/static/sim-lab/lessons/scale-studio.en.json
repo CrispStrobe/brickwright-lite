@@ -2,7 +2,7 @@
   "version": 1,
   "id": "scale-studio",
   "language": "en",
-  "what": "One motor turns the orange crank while a passive pantograph moves the red tip. Two long arms and two short links make the output displacement exactly twice the input displacement in ideal planar geometry. A 32 mm input circle becomes a 64 mm output circle without a second motor. Quarter-turn pauses reveal a passive 2:1 pantograph. Compare corresponding points on the 32 mm and 64 mm circles.",
+  "what": "Pantograph. One motor turns the orange crank while a passive pantograph moves the red tip. Two long arms and two short links make the output displacement exactly twice the input displacement in ideal planar geometry. A 32 mm input circle becomes a 64 mm output circle without a second motor. Quarter-turn pauses reveal a passive 2:1 pantograph. Compare corresponding points on the 32 mm and 64 mm circles.",
   "try": [
     "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the forward and reverse turns and their observation pauses.",
     "Use a top view. Compare each point with its own circle center: both complete one revolution per crank turn, although the blue arms rock through changing angles. Compare the two circle diameters.",

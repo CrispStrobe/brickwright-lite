@@ -2,7 +2,7 @@
   "version": 1,
   "id": "amplify",
   "language": "en",
-  "what": "One motor moves the yellow input marker D around a 16 mm radius circle. A real parallelogram with extended arms makes the orange output marker Q follow a 32 mm radius circle. Q copies every planar displacement of D at twice its size. Both points complete one orbit together; the output travels farther during that same time. One motor drives a passive output at twice the input radius and speed. Eight teaching pauses reveal the 2:1 point geometry.",
+  "what": "Pantograph. One motor moves the yellow input marker D around a 16 mm radius circle. A real parallelogram with extended arms makes the orange output marker Q follow a 32 mm radius circle. Q copies every planar displacement of D at twice its size. Both points complete one orbit together; the output travels farther during that same time. One motor drives a passive output at twice the input radius and speed. Eight teaching pauses reveal the 2:1 point geometry.",
   "try": [
     "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the finite experiment and its observation pauses.",
     "Track the yellow marker D and the orange marker Q relative to the fixed origin O. At the first +45° motor target, the predicted X/Z coordinates are D=(59.314,43.314) mm and Q=(118.627,86.627) mm. Compare both coordinates, rather than only the circle diameters.",
