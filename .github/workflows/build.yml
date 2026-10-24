@@ -2056,7 +2056,14 @@ jobs:
       - name: Browser gate — Robot Lab atlas-six intake
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon9' }}
-        run: npm run verify:sim-lab -- --part=examples --examples=atlas-six
+        run: npm run verify:sim-lab -- --part=examples --examples=atlas-six --intake-capture=atlas-six
+
+      # Reopen the ORIGINAL post-run SB3 from the preceding step, including its
+      # saved variables. Separate bounded steps retain both full program runs.
+      - name: Browser gate — Robot Lab atlas-six saved-project replay
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon9' }}
+        run: npm run verify:sim-lab -- --part=intake-replay --intake=atlas-six
 
       - name: Browser gate — Robot Lab pantograph-doubler complete example
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)

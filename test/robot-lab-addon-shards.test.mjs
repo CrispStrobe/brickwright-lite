@@ -54,6 +54,6 @@ test('all newly delivered primary experiments have one complete journey with unc
         const step=steps[0];assert.deepEqual(shardsOf(step),[shard]);assert.equal(step.timeout,8);
         assert.equal(step.ifs,"${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == '"+shard+"' }}");
         const at=job.steps.indexOf(step),end=job.steps[at+1]?.line-1||lines.length,body=lines.slice(step.line-1,end).join('\n');
-        assert.deepEqual([...body.matchAll(/^        run: (.*)$/gm)].map(m=>m[1]),['npm run verify:sim-lab -- --part=examples --examples='+id]);
+        assert.deepEqual([...body.matchAll(/^        run: (.*)$/gm)].map(m=>m[1]),['npm run verify:sim-lab -- --part=examples --examples='+id+(id==='atlas-six'?' --intake-capture=atlas-six':'')]);
     }
 });

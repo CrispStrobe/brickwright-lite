@@ -8,6 +8,7 @@ import {SIX_INTAKES} from './sim-lab-six-intake-contracts.mjs';
 import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
 import {openFile} from './sim-lab-scale-gate.mjs';
 import {exportedProject} from './sim-lab-integral-gate.mjs';
+import {intakeIdentity, writeIntakeReceipt, readIntakeReceipt} from './sim-lab-intake-receipt.mjs';
 
 // Project import can reset the selected editor tab. Wait for the saved real
 // program and the loading overlay to finish before acting on the new GUI.
@@ -23,7 +24,7 @@ export function projectProgramReady(expected=null){
   ![...document.querySelectorAll('[class*="loader_background"]')].some(e=>e.offsetWidth||e.offsetHeight);
 }
 
-export async function intakeRoundtrip(page,opts,id,judge){
+export async function captureIntakeProject(page,opts,id){
  await page.getByTestId('bw-sim-lab-reset').click();
  await page.waitForFunction(()=>window.__bwSimLab.status==='ready');
  const record=await page.evaluate(()=>window.__bwSimLab.projectRecord);
@@ -38,7 +39,15 @@ export async function intakeRoundtrip(page,opts,id,judge){
   const actual=await page.evaluate(()=>({status:window.__bwSimLab.status,parts:window.__bwSimLab._pane.session.model.parts}));
   assert.equal(actual.status,'ready');assert.deepEqual(actual.parts,expected);
  }
- const reopened=await page.context().browser().newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'}),errors=[];
+ const receiptPath=resolve(opts.shotsDir,id+'-intake.json');
+ writeIntakeReceipt(receiptPath,{id,identity:intakeIdentity(id,opts.buildDir),project,record,expected,program});
+ console.log(`PASS ${id}: original post-run project exported and bound for fresh-context replay`);
+ return receiptPath;
+}
+
+export async function replayIntakeProject(browser,opts,id,judge,receiptPath){
+ const {project,record,program,expected}=readIntakeReceipt(receiptPath,{id,identity:intakeIdentity(id,opts.buildDir)});
+ const reopened=await browser.newPage({viewport:{width:1600,height:1050},serviceWorkers:'block'}),errors=[];
  reopened.on('pageerror',e=>errors.push(e.message));reopened.on('dialog',d=>d.accept());
  try{
   await opts.openSimLab(reopened,{program:null});
@@ -78,4 +87,9 @@ export async function intakeRoundtrip(page,opts,id,judge){
   await captureRenderedModel(reopened,resolve(opts.shotsDir,id+'-reopened.png'));
   console.log(`PASS ${id}: raw LDR/MPD, actual project save, fresh-context reopen and complete saved program`);
  }finally{await reopened.close();}
+}
+
+export async function intakeRoundtrip(page,opts,id,judge){
+ const receiptPath=await captureIntakeProject(page,opts,id);
+ if(!opts.captureOnly)await replayIntakeProject(page.context().browser(),opts,id,judge,receiptPath);
 }

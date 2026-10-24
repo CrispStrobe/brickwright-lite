@@ -107,3 +107,16 @@ actual baseline imports were recorded separately. No test implementation,
 model, program, solver, dependency pin or acceptance limit changed. The failed
 CI and preflight receipts remain retained; the updated source still requires
 all enabled exact-head hosted checks before landing and release.
+
+The complete combined-source local qualification passed all eleven stages,
+including both browsers. Atlas Six then passed all 440 hosted primary motion
+checks, six manual ports, sixty connected instruction pages, its 676-piece
+BOM and actual project export, but the eight-minute CI step expired during
+full saved-project replay. Partition that original journey into two sequential
+eight-minute steps in the same thirty-minute job. Bind the actual exported
+post-run SB3, saved state, model/program, frontend and source to a receipt;
+refuse missing, corrupted or stale evidence before replay. Keep the ordinary
+full journey, complete saved program, independent physical judges, full hold,
+raw imports, font controls and both lesson languages. No app physics, model
+or program change, no deadline increase. The actual original failure remains
+retained; the partitioned source requires fresh exact-head qualification.
