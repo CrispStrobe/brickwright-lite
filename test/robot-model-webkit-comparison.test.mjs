@@ -3,9 +3,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {FROZEN,RUNTIME_IMAGE,webkitDependencyLibraryPath,admitPreprovisionedRuntime,admitFrozenArtifactInputs,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
-const reviewed={...FROZEN,runId:1,jobId:2,artifactId:3,archiveBytes:128,archiveDigest:'sha256:'+'a'.repeat(64),checkoutSha:'b'.repeat(40),producerLogSha256:'c'.repeat(64)};
-const fixture=()=>({head:reviewed.reviewedHeadSha,tree:reviewed.treeSha,metadata:{job:{id:reviewed.jobId},artifact:{id:reviewed.artifactId,size_in_bytes:reviewed.archiveBytes,digest:reviewed.archiveDigest}}});
+import {FROZEN,RUNTIME_IMAGE,webkitDependencyLibraryPath,admitPreprovisionedRuntime,admitFrozenArtifactInputs,admitCandidateCheckout,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
+const reviewed={...FROZEN,runId:1,jobId:2,artifactId:3,archiveBytes:128,archiveDigest:'sha256:'+'a'.repeat(64),checkoutSha:FROZEN.candidateHeadSha,producerLogSha256:'c'.repeat(64)};
+const fixture=()=>({head:reviewed.candidateHeadSha,tree:reviewed.treeSha,parents:[...reviewed.candidateParents],changes:[...reviewed.reviewedDelta],metadata:{job:{id:reviewed.jobId},artifact:{id:reviewed.artifactId,size_in_bytes:reviewed.archiveBytes,digest:reviewed.archiveDigest}}});
 test('comparison admits only the reviewed whole tree and frozen existing artifact',()=>{
     assert.deepEqual(admitComparisonSource(fixture(),reviewed),reviewed);
     for(const cut of [x=>x.head='0'.repeat(40),x=>x.tree='1'.repeat(40),x=>x.metadata.job.id++,x=>x.metadata.artifact.id++,x=>x.metadata.artifact.size_in_bytes++,x=>x.metadata.artifact.digest='sha256:'+'f'.repeat(64)]){
@@ -80,9 +80,9 @@ test('workflow candidate checkout binds the same immutable reviewed source as ad
     const text=readFileSync(new URL('../.github/workflows/robot-model-webkit-comparison.yml',import.meta.url),'utf8');
     const candidate=text.match(/- name: Checkout frozen candidate\n([\s\S]*?)      - uses:/)?.[1];
     assert.ok(candidate,'Explicit frozen candidate checkout');
-    const admit=text=>assert.equal(text.match(/ref: ([0-9a-f]{40})/)?.[1],FROZEN.reviewedHeadSha);
+    const admit=text=>assert.equal(text.match(/ref: ([0-9a-f]{40})/)?.[1],FROZEN.candidateHeadSha);
     admit(candidate);
-    assert.throws(()=>admit(candidate.replace(FROZEN.reviewedHeadSha,'0'.repeat(40))));
+    assert.throws(()=>admit(candidate.replace(FROZEN.candidateHeadSha,'0'.repeat(40))));
 });
 
 const runtimePacket=()=>({image:RUNTIME_IMAGE,platform:'linux',arch:'x64',distro:'ubuntu',ubuntu:'24.04',node:'v22.23.4',playwright:'1.62.1',
@@ -109,4 +109,18 @@ test('workflow uses the reviewed preprovisioned image with the original job budg
     assert.ok(text.includes('image: '+RUNTIME_IMAGE));assert.ok(text.includes('BW_MODEL_WEBKIT_RUNTIME_IMAGE: '+RUNTIME_IMAGE));
     assert.ok(text.includes('timeout-minutes: 35'));assert.ok(text.includes('--preflight-runtime candidate test-results/runtime-preflight.json'));
     assert.ok(!text.includes('playwright install'),'No apt/browser installation in the model journey budget');
+});
+
+test('candidate checkout keeps PR lineage separate and rejects source, mode, ancestry or delta substitution',()=>{
+    assert.notEqual(reviewed.candidateHeadSha,reviewed.reviewedHeadSha);
+    assert.deepEqual(admitCandidateCheckout(fixture(),reviewed),reviewed);
+    for(const cut of [x=>x.head=reviewed.reviewedHeadSha,x=>x.parents.reverse(),x=>x.parents.pop(),
+        x=>x.changes.pop(),x=>x.changes.push(x.changes[0]),x=>x.changes[0]=x.changes[0].replace('100644','100755'),
+        x=>x.changes[0]=x.changes[0].replace('lanes/','scripts/')]){
+        const input=fixture();cut(input);assert.throws(()=>admitCandidateCheckout(input,reviewed));
+    }
+    for(const cut of [x=>x.checkoutSha=reviewed.reviewedHeadSha,x=>x.reviewedHeadSha='0'.repeat(40),
+        x=>x.reviewedDelta=[x.reviewedDelta[0].replace('lanes/','scripts/')]]){
+        const input=structuredClone(reviewed);cut(input);assert.throws(()=>admitFrozenArtifactInputs(input));
+    }
 });

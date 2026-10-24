@@ -116,3 +116,26 @@ The replacement now binds successful current-main Build 40021842629, job
 the reviewed candidate), and sole Pages artifact 12533921398, 117535693 bytes.
 Its original producer log and archive digest are frozen in the consumer.
 No replacement journey has executed yet; all earlier failures remain retained.
+
+## Combined-source replacement, 2026-10-24
+
+The former comparison #1306 is closed and unqualified: Sine completed, but
+Quartermaster missed its unchanged 324-second deadline. The new isolated
+`lane/robot-model-webkit-shader-20261024` consumer qualifies combined product
+#1312, reviewed PR head `ab9023ef7c866801fdaf50b8da613a8b248fff87`.
+Successful producer run 40050173167 / job 120745543426 built literal checkout
+`401c5723d0baa4e334e5b405711bc347943defb5`, whole tree
+`6a3866f0b7e87cf0bc7fac95c75aa0292c479e0e`. Pages artifact 12543733745
+is 117553947 bytes, with its immutable digest frozen in the consumer.
+
+The actual checkout adds two lane documents relative to the reviewed PR head.
+The consumer therefore checks separate explicit identities: the unchanged
+official metadata and manifest reader must join the reviewed PR head; the
+candidate must equal the literal producer checkout and complete tree. Before
+input acquisition, Git must prove the two exact merge parents and the frozen
+raw two-document delta, including modes and blobs. Source changes, executable
+modes, substituted parents, omitted or extra paths refuse. The complete PR
+head tree is not claimed equal to the producer tree. This qualification
+plumbing preserves the original browser programs, viewport, launch arguments,
+physical checks, model bytes, 324-second wait and 35-minute job budget.
+Fresh actual qualification and every enabled final-head check remain pending.

@@ -59,6 +59,11 @@ export const MIN_RAMP = 0.1;
 export const FILE_SOUND_MS = 500;
 /** How many recorded brick events (tones, drawing, LEDs) the hub keeps for the UI. */
 const EVENT_LOG = 50;
+// Lab sync model: correct relative shaft phase without replacing either
+// motor's speed regulator. These are model bounds, not firmware constants.
+const SYNC_PHASE_GAIN = 8;
+const SYNC_CORRECTION_SHARE = 0.25;
+const SYNC_END_RAMP_DEG = 90;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const toInt8 = v => (Math.trunc(v) << 24) >> 24;
@@ -303,10 +308,33 @@ export class Ev3VirtualHub {
             const [s1, s2, s3] = job.steps;
             if (progress < s1) share = MIN_RAMP + (1 - MIN_RAMP) * progress / s1;
             else if (progress >= s1 + s2 && s3 > 0) share = MIN_RAMP + (1 - MIN_RAMP) * Math.max(0, total - progress) / s3;
+        } else if (job.kind === 'sync' && job.unit === 'degrees' && total > 0) {
+            // A finite count target must arrive slowly enough for mechanical
+            // braking. Both shafts share the master's remaining-count ramp.
+            share = MIN_RAMP + (1 - MIN_RAMP) * Math.min(1, Math.max(0, total - progress) / SYNC_END_RAMP_DEG);
         }
         const level = job.value * share;
-        if (job.regulated) driveRegulated(port, level / 100 * this._fullScale(port), spec, dtMs);
+        if (job.kind === 'sync') driveRegulated(port, this._syncDps(i, port, share), spec, dtMs);
+        else if (job.regulated) driveRegulated(port, level / 100 * this._fullScale(port), spec, dtMs);
         else driveOpen(port, level);
+    }
+
+    _syncDps (i, port, share) {
+        const job = port.job;
+        const fullScale = job.fullScaleDps || this._fullScale(port);
+        const base = job.value / 100 * fullScale * share;
+        const master = this.s.outputs[job.master];
+        const follower = this.s.outputs[job.follower];
+        // A later command can replace one port. Never couple its new owner to
+        // an old pair, nor invent phase origins for an older saved job.
+        if (!master?.job || !follower?.job || master.job.kind !== 'sync' || follower.job.kind !== 'sync' ||
+            master.job.id !== job.id || follower.job.id !== job.id || !Number.isFinite(job.ratio)) return base;
+        const ratio = job.ratio;
+        const error = ratio * (master.angleDeg - master.job.startDeg) - (follower.angleDeg - follower.job.startDeg);
+        const bound = fullScale * SYNC_CORRECTION_SHARE * share;
+        const correction = clamp(error * SYNC_PHASE_GAIN / (1 + ratio * ratio), -bound, bound);
+        const target = base + (i === job.master ? -ratio * correction : correction);
+        return clamp(target, -this._fullScale(port), this._fullScale(port));
     }
 
     _endJob (i, port) {
@@ -334,16 +362,42 @@ export class Ev3VirtualHub {
         return layer === 0 ? portsOfMask(nos) : [];
     }
 
+    _interruptSync (ports, newPair = false) {
+        const pairs = new Map();
+        this.s.outputs.forEach((port, i) => {
+            if (port.job?.kind !== 'sync') return;
+            if (!pairs.has(port.job.id)) pairs.set(port.job.id, []);
+            pairs.get(port.job.id).push(i);
+        });
+        for (const pair of pairs.values()) {
+            if (newPair && pair.length === ports.length && pair.every(i => ports.includes(i))) continue;
+            if (!newPair && !pair.some(i => ports.includes(i))) continue;
+            // A replacement command retires the old pair before claiming its
+            // selected outputs. The other shaft floats; its old master/count
+            // cannot keep controlling completion after ownership changes.
+            for (const i of pair) {
+                const port = this.s.outputs[i];
+                port.job = null;
+                port.busy = false;
+                port.started = false;
+                port.level = {kind: null, value: 0};
+                drivePassive(port, 'coast');
+            }
+        }
+    }
+
     outputType (layer, no) {
         const i = portOfNumber(no);
         return layer === 0 && i >= 0 ? this.s.outputs[i].type : EV3_TYPE.none;
     }
 
     outputReset (layer, nos) {
+        this._interruptSync(this._outputs(layer, nos));
         for (const i of this._outputs(layer, nos)) {
             const p = this.s.outputs[i];
             p.tachoZero = p.angleDeg;
         }
+        this._changed();
     }
 
     /**
@@ -386,6 +440,7 @@ export class Ev3VirtualHub {
     }
 
     outputStop (layer, nos, brake) {
+        this._interruptSync(this._outputs(layer, nos));
         for (const i of this._outputs(layer, nos)) {
             const p = this.s.outputs[i];
             p.job = null;
@@ -397,6 +452,7 @@ export class Ev3VirtualHub {
     }
 
     outputSet (layer, nos, kind, value) {
+        this._interruptSync(this._outputs(layer, nos));
         for (const i of this._outputs(layer, nos)) {
             const p = this.s.outputs[i];
             p.level = {kind, value: clamp(value, -100, 100)};
@@ -409,6 +465,7 @@ export class Ev3VirtualHub {
     outputStart (layer, nos) {
         for (const i of this._outputs(layer, nos)) {
             const p = this.s.outputs[i];
+            if (p.job?.kind === 'sync') continue;
             p.started = true;
             p.job = null;
             p.busy = false;
@@ -417,10 +474,12 @@ export class Ev3VirtualHub {
     }
 
     outputPolarity (layer, nos, pol) {
+        this._interruptSync(this._outputs(layer, nos));
         for (const i of this._outputs(layer, nos)) {
             const p = this.s.outputs[i];
             p.polarity = pol === 0 ? -p.polarity : (pol < 0 ? -1 : 1);
         }
+        this._changed();
     }
 
     _tacho (p) { return Math.trunc(p.angleDeg - p.tachoZero); }
@@ -444,6 +503,7 @@ export class Ev3VirtualHub {
     }
 
     outputProfile (layer, nos, {regulated, unit, value, steps, brake}) {
+        this._interruptSync(this._outputs(layer, nos));
         const s = steps.map(v => Math.abs(v));
         // A negative step count runs the other way (the stock Scratch EV3 extension turns
         // counter-clockwise this way); the level's sign and the steps' sign multiply.
@@ -465,16 +525,23 @@ export class Ev3VirtualHub {
             for (const i of ports) this.outputProfile(layer, 1 << i, {regulated: true, unit, value: speed, steps: [0, amount, 0], brake});
             return;
         }
+        this._interruptSync(ports, true);
         const t = clamp(turn, -200, 200);
+        speed = clamp(speed, -100, 100);
         const second = (100 - Math.abs(t)) / 100;
         const [a, b] = ports;
         const speeds = t >= 0 ? [speed, speed * second] : [speed * second, speed];
         const master = t >= 0 ? a : b;
+        const follower = t >= 0 ? b : a;
+        // A common angular scale keeps the requested shaft ratio even when
+        // the pair contains different motor types, within both rated limits.
+        const fullScaleDps = Math.min(...ports.map(i => this._fullScale(this.s.outputs[i])));
         const id = `${this.s.timeMs}:${a}${b}`;
         ports.forEach((i, k) => {
             const p = this.s.outputs[i];
             p.job = {kind: 'sync', id, regulated: true, unit, value: speeds[k], total: Math.abs(amount), brake,
-                master, masterStartDeg: this.s.outputs[master].angleDeg, startMs: this.s.timeMs, partner: ports[1 - k]};
+                master, follower, ratio: second, fullScaleDps, startDeg: p.angleDeg,
+                masterStartDeg: this.s.outputs[master].angleDeg, startMs: this.s.timeMs, partner: ports[1 - k]};
             p.busy = true;
             p.started = false;
         });
@@ -620,14 +687,22 @@ export class Ev3VirtualHub {
 
     setSleepMinutes (v) { this.s.sleepMinutes = clamp(v, 0, 120); }
 
-    /** Buttons by the number UI_BUTTON names them with (FDK §4.15); none is pressed in the Lab. */
-    button (b) { return Boolean(this.s.buttons[b]); }
+    /** UI_BUTTON numbers: zero is none, 1–6 individual inputs, seven is any (FDK §4.15). */
+    button (b) { return b === 7 ? this.anyButton() : Number.isInteger(b) && b >= 1 && b <= 6 && Boolean(this.s.buttons[b]); }
 
-    anyButton () { return this.s.buttons.some(Boolean); }
+    anyButton () { return this.s.buttons.slice(1, 7).some(Boolean); }
 
     flushButtons () {}
 
-    pressButton (b, down) { if (b >= 0 && b < this.s.buttons.length) this.s.buttons[b] = down ? 1 : 0; }
+    pressButton (b, down) {
+        if (!Number.isInteger(b) || b < 1 || b > 6) return false;
+        const value = down ? 1 : 0;
+        if (this.s.buttons[b] !== value) {
+            this.s.buttons[b] = value;
+            this._changed();
+        }
+        return true;
+    }
 
     /** 6 AA cells at 9 V (devices/catalog.js HUB_SUPPLY_VOLTS.ev3), full; currents estimated. */
     battery () {

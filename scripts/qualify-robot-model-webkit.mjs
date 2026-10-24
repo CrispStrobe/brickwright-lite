@@ -12,19 +12,28 @@ import os from 'node:os';
 
 export const FROZEN = Object.freeze({
     "repository": "CrispStrobe/brickwright-lite",
-    "runId": 40021842629,
+    "runId": 40050173167,
     "attempt": 1,
-    "runHeadSha": "07f1a47a72b1a41c4b6dd7d7bae04fabbf3bcacc",
-    "reviewedHeadSha": "07f1a47a72b1a41c4b6dd7d7bae04fabbf3bcacc",
-    "checkoutSha": "8e71d13c41a4014049636ad50aa15bfa5a288bce",
-    "treeSha": "3aeebc6d3ca05c3dce36dfd611024d6f2f5c8f87",
-    "jobId": 120655731951,
-    "artifactId": 12533921398,
-    "archiveBytes": 117535693,
-    "archiveDigest": "sha256:81e01c721f7df8370a3f5383434fa62d4ed36caf8c3b6e5cd69c3d0252f10892",
-    "producerLogSha256": "114beb312f1ae6da5957b4d63970109c0e8f3d7391914507b95d09539d8bbb5b",
+    "runHeadSha": "ab9023ef7c866801fdaf50b8da613a8b248fff87",
+    "reviewedHeadSha": "ab9023ef7c866801fdaf50b8da613a8b248fff87",
+    "checkoutSha": "401c5723d0baa4e334e5b405711bc347943defb5",
+    "treeSha": "6a3866f0b7e87cf0bc7fac95c75aa0292c479e0e",
+    "jobId": 120745543426,
+    "artifactId": 12543733745,
+    "archiveBytes": 117553947,
+    "archiveDigest": "sha256:6dfe08290d17f3947a9bd1a535dc4b8c78ce75444b9f0b1379cc168142f72f36",
+    "producerLogSha256": "f24f075fc20babb19d25806527231feff5cad32bc5cf63e0ace31e79aadba982",
     "producerSha": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
-    "arraysValuesSha": "4db2813d366af8a110fc79599afb55d1cd42d8df"
+    "arraysValuesSha": "4db2813d366af8a110fc79599afb55d1cd42d8df",
+    "candidateHeadSha": "401c5723d0baa4e334e5b405711bc347943defb5",
+    "candidateParents": [
+        "d13a5b6ddd6f468fa74451fe38afe879329dfc92",
+        "ab9023ef7c866801fdaf50b8da613a8b248fff87"
+    ],
+    "reviewedDelta": [
+        ":100644 100644 d452cf312c5ff5d4d7c626641ff75dd483f31618 e905b4f60fe7304c8da56e651b340cb425aa618a M\tlanes/2026-10-23-x86-gui-current-actual-admission.md",
+        ":000000 100644 0000000000000000000000000000000000000000 6b1132c9671f56feee798d2a3fb819c1e94f740e A\tlanes/2026-10-24-i80386-native-font-selection.md"
+    ]
 });
 const sha = b=>createHash('sha256').update(b).digest('hex');
 const git = (root,...args)=>execFileSync('git',['-c','gc.auto=0','-c','maintenance.auto=false',...args],{cwd:root,encoding:'utf8'}).trim();
@@ -73,7 +82,7 @@ async function preflightRuntime() {
         missingDependencies:dependencies.split('\n').filter(line=>/=>\s*not found/.test(line)),dependencies,
         processObserverAvailable:processObserverOutput.trim().length>0,processObserverCommand:['ps',...processObserverCommand],processObserverOutput,
         consumerHead:git(resolve(dirname(fileURLToPath(import.meta.url)),'..'),'rev-parse','HEAD'),candidateHead:git(root,'rev-parse','HEAD')};
-    admitPreprovisionedRuntime(packet);assert.equal(packet.candidateHead,FROZEN.reviewedHeadSha);
+    admitPreprovisionedRuntime(packet);assert.equal(packet.candidateHead,FROZEN.candidateHeadSha);
     await writeFile(output,JSON.stringify(packet,null,2)+'\n',{flag:'wx'});
 }
 export function admitFrozenArtifactInputs(expected) {
@@ -81,16 +90,29 @@ export function admitFrozenArtifactInputs(expected) {
     for(const key of ['runId','jobId','artifactId','archiveBytes'])
         assert.ok(Number.isSafeInteger(expected[key])&&expected[key]>0,'Frozen input remains unadmitted: '+key);
     assert.ok(expected.archiveBytes<=256*1024*1024,'Frozen archive resource bound');
-    for(const key of ['runHeadSha','reviewedHeadSha','checkoutSha','treeSha','producerSha','arraysValuesSha'])
+    for(const key of ['runHeadSha','reviewedHeadSha','candidateHeadSha','checkoutSha','treeSha','producerSha','arraysValuesSha'])
         assert.match(expected[key]||'',/^[0-9a-f]{40}$/,'Frozen source remains unadmitted: '+key);
     assert.match(expected.archiveDigest||'',/^sha256:[0-9a-f]{64}$/);
     assert.match(expected.producerLogSha256||'',/^[0-9a-f]{64}$/);
+    assert.equal(expected.candidateHeadSha,expected.checkoutSha,'Candidate is the literal producer checkout');
+    assert.deepEqual(expected.candidateParents?.slice(1),[expected.reviewedHeadSha],'Reviewed PR is the second merge parent');
+    assert.equal(expected.candidateParents?.length,2,'Two-parent synthetic merge');
+    for(const parent of expected.candidateParents)assert.match(parent,/^[0-9a-f]{40}$/);
+    assert.ok(Array.isArray(expected.reviewedDelta)&&expected.reviewedDelta.length>0,'Explicit frozen prose delta');
+    for(const entry of expected.reviewedDelta)assert.match(entry,/^:(?:100644 100644 [0-9a-f]{40} [0-9a-f]{40} M|000000 100644 0{40} [0-9a-f]{40} A)\tlanes\/[a-z0-9-]+\.md$/,'Only ordinary lane Markdown additions or edits');
     return expected;
 }
-export function admitComparisonSource({head,tree,metadata},expected=FROZEN) {
+export function admitCandidateCheckout({head,tree,parents,changes},expected=FROZEN) {
     admitFrozenArtifactInputs(expected);
-    assert.equal(head,expected.reviewedHeadSha,'Exact reviewed candidate');
+    assert.equal(head,expected.candidateHeadSha,'Exact literal producer checkout');
     assert.equal(tree,expected.treeSha,'Complete candidate/producer tree equality');
+    assert.deepEqual(parents,expected.candidateParents,'Actual producer merge ancestry');
+    assert.deepEqual(changes,expected.reviewedDelta,'Exact reviewed prose delta, including modes and blobs');
+    return expected;
+}
+export function admitComparisonSource({head,tree,parents,changes,metadata},expected=FROZEN) {
+    admitFrozenArtifactInputs(expected);
+    admitCandidateCheckout({head,tree,parents,changes},expected);
     assert.equal(metadata.job.id,expected.jobId,'Exact retained producer');
     assert.equal(metadata.artifact.id,expected.artifactId,'Exact existing artifact');
     assert.equal(metadata.artifact.size_in_bytes,expected.archiveBytes,'Frozen original archive length');
@@ -175,7 +197,9 @@ async function main() {
     assert.equal(git(root,'diff','--name-only'),'','Tracked candidate inputs unchanged');
     assert.equal(git(root,'diff','--cached','--name-only'),'','Candidate index unchanged');
     const head=git(root,'rev-parse','HEAD'),tree=git(root,'rev-parse','HEAD^{tree}');
-    assert.equal(head,FROZEN.reviewedHeadSha);assert.equal(tree,FROZEN.treeSha);
+    const parents=git(root,'show','-s','--format=%P','HEAD').split(' ');
+    const changes=git(root,'diff','--raw','--no-abbrev','--no-renames',FROZEN.reviewedHeadSha,'HEAD').split('\n');
+    admitCandidateCheckout({head,tree,parents,changes});
     const preflight=JSON.parse(await readFile(resolve(process.env.BW_MODEL_WEBKIT_RUNTIME_PREFLIGHT),'utf8'));
     admitPreprovisionedRuntime(preflight);assert.equal(preflight.consumerHead,git(harness,'rev-parse','HEAD'));
     assert.equal(preflight.candidateHead,head);assert.equal(process.env.BW_MODEL_WEBKIT_RUNTIME_IMAGE,RUNTIME_IMAGE);
@@ -210,7 +234,7 @@ async function main() {
     let originalBytes;
     const fetchImpl=boundedComparisonFetch(fetch,{onArchiveBytes:bytes=>{originalBytes=bytes;}}),metadata=await helper.fetchGuiArtifactMetadata({...FROZEN,token:process.env.GITHUB_TOKEN,fetchImpl});
     await save('original-metadata.json',metadata);
-    const expected=admitComparisonSource({head,tree,metadata}),admission=helper.admitGuiArtifactMetadata(metadata,expected);
+    const expected=admitComparisonSource({head,tree,parents,changes,metadata}),admission=helper.admitGuiArtifactMetadata(metadata,expected);
     await save('admission.json',admission);
     const archivePath=join(out,'official-frontend.zip');
     await save('original-acquisition-reservation.json',{owner:process.env.GITHUB_RUN_ID,admission,archivePath:'official-frontend.zip',

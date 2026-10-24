@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T21:00:00.051587Z",
+  "generatedAt": "2026-10-24T01:42:37.422Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1975,6 +1975,7 @@
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
+    "testflight-release-recovery.yml",
     "vendor-freshness.yml"
   ],
   "workflows": {
@@ -7375,6 +7376,18 @@
       },
       "sourceSha": "c9512f12299c93213be42deb00fa349679e68ba7"
     },
+    "testflight-release-recovery.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Audit or recover existing release metadata"
+      ],
+      "inFileInNoRun": [
+        "Audit or recover existing release metadata"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
     "robot-model-webkit-comparison.yml": {
       "runs": 3,
       "stepsInFile": [
@@ -7509,7 +7522,7 @@
   },
   "lastRefresh": {
     "workflow": "robot-model-webkit-comparison.yml",
-    "at": "2026-10-23T21:00:00.051587Z",
+    "at": "2026-10-24T01:42:37.422Z",
     "sourceSha": "working-tree"
   }
 }
