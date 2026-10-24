@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {mechanicsInteractions,manualMechanicsInteractions} from './sim-lab-mechanics-gate.mjs';
-import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
+import {captureRenderedModel,captureUiScreenshot} from './sim-lab-rendered-model-gate.mjs';
 import {intakeRoundtrip} from './sim-lab-intake-roundtrip.mjs';
 
 import {judgeBalance} from './sim-lab-balance-judge.mjs';
@@ -157,11 +157,12 @@ export async function newModelsInteractions(page, opts) {
     assert.ok(models.length, 'at least one new model is selected');
     const results = {};
     for (const id of models) {
+        const modelOpts = {...opts, timeout: opts.timeoutFor ? opts.timeoutFor(id) : opts.timeout};
         Object.assign(results, await mechanicsInteractions(page, {
-            ...opts, models: [id], judge: judgeNewModel, captureModel:captureRenderedModel, extendedObservations:SIX_INTAKES.includes(id), completionHoldMsFor:key=>SIX_INTAKES.includes(key)?1000:null,
+            ...modelOpts, models: [id], judge: judgeNewModel, captureModel:captureRenderedModel, extendedObservations:SIX_INTAKES.includes(id), completionHoldMsFor:key=>SIX_INTAKES.includes(key)?1000:null,
             simulatedMsFor: key => SPEC[key].simulatedMs, completeWhenPausedFor:key=>key==='root-bridge', speed: 4, observeProgram: true
         }));
-        await manualMechanicsInteractions(page,{...opts,models:[id],captureModel:captureRenderedModel});
+        await manualMechanicsInteractions(page,{...modelOpts,models:[id],captureModel:captureRenderedModel});
         await page.getByTestId('bw-sim-lab-instructions').click();
         await page.waitForFunction(()=>window.__bwSimLabInstructions?.status==='ready',null,{timeout:120000});
         const plan=await page.evaluate(()=>window.__bwSimLabInstructions.plan);
@@ -174,10 +175,10 @@ export async function newModelsInteractions(page, opts) {
         await page.keyboard.press('End');
         await page.waitForFunction(()=>window.__bwSimLabInstructions.page===window.__bwSimLabInstructions.steps);
         assert.equal(await page.getByTestId('bw-sim-instructions-bom').getByTestId('bw-sim-instructions-part').evaluateAll(es=>es.reduce((n,e)=>n+Number(e.dataset.count),0)),count+bands);
-        await page.getByTestId('bw-sim-instructions').screenshot({path:resolve(opts.shotsDir,id+'-bom.png')});
+        await captureUiScreenshot(page,{path:resolve(opts.shotsDir,id+'-bom.png')},page.getByTestId('bw-sim-instructions'));
         await page.keyboard.press('Escape');
         console.log(`PASS ${id}: manual controls, ${plan.steps.length} connected instruction pages and ${count+bands}-piece BOM`);
-        if([...SIX_INTAKES,'cable-compass','cable-compass-control','rise-ratio','rise-ratio-control','cascade','cascade-control','wavemaker','wavemaker-control','sine-shuttle','quartermaster','watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,opts,id,judgeNewModel);
+        if([...SIX_INTAKES,'cable-compass','cable-compass-control','rise-ratio','rise-ratio-control','cascade','cascade-control','wavemaker','wavemaker-control','sine-shuttle','quartermaster','watt-line','twin-tempo','root-bridge','balance-engine'].includes(id))await intakeRoundtrip(page,modelOpts,id,judgeNewModel);
     }
     writeFileSync(resolve(opts.shotsDir, 'new-model-measurements.json'), `${JSON.stringify(results, null, 2)}\n`);
     return results;
@@ -214,7 +215,7 @@ export async function newModelLesson(page, {openSimLab, shotsDir}, id, language 
         simulation: window.__bwSimLab?.status, view3d: window.__bwSimLab?.view3d
     })));
     writeFileSync(resolve(shotsDir, `${id}-lesson-${language}-capture-state.json`), JSON.stringify({frames}, null, 2));
-    await lesson.screenshot({path: resolve(shotsDir, `${id}-lesson-${language}.png`)});
+    await captureUiScreenshot(page,{path: resolve(shotsDir, `${id}-lesson-${language}.png`)},lesson);
     await lesson.getByRole('button', {name: language === 'de' ? 'Lektion schließen' : 'Close lesson', exact: true}).click();
     console.log(`PASS ${id}: ${language.toUpperCase()} lesson (${steps} steps, ${answer.length} characters)`);
     return {id, language, steps, characters: answer.length};

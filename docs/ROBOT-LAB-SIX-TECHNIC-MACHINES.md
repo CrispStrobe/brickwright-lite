@@ -68,13 +68,28 @@ and fresh-context program replay, bilingual lessons and library export.
 The browser's paused initial snapshot does not establish an unpowered startup
 interval; that remains a mandatory native check. Source-binding comparisons
 allow only numerical roundoff between JavaScript engines, independently of
-the unchanged physical tolerances.
+the unchanged physical tolerances. Compiled gear identities remain exact;
+computed ratios admit only binary arithmetic roundoff and are independently
+checked against the observed shaft motions.
 
 Fixed-period hold checks compare integer tick spans at exact sampled boundaries,
 so subtraction of late floating timestamps cannot turn one allowed frame into a
 false failure. Non-grid observations keep the direct comparison; short-hold
 negative controls retain the original one-frame allowance. Immutable supplied
 oracles remain in the fixtures alongside the reviewed numerical correction.
+
+Saved-project checks wait for the saved program and loading overlay before
+operating the restored editor, within the existing 120-second import budget.
+Atlas Six’s browser wall wait derives from its named 490-second simulated
+program envelope; other examples retain their prior wall waits. The physical
+program watchdogs and motion limits are unchanged.
+
+Screenshot capture checks font availability in every frame. An observed WebKit
+case leaves its readiness promise pending with an empty, loaded font set. Only
+that case, with available system fonts independently checked before and after
+capture, can use the scoped screenshot workaround. Actual pending custom fonts
+still block capture; blank-canvas negatives and unchanged model-pixel thresholds
+remain mandatory. The application DOM and fonts are never altered by capture.
 
 The qualification runner produces a source-bound receipt for these checks.
 Simulation qualification does not certify a physical build, friction, wear, cable routing

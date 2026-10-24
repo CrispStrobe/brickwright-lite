@@ -5,6 +5,7 @@
 // runs in native mode. Browser mode checks its actual program and after poses;
 // the full unpowered startup remains an explicit native-suite responsibility.
 import assert from 'node:assert/strict';
+import {sameGearTopology} from './sim-lab-gear-topology.mjs';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {createPhysicalHingeObserver} from '../../test/fixtures/model-files/vernier-drive-source/checks/physical-hinge-observer.mjs';
@@ -23,7 +24,6 @@ for(const [i,r]of route.entries()){
  assert.ok(near(r.targetMotorDeg,intendedRoute[i]*25/T.inputRatio)&&near(r.predictedLeftDeg,intendedRoute[i]*25)&&near(r.predictedRightDeg,-intendedRoute[i]*27)&&near(r.predictedCarrierDeg,-intendedRoute[i]),'Independent route arithmetic at stage'+i);
 }
 const span=a=>a.length?Math.max(...a)-Math.min(...a):NaN,max=a=>a.length?Math.max(...a.map(Math.abs)):NaN,mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
-const couplingSignature=cs=>cs.map(c=>({kind:c.kind,parts:[...c.parts].sort(),ratio:c.ratio,carrier:!!c.carrier})).sort((a,b)=>a.parts.join('|').localeCompare(b.parts.join('|')));
 let physical;
 async function measure(run){
  const measured=await measureRotations(run,markers,{repo});
@@ -47,7 +47,7 @@ function judge(run,measured){
  gate('hub_motor',run.mechanism.hubs.length===1&&run.mechanism.actuators.length===1&&run.mechanism.actuators[0].port==='A'&&run.mechanism.actuators[0].hub===run.mechanism.hubs[0].id,'One actual hub and its explicitly bound motor A');
  gate('free_chassis',run.mechanism.bodies.filter(b=>b.parts.length).every(b=>b.motion==='dynamic'),'Every body containing a placed part is dynamic, including the chassis');
  gate('issues',run.issues.length===0&&(run.mechanism.diagnostics||[]).length===0,'No unresolved import or mechanism diagnostics');
- gate('topology',JSON.stringify(couplingSignature(run.mechanism.couplings))===JSON.stringify(couplingSignature(contract.topology.couplings))&&run.mechanism.couplings.length===6,'Exactly the six preregistered physical gear meshes');
+ gate('topology',sameGearTopology(run.mechanism.couplings,contract.topology.couplings)&&run.mechanism.couplings.length===6,'Exactly the six preregistered physical gear meshes');
  gate('differential_meshes',carriers.length===2&&carriers.every(c=>c.frame===owners.carrier.body),'Both native side/spider gear meshes use the actual differential carrier frame');
  gate('independent_members',new Set([owners.left.body,owners.right.body,owners.carrier.body,owners.output.body]).size===4&&passive.every(id=>id!==motor.body2&&id!==measured.baseBody),'Left, right, carrier and pointer are distinct; right/carrier/pointer are unactuated passive bodies');
  gate('reference_frames',Object.keys(owners).filter(k=>k!=='spider').every(k=>owners[k].relativeBody===measured.baseBody)&&(!owners.spider||owners.spider.relativeBody===owners.carrier.body),'All main and compound-shaft markers reference the actual chassis; the spider alone references the actual carrier');

@@ -52,3 +52,23 @@ boundary. Reviewed oracle extracts retain the supplied physical gates and raw
 timestamps, comparing aligned hold spans as integer clock ticks. The original
 oracles and failed receipt remain; one-nanosecond and one-physics-step short-hold
 controls must still fail. No time, pose, solver or motion tolerance is increased.
+
+Cross-engine qualification found Vernier's six mesh identities identical, with
+two computed ratios differing by at most 1.33e-15. Its topology comparison now
+allows only binary arithmetic roundoff; angle, speed and motion limits stay
+unchanged. Ratio changes of 1e-12, altered part identities or carriers, and
+missing meshes remain rejected. Original failed observations remain preserved.
+
+Project replay waits for the restored non-shadow opcode counts and loading
+overlay before clicking the new editor, within the existing 120-second import
+budget. Atlas Six's external browser wall wait uses its already declared
+490-second model envelope; every other example keeps its prior wait. Native
+watchdogs and physical limits remain unchanged.
+
+Screenshot qualification records actual font state in every frame. An empty,
+loaded WebKit font set with available system fonts can use a scoped capture
+workaround for its unresolved ready promise, with availability checked again
+after capture. External bypass flags are refused, real pending fonts remain
+blocking, and blank-image negatives and all pixel thresholds stay unchanged.
+Controlled browser fixtures cover those guards; application DOM/fonts and
+physical state remain untouched.

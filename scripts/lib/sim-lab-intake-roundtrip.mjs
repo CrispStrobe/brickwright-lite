@@ -9,10 +9,25 @@ import {captureRenderedModel} from './sim-lab-rendered-model-gate.mjs';
 import {openFile} from './sim-lab-scale-gate.mjs';
 import {exportedProject} from './sim-lab-integral-gate.mjs';
 
+// Project import can reset the selected editor tab. Wait for the saved real
+// program and the loading overlay to finish before acting on the new GUI.
+// Ignore shadow ids: Scratch expands inline literals into new shadow blocks.
+export function projectProgramReady(expected=null){
+ const vm=window.__bwIntakeProjectVm||window.__bwSimLab?._pane?.props.vm;
+ const targets=vm?.runtime.targets.map(t=>{
+  const counts={};for(const b of Object.values(t.blocks?._blocks||{}))if(!b.shadow&&typeof b.opcode==='string')counts[b.opcode]=(counts[b.opcode]||0)+1;
+  return{name:t.getName(),operations:Object.entries(counts).sort(([a],[b])=>a.localeCompare(b))};
+ }).sort((a,b)=>a.name.localeCompare(b.name));
+ if(expected===null)return targets;
+ return targets&&JSON.stringify(targets)===JSON.stringify(expected)&&
+  ![...document.querySelectorAll('[class*="loader_background"]')].some(e=>e.offsetWidth||e.offsetHeight);
+}
+
 export async function intakeRoundtrip(page,opts,id,judge){
  await page.getByTestId('bw-sim-lab-reset').click();
  await page.waitForFunction(()=>window.__bwSimLab.status==='ready');
  const record=await page.evaluate(()=>window.__bwSimLab.projectRecord);
+ const program=await page.evaluate(projectProgramReady);assert.ok(program.some(t=>t.operations.length),'actual saved program contains blocks');
  const expected=await page.evaluate(()=>window.__bwSimLab._pane.session.model.parts);
  assert.match(record.ldraw,/^0 Author: (?:CrispStrobe|Christian Ströbele)/m);
  const project=resolve(opts.shotsDir,id+'.sb3');
@@ -27,8 +42,19 @@ export async function intakeRoundtrip(page,opts,id,judge){
  reopened.on('pageerror',e=>errors.push(e.message));reopened.on('dialog',d=>d.accept());
  try{
   await opts.openSimLab(reopened,{program:null});
+  await reopened.evaluate(()=>{window.__bwIntakeProjectVm=window.__bwSimLab._pane.props.vm;});
   await reopened.getByText('File',{exact:true}).click();await reopened.getByText('Load from your computer',{exact:true}).click();
   await reopened.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(project);
+  const projectLoadBudgetMs=120000,loadingStarted=Date.now();
+  try{await reopened.waitForFunction(projectProgramReady,program,{timeout:projectLoadBudgetMs});}
+  catch(error){
+   const state=await reopened.evaluate(()=>({status:window.__bwSimLab?.status,modelFile:window.__bwSimLab?._pane?.state.modelFile,
+    loaders:[...document.querySelectorAll('[class*="loader_background"]')].map(e=>({visible:!!(e.offsetWidth||e.offsetHeight),text:e.innerText})),
+    targets:window.__bwIntakeProjectVm.runtime.targets.map(t=>({name:t.getName(),blocks:Object.keys(t.blocks._blocks).length})),
+    selectedTabs:[...document.querySelectorAll('[role="tab"][aria-selected="true"]')].map(e=>e.innerText)}));
+   writeFileSync(resolve(opts.shotsDir,id+'-project-load-failure.json'),JSON.stringify({projectLoadBudgetMs,elapsedMs:Date.now()-loadingStarted,error:String(error),state,errors},null,2)+'\n');throw error;
+  }
+  writeFileSync(resolve(opts.shotsDir,id+'-project-load.json'),JSON.stringify({projectLoadBudgetMs,elapsedMs:Date.now()-loadingStarted,programShape:program},null,2)+'\n');
   await reopened.getByRole('tab',{name:/^(Robots|Robot Lab)$/}).click();
   await reopened.waitForFunction(count=>window.__bwSimLab?.status==='ready'&&window.__bwSimLab._pane.session.model.parts.length===count,expected.length);
   assert.deepEqual(await reopened.evaluate(()=>window.__bwSimLab.projectRecord),record);

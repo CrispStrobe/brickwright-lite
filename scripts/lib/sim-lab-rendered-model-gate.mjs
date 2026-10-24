@@ -31,17 +31,54 @@ async function captureFailure(page,path,error,phase){
  writeFileSync(path.replace(/\.png$/,'')+'-capture-failure.json',JSON.stringify({phase,error:String(error),state},null,2)+'\n');
 }
 
+// CSS Font Loading requires ready to settle even when no font loads occur.
+// WebKit can leave that promise pending with an empty, loaded FontFaceSet.
+// Independently verify every frame's actual font availability before working
+// around only Playwright's redundant promise wait. No DOM or font is changed.
+// https://drafts.csswg.org/css-font-loading/#font-face-set-ready
+const readFontState=async frame=>frame.evaluate(async()=>{
+ const fonts=document.fonts,style=getComputedStyle(document.body||document.documentElement);
+ const ready=await Promise.race([fonts.ready.then(()=>true),new Promise(done=>setTimeout(()=>done(false),500))]);
+ const requestedFont=style.fontSize+' '+style.fontFamily;
+ return {documentState:document.readyState,status:fonts.status,faces:[...fonts].map(f=>({family:f.family,status:f.status})),ready,
+  requestedFont,available:fonts.check(requestedFont)};
+});
+const emptyAvailable=state=>state.documentState==='complete'&&state.status==='loaded'&&state.faces.length===0&&state.available;
+const settled=state=>state.ready&&state.status==='loaded';
+export async function captureUiScreenshot(page,options={},target=page,evidencePath=options.path){
+ const previous=process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;
+ assert.equal(previous,undefined,'External font-readiness bypass is not accepted');
+ const browser=page.context().browser().browserType().name();
+ try{
+  const frames=page.frames(),before=await Promise.all(frames.map(readFontState));
+  await Promise.all(frames.map((frame,i)=>{
+   if(settled(before[i])||(browser==='webkit'&&emptyAvailable(before[i])))return;
+   return frame.waitForFunction(async()=>{await document.fonts.ready;return document.fonts.status==='loaded';},null,{timeout:30000});
+  }));
+  const states=await Promise.all(page.frames().map(readFontState));
+  const workaround=browser==='webkit'&&states.some(state=>!state.ready&&emptyAvailable(state));
+  assert.ok(states.every(state=>settled(state)||(workaround&&emptyAvailable(state))),'Every frame has settled fonts or verified available system fonts');
+  if(evidencePath)writeFileSync(evidencePath.replace(/\.png$/,'')+'-fonts.json',JSON.stringify({browser,mode:workaround?'verified-empty-font-set':'native-font-ready',before,states},null,2)+'\n');
+  let shot;
+  try{
+   if(workaround)process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
+   shot=await target.screenshot(options);
+  }finally{delete process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;}
+  if(workaround){
+   const after=await Promise.all(page.frames().map(readFontState));
+   assert.ok(after.every(state=>settled(state)||emptyAvailable(state)),'Fonts remain available after capture; no new pending face is ignored');
+   if(evidencePath)writeFileSync(evidencePath.replace(/\.png$/,'')+'-fonts.json',JSON.stringify({browser,mode:'verified-empty-font-set',before,states,after},null,2)+'\n');
+  }
+  return shot;
+ }catch(error){if(evidencePath)await captureFailure(page,evidencePath,error,'font-state-or-screenshot');throw error;}
+ finally{delete process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY;}
+}
+
 export async function captureRenderedModel(page,path){
- // Playwright waits for page fonts before capturing. Give that prerequisite
- // its own bounded wait. Screenshot acquisition has a separate timeout;
- // the retry budget and decoded-pixel requirements stay unchanged.
- try{await page.waitForFunction(async()=>{await document.fonts.ready;return document.fonts.status==='loaded';},null,{timeout:30000});}
- catch(error){await captureFailure(page,path,error,'font-readiness');throw error;}
  const started=Date.now(),budgetMs=5000,screenshotTimeoutMs=30000,attempts=[],stem=path.replace(/\.png$/,'');
  for(let attempt=1;;attempt++){
   const box=await page.getByTestId('bw-sim-lab-3d-canvas').boundingBox();assert.ok(box,'visible model canvas');
-  let shot;try{shot=await page.screenshot({timeout:screenshotTimeoutMs});}
-  catch(error){await captureFailure(page,path,error,'screenshot');throw error;}
+  const shot=await captureUiScreenshot(page,{timeout:screenshotTimeoutMs},page,path);
   const pixels=await renderedModelPixels(page,shot,box);
   const elapsedMs=Date.now()-started,visible=pixels.colored>=1000&&pixels.dark>=500;
   attempts.push({attempt,elapsedMs,...pixels,visible});

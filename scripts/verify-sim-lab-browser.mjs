@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {physicsAddonInteractions,addonLesson} from './lib/sim-lab-physics-addons-gate.mjs';
 import {resonanceInteractions, resonanceLesson} from './lib/sim-lab-resonance-gate.mjs';
+import {screenshotFontControls} from './lib/sim-lab-font-capture-gate.mjs';
 import {newModelsInteractions, newModelLesson} from './lib/sim-lab-new-models-gate.mjs';
 import {scalingSteeringInteractions,scalingSteeringLesson} from './lib/sim-lab-scaling-steering-gate.mjs';
 import {ellipseEngineInteractions,ellipseEngineLesson} from './lib/sim-lab-ellipse-engine-gate.mjs';
@@ -799,10 +800,12 @@ try {
         }
         const newModelIds = ['rod-ratio', 'vernier-drive', 'line-turner', 'dune-strider', 'atlas-six', 'oblique', 'cable-compass', 'cable-compass-control', 'rise-ratio', 'rise-ratio-control', 'cascade', 'cascade-control', 'wavemaker', 'wavemaker-control', 'sine-shuttle', 'quartermaster', 'watt-line', 'twin-tempo', 'root-bridge', 'balance-engine', 'cusp-lab', 'product-plotter', 'gimbal-lab', 'sky-courier'].filter(id => runExample(`${id}.ldr`) || (id==='cable-compass-control' && runExample('cable-compass.ldr')) || (id==='rise-ratio-control' && runExample('rise-ratio.ldr')) || (id==='wavemaker-control' && runExample('wavemaker.ldr')) || (id==='cascade-control' && runExample('cascade.ldr')));
         if (newModelIds.length) {
+            await screenshotFontControls(browser,resolve(artifacts,'font-capture'));
             const page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
             page.on('pageerror', error => errors.push(error.stack || error.message));
             page.on('dialog', dialog => dialog.accept());
-            const opts = {openSimLab, shotsDir: resolve(artifacts, 'new-models'), timeout: wallBudget(140000), models: newModelIds};
+            const opts = {openSimLab, shotsDir: resolve(artifacts, 'new-models'), timeout: wallBudget(140000),
+                timeoutFor: id => wallBudget(id === 'atlas-six' ? 490000 : 140000), models: newModelIds};
             await newModelsInteractions(page, opts);
             await page.close();
             // Each language reads a freshly loaded example. Release the long

@@ -64,3 +64,11 @@ test('sampled hold boundaries use integer ticks without admitting a physically s
  assert.equal(withinSampledFrame(0,475,25,500),true);
  assert.equal(withinSampledFrame(0,470,25,500),false);
 });
+
+test('gear topology accepts arithmetic roundoff and rejects changed ratios, identities, carriers and missing meshes',async()=>{
+ const {sameGearTopology}=await import('../scripts/lib/sim-lab-gear-topology.mjs');
+ const expected=[{kind:'gear',parts:['input','driven'],ratio:-2.999999999999999}];
+ const observed=[{kind:'gear',parts:['input','driven'],ratio:-3.0000000000000004}];
+ assert.equal(sameGearTopology(observed,expected),true);
+ for(const wrong of [[],[{...observed[0],ratio:expected[0].ratio+1e-12}],[{...observed[0],parts:['other','driven']}],[{...observed[0],carrier:true}],[{...observed[0],kind:'relativeGear'}]])assert.equal(sameGearTopology(wrong,expected),false);
+});
