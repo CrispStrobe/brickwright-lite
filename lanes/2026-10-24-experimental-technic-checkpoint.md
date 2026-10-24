@@ -19,3 +19,5 @@ original failed and interrupted qualifications. Release, production API cutover,
 the private builder kit and actual VPS pilot remain unfinished at this checkpoint.
 The user's latest checkpoint instruction supersedes the earlier requirement to
 finish the whole delivery loop before handing over.
+
+Implementation adds a separate experimental discovery list, 21 original-source pairs, equivalent MPD wrappers, full notices and 42 bilingual starting lessons. Basic parsing/compilation is recorded per candidate; Vector Delta is blocked for unsupported part 5996. Production build and representative GUI checks remain pending before pushing the checkpoint. The established native registry and its gates are unchanged.

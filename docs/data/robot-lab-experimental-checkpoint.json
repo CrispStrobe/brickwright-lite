@@ -1,0 +1,1280 @@
+{
+  "schema": 1,
+  "status": "EXPERIMENTAL_CHECKPOINT_NOT_QUALIFIED",
+  "basicCompilerSource": "9c78f3679b5c4f8984c12b7a75b8d48facff8ff5",
+  "scope": "Static source, BW syntax and mechanism-compiler checks only. Do not infer motion or physical buildability.",
+  "models": [
+    {
+      "id": "cross-ratio",
+      "title": "Cross Ratio — crossed four-bar half-angle transform",
+      "placements": 127,
+      "archive": "cross-ratio-addon.zip",
+      "archiveSha256": "69bef27ab1ae4d2f519cc18b99204c919b0c7f36b819507ead060d04d4e84a9a",
+      "originalLdrawEntry": "cross-ratio-addon/models/cross-ratio.ldr",
+      "originalLdrawSha256": "34023c8bd4d1646d75c1318f8baf000ef9466bb59e44a9b4ca0e84d0ff6c2241",
+      "canonicalLdrawSha256": "c3a22ff07aefbb8e35ae8e98ca6af71a2132c5dea68b5e4310ce0e10ee43ffee",
+      "originalProgramEntry": "cross-ratio-addon/programs/cross-ratio.bw",
+      "programSha256": "c553bf618c6487eb5c6745e07e76184196b1605222bb6743e5bf418d7095a413",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "cross-ratio",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 127,
+        "bodies": 5,
+        "joints": 4,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "bend-ripple",
+      "title": "Bend Ripple — one Cardan joint at a changing bend",
+      "placements": 156,
+      "archive": "bend-ripple-addon.zip",
+      "archiveSha256": "7d094381fa163fa246754bb1dfeeedfa1e3cf0f52de0748d992ed2940865eb19",
+      "originalLdrawEntry": "bend-ripple-addon/models/bend-ripple.ldr",
+      "originalLdrawSha256": "7bd00415e07a1ca41205aaa5973c00696c99058e0570657f27ef32a45b79d79d",
+      "canonicalLdrawSha256": "ff9fee60b1c13bb31f31b86c22d54747beaceec530f2617eec7497c31f5249df",
+      "originalProgramEntry": "bend-ripple-addon/programs/bend-ripple.bw",
+      "programSha256": "0569e19e533cfd193cd955597b1d4172ef9a77fb315ac22349809208d9eff91a",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "bend-ripple",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 156,
+        "bodies": 5,
+        "joints": 3,
+        "motors": 2,
+        "ports": [
+          "B",
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "apex",
+      "title": "Apex — Wankel rotary demonstrator",
+      "placements": 477,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "04-apex/apex.ldr",
+      "originalLdrawSha256": "7f810fd131b0aa2854d224f9830adc2e519093752960a5159ecdf03462e2359e",
+      "canonicalLdrawSha256": "5172c27b1828dd068b7b0ea9130e44009ee4eee0e9ade33874d1ae19d2e2cb18",
+      "originalProgramEntry": "04-apex/apex.bw",
+      "programSha256": "4db8b69cfc7bde6e39b58309b143a5bfa357b6384534052ada3f1a98643c10c3",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "apex",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 477,
+        "bodies": 6,
+        "joints": 4,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "bloom",
+      "title": "Bloom - expanding angulated-scissor sphere",
+      "placements": 781,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "05-bloom/bloom.ldr",
+      "originalLdrawSha256": "fc2db194bb6cd990e4bb319fc21c49f8177231a21296e0640ecca539d4bc7fde",
+      "canonicalLdrawSha256": "6136a05cd5eedbbc822513471ec6fb394afb2e17af929502d5010d07df07ee6e",
+      "originalProgramEntry": "05-bloom/bloom.bw",
+      "programSha256": "3f12b7ff0fd3f85e1882f8d2dee2d1744fc907d59fcad4a6bf553c8b022a96dc",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "bloom",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 781,
+        "bodies": 84,
+        "joints": 120,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b16 and b83 lock, merging islands",
+            "parts": [
+              "cage_XY_02_A_elbow",
+              "cage_XY_02_A_end_start",
+              "drive_input_axle",
+              "drive_secondary_axle"
+            ]
+          }
+        ],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "vector-delta",
+      "title": "Vector - three-axis parallel Delta robot",
+      "placements": 353,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "06-vector/vector-delta.ldr",
+      "originalLdrawSha256": "4eebeefc898fe8360640d0567f738db4bdb0cdc5adf4a3b00b291b46d906d3b5",
+      "canonicalLdrawSha256": "09bffd73e7ba2259bb02018a9444c42457eb5f2d01bf0209469c6e8209704137",
+      "originalProgramEntry": "06-vector/vector-delta.bw",
+      "programSha256": "69fe5e225b3cb74f314929e737dbdcd06f6f9298a244aa7da16ae820dfb903ff",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "vector-delta",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 347,
+        "bodies": 18,
+        "joints": 18,
+        "motors": 3,
+        "ports": [
+          "C",
+          "A",
+          "B"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "line": 655,
+            "code": "unknown-part",
+            "message": "Unknown part '5996.dat' at line 655 (and 5 more)",
+            "count": 6,
+            "lines": [
+              655,
+              667,
+              685,
+              697,
+              715,
+              727
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "loose-part",
+            "message": "Not connected to the rest of the model: tool_A_cross_axle, tool_A_minus_ball, tool_A_minus_bracket, tool_A_minus_retainer, tool_A_plus_ball, tool_A_plus_bracket, tool_A_plus_retainer, tool_A_radial_axle, tool_A_right_angle, tool_B_cross_axle, tool_B_minus_ball, tool_B_minus_bracket, tool_B_minus_retainer, tool_B_plus_ball, tool_B_plus_bracket, tool_B_plus_retainer, tool_B_radial_axle, tool_B_right_angle, tool_C_cross_axle, tool_C_minus_ball, tool_C_minus_bracket, tool_C_minus_retainer, tool_C_plus_ball, tool_C_plus_bracket, tool_C_plus_retainer, tool_C_radial_axle, tool_C_right_angle, tool_star",
+            "parts": [
+              "tool_A_cross_axle",
+              "tool_A_minus_ball",
+              "tool_A_minus_bracket",
+              "tool_A_minus_retainer",
+              "tool_A_plus_ball",
+              "tool_A_plus_bracket",
+              "tool_A_plus_retainer",
+              "tool_A_radial_axle",
+              "tool_A_right_angle",
+              "tool_B_cross_axle",
+              "tool_B_minus_ball",
+              "tool_B_minus_bracket",
+              "tool_B_minus_retainer",
+              "tool_B_plus_ball",
+              "tool_B_plus_bracket",
+              "tool_B_plus_retainer",
+              "tool_B_radial_axle",
+              "tool_B_right_angle",
+              "tool_C_cross_axle",
+              "tool_C_minus_ball",
+              "tool_C_minus_bracket",
+              "tool_C_minus_retainer",
+              "tool_C_plus_ball",
+              "tool_C_plus_bracket",
+              "tool_C_plus_retainer",
+              "tool_C_radial_axle",
+              "tool_C_right_angle",
+              "tool_star"
+            ]
+          }
+        ],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": true
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "cadence-geneva",
+      "title": "Cadence - Geneva clockwork",
+      "placements": 200,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "07-cadence/cadence-geneva.ldr",
+      "originalLdrawSha256": "048fd1abf79cec1e47cb3879253936797841b1cef87cb01d4a07c44cd28619d8",
+      "canonicalLdrawSha256": "7783a77d461b88cd5a4a7026a507eb24572328fd75b82e69ca1b9da8dae4b80f",
+      "originalProgramEntry": "07-cadence/cadence-geneva.bw",
+      "programSha256": "6ed053800f78526054be5732bebfd876f3cde711a5494889e964f8742a84546c",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "cadence-geneva",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 200,
+        "bodies": 11,
+        "joints": 9,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "equinox-differential",
+      "title": "Equinox - Differential lab",
+      "placements": 98,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "08-equinox/equinox-differential.ldr",
+      "originalLdrawSha256": "987090ff72755495e0f952f999f96d7beb4aa8b25aa53a7f50efaf9f74068406",
+      "canonicalLdrawSha256": "d67aee5320bd6bc3772fc4e546d96744600cfd4054608d5bb6c83498fd075448",
+      "originalProgramEntry": "08-equinox/equinox-differential.bw",
+      "programSha256": "a94693e9807f3046cf5b20057f59bc5fcdd45fcd8eb0666fdf3efc2d14bb8884",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "equinox-differential",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 98,
+        "bodies": 11,
+        "joints": 10,
+        "motors": 3,
+        "ports": [
+          "B",
+          "C",
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "kestrel-flapper",
+      "title": "Kestrel - Flapping linkage",
+      "placements": 61,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "09-kestrel/kestrel-flapper.ldr",
+      "originalLdrawSha256": "20a6a36d3d0fc3cbd1e71d5e4b3aba540262b987c367880c9ebe6a4fa132df3a",
+      "canonicalLdrawSha256": "767c84e57bbd91ee5f7c9f55e6b7467a6dde7e5266e259b0a0dd3499b05fed32",
+      "originalProgramEntry": "09-kestrel/kestrel-flapper.bw",
+      "programSha256": "0912ffaa0c3a62f672b719214b76a0f0afd451d848297d89b19df0e9ab24d421",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "kestrel-flapper",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 61,
+        "bodies": 5,
+        "joints": 4,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "lumen-iris",
+      "title": "Lumen - Six-leaf iris",
+      "placements": 146,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "10-lumen/lumen-iris.ldr",
+      "originalLdrawSha256": "e7d77d414de2f24f28a7ce6a8e1676eb5805363ced377f3d984bac12781d687e",
+      "canonicalLdrawSha256": "7153ebc0689e537f64a932c52781383ad978c5e0ec10a7c243b626e020719d01",
+      "originalProgramEntry": "10-lumen/lumen-iris.bw",
+      "programSha256": "ea74d96cba8a8a01cd727d307fd9149e2cede38224768798535ba3dfa9e8d9ff",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "lumen-iris",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 146,
+        "bodies": 10,
+        "joints": 8,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "helios-transmission",
+      "title": "Helios - Epicyclic transmission",
+      "placements": 156,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "11-helios/helios-transmission.ldr",
+      "originalLdrawSha256": "a6158b86ba3af7eccdf12652b943916d4327f48d91e9a0d1291c92f2710c520a",
+      "canonicalLdrawSha256": "8c91ef69f4e2f82a8b33b2bb84cecedcc831b1bfd5695c925fe688326fefd634",
+      "originalProgramEntry": "11-helios/helios-transmission.bw",
+      "programSha256": "db14980328bd7438d906eb06d4fb1def93a19325ed83e584cd8a4a68651e787c",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "helios-transmission",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 156,
+        "bodies": 8,
+        "joints": 8,
+        "motors": 2,
+        "ports": [
+          "B",
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "aster-governor",
+      "title": "Aster - Centrifugal governor",
+      "placements": 144,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "12-aster/aster-governor.ldr",
+      "originalLdrawSha256": "8c5526def87c2f20bb718305000f62391a8e736df55ccb419a821305aea0a300",
+      "canonicalLdrawSha256": "cb459d98ecff3f6b9f1b6706b06cea3cf5e21c3434886989a6241ba063f020d9",
+      "originalProgramEntry": "12-aster/aster-governor.bw",
+      "programSha256": "3f6fc4aff0e58e3d1e825c1a6bb2dfafe88400379ac700f9abdf90c7dbdc6c06",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "aster-governor",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 144,
+        "bodies": 8,
+        "joints": 8,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "orion-cardan",
+      "title": "Orion - Double Cardan drive",
+      "placements": 118,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "13-orion/orion-cardan.ldr",
+      "originalLdrawSha256": "654b56b60380fc3408349fa80374da088629451e8d29ac8060dc3ce77ee9dd89",
+      "canonicalLdrawSha256": "e526ea81c28c05e80bdddedbe110b2ae2b0bbbf36d023ace3a911f2e551fa23a",
+      "originalProgramEntry": "13-orion/orion-cardan.bw",
+      "programSha256": "9023ebdc4a02a7f1002628cb825bd3fb95c5ef1814f103138415a31b606e41c0",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "orion-cardan",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 118,
+        "bodies": 5,
+        "joints": 2,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "loose-part",
+            "message": "Not connected to the rest of the model: fork_middle_far, fork_middle_near, marker_middle_bush_after, marker_middle_bush_before, marker_middle_down, marker_middle_up, shaft_middle",
+            "parts": [
+              "fork_middle_far",
+              "fork_middle_near",
+              "marker_middle_bush_after",
+              "marker_middle_bush_before",
+              "marker_middle_down",
+              "marker_middle_up",
+              "shaft_middle"
+            ]
+          }
+        ],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "meridian-linkage",
+      "title": "Meridian - Exact Straight-Line Linkage",
+      "placements": 91,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "14-meridian/meridian-linkage.ldr",
+      "originalLdrawSha256": "631d20931c3b41c43e78bde7c660fba2dd938f0bfdbf00a2f1fc113a8a747846",
+      "canonicalLdrawSha256": "c807b8f9e3e11112026671ce37dc0e001c6603b703b8c0265befa99af2476cc7",
+      "originalProgramEntry": "14-meridian/meridian-linkage.bw",
+      "programSha256": "c86070968f4e5a095d78d186f4472926adeba8eab330519d128714bca3d17b48",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "meridian-linkage",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 91,
+        "bodies": 9,
+        "joints": 10,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "solstice-pumpjack",
+      "title": "Solstice - Walking Beam Pump",
+      "placements": 93,
+      "archive": "brickwright-models-04-15-ldr-bw.zip",
+      "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
+      "originalLdrawEntry": "15-solstice/solstice-pumpjack.ldr",
+      "originalLdrawSha256": "db4b2b9c62d70d24a1ae488c48c3975a2ec2accc34e28016ae725f70a5755b7f",
+      "canonicalLdrawSha256": "fb7edde35e329b35af4bcab107be8e5c560db48cbfcaaea451cc60cc9a168d72",
+      "originalProgramEntry": "15-solstice/solstice-pumpjack.bw",
+      "programSha256": "77ebf25fd16693953e719959294c28d9bfe23690a06f3d31f2c4e0686c513a41",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "solstice-pumpjack",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 93,
+        "bodies": 7,
+        "joints": 7,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "inertia-loop",
+      "title": "Inertia Loop — a closed shape cycle on a free yaw platform",
+      "placements": 314,
+      "archive": "brickwright-latest-six-models-ldr-bw.zip",
+      "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
+      "originalLdrawEntry": "inertia-loop/inertia-loop.ldr",
+      "originalLdrawSha256": "6f7584329f49b5def98cf726439caf23a3984c3738999b8d94331787d7988792",
+      "canonicalLdrawSha256": "62de372b6541e8b4f4d5c9541991cc69377f188ab8b734cc0a5b6c56e2acfb6f",
+      "originalProgramEntry": "inertia-loop/inertia-loop.bw",
+      "programSha256": "98225083c8198e591a914388710377cbe0e6e5647096a1a4921e6f7a79326626",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "inertia-loop",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 314,
+        "bodies": 8,
+        "joints": 6,
+        "motors": 2,
+        "ports": [
+          "A",
+          "B"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "gear-not-on-hinge",
+            "message": "Gear negative_ballast_0 not on hinge",
+            "parts": [
+              "negative_ballast_0"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-not-on-hinge",
+            "message": "Gear negative_ballast_1 not on hinge",
+            "parts": [
+              "negative_ballast_1"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-not-on-hinge",
+            "message": "Gear negative_ballast_2 not on hinge",
+            "parts": [
+              "negative_ballast_2"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-not-on-hinge",
+            "message": "Gear positive_ballast_0 not on hinge",
+            "parts": [
+              "positive_ballast_0"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-not-on-hinge",
+            "message": "Gear positive_ballast_1 not on hinge",
+            "parts": [
+              "positive_ballast_1"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-not-on-hinge",
+            "message": "Gear positive_ballast_2 not on hinge",
+            "parts": [
+              "positive_ballast_2"
+            ]
+          }
+        ],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "offset-relay",
+      "title": "Offset Relay — variable-offset pinned coupling",
+      "placements": 456,
+      "archive": "brickwright-latest-six-models-ldr-bw.zip",
+      "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
+      "originalLdrawEntry": "offset-relay/offset-relay.ldr",
+      "originalLdrawSha256": "6ce3d93525e4e0c376bdd4256d99dc4a84819e3a6312c721ee3b76a3d77bf929",
+      "canonicalLdrawSha256": "eb99c7f77b20edff60edfa13b43aed627285325d5fbe13fcb525e0a7c27aea2c",
+      "originalProgramEntry": "offset-relay/offset-relay.bw",
+      "programSha256": "e618e90134f78a395db299b82aa405759a445a1d0a6d8977777fd790335abc8b",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "offset-relay",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 456,
+        "bodies": 15,
+        "joints": 20,
+        "motors": 2,
+        "ports": [
+          "B",
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "rack-decoder",
+      "title": "Rack Decoder",
+      "placements": 245,
+      "archive": "brickwright-latest-six-models-ldr-bw.zip",
+      "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
+      "originalLdrawEntry": "rack-decoder/rack-decoder.ldr",
+      "originalLdrawSha256": "988a2b615a77b1429a384b8ca9d27da501c3ebe33b9f9585cc8e66ecd6080589",
+      "canonicalLdrawSha256": "482d814c67ef84c8084db07b5d781926b6f5493330b4e7d655f01332488c9fa4",
+      "originalProgramEntry": "rack-decoder/rack-decoder.bw",
+      "programSha256": "dae855291f0abab2522bdcb1c10a6aaeae3464b63898d38616e93c01c4c919d7",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "rack-decoder",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 245,
+        "bodies": 8,
+        "joints": 7,
+        "motors": 2,
+        "ports": [
+          "A",
+          "B"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "tangent-table",
+      "title": "Tangent Table — two-input mechanical tangent demonstration",
+      "placements": 297,
+      "archive": "brickwright-latest-six-models-ldr-bw.zip",
+      "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
+      "originalLdrawEntry": "tangent-table/tangent-table.ldr",
+      "originalLdrawSha256": "39bc72608a7ca5dacbe41a9e6b7bc55860612ba0170632f53546453d2d203569",
+      "canonicalLdrawSha256": "857c6d4c61c12c8860b0baac23375fd11ce0dc68b99ea5fb0d7c22f59adf1f05",
+      "originalProgramEntry": "tangent-table/tangent-table.bw",
+      "programSha256": "ffa877576b230c01deb66af6c8d5f173a5e57107129626161d31e907b1c6d1ed",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "tangent-table",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 297,
+        "bodies": 7,
+        "joints": 6,
+        "motors": 2,
+        "ports": [
+          "A",
+          "B"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "pan-shift",
+      "title": "Pan Shift — one-pan load-position experiment",
+      "placements": 197,
+      "archive": "brickwright-latest-six-models-ldr-bw.zip",
+      "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
+      "originalLdrawEntry": "pan-shift/pan-shift.ldr",
+      "originalLdrawSha256": "1658a2488ea70b3846bfba71438c07b02a8c65de256228890468d2d2bc5ce469",
+      "canonicalLdrawSha256": "d4a21d566ae36e6b16515255e79764c95ceb102ac39d6474c1aaba300630ef55",
+      "originalProgramEntry": "pan-shift/pan-shift.bw",
+      "programSha256": "d91097cc55f4bbdfceedc3a843c8ebd3820f296dd288cddd06e037ff8b6412e8",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "pan-shift",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 197,
+        "bodies": 7,
+        "joints": 6,
+        "motors": 2,
+        "ports": [
+          "A",
+          "B"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "remote-pivot",
+      "title": "Remote Pivot — rotation about an empty centre",
+      "placements": 153,
+      "archive": "brickwright-latest-six-models-ldr-bw.zip",
+      "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
+      "originalLdrawEntry": "remote-pivot/remote-pivot.ldr",
+      "originalLdrawSha256": "186d9c1b1b3b9e7ac72f4e0928d35fcfda1a4b07ac464288e0c5421046ac603e",
+      "canonicalLdrawSha256": "5ae709b12107c6759420ba74c8e4554e1ec337deb7bff37ca0e5150dbd0f43a4",
+      "originalProgramEntry": "remote-pivot/remote-pivot.bw",
+      "programSha256": "26565cd4225d3b40f60a17bfb3430a089977fcd77d80c8d856228949e0d8607e",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "remote-pivot",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 153,
+        "bodies": 7,
+        "joints": 7,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "vesper-quickreturn",
+      "title": "Vesper - Quick-Return Shaper",
+      "placements": 91,
+      "archive": "vesper-quickreturn.zip",
+      "archiveSha256": "23de5c20d88547286a399ef950b9d30c23f988a4479ee252b9078d76421d8a70",
+      "originalLdrawEntry": "models/vesper-quickreturn.ldr",
+      "originalLdrawSha256": "953b0232b5f5af1fbbcede365e5ba5d20d8df69140779f7076b1d645b88631c9",
+      "canonicalLdrawSha256": "791e9b8843359153bde34aa803c7cf39228643819be45c562f79f27dbaa3c5a3",
+      "originalProgramEntry": "programs/vesper-quickreturn.bw",
+      "programSha256": "1d0aa655c223bbf4511967202ea56dd376e4dcea053943442cce87fda6643bfd",
+      "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
+      "basicChecks": {
+        "id": "vesper-quickreturn",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "powered motion",
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 91,
+        "bodies": 7,
+        "joints": 7,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    }
+  ]
+}

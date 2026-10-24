@@ -1,0 +1,154 @@
+# BLOOM EIGHT — one measured expansion and return through a 72:1 stock gear train.
+# Original control program for the matching bloom.ldr.
+# Import Bloom in Robot Lab, then Reset the complete model before running.
+# Motor A drives two 8T/24T pairs and the worm/8T pair. Passive links are never posed.
+# Nominal theta 48 -> 30 degrees requires 1296 motor degrees.
+# Real inner-pivot spans correct accumulated gear slip after each nominal move.
+# Each trim uses at most three finite commands, each capped at 150 motor degrees.
+# Hold dwells use the motor position servo through all three gear stages.
+# The actual part reporters round coordinates to 1 mm. Their averaged span gives
+# a controller arrival measurement; independent all-pivot validation qualifies
+# the complete model and is not replaced by these three coarse spans.
+# The 3-degree encoder budget covers the native 1-degree finite-move completion
+# threshold and brake-to-hold transition: at 72:1, this is 0.042 output degrees.
+DEVICE SPIKE
+GLOBAL target
+GLOBAL requestedSpeed
+GLOBAL moveSpeed
+GLOBAL attempts
+GLOBAL stage
+GLOBAL completed
+GLOBAL failed
+GLOBAL dx
+GLOBAL dy
+GLOBAL dz
+GLOBAL spanXY
+GLOBAL spanYZ
+GLOBAL spanZX
+GLOBAL spanMean
+GLOBAL spanTarget
+GLOBAL trimScale
+GLOBAL trimAttempts
+GLOBAL correction
+GLOBAL homeSpan
+GLOBAL homeAngle
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set stage to 0
+  set attempts to 0
+  set trimAttempts to 0
+  IF (lab status) = "no-model" THEN:
+    set failed to 1
+    say "Import Bloom in Robot Lab, then Reset and Run."
+    stop all
+  reset timer
+  broadcast "Bloom watchdog"
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  IF (abs of (lab motor A angle)) > 5 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Saved-angle guard: Reset the complete Bloom model before retrying."
+    stop all
+  broadcast "Bloom measure" and wait
+  IF (((abs of (spanXY - 8.374)) > 1.2) or ((abs of (spanYZ - 8.374)) > 1.2)) or ((abs of (spanZX - 8.374)) > 1.2) THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Saved-shape guard: import the matching Bloom model and Reset it."
+    stop all
+  set stage to 1
+  set spanTarget to 8.373882
+  set trimScale to 0.00573
+  broadcast "Bloom trim" and wait
+  set homeSpan to spanMean
+  set homeAngle to (lab motor A angle)
+  set stage to 2
+  set target to (homeAngle + 1296)
+  set requestedSpeed to 144
+  broadcast "Bloom move" and wait
+  set spanTarget to 15.271395
+  set trimScale to 0.00483
+  broadcast "Bloom trim" and wait
+  set stage to 3
+  wait 1 seconds
+  set stage to 4
+  set target to homeAngle
+  set requestedSpeed to 144
+  broadcast "Bloom move" and wait
+  set spanTarget to homeSpan
+  set trimScale to 0.00573
+  broadcast "Bloom trim" and wait
+  lab stop motor A hold
+  set stage to 5
+  set completed to 1
+  say "Bloom cycle complete. The measured inner cage span has returned home; motor A holds."
+
+WHEN I receive "Bloom move":
+  set attempts to 0
+  repeat until ((abs of (target - (lab motor A angle))) < 0.4) or (attempts > 2):
+    set moveSpeed to requestedSpeed
+    IF attempts > 0 THEN:
+      set moveSpeed to 12
+    lab run motor A for (target - (lab motor A angle)) degrees at moveSpeed degrees per second
+    lab stop motor A hold
+    wait 0.05 seconds
+    change attempts by 1
+  IF (abs of (target - (lab motor A angle))) > 3 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Motor target arrival failed. Inspect the drive and Reset before retrying."
+    stop all
+  wait 0.5 seconds
+  IF (abs of (target - (lab motor A angle))) > 3 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Hold drift exceeded the guard. Reset before retrying."
+    stop all
+
+WHEN I receive "Bloom trim":
+  set trimAttempts to 0
+  broadcast "Bloom measure" and wait
+  repeat until ((abs of (spanTarget - spanMean)) < 0.04) or (trimAttempts > 2):
+    set correction to ((spanTarget - spanMean) / trimScale)
+    IF correction > 150 THEN:
+      set correction to 150
+    IF correction < -150 THEN:
+      set correction to -150
+    lab run motor A for correction degrees at 36 degrees per second
+    lab stop motor A hold
+    wait 0.3 seconds
+    change trimAttempts by 1
+    broadcast "Bloom measure" and wait
+  IF (((abs of (spanTarget - spanMean)) > 0.04) or ((abs of (spanXY - spanMean)) > 0.15)) or (((abs of (spanYZ - spanMean)) > 0.15) or ((abs of (spanZX - spanMean)) > 0.15)) THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "Actual-shape arrival failed. Inspect the cage and Reset before retrying."
+    stop all
+
+WHEN I receive "Bloom measure":
+  set dx to ((lab part "cage_XY_00_B_end_start" x) - (lab part "cage_XY_04_B_end_start" x))
+  set dy to ((lab part "cage_XY_00_B_end_start" y) - (lab part "cage_XY_04_B_end_start" y))
+  set dz to ((lab part "cage_XY_00_B_end_start" z) - (lab part "cage_XY_04_B_end_start" z))
+  set spanXY to (sqrt of ((dx * dx) + (dy * dy) + (dz * dz)))
+  set dx to ((lab part "cage_YZ_00_B_end_start" x) - (lab part "cage_YZ_04_B_end_start" x))
+  set dy to ((lab part "cage_YZ_00_B_end_start" y) - (lab part "cage_YZ_04_B_end_start" y))
+  set dz to ((lab part "cage_YZ_00_B_end_start" z) - (lab part "cage_YZ_04_B_end_start" z))
+  set spanYZ to (sqrt of ((dx * dx) + (dy * dy) + (dz * dz)))
+  set dx to ((lab part "cage_ZX_00_B_end_start" x) - (lab part "cage_ZX_04_B_end_start" x))
+  set dy to ((lab part "cage_ZX_00_B_end_start" y) - (lab part "cage_ZX_04_B_end_start" y))
+  set dz to ((lab part "cage_ZX_00_B_end_start" z) - (lab part "cage_ZX_04_B_end_start" z))
+  set spanZX to (sqrt of ((dx * dx) + (dy * dy) + (dz * dz)))
+
+  set spanMean to ((spanXY + spanYZ + spanZX) / 3)
+
+WHEN I receive "Bloom watchdog":
+  repeat until completed = 1:
+    IF timer > 90 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "90 second watchdog: stopped and holding. Reset before retrying."
+      stop all
+    wait 0.02 seconds

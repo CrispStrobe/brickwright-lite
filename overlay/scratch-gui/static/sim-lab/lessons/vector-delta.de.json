@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "vector-delta",
+  "language": "de",
+  "what": "Gesperrt: Teil 5996 wird noch nicht unterstützt. Die Originalquelle bleibt für die Überarbeitung erhalten. Drei parallele Ketten sollen eine Plattform positionieren. Bevor diese Quelle sicher geladen werden kann, wird Unterstützung für Teil 5996 benötigt.",
+  "why": "Drei parallele Ketten sollen eine Plattform positionieren. Bevor diese Quelle sicher geladen werden kann, wird Unterstützung für Teil 5996 benötigt.",
+  "try": [
+    "Gesperrt: Teil 5996 wird noch nicht unterstützt. Die Originalquelle bleibt für die Überarbeitung erhalten.",
+    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start."
+  ],
+  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
+  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
+  "answer": "Drei parallele Ketten sollen eine Plattform positionieren. Bevor diese Quelle sicher geladen werden kann, wird Unterstützung für Teil 5996 benötigt. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "further": [
+    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
+    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+  ],
+  "related": []
+}

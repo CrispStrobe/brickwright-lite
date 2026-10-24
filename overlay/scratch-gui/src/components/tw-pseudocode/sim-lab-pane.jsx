@@ -657,12 +657,13 @@ class SimLabPane extends React.Component {
     /** loadModel from a block, a word or a call: a shipped model by id, or LDraw text. */
     async apiLoadModel (spec) {
         if (this.disposed || !this.lib) return {ok: false, code: 'no-model'};
+        const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
+        if (entry?.blocked) return {ok: false, code: 'experimental-blocked', message: entry.intro[this.locale] || entry.intro.en};
         if (this.state.status === 'running') this.apiStop();
         if (this.editor) {
             this.teardownEditor();
             this.setState({mode: 'simulate', placing: null, selection: []});
         }
-        const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
         if (entry) await this.openShipped(modelKey(entry), {preserveProgram: true});
         else {
             this.lastText = spec;
@@ -1177,6 +1178,7 @@ class SimLabPane extends React.Component {
         if (includeProgram && this.session) this.pause();
         const entry = this.lib.MODELS.find(m => modelKey(m) === key);
         if (!entry) return;
+        if (entry.blocked) { this.setState({message: entry.intro[this.locale] || entry.intro.en}); return; }
         const file = entry.file;
         const response = await fetch(`${this.lib.MODELS_BASE}${file}`);
         if (this.disposed || this.shippedRequest !== request) return;
@@ -1211,6 +1213,7 @@ class SimLabPane extends React.Component {
     async openGalleryExample (key, includeProgram) {
         const entry = this.lib.MODELS.find(m => modelKey(m) === key);
         if (!entry) throw new Error(this.text.failed);
+        if (entry.blocked) throw new Error(entry.intro[this.locale] || entry.intro.en);
         if (this.state.status === 'running') this.pause();
         if (this.editor) this.teardownEditor();
         await new Promise(resolve => this.setState({mode: 'simulate', placing: null, selection: [],
@@ -3067,7 +3070,7 @@ class SimLabPane extends React.Component {
                 <label style={labelled} title={T.model}>{icon('build')}
                     <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''} aria-label={T.model} style={field}
                         onChange={e => e.target.value && this.openShipped(e.target.value, {includeProgram: true, updateTitle: true})}>
-                        {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
+                        {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)} disabled={m.blocked}>{m.title[this.locale] || m.title.en}{m.experimental ? (this.locale === 'de' ? ' (experimentell)' : ' (experimental)') : ''}</option>)}
                         {modelFile && !shipped && <option value="">{modelFile}</option>}
                     </select>
                 </label>

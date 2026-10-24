@@ -1,0 +1,421 @@
+0 Cadence - Geneva clockwork
+0 Name: cadence-geneva.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/cadence-geneva.txt
+0 !LDRAW_ORG Unofficial_Model
+0 // Original Cadence design assembled with OpenAI assistance.
+0 // New native PlacedModel exported by the unchanged Brickwright serializeModel function.
+0 // Application Author is the native serializer default; design provenance is stated above.
+0 // Stock parts, one input motor, four-slot Geneva indexer, friction dwell and twelve-position dial.
+0 // No custom constraints, collision edits or scripted output poses.
+0 // Companion: cadence-geneva.bw. Robot Lab Plain; open model, then Code > To blocks.
+0 // Reset the complete model before running and before repeating the demonstration.
+0 // Friction-dwell clockwork demonstration; physical build and timekeeping accuracy untested.
+0 !BW ID gear_bearing_100
+1 0 -100 100 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID gear_bearing_160
+1 0 -100 160 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID gear_column_left
+1 72 -260 160 0 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID gear_column_left_elbow_80
+1 72 -240 80 0 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID gear_column_left_elbow_140
+1 72 -240 140 0 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID gear_column_left_elbow_240
+1 72 -240 240 0 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID gear_column_left_upper_pin
+1 0 -240 90 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID gear_column_left_lower_pin
+1 0 -240 150 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID gear_column_left_foot_pin
+1 0 -240 250 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID gear_column_right
+1 72 60 160 0 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID gear_column_right_elbow_80
+1 72 40 80 0 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID gear_column_right_elbow_180
+1 72 40 180 0 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID gear_column_right_elbow_240
+1 72 40 240 0 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID gear_column_right_upper_pin
+1 0 40 90 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID gear_column_right_lower_pin
+1 0 40 170 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID gear_column_right_foot_pin
+1 0 40 250 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID floor_center
+1 0 -100 260 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID face_column_-100
+1 72 -140 120 -100 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID face_top_elbow_-100
+1 72 -160 20 -100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID face_top_pin_-100
+1 0 -160 10 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID face_foot_elbow_-100
+1 72 -160 240 -100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID floor_left_-100
+1 0 -160 260 -100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID face_foot_pin_-100
+1 1 -160 260 -100 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID face_column_100
+1 72 -140 120 100 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID face_top_elbow_100
+1 72 -160 20 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID face_top_pin_100
+1 0 -160 10 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID face_foot_elbow_100
+1 72 -160 240 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID floor_left_100
+1 0 -160 260 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID face_foot_pin_100
+1 1 -160 260 100 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID floor_cross_-160
+1 0 -160 280 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_center_cross_pin
+1 0 -160 270 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID floor_cross_-260
+1 0 -260 280 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID floor_cross_pin_-260_-100
+1 0 -260 270 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID floor_cross_pin_-260_100
+1 0 -260 270 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID input_bearing
+1 0 100 60 100 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID input_column_left
+1 72 40 160 100 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID input_top_elbow_left
+1 72 60 80 100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID input_top_pin_left
+1 0 60 70 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID input_foot_elbow_left
+1 72 60 240 100 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID input_foot_pin_left
+1 1 60 260 100 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID input_column_right
+1 72 160 160 100 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID input_top_elbow_right
+1 72 140 80 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID input_top_pin_right
+1 0 140 70 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID input_foot_elbow_right
+1 72 140 240 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID input_foot_pin_right
+1 1 140 260 100 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID floor_input
+1 0 100 260 100 0 0 1 0 1 0 -1 0 0 32316.dat
+0 !BW ID floor_input_lap
+1 0 60 280 100 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID floor_input_lap_pin_-80
+1 0 -80 270 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID floor_input_lap_pin_-60
+1 0 -60 270 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID floor_input_lap_pin_-40
+1 0 -40 270 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID floor_input_lap_pin_-20
+1 0 -20 270 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID floor_input_lap_pin_100
+1 0 100 270 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID motor_pedestal
+1 72 100 200 100 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID motor_mount_80
+1 72 80 180 100 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID motor_mount_120
+1 72 120 180 100 0 1 0 -1 0 0 0 0 1 15100.dat
+0 !BW ID motor_bottom_tie
+1 1 100 180 100 1 0 0 0 0 -1 0 1 0 6558.dat
+0 !BW ID motor_pedestal_elbow
+1 72 80 220 100 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motor_pedestal_spacer
+1 72 80 240 100 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID motor_pedestal_floor_pin
+1 1 80 240 100 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID brake_hub_seat
+1 72 -200 200 0 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID brake_foot
+1 0 -200 280 0 1 0 0 0 1 0 0 0 1 32316.dat
+0 !BW ID brake_reaction_column_-20
+1 72 -220 220 -20 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID brake_upper_elbow_-20
+1 72 -200 220 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID brake_upper_pin_-20
+1 0 -200 210 -20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID brake_foot_elbow_-20
+1 72 -200 240 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID brake_foot_spacer_-20
+1 72 -200 260 -20 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID brake_foot_pin_-20
+1 1 -200 260 -20 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID brake_reaction_column_20
+1 72 -220 220 20 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID brake_upper_elbow_20
+1 72 -200 220 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID brake_upper_pin_20
+1 0 -200 210 20 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID brake_foot_elbow_20
+1 72 -200 240 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID brake_foot_spacer_20
+1 72 -200 260 20 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID brake_foot_pin_20
+1 1 -200 260 20 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID brake_to_floor_pin
+1 0 -200 270 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub
+1 71 -400 230 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_deck_-460
+1 0 -460 240 0 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID hub_mount_-460_-100
+1 0 -460 230 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_mount_-460_100
+1 0 -460 230 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_deck_-340
+1 0 -340 240 0 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID hub_mount_-340_-100
+1 0 -340 230 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_mount_-340_100
+1 0 -340 230 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_foot_-80
+1 0 -400 280 -80 0 0 1 0 1 0 -1 0 0 40490.dat
+0 !BW ID hub_foot_spacer_-80
+1 72 -460 260 -80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_frame_link_-80
+1 0 -280 260 -80 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID hub_foot_pin_-460_-80
+1 1 -460 260 -80 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID hub_foot_pin_-340_-80
+1 1 -340 260 -80 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID hub_to_frame_pin_-80
+1 0 -260 270 -80 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID hub_foot_80
+1 0 -400 280 80 0 0 1 0 1 0 -1 0 0 40490.dat
+0 !BW ID hub_foot_spacer_80
+1 72 -460 260 80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID hub_frame_link_80
+1 0 -280 260 80 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID hub_foot_pin_-460_80
+1 1 -460 260 80 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID hub_foot_pin_-340_80
+1 1 -340 260 80 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID hub_to_frame_pin_80
+1 0 -260 270 80 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 !BW ID motor_A
+0 !BW PORT A
+1 15 100 140 100 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID driver_shaft
+1 72 100 20 100 0 0 1 1 0 0 0 1 0 60485.dat
+0 !BW ID driver_shaft_bush_40
+1 71 100 40 100 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID driver_shaft_bush_80
+1 71 100 80 100 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID star_shaft
+1 72 0 110 0 0 0 1 1 0 0 0 1 0 3707.dat
+0 !BW ID star_shaft_bush_40
+1 71 0 40 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID star_shaft_bush_80
+1 71 0 80 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID star_shaft_bush_140
+1 71 0 140 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID star_shaft_bush_180
+1 71 0 180 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 STEP
+0 !BW ID star_x_minus
+1 14 0 0 -20 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID star_z_minus
+1 14 -20 20 0 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID star_x_plus
+1 14 0 0 20 0 0 1 0 1 0 -1 0 0 32525.dat
+0 !BW ID star_z_plus
+1 14 20 20 0 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID star_rear_minus
+1 72 -20 40 0 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID star_rear_pin_minus
+1 0 -20 50 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID star_rear_plus
+1 72 20 40 0 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID star_rear_pin_plus
+1 0 20 50 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID star_center
+1 4 0 60 0 0 0 1 0 1 0 -1 0 0 7229.dat
+0 !BW ID star_corner_minus_minus
+1 1 -20 20 -20 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID star_corner_minus_plus
+1 1 -20 20 20 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID star_corner_plus_minus
+1 1 20 20 -20 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID star_corner_plus_plus
+1 1 20 20 20 0 0 1 1 0 0 0 1 0 6558.dat
+0 STEP
+0 !BW ID driver_crank
+1 4 100 -30 150 1 0 0 0 1 0 0 0 1 32063.dat
+0 !BW ID driver_key
+1 4 100 -45 100 1 0 0 0 1 0 0 0 1 60483.dat
+0 !BW ID driver_root_shim
+1 4 100 -20 100 1 0 0 0 1 0 0 0 1 6632.dat
+0 !BW ID driver_key_pin
+1 0 100 -35 120 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID driver_root_top
+1 72 100 -60 100 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID driver_root_bottom
+1 72 100 -10 100 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 !BW ID driver_pin_axle
+1 72 100 -5 200 0 0 1 1 0 0 0 1 0 32073.dat
+0 !BW ID driver_pin_top
+1 72 100 -45 200 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID driver_pin_spacer
+1 72 100 -20 200 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 STEP
+0 !BW ID driver_roller_0
+1 71 100 -5 200 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID driver_roller_1
+1 71 100 15 200 1 0 0 0 1 0 0 0 1 18654.dat
+0 STEP
+0 !BW ID driver_pin_bottom
+1 72 100 35 200 1 0 0 0 0 1 0 -1 0 3713.dat
+0 STEP
+0 !BW ID dial_star_pinion
+1 14 0 120 0 1 0 0 0 0 1 0 -1 0 10928.dat
+0 !BW ID dial_idler_1_gear
+1 14 -40 120 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3648.dat
+0 !BW ID dial_idler_1_shaft
+1 72 -40 130 0 0 0.130526 0.991445 1 0 0 0 0.991445 -0.130526 3706.dat
+0 !BW ID dial_idler_1_bush_80
+1 71 -40 80 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_idler_1_bush_140
+1 71 -40 140 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_idler_1_bush_180
+1 71 -40 180 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_idler_2_gear
+1 14 -100 120 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID dial_idler_2_shaft
+1 72 -100 130 0 0 0 1 1 0 0 0 1 0 3706.dat
+0 !BW ID dial_idler_2_bush_80
+1 71 -100 80 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID dial_idler_2_bush_140
+1 71 -100 140 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID dial_idler_2_bush_180
+1 71 -100 180 0 1 0 0 0 0 1 0 -1 0 3713.dat
+0 !BW ID dial_output_gear
+1 71 -160 120 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3648.dat
+0 !BW ID dial_output_shaft
+1 72 -160 50 0 0 0.130526 0.991445 1 0 0 0 0.991445 -0.130526 50451.dat
+0 !BW ID dial_output_bush_-100
+1 71 -160 -100 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_output_bush_-60
+1 71 -160 -60 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_output_bush_-20
+1 71 -160 -20 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_output_bush_20
+1 71 -160 20 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_output_bush_80
+1 71 -160 80 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_output_bush_140
+1 71 -160 140 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_output_bush_200
+1 71 -160 200 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 3713.dat
+0 !BW ID dial_brake_drive_gear
+1 72 -160 180 0 0.991445 -0.130526 0 0 0 1 -0.130526 -0.991445 0 10928.dat
+0 !BW ID dial_brake_clutch
+1 15 -200 180 0 0.996195 -0.087156 0 0 0 1 -0.087156 -0.996195 0 76019.dat
+0 !BW ID dial_brake_fixed_pin
+1 1 -200 190 0 0 0.087156 -0.996195 -1 0 0 0 0.996195 0.087156 43093.dat
+0 !BW ID dial_hand_hub
+1 4 -160 -80 0 -0.991445 0 -0.130526 0 1 0 0.130526 0 -0.991445 60483.dat
+0 !BW ID dial_hand_pointer
+1 4 -161.305262 -100 -59.807595 -0.999467 0 0.032632 0 1 0 -0.032632 0 -0.999467 32316.dat
+0 !BW ID dial_hand_adjust_pin
+1 0 -162.610524 -90 -19.828897 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_hand_tip
+1 15 -160 -120 -99.786293 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_hand_tip_pin
+1 0 -160 -110 -99.786293 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_horizontal_-140
+1 0 -160 -80 -140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID dial_face_horizontal_140
+1 0 -160 -80 140 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID dial_face_vertical_-140
+1 0 -300 -60 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID dial_face_vertical_140
+1 0 -20 -60 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID dial_face_corner_-140_-140
+1 0 -300 -70 -140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_corner_-140_140
+1 0 -300 -70 140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_corner_140_-140
+1 0 -20 -70 -140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_corner_140_140
+1 0 -20 -70 140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_center_bearing
+1 0 -160 0 0 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID dial_face_center_splice_-1
+1 72 -160 -60 -120 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID dial_face_center_splice_mid_-1
+1 72 -160 -40 -100 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID dial_face_center_splice_low_-1
+1 72 -160 -20 -120 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID dial_face_center_splice_upper_pin_-1
+1 0 -160 -50 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_center_splice_mid_pin_-1
+1 0 -160 -30 -120 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_center_splice_pin_-1
+1 0 -160 -10 -140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_center_splice_1
+1 72 -160 -60 120 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID dial_face_center_splice_mid_1
+1 72 -160 -40 100 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID dial_face_center_splice_low_1
+1 72 -160 -20 120 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID dial_face_center_splice_upper_pin_1
+1 0 -160 -50 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_center_splice_mid_pin_1
+1 0 -160 -30 120 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_face_center_splice_pin_1
+1 0 -160 -10 140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_12
+1 14 -160 -100 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_12
+1 0 -160 -80 -140 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID dial_marker_1
+1 15 -80 -100 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_1
+1 0 -80 -90 -140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_2
+1 15 -20 -80 -80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_2
+1 0 -20 -70 -80 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_3
+1 14 -20 -80 0 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_3
+1 0 -20 -70 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_4
+1 15 -20 -80 80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_4
+1 0 -20 -70 80 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_5
+1 15 -80 -100 140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_5
+1 0 -80 -90 140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_6
+1 14 -160 -100 140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_6
+1 0 -160 -80 140 0 0 1 1 0 0 0 1 0 6558.dat
+0 !BW ID dial_marker_7
+1 15 -240 -100 140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_7
+1 0 -240 -90 140 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_8
+1 15 -300 -80 80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_8
+1 0 -300 -70 80 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_9
+1 14 -300 -80 0 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_9
+1 0 -300 -70 0 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_10
+1 15 -300 -80 -80 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_10
+1 0 -300 -70 -80 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID dial_marker_11
+1 15 -240 -100 -140 1 0 0 0 1 0 0 0 1 18654.dat
+0 !BW ID dial_marker_pin_11
+1 0 -240 -90 -140 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
