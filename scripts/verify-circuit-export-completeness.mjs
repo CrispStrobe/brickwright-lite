@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Deployed proof: one circuit document downloads identically from every view. */
+/** Built/deployed proof: exports, captures and scope display preserve their public contracts. */
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -7,7 +7,9 @@ import {mkdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const proofUrl = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
-const outDir = path.resolve(process.env.PROOF_DIR || 'artifacts/circuit-export-completeness');
+// This flat directory is already collected by the Instruments artifact upload.
+const outDir = path.resolve(process.env.PROOF_DIR || 'artifacts/chrome-sweep');
+const proofFile = name => path.join(outDir, `circuit-export-${name}`);
 await mkdir(outDir, {recursive: true});
 
 const browser = await chromium.launch();
@@ -204,7 +206,7 @@ try {
         scope.locator('[data-testid="bw-scope-trace-csv-download"]').click()
     ]);
     const csvBytes = await readDownload(csvDownload);
-    await writeFile(path.join(outDir, 'scope-before-display.csv'), csvBytes, {flag: 'wx'});
+    await writeFile(proofFile('scope-before-display.csv'), csvBytes, {flag: 'wx'});
     const csv = csvBytes.toString('utf8');
     if (!/^# net=.* capture=envelope .*points=\d+\nelapsed_seconds,min_volts,max_volts\n/m.test(csv)) {
         throw new Error(`scope CSV has no truthful envelope header: ${csv.slice(0, 180)}`);
@@ -225,7 +227,7 @@ try {
     assert.equal(prefix.count, 5000);
     assert.equal(BigInt(prefix.startTimeNs) + BigInt(prefix.count) * BigInt(prefix.intervalNs), BigInt(prefix.timeNs),
         'late-attached envelope origin must join its actual clock');
-    const retainObservation = async (stage, value) => writeFile(path.join(outDir, `scope-observation-${stage}.json`),
+    const retainObservation = async (stage, value) => writeFile(proofFile(`scope-observation-${stage}.json`),
         JSON.stringify(value, null, 2) + '\n', {flag: 'wx'});
     const observeCapture = async () => page.evaluate(h => {
         const b = window.__board, d = b.getScopeData(h), depth = d.samples.length / 2;
@@ -238,10 +240,10 @@ try {
     const retainCanvas = async (name, data) => {
         assert.ok(data.startsWith('data:image/png;base64,'), 'actual canvas must produce PNG');
         const bytes = Buffer.from(data.slice('data:image/png;base64,'.length), 'base64');
-        await writeFile(path.join(outDir, name), bytes, {flag: 'wx'});
-        return {name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex')};
+        await writeFile(proofFile(name), bytes, {flag: 'wx'});
+        return {name: path.basename(proofFile(name)), bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex')};
     };
-    await writeFile(path.join(outDir, 'scope-observed-circuit.json'),
+    await writeFile(proofFile('scope-observed-circuit.json'),
         JSON.stringify(await page.evaluate(() => window.__circuit.toJSON()), null, 2) + '\n', {flag: 'wx'});
     await retainObservation('prefix', {...prefix, selectedNet: signalNet,
         readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), readout: await acq.textContent()});
@@ -258,13 +260,13 @@ try {
     const warning = scope.getByTestId('bw-scope-overrange-0');
     await warning.filter({hasText: /Above viewport|Über dem Anzeigebereich/}).waitFor();
     await warning.scrollIntoViewIfNeeded();
-    await page.screenshot({path: path.join(outDir, 'scope-viewport-warning.png'), fullPage: true});
+    await page.screenshot({path: proofFile('scope-viewport-warning.png'), fullPage: true});
     await scope.getByTestId('bw-scope-vdiv-0').selectOption('5');
     await warning.waitFor({state: 'detached'});
     const [afterDownload] = await Promise.all([page.waitForEvent('download', {timeout: 10000}),
         scope.getByTestId('bw-scope-trace-csv-download').click()]);
     const afterCsvBytes = await readDownload(afterDownload);
-    await writeFile(path.join(outDir, 'scope-after-display.csv'), afterCsvBytes, {flag: 'wx'});
+    await writeFile(proofFile('scope-after-display.csv'), afterCsvBytes, {flag: 'wx'});
     assert.ok(afterCsvBytes.equals(csvBytes), 'display scale must preserve every raw CSV byte');
 
     await stepCapture(10000);
@@ -345,13 +347,13 @@ try {
     assert.equal(downloadNames.length, 8, 'three File saves plus three TeX exports and two unchanged scope CSV exports');
     result = {url: proofUrl, fileMenu, example: '50-rc-scope', views: 3, downloads: downloadNames.length, downloadNames, bytes: artifacts[0].length,
         sha256: hashes[0], scopeRows: numericRows.length, scopeDisplay, pageErrors, assets};
-    await page.screenshot({path: path.join(outDir, 'circuit-export-board-view.png'), fullPage: true});
-    await writeFile(path.join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
+    await page.screenshot({path: proofFile('board-view.png'), fullPage: true});
+    await writeFile(proofFile('result.json'), `${JSON.stringify(result, null, 2)}\n`);
     console.log(JSON.stringify(result));
 } catch (error) {
-    await writeFile(path.join(outDir, 'failure.json'), JSON.stringify({url: proofUrl,
+    await writeFile(proofFile('failure.json'), JSON.stringify({url: proofUrl,
         error: String(error), pageErrors}, null, 2) + '\n');
-    await page.screenshot({path: path.join(outDir, 'failure.png')}).catch(() => {});
+    await page.screenshot({path: proofFile('failure.png')}).catch(() => {});
     throw error;
 } finally {
     await browser.close();
