@@ -136,6 +136,7 @@ try {
     await designer.getByRole('button', {name: /Scope$/}).click({force: true});
     const scope = designer.locator('[data-scope-module]');
     await scope.waitFor({state: 'visible', timeout: 10000});
+    const scopeElement = await scope.elementHandle();
     // A deterministic capture: display controls must not silently advance it.
     await designer.getByRole('button', {name: /Pause simulation/i}).press('Enter');
     await designer.getByRole('button', {name: /Resume simulation/i}).waitFor();
@@ -152,8 +153,8 @@ try {
     // bilingual because production may inherit either supported GUI locale.
     await scope.getByRole('button', {name: /^\+ (?:channel|Kanal)$/}).click();
     await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
-    await page.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
-        ?.getAttribute('data-retained') === '5000');
+    await page.waitForFunction(root => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
+        ?.getAttribute('data-retained') === '5000', scopeElement);
     await page.waitForFunction(root => {
         const canvas = root.querySelector('canvas');
         if (!canvas) return false;
@@ -207,8 +208,8 @@ try {
     assert.equal((await readDownload(afterDownload)).toString('utf8'), csv, 'display scale must preserve every raw CSV byte');
 
     await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
-    await page.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
-        ?.getAttribute('data-wrapped') === 'true');
+    await page.waitForFunction(root => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
+        ?.getAttribute('data-wrapped') === 'true', scopeElement);
     const wrappedStart = await acq.getAttribute('data-start-time-ns');
     await scope.getByTestId('bw-scope-hold').click();
     const heldText = await acq.textContent();
@@ -221,18 +222,19 @@ try {
     assert.equal(await acq.textContent(), heldText, 'HOLD metadata must stay with its frozen picture');
     assert.equal(await scope.locator('canvas').evaluate(canvas => canvas.toDataURL()), heldPixels);
     await scope.getByTestId('bw-scope-hold').click();
-    await page.waitForFunction(old => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
-        ?.getAttribute('data-start-time-ns') !== old, wrappedStart);
-    await page.waitForFunction(old => document.querySelector('[data-scope-panel] canvas')?.toDataURL() !== old, heldPixels);
+    await page.waitForFunction(({root, old}) => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
+        ?.getAttribute('data-start-time-ns') !== old, {root: scopeElement, old: wrappedStart});
+    await page.waitForFunction(({root, old}) => root.querySelector('canvas')?.toDataURL() !== old,
+        {root: scopeElement, old: heldPixels});
     await scope.getByTestId('bw-scope-view-spectrum').click();
     await page.waitForFunction(() => window.__board.getScopeChannels()
         .some(h => window.__board.getScopeData(h).capture === 'sample'));
     await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
-    await page.waitForFunction(() => {
-        const el = document.querySelector('[data-testid="bw-scope-acquisition-0"]');
+    await page.waitForFunction(root => {
+        const el = root.querySelector('[data-testid="bw-scope-acquisition-0"]');
         return el?.getAttribute('data-capture') === 'sample' && /Nyquist/.test(el.textContent)
             && Number(el.getAttribute('data-retained')) > 0;
-    });
+    }, scopeElement);
     const pointText = await acq.textContent(), frequency = pointText.match(/Nyquist ([0-9.]+) (MHz|kHz|Hz)/);
     assert.ok(frequency, 'actual point record must disclose numeric Nyquist');
     const nyquistHz = Number(frequency[1]) * ({MHz: 1e6, kHz: 1e3, Hz: 1}[frequency[2]]);
