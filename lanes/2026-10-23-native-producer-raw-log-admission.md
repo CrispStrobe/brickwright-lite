@@ -1,6 +1,6 @@
 # Preserve original hosted native qualification log bytes
 
-CLAIMED — Native qualification integration coordinator; isolated producer
+IMPLEMENTATION DONE (held producer candidate) — Native qualification integration coordinator; isolated producer
 continuation `lane/native-qualified-main-producer-continuation-20261023`.
 
 Own a narrowly scoped repair of the hosted qualification producer's raw job-log
@@ -28,3 +28,7 @@ threshold, JSON/tree/source gate or physical behavior change. Native compilation
 remains hosted; private source/resource-bound installed qualification and all
 existing holds remain mandatory. This supplements the merged native integration
 claim only for this raw-log transport boundary.
+
+The narrow implementation preserves original log bytes and metadata handling.
+All 26 offline admission controls pass; four raw-log boundary mutations are
+detected. Hosted executable compilation and installed acceptance remain pending.
