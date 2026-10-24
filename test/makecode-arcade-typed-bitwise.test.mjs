@@ -6,6 +6,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {arrayOperation} from './helpers/arrays-current-operation.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const ops=['&','|','^','<<','>>','>>>'];
 test('typed bitwise primitives preserve integer conversion and reject opaque values explicitly',()=>{
@@ -50,12 +51,12 @@ const names=['high','highShift','highSign','negativeCount','wrappedCount','fract
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 test('original bitwise semantics retain unsigned values, evaluation order and numeric arrays through Code/export/fresh SB3',async()=>{
  const expected=await runPxtArcade(source,{fakeClock:true}),runs=[];
- const check=run=>{const values=vars(run);for(const n of names)assert.equal(values[n],expected[n],n);assert.deepEqual(run.errors,[]);const Ext=loadExtensionClass('arrays'),ext=new Ext(run.vm.runtime);assert.equal(ext.valueCompare({LEFT:values.resultValues,OP:'===',RIGHT:values.alias}),true);for(const [i,n]of ['high','highShift','inverted'].entries())assert.equal(ext.referenceItem({ARRAY:values.resultValues,INDEX:i}),expected[n],n+' numeric array');};
- const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);const run=await runProgram(imported.code,{frames:120,storage:true});runs.push(run);assert.deepEqual(run.creator.warnings,[]);check(run);return run;};
+ const check=async run=>{const values=vars(run);for(const n of names)assert.equal(values[n],expected[n],n);assert.deepEqual(run.errors,[]);assert.equal(await arrayOperation(run.vm,'valueCompare',{LEFT:values.resultValues,OP:'===',RIGHT:values.alias}),true);for(const [i,n]of ['high','highShift','inverted'].entries())assert.equal(await arrayOperation(run.vm,'referenceItem',{ARRAY:values.resultValues,INDEX:i}),expected[n],n+' numeric array');};
+ const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);const run=await runProgram(imported.code,{frames:120,storage:true});runs.push(run);assert.deepEqual(run.creator.warnings,[]);await check(run);return run;};
  try{
   const imported=arcadeToPseudocode(source),run=await execute(imported);assert.ok(run.calls.get('arrays_valueBinary')>0);assert.ok(run.calls.get('arrays_valueUnary')>0);assert.ok(!Object.keys(Object.fromEntries(run.calls)).some(k=>k.startsWith('bitops_')));
   await execute({...imported,code:run.creator.decompile()});
   const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);const original=await runPxtArcade(exported.files,{fakeClock:true});const declared=parseMakeCodeTs(exported.ts).body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(d=>d.name));for(const n of names){const matches=declared.filter(k=>k===n||k===`Game_${n}`);assert.equal(matches.length,1,n+' declaration');assert.equal(original[matches[0]],expected[n],n+' exported');}await execute(arcadeToPseudocode(exported.files));
-  const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));fresh.vm.greenFlag();await stepFrames(fresh.vm,120);check(fresh);
+  const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));fresh.vm.greenFlag();await stepFrames(fresh.vm,120);await check(fresh);
  }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });

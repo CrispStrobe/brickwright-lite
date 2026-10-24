@@ -1,5 +1,238 @@
 # Conversion capabilities and GUI closure ledger
 
+The active [captured-class primitive task](ARCADE-CLASS-CAPTURED-PRIMITIVES.md)
+records the current source changes, observed failures and next acceptance steps.
+All six complete source groups pass at `7f08e871ad3c76929282787092270b1b09158744`,
+including actual emitted-file reimport and Code feedback for the full inheritance
+example. Broader regression, runtime and visible editor qualification remain
+open; these source controls do not reclassify applications.
+
+## Current measured boundary and open editor work — 23 October 2026
+
+The [completed unit run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/39959713589)
+has 12,463 passes and 147 failures. Its frontier, class, operation, diagnostic
+and original SDK Sprite receiver cohorts pass. These counts do not measure
+application completion or editor parity.
+
+[Native-frame reset analysis](ARCADE-NATIVE-FRAME-RESET.md) has two bounded
+source results: the original whole11 groups pass at
+`40f6434f0b5686032c5e5735708423d3335ef917`, and the separate custom-kind
+whole4 module passes at `40f6434f0b5686032c5e5735708423d3335ef917`. Native
+SpriteKind creation, fixed safe-name numeric binding and ordered custom lookup
+are admitted only under the actual source/effect proof. This grants no exact
+numeric ID, Array or initialized-value certificate. The original eleven groups
+remain unchanged, and custom-kind tests run as their own complete module.
+
+The official 408 numeric-authoring job reports five successful journeys; its
+optional clean-export freshness observation is unavailable. This is not a
+freshness-complete capture or a whole-unit verdict. The exact Code/pseudocode/
+Blocks acceptance remains open: author namespace and variable kinds, edit
+native binding order and kind values, preserve and edit graphics, save/reopen,
+export, compile in MakeCode, reimport and verify actual controller/kind
+behavior. Source conversion does not close this visible journey or alter the
+historical 36 partial corpus count.
+
+## Closed recursive Number results — planned authoring acceptance
+
+The source implementation has 55 passing controls; original integration and visible acceptance remain pending. Author pure module value procedures with base and recursive/mutual calls, direct immutable aliases, parameters and local writes in Code/pseudocode and the actual connected Blocks representation. Edit every call edge, base case and argument; retain independent invocation frames and named diagnostics for unsafe entries, defaults, escaping callbacks and changed writers. Preserve the current bodies, values, call/effect order and assets through save/fresh reopen and actual export/MakeCode compilation/reimport. Generic cyclic facts and unrelated Sprite return forwarding remain separate. The [merged proof scope](../lanes/2026-10-22-arcade-recursive-number-normal-results.md) and [qualification contract](ARCADE-NUMERIC-RECURSIVE-RESULTS.md) do not establish this editor journey.
+
+## Image pixel normal results — source controls qualified, editor journey pending
+
+The Image/factory source proof does not add an image editor or establish a visible journey. Author and edit a genuine Image receiver and both pixel coordinates in Code/pseudocode and its existing connected Blocks representation. Preserve alias, clone and fresh-factory identity; modify the referenced pixels in graphics and verify the running program and current exported files use those edited assets. Check normal results alongside null/missing receivers, unsupported coordinates, unknown calls, changed writers and overrides without introducing Number defaults or erasing argument effects. Preserve connections, diagnostics, values and current asset bytes through save/fresh reopen, actual MakeCode compile and fresh reimport. Rendered pixels and complete SDK/browser acceptance remain separate gates.
+
+## Numeric factory closure results — native controls qualified, GUI work open
+
+A closed numeric factory/alias family now passes 39 source controls and all
+eight original native counter tests. An edited captured increment and renamed
+alias retain independent instances through actual export/reimport. The tested
+export explicitly sets `callableLexicalPrototype: true`; visible option access
+and propagation must be checked along with the complete authoring journey.
+
+Author and edit the factory in Code/pseudocode and connected callable Blocks,
+rename aliases, preserve independent instances, save/reopen, compile the actual
+exported files in MakeCode and freshly reimport them. Cover unsafe entry order,
+unknown callbacks, changed capture writers and currentness diagnostics. Larger
+games require proved effect/entry expansion beyond the current numeric family
+and its `info.setScore` sink. Source and VM results do not qualify the visible
+editor journey, rendered assets or a new complete corpus application.
+
+## Static fresh animation resources — source qualification, GUI work open
+
+Owned serialized exports preserve fresh evaluation at each literal animation
+resource use. The complete affected source cohort passes 32 tests without skips;
+raw AST, dynamic/shared/missing resources and namespace uncertainty retain their
+existing lookup behavior. This supplies no pixel-result or SDK execution proof.
+
+Required visible journey: author two fresh frame reporters in connected Blocks
+and Code/pseudocode, edit the referenced animation in the graphics editor,
+verify independent fresh collections and the edited running artwork, then
+save/reopen, export the full MakeCode project and freshly reimport it. Cover
+palette, resource names and IDs, unavailable resources and dynamic selectors.
+The source tests do not qualify these visible journeys or reduce corpus partials.
+
+## Nullable collection length — source qualification, GUI work open
+
+[Native Array length normal results](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md)
+pass the complete nine-module/31-test source cohort without skips. This does
+not make a null receiver an Array or turn a missing value into zero. Unknown
+calls, getter effects, aliases, writers and source changes retain their guards.
+
+Required visible journey: import and author a real frame collection, edit its
+length use in Code/pseudocode and connected Blocks, and verify normal results
+and null/missing-value errors through save/fresh reopen and MakeCode export.
+Add genuine graphics-editor frame insertion, removal and reordering, then
+verify the running game uses the edited collection and artwork. Preserve actual
+Undefined/uninitialized semantics wherever representation is required; report
+an unsupported representation instead of silently substituting a Scratch zero.
+
+The original three-test animation carrier now passes, including actual export
+and edited pixels in fresh VM execution. The 47-control Image/factory source
+cohort also passes. The audit wrapper retains its timestamp serialization
+identity failure; exact source identities were independently verified. These
+results do not qualify rendered browser pixels, SDK execution, the editor
+journeys above or an additional complete corpus application.
+
+## Captured lexical declaration readiness — conversion controls only
+
+The [source capability](ARCADE-LEXICAL-DECLARATION-READINESS.md) passes all 23
+controls across eight complete modules. It proves an executed declaration at a
+closure allocation or every closed hoisted entry, retaining actual Undefined
+and all primitive writers. It supplies no default zero, annotation authority,
+Array admission or blanket default-parameter support.
+
+GUI acceptance remains open: import a genuine captured lexical value, inspect
+the actual Code and connected Blocks representation, edit declaration/call
+order, and preserve semantics through Code/pseudocode, save/fresh reopen and
+MakeCode export/reimport. Record any representation that cannot preserve an
+uninitialized declaration or Undefined explicitly; a Scratch zero variable is
+not a substitute. Unsafe early/default/unknown entries must retain an owned,
+readable conversion diagnostic. No new authoring control or visible journey
+is qualified by the source tests alone.
+
+## Source operators: GUI acceptance pending — 2026-10-21
+
+`arcade_sourceValueBinary` exposes fixed selectors `+ - * / % ** & | ^ << >> >>>`;
+`arcade_sourceValueUnary` exposes only `~`, with one `VALUE` and no `RIGHT`.
+Both menus reject reporter selectors. The existing Code words are:
+
+```text
+arcade source value (a) op "&" with (b)
+arcade source unary "~" of (a)
+```
+
+The complete twelve native controls pass on `45d495832`, including genuine
+bitwise/unary Number results through typeof and ordinary Number formals,
+export/reimport, currentness and hostile callbacks. Source `+` is not blanket
+Number evidence. This supersedes earlier failed native counts for that tested
+composition only; retain their originals. It does not qualify later heads,
+visible editing or a reduction in the historical 36 partial applications.
+
+Required editor acceptance: create both reporters from the palette; edit every
+binary selector and unary `~`; connect actual Array aliases and primitive
+operands; check Number/text results and both binary operand orders. Exercise
+typed helpers and typeof, once-only operand effects and single-input unary
+execution. An invalid operand must block its dependent work, report the owned
+error once and leave an unrelated fiber running.
+
+Then edit Code and return to connected Blocks, save/fresh reopen, and export
+and reimport the current project with its actual assets. Preserve results,
+aliases, input connections, errors and asset bytes throughout. Dropdowns and
+pseudocode already exist; these visible journeys remain unqualified.
+
+## Current live authoring failures — 2026-10-20
+
+This section supersedes older GUI readiness claims below. Historical counts
+remain 147 translated / 36 partial / one malformed; five full current-corpus
+attempts are incomplete. Component passes do not close these journeys.
+
+| Capability | Current evidence | GUI acceptance still open |
+| --- | --- | --- |
+| Imported animation resource | Actual original/Code/export data and a separate fresh reimport preserve four original frame hashes, dimensions, palette and 100 ms timing in the runtime resource map. | Create/edit/reorder frames in the graphics editor, run the edited costume, save/reopen and export to the genuine MakeCode runtime. Headless resource data is not rendered pixels. |
+| Animation and controller input | The exact browser-control program runs in a real VM: A produces both colours, B stops playback and Right moves the sprite. | The actual browser journey still observes only the initial colour. Diagnose DOM input, clock, errors and every-frame observations before changing its assertions. |
+| Editable assigned images | Initial authoring steps work in the rotation journey. Its final edited-file reimport aborts on an Array intrinsic-surface refusal. | Identify the actual changed intrinsic descriptor and preserve the guard; verify both edited file formats and the running assigned pixels. |
+| Tile painting, identity and placement | The light browser reports failures after painting/renaming, legacy edits and placement save/removal. | Repair actual editor-to-block mutation and startup chains. Preserve qualified tile IDs, walls/collisions, undo/revert and save/reopen. The deferred-observer candidate passes eight controls against the real Blocks engine; restoring the old observer fails all four new regressions. Actual browser authoring remains unqualified. |
+| Native versus MakeCode arithmetic | The distinct source reporter passes actual Creator/decompile, importer and six VM controls. Native Array export has a separate original-PXT value/alias oracle. | Create/edit both operator families in visible Blocks and Code, save/reopen and export/reimport. The complete original coercion module still needs final hosted qualification; selecting the Arcade device alone never selects arithmetic semantics. |
+
+See [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md)
+and [CI repair matrix](ARCADE-CI-REPAIR-STATUS.md) for source paths, original
+failures and concrete acceptance. Keep older native Array text `5` controls in
+their native authoring scope; they do not override genuine PXT comparisons.
+
+## Source arithmetic and native Array export authoring — 2026-10-20
+
+The Arcade reporter `arcade_sourceValueBinary` has a fixed Blocks selector for
+`+`, `-`, `*`, `/`, `%` and `**`. Its shared
+[Code word](../overlay/scratch-gui/src/lib/arcadeDialect.js) is:
+
+```text
+arcade source value (a) op "+" with (b)
+```
+
+This models opaque MakeCode Array arithmetic. The existing `calculate value`
+word retains native JavaScript Array conversion. Import routing keeps their
+semantics separate, including Array/primitive writer alternatives; unknown
+opaque alternatives refuse. Neither an Arcade device selection nor a type
+annotation grants Array ownership or native flat-element proof. Existing
+bitwise restrictions remain.
+
+Actual Creator/decompiler controls, the importer union control and six current
+VM controls pass in separate complete episodes. Native export preserves empty,
+`[5]` and primitive-writer Array text in both operand orders and alias identity:
+its full files compile, and its exact TypeScript executes in the original PXT
+Runtime with a bare-board/core fixture. That finite oracle observes zero
+background child fibers; it is not full Arcade-board or game qualification.
+The [current work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package)
+retains the original failures and complete SDK-module acceptance still pending.
+
+Visible palette creation, all six menu edits, Code regeneration, save/reopen
+and edited export/reimport remain browser acceptance tasks. Headless block
+construction and decompilation do not establish those interactions.
+
+## Array runtime and public pipeline checkpoint — 2026-10-20
+
+The repaired runtime passes64 existing and17 additional native controls, plus
+two actual public authored Code/export/reimport tests for named empty Array
+aliases, text coercion and the separate item-getter route. The native tests
+also cover named JSON/2D factories, reload replacement, custom parsers and
+strict native allocation eligibility. These are component execution results;
+visible Blocks editing, Code regeneration in the editor, save/reopen and
+exported MakeCode SDK compilation still require their own journeys. Keep those
+GUI tasks open. See [the ordered queue](ARCADE-COMPATIBILITY-NEXT-STEPS.md#ordered-next-work).
+
+## Latest bounded qualification checkpoint — 2026-10-19
+
+Three complete 225-subject CLI attempts ended without reports; **all 225 current
+outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
+partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
+separately. These incomplete episodes do not establish their kill causes,
+a bottleneck or a successful prefix.
+
+C6 ran all 48 native Array controls: 45 passed and three failed. The composed
+supplier/host repair has an independently audited C7 installation (363 outputs,
+179 current VM files) and a complete pass of all 49 native tests, independently audited from the saved results.
+Genuine original/Code/export-reimport comparison remains pending. Supplier final checks, new emitted-map SDK acceptance and visible GUI
+journeys remain separate. The first optional-progress episode passed 44 of 45 tests, including all
+eight new tests. The corrected successor passed all 45 unchanged tests;
+independent saved-data review passes.
+See [the current acceptance checklist](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#methodical-acceptance-still-required).
+
+Current Array runtime status: C6 completed 48 native controls with 45 passing and three failing. The composed supplier/host successor has a verified C7 installation; all 49 native tests pass with independent saved-data acceptance; genuine-value qualification remains pending.
+
+## Current integration checkpoint — 2026-10-19
+
+The historical 184-input result remains **147 translated, 36 partial and one malformed**. Three complete 225-input attempts ended without reports; all 225 current outcomes remain unobserved. No focused count below changes that result.
+
+| Area | Observed result | Next acceptance |
+| --- | --- | --- |
+| Literal Array text conversion | The complete C6 native episode ran 48 controls: 45 passed and three failed. The prior 40-control 33/7 result and earlier boot-before-TAP failure remain retained. Supplier operation-map hardening and current computation-error disposition are composed; the fresh C7 installation passed its full 363-file audit, including 179 current VM files. | The full 49-test suite pass has independent saved-data acceptance. Qualify genuine original/Code/export-reimport values without changing the expected Array text `5`. Preserve errors, unrelated scripts, ownership and cleanup. Supplier final checks, visible editing and SDK acceptance remain separate. |
+| Camera constants | The canonical enum candidate replaces the fixture call whitelist with the existing per-use lexical identity resolver. Together with the proper deletion parser/diagnostic correction, all 42 component controls pass, including the unchanged 34 controls and eight added operator checks. | Independent saved-data review accepted all 42 outcomes. Qualify the normal asset path, Code, runtime and saved/exported projects next. Deletion is explicitly unsupported; it is no longer silently parsed as unrelated reads. |
+| Conversion audit CLI | The shared reader/core passed 21 complete controls. Compact lossless reporting and its corrected source-policy control now pass all 29 component controls, with independent saved-data acceptance. An earlier actual shipped CLI translated two authored raw inputs into five blocks each; its warning-sensitive controller failure and independently audited reports remain retained. | Independent saved-data review accepted the complete 29-test result. Independent full-report review also accepted the actual shipped gzip-report CLI for two authored raw inputs, including native payloads, descriptors and complete returned-graph parity except inventoried generated IDs and input-path identity. Complete census and roundtrip CLI adoption remain pending. Full retained-input lineage has been independently audited; it is not a current conversion result. |
+| Retained input lineage | Independent saved-data review verified all 184 raw inputs and 41 complete contexts, retaining 29 historical compiler successes and 12 failures, generated resources, deduplication, original adapter source identities and notice gaps. | Run the complete current conversion census. Forty provenance reconstructions are not actual SDK returns; the one original identity conflict must naturally reject with no conversion credit. |
+| Visible authoring | Existing headless sprite, art, animation and import controls have their own recorded boundaries. | Exercise actual Blocks, Code and graphics edits, controller input, save/reopen and current MakeCode export/import. Track typed helper, class, callback and Array authoring separately from conversion support. |
+
+Preserve the original failures and every provided diagnostic channel. Missing channels remain missing. Translation success does not establish runtime behavior, a usable editor or a working full game. The later historical sections retain their original source boundaries.
+
+
 The [current project gap list](compatibility/arcade-current-remaining-project-gaps.md)
 separates measured conversion routes from native and authoring gates. Results
 below are dated checkpoints with their own source and evidence boundaries; a
@@ -4454,8 +4687,9 @@ are available in native blocks and pseudocode. Imported class aliases and
 arrays preserve one sprite identity. The retained original library supplies
 fonts and rendering; costume art is passed through the existing asset editor.
 A dedicated visual Text Sprite inspector, discoverability controls and complete
-GUI game-building acceptance remain to be qualified. Numeric SpriteKind IDs
-remain an explicit runtime/conversion gap.
+GUI game-building acceptance remain to be qualified. Numeric SpriteKind values
+remain distinct from friendly names; the native-frame source proof does not
+claim exact IDs or complete visible kind authoring.
 
 Asset factories distinguish image and tile galleries, genuine missing-kind null,
 fresh image allocation and shared tile identities. Zero-sized image sprite
@@ -4509,10 +4743,14 @@ Blocks edits, Pixel art, controller input, SB3 reopen and MakeCode roundtrips in
 CI. Its hosted result is pending. Do not mark graphics/authoring completeness
 from native opcode availability or original-simulator tests.
 
-Still required: numeric SpriteKind creation, dependency initializer ordering,
-kind display names separate from runtime IDs, captured event IDs, null/default
-kind semantics, and direct authoring of dynamic kinds. Also retain the open
-general object-coercion, class/callable and scheduler/debugger boundaries.
+The source effect proof now covers numeric SpriteKind creation, fixed safe-name
+numeric binding and ordered custom lookup under its exact control-flow
+preconditions. Still required in the visible editor: authoring and editing these
+namespace/variable kinds in Code, pseudocode and Blocks; readable names distinct
+from runtime IDs; safe binding-order diagnostics; and actual original Blockly
+decompilation and custom-kind dropdown behavior. Captured event IDs and
+null/default kind semantics remain separate. Also retain the open general
+object-coercion, class/callable and scheduler/debugger boundaries.
 
 ## Numeric kind and original library authoring: bounded integration
 
@@ -4525,11 +4763,13 @@ is inferred from a custom display name. Three full kind-program roundtrips pass
 original execution, native execution, Code, SB3 replacement/reopening, original
 export execution and prepared reimport.
 
-Remaining GUI acceptance: direct creation/editing of mutable custom kinds;
-readable names separately from numeric IDs; dynamic binding diagnostics; original
-MakeCode Blockly decompilation and custom kind dropdown behavior. The existing
-Text Sprite production IDE journey is still pending its hosted result. Numeric
-word availability does not close these authoring gaps.
+Remaining GUI acceptance: author and edit custom kind declarations and native
+binding order in Code, pseudocode and Blocks; preserve the graphics and source
+through save/reopen, MakeCode export/compile/reimport, and verify controller and
+kind behavior. Friendly names must remain separate from runtime IDs, with
+diagnostics for unsafe or late binding. Original MakeCode Blockly decompilation
+and custom kind dropdown behavior also remain open. Numeric source support does
+not close these authoring gaps.
 
 Exact older character-animation source/export now has controls. Twenty SDK Scene
 constants and primitive String compositions have typed source controls. Local
@@ -4550,8 +4790,8 @@ original compiler export/reimport. HUD controls include original pixels and
 saved-project/export checks. Ordinary source `score`/`lives` bindings retain
 their meaning through collision-safe renaming.
 
-User-facing gaps still required: direct raw flag writes; complete custom kind
-management and original Blockly decompilation; dedicated TextSprite editing;
+User-facing gaps still required: direct raw flag writes; complete visible custom
+kind management and original Blockly decompilation; dedicated TextSprite editing;
 dynamic layout/opaque dialog value handling; genuine splash/long-text original
 rendering and input. The
 [native dialog contract](compatibility/arcade-native-text-dialogs.md) requires
@@ -5207,3 +5447,404 @@ needs separate qualified implementation; never silently infer it from tests.
 The optional Image Array entry proof now handles the parser's opaque root procedure metadata while keeping consumed defaults, annotations and serializer domains as observed data. All 60 source controls pass. An authentic project advances past the original clone and stops at an incoming overlap-sprite alias `destroy()` call; callback provenance, complete writer closure and destruction reentry still need implementation and qualification.
 
 The complete 22 request-fence and 13 editor-contract tests pass. Browser work must still exercise pending file/share imports, replacement imports, stage changes and disposal visibly, including answer/cancel/error outcomes. Verify Code, connected Blocks, artwork, save/reopen and edited export together. The remaining native-prompt suite and installed dialogs have no new qualification from these source tests.
+
+## Array authoring follow-up — 2026-10-20
+
+This checkpoint supersedes the older Array runtime results below. The composed
+candidate passes its normal installation audit, actual source-admission CLI and
+all 64 existing native controls. The 14 new JSON/replacement controls report
+13 passes and one custom-parser guard failure. The
+[allocation contract](ARCADE-NAMED-ARRAY-ALLOCATION.md) records the repair and
+qualification queue. These results establish no new visible editor acceptance.
+
+| Surface | Required connected user journey |
+| --- | --- |
+| Blocks | Create empty and JSON-backed named arrays, obtain aliases, push a Number and add text in both operand orders. Edit the actual names and inputs; an Arrays-only project must run without inserting unrelated Arcade blocks. |
+| Code | Regenerate the same blocks, edit the program and convert back. Preserve nested values, evaluated-once inputs and named getters when export reconstructs through JSON. Do not change the emitted factory to hide a runtime refusal. |
+| Save/reopen and errors | Reopen in a fresh session, run and restart. A factory can replace an expired binding; reading that binding must still reject the dependent script while unrelated scripts continue. Show the actual block/location and original error. |
+| MakeCode and graphics | Export current values and actual edited resources, compile/import the emitted files in the original target, and reimport into Lite. Native Array tests do not qualify sprite, tile, animation, sound or controller behavior. |
+
+An authentic supplied-input tutorial diagnostic preserves all five ordered SVG
+payloads through export/reimport with empty provided diagnostic and runtime
+error channels. Its inline export changes gallery names, animation-resource
+grouping, editor metadata and file layout. Track these as explicit editor
+acceptance work: retain readable resource identities, edit the frames in the
+graphics editor, verify live animation and current pixels, save/reopen, and
+export the edited assets. These captures show no artwork loss and do not qualify
+that visible journey or the modern asynchronous dependency resolver.
+
+## Current Array and camera acceptance boundaries — 2026-10-19
+
+The local candidate explicitly adopts the number-input and operation-ownership
+hooks already merged in [extensions PR #48](https://github.com/CrispStrobe/extensions/pull/48).
+The actual shipped source-admission command and both unchanged native test
+modules completed all 32 cases with no skips. This is a runtime boundary, not
+a complete corpus or graphical authoring result. Preserve the original failed
+pin result and the missing-input refusal.
+
+| Capability | Current evidence | Remaining user-facing acceptance |
+| --- | --- | --- |
+| Array operations and Number inputs | The earlier hook pin passed 29 ownership cases and three Number-ingress cases. The newer literal-coercion candidate completed 40 controls with 33 passing and seven failing; a reviewed rejection-routing follow-up passes its fresh installation audit but stops during circular CommonJS startup before any of its 45 native controls run. | Test connected Number reporters versus text, actual editor mutations, Stop/restart and save/reopen through the production registered extension. |
+| Array conversion to text | A real original/imported/Code/exported three-context run exposed `[object Object]` where the element text was expected. A separate implementation is under review. | Preserve nested arrays, holes, aliases and cycles through the same operation used by Code and blocks. A global reference-prototype change is insufficient. Require real execution and MakeCode acceptance with unchanged expected values. |
+| Camera enum arguments to typed helpers | Canonical per-use enum semantics and explicit deletion diagnostics pass all 42 component controls, independently audited. The actual camera fixture imports/parses cleanly; its observer without asset uploads stops at two missing-costume warnings. | Qualify normal assets, Code, archive, runtime and MakeCode export/import. Existing camera dropdown blocks need visible selection/edit/save-reopen checks; typed helper authoring remains a separate GUI gap. |
+
+Follow [the failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) for
+whole-module, original-compiler, complete-census and landing gates. Focused
+passes do not reduce the historical partial count.
+
+
+### Current Array and Camera authoring acceptance boundaries
+
+The initial CameraProperty Number profile has been replaced by canonical compile-time enum-member semantics with per-use lexical identity, preserving full compiler-owned validation and public eager analysis. Together with explicit unsupported deletion diagnostics, all 42 component controls pass and their saved data is independently accepted. The authored camera fixture imports/parses cleanly. Full camera/Code/archive/export execution with actual assets is pending; the asset-unprovided observer is not a rendering-defect result. Blocks must let users select and edit each camera property and author the corresponding typed helper parameters. Verify those choices survive Code, project save/reopen and MakeCode export/import.
+
+The newer Array coercion candidate reproduced the fresh normal VM installation; its complete 40 native controls ran with 33 passing and seven failing. The source-reviewed failure-routing follow-up passes its fresh installation audit, but its native episode stops during circular CommonJS startup before any of the 45 controls run. The immutable export-shape repair and complete native qualification remain pending. The genuine three-path runtime failure remains preserved; no changed semantics pass is inferred. Named and other nonliteral factories, fresh saved aliases, and supported native object elements remain compatibility work. Keep the existing Array addition and construction blocks editable, add any missing producer/value surfaces, and verify actual edited projects after save/reopen; a literal-only source result does not qualify general Arrays in the GUI.
+
+### Concrete existing authoring surfaces and pending journeys
+
+The shared [Arcade dialect](../overlay/scratch-gui/src/lib/arcadeDialect.js) already defines `new array reference from`, `reference to named array`, `calculate value … op … with`, `arcade camera property`, and `declare arcade source callable`. The [Creator](../overlay/scratch-gui/src/lib/sb3-creator.js) also maps named Array creation, range/2D/empty construction and push/set/insert/remove/delete statements. Source presence is not a rendered palette or editing acceptance result.
+
+Qualify users constructing and editing those connected Blocks and Code forms, Number versus text inputs, aliases and typed helper parameters; preserve the changed values through current Code, save/fresh reopen and MakeCode export/import. Named and dimensional/range/slice/concat factories and decoder cache-miss aliases need their own real allocation/coercion evidence.
+
+Graphics export must use the current VM costume SVG/raster/palette and sound assets, as the production [pseudocode importer](../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx) does. Do not substitute an earlier Creator asset cache. Browser drawing, visible camera selection, controller use and the normal asset-bearing camera journey remain independent acceptance gates. Full roundtrip CLI integration and the complete 225-input current assessment are pending.
+
+### Score threshold callbacks — SOURCE candidate
+
+The candidate adds fixed-player score-threshold registration and callback
+blocks with matching Code words and current-graph export. It retains strict
+threshold replacement, upward/downward crossings, integer score storage,
+fractional thresholds and completion of a paused handler before the setter
+continues. Root/member writes, escaping owners and unproved threshold values
+remain diagnostics.
+
+The three focused source controls and canonical CLI vocabulary adoption pass.
+Original SDK execution, Code/Blocks edits, same/fresh SB3, current export/reimport
+and visible browser authoring remain pending. This is
+not a completed tutorial, game or corpus result.
+
+### Immutable serialized Arcade export (source candidate)
+
+The current VM/CLI/roundtrip export routes use `projectJsonToArcade` to construct a
+fresh deeply frozen project from actual serialized JSON before asset callbacks.
+This permits a bounded read-only variable-watcher proof for native Sprite flags
+without enrolling mutable caller ASTs or using watcher display values as types.
+Direct AST exports remain conservative for monitor records. Asset callbacks read
+frozen records; per-costume palette indices remain explicit. See
+[the API boundary](ARCADE-PROJECT-JSON-EXPORT.md). All eleven complete snapshot,
+flags and actual CLI palette controls pass, with zero skips; the composed
+score/compound set passes all seventeen. Browser qualification, complete games
+and performance remain unobserved for this change.
+
+### Class instances inside Arrays and fields — source acceptance
+
+The converter analysis now preserves actual local class aliases through Array
+construction, indices, push, owned fields, self references and closed method
+returns. This adds no Number facts from type annotations and grants no flat-Array
+coercion permission for Arrays containing objects. The complete affected
+seven-module set passes all 21 controls. The unchanged object-heap source now
+exports cleanly; SDK Sprite inheritance remains a separate unsupported proof.
+
+No new visible authoring controls are qualified by that analysis. Verify users
+editing these aliases and class bodies in Code and connected Blocks, viewing
+current generated Code, saving/fresh reopening and exporting to the original
+SDK. Keep actual method bodies and arguments intact through edits. Native VM,
+original-SDK and visible editor acceptance remain pending.
+
+
+## Current menu composition work package — 2026-10-21
+
+The latest main supplies generated menu normalization at the outer creator and
+code-editor boundary. The Arcade source-value candidate adds binary and unary
+operation menus absent from the main-only generated table. Regenerate from the
+actual composed extensions, retaining the normal dependency identities; verify
+with the generator's `--check` command. This is pending, not GUI acceptance.
+
+| Surface | Required evidence |
+| --- | --- |
+| Blocks | Create both numeric reporters from the palette, change their operation menus, connect controller-driven values, run, and retain the visible selections. |
+| Code / pseudocode | Use actual wrapped creator/editor entry points; verify literal menu shadows and fields agree through both directions, including Array mutate/take/sort and animation resource menus. Preserve refusals for computed or malformed menu inputs. |
+| Saved projects and export | Save and reopen the actual edited project; export to MakeCode Arcade, compile/run, then import into a fresh project and verify operations and assets. |
+| Graphics | Keep referenced animation frames editable with readable identities; changing a frame must affect actual drawing after reopening and export/reimport. |
+
+Bare converter controls do not exercise the outer menu wrappers. The complete
+menu module also contains actual SPIKE VM tests, so its results require normal
+current runtime dependencies and cannot be called pure conversion evidence.
+Historical corpus counts remain unchanged until the complete original ordered
+assessment and the applicable application journey finish.
+
+
+### Canonical Array selector export candidate — 2026-10-21
+
+The selected Array `OP` readers now share a narrow syntax decoder for mutation
+and take menus, including the editor's declared menu shadows and supported
+legacy fields/inline text/text shadows. It checks the exact opcode, field and
+unique physical parent edge; computed selectors, fallback reporters, conflicting
+synthetic fields, shared shadows and malformed structures remain refused.
+This supplies no receiver, element, alias or initialized-value authority.
+
+The focused candidate uses the registered outer Creator, actual menu migration,
+Code feedback, exact exported-file reimport and repeated conversion. It also
+retains canonical animation-resource menus as a regression boundary; animation
+was not established as the Array selector defect. All existing affected Array,
+occurrence, scalar and class modules remain required in complete form. SOURCE
+review is not execution or visible authoring acceptance.
+
+Still required: palette mutation/take selection edits with actual aliases and
+later invalid writers; Code → Blocks → Code, save/fresh SB3 reopen and original
+export/reimport with current assets and unchanged values/errors. Arbitrary
+readable-view projections are not proof inputs. Native/original MakeCode and
+visible controller/graphics journeys remain separate; no retained corpus count
+has changed.
+
+Unknown selectors also remain in each independent writer census: affected
+scalar/class/private export elements stay opaque, named aliases refuse unknown
+operations, and Array element/presence facts cannot ignore potential writes or
+shrinks. A final emitter diagnostic alone is not proof that these independent
+facts were refused. The focused controls query the production proofs directly.
+
+### Canonical Array OP Code reader followup
+
+The source candidate supplies the two validated Array selectors to Code readers
+as inline syntax in a reader clone; export proofs continue to inspect the original
+physical project. Malformed/computed/shared selectors receive no projection. The
+first new-module run was four passes/four failures; reader and fixture corrections
+await changed-source qualification. Complete affected acceptance retains fourteen
+whole modules, including all seven menu-shape groups with real getInfo/SPIKE VM
+prerequisites. Visible editing, native execution, fresh SB3 and current-asset
+roundtrips remain separate acceptance gates. Historical project counts are unchanged.
+
+### Array reset overwrite source candidate
+
+Exact-file reimport retains real local/global null initializers. A separate
+source candidate discounts only reset values proved overwritten before every
+actual relevant read through a closed linear direct-call path. It preserves
+the overwrite expressions, all other writers, runtime effects and independent
+Array producer checks. Captures, unknown effects, branches, loops, recursion,
+competing entries and opaque writers remain refusals; class effects are not
+globally exempted. The previous menu diagnostic completed five groups with
+three genuine reimport failures; those failures remain historical evidence.
+The new complete eight-group proof module and all fourteen previously selected
+modules await qualification. No native, visible editing or project-count claim
+follows from this source candidate.
+
+The new overwrite theorem requires the existing owned, deeply frozen JSON
+snapshot entry. Complete serialized projects enter `projectJsonToArcade`; direct
+mutable ASTs, caller-frozen objects and Proxy wrappers retain their conservative
+refusal. Actual namespace ownership, monitor restrictions and every remaining
+producer/writer obligation still apply. GUI export source already uses the JSON
+entry, but visible editing/browser acceptance remains unqualified. This is not a
+general object-equivalence or native-execution claim.
+
+### Current bounded development result
+
+The complete two new modules ran together: fifteen groups passed and one failed.
+All three previously failing exact-file reimport examples now pass, including
+Code feedback and repeated physical projects. Owned JSON, inherited-container,
+unsafe monitor and selector controls passed. This does not qualify the complete
+fifteen-module affected selection or native, original compiler, getInfo, browser
+and visible-editing gates.
+
+The remaining original class assertion is retained as a failure. Five complete
+causal capture leaves show the actual primitive numeric writer is absent from
+class element facts, and emitted local declarations incorrectly use primitive
+Number types for class values. Appending that writer does not overwrite the
+example's consumed index zero, so the runtime-refusal expectation also needs a
+proper semantic control. A separate claimed workpackage must repair complete
+class/Array writer modeling and class-aware declaration types before changing
+that expectation. No successful MakeCode compilation or full export qualification
+is inferred from an empty diagnostic list. Historical project counts are unchanged.
+
+### Class Array writer and declaration repair candidate
+
+A separate SOURCE candidate retains actual numeric and opaque Array writers and
+uses class-aware local/global declarations. Mixed class and primitive writers
+must produce honest mixed types; an empty reporter fact cannot certify every
+element as a class. Actual allocation origins remain separate from annotations
+and never grant runtime inputs or Array bodies. The original append/read-at-zero
+example is retained with source/output checks, plus an actual consumed-slot
+String-to-Number-contract refusal. All sixteen affected modules and genuine
+original SDK compilation, native behavior, fresh SB3 and visible editing remain
+pending. Named SDK absence is a prerequisite gap, not a compilation result. The
+historical fifteen-pass/one-failure episode and project counts remain unchanged.
+
+The class/Array declaration candidate's first complete menu/overwrite/typing
+24-control attempt recorded **17 pass, 6 fail, 1 SDK_ABSENT**. This is preserved
+as failed development evidence. Existing source-reference global declarations
+remain uninitialized; some corrected class-local null prefixes are already
+covered by the legacy reset proof. Explicit raw-input refusal controls remain
+for prefixes requiring owned JSON. Class-aware effects across the remaining
+reimports and genuine original/emitted-file compilation are still pending.
+No complete affected-suite, native, visible authoring or corpus-count claim follows.
+
+A separate closed-class reset-effect candidate now examines actual constructor
+and own-field bodies, actual arguments and receiver allocation/writer origins
+only behind the owned project-JSON boundary. Inheritance, SDK/accessor paths,
+callbacks, escapes, unknown bodies and effectful receiver expressions refuse.
+The legacy reset/effect guards stay unchanged. The next development selection
+is four complete modules (32 controls); the full affected selection now contains
+17 modules. All native/compiler/getInfo/SPIKE/fresh-SB3/visible authoring gates
+remain separate and pending; no historical partial-count reduction is claimed.
+
+## Preserved development failure and source follow-up
+
+The complete four-module attempt recorded 24 passes, seven failures and one
+SDK_ABSENT control. Its final cumulative child-plus-observer CPU exceeded the
+25-second budget. It is preserved as both product and resource failure; no local
+repeat, filtering, sharding or budget increase qualifies it.
+
+The source follow-up checks every actual writer alternative independently,
+including primitive resets followed by class allocation. Canonical native
+null/undefined fields retain absence facts; malformed or conflicting selectors
+remain opaque. The new immutable-only overwrite theorem can bind an ancestor
+reset only through the same exact single-caller, zero-argument, straight-line
+ancestry. All legacy reset/effect bodies remain unchanged.
+
+Genuine allocation flow may replace stale declaration syntax, but ordinary
+parameter/result hints remain conservative `any`, with explicit primitive
+constraints first. These hints issue no operand, Array, receiver or body proof;
+annotations alone issue no hint. Source scalar Any declarations are neutral
+binding commands, not value evidence. A harmless pure constructor before an
+overwrite is a positive control, paired with constructor publication and callback
+refusals. Full failure captures now also cover the class-effect round trips.
+
+Next qualification is the complete hosted 32-control selection with its genuine
+SDK prerequisite. Compiler validity of mixed Array method access, the complete
+17 affected modules, native/current execution and GUI journeys remain pending.
+Historical project totals are unchanged.
+
+This source follow-up is unexecuted. Independent source review is not runtime,
+compiler, complete-suite or GUI qualification.
+
+### Class/Array writer follow-up: visible authoring acceptance pending
+
+The source follow-up has no GUI qualification. Require an asset-bearing project
+whose actual Number/Box writers produce honest `any[]`, `Box`, null and `any`
+declarations. Edit the actual graph after retaining the original snapshot, then
+check Blocks/Code, save/fresh SB3, MakeCode export and reimport: current operands,
+writer alternatives, values, execution trace and current assets must survive;
+an actual incompatible primitive constructor argument must remain refused.
+
+The existing native null/undefined dropdown is implemented. Its acceptance still
+needs selection, save/reopen and exact physical `KIND` field verification, with
+malformed, computed and conflicting field/input shapes refused. This is distinct
+from the remaining raw class-descriptor and argument-list editor gap; no new
+class graphics editor is claimed.
+
+Exercise constructor/reset ordering and visible refusal of publication,
+callbacks, effectful unused arguments, repeated entries and nonzero-argument
+entry paths. Compare the current count-only export completion feedback with the
+detailed Blocks-to-Code conversion report: actionable named reason, block,
+class and slot diagnostics remain an authoring acceptance requirement. Source
+proofs and count-only completion do not establish that user-facing result.
+
+
+### Native-addition refusal details: source candidate
+
+The source candidate records the actual rejected helper call and operand, its
+observed type kinds, and the initialization/captured-scalar checks that were
+actually reached. `NOT_EVALUATED` identifies original short circuits;
+`UNAVAILABLE` identifies context the original analysis did not retain. A common
+reason does not establish a common cause or prove that earlier class fixes
+resolve a refused project.
+
+An optional structured refusal record accompanies the unchanged unsupported
+strings. The actual analyzed emitted draft is retained with failure evidence.
+Physical emitter sites are explicitly candidates: they are not silently joined
+to a rejected source-call ordinal after procedure assembly. Exact block, source
+range and class/slot associations remain unavailable where no genuine join
+exists. Successful exporter return fields and all proof/refusal rules remain
+unchanged; diagnostic details issue no operand, Array or class authority.
+
+The existing conversion report gains an export/run outcome and available
+context. Saving source does not mean it was compiled, loaded or behaviorally
+preserved. Current-original export keeps its exact source path. Report-only
+request/revision fences suppress stale results after edits, project changes,
+VM replacement, disposal or a newer export. Download/compiler/player and asset
+operations retain their existing behavior and errors.
+
+The complete new domain and report modules and existing conversion-failure
+module pass all 15 controls with no skips or TODOs, through genuine normal
+dependencies. The numeric authoring browser verifier remains pending.
+The browser addition follows all earlier journeys and requires a genuine visible
+refusal, expanded details, collapse/dismiss, a later clean export and exact
+current asset bytes. Existing native/domain/export suites, original/emitted SDK
+compilation and hosted checks remain mandatory. No visible GUI or application pass, resolved official failure or partial-count
+reduction is claimed. The 15-control episode met its own local resource limits;
+that result does not qualify the separate 32-control cohort. The earlier complete 32-control product/resource failure remains
+preserved; this work does not authorize an unchanged local replay.
+
+Physical emission candidates are collected only through the actual owned JSON
+root and its own descendant graph edges. Direct caller-object exports retain
+unavailable physical provenance and gain no new getter/Proxy observations from
+the collector. Collection failures cannot replace the original export outcome.
+
+Unassigned scalar native-helper operands remain conservatively refused. A new
+entry/default-initialization proof must preserve TDZ, unknown-writer and early
+callback negatives; the passing initialized-scalar control does not establish
+that broader capability.
+
+## Ordinary default export observation — 2026-10-22
+
+The ordinary JSON API, without either prototype option, exported the captured
+counter with no unsupported elements or result warnings; complete files match
+the earlier export. Independent saved-result review verified current inputs,
+source and module loads. Preserve the outer wrapper failure on Node's module
+format warning; this is an observed conversion result, not an all-pass wrapper
+or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](ARCADE-NUMERIC-CLOSURE-RESULTS.md#ordinary-default-export-observation--2026-10-22).
+
+### Forwarded Sprite receiver source candidate
+
+The ordinary factory/forwarding candidate is documented in
+[the class-lineage contract](ARCADE-CLASS-LINEAGE.md#ordinary-sprite-factories-and-forwarded-normal-results).
+It proves selected x/y normal results through real factory, argument, return and
+alias cells, retaining selected Image effects and callback/writer refusals.
+It changes neither execution nor the visible editor surface; hosted qualification
+and the original saved-project roundtrip remain pending.
+
+GUI follow-up must author the same game with actual existing Sprite and Image
+blocks and pseudocode: create/fill an Image, create two Sprites, return/forward
+them through procedures, mutate x/y through aliases and a returned receiver,
+clone/setImage, then export, compile in MakeCode, reimport and reopen a fresh SB3.
+Check actual positions, pixels, independent allocations, shared aliases and
+effect order. Display unsupported mixed-class/callback cases honestly rather
+than granting a Sprite type from annotations or hiding export refusals.
+
+## Captured primitive operation results — authoring acceptance
+
+See the self-contained [capability and acceptance contract](ARCADE-CAPTURED-PRIMITIVE-OPERATIONS.md).
+The source candidate composes exact canonical arithmetic/comparison results over
+captured primitive cells for the native-addition consumer. It leaves generic
+initialization and type cells unchanged. All eleven new complete source groups
+pass locally under Node 22.23.2. Hosted original/exported SDK and native routes,
+visible editor connections and graphics behavior remain separately unqualified.
+
+Use existing global-variable, value-procedure and Arrays arithmetic blocks to
+build a procedure that updates a global trace with nested multiplication and
+addition. Call it after the declaration, edit its operand/operator through Code
+and Blocks, execute and inspect the actual value, save/reopen, export, compile
+in the selected MakeCode SDK and import the exact edited files. Include a
+controller event and a procedure result feeding a real sprite/image operation;
+preserve pixels and reference identity. Invalid writers and TDZ variants must
+remain visible refusals. Record each route separately before closing this GUI
+row or crediting an application. No new graphics acceptance follows from a
+Number normal-result proof.
+
+## Captured class primitive result composition
+
+Source implementation and qualification boundaries are recorded in
+[Captured class primitive results](ARCADE-CAPTURED-CLASS-PRIMITIVE-RESULTS.md).
+Exact issued results can compose with independently proved receiver readiness;
+no initialized receiver or Array authority is granted. Captured fields, real
+`this`-based methods/getters, and Boolean/union frontier behavior remain distinct
+acceptance cases. The linked document scopes the remaining method-entry proof
+and visible Code/Blocks authoring, current export, save/reopen and runtime checks.
+No corpus completion is claimed from this source change.
+
+## Class parser and lexical frontier continuation
+
+[Class lexical declaration readiness](ARCADE-CLASS-LEXICAL-FRONTIER.md) records
+the no-else If, genuine nonstatic this-context and Boolean carrier changes,
+with source/hosted qualification pending. It scopes remaining method-entry,
+nested/field receiver, keyword-accessor grammar, Code/Blocks/pseudocode
+authoring, graphics/reference-field and export/reopen acceptance separately.
+Method entry seeds remain empty; no initialized input or Array producer is
+granted. Do not infer application completion from source acceptance.

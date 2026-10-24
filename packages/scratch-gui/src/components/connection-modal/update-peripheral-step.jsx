@@ -31,6 +31,8 @@ class UpdatePeripheralStep extends React.Component {
         bindAll(this, [
             'handleSendUpdate'
         ]);
+        this._updateIntent = null;
+        this._updateDisposed = false;
         this.state = {
             /** @type {UPDATE_ACTIVITY} */
             activity: UPDATE_ACTIVITY.getReady,
@@ -46,7 +48,15 @@ class UpdatePeripheralStep extends React.Component {
         };
     }
 
+    componentWillUnmount () {
+        this._updateDisposed = true;
+        this._updateIntent = null;
+    }
+
     async handleSendUpdate () {
+        const intent = {};
+        this._updateIntent = intent;
+        const isCurrent = () => !this._updateDisposed && this._updateIntent === intent;
         this.setState({
             activity: UPDATE_ACTIVITY.sendUpdate,
             progress: 0,
@@ -58,17 +68,19 @@ class UpdatePeripheralStep extends React.Component {
                 // On my computer, I get a progress update every 0.005% or so.
                 // Rendering the progress ring is a little expensive, so filtering updates here reduces the CPU load.
                 // Updating every 1% doesn't look very smooth, but 0.5% (1/200) looks good to me.
-                this.setState({progressPercentage: Math.floor(progress * 200) / 2});
-            });
-            this.setState({
+                if (isCurrent()) this.setState({progressPercentage: Math.floor(progress * 200) / 2});
+            }, {isCurrent});
+            if (isCurrent()) this.setState({
                 activity: UPDATE_ACTIVITY.results,
                 res
             });
         } catch (err) {
-            this.setState({
+            if (isCurrent()) this.setState({
                 activity: UPDATE_ACTIVITY.results,
                 err
             });
+        } finally {
+            if (this._updateIntent === intent) this._updateIntent = null;
         }
     }
 

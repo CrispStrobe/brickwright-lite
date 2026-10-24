@@ -46,7 +46,52 @@ console.log('  exposed the canonical shared procedure model in scratch-vm packag
 // produces not-well-formed toolbox XML, so scratch-blocks fails to build the category and the
 // extension's blocks never appear. `xmlEscape` is already imported in runtime.js — wrap the name.
 const runtimePath = path.join(DEST, 'src', 'engine', 'runtime.js');
+// Read-only construction origins for optional source-result evidence. No
+// extension can register a replacement table or renew an origin certificate.
+function patchExtensionResultOrigins(source) {
+    const marker = '// bw-source-result-native-origins-v1';
+    if (source.includes(marker)) {
+        for (const token of ['const bwResultPrimitiveTable = {};', 'const bwResultCategoryList = [];',
+            'const bwResultBlocks = [];', 'const bwResultCategoryOrigin =', "'sourceResultOrigins'"])
+            if (!source.includes(token)) throw new Error('runtime source-result origin patch is incomplete');
+        return source;
+    }
+    const replaceOnce = (before, after) => {
+        if (source.split(before).length !== 2) throw new Error('runtime source-result origin anchor differs: ' + before);
+        source = source.replace(before, after);
+    };
+    replaceOnce('class Runtime extends EventEmitter {', `${marker}
+const bwResultRuntimeOrigins = new WeakMap();
+const bwResultCategoryOrigins = new WeakMap();
+const bwResultOriginGet = WeakMap.prototype.get, bwResultOriginSet = WeakMap.prototype.set;
+const bwResultOriginApply = Reflect.apply, bwResultOriginFreeze = Object.freeze, bwResultOriginDefine = Object.defineProperty;
+class Runtime extends EventEmitter {`);
+    replaceOnce('        this._primitives = {};', '        const bwResultPrimitiveTable = {};\n        this._primitives = bwResultPrimitiveTable;');
+    replaceOnce('        this._blockInfo = [];', `        const bwResultCategoryList = [];
+        this._blockInfo = bwResultCategoryList;
+        bwResultOriginApply(bwResultOriginSet, bwResultRuntimeOrigins, [this,
+            bwResultOriginFreeze({table: bwResultPrimitiveTable, categories: bwResultCategoryList})]);`);
+    replaceOnce('        this._blockInfo.push(categoryInfo);', `        bwResultOriginApply(bwResultOriginSet, bwResultCategoryOrigins, [categoryInfo,
+            bwResultOriginFreeze({runtime: this, blocks: null})]);
+        this._blockInfo.push(categoryInfo);`);
+    replaceOnce('        categoryInfo.blocks = [];', `        const bwResultBlocks = [];
+        const bwResultCategoryOrigin = bwResultOriginApply(bwResultOriginGet, bwResultCategoryOrigins, [categoryInfo]);
+        if (bwResultCategoryOrigin && bwResultCategoryOrigin.runtime === this)
+            bwResultOriginApply(bwResultOriginSet, bwResultCategoryOrigins, [categoryInfo,
+                bwResultOriginFreeze({runtime: this, blocks: bwResultBlocks})]);
+        categoryInfo.blocks = bwResultBlocks;`);
+    replaceOnce('module.exports = Runtime;', `bwResultOriginDefine(Runtime, 'sourceResultOrigins', {value: (runtime, category) => {
+    const origin = bwResultOriginApply(bwResultOriginGet, bwResultRuntimeOrigins, [runtime]);
+    if (!origin) return null;
+    if (category === undefined) return origin;
+    const row = bwResultOriginApply(bwResultOriginGet, bwResultCategoryOrigins, [category]);
+    return row && row.runtime === runtime ? row : null;
+}, writable: false, configurable: false});
+module.exports = Runtime;`);
+    return source;
+}
 let rt = readFileSync(runtimePath, 'utf8');
+rt = patchExtensionResultOrigins(rt);
 rt = patchExtensionPrimitiveCaches(rt);
 writeFileSync(runtimePath, rt);
 // Arcade sprites need one deterministic physics tick per Scratch VM frame.

@@ -1,3 +1,10 @@
+import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
+import {createArrayDefiniteOverwrite} from './array-definite-overwrite.js';
+import {createArrayNativeFrameReset} from './array-native-frame-reset.js';
+import {isProjectJsonSnapshot} from './project-json-snapshot.js';
+const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create;
+import {sourceValueOperation} from './source-value-operator-helpers.js';
+import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
 
@@ -20,6 +27,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const block=(target,id)=>typeof id==='string'?target.blocks?.[id]:null;
     const child=(node,name,target)=>block(target,node?.inputs?.[name]?.[1]);
     const literal=(node,name,target)=>{
+        if(isArrayMenuSelector(node,name))return arrayMenuLiteral(target,node,name);
         if(node?.fields?.[name])return typeof node.fields[name][0]==='string'?node.fields[name][0]:null;
         const value=node?.inputs?.[name]?.[1];if(Array.isArray(value)&&value[0]===10)return String(value[1]);
         const leaf=block(target,value);return leaf?.shadow&&leaf.opcode==='text'?leaf.fields?.TEXT?.[0]:null;
@@ -87,7 +95,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const input=(node,name,target)=>{const raw=node?.inputs?.[name]?.[1];if(typeof raw==='string')return {target,node:block(target,raw)};if(Array.isArray(raw)&&raw[0]===12){const value=globalCell(target,raw[2]);const declaration=targets.find(t=>Object.hasOwn(t.variables||{},raw[2]))?.variables[raw[2]];return declaration?.[0]===raw[1]?{target,cell:value,at:node}:{target,raw:null,at:node};}return {target,raw,at:node};};
     const exactKeys=(node,inputs,fields=[])=>Object.keys(node.inputs||{}).sort().join('|')===[...inputs].sort().join('|')&&Object.keys(node.fields||{}).every(name=>fields.includes(name));
     const schemas={arrays_referenceTruthy:['ARRAY','INDEX'],arrays_referenceItem:['ARRAY','INDEX'],arrays_referenceRemove:['ARRAY','VALUE'],arrays_referenceRandom:['ARRAY'],arrays_referenceLength:['ARRAY'],arrays_referenceSlice:['ARRAY','START','END'],arrays_referenceConcat:['ARRAY','OTHER'],arrays_referenceIndexOf:['ARRAY','VALUE','INDEX'],arrays_referenceTake:['ARRAY','OP','INDEX'],arrays_mutateReference:['ARRAY','OP','INDEX','VALUE']};
-    const operationShape=node=>{const expected=schemas[node.opcode];if(!expected)return false;const fieldOp=Object.hasOwn(node.fields||{},'OP'),inputs=fieldOp?expected.filter(name=>name!=='OP'):expected;return exactKeys(node,inputs,fieldOp?['OP']:[]);};
+    const operationShape=node=>{const expected=schemas[node.opcode];if(!expected)return false;if(isArrayMenuSelector(node,'OP')&&!isKnownArrayMenuOperation(node,literal(node,'OP',owners.get(node)?.target)))return false;const fieldOp=Object.hasOwn(node.fields||{},'OP'),inputs=fieldOp?expected.filter(name=>name!=='OP'):expected;return exactKeys(node,inputs,fieldOp?['OP']:[]);};
     const argumentList=(target,node)=>{
         const args=[],seen=new Set();let edge=node.inputs?.ARGS?.[1];
         while(typeof edge==='string'){
@@ -384,8 +392,10 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         }
         return false;
     };
+    const nativeFrameReset=createArrayNativeFrameReset({project,targets,scopes,records,calls,owners,invalid,block,child,input,
+        literal,binding,globalCell,localCell,captures,closedEffects});
     for(const destination of cells.values())destination.writers=destination.writers.filter(writer=>
-        !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer));
+        !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer)&&!nativeFrameReset.discount(destination,writer));
     // Orphan writes and dynamic local names cannot disappear from all-writer proof.
     for(const target of targets)for(const node of Object.values(target.blocks||{})){
         if(!owners.has(node)&&['data_setvariableto','data_changevariableby'].includes(node.opcode)){const c=globalCell(target,node.fields?.VARIABLE?.[1]);if(c)(c.directBad=true,c.types.add(bad));}
@@ -406,7 +416,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // - a local reset immediately followed by its definite overwrite.
     // The overwrite value must not read the cell. Every other writer and every
     // other occurrence keeps the full writer set.
-    const resetValue=n=>n?.opcode==='arrays_specialValue'&&exactKeys(n,[],['KIND'])&&['undefined','null'].includes(n.fields?.KIND?.[0]);
+    const resetValue=n=>n?.opcode==='arrays_specialValue'&&exactKeys(n,[],['KIND'])&&Array.isArray(n.fields?.KIND)&&n.fields.KIND.length===2&&n.fields.KIND[1]===null&&['undefined','null'].includes(n.fields.KIND[0]);
     const readsCell=(target,node,c,seen=new Set())=>{
         if(!node||seen.has(node))return false;seen.add(node);if(binding(target,node)===c)return true;
         for(const [name,slot]of Object.entries(node.inputs||{})){if(name.startsWith('SUBSTACK'))continue;
@@ -415,7 +425,19 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return false;
     };
     const topChain=(scope,node)=>{const seen=new Set();let id=scope.root?.next;while(id&&!seen.has(id)){seen.add(id);const n=block(scope.target,id);if(n===node)return true;id=n?.next;}return false;};
-    let resetFlowReady=false,spriteDataReady=false;
+    let resetFlowReady=false,spriteDataReady=false,sourceDependency=null;
+    const observeSourceDependency=c=>{
+        const dependency=sourceDependency;if(!dependency||!c||dependency.seen.has(c))return;
+        dependency.seen.add(c);
+        if(c.global&&c.types.has(bad))for(const type of c.types)
+            if(type&&typeof type==='object'&&type.array){dependency.mixed=true;dependency.globals.add(c);break;}
+        // Cached unions and initialization short circuits must not conceal
+        // the actual indexed direct-alias writer dependency behind a local.
+        for(let i=0;i<c.writers.length;i++){
+            const value=c.writers[i].value;
+            if(value)observeSourceDependency(value.cell||(value.node&&binding(value.target,value.node)));
+        }
+    };
     // A side-effect-free primitive literal expression (no cell read, no call):
     // like a reset, its value is unobservable once definitely overwritten.
     const inertLiteral=(target,n,seen=new Set())=>{
@@ -461,6 +483,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     const computingCells=new Set();
     const cellTypesAt=(c,at)=>{
+        observeSourceDependency(c);
         if(!c||c.directBad||!at||computingCells.has(c))return new Set(c?c.types:[bad]);
         const live=c.writers.filter(w=>!killedReset(c,w,at)),guarded=new Set(live.filter(w=>falsyGuarded(c,w,at)));
         if(live.length===c.writers.length&&!guarded.size)return new Set(c.types);
@@ -529,6 +552,25 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!value)return new Set([bad]);if(value.cell)return cellTypesAt(value.cell,value.at);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
     const literalNumber=(target,node,name)=>{const v=input(node,name,target);if(v.raw&&[4,5,6,7,8].includes(v.raw[0]))return Number(v.raw[1]);if(v.node?.shadow&&v.node.opcode==='math_number')return Number(v.node.fields?.NUM?.[0]);return null;};
+    // Slice presence accepts only closed integer shadows and the exact numeric
+    // `0 + shadow` wrapper emitted for source constants. This does not broaden
+    // literalNumber, positional slot proofs or any general numeric producer.
+    const sliceBound=(target,node,name)=>{
+        const number=value=>{
+            let raw;
+            if(Array.isArray(value.raw)&&value.raw.length===2&&[4,5,6,7,8].includes(value.raw[0]))raw=value.raw[1];
+            else {const n=value.node,row=n?.fields?.NUM;
+                if(!n||invalid.has(n)||n.shadow!==true||n.opcode!=='math_number'||!exactKeys(n,[],['NUM'])||
+                    Object.keys(n.fields||{}).length!==1||!Array.isArray(row)||row.length!==2||row[1]!==null)return null;
+                raw=row[0];}
+            if(typeof raw!=='string'&&typeof raw!=='number')return null;
+            const result=Number(raw);return Number.isFinite(result)&&Number.isInteger(result)?result:null;
+        };
+        const value=input(node,name,target),direct=number(value);if(direct!==null)return direct;
+        const n=value.node;if(!n||invalid.has(n)||n.opcode!=='operator_add'||!exactKeys(n,['NUM1','NUM2'])||
+            Object.keys(n.fields||{}).length)return null;
+        return number(input(n,'NUM1',target))===0?number(input(n,'NUM2',target)):null;
+    };
     // A reset can be ignored for KIND facts only when a synchronous source-start
     // segment overwrites it before any observer can read that particular cell.
     // The general Array cell writer set remains unchanged.
@@ -571,6 +613,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(node.shadow&&node.opcode==='math_number')return !Number.isNaN(Number(node.fields?.NUM?.[0]));
         if(node.opcode==='arcade_createSpriteKind')return exactKeys(node,[]);
         if(node.opcode==='arcade_spriteKindValue')return exactKeys(node,['NAME'])&&typeof literal(node,'NAME',value.target)==='string';
+        if(sourceValueOperation(node)?.result==='Number')return true;
         if(node.opcode==='arrays_valueBinary')return ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(node,'OP',value.target))&&numericKind(input(node,'LEFT',value.target),next)&&numericKind(input(node,'RIGHT',value.target),next);
         // Scratch arithmetic reporters always cast their operands and return a Number.
         if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(node.opcode))return exactKeys(node,['NUM1','NUM2']);
@@ -645,6 +688,22 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                     try{const l=operand('ARRAY'),r=operand('OTHER');if(!singleArray(new Set(l))||!singleArray(new Set(r)))return 0;
                         return Math.min(...l.map(a=>a===t?0:minimumAt(a,node)))+Math.min(...r.map(a=>a===t?0:minimumAt(a,node)));}
                     finally{concatLengths.delete(t);}}});
+            }
+            if(node.opcode==='arrays_referenceSlice'&&!Object.getOwnPropertyDescriptor(t,'minLength').get){
+                Object.defineProperty(t,'minLength',{configurable:true,enumerable:true,get(){
+                    if(concatLengths.has(t))return 0;concatLengths.add(t);
+                    try{
+                        const start=sliceBound(target,node,'START'),end=sliceBound(target,node,'END');
+                        // With nonnegative START, slice length is monotone in
+                        // source length for either sign of END. A lower length
+                        // alone cannot prove negative-START/nonnegative-END.
+                        if(start===null||start<0||end===null)return 0;
+                        const source=[...readInput(input(node,'ARRAY',target))];
+                        if(!singleArray(new Set(source)))return 0;
+                        const length=Math.max(0,Math.min(...source.map(a=>a===t?0:minimumAt(a,node))));
+                        const first=Math.min(start,length),last=end<0?Math.max(length+end,0):Math.min(end,length);
+                        return Math.max(last-first,0);
+                    }finally{concatLengths.delete(t);}}});
             }
             return new Set([t]);
         }
@@ -728,6 +787,8 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(parent.opcode==='arcade_callFunction')return name==='ARGS'&&exactKeys(parent,['NAME','ARGS'])&&typeof literal(parent,'NAME',owners.get(parent).target)==='string';
         if(parent.opcode==='procedures_call'){const call=calls.find(call=>call.node===parent);return !!call?.fn&&!call.fn.invalid&&!!call.args&&Object.keys(parent.fields||{}).length===0;}
         if(schemas[parent.opcode])return operationShape(parent);
+        const sourceOperation=sourceValueOperation(parent);
+        if(sourceOperation)return sourceOperation.inputs.includes(name);
         const scalarInputs={arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2'],operator_lt:['OPERAND1','OPERAND2'],operator_gt:['OPERAND1','OPERAND2'],operator_equals:['OPERAND1','OPERAND2'],operator_and:['OPERAND1','OPERAND2'],operator_or:['OPERAND1','OPERAND2'],operator_not:['OPERAND'],operator_join:['STRING1','STRING2'],operator_length:['STRING'],operator_letter_of:['LETTER','STRING'],operator_contains:['STRING1','STRING2'],operator_round:['NUM']};
         const inputs=scalarInputs[parent.opcode];if(!inputs)return false;
         if(parent.opcode.startsWith('arrays_value'))return exactKeys(parent,Object.hasOwn(parent.fields||{},'OP')?inputs:[...inputs,'OP'],['OP'])&&inputs.includes(name);
@@ -927,6 +988,100 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(w.scope!==scope||!onceNode(w.node)||!scope.executedBefore?.get(statementOf(node))?.has(w.node))return null;
         return {value:input(w.node,'VALUE',w.target),node:w.node};
     };
+    // This query supplies actual public writer nodes, never a Number, Array or
+    // runtime certificate. A caller must independently prove every returned
+    // input primitive. It is intentionally narrower than general Sprite typing.
+    let spriteFlagsExpired=false;
+    const flagsReadOnlyMonitors=()=>{
+        // Preserve the old arbitrary-AST empty-monitor path without ever
+        // iterating unowned watcher records, even if a Proxy lies about length.
+        if(!isProjectJsonSnapshot(project))return !(project.monitors||[]).length;
+        const own=(value,key)=>value&&typeof value==='object'?watcherOwnDescriptor(value,key)?.value:undefined;
+        const monitors=own(project,'monitors');
+        if(!watcherIsArray(monitors)||own(project,'targets')!==targets||!watcherIsArray(targets))return false;
+        const seen=watcherCreate(null),allowed=['id','mode','opcode','params','spriteName','value','width','height','x','y','visible','sliderMin','sliderMax','isDiscrete'];
+        // Every traversed edge is an OWN edge of the native parsed frozen
+        // tree. Neither a prototype property nor an Array iterator can supply
+        // an unowned record after construction.
+        for(let i=0;i<own(monitors,'length');i++){
+            const monitor=own(monitors,i+'');
+            if(!monitor||typeof monitor!=='object')return false;
+            const keys=watcherOwnKeys(monitor);if(keys.length!==allowed.length)return false;
+            for(let k=0;k<keys.length;k++){
+                let known=false;for(let a=0;a<allowed.length;a++)if(allowed[a]===keys[k])known=true;
+                if(!known)return false;
+            }
+            const id=own(monitor,'id'),params=own(monitor,'params'),name=own(params,'VARIABLE');
+            if(typeof id!=='string'||seen[id]||own(monitor,'opcode')!=='data_variable'||own(monitor,'mode')!=='default'||
+                own(monitor,'spriteName')!==null||typeof own(monitor,'visible')!=='boolean'||typeof own(monitor,'isDiscrete')!=='boolean'||
+                !params||typeof params!=='object'||watcherOwnKeys(params).length!==1||typeof name!=='string')return false;
+            const numeric=['x','y','width','height','sliderMin','sliderMax'];
+            for(let k=0;k<numeric.length;k++){const value=own(monitor,numeric[k]);if(typeof value!=='number'||!watcherFinite(value))return false;}
+            let owner=null,count=0;
+            for(let t=0;t<own(targets,'length');t++){
+                const target=own(targets,t+''),variables=own(target,'variables'),declaration=own(variables,id);
+                if(declaration!==undefined){
+                    if(owner||own(target,'isStage')!==true||!watcherIsArray(declaration)||own(declaration,'length')!==2||own(declaration,'0')!==name)return false;
+                    owner=target;const variableKeys=watcherOwnKeys(variables);
+                    for(let v=0;v<variableKeys.length;v++)if(own(own(variables,variableKeys[v]),'0')===name)count++;
+                }
+            }
+            if(!owner||count!==1)return false;
+            seen[id]=true;
+        }
+        return true;
+    };
+    // live() may observe metadata itself when an existing reset proof was
+    // used. Every such callback precedes this final source/identity-only check.
+    const spriteFlagsPhysicalCurrent=()=>project.targets===targets&&snapshot()===original&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const spriteFlagsCurrent=()=>{if(spriteFlagsExpired)return false;try{if(summaryExpired||effectMetadata()!==originalEffects||!live()||!spriteFlagsPhysicalCurrent())spriteFlagsExpired=true;}catch(error){spriteFlagsExpired=true;throw error;}return !spriteFlagsExpired;};
+    const spriteFlagWriters=(target,node)=>{try{
+        if(!spriteFlagsCurrent()||invalidGlobalBinding||!nodes.has(target)||invalid.has(node)||!owners.has(node)||
+            !exactKeys(node,['ID'],['PROPERTY'])||node.mutation!=null||literal(node,'PROPERTY',target)!=='flags')return null;
+        // These external sources can replace a binding outside this writer
+        // inventory. Only owned read-only watchers are inert; cloud and external writers refuse.
+        if(targets.some(t=>Object.values(t.variables||{}).some(v=>v.length!==2))||!flagsReadOnlyMonitors())return null;
+        if(!Array.isArray(project.extensions)||project.extensions.some(id=>!['arcade','arrays'].includes(id))||
+            project.extensionURLs&&Object.entries(project.extensionURLs).some(([id,url])=>id!=='arrays'||url!=='https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js'))return null;
+        const receiver=idCell(target,node),creation=liveCreation(receiver,node);
+        if(!creation||!onceNode(creation)||!exactKeys(creation,creation.opcode==='arcade_createSprite'?['TEMPLATE','KIND','WIDTH','HEIGHT']:['IMAGE','TEMPLATE','KIND'])||creation.mutation!=null)return null;
+        const writerInputs=[];
+        const properties=new Set(['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags']);
+        const flags=new Set(['AutoDestroy','StayInScreen','BounceOnWall','DestroyOnWall','Invisible','Ghost','GhostThroughSprites','GhostThroughWalls','GhostThroughTiles','RelativeToCamera','ShowPhysics']);
+        const flagBooleanWriters=new Set(['arcade_setSpriteFlag','arcade_setSpriteStayInScreen','arcade_setSpriteAutoDestroy','arcade_setSpriteBounceOnWall','arcade_setSpriteGhostThroughSprites']);
+        for(const r of records){
+            const n=r.node;
+            if(flagBooleanWriters.has(n.opcode)){
+                const fixed=n.opcode==='arcade_setSpriteFlag';
+                if(!exactKeys(n,['ID','ON'],fixed?['FLAG']:[])||n.mutation!=null||fixed&&!flags.has(literal(n,'FLAG',r.target)))return null;
+                const made=liveCreation(idCell(r.target,n),n);if(!made)return null;
+                if(made===creation)writerInputs.push({target:r.target,node:n,input:'ON'});
+            }
+            if(n.opcode==='arcade_setSpriteProperty'){
+                const property=literal(n,'PROPERTY',r.target);
+                if(!properties.has(property)||!exactKeys(n,['ID','VALUE'],['PROPERTY'])||n.mutation!=null)return null;
+                if(property==='flags'){
+                    const made=liveCreation(idCell(r.target,n),n);if(!made)return null;
+                    if(made===creation)writerInputs.push({target:r.target,node:n,input:'VALUE'});
+                }
+            }
+            for(const name of Object.keys(n.inputs||{})){
+                const value=input(n,name,r.target),c=value.cell||(value.node&&binding(r.target,value.node));
+                if(!c||liveCreation(c,n)!==creation)continue;
+                if(invalid.has(n)||r.scope.invalid)return null;
+                // Plain aliases stay in the same complete cell/writer index.
+                if(name==='VALUE'&&['data_setvariableto','arcade_setLocal','arcade_setCaptured'].includes(n.opcode))continue;
+                if(name==='ID'&&n.opcode==='arcade_spriteProperty'&&exactKeys(n,['ID'],['PROPERTY'])&&properties.has(literal(n,'PROPERTY',r.target))&&n.mutation==null)continue;
+                if(name==='ID'&&n.opcode==='arcade_setSpriteProperty')continue;
+                if(name==='ID'&&flagBooleanWriters.has(n.opcode))continue;
+                // Object/Array publication, unknown calls, unproved formal
+                // forwarding and other receiver operations are not this slice.
+                return null;
+            }
+        }
+        if(!spriteFlagsCurrent())return null;
+        return Object.freeze(writerInputs.map(row=>Object.freeze(row)));
+    }catch(error){spriteFlagsExpired=true;throw error;}};
     // An Array settings read is the value of the one same-type write of that
     // literal key that ran once, earlier in the reading scope. Every other
     // write/remove of that key and every clear must be in the same once-only
@@ -955,6 +1110,24 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     spriteDataReady=true;
     resetFlowReady=true;
+    const definiteOverwrite=createArrayDefiniteOverwrite({project,targets,scopes,records,calls,owners,invalid,implicitEntries,
+        block,child,input,literal,binding,globalCell,localCell,exactKeys,resetValue,
+        ordinarySummaryGlobal,statementOf,closedEffects,isArrayMenuSelector,isKnownArrayMenuOperation});
+    for(const c of cells.values())c.writers=c.writers.filter(writer=>{
+        if(!definiteOverwrite(c,writer))return true;
+        // Only a reaching reset of an owned immutable JSON tree is removed.
+        // Every actual overwrite and other writer retains its producer checks.
+        extendedResetUsed=true;return false;
+    });
+    let prefixResetExpired=false;
+    const prefixResetCurrent=()=>{
+        // This function is the exact helper instance constructed above, never
+        // a caller certificate. Legacy/unused prefix paths acquire no watcher.
+        if(!definiteOverwrite.used?.())return true;
+        if(!prefixResetExpired)try{if(!definiteOverwrite.current())prefixResetExpired=true;}
+        catch(error){prefixResetExpired=true;throw error;}
+        return !prefixResetExpired;
+    };
     // A push precedes an occurrence in every activation when it executed
     // earlier in the occurrence's own scope (directly or on a called
     // procedure's straight prefix), or when the occurrence is in an ordinary
@@ -1033,12 +1206,25 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     // Monotone producer flow handles genuine alias SCCs with an allocation;
     // cycles in the physical block graph were independently refused above.
     let changed;
-    const populate=(t,seen=new Set())=>{if(!t||typeof t!=='object'||!t.array||seen.has(t))return;seen.add(t);for(const item of t.items)for(const type of readInput(item))if(!t.elements.has(type)){t.elements.add(type);changed=true;}for(const type of t.elements)populate(type,seen);};
+    const arrayAllocations=new Set();
+    const populate=(t,seen=new Set())=>{if(!t||typeof t!=='object'||!t.array||seen.has(t))return;arrayAllocations.add(t);seen.add(t);for(const item of t.items)for(const type of readInput(item))if(!t.elements.has(type)){t.elements.add(type);changed=true;}for(const type of t.elements)populate(type,seen);};
     do{
         changed=false;
         for(const c of cells.values())for(const w of c.writers){const types=w.value&&!invalid.has(w.node)&&!w.scope.invalid?readInput(w.value):new Set([bad]);for(const type of types)if(!c.types.has(type)){c.types.add(type);changed=true;}}
         for(const {target,node}of records){const types=readNode(target,node);values.set(node,types);for(const t of types)populate(t);}
-        for(const {target,node,value}of mutations){const receiver=readInput(input(node,'ARRAY',target)),op=literal(node,'OP',target)||literal(node,'MODE',target);for(const t of receiver)if(t&&typeof t==='object'&&t.array){t.shrinks ||= new Set();if((['pop','shift','removeAt','length','removeElement'].includes(op)||node.opcode==='arrays_referenceRemove')&&!t.shrinks.has(node)){t.shrinks.add(node);changed=true;}if(['push','unshift','insertAt','set'].includes(op)){t.sources.add(value);for(const type of readInput(value))if(!t.elements.has(type)){t.elements.add(type);changed=true;}}}}
+        for(const {target,node,value}of mutations){
+            const receiver=readInput(input(node,'ARRAY',target)),op=isArrayMenuSelector(node,'OP')?literal(node,'OP',target):literal(node,'OP',target)||literal(node,'MODE',target);
+            const unknownOperation=isArrayMenuSelector(node,'OP')&&!isKnownArrayMenuOperation(node,op);
+            // An unresolved receiver may alias any discovered Array. Unknown
+            // selectors cannot silently disappear from its element/shrink census.
+            const affected=unknownOperation&&(!receiver.size||receiver.has(bad))?new Set([...receiver,...arrayAllocations]):receiver;
+            for(const t of affected)if(t&&typeof t==='object'&&t.array){
+                t.shrinks ||= new Set();
+                if((unknownOperation||['pop','shift','removeAt','length','removeElement'].includes(op)||node.opcode==='arrays_referenceRemove')&&!t.shrinks.has(node)){t.shrinks.add(node);changed=true;}
+                if(unknownOperation&&!t.elements.has(bad)){t.elements.add(bad);changed=true;}
+                if(['push','unshift','insertAt','set'].includes(op)){t.sources.add(value);for(const type of readInput(value))if(!t.elements.has(type)){t.elements.add(type);changed=true;}}
+            }
+        }
     }while(changed);
     for(const c of cells.values())if(!c.types.size)c.types.add(bad);
     const initializingCells=new Set();
@@ -1094,7 +1280,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         // A literal value (JSON item or literal input) is initialized; it is an
         // Array only through jsonArray, which singleArray still checks.
         if(!value)return false;if(value.jsonArray||value.raw)return true;
-        const initializedCell=(c,scope,at)=>{if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
+        const initializedCell=(c,scope,at)=>{observeSourceDependency(c);if(!available(c,scope,at))return false;if(checkingWriterInitialization.has(c))return true;checkingWriterInitialization.add(c);try{const live=c.directBad?c.writers:c.writers.filter(w=>!killedReset(c,w,at));return live.length>0&&live.every(w=>w.value&&(initialized(w.value)||!c.directBad&&falsyGuarded(c,w,at)&&w.value.node?.opcode==='arrays_referenceItem'&&initialized(input(w.value.node,'ARRAY',w.target))));}finally{checkingWriterInitialization.delete(c);}};
         if(value.cell)return initializedCell(value.cell,owners.get(value.at),value.at);
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
@@ -1124,17 +1310,89 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(Object.hasOwn(FRESH_SDK_ARRAYS,node.opcode))return exactKeys(node,FRESH_SDK_ARRAYS[node.opcode]);
         return false;
     };
-    const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
-    return Object.freeze({validateInput(target,node,name='ARRAY'){
-        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects)summaryExpired=true;}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;throw error;}
-        if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;}
+    // Retained physical/realm/context obligations apply to mixed-global
+    // dependencies without forcing valid primary proofs into a narrower
+    // straight-line profile. Inventory only already-indexed receiver inputs.
+    const mixedArrayCell=[...cells.values()].some(c=>c.types.has(bad)&&[...c.types].some(t=>t&&typeof t==='object'&&t.array));
+    const mixedGlobalCell=[...cells.values()].some(c=>c.global&&c.types.has(bad)&&[...c.types].some(t=>t&&typeof t==='object'&&t.array));
+    const protectedInputs=[];
+    if(mixedGlobalCell)for(let i=0;i<snapshots.length;i++){
+        const {target,node,inputRows}=snapshots[i];if(!Object.hasOwn(schemas,node.opcode))continue;
+        for(let j=0;j<inputRows.length;j++){
+            const name=inputRows[j][0];if(name!=='ARRAY'&&(name!=='OTHER'||node.opcode!=='arrays_referenceConcat'))continue;
+            const previousReset=resetFlowReady,previousDependency=sourceDependency,dependency={mixed:false,seen:new Set(),globals:new Set()};
+            try{resetFlowReady=false;sourceDependency=dependency;
+                const value=input(node,name,target);readInput(value);initialized(value);
+            }finally{resetFlowReady=previousReset;sourceDependency=previousDependency;}
+            if(dependency.mixed){
+                const globals=[];
+                for(const [owner,map]of globalCell.maps)for(const [id,key]of map)
+                    if(dependency.globals.has(cells.get(key)))globals.push({owner,id});
+                protectedInputs.push({target,node,name,globals});
+            }
+        }
+    }
+    const protectedInput=(target,node,name)=>{
+        for(let i=0;i<protectedInputs.length;i++){const r=protectedInputs[i];if(r.target===target&&r.node===node&&r.name===name)return r;}
+        return null;
+    };
+    // Visible slider/list controls write the addressed variable through the
+    // actual GUI variable-utils path. Read-only UI metadata is not a producer
+    // restriction. The full physical snapshot freezes either configuration.
+    const monitorWrites=receiver=>Array.isArray(project.monitors)&&project.monitors.some(monitor=>{
+        if(!monitor?.visible||!['slider','list'].includes(monitor.mode))return false;
+        let owner;
+        if(monitor.spriteName)owner=targets.find(t=>t.name===monitor.spriteName);
+        if(!owner)owner=monitor.targetId?targets.find(t=>t.id===monitor.targetId):targets.find(t=>t.isStage);
+        return receiver.globals.some(binding=>binding.id===monitor.id&&(!owner||binding.owner===owner));
+    });
+    const occurrence=mixedArrayCell?createArrayOccurrenceExportAuthority(project,(target,node,name)=>{
+        const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
+    }):null;
+    const live=()=>prefixResetCurrent()&&project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    // Observe a newly used dependency before publishing the cached authority.
+    // A later validation still observes it before any diagnostic early exit.
+    prefixResetCurrent();
+    return Object.freeze({spriteFlagWriters,validateInput(target,node,name='ARRAY'){
+        // Observe the used frame theorem before every diagnostic exit. A
+        // prototype/reflection failure permanently expires this dependency.
+        if(!nativeFrameReset.current())return {ok:false,reason:'requires the current native frame and activation frontier for a discounted Array reset'};
+        if(!prefixResetCurrent())return {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'};
+        // Observe retained occurrence facts before *any* diagnostic early exit.
+        // A false/throw observation cannot revive after physical restoration.
+        const protectedReceiver=protectedInput(target,node,name);
+        const occurrenceCurrent=occurrence?(protectedReceiver?occurrence.observeSource():occurrence.observe()):false;
+        if(protectedReceiver&&!occurrenceCurrent)return {ok:false,reason:'requires the current physical source context for a mixed global Array proof'};
+        if(protectedReceiver){
+            let writes;
+            try{writes=monitorWrites(protectedReceiver);}
+            catch(error){occurrence.expireSource();throw error;}
+            // A monitor property/reflection trap may have edited source while
+            // being observed. Recheck this new callback boundary before proof.
+            if(!occurrence.observeSource())return {ok:false,reason:'requires the current physical source context for a mixed global Array proof'};
+            if(writes)return {ok:false,reason:'an active monitor can write the actual mixed global Array binding'};
+        }
+        if(occurrence?.candidate(target,node,name)&&!occurrenceCurrent)return {ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'};
+        // An unrelated-input query may also observe a source failure. Revoke
+        // only after that real false/throw; do not add another observation.
+        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects){summaryExpired=true;if(protectedInputs.length)occurrence.expireSource();}}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();throw error;}
+        if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;if(protectedInputs.length)occurrence.expireSource();}
         // Only a successfully discounted reset may retain this dependency.
         // False or thrown currentness expires it before any diagnostic exit.
         if(frameResetUsed&&frameResetExpired)current=false;
+        // Existing metadata observers can run while live() is checked. Bind
+        // the prefix again after them before consuming any cached reset fact.
+        if(!prefixResetCurrent())return {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'};
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
-        if(deadOccurrence(target,node))return {ok:true};
-        const value=input(node,name,target),types=readInput(value);return singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'};
+        // Compute the original result once. A genuine producer observer below
+        // can change ambient ownership after the earlier metadata fence.
+        const publish=result=>result.ok&&!nativeFrameReset.current()?
+            {ok:false,reason:'requires the current native frame and activation frontier for a discounted Array reset'}:result.ok&&!prefixResetCurrent()?
+            {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result;
+        if(deadOccurrence(target,node))return publish({ok:true});
+        if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
+        const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});
     }});
 }

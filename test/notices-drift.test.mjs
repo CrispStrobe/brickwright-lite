@@ -33,6 +33,7 @@ import {readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync} from 'n
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import * as censusModule from '../scripts/lib/notices-census.mjs';
+import {renderRegisteredArraysCarrier} from '../scripts/lib/arrays-carrier.mjs';
 const {censusAll, judge, liteAddedDeps, vendoredTrees, roms, wasmToolchains, fetchedArtifacts, sectionFor} = censusModule;
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -189,7 +190,7 @@ test('scoped Arrays artifact reads its shipped MPL declaration and detects missi
     const root = synth({
         'vendor-pins.json': JSON.stringify({'arrays-values':'a'.repeat(40)}),
         'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js':
-            `const makeExt = require('../adapter');\nmodule.exports = makeExt(${JSON.stringify(source)});\n`
+            renderRegisteredArraysCarrier(source)
     });
     const items = vendoredTrees(root, 'Owner');
     assert.equal(items.length, 1);
@@ -202,7 +203,11 @@ test('scoped Arrays artifact reads its shipped MPL declaration and detects missi
     assert.throws(() => vendoredTrees(missing, 'Owner'), /no shipped bundle/);
     const malformed = synth({'vendor-pins.json':JSON.stringify({'arrays-values':'a'.repeat(40)}),
         'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js':'module.exports = broken;'});
-    assert.throws(() => vendoredTrees(malformed, 'Owner'), /unreadable bundle/);
+    assert.throws(() => vendoredTrees(malformed, 'Owner'), /unreadable registered bundle/);
+    const unregistered = synth({'vendor-pins.json':JSON.stringify({'arrays-values':'a'.repeat(40)}),
+        'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js':
+            `const makeExt = require('../adapter');\nmodule.exports = makeExt(${JSON.stringify(source)});\n`});
+    assert.throws(() => vendoredTrees(unregistered, 'Owner'), /unreadable registered bundle/);
 });
 
 test('scoped WeDo2 reads the shipped licence and author without exempting its attribution', () => {

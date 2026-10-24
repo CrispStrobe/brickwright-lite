@@ -311,6 +311,34 @@ full-OS, broad DOSBox, physical-timing, RTx or release claim.
 
 ## Next finite GUI composition and hosted acceptance
 
+Current Arcade composition selects compiler `37bfe28760f60c836097854fb141fd114bbee518` from
+main's reviewed supplier adoption. Its compiler source is identical to D7;
+both x86 consumer literals match the current selection. Actual execution remains
+disabled. The preceding F9 hosted source workflow passed all 67 Node control
+groups, including twelve GUI groups; it supplies no current composed GUI/guest,
+tool or external-event qualification. Keep the following D7 record as historical
+source maintenance and preserve its original reader identities.
+
+Current D7 supplier-consumer maintenance is a SOURCE candidate: the fixed SB3
+selection in `scripts/run-i80386-hdd-gui-actual.py` and
+`scripts/read-i80386-hdd-gui-originals.py` is
+`d7c258910dd3837021a7a8c4b85d38a4e28e138a`. Both actual gates remain disabled;
+all other script bytes, dependency declarations and historical readers stay held.
+The complete unchanged source-control module and exact-head checks are pending.
+Fresh affected GUI/guest qualification still needs its own admitted D7 source,
+installed supplier/browser and tool graph, finite resources, external request and
+event, and independent original reader. No earlier source result or consumed
+event qualifies this candidate; no guest attempt is authorized here.
+
+The earlier GUI source work in
+[PR #1095](https://github.com/CrispStrobe/brickwright-lite/pull/1095) has merged.
+The current-main compiler selection is an ancestor of the explicit D7 adoption;
+D7 adds the source operators, score callbacks and motor-power support. The
+candidate's twenty mapped compiler files and mirrors match D7. Preserve that
+adoption and the two matching consumer fences while qualifying the combined
+head. This refresh supplies no new tool availability, request, event or guest
+result; retain the earlier consumed failures and their historical readers.
+
 A separate source-only exact-entry chain slice is being reviewed on top of
 PR1013's `79afc8bc` checkpoint. It adds `font-chain-guard` and `font-chain`
 controller modes plus independent `--font-chain` observation validation, all
@@ -1006,7 +1034,7 @@ four CUI commits change five module-label/layout and supporting files; existing
 386 target/API source is unchanged. Full rendering and this scenario's browser
 acceptance still need their own qualification. Board and SB3 selections stay held.
 
-The current-main composition explicitly advances only the GUI consumer expectation
+The earlier composition explicitly advanced only the GUI consumer expectation
 to canonical CUI `bda0157410a6704ae859a19398a8a742cdfae50b`, checking root
 devDependencies, GUI dependencies, both lock roots/resolutions and vendor pins.
 The dependency declarations remain main bytes. Earlier request/source selections
@@ -1025,7 +1053,7 @@ lock and vendor selection. A synthetic noncurrent consumer tests refusal without
 retaining a stale active supplier pin. The earlier CI failure stays retained;
 this repair changes no dependency version or runtime qualification.
 
-The current-main pin adoption now explicitly selects Board
+The earlier main pin adoption explicitly selected Board
 `fac3a5a9928c8b53a778b0c42d8d91d5e693e4b7` and CUI
 `a7621be4d40d089826d78cd1e656b7c592ef16db` in both consumers, preserving main
 package/lock/vendor declarations. Board controls actual v3/v4 admission and
@@ -1033,6 +1061,16 @@ scenario proof grading; historical actual originals require their retained
 historical reader. Font-prior formats and bytes remain held. New source, reader
 and request bindings, exact-head CI and affected guest qualification remain
 pending; this pin refresh establishes no new runtime result.
+
+The 2026-10-20 consumer composition follows main's canonical CUI selection
+`989f9541de610d2a742b36867c12df61d36b0c24` in both the controller and reader.
+Root and GUI package/lock declarations and vendor pins remain unchanged;
+Board and SB3 selections are also unchanged. This explicitly updates the
+consumer identity after the B27 part-face adoption, not a dependency selection
+or browser/guest qualification. Actual execution stays disabled. Historical
+originals retain their historical readers and source bindings. Any new actual
+needs a freshly admitted complete source, request, workflow/event and artifact
+envelope, followed by the existing affected GUI/guest acceptance.
 
 After the bw-circuit-ui bump to `989f9541de610d2a742b36867c12df61d36b0c24`
 (Lite #1122, B27 part faces) both consumers' CUI declarations follow it, so the

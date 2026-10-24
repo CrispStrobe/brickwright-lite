@@ -42,6 +42,7 @@
  * Exit codes: 0 done, 1 the program does not compile / refused / faulted, 2 bad usage,
  * 3 the runtime (or, for run, the LabWired engine) is not synced. What was not translated is always printed.
  */
+import {createProjectedCostumePaletteLookup} from './lib/project-palette-lookup.mjs';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
@@ -150,9 +151,10 @@ async function readProject (file) {
     } else if (artwork.outcome === 'invalid' || artwork.outcome === 'future') {
         warnings.push(`Editable artwork source not exported: ${artwork.reason || 'unsupported future artwork version'}`);
     }
-    const costumePalette = (t, c) => palettes.get(`${project.targets.indexOf(t)}:${t.costumes.indexOf(c)}`) || null;
     const {withoutAssetLibraries} = await lib('bw-asset-library.js');
-    return {project: withoutAssetLibraries(project, artwork.libraries || []),
+    const exportedProject = withoutAssetLibraries(project, artwork.libraries || []);
+    const costumePalette = createProjectedCostumePaletteLookup(project, exportedProject, palettes);
+    return {project: exportedProject,
         costumeSvg, costumePalette, soundData, animationDocuments, warnings, original};
 }
 
@@ -171,8 +173,8 @@ async function toMakeCode (file, target) {
         warnings.push('the imported MakeCode original no longer matches this program (it changed since import); exported from the blocks');
     }
     if (target === 'arcade') {
-        const {projectToArcade} = await lib('bw-makecode/export-arcade.js');
-        const out = projectToArcade(project, {name, costumeSvg, costumePalette, soundData, animationDocuments});
+        const {projectJsonToArcade} = await lib('bw-makecode/export-arcade.js');
+        const out = projectJsonToArcade(JSON.stringify(project), {name, costumeSvg, costumePalette, soundData, animationDocuments});
         return {...out, warnings: [...warnings, ...out.warnings], name};
     }
     if (target === 'ev3') {

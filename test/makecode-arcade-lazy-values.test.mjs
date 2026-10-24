@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
+const BW=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).default;
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+// Observe the current runtime's backing while callbacks are paused. This does
+// not invoke an opcode without its actual VM call or decode/rewrite values.
+const arrayBody=(run,reference)=>{const body=BW.arrayValue(run.vm.runtime,reference);assert.ok(Array.isArray(body),'actual current runtime Array backing');return body;};
 async function execute(imported){
     assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true});
@@ -36,10 +41,17 @@ if(c===false){result+=4}
 if(d===null){result+=8}
 if(e===""){result+=16}
 if(f==="false"){result+=32}
-if(g===undefined){result+=64}`,run=>{
+if(g===undefined){result+=64}
+let observed0=values[0]
+let observed1=values[1]
+let observed2=values[2]
+let observed3=values[3]
+let observed4=values[4]
+let observed5=values[5]
+let observed6=values[6]`,run=>{
         assert.equal(Number(vars(run).calls),6);assert.equal(Number(vars(run).result),127);
-        const p=run.vm.runtime._primitives,values=vars(run).values;
-        assert.deepEqual(Array.from({length:7},(_,i)=>p.arrays_referenceItem({ARRAY:values,INDEX:i})),[7,'0',false,null,'','false',{bwUndefined:true}]);
+        const value=vars(run);
+        assert.deepEqual(Array.from({length:7},(_,i)=>value['observed'+i]),[7,'0',false,null,'','false',{bwUndefined:true}]);
     });
 });
 // Direct selected-original source probes retain 214356978 rather than normal
@@ -57,11 +69,11 @@ let receiverCalls=0
 let indexCalls=0
 function getRow(){receiverCalls+=1;tap(7);return rows[0]}
 function index(){indexCalls+=1;tap(8);return 0}
-getRow()[index()]=0||tap(9)`,run=>{
+getRow()[index()]=0||tap(9)
+let observedItem=rows[0][0]`,run=>{
         assert.equal(Number(vars(run).trace),214356978);assert.equal(Number(vars(run).sum),3);assert.equal(Number(vars(run).paired),7);
         assert.equal(Number(vars(run).receiverCalls),1);assert.equal(Number(vars(run).indexCalls),1);
-        const p=run.vm.runtime._primitives,row=p.arrays_referenceItem({ARRAY:vars(run).rows,INDEX:0});
-        assert.equal(p.arrays_referenceItem({ARRAY:row,INDEX:0}),9);
+        assert.equal(vars(run).observedItem,9);
     });
 });
 test('logical and conditional selections retain Sprite, Image and array reference identity',async()=>{
@@ -82,11 +94,12 @@ fallback[1].y=35
 let evaluations=0
 function pick(flag:boolean){let selected=flag?pictureA:pictureB;return selected}
 let returned=pick(false)
-returned.fill(4)`,run=>{
+returned.fill(4)
+let observedLength=row.length`,run=>{
         const [a,b,attached]=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);assert.equal(a.x,25);assert.equal(b.y,35);
-        const value=vars(run),p=run.vm.runtime._primitives;
+        const value=vars(run);
         assert.equal(value.chosen,value.first);assert.equal(value.picture,value.pictureB);assert.equal(value.returned,value.pictureB);
-        assert.equal(value.row,value.fallback);assert.equal(p.arrays_referenceLength({ARRAY:value.row}),2);
+        assert.equal(value.row,value.fallback);assert.equal(value.observedLength,2);
         assert.equal(attached.image.pixels[0],4);
     });
 });
@@ -112,9 +125,9 @@ let indexes=0
 function receiver(){receivers+=1;return rows[0]}
 function index(){indexes+=1;return 0}
 function change(){rows[0][0]=100;return 7}
-receiver()[index()]+=false?0:change()`,run=>{
-        const p=run.vm.runtime._primitives,row=p.arrays_referenceItem({ARRAY:vars(run).rows,INDEX:0});
-        assert.equal(p.arrays_referenceItem({ARRAY:row,INDEX:0}),107);
+receiver()[index()]+=false?0:change()
+let observedItem=rows[0][0]`,run=>{
+        assert.equal(vars(run).observedItem,107);
         assert.equal(Number(vars(run).receivers),1);assert.equal(Number(vars(run).indexes),2);
     });
 });
@@ -168,13 +181,13 @@ test('concurrent controller callbacks keep lazy value cells separate across paus
 function delayed(value:any){pause(20);return value}
 controller.A.onEvent(ControllerButtonEvent.Pressed,function(){let selected=delayed(0)||delayed("0");results.push(selected)})
 controller.B.onEvent(ControllerButtonEvent.Pressed,function(){let selected=delayed(false)?99:(delayed(undefined)||delayed(null));results.push(selected)})`,async run=>{
-        const p=run.vm.runtime._primitives,array=vars(run).results;
-        assert.equal(p.arrays_referenceLength({ARRAY:array}),0);
+        const array=vars(run).results;
+        assert.equal(arrayBody(run,array).length,0);
         for(const key of [' ','z'])run.vm.postIOData('keyboard',{key,isDown:true});await stepFrames(run.vm,3);
         for(const key of [' ','z'])run.vm.postIOData('keyboard',{key,isDown:false});
         const deadline=Date.now()+3000;
-        while(p.arrays_referenceLength({ARRAY:array})!==2 && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
-        const results=Array.from({length:p.arrays_referenceLength({ARRAY:array})},(_,i)=>p.arrays_referenceItem({ARRAY:array,INDEX:i}));
+        while(arrayBody(run,array).length!==2 && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
+        const results=Array.from(arrayBody(run,array));
         assert.equal(results.length,2,JSON.stringify({results,vars:vars(run),errors:run.errors,code:run.creator.decompile(),threads:run.vm.runtime.threads.map(t=>({status:t.status,stack:t.stack.map(id=>t.target.blocks.getBlock(id)?.opcode),frames:t.stackFrames}))}));assert.ok(results.includes('0'));assert.ok(results.includes(null));
         assert.deepEqual(run.errors,[]);
     });

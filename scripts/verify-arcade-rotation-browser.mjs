@@ -65,8 +65,33 @@ try {
         null, {timeout: 60000});
     await page.evaluate(() => {
         const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
-        window.__bwRotationObservation = {blockErrors: [], diagnostics: []};
-        runtime.on('BLOCKS_ERROR', error => window.__bwRotationObservation.blockErrors.push(String(error)));
+        const ownDescriptor=Object.getOwnPropertyDescriptor,own=Object.hasOwn,define=Object.defineProperty;
+        const summaryFields=['rootIndex','rootLabel','keyKind','key','symbolPosition','comparison','changedField',
+            'actualType','savedType','actualFlag','savedFlag'];
+        const intrinsicSummary=error=>{try{
+            // No property getters, primitive calls, stack reads or coercion.
+            // Constraint signals wrap the newly-created native error as cause.
+            const direct=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'bwArrayIntrinsicMismatch'):null;
+            const cause=error&&(typeof error==='object'||typeof error==='function')?ownDescriptor(error,'cause'):null;
+            const source=direct&&own(direct,'value')?direct:
+                cause&&own(cause,'value')&&cause.value&&typeof cause.value==='object'?ownDescriptor(cause.value,'bwArrayIntrinsicMismatch'):null;
+            if(!source||!own(source,'value')||!source.value||typeof source.value!=='object')return null;
+            const copy={};
+            for(let i=0;i<summaryFields.length;i++){
+                const key=summaryFields[i],descriptor=ownDescriptor(source.value,key);
+                if(!descriptor||!own(descriptor,'value'))return null;
+                const value=descriptor.value;
+                if(value!==null&&typeof value!=='string'&&typeof value!=='number'&&typeof value!=='boolean')return null;
+                define(copy,key,{value,enumerable:true});
+            }
+            return copy;
+        }catch(_observationFailure){return null;}};
+        window.__bwRotationObservation = {blockErrors: [], intrinsicRefusals: [], diagnostics: []};
+        runtime.on('BLOCKS_ERROR', error => {
+            const observation=window.__bwRotationObservation;
+            observation.intrinsicRefusals.push(intrinsicSummary(error));
+            observation.blockErrors.push(String(error));
+        });
         runtime.on('ARCADE_RUNTIME_DIAGNOSTIC', issue => window.__bwRotationObservation.diagnostics.push(issue));
     });
     await page.getByRole('tab', {name: 'Code', exact: true}).click();

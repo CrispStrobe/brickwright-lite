@@ -1,7 +1,541 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-16. The current-state refresh below supersedes the older
-2026-10-10 checkpoints retained later in this guide. This is the public
+## Current qualification — 24 October 2026
+
+Start with [the current results and task order](ARCADE-COMPATIBILITY-NEXT-STEPS.md)
+and [captured class primitive work](ARCADE-CLASS-CAPTURED-PRIMITIVES.md).
+Older sections below retain historical results; they do not describe the current
+candidate or authorize reusing another head's test results.
+
+The completed four-shard baseline has **12,463 passes, 147 failures, 19 skips
+and 37 TODOs**. The later hosted numeric-authoring job passes five journeys;
+its optional clean-export freshness observation is unavailable. Source controls
+for native-frame reset and custom-kind binding pass eleven and four groups
+respectively. These results cover different heads and boundaries.
+
+The [current class candidate](ARCADE-CLASS-CAPTURED-PRIMITIVES.md) corrects
+primitive addition unions and proves captured reads from actual producers and
+writers. Its complete six-group module passes at
+`7f08e871ad3c76929282787092270b1b09158744`, including the full inheritance
+export/reimport and Code feedback journey. Actual method entry, formal input and
+source-order temporary alias proofs remain private and separate from global
+capture declaration readiness. The separate complete class-scalar, lineage and
+union run passes fourteen groups at that same source head. Remaining affected cohorts, mutations and
+hosted runtime qualification remain pending. Keep the original failed runs
+and program.
+
+Historical **147 translated / 36 partial / one malformed** application counts
+remain unremeasured. No component result, passing corpus guard or source-only
+conversion changes those counts. Final composed hosted checks, actual MakeCode
+execution and visible authoring journeys remain required.
+
+## Recursive Number capability — complete source controls pass
+
+[PR #1213](https://github.com/CrispStrobe/brickwright-lite/pull/1213) merged the
+exact new proof scope after all four enabled checks passed. The integrated
+candidate keeps generic cyclic `Opaque` facts and all preceding refusal gates.
+Read [the capability and acceptance contract](ARCADE-NUMERIC-RECURSIVE-RESULTS.md)
+and the Image/recursive authoring rows in the
+[GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Source eligibility,
+original/emitted SDK, native execution, fresh project reload, actual authoring
+and application accounting are separate gates. No recursive application is
+counted complete yet; preserve the previous function-return failures and the
+unmeasured historical 36 partial applications.
+
+The complete source cohort passes **55/55**: all preceding 47 controls and all
+eight new groups, without skips, TODOs or raised limits. The original complete
+twelve-test native/SDK module and visible authoring gates remain pending.
+
+
+## New hosted checkpoint — 22 October 2026
+
+Read [the latest repair observation](ARCADE-CI-REPAIR-STATUS.md) first. The next
+hosted unit run reports **12,160 passes / 168 failures**: thirteen old failures
+resolved, zero newly failing titles. SPIKE power11 and Robot Lab groups pass;
+legacy SDK controls improve to **31/32**, with mixed Array forwarding still
+refused after exact-file reimport. The earlier run omitted its typing captures
+and was incorrectly attributed to initial export. The next candidate now retains
+those captures: initial export, Code feedback and exact-file import pass, then
+second export refuses mutation/indexing Array producers. Diagnose the actual
+second project and its writers; preserve the earlier missing-data limitation.
+
+The standard build passes; numeric authoring stops at an open actions menu
+intercepting a report click. The source repair uses the real summary and retains
+all assertions. The complete candidate still needs qualification; historical
+**36 partial applications remain unremeasured**. Next conversion capability is
+[the bounded recursive Number proof claim](https://github.com/CrispStrobe/brickwright-lite/pull/1213).
+That scope has merged; preserve generic cyclic refusals and
+track Code, Blocks, fresh reopen, actual export/compiler and graphics journeys
+separately. No additional manual build dispatch or `ci:full` label is needed.
+
+## Earlier qualification and continuation — 2026-10-22
+
+Read [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md) before the older
+checkpoints below. The complete hosted F9 run finished, rather than remaining
+pending: its ordinary unit shards report 12,103 passes and 181 failures. The
+complete legacy SDK module has 30 passes and two failures, with its genuine
+original/emitted compilation group passing. Native Array, CLI, word and bitwise
+control cohorts pass. The historical **147 translated / 36 partial / one
+malformed** application census has not been remeasured.
+
+Main's school/SPIKE repair is now normally composed locally, retaining the
+Arcade additions and compiler capabilities. Its compiler selection is a D7
+descendant with identical compiler source; the x86 consumers match the current
+selection and actual execution remains disabled. Earlier hosted controls do
+not qualify the new composition. The incoming motor implementation removes the
+measured eager import chain and restores the historical manual percent-speed
+route, but the unchanged initial-JS budget and affected browser checks must
+measure the final result.
+
+Continue in this order: finish strict menu-companion proof; correct the scoped
+failure witnesses and diagnostic capture; qualify one complete integration
+candidate; inspect actual remaining operands; then perform the full corpus
+permutations. The [failure-witness claim](../lanes/2026-10-22-arcade-failure-witness-maintenance.md)
+is merged. Keep GUI journeys, original/emitted SDK, native execution and corpus
+accounting as separate acceptance tasks. Preserve all original failures and
+unsupported-element reports. Do not add `ci:full`, duplicate hosted dispatches,
+relax budgets or claim application completions from component passes.
+
+
+### Next semantic work: separate three return failures
+
+The complete [function-return module](../test/makecode-arcade-function-returns.test.mjs)
+reports **nine passes and three failures** in the hosted F9 unit run. Each failed
+case passes its native/Code checks, then stops at initial export with the native
+addition refusal. Exact rejected operands and type facts were not captured;
+exported SDK compilation and save/reload are not reached for those cases.
+Do not claim that all three have the same cause.
+
+1. **Closed numeric recursion and mutual recursion.** The actual generic value
+   graph deliberately adds `Opaque` to cyclic call results and excludes cyclic
+   immutable-function facts. Formal parameters already receive actual entry
+   initialization and argument propagation; a blanket initialization change is
+   the wrong starting point. Claim a new private normal-return Number proof for
+   closed recursive call components, with a narrow producer-query/native-addition
+   bridge and focused complete controls. Existing numeric claims explicitly
+   refuse recursion, so merge an expanded claim first. Keep generic `Opaque`
+   intact, preserve real calls and effects, and reject unknown entries, aliases,
+   defaults, fallthrough/undefined returns, opaque writers and source changes.
+   Prove values on normal return; do not invent termination or replace recursion
+   with constants. Qualify actual exported inputs before claiming either case.
+2. **Sprite forwarding and numeric properties.** The third case includes
+   `sprite.x += 5` and has no source class. The existing class scalar view returns
+   early without a class, and the generic graph has no proven Sprite property
+   contract. Capture the actual rejected operand first. Any new numeric-property
+   fact must join genuine SDK allocations, receiver identity, aliases, every
+   writer and effects; a Sprite annotation or field spelling grants no fact.
+   Treat this as a separate capability until current evidence links it otherwise.
+3. **Alias forwarding through the second owned Array export.** Use the newly
+   enabled five-leaf hosted failure capture to inspect current project, draft,
+   importer and refusal values. Preserve first/second export stages separately.
+   Do not substitute an older capture or weaken initialization/reset checks.
+
+For each capability, extend the GUI ledger with an explicit authoring journey:
+Code/pseudocode and connected Blocks, edit an operand or return, save/fresh reopen,
+run with the controller/stage, export and compile in MakeCode, and freshly
+reimport. Sprite artwork and position edits must affect the game. Source tests
+alone do not qualify those representations. The manual Robot Lab control's
+Power label also needs a separate GUI scope clarifying its existing percent-speed
+mode versus dedicated fixed-duty SPIKE power; it is not physical PWM acceptance.
+
+The menu guard now has ten passing complete controls and a passing production
+check on retained hosted JavaScript/HTML. Reporting and overwrite witnesses pass
+all 23 complete controls. New-build, affected browser/guest and full corpus
+qualification still belong to the final integration head.
+
+
+## Latest observed state and next work — 2026-10-21
+
+### Latest incremental closure
+
+Closed numeric factories now pass all **39 affected source controls** and
+**all eight original native counter tests**, without skips. The two original
+export refusals are closed: edited captures and renamed aliases export and
+reimport with values 9, 16 and 9. The tested export uses
+`callableLexicalPrototype: true`. The bounded source proof preserves actual
+calls, Undefined/callable facts, separate activations and unknown-entry refusals.
+See [the exact scope and remaining GUI/SDK work](ARCADE-NUMERIC-CLOSURE-RESULTS.md).
+These component results do not change historical corpus counts.
+
+Nullable native Array `.length` now has a source-qualified Number result on
+normal completion: **31/31 tests across nine complete modules**, no skips.
+Null/Undefined receivers, initialization, all writers and strict Array/coercion
+APIs remain unchanged. The original 29-pass/two-failure run is retained; the
+corrected run includes meaningful canonical-helper selection witnesses.
+See [the exact capability and next tasks](ARCADE-ANIMATION-NUMERIC-PRODUCERS.md).
+
+Static fresh-resource emission now passes all **32 tests across three complete
+affected source modules**, without skips. It preserves the raw AST API and
+fallback paths; the earlier 31-pass/one-fail fixture original is retained.
+Closed Image/factory normal results now pass all **47 controls across eleven
+complete source modules**. All **three unchanged original animation carrier
+tests** also pass: edited frame pixels survive save/reload, actual export,
+fresh reimport and fresh VM execution, with no unsupported elements or warnings.
+The audit wrapper retains a failed exact metadata comparison because JavaScript
+rounds filesystem nanosecond timestamps; independent saved-result review verifies
+the exact source identities. This is an observed test success with an audit
+serialization failure, not an all-pass wrapper. Retained VM providers differ
+from the current raw VM source in three files. Original/emitted SDK compilation,
+current installed-runtime and actual editor/browser acceptance remain pending.
+No historical partial-app count has been remeasured.
+
+
+Latest main has been normally composed locally, preserving its new Robot Lab
+library, both sides of the scope ledger and the 16-group browser matrix.
+This is a source composition, not new hosted acceptance. The published PR
+head and historical **147 translated / 36 partial / one malformed** corpus
+measurement remain unchanged. See the repair matrix before scheduling CI.
+
+### Local integration follow-up
+
+The preserved Array/class, refusal-report, CLI fixture and SPIKE candidates now
+have a clean local composition with the current main and the inert assessment
+workflow registration. A source review verified merge ownership, the combined
+scope ledger and the tracked importer mirror. This composition has not received
+hosted qualification and is not the published PR head described below.
+
+The complete refusal-report cohort passes **15 tests, zero failures or skips**.
+Its earlier two fixture failures are retained; their correction did not relax
+the product proof. The report provides observed operand facts and the analyzed
+draft, while deferred UI updates retain request, revision and VM ownership.
+An observed refusal remains a refusal, not a successful application conversion.
+
+The complete genuine metadata generator now returns **615 menu rows**, with
+only the SPIKE motor-power row added to the previous 614-row table. Its source
+output was adopted whole. The preceding fresh installer exceeded its resource
+limit; only its independently checked immutable outputs were admitted for this
+subsequent metadata run. Do not call the installer successful or repeat it.
+The actual menu CLI check, motor controls and affected guest remain pending.
+
+One complete existing event-game example now passes import, genuine Creator
+artwork ingress, actual SB3 save, reopened project/artwork and immutable JSON
+export with **zero unsupported elements**. All three SVG references join the
+actual saved archive. This is source/save/artwork acceptance; original/emitted
+MakeCode compilation, native game execution and browser authoring remain
+unqualified for this diagnostic. The earlier observer failure is preserved:
+Creator supplies its default Stage asset during save, not in its asset map.
+The diagnostic now uses the genuine package rather than a substitute image or
+a weakened assertion. This example did not reproduce a native-addition refusal.
+
+The preceding original edited-animation case had two passes and one export
+failure (superseded by the three passing original tests above). Exact current export arguments and the returned diagnostic identify
+an initialized `count` after `count = frames.length`, with `Opaque` and `Number`
+producer facts. Its actual resource context and all original assertions remain
+retained. The [next producer work](ARCADE-CI-REPAIR-STATUS.md#readiness-analysis-and-overlapping-power-work)
+has a separate merged implementation claim; it must preserve dynamic fallback,
+fresh/shared identity, all writers, null and possible missing elements.
+
+Separately, captured lexical declaration readiness now passes all 23 controls
+across eight complete source modules. It distinguishes declaration execution
+from value initialization and proves complete closed function entries. Real
+parser defaults, retained optional signatures, escapes, reflection and opaque
+writers cannot acquire authority. The earlier failing originals are preserved.
+See [the contract and remaining gates](ARCADE-LEXICAL-DECLARATION-READINESS.md).
+This is source-analysis qualification; full SDK, native, browser and corpus
+acceptance remain separate. No fresh corpus count is available.
+
+The x86 refresh confirms that PR #1095 is already merged. Current main's SB3
+selection is an ancestor of D7; retain the candidate's reviewed D7 compiler
+capabilities and its matching consumer fences. Continue from the
+[current x86 guide](X86-NEXT-LANES.md#next-finite-gui-composition-and-hosted-acceptance).
+
+The operator-authorized x86 supplier-consumer claim has merged in PR #1193;
+its two fixed D7 identities are a local candidate with actual execution disabled
+and fresh affected GUI/guest acceptance pending. The school owner has separately
+taken over the narrow SPIKE power repair. Preserve our candidate and receipts,
+and reconcile with that owner's landed result rather than duplicating it.
+
+This section supersedes older pending-run descriptions below. PR [#1128](https://github.com/CrispStrobe/brickwright-lite/pull/1128)
+at `125dacab7e183ca15d08224524b576894480d8b1` has finished all enabled
+checks. All three browser groups passed; build and all four unit shards failed.
+The repaired source fence passed all 178 controls. This is not a green candidate.
+
+The complete unit logs contain 175 ordinary failures, of which 158 stop at the
+native-addition operand-domain guard. A common message does not establish a
+common cause: the logs do not contain the actual failing operand facts. The
+other failures include bitwise expectations, the public assessment CLI output
+layout, SPIKE power opcode/menu adoption, a stale word-table count, and an x86
+supplier fence. See [the repair matrix](ARCADE-CI-REPAIR-STATUS.md#latest-complete-hosted-observation--2026-10-21).
+
+Work is preserved in separate candidates. Their presence does not establish
+execution, SDK, editor or application acceptance:
+
+1. **Array writers and constructor effects:** the corrected candidate preserves
+   actual mixed writer types, rejects missing/null malformed class kind fields,
+   and uses a closed constructor-effect proof for startup resets. Qualify the
+   entire corrected 32-test cohort in hosted CI with original and emitted SDK
+   compilation. The prior complete local run failed seven assertions and its
+   resource bound; do not repeat it locally or filter away cases.
+2. **Refusal reports:** add already-observed operand facts and the exact analyzed
+   export draft, then present them in the existing conversion report. Preserve
+   original refusal reasons, evaluation order and proof rules. Unknown source
+   locations and selected blocks must remain explicitly unavailable; candidate
+   emission sites are not selected-block attribution. Test report ownership
+   against deferred updates, edits, VM changes and overlapping requests. This
+   supplies evidence for the 158 failures; it does not itself fix them.
+3. **SPIKE supplier adoption:** the scoped upstream supplier already implements
+   the motor power operation. Genuine bundle generation has been independently
+   checked: only SPIKE's carrier and pin row changed; the other 29 bundles and
+   global supplier pin are unchanged. The matching virtual motor models use
+   torque, damping and inertia for power control. Full motor tests, affected
+   guest qualification and the existing
+   opcode/menu gate remain mandatory. Generated bundle identity alone is not
+   motor qualification.
+4. **Public CLI and word table:** the CLI test must place ordinary outputs
+   outside its protected input catalogue, retain actual nonempty artifact and
+   collision assertions, and pass the complete ten-test public module. The
+   generated word table contains 406 forms, including two score-handler forms;
+   update the fixed fixture and run all five module controls. Neither repair
+   changes converter semantics or application counts.
+5. **Fresh corpus measurement:** qualify the public hosted isolation controls
+   before admitting private inputs. Preserve the existing failed local isolation
+   result. Bind read-only inputs, report encryption and complete output/lifetime
+   limits, then run the complete 225 observations once. Compare the historical
+   36 partials against the original 184-input cohort, separately from 41 context
+   revisits. A source-only isolation implementation is not a safe completed run.
+
+The historical count remains **147 translated / 36 partial / one malformed**.
+Do not promote applications from focused test successes. Every eventual closure
+needs original input, native run, Code and Blocks edits, graphics/resources where
+applicable, saved-project reopen, exported MakeCode compilation and fresh import.
+Detailed Blocks/Code/graphics acceptance remains in the
+[GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
+Private checkout locations, original logs, recovery patches and source-review
+receipts belong only in the ignored local companion and private operational log.
+
+## Start here — 2026-10-21
+
+### Current composition and next acceptance
+
+The extension menu table now includes the two missing source-operation menus.
+It is copied from a complete run of the actual normal-installation metadata
+generator: 614 opcode rows across 30 bundled and 12 stock extension attempts,
+with only the existing camera-extension skip. No rows were supplied by hand.
+The actual generator CLI `--check` also passes against that complete table.
+Integrated mirror checks, the complete extension-menu/SPIKE module and visible
+editor journeys remain gates; metadata checks do not qualify game execution.
+
+The separate class/Array declaration candidate first exposed six failures in
+its complete 24-control group (17 pass, six fail, one named missing-SDK skip).
+Its expanded constructor-effect group now has 24 passes, seven failures and
+one named SDK skip, and did not meet its declared local resource bound. Preserve
+the complete failures; qualify the corrected whole 32-test group in hosted CI.
+Correct class temporaries also made an existing raw safe-prefix proof applicable;
+that case needs a positive control alongside a genuine immutable-boundary
+negative. Mixed Array startup reimport still needs a closed constructor-effect
+proof. The exact scope and unsafe-constructor controls are in
+[`lanes/2026-10-21-arcade-class-reset-effects.md`](../lanes/2026-10-21-arcade-class-reset-effects.md).
+Preserve complete failing graphs, actual writes and initializers; require the
+full affected cohort and genuine original/emitted SDK compilation. A missing
+compiler is an unqualified prerequisite. The historical 36 partials are unchanged.
+
+
+The SDK Sprite receiver candidate now passes its complete nine-module,
+35-control source cohort. It admits the genuine Sprite `x` slot through checked
+Image ingress and closed `sprites.allOfKind` receiver sets, preserving possible
+Undefined values, exceptions and unproved writers. The unchanged two-case
+conversion diagnostic also passes; it covers import, Creator/assets and export,
+with the full source and output files retained. Current VM execution, original
+SDK execution, fresh reimport and visible authoring remain pending. Read
+[the receiver contract and qualification boundary](ARCADE-CLASS-LINEAGE.md).
+
+The stdout assessment transport passes all 23 controls across its writer,
+unchanged progress module and independently implemented decoder. The CLI can
+emit bounded framed progress, a compressed report, Markdown and a terminal
+record using `--stdio-transcript`; normal file output remains the default.
+A separate seven-invocation static CLI comparison also passes, preserving
+complete graphs, actual parse-failure exit and output-conflict refusals. The
+complete public CLI module with SB3/VM prerequisites, report admission and
+filesystem isolation remain separate gates. Read
+[the wire contract and pending work](ARCADE-PRIVATE-ASSESSMENT-STDIO.md).
+
+A separate pending candidate adds a strict canonical Array menu reader shared
+by the affected export analyses; it is not included in this composed slice.
+Its reimported null initialization exposes a further requirement:
+prove that an independent Array assignment precedes every read. The new proof
+must use the existing immutable project-JSON export boundary, preserve direct
+mutable-object refusals and retain all producer/writer checks. Its complete
+round-trip and hostile-input controls remain pending; menu syntax support alone
+does not close those application gaps.
+
+Current main also adds generated extension menu normalization. The composed
+candidate now adopts the complete actual `getInfo()` table, including
+`arcade_sourceValueBinary` and `arcade_sourceValueUnary`. The genuine CLI
+`scripts/gen-extension-menu-args.mjs --check` passes. Verify the source-integrated
+table mirror in hosted qualification. Preserve the declared camera skip; it does not
+qualify camera behavior or the complete extension-menu/SPIKE module.
+
+Qualify the real outer creator/editor menu wrappers as well as the bare
+converter: literal menu shadows must survive import, Blocks/Code changes,
+export/reimport and saved-project reopening. Check Array mutation/sort and
+animation resource menus too. The complete extension-menu test module includes
+real SPIKE VM controls; it is not a pure metadata-only module and must not be
+filtered into a misleading qualification claim. See the GUI ledger's current
+menu-composition work package below.
+
+
+Read [CI repair status](ARCADE-CI-REPAIR-STATUS.md) before continuing the current
+Arcade/Array lane in `LANES.md`. It records the complete four-shard failure census,
+the tested animation export repair and independently scoped class-value, native
+Number, browser initialization, supplier measurement and corpus work. A passing
+build or lesson corpus does not establish MakeCode application compatibility.
+
+Keep the historical 147 translated / 36 partial / one malformed result until a
+complete replacement census exists. Preserve failing inputs and diagnostics;
+complete affected modules, current execution and export/reimport before claiming
+a gap closed. Local operational paths and raw receipts belong in private ignored
+handoff notes, never in this document.
+
+The proposed [complete private-input assessment route](ARCADE-PRIVATE-ASSESSMENT.md)
+scopes the remaining hosted census work, credential separation and encrypted
+output admission. It is a plan, with no dispatch or replacement census yet.
+
+
+Next, read [the complete application-journey acceptance work](ARCADE-COMPATIBILITY-NEXT-STEPS.md#next-acceptance-the-complete-application-journey--2026-10-21).
+The opt-in `--journey` driver now covers actual import, three VM runs, Code,
+current export and fresh reimport. Read [its CLI and acceptance boundary](ARCADE-CONVERSION-JOURNEY.md).
+Its twelve focused tests pass; complete corpus measurement, private transport
+prerequisites and visible authoring gates remain pending.
+
+
+## Current integration checkpoint — 2026-10-20
+
+The bounded nested-slice candidate passes its complete 50-test pure authority
+module. Read [its proof and pending acceptance](ARCADE-SLICE-PRESENCE.md);
+native, original-PXT, fresh-SB3 and browser checks remain separate.
+
+Start with [the current CI repair matrix](ARCADE-CI-REPAIR-STATUS.md#current-batch-and-acceptance-boundary--2026-10-20)
+for the exact red-check causes, local complete-module passes and pending hosted
+acceptance. Supplier [#57](https://github.com/CrispStrobe/extensions/pull/57) is
+merged; Lite final composition is still awaiting qualification.
+
+The current hosted campaign also exposes genuine source-language Array coercion
+and live editing failures. Read [their work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md)
+and [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#current-live-authoring-failures--2026-10-20)
+before treating any headless or native authoring result as MakeCode parity.
+
+For the latest functional repair and ordered acceptance work, read
+[the current queue](ARCADE-COMPATIBILITY-NEXT-STEPS.md#current-integration-and-repair-queue--2026-10-20).
+The named-empty Array candidate is additional to the qualified earlier49, and
+must not inherit their runtime or roundtrip acceptance.
+
+The current repaired Array runtime now passes all64 existing native controls
+and the complete17 additional JSON/replacement/custom-parser controls, with
+zero skips. The fresh normal installation and saved originals are audited.
+Original failures and the two subsequent test-fixture defects are retained;
+assertions were preserved. Both genuine public Code/export/reimport tests now
+pass too, with independent saved-data checks of expected values, aliases,
+diagnostics and Stop/quit completion. Final hosted checks, SDK compilation and
+visible authoring remain pending. This does not change the historical36-partial
+count or establish complete-game parity.
+
+A later source-arithmetic candidate has a separately accepted normal installation,
+six passing VM controls, three passing intrinsic-refusal controls and one passing
+importer writer-union control. The original combined native episode retains its
+two fixture failures; its corrected six-test successor passes separately.
+The final hosted original SDK module is still required. Three focused scalar
+export/metadata/capture controls and the corrected reference/SB3 case now pass.
+The native export oracle passes full-file compilation and separate exact emitted
+TypeScript execution in the original PXT Runtime/core board, including values and
+aliases; its zero observed child fibers do not qualify background tasks or games.
+The CSV eight-control module passes with the installed Papa parser on string
+inputs; native File/browser and emitted-size qualification remain pending. Read
+the [current work package](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#current-original-pxt-array-coercion-work-package)
+for final gates and the remaining browser diagnostics. These results do not
+replace earlier regression cohorts or promote corpus entries.
+
+Main has been normally merged into the current integration successor, including
+[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and the latest
+Robot Lab and NXT changes. Supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52)
+merged after all seven enabled checks passed. Its explicit Array dependency
+identity is preserved in the integration candidate. These local candidate
+changes have not yet landed as a qualified Lite release.
+
+At the preceding reconciled candidate, all 53 conversion component tests passed.
+A fresh normal VM installation reproduced all 364 expected outputs, including
+180 current VM source files. The shipped Array source admission and all 49
+native Array tests passed; independent saved-data checks accepted both the
+installation and the complete test result. Three actual original-Code,
+captured-Code and fresh exported-TypeScript reimport executions also passed the
+unchanged scalar/Array expectations and completed Stop/quit cleanup. Their
+independent saved-data review also passed. These finite runtime results do not
+qualify graphics, audio, browser authoring or complete games.
+
+The delivery candidate passes all 151 selected conversion regression tests,
+including Camera reconciliation, compiler-owned empty procedure preparation and
+the complete controller-button module. The complete Console and Font source
+and export modules pass all 31 tests. All six CI contract modules pass their 28
+tests. Final hosted SDK/browser and affected guest qualification remain pending;
+these component results do not establish full-corpus compatibility.
+
+Two subsequent experiments tried omitting unused Console and Font producer
+graphs. Their 18- and 27-test groups passed; independent saved-data review also
+accepted all 68 full outputs across two diagnostic episodes using fixed real inputs,
+with all five input snapshots unchanged. However, the balanced timing episode
+showed overhead in the unused Font cases and mixed Console results. Both
+experiments were normally reverted from the delivery candidate. Their commits,
+tests and original evidence remain available; do not reintroduce them as proven
+performance improvements. Measure selection costs as well as the work omitted.
+
+The fifth complete 225-input CLI attempt ended with SIGKILL after 25.03 CPU
+seconds and did not produce a complete report. **The historical result remains
+147 translated / 36 partial / one malformed; current full-corpus outcomes are
+still unmeasured.** Do not subtract component passes or completed progress rows
+from that count. An independent saved-data check accepted the incomplete-run
+diagnostics. Its inclusive conversion intervals account for 21.04 CPU seconds;
+report-wire capture accounts for 2.34. These are prefix process intervals, not
+exclusive function costs or a benchmark of the full input set.
+
+A single real slow input was profiled next. Both importer and Creator returned,
+but saving the full Creator observation exceeded the diagnostic file limit.
+The diagnostic therefore failed; its retained partial profile may identify hot
+functions, but supplies no successful conversion, corpus or speed claim. Keep
+the original failure and separate observer sampling from product sampling.
+
+Next, improve the measured conversion costs without changing the input set,
+diagnostics, assertions or execution bounds, then obtain the complete unchanged
+225-input report. Group its actual diagnostics by construct and source location,
+implement each family, and qualify Code, Blocks, graphics, controller,
+save/reopen and export/reimport journeys. Six broader SDK controls currently
+lack the original compiler/browser runtime and remain pending for one final
+hosted qualification. Keep browser gates for candidates that need them; do not
+repeatedly request `ci:full` during component work. All enabled final checks and
+affected guest qualification remain required before merging.
+
+The ignored local handoff holds source identities, original evidence, commands
+and active ownership. The dated notes below are historical and retain their
+original result boundaries.
+
+## Latest bounded qualification checkpoint — 2026-10-19
+
+Three complete 225-subject CLI attempts ended without reports; **all 225 current
+outcomes remain unobserved**. The historical 184 raw-input result stays **147 translated / 36
+partial / one malformed**; the 41 original contexts retain 29 compiler successes and 12 failures
+separately. These incomplete episodes do not establish their kill causes,
+a bottleneck or a successful prefix.
+
+C6 ran all 48 native Array controls: 45 passed and three failed. The composed
+supplier/host repair has an independently audited C7 installation (363 outputs,
+179 current VM files) and a complete pass of all 49 native tests, independently audited from the saved results.
+Genuine original/Code/export-reimport comparison remains pending. Supplier final checks, new emitted-map SDK acceptance and visible GUI
+journeys remain separate. The first optional-progress episode passed 44 of 45 tests, including all
+eight new tests. The corrected successor passed all 45 unchanged tests;
+independent saved-data review passes.
+See [the current acceptance checklist](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md#methodical-acceptance-still-required).
+
+## Current continuation checkpoint — 2026-10-19
+
+Read [the current failure work packages](ARCADE-CURRENT-FAILURE-WORK-PACKAGES.md) and [the GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) before the dated historical results below. Local component work has been normally composed with a pinned recent main; it is not a merged, fully qualified public release. Refresh main, foundation [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888), and supplier [PR52](https://github.com/CrispStrobe/extensions/pull/52) before acting. Preserve their owners' work and exact dependency pins.
+
+The recorded historical census remains **147 translated / 36 partial / one malformed** out of 184. All 184 raw sources and 41 complete dependency-bearing inputs now have an independent input-lineage audit; their 29 original compiler successes and 12 failures are retained. Three complete current 225-input attempts ended without reports; all current outcomes remain unobserved. Original compiler validity, conversion, runtime and visible authoring are separate results.
+
+Recent component results: Camera/parser 42 controls pass; lossless report codec/CLI 29 controls pass; compact native-byte observation passes 37 controls. An actual two-input compressed CLI report has an independent full payload/descriptor audit. The earlier Array episode failed during circular-module startup before any of its 45 tests ran. The repaired export cycle later ran all 48 tests, with 45 passing and three failing. The composed supplier/host successor now has a complete installation audit and an independently audited pass of all 49 native tests; genuine original/Code/export-reimport execution remains pending. These results retain their separate source boundaries.
+
+Continue in order: qualify the composed current Array value/error semantics; obtain a complete bounded report from the same shipped public CLI/core over all 225 inputs; group actual unsupported constructs by cause and source location; close each family with negative controls and complete affected modules; qualify real Blocks/Code/graphics/controller/save-reopen/export journeys. The public failure table scopes those gates. The ignored local handoff holds exact source heads, commands, original evidence and recovery information.
+
+
+Updated 2026-10-19. The checkpoint above supersedes the historical
+2026-10-16 and 2026-10-10 notes retained below. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
 operator's actual checkouts, tools, private corpus and original receipts.
@@ -3854,3 +4388,46 @@ The optional Image Array clone entry analysis now separates opaque root metadata
 An authentic FreeThrow conversion now issues the entry query and accepts the same first clone that previously failed before the query. Its next named refusal is a zero-argument `destroy()` on a sprite alias from an actual overlap callback. Proving that callback origin, every receiver writer and destruction reentry remains necessary; a `Sprite` annotation supplies no authority. Whole-game acceptance and the raw census remain unchanged.
 
 The complete 22 import-request and 13 editor-contract tests pass with their existing mutation controls. The 24-test native-prompt module, actual browser editing and installed native dialogs remain separate pending qualifications. The original notice inventory missed five hyphenated license filenames; preserve the original coverage gap and use the complete inventory for the next qualification.
+
+### Empty ordinary procedure preparation candidate — 2026-10-20
+
+The historical 36 partial translations are stale baseline observations, not a
+current gap count. The fourth complete 225-input attempt also stopped without
+full reports: it recorded 105 subject-begin markers and 104 completed conversion
+markers, then exited with signal 9 after 25.082 seconds of process CPU and
+13.049 seconds of wall time. The launcher did not time out or send that signal.
+All 225 current outcomes remain unobserved; progress markers confer no prefix
+coverage or successful conversion count.
+
+Saved process intervals attribute 13.042 seconds to the interval ending at the
+import return, 8.121 seconds from the import return to the Creator return, and
+2.229 seconds to completed report-wire capture intervals. These are inclusive
+phase intervals, not exclusive function profiles or proof of a particular
+algorithm's contribution. The importer and Creator remain the main cost
+frontier. No execution cap is raised.
+
+A new source candidate avoids ordinary procedure validation work only when the
+complete compiler-owned preparation has no selected ordinary functions. It
+retains declaration identity analysis, callable routes, signature selection,
+escape checks, exclusions and duplicate diagnostics. A local currentness
+admission is taken before analysis and checked after selection; uncertain,
+changed-intrinsic, Throw and unknown inputs use the original path. Selected
+functions still receive the original value graph, defaults and both validation
+calls. Public low-level preparation and validation retain their eager behavior.
+No graph, source/type certificate, callback or truth cache escapes this complete
+operation.
+
+This candidate has not been executed or measured. The extra entry observation
+may cost more on nonempty selections. Full affected controls and a separately
+admitted changed complete-input run are required before selection; there is no
+speed or fit claim. Runtime, exporter and editor differences remain separate
+qualification work.
+
+## Ordinary default export observation — 2026-10-22
+
+The ordinary JSON API, without either prototype option, exported the captured
+counter with no unsupported elements or result warnings; complete files match
+the earlier export. Independent saved-result review verified current inputs,
+source and module loads. Preserve the outer wrapper failure on Node's module
+format warning; this is an observed conversion result, not an all-pass wrapper
+or a GUI/SDK/corpus result. See [the exact boundary and remaining acceptance](ARCADE-NUMERIC-CLOSURE-RESULTS.md#ordinary-default-export-observation--2026-10-22).

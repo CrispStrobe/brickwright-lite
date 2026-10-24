@@ -100,22 +100,39 @@ export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false)
 // root invalidates every leaf in the program.
 const CAMERA_PROPERTY_MEMBERS = Object.freeze(['X','Y','Left','Right','Top','Bottom']);
 export function ordinaryCameraPropertyNumberLeaves(program) {
-    const sdk=staticSdkNamespaceReceivers(program),candidates=[];
+    const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['eval','Function']}),candidates=[];
+    // Recognize parser/normalizer syntax independently of particular SDK calls.
+    // An unknown binding/effect form cannot establish the builtin enum root.
+    const forms=new Set(['Program','Block','Declaration','DestructuringDeclaration','DestructuringForOf',
+        'ObjectPattern','ArrayPattern','BindingProperty','AssignmentPattern','RestElement',
+        'FunctionDeclaration','FunctionExpression','Class','For','ForOf','While','If','Switch',
+        'ExpressionStatement','Return','ThrowStatement','Break','Continue','Identifier','Member','Index',
+        'Call','Assignment','Update','Binary','Logical','Unary','Conditional','Parenthesized',
+        'Array','Object','Number','String','Boolean','Null','Undefined','Template','Interface','Namespace','Enum',
+        'As','TypeAssertion']);
     let unsafe=false;
     const rootOf=node=>{while(['Member','Index'].includes(node?.type))node=node.object;return node;};
-    const visit=(node,parent=null)=>{
+    const visit=(node,parent=null,assertedAncestor=false)=>{
         if(!node||typeof node!=='object')return;
-        if(Array.isArray(node)){for(const value of node)visit(value,parent);return;}
+        if(Array.isArray(node)){for(const value of node)visit(value,parent,assertedAncestor);return;}
+        const asserted=assertedAncestor||!!(node.assertedType||node.typeAssertions?.length)||['As','TypeAssertion'].includes(node.type);
+        if(typeof node.type==='string'&&!forms.has(node.type))unsafe=true;
+        if(node.type==='Identifier'&&['eval','Function'].includes(node.name)&&sdk.has(node))unsafe=true;
+        if(node.type==='Template'&&typeof node.tag==='string'&&
+            (node.tag==='CameraProperty'||node.tag.startsWith('CameraProperty.')))unsafe=true;
         if(node.type==='Identifier'&&node.name==='CameraProperty'&&sdk.has(node)){
             const member=parent?.type==='Member'&&parent.object===node?parent:null;
-            if(!member||member.optional||!CAMERA_PROPERTY_MEMBERS.includes(member.name))unsafe=true;
+            if(!member||member.optional||member.computed||node.optional||
+                node.assertedType||node.typeAssertions?.length||member.assertedType||member.typeAssertions?.length||
+                asserted||
+                !CAMERA_PROPERTY_MEMBERS.includes(member.name))unsafe=true;
             else candidates.push(member);
         }
         if(node.type==='Assignment'||node.type==='Update'||node.type==='Unary'&&node.op==='delete'){
             const root=rootOf(node.type==='Assignment'?node.left:node.argument);
             if(root?.type==='Identifier'&&root.name==='CameraProperty'&&sdk.has(root))unsafe=true;
         }
-        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node);
+        for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node,asserted);
     };
     visit(program);
     return new WeakSet(unsafe?[]:candidates);

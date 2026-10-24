@@ -28,6 +28,7 @@ import {createRequire} from 'node:module';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import test from 'node:test';
+import {registeredArraysSource, renderRegisteredArraysCarrier} from '../scripts/lib/arrays-carrier.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const read = file => readFileSync(path.join(root, file), 'utf8');
@@ -568,9 +569,11 @@ const dependencyPackages = () => {
 const dependencyFiles = () => dependencyPackages().flatMap(name => walk(`${GUI_MODULES}/${name}`,
     file => !NOT_SHIPPED_DIR.test(file.slice(`${GUI_MODULES}/${name}`.length))));
 const QUICK_CONFIRM = /\bconfirm\s*\(/;
-// The CrispStrobe extensions Lite bundles are one string literal each (`makeExt("…")`), run
-// with `new Function`: their calls are in the decoded string, invisible to a parse of the file.
+// CrispStrobe carriers contain source strings, including the registered Arrays
+// form. Decode both exact forms so calls inside them cannot evade the census.
 const extensionSource = source => {
+    const registered = registeredArraysSource(source);
+    if (registered !== null) return registered;
     const match = source.match(/^const makeExt = require\('\.\.\/adapter'\);\nmodule\.exports = makeExt\(("(?:[^"\\]|\\.)*")\);\s*$/s);
     return match ? JSON.parse(match[1]) : null;
 };
@@ -708,6 +711,20 @@ test('census: no shipped source uses the value of confirm() except the reviewed 
     assert.ok(!files.includes('packages/scratch-gui/src/containers/menu-bar-hoc.jsx'),
         'a path present in overlay/ ships the overlay copy, not the packages mirror');
     assert.deepEqual(censusVerdict(census()), []);
+});
+
+test('the confirm census reports calls inside the registered Arrays carrier', () => {
+    const file = 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js';
+    const code = 'const answer = confirm("Unreviewed dialog?"); use(answer);';
+    const carrier = renderRegisteredArraysCarrier(code);
+    assert.equal(extensionSource(carrier), code);
+    assert.equal(extensionSource(renderRegisteredArraysCarrier('')), '', 'empty registered source is not absence');
+    const calls = confirmCalls(file, carrier);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].where, 'bundled extension source');
+    assert.equal(calls[0].callee, 'confirm');
+    assert.match(censusVerdict(calls).join('\n'),
+        /arrays\/index\.js:1 \(bundled extension source\) uses the value of confirm/);
 });
 
 test('census turns red on a new direct confirm() use, a stale count and a dead entry', () => {

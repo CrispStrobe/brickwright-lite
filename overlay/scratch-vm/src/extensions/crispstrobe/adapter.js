@@ -137,6 +137,12 @@ module.exports = function makeCrispExtension (source, dependencies = null, array
                     if (k !== 'constructor' && typeof inst[k] === 'function' && !(k in this)) this[k] = inst[k].bind(inst);
                 }
             }
+            // Capture genuine source-operation delegates before this adapter
+            // escapes; later getInfo/registration cannot bless a replacement.
+            if (typeof dependencies?.bindSourceOperationAdapter === 'function') {
+                if (typeof this._inst._bindSourceOperationAdapter !== 'function') throw new Error('Source-operation constructor binding is missing');
+                this._inst._bindSourceOperationAdapter(this);
+            }
         }
         getInfo () {
             const info = localizeLegacyMenus(this._inst.getInfo());

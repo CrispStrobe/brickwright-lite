@@ -308,9 +308,16 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> a13f92b8 (2026-10-15): STM32 C correct on silicon (clock tree, G0 IOPORT, pulls, ADC, tone, named refusals; sb3-creator #155) plus #153/#154 Code-tab declaration fixes; src/ change is sb3Creator.js only.
     // -> 7d3f8be7 (2026-10-16): the reviewed shared producer pin. Keep the
     // complete executable artifact and round-trip assertions below required.
-    // -> 37bfe287 (2026-10-21): canonical school circuits share this compiler pin.
-    // The range also carries arithmetic, score/motor words and registry updates;
-    // the existing executable SPIKE artifact assertions must qualify this bump.
+    // -> 74f89846 (2026-10-20): one canonical Arcade source-arithmetic word;
+    // SPIKE producer bytes are unchanged. Re-run every artifact assertion.
+    // -> f4b1a789 (2026-10-21): merged supplier #159, including the source
+    // operation dialect and qualified compiler/sensor fixes; SPIKE producer
+    // source remains unchanged from 7d3f8be7. All artifact assertions remain.
+    // -> d7c25891 (2026-10-21): reviewed supplier #160 score callbacks and #161
+    // SPIKE motor-power/PWM mapping adoption. SPIKE compiler/registry source changed;
+    // rerun every executable artifact and round-trip assertion at this exact pin.
+    // -> 37bfe287 (2026-10-21): canonical school examples and supplier provenance.
+    // Compiler src is byte-identical to d7c25891; keep all artifact assertions.
     // -> 371a8f9d (2026-10-23): programmable Widgets and school battery variants;
     // preserve and re-run all executable SPIKE artifact checks below.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],

@@ -433,3 +433,70 @@ test('late incompatible formal aliases cannot gain presence from pending dataflo
     const creator=current('function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let alias=identity(first);alias.push([1]);let row=first[0];let count=row.length;alias=0 as any');
     assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
 });
+
+// Full source -> actual Creator -> exported files -> source -> actual Creator
+// controls. These statements retain source/copy aliases and real nested writes;
+// the expected negatives are Array presence/type refusals, not parse failures.
+const sliceCases = {
+    "literal-positive": "let rows=[[5],[6]];let copied=rows.slice(0,1);let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "negative-end-positive": "let rows=[[5],[6]];let copied=rows.slice(0,-1);let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "empty-window": "let rows=[[5],[6]];let copied=rows.slice(0,0);let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "out-of-bounds": "let rows=[[5],[6]];let copied=rows.slice(9,10);let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "negative-start-hump": "let rows=[[5],[6],[7],[8]];let copied=rows.slice(-2,2);let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "no-credit-from-later-push": "let rows:number[][]=[];let copied=rows.slice(0,1);rows.push([7]);let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "result-shrink-before": "let rows=[[5],[6]];let copied=rows.slice(0,1);copied.pop();let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "result-shrink-after": "let rows=[[5],[6]];let copied=rows.slice(0,1);let alias=copied;let selected:number[]=null;selected=alias[0];copied.pop();selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "source-alias-slot-writer": "let rows=[[5],[6]];let poisoned:any[]=rows;poisoned[0]=7;let copied=rows.slice(0,1);let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "copy-alias-slot-writer": "let rows=[[5],[6]];let copied=rows.slice(0,1);let alias=copied;let poisoned:any[]=alias;poisoned[0]=7;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];",
+    "future-source-writer-union": "let rows:any[]=[[5],[6]];let copied=rows.slice(0,1);rows=[7];let alias=copied;let selected:number[]=null;selected=alias[0];selected[0]=9;let observed=selected[0];",
+    "selected-reset-after-acquisition": "let rows=[[5],[6]];let copied=rows.slice(0,1);let alias=copied;let selected:number[]=null;selected=alias[0];selected=null;selected[0]=9;let observed=rows[0][0];let same=selected===rows[0];"
+};
+function sliceJourney(name) {
+    const row={name};
+    try {
+        row.imported=arcadeToPseudocode(sliceCases[name]);
+        row.creator=new Creator();row.creator.parse(row.imported.code);
+        row.exported=projectToArcade(row.creator.project);
+        row.reimported=arcadeToPseudocode(row.exported.files);
+        row.second=new Creator();row.second.parse(row.reimported.code);
+    } catch(error) {row.exception=error;row.threw=true;}
+    return row;
+}
+function sliceResult(row,accept) {
+    assert.equal(row.threw,undefined,row.name+': '+row.exception?.message);
+    assert.deepEqual(row.imported.unsupported,[],row.name+' import');
+    assert.deepEqual(row.creator.warnings,[],row.name+' Creator');
+    const blocks=row.creator.project.targets.flatMap(t=>Object.values(t.blocks));
+    assert.ok(blocks.some(b=>b.opcode==='arrays_referenceSlice'),row.name+' actual slice');
+    if(accept) assert.deepEqual(row.exported.unsupported,[],row.name+' export');
+    else assert.ok(row.exported.unsupported.some(s=>/^Array reference /.test(s)),row.name+' actual Array refusal');
+    assert.deepEqual(row.reimported.unsupported,[],row.name+' exported-file import');
+    assert.deepEqual(row.second.warnings,[],row.name+' exported-file Creator');
+    // A negative export can be partial; clean reimport is not acceptance of
+    // the refused nested operation. Only the positive branch requires export[].
+}
+test('bounded nested slices retain actual presence through aliases and overwritten reset',()=>{
+    const rows=['literal-positive','negative-end-positive'].map(sliceJourney);
+    for(const row of rows)sliceResult(row,true);
+});
+test('empty OOB negative-start windows and later source pushes grant no slice presence',()=>{
+    const rows=['empty-window','out-of-bounds','negative-start-hump','no-credit-from-later-push'].map(sliceJourney);
+    for(const row of rows)sliceResult(row,false);
+});
+test('slice-result shrinking is ordered at the actual nested acquisition',()=>{
+    const rows=['result-shrink-before','result-shrink-after'].map(sliceJourney);
+    sliceResult(rows[0],false);sliceResult(rows[1],true);
+});
+test('slice source and copy alias writers future unions and selected reset retain refusals',()=>{
+    const rows=['source-alias-slot-writer','copy-alias-slot-writer','future-source-writer-union','selected-reset-after-acquisition'].map(sliceJourney);
+    for(const row of rows)sliceResult(row,false);
+});
+test('slice minimum is acquired after source shrinks and only closed integer bounds count',()=>{
+    checked('let rows=[[1],[2],[3]];rows.pop();let copied=rows.slice(1,2);let row=copied[0];row[0]=9');
+    for(const source of [
+        'let rows=[[1]];rows.pop();let copied=rows.slice(0,1);let row=copied[0];row[0]=9',
+        'let rows=[[1],[2]];let copied=rows.slice(0,0.5);let row=copied[0];row[0]=9',
+        'let rows=[[1],[2]];let start=0;let copied=rows.slice(start,1);let row=copied[0];row[0]=9',
+        'let rows=[[1],2 as any];let copied=rows.slice(0,1);let row=copied[0];row[0]=9'
+    ]) {const c=current(source);assert.ok(projectToArcade(c.project).unsupported.some(s=>/^Array reference /.test(s)),source);}
+});

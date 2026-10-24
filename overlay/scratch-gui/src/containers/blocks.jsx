@@ -478,31 +478,26 @@ class Blocks extends React.Component {
             this.onWorkspaceMetricsChange();
         }
 
-        // Remove and reattach the workspace listener (but allow flyout events)
+        // Queue reload events for other Blockly listeners, but keep the VM
+        // from receiving its own clear/load echo after this listener returns.
+        // Restore the listener even when XML parsing or error reporting throws.
         this.workspace.removeChangeListener(vmBlockListenerFor(this.props.vm));
-        const dom = this.ScratchBlocks.Xml.textToDom(data.xml);
         try {
-            // Blockly fires the clear/load events on a later task, after the
-            // listener is back: tagged, so the VM does not delete and recreate
-            // its own blocks (lib/workspace-reload-events.js).
-            runAsWorkspaceReload(this.ScratchBlocks.Events, () =>
-                this.ScratchBlocks.Xml.clearWorkspaceAndLoadFromXml(dom, this.workspace));
-        } catch (error) {
-            // The workspace is likely incomplete. What did update should be
-            // functional.
-            //
-            // Instead of throwing the error, by logging it and continuing as
-            // normal lets the other workspace update processes complete in the
-            // gui and vm, which lets the vm run even if the workspace is
-            // incomplete. Throwing the error would keep things like setting the
-            // correct editing target from happening which can interfere with
-            // some blocks and processes in the vm.
-            if (error.message) {
-                error.message = `Workspace Update Error: ${error.message}`;
+            const dom = this.ScratchBlocks.Xml.textToDom(data.xml);
+            try {
+                runAsWorkspaceReload(this.ScratchBlocks.Events, () =>
+                    this.ScratchBlocks.Xml.clearWorkspaceAndLoadFromXml(dom, this.workspace));
+            } catch (error) {
+                // Keep an incomplete workspace usable, as for an ordinary
+                // reload, while preserving the original error for reporting.
+                if (error.message) {
+                    error.message = `Workspace Update Error: ${error.message}`;
+                }
+                log.error(error);
             }
-            log.error(error);
+        } finally {
+            this.workspace.addChangeListener(vmBlockListenerFor(this.props.vm));
         }
-        this.workspace.addChangeListener(vmBlockListenerFor(this.props.vm));
 
         if (this.props.vm.editingTarget && this.props.workspaceMetrics.targets[this.props.vm.editingTarget.id]) {
             const {scrollX, scrollY, scale} = this.props.workspaceMetrics.targets[this.props.vm.editingTarget.id];

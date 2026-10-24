@@ -1,112 +1,59 @@
-import {analyseSourceValueProducers,analyseSourceDeclarationIdentityForPreparation} from './source-value-producers.js';
+import {analyseSourceValueProducers,analyseSourceDeclarationIdentityForPreparation,validateProcedureConstraintSource,validateCompilerOwnedProcedureConstraintSource} from './source-value-producers.js';
+import {declarationIdentityInput} from './declaration-identity-input.js';
+import {TYPES,constraints} from './ordinary-procedure-constraint-metadata.js';
+export {validateProcedureConstraintSource} from './source-value-producers.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {analyseCallableFlow} from './callable-flow.js';
-const TYPES=Object.freeze({number:'Number',string:'String',boolean:'Boolean',any:'Any'});
+const preparationApply=Reflect.apply;
+const preparationMapSize=Object.getOwnPropertyDescriptor(Map.prototype,'size').get;
+// Additional surfaces used by the omitted value-graph/default work. The
+// shared declaration-identity admission remains unchanged. These local rows
+// close iterator and serialization callbacks before selecting the omission.
+const preparationRealm=globalThis,preparationKeys=Reflect.ownKeys;
+const preparationDescriptor=Object.getOwnPropertyDescriptor,preparationPrototype=Object.getPrototypeOf;
+const preparationOwn=Object.hasOwn,preparationSame=Object.is;
+const preparationExtraObjects=[JSON,Number,String,RegExp,Symbol,Math,Boolean,Uint8Array,ArrayBuffer,DataView,
+ Number.prototype,String.prototype,RegExp.prototype,Symbol.prototype,Boolean.prototype,
+ Uint8Array.prototype,preparationPrototype(Uint8Array.prototype),ArrayBuffer.prototype,DataView.prototype];
+for(const iterator of [[][Symbol.iterator](),new Map().entries(),new Set().values(),''[Symbol.iterator]()]){
+ let prototype=preparationPrototype(iterator);
+ while(prototype){if(!preparationExtraObjects.includes(prototype))preparationExtraObjects.push(prototype);prototype=preparationPrototype(prototype);}
+}
+const preparationExtraFields=['value','writable','get','set','enumerable','configurable'];
+const preparationExtraRows=preparationExtraObjects.map(object=>({object,prototype:preparationPrototype(object),
+ keys:preparationKeys(object),fields:preparationKeys(object).map(key=>preparationDescriptor(object,key))}));
+const preparationExtraAliases=['JSON','Number','String','RegExp','Symbol','Math','Boolean','Uint8Array','ArrayBuffer','DataView'].map(key=>({key,row:preparationDescriptor(preparationRealm,key)}));
+const preparationSameDescriptor=(before,now)=>{
+ if(!before||!now)return before===now;
+ for(let i=0;i<preparationExtraFields.length;i++){
+  const key=preparationExtraFields[i],present=preparationOwn(before,key);
+  if(present!==preparationOwn(now,key)||present&&!preparationSame(before[key],now[key]))return false;
+ }
+ return true;
+};
+const preparationExtrasCurrent=()=>{
+ for(let i=0;i<preparationExtraAliases.length;i++){
+  const entry=preparationExtraAliases[i];
+  if(!preparationSameDescriptor(entry.row,preparationDescriptor(preparationRealm,entry.key)))return false;
+ }
+ for(let i=0;i<preparationExtraRows.length;i++){
+  const row=preparationExtraRows[i],keys=preparationKeys(row.object);
+  if(preparationPrototype(row.object)!==row.prototype||keys.length!==row.keys.length)return false;
+  for(let j=0;j<keys.length;j++)if(keys[j]!==row.keys[j]||!preparationSameDescriptor(row.fields[j],preparationDescriptor(row.object,keys[j])))return false;
+ }
+ return true;
+};
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
 // Only the bound prefix operation belongs on the executable AST. In particular,
 // the preparation result's Program must never become an enumerable AST child.
 export function procedureConstraintAstMetadata(prepared) {
  return Object.freeze({prefix:prepared.prefix});
 }
-function actualAnyDefaultPrologue(fn) {
- const defaults=fn.parameterDefaults||[];
- if(!Array.isArray(defaults)||defaults.some(row=>!row||typeof row!=='object'||Array.isArray(row)))return false;
- if(!defaults.length)return true;
- if(fn.parameterDefaultPrologue!==true||new Set(defaults.map(row=>row.name)).size!==defaults.length)return false;
- const expected=defaults.map(({name,value})=>({type:'If',test:{type:'Binary',op:'===',left:{type:'Identifier',name},right:{type:'Undefined'}},consequent:[{type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name},right:value}}],alternate:[]}));
- return defaults.every(row=>row&&Object.keys(row).length===2&&Object.hasOwn(row,'value')&&fn.params.includes(row.name)&&fn.optionalParams?.includes(row.name)&&fn.paramTypes?.[row.name]?.text==='any')&&JSON.stringify(fn.body?.slice(0,defaults.length))===JSON.stringify(expected);
-}
-function constraints(fn,explicit=false) {
- if(fn?.bwCallableDefinition || fn?.bwClassCallableMethod || fn?.bwObjectClass || !fn?.params?.length)return [];
- const annotated=fn.params.filter(name=>fn.paramTypes?.[name]?.text);
- if(!annotated.length)return [];
- // Reference/callable routes remain independently checked, outside this protocol.
- if(annotated.some(name=>!TYPES[fn.paramTypes[name].text]))return [];
- const optional=fn.optionalParams||[],firstOptional=fn.params.findIndex(name=>optional.includes(name));
- const optionalAny=optional.every(name=>fn.params.includes(name)&&fn.paramTypes?.[name]?.text==='any')&&(firstOptional<0||fn.params.slice(firstOptional).every(name=>optional.includes(name)));
- if(!optionalAny||!actualAnyDefaultPrologue(fn)||fn.defaultParams&&Object.keys(fn.defaultParams).length||fn.restParam||fn.typeParameters?.length){if(explicit)fail('optional typed/default/rest/generic parameters are outside the primitive protocol');return [];}
- return annotated.map(name=>Object.freeze({name,type:TYPES[fn.paramTypes[name].text]}));
-}
 export function procedureConstraintPrefix(fn,procedure,parameterName=name=>name) {
  return constraints(fn,true).map(({name,type})=>`  declare arcade procedure ${JSON.stringify(procedure)} parameter ${JSON.stringify(parameterName(name))} as ${type}`);
 }
 // This checker adds obligations, never types to the producer graph. Call it on
 // the actual flattened ordinary-declaration AST before rendering its bodies.
-export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false}={}) {
- // A comparison, `!` or typeof of proved primitive operands is a primitive
- // producer for this consumer (exported Code booleans are `0 < 1` helpers).
- // A callback closure is allocated after the bindings already initialized
- // at that point; they stay initialized inside its body.
- // Structural binary helpers (`function h(a,b){return a OP b}` at the top
- // level, declared once and never written) are specialized per call site, as
- // the callable source gate does: each call is Number only from Number operands.
- const helperNames=new Map();
- for(const fn of program.body||[]){
-  const value=fn?.type==='FunctionDeclaration'&&fn.params?.length===2&&new Set(fn.params).size===2&&fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
-  if(value?.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(value.op)&&value.left?.type==='Identifier'&&value.right?.type==='Identifier'&&value.left.name===fn.params[0]&&value.right.name===fn.params[1])
-   helperNames.set(fn.name,helperNames.has(fn.name)?null:fn);
- }
- const written=new Set();const scanWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanWrites);return;}
-  if(node.type==='Assignment'||node.type==='Update'){let target=node.type==='Assignment'?node.left:node.argument;while(['Member','Index'].includes(target?.type))target=target.object;if(target?.type==='Identifier')written.add(target.name);}
-  if(node.type==='Declaration')for(const decl of node.decls||[])written.add(decl.name);
-  if(Array.isArray(node.params))for(const name of node.params)written.add(name);
-  for(const child of Object.values(node))if(child&&typeof child==='object')scanWrites(child);};
- scanWrites(program);
- const numericHelpers=new Set([...helperNames].filter(([name,fn])=>fn&&!written.has(name)).map(([,fn])=>fn));
- const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers});
- const constraintTypes=graph.constraintTypesAt||graph.typesAt;
- const functions=new Map(),uses=[],calls=[],writes=[];
- const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
- const walk=(node,parent=null,key=null)=>{
-  if(!node||typeof node!=='object')return;
-  if(Array.isArray(node)){node.forEach(child=>walk(child,parent,key));return;}
-  if(ordinary.has(node)) {const selected=constraints(node);if(selected.length)functions.set(node,{selected,escaped:false});}
-  if(node.type==='Identifier')uses.push({node,parent,key});
-  if(node.type==='Call')calls.push(node);
-  if(node.type==='Assignment'||node.type==='Update')writes.push(node);
-  for(const [name,value] of Object.entries(node))if(value&&typeof value==='object')walk(value,node,name);
- };
- walk(program);
- // The callable/named/registered-callback lanes retain escaped function values.
- // This ordinary declaration protocol only handles truly unescaped declarations.
- for(const {node,parent,key} of uses) {
-  const declaration=graph.unchangedFunctionAt(node),entry=functions.get(declaration);
-  if(entry&&!(parent?.type==='Call'&&key==='callee'))entry.escaped=true;
- }
- const diagnostics=[];
- for(const [fn,entry] of functions) {
-  if(entry.escaped)continue;
-  const requireTypes=(types,type,label)=>{if(type==='Any')return;if(!types.size||[...types].some(actual=>actual!==type))diagnostics.push(`Procedure parameter constraint: ${label} requires ${type} from actual producers`);};
-  // Default metadata is not a producer. Check the actual conditional RHS on
-  // the same source AST; only this bounded primitive default slice is selected.
-  for(let index=0;index<(fn.parameterDefaults||[]).length;index++){
-   const value=fn.body[index].consequent[0].expr.right,types=constraintTypes(value),parameterIndex=fn.params.indexOf(fn.parameterDefaults[index].name);
-   const formalBindings=new Map(fn.params.map((name,index)=>[graph.bindingOf(fn.body[0],name),index]).filter(([binding])=>binding));
-   const inspect=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(inspect);return;}if(node.type==='Identifier'&&formalBindings.has(graph.bindingOf(node))&&formalBindings.get(graph.bindingOf(node))>=parameterIndex)diagnostics.push(`Procedure parameter constraint: ${fn.name} default cannot reference its own or a later formal`);for(const child of Object.values(node))if(child&&typeof child==='object')inspect(child);};inspect(value);
-   if(!types.size||[...types].some(type=>!['Number','String','Boolean','Null','Undefined'].includes(type)))diagnostics.push(`Procedure parameter constraint: ${fn.name} default requires actual primitive producers`);
-  }
-  const incoming=calls.filter(call=>graph.unchangedFunctionAt(call)===fn);
-  for(const call of incoming) {
-   if(call.isNew||call.typeArguments?.length||call.args.length>fn.params.length||fn.params.slice(call.args.length).some(name=>!fn.optionalParams?.includes(name)||fn.paramTypes?.[name]?.text!=='any')){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
-   for(const constraint of entry.selected)requireTypes(constraintTypes(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
-  }
-  // All assignments into an actual formal must discharge its contract. Its
-  // declared type is deliberately absent from the actual RHS producer proof.
-  const formalBindings=new Map(),anchor=fn.body?.[0];
-  for(const name of fn.params)if(anchor&&graph.bindingKindsAt(anchor,name).has('parameter'))formalBindings.set(graph.bindingOf(anchor,name),name);
-  for(const writer of writes) {
-   const lhs=writer.type==='Update'?writer.argument:writer.left;
-   if(lhs?.type!=='Identifier')continue;const name=formalBindings.get(graph.bindingOf(lhs)),constraint=entry.selected.find(c=>c.name===name);if(!constraint)continue;
-   if(writer.type==='Update'||writer.op!=='='){
-    if(constraint.type==='Any')continue;
-    const numeric=constraint.type==='Number'&&(writer.type==='Update'?['++','--'].includes(writer.op):['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(writer.op));
-    if(!numeric)diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);
-    else if(writer.type!=='Update')requireTypes(constraintTypes(writer.right),'Number',`${fn.name}.${name} compound writer`);
-   }else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
-  }
- }
- return Object.freeze([...new Set(diagnostics)]);
-}
 
 // Defaults in the selected target are applied only to omitted arguments. Keep
 // one editable default body and carry omission through ordinary visible formals.
@@ -162,6 +109,11 @@ export function prepareProcedureConstraintSourceForTranslation(program,{mode='pr
 }
 
 function prepareConstraints(program,mode,declarationIdentityOnly) {
+ // This admission is local to the complete compiler-owned preparation, before
+ // any analysis. Negative admission stays negative across callbacks/ABA; Throw,
+ // unknown, foreign own-data shapes or changed intrinsics retain the old path.
+ // Public preparation performs no new descriptor or intrinsic observations.
+ const emptyInput=declarationIdentityOnly&&preparationExtrasCurrent()?declarationIdentityInput(program):null;
  const excludedSignature=(messages,message)=>{if(mode==='prototype')messages.push(message);};
  const graph=declarationIdentityOnly?analyseSourceDeclarationIdentityForPreparation(program):
   analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
@@ -187,10 +139,16 @@ function prepareConstraints(program,mode,declarationIdentityOnly) {
  for(const [name,callbacks]of escapes){selected.delete(name);if(mode==='supported-default'&&callbacks.every(Boolean))continue;excluded.push('Procedure parameter constraint: '+name+' escaped or nonordinary call remains outside this protocol');}
  for(const [name,entry]of selected)if(graph.unchangedFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
  const validation={onlyFunctions:new Set(selected.keys()),ordinaryPrimitiveSdkNumbers:mode==='supported-default',sceneClockNumbers:mode==='supported-default'};
- const diagnostics=[...excluded,...validateProcedureConstraintSource(program,validation)];
+ const validate=declarationIdentityOnly?validateCompilerOwnedProcedureConstraintSource:validateProcedureConstraintSource;
+ // No ordinary function can enter the shared validator's functions Map when
+ // the actual local selection Set is empty. Its completed diagnostic result is
+ // then [], independent of graph values. Preserve all selection/escape/duplicate
+ // work above; do not elide any nonempty or public/uncertain validation.
+ const noOrdinaryObligations=declarationIdentityOnly&&emptyInput?.current()===true&&preparationExtrasCurrent()&&preparationApply(preparationMapSize,selected,[])===0;
+ const diagnostics=[...excluded,...(noOrdinaryObligations?[]:validate(program,validation))];
  for(const name of duplicates)diagnostics.push('Procedure parameter constraint: duplicate ordinary declaration '+name);
- const lowered=diagnostics.length?program:lowerOmittedDefaults(program,selected,graph);
- if(lowered!==program)diagnostics.push(...validateProcedureConstraintSource(lowered,validation));
+ const lowered=diagnostics.length||noOrdinaryObligations?program:lowerOmittedDefaults(program,selected,graph);
+ if(lowered!==program)diagnostics.push(...validate(lowered,validation));
  return Object.freeze({program:lowered,independentRoutes:Object.freeze([...independent].map(fn=>Object.freeze({name:fn.name,protocol:'existing-numeric-callable'}))),diagnostics:Object.freeze([...diagnostics]),prefix(fn,procedure,parameterName=name=>name){
   const entry=selected.get(fn.source||fn.name);if(!entry||duplicates.has(fn.source||fn.name))return [];
   if(JSON.stringify(fn.params)!==JSON.stringify(entry.params)||JSON.stringify(fn.params.map(name=>fn.paramTypes?.[name]?.text))!==JSON.stringify(entry.types))fail('lowered ordinary formal metadata differs from its actual source declaration');
