@@ -567,7 +567,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     // A big model is drawn instanced (view/instanced-parts.js): the meshes below stay as the
     // parts' invisible proxies, so picking, highlights and tints read and write them as before.
     let instanced = null;
-    s.onBeforeRender = () => instanced?.sync();
+    s.onBeforeRender = (_renderer, _scene, renderCamera) => instanced?.sync(false, renderCamera);
     const disposeMesh = mesh => {
         modelGroup.remove(mesh);
         for (const m of [].concat(mesh.material)) m.dispose();

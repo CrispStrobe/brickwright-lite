@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {BufferGeometry, Color, Euler, Float32BufferAttribute, Matrix4, Mesh, MeshStandardMaterial, Quaternion, Raycaster, Vector3} from 'three';
+import {BufferGeometry, Color, Euler, Float32BufferAttribute, Matrix4, Mesh, MeshStandardMaterial, Quaternion, Raycaster, Vector3, Vector4, PerspectiveCamera, Scene} from 'three';
 import {parseLDConfig} from '../overlay/scratch-gui/src/lib/bw-sim/view/ldraw-colors.js';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {buildSimScene, applySnapshot} from '../overlay/scratch-gui/src/lib/bw-sim/view/sim-scene3d.js';
@@ -260,122 +260,176 @@ const visual = () => {
             g.setAttribute('direction', new Float32BufferAttribute([1, 0, 0, 1, 0, 0], 3));
         }
         g.addGroup(0, 2, 0);
+        g.computeBoundingBox();g.computeBoundingSphere();
         return g;
     };
-    return {faces: new BufferGeometry(), edges: line(false), conditional: line(true)};
+    const faces = new BufferGeometry();
+    faces.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    faces.addGroup(0, 3, 0);
+    return {faces, edges: line(false), conditional: line(true)};
 };
-const fixture = () => {
-    const parts = createInstancedParts({colors: new Map([[16, {value: '#7799cc', edge: '#223344', alpha: 1}]])});
-    for (let i = 0; i < 2; i++) {
+const hook = (scene, parts, view = 'view/sim-scene3d.js') => {
+    const text = readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim', view), 'utf8');
+    const callback = text.match(/(?:scene|s)\.onBeforeRender = ([^\n]+);/);
+    assert.ok(callback, 'Actual early scene hook must exist');
+    scene.onBeforeRender = new Function('instanced', `return ${callback[1]};`)(parts);
+};
+const fixture = (view) => {
+    const parts = createInstancedParts({colors: new Map([
+        [16, {value: '#7799cc', edge: '#223344', alpha: 1}],
+        [40, {value: '#6688aa', edge: '#112233', alpha: 0.5}]
+    ])});
+    const source = visual(), proxies = [];
+    for (let i = 0; i < 4; i++) {
         const proxy = new Mesh(new BufferGeometry(), new MeshStandardMaterial({color: '#7799cc'}));
-        proxy.position.set(i + 1 / 3, -0.2, 0.7);
-        proxy.updateMatrixWorld(true);
-        parts.add(proxy, visual(), 16);
+        proxy.position.set(i / 3, -0.2, 0.7);proxy.rotation.set(0.1, i / 10, -0.2);
+        proxy.updateMatrixWorld(true);proxies.push(proxy);parts.add(proxy, source, i < 2 ? 16 : 40);
     }
     parts.build();
-    return {parts, regular: parts.object.children.filter(o => o.name === 'instanced:edges-own'),
-        conditional: parts.object.children.filter(o => o.name === 'instanced:conditional-own')};
+    const scene = new Scene();scene.add(parts.object);
+    parts.object.position.set(0.2, -0.1, 0.3);parts.object.rotation.set(0.2, 0.3, -0.1);
+    const lines = parts.object.children.filter(o => o.isLineSegments);
+    lines.forEach((o, i) => {o.position.set(i / 11, 0, -i / 13);o.rotation.z = i / 7;});
+    const camera = new PerspectiveCamera(48, 1.6, 0.2, 50);
+    camera.position.set(0.3, 0.2, 6);camera.rotation.set(-0.1, 0.15, 0.05);
+    hook(scene, parts, view);
+    const frame = (selected = camera) => {
+        scene.updateMatrixWorld(true);selected.updateMatrixWorld(true);
+        scene.onBeforeRender(null, scene, selected);
+    };
+    return {parts, source, proxies, scene, lines, camera, frame};
 };
-const pose = (x, y, z, angle = 0.3) => new Matrix4().compose(new Vector3(x, y, z),
-    new Quaternion().setFromEuler(new Euler(angle, -0.4, 0.2)), new Vector3(1.2, 0.8, 1.1));
-const projection = () => new Matrix4().makePerspective(-0.25, 0.5, 0.3, -0.35, 0.2, 40);
-// Independent column-major scalar reference, rather than the production Matrix4 method.
-const multiply = (a, b) => Array.from({length: 16}, (_, k) => {
-    const row = k % 4, col = Math.floor(k / 4);
-    return [0, 1, 2, 3].reduce((sum, i) => sum + a[i * 4 + row] * b[col * 4 + i], 0);
+const clipOf = (line, i = 0) => new Matrix4().fromArray(line.geometry.getAttribute('iClipFromInstance').array, i * 16);
+const originalProjection = (line, camera, point, i = 0) => new Vector4(...point, 1)
+    .applyMatrix4(new Matrix4().fromArray(line.userData.batch.matrices.array, i * 16))
+    .applyMatrix4(line.matrixWorld).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+const nearPoint = (actual, expected) => ['x', 'y', 'z', 'w'].forEach(k => {
+    assert.ok(Number.isFinite(actual[k]) && Number.isFinite(expected[k]));
+    assert.ok(Math.abs(actual[k] - expected[k]) <= 2e-5 * Math.max(1, Math.abs(expected[k])), `${k}: ${actual[k]} vs ${expected[k]}`);
 });
-const transform = (m, p) => [0, 1, 2, 3].map(row => p.reduce((sum, v, i) => sum + m[i * 4 + row] * v, 0));
-const near = (a, b) => a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) <= 1e-10 * Math.max(1, Math.abs(b[i])), `${i}: ${v} vs ${b[i]}`));
-const draw = (object, camera, modelView) => {
-    object.modelViewMatrix.copy(modelView); // the renderer refreshes this before the material callback
-    object.material.onBeforeRender(null, null, camera, object.geometry, object, null);
-    return object.material.uniforms.clipFromModel.value;
-};
-const discard = (m, c0, c1) => {
-    const project = p => { const v = transform(m, [...p, 1]); return [v[0] / v[3], v[1] / v[3]]; };
-    const a = project([0, 0, 0]), b = project([1, 0, 0]);
-    const normal = [a[1] - b[1], b[0] - a[0]];
-    const side = p => { const q = project(p); return normal[0] * (q[0] - a[0]) + normal[1] * (q[1] - a[1]); };
-    return side(c0) * side(c1) < 0;
+const assertProjection = (line, camera) => {
+    for (let i = 0; i < line.geometry.instanceCount; i++) for (const point of [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, -1, 0]])
+        nearPoint(new Vector4(...point, 1).applyMatrix4(clipOf(line, i)), originalProjection(line, camera, point, i));
 };
 
-test('line uniforms use current noncommuting projection and model-view in the material draw callback', () => {
-    const f = fixture(), camera = {projectionMatrix: projection()}, mv = pose(0.3, -0.4, -6);
-    for (const object of [...f.regular, ...f.conditional]) {
-        const actual = draw(object, camera, mv).elements;
-        near(actual, multiply(camera.projectionMatrix.elements, mv.elements));
-        assert.ok(actual.some((v, i) => Math.abs(v - multiply(mv.elements, camera.projectionMatrix.elements)[i]) > 0.001));
-        assert.equal(object.material.uniformsNeedUpdate, true);
+test('both actual early scene hooks prepare first-frame clip buffers before any material callback', () => {
+    for (const view of ['view/sim-scene3d.js', 'editor/editor-view3d.js']) {
+        const f = fixture(view);
+        for (const line of f.lines) {
+            assert.ok(line.geometry.getAttribute('iClipFromInstance').array.every(v => v === 0));
+            line.modelViewMatrix.makeTranslation(1000, 2000, 3000); // deliberately stale until the later draw boundary
+        }
+        f.frame();
+        for (const line of f.lines) {
+            const a = line.geometry.getAttribute('iClipFromInstance');
+            assert.ok(a.version > 0, 'Prepared before the renderer creates/uploads attribute buffers');
+            assertProjection(line, f.camera);
+            const version = a.version;
+            line.material.onBeforeRender(null, f.scene, f.camera, line.geometry, line);
+            assert.equal(a.version, version, 'No too-late material-stage writes');
+        }
+        f.parts.dispose();
+    }
+});
+
+test('clip shaders retain one active instance matrix and the original four-point conditional predicate', () => {
+    const f = fixture();f.frame();
+    for (const line of f.lines) {
+        const shader = line.material.vertexShader;
+        assert.equal((shader.match(/attribute mat4 /g) || []).length, 1);
+        assert.match(shader, /attribute mat4 iClipFromInstance/);
+        assert.doesNotMatch(shader, /clipFromModel|projectionMatrix|modelViewMatrix|iMatrix/);
+        assert.equal(line.geometry.getAttribute('iClipFromInstance').meshPerAttribute, 1);
+        assert.equal(line.geometry.getAttribute('iClipFromInstance').itemSize, 16);
+        assert.equal(line.geometry.instanceCount, line.userData.batch.entries.length);
+        assert.equal(line.frustumCulled, false);
+        if (line.name.startsWith('instanced:edges-')) assert.match(shader, /gl_Position\s*=\s*iClipFromInstance\s*\*\s*vec4\(position, 1\.0\)/);
+        else {
+            assert.match(shader, /mat4 mvp\s*=\s*iClipFromInstance/);
+            for (const expression of ['control0', 'control1', 'position', 'position + direction']) assert.ok(shader.includes(`mvp * vec4(${expression}, 1.0)`));
+            assert.match(shader, /vDiscard\s*=\s*d0 \* d1 < 0\.0 \? 1\.0 : 0\.0/);
+        }
     }
     f.parts.dispose();
 });
 
-test('successive objects sharing a line material get their own fresh transform and uniform upload', () => {
-    const f = fixture(), camera = {projectionMatrix: projection()};
-    for (const objects of [f.regular, f.conditional]) {
-        assert.equal(objects.length, 2);
-        assert.equal(objects[0].material, objects[1].material);
-        const storage = draw(objects[0], camera, pose(0, 0, -5));
-        const previous = storage.elements.slice();
-        objects[0].material.uniformsNeedUpdate = false; // reset by Three after the previous upload
-        assert.equal(draw(objects[1], camera, pose(1.7, 0.2, -8, 0.7)), storage);
-        near(storage.elements, multiply(camera.projectionMatrix.elements, objects[1].modelViewMatrix.elements));
-        assert.notDeepEqual(storage.elements, previous);
-        assert.equal(objects[1].material.uniformsNeedUpdate, true);
+test('camera-only, projection-only and second-camera changes refresh clip data without dirtying face buffers', () => {
+    const f = fixture();f.frame();
+    const faces = f.parts.object.children.filter(o => o.isInstancedMesh);
+    const worldVersions = faces.map(o => o.instanceMatrix.version), colorVersions = faces.map(o => o.instanceColor.version);
+    const a = f.lines[0].geometry.getAttribute('iClipFromInstance');let version = a.version;
+    f.camera.position.x += 0.4;f.frame();assert.ok(a.version > version);assertProjection(f.lines[0], f.camera);
+    version = a.version;f.camera.fov = 55;f.camera.updateProjectionMatrix();f.frame();assert.ok(a.version > version);assertProjection(f.lines[0], f.camera);
+    version = a.version;const other = f.camera.clone();other.position.y -= 0.6;f.frame(other);assert.ok(a.version > version);
+    for (const line of f.lines) assertProjection(line, other);
+    assert.deepEqual(faces.map(o => o.instanceMatrix.version), worldVersions);
+    assert.deepEqual(faces.map(o => o.instanceColor.version), colorVersions);
+    f.parts.dispose();
+});
+
+test('shared source geometry and material retain distinct per-object clip buffers and current parent transforms', () => {
+    const f = fixture();f.frame();
+    const regular = f.lines.filter(o => o.name.startsWith('instanced:edges-'));
+    assert.equal(regular[0].material, regular[1].material);
+    assert.equal(new Set(f.lines.map(o => o.geometry.getAttribute('iClipFromInstance').array)).size, f.lines.length);
+    for (const line of regular) assert.equal(line.geometry.getAttribute('position'), f.source.edges.getAttribute('position'));
+    assert.equal(f.source.edges.getAttribute('iClipFromInstance'), undefined);
+    const snapshot = Array.from(regular[0].geometry.getAttribute('iClipFromInstance').array);
+    regular[1].position.x += 0.5;f.frame();
+    assert.deepEqual(Array.from(regular[0].geometry.getAttribute('iClipFromInstance').array), snapshot);
+    for (const line of f.lines) assertProjection(line, f.camera);
+    f.parts.object.rotation.y += 0.7;f.frame();
+    for (const line of f.lines) assertProjection(line, f.camera);
+    f.parts.dispose();
+});
+
+test('unchanged Float32 clip values do not request repeated uploads', () => {
+    const f = fixture();f.frame();
+    const versions = f.lines.map(o => o.geometry.getAttribute('iClipFromInstance').version);
+    const bytes = f.lines.map(o => Array.from(o.geometry.getAttribute('iClipFromInstance').array));
+    for (let i = 0; i < 5; i++) f.frame();
+    assert.deepEqual(f.lines.map(o => o.geometry.getAttribute('iClipFromInstance').version), versions);
+    assert.deepEqual(f.lines.map(o => Array.from(o.geometry.getAttribute('iClipFromInstance').array)), bytes);
+    f.parts.dispose();
+});
+
+test('proxy movement and hide/unhide still drive effective world and clip matrices', () => {
+    const f = fixture();f.frame();const proxy = f.proxies[0];
+    const line = f.lines.find(o => o.userData.batch.entries.some(e => e.proxy === proxy));
+    const i = line.userData.batch.entries.findIndex(e => e.proxy === proxy);
+    proxy.position.x += 0.75;proxy.updateMatrixWorld(true);f.frame();assertProjection(line, f.camera);
+    const visible = Array.from(line.geometry.getAttribute('iClipFromInstance').array.slice(i * 16, i * 16 + 16));
+    proxy.userData.hidden = true;f.frame();
+    assert.ok(line.userData.batch.matrices.array.slice(i * 16, i * 16 + 16).every(v => v === 0));
+    assert.ok(line.geometry.getAttribute('iClipFromInstance').array.slice(i * 16, i * 16 + 16).every(v => v === 0));
+    proxy.userData.hidden = false;f.frame();
+    assert.deepEqual(Array.from(line.geometry.getAttribute('iClipFromInstance').array.slice(i * 16, i * 16 + 16)), visible);
+    f.parts.dispose();
+});
+
+test('conditional visible and hidden sides match the original independently projected point rule', () => {
+    const f = fixture();f.frame();const line = f.lines.find(o => o.name.startsWith('instanced:conditional-'));
+    const discard = p => {
+        const [c0, c1, p0, p1] = p.map(v => [v.x / v.w, v.y / v.w]);
+        const n = [p0[1] - p1[1], p1[0] - p0[0]];
+        return (n[0] * (c0[0] - p0[0]) + n[1] * (c0[1] - p0[1])) * (n[0] * (c1[0] - p0[0]) + n[1] * (c1[1] - p0[1])) < 0;
+    };
+    for (const [control, expected] of [[[0, -1, 0], true], [[0, 2, 0], false]]) {
+        const points = [[0, 1, 0], control, [0, 0, 0], [1, 0, 0]];
+        const old = points.map(p => originalProjection(line, f.camera, p));
+        const prepared = points.map(p => new Vector4(...p, 1).applyMatrix4(clipOf(line)));
+        prepared.forEach((p, i) => nearPoint(p, old[i]));
+        assert.equal(discard(old), expected);assert.equal(discard(prepared), expected);
     }
     f.parts.dispose();
 });
 
-test('camera changes and an unchanged repeated draw refresh uniforms without changing instance buffers', () => {
-    const f = fixture(), object = f.regular[0], mv = pose(0.1, 0.7, -4);
-    const attributes = ['iMatrix', 'iTint', 'position', 'color'].map(name => object.geometry.getAttribute(name));
-    const before = attributes.map(a => ({bytes: Buffer.from(a.array.buffer).toString('hex'), version: a.version}));
-    const camera = {projectionMatrix: projection()};
-    const storage = draw(object, camera, mv), previous = storage.elements.slice();
-    camera.projectionMatrix = new Matrix4().makePerspective(-0.4, 0.35, 0.2, -0.5, 0.3, 60);
-    object.material.uniformsNeedUpdate = false;
-    assert.equal(draw(object, camera, mv), storage);
-    assert.notDeepEqual(storage.elements, previous);
-    const current = storage.elements.slice();
-    object.material.uniformsNeedUpdate = false;
-    draw(object, camera, mv);
-    assert.deepEqual(storage.elements, current);
-    assert.equal(object.material.uniformsNeedUpdate, true);
-    attributes.forEach((a, i) => {
-        assert.equal(Buffer.from(a.array.buffer).toString('hex'), before[i].bytes);
-        assert.equal(a.version, before[i].version);
-    });
-    f.parts.dispose();
+test('clip buffers belong to disposable mirrors while cached source geometry stays unchanged', () => {
+    const f = fixture();f.frame();let disposed = 0;
+    const original = Array.from(f.source.edges.getAttribute('position').array);
+    for (const line of f.lines) line.geometry.addEventListener('dispose', () => disposed++);
+    f.parts.dispose();assert.equal(disposed, f.lines.length);assert.equal(f.parts.object.children.length, 0);
+    assert.deepEqual(Array.from(f.source.edges.getAttribute('position').array), original);
+    assert.equal(f.source.edges.getAttribute('iClipFromInstance'), undefined);
 });
-
-test('regular line shader preserves instance projection with the per-draw matrix', () => {
-    const f = fixture(), object = f.regular[0], camera = {projectionMatrix: projection()}, mv = pose(0.5, -0.7, -7);
-    assert.match(object.material.vertexShader, /uniform mat4 clipFromModel/);
-    assert.match(object.material.vertexShader, /gl_Position\s*=\s*clipFromModel\s*\*\s*\(iMatrix\s*\*\s*vec4\(position, 1\.0\)\)/);
-    const instance = Array.from(object.geometry.getAttribute('iMatrix').array.slice(0, 16));
-    const actual = draw(object, camera, mv).elements;
-    const oldMvp = multiply(multiply(camera.projectionMatrix.elements, mv.elements), instance);
-    for (const point of [[0, 0, 0, 1], [1.3, -0.4, 0.2, 1], [-0.7, 0.9, -0.1, 1]]) {
-        near(transform(actual, transform(instance, point)), transform(oldMvp, point));
-    }
-    f.parts.dispose();
-});
-
-test('conditional lines retain the four-point perspective projection and visible/hidden edge rule', () => {
-    const f = fixture(), object = f.conditional[0], camera = {projectionMatrix: projection()}, mv = pose(0.5, 0.2, -7);
-    const shader = object.material.vertexShader;
-    assert.match(shader, /mat4 mvp\s*=\s*clipFromModel\s*\*\s*iMatrix/);
-    for (const term of ['control0', 'control1', 'position', 'position + direction']) assert.ok(shader.includes(`mvp * vec4(${term}, 1.0)`));
-    assert.match(shader, /vDiscard\s*=\s*d0 \* d1 < 0\.0 \? 1\.0 : 0\.0/);
-    const instance = Array.from(object.geometry.getAttribute('iMatrix').array.slice(0, 16));
-    const actual = multiply(draw(object, camera, mv).elements, instance);
-    const oldMvp = multiply(multiply(camera.projectionMatrix.elements, mv.elements), instance);
-    for (const [c0, c1, hidden] of [[[0, 1, 0], [0, -1, 0], true], [[0, 1, 0], [0, 2, 0], false]]) {
-        assert.equal(discard(oldMvp, c0, c1), hidden);
-        assert.equal(discard(actual, c0, c1), hidden);
-        near(transform(actual, [...c0, 1]), transform(oldMvp, [...c0, 1]));
-    }
-    f.parts.dispose();
-});
-
 }

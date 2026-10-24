@@ -52,14 +52,13 @@ const pageOverride = () => (typeof window !== 'undefined' && typeof window.__bwS
 export const useInstancing = (count, instancing = pageOverride()) => (instancing === 'auto' ? count >= INSTANCE_FROM : Boolean(instancing));
 
 const LINE_VERTEX = /* glsl */`
-    uniform mat4 clipFromModel;
-    attribute mat4 iMatrix;
+    attribute mat4 iClipFromInstance;
     attribute vec3 iTint;
     attribute vec3 color;
     varying vec3 vColor;
     void main () {
         vColor = color * iTint;
-        gl_Position = clipFromModel * (iMatrix * vec4(position, 1.0));
+        gl_Position = iClipFromInstance * vec4(position, 1.0);
     }`;
 const LINE_FRAGMENT = /* glsl */`
     varying vec3 vColor;
@@ -69,8 +68,7 @@ const LINE_FRAGMENT = /* glsl */`
     }`;
 // part-style.js's conditional-line rule, per instance.
 const CONDITIONAL_VERTEX = /* glsl */`
-    uniform mat4 clipFromModel;
-    attribute mat4 iMatrix;
+    attribute mat4 iClipFromInstance;
     attribute vec3 iTint;
     attribute vec3 control0;
     attribute vec3 control1;
@@ -80,7 +78,7 @@ const CONDITIONAL_VERTEX = /* glsl */`
     varying vec3 vColor;
     void main () {
         vColor = color * iTint;
-        mat4 mvp = clipFromModel * iMatrix;
+        mat4 mvp = iClipFromInstance;
         vec4 c0 = mvp * vec4(control0, 1.0);
         vec4 c1 = mvp * vec4(control1, 1.0);
         vec4 p0 = mvp * vec4(position, 1.0);
@@ -102,20 +100,9 @@ const CONDITIONAL_FRAGMENT = /* glsl */`
         #include <colorspace_fragment>
     }`;
 
-// Camera and model-view are invariant within a draw. Compute their product once,
-// rather than multiplying two uniform matrices in every line vertex. Three calls
-// material.onBeforeRender after refreshing the actual object's modelViewMatrix.
-const lineShaderMaterial = (vertexShader, fragmentShader) => {
-    const material = new ShaderMaterial({vertexShader, fragmentShader,
-        uniforms: {clipFromModel: {value: new Matrix4()}}});
-    material.onBeforeRender = (renderer, scene, camera, geometry, object) => {
-        material.uniforms.clipFromModel.value.multiplyMatrices(camera.projectionMatrix, object.modelViewMatrix);
-        // Line batches share this material. The next object needs its current
-        // matrix even when Three reuses the same program and material.
-        material.uniformsNeedUpdate = true;
-    };
-    return material;
-};
+// Clip transforms are prepared in the scene callback, before Three uploads geometry
+// attributes. A material callback is later than that upload boundary.
+const lineShaderMaterial = (vertexShader, fragmentShader) => new ShaderMaterial({vertexShader, fragmentShader});
 
 const groupRange = (geometry, index) => geometry.groups.find(g => g.materialIndex === index) || null;
 
@@ -212,6 +199,11 @@ export const createInstancedParts = ({colors}) => {
                         const geo = subGeometry(source, range, true);
                         geo.instanceCount = n;
                         geo.setAttribute('iMatrix', matrices);
+                        // World matrices remain shared with faces. Clip data belongs to
+                        // this line object: siblings may have different world transforms.
+                        const clipMatrices = new InstancedBufferAttribute(new Float32Array(n * 16), 16);
+                        clipMatrices.setUsage(DynamicDrawUsage);
+                        geo.setAttribute('iClipFromInstance', clipMatrices);
                         // Own-colour lines are drawn in the placed colour's EDGE; fixed ones in their own colours.
                         const tint = new Float32Array(n * 3).fill(1);
                         if (side === 'own') {
@@ -234,12 +226,20 @@ export const createInstancedParts = ({colors}) => {
     const scratch = new Color();
     const glow = new Color();
     const ZERO = new Array(16).fill(0);
+    const viewProjection = new Matrix4();
+    const objectClip = new Matrix4();
+    const effectiveInstance = new Matrix4();
+    const instanceClip = new Matrix4();
     /**
-     * Copy every proxy's world matrix and look into its instances. Cheap enough per frame
-     * (16 + 6 floats per part); the GPU upload happens only when something changed.
+     * Copy proxy world matrices and colors, requesting uploads only for changed Float32 values.
+     * With the actual render camera, prepare each line object's clip data before attribute upload.
      * @param {boolean} [force] upload even if nothing changed
+     * @param {Camera} [camera] actual render camera, supplied by Scene.onBeforeRender
      */
-    const sync = (force = false) => {
+    const sync = (force = false, camera = null) => {
+        // Scene and camera world matrices are current here; per-object
+        // modelViewMatrix is not refreshed until the later draw callback.
+        if (camera) viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
         for (const batch of batches) {
             const m = batch.matrices.array;
             let moved = force;
@@ -273,6 +273,29 @@ export const createInstancedParts = ({colors}) => {
                     }
                 });
                 if (changed) attribute.needsUpdate = true;
+            }
+            if (camera) {
+                for (const {mesh, kind} of batch.meshes) {
+                    if (!kind.startsWith('edges-') && !kind.startsWith('conditional-')) continue;
+                    const attribute = mesh.geometry.getAttribute('iClipFromInstance');
+                    const clip = attribute.array;
+                    objectClip.multiplyMatrices(viewProjection, mesh.matrixWorld);
+                    let changed = force;
+                    for (let i = 0; i < batch.entries.length; i++) {
+                        // Derive from the effective Float32 instance actually used
+                        // by the GPU, including the zero matrix for a hidden proxy.
+                        effectiveInstance.fromArray(m, i * 16);
+                        instanceClip.multiplyMatrices(objectClip, effectiveInstance);
+                        for (let k = 0; k < 16; k++) {
+                            const value = Math.fround(instanceClip.elements[k]);
+                            if (clip[i * 16 + k] !== value) {
+                                clip[i * 16 + k] = value;
+                                changed = true;
+                            }
+                        }
+                    }
+                    if (changed) attribute.needsUpdate = true;
+                }
             }
         }
     };
