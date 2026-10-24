@@ -900,7 +900,7 @@ jobs:
     needs: scope
     outputs:
       gui_producer_runner_v1: |
-        bw.gui.producer-runner.v1	${{ github.repository }}	${{ github.run_id }}	${{ github.run_attempt }}	${{ github.job }}	${{ github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.workflow_sha }}	${{ github.workflow_ref }}
+        bw.gui.producer-runner.v1	${{ github.repository }}	${{ github.run_id }}	${{ github.run_attempt }}	build	${{ github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.workflow_sha }}	${{ github.workflow_ref }}
         build_editor	${{ steps['build_editor'].outcome }}	${{ steps['build_editor'].conclusion }}
         gui_build_manifest	${{ steps['gui_build_manifest'].outcome }}	${{ steps['gui_build_manifest'].conclusion }}
         gui_pages_upload	${{ steps['gui_pages_upload'].outcome }}	${{ steps['gui_pages_upload'].conclusion }}

@@ -28,7 +28,9 @@ function render(e = expected, changes = {}) {
     const wire = build.split('      gui_producer_runner_v1: |\n')[1].split(/^    [a-z]/m)[0]
         .split('\n').filter(Boolean).map(line => line.slice(8)).join('\n') + '\n';
     assert.equal(wire, GUI_RUNNER_TEMPLATE);
-    const values = {'github.repository': repository, 'github.run_id': '12', 'github.run_attempt': '2', 'github.job': 'build',
+    assert.ok(!wire.includes('github.job'), 'job outputs cannot read the step-only github.job context');
+    assert.equal(wire.split('\n')[0].split('\t')[4], 'build', 'logical producer identity comes from the inspected job key');
+    const values = {'github.repository': repository, 'github.run_id': '12', 'github.run_attempt': '2',
         'github.sha': e.checkoutSha, 'github.event.pull_request.head.sha || github.sha': e.runHeadSha,
         'github.workflow_sha': sha('f'), 'github.workflow_ref': `${repository}/.github/workflows/build.yml@refs/pull/12/merge`};
     for (const step of source.steps) for (const field of ['outcome', 'conclusion']) values[`steps['${step.id}'].${field}`] = 'success';
@@ -99,6 +101,7 @@ test('actual workflow scalar mapping drives a distinct receipt and leaves pendin
 
 test('source closure refuses IDs, names, order, scalar/default/output substitutions and consumer-route drift', () => {
     for (const change of [
+        s => s.replace('\tbuild\t${{ github.sha }}', '\t${{ github.job }}\t${{ github.sha }}'),
         s => s.replace('id: gui_build_manifest', 'id: wrong_manifest'),
         s => s.replace('id: gui_pages_upload', 'id: gui_pages_upload\n        id: duplicate'),
         s => s.replace('name: Write GUI build source manifest', 'name: Unknown manifest writer'),

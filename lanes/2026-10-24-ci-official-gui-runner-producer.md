@@ -133,3 +133,12 @@ receive one qualification set without a concurrent opening-label transition.
 Claim checks and this publication checkpoint establish no runner metadata,
 artifact admission, numeric GUI or native guest result. Preserve the original
 REST refusals; require the final source checks and affected consumers to pass.
+
+
+The producer wire's logical job field is the source-bound literal `build`,
+checked against the exact job key and `needs: build`. It is not a projected
+runtime observation: `github.job` is available only within execution steps,
+so job-output evaluation must not reference it. The consumer still checks its
+actual `GITHUB_JOB`. Pure rendering controls deliberately omit `github.job`
+from the output context and reject a source mutation that introduces it.
+The earlier source candidate and review finding remain retained.

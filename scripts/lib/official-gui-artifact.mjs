@@ -79,7 +79,7 @@ const GUI_RUNNER_STEPS = Object.freeze([
     ['gui_pages_upload', 'Upload GUI Pages artifact']
 ]);
 const GUI_RUNNER_HEADER = [GUI_RUNNER_SCHEMA, '${{ github.repository }}', '${{ github.run_id }}',
-    '${{ github.run_attempt }}', '${{ github.job }}', '${{ github.sha }}',
+    '${{ github.run_attempt }}', 'build', '${{ github.sha }}',
     '${{ github.event.pull_request.head.sha || github.sha }}',
     '${{ github.event.pull_request.head.sha || github.sha }}',
     '${{ github.workflow_sha }}', '${{ github.workflow_ref }}'].join('\t');
@@ -87,7 +87,9 @@ export const GUI_RUNNER_TEMPLATE = [GUI_RUNNER_HEADER, ...GUI_RUNNER_STEPS.map((
     `${step}\t${'${{'} steps['${step}'].outcome }}\t${'${{'} steps['${step}'].conclusion }}`)].join('\n') + '\n';
 
 // This source profile is deliberately specific to the single existing build
-// dependency. It exports terminal scalars, never an action's outputs/context.
+// dependency. The logical producer job is the checked static build key;
+// github.job is unavailable at job-output evaluation. Only terminal scalars
+// are exported, never an action's outputs/context.
 export function guiRunnerProducerSource(workflowText) {
     assert.ok(typeof workflowText === 'string' && Buffer.byteLength(workflowText) <= 1024 * 1024, 'Bounded producer workflow source');
     const block = name => {
