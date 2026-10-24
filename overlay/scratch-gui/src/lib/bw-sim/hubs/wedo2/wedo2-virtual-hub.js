@@ -80,6 +80,8 @@ export class Wedo2VirtualHub {
         this.tones = [];
         this.plugged = false;
         this._sink = null;
+        this._buttonPressed = false;
+        this._buttonSubscribed = false;
         /** connectId → {mode, delta, unit, notify, last} */
         this._formats = new Map();
         this.log = [];
@@ -135,11 +137,12 @@ export class Wedo2VirtualHub {
     }
 
     exportState () {
-        return {timeMs: this.timeMs, motors: [...this.motors].map(([p, m]) => [p, {...m}])};
+        return {timeMs: this.timeMs, buttonPressed: this._buttonPressed, motors: [...this.motors].map(([p, m]) => [p, {...m}])};
     }
 
     importState (state) {
         this.timeMs = state.timeMs;
+        this._buttonPressed = state.buttonPressed === true;
         for (const [p, m] of state.motors) this.motors.set(p, {...m});
     }
 
@@ -187,8 +190,26 @@ export class Wedo2VirtualHub {
     // ---- the protocol (main thread) ---------------------------------------------------------
 
     setSink (sink) {
+        const owner = {};
+        this._sinkOwner = owner;
         this._sink = typeof sink === 'function' ? sink : null;
-        if (!this._sink) this._formats.clear();
+        if (!this._sink) {
+            this._formats.clear();
+            this._buttonSubscribed = false;
+        }
+        const release = () => { if (this._sinkOwner === owner) this.setSink(null); };
+        release.isCurrent = () => this._sinkOwner === owner && this._sink !== null;
+        return release;
+    }
+
+    readButton (index) { return index === 0 ? {pressed: this._buttonPressed} : null; }
+
+    pressButton (index, down) {
+        if (index !== 0 || typeof down !== 'boolean') return false;
+        if (this._buttonPressed === down) return true;
+        this._buttonPressed = down;
+        if (this._buttonSubscribed) this._send(CHAR.BUTTON, Uint8Array.from([down ? 1 : 0]));
+        return true;
     }
 
     _send (uuid, bytes) {
@@ -199,7 +220,10 @@ export class Wedo2VirtualHub {
 
     /** A host subscribed to a characteristic: Attached IO announces the devices; Input Values (re)sends values. */
     startNotifications (uuid) {
-        if (uuid === CHAR.ATTACHED_IO) {
+        if (uuid === CHAR.BUTTON) {
+            this._buttonSubscribed = true;
+            this._send(CHAR.BUTTON, this.read(CHAR.BUTTON));
+        } else if (uuid === CHAR.ATTACHED_IO) {
             for (const [p, connectId] of Object.entries(CONNECT_OF)) {
                 const ioType = this.motors.has(p) ? WEDO_IO.MOTOR : this.sensorPorts.get(p)?.ioType;
                 if (ioType !== undefined) this._send(CHAR.ATTACHED_IO, attachedIo(connectId, ioType));
@@ -217,7 +241,7 @@ export class Wedo2VirtualHub {
     read (uuid) {
         if (uuid === CHAR.BATTERY_LEVEL) return Uint8Array.from([100]);
         if (uuid === CHAR.LOW_VOLTAGE) return Uint8Array.from([0]);
-        if (uuid === CHAR.BUTTON) return Uint8Array.from([0]);
+        if (uuid === CHAR.BUTTON) return Uint8Array.from([this._buttonPressed ? 1 : 0]);
         if (uuid === CHAR.NAME) return Uint8Array.from([...WEDO2_NAME].map(c => c.charCodeAt(0)));
         throw new Error(`characteristic ${uuid} is not readable`);
     }

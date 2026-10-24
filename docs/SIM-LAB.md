@@ -342,6 +342,14 @@ Owner (2026-10-18): *"all must be steerable also by pseudocode and blocks and ot
 - **Run** in the Lab presses the green flag for a Robot Lab program as for a SPIKE one; *start the simulation* inside a script never does (no loop). A motor told to turn makes the world run, like holding the drive pad's arrow.
 - **Units**: degrees and degrees per second for motors (the encoder angle, unwrapped), power −100…100 %, positions in cm (world frame, y up), heading in degrees clockwise seen from above (0 at load), distance in cm (−1 when nothing is in range), colour as a word (`red`, `none`), force 0–100.
 
+**Program connections and brick inputs.** Use **Program connection** to choose a model brick and its
+Bluetooth, USB serial, local bridge or HTTP route, when supported by the loaded extension. **Connect**
+establishes the link; **Run** starts the program. Disconnecting, replacing the model or closing the Lab
+invalidates outstanding connections. **Brick buttons** holds the model's inputs with the pointer, Space
+or Enter and releases them on cancellation or pane closure. Hosts use `brickButtons()`,
+`holdButton(hub, button)` and `pressButton(hub, button, pressed)` on the same Lab API.
+See [connections and buttons](ROBOT-LAB-CONNECTIONS-AND-BUTTONS.md) for endpoints, supported inputs and limits.
+
 **Which motors a program may turn directly.**
 - A model **with no hub** (the *Motor bench* model) runs on the Lab's own `lab-direct` hub (`bw-sim/hubs/lab-direct/`), which owns every motor of the model. Its controller is the SPIKE hub's (trajectory generator + PI/damping loop into the DC model, `hubs/spike/spike-motor-controller.js`): power is an open-loop duty; speed and degrees are regulated; *run for degrees* ends when the **encoder** is within 1° of the target and slower than 10 °/s, then brakes (or holds) — never on a clock. Measured: 360 ± 2° (the bound is derived in `test/bw-sim-robot-lab-api.test.mjs`).
 - A motor on a **SPIKE hub port** run from Scratch blocks: the command goes to that hub's own controller, exactly as a SPIKE block's does (one owner per port; the last command wins, as between two blocks). The API's `{power}` there is a speed (N % of the motor's top speed, as `start motor A forward` at speed N); a program's **start motor at % power** block is the unregulated duty (*Motor power* below).

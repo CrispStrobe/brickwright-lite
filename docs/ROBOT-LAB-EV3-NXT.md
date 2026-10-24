@@ -182,7 +182,8 @@ six AA cells.
 - **EV3 wall stopper** (`ev3-wall-stopper.ldr`, Wall mat): the brick between two Technic beams 15, two large
   motors behind it (B left, C right) on 88 mm wheels, free 88 mm front wheels, the ultrasonic sensor on input 4
   looking ahead. Example: `ev3-wall-stopper.bw` (DEVICE EV3: run BC at 40 % until `ev3 distance 4 cm` < 15,
-  brake) — see *Known open*. The stock Scratch EV3 blocks drive it (test and gate).
+  brake). Choose **Local bridge** or **USB serial** under **Program connection** for this
+  example. The stock Scratch EV3 blocks retain their Bluetooth route (test and gate).
 - **NXT bumper bot** (`nxt-bumper-bot.ldr`, Wall mat): the same layout on the NXT and its motors, the touch
   sensor's button as the bumper on input 1. Example: `nxt-bumper-bot.blocks.json` — legonxt blocks (the same
   script in `nxt …` words is in test/lego-hubs-dialect.test.mjs): set up the touch sensor, B and C 360° at power 75, wait 2 s, B and C on at 60,
@@ -212,9 +213,11 @@ six AA cells.
   and the Lab's NXT example is still the blocks file (`test/lego-hubs-dialect.test.mjs` checks the same
   script in words equals it).
 - The NXT's MOTOR_SYNC, its buttons and both ultrasonic listen modes are modelled (see *NXT motor sync,
-  buttons and listening*). Still open: EV3 sync turn ratios are a simple scaling (our model), the EV3's
-  buttons are never pressed in the Lab (WAIT_FOR_PRESS waits), and no Lab UI or `runtime.robotLab` call
-  presses a button yet; the stock EV3 extension reads distance in inches (its mode 1) and caps it at 100.
+  buttons and listening*). EV3 sync now couples shaft phase with the documented signed turn ratios;
+  the Lab's **Brick buttons** controls and `runtime.robotLab.holdButton` / `pressButton` release
+  WAIT_FOR_PRESS commands. See [connections and buttons](ROBOT-LAB-CONNECTIONS-AND-BUTTONS.md) for
+  input ownership, model controller choices and qualification boundaries. The stock EV3 extension
+  reads distance in inches (its mode 1) and caps it at 100.
 
 ## Tests and gate
 

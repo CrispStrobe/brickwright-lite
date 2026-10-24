@@ -30,6 +30,8 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInfo from './sim-lab-info.jsx';
 import SimLabReadings from './sim-lab-readings.jsx';
+import SimLabConnections from './sim-lab-connections.jsx';
+import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
 import {teachingMeasurementPreset} from '../../lib/bw-sim/measurements/teaching-presets.js';
@@ -377,6 +379,7 @@ class SimLabPane extends React.Component {
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
             controlsOpen: false, manualOverride: false, programLoading: false,
+            connection: {bricks: [], routes: [], hubId: null, route: 'bluetooth', status: 'idle', message: ''},
             mixerOpen: (() => { try { return localStorage.getItem(MIXER_OPEN_KEY) === '1'; } catch { return false; } })(), mixer: {session: null, power: {}},
             // Simulate: sensor rays, the Readings panel, slow motion, and the replay position (null: live)
             measurementsOpen: false, showMeasurements: false, measurementTick: 0, showSensors: false, readings: false, showStats: false, timeScale: 1, replayAt: null, replayFrames: 0, readingsTick: 0,
@@ -515,8 +518,8 @@ class SimLabPane extends React.Component {
         // The scene's radio hubs (LWP3: BOOST, Powered Up, Technic, SPIKE Essential; WeDo 2.0) as virtual BLE
         // peripherals, for the LEGO extensions to reach over Web Bluetooth or Scratch Link (virtual-hub/lab-ble-peripherals.js).
         this.unregisterBle = this.lib.registerRobotLabBlePeripherals(() => (this.session ? this.session.hubs.map(h => h.hub) : []));
-        this.registerBtBricks();
         this.installApi();
+        this.installConnections();
         this.raf = requestAnimationFrame(this.frame);
         await this.openStored();
     }
@@ -545,6 +548,107 @@ class SimLabPane extends React.Component {
         if (runtime) runtime.robotLab = this.api;
     }
 
+    /** The coordinator captures the old scene/VM before any asynchronous provider work. */
+    installConnections () {
+        this.connections = this.lib.createLabConnectionCoordinator({
+            getVM: () => this.props.vm,
+            stopClock: () => this.stopClock(),
+            stopProgram: (vm, scene, {preserveProgram = false} = {}) => {
+                if (!scene || scene.lockstep || !scene.hubs.some(record => this.lib.labConnectionRoutes(scene, record).length)) return;
+                const errors = [];
+                // A loadModel block replaces its world while its calling script
+                // continues. Its old motors and pending toolbar Run still retire.
+                try { if (!preserveProgram) vm?.stopAll(); } catch (error) { errors.push(error); }
+                // Queued provider stop writes may outlive cancellation. Retire
+                // the actual old model motors now, while routes are tombstones.
+                for (const {hub} of scene.hubs || []) {
+                    if (typeof hub.directCommand !== 'function') continue;
+                    try { hub.hubState?.backend?.cancel(); } catch (error) { errors.push(error); }
+                    let ports = [];
+                    try { ports = hub.motorPortIds?.() || []; } catch (error) { errors.push(error); }
+                    for (const port of ports) {
+                        try {
+                            const result = hub.directCommand(port, {stop: 'brake'});
+                            if (result?.ok === false) throw new Error(result.message || 'Could not stop a Lab motor');
+                        } catch (error) { errors.push(error); }
+                    }
+                }
+                if (errors.length) throw new AggregateError(errors, 'Could not stop the old Lab program');
+            },
+            prepareRun: (scene, vm) => new Promise(resolve => {
+                if (this.disposed || this.session !== scene || this.props.vm !== vm) { resolve(); return; }
+                this.setState({status: 'running', message: '', info: ''}, resolve);
+            }),
+            startClock: (scene, vm) => {
+                if (!this.disposed && this.session === scene && this.props.vm === vm) this.startClock();
+            },
+            onState: connection => {
+                if (!this.disposed) this.setState({connection, ...(connection.status === 'failed' ? {
+                    status: 'paused', message: this.t('connectFailed', {error: connection.message})
+                } : {})});
+            },
+            host: window, navigatorHost: navigator
+        });
+    }
+
+    observeConnection (action, scene = this.session) {
+        const observation = this.connectionObservation = {};
+        const failed = error => {
+            const errors = [error];
+            const remember = () => {
+                this.lastConnectionError = errors.length === 1 ? error : new AggregateError(errors,
+                    errors.map(cause => cause.message || String(cause)).join('; '));
+            };
+            remember();
+            if (!this.disposed && this.session === scene && this.connectionObservation === observation && error.name !== 'AbortError') {
+                try { this.stopClock(); } catch (cleanupError) { errors.push(cleanupError); }
+                remember();
+                try {
+                    this.setState({status: 'paused', message: this.t('connectFailed', {error: this.lastConnectionError.message})});
+                } catch (publicationError) { errors.push(publicationError); remember(); }
+            }
+        };
+        try { return Promise.resolve(action()).catch(failed); }
+        catch (error) { failed(error); return Promise.resolve(); }
+    }
+
+    connectLegacy (vm, connect, isCurrent) {
+        return this.lib.serializeLabLegacyConnection({vm, connect, isCurrent}).catch(error => {
+            if (isCurrent() && this.lib.labProviderRetirementFailure(vm)) {
+                // The ordinary Bluetooth connection-error fallback must not
+                // start a script after provider retirement became uncertain.
+                this.runConnection = null;
+                this.observeConnection(() => Promise.reject(new AggregateError([error], error.message)));
+            }
+            throw error;
+        });
+    }
+
+    connectConnection ({run = false} = {}) {
+        return this.observeConnection(() => {
+            const selected = this.connections.snapshot();
+            const record = this.session?.hubs.find(brick => brick.id === selected.hubId);
+            // Expose the native REPL while paused too: Connect never installs
+            // the world clock or starts a program.
+            if (record?.profile === 'spike-prime') record.hub.hubState.setSimulationEnabled(true);
+            return run ? this.connections.run() : this.connections.connect();
+        });
+    }
+
+    selectConnection (selection) {
+        this.runConnection = null;
+        this.stopClock();
+        this.setState({status: 'paused'});
+        this.observeConnection(() => this.connections.select(selection));
+    }
+
+    disconnectConnection () {
+        this.runConnection = null;
+        this.stopClock();
+        this.setState({status: 'paused'});
+        this.observeConnection(() => this.connections.disconnect());
+    }
+
     /** loadModel from a block, a word or a call: a shipped model by id, or LDraw text. */
     async apiLoadModel (spec) {
         if (this.disposed || !this.lib) return {ok: false, code: 'no-model'};
@@ -554,10 +658,10 @@ class SimLabPane extends React.Component {
             this.setState({mode: 'simulate', placing: null, selection: []});
         }
         const entry = this.lib.MODELS.find(m => modelKey(m).replace(/\.ldr$/i, '') === spec);
-        if (entry) await this.openShipped(modelKey(entry));
+        if (entry) await this.openShipped(modelKey(entry), {preserveProgram: true});
         else {
             this.lastText = spec;
-            await this.openText(spec, 'my-model.ldr');
+            await this.openText(spec, 'my-model.ldr', null, {preserveProgram: true});
         }
         return {ok: Boolean(this.session), status: this.state.status, issues: this.state.issues.length};
     }
@@ -571,6 +675,7 @@ class SimLabPane extends React.Component {
     /** stop from a block: pause the world, leave the program running (it may start it again). */
     apiStop () {
         if (!this.session) return;
+        this.connections?.pauseRun();
         if (this.session.lockstep) { this.pauseFirmware(); return; }
         this.stopClock();
         this.setState({status: 'paused'});
@@ -657,7 +762,7 @@ class SimLabPane extends React.Component {
         this.stopClock();
         const session = this.session;
         const request = this.runConnection = {};
-        const current = () => this.session === session && this.runConnection === request &&
+        const current = () => !this.disposed && this.props.vm === vm && this.session === session && this.runConnection === request &&
             this.state.status === 'running' && !this.state.manualOverride;
         // A fast virtual connection can resolve before React flushes setState.
         // Commit Run first; an intervening Stop or replacement still wins.
@@ -672,7 +777,7 @@ class SimLabPane extends React.Component {
         }
         this.setState({info: ''});
         try {
-            await this.connectRadioHub(hub, id);
+            await this.connectLegacy(vm, () => this.connectRadioHub(hub, id), current);
         } catch (error) {
             if (!current()) return;
             this.setState({message: this.t('connectFailed', {error: error.message})});
@@ -702,6 +807,7 @@ class SimLabPane extends React.Component {
         cancelAnimationFrame(this.raf);
         this.stopClock();
         this.teardown();
+        if (this.connections) this.observeConnection(() => this.connections.dispose());
         this.teardownEditor();
         if (this.unregisterRcx) this.unregisterRcx();
         if (this.unregisterBle) this.unregisterBle();
@@ -1032,7 +1138,10 @@ class SimLabPane extends React.Component {
         if (this.clock) this.clock.uninstall();
     }
 
-    teardown () {
+    teardown ({preserveProgram = false} = {}) {
+        this.runConnection = null;
+        if (this.connections) this.observeConnection(() => this.connections.setScene(null, {preserveProgram}));
+        if (this.unregisterBt) this.observeConnection(() => this.unregisterBt());
         this.stopClock();
         if (this.unsubscribeDrawing) this.unsubscribeDrawing();
         this.unsubscribeDrawing = null;
@@ -1044,7 +1153,7 @@ class SimLabPane extends React.Component {
     }
 
     /** Opens a MODELS entry by its key (`id`, else its file): one model file may be listed twice, with different examples. */
-    async openShipped (key, {includeProgram = false, updateTitle = false} = {}) {
+    async openShipped (key, {includeProgram = false, updateTitle = false, preserveProgram = false} = {}) {
         const request = this.shippedRequest = {};
         this.programRequest = null;
         if (includeProgram && this.session) this.pause();
@@ -1052,6 +1161,7 @@ class SimLabPane extends React.Component {
         if (!entry) return;
         const file = entry.file;
         const response = await fetch(`${this.lib.MODELS_BASE}${file}`);
+        if (this.disposed || this.shippedRequest !== request) return;
         if (!response.ok) {
             this.setState({status: 'failed', message: this.t('failed', {error: `HTTP ${response.status}`})});
             return;
@@ -1069,13 +1179,13 @@ class SimLabPane extends React.Component {
             await new Promise(resolve => this.setState({mat: entry.mat}, resolve));
             if (this.disposed || this.shippedRequest !== request) return;
         }
-        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example)});
+        await this.openText(text, file, key, {programLoading: Boolean(includeProgram && entry.example), preserveProgram, shippedRequest: request});
         if (this.disposed || this.shippedRequest !== request || this.state.status === 'failed') return;
         if (includeProgram && entry.example) await this.loadExample();
         if (this.disposed || this.shippedRequest !== request) return;
         if (updateTitle) this.props.onSetProjectTitle?.(entry.title[this.locale] || entry.title.en);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
-        if (!this.disposed) this.setState({...(this.state.lessonKey ? {lessonKey: key} : {}),
+        if (!this.disposed && this.shippedRequest === request) this.setState({...(this.state.lessonKey ? {lessonKey: key} : {}),
             ...(!includeProgram ? {info: this.shippedModel()?.example && !this.spikeLoaded() ? this.withIntro(this.text.exampleOffer) : ''} : {})});
     }
 
@@ -1181,14 +1291,18 @@ class SimLabPane extends React.Component {
         }
     }
 
-    async openText (text, name, shipped = null, {programLoading = false, measurements} = {}) {
+    async openText (text, name, shipped = null, {programLoading = false, measurements, preserveProgram = false, shippedRequest = null} = {}) {
+        if (shippedRequest !== null && this.shippedRequest !== shippedRequest) return;
+        // Inline/UI opens supersede pending shipped fetches. The owning shipped
+        // loader retains its identity for its later program/title publication.
+        this.shippedRequest = shippedRequest;
         if (this.opened && this.measurementReader) this.measurementModels.set(this.opened.text, this.measurements);
         const savedMeasurements = measurements === undefined ? this.measurementModels.get(text) : measurements;
         this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null; this.measurementRowsTime = null;
         const token = this.loadToken = {};
         this.clearReplay();
         this.opened = {text, name};
-        this.teardown();
+        this.teardown({preserveProgram});
         this.setState({status: 'loading', manualOverride: false, programLoading, message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, rtf: null, view3d: 'loading'});
         const {SimSession, fetchModelDrawing, createSimView3D, CATALOG} = this.lib;
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
@@ -1242,6 +1356,8 @@ class SimLabPane extends React.Component {
         }
         const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
+        this.registerBtBricks();
+        if (this.connections) this.observeConnection(() => this.connections.setScene(session, {preserveProgram}));
         this.measurementReader = this.lib.createMeasurementReader(session);
         this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
         this.measurementRows = this.measurementReader.read(this.measurements);
@@ -1646,19 +1762,76 @@ class SimLabPane extends React.Component {
      * a brick over Scratch Link finds the Lab's, and its direct commands drive it.
      */
     registerBtBricks () {
-        if (this.unregisterBt) return;
-        const hubOf = profile => () => {
-            const h = this.session && this.session.hubs.find(x => x.profile === profile);
-            return h ? h.hub : null;
+        if (this.unregisterBt || !this.session || this.disposed) return;
+        const scene = this.session;
+        let active = true;
+        const peers = new Set();
+        const make = (profile, factory) => {
+            const record = scene.hubs.find(item => item.profile === profile);
+            const hub = record?.hub;
+            const currentHub = () => active && !this.disposed && this.session === scene && !scene._disposed &&
+                record && scene.hubs.includes(record) && record.hub === hub && record.profile === profile ? hub : null;
+            const peripheral = factory(currentHub);
+            return {...peripheral, open: link => {
+                if (!currentHub()) throw new DOMException('The Lab Bluetooth brick was replaced.', 'NetworkError');
+                const session = factory(currentHub).open(link);
+                let live = true;
+                let linkClosed = false;
+                const owner = {retire: closeLink => {
+                    const errors = [];
+                    if (live) {
+                        live = false;
+                        peers.delete(owner);
+                        try { session.close?.(); } catch (error) { errors.push(error); }
+                    }
+                    if (closeLink && !linkClosed) {
+                        linkClosed = true;
+                        try { link.close(); } catch (error) { errors.push(error); }
+                    }
+                    if (errors.length) throw new AggregateError(errors, 'Lab Bluetooth peer cleanup failed');
+                }};
+                peers.add(owner);
+                if (!currentHub()) {
+                    owner.retire(true);
+                    throw new DOMException('The Lab Bluetooth brick was replaced while opening.', 'NetworkError');
+                }
+                return {
+                    receive: bytes => {
+                        if (!live) throw new DOMException('The Lab Bluetooth connection is closed.', 'NetworkError');
+                        if (!currentHub()) {
+                            owner.retire(true);
+                            throw new DOMException('The Lab Bluetooth brick was replaced.', 'NetworkError');
+                        }
+                        return session.receive(bytes);
+                    },
+                    close: () => owner.retire(false)
+                };
+            }};
         };
-        const unregister = [
-            this.lib.registerVirtualClassicPeripheral(this.lib.ev3ClassicPeripheral(hubOf('ev3'))),
-            this.lib.registerVirtualClassicPeripheral(this.lib.nxtClassicPeripheral(hubOf('nxt')))
-        ];
-        this.unregisterBt = () => {
-            for (const fn of unregister) fn();
-            this.unregisterBt = null;
+        const unregister = [];
+        const release = () => {
+            if (!active) return;
+            active = false;
+            if (this.unregisterBt === release) this.unregisterBt = null;
+            const errors = [];
+            // Remove discovery first: callbacks from closing a peer cannot
+            // reacquire an endpoint being retired or remove a later owner.
+            for (const off of unregister) { try { off(); } catch (error) { errors.push(error); } }
+            for (const owner of [...peers]) { try { owner.retire(true); } catch (error) { errors.push(error); } }
+            if (errors.length) throw new AggregateError(errors, 'Lab Bluetooth retirement failed');
         };
+        try {
+            for (const [profile, factory] of [['ev3', this.lib.ev3ClassicPeripheral], ['nxt', this.lib.nxtClassicPeripheral]]) {
+                if (scene.hubs.some(record => record.profile === profile)) {
+                    unregister.push(this.lib.registerVirtualClassicPeripheral(make(profile, factory)));
+                }
+            }
+        } catch (error) {
+            try { release(); }
+            catch (cleanupError) { throw new AggregateError([error, cleanupError], 'Lab Bluetooth registration and rollback failed'); }
+            throw error;
+        }
+        this.unregisterBt = release;
     }
 
     /**
@@ -1674,7 +1847,7 @@ class SimLabPane extends React.Component {
         this.stopClock();
         const session = this.session;
         const request = this.runConnection = {};
-        const current = () => this.session === session && this.runConnection === request &&
+        const current = () => !this.disposed && this.props.vm === vm && this.session === session && this.runConnection === request &&
             this.state.status === 'running' && !this.state.manualOverride;
         // A fast virtual connection can resolve before React flushes setState.
         // Commit Run first; an intervening Stop or replacement still wins.
@@ -1687,8 +1860,8 @@ class SimLabPane extends React.Component {
         }
         this.setState({info: ''});
         try {
-            await this.lib.connectVirtualHub({vm, extensionId,
-                peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID});
+            await this.connectLegacy(vm, () => this.lib.connectVirtualHub({vm, extensionId,
+                peripheralId: profile === 'ev3' ? this.lib.EV3_PERIPHERAL_ID : this.lib.NXT_PERIPHERAL_ID}), current);
         } catch (error) {
             // Said, and the world still runs: the program's own connect block may yet reach the brick.
             if (!current()) return;
@@ -1726,9 +1899,19 @@ class SimLabPane extends React.Component {
         if (!this.session || this.state.programLoading) return;
         if (this.state.manualOverride) this.setManualOverride(false);
         if (this.session.lockstep) { await this.runFirmware(); return; }
+        if (this.connections && this.connections.snapshot().route !== 'bluetooth') {
+            // A Robot Lab start block is already executing: only resume its
+            // world. A toolbar Run owns a fresh provider/green-flag admission.
+            if (!greenFlag) { this.apiEnsureRunning(); return; }
+            this.runConnection = null;
+            this.hub.setSimulationEnabled(true);
+            await this.connectConnection({run: true});
+            return;
+        }
         if (this.rcxHub()) { this.runRcx(); return; }
         if (this.radioHub()) { await this.runRadioHub(this.radioHub(), {greenFlag}); return; }
         if (this.btProfile()) { await this.runBt({greenFlag}); return; }
+        const vm = this.props.vm;
         const hubState = this.hub;
         hubState.setSimulationEnabled(true);
         // Connecting runs on wall time (its timeouts are the browser's); the program clock goes in
@@ -1736,13 +1919,12 @@ class SimLabPane extends React.Component {
         this.stopClock();
         const session = this.session;
         const request = this.runConnection = {};
-        const current = () => this.session === session && this.runConnection === request &&
+        const current = () => !this.disposed && this.props.vm === vm && this.session === session && this.runConnection === request &&
             this.state.status === 'running' && !this.state.manualOverride;
         // A fast virtual connection can resolve before React flushes setState.
         // Commit Run first; an intervening Stop or replacement still wins.
         await new Promise(resolve => this.setState({status: 'running'}, resolve));
         if (!current()) return;
-        const vm = this.props.vm;
         // Without a SPIKE or Robot Lab program the clock still runs (the arrows below drive the
         // motors), but say plainly why nothing moves on its own.
         const spike = this.spikeLoaded();
@@ -1762,13 +1944,13 @@ class SimLabPane extends React.Component {
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
         try {
             const {connectVirtualSpike} = this.lib;
-            await connectVirtualSpike({host: window, hubState,
+            await this.connectLegacy(vm, () => connectVirtualSpike({host: window, hubState,
                 connected: () => vm.getPeripheralIsConnected('spikeprime'),
                 disconnect: () => vm.disconnectPeripheral('spikeprime'),
                 connect: async () => {
                     if (typeof peripheral.setMode === 'function') peripheral.setMode('web-ble');
                     await peripheral.scan();
-                }});
+                }}), current);
         } catch (error) {
             if (!current()) return;
             this.setState({message: this.t('connectFailed', {error: error.message})});
@@ -1920,6 +2102,11 @@ class SimLabPane extends React.Component {
     pause () {
         if (!this.session) return;
         if (this.session.lockstep) { this.pauseFirmware(); return; }
+        this.runConnection = null;
+        if (this.connections && this.connections.snapshot().route !== 'bluetooth') {
+            this.disconnectConnection();
+            return;
+        }
         // Pause stops the program too (a Robot Lab program's next motor command would run the world again).
         if (this.spikeLoaded() || this.robotLabLoaded() || this.hubExtension()) {
             try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ }
@@ -2971,6 +3158,17 @@ class SimLabPane extends React.Component {
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
                 {this.renderInfo()}
                 {this.renderBlockers()}
+                {simulate && this.session && !this.session.lockstep && <React.Fragment>
+                    <SimLabConnections locale={this.locale} {...this.state.connection}
+                        disabled={this.state.programLoading}
+                        onHub={hubId => this.selectConnection({hubId, route: 'bluetooth'})}
+                        onRoute={route => this.selectConnection({route})}
+                        onConnect={() => this.connectConnection()}
+                        onDisconnect={() => this.disconnectConnection()} />
+                    <SimLabBrickButtons locale={this.locale} api={this.api} scene={this.session}
+                        disabled={this.state.programLoading}
+                        onError={error => this.setState({message: error.message})} />
+                </React.Fragment>}
                 <div data-testid="bw-sim-lab-main" style={{display: 'flex', flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative'}}>
                     {this.renderPalettePanel()}
                     <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: compact ? 220 : 240, minWidth: 0, position: 'relative', display: 'flex',

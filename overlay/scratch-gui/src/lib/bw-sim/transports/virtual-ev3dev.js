@@ -129,7 +129,7 @@ export const createVirtualEv3dev = (getHub, {user = null, password = null, onCom
         if (kind === 'button') {
             const b = BUTTONS.indexOf(String(port).toLowerCase());
             if (b < 0) return fail(404, `unknown button ${port}`);
-            return {json: {value: hub.button(b)}};
+            return {json: {value: hub.button(b + 1)}};
         }
         const spec = SENSOR_READS[kind];
         if (!spec) return fail(404, `unknown sensor ${kind}`);
