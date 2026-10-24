@@ -3,7 +3,7 @@
 DONE (source candidate; browser qualification pending) — Codex Robot Lab
 integration, owner-authorized continuation, 2026-10-23.
 Base `7c40d9cb8a47e9ccea435dee75098424495faa5e`; isolated branch
-`lane/robot-line-transform-claim-20261023`.
+`lane/robot-line-transform-source-20261023` (claim merged in PR1310).
 
 Own only regular/conditional line shader transforms and per-draw uniform
 preparation in `overlay/scratch-gui/src/lib/bw-sim/view/instanced-parts.js`,
@@ -52,3 +52,6 @@ bytes were restored exactly before the passing final run. These are isolated
 source controls; current whole-GUI CI and full fresh browser qualification remain
 required. The earlier Quartermaster failure remains retained and unqualified; no
 measured speed gain or resolution is inferred from this source change.
+
+The new controls are included in the existing registered instancing suite; no
+GUI import allowlist or dependency permission is broadened.
