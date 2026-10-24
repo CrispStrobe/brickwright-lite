@@ -1,0 +1,41 @@
+# Watt's Line physical-stop qualification probe. Simulator only.
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Separate from the normal experiment: deliberately presses each physical stop.
+# No imposed limit or hidden hinge restricts this motion. A 30s watchdog is finite.
+DEVICE SPIKE
+GLOBAL probeStage = 0
+GLOBAL probeDone = 0
+GLOBAL probeFailed = 0
+WHEN flag clicked:
+  set probeDone to 0
+  set probeFailed to 0
+  reset timer
+  lab start
+  broadcast "probe watchdog"
+  set probeStage to 1
+  lab run motor A at 5 degrees per second
+  wait 6 seconds
+  lab stop motor A brake
+  wait 0.4 seconds
+  set probeStage to 2
+  lab run motor A for (0 - (lab motor A angle)) degrees at 8 degrees per second
+  wait 0.4 seconds
+  set probeStage to 3
+  lab run motor A at -5 degrees per second
+  wait 6 seconds
+  lab stop motor A brake
+  wait 0.4 seconds
+  set probeStage to 4
+  lab run motor A for (0 - (lab motor A angle)) degrees at 8 degrees per second
+  wait 0.4 seconds
+  lab stop motor A hold
+  set probeStage to 5
+  set probeDone to 1
+WHEN I receive "probe watchdog":
+  REPEAT UNTIL (probeDone = 1):
+    IF (timer) > 30 THEN:
+      lab stop motor A brake
+      set probeFailed to 1
+      stop all
+    wait 0.1 seconds

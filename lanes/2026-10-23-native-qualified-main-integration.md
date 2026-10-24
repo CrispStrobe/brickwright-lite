@@ -1,6 +1,6 @@
 # Compose and qualify the published native repair on qualified main
 
-CLAIMED — Native qualification integration coordinator, branch
+IMPLEMENTATION DONE (held source candidate) — Native qualification integration coordinator, branch
 `lane/native-repair-qualified-main-integration-20261023`, base
 `df1b92757aa1c138d71bcae1dbedc77c8f56624e`.
 
@@ -30,3 +30,15 @@ No runtime semantic, supplier pin, firmware, timeout, guest-clock, solver,
 acceptance-bound, signing, release, deployment or hardware change. Any genuine
 source conflict or defect requires coordination and a separately authorized
 source envelope; do not resolve it by changing another owner's implementation.
+
+## Source integration controls
+
+The normal composition retains all four published candidate files byte-for-byte
+and preserves both candidate and qualified-main ancestry. All 74 complete
+`spike-renode-arena-session` controls pass under Node 22, with no skips. The
+unchanged producer's 22 host admission/refusal controls also pass. These are host
+controls, not firmware-guest or installed-app qualification.
+
+The successor remains held for its exact official frontend, the complete new
+producer request, fresh source-bound installed acceptance and every enabled
+final-head check. The existing consumer and producer branches remain preserved.

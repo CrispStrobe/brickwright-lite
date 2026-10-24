@@ -2,7 +2,7 @@
   "version": 1,
   "id": "straight-eight",
   "language": "de",
-  "what": "Ein Motor treibt ein Peaucellier-Getriebe: Sieben bewegliche Glieder und das feste Gestell führen den roten Punkt auf einer Geraden. Sieben bewegliche Glieder führen den roten Punkt geradlinig durch einen Kurbelbereich von ±60°, ohne Gleitführung.",
+  "what": "Peaucellier–Lipkin-Inversor. Ein Motor treibt ein Peaucellier-Getriebe: Sieben bewegliche Glieder und das feste Gestell führen den roten Punkt auf einer Geraden. Sieben bewegliche Glieder führen den roten Punkt geradlinig durch einen Kurbelbereich von ±60°, ohne Gleitführung.",
   "try": [
     "Setze zurück und starte das Beispiel. Beobachte die blaue Kurbel bei +60°, −60° und der Rückkehr zur Ausgangslage.",
     "Pausiere am Endpunkt. Vergleiche den roten Punkt mit dem festen Ursprung O; es gibt keine Gleitschiene.",

@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "mechanisms": [
+    {
+      "models": [
+        "stride-lab"
+      ],
+      "name": {
+        "en": "Hoeken linkage",
+        "de": "Hoeken-Getriebe"
+      },
+      "aliases": [
+        "Hoeken",
+        "Hoecken",
+        "Höken",
+        "four-bar linkage",
+        "Viergelenk"
+      ]
+    },
+    {
+      "models": [
+        "straight-eight"
+      ],
+      "name": {
+        "en": "Peaucellier–Lipkin linkage",
+        "de": "Peaucellier–Lipkin-Inversor"
+      },
+      "aliases": [
+        "Peaucellier",
+        "Lipkin",
+        "inversor",
+        "inversion",
+        "exact straight line",
+        "Peaucellier–Lipkin cell",
+        "Peaucellier cell",
+        "Peaucellier-Lipkin-Zelle"
+      ]
+    },
+    {
+      "models": [
+        "sarrus-lift"
+      ],
+      "name": {
+        "en": "Sarrus linkage",
+        "de": "Sarrus-Getriebe"
+      },
+      "aliases": [
+        "Sarrus",
+        "spatial six-bar linkage",
+        "räumliches Sechsgelenk"
+      ]
+    },
+    {
+      "models": [
+        "amplify",
+        "pantograph-doubler",
+        "scale-studio",
+        "scale-echo"
+      ],
+      "name": {
+        "en": "Pantograph",
+        "de": "Pantograf"
+      },
+      "aliases": [
+        "pantograph",
+        "pantograf",
+        "pantographen",
+        "parallelogram linkage",
+        "Storchschnabel",
+        "homothety",
+        "Ähnlichkeit",
+        "pantographs"
+      ]
+    },
+    {
+      "models": [
+        "offset-orbit",
+        "crossglide"
+      ],
+      "name": {
+        "en": "Oldham coupling",
+        "de": "Oldham-Kupplung"
+      },
+      "aliases": [
+        "Oldham",
+        "cross slider coupling",
+        "Kreuzschieberkupplung",
+        "parallel offset shafts",
+        "Oldham couplings"
+      ]
+    },
+    {
+      "models": [
+        "phase-bridge",
+        "phase-bridge-misphased",
+        "ripple-relay"
+      ],
+      "name": {
+        "en": "Universal / Cardan joints",
+        "de": "Kardan- / Kreuzgelenke"
+      },
+      "aliases": [
+        "universal joint",
+        "Cardan",
+        "Hooke joint",
+        "Hooke’s joint",
+        "Kardangelenk",
+        "Kreuzgelenk",
+        "double Cardan",
+        "Doppel-Kardan"
+      ]
+    },
+    {
+      "models": [
+        "watt-line"
+      ],
+      "name": {
+        "en": "Watt linkage",
+        "de": "Watt-Getriebe"
+      },
+      "aliases": [
+        "Watt",
+        "Watts linkage",
+        "Watt’s linkage",
+        "four-bar linkage",
+        "approximate straight line"
+      ]
+    },
+    {
+      "models": [
+        "twin-tempo"
+      ],
+      "name": {
+        "en": "Gear reduction and drum hoist",
+        "de": "Zahnraduntersetzung und Seilwinde"
+      },
+      "aliases": [
+        "gear ratio",
+        "3:1",
+        "three to one",
+        "idler gear",
+        "Übersetzung",
+        "Seilzug",
+        "Trommelwinde"
+      ]
+    },
+    {
+      "models": [
+        "sine-shuttle"
+      ],
+      "name": {
+        "en": "Scotch yoke",
+        "de": "Kurbelschleife"
+      },
+      "aliases": [
+        "Scotch yoke",
+        "captured block",
+        "harmonic motion",
+        "sinusoidal motion",
+        "Kurbelschleife",
+        "harmonische Bewegung",
+        "Doppelschieber"
+      ]
+    },
+    {
+      "models": [
+        "quartermaster"
+      ],
+      "name": {
+        "en": "Contact indexer with dwell latch",
+        "de": "Schrittgetriebe mit Rastsperre"
+      },
+      "aliases": [
+        "contact indexer",
+        "indexing wheel",
+        "quarter turn",
+        "intermittent motion",
+        "dwell latch",
+        "Schrittgetriebe",
+        "Rastgetriebe",
+        "Vierteldrehung",
+        "Rastsperre"
+      ]
+    }
+  ]
+}

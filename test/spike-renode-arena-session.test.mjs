@@ -6,6 +6,7 @@ import Hub from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
 import {ArenaHubBridge} from '../overlay/scratch-gui/src/lib/spike-arena/arena-hub-bridge.js';
 import {RenodeArenaSession} from '../overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js';
 import {sandboxWorld} from '../overlay/scratch-gui/src/lib/spike-arena/arena-sandbox.js';
+import {dualUltrasonicRobot} from '../overlay/scratch-gui/src/lib/spike-nuttx/motor-topology.js';
 const bridge = () => new ArenaHubBridge({hubState: new Hub(), world: sandboxWorld()});
 test('cancel during startup closes only the session we started and never runs it', async () => {
     const calls = []; let release;
@@ -882,3 +883,86 @@ for (const cancel of [false, true]) test(`replacement upload awaiting completed 
         }
     } finally {release(); armed = false; clearTimeout(session.timer); await session.stop();}
 });
+
+// Real session, bridge and program client; native frames are authored controls.
+for (const topology of ['dual-ultrasonic', 'six-motors']) {
+for (const operation of topology === 'six-motors' ? ['upload'] : ['save', 'load', 'restart', 'upload']) {
+    for (const boundary of ['live', 'hub-stop', 'queued-hub-stop']) {
+        test(`${topology} preflight ${operation}/${boundary}: Stop prevents the next command`, async () => {
+            const hub = new Hub();
+            const arena = new ArenaHubBridge({hubState: hub, world: sandboxWorld(), robot: topology === 'dual-ultrasonic' ? dualUltrasonicRobot() : {sensors: []}});
+            let seq = 0, state = 0, lastReply, session, armed = false, stopping, frameAtStop;
+            const calls = [];
+            const frame = () => ({schemaVersion: 1, type: 'snapshot', seq: ++seq, clockNs: seq * 1000000,
+                target: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none',
+                    imageSha256: 'a'.repeat(64), capabilities: ['arena-inputs/v1', 'arena-clock/v1',
+                        'guest-motor-output/v1', 'state-sample/v1', 'nuttx-program/v1',
+                        'nuttx-program-storage/v1', topology === 'dual-ultrasonic' ? 'nuttx-addressed-distance/v1' : 'nuttx-six-motors/v1']},
+                lifecycle: {connectionGeneration: 1, nuttxProgram: {state, error: 0},
+                    ...(lastReply ? {nuttxProgramReply: lastReply} : {})},
+                ports: Object.entries(topology === 'dual-ultrasonic' ?
+                    {A: 'motor', B: 'motor', C: 'color', D: null, E: 'distance', F: 'distance'} :
+                    Object.fromEntries([...'ABCDEF'].map(port => [port, 'motor'])))
+                    .map(([id, kind]) => ({id, kind, attached: kind !== null})),
+                motors: [...(topology === 'dual-ultrasonic' ? 'AB' : 'ABCDEF')].map(port => ({port, position: 0, speedDps: 0,
+                    demandDirection: 0, stalled: false}))});
+            const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read',
+                'run', 'arena.inputs.write', 'program.packet'].map(op => [`renode.spike.${op}`, async args => {
+                calls.push({op, opcode: args?.bytes?.[2], closed: session.closed});
+                if (op === 'program.packet') {
+                    const opcode = args.bytes[2];
+                    if (opcode === 2 || opcode === 9) state = 1;
+                    if (opcode === 3) state = 2;
+                    if (opcode === 4) state = 4;
+                    const reply = new Uint8Array(20), view = new DataView(reply.buffer);
+                    reply.set([0x71, 1, opcode, state]);view.setUint32(4, 1, true);view.setUint16(14, 1, true);
+                    lastReply = [...reply];return JSON.stringify(frame());
+                }
+                return op === 'state.read' ? JSON.stringify(frame()) : JSON.stringify({closed: true});
+            }]));
+            session = new RenodeArenaSession({bridge: arena, capabilities, backend: 'nuttx',
+                topology, program: {version: 1, instructions: [[0, 0, 0, 0]]}});
+            const stop = () => {frameAtStop = session.latestFrame;stopping = session.stop();};
+            const unsubscribe = hub.subscribe(() => {
+                if (!armed || boundary === 'live') return;
+                armed = false;
+                if (boundary === 'hub-stop') stop();
+                else queueMicrotask(stop);
+            });
+            try {
+                await session.start();clearTimeout(session.timer);
+                state = 3;session.observeProgram({state});
+                const before = calls.length;armed = true;
+                let failure;
+                try {
+                    if (operation === 'restart') await session.restartProgram();
+                    else if (operation === 'upload') await session.uploadProgram({version: 1, instructions: [[0, 0, 0, 0]]});
+                    else await session.storage(operation);
+                } catch (error) {failure = error;}
+                if (stopping) await stopping;
+                clearTimeout(session.timer);
+                const opcode = {save: 8, load: 9, restart: 3, upload: 0}[operation];
+                if (boundary === 'live') {
+                    assert.equal(failure, undefined);
+                    assert.equal(session.closed, false);
+                    assert.equal(calls.slice(before).filter(row => row.opcode === opcode).length, 1);
+                } else {
+                    assert.ok(stopping, 'The actual hub observer must request Stop');
+                    assert.match(String(failure), /closed|cancelled/);
+                    assert.deepEqual(calls.slice(before).filter(row => row.opcode === opcode), [],
+                        'No storage or START request after the preflight observer Stops');
+                    assert.equal(session.latestFrame, frameAtStop, 'No frame publication after Stop');
+                    assert.equal(calls.slice(before).filter(row => row.opcode === 4).length, 1,
+                        'Only the owned teardown may send its cleanup STOP');
+                    assert.equal(hub.configurationOwner, null);
+                    assert.equal(hub.externalBackend, null);
+                    assert.equal(hub.clockOwner, null);
+                    assert.equal(calls.filter(row => row.op === 'session.close').length, 1);
+                }
+            } finally {
+                armed = false;unsubscribe();clearTimeout(session.timer);await session.stop();
+            }
+        });
+    }
+}
+}

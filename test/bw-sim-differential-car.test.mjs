@@ -143,7 +143,7 @@ const steerTargets = source => [...source.matchAll(/^\s*run motor B to position 
 
 test('the Differential car is a shipped example with its program, titled and introduced in English and German', () => {
     assert.ok(ENTRY, 'MODELS lists differential-car.ldr');
-    assert.deepEqual(ENTRY.title, {en: 'Differential car', de: 'Differenzial-Auto'});
+    assert.deepEqual(ENTRY.title, {en: 'Differential car — differential drive and rack steering', de: 'Differenzial-Auto — Differenzialantrieb und Zahnstangenlenkung'});
     assert.equal(ENTRY.mat, 'plain');
     for (const lang of ['en', 'de']) assert.ok(ENTRY.intro[lang].length > 80, `an intro in ${lang}`);
     assert.notEqual(ENTRY.intro.en, ENTRY.intro.de);

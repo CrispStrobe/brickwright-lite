@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "resonance-lab",
+  "language": "en",
+  "what": "A single motor rocks a short input arm. Two retained rubber bands pull a separate, weighted balance arm. The output has its own bearing and no motor. It stores energy in its moving masses and the stretched bands, so its motion depends on the rhythm of the input as well as its size. A small motor-driven input excites a separate weighted arm through two rubber bands. Compare the near-resonant finite burst with fresh slow and fast experiments, then observe passive ringdown.",
+  "try": [
+    "Open this near-resonant example. It loads the saved model and compiles its program into Blocks automatically. Press Run: motor A rocks the blue input through ±2° for four cycles at 13 degrees per second, returns to zero and holds for a ten-second observation interval.",
+    "Watch the blue input and the orange passive arm together. The output has no motor. Compare their swings and timing during the final two driven cycles, then watch the output continue moving after the input holds.",
+    "Choose the slow, near-resonant and fast Resonance Lab examples separately. Each selection reloads the same saved assembly before loading its program, removing residual motion from the preceding experiment. Reset before repeating the current program, especially after manual motor control.",
+    "Compare observed cycle times as well as swing size. The three requested motor speeds are 5, 13 and 80 degrees per second; they are not oscillation frequencies. Count the passive oscillations during ringdown and compare that free rhythm with each driven response."
+  ],
+  "why": "The two bands pull on opposite sides of the output pivot. Their pretension torques cancel in the saved symmetric pose. A small angular difference changes the two tensions in opposite directions, producing a restoring torque. Inertia prevents the weighted arm from following every change immediately. Repeated excitation near its natural rhythm builds a larger response; faster excitation is increasingly filtered by inertia.",
+  "matters": "Elastic couplings can amplify vibration, shift its timing and keep moving after an actuator stops. These effects matter in machinery, flexible robot transmissions, suspension systems and vibration isolation. An encoder on the motor does not by itself describe the motion of a compliant load.",
+  "question": "Does a passive swing larger than the motor swing mean that the machine creates energy?",
+  "answer": "No. The motor supplies energy through the two bands over several cycles. The larger output motion stores that accumulated energy as elastic potential energy and rotational kinetic energy. When the input is held, losses gradually dissipate the stored energy. The comparison is a finite burst, not a claim of an undamped steady state.",
+  "further": [
+    "For small angles and equal bands, the restoring stiffness is K = 2kr². Here r is the distance from each band seat to its rotor pivot, and k is the native spring stiffness of one complete band loop. The mass positions matter through rotational inertia I, not mass alone.",
+    "For small angles, fₙ = √(K/I)/(2π). Predict the effect of moving the same weights farther from the pivot. The complete moving assembly contributes to I. A changed geometry needs its own clearance and motion checks.",
+    "Finite acceleration, target completion and the Blocks scheduler affect the actual cycle duration. Measure both arms rather than treating the requested motor speed or encoder angle as the passive output.",
+    "This is a four-cycle transient experiment. A late-burst amplitude or phase comparison does not establish the mathematical steady-state frequency response. Compare fresh runs over the same observation window.",
+    "The source design used tension-only simulated bands, estimated part masses and an approximate rubber stiffness. Its small-angle frequency estimate is about 1.323 Hz. That is a source-design prediction, not a new measurement of this app build or a physical rubber band.",
+    "Real bands vary with size, age, temperature and preload. A physical build and measured material calibration remain separate work. Compare Echo Bridge for coupled pendulums and Pendulum Array for gravity-driven periods."
+  ],
+  "formula": "Fixed pivots, small angles: Iθ̈ + Cb(θ̇ − φ̇) + C0θ̇ + K(θ − φ) = 0; K ≈ 2kr²; fₙ = √(K/I)/(2π). Here φ is input angle, θ passive output angle, I the complete output inertia, Cb the bands’ equivalent angular damping, C0 the output’s remaining angular damping and k one band-loop stiffness. Source geometry: pivot spacing 56 mm, anchor lever arms r = 8 mm, two nominal 33 mm bands. Source-design undamped estimate fₙ ≈ 1.323 Hz; observe the current experiment separately.",
+  "related": [
+    "resonance-lab-slow",
+    "resonance-lab-fast",
+    "echo-bridge.ldr",
+    "pendulum-array.ldr",
+    "clutch-bench.ldr"
+  ]
+}

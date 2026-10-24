@@ -201,7 +201,7 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null, i
         instanced.build();
         scene.add(instanced.object);
         // After three updates the world matrices and before it draws: the instances follow the bodies.
-        scene.onBeforeRender = () => instanced.sync();
+        scene.onBeforeRender = (_renderer, _scene, renderCamera) => instanced.sync(false, renderCamera);
     }
 
     // Ground plane at ground body's top
