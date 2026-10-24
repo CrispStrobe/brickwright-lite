@@ -209,6 +209,21 @@ test('joint and rope edits use their selected targets current bindings and disca
     assert.deepEqual(f.changes[2][0], {id: 'turn', kind: 'mass', label: 'Assembly', targets: ['a'], visible: true});
 });
 
+test('untouched automatic labels follow quantity and locale changes while custom labels stay custom', () => {
+    const mechanism = bindingFixture();
+    const definition = {id: 'turn', kind: 'jointAngle', label: 'jointAngle', joint: 'j0',
+        binding: readings.jointBinding(mechanism, mechanism.joints[0]), visible: true};
+    const f = editorFixture({mechanism, definitions: [definition], rows: []});
+    f.edit('turn'); f.choose('bw-sim-lab-measurement-kind', 'jointSpeed');
+    const previous = f.panel.props;
+    f.panel.props = {...previous, locale: 'de'}; f.panel.componentDidUpdate(previous);
+    const name = findElement(f.panel.render(), e => e.type === 'input' && e.props.maxLength === 80);
+    assert.equal(name.props.value, 'Gelenkdrehzahl');
+    f.submit(); assert.equal(f.changes[0][0].label, 'jointSpeed');
+    f.edit('turn'); f.name('My hinge'); f.choose('bw-sim-lab-measurement-kind', 'jointAngle'); f.submit();
+    assert.equal(f.changes[1][0].label, 'My hinge');
+});
+
 test('legacy or reused joint and rope IDs require explicit target confirmation, never first-option fallback', () => {
     for (const scenario of ['legacy-joint', 'reused-joint', 'reused-rope']) {
         const mechanism = bindingFixture(), rope = scenario === 'reused-rope';

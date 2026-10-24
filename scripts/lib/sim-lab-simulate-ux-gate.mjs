@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 import {readFile, stat, writeFile} from 'node:fs/promises';
+import JSZip from 'jszip';
 import {tool} from './sim-lab-toolbar-gate.mjs';
 import {measurementPlotInteractions} from './sim-lab-measurement-plots-gate.mjs';
 
@@ -288,6 +289,13 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     const savedInfo = await stat(savedPath);
     assert.ok(savedInfo.size > 0 && savedInfo.size <= 8 * 1024 * 1024, 'bounded generated project fixture');
     const savedBytes = await readFile(savedPath);
+    const savedZip = await JSZip.loadAsync(savedBytes, {checkCRC32: true});
+    const sidecar = savedZip.file('brickwright/state.json');
+    assert.ok(sidecar, 'the downloaded project includes its actual Brickwright sidecar');
+    const sidecarText = await sidecar.async('text');
+    assert.ok(Buffer.byteLength(sidecarText) <= 2 * 1024 * 1024, 'bounded saved project metadata');
+    const savedBundle = JSON.parse(sidecarText);
+    assert.deepEqual(savedBundle.state.simLab, beforeProject, 'the downloaded bytes, not just localStorage, carry the edited definitions');
     const oldSession = await page.evaluateHandle(() => window.__bwSimLab._pane.session);
     try {
         await page.getByText('File', {exact: true}).first().click();
@@ -301,6 +309,7 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     assert.deepEqual(afterProject.measurements.find(d => d.id === 'custom-1'), afterModelReturn);
     const digest = text => createHash('sha256').update(text).digest('hex');
     editedEvidence.project = {before: beforeProject.measurements, after: afterProject.measurements,
+        saved: savedBundle.state.simLab.measurements,
         modelBeforeSha256: digest(beforeProject.ldraw), modelAfterSha256: digest(afterProject.ldraw),
         sb3: {file: 'sim-lab-measurement-edit.sb3', bytes: savedBytes.length, sha256: digest(savedBytes)}};
     const report = JSON.stringify(editedEvidence, null, 2) + '\n';
