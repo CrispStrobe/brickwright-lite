@@ -158,7 +158,12 @@ try {
     await page.waitForFunction(root => {
         const canvas = root.querySelector('canvas');
         if (!canvas) return false;
-        const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+        const context = canvas.getContext('2d');
+        // The voltage-axis labels are green too. Exclude two text heights at
+        // each edge so an empty plot cannot pass by rendering its labels.
+        const inset = Math.ceil(Number.parseFloat(context.font) * 2);
+        if (!Number.isFinite(inset) || canvas.height <= inset * 2) return false;
+        const pixels = context.getImageData(0, inset, canvas.width, canvas.height - inset * 2).data;
         for (let index = 0; index < pixels.length; index += 4) {
             // The CH1 trace is #2ecc71. Tolerate antialiasing while requiring
             // green dominance, which the empty graticule/background lacks.
