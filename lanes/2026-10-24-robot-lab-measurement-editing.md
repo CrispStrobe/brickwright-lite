@@ -1,6 +1,7 @@
 # Edit saved Robot Lab measurements
 
-CLAIMED — Codex, user-authorized measurement usability follow-up, 2026-10-24.
+Implementation DONE (source candidate; qualification pending) — Codex,
+user-authorized measurement usability follow-up, 2026-10-24.
 Isolated branch `lane/robot-measurement-editor-claim-20261024`, claim base
 `835e96acb9557df07f8e7eb0797b895bded9592a`.
 
@@ -36,3 +37,27 @@ real browser/Jolt measurement journey and saved-model round trip against the
 new source-bound frontend, plus every enabled exact-head check. A matched-head
 merge requires reviewed/predicted/landed tree and parent equality. Keep prior
 failures and existing limits; no hardware-accuracy or release claim follows.
+
+## Candidate controls
+
+Implementation starts from qualified joint main
+`1825cf0308d3ba0e217a3117fedefbe959cab8c8`, including the merged claim.
+The panel reuses the existing form and change callback. It preserves measurement
+identity and current visibility, checks current model and target identity at
+Save, and requires explicit confirmation of a legacy or mismatched joint/rope
+binding. Opening or canceling an edit does not migrate saved definitions.
+
+Eight local controls exercise the actual constructor and editor actions at a
+controlled state callback boundary. Six source mutations are detected, covering
+ID replacement, missing session/binding fences, implicit target fallback and
+stale focus restoration. The initial focus-control failure is retained; preset
+actions now cancel drafts and restore row focus only when an edit was active.
+These controls do not qualify ReactDOM, browser behavior or guest physics.
+
+The existing real React UI controls are extended, and the real measurement
+browser journey now edits targets through controls, checks stable IDs and plot
+selection, independently checks the selected hinge binding, and saves/reopens
+the generated project. Hosted execution of those controls and the new
+source-bound browser journey, plus every enabled exact-head check, remain
+required before landing. No package, schema, persistence format, physics or
+workflow change is included.
