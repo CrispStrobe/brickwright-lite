@@ -32,7 +32,8 @@ a fresh owned container (2 CPU, 2 GiB, no network, unchanged 120 s startup):
   dual-ultrasonic run left port F's sensor in the shared hub for the next pane.
   [PR1355](https://github.com/CrispStrobe/brickwright-lite/pull/1355) returns
   port F after the disposed Stop settles unless a newer session owns the hub;
-  the installed case passes on an executable built from that head.
+  the installed case passes on an executable built from that head (merged as
+  `b06ad7c6`).
 - **Selected-image races:** a real native selection of the operator image, with
   only its return delayed, is published normally and is ignored as stale after
   Reset or arena closure.
