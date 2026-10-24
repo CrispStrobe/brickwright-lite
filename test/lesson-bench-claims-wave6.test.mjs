@@ -8,8 +8,8 @@ import {packageSourceRoot} from './helpers/package-source.mjs';
  * below comes out of that. What is new is that half this wave's checkpoints
  * name the FREQUENCY-domain instruments, so this gate also drives the app's own
  * sweep (`model/sweep-runner.js` `runBode`, the same call `SweepPanel` makes)
- * and the app's own scope tap (`board.addScopeChannel` with the arguments
- * `ScopePanel` passes: a type and a net, and nothing else).
+ * and the app's own scope tap (`board.addScopeChannel` with the explicit
+ * capture cadence that `ScopePanel` passes).
  *
  * WHAT IS DELIBERATELY NOT PINNED HERE: wall-clock timings. The Bode sweep's
  * cost matters to two lessons and was measured (7.2 s for one point at 10 Hz,
@@ -43,6 +43,21 @@ const circuitOf = id => JSON.parse(
 
 const MS = 1000n * 1000n;
 const US = 1000n;
+
+function assertChosenScopeCadences(panel) {
+    // Match each argument object independently, including nested probe options.
+    const calls = [...panel.matchAll(/board\.addScopeChannel\(/g)]
+        .map(m => balancedFrom(panel, m.index, '{', '}', 'addScopeChannel argument'));
+    assert.ok(calls.length >= 3, 'time-domain and spectrum acquisition sites must be present');
+    for (const call of calls) {
+        assert.match(call, /\bsampleRateHz\b/, `a channel is created without a rate: ${call}`);
+    }
+    const spectrumTaps = calls.filter(call => /capture:\s*specCapture\b/.test(call));
+    assert.equal(spectrumTaps.length, 1, 'the FFT tap uses the selected capture mode');
+    assert.match(panel, /\[specCapture,\s*setSpecCapture\]\s*=\s*useState\('sample'\)/,
+        'the FFT must default to point capture');
+    return calls;
+}
 
 const lesson = id => {
     const found = WAVE.lessons.find(l => l.id === id);
@@ -168,19 +183,28 @@ test('the scope record is chosen, and a full RC step now fits in one', async () 
     // moves a label and nothing else.
     const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
     assert.match(panel, /data-testid="bw-scope-record"/, 'the record control is rendered');
-    // Each call's argument object, brace-matched from its own opening `{`, so a nested object
-    // literal cannot end the region early.
-    const calls = [...panel.matchAll(/board\.addScopeChannel\(/g)]
-        .map(m => balancedFrom(panel, m.index, '{', '}', 'addScopeChannel argument'));
     // Two time-domain sites (re-attach after a netlist edit, and add-channel) plus
-    // the spectrum tap the FFT view opens (D24, bw-circuit-ui `7696656`). The
-    // invariant that matters is not the count but that NO site takes the default:
-    // a rate the panel never sends is a control that moves a label and nothing else.
-    assert.equal(calls.length, 3, `expected three addScopeChannel call sites, found ${calls.length}`);
-    for (const c of calls) assert.match(c, /sampleRateHz/, `a channel is created without a rate: ${c}`);
-    const spectrumTaps = calls.filter(c => /capture:\s*'sample'/.test(c));
-    assert.equal(spectrumTaps.length, 1,
-        'exactly one site is the spectrum tap, and it is the only one that asks for a sample series');
+    // the FFT tap are the baseline. Independent audio acquisitions may add
+    // sites. Every site must choose a cadence; the FFT still defaults to points.
+    assertChosenScopeCadences(panel);
+});
+
+test('scope record guards accept independent timed taps and reject missing cadence or a changed FFT default', () => {
+    const panel = readFileSync(path.join(CUI, 'components/ScopePanel.jsx'), 'utf8');
+    const calls = assertChosenScopeCadences(panel);
+    const extra = `${panel}\nboard.addScopeChannel({type: 'voltage', netId: 'independent',
+        sampleRateHz: 20_000, depth: 8192, capture: 'average'});`;
+    assert.doesNotThrow(() => assertChosenScopeCadences(extra),
+        'an additional explicitly timed capture must not invalidate the lesson record');
+    for (const call of calls) {
+        const missingRate = call.replace(/\bsampleRateHz(?:\s*:\s*[\w$]+)?\s*,?/, '');
+        assert.notEqual(missingRate, call, 'the missing-cadence fixture must modify its actual tap');
+        assert.throws(() => assertChosenScopeCadences(panel.replace(call, missingRate)), /without a rate/);
+    }
+    const changedDefault = panel.replace(
+        /(\[specCapture,\s*setSpecCapture\]\s*=\s*useState\()'sample'/, "$1'average'");
+    assert.notEqual(changedDefault, panel, 'the changed-default fixture must modify the FFT initial mode');
+    assert.throws(() => assertChosenScopeCadences(changedDefault), /FFT must default to point capture/);
 });
 
 // ── signals-rl-response / pc52-inductor-filter ─────────────────────────────
