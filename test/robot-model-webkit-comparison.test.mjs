@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
 import {FROZEN,RUNTIME_IMAGE,webkitDependencyLibraryPath,admitPreprovisionedRuntime,admitFrozenArtifactInputs,admitCandidateCheckout,admitComparisonSource,boundedComparisonFetch,observeSafely,comparisonOutcome} from '../scripts/qualify-robot-model-webkit.mjs';
-const reviewed={...FROZEN,runId:1,jobId:2,artifactId:3,archiveBytes:128,archiveDigest:'sha256:'+'a'.repeat(64),checkoutSha:FROZEN.candidateHeadSha,producerLogSha256:'c'.repeat(64)};
+const reviewed={...FROZEN,runId:1,jobId:2,artifactId:3,archiveBytes:128,archiveDigest:'sha256:'+'a'.repeat(64),checkoutSha:FROZEN.candidateHeadSha,producerLogSha256:'c'.repeat(64),reviewedDelta:[':100644 100644 '+'a'.repeat(40)+' '+'b'.repeat(40)+' M\tlanes/fixture-existing.md',':000000 100644 '+'0'.repeat(40)+' '+'c'.repeat(40)+' A\tlanes/fixture-added.md']};
 const fixture=()=>({head:reviewed.candidateHeadSha,tree:reviewed.treeSha,parents:[...reviewed.candidateParents],changes:[...reviewed.reviewedDelta],metadata:{job:{id:reviewed.jobId},artifact:{id:reviewed.artifactId,size_in_bytes:reviewed.archiveBytes,digest:reviewed.archiveDigest}}});
 test('comparison admits only the reviewed whole tree and frozen existing artifact',()=>{
     assert.deepEqual(admitComparisonSource(fixture(),reviewed),reviewed);
@@ -123,4 +123,13 @@ test('candidate checkout keeps PR lineage separate and rejects source, mode, anc
         x=>x.reviewedDelta=[x.reviewedDelta[0].replace('lanes/','scripts/')]]){
         const input=structuredClone(reviewed);cut(input);assert.throws(()=>admitFrozenArtifactInputs(input));
     }
+});
+
+test('an empty frozen Git delta admits only that exact whole-tree packet and refuses any added change',()=>{
+    const expected={...reviewed,reviewedDelta:[]},input={...fixture(),changes:[]};
+    assert.deepEqual(admitCandidateCheckout(input,expected),expected);
+    assert.throws(()=>admitCandidateCheckout({...input,changes:[reviewed.reviewedDelta[0]]},expected));
+    assert.throws(()=>admitCandidateCheckout({...input,tree:'f'.repeat(40)},expected));
+    assert.throws(()=>admitCandidateCheckout({...input,parents:[]},expected));
+    assert.throws(()=>admitFrozenArtifactInputs({...expected,reviewedDelta:null}));
 });

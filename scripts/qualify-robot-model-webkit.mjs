@@ -12,28 +12,25 @@ import os from 'node:os';
 
 export const FROZEN = Object.freeze({
     "repository": "CrispStrobe/brickwright-lite",
-    "runId": 40050173167,
+    "runId": 40057391894,
     "attempt": 1,
-    "runHeadSha": "ab9023ef7c866801fdaf50b8da613a8b248fff87",
-    "reviewedHeadSha": "ab9023ef7c866801fdaf50b8da613a8b248fff87",
-    "checkoutSha": "401c5723d0baa4e334e5b405711bc347943defb5",
-    "treeSha": "6a3866f0b7e87cf0bc7fac95c75aa0292c479e0e",
-    "jobId": 120745543426,
-    "artifactId": 12543733745,
-    "archiveBytes": 117553947,
-    "archiveDigest": "sha256:6dfe08290d17f3947a9bd1a535dc4b8c78ce75444b9f0b1379cc168142f72f36",
-    "producerLogSha256": "f24f075fc20babb19d25806527231feff5cad32bc5cf63e0ace31e79aadba982",
+    "runHeadSha": "ccf990c4c763b8cfda6fba8695f20d2117968103",
+    "reviewedHeadSha": "ccf990c4c763b8cfda6fba8695f20d2117968103",
+    "checkoutSha": "a80ee12fe93701a33f541b036302530eee4446a3",
+    "treeSha": "aa87581cbc30f597fd57ba4d32e0287f9ebf5d3b",
+    "jobId": 120765423208,
+    "artifactId": 12546742529,
+    "archiveBytes": 117557239,
+    "archiveDigest": "sha256:7efba384ccad5317ddbf7f5e2a38a9614ee6c9198fc3fbe817dfe8e42f68829b",
+    "producerLogSha256": "6a48ce900f327e16d8b68520c9f0172caa6e21b1e8b1b0a187efad2508a6db28",
     "producerSha": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
     "arraysValuesSha": "4db2813d366af8a110fc79599afb55d1cd42d8df",
-    "candidateHeadSha": "401c5723d0baa4e334e5b405711bc347943defb5",
+    "candidateHeadSha": "a80ee12fe93701a33f541b036302530eee4446a3",
     "candidateParents": [
-        "d13a5b6ddd6f468fa74451fe38afe879329dfc92",
-        "ab9023ef7c866801fdaf50b8da613a8b248fff87"
+        "0cacffcda93108524f784a8d0fa0d729e267f68c",
+        "ccf990c4c763b8cfda6fba8695f20d2117968103"
     ],
-    "reviewedDelta": [
-        ":100644 100644 d452cf312c5ff5d4d7c626641ff75dd483f31618 e905b4f60fe7304c8da56e651b340cb425aa618a M\tlanes/2026-10-23-x86-gui-current-actual-admission.md",
-        ":000000 100644 0000000000000000000000000000000000000000 6b1132c9671f56feee798d2a3fb819c1e94f740e A\tlanes/2026-10-24-i80386-native-font-selection.md"
-    ]
+    "reviewedDelta": []
 });
 const sha = b=>createHash('sha256').update(b).digest('hex');
 const git = (root,...args)=>execFileSync('git',['-c','gc.auto=0','-c','maintenance.auto=false',...args],{cwd:root,encoding:'utf8'}).trim();
@@ -98,7 +95,7 @@ export function admitFrozenArtifactInputs(expected) {
     assert.deepEqual(expected.candidateParents?.slice(1),[expected.reviewedHeadSha],'Reviewed PR is the second merge parent');
     assert.equal(expected.candidateParents?.length,2,'Two-parent synthetic merge');
     for(const parent of expected.candidateParents)assert.match(parent,/^[0-9a-f]{40}$/);
-    assert.ok(Array.isArray(expected.reviewedDelta)&&expected.reviewedDelta.length>0,'Explicit frozen prose delta');
+    assert.ok(Array.isArray(expected.reviewedDelta),'Explicit frozen prose delta; empty means identical complete trees');
     for(const entry of expected.reviewedDelta)assert.match(entry,/^:(?:100644 100644 [0-9a-f]{40} [0-9a-f]{40} M|000000 100644 0{40} [0-9a-f]{40} A)\tlanes\/[a-z0-9-]+\.md$/,'Only ordinary lane Markdown additions or edits');
     return expected;
 }
@@ -198,7 +195,8 @@ async function main() {
     assert.equal(git(root,'diff','--cached','--name-only'),'','Candidate index unchanged');
     const head=git(root,'rev-parse','HEAD'),tree=git(root,'rev-parse','HEAD^{tree}');
     const parents=git(root,'show','-s','--format=%P','HEAD').split(' ');
-    const changes=git(root,'diff','--raw','--no-abbrev','--no-renames',FROZEN.reviewedHeadSha,'HEAD').split('\n');
+    const delta=git(root,'diff','--raw','--no-abbrev','--no-renames',FROZEN.reviewedHeadSha,'HEAD');
+    const changes=delta ? delta.split('\n') : [];
     admitCandidateCheckout({head,tree,parents,changes});
     const preflight=JSON.parse(await readFile(resolve(process.env.BW_MODEL_WEBKIT_RUNTIME_PREFLIGHT),'utf8'));
     admitPreprovisionedRuntime(preflight);assert.equal(preflight.consumerHead,git(harness,'rev-parse','HEAD'));

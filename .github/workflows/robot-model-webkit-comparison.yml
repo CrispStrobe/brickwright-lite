@@ -15,7 +15,7 @@ jobs:
     if: >-
       github.repository == 'CrispStrobe/brickwright-lite' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'lane/robot-model-webkit-shader-20261024'
+      github.event.pull_request.head.ref == 'lane/robot-model-webkit-instance-clip-20261024'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     container:
@@ -41,7 +41,7 @@ jobs:
       - name: Checkout frozen candidate
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: 401c5723d0baa4e334e5b405711bc347943defb5
+          ref: a80ee12fe93701a33f541b036302530eee4446a3
           fetch-depth: 2
           path: candidate
           persist-credentials: false

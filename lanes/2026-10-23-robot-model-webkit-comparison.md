@@ -139,3 +139,33 @@ head tree is not claimed equal to the producer tree. This qualification
 plumbing preserves the original browser programs, viewport, launch arguments,
 physical checks, model bytes, 324-second wait and 35-minute job budget.
 Fresh actual qualification and every enabled final-head check remain pending.
+
+## Early instance-clip replacement, 2026-10-24
+
+Comparison #1320 is closed unqualified: Sine completed its full journey, but
+Quartermaster again missed the unchanged 324-second deadline. Preserve that
+result and every original. The new isolated
+`lane/robot-model-webkit-instance-clip-20261024` consumer binds product #1322
+at reviewed PR head `ccf990c4c763b8cfda6fba8695f20d2117968103`, successful
+Build 40057391894 / job 120765423208, and Pages artifact 12546742529
+(117557239 bytes). Literal checkout `a80ee12fe93701a33f541b036302530eee4446a3`
+has the exact whole reviewed tree `aa87581cbc30f597fd57ba4d32e0287f9ebf5d3b`.
+Ordered merge parents and the exact empty raw Git delta are independently
+verified; original producer-log and archive digests are frozen.
+
+An explicitly empty delta is valid only when the actual Git delta is also
+exactly empty; missing declarations, extra paths, modes, parents or a different
+tree refuse. The metadata helper remains unchanged and still checks the
+reviewed PR lineage. Sixteen focused admission/refusal controls pass. All
+physical assertions, model bytes, camera/viewport, runtime image, browser launch
+and original per-example and outer deadlines remain unchanged.
+
+Before creation, normally compose the final native-producer head and scoped
+census so later qualification cannot require a frozen-head update. Choose
+that producer branch as this consumer's base at creation. After actual
+qualification and qualified parent landing, retarget the unchanged head only
+for its main merge; the actual workflow does not trigger on edited events.
+No source push, repeated label, manual dispatch or successful-guest replay.
+The fresh complete actual journeys and every enabled final-head check remain
+pending; source preparation is not performance, installed, hardware or release
+acceptance.
