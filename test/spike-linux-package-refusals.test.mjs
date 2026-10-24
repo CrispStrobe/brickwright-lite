@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {REQUIRED_RUNTIME_NOTICES} from '../scripts/lib/spike-linux-notices.mjs';
 import {fileURLToPath} from 'node:url';
 const script = fileURLToPath(new URL('../scripts/build-spike-linux-desktop.mjs', import.meta.url));
 const skip = process.platform !== 'linux' || process.arch !== 'x64';
@@ -36,6 +37,7 @@ async function fixture () {
     await writeFile(join(runtime,'.renode-root'),'synthetic runtime root');
     await writeFile(join(runtime,'scripts/monitor.py'),'synthetic monitor helpers');
     await mkdir(join(runtime,'licenses'));await writeFile(join(runtime,'licenses/renode-license'),'synthetic MIT notice');
+    for (const name of Object.keys(REQUIRED_RUNTIME_NOTICES)) await writeFile(join(runtime,'licenses',name),`synthetic ${name}`);
     await writeFile(join(frontend,'index.html'),'synthetic frontend');await writeFile(join(frontend,'capability-broker.html'),'synthetic broker');
     return {root,support,runtime,frontend};
 }
@@ -98,4 +100,11 @@ test('relocated prepared output keeps compile pins free of staging paths', {skip
         assert.ok(!String(value).includes(f.root), `${name} embeds a staging path`);
         assert.ok(!String(value).startsWith('/'), `${name} is absolute`);
     }
+}));
+
+test('a supplied runtime lacking a required Renode/.NET/LLVM notice is refused before output', {skip}, withFixture(async f => {
+    const output = join(f.root,'refused');
+    await rm(join(f.runtime,'licenses/tlib-license'));
+    const result = run(f,output);assert.notEqual(result.status,0);
+    assert.match(result.stderr,/lacks required notices: tlib-license/);await assert.rejects(readdir(output),/ENOENT/);
 }));

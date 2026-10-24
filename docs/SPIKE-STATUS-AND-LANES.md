@@ -837,6 +837,12 @@ show a bounded error rather than an indefinite ellipsis.
 one world and cannot start an unavailable backend. Doable now; this lane first
 records already working features and fixes only demonstrated gaps.
 
+**Status (2026-10-24):** the rendered-UI pass recorded in the lane ledger
+checked EN/DE labels, touch, long conversion reports, a 50–75 % right pane,
+mat save/reopen and bounded Identify. It fixed one defect: a touch drag with
+the Move tool was cancelled as a page scroll. Still open: the
+saved-Python → empty-Pseudocode transition, which belongs to the importer owner.
+
 ### G04 — Extend API/topology parity through declared capabilities
 
 **Owners:** firmware L01/L02/L05/L06/L09, Runtime, then Lite. **Start:**
@@ -868,6 +874,34 @@ own packaging and platform acceptance evidence.
 **Done:** an exact distributable closure, reproducible assembly instructions and
 platform-specific installed tests. Linux inventory work is doable now; other
 platform/signing tests require their build environment and credentials.
+
+**Linux status (2026-10-24):** the linked crate set is generated and bound to
+`Cargo.lock`, flagged licences are reviewed, the builder enforces seven Renode/.NET/LLVM
+notices and installs crate notices, and an installed-layout check exists. Thirteen
+crates without licence files and the LGPL/GPL-referencing Renode notices stay open. See
+[SPIKE-LINUX-DESKTOP.md](SPIKE-LINUX-DESKTOP.md#licence-review-of-the-linked-crate-set-2026-10-24).
+
+**Separate contracts, not met by Linux evidence:**
+- *Non-Unix staging (Windows, macOS):* needs its own builder path and runner (Windows
+  x64; macOS arm64/x64). Evidence required: that target's linked crate inventory
+  (`--filter-platform` for the target triple), a Renode distribution for that
+  platform with its native-library and notice closure, resource-path checks for the
+  platform's Tauri resource directory, its own refusal tests, and an installed-app
+  layout check run on that OS.
+- *Signed installers and update channels:* need signing credentials (Apple Developer
+  ID plus notarization, Windows Authenticode, a Debian repository key) held outside
+  this repository. Evidence required: signature verification of the exact artifact
+  digest, notarization/stapling receipts where they apply, update-manifest signature
+  checks, and installed tests of the signed artifact. Signing must not change the
+  recorded resource bytes.
+- *Firmware L11 / Runtime inputs Lite depends on:* the NuttX/guest staged profile
+  manifest and file list in `scripts/lib/spike-resource-profile.mjs` (including the
+  licence files it requires), `state-config.json` `identity.firmware` and
+  `identity.imageSha256`, the 8192-byte `initial-flash.bin` geometry, and the
+  MicroPython support `manifest.json` digests. Those owners must provide source pins,
+  complete notice sets for every staged binary, and corresponding-source pointers for
+  Apache/BSD/MIT firmware parts. Renode upstream must provide the source pointer
+  for LGPL `tlib` in the pinned distribution.
 
 ### G06 — Improve model fidelity and unchanged-image bringup
 
