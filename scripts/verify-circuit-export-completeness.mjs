@@ -203,7 +203,9 @@ try {
         page.waitForEvent('download', {timeout: 10000}),
         scope.locator('[data-testid="bw-scope-trace-csv-download"]').click()
     ]);
-    const csv = (await readDownload(csvDownload)).toString('utf8');
+    const csvBytes = await readDownload(csvDownload);
+    await writeFile(path.join(outDir, 'scope-before-display.csv'), csvBytes, {flag: 'wx'});
+    const csv = csvBytes.toString('utf8');
     if (!/^# net=.* capture=envelope .*points=\d+\nelapsed_seconds,min_volts,max_volts\n/m.test(csv)) {
         throw new Error(`scope CSV has no truthful envelope header: ${csv.slice(0, 180)}`);
     }
@@ -216,10 +218,33 @@ try {
         if (handles.length !== 1) throw new Error('ambiguous scope fixture');
         const data = board.getScopeData(handles[0]);
         return {handle: handles[0], count: data.count, intervalNs: String(data.sampleIntervalNs),
-            depth: data.samples.length / 2, capture: data.capture};
+            depth: data.samples.length / 2, capture: data.capture,
+            timeNs: String(board.getTime()), startTimeNs: String(data.startTNs)};
     });
     assert.equal(prefix.handle, scopeHandle);
     assert.equal(prefix.count, 5000);
+    assert.equal(BigInt(prefix.startTimeNs) + BigInt(prefix.count) * BigInt(prefix.intervalNs), BigInt(prefix.timeNs),
+        'late-attached envelope origin must join its actual clock');
+    const retainObservation = async (stage, value) => writeFile(path.join(outDir, `scope-observation-${stage}.json`),
+        JSON.stringify(value, null, 2) + '\n', {flag: 'wx'});
+    const observeCapture = async () => page.evaluate(h => {
+        const b = window.__board, d = b.getScopeData(h), depth = d.samples.length / 2;
+        const last = ((d.writeIndex - 1 + depth) % depth) * 2;
+        const pair = [d.samples[last], d.samples[last + 1]];
+        if (!pair.every(Number.isFinite)) throw new Error('nonfinite actual scope witness');
+        return {timeNs: String(b.getTime()), startTimeNs: String(d.startTNs), count: d.count,
+            intervalNs: String(d.sampleIntervalNs), depth, capture: d.capture, lastPair: pair};
+    }, scopeHandle);
+    const retainCanvas = async (name, data) => {
+        assert.ok(data.startsWith('data:image/png;base64,'), 'actual canvas must produce PNG');
+        const bytes = Buffer.from(data.slice('data:image/png;base64,'.length), 'base64');
+        await writeFile(path.join(outDir, name), bytes, {flag: 'wx'});
+        return {name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex')};
+    };
+    await writeFile(path.join(outDir, 'scope-observed-circuit.json'),
+        JSON.stringify(await page.evaluate(() => window.__circuit.toJSON()), null, 2) + '\n', {flag: 'wx'});
+    await retainObservation('prefix', {...prefix, selectedNet: signalNet,
+        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), readout: await acq.textContent()});
     assert.equal(await acq.getAttribute('data-capture'), prefix.capture);
     assert.equal(await acq.getAttribute('data-interval-ns'), prefix.intervalNs);
     assert.equal(await acq.getAttribute('data-depth'), String(prefix.depth));
@@ -238,23 +263,35 @@ try {
     await warning.waitFor({state: 'detached'});
     const [afterDownload] = await Promise.all([page.waitForEvent('download', {timeout: 10000}),
         scope.getByTestId('bw-scope-trace-csv-download').click()]);
-    assert.equal((await readDownload(afterDownload)).toString('utf8'), csv, 'display scale must preserve every raw CSV byte');
+    const afterCsvBytes = await readDownload(afterDownload);
+    await writeFile(path.join(outDir, 'scope-after-display.csv'), afterCsvBytes, {flag: 'wx'});
+    assert.ok(afterCsvBytes.equals(csvBytes), 'display scale must preserve every raw CSV byte');
 
     await stepCapture(10000);
     await page.waitForFunction(root => root.querySelector('[data-testid="bw-scope-acquisition-0"]')
         ?.getAttribute('data-wrapped') === 'true', scopeElement);
     const wrappedStart = await acq.getAttribute('data-start-time-ns');
-    assert.equal(wrappedStart, await page.evaluate(h => String(window.__board.getScopeData(h).startTNs), prefix.handle));
+    const wrappedCapture = await observeCapture();
+    assert.equal(wrappedStart, wrappedCapture.startTimeNs);
+    await retainObservation('wrapped', {...wrappedCapture, readoutStartTimeNs: wrappedStart,
+        readout: await acq.textContent()});
     await scope.getByTestId('bw-scope-hold').click();
     const heldText = await acq.textContent();
     const heldPixels = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
+    const heldImage = await retainCanvas('scope-held-before.png', heldPixels);
+    await retainObservation('held-before', {...await observeCapture(), readout: heldText,
+        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), image: heldImage});
     // This source repeats after a 50ms tick. A viewport change makes the
     // frozen-picture check sensitive even when two waveform phases coincide.
     await scope.getByTestId('bw-scope-center-0').fill('2');
     await stepCapture(15000);
     assert.equal(await page.evaluate(h => window.__board.getScopeData(h).count, prefix.handle), 15000);
+    const heldAfterPixels = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
+    const heldAfterImage = await retainCanvas('scope-held-after-step.png', heldAfterPixels);
+    await retainObservation('held-after', {...await observeCapture(), readout: await acq.textContent(),
+        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), requestedViewportCenter: 2, image: heldAfterImage});
     assert.equal(await acq.textContent(), heldText, 'HOLD metadata must stay with its frozen picture');
-    assert.equal(await scope.locator('canvas').evaluate(canvas => canvas.toDataURL()), heldPixels);
+    assert.equal(heldAfterPixels, heldPixels);
     const freshStart = await page.evaluate(h => String(window.__board.getScopeData(h).startTNs), prefix.handle);
     assert.notEqual(freshStart, wrappedStart, 'actual acquired record must advance during HOLD');
     await scope.getByTestId('bw-scope-hold').click();
@@ -266,6 +303,10 @@ try {
         const canvas = root.isConnected && root.querySelector('canvas');
         return !!canvas && canvas.toDataURL() !== old;
     }, {root: scopeElement, old: heldPixels});
+    const resumedImage = await retainCanvas('scope-resumed.png',
+        await scope.locator('canvas').evaluate(canvas => canvas.toDataURL()));
+    await retainObservation('resumed', {...await observeCapture(), readout: await acq.textContent(),
+        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), image: resumedImage});
     await scope.getByTestId('bw-scope-view-spectrum').click();
     await page.waitForFunction(() => window.__board.getScopeChannels()
         .some(h => window.__board.getScopeData(h).capture === 'sample'));
@@ -280,8 +321,20 @@ try {
     assert.ok(frequency, 'actual point record must disclose numeric Nyquist');
     const nyquistHz = Number(frequency[1]) * ({MHz: 1e6, kHz: 1e3, Hz: 1}[frequency[2]]);
     assert.equal(nyquistHz, 1e9 / Number(await acq.getAttribute('data-interval-ns')) / 2);
+    const pointCapture = await page.evaluate(() => {
+        const b = window.__board, d = b.getScopeChannels().map(h => b.getScopeData(h)).find(data => data.capture === 'sample');
+        if (!d) throw new Error('actual point tap missing');
+        return {timeNs: String(b.getTime()), startTimeNs: String(d.startTNs), count: d.count,
+            intervalNs: String(d.sampleIntervalNs), depth: d.samples.length / 2, capture: d.capture};
+    });
+    assert.equal(pointCapture.count, 500);
+    assert.equal(BigInt(pointCapture.startTimeNs) + BigInt(pointCapture.count - 1) * BigInt(pointCapture.intervalNs), BigInt(pointCapture.timeNs));
+    await retainObservation('point', {...pointCapture, nyquistHz,
+        readoutStartTimeNs: await acq.getAttribute('data-start-time-ns'), readout: pointText});
     const scopeDisplay = {actualPrefix: prefix.count, ringWrap: true, viewportWarningAndClear: true,
         rawCsvByteIdentical: true, holdWhileAcquiring: true, holdDespiteViewportChange: true, resumeVisiblyRedraws: true, pointSampleNyquistHz: nyquistHz,
+        rawCsvBytes: csvBytes.length, rawCsvBeforeSha256: createHash('sha256').update(csvBytes).digest('hex'),
+        rawCsvAfterSha256: createHash('sha256').update(afterCsvBytes).digest('hex'),
         analogAntiAliasModeled: false, physicalAccuracyClaim: false};
 
     assert.equal(pageErrors.length, 0, 'the complete scope interaction must remain free of page errors');
