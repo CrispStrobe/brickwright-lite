@@ -2,7 +2,9 @@
 
 Owner: Codex, x86 native font and current GUI lane.
 Base: `48bf48a242808b81c15f45c503df3aee60ed2b40`.
-Status: claim only. Merge this claim before editing the census or pointers.
+Status: claim merged in PR1329. Scoped source repair is prepared in PR1318's
+branch; final exact-head CI and normal merge remain pending. No native job or
+actual font event has run.
 
 ## Exact scope
 
@@ -38,3 +40,15 @@ any new source head; older requests grant no event or installed qualification.
 
 No generator, test, workflow, guard, supplier pin, actual-event, browser,
 Arcade or other owner's source path is claimed here.
+
+## Prepared source checkpoint — 2026-10-24
+
+The scoped generator recorded three completed source-control runs,
+40061993566, 40052583855 and 40051869439. The first is at PR1318's prior
+head; all three skipped `native-font-selection`. The refreshed census retains
+all unrelated workflow and run rows plus main provenance, and the three dated
+pointers state where the owner-only guarded job and two steps could run. The
+unchanged generator check and all seven focused census tests, including their
+mutation cases, pass locally under Node 22.23.2. Hosted exact-head CI still
+must qualify the final combined source. The previous native and GUI offline
+requests bind older source heads and cannot authorize an event.
