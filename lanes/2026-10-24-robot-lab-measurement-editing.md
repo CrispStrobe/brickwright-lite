@@ -47,11 +47,12 @@ identity and current visibility, checks current model and target identity at
 Save, and requires explicit confirmation of a legacy or mismatched joint/rope
 binding. Opening or canceling an edit does not migrate saved definitions.
 
-Ten local controls exercise the actual constructor and editor actions at a
-controlled state callback boundary. Seven source mutations are detected, covering
-ID replacement, missing session/binding fences, implicit target fallback and
-stale focus restoration. The initial focus-control failure is retained; preset
-actions now cancel drafts and restore row focus only when an edit was active.
+Eleven local controls exercise the actual constructor and editor actions at a
+controlled state callback boundary. Three targeted callback/focus mutations are
+detected with all eleven controls running. The earlier seven edit-guard mutations
+and original failures are retained. Preset actions remain immediate when no draft
+is open; an active draft clears before a preset callback, with focus restored to
+its row. The existing lesson-preset assertion is unchanged.
 These controls do not qualify ReactDOM, browser behavior or guest physics.
 
 The existing real React UI controls are extended, and the real measurement

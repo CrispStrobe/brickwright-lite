@@ -301,3 +301,34 @@ test('both preset actions cancel a draft even when the replacement definition is
         assert.equal(f.focus.count, restoredFocus, 'a preset action without an active edit does not jump to an old row');
     }
 });
+
+test('preset actions are immediate without a draft and wait for an active cancellation', () => {
+    for (const lesson of [false, true]) {
+        let presets = 0;
+        const f = editorFixture({teachingPreset: {title: 'Lesson', definitions: props.definitions}, onPresets () {presets++;}});
+        const synchronousState = f.panel.setState;
+        const pending = [];
+        const deferState = (update, callback) => pending.push(() => {
+            Object.assign(f.panel.state, typeof update === 'function' ? update(f.panel.state, f.panel.props) : update);
+            callback?.();
+        });
+        const action = () => lesson ? f.control('bw-sim-measurement-teaching-preset') : findElement(f.panel.render(), e =>
+            e.type === 'button' && e.props.children === 'Reset to recommended measurements');
+        const count = () => lesson ? f.changes.length : presets;
+        f.panel.setState = deferState;
+        action().props.onClick();
+        assert.equal(count(), 1, 'no draft means the original preset callback remains immediate');
+        assert.equal(pending.length, 0, 'an idle editor needs no state transition');
+        f.panel.setState = synchronousState;
+        f.edit('span'); f.name('Unsaved');
+        f.panel.setState = deferState;
+        action().props.onClick();
+        assert.ok(f.panel.state.editor);
+        assert.equal(count(), 1, 'the active draft must clear before the preset callback');
+        assert.equal(pending.length, 1);
+        pending.shift()();
+        assert.equal(f.panel.state.editor, null);
+        assert.equal(count(), 2);
+        assert.equal(f.focus.count, 1);
+    }
+});

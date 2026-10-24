@@ -94,9 +94,12 @@ class SimLabMeasurements extends React.Component {
         });
     }
     cancelEdit (afterCancel) {
-        const wasEditing = Boolean(this.state.editor);
+        if (!this.state.editor) {
+            afterCancel?.();
+            return;
+        }
         this.setState({editor: null, editorStatus: ''}, () => {
-            if (wasEditing) this.returnFocus?.focus?.();
+            this.returnFocus?.focus?.();
             afterCancel?.();
         });
     }
