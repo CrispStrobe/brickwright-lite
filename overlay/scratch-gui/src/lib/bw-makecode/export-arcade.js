@@ -26,6 +26,7 @@ import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
 import {sourceReferenceProject} from './source-reference-project.js';
 import {scalarExportFlow,closedRemovalScalarAddition} from './scalar-export-flow.js';
 import {sourceScalarProject} from './source-scalar-project.js';
+import {createImageConsumerAbiExport} from './image-consumer-abi-export.js';
 import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
@@ -1756,8 +1757,8 @@ class ArcadeEmitter {
             if (!['x', 'y', 'width', 'height', 'value', 'count'].includes(property)) { this.note(`Unsupported seven segment property in ${b.opcode}`); return this.na(); }
             return `${v('DISPLAY')}.${property}`;
         }
-        case 'arcade_imageProperty': return `${v('IMAGE')}.${this.field(b,'PROPERTY')}`;
-        case 'arcade_imagePixel': return `${v('IMAGE')}.getPixel(${v('X')}, ${v('Y')})`;
+        case 'arcade_imageProperty': {const image=v('IMAGE'),typed=this.imageConsumerAbi?.accepts(this.target,b);return `${typed?`(<Image>(${image}))`:image}.${this.field(b,'PROPERTY')}`;}
+        case 'arcade_imagePixel': {const image=v('IMAGE'),typed=this.imageConsumerAbi?.accepts(this.target,b);return `${typed?`(<Image>(${image}))`:image}.getPixel(${v('X')}, ${v('Y')})`;}
         case 'arcade_createImageSprite':
         case 'arcade_spawnImageSprite':
             if (!this.spawnAssignment && b.opcode === 'arcade_spawnImageSprite') this.note('Arcade positioned image spawn expression needs an assigned handle');
@@ -3957,6 +3958,7 @@ class ArcadeEmitter {
         try{this.procedureConstraints=prepareProcedureConstraintExport(this.project);}catch(error){this.note(error.message);this.procedureConstraints=null;}
         this.objectClassExport=prepareObjectClassExport(this);
         this.prepareCallableExport();
+        this.imageConsumerAbi=createImageConsumerAbiExport({project:this.project,provider:this.objectClassExport});
         const imageParameterTypes = this.imageProcedureParameters();
         const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
         for(const [key,parameters] of scalarFlow.definitions) {

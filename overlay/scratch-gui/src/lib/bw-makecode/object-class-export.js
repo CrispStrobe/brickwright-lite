@@ -3,9 +3,37 @@ import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {checkClassPrimitiveExport} from './class-primitive-export-proof.js';
 import {hasSdkFontValues,seedSdkFontValueType,sdkFontGraphType} from './sdk-font-export-types.js';
 import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
+import {currentImageAbiSdkDescriptors} from './image-consumer-abi-export.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {classCallableExportTypes} from './class-callable-export-types.js';
 import {createClassCallableExportProvider} from './class-callable-export-provider.js';
+
+// Only models constructed here may answer the consumer ABI's private queries.
+// There is no public enrollment operation and callback-shaped imitations fail.
+const imageAbiModels=new WeakMap(),imageAbiApply=Reflect.apply,modelGet=WeakMap.prototype.get,modelSet=WeakMap.prototype.set,canonicalHas=WeakSet.prototype.has;
+export function imageAbiModelQuery(model,project,action,target,block){
+    const row=imageAbiApply(modelGet,imageAbiModels,[model]);
+    if(!row||row.project!==project||!row.current())return null;
+    if(action==='current')return true;
+    if(action==='constructor')return row.constructor(target,block);
+    return null;
+}
+const modelRecords=roots=>{
+    const rows=[],seen=new WeakSet();let valid=true;
+    const visit=value=>{
+        if(!value||typeof value!=='object'||seen.has(value))return;seen.add(value);
+        const keys=Reflect.ownKeys(value),entries=[];rows.push({value,keys,entries,parent:Object.getPrototypeOf(value)});
+        if(rows.length>100000){valid=false;return;}
+        for(const key of keys){const d=Object.getOwnPropertyDescriptor(value,key);if(!d||!Object.hasOwn(d,'value')){valid=false;return;}entries.push(d);visit(d.value);}
+    };visit(roots);
+    return ()=>{
+        if(!valid)return false;
+        for(const row of rows){const keys=Reflect.ownKeys(row.value);if(Object.getPrototypeOf(row.value)!==row.parent||keys.length!==row.keys.length)return false;
+            for(let i=0;i<keys.length;i++){const a=Object.getOwnPropertyDescriptor(row.value,keys[i]),b=row.entries[i];
+                if(keys[i]!==row.keys[i]||!a||!Object.hasOwn(a,'value')||!Object.is(a.value,b.value)||a.writable!==b.writable||a.enumerable!==b.enumerable||a.configurable!==b.configurable)return false;}
+        }return true;
+    };
+};
 
 // Recover reviewable class declarations from explicit authoring blocks, not
 // from a mutable heap snapshot. Bindings and invocation cells retain types.
@@ -45,7 +73,8 @@ export function prepareObjectClassExport(emitter) {
     const builtinNames=new Set(sdkExportClasses().map(cls=>cls.name));
     const builtinObject=emitter.project.targets.some(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_createObject' && builtinNames.has(literal(target,block,'CLASS'))));
     if(!classes.size && !builtinObject && !hasSdkFontValues(emitter.project))return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),inputTypes:()=>new Set(),fontGlyphInput:()=>false,localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
-    for(const cls of sdkExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
+    const canonicalSdk=new WeakSet();
+    for(const cls of sdkExportClasses())if(!classes.has(cls.name)){classes.set(cls.name,cls);canonicalSdk.add(cls);}
     const callableTypes=classCallableExportTypes(classes,builtinNames);
     const parameterText=parameter=>{try{return callableTypes.parameter(parameter);}catch(error){emitter.note(error.message);return parameter.type;}};
     const fieldText=field=>{try{return callableTypes.field(field);}catch(error){emitter.note(error.message);return field.type;}};
@@ -407,6 +436,23 @@ export function prepareObjectClassExport(emitter) {
     }
     const publicTypes=value=>new Set([...graph.node(value).types].filter(type=>!originTags.has(type)).map(type=>type===unknownMenuElement?'any':type));
     const valueTypes=(target,block)=>publicTypes(cell(target,block));
+    // Identity query only: actual canonical SDK record, never a parsed class
+    // spelling, field annotation or Image/initialization certificate.
+    const classEntries=[...classes],recordsCurrent=modelRecords(classEntries.map(([,value])=>value));
+    const modelCurrent=()=>currentImageAbiSdkDescriptors()&&classes.size===classEntries.length&&
+        classEntries.every(([name,value])=>classes.get(name)===value)&&recordsCurrent();
+    const sdkDialogConstructor=(target,block)=>{
+        if(!modelCurrent()||!emitter.project.targets.includes(target)||
+            !Object.values(target.blocks||{}).includes(block)||block.opcode!=='arcade_createObject')return null;
+        const slot=block.inputs?.CLASS;
+        if(!Array.isArray(slot)||slot.length!==2||slot[0]!==1||!Array.isArray(slot[1])||slot[1].length!==2||slot[1][0]!==10||typeof slot[1][1]!=='string')return null;
+        const cls=classes.get(slot[1][1]);
+        if(!cls||!imageAbiApply(canonicalHas,canonicalSdk,[cls]))return null;
+        if(cls.name==='__bwSDK_BaseDialog')return cls.parent==null?'BaseDialog':null;
+        if(cls.name!=='__bwSDK_SplashDialog'||cls.parent!=='__bwSDK_BaseDialog')return null;
+        const base=classes.get(cls.parent);
+        return base&&imageAbiApply(canonicalHas,canonicalSdk,[base])&&base.parent==null?'SplashDialog':null;
+    };
     const classCallableProviders=new Map();
     const classCallableProvider=(target,{sdkImagePrototype=emitter.opts.sdkImagePrototype===true||emitter.callableExports?.get(target)?.sdkImageEnabled===true}={})=>{
         if(!classCallableProviders.has(target))classCallableProviders.set(target,new Map());
@@ -414,7 +460,9 @@ export function prepareObjectClassExport(emitter) {
         if(!modes.has(sdkImagePrototype))modes.set(sdkImagePrototype,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype,literalResource:emitter.sdkImageLiteralResources?.resource}));
         return modes.get(sdkImagePrototype);
     };
-    return {classes,procedures,variableTypes,variableDeclarationTypes,localDeclarationType,procedureParameterType,procedureResultType,valueTypes,inputTypes:(target,block,name)=>publicTypes(input(target,block,name)),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
+    const result={sdkDialogConstructor,classes,procedures,variableTypes,variableDeclarationTypes,localDeclarationType,procedureParameterType,procedureResultType,valueTypes,inputTypes:(target,block,name)=>publicTypes(input(target,block,name)),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
         sdkVariable:name=>emitter.project.targets.some(target=>Object.entries(target.variables||{}).some(([id,value])=>emitter.varName(target,value[0])===name&&[...(emitter.callableExports||[])].some(([actual,entry])=>entry.sdkImageEnabled&&classCallableProvider(actual).sdkVariable(id)))),
         classCallableProvider,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
+    imageAbiApply(modelSet,imageAbiModels,[result,{project:emitter.project,current:modelCurrent,constructor:sdkDialogConstructor}]);
+    return result;
 }
