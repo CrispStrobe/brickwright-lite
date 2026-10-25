@@ -756,6 +756,107 @@ try {
             && pointReceipt.receiptMismatches.length === 0 && pointReceipt.errors.length === 0,
             JSON.stringify(pointReceipt));
     } finally {await scopePage.close();}
+
+    // Actual built Lite consumer journeys: imported SPICE, its real fourth
+    // terminal partition, and the learner's displayed DC-OP result. Expected
+    // values come from the authored saturation/load line, never a test solve.
+    for (const grounded of [false, true]) {
+        const name = grounded
+            ? 'installed loaded PMOS ground-bulk SPICE import and displayed signed DC OP'
+            : 'installed loaded PMOS source-bulk SPICE import and displayed signed DC OP';
+        const pmosPage = await browser.newPage({viewport: {width: 1440, height: 1000}});
+        const pageErrors = [];
+        pmosPage.on('pageerror', error => pageErrors.push(error.message));
+        let failure = null;
+        let detail = '';
+        try {
+            await pmosPage.addInitScript(() => {
+                localStorage.clear(); sessionStorage.clear();
+                localStorage.setItem('bw-starter-v1-complete', '1');
+            });
+            await pmosPage.goto(`http://localhost:${port}/`, {waitUntil: 'networkidle', timeout: 60000});
+            await pmosPage.getByRole('tab', {name: /Circuit/}).click();
+            const designer = pmosPage.locator('.bw-circuit-designer:visible').last();
+            await designer.locator('[data-canvas]').waitFor({timeout: 60000});
+            const source = grounded ? -2 : 10;
+            const rail = grounded ? -5 : 0;
+            const text = [
+                '* authored loaded PMOS installed GUI control',
+                `VS source 0 ${source}`, `VG gate 0 ${source - 2}`,
+                ...(grounded ? ['VR rail 0 -5'] : []),
+                `R1 out ${grounded ? 'rail' : '0'} 4k`,
+                `M1 out gate source ${grounded ? '0' : 'source'} PM W=5u L=2u`,
+                '.model PM PMOS(LEVEL=1 VTO=-1 KP=100u LAMBDA=.02)', '.op', '.end', ''
+            ].join('\n');
+            await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+            await designer.getByRole('button', {name: /^📥 Import/}).click();
+            const choosing = pmosPage.waitForEvent('filechooser');
+            await designer.locator('[data-import-format="spice"]').click();
+            await (await choosing).setFiles({name: grounded ? 'pmos-ground-bulk.cir' : 'pmos-source-bulk.cir',
+                mimeType: 'text/plain', buffer: Buffer.from(text)});
+            await pmosPage.waitForFunction(expectedSource => {
+                const circuit = window.__circuit;
+                return circuit?.parts.some(part => part.id === 'M1' && part.kind === 'pmos')
+                    && circuit.parts.some(part => part.id === 'VS' && part.params.volts === expectedSource)
+                    && window.__board === circuit.board;
+            }, source);
+            // Read actual imported topology only; never call or replace the
+            // Board's solver/operatingPoint method from page evaluation.
+            const topology = await pmosPage.evaluate(() => {
+                const circuit = window.__circuit, part = circuit.getPart('M1');
+                const net = terminal => circuit.resolvedNets.find(n =>
+                    n.terminals.some(t => t.part === 'M1' && t.terminal === terminal));
+                return {kind: part.kind, terminals: part.terminals, model: part.params.model,
+                    legacy: part.params.bulkAtGround || part.params.bulkOnSource,
+                    drain: net('drain')?.id, bulk: net('bulk')?.terminals,
+                    grounds: circuit.parts.filter(p => p.kind === 'gnd').map(p => p.id),
+                    circuitBoardMatches: window.__board === circuit.board};
+            });
+            if (!topology.circuitBoardMatches || topology.kind !== 'pmos' || topology.model !== 'level1'
+                || topology.legacy || topology.terminals?.length !== 4
+                || !topology.terminals.includes('bulk') || !topology.drain
+                || !topology.bulk?.some(t => grounded
+                    ? topology.grounds.includes(t.part) && t.terminal === 'gnd'
+                    : t.part === 'M1' && t.terminal === 'source')) {
+                throw new Error(`actual PMOS fourth-terminal connection lost: ${JSON.stringify(topology)}`);
+            }
+            await designer.getByRole('radio', {name: 'Sim mode', exact: true}).click();
+            if (!await designer.locator('[data-instruments-column]').count()) {
+                await designer.getByRole('button', {name: /Expand instruments panel/i}).click();
+            }
+            await designer.getByTestId('bw-operating-point-run').click();
+            const result = designer.getByTestId('bw-operating-point-result');
+            await result.waitFor({state: 'visible'});
+            const shown = await result.innerText();
+            const read = (label, unit) => {
+                const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const match = shown.match(new RegExp(`${escaped}:\\s+([-+0-9.eE]+) ${unit}(?:\\s|$)`));
+                if (!match || !Number.isFinite(Number(match[1]))) {
+                    throw new Error(`missing actual ${label} ${unit}: ${JSON.stringify(shown)}`);
+                }
+                return Number(match[1]);
+            };
+            // VSG=2, |VTO|=1, W/L=2.5 and R=4k. The unique solution
+            // lies in saturation; the UI formats its actual readings to6sig.
+            const predicted = rail + .5 * (1 + .02 * (source - rail)) / 1.01;
+            const predictedSupply = -(predicted - rail) / 4000;
+            const drain = read(topology.drain, 'V'), supply = read('VS.pos', 'A');
+            if (source - predicted <= 1 || !shown.includes('positive-into-part-terminal')
+                || Math.abs(drain - predicted) > 5e-6 || Math.abs(supply - predictedSupply) > 5e-10) {
+                throw new Error(`actual displayed PMOS OP differs from loaded law: ${JSON.stringify({
+                    drain, predicted, supply, predictedSupply, shown})}`);
+            }
+            if (pageErrors.length) throw new Error(`actual app page errors: ${JSON.stringify(pageErrors)}`);
+            detail = JSON.stringify({bulk: grounded ? 'ground' : 'source', drain, predicted,
+                supply, predictedSupply, fourthTerminalConnected: true});
+        } catch (error) {
+            failure = String(error).split('\n')[0];
+        } finally {
+            try {await pmosPage.close();} catch (error) {failure ||= `page cleanup: ${String(error).split('\n')[0]}`;}
+        }
+        check(name, failure === null, failure || detail);
+    }
+
 } finally {
     await browser.close();
     server.close();
