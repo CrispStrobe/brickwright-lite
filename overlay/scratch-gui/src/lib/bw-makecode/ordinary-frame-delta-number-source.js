@@ -62,7 +62,7 @@ const hasCandidate=program=>{
     }return found;
 };
 const plainCall=(n,arities)=>{
-    if(n?.type!=='Call'||![n.isNew,n.constructorCall,n.optional,n.callee?.optional].every(v=>v===undefined||v===false)||
+    if(!Array.isArray(arities)||n?.type!=='Call'||![n.isNew,n.constructorCall,n.optional,n.callee?.optional].every(v=>v===undefined||v===false)||
         n.typeArguments!==undefined&&(!Array.isArray(n.typeArguments)||n.typeArguments.length)||!Array.isArray(n.args)||!arities.includes(n.args.length))return false;
     for(let i=0;i<n.args.length;i++)if(!Object.hasOwn(n.args,String(i))||!n.args[i]||typeof n.args[i].type!=='string'||n.args[i].type==='Spread')return false;
     return true;
@@ -70,6 +70,10 @@ const plainCall=(n,arities)=>{
 const callback=n=>n?.type==='FunctionExpression'&&Array.isArray(n.params)&&n.params.length===0&&Array.isArray(n.body)&&
     !n.parameterDefaults?.length&&!n.optionalParams?.length&&!n.typeParameters?.length&&!n.restParam&&
     !n.async&&!n.isAsync&&!n.generator&&!n.isGenerator;
+const gameCalls=new Map([['runtime',[0]],['gameOver',[1]],['splash',[1,2]],['onPaint',[1]],['onUpdate',[1]],['eventContext',[0]]]);
+const sdkRoots=new Set(['game','Math','screen','controller','music','Sounds']);
+const constants=new Set(['undefined','NaN','Infinity']);
+const nodeTypes=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ExpressionStatement','Block','If','For','ForOf','ForIn','While','Switch','Break','Continue','Return','ThrowStatement','Identifier','Number','Boolean','String','Null','Undefined','Parenthesized','Binary','Logical','Unary','Assignment','Update','Call','Member','Index','Array','Object','Conditional','Template','Empty','EmptyStatement']);
 const otherCalls=new Map([['pause',[1]],['randint',[2]],['Math.sign',[1]],['Math.randomRange',[2]],
     ['Math.min',[2]],['Math.max',[2]],['Math.atan2',[2]],['Math.abs',[1]],['Math.floor',[1]],['Math.ceil',[1]],['Math.round',[1]],
     ['screen.fill',[1]],['screen.fillRect',[5]],['screen.print',[1,2,3,4,5]],
@@ -83,23 +87,44 @@ export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false
     if(!syntax.isCurrent())return denied;
     const lexical=analyseCallableBindings(program),binding=n=>lexical.references.get(n),candidates=new WeakSet();
     let unsafe=false,found=false;
+    const functions=new Map();
+    for(const n of syntax.nodes)if(n.type==='FunctionDeclaration'){
+        const b=lexical.global.names.get(n.name);
+        if(!syntax.root(n)||!b||b.node!==n||b.written||!Array.isArray(n.params)||new Set(n.params).size!==n.params.length||
+            n.exported||n.parameterDefaults?.length||n.optionalParams?.length||n.typeParameters?.length||n.restParam||n.async||n.isAsync||n.generator||n.isGenerator)unsafe=true;
+        else functions.set(b,n);
+    }
+    // The only callback boundary is the real zero-argument game registration.
+    // A source function cannot escape and acquire an unknown external entry.
+    for(const n of syntax.nodes)if(n.type==='Identifier'&&functions.has(binding(n))){
+        const fn=functions.get(binding(n)),call=syntax.parentOf(n);
+        if(call?.callee!==n||!plainCall(call,[fn.params.length]))unsafe=true;
+    }
+    const safeIndices=new WeakSet();
+    for(const n of syntax.nodes)if(n.type==='Index'){
+        if(safeIndex(n)!==true||!ambientCurrent()||!syntax.isCurrent())return denied;
+        safeIndices.add(n);
+    }
     for(const n of syntax.nodes){
         // Namespace/enum merging and var-hoisted roots are outside this
         // lexical binding analyser's local/block model. Never infer SDK
         // identity merely because such a declaration lacks a reference row.
-        if(['Namespace','Enum'].includes(n.type)&&['game','control'].includes(n.name)||
+        if(n.type==='Namespace'||n.type==='ForIn'||n.type==='Enum'&&['game','control'].includes(n.name)||
             n.type==='Declaration'&&n.kind==='var'&&(n.decls||[]).some(d=>['game','control'].includes(d.name))||
             ['ForOf','ForIn'].includes(n.type)&&n.kind==='var'&&['game','control'].includes(n.name))unsafe=true;
+        if(n.type&&(!nodeTypes.has(n.type)||n.exported!==undefined&&n.exported!==false))unsafe=true;
+        if(n.type==='Identifier'&&!binding(n)&&!sdkRoots.has(n.name)&&!constants.has(n.name)&&!(['pause','randint'].includes(n.name)&&syntax.parentOf(n)?.callee===n))unsafe=true;
+        if(n.type==='FunctionExpression'){const call=syntax.parentOf(n),callee=call?.callee;if(!callback(n)||!plainCall(call,[1])||call.args[0]!==n||callee?.type!=='Member'||!['onPaint','onUpdate'].includes(callee.name)||callee.object?.type!=='Identifier'||callee.object.name!=='game'||binding(callee.object))unsafe=true;}
         if(n.type==='Identifier'&&['control','this','global','globalThis','window','self','eval','Function','Reflect','arguments'].includes(n.name)&&
             (n.name==='this'||!binding(n)))unsafe=true;
         if(n.type==='Class'&&n.base||n.type==='Member'&&['constructor','prototype','__proto__'].includes(n.name))unsafe=true;
-        if(n.type==='Index'&&safeIndex(n)!==true)unsafe=true;
         const target=n.type==='Assignment'?n.left:n.type==='Update'||n.type==='Unary'&&n.op==='delete'?n.argument:null;
-        if(target&&target.type!=='Identifier'&&!(target.type==='Index'&&safeIndex(target)===true))unsafe=true;
+        if(target?.type==='Identifier'&&!binding(target))unsafe=true;
+        if(target&&target.type!=='Identifier'&&!(target.type==='Index'&&safeIndices.has(target)))unsafe=true;
         if(n.type==='Identifier'&&n.name==='game'&&!binding(n)){
             const member=syntax.parentOf(n),call=syntax.parentOf(member);
             if(member?.type!=='Member'||member.object!==n||member.optional||call?.callee!==member){unsafe=true;continue;}
-            const arities={runtime:[0],gameOver:[1],splash:[1,2],onPaint:[1],onUpdate:[1],eventContext:[0]}[member.name];
+            const arities=gameCalls.get(member.name);
             if(!arities||!plainCall(call,arities)){unsafe=true;continue;}
             if(['onPaint','onUpdate'].includes(member.name)&&!callback(call.args[0]))unsafe=true;
             if(member.name!=='eventContext')continue;
@@ -115,7 +140,7 @@ export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false
         // Same-named lexical receivers are ordinary values, never this SDK.
         if(own&&['game','control'].includes(r.name))continue;
         if(!own&&r?.name==='game')continue;
-        if(n.callee?.type==='Identifier'&&own?.kind==='function'&&own.node?.type==='FunctionDeclaration'&&!own.written)continue;
+        if(n.callee?.type==='Identifier'&&functions.has(own)&&plainCall(n,[functions.get(own).params.length]))continue;
         const allowed=!own&&otherCalls.get(path(n.callee));
         if(!allowed||!plainCall(n,allowed))unsafe=true;
     }
