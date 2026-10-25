@@ -56,3 +56,14 @@ info.player4.setScore(7)
 game.popScene()
 info.player4.setScore(7)
 let ready=true`;
+
+// The raw control above stays unchanged. Its terminal pure declaration may be
+// omitted by the selected compiler when nothing in the program reads it.
+// This explicit observation variant changes only that auxiliary marker's
+// lifetime, leaving every score/player/callback/scene operation in order.
+const completionDeclaration = '\nlet ready=true';
+if (!SCORE_THRESHOLD_SOURCE.endsWith(completionDeclaration)) {
+    throw new Error('Score observation requires the exact terminal completion declaration');
+}
+export const SCORE_THRESHOLD_OBSERVED_SOURCE = 'let ready=false\n' +
+    SCORE_THRESHOLD_SOURCE.slice(0, -completionDeclaration.length) + '\nready=true';
