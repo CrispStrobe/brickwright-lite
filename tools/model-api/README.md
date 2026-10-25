@@ -7,7 +7,10 @@ result for one day. Agents never receive a GitHub credential or choose worker
 code, repository, branch or executable scripts. GitHub Pages can host a static
 client, but cannot run this compute endpoint.
 
-The worker imports the shipped Robot Lab measurement reader. API extensions
+The worker imports the shipped Robot Lab measurement reader. Each report's
+`runtime` names the reader's SHA-256 and `engineAsset`: the installed
+`jolt-physics` version, its lockfile URL/integrity and the SHA-256 of the entry
+module actually selected (SIMD or baseline), or `available: false`. API extensions
 add part-local marker coordinates, a current reference-part frame, signed
 observed rotation, hinge closure and explicitly labelled VM program variables.
 Responses contain sampled values, units, provenance, availability and
@@ -57,6 +60,13 @@ The body limit is 1 MiB, model 768 KiB, BW 64 KiB, encrypted/compressed dispatch
 120 s program time, 30 s settling tail, 2,001 recorded samples and 180 s worker
 wall time. Timing settings use multiples of 25 ms; internal physics stays 5 ms.
 Large recordings are downsampled, with the actual sample interval reported.
+An over-limit body, declared or chunked, is refused with a JSON `413 too-large`
+and a body that stalls past 10 s with `408 body-timeout`. The refusal is written
+before the half-read request is ended (`Connection: close`); ending it first
+resets the connection, which a host reports as an invocation failure instead of
+the refusal. A host that buffers the whole request body before invoking the
+function (as Vercel does) may hold a stalled upload without ever starting it, so
+a client-side deadline there observes the host, not this server deadline.
 
 For short contact-sensitive experiments use:
 
