@@ -2,19 +2,27 @@
   "version": 1,
   "id": "equinox-differential",
   "language": "en",
-  "what": "Experimental source: intended motion has not been independently checked. Compare both side-shaft speeds and the carrier speed; evaluate the gear relation from actual shaft motion.",
-  "why": "Compare both side-shaft speeds and the carrier speed; evaluate the gear relation from actual shaft motion.",
+  "what": "Open bevel-gear differential on a test bench. Motor A drives the differential casing, the carrier, through a 12-tooth bevel pinion on its 28-tooth ring (12:28). Inside, three 12-tooth bevel planets connect two 12-tooth side gears, one per output shaft; each shaft carries an indicator wheel. Motors B and C are only brakes: each sits on one output (B right, C left) through a 12:20 bevel pair and is switched between coasting and holding, never driven. Each of the first three stages turns the carrier exactly once (840° on A): both outputs free, right held, left held. The last stage turns the carrier three times back with both free.",
   "try": [
-    "Inspect the frame, shaft supports and passive output before running.",
-    "Reset, then try the finite example program. Stop if the structure becomes unstable.",
-    "Record the passive output, foundation motion and final hold; check the full travel."
+    "Open Equinox with its program, press Reset, then Run. Each stage starts with a short pause while the brakes switch; then A turns 840° at 105°/s (8 s), one carrier turn.",
+    "Stage 2, right output held by B: watch the left wheel turn twice while the carrier turns once. Stage 3 swaps the roles: the left output is held and the right wheel makes two turns.",
+    "Stage 1, both free: the sum is fixed – together the two outputs make two turns – but how it divides depends on the friction and inertia each side sees. The matching coasting motors make an even split likely, not certain. Stage 4 runs three carrier turns backwards the same way.",
+    "The displayed rightBrakeTurns and leftBrakeTurns are brake-motor turns, not wheel turns: through the 12:20 bevels a brake motor turns 5/3 times per wheel turn, so two wheel turns read as about 3.3 motor turns."
   ],
-  "matters": "A measured passive output and a physical comparison are needed before this example can demonstrate the intended principle.",
-  "question": "What passive output do you predict, and which physical change would test the proposed transmission?",
-  "answer": "Compare both side-shaft speeds and the carrier speed; evaluate the gear relation from actual shaft motion. This checkpoint does not yet establish that the supplied model achieves it.",
+  "why": "In a differential with equal side gears the planets can spin on their own axles, so only the average of the two side shafts is tied to the carrier: ω_L + ω_R = 2·ω_K (all speeds about the same axle direction). That is one equation for two unknowns. Holding one output (ω_R = 0) supplies the second equation and gives ω_L = 2·ω_K; holding the other gives ω_R = 2·ω_K. With both outputs free the gears do not decide the split; torque does. An ideal open differential applies equal torque to both sides, so the side with less resistance turns faster.",
+  "matters": "This is why a car can drive through a curve: the outer wheel rolls farther than the inner one while the engine drives the carrier. It is also why an open differential loses traction when one wheel spins on ice: equal torque means the gripping wheel gets no more than the spinning one. The same averaging appears in Mean Machine and Vernier Drive. The supplier notes a tooth-clearance limitation at the external bevel meshes, so gear contact here is no guarantee for a physical build. In a headless run of the Brickwright simulator, left plus right stayed equal to twice the carrier angle within 0.02° in every stage; a held output crept less than 0.4°, and the free split was 359.9°/360.5° forward and 1077.5°/1083.3° in reverse. That is a simulation observation; no physical LEGO build has been tested.",
+  "question": "Motor B holds the right output while A turns the carrier exactly once. How many turns does the left wheel make, and how many turns does the coasting motor C on the left output report?",
+  "answer": "From ω_L + ω_R = 2·ω_K with ω_R = 0, the left output makes 2 turns per carrier turn. Motor C is geared to it through 12:20 bevels and turns 20/12 times as far: about 3.33 turns. Motor A itself turned 840° = 2.33 turns, because the carrier turns only 12/28 as far as A.",
   "further": [
-    "Measure a real physical control under the same drive conditions.",
-    "Check actual connector engagement, clearances, support and saved-project replay."
+    "Predict stage 4: the carrier turns three times backwards with both outputs free. Whatever the split, ideal gears require left + right = −6 turns.",
+    "Stages 1 and 4 leave the split to the simulated friction. Record both wheels and check their sum; do not expect the individual values to repeat exactly, and do not expect the wheels to return exactly to their saved angles.",
+    "Predict a case the program does not run: if the carrier were held (ω_K = 0) and one output turned, the other would have to turn the same amount the opposite way, ω_L = −ω_R.",
+    "Compare Differential, Mean Machine and Vernier Drive, which use the same averaging law for steering, mechanical averaging and a large reduction."
   ],
-  "related": []
+  "formula": "θ_K = (12/28)·θ_A; θ_L + θ_R = 2·θ_K (equal 12-tooth side gears). Per stage θ_A = 840° → θ_K = 360°. Right held: θ_L = 720°. Left held: θ_R = 720°. Brake motors: |θ_B| = (20/12)·|θ_R|, |θ_C| = (20/12)·|θ_L|. Stage 4: θ_A 2520° → 0° ⇒ θ_K = −1080°, θ_L + θ_R = −2160°. K = carrier.",
+  "related": [
+    "differential.ldr",
+    "mean-machine.ldr",
+    "vernier-drive.ldr"
+  ]
 }

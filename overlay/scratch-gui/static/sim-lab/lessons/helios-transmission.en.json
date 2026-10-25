@@ -2,19 +2,26 @@
   "version": 1,
   "id": "helios-transmission",
   "language": "en",
-  "what": "Experimental source: intended motion has not been independently checked. Compare the relative speeds when a different member is driven, held or released.",
-  "why": "Compare the relative speeds when a different member is driven, held or released.",
+  "what": "Two-input epicyclic (planetary) transmission with stepped planets and no ring gear. Motor A turns a 24-tooth input sun. Motor B turns, through a 20-tooth gear, a 28-tooth turntable that serves as the planet carrier. Each of the two planets is a compound pair on one axle: an 8-tooth gear meshing with the input sun and a 16-tooth gear meshing with a 16-tooth output sun on the central output axle. A runs at a constant 30°/s for the whole demonstration while B steps through 0, −21, −42, −63 and −84°/s for 4 s each, then sweeps back to 0. The program names these stages high, reduced, unity, neutral and reverse output. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
   "try": [
-    "Inspect the frame, shaft supports and passive output before running.",
-    "Reset, then try the finite example program. Stop if the structure becomes unstable.",
-    "Record the passive output, foundation motion and final hold; check the full travel."
+    "Reset, then Run. In stage 1 (B held) compare the output marker with the input sun: the output should turn three times as fast in the same direction.",
+    "Before stage 3 (B at −42°/s), predict what the planets will do on their own axles. Then watch them.",
+    "In stage 4 (−63°/s) the output should stand still although both motors are turning; in stage 5 (−84°/s) it should run backwards at the input speed.",
+    "During the stage 6 sweep A never changes. Watch the output pass from reverse through standstill and 1:1 to fast forward, and note when each happens."
   ],
-  "matters": "A measured passive output and a physical comparison are needed before this example can demonstrate the intended principle.",
-  "question": "What passive output do you predict, and which physical change would test the proposed transmission?",
-  "answer": "Compare the relative speeds when a different member is driven, held or released. This checkpoint does not yet establish that the supplied model achieves it.",
+  "why": "Seen from the carrier, the gears form an ordinary fixed-axis train: input sun 24 → planet 8, then planet 16 → output sun 16. Two external meshes give a positive sign, so the train ratio is (24/8) × (16/16) = 3. Willis’ equation for epicyclic gears states (ω_out − ω_c) = 3 (ω_in − ω_c), i.e. ω_out = 3 ω_in − 2 ω_c. B drives the carrier through an external 20:28 mesh, so ω_c = −(20/28) ω_B. With ω_in = 30°/s: B = 0 gives ω_c = 0 and an output of 90°/s; B = −21 → ω_c = 15 → 60°/s; B = −42 → ω_c = 30 → 30°/s; B = −63 → ω_c = 45 → 0; B = −84 → ω_c = 60 → −30°/s. These are exactly the program’s stage names (×3, ×2, ×1, neutral, reverse) under the encoder signs it uses. In the simulator, the measured output speeds were 90.0, 60.0, 30.0, 0.0 and −30.0°/s (Willis residual below 0.02°/s), and in stage 3 the planets turned 0.00°/s relative to the carrier.",
+  "matters": "A planetary set with two driven members is a power-split transmission: hybrid cars combine an engine and an electric motor this way, and the speed of the second input sets the overall ratio continuously without shifting gears. That ratio change is not free – whenever the output differs from what A alone would give, motor B must supply or absorb power. The simulation shows only the speed relationship; torque split, efficiency, tooth loads and the power B would need under load are not modelled.",
+  "question": "In stage 3 the carrier turns at exactly the input speed, 30°/s. What do the planet gears do on their own axles, and how fast does the output turn?",
+  "answer": "The planets stop spinning relative to the carrier. With ω_c = ω_in, Willis’ equation gives ω_out − ω_c = 3 × 0 = 0, so input sun, carrier, planets and output sun all rotate together as one rigid block at 30°/s. The gears stay meshed, but no tooth rolls on another: a 1:1 direct drive.",
   "further": [
-    "Measure a real physical control under the same drive conditions.",
-    "Check actual connector engagement, clearances, support and saved-project replay."
+    "Predict when the output stops during the stage 6 sweep. B starts at −84°/s and rises by 1.4°/s every 0.1 s, so on paper −63°/s (standstill) comes after 1.5 s and −42°/s (1:1) after 3.0 s. In the simulator each 0.1 s wait actually lasted about 0.17 s, so the sweep took about 10 s and standstill came at about 2.4 s – still exactly at ω_B = −63°/s.",
+    "If A were held and only B turned, the formula gives ω_out = −2 ω_c: the output runs backwards at twice the carrier speed. Check this with the gear counts.",
+    "Compare the Differential and Vernier Drive models. A bevel differential is the special epicyclic case with train ratio −1, which is why its carrier turns at the average of the two sides."
   ],
-  "related": []
+  "formula": "Willis: (ω_out − ω_c) / (ω_in − ω_c) = (24/8) × (16/16) = 3 → ω_out = 3 ω_A − 2 ω_c; ω_c = −(20/28) ω_B. With ω_A = 30°/s: ω_B = 0, −21, −42, −63, −84°/s → ω_c = 0, 15, 30, 45, 60°/s → ω_out = 90, 60, 30, 0, −30°/s (×3, ×2, ×1, 0, −1).",
+  "related": [
+    "differential.ldr",
+    "vernier-drive.ldr",
+    "mean-machine.ldr"
+  ]
 }

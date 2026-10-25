@@ -2,19 +2,26 @@
   "version": 1,
   "id": "meridian-linkage",
   "language": "de",
-  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Miss einen passiven Abtriebspunkt über den gesamten Hub; die vorgeschlagene exakte Geradführung muss noch unabhängig geprüft werden.",
-  "why": "Miss einen passiven Abtriebspunkt über den gesamten Hub; die vorgeschlagene exakte Geradführung muss noch unabhängig geprüft werden.",
+  "what": "Peaucellier-Lipkin-Inversor: eine exakte Geradführung. Von einem festen Drehpunkt O führen zwei 64 mm lange Arme zu den seitlichen Ecken B und D einer Raute aus vier 48 mm langen Balken; ihre beiden anderen Ecken sind P und der Abtriebspunkt Q. Motor A dreht eine 16 mm lange Kurbel um eine Achse 16 mm neben O, sodass P sich auf einem Kreis durch O bewegt. Die rote Markierung bei Q hat keine Führung; die weiße Schiene 16 mm neben ihrer Bahn dient nur als Sichtreferenz und ist nicht mit ihr verbunden. Das Programm schwenkt die Kurbel langsam auf +60°, zurück, auf −60° und zurück (15°/s mit 3 s Pause), wiederholt das mit 30°/s und endet in der Ausgangslage. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
   "try": [
-    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
-    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
-    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+    "Setze zurück. Merke dir in der Ausgangslage, wo die rote Markierung gegenüber der weißen Referenzschiene steht.",
+    "Beobachte beim langsamen Schwenk auf +60° den Abstand zwischen Markierung und Schiene. In der idealen Geometrie bleibt er auf dem ganzen Weg 16 mm.",
+    "Vergleiche, wie weit sich die Markierung bei gleicher Kurbeldrehung nahe der Ausgangslage und nahe den Enden bewegt. Sind die Wege gleich?",
+    "Vergleiche die langsamen Schwenks mit der schnelleren Wiederholung: Die Markierung sollte bei beiden Geschwindigkeiten dieselbe Gerade zeichnen."
   ],
-  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
-  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
-  "answer": "Miss einen passiven Abtriebspunkt über den gesamten Hub; die vorgeschlagene exakte Geradführung muss noch unabhängig geprüft werden. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "why": "Die Rautenzelle ist ein Kreisinverter. Weil OB = OD und alle vier Rautenseiten gleich lang sind, liegen O, P und Q stets auf einer Geraden, und es gilt OP × OQ = OB² − BP² = 64² − 48² = 1792 mm² – eine Konstante. Die Inversion bildet jeden Kreis durch O auf eine Gerade ab. P wird auf einem solchen Kreis geführt (16 mm lange Kurbel um einen Mittelpunkt 16 mm neben O), also muss Q auf der Geraden liegen, die senkrecht zur Verbindung O–Kurbelachse im Abstand 1792 / (2 × 16) = 56 mm von O verläuft. Beim Kurbelwinkel φ bewegt sich Q auf dieser Geraden um y = 56 mm × tan(φ/2): ±32,3 mm bei ±60°, insgesamt ein Hub von etwa 64,7 mm. Im Simulator blieb der gemessene Abtriebspunkt während des ganzen Laufs auf 0,16 mm genau auf einer Geraden (56,0–56,3 mm von O) und auf 0,24 mm genau bei 56 mm × tan(φ/2).",
+  "matters": "Bevor sich präzise Gleitführungen fertigen ließen, brauchte man gerade Bewegungen, die allein aus Drehgelenken entstehen. Das Watt-Gestänge liefert nur eine angenäherte Gerade; Peaucelliers Inversor (1864, unabhängig davon auch von Lipkin gefunden) war das erste ebene Gestänge mit exakter Geradführung. Er zeigt zugleich, dass ein Mechanismus eine geometrische Abbildung berechnen kann. Exakt ist dabei die ideale Geometrie: Echte Pins mit Spiel und sich biegende Balken weichen etwas ab, und auch der Simulator hat kleine eigene Rechenfehler.",
+  "question": "Die Kurbel dreht sich in gleichen Schritten mit konstanter Geschwindigkeit. Bewegt sich die Markierung in gleichen Schritten auf ihrer Geraden? Und warum hält das Programm bei ±60° an, statt die Kurbel ganz herumzudrehen?",
+  "answer": "Nein: y = 56 mm × tan(φ/2) wächst zu den Enden hin schneller. Die ersten 15° aus der Ausgangslage verschieben Q um etwa 7,4 mm, der Schritt von 45° auf 60° um etwa 9,1 mm. Eine volle Umdrehung ist unmöglich: Die Zelle ist ganz gestreckt, wenn OQ = 64 + 48 = 112 mm beträgt, und das ist bei φ = ±120° der Fall. Darüber hinaus gibt es keine mögliche Stellung der Glieder; das Programm bleibt mit ±60° deutlich darunter.",
   "further": [
-    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
-    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+    "Berechne y für jeden 15°-Schritt von 0° bis 60° und vergleiche mit der Markierung. Der Abstand zur Schiene sollte 16 mm bleiben.",
+    "Mache auf dem Papier alle vier Rautenseiten 40 mm lang: Die Konstante wird 64² − 40² = 2496 mm², und die Gerade rückt auf 78 mm Abstand von O – weiterhin exakt gerade.",
+    "Vergleiche Watt’s Line (angenäherte Geradführung) und Straight Eight, ein etabliertes Peaucellier-Lipkin-Modell. Hier entsteht die Geradheit allein aus der Geometrie: Q hat weder Schlitten noch eine Software-Zwangsbedingung."
   ],
-  "related": []
+  "formula": "OP × OQ = OB² − BP² = 64² − 48² = 1792 mm². P auf einem Kreis mit r = 16 mm durch O → Q auf der Geraden x = (OB² − BP²) / (2r) = 56 mm. y_Q = 56 mm × tan(φ/2): ±32,3 mm bei φ = ±60°. Voll gestreckt bei OQ = 112 mm ↔ φ = ±120°.",
+  "related": [
+    "straight-eight.ldr",
+    "watt-line.ldr",
+    "line-turner.ldr"
+  ]
 }

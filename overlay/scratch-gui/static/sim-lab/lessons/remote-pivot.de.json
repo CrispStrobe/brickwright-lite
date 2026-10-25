@@ -2,19 +2,26 @@
   "version": 1,
   "id": "remote-pivot",
   "language": "de",
-  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Verfolge den Abtrieb um das vorgeschlagene Fernzentrum und vergleiche seinen Radius während der ganzen Bewegung.",
-  "why": "Verfolge den Abtrieb um das vorgeschlagene Fernzentrum und vergleiche seinen Radius während der ganzen Bewegung.",
+  "what": "Ein Doppelparallelogramm mit entferntem Drehzentrum (Remote Center of Motion). Motor A dreht einen 32 mm langen Eingangslenker um ein festes Lager. Ein Folgelenker an einem zweiten festen Lager, 32 mm daneben, ergänzt das erste Parallelogramm; seine L-förmige Koppel verschiebt sich deshalb nur und dreht sich nie. Ein zweites Parallelogramm aus Eingangslenker und dieser Koppel trägt den Ausgangslenker. Er bleibt stets parallel zum Eingangslenker, und seine Verlängerung geht immer durch einen festen Punkt C, 16 mm jenseits des Folgelagers. Dort gibt es kein Lager, keine Achse und überhaupt kein Bauteil. Das Programm schwenkt den Eingang aus der Startlage 90° nach 60°, 75°, 90°, 105°, 120°, dann direkt zurück nach 60° und schließlich nach 90° und hält jeweils 2,5 s.",
   "try": [
-    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
-    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
-    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+    "Setze zurück und starte. Verlängere bei jedem Halt in Gedanken die Linie des Ausgangslenkers: Sie sollte jedes Mal dieselbe leere Stelle C treffen.",
+    "Vergleiche 60° und 120°. Das äußere Gelenk des Ausgangs, 64 mm von C entfernt, sollte einen Bogen von 60° beschreiben, das innere Gelenk, 32 mm von C, einen halb so langen.",
+    "Beobachte Folgelenker und L-Koppel: Der Folgelenker bleibt parallel zum Eingangslenker, die Koppel bewegt sich, ohne sich zu drehen.",
+    "Stufe 6 schwenkt direkt von 120° nach 60°. Bleibt C auch während der Bewegung fest, nicht nur in den Haltepunkten?"
   ],
-  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
-  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
-  "answer": "Verfolge den Abtrieb um das vorgeschlagene Fernzentrum und vergleiche seinen Radius während der ganzen Bewegung. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "why": "Im Parallelogramm bleiben gegenüberliegende Seiten parallel und gleich lang. Das erste Parallelogramm (Gestell, Eingang, Folgelenker, Koppel) lässt die Koppel ohne Drehung verschieben. Jeder ihrer Punkte beschreibt deshalb den Kreis der Eingangskurbel, um einen festen Vektor verschoben. Das innere Ausgangsgelenk Q ist ein solcher Punkt: Q läuft auf einem 32-mm-Kreis um einen festen Punkt C, nämlich das Eingangslager, um denselben Vektor verschoben. Das zweite Parallelogramm hält den Ausgangslenker parallel zum Eingangslenker, also in Richtung des Radius von Q. Eine Gerade durch Q in Radiusrichtung geht immer durch den Kreismittelpunkt. Die Ausgangslinie geht also stets durch C und dreht sich um genau den Eingangswinkel. C ist ein virtueller Drehpunkt, gehalten von der Geometrie und nicht von einem Lager.",
+  "matters": "Chirurgieroboter nutzen diese Anordnung, damit ein Instrument um den kleinen Schnitt in der Bauchdecke schwenkt, wo kein Lager sitzen kann. Kamera- und Teleskophalterungen drehen so um einen optischen Mittelpunkt. Parallel Lift nutzt dieselbe Parallelogrammregel, um ein Tablett waagerecht zu halten.",
+  "question": "In C ist nichts befestigt. Wie weit bewegt sich das äußere Ausgangsgelenk (64 mm von C), wenn der Eingang von 60° auf 120° schwenkt, und bewegt sich C dabei?",
+  "answer": "C bewegt sich nicht; die Geometrie legt den Punkt fest. Das äußere Gelenk läuft auf einem 64-mm-Kreis um C über 60°: ein Bogen von 64·π/3 ≈ 67,0 mm, in gerader Linie 2·64·sin 30° = 64 mm. Das innere Gelenk legt den halben Weg zurück. Der Ausgangslenker dreht sich um genau dieselben 60° wie der Eingang.",
   "further": [
-    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
-    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+    "Parallelogramme haben Verzweigungslagen, in denen alle Lenker mit dem Gestell fluchten (Eingang bei 0° oder 180°); dort könnte der Folgelenker in die gekreuzte Lage umschlagen. Die Bahn von ±30° um 90° bleibt weit davon entfernt, und die Softwaregrenze stoppt den Motor jenseits von ±31°.",
+    "Echte Geräte mit entferntem Drehzentrum müssen steif sein: Spiel in einem der beweglichen Gelenke verschiebt das virtuelle Zentrum, weil nichts Körperliches es hält. Aus demselben Grund kann C auch in der Simulation leicht wandern.",
+    "In einer Robot-Lab-Simulation des mitgelieferten Programms ohne Bedienoberfläche ergab eine Ausgleichsrechnung für den festen Punkt des Ausgangslenkers C im Abstand 16,00 mm vom Folgelager; C wanderte höchstens 0,1 mm, und der Ausgang drehte sich auf 0,04° genau wie der Eingang. Das ist eine Simulationsbeobachtung, kein Versuch am echten Modell."
   ],
-  "related": []
+  "formula": "Eingangswinkel θ = 90° + Winkel von Motor A (1:1). Ausgangswinkel = θ. Q = C + 32 mm·(cos θ, sin θ); E = C + 64 mm·(cos θ, sin θ). Gestelllager 32 mm voneinander entfernt; C liegt 16 mm jenseits des Folgelagers, auf der den Lenkern abgewandten Seite. Bogen des äußeren Gelenks bei Schwenkwinkel Δθ: s = 64 mm·Δθ (im Bogenmaß); Sehne = 2·64 mm·sin(Δθ/2). Softwaregrenze: Motor A innerhalb ±31°.",
+  "related": [
+    "parallel-lift.ldr",
+    "crank-rocker.ldr",
+    "pantograph-doubler.ldr"
+  ]
 }

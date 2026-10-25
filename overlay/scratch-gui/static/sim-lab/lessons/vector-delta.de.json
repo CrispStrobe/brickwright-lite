@@ -2,18 +2,25 @@
   "version": 1,
   "id": "vector-delta",
   "language": "de",
-  "what": "Gesperrt: Teil 5996 wird noch nicht unterstützt. Die Originalquelle bleibt für die Überarbeitung erhalten. Drei parallele Ketten sollen eine Plattform positionieren. Bevor diese Quelle sicher geladen werden kann, wird Unterstützung für Teil 5996 benötigt.",
-  "why": "Drei parallele Ketten sollen eine Plattform positionieren. Bevor diese Quelle sicher geladen werden kann, wird Unterstützung für Teil 5996 benötigt.",
+  "what": "Paralleler Delta-Roboter (Bauart Clavel) – derzeit gesperrt. Drei Motoren auf der Basis, um 120° versetzt, treiben über je ein 8:24-Zahnradpaar (3:1) einen 48 mm langen Oberarm an. Von jedem Arm führt ein Paar paralleler, 56 mm langer Unterarme mit Kugelgelenken zu einem gemeinsamen Werkzeugkopf. Das mitgelieferte Programm würde für 13 XYZ-Wegpunkte, darunter drei Greifstationen, die inverse Kinematik lösen und die drei Motoren gemeinsam fahren. Das Modell lässt sich noch nicht öffnen: Es verwendet sechsmal das Teil 5996, das Brickwright nicht unterstützt; weder Modell noch Programm können laufen.",
   "try": [
-    "Gesperrt: Teil 5996 wird noch nicht unterstützt. Die Originalquelle bleibt für die Überarbeitung erhalten.",
-    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start."
+    "Das Modell ist gesperrt: Brickwright lädt es erst, wenn Teil 5996 unterstützt wird, daher lässt sich noch nichts starten. Du kannst aber das Programm im Code-Bereich lesen und sehen, wie ein Delta-Roboter gesteuert wird.",
+    "Suche im Programm das Skript Vector leg. Für jede Armrichtung φ (90°, 330° und 210°) projiziert es das Ziel in die senkrechte Ebene dieses Arms und löst einen Schnitt: Wo kann der Ellbogen liegen, damit er 48 mm von der Schulter und 56 mm vom Werkzeuggelenk entfernt ist?",
+    "Vergleiche die Wegpunkte: Der Werkzeugkopf hebt zuerst um 25 LDU (10 mm) an und fährt dann drei Stationen an, 24 LDU (9,6 mm) von der Mitte entfernt und um 120° versetzt, an denen er jeweils 15 LDU (6 mm) absenkt. Sage voraus, welche Motoren sich bewegen müssen, wenn der Kopf nur senkrecht steigt.",
+    "Sieh dir die Schutzabfragen an: Ziele außerhalb von |x|, |z| ≤ 30 LDU oder außerhalb eines 29 LDU hohen Bandes sowie Schulterwinkel außerhalb von 15°–40° beenden das Programm, bevor sich ein Motor bewegt."
   ],
-  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
-  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
-  "answer": "Drei parallele Ketten sollen eine Plattform positionieren. Bevor diese Quelle sicher geladen werden kann, wird Unterstützung für Teil 5996 benötigt. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "why": "Jedes Unterarmpaar bildet ein Parallelogramm, deshalb kann der Werkzeugkopf nicht kippen, sondern nur in x, y und z verschoben werden. Drei Motoren liefern genau diese drei Freiheitsgrade. Jedes Bein wird einzeln gelöst: Die Schulter sitzt 200 LDU (80 mm) von der Mitte, die Werkzeuggelenke 60 LDU (24 mm), der wirksame Versatz beträgt also 140 LDU. Der Ellbogen muss auf einem Kreis mit Radius L = 48 mm um die Schulter und auf einer Kugel mit Radius l = 56 mm um das Werkzeuggelenk liegen. Daraus folgt D·cos θ + y·sin θ = (L² + q² − l²)/(2L), gelöst als θ = atan2(y, D) − arccos K. Das Motorziel ist −3·(θ − 35°), weil das Getriebe mit 3 multipliziert und die gespeicherte Stellung θ = 35° hat.",
+  "matters": "Delta-Roboter sind die schnellen Pick-and-Place-Maschinen in Verpackungsanlagen und das Gestell vieler 3D-Drucker: Die schweren Motoren bleiben an der Basis, nur leichte Stäbe bewegen sich. Der Preis ist ein nichtlinearer, gekoppelter Zusammenhang zwischen Motorwinkeln und Werkzeugposition und ein durch die Armlängen begrenzter Arbeitsraum. Das Programm zeigt die übliche Lösung: für jeden Wegpunkt die inverse Kinematik berechnen und die drei Motorgeschwindigkeiten so skalieren, dass alle gleichzeitig ankommen. Dieses experimentelle Modell wurde in Brickwright weder geöffnet noch gemessen; sein mechanisches Verhalten ist ungeprüft.",
+  "question": "Der Werkzeugkopf steigt in der Mitte senkrecht um 10 mm (Wegpunkt 1). Drehen sich alle drei Motoren um denselben Winkel? Und wenn der Kopf danach 9,6 mm seitlich zu Station 1 fährt?",
+  "answer": "Senkrecht in der Mitte: ja. Aus Symmetriegründen ändert sich jeder Schulterwinkel von 35° auf etwa 19,5°; nach den Gleichungen des Programms drehen sich alle drei Motoren um etwa +46,5°. Seitlich zu Station 1: nein. Von der angehobenen Stellung aus ändern sich die Motorziele um etwa −3,5° (A), −11,4° (B) und +3,0° (C). Selbst eine gerade Seitwärtsbewegung braucht drei verschiedene Motorbewegungen; deshalb skaliert das Programm die Geschwindigkeiten so, dass alle drei gleichzeitig fertig sind.",
   "further": [
-    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
-    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+    "Rechne die Beingleichungen für Wegpunkt 3 (x = −24, y = 192,47 LDU, z = 0) von Hand durch und prüfe die drei Schulterwinkel gegen die Grenze von 15°–40°.",
+    "Vergleiche Atlas Six (Stewart-Plattform, sechs Beine, sechs Freiheitsgrade) und Twinpoint (ebenes Fünfgelenk, zwei Freiheitsgrade): Bei allen teilen sich mehrere Ketten einen Endeffektor.",
+    "Bevor dieses Modell im Simulator etwas zeigen kann, braucht Teil 5996 Katalog- und Geometrieunterstützung. Danach müssen Aufbau, Bewegung und Positioniergenauigkeit des Werkzeugkopfs noch geprüft werden."
   ],
-  "related": []
+  "formula": "Bein bei Winkel φ: radial = x·cos φ + z·sin φ; D = 140 − radial; q² = x² + y² + z² + 140² − 280·radial; ρ = √(D² + y²); K = (L² + q² − l²)/(2Lρ) mit L = 120 LDU (48 mm), l = 140 LDU (56 mm); θ = atan2(y, D) − arccos K. Motorziel = −3·(θ − 35°). Schultern bei φ = 90°, 330°, 210°. Koordinaten in LDU, y nach unten.",
+  "related": [
+    "atlas-six.ldr",
+    "twinpoint.ldr"
+  ]
 }

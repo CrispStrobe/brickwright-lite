@@ -2,19 +2,28 @@
   "version": 1,
   "id": "bend-ripple",
   "language": "de",
-  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die passive Wellendrehzahl bei verschiedenen Knickwinkeln; ein einzelnes Kardangelenk kann periodische Drehzahlschwankungen erzeugen.",
-  "why": "Vergleiche die passive Wellendrehzahl bei verschiedenen Knickwinkeln; ein einzelnes Kardangelenk kann periodische Drehzahlschwankungen erzeugen.",
+  "what": "Einzelnes Kardangelenk mit verstellbarem Knickwinkel. Motor A dreht die Eingangswelle im Verhältnis 1:1. Motor B schwenkt den Lagerträger der Ausgangswelle um den Gelenkmittelpunkt und stellt so den Knickwinkel β zwischen 10° und 30° ein. Die Ausgangswelle hat keinen Motor; sie wird nur über das Technic-Kardangelenk angetrieben. Das Programm vergleicht eine volle Eingangsumdrehung bei β = 10° mit einer bei β = 30° und hält dazwischen den Eingang bei 45° Phase fest, während sich nur der Knickwinkel ändert.",
   "try": [
-    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
-    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
-    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+    "Öffne Bend Ripple mit Programm, drücke Zurücksetzen und dann Start. Encoder A = 0° entspricht der Eingangsphase 0°, der Knickwinkel ist β = 10° + Encoder B. Jede Haltephase dauert 2 s; der ganze Lauf etwa zwei Minuten.",
+    "Stufe 1 dreht den Eingang bei β = 10° um 360°, Stufe 2 weitere 45° in die Diagonalstellung (405°). Vergleiche während der Umdrehung die Markierung am Ausgang mit dem Eingang: Bei 10° eilt der Ausgang um weniger als ein halbes Grad vor und nach – kaum zu sehen.",
+    "In Stufe 3 hält Motor A den Eingang bei 405°, während Motor B den Knickwinkel auf 30° erhöht. Beobachte die Ausgangswelle relativ zu ihrem Träger: Obwohl der Eingang stillsteht, sollte sich der Ausgang um etwa 3,7° drehen. Stufe 6 verkleinert den Knickwinkel wieder, und der Ausgang sollte zurückdrehen.",
+    "Stufe 4 dreht den Eingang bei β = 30° eine volle Umdrehung weiter (405° → 765°), Stufe 5 zurück, Stufe 7 auf den gespeicherten Nullpunkt. Jetzt erreicht das Vor- und Nacheilen etwa ±4,1°, zweimal pro Umdrehung, und trotzdem stimmen Ein- und Ausgang nach jeder vollen Umdrehung wieder überein."
   ],
-  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
-  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
-  "answer": "Vergleiche die passive Wellendrehzahl bei verschiedenen Knickwinkeln; ein einzelnes Kardangelenk kann periodische Drehzahlschwankungen erzeugen. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "why": "Das Kreuz des Gelenks hält Eingangs- und Ausgangsgabel rechtwinklig zueinander. Fluchten die Wellen, folgt der Ausgang daher exakt dem Eingang. Ist die Ausgangswelle um β abgeknickt, lautet die Bedingung tan ψ = tan θ / cos β (Eingangswinkel θ, Ausgangswinkel ψ, gezählt ab der Stellung, in der die Eingangsgabel in der Knickebene liegt). Beide Wellen machen weiterhin Umdrehung für Umdrehung, doch innerhalb einer Umdrehung eilt der Ausgang abwechselnd vor und nach, zweimal pro Umdrehung. Das momentane Drehzahlverhältnis pendelt zwischen cos β und 1/cos β: 0,985–1,015 bei 10°, 0,866–1,155 bei 30°. Weil β in derselben Gleichung steht, bewegt auch eine Änderung des Knickwinkels bei festem θ den Ausgang – außer bei den Phasen θ = 0°, 90°, 180° und 270°.",
+  "matters": "Einzelne Kardangelenke stecken in Lenksäulen, Gelenkwellen und Werkzeugantrieben. Ihre Drehzahlschwankung erzeugt Schwingungen und Drehmomentstöße. Deshalb haben Gelenkwellen in Fahrzeugen zwei Gelenke, die so ausgerichtet sind, dass das zweite die Schwankung des ersten aufhebt (siehe Phase Bridge), oder Gleichlaufgelenke. Bend Ripple macht den Knickwinkel selbst zu einer zweiten Eingabe – so wie beim Einfedern einer Radaufhängung, während die Welle dreht. In einem Lauf des Brickwright-Simulators ohne Oberfläche folgte der gemessene Ausgang, relativ zu seinem Träger, tan ψ = tan θ / cos β auf 0,007° genau: 0,88° Schwankung von Spitze zu Spitze bei 10° und 8,20° beim erreichten Knickwinkel von 29,94°, dazu 3,64° Ausgangsdrehung in der Stufe, in der sich nur der Knickwinkel änderte. Das ist eine Simulationsbeobachtung; ein realer LEGO-Aufbau wurde nicht geprüft.",
+  "question": "Motor A hält den Eingang genau bei 405°, während Motor B den Knickwinkel von 10° auf 30° erhöht. Bleibt die Ausgangswelle stehen? Was würde passieren, wenn der Eingang stattdessen bei 360° stünde?",
+  "answer": "Bei 405° (45° Phase) dreht sich der Ausgang, im Ideal um etwa 3,67°: ψ = arctan(1/cos β) wächst von 45,44° bei 10° auf 49,11° bei 30° und dreht zurück, wenn der Knickwinkel wieder 10° beträgt. Bei 360° (Phase 0°) ist tan θ = 0, also bleibt ψ bei jedem Knickwinkel 0°; ebenso bei 90°, 180° und 270°. Die Wirkung des Knickwinkels allein hängt also von der Eingangsphase ab.",
   "further": [
-    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
-    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+    "Phasenschwankung ψ − θ: im Ideal etwa 0,88° von Spitze zu Spitze bei β = 10° und 8,23° bei β = 30° – rund neunmal so viel bei dreifachem Knickwinkel, weil sie bei kleinen Winkeln etwa mit β² wächst. Vergleiche Messwerte innerhalb der Umdrehung, nicht nur die Endstellungen.",
+    "Am schnellsten (Verhältnis 1/cos β) läuft der Ausgang, wenn die Eingangsgabel in der Knickebene liegt (θ = 0°, 180°), am langsamsten (cos β) eine Vierteldrehung später. Suche diese Phasen während der 30°-Umdrehung.",
+    "Die befohlenen Geschwindigkeitsgrenzen (24°/s für A, 4°/s für B) sind keine gemessenen Geschwindigkeiten. Berechne Verhältnisse aus gemessenen Winkeländerungen und miss den Ausgang relativ zum bewegten Träger, nicht zum Raum.",
+    "Grenzen: Spiel und Reibung im Kardangelenk und der tatsächliche Freiraum seines Kreuzes werden nicht abgebildet. Der Lieferant selbst bezeichnet seine Freiraumprüfung der Gabeln als nicht eindeutig."
   ],
-  "related": []
+  "formula": "tan ψ = tan θ / cos β; ψ = atan2(sin θ, cos β·cos θ), fortlaufend gezählt. dψ/dθ = cos β / (1 − sin²β·cos²θ), zwischen cos β (θ = 90°, 270°) und 1/cos β (θ = 0°, 180°). Größter Phasenfehler: tan(ψ − θ) = (1 − cos β)/(2·√cos β) → ±0,44° bei 10°, ±4,12° bei 30°. θ = Encoder A, β = 10° + Encoder B, ψ relativ zum bewegten Träger.",
+  "related": [
+    "ripple-relay.ldr",
+    "phase-bridge.ldr",
+    "phase-bridge-misphased.ldr",
+    "wavemaker.ldr"
+  ]
 }

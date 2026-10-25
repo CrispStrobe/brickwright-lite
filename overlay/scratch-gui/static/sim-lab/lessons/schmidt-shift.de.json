@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "schmidt-shift",
+  "language": "de",
+  "what": "Eine Schmidt-Kupplung verbindet parallele Wellen mit 48 mm Achsabstand. Ein Motor dreht den Antriebsträger. Sechs Koppelstangen verbinden ihn mit einem frei getragenen Mittelträger und einem passiven Abtriebsträger. Vier rechteckige Rahmen bilden die drei Drehträger: Der Mittelträger besteht aus zwei verbundenen gelben Rahmen. Die Mechanik benötigt nur Drehgelenke, weder Zahnräder noch Schiebeführungen. Experimentelles Modell: Der Lieferant meldet einen bestandenen nativen Simulationstest; eine physische Kausalkontrolle und ein echter Aufbau stehen noch aus.",
+  "try": [
+    "Lade das Modell und das passende Programm, setze auf die gespeicherte Lage zurück und starte den endlichen Hin- und Rücklauf. Beobachte alle drei Träger, auch den Abtrieb ohne eigenen Motor.",
+    "Wähle an jedem Träger dieselbe Ecke. Vergleiche ihre Ausrichtung bei Vierteldrehungen und beim Richtungswechsel. Bleiben die Träger auch zwischen diesen Positionen gleich ausgerichtet?",
+    "Beobachte den Mittelpunkt des Mittelträgers getrennt von seinen Ecken. Bei der idealen Bewegung mit festem Achsversatz bleibt der Mittelpunkt stehen, während die Ecken um ihn kreisen."
+  ],
+  "why": "Je zwei benachbarte Träger haben drei entsprechende Gelenkstellen, die durch gleich lange Koppelstangen von 40 mm verbunden sind. Diese parallelen Verbindungen erhalten die relative Ausrichtung der Träger. Die zweite Stangengruppe überträgt dieselbe Ausrichtung auf den Abtrieb. Die beiden Mittelpunktabstände von 40 mm überbrücken den Wellenversatz von 48 mm. Der mittlere Mittelpunkt liegt dadurch 24 mm seitlich und 32 mm oberhalb der Antriebsachse.",
+  "matters": "Parallele Wellen können über gelenkige Stangen die gleiche Drehbewegung übertragen. Oldham-Kupplungen gleichen einen Versatz mit rechtwinkligen Schiebeführungen aus. Kardangelenke verbinden dagegen abgewinkelte Wellen und können eine ungleichförmige Drehbewegung erzeugen. Der Vergleich zeigt, wie unterschiedliche Gelenkanordnungen verschiedene Ausrichtungsprobleme lösen.",
+  "question": "Der Antrieb dreht sich aus der gespeicherten Lage um 90° und kehrt danach zurück. Was sollten Abtrieb und Mittelträger tun? Sollte der mittlere Mittelpunkt eine Umlaufbahn beschreiben?",
+  "answer": "Im Idealfall drehen sich beide anderen Träger um dieselben vorzeichenbehafteten 90° und kehren mit dem Antrieb zurück. Ihre Mittelpunkte bleiben an den Ecken des festen Dreiecks. Die Ecken des Mittelträgers kreisen, sein Mittelpunkt jedoch nicht. Gleiche Winkel nur an den Endpunkten reichen als Beobachtung nicht aus: Vergleiche auch die Bewegung dazwischen.",
+  "further": [
+    "Vergleiche dieses Modell mit Offset Orbit. Beide verbinden parallel versetzte Wellen, doch das Oldham-Kreuz gleitet und sein Mittelpunkt folgt einer anderen Bahn.",
+    "Die Wellenlager dieses Aufbaus sind fest montiert. Er demonstriert keinen veränderlichen Versatz im laufenden Betrieb. Aus der beobachteten Bewegung folgen auch keine Aussagen zu Drehmomentbelastbarkeit, Lebensdauer oder Auswuchtung.",
+    "Vergleiche mit dem experimentellen Offset Relay, das den Wellenversatz während des Laufs verändert; Schmidt Shift behält einen festen Versatz."
+  ],
+  "formula": "Ideal, wenn alle Trägerwinkel aus derselben Achsrichtung betrachtet werden: ΔθAntrieb = ΔθMitte = ΔθAbtrieb. Mittelpunktsdreieck: 24² + 32² = 40² mm²; Abstand zwischen Antrieb und Abtrieb = 48 mm.",
+  "related": [
+    "offset-orbit.ldr",
+    "crossglide.ldr",
+    "phase-bridge.ldr"
+  ]
+}

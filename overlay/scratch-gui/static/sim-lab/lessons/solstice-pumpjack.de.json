@@ -2,19 +2,26 @@
   "version": 1,
   "id": "solstice-pumpjack",
   "language": "de",
-  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die Kurbelphase mit der Balkenschwingung und dem senkrechten Abtriebshub.",
-  "why": "Vergleiche die Kurbelphase mit der Balkenschwingung und dem senkrechten Abtriebshub.",
+  "what": "Pferdekopfpumpe (Tiefpumpe) mit einer Kurbelschwinge nach Grashof als Antrieb. Motor A dreht eine 16 mm lange Kurbel. Eine 64 mm lange Treibstange (9er-Lochbalken) bewegt das hintere Ende eines 15er-Schwengels, der auf einem festen Bock gelagert ist; der hintere Hebelarm misst 48 mm, der vordere 56 mm. Vom vorderen Ende hängt eine zweite, 64 mm lange Stange zu einer Zahnstange hinab, die senkrecht in einem Zahnstangengehäuse gleitet – sie steht für den Pumpenkolben. Das Programm dreht die Kurbel in vier langsamen 90°-Schritten (30°/s, 3 s Pause) und danach in ganzen Umdrehungen rückwärts, vorwärts und wieder rückwärts mit 60°/s zurück in die Ausgangslage. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
   "try": [
-    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
-    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
-    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+    "Setze zurück und drücke Start. Merke dir bei jedem 90°-Halt die Höhe der Zahnstange. Welche Haltepunkte liegen nahe am oberen und unteren Hubende?",
+    "Vergleiche den 180°-Halt mit der Ausgangslage (0°). Steht die Zahnstange wieder auf derselben Höhe?",
+    "Miss bei den ganzen Umdrehungen mit 60°/s getrennt, wie lange die Zahnstange steigt und wie lange sie sinkt (Mitzählen in Zeitlupe genügt).",
+    "Beobachte den Schwengel: Er nickt nur hin und her; voll umlaufen kann allein die Kurbel."
   ],
-  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
-  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
-  "answer": "Vergleiche die Kurbelphase mit der Balkenschwingung und dem senkrechten Abtriebshub. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "why": "Kurbel, Treibstange, hinterer Schwengelarm und Gestell bilden ein Viergelenk: Kurbel a = 16 mm, Koppel b = 64 mm, Schwinge c = 48 mm und Gestell d = 64√2 ≈ 90,5 mm (die Kurbelachse liegt 64 mm unter und 64 mm hinter dem Schwengellager). Die Grashof-Bedingung 16 + 90,5 ≤ 64 + 48 ist erfüllt, und die Kurbel ist das kürzeste Glied: Sie läuft um, der Schwengel schwingt. Seine Endlagen erreicht er in den Totlagen, in denen Kurbel und Treibstange auf einer Geraden liegen (48 mm bzw. 80 mm von der Kurbelachse bis zum Schwengelzapfen); der Kosinussatz ergibt dann einen Schwingwinkel von etwa 42,4°. Der vordere Arm ist länger (56 mm gegenüber 48 mm), daher bewegt sich das Pumpenende 56/48 ≈ 1,17-mal so weit wie das Ende an der Treibstange; die ideale Geometrie liefert einen Zahnstangenhub von etwa 40,6 mm. Die beiden Totlagen teilen die Kurbelumdrehung in etwa 192,5° und 167,5°, sodass ein Hub langsamer ist als der andere.",
+  "matters": "Ölfeldpumpen nutzen diese Bauweise, weil eine langsam und gleichmäßig laufende Kurbel – meist mit Gegengewichten – ein schweres Gestänge über einen langen senkrechten Hub heben kann. Ungleiche Hubzeiten und der beinahe Stillstand in jeder Totlage sind bei echten Pumpen wichtig, weil sie Gestängelasten und Füllzeit beeinflussen. Bei Solstice ersetzt eine gerade geführte Zahnstange den gebogenen Pferdekopf mit Seil. Es ist nur ein Mechanismusmodell: Flüssigkeit, Ventile, Dichtung und Pumplast werden nicht modelliert.",
+  "question": "Die Kurbel hält bei 0°, 90°, 180°, 270° und 360°. Steht die Zahnstange bei 180° auf derselben Höhe wie in der Ausgangslage, wie es bei einer reinen Sinusbewegung wäre?",
+  "answer": "Nein. In der idealen Geometrie steht die Zahnstange beim 180°-Halt etwa 10,6 mm höher als in der Ausgangslage: Eine Kurbelschwinge ist keine Kurbelschleife, und die Ausgangslage ist nicht die Hubmitte. Der 90°-Halt liegt etwa 2 mm unter dem oberen, der 270°-Halt weniger als 1 mm über dem unteren Ende des 40,6-mm-Hubs. Vorwärts braucht das Heben etwa 192° Kurbeldrehung, das Senken etwa 168°. Im Simulator gemessen: 10,5 mm höher bei 180°, 40,60 mm Hub, 42,4° Schwengelausschlag, oberes und unteres Ende bei 115° und 283° Kurbelwinkel.",
   "further": [
-    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
-    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+    "Liefe eine 24 mm lange Kurbel noch voll um? Prüfe Grashof: 24 + 90,5 = 114,5 > 64 + 48 = 112 – nein, das Gestänge würde vor dem Ende der Umdrehung klemmen.",
+    "Vergleiche Crank-Rocker, Rod Ratio und Quickstroke: Welche davon haben gleich lange Hübe, und warum?",
+    "Anders als bei einer echten Pumpe trifft die Zahnstange hier auf keine Last. Sage voraus, wie eine schwere Last beim Aufwärtshub das Motormoment nahe den Totlagen verändern würde."
   ],
-  "related": []
+  "formula": "Grashof: 16 + 90,5 ≤ 64 + 48 mm (Kurbel a = 16, Treibstange b = 64, hinterer Arm c = 48, Gestell d = 64√2 ≈ 90,5). Schwengel-Endlagen: cos ψ = (c² + d² − (b ∓ a)²) / (2cd) → ψ = 19,5° und 61,9°, Schwingwinkel ≈ 42,4°. Zahnstangenhub ≈ 40,6 mm (vorderer Arm 56 mm). Kurbelabschnitte zwischen den Totlagen ≈ 192,5° und 167,5°.",
+  "related": [
+    "crank-rocker.ldr",
+    "rod-ratio.ldr",
+    "quickstroke.ldr"
+  ]
 }

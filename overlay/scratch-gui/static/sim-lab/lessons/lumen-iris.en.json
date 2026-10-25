@@ -2,19 +2,25 @@
   "version": 1,
   "id": "lumen-iris",
   "language": "en",
-  "what": "Experimental source: intended motion has not been independently checked. Observe the blade motion and measure the clear opening at several input angles.",
-  "why": "Observe the blade motion and measure the clear opening at several input angles.",
+  "what": "Geared six-leaf iris aperture. Motor A turns a 12-tooth pinion that meshes with one of six 20-tooth leaf gears. That leaf gear also meshes with the outer teeth of a 60-tooth hollow turntable, and the turntable ring drives the other five leaf gears. Each leaf gear carries a 6 × 6 plate as its leaf; the six plates sit at staggered heights so they can overlap like the blades of a camera iris. Turning the leaves swings the plates outward about their own axles and opens a six-fold symmetric hole in the middle. The program opens in four equal input steps of 13.8° to −55.2°, closes through the same checkpoints, then opens and closes once more at double speed. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
   "try": [
-    "Inspect the frame, shaft supports and passive output before running.",
-    "Reset, then try the finite example program. Stop if the structure becomes unstable.",
-    "Record the passive output, foundation motion and final hold; check the full travel."
+    "Reset, then Run. At each 13.8° pause of cycle 1, look straight at the centre and estimate the width of the opening. In the simulator the inscribed opening measured about 8.8, 16.3, 22.5 and 27.2 mm at the four checkpoints (the supplier quotes about 24 mm, apparently measured differently).",
+    "Compare the four opening steps. The input steps are equal; do the increases in opening look equal too?",
+    "Follow the turntable and one leaf gear. The leaf should turn three times as far as the ring, in the opposite direction, and all six leaves should move together.",
+    "Compare the opening at the same checkpoint while opening and while closing, and in the faster cycle 2. A pure gear train gives the same opening at the same input angle; a difference points to lag or backlash."
   ],
-  "matters": "A measured passive output and a physical comparison are needed before this example can demonstrate the intended principle.",
-  "question": "What passive output do you predict, and which physical change would test the proposed transmission?",
-  "answer": "Observe the blade motion and measure the clear opening at several input angles. This checkpoint does not yet establish that the supplied model achieves it.",
+  "why": "Gears couple all six leaves to the single input: leaf angle = (12/20) × input = 0.6 × input, ring angle = (12/60) × input = 0.2 × input. At full travel (55.2° at the motor) every leaf has turned about 33.1° and the ring about 11.0°. Every 20-tooth gear meshes the same ring from outside, so all six turn by the same angle in the same direction and the opening stays centred. The opening is not proportional to the leaf angle, however. Each leaf pivots about its own axle, so the distance of its inner edge from the centre changes roughly like a cosine of the pivot angle. In the ideal plate geometry the first degrees clear the centre fastest and every later quarter step adds less width than the one before. In the simulator, the measured ratios were leaf/input = −0.600 and ring/input = +0.200 for all six leaves, and the four opening steps added about 8.8, 7.5, 6.2 and 4.7 mm.",
+  "matters": "Iris diaphragms control light in cameras and microscopes and are also used as adjustable valves. The essential idea is one input moving many identical parts through a symmetric coupling, so the opening stays centred; synchronised clamps and centring grippers use the same idea. A classic camera iris uses one actuating ring with pins and slots; Lumen instead gears every leaf directly to the ring. The simulator models no light and no light-tight seal; the supplier notes that the closed leaves leave a tiny gap.",
+  "question": "The program opens the iris in four equal 13.8° input steps. Will each step widen the opening by the same amount?",
+  "answer": "No, not in the ideal geometry. The gearing is linear – each step turns every leaf by the same 8.3° – but the opening depends on where each leaf edge ends up, and that follows a cosine-like relation to the leaf angle. Near the closed position a few degrees clear the centre quickly; towards full travel the edges move increasingly sideways rather than outward, so the later steps add less.",
   "further": [
-    "Measure a real physical control under the same drive conditions.",
-    "Check actual connector engagement, clearances, support and saved-project replay."
+    "Check the 3:1 ratio between leaf gear and ring at full travel: about 33.1° at a leaf against about 11.0° at the ring.",
+    "In a physical build all six meshes must be in phase. If one leaf gear were fitted one tooth off, that leaf would be out by 360°/20 = 18°. What would that do to the opening?",
+    "Sketch one leaf as a square plate pivoting about an axle 40 mm from the centre and measure how its nearest edge moves for 0°, 8°, 17°, 25° and 33°."
   ],
-  "related": []
+  "formula": "Leaf angle = (12/20) × θ_A = 0.6 θ_A; ring angle = (12/60) × θ_A = 0.2 θ_A. Full travel |θ_A| = 55.2168° → leaves ≈ 33.1°, ring ≈ 11.0°; quarter step 13.8042° → 8.28° per leaf. One tooth on a leaf gear = 360°/20 = 18° of leaf rotation. Signs depend on the axis convention.",
+  "related": [
+    "ratio-workbench.ldr",
+    "vernier-drive.ldr"
+  ]
 }

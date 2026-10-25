@@ -28,6 +28,8 @@ WHEN flag clicked:
   set trimDirectionB to 1
   set trimStartedA to 0
   set trimStartedB to 0
+  set coarseDoneA to 1
+  set coarseDoneB to 1
   set completed to 0
   set failed to 0
   lab stop motor A hold
@@ -407,9 +409,13 @@ WHEN flag clicked:
 WHEN I receive "Rack Decoder move":
   set arrivedA to 0
   set correctionsA to 0
+  set coarseDoneA to 0
   if (abs of (targetA - (lab motor A angle))) > 0.15 then:
     lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
     lab stop motor A hold
+  set coarseDoneA to 1
+  # Both racks share the carried pinion: settle and trim only after the other coarse move has stopped.
+  wait until coarseDoneA = 1 and coarseDoneB = 1
   wait 1 seconds
   repeat 3:
     if (abs of (targetA - (lab motor A angle))) > 0.2 then:
@@ -442,9 +448,13 @@ WHEN I receive "Rack Decoder move":
 WHEN I receive "Rack Decoder move":
   set arrivedB to 0
   set correctionsB to 0
+  set coarseDoneB to 0
   if (abs of (targetB - (lab motor B angle))) > 0.15 then:
     lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
     lab stop motor B hold
+  set coarseDoneB to 1
+  # Both racks share the carried pinion: settle and trim only after the other coarse move has stopped.
+  wait until coarseDoneA = 1 and coarseDoneB = 1
   wait 1 seconds
   repeat 3:
     if (abs of (targetB - (lab motor B angle))) > 0.2 then:

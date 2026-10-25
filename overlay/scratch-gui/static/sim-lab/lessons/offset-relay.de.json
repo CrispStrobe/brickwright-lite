@@ -2,19 +2,27 @@
   "version": 1,
   "id": "offset-relay",
   "language": "de",
-  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche Antriebs- und passive Abtriebsrotation bei verändertem Wellenversatz.",
-  "why": "Vergleiche Antriebs- und passive Abtriebsrotation bei verändertem Wellenversatz.",
+  "what": "Eine Schmidt-Kupplung mit drei Scheiben auf parallelen Wellen. Motor A dreht die Eingangswelle direkt (1:1). Zwischen Eingang und Ausgang liegt eine schwimmende Mittelscheibe. Die Ausgangswelle sitzt in einem Lagerschlitten, den Motor B über eine Zahnstange seitlich verschiebt; so ändert sich der Achsversatz. Benachbarte Scheiben sind jeweils durch vier gleich lange Lenker von 32 mm verbunden, die stets parallel zueinander bleiben. Gesteuert werden nur Eingangswinkel und Schlittenlage; Mittelscheibe und Ausgang drehen sich passiv mit. Das Programm dreht den Eingang zwei Umdrehungen bei festem Versatz von 32 mm, dann je zwei Umdrehungen, während sich der Versatz von 32 auf 48, von 48 auf 24 und von 24 auf 32 mm ändert, fährt diese drei Änderungen rückwärts und endet mit zwei Umdrehungen zurück bei 32 mm.",
   "try": [
-    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
-    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
-    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+    "Setze zurück und starte. Präge dir in Stufe 1 (fester Versatz 32 mm) je eine Markierung auf Eingangs-, Mittel- und Ausgangsscheibe ein und vergleiche ihre Winkel nach jeder Umdrehung.",
+    "In den Stufen 2–4 wandert die Ausgangswelle, während der Eingang dreht. Sage voraus: Bleibt der Ausgang zurück, eilt er vor oder läuft er genau mit?",
+    "Beobachte die Mitte der Mittelscheibe statt ihres Winkels. Wohin wandert sie, wenn der Versatz auf 48 mm wächst, und wohin bei 24 mm?",
+    "Die Stufen 5–7 wiederholen die Versatzänderungen mit rückwärts drehendem Eingang; Stufe 8 kehrt bei festem Versatz zurück. Vergleiche die zusammengehörigen Stufen auf Hin- und Rückweg."
   ],
-  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
-  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
-  "answer": "Vergleiche Antriebs- und passive Abtriebsrotation bei verändertem Wellenversatz. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "why": "In jedem Lenkersatz verbindet jeder Lenker einen Zapfen der einen Scheibe mit dem entsprechenden Zapfen der nächsten; alle vier sind gleich lang und bleiben parallel. Ein Viereck mit zwei gleich langen, parallelen Gegenseiten ist ein Parallelogramm. Deshalb behält die zweite Scheibe genau die Drehlage der ersten: Sie kann sich seitlich verschieben, aber nicht gegen sie verdrehen. Zweimal angewendet gilt Ausgangswinkel = Mittelwinkel = Eingangswinkel, in jedem Augenblick, für jeden zulässigen Versatz und auch während sich der Versatz ändert. Der Versatz bestimmt nur, wo die Mittelscheibe liegt. Ihr Mittelpunkt muss von beiden Wellenachsen genau eine Lenkerlänge L entfernt sein. Er liegt also mittig zwischen ihnen, im Abstand h = √(L² − (e/2)²) von der Verbindungslinie der Achsen.",
+  "matters": "Schmidt-Kupplungen verbinden Wellen, deren Abstand sich im Betrieb ändert, etwa Walzen in Druck- und Papiermaschinen, und übertragen dabei die Drehzahl exakt gleichförmig, nur mit Gelenken. Zum Vergleich: Eine Kreuzscheibenkupplung (Oldham, siehe Crossglide und Offset Orbit) erreicht ebenfalls 1:1, aber über Gleitflächen. Ein Kardangelenk (Phase Bridge) gleicht einen Winkel zwischen Wellen aus, keinen parallelen Versatz, und erzeugt Drehzahlschwankungen.",
+  "question": "Motor B verschiebt die Ausgangswelle während zweier Eingangsumdrehungen von 32 auf 48 mm Versatz. Bleibt der Ausgang dabei hinter dem Eingang zurück oder eilt er vor? Wohin wandert der Mittelpunkt der Mittelscheibe?",
+  "answer": "Weder noch. Die Parallelogramme erzwingen in jedem Augenblick Ausgangswinkel = Eingangswinkel; der Ausgang macht genau zwei Umdrehungen im Gleichschritt. Stattdessen wandert der Mittelpunkt der Mittelscheibe: Mit L = 32 mm liegt er bei 32 mm Versatz √(32² − 16²) ≈ 27,7 mm von der Verbindungslinie der Achsen entfernt, bei 48 mm Versatz nur noch √(32² − 24²) ≈ 21,2 mm, immer mittig zwischen den Achsen. Auf die Verbindungslinie käme er erst bei e = 2L = 64 mm, in der gestreckten Totlage, die das Programm vermeidet.",
   "further": [
-    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
-    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+    "Berechne h für die Stufen mit 24 mm Versatz (≈ 29,7 mm) und vergleiche mit der Lage, in der sich der Mittelpunkt der Mittelscheibe tatsächlich einstellt.",
+    "Warum vier Lenker je Stufe? Zwei parallele Lenker allein können in eine gekreuzte Lage umschlagen, wenn sie sich mit der Verbindungslinie der Mittelpunkte ausrichten. Bei Zapfen im 90°-Abstand sind immer mindestens zwei Lenker weit davon entfernt. Die klassische Kupplung verwendet drei Lenker im 120°-Abstand. In einer Starrkörpersimulation sind die zusätzlichen Lenker überzählige Bindungen; kleine Geometriefehler können dann zu gegeneinander arbeitenden Kräften führen.",
+    "Der Arbeitsbereich hat zwei Grenzen: Ohne Versatz könnte die Mittelscheibe frei um die gemeinsame Achse schwenken, bei 2L = 64 mm liegen die Lenker gestreckt. Das Programm bleibt zwischen 24 und 48 mm; die Softwaregrenze greift bei 23,2 und 48,8 mm.",
+    "In einer Robot-Lab-Simulation des mitgelieferten Programms ohne Bedienoberfläche, gemessen an den Scheibenlagen relativ zum Rahmen: Ausgangs- und Mittelscheibe blieben über alle 2.880° und jede Versatzänderung innerhalb von 0,1° beim Eingang, und der Mittelpunkt der Mittelscheibe lag höchstens 0,04 mm neben dem vorhergesagten h. Das ist eine Simulationsbeobachtung, kein Versuch am echten Modell."
   ],
-  "related": []
+  "formula": "θ_aus = θ_mitte = θ_ein für jeden Versatz 0 < e < 2L. Mittelpunkt der Mittelscheibe: mittig zwischen den Achsen (je e/2), im Abstand h = √(L² − e²/4) von ihrer Verbindungslinie, L = 32 mm. e = 24 mm → h ≈ 29,66 mm; e = 32 mm → h ≈ 27,71 mm; e = 48 mm → h ≈ 21,17 mm. Versatz e = 32 mm − (π/30 mm pro Grad) × Winkel von Motor B (B = −152,8° → 48 mm, B = +76,4° → 24 mm). Eingangswinkel = Winkel von Motor A.",
+  "related": [
+    "crossglide.ldr",
+    "offset-orbit.ldr",
+    "phase-bridge.ldr"
+  ]
 }

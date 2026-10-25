@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "EXPERIMENTAL_CHECKPOINT_NOT_QUALIFIED",
+  "status": "EXPERIMENTAL_NOT_QUALIFIED_SIMULATOR_LAWS_MEASURED",
   "basicCompilerSource": "9c78f3679b5c4f8984c12b7a75b8d48facff8ff5",
   "scope": "Static source, BW syntax and mechanism-compiler checks only. Do not infer motion or physical buildability.",
   "models": [
@@ -50,13 +50,45 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "law": "tan(φ/2)=3·tan(θ/2); coupler heading θ+φ",
+          "measured": {
+            "inputRange": [
+              29.95,
+              149.86
+            ],
+            "outputRange": [
+              77.49,
+              169.75
+            ],
+            "outputSweep": 92.26,
+            "rmsResidualDeg": 0.0024,
+            "maxResidualDeg": 0.0063,
+            "couplerMaxDevDeg": 0.008,
+            "holds": {
+              "30": 77.495,
+              "45": 102.249,
+              "90": 143.146,
+              "120": 158.238,
+              "150": 169.742
+            }
+          },
+          "completed": true,
+          "nan": false,
+          "notes": "Output rotates in the same sense as input; returns to 119.96° at 59.96°."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "bend-ripple",
@@ -105,13 +137,36 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "law": "ψ=atan2(sin θ, cos β cos θ), ψ relative to carrier",
+          "measured": {
+            "rmsResidualDeg": 0.0039,
+            "maxResidualDeg": 0.0065,
+            "ripplePP_10deg": 0.877,
+            "ripplePP_29_94deg": 8.202,
+            "ripplePP_reverse": 8.204,
+            "bendOnlyUpDeg": 3.642,
+            "bendOnlyUpLaw": 3.651,
+            "bendOnlyDownDeg": -3.626,
+            "reachedBendDeg": 29.94,
+            "phaseOffsetDeg": 0
+          },
+          "completed": true,
+          "nan": false,
+          "notes": "Bend reached 29.94° not 30° (B within its 0.5° arrival guard), hence 8.20° vs ideal 8.234° ripple. Identity (no ripple) model is rejected: rms 2.21° vs 0.004°."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "apex",
@@ -159,13 +214,34 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "law": "carrier=(5/7)A, rotor=carrier/3, rotor rel carrier=−(2/3)carrier",
+          "measured": {
+            "motorDeg": 1512.35,
+            "carrierDeg": 1080.25,
+            "rotorDeg": 360.08,
+            "idlerRelCarrierDeg": 2160.5,
+            "rotorRelCarrierDeg": -720.17,
+            "maxDevCarrierDeg": 0.002,
+            "maxDevRotorDeg": 0.002,
+            "eccentricityFromCompiledHingesMm": 4
+          },
+          "completed": true,
+          "nan": false,
+          "notes": "Carrier turns opposite to the drive gear (external mesh), rotor same sense as carrier. Apex epitrochoid not traced directly; follows from measured ratio plus rigid rotor and 4 mm offset."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "bloom",
@@ -225,13 +301,46 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "law": "link rotation |Δθ|=Δmotor/72; r=a·cos(θ+22.5°)/sin22.5°",
+          "measured": {
+            "motorDeltaDeg": 1296.3,
+            "linkRotationMeanDeg": 18.061,
+            "linkRotationRangeDeg": [
+              17.972,
+              18.149
+            ],
+            "predictedDeg": 18,
+            "reportedExpandedSpanCm": [
+              15.2,
+              15.3
+            ],
+            "predictedSpanCm": 15.271,
+            "initialSpanBeforeTrimCm": [
+              8.03,
+              8.1
+            ],
+            "savedSpanPredictedCm": 8.374,
+            "closeSlackMotorDeg": 23
+          },
+          "completed": true,
+          "nan": false,
+          "nanBrowser": "NOT REPRODUCED headlessly (COLD=0 and COLD=1000)",
+          "lockedHinges": "b16 merges cage_XY_02_A link with drive_input_axle/drive_secondary_axle/drive_wheel_8T (intended worm-driven link); not causal headlessly",
+          "notes": "Spans reported to 0.1 cm; trims chase rounding. Cage starts ~0.3 cm small (settling) and closes with slack."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "vector-delta",
@@ -333,12 +442,20 @@
       },
       "nativeInitialization": "NOT_RUN",
       "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "mechanicalLaw": "NOT_RUN_BLOCKED",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "NOT_RUN_BLOCKED",
+        "detail": {
+          "verdict": "NOT RUN",
+          "notes": "Blocked: unknown part 5996.dat."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "cadence-geneva",
@@ -386,13 +503,41 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "law": "n=4 Geneva: 90° step per crank turn, 90° engagement/270° dwell, peak ratio 2.414; dial=star/3",
+          "measured": {
+            "crankDeg": 4320.1,
+            "starDeg": 1078.66,
+            "dialDeg": 359.48,
+            "clutchDeg": -119.82,
+            "dialOverStar": -0.3333,
+            "firstStepDeg": 88.63,
+            "laterStepsDeg": 90,
+            "midStepSpacingDeg": 360,
+            "dwellSpreadDeg": 0,
+            "starMovingFraction": 0.237,
+            "peakRatio3frame": 2.468,
+            "maxInStepDeviationDeg": [
+              1.54,
+              1.98
+            ]
+          },
+          "completed": true,
+          "nan": false,
+          "notes": "Dial opposite to star (3 external meshes) and positive in program convention; success check passes. Up to ~2° in-step lag vs the ideal curve and 1.4° short first step (datum). Friction clutch holds dwell perfectly in simulation."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "equinox-differential",
@@ -442,13 +587,45 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "law": "L+R=2K, K=(12/28)A; brake motor = 20/12 × output",
+          "measured": {
+            "maxAbsLplusRminus2K": 0.02,
+            "KoverA": -0.4286,
+            "stage1": {
+              "L": -359.87,
+              "R": -360.45
+            },
+            "stage2RightHeld": {
+              "L": -720.46,
+              "R": 0.36
+            },
+            "stage3LeftHeld": {
+              "L": 0.25,
+              "R": -720.14
+            },
+            "stage4Free": {
+              "L": 1077.51,
+              "R": 1083.26
+            },
+            "brakeMotorPerOutput": 1.667
+          },
+          "completed": true,
+          "nan": false,
+          "notes": "Held output creeps <0.4°. Free split depends on friction (0.6° fwd, 5.8° rev difference)."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "kestrel-flapper",
@@ -496,13 +673,57 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "program": "completed=1 failed=0 stage 5",
+          "predicted": {
+            "swingDeg": 63.07,
+            "crankSectorsDeg": [
+              192.46,
+              167.54
+            ],
+            "reversalCrankDeg": [
+              138.6,
+              331.0
+            ],
+            "strokeTimesS": [
+              4.28,
+              3.72
+            ]
+          },
+          "measured": {
+            "swingDeg": 63.07,
+            "reversalCrankDeg": [
+              139.0,
+              331.0
+            ],
+            "crankSectorsDeg": [
+              192,
+              168
+            ],
+            "strokeTimesS": [
+              4.26,
+              3.74
+            ],
+            "reverseRetraces": true,
+            "endResidualDeg": {
+              "crank": -0.15,
+              "rocker": 0.08
+            }
+          },
+          "residual": "swing <0.01°, reversal angles within 0.4° (frame resolution 1.5°)"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "lumen-iris",
@@ -550,13 +771,47 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "program": "completed=1 failed=0 stage 11",
+          "predicted": {
+            "leafPerInput": -0.6,
+            "ringPerInput": 0.2,
+            "openingIncrements": "diminishing"
+          },
+          "measured": {
+            "leafPerInput": -0.6,
+            "ringPerInput": 0.2,
+            "allSixLeavesEqual": true,
+            "inscribedOpeningMm": [
+              8.75,
+              16.29,
+              22.47,
+              27.18
+            ],
+            "incrementsMm": [
+              8.75,
+              7.54,
+              6.18,
+              4.71
+            ],
+            "closedGapMm": 0.09,
+            "openCloseDifferenceMm": 0.1
+          },
+          "residual": "ratios <0.0001; opening is from tracked plate outlines in the leaf plane",
+          "surprise": "full-travel inscribed opening 27.2 mm vs supplier's 24 mm; lesson now quotes the simulator value and notes the difference"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "helios-transmission",
@@ -605,13 +860,54 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "program": "completed=1 failed=0 stage 8",
+          "predicted": {
+            "law": "w_out = 3 w_A - 2 w_c, w_c = -(20/28) w_B",
+            "stageOutputDps": [
+              90,
+              60,
+              30,
+              0,
+              -30
+            ]
+          },
+          "measured": {
+            "inputDps": 30.0,
+            "carrierDps": [
+              0,
+              15.0,
+              30.0,
+              45.0,
+              60.0
+            ],
+            "outputDps": [
+              90.0,
+              60.0,
+              30.0,
+              0.0,
+              -30.0
+            ],
+            "planetRelCarrierStage3Dps": 0.0,
+            "carrierPerControlGear": -0.7143,
+            "sweepStandstillAtS": 2.4,
+            "sweepDurationS": 9.97
+          },
+          "residual": "Willis residual <0.02°/s in all five stages",
+          "surprise": "program waits stretch: 'wait 0.1 s' lasted ~0.17 s, so the sweep took ~10 s, not 6 s; lesson's 1.5 s / 3.0 s timing corrected (law unaffected: standstill exactly at w_B = -63°/s)"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "aster-governor",
@@ -659,13 +955,71 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "program": "completed=1 failed=0 stage 17",
+          "predicted": {
+            "law": "w^2 = g k tan(a) / (e + L sin a), k = (m+M)/m, e = 24 mm, L = 48 mm, rest a = 23.6°",
+            "kFromCatalogueMasses": "≈1.12 (collar only) to ≈1.20 (collar + lower arms)"
+          },
+          "measured": {
+            "plateausDps": [
+              675,
+              725,
+              800,
+              725,
+              675,
+              725
+            ],
+            "armLiftDeg": [
+              4.55,
+              10.24,
+              18.49,
+              10.04,
+              4.28,
+              10.28
+            ],
+            "collarRiseMm": [
+              3.15,
+              7.99,
+              16.31,
+              7.91,
+              3.11,
+              8.0
+            ],
+            "weightRadiusMm": [
+              45.8,
+              49.8,
+              55.1,
+              49.6,
+              45.6,
+              49.8
+            ],
+            "fittedK": [
+              1.234,
+              1.236,
+              1.237,
+              1.241,
+              1.243,
+              1.234
+            ],
+            "bothSidesSymmetricDeg": 0.45,
+            "returnsToStop": true
+          },
+          "residual": "one constant k = 1.237 ± 0.005 fits all six steady plateaus (<0.5%); hysteresis up vs down ≤0.3° arm, ≤0.08 mm collar; restart repeats within 0.05°",
+          "note": "fitted k is ~3-10% above the point-mass value from catalogue masses (distributed arm/weight mass); the law's form holds, the lesson keeps it as an approximation. No throttle: speed is fully programmed."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "orion-cardan",
@@ -728,13 +1082,60 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "program": "completed=1 failed=0 stage 19",
+          "predicted": {
+            "betaDeg": 36.87,
+            "midLeadPeakToPeakDeg": 12.76,
+            "midSpeedRatio": [
+              0.8,
+              1.25
+            ],
+            "outputMinusInputDeg": 0
+          },
+          "measured": {
+            "middleAxisInFrame": [
+              -0.8,
+              0,
+              -0.6
+            ],
+            "midLeadPeakToPeakDeg": [
+              12.76,
+              12.78,
+              12.74,
+              12.74,
+              12.74
+            ],
+            "midSpeedRatio": [
+              0.804,
+              1.24
+            ],
+            "outputMinusInputPeakToPeakDeg": [
+              0.04,
+              0.09,
+              0.04,
+              0.04,
+              0.04
+            ],
+            "outPerInSpeed": [
+              0.999,
+              1.002
+            ]
+          },
+          "residual": "lead amplitude within 0.02°; speed-ratio extremes slightly flattened by the 4-frame finite difference; output within 0.05° (0.09° at 300°/s)"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "meridian-linkage",
@@ -782,13 +1183,41 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "program": "completed=1 failed=0 stage 7",
+          "predicted": {
+            "lineDistanceMm": 56.0,
+            "y": "56 tan(phi/2)",
+            "yAt60Mm": 32.33
+          },
+          "measured": {
+            "crankToOMm": 16.0,
+            "lineDistanceMm": [
+              56.0,
+              56.31
+            ],
+            "maxPerpResidualFromBestFitLineMm": 0.159,
+            "maxYErrorMm": 0.235,
+            "yRangeMm": [
+              -32.62,
+              32.49
+            ],
+            "offPlaneMm": 0.05
+          },
+          "residual": "straight within 0.16 mm; position law within 0.24 mm; steady offset ~0.15 mm from joint compliance"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "solstice-pumpjack",
@@ -836,13 +1265,52 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "program": "completed=1 failed=0 stage 7",
+          "predicted": {
+            "strokeMm": 40.58,
+            "beamSwingDeg": 42.4,
+            "topBottomCrankDeg": [
+              115.5,
+              283.1
+            ],
+            "rackRelHomeMm": {
+              "90": 22.6,
+              "180": 10.6,
+              "270": -15.6
+            }
+          },
+          "measured": {
+            "strokeMm": 40.6,
+            "beamSwingDeg": 42.42,
+            "topBottomCrankDeg": [
+              115.0,
+              283.0
+            ],
+            "rackRelHomeMm": {
+              "90": 22.6,
+              "180": 10.5,
+              "270": -15.6
+            },
+            "riseCrankDeg": 192,
+            "fallCrankDeg": 168,
+            "rackOffAxisMm": 0.001
+          },
+          "residual": "stroke 0.02 mm, swing 0.02°, turning points within 0.5°",
+          "note": "positive encoder = rack reaches top near 115°, so the lesson now names the 90° pause as near the top"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "inertia-loop",
@@ -940,13 +1408,37 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "run": "completed=1 failed=0 stage 11, 209.3 s",
+          "law": "net yaw per loop = (k_wide - k_compact)·Φ, sign flips for inverse loop, control ~0",
+          "measured": {
+            "k_compact": 0.0892,
+            "k_wide": 0.0868,
+            "legSwingDeg": 578.2,
+            "controlNetDeg": -0.205,
+            "forwardNetDeg": -14.881,
+            "inverseNetDeg": 15.267,
+            "overallDeg": 0.181,
+            "massOnlyLegsMaxDeg": 0.08
+          },
+          "predicted": {
+            "forwardNetDeg": -15.36,
+            "inverseNetDeg": 15.36
+          },
+          "residual": "forward 0.48°, inverse 0.09° from prediction; control drift -0.2°"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "offset-relay",
@@ -995,13 +1487,45 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "run": "completed=1 failed=0 stage 9",
+          "law": "theta_out = theta_mid = theta_in at all offsets; middle centre h = sqrt(L^2 - e^2/4), L = 32 mm",
+          "measured": {
+            "maxOutMinusInDeg": 0.098,
+            "maxMidMinusInDeg": 0.056,
+            "inputTravelDeg": 2880,
+            "e_mm": [
+              24.0,
+              32.0,
+              48.0
+            ],
+            "h_mm": [
+              29.68,
+              27.71,
+              21.15
+            ]
+          },
+          "predicted": {
+            "h_mm": [
+              29.66,
+              27.71,
+              21.18
+            ]
+          },
+          "residual": "angle ≤0.1°, h ≤0.04 mm"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "rack-decoder",
@@ -1013,7 +1537,7 @@
       "originalLdrawSha256": "988a2b615a77b1429a384b8ca9d27da501c3ebe33b9f9585cc8e66ecd6080589",
       "canonicalLdrawSha256": "482d814c67ef84c8084db07b5d781926b6f5493330b4e7d655f01332488c9fa4",
       "originalProgramEntry": "rack-decoder/rack-decoder.bw",
-      "programSha256": "dae855291f0abab2522bdcb1c10a6aaeae3464b63898d38616e93c01c4c919d7",
+      "programSha256": "24fb9c6a65af2cca2e642ce461a73774575a73038292dbb9e90037e65f227cc7",
       "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
       "basicChecks": {
         "id": "rack-decoder",
@@ -1050,13 +1574,85 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "programRevision": {
+        "originalProgramSha256": "dae855291f0abab2522bdcb1c10a6aaeae3464b63898d38616e93c01c4c919d7",
+        "revisedProgramSha256": "24fb9c6a65af2cca2e642ce461a73774575a73038292dbb9e90037e65f227cc7",
+        "reason": "Original per-motor arrival guards raced the other motor: in stage 3 motor A still drove the shared pinion carriage while motor B ran its 0.5 deg / 0.5 deg/s check, so the run failed nondeterministically (headless stage 3, browser stage 8). Revision: each receiver waits until both coarse moves have stopped before settling, trimming and checking. Thresholds, targets and stages unchanged.",
+        "date": "2026-10-25"
+      },
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "run": "Fixed program (receivers wait for both coarse moves to stop), main-session run scratchpad/rack-fix/rack-decoder-headless.json: completed=1 failed=0 stage 9. Original shipped program: headless failed=1 in stage 3 (motor B arrival guard), law held in stages 0-3.",
+          "law": "c = (a+b)/2, theta = (a-b)/(2r), r = 6 mm",
+          "measured": {
+            "maxCarriageErrorMm": 0.0012,
+            "maxPointerErrorDeg": 0.116,
+            "stageEnds_a_b_c_thetaDeg": {
+              "1": [
+                -12.014,
+                -12.013,
+                -12.013,
+                -0.01
+              ],
+              "2": [
+                11.987,
+                11.994,
+                11.991,
+                0.0
+              ],
+              "3": [
+                -12.005,
+                11.995,
+                -0.005,
+                -114.63
+              ],
+              "4": [
+                12.011,
+                -11.997,
+                0.007,
+                114.65
+              ],
+              "5": [
+                -11.99,
+                -0.018,
+                -6.004,
+                -57.17
+              ],
+              "6": [
+                0.014,
+                -11.993,
+                -5.99,
+                57.33
+              ],
+              "7": [
+                6.005,
+                6.007,
+                6.006,
+                0.04
+              ],
+              "8": [
+                0.0,
+                -0.002,
+                -0.001,
+                -0.04
+              ]
+            },
+            "pointerSpanDeg": 229.28,
+            "carriageSpanMm": 24.0
+          },
+          "residual": "carriage ≤0.0012 mm, pointer ≤0.12° over all stages (signs are the measurement axis convention; lesson magnitudes match)"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "tangent-table",
@@ -1105,13 +1701,59 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "run": "completed=1 failed=0 stage 8",
+          "law": "y = x·tan(theta) with measured theta and x",
+          "measured": {
+            "maxErrorMm": 0.0009,
+            "stageEnds": {
+              "1": [
+                15.015,
+                32.0,
+                8.583
+              ],
+              "2": [
+                15.015,
+                48.0,
+                12.875
+              ],
+              "3": [
+                -15.076,
+                48.0,
+                -12.931
+              ],
+              "4": [
+                -15.076,
+                32.0,
+                -8.619
+              ],
+              "5": [
+                14.191,
+                32.0,
+                8.092
+              ],
+              "6": [
+                9.635,
+                48.0,
+                8.149
+              ]
+            },
+            "stage6TransitPeakMm": 8.41
+          },
+          "residual": "law exact to 0.001 mm; but guide/motor hinge settles up to 0.17° off its target (within the 0.5° arrival guard), so the 'equal 8 mm' endpoints are 8.092 and 8.149 mm (gap 0.057 mm, matching the supplier's 0.0577)"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "pan-shift",
@@ -1160,13 +1802,37 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "run": "completed=1 failed=0 stage 8, ~374 s (needs LIMIT ≥ ~400000)",
+          "law": "Roberval: moving load on the pan does not change beam angle; trim on the beam does, ± symmetric",
+          "measured": {
+            "beamDeg_settled": {
+              "0": 0.1,
+              "1_loadOut": 0.096,
+              "2": 0.095,
+              "3_trim+60": -14.13,
+              "4_trim+60_loadOut": -14.129,
+              "5_trim-60_loadOut": 14.33,
+              "6_trim-60": 14.329,
+              "7": 0.121
+            },
+            "panTiltMaxDeg": 0.28
+          },
+          "residual": "load-position effect ≤0.004° vs 14.2° trim effect; pan stays upright within 0.28° (constant offset)",
+          "note": "Did not determine whether ±14.2° is a gravity rest angle or contact with the backed stops."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "remote-pivot",
@@ -1214,13 +1880,34 @@
         "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "run": "completed=1 failed=0 stage 8",
+          "law": "output turns by the input angle about a fixed empty point C, 16 mm beyond the follower bearing",
+          "measured": {
+            "maxOutMinusInDeg": 0.042,
+            "AB_mm": 32.0,
+            "BC_mm": 16.003,
+            "AC_mm": 35.777,
+            "C_wander_mm": 0.104,
+            "inputRangeDeg": [
+              -29.9,
+              29.9
+            ]
+          },
+          "residual": "C within 0.003 mm of predicted distance, wander ≤0.1 mm"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
     },
     {
       "id": "vesper-quickreturn",
@@ -1268,8 +1955,8 @@
         "blocked": false
       },
       "nativeInitialization": "GUI_WORKER_READY; no physics stepping acceptance",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
@@ -1284,6 +1971,583 @@
         "renderedScreenshotChecked": true,
         "scope": "Load, automatic program-to-Blocks and visible render; no program run or physical-law acceptance"
       },
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "run": "completed=1 failed=0",
+          "law": "time ratio 1.4589 (full geometry), stroke 66.17 mm, slow direction swaps on reversal",
+          "measured": {
+            "strokeMm": 66.185,
+            "30dps": {
+              "fastS": 4.883,
+              "slowS": 7.117,
+              "ratio": 1.4575
+            },
+            "60dps": {
+              "fastS": 2.444,
+              "slowS": 3.556,
+              "ratio": 1.455
+            },
+            "reversalCrankDeg": [
+              24.9,
+              171.9
+            ],
+            "slowSwapsOnReverse": true
+          },
+          "residual": "ratio -0.0014 (30°/s) and -0.004 (60°/s); stroke +0.017 mm"
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
+    },
+    {
+      "id": "tempest-pendulum",
+      "title": "Tempest - Serial Double Pendulum",
+      "archive": "tempest-pendulum.ldr + tempest-pendulum.bw (loose files)",
+      "archiveSha256": null,
+      "originalLdrawEntry": "tempest-pendulum.ldr",
+      "originalLdrawSha256": "b7c6ac8f6d0b91227945f46424fe4b0668299fb65618e27bfed4a1b07c08e9c3",
+      "originalProgramEntry": "tempest-pendulum.bw",
+      "adaptation": "Author header normalized from the serializer default Brickwright to CrispStrobe (both select the same own-file import policy) and a BSD-3-Clause !LICENSE line added; geometry and program bytes unchanged; MPD wrapper generated from canonical LDR.",
+      "placements": 69,
+      "canonicalLdrawSha256": "83b3e27b932f8356b5d2fff557f524f1ef589d871cf8f3aa64bd5647d86a3902",
+      "programSha256": "6b4bd9bf40610de86dbd773622592b65127d72fd52d0b795a8b9ba3cc4786fd8",
+      "basicChecks": {
+        "id": "tempest-pendulum",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 69,
+        "bodies": 5,
+        "joints": 3,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "summary": "Slow normal mode: period 0.664 s (point-mass ideal 0.66 s), lower/upper amplitude about 1.4 (ideal sqrt 2), in phase; COLD=1000 start sags 86 deg and trips the datum guard."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
+    },
+    {
+      "id": "schmidt-shift",
+      "title": "Schmidt Shift - all-revolute offset coupling",
+      "archive": "schmidt-shift-addon.zip",
+      "archiveSha256": "95b0d2d383b8ec1d9e54baa928d6604e8e45c398bce973d04770d29dc84f43f5",
+      "originalLdrawEntry": "schmidt-shift/models/schmidt-shift.ldr",
+      "originalLdrawSha256": "ae0ee9bf4d70c4c517e02587ab680e09b2d3834638fecf5d5af668c61a8e3bd3",
+      "originalProgramEntry": "schmidt-shift/programs/schmidt-shift.bw",
+      "adaptation": "!LICENSE path pointed at the packaged licenses/schmidt-shift.txt; geometry and program bytes unchanged; supplier lessons kept with an added experimental note and an Offset Relay comparison; MPD wrapper regenerated in the collection convention. Supplier reports native PASS on 6fd9e0b with an inconclusive disconnected control.",
+      "placements": 170,
+      "canonicalLdrawSha256": "2fd6d4c2746cd59be306dac049b446e6d3913293071d76165344c878998e63c5",
+      "programSha256": "bb757ed3b4c19f10d1f18e7927d583aaa5bccfb3dede27a768dc08c3499c6dab",
+      "basicChecks": {
+        "id": "schmidt-shift",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "independent mechanical law",
+          "physical causal control",
+          "continuous clearance",
+          "passive support and hold",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 170,
+        "bodies": 11,
+        "joints": 14,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "nativeInitialization": "NOT_RUN",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "NOT_RUN",
+      "clearanceAndSupport": "NOT_RUN",
+      "instructions": "NOT_RUN",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "detail": {
+          "verdict": "AGREES",
+          "summary": "All 14 hinges track -360..+720 deg together; program completes with COLD=1000."
+        },
+        "scope": "one headless run on the app branch engine; not a physical build"
+      }
+    },
+    {
+      "id": "poise",
+      "title": "Poise — Roberval balance",
+      "placements": 159,
+      "archive": "poise-addon.zip",
+      "archiveSha256": "19b216d481f7538bb783a23a54263b0446864ad4349740fc3d46e6ee2173ddfb",
+      "originalLdrawSha256": "a414ed579d02c6b36dcaf9f7dbdee1831232d79e2085f7de473b2dc81f3de350",
+      "canonicalLdrawSha256": "b1d42ec1761bd45408de23c502dda2069ebc7f755ef14e877aa4dfa5e2fdfe63",
+      "program": "poise.bw",
+      "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
+      "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/poise.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
+      "supplierClaims": "PASS_MAIN: weights moved ~48 mm, balance within 0.024° in held windows; construction PASS_SCOPED; browser and physical build UNTESTED.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "measured": "Headless (COLD=0 and COLD=1000): completed=1, failed=0, arrivals=5, no NaN, 52.7 s. Weight-assembly COM (17.2 g body) moved ~19.8 mm along the beam axis; balance max |θ| 0.046°, held means −0.029…+0.005° (spread 0.033°), pan tilt ≤0.073°, upper/lower bar agree within 0.015°. A plain beam with the measured restoring stiffness would tilt ~12° for that shift, so position invariance is >300× suppressed."
+      },
+      "concerns": [
+        "Supplier quotes 48 mm weight travel (weight-part origin); the moving body’s COM moves ~20 mm – both consistent, lesson cites the COM figure.",
+        "German formula said “halben Balkenabstand” (half the bar spacing) for the 56 mm half-span; fixed to “halbe Balkenlänge”.",
+        "Fixed pan stops at ~±17° are analytical only; dynamic stop contact never tested."
+      ],
+      "basicChecks": {
+        "id": "poise",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "physical causal control on real parts",
+          "continuous clearance",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 159,
+        "bodies": 8,
+        "joints": 8,
+        "motors": 2,
+        "ports": [
+          "A",
+          "B"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "NOT_RUN_ON_REAL_PARTS",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "poise-mass-control",
+      "title": "Poise Mass Control — 1.5 g added to the left pan",
+      "placements": 162,
+      "archive": "poise-addon.zip",
+      "archiveSha256": "19b216d481f7538bb783a23a54263b0446864ad4349740fc3d46e6ee2173ddfb",
+      "originalLdrawSha256": "23088c673efb66026e6dfdbb675c45be3316eda0fb9e2837379fefd2a8c60336",
+      "canonicalLdrawSha256": "cb4692688b413eeb1bec77ec6638f2f63ff8d584f31dccae589bb80db4f088a9",
+      "program": "poise.bw",
+      "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
+      "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/poise-mass-control.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
+      "supplierClaims": "PASS_CONTROL (response −3.15° vs main in final dwell, not settled) and PASS_LATE_HOLD: final 2 s mean −2.945° vs predicted −2.939°.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "measured": "Headless with 120 s after-hold (COLD=0; COLD=1000 also completes): completed=1, arrivals=5, no NaN. Max |θ| 5.82° (undamped prediction 5.88°); held-window means −2.46…−3.43° with pp up to 3.8° (still oscillating); final 2 s mean −2.910°, pp 0.082°, vs prediction −2.939° (0.03°). Main vs control: level vs clear −2.9° tilt – predicted difference appears."
+      },
+      "concerns": [
+        "The five held pauses are not settled (pp up to 3.8°); the lesson tells learners to wait ~2 min after the program. In the app the simulation must keep running after completion for this.",
+        "Our settled value −2.910° differs from the supplier’s −2.945° by 0.035°, well within their 0.3° gate."
+      ],
+      "basicChecks": {
+        "id": "poise-mass-control",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "physical causal control on real parts",
+          "continuous clearance",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 162,
+        "bodies": 8,
+        "joints": 8,
+        "motors": 2,
+        "ports": [
+          "A",
+          "B"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "THIS_IS_THE_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "equal-share",
+      "title": "Equal Share — whippletree force equalizer",
+      "placements": 148,
+      "archive": "equal-share-addon.zip",
+      "archiveSha256": "34a7402ae1579f9c5d0521c3c784362687945a7c770f39640389e1832ae0f684",
+      "originalLdrawSha256": "0ecc44d08b65bf50f48da3e67887b619b5ac6d36f817d4d042b976a6387c8049",
+      "canonicalLdrawSha256": "dab7916b2d6cb95c8073596a529b2e80afd67bc33c3ae560e015ff9c32bcb778",
+      "program": "equal-share.bw",
+      "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
+      "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/equal-share.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
+      "supplierClaims": "PASS_MAIN 98/98: ratios 2.0003/2.0004/1.9997 at 15/25/35°, beam −1.668/−2.760/−3.779°; forces inferred from the native spring law; browser and physical UNTESTED.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "measured": "Headless WITH SPIKE connection (COLD=0 and COLD=1000): completed=1, arrivals=5, no NaN, 19.4 s. Held L / each-R compression: 5.589/2.794 (2.0003), 9.254/4.626 (2.0004), 12.670/6.336 (1.9997) mm; beam −1.669/−2.762/−3.771°; both right shocks identical to 0.001 mm; return 0.03 mm. WITHOUT the SPIKE connection the program fails at stage 1 (failed=1 at 12.6 s, “The crank did not reach its target”), reproducing the supplier’s v1 failure."
+      },
+      "concerns": [
+        "Program depends on the SPIKE extension block “set motor stop action A hold”, which only takes effect when the virtual SPIKE is connected (app Run button). Headless without that connection it fails at stage 1. Any start path that does not connect SPIKE (e.g. a lesson “Open model + program” then green flag, or tests using the plain runner) will fail. Needs an app check before shipping.",
+        "German UI label: supplier lesson said “Run”; changed to “Start” to match other German lessons.",
+        "Answer strengthened: right pair carries the same total force as the left spring (measured 1:1 force split by construction of the 2:1 compression)."
+      ],
+      "basicChecks": {
+        "id": "equal-share",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "physical causal control on real parts",
+          "continuous clearance",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 148,
+        "bodies": 9,
+        "joints": 10,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "NOT_RUN_ON_REAL_PARTS",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "equal-share-even-springs",
+      "title": "Equal Share Even Springs — one spring per side",
+      "placements": 142,
+      "archive": "equal-share-addon.zip",
+      "archiveSha256": "34a7402ae1579f9c5d0521c3c784362687945a7c770f39640389e1832ae0f684",
+      "originalLdrawSha256": "c60acfe7907adb1501f3a8b42476e72bce43dadd5f84918cac994faf89d05828",
+      "canonicalLdrawSha256": "903eb6f8503a05d3eb2a018bc5057d94594f9066d9a5afdb4480bfdce6f1312c",
+      "program": "equal-share.bw",
+      "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
+      "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/equal-share-even-springs.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
+      "supplierClaims": "PASS_CONTROL 104/104: ratio 1.00002 at all holds, beam ≤0.0001°.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "measured": "Headless WITH SPIKE connection (COLD=0 and COLD=1000): completed=1, arrivals=5, no NaN. L/R compression 4.197/4.197, 6.951/6.951, 9.516/9.516 mm (ratio 1.0000); beam 0.0000…0.0002°. Main vs control at 35°: ratio 2.000 vs 1.000, beam −3.77° vs 0.00° – predicted difference appears."
+      },
+      "concerns": [
+        "Same SPIKE-connection dependency as Equal Share."
+      ],
+      "basicChecks": {
+        "id": "equal-share-even-springs",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "physical causal control on real parts",
+          "continuous clearance",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 142,
+        "bodies": 8,
+        "joints": 8,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "THIS_IS_THE_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "spiral-scribe",
+      "title": "Spiral Scribe — one-motor radial feed",
+      "placements": 185,
+      "archive": "spiral-scribe.zip",
+      "archiveSha256": "6a30e6224f9044aa0cbc677d8087867296e131ff17e4fa168ed0564e41a339e5",
+      "originalLdrawSha256": "1fc7593c1f460a21b296b22e5570a69607aeaf44295a598ee7c2f57497618873",
+      "canonicalLdrawSha256": "b67fd04fba5744001932944ad838759d1493d5d825c11957508092dfe7f52339",
+      "program": "spiral-scribe.bw",
+      "programSha256": "73bc601d534d57c1eff08b5d902acc55dac0a7931858009cf174ef302410a6d1",
+      "adaptation": "!LICENSE path pointed at the packaged licenses/spiral-scribe.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated in the collection convention; supplier lessons rewritten for the catalogue (file/hash/‘native’ wording removed, physics kept, one simulator-measurement sentence, related links kept: cusp-lab, orbit-mixer, orbital-loom, rack-shuttle).",
+      "supplierClaims": "Revision 5; native PASS of all gates (carrier 360.1° per cycle, outward gain 37.708/37.709 mm, radius-law error <0.001 mm, return 0.110 mm) and a sun-removed causal control that breaks the law (46.97 mm error). Construction PARTIAL/UNRESOLVED: 64781 rack mesh pitch 3.2 mm (38.4 mm per 12 teeth) vs 37.699 mm ideal pinion law → tooth interpenetration over a full turn; app/browser and physical build untested.",
+      "simulatorLaw": "AGREES (simulator only). Headless COLD=0: completed=1 failed=0 phase 10; carrier/motor = −1/3.0000, planet/carrier (table frame) = 2.0000; slider feed 9.43/18.86/28.28/37.71 mm at the quarter turns of both cycles, max |feed − 6 mm·θ| = 0.001 mm; same 37.71 mm at 60 and 120°/s; return −0.015 mm. COLD=1000: start guard passes (no drift during cold), identical results.",
+      "concerns": [
+        "Supplier's unresolved rack-tooth pitch mismatch (the simulator enforces the ideal rack ratio, so the native pass does not prove a buildable mesh); the lesson states it.",
+        "No pen: the red crossbar is only a marker. The app supports `0 !BW PEN` (next part draws on the floor) and `0 !BW DRAW surface pen tip center radius` (pen on a rotating surface, as in orbital-loom); adding `0 !BW PEN` before output_marker would trace the spiral on the floor, but that is a model edit beyond the allowed header change and was not made.",
+        "Supplier intro text called it 'native-tested'; replaced by our neutral intro."
+      ],
+      "basicChecks": {
+        "id": "spiral-scribe",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "physical causal control on real parts",
+          "continuous clearance",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 185,
+        "bodies": 6,
+        "joints": 4,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "NOT_RUN_ON_REAL_PARTS",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "stroke-shift",
+      "title": "Stroke Shift — adjustable crank throw",
+      "placements": 295,
+      "archive": "stroke-shift.zip",
+      "archiveSha256": "ee2ea664c208ce4ee0e5cbf89b286d6800770eeec32794396408913052c30971",
+      "originalLdrawSha256": "c41d91120eac34fd062381a07ac3173aab7e5ff4e179c9c105e7be5f1c4e8ab5",
+      "canonicalLdrawSha256": "bc3857651b1d588517c61fd81ce2ea08c0df7227c35dedc9b1a8e992c2367ec0",
+      "program": "stroke-shift.bw",
+      "programSha256": "5d4fc358feb5ac8a33bf2f70149a78a9fecab475c442c5574fe7810be7203077",
+      "adaptation": "Canonical models/ + programs/ pair used; byte-identical to evidence/native-inputs/ and to the hashes in evidence/native-qualification.json (the evidence/development/ LDR 7a75a85d… is an earlier rejected seam revision; its BW is identical). !LICENSE path pointed at licenses/stroke-shift.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated; integration/ lessons used with edits (file/‘native’ claims replaced by one simulator-measurement sentence, formulas typeset, German wording fixed); related links unchanged (rod-ratio, quickstroke, sine-shuttle, oblique).",
+      "supplierClaims": "All 52 predeclared native gates pass: outward strokes 32.003/44.005/56.002 mm, max law error 0.00111 mm, return 0.002 mm; construction review of 949 sampled configurations with one stock-actuator internal-mesh approximation outside the programmed radii; physical build, cable route and app UI untested.",
+      "simulatorLaw": "AGREES (simulator only). Headless COLD=0: completed=1 failed=0 trial 3 stage 6; measured from body poses: crank radius 16.000/22.002/28.000 mm, piston strokes 32.004/44.007/56.003 mm (= 2r within 0.001 mm), projected rod length 176.000 ± 0.001 mm, max |x − (r cos θ + √(L² − r² sin²θ))| = 0.0007 mm, carrier turn 360.2–360.3°, 6.43 s per turn at every radius; final radius 15.998 mm, piston return −0.002 mm. COLD=1000: start guard passes, identical results.",
+      "concerns": [
+        "Motor B rides on the rotating carrier while the hub is fixed: real cable slack/winding untested (program has zero net winding).",
+        "Proposed B jog lets B move at carrier angles other than 0°, which the supplier's route never does.",
+        "Archive holds three LDR copies; only models/ = evidence/native-inputs/ (c41d9112…) is the qualified one; evidence/development/ (7a75a85d…) must not be used.",
+        "Supplier README's 'Reproduce' runs bundled scripts; not executed here."
+      ],
+      "basicChecks": {
+        "id": "stroke-shift",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "physical causal control on real parts",
+          "continuous clearance",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 295,
+        "bodies": 8,
+        "joints": 7,
+        "motors": 2,
+        "ports": [
+          "B",
+          "A"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "NOT_RUN_ON_REAL_PARTS",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "triad-table",
+      "title": "Triad Table — three lengths, one pose",
+      "placements": 258,
+      "archive": "triad-table-complete.zip",
+      "archiveSha256": "2491e4da7c707c1c19791dc36c953c0bb042b8913e4e086d511e1f05667d3040",
+      "originalLdrawSha256": "1e92fa7eb0c7fcc42412f577ea40366f3830a723cdc26a1a5ed60e197a32319f",
+      "canonicalLdrawSha256": "c15ac7cf3c3bb9bab2ccf19d930094f89ec3c4c330a291bd7f6316da07a015fd",
+      "program": "triad-table.bw",
+      "programSha256": "d76ead5a6ea5daab919192374938987585c0ee6c3a01e81ff35a9e1601c9997c",
+      "adaptation": "!LICENSE path pointed at licenses/triad-table.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated. Lessons: rewritten from the supplier's final integration/lessons (docs-draft/ lessons are pre-qualification drafts and stale: pieces null, signs pending); physics kept, numbers re-derived, one simulator-measurement sentence, related links twinpoint, atlas-six, axis-plotter (gimbal-lab dropped as unrelated).",
+      "supplierClaims": "124/124 native gates over 4,868 samples, all 15 settled waypoints; worst settled error 0.003028 mm / 0.005752°; return 0.001840 mm / 0.003785°; min actuator-stop margin 2.957 mm; revision 1 failed physical-output checks and is retained; physical build, cable routing and app UI untested; no physical yaw stops; out-of-route contacts in the wider geometry review.",
+      "simulatorLaw": "AGREES (simulator only). COLD=0: completed=1 failed=0 stage 16, finishedAt 155.0 s; every settled pose within 0.0045 mm and 0.0118° of target (e.g. +x 4.800 mm, +yaw 10.009°, NE compound 3.202/3.198 mm/7.008°); measured leg lengths match |q_i − a_i| from the measured pose within 0.0041 LDU = 0.0017 mm over the whole run; final pose −0.0008/−0.0022 mm, 0.0103°. COLD=1000: start guard passes (max body drift during 1 s cold 0.005 mm), completed=1 failed=0, worst settled 0.0043 mm / 0.0056°.",
+      "concerns": [
+        "No manual jog proposed (coupled legs, no yaw stops); if the app allows free continuous drive when manualJog is null, a learner can drive one leg alone off-route.",
+        "Coordinator brief mentioned docs-draft/lessons; those are explicitly historical (README) and stale; the supplier's final lessons are in integration/lessons and were the basis.",
+        "Physical build untested: actuator clutches/backlash, three motor cables, and the three intentionally locked two-pin braces (reported as locked-hinges warnings in the import panel).",
+        "The program interpolates motor angles, so paths between waypoints are not straight; only settled poses are qualified."
+      ],
+      "basicChecks": {
+        "id": "triad-table",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "unchecked": [
+          "physical causal control on real parts",
+          "continuous clearance",
+          "construction instructions",
+          "full saved-project replay"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 258,
+        "bodies": 12,
+        "joints": 12,
+        "motors": 3,
+        "ports": [
+          "A",
+          "B",
+          "C"
+        ],
+        "hubs": [
+          "spike-prime"
+        ],
+        "issues": [
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b0 and b10 lock, merging islands",
+            "parts": [
+              "leg_body_cross_0_A",
+              "leg_body_cross_20_A",
+              "leg_body_pin_0_A",
+              "leg_body_pin_20_A"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b1 and b11 lock, merging islands",
+            "parts": [
+              "leg_body_cross_0_B",
+              "leg_body_cross_20_B",
+              "leg_body_pin_0_B",
+              "leg_body_pin_20_B"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b12 and b2 lock, merging islands",
+            "parts": [
+              "actuator_body_C",
+              "leg_body_pin_0_C",
+              "leg_body_pin_20_C"
+            ]
+          }
+        ],
+        "programErrors": [],
+        "programWarnings": [],
+        "blocked": false
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "NOT_RUN_ON_REAL_PARTS",
+      "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN"
     }
   ],

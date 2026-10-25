@@ -13,23 +13,45 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A crossed four-bar (antiparallelogram): motor A steps the input arm, and the passive output follows tan(φ/2) = 3·tan(θ/2), so equal input steps give shrinking output steps.",
+            "de": "Ein gekreuztes Viergelenk (Antiparallelogramm): Motor A fährt den Antriebsarm schrittweise, der passive Abtrieb folgt tan(φ/2) = 3·tan(θ/2) – gleiche Antriebsschritte ergeben immer kleinere Abtriebsschritte."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -30,
+                "maxDeg": 90,
+                "stepDeg": 15,
+                "speedDps": 12
+            }
         }
     },
     {
         "file": "bend-ripple.ldr",
         "title": {
             "en": "Bend Ripple — variable-bend Cardan joint",
-            "de": "Bend Ripple — Kardan mit veränderlichem Winkel"
+            "de": "Bend Ripple — Kardangelenk mit verstellbarem Knickwinkel"
         },
         "example": "bend-ripple.bw",
         "mat": "plain",
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A single Cardan joint whose bend is a second motor input: compare the output’s lead and lag at 10° and 30° bend, and watch the output turn while the input is held.",
+            "de": "Ein einzelnes Kardangelenk, dessen Knickwinkel ein zweiter Motor verstellt: Vergleiche das Vor- und Nacheilen bei 10° und 30° und beobachte, wie sich der Ausgang bei festgehaltenem Eingang dreht."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 765,
+                "stepDeg": 45,
+                "speedDps": 24
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 20,
+                "stepDeg": 5,
+                "speedDps": 4
+            }
         }
     },
     {
@@ -43,8 +65,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "Wankel engine kinematics without combustion: the carrier acts as eccentric shaft and gears make the three-apex rotor turn at exactly one third of its speed.",
+            "de": "Wankel-Kinematik ohne Verbrennung: Der Träger wirkt als Exzenterwelle, und Zahnräder lassen den Rotor mit drei Spitzen mit genau einem Drittel seiner Drehzahl umlaufen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 1512,
+                "stepDeg": 126,
+                "speedDps": 36
+            }
         }
     },
     {
@@ -58,8 +88,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "Three rings of angulated scissors with a fixed 135° kink: one motor through a 72:1 drive opens the cage, and every pivot slides along a straight radial line.",
+            "de": "Drei Ringe aus abgewinkelten Scheren mit festem 135°-Knick: Ein Motor öffnet den Käfig über eine 72:1-Untersetzung, und jedes Gelenk gleitet auf einer radialen Geraden."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 1296,
+                "stepDeg": 144,
+                "speedDps": 144
+            }
         }
     },
     {
@@ -73,8 +111,8 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": true,
         "intro": {
-            "en": "Blocked: part 5996 is not supported yet. Original source is retained for repair.",
-            "de": "Gesperrt: Teil 5996 wird noch nicht unterstützt. Die Originalquelle bleibt für die Überarbeitung erhalten."
+            "en": "A Delta parallel robot: three base motors and parallelogram arms move a tool head that can only translate. Blocked – part 5996 is not supported yet, so it cannot be opened.",
+            "de": "Ein paralleler Delta-Roboter: Drei Motoren an der Basis und Parallelogrammarme bewegen einen Werkzeugkopf, der nur verschoben werden kann. Gesperrt – Teil 5996 wird noch nicht unterstützt, daher lässt sich das Modell nicht öffnen."
         }
     },
     {
@@ -88,8 +126,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between; a friction clutch holds the dial while it rests.",
+            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen; eine Rutschkupplung hält den Zeiger in der Ruhe."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 4320,
+                "stepDeg": 45,
+                "speedDps": 30
+            }
         }
     },
     {
@@ -103,8 +149,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "An open bevel differential on a bench: motor A drives the carrier, while motors B and C only coast or brake the outputs, so you can test ω_L + ω_R = 2·ω_carrier stage by stage.",
+            "de": "Ein offenes Kegelraddifferenzial auf dem Prüfstand: Motor A treibt den Träger, die Motoren B und C lassen die Abtriebe nur auslaufen oder bremsen sie – so lässt sich ω_L + ω_R = 2·ω_Träger Stufe für Stufe prüfen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 2520,
+                "stepDeg": 210,
+                "speedDps": 105
+            }
         }
     },
     {
@@ -118,8 +172,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A Grashof crank-rocker turns motor A’s full crank rotation into a rocking wing: one stroke each way per turn, with slightly unequal stroke times.",
+            "de": "Eine Kurbelschwinge nach Grashof macht aus der vollen Kurbeldrehung von Motor A einen schwingenden Flügel: ein Schlag in jede Richtung je Umdrehung, mit leicht ungleichen Schlagzeiten."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 720,
+                "stepDeg": 30,
+                "speedDps": 45
+            }
         }
     },
     {
@@ -133,8 +195,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "One motor turns a 12-tooth pinion, a 60-tooth ring and six 20-tooth leaf gears together, so six overlapping plates open a centred iris aperture.",
+            "de": "Ein Motor dreht über ein 12er-Ritzel einen 60er-Drehkranz und sechs 20er-Lamellenräder gemeinsam; sechs überlappende Platten öffnen so eine mittige Irisblende."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -55.2168,
+                "maxDeg": 0,
+                "stepDeg": 13.8042,
+                "speedDps": 15
+            }
         }
     },
     {
@@ -148,8 +218,8 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse.",
+            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf."
         }
     },
     {
@@ -163,8 +233,8 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "Passive flyweights on a hinged rhombus lift a sliding collar as motor A spins the spindle faster; it senses speed (ω²) but, with no throttle, does not regulate it.",
+            "de": "Passive Fliehgewichte an einer Gelenkraute heben eine Gleitmuffe, wenn Motor A die Spindel schneller dreht; der Regler misst die Drehzahl (ω²), regelt sie aber mangels Drossel nicht."
         }
     },
     {
@@ -178,8 +248,8 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft speeds up and slows down twice per turn, while the output follows the input evenly.",
+            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer, der Abtrieb folgt dem Eingang gleichförmig."
         }
     },
     {
@@ -193,8 +263,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A Peaucellier–Lipkin cell inverts a crank circle through its pivot into an exact straight line: the passive output point moves straight with no guide at all.",
+            "de": "Eine Peaucellier-Lipkin-Zelle bildet einen Kurbelkreis durch ihren Drehpunkt auf eine exakte Gerade ab: Der passive Abtriebspunkt läuft ganz ohne Führung geradeaus."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -60,
+                "maxDeg": 60,
+                "stepDeg": 10,
+                "speedDps": 15
+            }
         }
     },
     {
@@ -208,8 +286,16 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A Grashof crank-rocker nods a walking beam, and a hanging rod drives a guided rack up and down as a pump plunger; no fluid is modelled.",
+            "de": "Eine Kurbelschwinge nach Grashof lässt einen Schwengel nicken, und eine Hängestange bewegt eine geführte Zahnstange als Pumpenkolben auf und ab; Flüssigkeit wird nicht modelliert."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 360,
+                "stepDeg": 30,
+                "speedDps": 30
+            }
         }
     },
     {
@@ -223,8 +309,22 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A flywheel and movable masses ride on a free-turning platform: spin, spread, spin back and retract, and the platform ends up facing a new direction although both motors return home. Experimental: the effect has not yet been independently measured.",
+            "de": "Schwungrad und verschiebbare Massen sitzen auf einer frei drehbaren Plattform: Drehen, Spreizen, Zurückdrehen, Einziehen – und die Plattform zeigt in eine neue Richtung, obwohl beide Motoren zurückkehren. Experimentell: Der Effekt wurde noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -5,
+                "maxDeg": 10805,
+                "stepDeg": 1080,
+                "speedDps": 420
+            },
+            "B": {
+                "minDeg": -315,
+                "maxDeg": 9.5,
+                "stepDeg": 76.4,
+                "speedDps": 90
+            }
         }
     },
     {
@@ -238,8 +338,22 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A Schmidt coupling: three discs joined by parallel links keep the output turning exactly with the input while motor B shifts the output shaft sideways. Experimental: not yet independently measured.",
+            "de": "Eine Schmidt-Kupplung: Drei durch parallele Lenker verbundene Scheiben halten den Ausgang exakt im Gleichlauf mit dem Eingang, während Motor B die Ausgangswelle seitlich verschiebt. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -3,
+                "maxDeg": 2883,
+                "stepDeg": 90,
+                "speedDps": 90
+            },
+            "B": {
+                "minDeg": -160,
+                "maxDeg": 84,
+                "stepDeg": 19.1,
+                "speedDps": 15
+            }
         }
     },
     {
@@ -253,8 +367,22 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "Two motor-driven racks share one free pinion: their average moves the carriage, their difference turns the pointer – a differential in straight lines. Experimental: not yet independently measured.",
+            "de": "Zwei motorgetriebene Zahnstangen teilen sich ein freies Ritzel: Ihr Mittelwert verschiebt den Schlitten, ihre Differenz dreht den Zeiger – ein Differenzial auf geraden Wegen. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -122,
+                "maxDeg": 122,
+                "stepDeg": 19.1,
+                "speedDps": 14.3
+            },
+            "B": {
+                "minDeg": -122,
+                "maxDeg": 122,
+                "stepDeg": 19.1,
+                "speedDps": 14.3
+            }
         }
     },
     {
@@ -268,8 +396,22 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "One motor tilts a guide, the other sets a reach; where the guides cross, a free slider shows y = x·tan θ – a variable-gain mechanical multiplier. Experimental: not yet independently measured.",
+            "de": "Ein Motor neigt eine Kulisse, der andere stellt eine Reichweite ein; wo sich die Führungen kreuzen, zeigt ein freier Schieber y = x·tan θ – ein mechanischer Multiplizierer mit veränderlicher Verstärkung. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -16,
+                "maxDeg": 16,
+                "stepDeg": 1,
+                "speedDps": 8
+            },
+            "B": {
+                "minDeg": -2627,
+                "maxDeg": 2627,
+                "stepDeg": 597,
+                "speedDps": 300
+            }
         }
     },
     {
@@ -283,8 +425,22 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A Roberval balance: moving a weight across the parallelogram-guided pan should not tip the beam, while moving a trim weight on the beam must. Experimental: not yet independently measured.",
+            "de": "Eine Roberval-Waage: Ein Gewicht auf der parallel geführten Schale zu verschieben, sollte den Balken nicht kippen – ein Trimmgewicht auf dem Balken dagegen schon. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -1,
+                "maxDeg": 181,
+                "stepDeg": 15,
+                "speedDps": 10
+            },
+            "B": {
+                "minDeg": -61,
+                "maxDeg": 61,
+                "stepDeg": 5,
+                "speedDps": 5
+            }
         }
     },
     {
@@ -298,23 +454,276 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A double parallelogram swings its output link about an empty point where no bearing exists – the remote centre of motion used in surgical robots. Experimental: not yet independently measured.",
+            "de": "Ein Doppelparallelogramm schwenkt seinen Ausgangslenker um einen leeren Punkt ohne Lager – das entfernte Drehzentrum, wie es Chirurgieroboter nutzen. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -31,
+                "maxDeg": 31,
+                "stepDeg": 5,
+                "speedDps": 8
+            }
         }
     },
     {
         "file": "vesper-quickreturn.ldr",
         "title": {
             "en": "Vesper — quick-return shaper",
-            "de": "Vesper — Schnellrücklauf-Hobel"
+            "de": "Vesper — Schnellrücklauf mit Kurbelschleife"
         },
         "example": "vesper-quickreturn.bw",
         "mat": "plain",
         "experimental": true,
         "blocked": false,
         "intro": {
-            "en": "Experimental source: intended motion has not been independently checked.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft."
+            "en": "A crank and slotted lever turn steady motor rotation into a slow working stroke and a quick return, about 1.46 : 1, as in a metal shaping machine. Experimental: not yet independently measured.",
+            "de": "Kurbel und schwingende Kurbelschleife machen aus gleichmäßiger Motordrehung einen langsamen Arbeitshub und einen schnellen Rücklauf, etwa 1,46 : 1, wie in einer Stoßmaschine. Experimentell: noch nicht unabhängig gemessen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -2,
+                "maxDeg": 1082,
+                "stepDeg": 15,
+                "speedDps": 30
+            }
+        }
+    },
+    {
+        "file": "tempest-pendulum.ldr",
+        "title": {
+            "en": "Tempest — serial double pendulum",
+            "de": "Tempest — serielles Doppelpendel"
+        },
+        "example": "tempest-pendulum.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A serial double pendulum: motor A pulses a short carrier, then two free 64mm arms swing under gravity alone. Small swings settle into normal modes with periods near 0.66s and 0.27s.",
+            "de": "Ein serielles Doppelpendel: Motor A gibt einem kurzen Träger einen Impuls, danach schwingen zwei freie, 64mm lange Arme allein unter der Schwerkraft. Kleine Ausschläge zerfallen in Eigenschwingungen mit Perioden um 0,66s und 0,27s."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -60,
+                "maxDeg": 60,
+                "stepDeg": 15,
+                "speedDps": 90
+            }
+        }
+    },
+    {
+        "file": "schmidt-shift.ldr",
+        "title": {
+            "en": "Schmidt Shift — offset coupling",
+            "de": "Schmidt Shift — Kupplung für versetzte Wellen"
+        },
+        "example": "schmidt-shift.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor drives a coupling of three carriers and six connecting rods between parallel, offset shafts. Compare the input, floating middle and passive output angles through full turns and reversal.",
+            "de": "Ein Motor treibt eine Kupplung aus drei Drehträgern und sechs Koppelstangen zwischen parallelen, versetzten Wellen. Vergleiche die Winkel von Antrieb, frei getragenem Mittelträger und passivem Abtrieb bei vollen Umdrehungen und Richtungswechsel."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -360,
+                "maxDeg": 720,
+                "stepDeg": 45,
+                "speedDps": 30
+            }
+        }
+    },
+    {
+        "file": "poise.ldr",
+        "title": {
+            "en": "Poise — Roberval balance",
+            "de": "Poise — Roberval-Waage"
+        },
+        "example": "poise.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A Roberval balance: two motors move equal weights across level pans, and the passive balance should stay level wherever on the pan the weights sit.",
+            "de": "Eine Roberval-Waage: Zwei Motoren verschieben gleiche Gewichte auf waagerechten Schalen, und die passive Waage sollte waagerecht bleiben, gleich wo die Gewichte auf der Schale liegen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 180,
+                "stepDeg": 45,
+                "speedDps": 15
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 180,
+                "stepDeg": 45,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "poise-mass-control.ldr",
+        "title": {
+            "en": "Poise Mass Control — 1.5 g added to the left pan",
+            "de": "Poise-Kontrolle — 1,5 g Zusatzmasse links"
+        },
+        "example": "poise.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Poise with one small beam and two pins added under the left pan: the same program now tilts the balance, which settles near −2.9° after about two minutes.",
+            "de": "Poise mit einem kleinen Balken und zwei Pins unter der linken Schale: Dasselbe Programm neigt nun die Waage, die sich nach etwa zwei Minuten bei −2,9° einpendelt."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 180,
+                "stepDeg": 45,
+                "speedDps": 15
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 180,
+                "stepDeg": 45,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "equal-share.ldr",
+        "title": {
+            "en": "Equal Share — whippletree force equalizer",
+            "de": "Equal Share — Kraftausgleich mit Ausgleichsbalken"
+        },
+        "example": "equal-share.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A whippletree: one motor pushes the free centre of a balance beam against one spring on the left and two in parallel on the right, so the single spring gives way twice as far while both sides carry equal force.",
+            "de": "Ein Ausgleichsbalken: Ein Motor schiebt die frei drehbare Mitte eines Balkens gegen eine Feder links und zwei parallele rechts; die einzelne Feder gibt doppelt so weit nach, während beide Seiten gleich viel Kraft tragen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 35,
+                "stepDeg": 5,
+                "speedDps": 8
+            }
+        }
+    },
+    {
+        "file": "equal-share-even-springs.ldr",
+        "title": {
+            "en": "Equal Share Even Springs — one spring per side",
+            "de": "Equal-Share-Kontrolle — je eine Feder pro Seite"
+        },
+        "example": "equal-share.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Equal Share with the right-hand pair replaced by one matching spring: the same program now compresses both springs equally and the beam stays square.",
+            "de": "Equal Share, bei dem eine gleiche Feder das rechte Paar ersetzt: Dasselbe Programm drückt nun beide Federn gleich weit zusammen, und der Balken bleibt gerade."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 35,
+                "stepDeg": 5,
+                "speedDps": 8
+            }
+        }
+    },
+    {
+        "file": "spiral-scribe.ldr",
+        "title": {
+            "en": "Spiral Scribe — one-motor radial feed",
+            "de": "Spiral Scribe — radialer Vorschub mit einem Motor"
+        },
+        "example": "spiral-scribe.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor turns a carrier around a fixed sun gear; the orbiting planet’s pinion feeds a rack outward, so a passive marker traces an Archimedean spiral (about 37.7 mm per turn).",
+            "de": "Ein Motor dreht einen Träger um ein festes Sonnenrad; das Ritzel des umlaufenden Planeten schiebt eine Zahnstange nach außen, sodass eine passive Markierung eine archimedische Spirale beschreibt (etwa 37,7 mm je Umdrehung)."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -1080,
+                "maxDeg": 0,
+                "stepDeg": 90,
+                "speedDps": 60
+            }
+        }
+    },
+    {
+        "file": "stroke-shift.ldr",
+        "title": {
+            "en": "Stroke Shift — adjustable crank throw",
+            "de": "Stroke Shift — verstellbarer Kurbelradius"
+        },
+        "example": "stroke-shift.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Motor B sets a real crank radius of 16, 22 or 28 mm while A holds; A then turns the crank once and back, and the same connecting rod drives a passive piston through strokes of 2r = 32, 44 and 56 mm.",
+            "de": "Motor B stellt den Kurbelradius auf 16, 22 oder 28 mm, während A hält; danach dreht A die Kurbel einmal hin und zurück, und dasselbe Pleuel bewegt einen passiven Schlitten mit Hüben von 2r = 32, 44 und 56 mm."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 1080,
+                "stepDeg": 90,
+                "speedDps": 180
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 3582.446015,
+                "stepDeg": 1791.223007,
+                "speedDps": 360
+            }
+        }
+    },
+    {
+        "file": "triad-table.ldr",
+        "title": {
+            "en": "Triad Table — three lengths, one pose",
+            "de": "Triad Table — drei Längen, eine Pose"
+        },
+        "example": "triad-table.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Three motor-driven screw legs (R-P-R) jointly set the x, y position and heading of one passive platform; no motor is an axis on its own. The program visits 15 poses: ±4.8 mm, ±10° and four combined poses.",
+            "de": "Drei motorgetriebene Schraubbeine (R-P-R) bestimmen gemeinsam x, y und Ausrichtung einer passiven Plattform; kein Motor ist für sich eine Achse. Das Programm fährt 15 Posen an: ±4,8 mm, ±10° und vier kombinierte Posen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -1500,
+                "maxDeg": 1500,
+                "stepDeg": 150,
+                "speedDps": 180
+            },
+            "B": {
+                "minDeg": -1500,
+                "maxDeg": 1500,
+                "stepDeg": 150,
+                "speedDps": 180
+            },
+            "C": {
+                "minDeg": -1500,
+                "maxDeg": 1500,
+                "stepDeg": 150,
+                "speedDps": 180
+            }
         }
     }
 ]);
@@ -327,8 +736,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare input and passive output angles through the travel; crossed linkages can produce nonlinear half-angle relationships.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche Antriebs- und passive Abtriebswinkel über den Bewegungsbereich; gekreuzte Gestänge können nichtlineare Halbwinkel-Beziehungen erzeugen."
+            "en": "A crossed four-bar (antiparallelogram): motor A steps the input arm, and the passive output follows tan(φ/2) = 3·tan(θ/2), so equal input steps give shrinking output steps.",
+            "de": "Ein gekreuztes Viergelenk (Antiparallelogramm): Motor A fährt den Antriebsarm schrittweise, der passive Abtrieb folgt tan(φ/2) = 3·tan(θ/2) – gleiche Antriebsschritte ergeben immer kleinere Abtriebsschritte."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -337,7 +746,14 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "gekreuztes Viergelenk"
         },
         "keywords": [
+            "antiparallelogram",
             "crossed four-bar",
+            "crossed parallelogram",
+            "half-angle",
+            "variable ratio",
+            "Antiparallelogramm",
+            "gekreuztes Viergelenk",
+            "veränderliche Übersetzung",
             "half-angle transform",
             "experimental",
             "prototype",
@@ -354,8 +770,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "gears",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare passive shaft speed at different bend angles; a single Cardan joint can produce periodic speed variation.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die passive Wellendrehzahl bei verschiedenen Knickwinkeln; ein einzelnes Kardangelenk kann periodische Drehzahlschwankungen erzeugen."
+            "en": "A single Cardan joint whose bend is a second motor input: compare the output’s lead and lag at 10° and 30° bend, and watch the output turn while the input is held.",
+            "de": "Ein einzelnes Kardangelenk, dessen Knickwinkel ein zweiter Motor verstellt: Vergleiche das Vor- und Nacheilen bei 10° und 30° und beobachte, wie sich der Ausgang bei festgehaltenem Eingang dreht."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -364,8 +780,16 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Kardan mit veränderlichem Winkel"
         },
         "keywords": [
-            "Cardan",
+            "Cardan joint",
             "universal joint",
+            "Hooke joint",
+            "speed ripple",
+            "bend angle",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "Knickwinkel",
+            "Drehzahlschwankung",
+            "Cardan",
             "angular velocity ripple",
             "experimental",
             "prototype",
@@ -382,8 +806,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "gears",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Follow the centre and orientation of the geared rotor. This is a kinematic demonstrator; combustion is outside its scope.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Verfolge Mittelpunkt und Orientierung des verzahnten Rotors. Das Modell zeigt Kinematik; Verbrennung gehört nicht zum Modell."
+            "en": "Wankel engine kinematics without combustion: the carrier acts as eccentric shaft and gears make the three-apex rotor turn at exactly one third of its speed.",
+            "de": "Wankel-Kinematik ohne Verbrennung: Der Träger wirkt als Exzenterwelle, und Zahnräder lassen den Rotor mit drei Spitzen mit genau einem Drittel seiner Drehzahl umlaufen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -393,6 +817,14 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         },
         "keywords": [
             "Wankel",
+            "rotary engine",
+            "epitrochoid",
+            "eccentric shaft",
+            "three-apex rotor",
+            "Wankelmotor",
+            "Kreiskolbenmotor",
+            "Epitrochoide",
+            "Exzenterwelle",
             "rotary mechanism",
             "eccentric rotor",
             "experimental",
@@ -410,8 +842,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Follow several connected scissor arms and compare their opening with the overall span.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Verfolge mehrere verbundene Scherenarme und vergleiche ihre Öffnung mit der Gesamtspannweite."
+            "en": "Three rings of angulated scissors with a fixed 135° kink: one motor through a 72:1 drive opens the cage, and every pivot slides along a straight radial line.",
+            "de": "Drei Ringe aus abgewinkelten Scheren mit festem 135°-Knick: Ein Motor öffnet den Käfig über eine 72:1-Untersetzung, und jedes Gelenk gleitet auf einer radialen Geraden."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -423,6 +855,12 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "angulated scissors",
             "Hoberman",
             "expanding sphere",
+            "deployable structure",
+            "scissor linkage",
+            "Scherengitter",
+            "Hoberman-Kugel",
+            "entfaltbares Tragwerk",
+            "Scherenmechanismus",
             "experimental",
             "prototype",
             "unverified",
@@ -438,8 +876,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Blocked: part 5996 is not supported yet. Original source is retained for repair. Three parallel chains are intended to position one platform. Support for part 5996 is required before this source can be loaded safely.",
-            "de": "Gesperrt: Teil 5996 wird noch nicht unterstützt. Die Originalquelle bleibt für die Überarbeitung erhalten. Drei parallele Ketten sollen eine Plattform positionieren. Bevor diese Quelle sicher geladen werden kann, wird Unterstützung für Teil 5996 benötigt."
+            "en": "A Delta parallel robot: three base motors and parallelogram arms move a tool head that can only translate. Blocked – part 5996 is not supported yet, so it cannot be opened.",
+            "de": "Ein paralleler Delta-Roboter: Drei Motoren an der Basis und Parallelogrammarme bewegen einen Werkzeugkopf, der nur verschoben werden kann. Gesperrt – Teil 5996 wird noch nicht unterstützt, daher lässt sich das Modell nicht öffnen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -450,7 +888,12 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "keywords": [
             "Delta robot",
             "parallel robot",
+            "Clavel",
             "inverse kinematics",
+            "pick and place",
+            "Delta-Roboter",
+            "Parallelkinematik",
+            "inverse Kinematik",
             "experimental",
             "prototype",
             "unverified",
@@ -466,8 +909,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare pin engagement, passive wheel advance and dwell between engagements.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche Stifteingriff, passive Radbewegung und Stillstand zwischen den Eingriffen."
+            "en": "A four-slot Geneva drive (Maltese cross) turns a steadily driven crank into twelve 30° dial steps with a dwell in between; a friction clutch holds the dial while it rests.",
+            "de": "Ein Malteserkreuzgetriebe mit vier Schlitzen macht aus einer gleichmäßig gedrehten Kurbel zwölf Zeigerschritte zu 30° mit Rast dazwischen; eine Rutschkupplung hält den Zeiger in der Ruhe."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -476,10 +919,16 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Malteserkreuz-Schaltung"
         },
         "keywords": [
-            "Geneva",
+            "Geneva drive",
             "Maltese cross",
+            "intermittent motion",
             "indexing",
             "dwell",
+            "Malteserkreuz",
+            "Schrittgetriebe",
+            "Rastgetriebe",
+            "Taktgetriebe",
+            "Geneva",
             "experimental",
             "prototype",
             "unverified",
@@ -495,8 +944,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "gears",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare both side-shaft speeds and the carrier speed; evaluate the gear relation from actual shaft motion.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die Drehzahlen beider Seitenwellen und des Trägers; prüfe die Getriebebeziehung anhand der wirklichen Wellenbewegung."
+            "en": "An open bevel differential on a bench: motor A drives the carrier, while motors B and C only coast or brake the outputs, so you can test ω_L + ω_R = 2·ω_carrier stage by stage.",
+            "de": "Ein offenes Kegelraddifferenzial auf dem Prüfstand: Motor A treibt den Träger, die Motoren B und C lassen die Abtriebe nur auslaufen oder bremsen sie – so lässt sich ω_L + ω_R = 2·ω_Träger Stufe für Stufe prüfen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -506,7 +955,14 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         },
         "keywords": [
             "differential",
+            "open differential",
+            "bevel gears",
             "carrier",
+            "planetary bevel",
+            "Differenzial",
+            "Ausgleichsgetriebe",
+            "Kegelrad",
+            "Achswellenrad",
             "angular velocity sum",
             "experimental",
             "prototype",
@@ -523,8 +979,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare crank rotation with the alternating motion of the passive wings.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die Kurbelrotation mit der wechselnden Bewegung der passiven Flügel."
+            "en": "A Grashof crank-rocker turns motor A’s full crank rotation into a rocking wing: one stroke each way per turn, with slightly unequal stroke times.",
+            "de": "Eine Kurbelschwinge nach Grashof macht aus der vollen Kurbeldrehung von Motor A einen schwingenden Flügel: ein Schlag in jede Richtung je Umdrehung, mit leicht ungleichen Schlagzeiten."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -533,6 +989,18 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Schlagflügel-Gestänge"
         },
         "keywords": [
+            "crank-rocker",
+            "four-bar linkage",
+            "Grashof",
+            "flapping wing",
+            "ornithopter",
+            "quick return",
+            "dead centre",
+            "Kurbelschwinge",
+            "Viergelenk",
+            "Schlagflügel",
+            "Totlage",
+            "Schnellrücklauf",
             "crank rocker",
             "flapping linkage",
             "experimental",
@@ -550,8 +1018,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Observe the blade motion and measure the clear opening at several input angles.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Beobachte die Blattbewegung und miss die freie Öffnung bei mehreren Antriebswinkeln."
+            "en": "One motor turns a 12-tooth pinion, a 60-tooth ring and six 20-tooth leaf gears together, so six overlapping plates open a centred iris aperture.",
+            "de": "Ein Motor dreht über ein 12er-Ritzel einen 60er-Drehkranz und sechs 20er-Lamellenräder gemeinsam; sechs überlappende Platten öffnen so eine mittige Irisblende."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -562,6 +1030,15 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "keywords": [
             "iris diaphragm",
             "aperture",
+            "iris",
+            "turntable",
+            "gear ring",
+            "synchronised leaves",
+            "Irisblende",
+            "Blende",
+            "Lamellen",
+            "Drehkranz",
+            "Zahnkranz",
             "radial linkage",
             "experimental",
             "prototype",
@@ -578,8 +1055,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "gears",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare the relative speeds when a different member is driven, held or released.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die Relativdrehzahlen, wenn ein anderes Glied angetrieben, gehalten oder freigegeben wird."
+            "en": "A stepped-planet epicyclic set adds two motor inputs: A turns the sun at constant speed while B’s carrier speed alone steps the output through ×3, ×2, ×1, standstill and reverse.",
+            "de": "Ein Umlaufgetriebe mit Stufenplaneten überlagert zwei Motoren: A dreht das Sonnenrad konstant, und allein die Trägerdrehzahl von B schaltet den Abtrieb durch ×3, ×2, ×1, Stillstand und Rückwärtslauf."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -588,9 +1065,19 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Planetengetriebe"
         },
         "keywords": [
-            "epicyclic",
+            "epicyclic gear",
             "planetary gear",
+            "compound planet",
+            "stepped planet",
+            "power split",
             "Willis equation",
+            "eCVT",
+            "Umlaufgetriebe",
+            "Planetengetriebe",
+            "Stufenplanet",
+            "Leistungsverzweigung",
+            "Willis-Gleichung",
+            "epicyclic",
             "experimental",
             "prototype",
             "unverified",
@@ -606,8 +1093,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "forces",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Observe the passive weights as speed changes; centrifugal effects grow with angular speed squared while gravity pulls downward.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Beobachte die passiven Gewichte bei wechselnder Drehzahl; Fliehkrafteffekte wachsen mit dem Quadrat der Winkelgeschwindigkeit, während die Schwerkraft nach unten wirkt."
+            "en": "Passive flyweights on a hinged rhombus lift a sliding collar as motor A spins the spindle faster; it senses speed (ω²) but, with no throttle, does not regulate it.",
+            "de": "Passive Fliehgewichte an einer Gelenkraute heben eine Gleitmuffe, wenn Motor A die Spindel schneller dreht; der Regler misst die Drehzahl (ω²), regelt sie aber mangels Drossel nicht."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -618,7 +1105,15 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         "keywords": [
             "centrifugal governor",
             "flyball governor",
+            "Porter governor",
+            "Watt governor",
+            "collar",
+            "flyweights",
             "angular speed squared",
+            "Fliehkraftregler",
+            "Muffe",
+            "Fliehgewichte",
+            "Drehzahlregler",
             "experimental",
             "prototype",
             "unverified",
@@ -634,8 +1129,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "gears",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare intermediate and output shaft speeds; suitable phasing and equal bends can cancel the two speed variations.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche Zwischen- und Abtriebsdrehzahl; passende Phasenlage und gleiche Knickwinkel können beide Drehzahlschwankungen ausgleichen."
+            "en": "Two equally bent, correctly phased Cardan joints: the middle shaft speeds up and slows down twice per turn, while the output follows the input evenly.",
+            "de": "Zwei gleich abgewinkelte, richtig ausgerichtete Kardangelenke: Die Zwischenwelle wird zweimal je Umdrehung schneller und langsamer, der Abtrieb folgt dem Eingang gleichförmig."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -644,9 +1139,18 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Doppel-Kardanantrieb"
         },
         "keywords": [
-            "double Cardan",
+            "Cardan joint",
             "universal joint",
+            "Hooke joint",
+            "double Cardan",
+            "drive shaft",
+            "constant velocity",
             "phasing",
+            "Kardangelenk",
+            "Kreuzgelenk",
+            "Gelenkwelle",
+            "Doppelkardan",
+            "Gleichlauf",
             "experimental",
             "prototype",
             "unverified",
@@ -662,8 +1166,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Measure a passive output point throughout its stroke; the proposed exact straight-line geometry still requires independent verification.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Miss einen passiven Abtriebspunkt über den gesamten Hub; die vorgeschlagene exakte Geradführung muss noch unabhängig geprüft werden."
+            "en": "A Peaucellier–Lipkin cell inverts a crank circle through its pivot into an exact straight line: the passive output point moves straight with no guide at all.",
+            "de": "Eine Peaucellier-Lipkin-Zelle bildet einen Kurbelkreis durch ihren Drehpunkt auf eine exakte Gerade ab: Der passive Abtriebspunkt läuft ganz ohne Führung geradeaus."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -672,6 +1176,16 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Geradführungs-Gestänge"
         },
         "keywords": [
+            "Peaucellier–Lipkin",
+            "Peaucellier linkage",
+            "inversor",
+            "exact straight-line linkage",
+            "circle inversion",
+            "straight-line mechanism",
+            "Peaucellier-Lipkin",
+            "Inversor",
+            "Geradführung",
+            "Kreisinversion",
             "straight-line linkage",
             "geometric closure",
             "experimental",
@@ -689,8 +1203,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare crank phase with the rocking beam and the vertical output stroke.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die Kurbelphase mit der Balkenschwingung und dem senkrechten Abtriebshub."
+            "en": "A Grashof crank-rocker nods a walking beam, and a hanging rod drives a guided rack up and down as a pump plunger; no fluid is modelled.",
+            "de": "Eine Kurbelschwinge nach Grashof lässt einen Schwengel nicken, und eine Hängestange bewegt eine geführte Zahnstange als Pumpenkolben auf und ab; Flüssigkeit wird nicht modelliert."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -700,7 +1214,16 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         },
         "keywords": [
             "pumpjack",
+            "beam pump",
+            "nodding donkey",
             "walking beam",
+            "crank-rocker",
+            "Grashof",
+            "Pferdekopfpumpe",
+            "Tiefpumpe",
+            "Schwengel",
+            "Kurbelschwinge",
+            "Balancier",
             "crank rocker",
             "experimental",
             "prototype",
@@ -717,8 +1240,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "inertia",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare the free platform yaw before and after an internal shape cycle; include the motion of every moving assembly in the momentum comparison.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche die freie Plattformdrehung vor und nach einem inneren Formzyklus; berücksichtige bei der Impulsbilanz alle bewegten Baugruppen."
+            "en": "A flywheel and movable masses ride on a free-turning platform: spin, spread, spin back and retract, and the platform ends up facing a new direction although both motors return home. Experimental: the effect has not yet been independently measured.",
+            "de": "Schwungrad und verschiebbare Massen sitzen auf einer frei drehbaren Plattform: Drehen, Spreizen, Zurückdrehen, Einziehen – und die Plattform zeigt in eine neue Richtung, obwohl beide Motoren zurückkehren. Experimentell: Der Effekt wurde noch nicht unabhängig gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -727,8 +1250,20 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "geschlossener Formzyklus"
         },
         "keywords": [
-            "geometric phase",
             "angular momentum",
+            "conservation of angular momentum",
+            "reaction wheel",
+            "flywheel",
+            "moment of inertia",
+            "geometric phase",
+            "falling cat",
+            "zero angular momentum reorientation",
+            "Drehimpulserhaltung",
+            "Schwungrad",
+            "Reaktionsrad",
+            "Trägheitsmoment",
+            "geometrische Phase",
+            "Katzenreflex",
             "shape cycle",
             "experimental",
             "prototype",
@@ -745,8 +1280,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "gears",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare input and passive output rotation while the shaft offset changes.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche Antriebs- und passive Abtriebsrotation bei verändertem Wellenversatz."
+            "en": "A Schmidt coupling: three discs joined by parallel links keep the output turning exactly with the input while motor B shifts the output shaft sideways. Experimental: not yet independently measured.",
+            "de": "Eine Schmidt-Kupplung: Drei durch parallele Lenker verbundene Scheiben halten den Ausgang exakt im Gleichlauf mit dem Eingang, während Motor B die Ausgangswelle seitlich verschiebt. Experimentell: noch nicht unabhängig gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -755,7 +1290,17 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Kupplung mit variablem Versatz"
         },
         "keywords": [
+            "Schmidt coupling",
             "offset coupling",
+            "parallel offset coupling",
+            "parallelogram linkage",
+            "constant velocity",
+            "shaft misalignment",
+            "Schmidt-Kupplung",
+            "Parallelversatz",
+            "Wellenversatz",
+            "Parallelogramm",
+            "Gleichlauf",
             "parallel shafts",
             "phase transmission",
             "experimental",
@@ -773,8 +1318,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare actual rack displacement with the proposed mechanical state selection.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche den wirklichen Zahnstangenweg mit der vorgeschlagenen mechanischen Zustandsauswahl."
+            "en": "Two motor-driven racks share one free pinion: their average moves the carriage, their difference turns the pointer – a differential in straight lines. Experimental: not yet independently measured.",
+            "de": "Zwei motorgetriebene Zahnstangen teilen sich ein freies Ritzel: Ihr Mittelwert verschiebt den Schlitten, ihre Differenz dreht den Zeiger – ein Differenzial auf geraden Wegen. Experimentell: noch nicht unabhängig gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -783,7 +1328,16 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "mechanische Auswahl"
         },
         "keywords": [
+            "rack differential",
+            "linear differential",
             "rack and pinion",
+            "sum and difference",
+            "average",
+            "Zahnstangen-Differenzial",
+            "Zahnstange",
+            "Ritzel",
+            "Mittelwert",
+            "Differenz",
             "mechanical decoder",
             "position logic",
             "experimental",
@@ -801,8 +1355,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Measure the passive intersection position as the inputs change; derive the proposed tangent relation from the linkage geometry.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Miss die passive Schnittpunktlage bei veränderten Eingaben; leite die vorgeschlagene Tangens-Beziehung aus der Gestängegeometrie ab."
+            "en": "One motor tilts a guide, the other sets a reach; where the guides cross, a free slider shows y = x·tan θ – a variable-gain mechanical multiplier. Experimental: not yet independently measured.",
+            "de": "Ein Motor neigt eine Kulisse, der andere stellt eine Reichweite ein; wo sich die Führungen kreuzen, zeigt ein freier Schieber y = x·tan θ – ein mechanischer Multiplizierer mit veränderlicher Verstärkung. Experimentell: noch nicht unabhängig gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -811,6 +1365,17 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "mechanische Winkelabbildung"
         },
         "keywords": [
+            "tangent mechanism",
+            "mechanical multiplier",
+            "variable gain",
+            "slotted guide",
+            "analog computer",
+            "y = x tan θ",
+            "Tangens",
+            "Kulisse",
+            "mechanischer Multiplizierer",
+            "Analogrechner",
+            "veränderliche Verstärkung",
             "tangent",
             "analog computation",
             "line intersection",
@@ -829,8 +1394,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "forces",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Move the load position and compare the balance response; test any proposed moment compensation from actual motion.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Ändere die Lastposition und vergleiche die Waagenreaktion; prüfe einen vorgeschlagenen Momentenausgleich anhand wirklicher Bewegung."
+            "en": "A Roberval balance: moving a weight across the parallelogram-guided pan should not tip the beam, while moving a trim weight on the beam must. Experimental: not yet independently measured.",
+            "de": "Eine Roberval-Waage: Ein Gewicht auf der parallel geführten Schale zu verschieben, sollte den Balken nicht kippen – ein Trimmgewicht auf dem Balken dagegen schon. Experimentell: noch nicht unabhängig gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -839,9 +1404,20 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "de": "Versuch zur Lastposition"
         },
         "keywords": [
+            "Roberval balance",
+            "Roberval paradox",
+            "parallelogram balance",
+            "scale",
+            "corner-load error",
+            "moment",
+            "couple",
+            "Roberval-Waage",
+            "Robervalsches Paradoxon",
+            "Parallelogrammwaage",
+            "Ecklastfehler",
+            "Kräftepaar",
             "balance",
             "load position",
-            "moment",
             "parallelogram",
             "experimental",
             "prototype",
@@ -858,8 +1434,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Track the output around the proposed remote centre and compare its radius throughout the motion.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Verfolge den Abtrieb um das vorgeschlagene Fernzentrum und vergleiche seinen Radius während der ganzen Bewegung."
+            "en": "A double parallelogram swings its output link about an empty point where no bearing exists – the remote centre of motion used in surgical robots. Experimental: not yet independently measured.",
+            "de": "Ein Doppelparallelogramm schwenkt seinen Ausgangslenker um einen leeren Punkt ohne Lager – das entfernte Drehzentrum, wie es Chirurgieroboter nutzen. Experimentell: noch nicht unabhängig gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -869,6 +1445,16 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         },
         "keywords": [
             "remote centre of motion",
+            "remote center of motion",
+            "RCM",
+            "double parallelogram",
+            "virtual pivot",
+            "surgical robot",
+            "parallelogram linkage",
+            "entferntes Drehzentrum",
+            "Doppelparallelogramm",
+            "virtueller Drehpunkt",
+            "Chirurgieroboter",
             "remote center",
             "parallelogram",
             "experimental",
@@ -886,8 +1472,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "Experimental source: intended motion has not been independently checked. Compare outward and return stroke durations at constant input speed; unequal input-angle sweeps can produce unequal stroke times.",
-            "de": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Vergleiche Vor- und Rücklaufdauer bei konstanter Antriebsdrehzahl; unterschiedliche überstrichene Antriebswinkel können unterschiedliche Hubzeiten erzeugen."
+            "en": "A crank and slotted lever turn steady motor rotation into a slow working stroke and a quick return, about 1.46 : 1, as in a metal shaping machine. Experimental: not yet independently measured.",
+            "de": "Kurbel und schwingende Kurbelschleife machen aus gleichmäßiger Motordrehung einen langsamen Arbeitshub und einen schnellen Rücklauf, etwa 1,46 : 1, wie in einer Stoßmaschine. Experimentell: noch nicht unabhängig gemessen."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -897,12 +1483,334 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         },
         "keywords": [
             "quick return",
+            "quick-return mechanism",
+            "crank and slotted lever",
             "shaper",
+            "shaping machine",
+            "Whitworth",
+            "time ratio",
+            "Schnellrücklauf",
+            "schwingende Kurbelschleife",
+            "Kurbelschleife",
+            "Stoßmaschine",
+            "Shapingmaschine",
+            "Zeitverhältnis",
             "stroke timing",
             "experimental",
             "prototype",
             "unverified",
             "experimentell"
+        ],
+        "experimental": true
+    },
+    "tempest-pendulum.ldr": {
+        "pieces": 69,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A serial double pendulum: motor A pulses a short carrier, then two free 64mm arms swing under gravity alone. Small swings settle into normal modes with periods near 0.66s and 0.27s.",
+            "de": "Ein serielles Doppelpendel: Motor A gibt einem kurzen Träger einen Impuls, danach schwingen zwei freie, 64mm lange Arme allein unter der Schwerkraft. Kleine Ausschläge zerfallen in Eigenschwingungen mit Perioden um 0,66s und 0,27s."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "serial double pendulum",
+            "de": "serielles Doppelpendel"
+        },
+        "keywords": [
+            "double pendulum",
+            "coupled oscillators",
+            "normal modes",
+            "chaos",
+            "Doppelpendel",
+            "Eigenschwingung",
+            "gekoppelte Pendel",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "schmidt-shift.ldr": {
+        "pieces": 170,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor drives a coupling of three carriers and six connecting rods between parallel, offset shafts. Compare the input, floating middle and passive output angles through full turns and reversal.",
+            "de": "Ein Motor treibt eine Kupplung aus drei Drehträgern und sechs Koppelstangen zwischen parallelen, versetzten Wellen. Vergleiche die Winkel von Antrieb, frei getragenem Mittelträger und passivem Abtrieb bei vollen Umdrehungen und Richtungswechsel."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Schmidt coupling",
+            "de": "Schmidt-Kupplung"
+        },
+        "keywords": [
+            "Schmidt coupling",
+            "Schmidt-Kupplung",
+            "parallel offset shafts",
+            "parallel versetzte Wellen",
+            "constant velocity coupling",
+            "Gleichlaufkupplung",
+            "connecting rods",
+            "Koppelstangen",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "poise.ldr": {
+        "pieces": 159,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A Roberval balance: two motors move equal weights across level pans, and the passive balance should stay level wherever on the pan the weights sit.",
+            "de": "Eine Roberval-Waage: Zwei Motoren verschieben gleiche Gewichte auf waagerechten Schalen, und die passive Waage sollte waagerecht bleiben, gleich wo die Gewichte auf der Schale liegen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Roberval balance",
+            "de": "Roberval-Waage"
+        },
+        "keywords": [
+            "Roberval balance",
+            "Roberval-Waage",
+            "equal-arm balance",
+            "parallelogram",
+            "load position",
+            "weighing",
+            "Waage",
+            "Lastposition",
+            "Parallelogramm",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "poise-mass-control.ldr": {
+        "pieces": 162,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Poise with one small beam and two pins added under the left pan: the same program now tilts the balance, which settles near −2.9° after about two minutes.",
+            "de": "Poise mit einem kleinen Balken und zwei Pins unter der linken Schale: Dasselbe Programm neigt nun die Waage, die sich nach etwa zwei Minuten bei −2,9° einpendelt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "1.5 g added to the left pan",
+            "de": "1,5 g Zusatzmasse links"
+        },
+        "keywords": [
+            "Roberval balance",
+            "added mass",
+            "control",
+            "weighing",
+            "Kontrollversuch",
+            "Zusatzmasse",
+            "Roberval-Waage",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "equal-share.ldr": {
+        "pieces": 148,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A whippletree: one motor pushes the free centre of a balance beam against one spring on the left and two in parallel on the right, so the single spring gives way twice as far while both sides carry equal force.",
+            "de": "Ein Ausgleichsbalken: Ein Motor schiebt die frei drehbare Mitte eines Balkens gegen eine Feder links und zwei parallele rechts; die einzelne Feder gibt doppelt so weit nach, während beide Seiten gleich viel Kraft tragen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "whippletree force equalizer",
+            "de": "Kraftausgleich mit Ausgleichsbalken"
+        },
+        "keywords": [
+            "whippletree",
+            "whiffletree",
+            "force equalizer",
+            "parallel springs",
+            "stiffness",
+            "Ausgleichsbalken",
+            "Waagscheit",
+            "parallele Federn",
+            "Kraftverteilung",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "equal-share-even-springs.ldr": {
+        "pieces": 142,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Equal Share with the right-hand pair replaced by one matching spring: the same program now compresses both springs equally and the beam stays square.",
+            "de": "Equal Share, bei dem eine gleiche Feder das rechte Paar ersetzt: Dasselbe Programm drückt nun beide Federn gleich weit zusammen, und der Balken bleibt gerade."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "one spring per side",
+            "de": "je eine Feder pro Seite"
+        },
+        "keywords": [
+            "whippletree",
+            "control",
+            "equal springs",
+            "Ausgleichsbalken",
+            "Kontrollversuch",
+            "gleiche Federn",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "spiral-scribe.ldr": {
+        "pieces": 185,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "gears",
+        "description": {
+            "en": "One motor turns a carrier around a fixed sun gear; the orbiting planet’s pinion feeds a rack outward, so a passive marker traces an Archimedean spiral (about 37.7 mm per turn).",
+            "de": "Ein Motor dreht einen Träger um ein festes Sonnenrad; das Ritzel des umlaufenden Planeten schiebt eine Zahnstange nach außen, sodass eine passive Markierung eine archimedische Spirale beschreibt (etwa 37,7 mm je Umdrehung)."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "one-motor radial feed",
+            "de": "radialer Vorschub mit einem Motor"
+        },
+        "keywords": [
+            "Archimedean spiral",
+            "polar coordinates",
+            "radial feed",
+            "fixed sun",
+            "planet carrier",
+            "rack and pinion",
+            "polar tracer",
+            "archimedische Spirale",
+            "Polarkoordinaten",
+            "radialer Vorschub",
+            "Planetenträger",
+            "Zahnstange",
+            "experimental",
+            "prototype",
+            "experimentell",
+            "unverified"
+        ],
+        "experimental": true
+    },
+    "stroke-shift.ldr": {
+        "pieces": 295,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Motor B sets a real crank radius of 16, 22 or 28 mm while A holds; A then turns the crank once and back, and the same connecting rod drives a passive piston through strokes of 2r = 32, 44 and 56 mm.",
+            "de": "Motor B stellt den Kurbelradius auf 16, 22 oder 28 mm, während A hält; danach dreht A die Kurbel einmal hin und zurück, und dasselbe Pleuel bewegt einen passiven Schlitten mit Hüben von 2r = 32, 44 und 56 mm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "adjustable crank throw",
+            "de": "verstellbarer Kurbelradius"
+        },
+        "keywords": [
+            "adjustable crank throw",
+            "variable stroke",
+            "slider-crank",
+            "connecting rod",
+            "linear actuator",
+            "passive piston",
+            "crank radius",
+            "verstellbarer Kurbelradius",
+            "verstellbarer Hub",
+            "Schubkurbel",
+            "Pleuel",
+            "Linearaktuator",
+            "experimental",
+            "prototype",
+            "experimentell",
+            "unverified"
+        ],
+        "experimental": true
+    },
+    "triad-table.ldr": {
+        "pieces": 258,
+        "motors": 3,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Three motor-driven screw legs (R-P-R) jointly set the x, y position and heading of one passive platform; no motor is an axis on its own. The program visits 15 poses: ±4.8 mm, ±10° and four combined poses.",
+            "de": "Drei motorgetriebene Schraubbeine (R-P-R) bestimmen gemeinsam x, y und Ausrichtung einer passiven Plattform; kein Motor ist für sich eine Achse. Das Programm fährt 15 Posen an: ±4,8 mm, ±10° und vier kombinierte Posen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "three lengths, one pose",
+            "de": "drei Längen, eine Pose"
+        },
+        "keywords": [
+            "parallel robot",
+            "3-RPR",
+            "planar parallel platform",
+            "XY-theta stage",
+            "positioning table",
+            "inverse kinematics",
+            "pose",
+            "yaw",
+            "linear actuator",
+            "singularity",
+            "Parallelroboter",
+            "Positioniertisch",
+            "ebene Parallelplattform",
+            "inverse Kinematik",
+            "Gierwinkel",
+            "Linearaktuator",
+            "experimental",
+            "prototype",
+            "experimentell",
+            "unverified"
         ],
         "experimental": true
     }

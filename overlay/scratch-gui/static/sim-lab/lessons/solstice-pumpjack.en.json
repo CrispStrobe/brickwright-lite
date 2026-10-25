@@ -2,19 +2,26 @@
   "version": 1,
   "id": "solstice-pumpjack",
   "language": "en",
-  "what": "Experimental source: intended motion has not been independently checked. Compare crank phase with the rocking beam and the vertical output stroke.",
-  "why": "Compare crank phase with the rocking beam and the vertical output stroke.",
+  "what": "Beam pump (pumpjack or “nodding donkey”) driven by a Grashof crank-rocker. Motor A turns a 16 mm crank. A 64 mm pitman (9-hole beam) moves the rear end of a 15-hole walking beam that pivots on a fixed post; the beam’s rear arm is 48 mm and its front arm 56 mm. From the front end a second 64 mm rod hangs down to a gear rack that slides vertically in a rack housing – the stand-in for the pump plunger. The program turns the crank in four slow 90° steps (30°/s, 3 s pauses), then makes whole turns backwards, forwards and backwards at 60°/s, ending at home. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
   "try": [
-    "Inspect the frame, shaft supports and passive output before running.",
-    "Reset, then try the finite example program. Stop if the structure becomes unstable.",
-    "Record the passive output, foundation motion and final hold; check the full travel."
+    "Reset, then Run. At each 90° pause note the height of the rack. Which pauses are close to the top and bottom of its stroke?",
+    "Compare the 180° pause with home (0°). Is the rack back at the same height?",
+    "During the whole turns at 60°/s, time the rise and the fall of the rack separately (counting in slow motion is enough).",
+    "Watch the walking beam: it only nods back and forth; only the crank turns fully."
   ],
-  "matters": "A measured passive output and a physical comparison are needed before this example can demonstrate the intended principle.",
-  "question": "What passive output do you predict, and which physical change would test the proposed transmission?",
-  "answer": "Compare crank phase with the rocking beam and the vertical output stroke. This checkpoint does not yet establish that the supplied model achieves it.",
+  "why": "Crank, pitman, the rear half of the beam and the fixed frame form a four-bar: crank a = 16 mm, coupler b = 64 mm, rocker c = 48 mm and frame d = 64√2 ≈ 90.5 mm (the crank axis is 64 mm below and 64 mm behind the beam pivot). Grashof holds, 16 + 90.5 ≤ 64 + 48, and the crank is the shortest link, so the crank turns fully and the beam rocks. The beam reaches its limits at the dead centres, where crank and pitman line up (48 mm or 80 mm from the crank axis to the beam pin); the law of cosines then gives a beam swing of about 42.4°. The front arm is longer (56 mm against 48 mm), so the pump end moves 56/48 ≈ 1.17 times as far as the pitman end; the ideal geometry gives a rack stroke of about 40.6 mm. The two dead centres split the crank turn into about 192.5° and 167.5°, so one stroke is slower than the other.",
+  "matters": "Oil-field beam pumps use this layout because a slow, steady crank, usually with counterweights, can lift a heavy rod string through a long vertical stroke. Unequal stroke times and the near-standstill at each dead centre matter in real pumps because they change rod loads and filling time. In Solstice a straight guided rack replaces the curved horsehead and cable. It is a mechanism demonstrator only: no fluid, valves, seal or pumping load are modelled.",
+  "question": "The crank pauses at 0°, 90°, 180°, 270° and 360°. Is the rack at the same height at 180° as at home, as it would be for a simple sine motion?",
+  "answer": "No. In the ideal geometry the rack is about 10.6 mm higher at the 180° pause than at home: a crank-rocker is not a Scotch yoke, and home is not mid-stroke. The 90° pause lands about 2 mm below the top and the 270° pause under 1 mm above the bottom of the 40.6 mm stroke. Running forward, the rise takes about 192° of crank rotation and the fall about 168°. In the simulator, measured: 10.5 mm higher at 180°, a 40.60 mm stroke, a 42.4° beam swing, top and bottom at crank 115° and 283°.",
   "further": [
-    "Measure a real physical control under the same drive conditions.",
-    "Check actual connector engagement, clearances, support and saved-project replay."
+    "Would a 24 mm crank still turn fully? Check Grashof: 24 + 90.5 = 114.5 > 64 + 48 = 112, so no – the linkage would jam before completing a turn.",
+    "Compare Crank-Rocker, Rod Ratio and Quickstroke: which of them have equal stroke times, and why?",
+    "Unlike a real beam pump, the rack here meets no load. Predict how a heavy load on the up-stroke would change the motor torque near each dead centre."
   ],
-  "related": []
+  "formula": "Grashof: 16 + 90.5 ≤ 64 + 48 mm (crank a = 16, pitman b = 64, rear arm c = 48, frame d = 64√2 ≈ 90.5). Beam limits: cos ψ = (c² + d² − (b ∓ a)²) / (2cd) → ψ = 19.5° and 61.9°, swing ≈ 42.4°. Rack stroke ≈ 40.6 mm (front arm 56 mm). Crank sectors between dead centres ≈ 192.5° and 167.5°.",
+  "related": [
+    "crank-rocker.ldr",
+    "rod-ratio.ldr",
+    "quickstroke.ldr"
+  ]
 }

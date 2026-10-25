@@ -2,19 +2,25 @@
   "version": 1,
   "id": "aster-governor",
   "language": "en",
-  "what": "Experimental source: intended motion has not been independently checked. Observe the passive weights as speed changes; centrifugal effects grow with angular speed squared while gravity pulls downward.",
-  "why": "Observe the passive weights as speed changes; centrifugal effects grow with angular speed squared while gravity pulls downward.",
+  "what": "Centrifugal (flyball) governor with a loaded sliding collar. Motor A turns a vertical spindle and rotor frame. On each side two 48 mm arms form a hinged rhombus: an upper arm hinged to the top of the rotor and a lower arm hinged to a collar that slides on guide axles. The arms meet at an axle carrying the flyweight, two 56 mm SPIKE wheels per side. The hinges are 24 mm from the axis, and at rest the arms lean about 24° from vertical with the collar sitting on its lower stop. When the weights swing outward the rhombus flattens and the collar slides up. The program ramps the spindle to 675, 725 and 800°/s, back down through 725 and 675 to rest, then restarts at 725°/s and stops again. Experimental model: the law described here has so far been measured only in the simulator (one headless run), not on real LEGO parts.",
   "try": [
-    "Inspect the frame, shaft supports and passive output before running.",
-    "Reset, then try the finite example program. Stop if the structure becomes unstable.",
-    "Record the passive output, foundation motion and final hold; check the full travel."
+    "Reset, then Run. In stage 1 the rotor is still: note the collar on its stop and the arm angle.",
+    "Compare the collar height at 675, 725 and 800°/s (stages 3, 5 and 7). The speed rises by only 7% and then 10%. Does the collar rise by equally small amounts?",
+    "Compare stage 9 with stage 5, and stage 11 with stage 3: the same speed, reached once from below and once from above. A different collar height means hysteresis (friction or lag) and is not part of the ideal law.",
+    "In stage 15 the governor restarts at 725°/s. Compare its collar height with stages 5 and 9, then check that gravity returns the collar to its stop at the end."
   ],
-  "matters": "A measured passive output and a physical comparison are needed before this example can demonstrate the intended principle.",
-  "question": "What passive output do you predict, and which physical change would test the proposed transmission?",
-  "answer": "Observe the passive weights as speed changes; centrifugal effects grow with angular speed squared while gravity pulls downward. This checkpoint does not yet establish that the supplied model achieves it.",
+  "why": "In the rotating frame each flyweight feels an outward centrifugal force m ω² r, where r = e + L sin α is its distance from the axis (hinge offset e = 24 mm, arm L = 48 mm, arm angle α from vertical). Gravity on the weights and on the collar pulls the rhombus back towards vertical. Balancing the two by virtual work for point masses gives ω² = g (m + M) tan α / (m (e + L sin α)), with m the mass of one flyweight and M the collar mass. Below the speed that satisfies this at the rest angle (α ≈ 23.6°) the arms stay down on the stop; above it they rise until the equation balances again. Because the force grows with ω², a 10% increase in speed raises the centrifugal pull by 21%. The real arms have mass and size of their own, so the formula is an approximation. In the simulator, the measured arm lift was 4.6°, 10.2° and 18.5° at 675, 725 and 800°/s (collar up 3.2, 8.0 and 16.3 mm), and one constant (m + M)/m ≈ 1.24 fitted all six steady plateaus within 0.5%; up and down plateaus differed by at most 0.3°.",
+  "matters": "James Watt’s flyball governor sensed engine speed this way and moved a steam throttle through its collar: a mechanical feedback loop. Aster builds only the sensing half. There is no throttle, and the motor follows its programmed speed whatever the collar does, so this is a speed indicator, not a regulator. The same ω² law sets the engagement speed of centrifugal clutches and speed switches.",
+  "question": "At 725°/s the collar sits at a certain height. The program then raises the speed by about 10% to 800°/s. Does the outward pull on each weight at the same radius grow by about 10% or about 21%, and what happens next?",
+  "answer": "About 21%, because centrifugal force goes with ω²: (800/725)² ≈ 1.22. The weights therefore move outward and the collar rises until the larger radius and steeper arm angle let gravity balance the stronger pull again. Ideally the direction of rotation would not matter, since ω² has no sign, but the supplier reports that reverse rotation was unstable in this model, so the program only turns forward.",
   "further": [
-    "Measure a real physical control under the same drive conditions.",
-    "Check actual connector engagement, clearances, support and saved-project replay."
+    "Estimate the lift-off speed for a weightless collar: ω² = g tan α / (e + L sin α) = 9.81 × 0.436 / 0.0432 ≈ 99 s⁻², about 570°/s. The program’s first plateau, 675°/s, lies above this rough estimate; the collar’s weight raises the threshold.",
+    "Add the missing half on paper: which way must a throttle linkage driven by the collar move to slow an engine that is speeding up?",
+    "Compare the established Centrifugal Governor model, whose free arms have no collar. The supplier qualified Aster only for this exact speed sequence; other ramps and reverse rotation are new, unverified experiments."
   ],
-  "related": []
+  "formula": "Point masses: ω² = g (m + M) tan α / (m (e + L sin α)); e = 24 mm, L = 48 mm, rest α ≈ 23.6°. ω [rad/s] = speed [°/s] × π/180: 675°/s ≈ 11.8, 725°/s ≈ 12.7, 800°/s ≈ 14.0 rad/s. Centrifugal ratio 800 vs 725°/s: (800/725)² ≈ 1.22.",
+  "related": [
+    "centrifugal-governor.ldr",
+    "flywheel-differential.ldr"
+  ]
 }

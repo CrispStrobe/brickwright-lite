@@ -2,19 +2,26 @@
   "version": 1,
   "id": "bloom",
   "language": "de",
-  "what": "Experimentelle Quelle: Die vorgesehene Bewegung wurde noch nicht unabhängig geprüft. Verfolge mehrere verbundene Scherenarme und vergleiche ihre Öffnung mit der Gesamtspannweite.",
-  "why": "Verfolge mehrere verbundene Scherenarme und vergleiche ihre Öffnung mit der Gesamtspannweite.",
+  "what": "Expandierender Käfig aus abgewinkelten Scheren (das Hoberman-Prinzip). Drei zueinander senkrechte Ringe mit je acht Scherenzellen, insgesamt 48 starre, abgeknickte Glieder, sind so gekoppelt, dass sie sich gemeinsam öffnen. Jedes Glied hat zwei 48 mm lange Arme, die in einem festen Knick von 135° zusammenstoßen. Motor A treibt den Käfig über zwei 8:24-Zahnradpaare und eine Schnecke auf einem 8er-Zahnrad an – eine Untersetzung von 72:1. Das Programm öffnet den Käfig vom Scherenwinkel θ = 48° auf 30° (1296 Motorgrad), prüft die tatsächliche Größe, hält eine Sekunde und schließt ihn wieder. θ ist dabei der Winkel zwischen einem Arm und der Ringtangente an seinem inneren Gelenk.",
   "try": [
-    "Prüfe Rahmen, Wellenlager und passiven Abtrieb vor dem Start.",
-    "Setze das Modell zurück und probiere das endliche Beispielprogramm. Stoppe bei instabilem Aufbau.",
-    "Erfasse passiven Abtrieb, Grundbewegung und Endhaltung; prüfe den gesamten Bewegungsbereich."
+    "Öffne Bloom mit Programm, drücke Zurücksetzen und dann Start. Das Programm misst zuerst drei innere Spannweiten, den Abstand gegenüberliegender innerer Gelenke in jedem Ring, und startet nur, wenn jede etwa 8,4 cm beträgt.",
+    "Stufe 2 dreht Motor A mit 144°/s um 1296° (etwa 9 s). Der Scherenwinkel ändert sich nur um 18°, doch die innere Öffnung jedes Rings sollte von etwa 8,4 cm auf etwa 15,3 cm wachsen, während die äußersten Gelenke nur von etwa 22,6 cm auf 24,9 cm Abstand auseinanderrücken.",
+    "Verfolge einen Ring: Jedes Gelenk bewegt sich auf einer Geraden durch den Mittelpunkt, und jede Zelle deckt immer genau 45° des Kreises ab. Der Ring ändert seine Größe, nicht seine Form.",
+    "Nach jeder Bewegung korrigiert das Programm den Motor anhand der gemessenen Spannweiten mit höchstens drei kleinen Nachstellungen, weil es dem tatsächlichen Käfig vertraut und nicht dem Motorwinkel. Stufe 3 hält, Stufe 4 schließt den Käfig und stellt auf die Anfangsspannweite nach."
   ],
-  "matters": "Ein gemessener passiver Abtrieb und ein mechanischer Vergleich sind nötig, bevor dieses Beispiel das vorgesehene Prinzip zeigen kann.",
-  "question": "Welchen passiven Abtrieb erwartest du, und welche mechanische Änderung würde die vorgeschlagene Übertragung prüfen?",
-  "answer": "Verfolge mehrere verbundene Scherenarme und vergleiche ihre Öffnung mit der Gesamtspannweite. Dieser Zwischenstand belegt noch nicht, dass das gelieferte Modell dies erreicht.",
+  "why": "Jedes abgeknickte Glied hat zwei Arme der Länge a = 48 mm unter einem festen Winkel von 135° = 180° − 360°/8. Genau mit diesem Knick schließt sich ein Ring aus acht Zellen bei jedem Scherenwinkel, und alle Gelenke gleiten auf festen radialen Geraden: Die inneren Gelenke liegen auf dem Radius r = a·cos(θ + 22,5°)/sin 22,5°, die äußeren auf R = a·cos(θ − 22,5°)/sin 22,5°. Mit geraden Scherenstäben würde sich der Winkel jeder Zelle ändern, und der Ring könnte sich nicht in jeder Größe schließen; der Knick hält jede Zelle bei 45°. Von θ = 48° auf 30° wächst r von etwa 42 mm auf 76 mm (×1,82), R aber nur von 113 mm auf 124 mm (×1,10): Die innere Öffnung erblüht viel stärker, als die Außengröße zunimmt.",
+  "matters": "Entfaltbare Tragwerke wie expandierende Kuppeln, wandelbare Dächer, ausklappbare Antennen und die Hoberman-Kugel nutzen abgewinkelte Scheren, weil ein einziger Antrieb die Größe des ganzen Gebildes ändert, ohne seine Form zu verändern. Die 72:1-Untersetzung tauscht Geschwindigkeit gegen Kraft: 1296 Motorgrad ändern θ nur um 18°. Das Programm stellt den Motor anhand gemessener Spannweiten nach, statt dem Motorwinkel zu vertrauen; im Simulator setzte sich der Käfig vor der ersten Nachstellung um etwa 0,3 cm zu klein und schloss mit etwa 23 Motorgrad Spiel. In zwei Läufen des Brickwright-Simulators ohne Oberfläche öffnete und schloss sich der Käfig ohne Fehler: Jedes der 48 Glieder drehte sich bei 1296 Motorgrad um 18,06° ± 0,09° (vorhergesagt 18,00°), und die gemeldete innere Spannweite erreichte 15,2–15,3 cm (vorhergesagt 15,27 cm). Das ist eine Simulationsbeobachtung; ein realer LEGO-Aufbau wurde nicht geprüft.",
+  "question": "Das Programm ändert θ von 48° auf 30°. Wachsen die innere Öffnung und die Außengröße eines Rings um denselben Faktor?",
+  "answer": "Nein. Der Innenradius r = a·cos(θ + 22,5°)/sin 22,5° wächst von etwa 41,9 mm auf 76,4 mm, also etwa um den Faktor 1,82. Der Außenradius R = a·cos(θ − 22,5°)/sin 22,5° wächst nur von etwa 113,2 mm auf 124,4 mm, etwa um den Faktor 1,10. Ihre Differenz, die radiale Tiefe des Rings R − r = 2a·sin θ, schrumpft beim Öffnen von etwa 71 mm auf 48 mm.",
   "further": [
-    "Miss einen echten mechanischen Vergleich bei gleichen Antriebsbedingungen.",
-    "Prüfe Steckverbindungen, Freigängigkeit, Abstützung und Wiedergabe gespeicherter Projekte."
+    "Prüfe die Nachstellfaktoren des Programms an der Geometrie: dr/dθ = −a·sin(θ + 22,5°)/sin 22,5°. Über 72:1 ergibt das etwa 0,0057 cm innere Spannweite pro Motorgrad bei θ = 48° und 0,0048 cm bei 30° – genau die trimScale-Werte im Programm.",
+    "Berechne, wo sich die inneren Gelenke in der Mitte träfen (r = 0 bei θ = 67,5°), und suche im Modell, was lange vorher zusammenstoßen würde.",
+    "Bloom besteht aus drei Großkreisringen, nicht aus einer vollständigen Hoberman-Kugel. Finde heraus, welche Gelenke sich zwei Ringe an ihren Kreuzungen teilen und warum das alle drei Ringe zwingt, sich gemeinsam zu öffnen.",
+    "Grenzen: Die Positionsabfragen runden auf 1 mm, und drei Spannweiten sind nur eine grobe Prüfung eines Modells aus 781 Teilen. Angenommen werden starre Glieder und ideale Gelenke; ein realer Käfig würde unter seinem Gewicht durchhängen und im Spiel der Pins wackeln."
   ],
-  "related": []
+  "formula": "a = 48 mm (120 LDU), n = 8 Zellen, Knick = 180° − 360°/n = 135°. Innenradius r = a·cos(θ + 180°/n)/sin(180°/n); Außenradius R = a·cos(θ − 180°/n)/sin(180°/n); R − r = 2a·sin θ. θ = 48° → innere Spannweite 2r ≈ 8,37 cm; θ = 30° → 2r ≈ 15,27 cm. Antrieb 72:1: |Δθ| = ΔMotor/72, also 1296° → 18°.",
+  "related": [
+    "rise-ratio.ldr",
+    "amplify.ldr"
+  ]
 }
