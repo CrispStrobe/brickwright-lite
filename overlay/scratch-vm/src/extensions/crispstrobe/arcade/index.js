@@ -5303,7 +5303,8 @@ module.exports = makeExt(`// Name: Arcade
         }
         const state=this._state(),elapsed=Object.getOwnPropertyDescriptor(state,'frameDeltaTime');
         if(!elapsed||!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Frame delta Number: frame value is not owned data');
-        return {state,value:elapsed.value};
+        const value=state.frameDeltaTime; // retain the original property read and its effects
+        return {state,value};
       },()=>this._state().frameDeltaTime || 0);
     }
     musicVolume() {return this._music().pxt.music.volume();}

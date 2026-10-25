@@ -172,3 +172,16 @@ test('actual source callback refuses own state and field accessors without evalu
     Object.defineProperty(state,'frameDeltaTime',{get(){reads++;return 42;},configurable:true});
     assert.throws(()=>method.call(instance,{},{}),/frame accessor/);assert.equal(reads,0);assert.equal(initializations,0);
 });
+
+test('actual frame callback performs the original property read once and does not substitute a Proxy descriptor',()=>{
+    const source=readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js',import.meta.url),'utf8');
+    const start=source.indexOf('    frameDeltaTime(args,util) {'),end=source.indexOf('\n    musicVolume()',start),services=new WeakMap();
+    const method=Function('frameDeltaValues','return ({'+source.slice(start,end)+'}).frameDeltaTime;')(services);
+    for(const returned of [9,'foreign']){
+        let reads=0,initializations=0;const target={frameDeltaTime:42},state=new Proxy(target,{get(object,key,receiver){if(key==='frameDeltaTime'){reads++;return returned;}return Reflect.get(object,key,receiver);}});
+        const instance={_runtime:{bwArcadeDeviceState:state},_state(){initializations++;return state;}};
+        services.set(instance,{read:(_args,_util,read)=>{const observed=read();assert.equal(observed.state,state);assert.equal(observed.value,returned);assert.notEqual(observed.value,Object.getOwnPropertyDescriptor(state,'frameDeltaTime').value);return observed.value;}});
+        assert.equal(method.call(instance,{},{}),returned);assert.equal(reads,1,'one actual reporter read after the modeled initializer');assert.equal(initializations,1);
+    }
+    const f=fixture();f.begin();assert.throws(()=>f.report(()=>f.service.read(f.cache.clock._argValues,f.util,()=>({state:f.scene,value:9}),f.legacy)),/scene or input segment changed/);assert.equal(f.consume(),false,'descriptor/result disagreement supplies no Number fact');
+});
