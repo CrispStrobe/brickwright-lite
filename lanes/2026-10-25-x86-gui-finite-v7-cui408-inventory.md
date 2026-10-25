@@ -1,5 +1,9 @@
 # 386 GUI finite v7 inventory for Circuit UI 408 — 2026-10-25
 
+> The earlier 408/761 tuple below is the prior, unselected source design.
+> For the next composition the qualified supplier-wave amendment at the end
+> supersedes only its current tuple and witness data. It grants no event.
+
 | Owner | Status | Base | Boundary |
 | --- | --- | --- | --- |
 | Codex x86 GUI lane, coordinated with the CUI 408 consumer owner | Claim only; no v7 implementation or event | `88f97f5b2b715f294e8f38c8bd2a21e9a5d73f18` | Fresh, bounded current installed inventory and independent admission |
@@ -29,3 +33,41 @@ The hosted npm and Chromium observations retain their exact source, package, pro
 Before effects, admit the owned ready nonfork PR, first attempt, actor, exact source head/tree/workflow, all tracked source rows, canonical template digest and unique body/variable readbacks. Qualify every enabled exact-head source check, allowing only source-declared skips. Select the v7 event once; retain the official run, job, numbered steps, artifact and log after metadata admission, acquire each original once, and grade with a standalone reader that imports no producer code. A failed or partial run remains failed and spent.
 
 Focused cuts must refuse a 408 request against the old 91 prior map, a coherently repinned artifact under an unchanged external expectation, wrong source/vendor pin, missing or empty `src/index.js`, malformed template transport, row or byte overflow, alias and symlink drift, incomplete prefix, wrong official step or artifact, and a false browser/guest claim. Regrade held V4/V5/V6 originals unchanged. A newly admitted finite v7 inventory is **input evidence only**: a current V8 request/expectation and source/Build must independently bind that exact original before any separate V8 tag dispatch. No actual GUI, font selection, whole OS, physical host, compiler, performance or release result is implied here.
+
+
+## Qualified supplier-wave ownership amendment
+
+CLAIM AMENDMENT: implementation waits for this documentation head to merge.
+The new source target is qualified Board
+[`836867513c3e7fac420ddaa32c17e1c7b6d3e513`](https://github.com/CrispStrobe/bw-board/commit/836867513c3e7fac420ddaa32c17e1c7b6d3e513)
+and qualified whole CUI
+[`1bc233c9297e03abb9b7eb603e045b4e92b0bb40`](https://github.com/CrispStrobe/bw-circuit-ui/commit/1bc233c9297e03abb9b7eb603e045b4e92b0bb40),
+with SB3 unchanged. The package owner retains all package, pin, lockfile,
+generator and installed-GUI qualification work under the
+[meter/ADC adoption claim](2026-10-25-meter-adc-package-adoption.md). This
+amendment changes no pin or executable source. It authorizes the x86 owner
+to prepare only its reviewed forward source contribution for that composition.
+
+This expressly supersedes the earlier prohibition on a Board identity
+change only for this new current tuple. Keep the frozen later source bodies
+and change only current package selectors, current-template/request/control
+expectations, and the closed installed-source witness rows. The witness set
+must cover the independently reviewed packaged Git delta from historical
+CUI 91 to this qualified CUI target, including new packaged paths; a delta
+from 408 alone is insufficient. Historical 91 and earlier original bytes
+keep their original meaning. No default-to-prior current pin is permitted.
+
+The existing producer, standalone reader, GUI test and workflow paths stay
+owned by this x86 lane; the coordinated global pin policy remains with the
+x86 historical-role owner. Own only these identity/witness updates and
+matching status prose in the existing claim. Every existing schema, label,
+marker, artifact namespace, method, first/secondary failure boundary, four
+package roots, six critical roles, row/byte/transport/time/resource caps and
+execution guard stays unchanged. All actual/finite guards remain false.
+No selected V7 event exists to replay or reinterpret.
+
+Compose the package owner's independently qualified adoption first, then
+qualify the final finite source and frontend Build before any separately
+admitted single inventory event. V8 selection still needs its own current
+source/request/expectation and approved finite original. No event, compiler,
+guest, media acquisition, physical timing or release is authorized here.

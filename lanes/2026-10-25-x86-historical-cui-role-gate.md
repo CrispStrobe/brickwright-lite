@@ -19,3 +19,31 @@ The [reviewed WIP candidate](https://github.com/CrispStrobe/brickwright-lite/com
 Before joint consumer qualification, review the newly qualified Board and CUI supplier checkpoints and the resulting producer/control bodies. The candidate's current CUI identity and body profiles describe the earlier checkpoint. Legitimate source or pin changes require explicit profile review and updates; never regenerate a trusted profile automatically from candidate inputs. Preserve the historical literal roles and all existing current-input failures. Re-run the complete three-supplier history gate and coherent alias/profile controls on the final composition, then require every enabled exact-head check before merging.
 
 Keep finite-V7 inventory and V8 actual selection unarmed until that qualified consumer source, Build and independently admitted metadata exist. Earlier inventory receipts and source-body hashes do not authorize a new pin. This claim grants no hardware, physical timing, full-OS, release or licence-clearance result.
+
+
+## Qualified supplier-wave ownership amendment
+
+CLAIM AMENDMENT: implementation waits for this documentation head to merge.
+The new source target is qualified Board
+[`836867513c3e7fac420ddaa32c17e1c7b6d3e513`](https://github.com/CrispStrobe/bw-board/commit/836867513c3e7fac420ddaa32c17e1c7b6d3e513)
+and qualified whole CUI
+[`1bc233c9297e03abb9b7eb603e045b4e92b0bb40`](https://github.com/CrispStrobe/bw-circuit-ui/commit/1bc233c9297e03abb9b7eb603e045b4e92b0bb40),
+with SB3 unchanged. The package owner retains all package, pin, lockfile,
+generator and installed-GUI qualification work under the
+[meter/ADC adoption claim](2026-10-25-meter-adc-package-adoption.md). This
+amendment changes no pin or executable source. It authorizes the x86 owner
+to prepare only its reviewed forward source contribution for that composition.
+
+Keep the existing two historical source roles and one visible policy
+declaration. Preserve the later finite-V7/V8 producer and controls; the
+smaller mainline producer/control files are not replacements for them.
+Update only the reviewed current identity and the exact whole-body profile
+rows after independent review of the final producer/control bytes. Apply no
+caller-selected profile, automatic hash refresh, file-wide exception, or
+permission for an old identity in current inputs. The historical literal and
+all earlier wire fixtures remain unchanged.
+
+Own only `test/pin-move-chain.test.mjs` and this claim in that policy task.
+Full three-supplier history, prior controls, coherent alias/current-input
+mutations, production-profile rejection and the genuine V8 negative cohort
+remain required. Source controls grant no current inventory or execution.
