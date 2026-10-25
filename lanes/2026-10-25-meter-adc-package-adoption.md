@@ -121,3 +121,15 @@ The complete13 changed packaged CUI files have source witnesses; this is source
 admission, not an installed-consumer certificate. The x86 owner is reviewing
 its newer whole producer/control profile and bounded current selectors before
 joint composition. No current pin or F7/V8 event is selected by that review.
+
+## Minimal current-identity composition
+
+The x86 owner supplies reviewed component
+`558ce246cdf273fc167954db83f4b797266046f5` for normal composition. Its four
+code files update ten current identity literals and the accompanying assertion
+label: the GUI producer/reader, direct Circuit workflow and its source test.
+Schemas, guards, resource caps, artifact-v2 protocol and GUI test body remain
+unchanged. The larger pending B9 change set and historical profile table are
+explicitly excluded. Ordinary package adoption does not require that separate
+work or authorize an actual guest event. The composed package identities and
+all14 existing GUI controls still require final acceptance.

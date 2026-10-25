@@ -48,6 +48,10 @@ These are unclaimed proposals, not automatic extensions of this campaign:
   actual current laws, rail-power accounting and KCL/energy tests before
   reporting quiescent or bias current. Loading, offset, slew, temperature and
   noise need their own references; typical values are not guaranteed limits.
+- **Public census hygiene:** extend location redaction to assignment-prefixed
+  discovery strings (for example `TOOL_DIR=/example/tool`) and add a causal
+  negative proving those values cannot enter public generated snapshots. Keep
+  stable source/availability facts intact and do not publish host locations.
 - **Further instrument realism:** investigate demonstrated raw-voltage
   authority gaps first. Any bandwidth/coupling/noise model needs explicit
   parameters, independent time-domain expectations and preservation of the

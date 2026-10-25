@@ -8,8 +8,10 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const cli = path.join(root, 'node_modules/bw-circuit-ui/bin/bwc.mjs');
 const flags = ['--adc-bits', '2', '--adc-low', '0', '--adc-high', '3'];
+const env = {...process.env};
+delete env.BW_BOARD;
 const run = args => spawnSync(process.execPath, [cli, ...args],
-    {cwd: root, encoding: 'utf8', timeout: 30000, maxBuffer: 4 * 1024 * 1024});
+    {cwd: root, env, encoding: 'utf8', timeout: 30000, maxBuffer: 4 * 1024 * 1024});
 
 test('installed ideal ADC helper has the selected supplier and exact threshold/zero authority', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));

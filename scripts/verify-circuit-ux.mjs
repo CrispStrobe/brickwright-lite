@@ -758,6 +758,80 @@ try {
     } finally {await scopePage.close();}
 
 
+    // The real meter must distinguish an unmodelled rail current from zero,
+    // and recover when the learner moves the probe back to a represented lead.
+    {
+        const meterPage = await browser.newPage({viewport: {width: 1600, height: 1000}});
+        const meterErrors = [];
+        meterPage.on('pageerror', error => meterErrors.push(error.message));
+        try {
+            await meterPage.addInitScript(() => {
+                localStorage.clear(); sessionStorage.clear();
+                localStorage.setItem('bw-starter-v1-complete', '1');
+            });
+            await meterPage.goto(`http://localhost:${port}/`, {waitUntil: 'networkidle', timeout: 60000});
+            await meterPage.getByRole('tab', {name: /Circuit/}).click();
+            const designer = meterPage.locator('.bw-circuit-designer:visible').last();
+            await designer.locator('[data-canvas]').waitFor({timeout: 60000});
+            await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+            const choosing = meterPage.waitForEvent('filechooser');
+            await designer.getByRole('button', {name: /^📂 Open$/}).click();
+            await (await choosing).setFiles({name: 'lm741-current-authority.json', mimeType: 'application/json',
+                buffer: await readFile(join(root, 'test/fixtures/lm741-voltage-follower.json'))});
+            await meterPage.waitForFunction(() => window.__board === window.__circuit?.board
+                && window.__circuit.parts.some(part => part.id === 'u1' && part.kind === 'lm741'));
+            await designer.getByRole('radio', {name: 'Sim mode', exact: true}).click();
+            await meterPage.waitForFunction(() => window.__board?.getTime() > 0n);
+            if (!await designer.locator('[data-instruments-column]').count()) {
+                await designer.getByRole('button', {name: /Expand instruments panel/i}).click();
+            }
+            await designer.getByRole('button', {name: /Pause simulation/i}).press('Enter');
+            await designer.getByRole('button', {name: /Resume simulation/i}).waitFor();
+            const meter = designer.locator('[data-meter-module]');
+            if (!await meter.count()) await designer.getByRole('button', {name: /Meter$/}).last().click();
+            await meter.waitFor();
+            await designer.getByRole('button', {name: 'Fit all parts', exact: true}).click();
+            await meter.getByRole('button', {name: 'A', exact: true}).click();
+            const place = async terminal => {
+                await meter.getByRole('button', {name: /^Probe A:/}).click();
+                const dot = designer.locator(`[data-terminal-dot="u1:${terminal}"] circle`).first();
+                await dot.waitFor({state: 'visible'});
+                const bounds = await dot.boundingBox();
+                if (!bounds) throw new Error(`LM741 terminal ${terminal} has no real canvas position`);
+                // Dots are pointer-transparent: use the real canvas hit test.
+                await meterPage.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+            };
+            const hasCurrent = () => meter.getByTestId('bw-meter-value').evaluate(el =>
+                Number.isFinite(Number.parseFloat(el.textContent)) && Number.parseFloat(el.textContent) > 0);
+            await place('out');
+            await meterPage.waitForFunction(() => {
+                const el = document.querySelector('[data-testid="bw-meter-value"]');
+                return el && Number.parseFloat(el.textContent) > 0;
+            });
+            check('installed LM741 represented output current is readable before rail refusal', await hasCurrent());
+            await place('vpos');
+            await meter.getByTestId('bw-meter-note').filter({hasText: 'Cannot read current'}).waitFor();
+            check('installed LM741 unmodelled supply current displays unavailable rather than zero',
+                (await meter.getByTestId('bw-meter-value').textContent()).trim() === '---');
+            await meterPage.evaluate(() => {
+                const board = window.__board;
+                board.advanceTo(board.getTime() + 1000000n);
+            });
+            await place('out');
+            await meterPage.waitForFunction(() => {
+                const el = document.querySelector('[data-testid="bw-meter-value"]');
+                return el && Number.parseFloat(el.textContent) > 0;
+            });
+            check('installed LM741 meter recovers a represented current after rail refusal',
+                await hasCurrent() && await meter.getByTestId('bw-meter-note').count() === 0);
+        } catch (error) {
+            check('installed LM741 current-authority consumer journey', false, String(error).split('\n')[0]);
+        } finally {
+            check('installed LM741 meter has no unexpected page errors', meterErrors.length === 0, JSON.stringify(meterErrors));
+            await meterPage.close();
+        }
+    }
+
     // Qualified installed ADC view: actual built modules, real Board and file Open.
     {
         const ADC_IDS = ['scope-adc-primary-selection', 'scope-adc-render-and-raw', 'scope-adc-trigger',

@@ -46,12 +46,19 @@ test('the production browser gate requires the LM741 face, pins and live solve',
 
 test('installed LM741 refuses unmodelled rail current while real zero and signed currents remain valid', async () => {
     const {Circuit} = await loadCircuitModel(root);
+    const {readMeter, createMeterState} = await import(path.join(root,
+        'node_modules/bw-circuit-ui/src/model/multimeter.js'));
     const circuit = Circuit.fromJSON(structuredClone(fixture));
     circuit.setPower(true);
     circuit.board.advanceTo(10_000n);
     assert.throws(() => circuit.board.meterCurrent('u1', 'vpos'),
         error => error.code === 'MISSING_BRANCH_CURRENT' && /u1\.vpos/.test(error.message),
         'a connected supply terminal is not a modelled quiescent-current law');
+    const railReading = readMeter({...createMeterState(), mode: 'current',
+        probeA: {partId: 'u1', terminal: 'vpos'}}, circuit);
+    assert.equal(railReading.siValue, null);
+    assert.equal(railReading.value, '---');
+    assert.equal(railReading.note, 'Cannot read current', 'the actual display model must not fabricate zero');
     assert.ok(circuit.board.meterCurrent('u1', 'out') > 0);
     assert.ok(circuit.board.meterCurrent('load', 'a') < 0);
     for (const volts of [0, 1, -1]) {
@@ -68,6 +75,10 @@ test('installed LM741 refuses unmodelled rail current while real zero and signed
         bench.board.advanceTo(1000n);
         assert.equal(bench.board.meterCurrent('R', 'a'), volts === 0 ? 0 : -volts / 1000);
         assert.equal(bench.board.meterCurrent('R', 'b'), volts / 1000);
+        const reading = readMeter({...createMeterState(), mode: 'current',
+            probeA: {partId: 'R', terminal: 'a'}}, bench);
+        assert.equal(reading.siValue, volts === 0 ? 0 : -volts / 1000);
+        assert.equal(reading.note, null);
     }
 });
 
