@@ -14,8 +14,8 @@ const terminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 
 
 test('the exact installed packages expose and solve the physical LM741', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
-    assert.equal(pins['bw-board'], '761153ff92d521c01107ee7b32922ba7adc10ee2');
-    assert.equal(pins['bw-circuit-ui'], '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671');
+    assert.equal(pins['bw-board'], '836867513c3e7fac420ddaa32c17e1c7b6d3e513');
+    assert.equal(pins['bw-circuit-ui'], '1bc233c9297e03abb9b7eb603e045b4e92b0bb40');
 
     const sidecar = JSON.parse(readFileSync(
         path.join(root, 'node_modules/bw-circuit-ui/src/parts-data/lm741.json'), 'utf8'));
@@ -42,6 +42,33 @@ test('the production browser gate requires the LM741 face, pins and live solve',
     assert.match(source, /data-dip-body="lm741"/);
     assert.match(source, /lm741\.terminals === 8/);
     assert.match(source, /Math\.abs\(lm741\.output - 1\.001\) < 0\.02/);
+});
+
+test('installed LM741 refuses unmodelled rail current while real zero and signed currents remain valid', async () => {
+    const {Circuit} = await loadCircuitModel(root);
+    const circuit = Circuit.fromJSON(structuredClone(fixture));
+    circuit.setPower(true);
+    circuit.board.advanceTo(10_000n);
+    assert.throws(() => circuit.board.meterCurrent('u1', 'vpos'),
+        error => error.code === 'MISSING_BRANCH_CURRENT' && /u1\.vpos/.test(error.message),
+        'a connected supply terminal is not a modelled quiescent-current law');
+    assert.ok(circuit.board.meterCurrent('u1', 'out') > 0);
+    assert.ok(circuit.board.meterCurrent('load', 'a') < 0);
+    for (const volts of [0, 1, -1]) {
+        const bench = Circuit.fromJSON({parts: [
+            {id: 'V', kind: 'vsource', params: {volts}, x: 0, y: 0},
+            {id: 'R', kind: 'resistor', params: {ohms: 1000}, x: 100, y: 0},
+            {id: 'G', kind: 'gnd', params: {}, x: 0, y: 100}
+        ], wires: [
+            {from: 'V', fromTerminal: 'pos', to: 'R', toTerminal: 'a'},
+            {from: 'V', fromTerminal: 'neg', to: 'G', toTerminal: 'gnd'},
+            {from: 'R', fromTerminal: 'b', to: 'G', toTerminal: 'gnd'}
+        ]});
+        bench.setPower(true);
+        bench.board.advanceTo(1000n);
+        assert.equal(bench.board.meterCurrent('R', 'a'), volts === 0 ? 0 : -volts / 1000);
+        assert.equal(bench.board.meterCurrent('R', 'b'), volts / 1000);
+    }
 });
 
 // Independent nominal loaded-follower response, not an engine helper or a fit
