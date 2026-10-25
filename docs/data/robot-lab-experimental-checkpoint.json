@@ -3440,8 +3440,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (carry-ratio-control)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "db1eeba (checkpoint-build-238)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 64,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 34900
+      }
     },
     {
       "id": "carry-ratio-control",
@@ -3461,8 +3472,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 275",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "db1eeba (checkpoint-build-238)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 64,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 38567
+      }
     }
   ],
   "appVerification": {
