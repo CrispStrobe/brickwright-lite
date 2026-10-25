@@ -1,6 +1,12 @@
 # Arcade SDK scalar results and native addition
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration,
+Status: IMPLEMENTED; final qualification pending. Claim merged in
+[PR #1373](https://github.com/CrispStrobe/brickwright-lite/pull/1373).
+All 44 affected source controls pass across five complete cohorts; two guard
+mutations are detected. Code/SB3/export/reimport preserve edited position and
+pixels. Actual hosted runtime/editor acceptance remains open; see
+[the current handoff](../docs/ARCADE-AGENT-HANDOFF.md#25-october-fresh-source-census-and-sdk-scalar-repair).
+Owner: Arcade integration,
 continuing PR #1128. Base: `23ec908232f6d4c4604ed6f7dcb23b75af19053d`.
 
 ## Problem and boundary

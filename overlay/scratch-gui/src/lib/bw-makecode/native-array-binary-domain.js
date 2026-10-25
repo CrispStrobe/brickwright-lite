@@ -524,24 +524,6 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                     initialization,capturedScalar:capture,invalidDomain:domain,
                     sourceRange:'UNAVAILABLE',owningProcedure:call.original.owningProcedure,block:'UNAVAILABLE',classSlot:'UNAVAILABLE'};
             }catch { /* Retain the original refusal with no invented details. */ }
-            // Separate, additive fact for the exporter: whether the ordinary
-            // (non-join) helper the exporter already emits on refusal is
-            // admissible because no Array can reach any addition here. The
-            // program must contain no Array literal, index or named-Array
-            // node, and EVERY helper operand (not only this first refused
-            // one) must have only primitive or Opaque producers. A known
-            // object type (Image, object literal) or any Array kind keeps the
-            // refusal. Absence of this fact never weakens the refusal above.
-            try {
-                const arrayShaped=new Set(['Array','Index','NativeNamedArrayCreate','NativeNamedArrayDelete','NativeArrayAccess','LegacyParsedValue','LegacyJsonValue']);
-                const operandsOrdinary=domainHelpers.every(each=>each.calls.every(each=>each.args.every(operand=>{
-                    if(provedHelperResults.has(operand))return true;
-                    const operandTypes=types(operand);
-                    return [...operandTypes].every(type=>typeof type==='string'&&(primitive.has(type)||type==='Opaque'))&&!allocations(operand).length;
-                })));
-                const arrayFree=bindings.nodes.every(node=>!arrayShaped.has(node?.type)&&!Object.hasOwn(node,'bwNativeNamedArray'));
-                if(operandsOrdinary&&arrayFree)result.ordinaryFallback=true;
-            }catch { /* Without this fact the refusal stands unchanged. */ }
             return result;
         }
         for(const allocation of allocations(arg)){

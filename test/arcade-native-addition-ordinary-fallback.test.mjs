@@ -2,12 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {SB3Creator} from './helpers/bw-vm.mjs';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
-// The native Array join is only relevant when an Array can reach an addition.
-// Array-free programs whose operands are primitive or SDK (Opaque) values keep
-// the ordinary helper; a known object operand or any Array keeps the refusal.
-const reason = 'native addition requires initialized primitive or proved flat Array operands';
+// A genuine SDK numeric result must be proved independently of whether an
+// unrelated Array exists. Unknown SDK results cannot acquire this authority.
 const exported = source => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
@@ -28,16 +26,17 @@ function launch() {
 launch()
 initialX += 0`;
 
-test('an Array-free SDK-number accumulator exports through the ordinary helper', () => {
+test('a proved SDK-number accumulator exports through the ordinary helper', () => {
     const out = exported(sdkWriter);
     assert.deepEqual(out.unsupported, []);
     assert.match(out.ts, /function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
     assert.doesNotMatch(out.ts, /join\(","\)/);
 });
 
-test('the same accumulator stays refused once the program holds an Array', () => {
+test('the same proved accumulator exports when an unrelated Array exists', () => {
     const out = exported(`let values = [1, 2]
 ${sdkWriter}
 values.push(initialX)`);
-    assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
+    assert.deepEqual(out.unsupported, []);
+    assert.match(out.ts, /function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
 });

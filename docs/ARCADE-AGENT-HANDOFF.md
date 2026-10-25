@@ -1,5 +1,45 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 25 October: fresh source census and SDK scalar repair
+
+The fresh baseline at `468f97a625c8065ea791047ddfb319563094be4e` measures
+**145 translated / 38 partial / one parse failure** on the unchanged 184 raw
+inputs. These are import-and-Creator classifications, not completed games.
+The 37 companion contexts preserve the same selected main sources and measure
+9 translated / 28 partial without dependency preparation. Do not call every
+companion context a complete tutorial or replace a hint with starter code to
+improve the count.
+
+The canonical catalogue additionally supplies 41 retained root/dependency
+contexts: 40 were observed (20 translated / 13 partial / seven parse failures);
+one exceeded the unchanged source-execution bound, including when isolated.
+Among the 29 observed contexts with historical original compiler successes,
+19 translate, four are partial and six fail parsing. Those original compiler
+results are retained evidence, not new SDK execution. Current runtime,
+full-project equivalence and visible authoring remain separate gates.
+
+[The merged scalar-proof claim](../lanes/2026-10-25-arcade-sdk-scalar-addition.md)
+now has an implementation candidate. It removes the unsafe ordinary-addition
+fallback for Opaque producers and proves Sprite position/motion results from
+actual factories, aliases, writers and entry order. SDK-returned Arrays and
+unknown producers remain refused. Canonical null resets require construction
+before every use; no nullable binding-wide Sprite or Array authority is issued.
+Unrelated primitive arrays do not invalidate the private Sprite slice.
+
+All 44 affected source controls pass across five complete cohorts. Two guard
+mutations are detected. The new source journey covers connected property
+blocks, Code, own-asset SB3, fresh export/reimport, an edited position and edited
+pixels. It does not establish actual browser or SDK/runtime qualification.
+Final composed hosted checks and affected actual authoring remain pending;
+preserve the current original CI failures and terminal numeric intake before
+publishing a successor.
+
+Next, carry [the atan2 authoring claim](https://github.com/CrispStrobe/brickwright-lite/pull/1377)
+through its required merge, upstream dialect implementation/qualification,
+normal supplier adoption, runtime/conversion controls and real GUI acceptance.
+The five affected retained contexts have other gaps too. Closing atan2 alone
+does not count those applications complete.
+
 ## Current qualification — 24 October 2026
 
 Start with [the current results and task order](ARCADE-COMPATIBILITY-NEXT-STEPS.md)

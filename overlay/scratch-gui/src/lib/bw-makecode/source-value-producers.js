@@ -610,17 +610,21 @@ export function sourceImageArrayCloneEffects(program,sourceContext=null) {
 }
 
 // This private primitive producer does not publish Sprite or Array types. Its
-// allocation tokens describe only the receivers of exact physical ay reads.
+// allocation tokens describe only the receivers of exact physical numeric reads.
 // In particular, the translator's annotation-seeded reference sets are not used.
 function ordinarySpriteAyNumberReads(program) {
     if(!spriteAyArrayCurrent())return null;
+    // The selected SDK Sprite accessors return Numbers on normal completion.
+    // Dimensions keep their independent Image/receiver proof; property spelling
+    // alone never establishes a Sprite allocation or a compatible writer.
+    const properties=['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom'];
     // Necessary syntax only: a negative result skips this optional analysis,
     // never supplies a type or an eligibility fact. Do not invoke getters.
     const syntaxSeen=new Set();
     const possible=value=>{
         if(!value||typeof value!=='object'||syntaxSeen.has(value))return false;syntaxSeen.add(value);
         const type=Object.getOwnPropertyDescriptor(value,'type'),name=Object.getOwnPropertyDescriptor(value,'name');
-        if(type&&Object.hasOwn(type,'value')&&type.value==='Member'&&name&&Object.hasOwn(name,'value')&&name.value==='ay')return true;
+        if(type&&Object.hasOwn(type,'value')&&type.value==='Member'&&name&&Object.hasOwn(name,'value')&&properties.includes(name.value))return true;
         for(const key of Reflect.ownKeys(value)) {
             if(metadata.has(key))continue;const row=Object.getOwnPropertyDescriptor(value,key);
             if(row?.enumerable&&Object.hasOwn(row,'value')&&possible(row.value))return true;
@@ -673,13 +677,31 @@ function ordinarySpriteAyNumberReads(program) {
         }
         return pixels;
     };
-    const factories=new Set(),arrays=new Set(),writes=new Map(),values=new Map(),loops=[],pushes=[];
+    const factories=new Set(),spriteSources=new Map(),arrays=new Set(),writes=new Map(),values=new Map(),loops=[],pushes=[];
+    const ready=node=>{
+        if(!node||typeof node!=='object')return true;
+        if(Array.isArray(node))return all(node,ready);
+        if(node.type==='Identifier'&&!graph.isInitializedAt(node))return false;
+        return all(Reflect.ownKeys(node).filter(key=>!metadata.has(key)),key=>ready(node[key]));
+    };
+    const number=node=>{
+        const types=graph.typesAt(node);
+        return types.size===1&&types.has('Number')&&ready(node);
+    };
+    const kind=node=>number(node)||node?.type==='Member'&&node.object?.type==='Identifier'&&
+        node.object.name==='SpriteKind'&&['Player','Projectile','Food','Enemy'].includes(node.name)&&graph.isSdkNamespace(node);
     const write=(key,value,site)=>{if(!writes.has(key))writes.set(key,[]);writes.get(key).push({value,site});};
     for(const node of nodes) {
         if(node.type==='Array'&&Array.isArray(node.items)&&node.items.length===0)arrays.add(node);
         if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Member'&&!node.callee.optional&&
-            path(node.callee)==='sprites.create'&&graph.isSdkNamespace(node.callee)&&Array.isArray(node.args)&&node.args.length===1&&
-            imageLiteral(node.args[0]))factories.add(node);
+            graph.isSdkNamespace(node.callee)&&Array.isArray(node.args)&&imageLiteral(node.args[0])){
+            const api=path(node.callee);
+            if(api==='sprites.create'&&(node.args.length===1||node.args.length===2&&kind(node.args[1])))factories.add(node);
+            if(api==='sprites.createProjectileFromSide'&&node.args.length===3&&number(node.args[1])&&number(node.args[2]))factories.add(node);
+            if(api==='sprites.createProjectileFromSprite'&&node.args.length===4&&number(node.args[2])&&number(node.args[3])){
+                factories.add(node);spriteSources.set(node,node.args[1]);
+            }
+        }
         if(node.type==='Declaration')for(const row of node.decls||[])if(row.init)write(binding(node,row.name),row.init,row);
         if(node.type==='Assignment'&&node.left?.type==='Identifier')write(binding(node.left),node.op==='='?node.right:null,node);
         if(node.type==='Update'&&node.argument?.type==='Identifier')write(binding(node.argument),null,node);
@@ -688,7 +710,7 @@ function ordinarySpriteAyNumberReads(program) {
     }
     for(const node of nodes)if(node.type==='Identifier'&&node.name==='sprites'&&graph.isSdkNamespace(node)) {
         const member=parents.get(node),call=parents.get(member);
-        if(member?.type!=='Member'||member.object!==node||member.name!=='create'||call?.callee!==member||!factories.has(call))return null;
+        if(member?.type!=='Member'||member.object!==node||call?.callee!==member||!factories.has(call))return null;
     }
     // The ordinary public route lowers for-of before constraint analysis.
     // Reprove the actual dense loop, without trusting generated names or an
@@ -743,8 +765,22 @@ function ordinarySpriteAyNumberReads(program) {
         }
         for(const loop of loops)for(const receiver of value(loop.iterable)||[])changed=add(binding(loop.body[0],loop.name),elements.get(receiver))||changed;
     }
+    // This slice proves Sprite reads, not every Array in the program. Retain
+    // all collections that may actually store a Sprite. Primitive-only arrays
+    // have their independent producer/initialization analysis and cannot grant
+    // a receiver token here. A Sprite escaping into an untracked collection is
+    // still rejected by the complete use census below.
+    for(const site of arrays)if(!any([...(elements.get(site)||[])],token=>factories.has(token)))arrays.delete(site);
+    for(const [key,tokens]of values){
+        for(const token of tokens)if(!factories.has(token)&&!arrays.has(token))tokens.delete(token);
+        if(!tokens.size)values.delete(key);
+    }
     const sprites=tokens=>tokens?.size&&all([...tokens],token=>factories.has(token));
     const collections=tokens=>tokens?.size&&all([...tokens],token=>arrays.has(token));
+    for(const source of spriteSources.values()){
+        let unwrapped=source;while(unwrapped?.type==='Parenthesized')unwrapped=unwrapped.expression;
+        if(unwrapped?.type!=='Null'&&!sprites(value(source)))return null;
+    }
     const loopBindings=new Map();
     for(const loop of loops) {
         const key=binding(loop.body[0],loop.name);
@@ -752,12 +788,41 @@ function ordinarySpriteAyNumberReads(program) {
         loopBindings.set(key,loop);
     }
     const usedArrays=new Set(),candidates=new Set();
-    for(const node of nodes)if(node.type==='Member'&&node.name==='ay'&&sprites(value(node.object)))candidates.add(node);
+    for(const node of nodes)if(node.type==='Member'&&properties.includes(node.name)&&sprites(value(node.object)))candidates.add(node);
     if(!candidates.size)return null;
+    // Exported blocks explicitly reset Sprite slots to null before constructing
+    // them. Permit only a direct, preceding reset with a direct constructor that
+    // dominates every use; a later or conditional null writer remains unknown.
+    // This is an occurrence proof, never a nullable binding-wide Sprite type.
+    const resets=new Map();
+    const statementAt=(node,owner)=>{
+        const body=owner===program?program.body:owner?.body;
+        if(!Array.isArray(body))return null;
+        for(let at=node;at;at=parents.get(at))if(parents.get(at)===body)return at;
+        return null;
+    };
+    const writeStatement=(row,owner)=>{
+        const statement=statementAt(row.site,owner);
+        if(statement?.type==='ExpressionStatement'&&statement.expr===row.site&&row.site.type==='Assignment')return statement;
+        if(statement?.type==='Declaration'&&statement.decls?.includes(row.site))return statement;
+        return null;
+    };
     // No unknown writer may be hidden behind a compatible later assignment.
     for(const [key,tokens]of values) {
         const rows=writes.get(key)||[];
-        for(const row of rows)if(!value(row.value)?.size||any([...value(row.value)],token=>!tokens.has(token)))return null;
+        const missing=rows.filter(row=>!value(row.value)?.size||any([...value(row.value)],token=>!tokens.has(token)));
+        if(missing.length){
+            if(!sprites(tokens)||missing.some(row=>row.value?.type!=='Null'))return null;
+            const construction=rows.find(row=>factories.has(row.value)),owner=construction&&owners.get(construction.site);
+            const statement=construction&&writeStatement(construction,owner),body=owner===program?program.body:owner?.body;
+            const position=statement&&body.indexOf(statement);
+            if(!statement||position<0||missing.some(row=>{
+                if(owners.get(row.site)!==owner)return true;
+                const before=writeStatement(row,owner),index=before?body.indexOf(before):-1;
+                return index<0||index>=position;
+            }))return null;
+            resets.set(key,{owner,position,body});
+        }
         for(const node of nodes)if(node.type==='Identifier'&&binding(node)===key&&graph.declarationCountAt(node)>1)return null;
     }
     const aliasUse=(node,parent)=>parent?.type==='Assignment'&&parent.op==='='&&parent.right===node&&parent.left?.type==='Identifier'||
@@ -783,6 +848,12 @@ function ordinarySpriteAyNumberReads(program) {
             if(aliasUse(node,parent)||parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
             const call=argumentCall(node);
             if(call?.callee?.type==='Member'&&call.callee.name==='push'&&call.args.length===1&&call.args[0]===node&&collections(value(call.callee.object)))continue;
+            if(spriteSources.get(call)===node)continue;
+            if(parent?.type==='Member'&&parent.object===node&&['setPosition','setVelocity'].includes(parent.name)){
+                const method=parents.get(parent);
+                if(method?.type==='Call'&&method.callee===parent&&!method.isNew&&!method.constructorCall&&!method.optional&&
+                    !method.typeArguments?.length&&method.args?.length===2&&all(method.args,number))continue;
+            }
             if(parent?.type==='Member'&&parent.object===node&&['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom','width','height','image','overlapsWith'].includes(parent.name))continue;
             if(call?.callee?.type==='Member'&&call.callee.name==='overlapsWith'&&call.args.length===1&&call.args[0]===node&&sprites(value(call.callee.object)))continue;
             return null;
@@ -806,9 +877,14 @@ function ordinarySpriteAyNumberReads(program) {
             return sites.length>0&&all(sites,call=>owners.get(call)===program?rank(call)>position:dominates(owners.get(call),position,next));
         }
         const call=argumentCall(owner);
-        return owner.type==='FunctionExpression'&&!owner.params.length&&call?.type==='Call'&&call.args?.length===1&&call.args[0]===owner&&
-            !call.isNew&&!call.constructorCall&&!call.optional&&!call.typeArguments?.length&&call.callee?.type==='Member'&&!call.callee.optional&&path(call.callee)==='game.onUpdate'&&
-            graph.isSdkNamespace(call.callee)&&owners.get(call)===program&&rank(call)>position&&root(call)?.type==='ExpressionStatement';
+        if(owner.type!=='FunctionExpression'||owner.params.length||call?.type!=='Call'||call.isNew||call.constructorCall||call.optional||
+            call.typeArguments?.length||call.callee?.type!=='Member'||call.callee.optional||!graph.isSdkNamespace(call.callee)||
+            owners.get(call)!==program||rank(call)<=position||root(call)?.type!=='ExpressionStatement')return false;
+        if(path(call.callee)==='game.onUpdate')return call.args?.length===1&&call.args[0]===owner;
+        if(!/^controller\.(?:A|B|up|down|left|right)\.onEvent$/.test(path(call.callee)||'')||call.args?.length!==2||call.args[1]!==owner)return false;
+        const event=call.args[0];
+        return event?.type==='Member'&&event.object?.type==='Identifier'&&event.object.name==='ControllerButtonEvent'&&
+            ['Pressed','Released','Repeated'].includes(event.name)&&graph.isSdkNamespace(event);
     };
     const globalInitializers=new Map();
     for(const statement of program.body)if(statement.type==='Declaration')for(const row of statement.decls||[]) {
@@ -816,10 +892,21 @@ function ordinarySpriteAyNumberReads(program) {
         if(row.init&&value(row.init)?.size&&graph.declarationCountAt(statement,row.name)===1)globalInitializers.set(key,statement);
     }
     const inside=(node,container)=>{for(let at=node;at;at=parents.get(at))if(at===container)return true;return false;};
+    const resetReads=new Set();
+    for(const node of nodes)if(node.type==='Identifier'&&resets.has(binding(node))){
+        const parent=parents.get(node);
+        if(parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
+        const reset=resets.get(binding(node)),owner=owners.get(node);
+        if(owner===reset.owner){
+            const statement=statementAt(node,owner),index=statement?reset.body.indexOf(statement):-1;
+            if(index<=reset.position)return null;
+        }else if(reset.owner!==program||!dominates(owner,reset.position))return null;
+        resetReads.add(node);
+    }
     for(const node of nodes)if(node.type==='Identifier'&&value(node)?.size) {
         const parent=parents.get(node);
         if(parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
-        if(graph.isInitializedAt(node))continue;
+        if(graph.isInitializedAt(node)||resetReads.has(node))continue;
         const key=binding(node),loop=loopBindings.get(key);
         if(loop&&inside(node,loop.body))continue;
         const declaration=globalInitializers.get(key),owner=owners.get(node),position=declaration?rank(declaration):-1;
@@ -834,11 +921,14 @@ function ordinarySpriteAyNumberReads(program) {
             if(owner===program&&node!==site&&rank(node)<position||!dominates(owner,position))return null;
         }
     }
-    // A native ay read has a Number result independently of the declared
+    // A native numeric read has a Number result independently of the declared
     // formal's type. Use that already established result only inside this
-    // private validation graph, then require every actual ay writer to agree.
+    // private validation graph, then require every actual property writer to agree.
     // No caller-supplied option or annotation can seed this graph.
-    const writerGraph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true},
+    // Supply this operation's private candidate set to prevent recursive Sprite
+    // analysis. Independent Math/score Number producers may validate a writer;
+    // an opaque call or annotation still contributes no Number fact.
+    const writerGraph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true,ordinaryPrimitiveSdkNumbers:true},
         {has:node=>candidates.has(node),current:()=>true});
     for(const node of nodes) {
         const lhs=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;

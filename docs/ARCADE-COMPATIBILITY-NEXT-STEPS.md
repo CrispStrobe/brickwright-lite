@@ -1,5 +1,35 @@
 # Arcade compatibility: integration and next steps
 
+## 25 October: ordered continuation
+
+Use [the fresh measured baseline and scalar candidate](ARCADE-AGENT-HANDOFF.md#25-october-fresh-source-census-and-sdk-scalar-repair)
+before the historical checkpoints below. The unchanged raw source corpus now
+measures 145 translated / 38 partial / one parse failure; it does not measure
+complete games. Keep companion roots, canonical retained dependency contexts,
+historical original compiler success and current execution distinct.
+
+1. Finish current PR #1128 terminal CI intake once, retaining actual failures
+   and the numeric-authoring outcome before publishing a successor.
+2. Qualify the SDK scalar candidate: 44 affected source checks and two guard
+   mutations pass; current SDK/runtime and visible authoring remain pending.
+   Verify real edited positions/pixels and fresh reopen; do not replace unknown
+   operands with defaults or reinstate the Opaque-addition fallback.
+3. Merge [the scoped atan2 claim](https://github.com/CrispStrobe/brickwright-lite/pull/1377)
+   before implementation. Land the dialect vocabulary upstream in sb3-creator,
+   then adopt its reviewed pin through sync. Implement importer, exporter,
+   runtime and the fixed Blocks menu together, preserving radians, argument
+   order and existing negative controls. Add actual visible menu-edit acceptance.
+4. Qualify one composed candidate with affected original/emitted PXT, native
+   execution, Code/Blocks, saved-project reload, artwork and controller checks.
+   Recount affected unchanged inputs and list residual gaps independently.
+
+Five historically compiling retained contexts report atan2 as one of several
+gaps. The same family also exposes HUD enum members, String conversion,
+procedure default/omission and numeric sprite provenance issues. Closing one
+API is not a completion claim for those projects. Claim each additional path
+before implementation; retain dependency-identity conflicts and missing context
+instead of silently repairing the original inputs.
+
 The active [captured-class primitive task](ARCADE-CLASS-CAPTURED-PRIMITIVES.md)
 records the current source changes, observed failures and next acceptance steps.
 All six complete source groups pass at `7f08e871ad3c76929282787092270b1b09158744`,

@@ -1,5 +1,17 @@
 # Conversion capabilities and GUI closure ledger
 
+## 25 October: SDK numeric properties and next authoring family
+
+| Capability | Current source result | Authoring/runtime acceptance still required |
+| --- | --- | --- |
+| Sprite position and motion results | Actual create/projectile factories, receiver aliases, all writers and entry order prove x/y/vx/vy/ax/ay/fx/fy/edges. Canonical null resets require construction before every use. Opaque/Array producers gain no ordinary-addition fallback. 44 affected controls and two mutations pass. | Existing property reporters and setters are connected Blocks and Code words. Source tests change a position and actual pixels through Code/SB3/export/reimport. Qualify visible edits, controller behavior, current original/emitted SDK execution and fresh project reopen. Source asset API edits do not qualify the graphics editor UI. |
+| atan2(y,x), radians | Measured missing importer API in five historically compiling retained contexts; implementation awaits its merged claim. | Extend the existing binary-math reporter menu and runtime with genuine atan2. Land the upstream dialect first and adopt its qualified pin. Test quadrants, axes, signed zero/nonfinite values, argument order, current export/reimport and a genuine visible operation-menu edit; retain every preceding authoring journey. |
+
+Fresh source counts and input-completeness limits are in
+[the current handoff](ARCADE-AGENT-HANDOFF.md#25-october-fresh-source-census-and-sdk-scalar-repair).
+No new complete-application, browser or installed-runtime result is claimed by
+these source controls. Preserve existing GUI assertions and original failures.
+
 The active [captured-class primitive task](ARCADE-CLASS-CAPTURED-PRIMITIVES.md)
 records the current source changes, observed failures and next acceptance steps.
 All six complete source groups pass at `7f08e871ad3c76929282787092270b1b09158744`,
