@@ -1,6 +1,6 @@
 # Imported measurement repair package adoption
 
-DONE — candidate implementation; exact-head qualification and matched landing remain required. Codex circuit/instrument owner. Exact initial Lite base `406ea47fac3fef7704228fcd0f66cdf7cf8fc504`.
+DONE — qualified and matched-merged by PR1397; accepted closeout is recorded below. Codex circuit/instrument owner. Exact initial Lite base `406ea47fac3fef7704228fcd0f66cdf7cf8fc504`.
 Branch `lane/imported-measurement-adoption-claim-20261025`.
 This is the consumer portion of ordered campaign step3. Merge this claim before
 implementation. Supplier source repairs are independently owned in
