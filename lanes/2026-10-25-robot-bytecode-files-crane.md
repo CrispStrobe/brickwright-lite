@@ -51,7 +51,10 @@ Three owned NXC/lms programs have retained compiler outputs and actual virtual
 brick download/start controls. Focused local controls: 23 NXT VM, 26 EV3 VM and
 three virtual-brick tests; ten NXT and fourteen EV3 source mutations are rejected.
 The crane adds a retained C drum, moving guide and balanced rope-hung payload.
-Three pure geometry/generator controls pass. Real VM/Jolt hoist, hold, payout,
+Four pure geometry/generator/insertion controls pass. The original hosted
+crane instruction failure is retained; the repair authors small insertion pages
+and independently checks rigid fasteners plus the physical rope attachment,
+including a missing-rope negative. Instruction views do not yet show rope callouts. Real VM/Jolt hoist, hold, payout,
 slack and finite payload-weight tension controls, plus the browser's actual GUI
 SB3 export/CRC-sidecar/fresh-context definition reopen, remain hosted gates.
 No physical accuracy or independent retained successful-SB3 audit is claimed.

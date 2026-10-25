@@ -27,6 +27,8 @@ import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import {judgeMechanicsRun} from '../scripts/lib/sim-lab-mechanics-judge.mjs';
+import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
+import {buildSteps, STEP_MAX} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
 
 const GUI = path.join(REPO, 'overlay', 'scratch-gui');
@@ -112,6 +114,69 @@ test('it compiles to the original slew/luff ratios and a retained, geared drum w
     const points = [...rope.points, rope.hook].map(point);
     const length = points.slice(1).reduce((sum, p, i) => sum + len(sub(p, points[i])), 0);
     assert.ok(Math.abs(rope.lengthM - length) <= 0.05 * LDU_M, 'the generated rope starts taut to the editor rounding bound');
+});
+
+// Independently walk the physical connector edges plus the declared string.
+// Authoring pages must not hide a detached part or an oversized insertion page.
+const assertCranePagesConnected = model => {
+    const plan = buildSteps(model, CATALOG);
+    assert.equal(plan.source, 'meta');
+    const {nodes, edges} = buildGraph(model, CATALOG, []);
+    const adjacent = new Map(model.parts.map(p => [p.id, new Set()]));
+    const join = (a, b) => { adjacent.get(a).add(b); adjacent.get(b).add(a); };
+    for (const edge of edges) join(nodes.get(edge.a.part).partId, nodes.get(edge.b.part).partId);
+    const rigid = new Map([...adjacent].map(([id, edges]) => [id, new Set(edges)]));
+    for (const rope of model.ropes || []) {
+        assert.deepEqual(rope.around, ['hoistDrum', 'tipGuide', 'hookLink']);
+        for (let i = 1; i < rope.around.length; i++) join(rope.around[i - 1], rope.around[i]);
+    }
+    assert.ok(plan.steps[0].parts.includes('hub'), 'the hub starts the assembly');
+    assert.ok(model.parts.length / plan.steps.length >= 1.5, 'pages retain the existing minimum grouping');
+    const built = new Set();
+    for (const step of plan.steps) {
+        assert.ok(step.parts.length > 0 && step.parts.length <= STEP_MAX);
+        if (step.parts.includes('hookLink')) {
+            assert.ok(built.has('hoistDrum') && built.has('tipGuide'), 'mount drum and guide before tying the hook');
+        }
+        const fresh = new Set(step.parts);
+        for (const id of fresh) assert.ok(!built.has(id), `part ${id} appears once`);
+        const queue = built.size ? step.parts.filter(id => [...adjacent.get(id)].some(p => built.has(p))) : [step.parts[0]];
+        const reached = new Set(queue);
+        for (let i = 0; i < queue.length; i++) for (const id of adjacent.get(queue[i])) {
+            if (fresh.has(id) && !reached.has(id)) { reached.add(id); queue.push(id); }
+        }
+        assert.deepEqual(step.parts.filter(id => !reached.has(id)), [], 'every inserted part reaches the assembly through connectors or its physical rope');
+        for (const id of step.parts) built.add(id);
+    }
+    assert.deepEqual([...built].sort(), model.parts.map(p => p.id).sort());
+    const at = new Map(plan.steps.flatMap((s, i) => s.parts.map(id => [id, i])));
+    const meta = id => CATALOG.get(model.parts.find(p => p.id === id).part);
+    const fastener = id => ['pin', 'axle'].includes(meta(id).category);
+    let checked = 0;
+    for (const part of model.parts.filter(p => fastener(p.id))) {
+        const joins = [...rigid.get(part.id)];
+        assert.ok(joins.length, `${part.id} has a physical support`);
+        if (joins.length > 2) continue;
+        const page = at.get(part.id);
+        if (/bush/i.test(meta(part.id).name) && joins.every(id => meta(id).category === 'axle')) {
+            const support = Math.min(...joins.map(id => at.get(id)));
+            assert.ok(support <= page && page - support <= 3, `${part.id} follows its shaft within three pages`);
+        } else if (/perpendicular pin hole/.test(meta(part.id).name) &&
+            Math.min(...joins.map(id => at.get(id))) <= page && page <= Math.max(...joins.map(id => at.get(id)))) {
+            // The existing two-stage perpendicular-connector insertion rule.
+        } else {
+            const later = Math.max(...joins.map(id => at.get(id)));
+            if (page !== later) assert.ok(page < later && later - page <= 3 &&
+                plan.steps[page].parts.every(fastener), `${part.id} precedes the part covering it on a fastener-only page`);
+        }
+        checked++;
+    }
+    assert.ok(checked >= 4, 'several actual fastener insertion orders are checked');
+};
+test('the authored crane pages preserve rigid insertion rules and the documented rope attachment', () => {
+    const {model} = prepared();
+    assertCranePagesConnected(model);
+    assert.throws(() => assertCranePagesConnected({...model, ropes: []}), /every inserted part reaches/, 'removing the rope must expose the detached hook');
 });
 
 test('the crane generator reproduces the shipped geometry and derives its rope from the same part metadata', () => {

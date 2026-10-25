@@ -23,6 +23,7 @@ import {fileURLToPath} from 'node:url';
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {upgradePartMeta} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {ropeTie} from '../overlay/scratch-gui/src/lib/bw-sim/editor/rope-path.js';
+import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const OUT = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/static/sim-lab/models/crane.ldr');
 /** The boom's elevation at build, degrees: the luffing actuator is then 140 LDU pin to pin (half out). */
@@ -197,8 +198,28 @@ const parsed = parseModel([...head, ...lines].join('\n'), {catalog});
 if (parsed.refusals.length) throw new Error(`crane generation refused: ${JSON.stringify(parsed.refusals)}`);
 const rope = ropeTie(parsed.model, catalog, ['hoistDrum', 'tipGuide', 'hookLink']);
 if (rope.error) throw new Error(`crane rope refused: ${rope.error}`);
-lines.push(`0 !BW ROPE hoistCord ${rope.lengthLdu} ${rope.around.join(' ')}`);
-
-writeFileSync(OUT, `${[...head, ...lines].join('\n')}\n`);
+// Preserve the small connector-derived insertion pages, but author them in the
+// file: the default connector-only manual cannot see the flexible rope joining
+// the free hook. The source comment documents threading/tying at its hook stage;
+// the existing instruction renderer shows rigid parts, without rope callouts.
+const plan = buildSteps(parsed.model, catalog);
+const blocks = new Map();
+let block = null;
+for (const line of lines) {
+    if (line.startsWith('0 !BW ID ')) {
+        block = [];
+        blocks.set(line.slice('0 !BW ID '.length), block);
+    }
+    if (!block) throw new Error('crane part record has no ID');
+    block.push(line);
+}
+const pages = [];
+for (const step of plan.steps) {
+    if (step.parts.includes('hookLink')) pages.push('0 // Thread the rope from the retained drum over the tip guide and tie it to the hook link.');
+    for (const id of step.parts) pages.push(...blocks.get(id));
+    pages.push('0 STEP');
+}
+pages.push(`0 !BW ROPE hoistCord ${rope.lengthLdu} ${rope.around.join(' ')}`);
+writeFileSync(OUT, `${[...head, ...pages].join('\n')}\n`);
 process.stdout.write(`crane.ldr: boom ${THETA_DEG}°, actuator ${L.toFixed(2)} LDU pin to pin (law of cosines ${L0.toFixed(2)}), ` +
     `tip ${W(Q).map(v => v.toFixed(1))}\n`);
