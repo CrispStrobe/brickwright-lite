@@ -1,1 +1,0 @@
-custom_debug 0.6.2 by panicbit <panicbit.dev@gmail.com> (authors field of the published Cargo.toml). Declared licence: Apache-2.0 OR MIT; distributed here under Apache-2.0. Neither the crate nor its repository ships a licence file; LICENSE-APACHE is the standard Apache License 2.0 text.
