@@ -128,6 +128,11 @@ export function prepareObjectClassExport(emitter) {
     // class/parameter tags and never returned as an input or body certificate.
     const allocationOrigins=new Map([...classes].filter(([,cls])=>!cls.intrinsic).map(([name])=>[name,Symbol(name)]));
     const originTags=new Set(allocationOrigins.values()),arithmetic=[],arithmeticSeen=new Set();
+    // A producer whose result domain this graph does not model. It refuses
+    // every allocation/declaration proof exactly like 'any' (typeOf), but is
+    // not reported as an actual 'any' type to consumers of valueTypes or
+    // inputTypes, whose own inference keeps deciding such values.
+    const unknownProducer=Symbol('unknown producer');
     const shaped=(node,names)=>node.mutation==null&&Object.keys(node.fields||{}).length===0&&
         Object.keys(node.inputs||{}).length===names.length&&names.every(name=>Object.hasOwn(node.inputs,name));
     const fixedString=(target,node,name)=>{
@@ -250,7 +255,9 @@ export function prepareObjectClassExport(emitter) {
         for(const [value,left,right]of arithmetic){
             const l=[...graph.node(left).types].filter(type=>!originTags.has(type)),r=[...graph.node(right).types].filter(type=>!originTags.has(type));
             if(!l.length||!r.length)continue;
-            if([...l,...r].some(type=>!['number','boolean','string','null','undefined'].includes(type)))graph.add(value,'any');
+            const known=[...l,...r].filter(type=>type!==unknownProducer);
+            if(known.some(type=>!['number','boolean','string','null','undefined'].includes(type)))graph.add(value,'any');
+            else if(known.length<l.length+r.length)graph.add(value,unknownProducer);
             else {if(l.includes('string')||r.includes('string'))graph.add(value,'string');
                 if(l.some(type=>type!=='string')&&r.some(type=>type!=='string'))graph.add(value,'number');}
         }
@@ -271,23 +278,23 @@ export function prepareObjectClassExport(emitter) {
                 const fixed=numericShape(node)||sourceValueOperation(node)||
                     ['operator_equals','operator_lt','operator_gt','operator_and','operator_or','operator_not'].includes(op)||
                     op==='operator_join'&&shaped(node,['STRING1','STRING2'])||op==='arrays_specialValue';
-                if(!flow&&!fixed)graph.add(value,'any');
+                if(!flow&&!fixed)graph.add(value,unknownProducer);
                 if(op==='data_variable'){
                     const id=node.fields?.VARIABLE?.[1];
                     if(!emitter.project.targets.some(t=>Object.values(t.blocks||{}).some(n=>
-                        ['data_setvariableto','data_changevariableby'].includes(n.opcode)&&n.fields?.VARIABLE?.[1]===id)))graph.add(value,'any');
+                        ['data_setvariableto','data_changevariableby'].includes(n.opcode)&&n.fields?.VARIABLE?.[1]===id)))graph.add(value,unknownProducer);
                 }
                 if(op==='arcade_getLocal'){
                     const name=literal(target,node,'NAME'),owner=owners.get(node),definition=definitions.get(owner);
                     if(!definition?.parameters.includes(name)&&!Object.values(target.blocks||{}).some(n=>
-                        owners.get(n)===owner&&n.opcode==='arcade_setLocal'&&literal(target,n,'NAME')===name))graph.add(value,'any');
+                        owners.get(n)===owner&&n.opcode==='arcade_setLocal'&&literal(target,n,'NAME')===name))graph.add(value,unknownProducer);
                 }
-                if(!graph.node(value).types.size)graph.add(value,'any');
+                if(!graph.node(value).types.size)graph.add(value,unknownProducer);
             }
         }
     }while(revision!==graph.revision);
     function typeOf(cell,seen=new Set()) {
-        const node=graph.node(cell);if(seen.has(node)||node.types.has(unknownMenuElement)||node.types.has('any'))return 'any';seen.add(node);
+        const node=graph.node(cell);if(seen.has(node)||node.types.has(unknownMenuElement)||node.types.has('any')||node.types.has(unknownProducer))return 'any';seen.add(node);
         const types=[...node.types].filter(type=>!originTags.has(type)&&!['void','null','undefined'].includes(type));
         if(node.types.has('array'))return types.some(type=>type!=='array')?'any':`${node.element?typeOf(node.element,seen):'any'}[]`;
         return types.length===1?sdkClassPublicName(types[0]):'any';
@@ -405,7 +412,7 @@ export function prepareObjectClassExport(emitter) {
         }
         Object.assign(emitter,saved);return out;
     }
-    const publicTypes=value=>new Set([...graph.node(value).types].filter(type=>!originTags.has(type)).map(type=>type===unknownMenuElement?'any':type));
+    const publicTypes=value=>new Set([...graph.node(value).types].filter(type=>!originTags.has(type)&&type!==unknownProducer).map(type=>type===unknownMenuElement?'any':type));
     const valueTypes=(target,block)=>publicTypes(cell(target,block));
     const classCallableProviders=new Map();
     const classCallableProvider=(target,{sdkImagePrototype=emitter.opts.sdkImagePrototype===true||emitter.callableExports?.get(target)?.sdkImageEnabled===true}={})=>{

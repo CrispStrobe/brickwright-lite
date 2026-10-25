@@ -20,7 +20,7 @@ import {classCallableDefaultProjectGate} from './class-callable-default-project-
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {callableSourceGate} from './callable-source-gate.js';
-import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable} from './callable-export-graph.js';
+import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable,callableCurrentInputType} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
 import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
 import {sourceReferenceProject} from './source-reference-project.js';
@@ -1472,7 +1472,7 @@ class ArcadeEmitter {
             if(source&&!sourceValueOperation(b)){this.note(`unsupported Arcade source value operation ${op}`);return this.na();}
             if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             if(source&&(unary||['&','|','^','<<','>>','>>>'].includes(op))&&!this.sourceBitwiseExportOperands?.has(b)){this.note('Arcade source bitwise operation requires actual Array or primitive operand producers');return this.na();}
-            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
+            if(!source&&!compare&&(unary?op==='~':['&','|','^','<<','>>','>>>'].includes(op))&&!this.nativeBitwiseExportOperands?.has(b)&&!this.callablePrimitiveOperands(b,unary?['VALUE']:['LEFT','RIGHT'])){this.note('Native bitwise operation requires actual primitive operand producers');return this.na();}
             // A qualified class-callable graph can retain primitive Number
             // addition directly. Generic Any helpers lose the Arrow's actual
             // result signature on source reparse; declarations alone cannot
@@ -3150,6 +3150,20 @@ class ArcadeEmitter {
         }
     }
 
+    // A qualified lexical callable graph proves the current type of each
+    // input of its own current-body blocks (captured cells included). Only a
+    // complete primitive proof of every operand is accepted; Arrays, class
+    // values, callables and unproved inputs keep the existing refusal.
+    callablePrimitiveOperands (block, names) {
+        const graph=this.callableExports?.get(this.target)?.graph;
+        if(!graph)return false;
+        return names.every(name=>{
+            let type=callableCurrentInputType(graph,block,name);
+            if(!type&&graph.plan?.version===2){try{type=this.objectClassExport.classCallableProvider(this.target).currentInputType(block,name);}catch(_){type=null;}}
+            return type?.kind==='named'&&['number','boolean','string'].includes(type.name);
+        });
+    }
+
     localDeclaration (name, key) {
         const classType=this.objectClassExport?.localDeclarationType?.(key,name);
         const type=classType??this.localValueTypes.get(key)?.get(name)??'any';
@@ -3194,6 +3208,7 @@ class ArcadeEmitter {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
+        const nativeNumberResults=new Set();
         const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],spriteFlagResults=new Map(),spriteFlagWriterInputs=new Map(),inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
         const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),scoreThresholdInputs=new Map(),nativeBitwiseInputs=new Map(),sourceBitwiseInputs=new Map(),sourceBitwiseConstructorResults=new Set(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
@@ -3337,11 +3352,15 @@ class ArcadeEmitter {
                     if(value.opcode==='arcade_sourceValueBinary'&&literal(blocks,value,'OP')==='+')anys.add(id);
                     else if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
                     else numbers.add(id);
+                    // A native arithmetic/bitwise result is a Number whatever its
+                    // operands; only the bitwise gate below reads this fact.
+                    if(!source&&(value.opcode==='arrays_valueUnary'?['-','+','~'].includes(literal(blocks,value,'OP')):['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(blocks,value,'OP'))))nativeNumberResults.add(id);
                     inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&['arrays_valueBinary','arcade_sourceValueBinary'].includes(value.opcode)?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
                     return id;
                 }
                 if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);inspectionLeaves.set(id,literal(blocks,value,'KIND'));return id;}
-                if(this.isBoolean(value) || ['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','operator_join','operator_letter_of','operator_length','planetemaths_min','planetemaths_max'].includes(value.opcode)) {
+                if(this.isBoolean(value) || ['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','operator_join','operator_letter_of','operator_length','planetemaths_min','planetemaths_max'].includes(value.opcode) ||
+                    value.opcode==='arcade_mathBinary'&&['min','max','randomRange'].includes(value.fields?.OP?.[0])) {
                     const id=`${key}:primitive:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
                     (this.isBoolean(value)?booleans:['operator_join','operator_letter_of'].includes(value.opcode)?strings:numbers).add(id);const operands=Object.keys(value.inputs||{}).map(name=>ref(inputBlock(blocks,value,name)));inspectionOperators.push([id,operands]);inspectionOperatorProofs.set(id,{type:this.isBoolean(value)?'boolean':['operator_join','operator_letter_of'].includes(value.opcode)?'string':'number',operands});return id;
                 }
@@ -3654,7 +3673,9 @@ class ArcadeEmitter {
         // Start from independently primitive actual writers. Self-dependent
         // flags cycles remain refused in this narrow slice, not assumed closed.
         for(const [value,entry]of spriteFlagResults){
-            if(!entry.writers.every(row=>inspectionTypes(spriteFlagWriterInputs.get(row.node),['number','boolean','string','null','undefined'])))continue;
+            // A native arithmetic/bitwise store (e.g. a compound flags update)
+            // writes a Number whatever it reads, so it cannot form an unproved cycle.
+            if(!entry.writers.every(row=>nativeNumberResults.has(spriteFlagWriterInputs.get(row.node))||inspectionTypes(spriteFlagWriterInputs.get(row.node),['number','boolean','string','null','undefined'])))continue;
             const current=this.arrayReceiverAuthority.spriteFlagWriters(entry.target,entry.node);
             if(current&&current.length===entry.writers.length&&current.every((row,index)=>row.target===entry.writers[index].target&&row.node===entry.writers[index].node&&row.input===entry.writers[index].input))admittedSpriteFlags.add(value);
         }
@@ -3665,7 +3686,10 @@ class ArcadeEmitter {
         this.scoreThresholdExportOperands=new Set();
         for(const [block,value]of scoreThresholdInputs)if(inspectionTypes(value,['number']))this.scoreThresholdExportOperands.add(block);
         this.nativeBitwiseExportOperands=new Set();
-        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(value=>inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true)))this.nativeBitwiseExportOperands.add(block);
+        // A native arithmetic/bitwise result is already a Number, so the
+        // gate does not also require its operands (they keep their own gate).
+        const bitwiseOperand=value=>nativeNumberResults.has(value)||inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true);
+        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(bitwiseOperand))this.nativeBitwiseExportOperands.add(block);
         for(const expected of this.procedureConstraints?.allObligations||[]){
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
             if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);

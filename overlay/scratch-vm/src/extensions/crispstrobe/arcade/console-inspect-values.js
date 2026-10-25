@@ -395,11 +395,14 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
             }
             return false;
         };
+        // Arcade min/max/randomRange always return a Number (their fixed
+        // menu has no other selector); a reporter or unknown selector does not.
+        const arcadeNumberMath=node=>node?.opcode==='arcade_mathBinary'&&['min','max','randomRange'].includes(literal(node,'OP'));
         const terminalDomain=(node,domains)=>{
             if(!domains)return;
             const op=node.opcode;
             if(['text','bw_stringLiteral','operator_join','operator_letter_of'].includes(op))domains.add('string');
-            else if(['math_number','bw_numberLiteral','operator_length','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random'].includes(op))domains.add('number');
+            else if(['math_number','bw_numberLiteral','operator_length','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random'].includes(op)||arcadeNumberMath(node))domains.add('number');
             else if(['operator_equals','operator_gt','operator_lt','operator_not','operator_and','operator_or','arrays_valueTruthy','arrays_valueCompare'].includes(op))domains.add('boolean');
             else if(op==='arrays_specialValue'){const kind=literal(node,'KIND');domains.add(['null','undefined'].includes(kind)?kind:['NaN','Infinity','-Infinity','-0'].includes(kind)?'number':'unknown');}
             else domains.add('unknown'); // The primitive inspector's legacy surface is unchanged.
@@ -519,7 +522,7 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                     'operator_multiply','operator_divide','operator_mod','operator_round','operator_random',
                     'operator_equals','operator_gt','operator_lt','operator_not','operator_and','operator_or',
                     'arrays_valueTruthy','arrays_valueCompare','arcade_sourceTypeOf','arcade_askForString',
-                    'arcade_spriteToString','arcade_bufferToString','arcade_bufferToHex'].includes(op)) {origins?.add(node);terminalDomain(node,domains);return true;}
+                    'arcade_spriteToString','arcade_bufferToString','arcade_bufferToHex'].includes(op)||!player&&arcadeNumberMath(node)) {origins?.add(node);terminalDomain(node,domains);return true;}
                 if(!player&&domains&&(op==='arcade_sourceValueBinary'||op==='arcade_sourceValueUnary')){
                     if(!sourceNumber(node))return false;
                     origins?.add(node);domains?.add('number');return true;

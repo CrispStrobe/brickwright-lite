@@ -1,4 +1,7 @@
 // Independently authored control; no third-party tutorial/package source.
+// The final self-write keeps the completion flag observable: the original PXT
+// compiler drops a never-read trailing global, so the original run never
+// published ready=true (the same keep-alive the other fixtures use).
 export const SCORE_THRESHOLD_SOURCE = `let trace=""
 let nested=""
 let live=""
@@ -55,4 +58,5 @@ info.player4.onScore(7,function(){scenes+="C"})
 info.player4.setScore(7)
 game.popScene()
 info.player4.setScore(7)
-let ready=true`;
+let ready=true
+ready=!!ready`;

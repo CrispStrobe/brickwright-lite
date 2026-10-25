@@ -1505,6 +1505,10 @@ const sdkSpriteFieldTypes=(()=>{
         if(!fields.has(field.name))fields.set(field.name,SDK_PRIMITIVE_TYPE_NAMES[field.typeName]||null);
     return fields;
 })();
+// The declared primitive type name of an SDK Sprite field, or null.
+export function sdkSpritePrimitiveFieldType(name) {
+    return typeof name==='string'&&sdkSpriteFieldTypes.get(name)||null;
+}
 function sdkSpriteFactoryCall(node,sdk) {
     return node?.type==='Call'&&!node.isNew&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Member'&&!node.callee.optional&&
         SDK_SPRITE_FACTORIES.has(path(node.callee))&&sdk.has(node.callee);

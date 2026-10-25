@@ -1789,7 +1789,16 @@ module.exports = makeExt(`// Name: Arcade
     registerScoreHandler(args,util) {
       const player=Number(Scratch.BWValues.decode(args.PLAYER));
       if(!Number.isInteger(player)||player<1||player>4)throw new Error('Arcade score registration requires a fixed player from 1 to 4');
-      const score=Scratch.BWValues.decode(args.SCORE);
+      let score=Scratch.BWValues.decode(args.SCORE);
+      // A number field shadow (the literal threshold) delivers its text; only
+      // that actual math_number shadow is a Number producer. Variables and
+      // other reporters still need a genuine Number value.
+      if(typeof score==='string'){
+        const target=util?.target||util?.thread?.target,block=target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
+        const input=block?.inputs?.SCORE,literal=input&&input.block===input.shadow?target.blocks.getBlock(input.block):null;
+        const text=literal?.opcode==='math_number'&&literal.shadow?literal.fields?.NUM?.value:undefined;
+        if(text!==undefined&&String(text)===String(args.SCORE)&&String(text).trim()!==''&&Number.isFinite(Number(text)))score=Number(text);
+      }
       if(typeof score!=='number')throw new TypeError('Arcade score threshold requires a Number');
       const state=this._lifeState(player);if(!state)return;
       const registration=this._handlerRegistration(args,util);

@@ -72,3 +72,38 @@ move(sprites.create(img\`1\`))
 values.push(total)`);
     assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
 });
+
+// Array programs: the refusal applies only where an Array can reach an
+// addition operand. These operands are SDK Sprite field reads through a
+// Sprite-declared local, program class method results and typeof results.
+test('an Array program adding a Sprite field read through a program receiver function keeps the ordinary helper', () => {
+    const out = exported(`let values = [1, 2]
+let actor = sprites.create(img\`1\`)
+function owner() { return actor }
+owner().fx += 5
+values.push(1)`);
+    assert.deepEqual(out.unsupported, []);
+    assert.match(out.ts, /function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
+});
+
+const classResult = escape => `let values = [1, 2]
+class Counter {
+    count: number
+    constructor() { this.count = 3 }
+    read() { return this.count }
+}
+let counter = new Counter()
+let total = 0
+total = counter.read() + 1
+${escape}values.push(total)`;
+
+test('a program method result in a program whose Arrays stay closed keeps the ordinary helper', () => {
+    const out = exported(classResult(''));
+    assert.deepEqual(out.unsupported, []);
+    assert.doesNotMatch(out.ts, /join\(","\)/);
+});
+
+test('the same method result keeps the refusal once an Array escapes into an SDK call', () => {
+    const out = exported(classResult('sprites.create(img`1`).say(values)\n'));
+    assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
+});

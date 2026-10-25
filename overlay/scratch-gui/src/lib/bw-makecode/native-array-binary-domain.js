@@ -1,7 +1,7 @@
 import {numericRecursiveNormalResults} from './numeric-recursive-normal-results.js';
 import {imagePixelNormalResults} from './image-pixel-normal-results.js';
 import {numericClosureNormalResults} from './numeric-closure-normal-results.js';
-import {analyseSourceValueProducers} from './source-value-producers.js';
+import {analyseSourceValueProducers,sdkSpritePrimitiveFieldType} from './source-value-producers.js';
 import {inspectNativeArrayAddHelpers} from './native-array-binary-helper-source.js';
 import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
@@ -540,7 +540,170 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                     return [...operandTypes].every(type=>typeof type==='string'&&(primitive.has(type)||type==='Opaque'))&&!allocations(operand).length;
                 })));
                 const arrayFree=bindings.nodes.every(node=>!arrayShaped.has(node?.type)&&!Object.hasOwn(node,'bwNativeNamedArray'));
-                if(operandsOrdinary&&arrayFree)result.ordinaryFallback=true;
+                // A program that holds Arrays still keeps the ordinary helper
+                // when no Array can reach any operand: every Opaque operand is
+                // proved to come only from primitive values, other closed
+                // helper results or reads of a declared-primitive SDK Sprite
+                // field whose receiver is never an Array or a parameter. A
+                // receiver that is null/undefined throws, never yields an
+                // Array. Unknown calls, parameters, compound writers and any
+                // other producer keep the refusal. Named/legacy Array tags are
+                // never admitted by this rule.
+                const namedFree=bindings.nodes.every(node=>!['NativeNamedArrayCreate','NativeNamedArrayDelete','NativeArrayAccess','LegacyParsedValue','LegacyJsonValue'].includes(node?.type)&&!Object.hasOwn(node,'bwNativeNamedArray'));
+                const unwrap=node=>node?.type==='Parenthesized'?unwrap(node.expression):node;
+                const noArray=node=>{const found=types(node);return found.size>0&&[...found].every(type=>typeof type==='string')&&!allocations(node).length;};
+                const primitiveOnly=node=>{const found=types(node);return found.size>0&&[...found].every(type=>typeof type==='string'&&primitive.has(type))&&!allocations(node).length;};
+                const variable=node=>{const kinds=graph.bindingKindsAt(actual(node));return kinds.size===1&&kinds.has('variable');};
+                const bindingAt=(node,name)=>name===undefined?graph.bindingOf(actual(node)):graph.bindingOf(actual(node),name);
+                // A binding every declaration of which states one non-Array
+                // SDK type (the exported PXT declaration, never a program
+                // class or any), and that is not a parameter.
+                const userClasses=new Set(bindings.nodes.filter(node=>node?.type==='Class'&&typeof node.name==='string').map(node=>node.name));
+                const declaredType=identifier=>{
+                    if(identifier?.type!=='Identifier'||!variable(identifier))return null;
+                    const binding=bindingAt(identifier);if(binding==null)return null;
+                    const rows=bindings.nodes.filter(node=>node.type==='Declaration').flatMap(node=>(node.decls||[]).filter(decl=>bindingAt(node,decl.name)===binding));
+                    const names=new Set(rows.map(decl=>decl.isArray===true?null:decl.typeName));
+                    const [name]=names;
+                    return rows.length>0&&names.size===1&&typeof name==='string'&&/^[A-Za-z_$][\w$.]*$/.test(name)&&
+                        !['any','Object','object','unknown'].includes(name)&&!userClasses.has(name)?name:null;
+                };
+                // Members typed any or Array in the SDK are never admitted.
+                const opaqueMembers=new Set(['data','allSprites','sprites','tiles','frames','pixels','children','buffer']);
+                const receiverSafe=node=>{
+                    const value=unwrap(node);if(!value||!noArray(value))return false;
+                    if(value.type==='Identifier'&&!variable(value))return false;
+                    if(declaredType(value))return true;
+                    return [...types(value)].every(type=>['Null','Undefined','Sprite','SdkSprite','Image'].includes(type));
+                };
+                const writersOf=identifier=>{
+                    const binding=bindingAt(identifier),rows=[];
+                    if(binding==null)return null;
+                    for(const node of bindings.nodes){
+                        if(node.type==='Declaration')for(const decl of node.decls||[])if(bindingAt(node,decl.name)===binding)rows.push(decl.init?{value:decl.init}:{empty:true});
+                        const left=node.type==='Assignment'?unwrap(node.left):node.type==='Update'?unwrap(node.argument):null;
+                        if(left?.type==='Identifier'&&bindingAt(left)===binding)rows.push(node.type==='Assignment'&&node.op==='='?{value:node.right}:node.type==='Update'?{empty:true}:{other:true});
+                    }
+                    return rows;
+                };
+                // getPixel returns a Number on an Image and throws otherwise;
+                // a program class may not supply its own getPixel method.
+                const ownGetPixel=bindings.nodes.some(node=>node?.type==='Class'&&(node.methods||[]).some(method=>method?.name==='getPixel'));
+                const imageValue=node=>{
+                    const value=unwrap(node);if(!value||allocations(value).length||ownGetPixel)return false;
+                    if(declaredType(value)==='Image'||value.type==='Member'||value.type==='Index')return true;
+                    const found=value.type==='Index'&&allocations(unwrap(value.object)).length?graph.arrayElementTypesAt(actual(unwrap(value.object))):types(value);
+                    return found.size>0&&[...found].some(type=>type==='Image')&&[...found].every(type=>['Image','Null','Undefined'].includes(type));
+                };
+                // Every actual program Array allocation stays inside closed
+                // program flow: it never reaches an object literal, a member or
+                // indexed store, a callback return, a constructor or an SDK or
+                // unknown callee. Then an Opaque program value is never one of
+                // them. Computed once, on demand.
+                let containment;
+                const internal=()=>{
+                    if(containment!==undefined)return containment;
+                    const reaches=node=>!!node&&typeof node==='object'&&allocations(node).length>0;
+                    containment=true;
+                    for(const node of bindings.nodes){
+                        if(node.type==='Object'&&(node.props||[]).some(property=>reaches(property.value))){containment=false;break;}
+                        if(node.type==='Assignment'&&unwrap(node.left)?.type!=='Identifier'&&reaches(node.right)){containment=false;break;}
+                        if(node.type==='Call'&&(node.args||[]).some(reaches)&&(node.isNew||node.constructorCall||
+                            !(node.callee?.type==='Identifier'&&graph.immutableFunctionAt(actual(node.callee)))&&
+                            !(node.callee?.type==='Member'&&reaches(node.callee.object)&&['push','unshift','indexOf','includes','insertAt','removeElement'].includes(node.callee.name)))){containment=false;break;}
+                        if(node.type==='Return'&&reaches(node.value)){
+                            let owner=bindings.parentOf(node);
+                            while(owner&&!['FunctionDeclaration','FunctionExpression'].includes(owner.type))owner=bindings.parentOf(owner);
+                            if(owner?.type!=='FunctionDeclaration'){containment=false;break;}
+                        }
+                    }
+                    return containment;
+                };
+                // A parameter whose own function declares it a primitive
+                // (exported PXT) type; untyped, any and object formals refuse.
+                const primitiveParameter=identifier=>{
+                    const kinds=graph.bindingKindsAt(actual(identifier));
+                    if(kinds.size!==1||!kinds.has('parameter'))return false;
+                    let owner=bindings.parentOf(identifier);
+                    while(owner&&!(Array.isArray(owner.params)&&owner.params.includes(identifier.name)))owner=bindings.parentOf(owner);
+                    const declared=owner?.paramTypes?.[identifier.name];
+                    return !!declared&&declared.isArray!==true&&['number','string','boolean'].includes(declared.text);
+                };
+                const fieldWritersSafe=(name,seen)=>{
+                    for(const node of bindings.nodes){
+                        if(node?.type==='Class'){
+                            for(const field of node.fields||[])if(field?.name===name&&(field.parameterProperty&&!['number','string','boolean'].includes(field.typeName)||field.init&&!valueSafe(field.init,seen)))return false;
+                        }
+                        if(node?.type==='Assignment'){
+                            const left=unwrap(node.left);
+                            if(left?.type==='Member'&&left.name===name&&(left.computed||node.op!=='='||!valueSafe(node.right,seen)))return false;
+                            if(left?.type==='Index')return false;
+                        }
+                    }
+                    return true;
+                };
+                const primitiveResultOps=new Set(['+','-','*','/','%','**','&','|','^','<<','>>','>>>','<','<=','>','>=','==','!=','===','!==']);
+                const valueSafe=(operand,seen=new Set())=>{
+                    if(provedHelperResults.has(operand)||primitiveOnly(operand))return true;
+                    const node=unwrap(operand);
+                    if(!node)return false;
+                    if(provedHelperResults.has(node)||primitiveOnly(node))return true;
+                    // A revisited producer adds no new leaf; all leaves are still checked.
+                    if(seen.has(node))return true;seen.add(node);
+                    const found=types(node);
+                    if(allocations(node).length||[...found].some(type=>typeof type!=='string'))return false;
+                    // A known non-Array object type (Image, Sprite...) is never an Array.
+                    if(found.size&&!found.has('Opaque'))return true;
+                    // Arithmetic, comparison and unary results of non-Array operands are primitive.
+                    if(node.type==='Binary'&&primitiveResultOps.has(node.op))return valueSafe(node.left,seen)&&valueSafe(node.right,seen);
+                    // These unary operators always return a primitive, whatever their operand.
+                    if(node.type==='Unary'&&['-','+','~','!','typeof'].includes(node.op))return true;
+                    if(node.type==='Member'&&!node.optional&&!node.computed){
+                        const receiver=unwrap(node.object),receiverTypes=receiver?types(receiver):new Set();
+                        if(node.name==='length'&&receiverTypes.size&&[...receiverTypes].some(type=>type?.kind==='Array'||type==='String')&&
+                            [...receiverTypes].every(type=>type?.kind==='Array'||['String','Null','Undefined'].includes(type)))return true;
+                        if(sdkSpritePrimitiveFieldType(node.name)!==null&&receiverSafe(node.object))return true;
+                        if(!opaqueMembers.has(node.name)&&!!declaredType(receiver)&&noArray(receiver))return true;
+                        // A program class field read: only program values reach it.
+                        if(internal()&&!opaqueMembers.has(node.name)&&receiverTypes.size>0&&[...receiverTypes].every(type=>['ClassInstance','Null','Undefined'].includes(type)))return true;
+                        // A field of the receiver `this`: every program store to
+                        // a field of that name (and its class initializers) is
+                        // checked; a parameter property must declare a primitive type.
+                        // A declared SDK Sprite primitive field that no program
+                        // class redeclares is the SDK field of a Sprite subclass.
+                        if(receiver?.type==='Identifier'&&receiver.name==='this'&&!opaqueMembers.has(node.name)){
+                            const declared=bindings.nodes.some(each=>each?.type==='Class'&&(each.fields||[]).some(field=>field?.name===node.name));
+                            return !declared&&sdkSpritePrimitiveFieldType(node.name)!==null||fieldWritersSafe(node.name,seen);
+                        }
+                        return false;
+                    }
+                    if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&node.callee.name==='getPixel'&&node.args?.length===2&&
+                        imageValue(node.callee.object)&&node.args.every(arg=>valueSafe(arg,seen)))return true;
+                    // A canonical generated primitive operation helper returns
+                    // a Number or Boolean on normal completion.
+                    if(node.type==='Call'&&operationCalls.has(node))return true;
+                    // A call of an actual program function or a program class
+                    // method computes its result from program values only.
+                    if(node.type==='Call'&&!node.isNew&&!node.optional&&internal()){
+                        if(node.callee?.type==='Identifier'&&graph.immutableFunctionAt(actual(node.callee)))return true;
+                        if(node.callee?.type==='Member'&&!node.callee.optional&&!node.callee.computed){
+                            const receiverTypes=types(unwrap(node.callee.object));
+                            if(receiverTypes.size&&[...receiverTypes].every(type=>['ClassInstance','Null','Undefined'].includes(type)))return true;
+                        }
+                    }
+                    if(node.type==='Index'){
+                        const receiver=unwrap(node.object);
+                        if(!receiver||!allocations(receiver).length)return false;
+                        const elements=graph.arrayElementTypesAt(actual(receiver));
+                        return [...elements].every(type=>typeof type==='string'&&type!=='Opaque');
+                    }
+                    if(node.type==='Identifier'&&primitiveParameter(node))return true;
+                    if(node.type!=='Identifier'||!variable(node))return false;
+                    const rows=writersOf(node);
+                    return !!rows?.length&&rows.every(row=>row.empty||row.value&&valueSafe(row.value,seen));
+                };
+                const operandsSafe=domainHelpers.every(each=>each.calls.every(each=>each.args.every(operand=>valueSafe(operand))));
+                if(operandsOrdinary&&arrayFree||operandsSafe&&namedFree)result.ordinaryFallback=true;
             }catch { /* Without this fact the refusal stands unchanged. */ }
             return result;
         }
