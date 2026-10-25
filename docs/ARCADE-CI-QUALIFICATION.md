@@ -124,3 +124,15 @@ is new legs k and k+3. (It does not refine modulo four.) Admission now
 requires all six exact current names; the two- and four-way names stay in
 the skip collector as historical evidence only. No test, assertion, skip or
 timeout changed.
+
+## Six legs balanced by measured time — 2026-10-25
+
+The modulo-six split ran its legs' test steps in 8–17 minutes: one leg held
+twice the measured test time of another. `scripts/list-tests.mjs` now assigns
+files from `scripts/data/unit-test-timings.json` (per-file top-level test
+seconds read from one hosted run's `unit-shard-*` TAP and census artifacts by
+`scripts/gen-unit-test-timings.mjs`), longest first to the lightest leg, plus
+a small per-file start-up constant. Files the table does not know fall back to
+name hashing. The partition guarantees are unchanged: complete, disjoint,
+equal to the fast set, CLI identical. The legs no longer refine the older
+modulo splits. Regenerate the table when the legs drift apart.
