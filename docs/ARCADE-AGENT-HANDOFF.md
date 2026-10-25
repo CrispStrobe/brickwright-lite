@@ -2,6 +2,26 @@
 
 ## 25 October: fresh source census and SDK scalar repair
 
+The subsequent four-shard run at
+[`3fb45ce3`](https://github.com/CrispStrobe/brickwright-lite/commit/3fb45ce31ff38bfdaeecaf2afc4e3106f1bf3f2d)
+has 65 failures, compared with the earlier 70 below. Six actual failure titles
+disappeared and one appeared; inspect each retained failure rather than treating
+the net reduction as proof of a particular repair. Its numeric-authoring job
+passed five reports covering 29 journeys. The optional clean-export capture
+remains `UNAVAILABLE_FRESHNESS` / `OBSERVATION_MISSING`. These results qualify
+that head's observed boundaries, not the later composed source candidate.
+
+The next implementation is the
+[merged Image consumer ABI scope](../lanes/2026-10-25-arcade-image-consumer-abi.md).
+The unchanged SplashDialog test reaches exported MakeCode execution and fails
+inside generated startup. A source reconstruction shows Image aliases emitted
+as `any`, but does not establish the exact failing expression. The same required
+exported-PXT invocation now observes its compilation and, on failure, reports
+hashed inputs and bounded generated-code context. It neither retries the guest
+nor changes assertions. Prove actual current Image receivers before introducing
+Image interface context; preserve writable fields, alias generations across
+resize, early-read refusals and the original zero/negative allocation matrix.
+
 The fresh baseline at `468f97a625c8065ea791047ddfb319563094be4e` measures
 **145 translated / 38 partial / one parse failure** on the unchanged 184 raw
 inputs. These are import-and-Creator classifications, not completed games.

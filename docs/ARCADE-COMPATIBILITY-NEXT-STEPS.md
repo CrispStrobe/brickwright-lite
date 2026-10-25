@@ -25,6 +25,25 @@ historical original compiler success and current execution distinct.
    import/Creator, current SDK compilation, native execution and visible
    authoring separate. Scope the next remaining family from actual diagnostics.
 
+The later `3fb45ce3` run has 65 failures across four shards: six earlier failure
+titles resolved and one newly failing title. Its numeric-authoring job passes
+five reports / 29 journeys, with optional clean-export capture still unavailable.
+Preserve that terminal intake before publishing the composed successor. These
+are observations of the earlier head, not qualification of the new candidate.
+
+The current next repair has a
+[merged Image consumer claim](../lanes/2026-10-25-arcade-image-consumer-abi.md).
+Bind the exact current Image receiver before emitting interface type context.
+The existing dialog test preserves its original assertions and observes the
+same required compilation for bounded failure diagnostics. Do not infer the
+exact `iface` cause from an `any` declaration alone. After this scope qualifies,
+inspect SDK constructor/virtual-call captured scalar effects: a reconstruction
+of the unchanged constructor fixture first refuses the captured trace in
+`Game_mark`. Removing the SDK-subclass exclusion or labelling every `this.x`
+read Number would not prove those callback writes. Claim constructor identity,
+argument/property initialization order, virtual dispatch effects, all captured
+writers and currentness together before implementing that separate repair.
+
 Five historically compiling retained contexts report atan2 as one of several
 gaps. The same family also exposes HUD enum members, String conversion,
 procedure default/omission and numeric sprite provenance issues. Closing one
