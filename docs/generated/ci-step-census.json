@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T08:16:30.599Z",
+  "generatedAt": "2026-10-25T09:54:03.359Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1982,6 +1982,7 @@
     "robot-lab-own-firmware.yml",
     "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
+    "spike-linux-package.yml",
     "target-performance.yml",
     "tauri.yml",
     "testflight-release-audit.yml",
@@ -7729,6 +7730,24 @@
       },
       "sourceSha": "a11711d61"
     },
+    "spike-linux-package.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Install native build dependencies",
+        "Fetch locked crates",
+        "Assemble the package with placeholder runtime and support inputs",
+        "Install with normal dpkg policy and check the installed layout"
+      ],
+      "inFileInNoRun": [
+        "Install native build dependencies",
+        "Fetch locked crates",
+        "Assemble the package with placeholder runtime and support inputs",
+        "Install with normal dpkg policy and check the installed layout"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
     "testflight-release-audit.yml": {
       "runs": 0,
       "stepsInFile": [
@@ -7746,7 +7765,7 @@
   },
   "lastRefresh": {
     "workflow": "testflight-release-audit.yml",
-    "at": "2026-10-24T08:16:30.599Z",
+    "at": "2026-10-25T09:54:03.359Z",
     "sourceSha": "working-tree"
   }
 }
