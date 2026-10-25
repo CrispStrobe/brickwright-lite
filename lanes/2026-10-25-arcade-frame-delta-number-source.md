@@ -1,6 +1,6 @@
 # Current event-context frame delta as an actual numeric source producer
 
-Status: IMPLEMENTED source candidate; project/runtime result ABI and final qualification pending.
+Status: IMPLEMENTED source candidate; result ABI composed under #1411, final hosted qualification pending.
 Base: `a7f8348315ef7b31f33d8b236bf43d6e86c53a03`.
 Owner: Arcade integration; preserve the active integration publisher and its
 exclusive official-original intake. No publication to the active source PR.
@@ -74,9 +74,10 @@ caller-made options, current AST replacement and ambient invalidation. Unknown
 roots, exported entries and ambiguous namespace/var bindings remain conservative.
 No general Array call or class/ambient-this authority is added.
 
-The strict tenth control still fails the first JSON export because project
-consumer flow lacks its own frame result proof. It keeps the original Code, two
-JSON generations and SB3 assertions intact. Follow the separate
+The initial source-only candidate left the strict tenth control failing at
+first JSON export because consumer flow lacked its own frame result proof.
+The composed #1411 candidate now passes that same Code, two-JSON and SB3 control
+unchanged. Follow the separate
 [project and actual runtime ABI scope](2026-10-25-arcade-frame-delta-number-abi.md)
 for that boundary. Source success does not certify a completed VM result or
 close the complete game/export/editor journey. Earlier red observations remain

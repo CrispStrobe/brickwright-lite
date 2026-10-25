@@ -4,9 +4,10 @@
 
 The latest complete unchanged 184-input import/Creator census measures
 **147 translated / 36 partial / one parse failure**, using the same observer
-and input hashes. The preceding measurement was 146/37/1; only the retained
-snake-game primitive-caller case changes stage in this latest comparison, with
-no stage regressions. The earlier sorting repair changed 145/38/1 to 146/37/1.
+and input hashes. The repair that reduced 146/37/1 to 147/36/1 changed only the
+retained snake-game primitive-caller case. A fresh census after composing the
+frame/math result candidate still measures 147/36/1, with unchanged diagnostics
+and no stage regressions. The earlier sorting repair changed 145/38/1 to 146/37/1.
 This is source conversion, not SDK/native execution or completed applications.
 Earlier measurements below are historical and must not replace this result.
 
