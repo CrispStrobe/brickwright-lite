@@ -1,3 +1,4 @@
+import {createClosedOrdinarySourceEntry} from './closed-ordinary-source-entry.js';
 import {nullableArrayLengthSource} from './nullable-array-length-source.js';
 import {lexicalDeclarationReadiness} from './lexical-declaration-readiness.js';
 import {constraints} from './ordinary-procedure-constraint-metadata.js';
@@ -99,7 +100,8 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
+    const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
     const nullableLengthIssued=new Set();let nullableLengthUsed=false;
     const lexicalSource=initializationEntries?lexicalDeclarationReadiness(program):null;
@@ -278,7 +280,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const resultFunctions=new Map([...functions].filter(([,fn])=>fn).map(([name,fn])=>[fn.result,name])),callGraph=new Map();
     for(const call of calls){let owner=owners.get(call.node);while(owner&&!owner.result)owner=owner.parent;const origin=resultFunctions.get(owner?.result);if(origin){if(!callGraph.has(origin))callGraph.set(origin,new Set());callGraph.get(origin).add(call.callee);}}
     const cyclic=(origin,current=origin,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callGraph.get(current)||[])if(next===origin||cyclic(origin,next,seen))return true;return false;};
-    for(const call of calls){if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn&&mathNumbers?.has(call.node)){add(call.result,'Number');continue;}if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
+    for(const call of calls){if(ordinaryEntry?.isUnreachable(call.node)){add(call.result,'Opaque');continue;}if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn&&mathNumbers?.has(call.node)){add(call.result,'Number');continue;}if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
             if(numericArrows.size)numericCalls.push({node:call.node,result:call.result,receiver:cell(call.node.callee)});
             else add(call.result,'Opaque');if(arrayValues)for(const argument of call.node.args)arrayOperations.push({kind:'escape',receiver:cell(argument)});continue;
         }if(numericHelpers.has(fn.node)) {
@@ -383,7 +385,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
+    const currentTypes=value=>new Set((!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
     // Construct this independent execution frontier only on demand. It cannot
     // add initialization/type facts or be selected by public source options.
     let lexicalReadiness;
@@ -407,10 +409,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
         isLexicalDeclarationExecutedAt:(node,binding)=>lexical().isDeclarationExecutedAt(node,binding),
         isCapturedLexicalDeclarationReadyAt:node=>lexical().isCapturedReadyAt(node),
-        lexicalDeclarationReadinessCurrent:()=>!lexicalSource||lexicalSource.current(),
+        lexicalDeclarationReadinessCurrent:()=> (!ordinaryEntry||ordinaryEntry.current())&&(!lexicalSource||lexicalSource.current()),
+        closedOrdinaryEntryCurrent:()=>!ordinaryEntry||ordinaryEntry.current(),
+        ordinaryEntryUnreachableAt:node=>ordinaryEntry?.isUnreachable(node)===true,
         nullableArrayLengthCurrent:()=>!nullableLengthSource||nullableLengthSource.current(),
-        isInitializedAt:node=>initializedReads.has(node),
-        isBindingInitializedAt:(node,binding)=>initializationAt.get(node)?.has(binding)===true,
+        isInitializedAt:node=>(!ordinaryEntry||ordinaryEntry.current())&&initializedReads.has(node),
+        isBindingInitializedAt:(node,binding)=>(!ordinaryEntry||ordinaryEntry.current())&&initializationAt.get(node)?.has(binding)===true,
         localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),
         declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,
         immutableFunctionAt:immutableFunction,
@@ -1268,7 +1272,7 @@ function proveImageArrayCloneEffectEntries(program,createGraph,sourceContext) {
 
 // Shared complete validator: public entry retains its original eager graph and
 // option observations. No caller can supply a graph/factory to this engine.
-function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers) {
+function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries=false) {
  // A comparison, `!` or typeof of proved primitive operands is a primitive
  // producer for this consumer (exported Code booleans are `0 < 1` helpers).
  // A callback closure is allocated after the bindings already initialized
@@ -1291,10 +1295,10 @@ function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sce
   for(const child of Object.values(node))if(child&&typeof child==='object')scanWrites(child);};
  scanWrites(program);
  const numericHelpers=new Set([...helperNames].filter(([name,fn])=>fn&&!written.has(name)).map(([,fn])=>fn));
- return {unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers};
+ return {unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers,closedOrdinaryEntries};
 }
-export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false}={}) {
- const graph=analyseSourceValueProducers(program,primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers));
+export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,closedOrdinaryEntries=false}={}) {
+ const graph=analyseSourceValueProducers(program,primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries));
  return validatePrimitiveConstraintGraph(program,graph,onlyFunctions);
 }
 function validatePrimitiveConstraintGraph(program,graph,onlyFunctions) {
@@ -1332,6 +1336,7 @@ function validatePrimitiveConstraintGraph(program,graph,onlyFunctions) {
   const incoming=calls.filter(call=>graph.unchangedFunctionAt(call)===fn);
   for(const call of incoming) {
    if(call.isNew||call.typeArguments?.length||call.args.length>fn.params.length||fn.params.slice(call.args.length).some(name=>!fn.optionalParams?.includes(name)||fn.paramTypes?.[name]?.text!=='any')){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
+   if(graph.ordinaryEntryUnreachableAt?.(call))continue;
    for(const constraint of entry.selected)requireTypes(constraintTypes(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
   }
   // All assignments into an actual formal must discharge its contract. Its
@@ -1539,8 +1544,8 @@ function compilerCameraNumberInput(program){
  * branch after actual parsing/owned normalizers. No graph or cheap getter escapes.
  * External low-level analysis and public validation keep the original path.
  */
-export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false}={}){
-    const original=()=>validateProcedureConstraintSource(program,{onlyFunctions,ordinaryPrimitiveSdkNumbers,sceneClockNumbers});
+export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,closedOrdinaryEntries=false}={}){
+    const original=()=>validateProcedureConstraintSource(program,{onlyFunctions,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries});
     if(!ordinaryPrimitiveSdkNumbers||!compilerMayHaveCameraMember(program))return original();
     let selected=onlyFunctions,eligible=true;
     try{
@@ -1560,7 +1565,7 @@ export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunc
     // getter/callback side effects are observed exactly once, never retried.
     if(!eligible)return original();
     const proof=compilerCameraNumberInput(program);if(!proof)return original();
-    const options=primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers);
+    const options=primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries);
     const graph=analyseSourceValues(program,options,null,proof);
     const diagnostics=validatePrimitiveConstraintGraph(program,graph,selected);
     return proof.current()?diagnostics:original();

@@ -138,7 +138,7 @@ function prepareConstraints(program,mode,declarationIdentityOnly) {
  for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.unchangedFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'&&!parent.isNew&&!parent.typeArguments?.length)){if(!escapes.has(node.name))escapes.set(node.name,[]);escapes.get(node.name).push(parent?.type==='Call'&&key==='args'&&!parent.isNew);}}
  for(const [name,callbacks]of escapes){selected.delete(name);if(mode==='supported-default'&&callbacks.every(Boolean))continue;excluded.push('Procedure parameter constraint: '+name+' escaped or nonordinary call remains outside this protocol');}
  for(const [name,entry]of selected)if(graph.unchangedFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
- const validation={onlyFunctions:new Set(selected.keys()),ordinaryPrimitiveSdkNumbers:mode==='supported-default',sceneClockNumbers:mode==='supported-default'};
+ const validation={onlyFunctions:new Set(selected.keys()),ordinaryPrimitiveSdkNumbers:mode==='supported-default',sceneClockNumbers:mode==='supported-default',closedOrdinaryEntries:mode==='supported-default'};
  const validate=declarationIdentityOnly?validateCompilerOwnedProcedureConstraintSource:validateProcedureConstraintSource;
  // No ordinary function can enter the shared validator's functions Map when
  // the actual local selection Set is empty. Its completed diagnostic result is
