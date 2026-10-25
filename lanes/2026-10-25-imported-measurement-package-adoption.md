@@ -44,3 +44,26 @@ Require every enabled exact-head check and affected clean application evidence
 before normal matched-head merge. This is no physical-device accuracy, universal
 corpus, release or deployment certificate. Close this bounded adoption before
 campaign step4; the overall campaign ends only after step5 acceptance.
+
+## Preparation checkpoint — source accepted, consumer not qualified
+
+The owned CUI supplier landed `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`
+after all three enabled checks succeeded: 75 actual browser scenarios, 162
+precision checks and 17 SPICE comparisons. Root and GUI manifests/locks now
+select this revision; Board and every other pin are unchanged. Canonical GUI
+lock generation also removes the existing optional macOS fsevents development
+flag; its version, resolution and integrity remain unchanged.
+
+Current-package tests retain their existing behavior and add imported loaded
+PMOS, genuine NMOS body-current authority and authored-step refusal controls.
+Their syntax checks pass; actual installed-consumer execution remains pending.
+Generated provenance and actual built-GUI verification are not yet accepted.
+
+Two fixed instrument source-contract paths and three separately owned x86
+source-contract paths still name the preceding CUI. Coordinate their bounded
+current-versus-historical compatibility before editing outside this envelope.
+The x86 owner retains those three paths and historical artifact qualification;
+this owner retains package inputs and global pin-identity enforcement. Do not
+waive the pin gate, hide a SHA or relabel originals. Hold main until the combined
+consumer and contract tree has every enabled exact-head check and affected
+application evidence. A preparation checkpoint is not a landed adoption.
