@@ -11,7 +11,8 @@ enabled exact-head check and normal supplier landing before selecting its pin.
 
 Own this file; `vendor-pins.json`, root `package.json` and `package-lock.json`,
 `packages/scratch-gui/package.json` and its `package-lock.json`; generated
-`overlay/scratch-gui/static/licenses/bw-packages.sources.json` and
+`overlay/scratch-gui/static/licenses/bw-packages.sources.json` and its generated
+`packages/scratch-gui/static/licenses/bw-packages.sources.json` mirror, plus
 `overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json`;
 `test/cli-op-kcl-package-adoption.test.mjs`,
 `test/lm741-package-adoption.test.mjs`, `test/lm324-package-adoption.test.mjs`,
@@ -21,6 +22,13 @@ Own this file; `vendor-pins.json`, root `package.json` and `package-lock.json`,
 `test/scope-reset-package-adoption.test.mjs`,
 `test/circuit-aperture-adoption.test.mjs`, and
 `scripts/verify-circuit-ux.mjs` for actual installed GUI checks.
+Also own `.github/workflows/circuit-instrument-regression.yml` and
+`scripts/lib/instrument-regression-cases.mjs` solely to advance the CUI checkout
+and `CONTRACT_SOURCES` identity from
+`91d8434a79d373cef2837c137ab356356f1a3b44` to the qualified supplier landing
+`408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`. Preserve all 312 case definitions,
+numerical bounds, resource caps, dispatch and release admission, and historical
+source receipts. This compatibility amendment does not authorize measurements.
 Only update current-package identity expectations in the prior adoption tests;
 keep every historical receipt, behavior assertion and negative intact.
 
@@ -29,7 +37,10 @@ Advance only the qualified CUI package in one purposeful batch. Preserve Board
 Use canonical pin, lock, GUI integration and provenance generators. Verify their
 expected delta first; any additional changed output needs a bounded scope
 correction before writing, not a blanket regeneration claim. No copied source,
-private engine override, solver/model/workflow/release/deployment changes.
+private engine override, solver/model/release/deployment changes. Workflow
+changes are excluded except the exact CUI checkout identity substitution above;
+no other workflow changes. This amendment adds no global gate, x86
+source-contract or dependency-pin authority.
 Preserve release, SPIKE, Arcade, Robot Lab and x86 owners.
 
 ## Required proof and closeout
