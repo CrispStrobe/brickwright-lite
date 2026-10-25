@@ -1,0 +1,22 @@
+Subject: CBCharacteristic.service and CBService.peripheral are optional now
+
+Apple made these weak optionals in iOS 15 / macOS 12 (2021). The vendored
+snapshot is from 2022-02-18 but was built against an older SDK, so this one
+line no longer compiles: under Swift 6.2 / the macOS 26 SDK it is
+
+  error: value of optional type 'CBService?' must be unwrapped to refer to
+         member 'peripheral' of wrapped base type 'CBService'
+
+It is the ONLY line in the whole vendored set that fails. Verified by building
+Session, BLESession, GATTHelpers, JSONRPCError, EncodingHelpers, RSSI,
+DispatchSemaphore and both CoreBluetooth delegate helpers against Swift 6.2:
+with this one change, "Build complete".
+
+Optional-chaining is the minimal correct fix and matches what the API now
+means — a characteristic whose service has been released has nothing to notify.
+
+--- a/Sources/BLESession.swift
++++ b/Sources/BLESession.swift
+@@
+-            endpoint.service.peripheral.setNotifyValue(false, for: endpoint)
++            endpoint.service?.peripheral?.setNotifyValue(false, for: endpoint)

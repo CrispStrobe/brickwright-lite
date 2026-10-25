@@ -1,0 +1,16 @@
+
+int count;
+task main() {
+    SetSensor(SENSOR_2, SENSOR_ROTATION);
+    ClearSensor(SENSOR_2);
+    count = 0;
+    repeat(5) {
+        OnFwd(OUT_B);
+        until (SENSOR_2 > 16);
+        Off(OUT_B);
+        count += 1;
+        PlayTone(220 * count, 20);
+        Wait(30);
+    }
+    SelectDisplay(DISPLAY_SENSOR_2);
+}

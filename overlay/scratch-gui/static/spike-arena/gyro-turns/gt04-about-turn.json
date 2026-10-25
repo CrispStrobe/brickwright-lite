@@ -1,0 +1,96 @@
+{
+  "id": "gt04-about-turn",
+  "title": {
+    "en": "About turn",
+    "de": "Kehrtwende"
+  },
+  "intro": {
+    "en": "Fetch the seed tray: drive 50 cm to the potting bench, turn round on the spot, and drive back 50 cm to the door. Careful - the yaw angle never reads more than 180: turning right past 180 it jumps to -180.",
+    "de": "Hol das Saatgutbrett: Fahre 50 cm zum Pflanztisch, drehe dich auf der Stelle um und fahre 50 cm zurück zur Tür. Vorsicht - der Gierwinkel zeigt nie mehr als 180: Wer über 180 hinaus nach rechts dreht, springt auf -180."
+  },
+  "hints": [
+    {
+      "en": "\"yaw > 180\" can never be true.",
+      "de": "„Gierwinkel > 180“ kann nie wahr werden."
+    },
+    {
+      "en": "Near a half turn the yaw is either just below 180 or just above -180. Its absolute value (abs of) is close to 180 either way.",
+      "de": "Nahe einer halben Drehung ist der Gierwinkel knapp unter 180 oder knapp über -180. Sein Betrag (abs of) ist in beiden Fällen nahe 180."
+    }
+  ],
+  "mat": {
+    "width": 130,
+    "height": 70,
+    "background": "white",
+    "paint": "#e9ecef",
+    "shapes": [
+      {
+        "color": "yellow",
+        "paint": "#ffe8cc",
+        "shape": {
+          "type": "rect",
+          "x": 76,
+          "y": 35,
+          "w": 16,
+          "h": 24
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "bench",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 75,
+        "y": 35,
+        "r": 6
+      },
+      "label": {
+        "en": "potting bench",
+        "de": "Pflanztisch"
+      }
+    },
+    {
+      "id": "door",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 25,
+        "y": 35,
+        "r": 6
+      },
+      "label": {
+        "en": "door",
+        "de": "Tür"
+      }
+    }
+  ],
+  "start": {
+    "x": 25,
+    "y": 35,
+    "heading": 0
+  },
+  "timeLimitMs": 20000,
+  "success": [
+    {
+      "type": "sequence",
+      "zones": [
+        "bench",
+        "door"
+      ]
+    },
+    {
+      "type": "stopIn",
+      "zone": "door"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "gt04-about-turn.bw",
+  "wrong": "gt04-about-turn.wrong.bw"
+}

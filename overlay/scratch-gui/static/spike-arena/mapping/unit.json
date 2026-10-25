@@ -1,0 +1,16 @@
+{
+  "id": "mapping",
+  "title": {
+    "en": "Mapping",
+    "de": "Kartieren"
+  },
+  "intro": {
+    "en": "Three missions at an excavation site: the rover explores first and remembers what it found - in variables and a list - then reports it by where it drives: count the finds, return to a find, and replay a route read from the ground.",
+    "de": "Drei Missionen auf einer Ausgrabungsstätte: Der Rover erkundet zuerst und merkt sich, was er gefunden hat - in Variablen und einer Liste - und meldet es dann dadurch, wohin er fährt: Funde zählen, zu einem Fund zurückkehren und eine vom Boden abgelesene Route nachfahren."
+  },
+  "challenges": [
+    "mp01-count-the-finds",
+    "mp02-back-to-the-find",
+    "mp03-replay-the-route"
+  ]
+}

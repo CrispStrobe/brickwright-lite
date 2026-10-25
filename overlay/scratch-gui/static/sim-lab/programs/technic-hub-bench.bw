@@ -1,0 +1,10 @@
+# Technic Hub motor bench: the LEGO Powered Up blocks (legopoweredup) turn the Technic large motor on
+# port A one full turn, wait, and turn it back. Press ⇦ To blocks, then Run in the Robot Lab tab: the
+# blocks connect to the Lab's Technic Hub as they would to a real one (docs/SIM-LAB.md).
+WHEN flag clicked:
+  pup set motor A power to 50 %
+  pup set motor A stop action to brake
+  pup turn motor A on for 360 degrees
+  wait 1 seconds
+  pup set motor A direction to backward
+  pup turn motor A on for 360 degrees

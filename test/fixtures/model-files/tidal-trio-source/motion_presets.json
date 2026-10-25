@@ -1,0 +1,74 @@
+{
+  "machine": "TIDAL TRIO",
+  "schema_version": 1,
+  "controller": "tidal_trio_pybricks.py",
+  "runtime": "Optional Pybricks firmware, API documented for version 4.1",
+  "hardware_tested": false,
+  "hub_count": 1,
+  "motor_count": 3,
+  "motor_ports_left_to_right": ["A", "B", "C"],
+  "motor_kind": "SPIKE Prime medium angular motor 45603",
+  "all_motor_output_axes": "+Z in the LDraw model, toward the front",
+  "positive_direction": "COUNTERCLOCKWISE, viewed from the output faces",
+  "phase_zero": "All three crank output pins point right from their motor axes",
+  "mechanism": {
+    "type": "Three independent direct-drive crank-rocker four-bar linkages",
+    "hole_spacing_mm": 8,
+    "crank_radius_studs": 2,
+    "coupler_length_studs": 6,
+    "rocker_length_studs": 4,
+    "fixed_pivot_spacing_studs": 6,
+    "crank_radius_mm": 16,
+    "coupler_length_mm": 48,
+    "rocker_length_mm": 32,
+    "fixed_pivot_spacing_mm": 48,
+    "gear_ratio_motor_to_crank": 1
+  },
+  "reference_motion": {
+    "default_crank_rpm": 6.0,
+    "default_crank_degrees_per_second": 36.0,
+    "reference_speed_cap_degrees_per_second": 90.0,
+    "alignment_speed_cap_degrees_per_second": 30.0,
+    "alignment_easing": "10*u^3 - 15*u^4 + 6*u^5",
+    "alignment_minimum_seconds": 1.5,
+    "alignment_maximum_seconds_for_standard_presets": 11.25,
+    "start_ramp_seconds": 3.0,
+    "stop_ramp_seconds": 3.0,
+    "ramp_velocity_profile": "half cosine",
+    "stop_advance_from_default_cruise_degrees": 54.0,
+    "update_interval_ms": 20,
+    "phase_reference": "one shared time-based scalar plus preset offsets",
+    "alignment_anchor": "Keep A at its current phase, choose nearest equivalent B/C targets",
+    "phase_unit": "degrees modulo 360"
+  },
+  "default_preset": 1,
+  "presets": [
+    {"display": 1, "name": "Wave", "phase_A_B_C_degrees": [0, 120, 240]},
+    {"display": 2, "name": "Together", "phase_A_B_C_degrees": [0, 0, 0]},
+    {"display": 3, "name": "Alternating", "phase_A_B_C_degrees": [0, 180, 0]},
+    {"display": 4, "name": "Reverse wave", "phase_A_B_C_degrees": [0, 240, 120]}
+  ],
+  "controls": {
+    "startup_RIGHT": "Record manually set right-pointing zero; release before continuing",
+    "stopped_LEFT": "Select next preset",
+    "stopped_RIGHT": "Gently align, then accelerate and run",
+    "moving_RIGHT": "Ramp to rest, hold, and return to selection",
+    "CENTER": "Normal Pybricks program stop remains enabled"
+  },
+  "faults": {
+    "motor_stalled": "Brake all motors and end the program",
+    "following_error_degrees": 15,
+    "following_error_timeout_ms": 750,
+    "settle_timeout_ms": 5000,
+    "settle_position_tolerance_degrees": 3,
+    "settle_speed_tolerance_degrees_per_second": 5,
+    "settle_stability_ms": 200
+  },
+  "documentation": [
+    "https://docs.pybricks.com/en/latest/pupdevices/motor.html",
+    "https://docs.pybricks.com/en/latest/hubs/primehub.html",
+    "https://docs.pybricks.com/en/latest/parameters/direction.html",
+    "https://docs.pybricks.com/en/latest/tools/index.html"
+  ],
+  "license": "CC BY 4.0 for the original design and controller"
+}

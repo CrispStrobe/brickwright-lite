@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "linger",
+  "language": "de",
+  "what": "Ein Motor dreht eine Kurbel kontinuierlich. Zwei gekoppelte Viergelenke lassen den langen Abtriebszeiger nahe einem Ende seines Schwenkwegs verweilen, während die Kurbel weiterläuft. Während eines vollständigen Zyklus schwenkt der Abtrieb trotzdem um etwa 69°. Diese angenäherte mechanische Rast entsteht durch echte Glieder und Gelenke; das Programm steuert nur den Antriebsmotor. Ein Motor dreht gleichmäßig durch zwei gekoppelte Viergelenke. Der Abtrieb schwenkt um etwa 69 Grad, bewegt sich während einer Vierteldrehung des Antriebs aber kaum. Miss die angenäherte Rast, die winzige Umkehr darin und das veränderliche Geschwindigkeitsverhältnis.",
+  "try": [
+    "Wähle dieses Beispiel und starte es; setze es nach manueller Bewegung vor dem nächsten Lauf zurück.",
+    "Beobachte den tatsächlichen Antriebswinkel von 186° bis 276°. Die Kurbel dreht sich um 90°, doch der ideale Abtriebswinkel ändert sich nur um etwa 0,131°. Prüfe, dass der Motor während dieses Intervalls weiterläuft; eine programmierte Pause würde die angenäherte mechanische Rast nicht zeigen. Beim platzierten Motor gilt θ=−Encoder A. Im ersten Vorwärtslauf sinkt Encoder A in diesem Fenster von −186° auf −276°.",
+    "Beobachte auch den restlichen Zyklus. Der Abtrieb muss einen nutzbaren Schwenkweg von etwa 69° durchlaufen. Ein abgetrennter Abtrieb, der sich nie bewegt, würde diesen Versuch nicht bestehen, obwohl er im Rastintervall vollkommen stillzustehen scheint."
+  ],
+  "why": "Das erste Viergelenk verlangsamt die Zwischenschwinge und kehrt ihre Bewegung nahe einer Endlage um. Das zweite Viergelenk legt seine eigene Abtriebsendlage nahe an denselben Winkel der Zwischenschwinge. Das Verhältnis von Abtriebs- zu Antriebswinkelgeschwindigkeit ist das Produkt der beiden Stufenverhältnisse. Zwei kleine Faktoren ergeben deshalb ein langes Intervall mit sehr langsamer Abtriebsbewegung. Bei B teilen sich erste Koppel, Zwischenschwinge und zweite Koppel eine axial gesicherte Achse, bleiben aber drei getrennte bewegliche Glieder.",
+  "matters": "Eine Maschine kann einen großen Teil eines kontinuierlichen Antriebszyklus für einen fast ruhenden Abtrieb nutzen, ohne zweiten Motor und ohne zeitgesteuerte Softwarepause. Damit lassen sich Bewegungsabläufe und zeitliche Aufteilungen untersuchen. Eine angenäherte Rast bedeutet weder eine exakte Verriegelung noch eine nachgewiesene Haltekraft oder Belastbarkeit. Im langsamen Intervall kehrt der Abtrieb seine Bewegung kurz und sehr geringfügig um.",
+  "question": "Warum genügt es allein noch nicht als Funktionsnachweis, wenn der Abtrieb während einer Vierteldrehung der Kurbel fast stillsteht?",
+  "answer": "Auch ein abgetrennter, verklemmter oder eingefrorener Abtrieb könnte stillstehen. Wir müssen die tatsächliche Kurbelbewegung über das festgelegte 90°-Intervall unabhängig beobachten, dort den kleinen Abtriebswinkelbereich messen und im übrigen Zyklus einen deutlichen Schwenkweg nachweisen. Die echten Gelenke müssen geschlossen bleiben, und beim Rücklauf muss derselbe geometrische Zusammenhang wieder auftreten.",
+  "further": [
+    "Vergleiche die beiden Stufenverhältnisse: dφ/dθ=(dφ/dβ)(dβ/dθ). Dabei ist θ der Antriebswinkel, β der Winkel der Zwischenschwinge und φ der Abtriebswinkel. Bestimme, wo die einzelnen Faktoren klein werden.",
+    "Nutze die exakte Extremstellung der zweiten Stufe in LDU: D=(100;0), B=(52;64), P=(88;16), E=(120;40). Prüfe DB=80, BP=60 und EP=40. DB und BP verlaufen entgegengesetzt entlang einer 3:4:5-Richtung; EP steht dazu senkrecht.",
+    "Untersuche die gemeinsame Achse bei B. Zwei Koppeln mit runden Bohrungen drehen sich in unterschiedlichen Bauebenen um die mit der Zwischenschwinge drehfest verbundene Achse. Alle drei Glieder drehfest miteinander zu verbinden würde die gewünschte Bewegung verhindern.",
+    "Finde E, P und Q am 7L-Abtriebsbalken: Es sind die Bohrungen h1, h3 und h6. Die Geometrie der beiden Schleifen nutzt EP=16 mm; die sichtbare Spitze liegt 40 mm von E entfernt. Also gilt Q=E+2,5(P−E). Der längere Zeiger macht den Abtrieb gut sichtbar, ohne die zeitliche Bewegungsaufteilung zu verändern.",
+    "Zähle sechs starre Körper einschließlich Rahmen und sieben Drehgelenke. Das Dreigliedgelenk bei B zählt als zwei unabhängige Gelenke. Die reguläre ebene Beweglichkeit ist 3(6−1)−2×7=1 und passt damit zum einzelnen Motor.",
+    "Vergleiche crank-rocker.ldr mit nur einer Viergelenkstufe, tempo-loop.ldr mit veränderlicher Winkelgeschwindigkeit und quickstroke.ldr mit unterschiedlichen Zeiten für Hin- und Rückhub. Linger konzentriert durch zwei passive Schleifen die Abtriebsbewegung auf einen Teil eines kontinuierlichen Antriebszyklus.",
+    "In validation/RESULTS.md stehen der tatsächlich gemessene Rastwinkelbereich, der gesamte Schwenkweg und die Gelenkfehler. Analytische Geometrie, native Simulation, Browserintegration und physischer Aufbau haben jeweils einen eigenen Prüfstatus."
+  ],
+  "formula": "In mm: O=(0;0), D=(40;0), E=(48;16); OA=16, AB=48, DB=32, BP=24, EP=16. A=16(cosθ;sinθ). B ist der gewählte Schnittpunkt der Kreise(A;48) und(D;32), P der gewählte Schnittpunkt der Kreise(B;24) und(E;16). θ=atan2(Az−Oz;Ax−Ox), β=atan2(Bz−Dz;Bx−Dx), φ=atan2(Pz−Ez;Px−Ex). dφ/dθ=(dφ/dβ)(dβ/dθ). Idealer gesamter Abtriebswinkelbereich≈69,04697°; idealer Bereich für θ=186…276°≈0,131275°, etwa 0,1901% des gesamten Schwenkwegs. Bei genau 10°/s tatsächlicher Antriebsgeschwindigkeit dauert das Intervall 9 s. Es ist eine angenäherte Rast mit winziger Bewegungsumkehr, kein exakter Stillstand über einen endlichen Antriebswinkel. Ein LDU=0,4 mm. Die physische Abtriebsspitze Q liegt 40 mm von E entfernt: Q=E+2,5(P−E). Das Vorzeichen des tatsächlich platzierten nativen Motors wurde gemessen: θ=−Encoder A ab der gespeicherten Ausgangslage; das Beobachtungsfenster gilt modulo 360°. Die gelieferten Encoderziele sind −360°, −720° und 0°; daraus folgt die physische Antriebsbewegung 0°→360°→720°→0°.",
+  "related": [
+    "crank-rocker.ldr",
+    "tempo-loop.ldr",
+    "quickstroke.ldr"
+  ]
+}

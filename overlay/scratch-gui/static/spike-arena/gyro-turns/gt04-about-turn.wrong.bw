@@ -1,0 +1,15 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: it waits for the yaw to pass 180, which it
+# never does - the rover spins at the bench until time runs out.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 40
+  move forward 50 cm
+  reset yaw
+  set movement speed 15
+  start moving steering 100
+  wait until spike angle yaw > 180
+  stop movement
+  set movement speed 40
+  move forward 50 cm

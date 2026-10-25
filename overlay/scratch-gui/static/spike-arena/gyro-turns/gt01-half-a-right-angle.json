@@ -1,0 +1,62 @@
+{
+  "id": "gt01-half-a-right-angle",
+  "title": {
+    "en": "Half a right angle",
+    "de": "Ein halber rechter Winkel"
+  },
+  "intro": {
+    "en": "The irrigation pipe runs diagonally across the dome. Turn the rover on the spot until it points along the pipe: exactly 45 degrees to the right, give or take 3. Then wait for the gardener.",
+    "de": "Das Bewässerungsrohr verläuft schräg durch die Kuppel. Drehe den Rover auf der Stelle, bis er am Rohr entlang zeigt: genau 45 Grad nach rechts, mit höchstens 3 Grad Abweichung. Dann warte auf die Gärtnerin."
+  },
+  "hints": [
+    {
+      "en": "Reset the yaw first, so the gyro measures from where the rover points now.",
+      "de": "Setze zuerst den Gierwinkel zurück, damit der Kreiselsensor ab der jetzigen Richtung misst."
+    },
+    {
+      "en": "The gyro is read a few times per second. The faster the turn, the further the rover spins between two readings: turn slowly.",
+      "de": "Der Kreiselsensor wird einige Male pro Sekunde gelesen. Je schneller die Drehung, desto weiter dreht sich der Rover zwischen zwei Messungen: Drehe langsam."
+    }
+  ],
+  "mat": {
+    "width": 120,
+    "height": 90,
+    "background": "white",
+    "paint": "#e9ecef",
+    "shapes": [
+      {
+        "color": "blue",
+        "paint": "#74c0fc",
+        "shape": {
+          "type": "line",
+          "points": [
+            [
+              40,
+              25
+            ],
+            [
+              110,
+              95
+            ]
+          ],
+          "width": 3
+        }
+      }
+    ]
+  },
+  "start": {
+    "x": 40,
+    "y": 25,
+    "heading": 0
+  },
+  "timeLimitMs": 8000,
+  "success": [
+    {
+      "type": "heading",
+      "target": 45,
+      "tolerance": 3
+    }
+  ],
+  "solution": "gt01-half-a-right-angle.bw",
+  "wrong": "gt01-half-a-right-angle.wrong.bw"
+}

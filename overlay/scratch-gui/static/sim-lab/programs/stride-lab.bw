@@ -1,0 +1,14 @@
+DEVICE SPIKE
+
+# STRIDE LAB - one-motor approximate straight-line linkage.
+# Reset before repeating. Motor A drives only the 16 mm crank.
+# The 40 mm coupler and 40 mm rocker constrain the tip geometrically.
+# The tip's working stroke is nearly straight; its return follows an arch.
+# A steady motor setting does not imply a constant tip speed.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 5
+  run motor A clockwise 720 degrees
+  wait 2 seconds
+  run motor A counterclockwise 720 degrees
+  wait 2 seconds

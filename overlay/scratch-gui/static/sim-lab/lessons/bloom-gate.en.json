@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "bloom-gate",
+  "language": "en",
+  "what": "One motor opens four colored leaves around a clear center. Eight gears around the perimeter keep the leaves in phase, while separate heights let them overlap. The square aperture grows from closed to an ideal clear width of 26.51 mm during a 45° motor move. Four overlapping leaves form a square opening. Compare the nonlinear change in width and area at two motor speeds.",
+  "try": [
+    "Select the example in Robot Lab, reset and press Run. The matching program loads automatically. Watch the finite experiment and its observation pauses.",
+    "Look straight through the center, perpendicular to the leaves. Follow one corner gear and the neighboring smaller gear: they turn in opposite directions, while all four leaves turn together. Compare the opening at the same motor angle in the two speed stages.",
+    "Predict the opening halfway through the motor move from 0° to −45° before checking the answer below. Compare actual blade edges and the clear opening; reaching an encoder target alone does not establish the aperture size. Keep manual exploration between −45° and 0° on motor A."
+  ],
+  "why": "Motor A directly turns the northeast 40-tooth corner gear. A 24-tooth idler connects each pair of neighboring 40-tooth corner gears. Two external meshes reverse direction twice and give a net 1:1 ratio, so all four leaves turn together. The smaller idlers turn in the opposite direction at 5/3 of the corner speed. With the delivered mounting and encoder convention, −45° on motor A gives a +45° leaf-opening angle. Each leaf's straight inner edge moves around its fixed corner pivot. The aperture remains square in the ideal projected geometry, but its width depends on both sine and cosine of the leaf angle, so equal motor-angle steps do not give equal changes in width or area.",
+  "matters": "Coordinated leaves vary an opening without putting a drive shaft through its center. A motor-position command can select an opening, but the geometry determines the required command. The two-speed experiment separates that geometric relation from acceleration, settling and gear play.",
+  "question": "At half the full motor travel, −22.5° from the closed datum, is the opening half as wide? Is its area half the maximum? What should change when the same motion runs at twice the motor speed?",
+  "answer": "The leaves have turned 22.5°. The ideal clear width is 19.62 mm, about 74.0% of the maximum 26.51 mm. The opening area is 384.95 mm², about 54.8% of the maximum 702.76 mm². Faster motion changes the timing; the ideal opening at a given angle stays the same. Acceleration and settling can change the measured transient behavior.",
+  "further": [
+    "Compare equal motor-angle steps near closed and near fully open. The width changes rapidly near closed and slowly near the 45° leaf limit. The area starts from zero and depends on the square of the width.",
+    "Compare the slow and fast runs by motor angle as well as by elapsed time. Look for the same opening curve and any differences during acceleration, reversal or settling. Compare your observations with the geometric prediction.",
+    "Compare Ratio Workbench for fixed gear ratios, Tempo Loop for changing output speed, and Scale Studio for geometric scaling. Here the gears supply a fixed angle ratio and the leaf geometry creates the nonlinear aperture."
+  ],
+  "formula": "Let φ be motor A's native angle from the closed datum and θ the geometric leaf-opening angle, positive toward open: θ=−φ; −45°≤φ≤0°, 0°≤θ≤45°. The four corner gears have a 1:1 angle ratio; each 24-tooth idler turns oppositely at 5/3 of their speed. Use θ in radians inside sin and cos. In the chassis plane, aperture half-width r=32(cos θ+sin θ−1) mm; clear square width d=2r=64(cos θ+sin θ−1) mm; aperture area S=d²=4096(cos θ+sin θ−1)² mm². The largest centered circle that fits through the square has diameter d.",
+  "related": [
+    "ratio-workbench.ldr",
+    "tempo-loop.ldr",
+    "scale-studio.ldr"
+  ]
+}

@@ -1,0 +1,193 @@
+# Orbit Mixer — three bounded planetary experiments
+# Original control program. SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 CrispStrobe
+# Reset/reload the supplied model to its saved pose before starting.
+# A is the carrier drive; B is the sun. Both inputs remain powered or holding.
+# Common world-axis mapping: C = -A/3; S = B; P = (8/3)C - (5/3)S.
+# Targets below are absolute, unwrapped motor-encoder angles.
+# Each move reads fresh feedback. Speeds are degrees per second.
+# A target error over 2 degrees holds BOTH motors and stops the program.
+# Barriers wait for both receivers; pauses allow the mechanism to settle.
+# Matched nominal speeds do not guarantee identical acceleration profiles.
+# Observe the passive paddle; its ideal angle is a prediction, not feedback.
+# Each outward carrier motion is one full +360-degree orbit, followed by home.
+# 6 finite phases; 12 native motor-move blocks.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  wait 0.5 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # HELD SUN: C = +360, S = 0; ideal P = +960 degrees.
+  broadcast "orbit held sun out" and wait
+  wait 1.5 seconds
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Return both inputs to zero before the next comparison.
+  broadcast "orbit held sun home" and wait
+  wait 1 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # ORIENTATION COMPENSATION: C = +360, S = +576; ideal final P = 0.
+  broadcast "orbit compensated out" and wait
+  wait 1.5 seconds
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (576 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Return with the same nominal speed ratio; measure transient heading drift.
+  broadcast "orbit compensated home" and wait
+  wait 1 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # REVERSE SPIN: C = +360, S = +720; ideal P = -240 degrees.
+  broadcast "orbit reverse spin out" and wait
+  wait 1.5 seconds
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (720 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  # Return to the saved model datum and finish holding both inputs.
+  broadcast "orbit reverse spin home" and wait
+  wait 1 seconds
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+  lab stop motor A hold
+  lab stop motor B hold
+
+WHEN I receive "orbit held sun out":
+  lab run motor A for (-1080 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit held sun out":
+  lab run motor B for (0 - (lab motor B angle)) degrees at 32 degrees per second
+  lab stop motor B hold
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit held sun home":
+  lab run motor A for (0 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit held sun home":
+  lab run motor B for (0 - (lab motor B angle)) degrees at 32 degrees per second
+  lab stop motor B hold
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensated out":
+  lab run motor A for (-1080 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensated out":
+  lab run motor B for (576 - (lab motor B angle)) degrees at 32 degrees per second
+  lab stop motor B hold
+  IF (abs of (576 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensated home":
+  lab run motor A for (0 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit compensated home":
+  lab run motor B for (0 - (lab motor B angle)) degrees at 32 degrees per second
+  lab stop motor B hold
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit reverse spin out":
+  lab run motor A for (-1080 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (-1080 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit reverse spin out":
+  lab run motor B for (720 - (lab motor B angle)) degrees at 40 degrees per second
+  lab stop motor B hold
+  IF (abs of (720 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit reverse spin home":
+  lab run motor A for (0 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all
+
+WHEN I receive "orbit reverse spin home":
+  lab run motor B for (0 - (lab motor B angle)) degrees at 40 degrees per second
+  lab stop motor B hold
+  IF (abs of (0 - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    stop all

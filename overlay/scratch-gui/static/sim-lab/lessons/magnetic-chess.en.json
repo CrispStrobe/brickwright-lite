@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "magnetic-chess",
+  "language": "en",
+  "what": "A three-motor XY carriage raises a magnet beneath a glass board. Magnetic attraction pulls an independent chess piece across the surface; lowering the head removes that force. The adapted apparatus contains 1,203 LEGO placements, one glass sheet and four bonded gaskets: 1,208 physical pieces, including 32 separate chess-piece assemblies. Three motors move a magnet beneath glass. Transport and release independent pieces; compare gap, magnetic attraction and sliding friction.",
+  "try": [
+    "Choose Magnetic Chess in Examples; its native program loads into Blocks automatically. Press Run to move the white knight from g1 to f3 and park the head. Reset before repeating.",
+    "Reset and load magnetic-chess-capture.bw for five transfers: knight g1–f3, e2–e4, d7–d5, the black pawn to a capture bay, and e4×d5. These are precomputed clear routes; this example is a transporter, without chess AI or automatic piece recognition.",
+    "Compare the controls after resetting: A and B position the carriage, while C raises the pickup through 180° and retracts it. Keep C within 0–180° and retain the supplied speeds and routes. Observe how a larger gap releases the piece."
+  ],
+  "why": "Attraction acts at the two magnet faces with equal and opposite forces. Raising the head closes the gap from about 34.8 mm to 2.8 mm. The lateral component pulls a displaced piece towards the head; sliding friction opposes it. No hinge or rigid bond joins a chess piece to the carriage, so a weak or distant field cannot carry it.",
+  "matters": "Contactless transport combines fields, friction, reaction forces, positioning and obstacle avoidance. The glass needs stable support. Here four double-sided adhesive gaskets bond it to its support tiles; the former loose registration shims are unnecessary. The adhesive is treated as a rigid bond, without a measured strength rating.",
+  "question": "Why must the pickup retract before the carriage returns home? What would happen if the magnetic force were zero?",
+  "answer": "With the head raised, the piece continues to feel attraction and would tend to follow the returning carriage. Retraction increases the face gap beyond the declared field range, releasing the piece. With zero magnetic force, correct motor angles alone move only the carriage: the independent piece stays on its square.",
+  "further": [
+    "The declared force model is an unmeasured approximation: 0.3 N at a 2.8 mm reference gap, capped at 1 N, softened at short distance and smoothly reduced to zero by 14 mm. It is not a measured LEGO magnet specification.",
+    "The board uses 56 mm squares. Routes pass between occupied squares and use capture bays outside the board. Motor encoders locate the head; they do not sense a lost piece or establish a physical homing datum.",
+    "The model is qualified in simulation. Real magnet strength, friction, glass support, cables and physical motor calibration need separate measurements. Reset restores the starting arrangement."
+  ],
+  "formula": "Central attraction: equal and opposite forces at the two faces. F ∝ [(d_ref² + s²)/(d² + s²)]² within the declared range; lateral motion occurs only when attraction overcomes sliding friction. This is an unmeasured model.",
+  "related": [
+    "axis-plotter.ldr",
+    "stepworks.ldr",
+    "orbital-loom.ldr"
+  ]
+}

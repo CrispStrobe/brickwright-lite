@@ -1,0 +1,109 @@
+/**
+ * The bridge between React Flow's node/edge state and our gate model — so the
+ * canvas can be React Flow (MIT: drag, pan, zoom, custom nodes, sub-flows for
+ * hierarchy) while the design that synthesises stays OUR model, fed to the
+ * tested Verilog generator and the live evaluator.
+ *
+ * Pure and framework-free: React Flow is a UI library, but this translation is
+ * plain data, so it is unit-tested without a browser.
+ *
+ * @module
+ */
+
+/**
+ * React Flow state → our gate model. A React Flow node carries our node's fields
+ * in `data`; a React Flow edge's source/target are node ids and its handles are
+ * port names. Positions are UI-only and dropped — the model is about logic.
+ *
+ * @param {Array} rfNodes  React Flow nodes: {id, data:{kind, gtype?, name?, width?, module?, dataWidth?, addrWidth?}}
+ * @param {Array} rfEdges  React Flow edges: {source, target, sourceHandle, targetHandle}
+ * @param {Array} [modules]  saved subcircuits ({name, nodes, edges, ports}) to compose
+ * @returns {{modules?: Array, nodes: Array, edges: Array}} our model
+ */
+// Display devices (LED, seven-segment) are viewing instruments, not logic: they
+// are dropped from the synthesised model, along with the edges that feed them.
+const DISPLAY_KINDS = new Set(['seg7', 'led', 'ledbank']);
+
+export function reactFlowToModel (rfNodes, rfEdges, modules) {
+    const shown = new Set();
+    const nodes = (rfNodes || []).filter(n => !DISPLAY_KINDS.has((n.data || {}).kind)).map(n => {
+        shown.add(n.id);
+        const d = n.data || {};
+        const node = {id: n.id, kind: d.kind};
+        if (d.gtype != null) node.type = d.gtype;
+        if (d.name != null) node.name = d.name;
+        if (d.width != null && d.width !== 1) node.width = d.width;
+        if (d.module != null) node.module = d.module;
+        if (d.value != null) node.value = d.value;
+        if (d.dataWidth != null) node.dataWidth = d.dataWidth;
+        if (d.addrWidth != null) node.addrWidth = d.addrWidth;
+        return node;
+    });
+    const edges = (rfEdges || []).filter(e => shown.has(e.source) && shown.has(e.target)).map(e => ({
+        from: {node: e.source, port: e.sourceHandle || 'out'},
+        to: {node: e.target, port: e.targetHandle || 'in'}
+    }));
+    // A subcircuit library composes: the generator emits each as its own module
+    // and instantiates it. Passed through so the top design carries its parts.
+    return modules && modules.length ? {modules, nodes, edges} : {nodes, edges};
+}
+
+/**
+ * Our gate model → React Flow state, for seeding the canvas (the starter, or a
+ * design loaded/generated elsewhere). Positions come from `positions` if given,
+ * else a simple left-to-right spread that the user can then drag.
+ *
+ * @param {{nodes: Array, edges: Array}} model
+ * @param {Object<string,{x:number,y:number}>} [positions]  by node id
+ * @returns {{nodes: Array, edges: Array}} React Flow state
+ */
+export function modelToReactFlow (model, positions = {}) {
+    // A device kind renders with its own node type; display instruments (led,
+    // seg7, ledbank) included, so a loaded/template model shows them correctly.
+    const DIRECT = new Set(['instance', 'memory', 'const', 'tunnel', 'led', 'seg7', 'ledbank']);
+    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : DIRECT.has(kind) ? kind : 'gate');
+    const nodes = ((model && model.nodes) || []).map((n, i) => ({
+        id: n.id,
+        type: rfType(n.kind),
+        position: positions[n.id] || {x: i * 130, y: (i % 2) * 70},
+        data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module, value: n.value,
+            ports: n.ports, dataWidth: n.dataWidth, addrWidth: n.addrWidth, bits: n.bits}
+    }));
+    const edges = ((model && model.edges) || []).map((e, i) => ({
+        id: `e${i}`,
+        source: e.from.node,
+        target: e.to.node,
+        sourceHandle: e.from.port,
+        targetHandle: e.to.port
+    }));
+    return {nodes, edges};
+}
+
+/**
+ * Clone a selection for copy/paste: the chosen nodes get fresh ids and a small
+ * offset, and only the edges WHOLLY inside the selection are copied (remapped to
+ * the new ids) — a wire to something not copied is dropped. Pure, so the paste
+ * logic is unit-tested without a browser.
+ *
+ * @param {Array} selNodes  the selected React Flow nodes
+ * @param {Array} allEdges  every edge (internal ones are picked out)
+ * @param {{dx:number, dy:number}} offset
+ * @param {() => string} mkNodeId  a fresh node id per call
+ * @param {() => string} mkEdgeId  a fresh edge id per call
+ * @returns {{nodes: Array, edges: Array}} the clones, marked selected
+ */
+export function cloneSelection (selNodes, allEdges, offset, mkNodeId, mkEdgeId) {
+    const {dx = 40, dy = 40} = offset || {};
+    const idMap = {};
+    const nodes = (selNodes || []).map(n => {
+        const id = mkNodeId();
+        idMap[n.id] = id;
+        const pos = n.position || {x: 0, y: 0};
+        return {...n, id, selected: true, position: {x: pos.x + dx, y: pos.y + dy}};
+    });
+    const inSel = new Set((selNodes || []).map(n => n.id));
+    const edges = (allEdges || [])
+        .filter(e => inSel.has(e.source) && inSel.has(e.target))
+        .map(e => ({...e, id: mkEdgeId(), source: idMap[e.source], target: idMap[e.target], selected: true}));
+    return {nodes, edges};
+}

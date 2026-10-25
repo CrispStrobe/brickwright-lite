@@ -1,0 +1,306 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "e1a2528e2ad951bf1aa800ca999186d1a573341c",
+  "auditSourceDirty": false,
+  "upstreamTutorialCommit": "8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02",
+  "upstreamLicenseUrl": "https://raw.githubusercontent.com/microsoft/pxt-arcade/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/LICENSE",
+  "upstreamLicenseSha256": "27ebda9d51f0a56b7e281ccd8230a27236dcb51c05f64b07869ecf6e965d68b0",
+  "assembly": {
+    "projects": 10,
+    "supplementalCodeProjects": 8,
+    "galleryBackgroundRefusalsResolved": 6,
+    "externalPackageBackgroundRefusalsRemaining": 4
+  },
+  "tests": {
+    "affected": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "gateCoverage": {
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "original184InputImportOnly": {
+    "translated": 93,
+    "partial": 90,
+    "malformed": 1
+  },
+  "recoveredInputAudit": {
+    "count": 10,
+    "partial": 10,
+    "originalCompilerUnavailable": 10,
+    "partialTranslationsStepped": 10,
+    "blockErrors": 0,
+    "frames": 24,
+    "behavioralEquivalence": "not-measured"
+  },
+  "cases": [
+    {
+      "case": "arcade-1403d6dfbdbfda3d",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: wakanda-palette (github:riknoll/wakanda-palette) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "wakanda-palette (github:riknoll/wakanda-palette)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 6,
+        "extensionCalls": 1,
+        "variablesChanged": 0,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "Project custom palette is preserved in source but native Arcade rendering still uses the default palette",
+        "Namor.follow() \u2014 unsupported Arcade handle method"
+      ]
+    },
+    {
+      "case": "arcade-2cdb086eac46d6df",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: throw_imgs (github:kiki-lee/throw_imgs) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "throw_imgs (github:kiki-lee/throw_imgs)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 2,
+        "extensionCalls": 1,
+        "variablesChanged": 0,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "athlete: throw_imgs.dunk \u2014 sprite artwork is unavailable in this project",
+        "hoop: throw_imgs.hoop \u2014 sprite artwork is unavailable in this project",
+        "scene.setBackgroundImage() with art we could not read",
+        "sprite.setVelocity() \u2014 no stage equivalent",
+        "sprite.setBounceOnWall()",
+        "hoop.setPosition() \u2014 Scratch scripts can only move their own sprite"
+      ]
+    },
+    {
+      "case": "arcade-5d0c02f598d4eda3",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: arcade-carnival (github:microsoft/arcade-carnival#v0.0.7), arrow-images (github:microsoft/arcade-tutorial-extensions/arrow-images#v0.0.11) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "arcade-carnival (github:microsoft/arcade-carnival#v0.0.7)",
+          "arrow-images (github:microsoft/arcade-tutorial-extensions/arrow-images#v0.0.11)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 9,
+        "extensionCalls": 3,
+        "variablesChanged": 0,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "Project code file \"test.ts\" is present but supplemental TypeScript translation is not implemented",
+        "bundles.wrap1()",
+        "bundles.wrap2()",
+        "bundles.wrap3()",
+        "bundles.wrap4()"
+      ]
+    },
+    {
+      "case": "arcade-67958b6a5a875e41",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: newpizzaassets (github:kiki-lee/new-pizza-assets#v0.0.3) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "newpizzaassets (github:kiki-lee/new-pizza-assets#v0.0.3)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 1,
+        "extensionCalls": 6,
+        "variablesChanged": 1,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "Project custom palette is preserved in source but native Arcade rendering still uses the default palette",
+        "scene.setBackgroundImage() with art we could not read",
+        "pizza.setPlayersWith()",
+        "music.play() \u2014 Arcade's music has no stage equivalent"
+      ]
+    },
+    {
+      "case": "arcade-90a0e61d3299702c",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: arcade-carnival (github:microsoft/arcade-carnival#v0.0.7), horserace-images (github:microsoft/arcade-tutorial-extensions/horserace-images#v0.0.8) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "arcade-carnival (github:microsoft/arcade-carnival#v0.0.7)",
+          "horserace-images (github:microsoft/arcade-tutorial-extensions/horserace-images#v0.0.8)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 7,
+        "extensionCalls": 20,
+        "variablesChanged": 2,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "game.wrap()"
+      ]
+    },
+    {
+      "case": "arcade-999ed460b9bd1d1e",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: carnival (github:microsoft/arcade-carnival#v0.0.7), arcade-mp (github:riknoll/arcade-mp#v0.1.0), arcade-carnival (github:microsoft/arcade-carnival#v0.0.7) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "carnival (github:microsoft/arcade-carnival#v0.0.7)",
+          "arcade-mp (github:riknoll/arcade-mp#v0.1.0)",
+          "arcade-carnival (github:microsoft/arcade-carnival#v0.0.7)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 4,
+        "extensionCalls": 3,
+        "variablesChanged": 0,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "bundles.wrap1()",
+        "bundles.wrap2()",
+        "carnival.startCountdownGame()"
+      ]
+    },
+    {
+      "case": "arcade-b1c05d93bd099fec",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: arcade-background-scroll (github:microsoft/arcade-background-scroll) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "arcade-background-scroll (github:microsoft/arcade-background-scroll)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 7,
+        "extensionCalls": 60,
+        "variablesChanged": 1,
+        "errors": []
+      },
+      "remaining": [
+        "scroller.scrollBackgroundWithSpeed()"
+      ]
+    },
+    {
+      "case": "arcade-c2576ea38bf22bfe",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: arcade-carnival (github:microsoft/arcade-carnival#v0.0.7) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "arcade-carnival (github:microsoft/arcade-carnival#v0.0.7)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 4,
+        "extensionCalls": 3,
+        "variablesChanged": 0,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "bundles.wrap1()",
+        "bundles.wrap2()",
+        "carnival.startCountdownGame()"
+      ]
+    },
+    {
+      "case": "arcade-e4b668bd7d79aed0",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: pizza-assets (github:kiki-lee/pizza-assets#v0.0.4) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "pizza-assets (github:kiki-lee/pizza-assets#v0.0.4)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 1,
+        "extensionCalls": 6,
+        "variablesChanged": 1,
+        "errors": []
+      },
+      "remaining": [
+        "Project code file \"tutorial.custom.1.ts\" is present but supplemental TypeScript translation is not implemented",
+        "Project custom palette is preserved in source but native Arcade rendering still uses the default palette",
+        "scene.setBackgroundImage() with art we could not read",
+        "pizza.setPlayersWith()",
+        "music.play() \u2014 Arcade's music has no stage equivalent"
+      ]
+    },
+    {
+      "case": "arcade-f65a6b2d8bfcc716",
+      "translation": "partial",
+      "originalCompilation": {
+        "status": "unavailable",
+        "reason": "MakeCode extension not available offline: flies_imgs (github:kiki-lee/flies_imgs#v0.0.3) \u2014 this build vendors microsoft/pxt-microturtle, microsoft/pxt-radio-blockchain, kitronikltd/pxt-kitronik-motor-driver",
+        "code": "NO_EXTENSION",
+        "extensions": [
+          "flies_imgs (github:kiki-lee/flies_imgs#v0.0.3)"
+        ]
+      },
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 2,
+        "extensionCalls": 1,
+        "variablesChanged": 0,
+        "errors": []
+      },
+      "remaining": [
+        "frog: flies_imgs.frog \u2014 sprite artwork is unavailable in this project",
+        "fly: flies_imgs.fly \u2014 sprite artwork is unavailable in this project",
+        "scene.setBackgroundImage() with art we could not read",
+        "fly.setVelocity() \u2014 Scratch scripts can only move their own sprite",
+        "fly.setBounceOnWall() \u2014 Scratch scripts can only move their own sprite"
+      ]
+    }
+  ],
+  "boundary": [
+    "Recovered files are an additional corpus, not replacements for the184 input baseline",
+    "No original complete game compiled: missing offline extension packages are named unavailable gates",
+    "Supplemental TypeScript translation and nondefault palette rendering remain named gaps",
+    "No new GUI renderer/build or original-editor browser run for this CLI/input slice"
+  ],
+  "privateInputs": "compat-corpora/makecode/tutorial-projects/",
+  "privateEvidence": "compat-corpora/reports/2026-10-08/tutorial-project-inputs/"
+}

@@ -1,0 +1,81 @@
+{
+  "schema": "brickwright-lite.freedos-interaction-components.v1",
+  "overall": "FAIL_TAB_REBOOT",
+  "probeRevision": "18657eb2b",
+  "appSourceRevision": "6351f8ee42ecd39719c27f80af2ff4e816791f23",
+  "appBuildRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37574894174",
+  "appArtifactId": 11462233976,
+  "appArtifactSha256": "ed3c1a48ca8f9cb2e69bf9e5a1978f259bbaef4f8477ab67616c12b37aae0e8f",
+  "ownedGuestProgram": {
+    "source": "test/fixtures/i80386-freedos-interaction/mouse.asm",
+    "bytes": 194,
+    "sha256": "b2874ac760be9c4922ff72bdd2341f31888c5f7fe355ad97a74d841fc7d62ec4"
+  },
+  "passedComponents": [
+    "actual FreeDOS boot and owned C: listing",
+    "fullscreen entry/exit with greater than 1400x850 canvas bounds",
+    "pane drag with greater than 100 pixel canvas width increase",
+    "guest PS/2 enable, accepted press/release and packet readback"
+  ],
+  "guestProbeOutput": [
+    "PS2 READY",
+    "PS2 PACKET 09 00 00",
+    "PS2 DONE"
+  ],
+  "mouseEvents": [
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 1,
+      "result": false
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 0,
+      "result": false
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 1,
+      "result": false
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 0,
+      "result": false
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 1,
+      "result": false
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 0,
+      "result": false
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 1,
+      "result": true
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 0,
+      "result": true
+    }
+  ],
+  "guestScreenshotSha256": "0896660eb9289f6d5871dc320e507c21c9d326b2f2d031199577d646b553b57d",
+  "failedComponent": "guest shell response after Circuits/Code roundtrip; runtime recreated",
+  "afterTabsMediaEvents": 3,
+  "rawMouseDiagnosticSha256": "c22d1a07d081d03db7cd1cf4042761ecffd9c9363e475bcdf9249c2976f05ba0",
+  "rawFailureDiagnosticSha256": "9999702d305be00f66de5a9dc21e500fb88a4c83c3667d1cb37370c2e092aef6",
+  "scope": "Guest hardware polling in actual Chromium. No INT33 mouse driver, drag-outside-canvas, corrected application build, or full tab lifetime acceptance."
+}

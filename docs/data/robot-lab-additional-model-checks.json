@@ -1,0 +1,519 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-20",
+  "physicsDependencyHead": "df2b9947b4c1aab73367e233a777384481813d70",
+  "method": "Peer headless benchmark loader; 400 steps at 200 Hz after 20 settling steps, motors at 60%, 75-second per-process limit. Flung means displacement over 0.5 m. Unknown and loose values count compiler issues, not necessarily distinct part numbers or groups. No intended-function qualification.",
+  "records": [
+    {
+      "id": "brickhub-299",
+      "name": "Renault Magnum 4x2 \u2014 original discontinued design",
+      "sha256": "de6068271d5bc3ad9e3b1054920dde78f7c3d7c7b95931fd1965b88d518c15df",
+      "status": "timeout-75s",
+      "functionallyQualified": false,
+      "bench": {}
+    },
+    {
+      "id": "brickhub-296",
+      "name": "FAW Jiefang 6x4",
+      "sha256": "70de524bb7430fca62ed7fcbb3c955fc785a5b0b6600d59e2b5177b016db3a15",
+      "status": "bench-complete",
+      "functionallyQualified": false,
+      "bench": {
+        "parts": 647,
+        "motors": 2,
+        "turned": [
+          50,
+          -361
+        ],
+        "unknown": 67,
+        "loose": 127,
+        "flung": 108,
+        "nan": false,
+        "details": [
+          {
+            "severity": "warning",
+            "line": 195,
+            "code": "unknown-part",
+            "message": "Unknown part '32556.dat' at line 195"
+          },
+          {
+            "severity": "warning",
+            "line": 172,
+            "code": "unknown-part",
+            "message": "Unknown part 'x88.dat' at line 172"
+          },
+          {
+            "severity": "warning",
+            "line": 273,
+            "code": "unknown-part",
+            "message": "Unknown part '44301.dat' at line 273"
+          },
+          {
+            "severity": "warning",
+            "line": 274,
+            "code": "unknown-part",
+            "message": "Unknown part '44301.dat' at line 274"
+          },
+          {
+            "severity": "warning",
+            "line": 275,
+            "code": "unknown-part",
+            "message": "Unknown part '44301.dat' at line 275"
+          },
+          {
+            "severity": "warning",
+            "line": 276,
+            "code": "unknown-part",
+            "message": "Unknown part '44301.dat' at line 276"
+          },
+          {
+            "severity": "warning",
+            "line": 321,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 321"
+          },
+          {
+            "severity": "warning",
+            "line": 321,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 321"
+          },
+          {
+            "severity": "warning",
+            "line": 330,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 330"
+          },
+          {
+            "severity": "warning",
+            "line": 507,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 507"
+          },
+          {
+            "severity": "warning",
+            "line": 512,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 512"
+          },
+          {
+            "severity": "warning",
+            "line": 513,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 513"
+          }
+        ]
+      }
+    },
+    {
+      "id": "brickhub-462",
+      "name": "GBC Pump Module Version 3M",
+      "sha256": "3697dbe2bf055ee34bd43151a6d67eed243f5b7e87c38ec6a13893c9e4dee304",
+      "status": "bench-complete",
+      "functionallyQualified": false,
+      "bench": {
+        "parts": 249,
+        "motors": 1,
+        "turned": [
+          1734
+        ],
+        "unknown": 12,
+        "loose": 3,
+        "flung": 14,
+        "nan": true,
+        "details": [
+          {
+            "severity": "warning",
+            "line": 9,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 9"
+          },
+          {
+            "severity": "warning",
+            "line": 10,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 10"
+          },
+          {
+            "severity": "warning",
+            "line": 362,
+            "code": "unknown-part",
+            "message": "Unknown part '4185.dat' at line 362"
+          },
+          {
+            "severity": "warning",
+            "line": 366,
+            "code": "unknown-part",
+            "message": "Unknown part '4185.dat' at line 366"
+          },
+          {
+            "severity": "warning",
+            "line": 55,
+            "code": "unknown-part",
+            "message": "Unknown part '3308.dat' at line 55"
+          },
+          {
+            "severity": "warning",
+            "line": 218,
+            "code": "unknown-part",
+            "message": "Unknown part '32556.dat' at line 218"
+          },
+          {
+            "severity": "warning",
+            "line": 239,
+            "code": "unknown-part",
+            "message": "Unknown part '32556.dat' at line 239"
+          },
+          {
+            "severity": "warning",
+            "line": 267,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 267"
+          },
+          {
+            "severity": "warning",
+            "line": 111,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 111"
+          },
+          {
+            "severity": "warning",
+            "line": 120,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 120"
+          },
+          {
+            "severity": "warning",
+            "line": 121,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 121"
+          },
+          {
+            "severity": "warning",
+            "line": 135,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 135"
+          }
+        ]
+      }
+    },
+    {
+      "id": "brickhub-446",
+      "name": "GBC Modular Tipper Module \u2014 Exit Right",
+      "sha256": "405e97908ffc7d20c2f54d826061dbd3b88330547e51494a72d3a609e75a74a4",
+      "status": "bench-complete",
+      "functionallyQualified": false,
+      "bench": {
+        "parts": 411,
+        "motors": 0,
+        "turned": [],
+        "unknown": 3,
+        "loose": 9,
+        "flung": 0,
+        "nan": false,
+        "details": [
+          {
+            "severity": "warning",
+            "line": 410,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 410"
+          },
+          {
+            "severity": "warning",
+            "line": 478,
+            "code": "unknown-part",
+            "message": "Unknown part '33299.dat' at line 478"
+          },
+          {
+            "severity": "warning",
+            "line": 479,
+            "code": "unknown-part",
+            "message": "Unknown part '33299.dat' at line 479"
+          },
+          {
+            "severity": "info",
+            "code": "ports-plugged",
+            "parts": [
+              "motor.ldr#64_8"
+            ],
+            "message": "Plugged in: motor.ldr#64_8 \u2192 A"
+          },
+          {
+            "severity": "warning",
+            "code": "gear-on-frame",
+            "message": "The 12-tooth gear (i6.ldr#62_18_17) is rigidly joined to Technic beam 5 (i6.ldr#62_18_11), which holds the 12-tooth gear (i6.ldr#62_18_14), so it cannot turn it: the two gears lock together.",
+            "parts": [
+              "i6.ldr#62_18_17",
+              "i6.ldr#62_18_14"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-on-frame",
+            "message": "The 8-tooth gear (l1.ldr#62_22) is rigidly joined to Technic liftarm 1 x 11.5 double bent (l3.ldr#62_14_5), which holds the 24-tooth gear (l1.ldr#62_16), so it cannot turn it: the two gears lock together.",
+            "parts": [
+              "l1.ldr#62_22",
+              "l1.ldr#62_16"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-on-frame",
+            "message": "The 8-tooth gear (l1.ldr#62_33) is rigidly joined to Technic beam 3 x 5 L-shaped (f1.ldr#62_29_5), which holds the 24-tooth gear (l1.ldr#62_41), so it cannot turn it: the two gears lock together.",
+            "parts": [
+              "l1.ldr#62_33",
+              "l1.ldr#62_41"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "gear-on-frame",
+            "message": "The 8-tooth gear (l1.ldr#62_37) is rigidly joined to Technic liftarm 1 x 11.5 double bent (l3.ldr#62_14_5), which holds the 24-tooth gear (l1.ldr#62_38), so it cannot turn it: the two gears lock together.",
+            "parts": [
+              "l1.ldr#62_37",
+              "l1.ldr#62_38"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b13 and b7 lock, merging islands",
+            "parts": [
+              "f3.ldr#62_43_5",
+              "i6.ldr#62_18_12",
+              "i6.ldr#62_18_18",
+              "l1.ldr#62_32"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b2 and b7 lock, merging islands",
+            "parts": [
+              "base.ldr#49_24",
+              "base.ldr#49_25",
+              "base.ldr#49_31",
+              "base.ldr#49_32"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b2 and b7 lock, merging islands",
+            "parts": [
+              "f1.ldr#62_29_5",
+              "f2.ldr#62_20_5",
+              "i6.ldr#62_18_18",
+              "l3.ldr#62_14_13",
+              "l3.ldr#62_14_5",
+              "l3.ldr#62_14_9",
+              "l3r.ldr#62_35_5"
+            ]
+          },
+          {
+            "severity": "warning",
+            "code": "locked-hinges",
+            "message": "Hinges between b2 and b8 lock, merging islands",
+            "parts": [
+              "base.ldr#49_24",
+              "base.ldr#49_25",
+              "base.ldr#49_33"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "brickhub-426",
+      "name": "GBC Modular Wheel Module",
+      "sha256": "a45ce5cfb0ef672b4fc54b23e18d87c0573634461534e1ba5ad2e0ef20964cc6",
+      "status": "bench-complete",
+      "functionallyQualified": false,
+      "bench": {
+        "parts": 264,
+        "motors": 1,
+        "turned": [
+          2978
+        ],
+        "unknown": 12,
+        "loose": 2,
+        "flung": 0,
+        "nan": false,
+        "details": [
+          {
+            "severity": "warning",
+            "line": 10,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 10"
+          },
+          {
+            "severity": "warning",
+            "line": 11,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 11"
+          },
+          {
+            "severity": "warning",
+            "line": 12,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 12"
+          },
+          {
+            "severity": "warning",
+            "line": 17,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 17"
+          },
+          {
+            "severity": "warning",
+            "line": 18,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 18"
+          },
+          {
+            "severity": "warning",
+            "line": 296,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 296"
+          },
+          {
+            "severity": "warning",
+            "line": 297,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 297"
+          },
+          {
+            "severity": "warning",
+            "line": 190,
+            "code": "unknown-part",
+            "message": "Unknown part '33299.dat' at line 190"
+          },
+          {
+            "severity": "warning",
+            "line": 190,
+            "code": "unknown-part",
+            "message": "Unknown part '33299.dat' at line 190"
+          },
+          {
+            "severity": "warning",
+            "line": 190,
+            "code": "unknown-part",
+            "message": "Unknown part '33299.dat' at line 190"
+          },
+          {
+            "severity": "warning",
+            "line": 190,
+            "code": "unknown-part",
+            "message": "Unknown part '33299.dat' at line 190"
+          },
+          {
+            "severity": "warning",
+            "line": 253,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 253"
+          }
+        ]
+      }
+    },
+    {
+      "id": "brickhub-111",
+      "name": "MAN TGS 8x4 Cement Truck",
+      "sha256": "c42174e2f4e11f43a7620a2439bd648ac8c2c41db8ec114670712b7a6823cb22",
+      "status": "timeout-75s",
+      "functionallyQualified": false,
+      "bench": {}
+    },
+    {
+      "id": "brickhub-304",
+      "name": "Scania R 4x2 Highline",
+      "sha256": "9a35ab4b9d4e2123764325ca74d2a43d7a8934e0dd3f4a30653790ca3ae806d2",
+      "status": "bench-complete",
+      "functionallyQualified": false,
+      "bench": {
+        "parts": 751,
+        "motors": 1,
+        "turned": [
+          -34
+        ],
+        "unknown": 73,
+        "loose": 131,
+        "flung": 98,
+        "nan": false,
+        "details": [
+          {
+            "severity": "warning",
+            "line": 411,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 411"
+          },
+          {
+            "severity": "warning",
+            "line": 412,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 412"
+          },
+          {
+            "severity": "warning",
+            "line": 413,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 413"
+          },
+          {
+            "severity": "warning",
+            "line": 425,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 425"
+          },
+          {
+            "severity": "warning",
+            "line": 426,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 426"
+          },
+          {
+            "severity": "warning",
+            "line": 427,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 427"
+          },
+          {
+            "severity": "warning",
+            "line": 428,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 428"
+          },
+          {
+            "severity": "warning",
+            "line": 481,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 481"
+          },
+          {
+            "severity": "warning",
+            "line": 485,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 485"
+          },
+          {
+            "severity": "warning",
+            "line": 541,
+            "code": "unknown-part",
+            "message": "Unknown part '3023.dat' at line 541"
+          },
+          {
+            "severity": "warning",
+            "line": 544,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 544"
+          },
+          {
+            "severity": "warning",
+            "line": 571,
+            "code": "unknown-part",
+            "message": "Unknown part '61409.dat' at line 571"
+          }
+        ]
+      }
+    }
+  ]
+}

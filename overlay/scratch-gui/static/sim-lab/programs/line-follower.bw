@@ -1,0 +1,12 @@
+DEVICE SPIKE
+
+# Robot Lab: follow the black line around the Line Oval mat.
+# Model: Line follower (wheels on A and B, colour sensor on C).
+# The sensor rides the line's outer edge: on black steer right, on white steer left.
+WHEN flag clicked:
+  set movement motors A B
+  FOREVER:
+    IF spike color C is black THEN:
+      start tank 30 15
+    ELSE:
+      start tank 15 30

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "positioning-arm",
+  "language": "de",
+  "what": "Zwei unabhängig angetriebene Gelenke positionieren das Ende eines 80/64-mm-Arms. Zwei unabhängig angetriebene Gelenke positionieren die Spitze. Vergleiche die Koordinaten mit den Gleichungen für 80 mm / 64 mm Glieder.",
+  "try": [
+    "Setze zurück und starte die Folge.",
+    "Vergleiche die zwei Ellbogenhaltungen nahe derselben Spitzenposition.",
+    "Stoppe und ändere ein Gelenk leicht. Beobachte beide Spitzenkoordinaten."
+  ],
+  "why": "Die Schulter trägt den Ellbogen. Für die Unterarmrichtung addiert sich sein Winkel zum Schulterwinkel. Zwei verschiedene Gelenkhaltungen können fast denselben Punkt erreichen.",
+  "matters": "Roboterarme müssen neben der Motorregelung auch Geometrie lösen.",
+  "question": "Wirken Schulter- und Ellbogenwinkel im selben festen Bezugssystem?",
+  "answer": "Nein. Das Bezugssystem des Ellbogens dreht mit der Schulter. Für den Unterarm gilt daher die Summe beider Winkel.",
+  "further": [
+    "Sage die Wirkung einer fast gestreckten Haltung vorher.",
+    "Unterscheide Position und Orientierung: dieser Arm stellt keinen Werkzeugwinkel unabhängig ein."
+  ],
+  "formula": "x = 80 cos(A) + 64 cos(A+B)\ny = 80 sin(A) + 64 sin(A+B)  [mm]",
+  "related": [
+    "tidal-trio.ldr"
+  ]
+}

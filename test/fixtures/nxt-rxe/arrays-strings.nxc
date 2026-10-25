@@ -1,0 +1,52 @@
+// Arrays (dope vectors), nested arrays, structs and strings, each result on the display in order
+// (Brickwright NXT .rxe VM fixture).
+struct point {
+    int x;
+    int y;
+};
+
+task main()
+{
+    int arr[];
+    ArrayInit(arr, 7, 5);
+    arr[2] = 42;
+    NumOut(0, LCD_LINE1, ArrayLen(arr));
+    NumOut(0, LCD_LINE2, arr[2] + arr[0]);
+    int part[];
+    ArraySubset(part, arr, 1, 3);
+    int both[];
+    ArrayBuild(both, part, arr);
+    NumOut(0, LCD_LINE3, ArrayLen(both));
+    int sum = 0;
+    for (int i = 0; i < ArrayLen(both); i++) sum += both[i];
+    NumOut(0, LCD_LINE4, sum);
+    string s = "NXT";
+    string t = StrCat(s, "-", NumToStr(2006));
+    TextOut(0, LCD_LINE5, t);
+    TextOut(0, LCD_LINE6, SubStr(t, 4, 4));
+    NumOut(0, LCD_LINE7, StrLen(t));
+    NumOut(0, LCD_LINE8, StrToNum("123abc"));
+    if (s == "NXT") TextOut(0, LCD_LINE1, "equal");
+    byte bytes[];
+    StrToByteArray(s, bytes);
+    NumOut(0, LCD_LINE2, bytes[0]);
+    int row[];
+    ArrayInit(row, 5, 3);
+    int grid[][];
+    ArrayInit(grid, row, 2);
+    NumOut(0, LCD_LINE3, grid[1][2] + ArrayLen(grid) * 10);
+    grid[1][2] = 9;
+    NumOut(0, LCD_LINE3, grid[1][2]);
+    point p;
+    p.x = 3;
+    p.y = 4;
+    NumOut(0, LCD_LINE4, p.x * p.y);
+    point pts[];
+    ArrayInit(pts, p, 2);
+    pts[1].y = 10;
+    NumOut(0, LCD_LINE5, pts[0].y + pts[1].y);
+    int copy[];
+    copy = arr;
+    copy[0] = 1;
+    NumOut(0, LCD_LINE6, copy[0] * 100 + arr[0]);
+}

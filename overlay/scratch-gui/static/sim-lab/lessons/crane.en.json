@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "crane",
+  "language": "en",
+  "what": "A two-motor crane raises its boom with a small screw actuator and slews it on a geared turntable. Motor A turns an 8-tooth pinion against the 28-tooth turntable. Motor B turns the actuator spindle. The hook is carried at the boom tip; this example has no active winch. A linear actuator raises a boom while a geared turntable slews it. Compare spindle travel, hook height and gear reduction.",
+  "try": [
+    "Choose Crane in Examples. Its program loads automatically. Run the saved pose: the boom rises, slews a quarter turn, lowers and swings back.",
+    "Compare motor A rotation with turntable rotation. An input of 315 degrees gives a nominal 90 degree turntable movement.",
+    "Observe the small actuator extension and the much larger hook displacement. Reset before another run; compare with Screw Crane and Sarrus Lift."
+  ],
+  "why": "The 8-tooth pinion driving 28 teeth reduces angle by 8/28, increasing ideal torque by the inverse ratio before friction. The screw converts spindle turns into extension, nominally 1.2 mm per full turn for this actuator. The boom pivots about its hinge, so its angle and hook height depend on the actuator attachment geometry. Hook travel is not simply the spindle extension.",
+  "matters": "Cranes combine gear reduction, screw conversion and leverage. The example isolates boom luffing and slewing; it does not qualify a physical lifting capacity, rope winch or hardware overload protection.",
+  "question": "How many motor A degrees correspond to a nominal quarter turn of the 28-tooth turntable?",
+  "answer": "315 degrees: multiply 90 degrees by 28/8. The pinion must turn farther than the turntable because it has fewer teeth. Ideal torque changes by the reciprocal angle ratio, before friction and losses.",
+  "further": [
+    "Compare spindle extension and actual hook height throughout the lift, rather than assuming a constant proportionality.",
+    "Compare with Screw Crane for another actuator geometry and with Sarrus Lift for a vertically constrained platform."
+  ],
+  "formula": "Turntable: φout = φA × 8/28; 315° → 90°. Actuator: Δl ≈ 1.2 mm × turnsB.",
+  "related": [
+    "screw-crane.ldr",
+    "sarrus-lift.ldr",
+    "parallel-lift.ldr"
+  ]
+}

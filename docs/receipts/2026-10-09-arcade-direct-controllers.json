@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "173e4a645c90ed506808f1c58e7c321ab030a1e1",
+  "base": "17e178bd3c6e398068a1f7fa053cbe0a64b44ee9",
+  "producerPin": "e3d0e890f47d9ffb19af3fb5e37d532a7b9ba63f",
+  "implemented": [
+    "Direct controller.player1\u2013player4.moveSprite and stopControllingSprite import/export",
+    "Native controller dropdown commands and canonical pseudocode words",
+    "Independent controller bindings without multiplayer player-state allocation or package dependency",
+    "Default speeds, zero-speed free axes, diagonal normalization, binding removal preserving velocity",
+    "Existing controller-pane browser gate extended with four-player input isolation, release and detach journey"
+  ],
+  "local": {
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "log": "arcade-direct-controllers-qualified-source.log",
+    "files": [
+      "test/makecode-arcade-direct-controllers.test.mjs",
+      "test/makecode-arcade-controller-bindings.test.mjs",
+      "test/makecode-arcade-multiplayer-movement.test.mjs",
+      "test/arcade-multiplayer-movement-runtime.test.mjs",
+      "test/dialect-arcade-import-lines.test.mjs",
+      "test/lego-spike-roundtrip.test.mjs",
+      "test/arcade-browser-bundle.test.mjs",
+      "test/overlay-packages-pairs.test.mjs"
+    ],
+    "producer": {
+      "passed": 236,
+      "failed": 0,
+      "skipped": 0,
+      "eslint": "pass"
+    },
+    "boundary": "Original pinned PXT runtime comparisons; native Code/Blocks/decompile/export/reimport/SB3 lifecycle; actual development and production extension bundles. Not a fresh full-app browser result."
+  },
+  "corpus": {
+    "boundary": "Unchanged import-only census; translated does not establish full gameplay compatibility",
+    "hashVerifiedInputs": 184,
+    "inputChanges": 0,
+    "before": {
+      "translated": 104,
+      "partial": 79,
+      "malformed": 1
+    },
+    "after": {
+      "translated": 105,
+      "partial": 78,
+      "malformed": 1
+    },
+    "changedImportDiagnosticRows": 1,
+    "realAppProof": "Newly translated two-player app runs in headless VM, player-two steering agrees with original PXT, return export compiles/runs in original PXT and reimports without diagnostics. Headless renderer/audio availability messages retained privately."
+  },
+  "browser": {
+    "freshJourney": "Prepared in existing hosted rotation/controller gate; pending",
+    "parent": "PR748 light rotation and pixel-color gates failed; raw job logs were unavailable while the job continued. Keep failures open until inspected and fixed.",
+    "parentJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37909605019/job/113761385275"
+  },
+  "remaining": [
+    "Direct controller values/aliases and dynamic lookup are separate unsupported APIs",
+    "Connection events, analog pressure, button repeat configuration and network sessions remain open",
+    "Fresh full-app browser qualification is required; no merge based on local tests"
+  ]
+}

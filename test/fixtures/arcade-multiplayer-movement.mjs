@@ -1,0 +1,13 @@
+export const MULTIPLAYER_MOVEMENT_SOURCE = `let first=sprites.create(img\`1\`,SpriteKind.Player)
+let second=sprites.create(img\`2\`,SpriteKind.Food)
+let replacement=sprites.create(img\`3\`,SpriteKind.Enemy)
+first.setPosition(30,30)
+second.setPosition(80,30)
+replacement.setPosition(100,60)
+let one=mp.playerSelector(mp.PlayerNumber.One)
+let two=mp.playerSelector(mp.PlayerNumber.Two)
+mp.moveWithButtons(two,60,0)
+mp.setPlayerSprite(one,first)
+mp.moveWithButtons(one)
+mp.setPlayerSprite(two,second)
+controller.B.onEvent(ControllerButtonEvent.Pressed,function(){mp.setPlayerSprite(two,replacement)})`;

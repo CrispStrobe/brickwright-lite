@@ -1,0 +1,56 @@
+{
+  "schema": "brickwright-lite.freedos-circuits-direct-acceptance.v1",
+  "result": "PASS",
+  "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37679932133",
+  "artifactApi": "https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11509166794",
+  "artifactBytes": 114703,
+  "artifactSha256": "1e8c32c53c3f596aa2bda727c2f8660d079fbddb6243da17cafc01c98e29f7db",
+  "artifactMembers": 38,
+  "inventoryMembers": 37,
+  "testedSourceRevision": "327143c40bfd0e0655395ec7c6cdb940de72c305",
+  "buildManifestCommit": "327143c",
+  "buildIndexSha256": "2deb06776d732fb4b64a40c4daf4dc860c0c25d54bb6691bf5edafebf8d34d42",
+  "generatedProbeSha256": "fd6684a86991d555e1264dfe9cfc47e6048938597063805e8195cc1142ae473b",
+  "probeParentSha256": "0cb78e14ac17c882fa4bfe62d65320f5fe27d66891d76ccaa1cd01436d75fc92",
+  "pins": {
+    "bw-circuit-ui": "557c4716236536829456818789c50772d0e65fa8",
+    "bw-board": "a1126312288867127343c2f9bbdfcd2856a18508",
+    "sb3-creator": "983aa61f2fa44901074763b7347588b4e210fc77",
+    "stc-compiler-flasher": "30f43384a9f226de3c3cb753e119dd93ca2e81ff"
+  },
+  "mediaSha256": {
+    "freedos14Floppy": "03df6088be016e57a6c44275f5bb9ab0244db71de1360957fd76ba83243b6a77",
+    "ownedBaseHdd": "2fa9c252f22cec4f8c5bdc82d1587293ffcaed791e0982384628d19a7316a851",
+    "ownedInteractionHdd": "fa600b54051d0f3d12793ff61316e4ddfb029e4b21b67aac4c3d4d1e608d3591"
+  },
+  "guestOutput": [
+    "PS2 PACKET 09 00 00",
+    "PS2 DONE",
+    "circuitok",
+    "tabok"
+  ],
+  "directCircuit": {
+    "physicalTrustedFocusedKeyEvents": 30,
+    "acceptedTargetScancodes": 30,
+    "beforePixelSha256": "c5e90149ca41bf660e144ef5d7c3bb5950fb9658e5ad47217cc452b90f4ecfa6",
+    "afterPixelSha256": "c817367f999f682b647dec0d1ec638683788826bee5d7a10b7180acf3d2c5fff",
+    "separateGuestOutputLine": "circuitok"
+  },
+  "guestTimeNs": {
+    "beforeTabs": "66808775833",
+    "beforeDirectCircuit": "67358786833",
+    "afterDirectCircuit": "69075487833",
+    "afterTabs": "71075527833"
+  },
+  "mediaAnnouncements": {
+    "beforeTabs": 2,
+    "afterTabs": 3,
+    "interpretation": "Diagnostic only; preserve guest output and clock to assess continuity."
+  },
+  "limits": [
+    "One free-media FreeDOS browser scenario with an owned PS/2 probe; no INT33 application test",
+    "No drag-outside-canvas or browser-reserved-key acceptance",
+    "No disk writeback/export, arbitrary package, native GUI backend or general OS compatibility claim",
+    "Original packet omits guest media and built index bytes; hashes and hosted admission bind those roles"
+  ]
+}

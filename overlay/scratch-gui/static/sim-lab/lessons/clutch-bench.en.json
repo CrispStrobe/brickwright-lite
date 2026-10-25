@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "clutch-bench",
+  "language": "en",
+  "what": "Motor A turns a shaft inside a 24-tooth friction clutch. Its outer teeth drive a 40-tooth output on motor B. The shaft pointers and clutch ring can move separately. A drives a 24-tooth slipping clutch and 40-tooth output; B returns the output to zero and holds it, then releases it.",
+  "try": [
+    "Reset, load the program and Run. Watch the unloaded output turn opposite to the input.",
+    "B returns the output to zero and holds it. Watch A continue turning while the clutch ring and output settle to a stop.",
+    "B releases the output, then A reverses. Check that motion returns and the free output/input speed ratio is approximately −0.6."
+  ],
+  "why": "The clutch transmits torque through limited friction rather than a rigid axle connection. Under a light load its ring follows the shaft. When the holding load exceeds the friction limit, the shaft slips inside the ring. The model uses a nominal 0.0375 N·m threshold; it does not predict the wear-dependent torque of an individual real part.",
+  "matters": "Torque limiters can protect a mechanism when an output is blocked. Slip loses angular indexing, and real clutches dissipate work as heat; this example has no temperature model.",
+  "question": "Must the input shaft stop whenever the output is held still?",
+  "answer": "No. Above the clutch limit, the input shaft can keep turning relative to its stationary toothed ring. Releasing the load restores transmission, but does not undo the angle lost during slip.",
+  "further": [
+    "Use the two manual motor controls to compare assistance and opposition at low speeds. Stop All holds both shafts.",
+    "Compare the slipping clutch with a rigid gear train: a tooth-count ratio applies between the outer ring and output, even when the input shaft slips."
+  ],
+  "formula": "Free transmission: ωB / ωA ≈ −24 / 40 = −0.6; nominal slip torque = 0.0375 N·m",
+  "related": [
+    "gearbox.ldr",
+    "ratio-workbench.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

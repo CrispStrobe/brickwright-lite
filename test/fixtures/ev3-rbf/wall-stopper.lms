@@ -1,0 +1,22 @@
+// EV3 wall stopper (Brickwright Robot Lab fixture): drive B and C at power 40
+// until the ultrasonic sensor on input 4 reads less than 15 cm, then brake.
+define LAYER   0
+define DRIVE   6      // B (2) + C (4)
+define US_PORT 3      // input 4 (0-3 internal)
+
+DATAF Distance
+DATA32 Timer
+
+vmthread MAIN
+{
+  OUTPUT_RESET(LAYER, DRIVE)
+  OUTPUT_POWER(LAYER, DRIVE, 40)
+  OUTPUT_START(LAYER, DRIVE)
+Loop:
+  INPUT_READSI(LAYER, US_PORT, 0, 0, Distance)
+  JR_GTF(Distance, 15.0F, Loop)
+  OUTPUT_STOP(LAYER, DRIVE, 1)
+  UI_WRITE(PUT_STRING, 'wall')
+  TIMER_WAIT(500, Timer)
+  TIMER_READY(Timer)
+}

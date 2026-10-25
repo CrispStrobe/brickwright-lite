@@ -1,0 +1,73 @@
+# Phase Bridge: original control program, BSD-3-Clause
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe)
+# Reset the supplied model before starting. Port A is the only motor.
+# Absolute, unwrapped targets use fresh encoder feedback on every move.
+# A missed target by more than 2 degrees holds A and stops the program.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  wait 0.5 seconds
+  # Step 1: equal 45-degree input advances.
+  lab run motor A for (45 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (45 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Step 2: equal 45-degree input advances.
+  lab run motor A for (90 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (90 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Step 3: equal 45-degree input advances.
+  lab run motor A for (135 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (135 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Step 4: equal 45-degree input advances.
+  lab run motor A for (180 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (180 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Step 5: equal 45-degree input advances.
+  lab run motor A for (225 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (225 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Step 6: equal 45-degree input advances.
+  lab run motor A for (270 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (270 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Step 7: equal 45-degree input advances.
+  lab run motor A for (315 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (315 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # Step 8: equal 45-degree input advances.
+  lab run motor A for (360 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (360 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all
+  wait 1 seconds
+  # One continuous reverse turn returns to the starting angle.
+  lab run motor A for (0 - (lab motor A angle)) degrees at 60 degrees per second
+  lab stop motor A hold
+  IF (abs of (0 - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    stop all

@@ -1,0 +1,118 @@
+{
+  "id": "sd04-door-in-the-wall",
+  "title": {
+    "en": "The door in the wall",
+    "de": "Die Tür in der Wand"
+  },
+  "intro": {
+    "en": "For this job the distance sensor is mounted on the rover's LEFT side, looking sideways. Drive along the station wall; where the reading suddenly jumps, there is a door. Drive on until the rover is in front of the middle of the door, turn left, and park in the storeroom.",
+    "de": "Für diesen Auftrag ist der Abstandssensor an der LINKEN Seite des Rovers montiert und schaut zur Seite. Fahre an der Stationswand entlang; wo der Messwert plötzlich springt, ist eine Tür. Fahre weiter, bis der Rover vor der Mitte der Tür steht, biege links ab und parke im Lager."
+  },
+  "hints": [
+    {
+      "en": "Along the wall the sensor reads about 13 cm; through the door it sees much further.",
+      "de": "An der Wand misst der Sensor etwa 13 cm; durch die Tür sieht er viel weiter."
+    },
+    {
+      "en": "The sensor sees the door's first edge. The door is 30 cm wide: drive about half of that further before you turn.",
+      "de": "Der Sensor sieht die erste Kante der Tür. Die Tür ist 30 cm breit: Fahre etwa die Hälfte davon weiter, bevor du abbiegst."
+    }
+  ],
+  "mat": {
+    "width": 190,
+    "height": 80,
+    "background": "white",
+    "paint": "#e7eff6",
+    "shapes": [
+      {
+        "color": "violet",
+        "paint": "#d0bfff",
+        "shape": {
+          "type": "rect",
+          "x": 125,
+          "y": 18,
+          "w": 30,
+          "h": 30
+        }
+      }
+    ]
+  },
+  "walls": [
+    {
+      "shape": {
+        "type": "rect",
+        "x": 55,
+        "y": 36,
+        "w": 110,
+        "h": 8
+      }
+    },
+    {
+      "shape": {
+        "type": "rect",
+        "x": 165,
+        "y": 36,
+        "w": 50,
+        "h": 8
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "storeroom",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 125,
+        "y": 20,
+        "r": 8
+      },
+      "label": {
+        "en": "storeroom",
+        "de": "Lager"
+      }
+    }
+  ],
+  "robot": {
+    "sensors": [
+      {
+        "kind": "color",
+        "port": "C",
+        "x": 7,
+        "y": 0
+      },
+      {
+        "kind": "distance",
+        "port": "D",
+        "x": 0,
+        "y": -7,
+        "heading": -90
+      },
+      {
+        "kind": "force",
+        "port": "E",
+        "x": 9.8,
+        "y": 3
+      }
+    ]
+  },
+  "start": {
+    "x": 20,
+    "y": 60,
+    "heading": 0
+  },
+  "timeLimitMs": 25000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "storeroom"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "sd04-door-in-the-wall.bw",
+  "wrong": "sd04-door-in-the-wall.wrong.bw"
+}

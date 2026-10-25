@@ -1,0 +1,175 @@
+0 STRIDE LAB - one-motor Hoeken straight-line demonstrator
+0 Name: stride-lab.ldr
+0 Author: ChatGPT; mounting adapted from CrispStrobe / Brickwright contributors
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE BSD-3-Clause : see ../LICENSE-BSD-3-Clause.txt
+0 // Original mounting patterns: TIDAL TRIO, Copyright (c) 2026 CrispStrobe.
+0 // New assembly and Hoeken linkage: ChatGPT, 2026.
+0 // Lengths AB=40 AD=80 BC=CD=CP=100 LDU. 20 LDU = 8 mm.
+0 // A=(0,0), D=(80,0). B=(40,0), C=(60,-sqrt(9600)) at Reset.
+0 // P=2C-B. The tip is the last hole of coupler, local (0,0,100).
+0 // Crank/coupler/rocker planes z=60/80/100; all hinges are physical pins.
+0 // The virtual trace in preview.html is an analytical illustration, not a !BW joint.
+0 // 1. Compact rigid chassis: two long rails and four pinned crossmembers
+0 !BW ID baseRail0
+1 0 40 220 0 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID baseRail120
+1 0 40 220 120 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID baseEnd-100
+1 72 -100 240 60 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID baseEndPin-100_0
+1 0 -100 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseEndPin-100_120
+1 0 -100 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseEnd180
+1 72 180 240 60 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID baseEndPin180_0
+1 0 180 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID baseEndPin180_120
+1 0 180 230 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail-60
+1 72 -60 200 60 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID footBasePin-60_0
+1 0 -60 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin-60_120
+1 0 -60 210 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail-40
+1 72 -40 200 60 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID footBasePin-40_0
+1 0 -40 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin-40_120
+1 0 -40 210 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail60
+1 72 60 200 60 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID footBasePin60_0
+1 0 60 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin60_120
+1 0 60 210 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footRail80
+1 72 80 200 60 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID footBasePin80_0
+1 0 80 210 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID footBasePin80_120
+1 0 80 210 120 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 2. Motor A, pinned on both sides to four structural posts
+0 !BW ID motor
+0 !BW PORT A
+1 15 0 0 0 1 0 0 0 0 1 0 -1 0 54696p01.dat
+0 !BW ID motorPost-1_-20
+1 0 -40 60 -20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin-1_-20_-20
+1 0 -30 -20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_-20_20
+1 0 -30 20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_-20_140
+1 0 -30 140 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFootConnector-1_-20
+1 72 -60 180 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motorFootPin-1_-20
+1 0 -60 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorPost-1_20
+1 0 -40 60 20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin-1_20_-20
+1 0 -30 -20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_20_20
+1 0 -30 20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin-1_20_140
+1 0 -30 140 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFootConnector-1_20
+1 72 -60 180 20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID motorFootPin-1_20
+1 0 -60 190 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorPost1_-20
+1 0 40 60 -20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin1_-20_-20
+1 0 30 -20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_-20_20
+1 0 30 20 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_-20_140
+1 0 30 140 -20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFootConnector1_-20
+1 72 60 180 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motorFootPin1_-20
+1 0 60 190 -20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID motorPost1_20
+1 0 40 60 20 0 1 0 0 0 1 1 0 0 41239.dat
+0 !BW ID motorSidePin1_20_-20
+1 0 30 -20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_20_20
+1 0 30 20 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorSidePin1_20_140
+1 0 30 140 20 1 0 0 0 0 1 0 -1 0 2780.dat
+0 !BW ID motorFootConnector1_20
+1 72 60 180 20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID motorFootPin1_20
+1 0 60 190 20 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 3. Braced grounded rocker bearing at D, four studs from A
+0 !BW ID rockerPost80
+1 0 80 80 80 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID rockerPost120
+1 0 80 80 120 -1 0 0 0 0 1 0 1 0 40490.dat
+0 !BW ID supportBrace
+1 72 20 100 100 -0.8 0 -0.6 -0.6 0 0.8 0 1 0 32525.dat
+0 !BW ID braceTopPin
+1 1 80 20 100 0 1 0 0 0 1 1 0 0 6558.dat
+0 !BW ID rockerFootConnector60
+1 72 80 160 60 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID rockerFootPin60
+1 1 80 180 60 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID rockerFootConnector140
+1 72 80 160 140 0 0 1 0 1 0 -1 0 0 15100.dat
+0 !BW ID rockerFootPin140
+1 1 80 180 140 0 1 0 1 0 0 0 0 -1 6558.dat
+0 !BW ID rockerFootSpreader
+1 72 80 180 60 1 0 0 0 1 0 0 0 1 40490.dat
+0 !BW ID braceFootConnector
+1 72 -40 180 80 0 0 -1 0 1 0 1 0 0 15100.dat
+0 !BW ID braceFootPin
+1 0 -40 190 80 0 1 0 1 0 0 0 0 -1 2780.dat
+0 STEP
+0 // 4. Red input crank, yellow extended coupler and blue rocker
+0 !BW ID crank
+1 4 0 0 60 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID rotorPin-20
+1 0 -20 0 50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID rotorPin20
+1 0 20 0 50 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID coupler
+1 14 60 -97.979589711 80 0.979795897 0 0.2 0.2 0 -0.979795897 0 1 0 32525.dat
+0 !BW ID pinB
+1 71 40 0 70 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID rocker
+1 1 68 -58.787753827 100 0.979795897 0 -0.2 -0.2 0 -0.979795897 0 1 0 32524.dat
+0 !BW ID pinC
+1 71 60 -97.979589711 90 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID pivotD
+1 71 80 0 100 0 1 0 0 0 1 1 0 0 32556a.dat
+0 !BW ID tipMarker
+1 4 76 -176.36326148 100 0.979795897 0 0.2 0.2 0 -0.979795897 0 1 0 32523.dat
+0 !BW ID tipMarkerPin60
+1 0 72 -156.767343538 90 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID tipMarkerPin80
+1 0 76 -176.36326148 90 0 1 0 0 0 1 1 0 0 2780.dat
+0 STEP
+0 // 5. SPIKE hub on a pinned rear cradle
+0 !BW ID hub
+1 15 30 160 -180 0 -1 0 1 0 0 0 0 1 45601.dat
+0 !BW ID hubRail40
+1 72 40 240 -140 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hubMountPin40_0
+1 0 40 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin40_-100
+1 0 40 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin40_-260
+1 0 40 230 -260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubRail80
+1 72 80 240 -140 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID hubMountPin80_0
+1 0 80 230 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin80_-100
+1 0 80 230 -100 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID hubMountPin80_-260
+1 0 80 230 -260 0 1 0 1 0 0 0 0 -1 2780.dat
+0 // Motor cable is routed from A to the hub in a real build; no cable geometry is supplied.

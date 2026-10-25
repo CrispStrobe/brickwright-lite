@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "butterfly",
+  "language": "de",
+  "what": "Kurbel und Pleuel bewegen einen Kreuzkopf auf zwei Achsführungen. Zwei passive Koppeln drehen die starren Dreiecksflügel gemeinsam. Die Bewegung entsteht aus geschlossenen Gelenkketten und nicht aus vorgegebenen Animationsposen. Eine Kurbel und ein gleitender Kreuzkopf heben zwei starre Dreiecksflügel gemeinsam.",
+  "try": [
+    "Zurücksetzen und einen langsamen Flügelschlag starten. Vergleiche Kurbelkreis, geraden Kreuzkopfhub und Flügelbögen.",
+    "Pausiere am tiefsten Kreuzkopfpunkt: Beide Flügel sind fast waagerecht.",
+    "Für kurze langsame Tippbewegungen Motorübersteuerung einschalten; vor dem nächsten Programmlauf wieder ausschalten."
+  ],
+  "why": "Der Kurbelradius beträgt 8 mm, die Pleuellänge 48 mm. Der Schubkurbelkreis erzeugt 16 mm Kreuzkopfhub. Zwei 40-mm-Koppeln drücken auf die 8-mm-Flügelarme. Die gespiegelten Flügel haben in einer gemeinsamen Ansicht entgegengesetzte Winkelvorzeichen und steigen dennoch gemeinsam.",
+  "matters": "Der Automat wandelt Drehung in Hin-und-her-Bewegung und Schwingung um. Er zeigt parallele Führungen und Dreiecksversteifung, jedoch keinen aerodynamischen Auftrieb oder Flug.",
+  "question": "Wie viele volle Flügelschläge ergeben zwei volle Motorumdrehungen?",
+  "answer": "Zwei. Jeder Kurbelumlauf senkt und hebt den Kreuzkopf einmal. Der ideale Flügelhub beträgt 53,130102°. Der Motor läuft durch, während die Flügel an jedem Ende umkehren.",
+  "further": [
+    "Vergleiche den Kreuzkopfweg im ersten und letzten Viertelumlauf: Das endliche Pleuel bewirkt ungleichförmige Geschwindigkeit.",
+    "Finde Dreiecksverbände und unterscheide starre Flügelteile von frei drehenden Koppelgelenken.",
+    "Der Nennhub von 53,13° gilt für ideale Geometrie. Die kurzen 8-mm-Antriebsarme verstärken numerische Gelenkfehler unter einem Millimeter; vorübergehendes Überschwingen ist sichtbar."
+  ],
+  "formula": "Kreuzkopfhub = 2r = 16 mm; ein Kurbelumlauf = ein Flügelschlag; idealer Flügelhub = 53,130102°",
+  "related": [
+    "crank-rocker.ldr",
+    "parallel-lift.ldr"
+  ]
+}

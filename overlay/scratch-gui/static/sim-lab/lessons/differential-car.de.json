@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "differential-car",
+  "language": "de",
+  "what": "Motor A treibt die Hinterräder über ein Differenzial an. Motor B bewegt über ein Ritzel eine geführte Zahnstange; Spurstangen lenken die Vorderräder. In einer Kurve kann sich das äußere Hinterrad schneller drehen als das innere. Das frei fahrende Auto verbindet Differenzial, Zahnstange und Lenkung. Ein Differenzial erlaubt verschiedene Drehzahlen der Hinterräder, während eine Zahnstange die Vorderräder lenkt. Vergleiche Geradeausfahrt und einen Vollkreis.",
+  "try": [
+    "Wähle Differenzial-Auto unter Beispiele und starte das automatisch geladene Programm auf der einfachen Matte. Beobachte Geradeausfahrt, einen Vollkreis und die Rückwärtsfahrt entlang der Anfahrt.",
+    "Vergleiche bei eingeschlagenen Vorderrädern die Drehzahlen der Hinterräder. Das Differenzial erlaubt unterschiedliche Abtriebsdrehzahlen ohne zwei unabhängige Fahrmotoren.",
+    "Setze zurück und vergleiche die Zahnstangenstellung bei Motor B auf null und 100 Grad. Vor einem weiteren vollständigen Lauf stoppen und zurücksetzen."
+  ],
+  "why": "Der Differenzialträger überträgt den Antrieb, während die inneren Zahnräder entgegengesetzte Drehzahländerungen an den beiden Abtrieben erlauben. Im idealen symmetrischen Getriebe entspricht die mittlere Abtriebsdrehzahl der Trägerdrehzahl. Das Lenkritzel wandelt Drehung in Zahnstangenverschiebung um und bewegt damit beide Spurstangen. Reale simulierte Radwinkel und Reifenkontakte bestimmen die gemessene Kurve; die Zahnstangenlenkung ist kein exaktes Einspur- oder ideales Ackermann-Modell.",
+  "matters": "Ein Differenzial erlaubt in einer Kurve unterschiedliche Radwege und überträgt zugleich einen gemeinsamen Antrieb. Ein getrennter Lenkmotor bestimmt die Fahrtrichtung. Die Simulation trennt Antrieb, Lenkung und Kontaktwirkungen; sie belegt keine reale Reifenreibung oder kalibrierte Fahrleistung.",
+  "question": "Was muss mit dem zweiten Differenzialabtrieb geschehen, wenn der erste bei gleichbleibender Trägerdrehzahl langsamer wird?",
+  "answer": "Der zweite Abtrieb wird im idealen symmetrischen Differenzial um denselben Betrag schneller. Der Mittelwert bleibt gleich der Trägerdrehzahl. Diese Aussage betrifft die Differenzialabtriebe; zusätzliche Radgetriebe müssen getrennt berücksichtigt werden.",
+  "further": [
+    "Vergleiche mit dem stationären Differenzial und dem Schwungrad-Differenzial, um Übertragung und Trägheit einzeln zu betrachten.",
+    "Vergleiche mit Turnwise: Dort werden ungleiche Lenkwinkel ohne Reifen-Boden-Kontakt und angetriebene Hinterachse isoliert."
+  ],
+  "formula": "Symmetric differential / symmetrisches Differenzial: (ω₁ + ω₂)/2 = ωcarrier. Pinion/rack / Ritzel-Zahnstange: x = rφ (φ in radians / im Bogenmaß).",
+  "related": [
+    "differential.ldr",
+    "flywheel-differential.ldr",
+    "turnwise.ldr"
+  ]
+}

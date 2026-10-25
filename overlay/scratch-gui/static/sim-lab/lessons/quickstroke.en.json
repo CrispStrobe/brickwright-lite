@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "quickstroke",
+  "language": "en",
+  "what": "One motor turns a crank at a steady requested speed. A connecting rod drives an orange carriage on two guide axles. Because the guide line is offset from the crank center, the two equal-distance strokes take different times. Reversing the motor exchanges the slow and fast directions. One steady crank produces unequal stroke times. Measure the quick-return ratio, then reverse the motor.",
+  "try": [
+    "Choose Quickstroke in Examples; its program loads into Blocks automatically. Press Run. The crank makes three uninterrupted turns each way at 30 degrees per second. Observe complete middle strokes away from startup and stopping.",
+    "During the first run, the carriage moves toward the motor more slowly and away from it more quickly. After the held pause, the motor reverses and these roles swap. Compare the times between actual carriage reversals, not equal time slices.",
+    "Follow the two red guide axles and both eyes of each smooth toggle. They prevent the carriage from rolling while the blue rod swings. The slider has no motor of its own."
+  ],
+  "why": "With crank radius r, rod length l, and guide offset e, the rod keeps (x − r cos θ)² + (e − r sin θ)² = l². This assembly uses the right-hand branch x = r cos θ + sqrt(l² − (e − r sin θ)²). Its two dead centers occur at unequal crank-angle intervals: about 211.511° and 148.489°. At constant crank speed, those intervals determine the different stroke times.",
+  "matters": "A mechanism can redistribute motion in time without changing the input speed. Here the same 63.416 mm travel takes ideally 7.050 seconds one way and 4.950 seconds the other at 30 degrees per second. The slower stroke could correspond to a working stroke in a machine, but this model is an unloaded kinematics demonstrator.",
+  "question": "If the motor speed doubles while remaining constant through each complete stroke, what happens to the two stroke times and to their ratio? What changes if its direction reverses?",
+  "answer": "Both ideal stroke times halve, while the slow/fast time ratio remains about 1.4244. Reversing the motor exchanges the slow and fast travel directions. Tslow/Tfast equals the fast-stroke average speed divided by the slow-stroke average speed; instantaneous carriage speed still changes and reaches zero at both ends.",
+  "further": [
+    "Set e = 0 in the equation as a mathematical comparison. Both dead-center intervals become 180° and the ideal time ratio becomes one. Changing the physical offset would require a newly assembled and checked geometry.",
+    "Compare Quickstroke with Tempo Loop. Both show a varying output speed from one steady input, but one output translates and the other rotates.",
+    "Measure actual reversal times before comparing them with the ideal equation. Native motor feedback and physical carriage positions are checked independently."
+  ],
+  "formula": "r=60, l=200, e=120 LDU; 1 LDU=0.4 mm. α=asin(e/(l+r)), β=asin(e/(l−r)); Tslow/Tfast=(π+β−α)/(π−β+α)=1.4244196373. θ is measured from LDraw +X toward LDraw +Z; the direct-drive encoder relationship is θ=−A.",
+  "related": [
+    "tempo-loop.ldr",
+    "rack-shuttle.ldr"
+  ]
+}

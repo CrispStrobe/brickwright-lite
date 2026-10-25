@@ -1,0 +1,101 @@
+# What lite changes in the vendored sb3-creator files, and why a byte comparison is the wrong question here
+
+Vendored trees are normally compared BYTE FOR BYTE against upstream at the pin,
+because they are copied unchanged. **This one is not copied unchanged.**
+
+*(Until 2026-09-12 this sentence began "The other two vendored trees". There are
+no other two: `bw-board` and `bw-circuit-ui` became npm git-sha dependencies that
+day and this is the only vendored tree left. See `docs/VENDORING-REGIME.md`.)*
+`scripts/sync-sb3creator.mjs` flattens `src/utils/<name>.js` into
+`src/lib/sb3-creator-<name>.js` and REWRITES the relative imports to match:
+
+```
+-import micropythonToPseudocode from './micropythonToPseudocode.js';
++import micropythonToPseudocode from './sb3-creator-micropython.js';
+```
+
+Five of the fourteen mapped files differ from upstream on disk, and all five
+differ **only** by that rewrite. A byte-identity gate over this tree would
+assert something false and go red on the sync doing exactly what it is for. The
+transform is the authority, and the sync's own `--check` already verifies it:
+run against the tree at the pin, all fourteen files match after the rewrite.
+
+## The hole this document closes
+
+Before the `9173ca75` pin, the fourteenth was reported and then waved through:
+
+```
+  STALE sb3-creator-examples.js  (differs from sb3-creator@main)
+
+  1 intentional downstream file delta(s) allowed.
+```
+
+`--allow-stale`, which is what `.github/workflows/vendor-freshness.yml` passes,
+makes staleness non-fatal — `if (check && stale && !allowStale)`. So the
+permitted set is **a count, not a list**: unbounded, unnamed, and unreasoned.
+It was one file. A sync that half-finished tomorrow and left five would
+print *"5 intentional downstream file delta(s) allowed"* and exit 0, with the
+message itself calling the accident intentional.
+
+**The word doing the work is "intentional", and nothing anywhere records whose
+intention or what it was.** That is the same shape as an allow-list with no
+reasons, which this repository refuses everywhere else.
+
+So the set remains declared below. The gate asserts
+the reported set EQUALS the declared set — not "is at most", because an entry
+that stops being stale is a stale exemption, and an inventory that can only fail
+one way becomes a graveyard.
+
+## The declared deltas
+
+There are none at `9173ca75`. The former `sb3-creator-examples.js` declaration
+is retired in the same commit as the pin bump: upstream now owns the
+`i8086_counter` example, and the normalized Lite/upstream catalogue delta is
+exactly 0 lite-only / 0 upstream-only. Keeping the old declaration would be a
+false exemption, so the exact-set gate must reject it.
+
+```json
+{
+  "upstreamRepo": "sb3-creator",
+  "syncScript": "scripts/sync-sb3creator.mjs",
+  "why": "The permitted-delta set was a COUNT printed by the sync and allowed by --allow-stale, so it was unbounded, unnamed and unreasoned. This block names it. The gate runs the sync's own --check (which writes nothing -- verified) and asserts the STALE set equals this list exactly.",
+  "measured": "2026-09-08, against sb3-creator 9173ca756a72e5be81578a084c4c783ebc5c267d: 14 mapped files, all 14 verified by the sync's transform, 0 declared deltas.",
+  "deltas": {}
+}
+```
+
+## What is NOT here, deliberately
+
+The five import-rewrite differences are not listed. They are not divergence —
+they are the transform, they are re-derived on every sync, and listing them
+would be an inventory of the tool's own output that goes stale whenever the
+naming scheme changes. The sync's `--check` is what proves those, and it does.
+
+## Carnival producer adoption — 2026-10-11
+
+The empty delta set also applies at `e8c6dd5a6c0b26e6538424f4c26a857b386f3c17`
+(producer main with the Carnival words of sb3-creator #93 merged).
+The countdown and two game-over dialect words belong to the shared producer,
+not to an intentional Lite divergence. See
+[sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93).
+The historical `9173ca75` measurement above remains a historical receipt.
+
+
+## Song reporter producer adoption — 2026-10-12
+
+The empty delta set also applies at `ba9d756aff95904ff217865cfe965aca494add1a`
+(producer main with the song playable word of sb3-creator #94 merged).
+All 18 mapped files are verified against the sync's transformation. The ordinary
+song reporter word belongs to the shared producer in
+[sb3-creator PR94](https://github.com/CrispStrobe/sb3-creator/pull/94), stacked on
+PR93. This does not add a downstream exemption or replace historical receipts.
+
+
+## Named song reporter adoption — 2026-10-12
+
+The empty downstream delta set also applies at
+`f079238eeb7d8ac6474048e748208fb7f954198f` from
+[sb3-creator PR95](https://github.com/CrispStrobe/sb3-creator/pull/95).
+All18 mapped files match the sync transform. Named song Code/Blocks uses the
+shared producer word rather than a local grammar exception. Historical receipts
+remain intact; no gate or exemption changes.

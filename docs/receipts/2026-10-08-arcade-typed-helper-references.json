@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "1fa9a3f34ed3f31bac7fb49da8fd8702c76687b2",
+  "auditSourceDirty": false,
+  "tests": {
+    "resourceFunctionScopeRoundtrip": 44,
+    "parserAndGate": 35,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typeConstraints": {
+    "resources": [
+      "Image",
+      "Sprite",
+      "tiles.Location",
+      "animation.Animation",
+      "scene.Scene",
+      "ArcadePhysicsEngine"
+    ],
+    "arrays": [
+      "T[]",
+      "Array<T>",
+      "nested arrays"
+    ],
+    "sources": [
+      "variable annotations",
+      "function parameters",
+      "named function returns",
+      "function and arrow callback parameters"
+    ],
+    "notResolved": [
+      "unknown type aliases",
+      "unions",
+      "callable annotations"
+    ]
+  },
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.b14a3b9a.js",
+    "initialBytes": 4360502,
+    "unchangedInitialLimit": 4467136
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "typedHelper": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "arrayAliasPreserved": true,
+      "observed": 363,
+      "initialLength": 3,
+      "controllerShift": 120,
+      "remainingLength": 2,
+      "spriteX": 89.5
+    },
+    "priorJourneys": [
+      "rotation",
+      "projectiles",
+      "destroy-kind",
+      "Code artwork ownership",
+      "multifile source"
+    ]
+  },
+  "baseline184ImportOnly": {
+    "before": {
+      "translated": 93,
+      "partial": 90,
+      "malformed": 1
+    },
+    "after": {
+      "translated": 96,
+      "partial": 87,
+      "malformed": 1
+    }
+  },
+  "newlyTranslated": [
+    {
+      "case": "arcade-7913e54dbadcc8d6.ts",
+      "inputSha256": "c033db1c8089fe6ac89068c6f44e4758bf0f01a6077f310e5d1a13ff6268b3e5",
+      "originalCompile": "pass",
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 4,
+        "extensionCalls": 2,
+        "variablesChanged": 2,
+        "errors": []
+      }
+    },
+    {
+      "case": "arcade-85a1c4bedb4c8217.ts",
+      "inputSha256": "0f951326fe4f206ac768f14d2e41faf3d731b81cb567fef72c599b46d4a51054",
+      "originalCompile": "pass",
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 1,
+        "extensionCalls": 36,
+        "variablesChanged": 2,
+        "errors": []
+      }
+    },
+    {
+      "case": "arcade-f5582962d2213ba0.ts",
+      "inputSha256": "11e5f31574413d5c6c9a5fb831e5bf252c5230198b01f23fc9000fb02335e9e5",
+      "originalCompile": "pass",
+      "runtimeSmoke": {
+        "status": "stepped",
+        "threadsStarted": 1,
+        "extensionCalls": 0,
+        "variablesChanged": 0,
+        "errors": []
+      }
+    }
+  ],
+  "recoveredTutorialAudit": {
+    "count": 10,
+    "partial": 10,
+    "originalCompilerUnavailable": 10,
+    "partialFragmentsStepped": 10,
+    "blockErrors": 0,
+    "frames": 24,
+    "previousFragmentsWithBlockErrors": 2,
+    "diagnosticOccurrences": 65,
+    "previousDiagnosticOccurrences": 73,
+    "behavioralEquivalence": "not-measured"
+  },
+  "boundary": [
+    "Three newly translated corpus entries are two uninitialized-sprite snippets and one function-only snippet; no complete game qualification",
+    "No refreshed full184 original-compiler tally",
+    "Full tutorial compilation unavailable for named offline packages",
+    "Package artwork/APIs, passed/stored callbacks, namespace augmentation, multiplayer, palettes and GUI source navigation remain open"
+  ],
+  "privateEvidence": "compat-corpora/reports/2026-10-08/arcade-typed-helper-references/"
+}

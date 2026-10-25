@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "pendulum-array",
+  "language": "en",
+  "what": "One motor turns a common support carrying three free pendulums. The red 7L arm, yellow 11L arm and blue 13L arm have different pivot-to-tip lengths: 48, 80 and 96 mm. Spin and stop the support; three free arms compare length-dependent periods and phase drift.",
+  "try": [
+    "Reset, load the program and Run. The support makes a half turn, then holds while the arms keep swinging.",
+    "Use slow motion to count complete swings during a stationary-support interval. Compare red, yellow and blue.",
+    "Watch the second, opposite half turn. Compare the new amplitudes and the changing relative phases after the support stops."
+  ],
+  "why": "Gravity provides a restoring torque; the mass distribution supplies rotational inertia. For a uniform slender rod pivoted at an end, the small-angle period grows with the square root of length. These LEGO beams have distributed mass, pin mass, finite amplitude and simulated damping, so their periods are approximate rather than ideal point-bob predictions.",
+  "matters": "Different natural periods make relative phase drift. An apparently moving pattern does not by itself demonstrate energy travelling from one pendulum to another.",
+  "question": "If pivot-to-tip length doubles, should the small-angle period double?",
+  "answer": "No. With similar mass distribution, the period scales approximately as the square root of length. Doubling length gives roughly 1.41 times the period; large amplitudes and beam details change the measurement.",
+  "further": [
+    "Compare measured periods near 0.38, 0.49 and 0.52 seconds rather than counting only motor turns.",
+    "After pausing the program, use a modest A setting to excite the array and Stop All to hold the support. Observe which parts continue moving."
+  ],
+  "formula": "Uniform rod, small angles: T ≈ 2π √(2L / 3g)",
+  "related": [
+    "centrifugal-governor.ldr",
+    "tidal-trio.ldr",
+    "pulse-percussion.ldr"
+  ]
+}

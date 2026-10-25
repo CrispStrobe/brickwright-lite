@@ -1,0 +1,92 @@
+{
+  "id": "rb06-crater-detour",
+  "title": {
+    "en": "Crater detour",
+    "de": "Umweg um den Krater"
+  },
+  "intro": {
+    "en": "A fresh crater blocks the direct way to the rock-sample cache in the top right. Drive around it: forward, left, forward, right, and on to the cache. Any wheel in the crater and the rover is stuck for good.",
+    "de": "Ein frischer Krater versperrt den direkten Weg zum Probenlager oben rechts. Fahre um ihn herum: vorwärts, links, vorwärts, rechts und weiter bis zum Lager. Gerät ein Rad in den Krater, steckt der Rover fest."
+  },
+  "hints": [
+    {
+      "en": "A left turn is the right turn mirrored: both motors the other way round, and the yaw goes negative.",
+      "de": "Eine Linksdrehung ist die gespiegelte Rechtsdrehung: beide Motoren andersherum, und der Gierwinkel wird negativ."
+    },
+    {
+      "en": "Keep the rover's whole body clear of the crater, not only its middle.",
+      "de": "Halte den ganzen Rover vom Krater fern, nicht nur seine Mitte."
+    }
+  ],
+  "mat": {
+    "width": 150,
+    "height": 100,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": [
+      {
+        "color": "black",
+        "paint": "#5b3a2e",
+        "shape": {
+          "type": "circle",
+          "x": 72,
+          "y": 55,
+          "r": 17
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "crater",
+      "role": "hazard",
+      "shape": {
+        "type": "circle",
+        "x": 72,
+        "y": 55,
+        "r": 17
+      },
+      "label": {
+        "en": "crater",
+        "de": "Krater"
+      }
+    },
+    {
+      "id": "cache",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 123,
+        "y": 22,
+        "r": 8
+      },
+      "label": {
+        "en": "sample cache",
+        "de": "Probenlager"
+      }
+    }
+  ],
+  "start": {
+    "x": 15,
+    "y": 55,
+    "heading": 0
+  },
+  "timeLimitMs": 35000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "cache"
+    }
+  ],
+  "failure": [
+    {
+      "type": "avoid",
+      "zone": "crater"
+    },
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "rb06-crater-detour.bw",
+  "wrong": "rb06-crater-detour.wrong.bw"
+}

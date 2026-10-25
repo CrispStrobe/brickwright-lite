@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "mean-machine",
+  "language": "en",
+  "what": "Two opposed motors drive the side gears of a differential. The output pointer follows their signed average; the spider gear turns to absorb their difference. Two motors drive a differential; the pointer computes their signed mean while the spider absorbs their difference.",
+  "try": [
+    "Reset and run. Watch ADD, CANCEL, UNEQUAL and NEGATIVE, with a return home between each case.",
+    "Pause after the +90°/−90° pair. The input shafts move while the pointer remains near zero.",
+    "Compare the +120°/−30° case with the equal-input case. Keep both motor commands active or holding."
+  ],
+  "why": "The two equal bevel side gears have equal tooth counts. Their speeds relative to the carrier are opposite. Two equal external gear meshes pass the carrier angle to the pointer without changing its net sign. Motor directions here use one common pointer view; the opposed housings alone do not determine the app command signs.",
+  "matters": "A differential can combine rotations in analog computation, or allow vehicle wheels to turn at different speeds. It computes a kinematic mean rather than measuring or correcting the pointer position.",
+  "question": "A turns +120° and B turns −30° from home. Where should the pointer stop?",
+  "answer": "At +45°: (120 − 30)/2 = 45. Equal and opposite inputs cancel at the carrier while the internal spider still turns.",
+  "further": [
+    "Change one bounded input target and predict the mean before running.",
+    "Compare this averager with the vehicle differential and identify the carrier and both side gears."
+  ],
+  "formula": "C = (A + B)/2; spider rotation relative to carrier = (B − A)/2",
+  "related": [
+    "differential.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

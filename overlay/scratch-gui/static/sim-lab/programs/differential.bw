@@ -1,0 +1,23 @@
+DEVICE SPIKE
+
+# Robot Lab: what a differential does.
+# Model: Differential (motor A turns the differential's 28-tooth gear through a
+# 12-tooth bevel gear; motor C can hold the right wheel through two bevel gears).
+# The gears inside share the turn between the two wheels.
+# Right wheel held: the left wheel turns twice as fast as the differential.
+# Right wheel turned as fast as the differential: the left wheel turns that fast too.
+# (Motor C at 36 turns the right wheel as fast as motor A at 50 turns the differential:
+# 12 teeth to 28 for motor A, 12 to 20 for motor C.)
+WHEN flag clicked:
+  set motor stop action C hold
+  stop motor C
+  set motor speed A 50
+  start motor A forward
+  display text "R"
+  wait 4 seconds
+  set motor speed C 36
+  start motor C forward
+  display text "="
+  wait 4 seconds
+  stop motor A
+  stop motor C

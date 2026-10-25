@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-08",
+  "buildSource": "7626e6c0d60808d4c5ea949231a0f97e53db1794",
+  "producer": "0de6ae91758353af89ce64b06717a4294cd6bb05",
+  "producerChanged": false,
+  "change": [
+    "game.onUpdate and game.onUpdateInterval retain runtime registration sites without scene-stack selection",
+    "Nested registrations retain live captured cells and evaluated interval values",
+    "Captured assignments export Arcade boolean values without Scratch numeric coercion",
+    "Shadowed game namespace and invalid callbacks produce diagnostics"
+  ],
+  "tests": {
+    "qualified": 22,
+    "failed": 0,
+    "skipped": 0,
+    "originalAndExportedPxt": {
+      "order": "IAaB",
+      "sum": 25,
+      "runs": 1,
+      "completedIntervals": 1
+    },
+    "nativeRoundtrips": [
+      "Code to Blocks",
+      "Blocks decompile to Code",
+      "MakeCode export and reimport",
+      "SB3 reload"
+    ],
+    "repeatInput": {
+      "order": "IAaBAaB",
+      "sum": 54,
+      "runs": 2
+    },
+    "interval": "100ms period is evaluated at registration; later period=1 does not change it"
+  },
+  "build": {
+    "bundle": "gui.13e19d9b.js",
+    "errors": 0,
+    "warnings": 2,
+    "initialBytes": 4360790,
+    "previousInitialBytes": 4360790,
+    "initialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "samples": [
+      {
+        "runs": 1,
+        "sum": 25,
+        "order": "IAaB",
+        "completedIntervals": 1
+      },
+      {
+        "runs": 2,
+        "sum": 54,
+        "order": "IAaBAaB",
+        "completedIntervals": 3
+      }
+    ],
+    "errors": [],
+    "blockErrors": [],
+    "flow": "Native file import, Code, Blocks, flag and visible A repeat"
+  },
+  "corpus": {
+    "immutableInputs": 184,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "changedDiagnosticRows": 0,
+    "measurement": "Import diagnostics only, not full-game equivalence"
+  },
+  "retainedFailures": [
+    "Old tests expected legacy update hats and callbacks before registration; replaced with explicit registration and first-frame assertions",
+    "Boolean capture export initially failed original PXT compilation; value-preserving captured writer fixes it",
+    "Shadowed game initially translated as namespace; explicit binding guard added",
+    "Repeat test initially emitted only native button event despite legacy keyboard handler; corrected to real keyboard input"
+  ],
+  "remaining": [
+    "Other callback families still depend on scene-stack selection for native registration",
+    "Initial scene-worker phase versus VM tick and push/pop timing",
+    "Legacy authored update hats versus sequential registered callbacks",
+    "Whole original event-loop ordering for pause0/20/70 and obstacle lifetime",
+    "U03 map painter/resource lifecycle and ranked artwork/palette/effect/music gaps",
+    "Exact-head hosted CI and stacked integration"
+  ],
+  "publication": "Draft stacked on Lite731; unmerged"
+}

@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "3f6ad084c84e64bfce0820ea23cd280143301322",
+  "base": "cdbe768b1",
+  "implemented": [
+    "Internal indexed scene raster after native frame updates",
+    "Background colour/image and sprite rasters with original z/id ordering",
+    "Reuse camera, viewport clipping and scale/rotation raster helpers",
+    "Stable image/buffer identity, scene suspension/restoration and explicit missing artwork/remaining coverage"
+  ],
+  "local": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "log": "arcade-frame-qualified.log",
+    "originalPxtFullPlanes": 5,
+    "pixelsPerPlane": 19200,
+    "comparedPixels": 96000,
+    "boundary": "Original PXT in Chromium against internal native VM indexed raster; fresh development/production extension bundles and scroll/copy/controller regressions. Full shipped GUI journey pending."
+  },
+  "coverage": [
+    "background",
+    "sprites"
+  ],
+  "remainingLayers": [
+    "tilemap",
+    "renderables",
+    "hud",
+    "speech",
+    "effects"
+  ],
+  "retainedFailures": [
+    "Harness used nonexistent runtime.ext_arcade; corrected actual opcode dispatch",
+    "Bundle test redeclared frame variable; corrected distinct sceneRaster variable"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "importerUnchanged": true,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1,
+    "latestHashVerifiedInputs": 184
+  },
+  "authoring": {
+    "newVocabulary": false,
+    "screenReporterExposed": false,
+    "paintShadeImplemented": false,
+    "graphicsGuiAdded": false,
+    "preparedControllerJourney": "Checks internal indexed scene pixel plus explicit coverage marker after actual controller copy"
+  },
+  "remaining": [
+    "Finish S01 tilemaps and supported scene content",
+    "S02 screen handle/snapshot and S03 renderables/paint/shade remain unavailable",
+    "S04 HUD/text/speech/effects",
+    "All enabled exact-head hosted checks and full shipped GUI qualification before merge"
+  ]
+}

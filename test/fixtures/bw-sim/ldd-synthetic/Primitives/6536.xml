@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC, hand-made: NOT LDD data. Technic axle and pin connector perpendicular, in a
+     frame chosen by hand: LDraw x (its axle hole) along LDD +z from the origin (angle 90 about
+     x turns +y to +z), its pin hole along LDD +x (angle -90 about z turns +y to +x), starting
+     at (-0.4, -0.8, 0.4). The stud field is ignored by the fitter (it fits lines only). -->
+<LEGOPrimitive versionMajor="0" versionMinor="1">
+  <Annotations><Annotation designname="Synthetic Technic Axle and Pin Connector Perpendicular" /></Annotations>
+  <Connectivity>
+    <Axel type="6" length="0.8" angle="90" ax="1" ay="0" az="0" tx="0" ty="0" tz="0" />
+    <Axel type="7" length="0.8" angle="-90" ax="0" ay="0" az="1" tx="-0.4" ty="-0.8" tz="0.4" />
+    <Custom2DField type="0" width="2" height="2" angle="0" ax="1" ay="0" az="0" tx="0" ty="0.4" tz="0">
+      0,0
+      0,0
+    </Custom2DField>
+  </Connectivity>
+</LEGOPrimitive>

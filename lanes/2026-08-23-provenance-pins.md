@@ -1,0 +1,1 @@
+| provenance / pins | bw-audit | `3beb78d` (sb3-creator) | audited every place either repo asserts what it verified; 11 action tags and 2 dep ranges pinned, a Pages fetch made sha-addressed, and a gate of its own found vacuous and recorded. MERGED — suite 6496/6400/0, prover 31/31 |

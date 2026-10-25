@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "c84f811cb7c0ae2e23fcc773366bb266497939b4",
+  "base": "29123437d",
+  "implemented": [
+    "Modern sayText indexed composition before owner sprite at its z/id draw position",
+    "Speech engine raster write mask preserves explicit colour-zero writes",
+    "Existing original speech/font engine and replacement/scene ownership reused"
+  ],
+  "local": {
+    "modernSpeech": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "originalPxtPlanes": 11,
+      "pixelsPerPlane": 19200,
+      "comparedPixels": 211200,
+      "log": "arcade-frame-modern-speech-qualified.log"
+    },
+    "regressionBatch": {
+      "passed": 34,
+      "failed": 2,
+      "skipped": 0,
+      "log": "arcade-frame-modern-speech-overlay-freshness-failure.log",
+      "failures": "Two bundle byte-freshness assertions: installed speech.js preceded formatting"
+    },
+    "refreshedBundles": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "log": "arcade-frame-modern-speech-bundles.log"
+    },
+    "boundary": "Original PXT Chromium full-plane comparisons, native frame and speech/Code/Blocks/export tests, refreshed development/production extension bundles. No new shipped GUI pixel success claim."
+  },
+  "coverage": [
+    "background",
+    "tilemap",
+    "sprites",
+    "modernSpeech"
+  ],
+  "remainingLayers": [
+    "renderables",
+    "hud",
+    "legacySpeech",
+    "effects"
+  ],
+  "remainingQualification": [
+    "Long suspended-scene speech expiry/global clock",
+    "Clock-aligned animated speech full planes",
+    "Existing separate SVG presentation zero-colour writes and owner draw order",
+    "Full controller-pane/rendered GUI and all enabled exact-head hosted checks before merge"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "importerUnchanged": true,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1
+  },
+  "retainedFailures": [
+    "Two strict installed speech.js byte-freshness assertions; resolved by actual overlay refresh, gate unchanged"
+  ],
+  "authoring": {
+    "newVocabulary": false,
+    "existingSayTextWordsReused": true,
+    "screenSnapshotExposed": false,
+    "paintShadeImplemented": false,
+    "graphicsGuiAdded": false
+  }
+}

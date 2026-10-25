@@ -1,0 +1,27 @@
+0 balance-equal (Brickwright Robot Lab validation machine)
+0 Name: balance-equal.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Equal-arm balance (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // A beam 7 stands upright (holes along z, layer z -30..-10); a frictionless pin 3673 joins its top hole
+0 // to the centre hole of a beam 15, the lever (layer z -10..10, holes x -140..140).
+0 // A beam 5 hangs on each arm in the layer in front (z 10..30), each held by two friction pins at x = +-80
+0 // and +-120: equal masses (1.6 g + 2 x 0.25 g) at equal arms (100 LDU).
+0 !BW ID stand
+1 72 0 60 -20 -1 0 0 0 0 1 0 1 0 32524.dat
+0 !BW ID pivot
+1 71 0 0 -10 0 1 0 0 0 1 1 0 0 3673.dat
+0 !BW ID lever
+1 4 0 0 0 0 0 1 1 0 0 0 1 0 32278.dat
+0 !BW ID weightL
+1 1 -100 0 20 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID pinL1
+1 0 -80 0 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID pinL2
+1 0 -120 0 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID weightR
+1 1 100 0 20 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID pinR1
+1 0 80 0 10 0 1 0 0 0 1 1 0 0 2780.dat
+0 !BW ID pinR2
+1 0 120 0 10 0 1 0 0 0 1 1 0 0 2780.dat

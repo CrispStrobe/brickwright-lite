@@ -1,0 +1,19 @@
+DEVICE SPIKE
+
+# Survey rover: drive to a survey point, nod the sensor head, then return.
+# A/B drive the wheels, C tilts the head, D measures distance.
+# Keep the head within +/-30 degrees so its cable does not wind up.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 20
+  set motor stop action C hold
+  set motor speed C 15
+  run motor C to position 0
+  move forward 10 cm
+  run motor C clockwise 30 degrees
+  wait 1 seconds
+  run motor C counterclockwise 60 degrees
+  wait 1 seconds
+  run motor C clockwise 30 degrees
+  move backward 10 cm
+  wait 1 seconds

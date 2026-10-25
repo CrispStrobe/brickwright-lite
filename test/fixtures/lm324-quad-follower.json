@@ -1,0 +1,41 @@
+{
+  "vcc": 5,
+  "parts": [
+    {"id": "rail", "kind": "vsource", "params": {"volts": 5}, "x": 90, "y": 70},
+    {"id": "gnd", "kind": "gnd", "params": {}, "x": 90, "y": 500},
+    {"id": "u1", "kind": "lm324", "params": {}, "x": 520, "y": 270},
+    {"id": "in1", "kind": "vsource", "params": {"volts": 0.5}, "x": 230, "y": 140},
+    {"id": "in2", "kind": "vsource", "params": {"volts": 1}, "x": 230, "y": 230},
+    {"id": "in3", "kind": "vsource", "params": {"volts": 2}, "x": 230, "y": 320},
+    {"id": "in4", "kind": "vsource", "params": {"volts": 3}, "x": 230, "y": 410},
+    {"id": "load1", "kind": "resistor", "params": {"ohms": 100000}, "x": 800, "y": 140},
+    {"id": "load2", "kind": "resistor", "params": {"ohms": 100000}, "x": 800, "y": 230},
+    {"id": "load3", "kind": "resistor", "params": {"ohms": 100000}, "x": 800, "y": 320},
+    {"id": "load4", "kind": "resistor", "params": {"ohms": 100000}, "x": 800, "y": 410}
+  ],
+  "wires": [
+    {"from": "rail", "fromTerminal": "pos", "to": "u1", "toTerminal": "vcc"},
+    {"from": "rail", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "u1", "fromTerminal": "gnd", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in1", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in2", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in3", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in4", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in1", "fromTerminal": "pos", "to": "u1", "toTerminal": "1_pos"},
+    {"from": "u1", "fromTerminal": "1_out", "to": "u1", "toTerminal": "1_neg"},
+    {"from": "u1", "fromTerminal": "1_out", "to": "load1", "toTerminal": "a"},
+    {"from": "load1", "fromTerminal": "b", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in2", "fromTerminal": "pos", "to": "u1", "toTerminal": "2_pos"},
+    {"from": "u1", "fromTerminal": "2_out", "to": "u1", "toTerminal": "2_neg"},
+    {"from": "u1", "fromTerminal": "2_out", "to": "load2", "toTerminal": "a"},
+    {"from": "load2", "fromTerminal": "b", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in3", "fromTerminal": "pos", "to": "u1", "toTerminal": "3_pos"},
+    {"from": "u1", "fromTerminal": "3_out", "to": "u1", "toTerminal": "3_neg"},
+    {"from": "u1", "fromTerminal": "3_out", "to": "load3", "toTerminal": "a"},
+    {"from": "load3", "fromTerminal": "b", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "in4", "fromTerminal": "pos", "to": "u1", "toTerminal": "4_pos"},
+    {"from": "u1", "fromTerminal": "4_out", "to": "u1", "toTerminal": "4_neg"},
+    {"from": "u1", "fromTerminal": "4_out", "to": "load4", "toTerminal": "a"},
+    {"from": "load4", "fromTerminal": "b", "to": "gnd", "toTerminal": "gnd"}
+  ]
+}

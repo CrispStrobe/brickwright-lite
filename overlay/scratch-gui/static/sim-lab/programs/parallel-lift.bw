@@ -1,0 +1,12 @@
+DEVICE SPIKE
+
+# A sweeps the equal-length links; the yellow tray follows an arc while staying level.
+# Reset the model before repeating the experiment.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 10
+  run motor A clockwise 45 degrees
+  wait 1 seconds
+  run motor A counterclockwise 90 degrees
+  wait 1 seconds
+  run motor A clockwise 45 degrees

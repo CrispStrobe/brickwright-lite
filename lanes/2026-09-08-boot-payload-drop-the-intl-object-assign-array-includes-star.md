@@ -1,0 +1,1 @@
+| boot payload: drop the Intl / Object.assign / Array.includes startup polyfills | lego-b9 (VPS Claude session) | main `51facfc49` (branch `perf/drop-intl-polyfill`) | **DONE.** Every browser in .browserslistrc has them natively (Safari 11 floor); `core-js/fn/promise/finally` kept for Safari 11.0; `verify-boot-payload` asserts `IntlPolyfill` is GONE from every script. |

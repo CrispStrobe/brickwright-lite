@@ -1,0 +1,17 @@
+// Waits for a message in inbox 1 (queue 0), answers "echo:" and the message in the response queue
+// (queue 10, what a master reads), then keeps running until stopped (Brickwright NXT .rxe VM fixture).
+task main()
+{
+    string msg;
+    TextOut(0, LCD_LINE1, "ready");
+    while (true) {
+        if (ReceiveRemoteString(MAILBOX1, true, msg) == NO_ERR) {
+            string answer = StrCat("echo:", msg);
+            SendResponseString(MAILBOX1, answer);
+            TextOut(0, LCD_LINE2, msg);
+            break;
+        }
+        Wait(10);
+    }
+    while (true) Wait(100);
+}

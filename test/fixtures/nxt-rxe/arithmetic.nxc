@@ -1,0 +1,37 @@
+// Integer arithmetic, logic and comparisons, each result shown on the display in order (Brickwright NXT .rxe VM fixture).
+int a = 17;
+int b = -5;
+long big = 100000;
+byte small = 250;
+unsigned int u = 65530;
+
+task main()
+{
+    NumOut(0, LCD_LINE1, a + b);
+    NumOut(0, LCD_LINE2, a - b);
+    NumOut(0, LCD_LINE3, a * b);
+    NumOut(0, LCD_LINE4, a / b);
+    NumOut(0, LCD_LINE5, a % b);
+    NumOut(0, LCD_LINE6, -a);
+    NumOut(0, LCD_LINE7, big * 3);
+    NumOut(0, LCD_LINE8, (a & 6) | (b ^ 3));
+    small += 10;
+    NumOut(0, LCD_LINE1, small);
+    u += 10;
+    NumOut(0, LCD_LINE2, u);
+    int z = 0;
+    NumOut(0, LCD_LINE3, a / z);
+    NumOut(0, LCD_LINE4, a % z);
+    NumOut(0, LCD_LINE5, a > b);
+    NumOut(0, LCD_LINE6, (a < b) || (big >= 100000));
+    NumOut(0, LCD_LINE7, !(a == 17) && true);
+    NumOut(0, LCD_LINE8, abs(b) + sign(b));
+    int x = 32767;
+    x++;
+    NumOut(0, LCD_LINE1, x);
+    NumOut(0, LCD_LINE2, a > 10 ? 1 : 2);
+    long l = -7;
+    NumOut(0, LCD_LINE3, l / 2);
+    NumOut(0, LCD_LINE4, a << 2);
+    NumOut(0, LCD_LINE5, a >> 1);
+}

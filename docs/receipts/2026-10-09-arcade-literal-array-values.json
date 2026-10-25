@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "38cf4623d0f235d611fd346ee86d1c541c8c458d",
+  "producerPin": "88aa7123bab943f8a420f3b0dc7fecf3dae6c5b5",
+  "local": {
+    "arrayRegressions": {
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0
+    },
+    "nativeControllerFixture": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "baseline": {
+    "arrayRefusalRegressions": 2,
+    "initialOracleHarnessErrors": 1,
+    "boundary": "Unused true constant global removed by original PXT; corrected fixture compares a computed result. Raw initial failures retained."
+  },
+  "corpus": {
+    "before": {
+      "translated": 107,
+      "partial": 76,
+      "malformed": 1
+    },
+    "after": {
+      "translated": 108,
+      "partial": 75,
+      "malformed": 1
+    },
+    "changedRows": [
+      {
+        "file": "arcade-6ae4c8f073c0ab65.ts",
+        "before": [
+          "Array as a value"
+        ],
+        "after": []
+      }
+    ],
+    "unchangedOriginalInputHashes": 184
+  },
+  "recoveredTutorial": {
+    "file": "arcade-6ae4c8f073c0ab65.ts",
+    "sha256": "b5f0862e11038a14c431d76400e80392feec1211d014f766462a1e0f5ca7bcf3",
+    "importDiagnostics": [],
+    "runtimeErrors": [],
+    "codeWarnings": [],
+    "originalExecuted": true,
+    "exportExecuted": true,
+    "reimportDiagnostics": [],
+    "decompileRestart": true,
+    "savedSb3Restart": true,
+    "boundary": "Unchanged tutorial has an empty helper body; verifies literal argument handling and interchange, not a playable game or rendered GUI."
+  },
+  "previousDisplayHosted": {
+    "source": "c7c1ae4aa",
+    "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37939577542",
+    "build": "SUCCESS",
+    "browserLight": "SUCCESS",
+    "browserHeavy": "SUCCESS",
+    "focused": "IN_PROGRESS",
+    "boundary": "Display repair source only; not qualification of the later camera-shake or array branches."
+  },
+  "pending": [
+    "Fresh shipped native-file/controller browser journey",
+    "all enabled exact-head checks before merge"
+  ]
+}

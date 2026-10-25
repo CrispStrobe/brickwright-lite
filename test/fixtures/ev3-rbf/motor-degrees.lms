@@ -1,0 +1,28 @@
+// Degree moves: STEP_POWER on B, STEP_SPEED backwards on C, STEP_SYNC on both; read the counters.
+DATA32 TachoB
+DATA32 TachoC
+DATA32 CountB
+DATA32 AfterReset
+DATA8  SpeedB
+
+vmthread MAIN
+{
+  OUTPUT_RESET(0, 6)
+  OUTPUT_CLR_COUNT(0, 6)
+  OUTPUT_STEP_POWER(0, 2, 50, 30, 300, 30, 1)
+  OUTPUT_READY(0, 2)
+  OUTPUT_STEP_SPEED(0, 4, -40, 0, 180, 0, 1)
+  OUTPUT_READY(0, 4)
+  OUTPUT_READ(0, 1, SpeedB, TachoB)
+  OUTPUT_READ(0, 2, SpeedB, TachoC)
+  OUTPUT_GET_COUNT(0, 1, CountB)
+  OUTPUT_STEP_SYNC(0, 6, 30, 0, 360, 1)
+  OUTPUT_READY(0, 6)
+  OUTPUT_RESET(0, 2)
+  OUTPUT_READ(0, 1, SpeedB, AfterReset)
+  // Report: each result written to the brick's console, in declaration order.
+  UI_WRITE(VALUE32, TachoB)
+  UI_WRITE(VALUE32, TachoC)
+  UI_WRITE(VALUE32, CountB)
+  UI_WRITE(VALUE32, AfterReset)
+}

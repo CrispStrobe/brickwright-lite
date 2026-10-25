@@ -1,0 +1,217 @@
+{
+  "id": "mp01-count-the-finds",
+  "title": {
+    "en": "Count the finds",
+    "de": "Funde zählen"
+  },
+  "intro": {
+    "en": "Yellow markers along the trench show where something was found. Drive along the trench to the red end line and count the markers on the way. Then report the count: turn right and park in the bay with that number - bay 1 is 15 cm from the trench, each further bay 15 cm more.",
+    "de": "Gelbe Markierungen entlang des Grabens zeigen, wo etwas gefunden wurde. Fahre den Graben bis zur roten Endlinie entlang und zähle unterwegs die Markierungen. Melde dann die Anzahl: Biege rechts ab und parke in der Bucht mit dieser Nummer - Bucht 1 liegt 15 cm vom Graben entfernt, jede weitere 15 cm weiter."
+  },
+  "hints": [
+    {
+      "en": "The sensor sees each marker for several readings in a row. Count a marker when yellow STARTS - remember in a second variable whether you are already on one.",
+      "de": "Der Sensor sieht jede Markierung mehrere Messungen lang. Zähle eine Markierung, wenn Gelb ANFÄNGT - merke dir in einer zweiten Variable, ob du schon auf einer bist."
+    },
+    {
+      "en": "Set a variable to finds * 15 and \"move forward\" by that many cm: the count becomes a distance.",
+      "de": "Setze eine Variable auf Funde * 15 und „fahre vorwärts“ so viele cm: Aus der Anzahl wird eine Strecke."
+    }
+  ],
+  "mat": {
+    "width": 150,
+    "height": 100,
+    "background": "white",
+    "paint": "#f1e3c6",
+    "shapes": [
+      {
+        "color": "white",
+        "paint": "#e6d3ad",
+        "shape": {
+          "type": "rect",
+          "x": 62,
+          "y": 15,
+          "w": 124,
+          "h": 16
+        }
+      },
+      {
+        "color": "yellow",
+        "shape": {
+          "type": "rect",
+          "x": 45,
+          "y": 15,
+          "w": 5,
+          "h": 16
+        }
+      },
+      {
+        "color": "yellow",
+        "shape": {
+          "type": "rect",
+          "x": 68,
+          "y": 15,
+          "w": 5,
+          "h": 16
+        }
+      },
+      {
+        "color": "yellow",
+        "shape": {
+          "type": "rect",
+          "x": 92,
+          "y": 15,
+          "w": 5,
+          "h": 16
+        }
+      },
+      {
+        "color": "red",
+        "shape": {
+          "type": "rect",
+          "x": 121,
+          "y": 15,
+          "w": 3,
+          "h": 16
+        }
+      },
+      {
+        "color": "white",
+        "paint": "#fff4e6",
+        "shape": {
+          "type": "rect",
+          "x": 113,
+          "y": 30,
+          "w": 22,
+          "h": 11
+        }
+      },
+      {
+        "color": "white",
+        "paint": "#fff4e6",
+        "shape": {
+          "type": "rect",
+          "x": 113,
+          "y": 45,
+          "w": 22,
+          "h": 11
+        }
+      },
+      {
+        "color": "white",
+        "paint": "#fff4e6",
+        "shape": {
+          "type": "rect",
+          "x": 113,
+          "y": 60,
+          "w": 22,
+          "h": 11
+        }
+      },
+      {
+        "color": "white",
+        "paint": "#fff4e6",
+        "shape": {
+          "type": "rect",
+          "x": 113,
+          "y": 75,
+          "w": 22,
+          "h": 11
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "bay-1",
+      "role": "area",
+      "shape": {
+        "type": "rect",
+        "x": 113,
+        "y": 30,
+        "w": 22,
+        "h": 11
+      },
+      "label": {
+        "en": "bay 1",
+        "de": "Bucht 1"
+      }
+    },
+    {
+      "id": "bay-2",
+      "role": "area",
+      "shape": {
+        "type": "rect",
+        "x": 113,
+        "y": 45,
+        "w": 22,
+        "h": 11
+      },
+      "label": {
+        "en": "bay 2",
+        "de": "Bucht 2"
+      }
+    },
+    {
+      "id": "bay-3",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 113,
+        "y": 60,
+        "w": 22,
+        "h": 11
+      },
+      "label": {
+        "en": "bay 3",
+        "de": "Bucht 3"
+      }
+    },
+    {
+      "id": "bay-4",
+      "role": "area",
+      "shape": {
+        "type": "rect",
+        "x": 113,
+        "y": 75,
+        "w": 22,
+        "h": 11
+      },
+      "label": {
+        "en": "bay 4",
+        "de": "Bucht 4"
+      }
+    }
+  ],
+  "start": {
+    "x": 15,
+    "y": 15,
+    "heading": 0
+  },
+  "timeLimitMs": 30000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "bay-3"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noStopIn",
+      "zone": "bay-1"
+    },
+    {
+      "type": "noStopIn",
+      "zone": "bay-2"
+    },
+    {
+      "type": "noStopIn",
+      "zone": "bay-4"
+    },
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "mp01-count-the-finds.bw",
+  "wrong": "mp01-count-the-finds.wrong.bw"
+}

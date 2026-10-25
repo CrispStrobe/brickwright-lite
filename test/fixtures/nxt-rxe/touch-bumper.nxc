@@ -1,0 +1,11 @@
+// Drive forward until the touch sensor on port 1 is pressed, then stop (Brickwright NXT .rxe VM fixture;
+// the Robot Lab's nxt-bumper-bot: drive motors B and C, the bumper's touch sensor on 1).
+task main()
+{
+    SetSensorTouch(IN_1);
+    OnFwd(OUT_BC, 60);
+    until (SENSOR_1 == 1);
+    Off(OUT_BC);
+    TextOut(0, LCD_LINE1, "bumped");
+    Wait(1000);
+}

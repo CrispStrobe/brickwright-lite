@@ -1,0 +1,17 @@
+[package]
+name = "tauri-plugin-scratchlink-original"
+version = "0.1.0"
+edition = "2021"
+description = "The reference Scratch Link (BSD-3, Scratch Foundation) as an in-app connection path on Apple platforms."
+license = "BSD-3-Clause"
+# Required by tauri-plugin's build script, and it must equal package.name. Its
+# absence is not a warning: the build script exits non-zero with
+# "package.links field in the Cargo manifest is not set", which surfaces only as
+# "failed to run custom build command" from a cargo build for an iOS target.
+links = "tauri-plugin-scratchlink-original"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

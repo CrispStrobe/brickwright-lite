@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-08",
+  "source": "9697810a2529b1b6aaaa31e7dc9699d5dad828ee",
+  "pullRequest": 739,
+  "producer": {
+    "source": "49903b5d38d967b64da34a3ca1dd1e228d06b98f",
+    "pullRequest": 72,
+    "dialectChecks": {
+      "pass": 232,
+      "fail": 0,
+      "skip": 0
+    }
+  },
+  "tests": {
+    "arcade": 16,
+    "spikeArtifact": 1,
+    "browserGateInventory": 21,
+    "pass": 38,
+    "fail": 0,
+    "skip": 0
+  },
+  "comparisons": [
+    "original PXT simulator",
+    "native Scratch VM",
+    "Code decompile/reparse",
+    "exported PXT simulator",
+    "export/reimport",
+    "SB3 save/reload"
+  ],
+  "trace": "L12SP12Q13E13N13L14P14Q15E15N15",
+  "concurrentInvocationsAndScenes": {
+    "total": 26,
+    "completed": 2
+  },
+  "stopRestart": "old queued work cancelled; one fresh fiber after restart",
+  "corpus": {
+    "inputs": 184,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "changedDiagnosticRows": 0,
+    "boundary": "import-only source census; asset completeness still needs audit"
+  },
+  "build": {
+    "status": "local cold build interrupted due exhausted shared-host swap",
+    "exitCode": 130,
+    "freshBundleQualified": false
+  },
+  "browser": {
+    "newScript": "scripts/verify-arcade-parallel-registration-browser.mjs",
+    "journeysPrepared": 8,
+    "executedOnThisSource": 0,
+    "status": "exact-head hosted production and visible GUI checks pending"
+  },
+  "integration": {
+    "observedParentFailure": "SPIKE artifact gate expected obsolete producer pin",
+    "repair": "explicit new pin plus unchanged SPIKE behavior assertions pass",
+    "overallHostedResult": "pending; no green integration claim"
+  },
+  "remaining": [
+    "complete-project asset and dependency inventory for ten background-image refusals",
+    "seven tilemap resource refusals",
+    "seven destruction effect/duration refusals",
+    "music and sound playback",
+    "callback creation and capture guidance in Code/Blocks",
+    "function-valued callbacks and common scene/startup timing",
+    "overall hosted integration"
+  ]
+}

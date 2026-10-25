@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# Robot Lab: drive at the wall and stop before it.
+# Model: Wall stopper (wheels on A and B, distance sensor on D looking ahead).
+# The distance sensor measures in cm: stop as soon as the wall is closer than 10 cm.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until (spike distance D) < 10
+  stop movement

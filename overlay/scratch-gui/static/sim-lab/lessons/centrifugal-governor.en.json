@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "centrifugal-governor",
+  "language": "en",
+  "what": "Two freely hinged arms rotate with a motor-driven crossbar. Higher speed makes them swing outward against gravity. Free arms swing outward as the rotor speeds up. Compare angular speed squared with gravity; reverse and compare again.",
+  "try": [
+    "Reset and run the three speed stages. Compare the average arm tilt while allowing for oscillation.",
+    "Watch the arms swing after the rotor stops.",
+    "Compare forward and reverse rotation at the middle speed."
+  ],
+  "why": "A rotating arm needs centripetal acceleration. In the rotating frame its outward inertial effect competes with gravity. The speed enters squared. This is a governor mechanism demonstrator; the arms do not automatically regulate the motor.",
+  "matters": "Mechanical governors use this speed-sensitive motion as part of a feedback linkage.",
+  "question": "At equal speed magnitude, should reversing rotation pull the arms inward instead?",
+  "answer": "No. The centrifugal term depends on angular speed squared. Forward and reverse have the same ideal steady equilibrium; transitions and oscillations can differ.",
+  "further": [
+    "Compare a doubled low speed with the change in mean tilt.",
+    "A real distributed arm is not a point mass: use the simple formula as an approximation."
+  ],
+  "formula": "point-mass approximation: tan(tilt) ≈ ω² × radius / g",
+  "related": [
+    "survey-rover.ldr",
+    "flywheel-differential.ldr"
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "09f2422103afc92a6e0275b1fa0d78209c7f1bb1",
+  "base": "6311b429fb2b07f03a8374ad10c0296e24c98499",
+  "producerPin": "56f6307e1b71f752c2f2005903877d97b2112e52",
+  "producerPR": "https://github.com/CrispStrobe/sb3-creator/pull/74",
+  "implemented": [
+    "game.ask(title, optional subtitle) imports as an asynchronous boolean reporter",
+    "Native boolean Blocks shape, canonical Code word, boolean type inference and original game.ask export",
+    "Each modal guards 500 ms, requires released-then-pressed A/B, prioritizes A, and suppresses normal controller callbacks and scene updates",
+    "Queued dialogs refresh physical held state when activated; Stop/restart settle pending calls and reject stale callbacks",
+    "Discarded question results still execute without colliding with source variable names",
+    "Localized yes/no UI, guard-disabled controls, ready focus and controller/keyboard input routing",
+    "Previously unwired palette component browser harness now runs inside the existing graphics gate"
+  ],
+  "local": {
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "log": "arcade-boolean-question-immutable-source.log",
+    "producerDialectPassed": 234,
+    "producerLint": "passed",
+    "files": [
+      "test/arcade-boolean-question.test.mjs",
+      "test/makecode-arcade-ask.test.mjs",
+      "test/makecode-arcade-splash.test.mjs",
+      "test/dialect-arcade-import-lines.test.mjs",
+      "test/lego-spike-roundtrip.test.mjs",
+      "test/gate-coverage.test.mjs",
+      "test/browser-gate-budgets.test.mjs",
+      "test/browser-gate-shards.test.mjs",
+      "test/overlay-packages-pairs.test.mjs"
+    ],
+    "originalPXT": "Both A/true and B/false branches match original and exported programs using original simulator board button input; Code reexecution and saved SB3 reload pass"
+  },
+  "componentBrowser": {
+    "boundary": "Fresh React stage dialog/CSS and palette editor plus real Scratch Blocks; palette primitive calls recorded separately from full runtime integration",
+    "locales": [
+      "en",
+      "de"
+    ],
+    "errors": 0,
+    "question": [
+      "guard-disabled buttons",
+      "focus when ready",
+      "visible yes/no labels",
+      "both boolean choices",
+      "Z cancellation"
+    ],
+    "palette": [
+      "16 colors",
+      "preview without project mutation",
+      "apply to real Blocks",
+      "stale edit refusal",
+      "text fits buttons"
+    ],
+    "log": "arcade-boolean-question-qualified-components.log"
+  },
+  "corpus": {
+    "hashVerifiedOriginalInputs": 184,
+    "freshImportOnly": true,
+    "translated": 104,
+    "partial": 79,
+    "malformed": 1,
+    "prior": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "changedDiagnosticRows": 4,
+    "soleGapClosedInputs": 2,
+    "inputsChanged": false,
+    "fullCompatibilityClaim": false
+  },
+  "browser": {
+    "productionQuestionJourney": "Added to the existing Arcade controller browser gate; fresh hosted execution pending",
+    "parentBuild": "PR745 build rejected an unwired component browser script; wiring fixed in this source",
+    "parentHeavy": "PR745 image bounds and speech gates observed bundled decoder ReferenceError; additional callback/sprite/tile browser gates failed. Retained privately; this question slice does not establish their root cause or fix them.",
+    "parentHeavyJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37899575377/job/113724420097"
+  },
+  "reference": "https://github.com/microsoft/pxt-common-packages/blob/master/libs/game/ask.ts",
+  "preservedFailures": [
+    "Initial inventory expectation and exact SPIKE pin expectation required reviewed consumer updates",
+    "Original PXT optimized away an unused marker; harness now uses original board input after the documented guard",
+    "Discard consumer was initially placed in expression handling; corrected to statement handling",
+    "Queued held input and native callback test instrumentation corrected before qualification",
+    "Component harness initially resolved sparse overlay CSS imports and layered locale overrides incorrectly; fresh mirror source/CSS and deterministic locale now pass",
+    "An unrelated optional native broker vocabulary test could not read files omitted by the sparse checkout; no broker source or gate changed"
+  ],
+  "remaining": [
+    "Fresh production dialog/controller/browser qualification and all enabled exact-head checks",
+    "Bundled image decoder ReferenceError and browser harness timing/output-directory failures",
+    "79 partial original inputs and one malformed input",
+    "Exact native dialog pixels, wrapping and full event-context scheduler equivalence",
+    "Existing askForNumber digit-limit and optional prompt semantics",
+    "Stacked integration; no merge"
+  ],
+  "realInputProbe": {
+    "originalInputs": 2,
+    "boundary": "Headless native VM with storage; no renderer or audio engine. Set real player life to zero and answer the original life-zero question through its native input path.",
+    "questionsAnswered": 2,
+    "restoredLife": [
+      3,
+      5
+    ],
+    "blockErrors": [
+      5,
+      0
+    ],
+    "largerInputErrors": "Arcade cannot read this frame image artwork.",
+    "fullGameQualified": false,
+    "remaining": "Qualify the larger original app artwork with an actual renderer before classifying the failure as a product gap.",
+    "log": "arcade-boolean-question-real-inputs-observed.log"
+  }
+}

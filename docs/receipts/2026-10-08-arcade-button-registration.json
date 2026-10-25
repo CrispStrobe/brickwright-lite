@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-08",
+  "buildSource": "9ede54df002df47f2b9ce46f41f2eae49a0e79cf",
+  "producer": "0de6ae91758353af89ce64b06717a4294cd6bb05",
+  "producerChanged": false,
+  "change": [
+    "Controller A/B/directional onEvent callbacks register at the authored call site without scene-stack selection",
+    "Native event expressions retain Pressed2049 Released2048 Repeated2054, including evaluated procedure arguments",
+    "Replacement per button/event and shared live capture cells preserved",
+    "Invalid callbacks and shadowed controller/ControllerButtonEvent bindings stay diagnosed"
+  ],
+  "tests": {
+    "qualifiedDistinct": 27,
+    "failedAfterReruns": 0,
+    "skipped": 0,
+    "firstRegressionRun": {
+      "passed": 26,
+      "failed": 1,
+      "reason": "Firework test sent input before execution reached runtime registration"
+    },
+    "focusedFinalReruns": {
+      "passed": 10,
+      "failed": 0
+    },
+    "originalAndExportedPxt": {
+      "trace": "P7R8P10R11",
+      "presses": 2,
+      "releases": 2,
+      "repeated": true,
+      "installs": 3
+    },
+    "roundtrips": [
+      "Native execution",
+      "Blocks decompile to Code",
+      "MakeCode export and reimport",
+      "SB3 reload"
+    ],
+    "shortTaps": "Native pressed and released edges posted without a frame between; captured release sees pressed mutation",
+    "repeat": "Held right eventually repeats; exact wall-clock repeat count not compared"
+  },
+  "build": {
+    "bundle": "gui.0cc1f4bb.js",
+    "errors": 0,
+    "warnings": 2,
+    "initialBytes": 4360790,
+    "previousInitialBytes": 4360790,
+    "initialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "samples": [
+      {
+        "trace": "P7R8",
+        "presses": 1,
+        "releases": 1,
+        "repeated": false,
+        "ready": true,
+        "installs": 2
+      },
+      {
+        "trace": "P7R8P10R11",
+        "presses": 2,
+        "releases": 2,
+        "repeated": false,
+        "ready": true,
+        "installs": 3
+      },
+      {
+        "trace": "P7R8P10R11",
+        "presses": 2,
+        "releases": 2,
+        "repeated": true,
+        "ready": true,
+        "installs": 3
+      }
+    ],
+    "errors": [],
+    "blockErrors": [],
+    "flow": "Native file import, Code, Blocks, flag, visible A/B/A and held right repeated event"
+  },
+  "corpus": {
+    "immutableInputs": 184,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "changedDiagnosticRows": 0,
+    "measurement": "Import diagnostics only; no full-game equivalence claim"
+  },
+  "retainedFailures": [
+    "Firework test supplied input before registration execution; corrected to explicit post-setup input with no-launch-before-input assertion"
+  ],
+  "remaining": [
+    "Other callback families: forever, life/countdown, sprite overlap/destruction registration paths",
+    "Initial scene-worker phase versus VM tick, push/pop and whole-loop pause/obstacle timing",
+    "Legacy authored hats retain their compatibility boundaries",
+    "U03 map painter/resource lifecycle, dedicated callback authoring guidance and ranked artwork/palette/effect/music gaps",
+    "Exact-head hosted CI and stacked integration"
+  ],
+  "publication": "Draft stacked on Lite732; unmerged"
+}

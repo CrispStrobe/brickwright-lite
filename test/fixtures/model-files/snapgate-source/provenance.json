@@ -1,0 +1,51 @@
+{
+  "archive": "snapgate-addon-20261021.zip",
+  "archiveSha256": "852046b4bc5dd08f725c27abc198497ed18c4f5cf023beec87dcd9950e700916",
+  "files": [
+    {
+      "source": "snapgate/models/snapgate.ldr",
+      "file": "snapgate.ldr",
+      "sha256": "4796bf3f379c6110574435a9cf0eab57698b199491f96706bf3ff9dda5fea525"
+    },
+    {
+      "source": "snapgate/models/snapgate.mpd",
+      "file": "snapgate.mpd",
+      "sha256": "0582582dba7e990686ad45a64fdf792f828e5e20731a304036e972fa65777414"
+    },
+    {
+      "source": "snapgate/programs/snapgate.bw",
+      "file": "snapgate.bw",
+      "sha256": "cb3dd5e8ad34cb4242342428eb88ffab1abcee25369dd1c4c82b6efbf834d62b"
+    },
+    {
+      "source": "snapgate/licenses/snapgate.txt",
+      "file": "LICENSE.txt",
+      "sha256": "ed121de3496066a2ddc8c11b30b48142165ab84bdb066fee351392ecaccf36ad"
+    },
+    {
+      "source": "snapgate/licenses/THIRD-PARTY-NOTICES.md",
+      "file": "THIRD-PARTY-NOTICES.md",
+      "sha256": "a582d1059c8017f144e6ec43a4250e1e20f7841e82613d40353375e07f41406f"
+    },
+    {
+      "source": "snapgate/licenses/quickstroke-original.txt",
+      "file": "quickstroke-original.txt",
+      "sha256": "ed121de3496066a2ddc8c11b30b48142165ab84bdb066fee351392ecaccf36ad"
+    },
+    {
+      "source": "snapgate/validation/contract.json",
+      "file": "acceptance.json",
+      "sha256": "5c59ef6ce8fba943f5dd61712d4af112af74b0183dc6cbf7fc37e8a56eef5973"
+    },
+    {
+      "source": "snapgate/lessons/snapgate.en.json",
+      "file": "snapgate.en.json",
+      "sha256": "5ea21b88a02c0c159dd5a1455df711a1fb0bfcb5a984bc5cc4450f805ef32df1"
+    },
+    {
+      "source": "snapgate/lessons/snapgate.de.json",
+      "file": "snapgate.de.json",
+      "sha256": "80e58e428becb905d285cb6a8042ed775670960bc49c347f5a20aab9b3530d08"
+    }
+  ]
+}

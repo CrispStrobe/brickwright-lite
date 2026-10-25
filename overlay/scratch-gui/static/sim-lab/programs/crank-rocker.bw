@@ -1,0 +1,10 @@
+DEVICE SPIKE
+
+# A rotates a crank; the blue output rocks through about 86 degrees.
+# Reset the model before repeating the experiment.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor speed A 15
+  run motor A clockwise 720 degrees
+  wait 1 seconds
+  run motor A counterclockwise 720 degrees

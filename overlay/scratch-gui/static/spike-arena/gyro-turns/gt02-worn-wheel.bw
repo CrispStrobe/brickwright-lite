@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# Gyro turns 2 - the worn wheel (reference solution).
+# Proportional correction: steer against the drift, harder the more it is.
+WHEN flag clicked:
+  set movement motors A B
+  reset yaw
+  set movement speed 30
+  REPEAT UNTIL spike color C is green:
+    start moving steering (spike angle yaw * -3)
+  stop movement

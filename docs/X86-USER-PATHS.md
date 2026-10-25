@@ -1,0 +1,61 @@
+# x86 user paths in Lite
+
+Source checkpoint: [Lite 2796d2f5](https://github.com/CrispStrobe/brickwright-lite/tree/2796d2f5ac344986a9fb870d0b2f06344b3d259b). This is a source-backed user guide, not a fresh installed-browser or guest acceptance. The supplier package at this checkpoint is board `3b03d226`; later board CPU qualification does not silently update this consumer.
+
+## Pick the right machine
+
+| Route | Use | Boundary |
+|---|---|---|
+| Functional 8086 DOS bench | Authored/free `.COM` and MZ `.EXE`, Code/DOS-service workflows | Does not boot an OS disk or select wired execution. |
+| Functional 8086 board | Supported BIOS/floppy manifest | Requires its board configuration and BIOS; program-service results are separate. |
+| Wired 8086 circuit | `executionMode: "wired"` plus `circuit.ref` and its realized circuit | Functional DOS-service/floppy proofs are separate from actual pin/bus execution. |
+| Wired Harris 80286 | An explicit circuit reference and admitted circuit backend | Not selected by DOSBox CPU settings or an ordinary DOS variant. |
+| Experimental functional 386 AT | Machine Manager raw disks or the named FreeDOS VGA profile | No wired 386 route or general native-addon guest loader is implied. |
+
+For runnable Node commands, see the [board user paths](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-USER-PATHS.md) and [loading guide](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-LOADING-GUIDE.md). The live 386 CLI is a TTY console with keyboard, Ctrl-] quit and Ctrl-L redraw; it is separate from this browser debugger.
+
+## Open a local disk
+
+1. In **Code**, open **Manage machines…** from the machine/device controls.
+2. For an arbitrary supported raw HDD, use **Boot a local DOSBox HDD**. Select the disk and optionally its `.conf`, then **Boot disk**. This always selects the functional 386 AT. The selected filename and explicit `imgmount -size` geometry must agree; automatic geometry only covers the documented 4-head/17-sector case.
+3. For the named route, use **FreeDOS VGA (named 386 profile)**, choose supported floppy/HDD files and optionally BIOS/VGA ROM files, then **Boot FreeDOS VGA**. This applies media, resets and starts the machine. The preset's fixed HDD geometry is not an arbitrary-disk geometry detector.
+4. Leave **Native blocks (experimental)** unchecked for ordinary execution. That option is not the separately reviewed Bochs native addon.
+5. Open **Controller** / Widgets and focus the **AT VGA** screen for keyboard input. **Play** enables widget interaction; **Edit** changes widget layout. These controls do not reset the CPU.
+
+**Full screen** enlarges the Controller pane; **Exit full screen** returns to the layout. This does not change guest video resolution. Pointer capture supports drags; there is no Pointer Lock, and the guest must enable PS/2 mouse reporting. Browser-reserved keys and screen-edge relative movement remain limitations.
+
+Selected file bytes live only in this tab; they are not uploaded, saved in the machine library or exported with reusable configuration. Saved/imported configs retain URL references and fetch on Run, checking supplied hashes. A pasted host pathname does not grant browser filesystem access. Disk changes remain in memory unless a separately documented export workflow supplies persistence.
+
+## Import and format limits
+
+| Input | What the reviewed route does |
+|---|---|
+| Machine config / `brickwright-media.json` | Imports configuration and media references; **Run** activates them. |
+| DOSBox `.conf` | Translates a subset of CPU/machine/program/image declarations. `mount` is provenance, not a host-directory mount; arbitrary autoexec commands do not run. |
+| Raw floppy / HDD | Loads supported slot bytes and geometry. A `.vhd` suffix does not decode a VHD container. |
+| ZIP / JS-DOS bundle | No general package extraction in these forms. Unpack separately and inspect the supported input. |
+| ISO / CD | No reviewed CD/ATAPI, ISO-filesystem or El Torito route. Renaming the input is not conversion. |
+| Debugger firmware picker | `.bin`, `.hex`, `.ihx` firmware; not a disk/ISO/package picker. |
+
+## Debug the running machine
+
+Open **Debugger** to enlarge the debugger view rather than the Controller screen. The dock is available across Circuits/Code, but its presence is **not a complete 386 debugger qualification**. Lite's pinned board composes the 386 adapter with an 8086-shaped target. Debug-event register capture calls a method that the 386 AT explicitly rejects; an active subscriber can make stepping fail before instruction retirement.
+
+| Surface | Existing shared behavior | 386 qualification limit |
+|---|---|---|
+| Run/Pause/Step | Forward instruction controls | Ordinary running exists; debug subscription can fail. Do not promise a working traced step until corrected. |
+| Step over/out, run to address | Shared 8086 target advertises these | 16-bit decoding/control flow and 20-bit address/run-to bounds are incomplete for protected-mode/32-bit code. |
+| Code/write/port/interrupt breakpoints | Shared hooks and capability declarations | Full 386 address/event capture is not qualified. Pending IRQ is not delivered IRQ; write does not mean read watchpoint. |
+| Registers/disassembly/memory | 8086-style inspection | AX-style register projection/8086 disassembler are not full EAX/EIP/segment-cache or 32-bit protected-mode inspection. |
+| Cycle/phase step | Not advertised | No physical bus-cycle step promise. |
+| 386 checkpoint/replay | Explicit refusal | No reverse/replay claim. |
+
+See the pinned [shared target](https://github.com/CrispStrobe/bw-board/blob/3b03d226cb1e7ecfcbbd28bc42fe492f8d2b6cf1/src/i8086-debug.js) and [386 AT refusal](https://github.com/CrispStrobe/bw-board/blob/3b03d226cb1e7ecfcbbd28bc42fe492f8d2b6cf1/src/experimental/i80386-at-machine.js). A separate correction must establish source-backed 386 semantics or explicit refusals before an installed GUI debugging claim.
+
+## Evidence and the next useful check
+
+Existing [FreeDOS interaction acceptance](I80386-FREEDOS-INTERACTION.md) covers one bounded real Chromium shell/input/pane-switch scenario; its earlier failures and remaining mouse/input limitations stay recorded. [The 386 GUI guide](I80386-GUI.md) distinguishes synthetic media-attachment checks from actual boot. Board-only MIT xv6 and owned DOS32A/DPMI client completions, including existing high-memory/timer acceptance, do not qualify the current installed Lite package.
+
+[Media Lab](https://github.com/CrispStrobe/brickwright-media-lab) keeps separately licensed software/assets outside the app. Its Minix 2 README's login/shell narrative is historical project evidence, not newly audited here. Freedoom/FastDoom was not executed in its packaging environment; OpenGEM's full-run proof remains pending. Use free or authored examples and their exact notices, not an assumption that every packaged project runs.
+
+Coordinate a supplier-pin update with its active owner before editing shared package/lock/generated files. After the separate debugger correction, qualify one existing free client through the actual installed package: visible completion/input, pause, breakpoint, step, register/memory change, resume and pane switch without losing the session. Record the exact package/pin/source and observable failure state. This guide changes no pin and claims no new GUI adoption, performance, physical RTx or full OS compatibility.

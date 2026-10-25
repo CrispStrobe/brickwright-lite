@@ -1,0 +1,28 @@
+0 gears-24-8 (Brickwright Robot Lab validation machine)
+0 Name: gears-24-8.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 // Speed-up 24:8 (Robot Lab validation, test/bw-sim-validation.test.mjs).
+0 // Bench: a SPIKE medium motor (port A) stands output-up at the origin (LDraw, -y up); a beam lies under
+0 // its housing, pinned into the housing's bottom holes u0/u1 (x = +-20) by two friction pins, so beam and
+0 // housing are one rigid frame. The motor's output carries a 3L axle (y -90..-30). Driven gears ride 8L axles
+0 // that turn in the frame beam's round holes and pass the housing's side (x >= 34). Pitch radii (module 1,
+0 // 1 mm = 2.5 LDU): 8T 10, 24T 30, 40T 50 LDU, so meshing centres are hole multiples of 20 LDU.
+0 // The motor carries the 24T at y -60; the 8T on an 8L axle at x = 40 (30 + 10 = 40). Output/input = -24/8 = -3.
+0 !BW ID motor
+0 !BW PORT A
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 !BW ID frame
+1 72 0 40 0 0 0 1 0 1 0 -1 0 0 32524.dat
+0 !BW ID framePin1
+1 0 20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID framePin2
+1 0 -20 30 0 0 1 0 1 0 0 0 0 -1 2780.dat
+0 !BW ID axleIn
+1 4 0 -60 0 0 1 0 1 0 0 0 0 -1 4519.dat
+0 !BW ID gIn
+1 16 0 -60 0 1 0 0 0 0 1 0 -1 0 3648.dat
+0 !BW ID axleOut
+1 4 40 -10 0 0 1 0 1 0 0 0 0 -1 3707.dat
+0 !BW ID gOut
+1 16 40 -60 0 1 0 0 0 0 1 0 -1 0 3647.dat

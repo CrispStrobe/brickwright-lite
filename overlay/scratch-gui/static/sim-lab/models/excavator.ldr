@@ -1,0 +1,180 @@
+0 Excavator (Brickwright Robot Lab reference model)
+0 Name: excavator.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID motorR
+0 !BW PORT B
+1 71 100 10 80 0 -1 0 -1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinR
+1 0 70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleR
+1 0 170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelR
+1 15 170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID motorL
+0 !BW PORT A
+1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinL
+1 0 -70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleL
+1 0 -170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelL
+1 15 -170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID frontBeam
+1 71 0 -10 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID frontPin1
+1 1 40 -10 -120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID frontPin2
+1 1 -40 -10 -120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID castorFront
+1 71 0 10 -140 0 0 -1 0 1 0 1 0 0 39370.dat
+0 !BW ID ballFront
+1 15 0 56 -140 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID ttBottom
+1 72 0 -110 120 1 0 0 0 1 0 0 0 1 99009.dat
+0 !BW ID ttMountR
+1 71 40 -90 100 0 -1 0 1 0 0 0 0 1 42003.dat
+0 !BW ID ttMountPinR
+1 0 20 -90 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID ttMountAxlePinR
+1 0 60 -80 100 0 0 -1 -1 0 0 0 1 0 43093.dat
+0 !BW ID ttMountL
+1 71 -40 -90 100 0 1 0 1 0 0 0 0 -1 42003.dat
+0 !BW ID ttMountPinL
+1 0 -20 -90 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID ttMountAxlePinL
+1 0 -60 -80 100 0 0 -1 -1 0 0 0 1 0 43093.dat
+0 !BW ID ttTop
+1 72 0 -110 120 1 0 0 0 1 0 0 0 1 99010.dat
+0 !BW ID slewMotor
+0 !BW PORT C
+1 71 20 -30 160 0 0 -1 0 1 0 1 0 0 54696p01.dat
+0 !BW ID slewPinHi
+1 0 40 -50 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slewPinLo
+1 0 40 -10 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID slewAxle
+1 0 20 -90 160 0 0 1 1 0 0 0 1 0 4519.dat
+0 !BW ID slewPinion
+1 71 20 -110 160 0 1 0 0 0 1 1 0 0 3647.dat
+0 !BW ID castor
+1 71 0 10 200 0 0 1 0 1 0 -1 0 0 39370.dat
+0 !BW ID castorPin
+1 0 40 -10 190 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID ball
+1 15 0 56 200 1 0 0 0 1 0 0 0 1 52629.dat
+0 !BW ID frameFront
+1 72 0 -130 100 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID frameBack
+1 72 0 -130 140 0 0 1 1 0 0 0 1 0 32316.dat
+0 !BW ID framePinR
+1 0 20 -130 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID framePinL
+1 0 -20 -130 120 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID postMountR
+1 71 60 -130 60 1 0 0 0 0 -1 0 1 0 15100.dat
+0 !BW ID postMountPinR
+1 0 60 -130 80 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID postR
+1 72 80 -190 60 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID postMountL
+1 71 -60 -130 60 -1 0 0 0 0 1 0 1 0 15100.dat
+0 !BW ID postMountPinL
+1 0 -60 -130 80 0 0 -1 0 1 0 1 0 0 6558.dat
+0 !BW ID postL
+1 71 -80 -190 60 0 1 0 0 0 1 1 0 0 40490.dat
+0 !BW ID boom
+1 72 50 -289.2 -74.4 0 1 0 0.96 0 -0.28 -0.28 0 -0.96 32278.dat
+0 !BW ID boomPivot
+1 0 0 -250 60 1 0 0 0 1 0 0 0 1 60485.dat
+0 !BW ID boomLaBody
+1 25 0 -150 60 1 0 0 0 -0.6 -0.8 0 0.8 -0.6 92693c01.dat
+0 !BW ID boomLaSpindle
+1 25 0 -174 42 1 0 0 0 -0.6 -0.8 0 0.8 -0.6 92695.dat
+0 !BW ID boomLaPiston
+1 72 0 -278 -36 1 0 0 0 -0.6 -0.8 0 0.8 -0.6 92696.dat
+0 !BW ID boomLaStubGear
+1 0 0 -162 51 -1 0 0 0 0.6 -0.8 0 -0.8 -0.6 6589.dat
+0 !BW ID boomLaAxleGear
+1 0 15 -150 60 0 0 -1 0 1 0 1 0 0 6589.dat
+0 !BW ID boomLaAxle
+1 0 80 -150 60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID boomLaEye
+1 0 20 -278 -36 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID boomMotor
+0 !BW PORT D
+1 71 120 -190 60 0 -1 0 1 0 0 0 0 1 54696p01.dat
+0 !BW ID boomMotorPinA
+1 0 90 -210 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID boomMotorPinB
+1 0 90 -170 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID boomMotorAxle
+1 0 171 -190 60 1 0 0 0 1 0 0 0 1 32062.dat
+0 !BW ID boomMotorGear
+1 71 180 -190 60 0 0 1 1 0 0 0 1 0 94925.dat
+0 !BW ID boomLaGear16
+1 71 180 -150 60 0 0 1 0 1 0 -1 0 0 94925.dat
+0 !BW ID stick
+1 72 100 -278.3585 -241.9036 0 1 0 0.5517 0 0.834 0.834 0 -0.5517 41239.dat
+0 !BW ID stickPivot
+1 0 70 -328.4 -208.8 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID stickLaBody
+1 25 0 -289.2 -74.4 1 0 0 0 -0.7503 -0.661 0 0.661 -0.7503 92693c01.dat
+0 !BW ID stickLaSpindle
+1 25 0 -309.0314 -96.9103 1 0 0 0 -0.7503 -0.661 0 0.661 -0.7503 92695.dat
+0 !BW ID stickLaPiston
+1 72 0 -378.4415 -175.6964 1 0 0 0 -0.7503 -0.661 0 0.661 -0.7503 92696.dat
+0 !BW ID stickLaStubGear
+1 0 0 -299.1157 -85.6552 -1 0 0 0 0.7503 -0.661 0 -0.661 -0.7503 6589.dat
+0 !BW ID stickLaAxleGear
+1 0 15 -289.2 -74.4 0 0 -1 0 1 0 1 0 0 6589.dat
+0 !BW ID stickLaAxle
+1 0 65 -289.2 -74.4 1 0 0 0 1 0 0 0 1 3737.dat
+0 !BW ID stickLaEye
+1 0 50 -378.4415 -175.6964 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID stickMotor
+0 !BW PORT E
+1 71 90 -278 -36 0 -1 0 0.28 0 -0.96 0.96 0 0.28 54696p01.dat
+0 !BW ID stickMotorPinA
+1 0 60 -283.6 -55.2 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID stickMotorPinB
+1 0 60 -272.4 -16.8 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID stickMotorAxle
+1 0 141 -278 -36 1 0 0 0 0.28 -0.96 0 0.96 0.28 32062.dat
+0 !BW ID stickMotorGear
+1 71 150 -278 -36 0 0 1 0.28 -0.96 0 0.96 0.28 0 94925.dat
+0 !BW ID stickLaGear16
+1 71 150 -289.2 -74.4 0 0 1 0 1 0 -1 0 0 94925.dat
+0 !BW ID bucket
+1 0 0 -167.241 -291.4304 -1 0 0 0 -0.5517 -0.834 0 -0.834 0.5517 24120.dat
+0 !BW ID bucketPivot
+1 0 50 -178.2755 -308.1109 1 0 0 0 1 0 0 0 1 3706.dat
+0 !BW ID bucketLaBody
+1 25 20 -295.039 -230.8691 1 0 0 0 -0.3014 0.9535 0 -0.9535 -0.3014 92693c01.dat
+0 !BW ID bucketLaSpindle
+1 25 20 -266.4338 -239.9103 1 0 0 0 -0.3014 0.9535 0 -0.9535 -0.3014 92695.dat
+0 !BW ID bucketLaPiston
+1 72 20 -156.2065 -274.7499 1 0 0 0 -0.3014 0.9535 0 -0.9535 -0.3014 92696.dat
+0 !BW ID bucketLaStubGear
+1 0 20 -280.7364 -235.3897 0 1 0 0.3014 0 0.9535 0.9535 0 -0.3014 6589.dat
+0 !BW ID bucketLaAxleGear
+1 0 35 -295.039 -230.8691 0 0 -1 0 1 0 1 0 0 6589.dat
+0 !BW ID bucketLaAxle
+1 0 110 -295.039 -230.8691 1 0 0 0 1 0 0 0 1 3737.dat
+0 !BW ID bucketLaEye
+1 0 10 -156.2065 -274.7499 1 0 0 0 1 0 0 0 1 32062.dat
+0 !BW ID bucketMotor
+0 !BW PORT F
+1 71 140 -261.678 -252.9382 0 -1 0 -0.834 0 -0.5517 0.5517 0 -0.834 54696p01.dat
+0 !BW ID bucketMotorPinA
+1 0 110 -244.9975 -263.9727 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID bucketMotorPinB
+1 0 110 -278.3585 -241.9036 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID bucketMotorAxle
+1 0 191 -261.678 -252.9382 1 0 0 0 -0.834 -0.5517 0 0.5517 -0.834 32062.dat
+0 !BW ID bucketMotorGear
+1 71 200 -261.678 -252.9382 0 0 1 -0.834 -0.5517 0 0.5517 -0.834 0 94925.dat
+0 !BW ID bucketLaGear16
+1 71 200 -295.039 -230.8691 0 0 1 0 1 0 -1 0 0 94925.dat

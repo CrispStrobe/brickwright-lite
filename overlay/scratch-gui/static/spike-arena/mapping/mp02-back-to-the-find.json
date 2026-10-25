@@ -1,0 +1,135 @@
+{
+  "id": "mp02-back-to-the-find",
+  "title": {
+    "en": "Back to the find",
+    "de": "Zurück zum Fund"
+  },
+  "intro": {
+    "en": "Somewhere in this trench lies one yellow find. Explore the trench in 5 cm steps until the distance sensor sees the end wall closer than 10 cm, and note at which step the colour sensor saw yellow. Then drive back and stop with the colour sensor over the find.",
+    "de": "Irgendwo in diesem Graben liegt ein gelber Fund. Erkunde den Graben in 5-cm-Schritten, bis der Abstandssensor die Endwand näher als 10 cm sieht, und merke dir, bei welchem Schritt der Farbsensor Gelb gesehen hat. Fahre dann zurück und halte mit dem Farbsensor über dem Fund."
+  },
+  "hints": [
+    {
+      "en": "Count every step in one variable. When you see yellow for the first time, copy the step count into a second variable.",
+      "de": "Zähle jeden Schritt in einer Variable. Wenn du zum ersten Mal Gelb siehst, kopiere die Schrittzahl in eine zweite Variable."
+    },
+    {
+      "en": "At the end wall, the find is (steps - found) steps behind you.",
+      "de": "An der Endwand liegt der Fund (Schritte - Fund) Schritte hinter dir."
+    }
+  ],
+  "mat": {
+    "width": 160,
+    "height": 50,
+    "background": "white",
+    "paint": "#f1e3c6",
+    "shapes": [
+      {
+        "color": "white",
+        "paint": "#e6d3ad",
+        "shape": {
+          "type": "rect",
+          "x": 75,
+          "y": 25,
+          "w": 150,
+          "h": 20
+        }
+      },
+      {
+        "color": "yellow",
+        "shape": {
+          "type": "rect",
+          "x": 72,
+          "y": 25,
+          "w": 8,
+          "h": 12
+        }
+      }
+    ]
+  },
+  "walls": [
+    {
+      "shape": {
+        "type": "rect",
+        "x": 152,
+        "y": 25,
+        "w": 8,
+        "h": 50
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "find",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 65,
+        "y": 25,
+        "w": 8,
+        "h": 20
+      },
+      "label": {
+        "en": "spot above the find",
+        "de": "Stelle über dem Fund"
+      }
+    },
+    {
+      "id": "trench-west",
+      "role": "area",
+      "shape": {
+        "type": "rect",
+        "x": 30.5,
+        "y": 25,
+        "w": 61,
+        "h": 20
+      },
+      "label": {
+        "en": "wrong part of the trench",
+        "de": "falschen Teil des Grabens"
+      }
+    },
+    {
+      "id": "trench-east",
+      "role": "area",
+      "shape": {
+        "type": "rect",
+        "x": 107.5,
+        "y": 25,
+        "w": 77,
+        "h": 20
+      },
+      "label": {
+        "en": "wrong part of the trench",
+        "de": "falschen Teil des Grabens"
+      }
+    }
+  ],
+  "start": {
+    "x": 20,
+    "y": 25,
+    "heading": 0
+  },
+  "timeLimitMs": 40000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "find"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noStopIn",
+      "zone": "trench-west"
+    },
+    {
+      "type": "noStopIn",
+      "zone": "trench-east"
+    },
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "mp02-back-to-the-find.bw",
+  "wrong": "mp02-back-to-the-find.wrong.bw"
+}

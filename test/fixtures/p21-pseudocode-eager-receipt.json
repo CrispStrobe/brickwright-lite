@@ -1,0 +1,172 @@
+{
+  "schema": "brickwright/p21-pseudocode-activation/v1",
+  "mode": "eager-baseline",
+  "run": 34061190255,
+  "headSha": "513237241a68dd374a7e3040a2f73cab4e89c347",
+  "url": "http://localhost:8617/",
+  "absoluteLimitMs": 1000,
+  "maxLongTaskMs": 100,
+  "samples": [
+    {
+      "durationMs": 153,
+      "longTasks": [],
+      "scripts": [
+        {
+          "name": "http://localhost:8617/chunks/1410.70ea5df5e2017f2b373b.js",
+          "encodedBodySize": 354806,
+          "startTime": 1058.7999999999884,
+          "responseEnd": 1073.5999999999767
+        },
+        {
+          "name": "http://localhost:8617/chunks/bw-codemirror.js",
+          "encodedBodySize": 8658,
+          "startTime": 1059.2999999999884,
+          "responseEnd": 1067.399999999965
+        }
+      ],
+      "pseudocodeScripts": [],
+      "tab": {
+        "visible": true,
+        "exactName": true,
+        "ariaControls": "react-tabs-7"
+      },
+      "panel": {
+        "id": "react-tabs-7",
+        "selected": true
+      },
+      "editorKind": "codemirror",
+      "errors": [],
+      "consoleErrors": [],
+      "failure": null
+    },
+    {
+      "durationMs": 125.09999999997672,
+      "longTasks": [],
+      "scripts": [
+        {
+          "name": "http://localhost:8617/chunks/1410.70ea5df5e2017f2b373b.js",
+          "encodedBodySize": 354806,
+          "startTime": 926.0999999999767,
+          "responseEnd": 940.4000000000233
+        },
+        {
+          "name": "http://localhost:8617/chunks/bw-codemirror.js",
+          "encodedBodySize": 8658,
+          "startTime": 926.4000000000233,
+          "responseEnd": 935.7000000000116
+        }
+      ],
+      "pseudocodeScripts": [],
+      "tab": {
+        "visible": true,
+        "exactName": true,
+        "ariaControls": "react-tabs-7"
+      },
+      "panel": {
+        "id": "react-tabs-7",
+        "selected": true
+      },
+      "editorKind": "codemirror",
+      "errors": [],
+      "consoleErrors": [],
+      "failure": null
+    },
+    {
+      "durationMs": 129.20000000001164,
+      "longTasks": [],
+      "scripts": [
+        {
+          "name": "http://localhost:8617/chunks/1410.70ea5df5e2017f2b373b.js",
+          "encodedBodySize": 354806,
+          "startTime": 960.7000000000116,
+          "responseEnd": 975.6000000000349
+        },
+        {
+          "name": "http://localhost:8617/chunks/bw-codemirror.js",
+          "encodedBodySize": 8658,
+          "startTime": 961.1000000000349,
+          "responseEnd": 970.1000000000349
+        }
+      ],
+      "pseudocodeScripts": [],
+      "tab": {
+        "visible": true,
+        "exactName": true,
+        "ariaControls": "react-tabs-7"
+      },
+      "panel": {
+        "id": "react-tabs-7",
+        "selected": true
+      },
+      "editorKind": "codemirror",
+      "errors": [],
+      "consoleErrors": [],
+      "failure": null
+    },
+    {
+      "durationMs": 130.30000000004657,
+      "longTasks": [],
+      "scripts": [
+        {
+          "name": "http://localhost:8617/chunks/1410.70ea5df5e2017f2b373b.js",
+          "encodedBodySize": 354806,
+          "startTime": 965.7000000000116,
+          "responseEnd": 982
+        },
+        {
+          "name": "http://localhost:8617/chunks/bw-codemirror.js",
+          "encodedBodySize": 8658,
+          "startTime": 966,
+          "responseEnd": 971.7000000000116
+        }
+      ],
+      "pseudocodeScripts": [],
+      "tab": {
+        "visible": true,
+        "exactName": true,
+        "ariaControls": "react-tabs-7"
+      },
+      "panel": {
+        "id": "react-tabs-7",
+        "selected": true
+      },
+      "editorKind": "codemirror",
+      "errors": [],
+      "consoleErrors": [],
+      "failure": null
+    },
+    {
+      "durationMs": 124,
+      "longTasks": [],
+      "scripts": [
+        {
+          "name": "http://localhost:8617/chunks/1410.70ea5df5e2017f2b373b.js",
+          "encodedBodySize": 354806,
+          "startTime": 960.7999999999884,
+          "responseEnd": 975.2999999999884
+        },
+        {
+          "name": "http://localhost:8617/chunks/bw-codemirror.js",
+          "encodedBodySize": 8658,
+          "startTime": 961,
+          "responseEnd": 967.1000000000349
+        }
+      ],
+      "pseudocodeScripts": [],
+      "tab": {
+        "visible": true,
+        "exactName": true,
+        "ariaControls": "react-tabs-7"
+      },
+      "panel": {
+        "id": "react-tabs-7",
+        "selected": true
+      },
+      "editorKind": "codemirror",
+      "errors": [],
+      "consoleErrors": [],
+      "failure": null
+    }
+  ],
+  "medianMs": 129.20000000001164
+}

@@ -1,0 +1,64 @@
+DEVICE SPIKE
+
+# MAGNETIC CHESS TRANSPORT: precomputed occupancy-aware routes.
+# XY calibration: SIMULATED NOMINAL SCALE, 10 LDU pinion radius; NOT measured hardware calibration.
+# No chess AI, piece sensor, homing routine, or simulated magnet is implied.
+# Start head at X=0, Z=0 LDU, magnet lowered.
+# Establish the physical datum before running; reset the matching CAD scene.
+WHEN flag clicked:
+  set motor stop action A hold
+  set motor stop action B hold
+  set motor stop action C hold
+  set motor speed A 5
+  set motor speed B 5
+  set motor speed C 5
+  # Transfer 1: w_knight_g1, g1 -> f3
+  run motor A counterclockwise 2005.35228296 degrees
+  run motor B counterclockwise 2807.49319614 degrees
+  run motor C clockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor A clockwise 401.07045659 degrees
+  run motor B clockwise 1604.28182637 degrees
+  run motor A clockwise 401.07045659 degrees
+  wait 1 seconds
+  run motor C counterclockwise 180.00000000 degrees
+  wait 1 seconds
+  # Transfer 2: w_pawn_e2, e2 -> e4
+  run motor A clockwise 802.14091318 degrees
+  run motor B counterclockwise 802.14091318 degrees
+  run motor C clockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor B clockwise 1604.28182637 degrees
+  wait 1 seconds
+  run motor C counterclockwise 180.00000000 degrees
+  wait 1 seconds
+  # Transfer 3: b_pawn_d7, d7 -> d5
+  run motor A clockwise 802.14091318 degrees
+  run motor B clockwise 2406.42273955 degrees
+  run motor C clockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor B counterclockwise 1604.28182637 degrees
+  wait 1 seconds
+  run motor C counterclockwise 180.00000000 degrees
+  wait 1 seconds
+  # Transfer 4: b_pawn_d7, d5 -> black_01
+  run motor C clockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor A counterclockwise 3609.63410932 degrees
+  run motor B clockwise 2606.95796785 degrees
+  run motor A counterclockwise 802.14091318 degrees
+  wait 1 seconds
+  run motor C counterclockwise 180.00000000 degrees
+  wait 1 seconds
+  # Transfer 5: w_pawn_e2, e4 -> d5
+  run motor A clockwise 3609.63410932 degrees
+  run motor B counterclockwise 3409.09888103 degrees
+  run motor C clockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor A clockwise 802.14091318 degrees
+  run motor B clockwise 802.14091318 degrees
+  wait 1 seconds
+  run motor C counterclockwise 180.00000000 degrees
+  wait 1 seconds
+  run motor A counterclockwise 401.07045659 degrees
+  run motor B counterclockwise 401.07045659 degrees

@@ -1,0 +1,17 @@
+DEVICE SPIKE
+
+# Robot Lab: find the red square on the Colour Zones mat.
+# Model: Colour explorer (wheels on A and B, colour sensor on C looking down).
+# Turn left until the robot faces the red corner, drive until the sensor
+# sees red, roll on into the square, stop and light the hub red.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  reset yaw
+  start tank -10 10
+  wait until (spike angle yaw) < -130
+  stop movement
+  start moving steering 0
+  wait until spike color C is red
+  move forward 15 cm
+  set center button light to red

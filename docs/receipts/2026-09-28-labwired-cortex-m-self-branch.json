@@ -1,0 +1,45 @@
+{
+  "schema": "brickwright.labwired-cortex-m-rtx.v1",
+  "measuredAt": "2026-09-28",
+  "metric": "simulated seconds per wall second (1.0x = real time)",
+  "source": {
+    "repository": "https://github.com/CrispStrobe/labwired-core",
+    "measuredCommit": "cdd2f1fa564710a010236de3bd8a720dabd29aab",
+    "mergeCommit": "313252d4ce741c4ea5e3f48da7e1376736764916",
+    "wasmPack": "0.13.1",
+    "buildProfile": "release",
+    "target": "nodejs"
+  },
+  "runner": {
+    "provider": "Kaggle",
+    "kernel": "chr1s4/labwired-cortex-m-self-branch-benchmark",
+    "visibility": "private",
+    "publicInputsOnly": true
+  },
+  "method": {
+    "samples": 7,
+    "warmupCycles": 100000,
+    "tickInterval": 1024,
+    "tickContract": "WasmSimulator.recommended_tick_interval(), as applied by the bw-board adapter",
+    "phase": "public smoke firmware after boot and UART OK, at its terminal Thumb b . loop",
+    "limitations": "Post-boot CPU/scheduler capacity only; does not qualify unimplemented board peripherals."
+  },
+  "targets": {
+    "microbit-v2": {
+      "clockHz": 64000000,
+      "pc": "0x4a4",
+      "uart": "OK\n",
+      "samplesRtx": [2.040384930859526, 2.9213943347736775, 3.135852991211788, 3.3233582734754927, 3.3470114534732227, 3.351888831255046, 3.4406056842246207],
+      "medianRtx": 3.3233582734754927,
+      "accepted": true
+    },
+    "atsamd51": {
+      "clockHz": 120000000,
+      "pc": "0x48a",
+      "uart": "OK\n",
+      "samplesRtx": [3.494736577241016, 3.757732944683535, 3.7676221105163874, 3.784580182197214, 3.8132091854108405, 7.8597475213302745, 9.623342379274877],
+      "medianRtx": 3.784580182197214,
+      "accepted": true
+    }
+  }
+}

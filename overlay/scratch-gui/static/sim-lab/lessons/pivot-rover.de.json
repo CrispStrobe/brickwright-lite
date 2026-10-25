@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "pivot-rover",
+  "language": "de",
+  "what": "Zwei hintere Antriebe bewegen den Rover; ein dritter Motor dreht das vordere Drehgestell. A/B fahren; C lenkt den Drehschemel innerhalb ±20°. Freie vordere Halbachsen erlauben unterschiedliche Raddrehzahlen. Vergleiche mit Ackermann-Lenkung.",
+  "try": [
+    "Setze zurück und starte beide programmierten Kurven.",
+    "Beobachte den Vorderachswinkel unabhängig von den Hinterraddrehzahlen.",
+    "Stoppe, wähle einen kleinen manuellen Lenkwinkel und fahre langsam."
+  ],
+  "why": "Das schräg gestellte Vordergestell führt das Fahrzeug, während die Hinterräder antreiben. Dies ist eine Drehschemellenkung und keine ideale Ackermann-Lenkung.",
+  "matters": "Mechanische Lenkung und Differenziallenkung lösen dieselbe Navigationsaufgabe unterschiedlich.",
+  "question": "Was sollte beim Vorzeichenwechsel des Lenkwinkels geschehen?",
+  "answer": "Bei gleicher Vorwärtsfahrt wechselt die Kurve die Seite. Beim Rückwärtsfahren ändert sich auch die Beziehung zwischen Richtungsänderung und Weg.",
+  "further": [
+    "Vergleiche Links- und Rechtskurve aus derselben Startpose.",
+    "Vergleiche den differenzialgelenkten Grundroboter."
+  ],
+  "formula": "",
+  "related": [
+    "driving-base.ldr"
+  ]
+}

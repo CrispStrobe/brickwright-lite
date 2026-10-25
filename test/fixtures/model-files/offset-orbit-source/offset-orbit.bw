@@ -1,0 +1,142 @@
+// Offset Orbit: parallel shafts linked by a real Oldham sliding cross.
+// Only Motor A drives. Output phase and cross orbit are independently observed.
+// Five seconds of free coast are followed by one explicit guarded home.
+// Every angle command reads the fresh, unwrapped native encoder.
+DEVICE SPIKE
+
+WHEN flag clicked:
+  set complete to 0
+  set fault to 0
+  set phase to 0
+  set moving to 0
+  set targetA to 0
+  set speedA to 45
+  set coastAngle to 0
+  reset timer
+  broadcast "Orbit watchdog"
+  lab reset
+  lab start
+  wait 5 seconds
+  set coastAngle to (lab motor A angle)
+  // Explicitly return the input to the physical saved CAD reference.
+  set moving to 1
+  set phase to -1
+  set targetA to 0
+  set speedA to 45
+  broadcast "Position Orbit input" and wait
+  // Hold 1: physical input 90 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 1
+  set targetA to 90
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 2: physical input 180 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 2
+  set targetA to 180
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 3: physical input 270 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 3
+  set targetA to 270
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 4: physical input 360 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 4
+  set targetA to 360
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 5: physical input 270 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 5
+  set targetA to 270
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 6: physical input 180 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 6
+  set targetA to 180
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 7: physical input 90 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 7
+  set targetA to 90
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 8: physical input 0 degrees, 20 degrees/second.
+  set moving to 1
+  set phase to 8
+  set targetA to 0
+  set speedA to 20
+  broadcast "Position Orbit input" and wait
+  // Hold 9: physical input 90 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 9
+  set targetA to 90
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  // Hold 10: physical input 180 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 10
+  set targetA to 180
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  // Hold 11: physical input 270 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 11
+  set targetA to 270
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  // Hold 12: physical input 360 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 12
+  set targetA to 360
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  // Hold 13: physical input 270 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 13
+  set targetA to 270
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  // Hold 14: physical input 180 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 14
+  set targetA to 180
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  // Hold 15: physical input 90 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 15
+  set targetA to 90
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  // Hold 16: physical input 0 degrees, 30 degrees/second.
+  set moving to 1
+  set phase to 16
+  set targetA to 0
+  set speedA to 30
+  broadcast "Position Orbit input" and wait
+  set complete to 1
+
+WHEN I receive "Position Orbit input":
+  set moving to 1
+  lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+  lab stop motor A hold
+  wait 0.25 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 then:
+    set fault to 1
+    stop all
+  set moving to 0
+  wait 0.5 seconds
+
+WHEN I receive "Orbit watchdog":
+  repeat until complete = 1:
+    if timer > 95 then:
+      set fault to 1
+      lab stop motor A hold
+      stop all
+    wait 0.02 seconds

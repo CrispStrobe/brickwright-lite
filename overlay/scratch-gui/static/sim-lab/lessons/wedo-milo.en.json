@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "wedo-milo",
+  "language": "en",
+  "what": "A one-motor WeDo rover rolls on one driven wheel and two front ball castors. Its forward-looking distance sensor can stop it before a wall. Distance feedback stops a one-motor rover.",
+  "try": [
+    "Reset and load the rover example on its wall mat. Predict where it will stop.",
+    "Run and watch the distance reading decrease as the driven wheel moves the chassis.",
+    "Reset, use a low manual motor setting, then Stop. Compare manual stopping with the sensor-controlled program."
+  ],
+  "why": "The distance sensor provides feedback about the environment. The program stops the drive when its condition is met; fixed running time alone would depend on speed and starting position. This WeDo motor has no encoder, so it cannot provide a measured shaft-position hold.",
+  "matters": "Obstacle detection links a sensor condition to a physical action.",
+  "question": "If the rover starts farther from the wall, should a distance-triggered program need a longer drive time?",
+  "answer": "Yes, it travels farther before reaching the same sensor condition. A fixed-time program would instead stop after the same duration, at a different distance.",
+  "further": [
+    "Compare with the two-motor wall stopper and its distance reading.",
+    "Identify which port drives the motor and which carries the distance sensor."
+  ],
+  "formula": "",
+  "related": [
+    "wall-stopper.ldr",
+    "survey-rover.ldr"
+  ]
+}

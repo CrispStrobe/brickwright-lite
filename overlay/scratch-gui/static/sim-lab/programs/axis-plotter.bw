@@ -1,0 +1,91 @@
+# Axis Plotter calibration — CrispStrobe, BSD-3-Clause.
+# Reset first. Actual encoder feedback drives a square and detached diagonal.
+# Shared receivers keep the example small enough to load promptly as Blocks.
+DEVICE SPIKE
+GLOBAL targetA = 0
+GLOBAL targetB = 0
+GLOBAL targetC = 0
+GLOBAL speedA = 60
+GLOBAL speedB = 60
+
+WHEN flag clicked:
+  lab start
+  lab stop motor A hold
+  lab stop motor B hold
+  lab stop motor C hold
+  broadcast "move pen" and wait
+  wait 0.15 seconds
+  set targetA to 28.647889756541
+  set targetB to 28.647889756541
+  broadcast "move XY" and wait
+  set targetC to -73.05211887918
+  broadcast "move pen" and wait
+  wait 0.15 seconds
+  set speedA to 42.971834634812
+  set speedB to 42.971834634812
+  REPEAT 48:
+    set targetA to targetA + 10.742958658703
+    broadcast "move XY" and wait
+  REPEAT 48:
+    set targetB to targetB + 10.742958658703
+    broadcast "move XY" and wait
+  REPEAT 48:
+    set targetA to targetA - 10.742958658703
+    broadcast "move XY" and wait
+  REPEAT 48:
+    set targetB to targetB - 10.742958658703
+    broadcast "move XY" and wait
+  set targetC to 0
+  broadcast "move pen" and wait
+  wait 0.15 seconds
+  set targetA to 139.14689
+  set targetB to 433.8109
+  set speedA to 22.61328
+  set speedB to 82.91534
+  broadcast "move XY" and wait
+  set targetC to -73.05211887918
+  broadcast "move pen" and wait
+  wait 0.15 seconds
+  set speedA to 30.385675670302
+  set speedB to 30.385675670302
+  REPEAT 39:
+    set targetA to targetA + 7.555487435897
+    set targetB to targetB - 7.555487435897
+    broadcast "move XY" and wait
+  set targetC to 0
+  broadcast "move pen" and wait
+  wait 0.15 seconds
+  set targetA to 0
+  set targetB to 0
+  set speedA to 81.83688
+  set speedB to 26.24956
+  broadcast "move XY" and wait
+
+WHEN I receive "move XY":
+  IF (abs of (targetA - (lab motor A angle))) > 0.001 THEN:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+    lab stop motor A hold
+  IF (abs of (targetA - (lab motor A angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    lab stop motor C hold
+    stop all
+
+WHEN I receive "move XY":
+  IF (abs of (targetB - (lab motor B angle))) > 0.001 THEN:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+    lab stop motor B hold
+  IF (abs of (targetB - (lab motor B angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    lab stop motor C hold
+    stop all
+
+WHEN I receive "move pen":
+  lab run motor C for (targetC - (lab motor C angle)) degrees at 60 degrees per second
+  lab stop motor C hold
+  IF (abs of (targetC - (lab motor C angle))) > 2 THEN:
+    lab stop motor A hold
+    lab stop motor B hold
+    lab stop motor C hold
+    stop all

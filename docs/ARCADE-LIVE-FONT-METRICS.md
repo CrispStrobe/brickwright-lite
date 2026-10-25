@@ -1,0 +1,47 @@
+# Arcade live font metrics
+
+Status: claim merged; implementation candidate with focused source and authoring qualification. Supplier publication and installed GUI qualification remain pending.
+
+## Selected source and boundary
+
+The selected Arcade 4.2.1 package pins common packages 14.1.4 and PXT 13.2.1 in its [package declaration](https://github.com/microsoft/pxt-arcade/blob/2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea/package.json). The immutable [screen text source](https://github.com/microsoft/pxt-common-packages/blob/31abf23d118f35010fb75122e60a1eb2b6dffe9f/libs/screen/text.ts) defines `Font.charWidth` and `Font.charHeight` as numeric fields. Its blob is `e30b7f61c9717e83c4e7ce2dbc500dc76dec51dd`, identical to the selected bundled source.
+
+The font bindings are constant; their objects have mutable fields. Read the actual font objects used by the existing original text module and renderer. Do not replace a property read with a guessed constant or cache its numeric value. Preserve existing component notices and font attribution; this lane adds no glyph assets or broad licensing claim.
+
+The initial scope covers direct, lexically unshadowed reads of `image.font5`, `image.font8` and `image.font12` numeric metrics. Font aliases, custom fonts, dynamic font selection, writes, multiplier/data inspection and other font APIs remain named unsupported boundaries until separately qualified. A shadowed `image` receiver cannot acquire SDK font authority.
+
+## Portable authoring contract
+
+Add a Number reporter `arcade_fontMetric` with fixed quoted `FONT` and `PROPERTY` fields. Canonical Code is:
+
+```text
+arcade font "font5" metric "charHeight"
+```
+
+`FONT` admits `font5`, `font8`, `font12`; `PROPERTY` admits `charWidth`, `charHeight`. Both are direct fields, with matching producer grammar, native metadata, decompilation and export. They are not text/menu input slots or dynamic reporters. Unknown or malformed selections receive explicit diagnostics rather than a fallback font, metric or zero.
+
+Native reads delegate to the existing original text module's actual font object. Export emits the corresponding original property read. Scalar and primitive provenance may recognize only this proven SDK member; unknown, object and reference operands retain their guards. Known scalar source declaration/default handling must preserve reads before initialization without guessing types from names.
+
+## Required controls
+
+Compare all six builtin metrics against the selected original execution. Qualify source import, editable Blocks representation, Code decompilation, same and fresh SB3, exported original execution and reimport. Verify FIELD shapes directly, including invalid choices and connected-reporter refusal. Retain strict shadowed/opaque/reference negatives.
+
+Use actual original/native image rendering with metric-derived text placement and compare all pixels, including Unicode where the selected font supports it. Editing the metric fields must survive Code and fresh SB3. Preserve actual artwork uploads/export inputs. Observe module lifetime through restart/project replacement and scene transitions; do not introduce clock, scheduler or pixel offsets. Focused metric controls do not qualify complete games or installed GUI journeys.
+
+## Ownership
+
+Own new font metric classification/helper/tests and narrow Arcade expression, scalar/primitive provenance, native reporter/getInfo/menu, export/type, canonical vocabulary/field and reviewed pin hunks. Coordinate source-reference/callable owners, the controller-repeat property lane and active converter/runtime owners. Do not edit their class, callback, scheduler, controller or reference lifecycle hunks. No product edits before the claim lands.
+
+## Focused implementation controls
+
+The implementation reads the original text module's live font objects. Its six builtin values are `font5` 6×5, `font8` 6×8 and `font12` 12×12. A source callback reading a metric-derived Number binding before assignment observes typed undefined. Independent selected-SDK source and exported executions match the native result.
+
+Focused controls compare all 19,200 image pixels after metric-based placement of Latin and supported Unicode text. They preserve actual costume uploads through Code, saved and fresh SB3, original export and reimport. Editing both direct fields changes the expected metric and image without offsets. Actual VM controls preserve the same font object across scene push/pop and recreate it on restart and same-VM project reload. Malformed fields and connected selectors retain diagnostics.
+
+These controls cover the metric reporter and its rendering use. Font object aliases, custom fonts, dynamic selection, mutation from imported source, unrelated font APIs, complete applications, installed editor dropdown journeys and cadence remain outside this qualification.
+
+## Hosted editor journey preparation
+
+`verify-arcade-live-font-authoring-gui.mjs` uses the shared sole official artifact admission, exact source/pin/SDK guards and served bundle byte checks. Its owned fixture displays the metric-derived surface as the actual background. The journey opens that project in the production editor, edits both direct dropdowns using visible menu actions, edits the metric in Code, saves and loads into a fresh browser context, exports through the real action and reimports that downloaded file. Every route requires all 19,200 displayed pixels to match its selected original execution; it retains actual compiler inputs, outputs and observations.
+
+The workflow step reuses the admitted build and SDK. It neither builds locally nor acquires a second archive. Fixture/schema/source checks and native surface preflight are preparation. The new background-display source variants require their own original executions during the admitted hosted journey; earlier image observations do not qualify those programs or installed widgets. Hosted acceptance remains pending.

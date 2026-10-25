@@ -1,0 +1,123 @@
+name: production-sw-probe
+
+# #306: after each production deploy, check that a returning visitor's
+# service worker hands out the CURRENT lazy chunks. The browser profile seeded
+# after the previous deploy is restored, checked against the new deploy, and
+# a fresh profile is seeded for the next one. Reports, never deploys.
+on:
+  workflow_run:
+    workflows: ['Vercel production deploy', 'Build (permissive base)']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  # Self-test when the probe itself changes: it runs every step against the
+  # live sites (read-only), which is also what puts it in the CI step census.
+  pull_request:
+    paths:
+      - .github/workflows/production-sw-probe.yml
+      - scripts/probe-production-sw.mjs
+      - scripts/census-example-faces.mjs
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: production-sw-probe-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'live' }}
+  cancel-in-progress: false
+
+jobs:
+  # One job, so that on the free tier it takes one runner slot per deploy:
+  # both live sites are probed in turn, and the example census only runs when
+  # the Pages build (which carries a new pin or new examples) triggered it.
+  probe:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CENSUS: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.name == 'Build (permissive base)' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          sparse-checkout: |
+            vendor-pins.json
+            scripts/ci-vendor-pins.mjs
+            scripts/probe-production-sw.mjs
+            scripts/census-example-faces.mjs
+            overlay/scratch-gui/examples/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install Playwright (Lite's locked version)
+        # In its own directory: the repository's package.json must not be installed.
+        run: |
+          mkdir -p "$RUNNER_TEMP/probe" && cd "$RUNNER_TEMP/probe"
+          echo '{"private":true,"type":"module"}' > package.json
+          npm install --no-audit --no-fund playwright@1.62.1
+          npx playwright install --with-deps chromium
+          cp "$GITHUB_WORKSPACE/scripts/probe-production-sw.mjs" .
+      - name: Check each live site against the previous seed, then reseed
+        run: |
+          prev=$(gh run list -R "$GITHUB_REPOSITORY" -w production-sw-probe -s success -L 20 --json databaseId -q '.[].databaseId' | grep -vx "$GITHUB_RUN_ID" | head -1 || true)
+          [ -n "$prev" ] && gh run download "$prev" -R "$GITHUB_REPOSITORY" -n sw-profiles -D prev 2>/dev/null || echo "no previous seed: this run only seeds"
+          probe() { node "$RUNNER_TEMP/probe/probe-production-sw.mjs" "$@"; }
+          fail=0
+          for t in pages=https://crispstrobe.github.io/brickwright-lite/ vercel=https://brickwright-lite.vercel.app/; do
+            name=${t%%=*} url=${t#*=}
+            if [ -d "prev/next/$name" ]; then
+              set +e; probe check --url "$url" --profile "prev/next/$name" --json "probe-$name.json"; rc=$?; set -e
+              if [ "$rc" = 3 ]; then echo "::notice::$name: inconclusive (probed chunks unchanged since the seed)";
+              elif [ "$rc" != 0 ]; then echo "::error::$name: service-worker probe failed ($rc)"; fail=1; fi
+            fi
+            probe seed --url "$url" --profile "next/$name"
+            # The HTTP disk cache is not needed; the worker's Cache Storage stays.
+            rm -rf "next/$name/Default/Cache" "next/$name/Default/Code Cache" "next/$name/Default/GPUCache"
+          done
+          du -sh next
+          exit $fail
+      - name: Upload the new seeds and results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sw-profiles
+          path: |
+            next/
+            probe-*.json
+          include-hidden-files: true
+          retention-days: 14
+
+      # Report, not a gate: which example parts the circuit editor draws with
+      # its generic module body (or a chip face), ranked by example count.
+      # The pinned bw-circuit-ui commit, through the same validator the other
+      # sibling checkouts use: a missing, short or moving SHA fails here.
+      - name: Pinned bw-circuit-ui commit (validated)
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
+        id: vendor_pins
+        run: node scripts/ci-vendor-pins.mjs >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
+        with:
+          repository: CrispStrobe/bw-circuit-ui
+          ref: ${{ steps.vendor_pins.outputs.bw-circuit-ui }}
+          path: cui
+      - name: Draw every example kind in the real canvas and report
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
+        run: |
+          kinds=$(node scripts/census-example-faces.mjs kinds)
+          (cd cui && npm ci --no-audit --no-fund && npx playwright install chromium \
+            && node scripts/census-part-faces.mjs --kinds "$kinds" --json ../example-faces.json) \
+            || echo "::warning::bw-circuit-ui census reported failures (see log); the report still lists faces"
+          # Exit 2: the pinned bw-circuit-ui has no face lists yet (pre-B22). A
+          # report, not a gate: say so instead of failing.
+          node scripts/census-example-faces.mjs report --census example-faces.json --md example-faces.md \
+            || { rc=$?; [ "$rc" = 2 ] && echo "::notice::example-faces report needs a bw-circuit-ui pin that lists faces (B22)" || exit "$rc"; }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() && env.CENSUS == 'true' }}
+        with:
+          name: example-faces
+          path: |
+            example-faces.json
+            example-faces.md
+          if-no-files-found: ignore

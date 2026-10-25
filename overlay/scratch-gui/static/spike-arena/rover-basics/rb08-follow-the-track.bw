@@ -1,0 +1,12 @@
+DEVICE SPIKE
+
+# Rover basics 8 - follow the track (reference solution).
+# Follows the LEFT edge of the line with tank steering: on black the right
+# wheel runs faster (steer left), off it the left wheel does (steer right).
+WHEN flag clicked:
+  set movement motors A B
+  FOREVER:
+    IF spike color C is black THEN:
+      start tank 8 30
+    ELSE:
+      start tank 30 8

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "screw-crane",
+  "language": "en",
+  "what": "A lifting mechanism combines rotating links with screw-driven linear motion. Motor A lifts the boom through a screw actuator; C slews it through an 8:28 reduction. Compare turns, extension and boom height.",
+  "try": [
+    "Reset and run the example sequence.",
+    "Separate turntable motion from the lifting actuator’s motion.",
+    "Compare actuator extension with the height change at the end of the boom."
+  ],
+  "why": "A screw turns rotation into a small linear displacement. The boom linkage then converts that stroke into an angle and tip height. Leverage varies with pose, so equal motor increments need not give equal tip-height increments.",
+  "matters": "Cranes and excavators combine transmission and linkage geometry to handle loads.",
+  "question": "Will doubling actuator extension always double boom-tip rise?",
+  "answer": "No. The actuator is part of a changing triangle. Its angle and mechanical advantage vary with the pose.",
+  "further": [
+    "Compare early and late portions of a lift.",
+    "Try the rack lift, whose direct pitch law is simpler."
+  ],
+  "formula": "screw travel = turns × lead;  boom height also depends on linkage pose",
+  "related": [
+    "forklift.ldr",
+    "parallel-lift.ldr"
+  ]
+}

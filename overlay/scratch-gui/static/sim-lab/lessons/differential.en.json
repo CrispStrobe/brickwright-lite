@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "differential",
+  "language": "en",
+  "what": "A differential shares carrier motion between two outputs that can turn at different speeds. Hold one output: the other takes twice the carrier speed.",
+  "try": [
+    "Reset and run. Watch both outputs as the second motor changes its command.",
+    "Compare a held output with a turning output.",
+    "Record both output speeds and compare their average with the carrier."
+  ],
+  "why": "The equal side gears constrain the sum of their speeds. They do not force equal speeds. In the flywheel example, inertia resists changes in the outputs while the differential still enforces its kinematics.",
+  "matters": "A vehicle differential lets inner and outer wheels follow different path lengths.",
+  "question": "If one equal side gear is held, does the other turn at the carrier speed?",
+  "answer": "It turns at twice the carrier speed. Their average must equal the carrier speed.",
+  "further": [
+    "Compare transient acceleration with steady motion.",
+    "Distinguish the driven pinion speed from the carrier speed."
+  ],
+  "formula": "(ωleft + ωright) / 2 = ωcarrier",
+  "related": [
+    "flywheel-differential.ldr",
+    "pivot-rover.ldr"
+  ]
+}

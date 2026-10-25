@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "d51cf93c7bcfd0bc62b9c9035d686651208939d8",
+  "base": "a3c779ac53d042e7cdd565c60e68bd19a9912df7",
+  "implemented": [
+    "Native legacy image/sprite allocation, negative kind and true scene creation IDs",
+    "Resumable credited PXT constructor preserves blank-image callbacks before flags/text, including yielding and captured closures",
+    "Live pixel/image facade, native z/id drawing and independent invisible/destroyed-owner bubbles",
+    "Native replacement/clear/expiry with yielding destruction callback completion and per-scene suspension",
+    "Decode undefined duration and null/undefined text; restore original BlockUtility caller for Promise creation continuations",
+    "Per-instance speech engine; reset discards old native ownership without old project callbacks"
+  ],
+  "local": {
+    "passed": 47,
+    "failed": 0,
+    "skipped": 0,
+    "newChecks": 18,
+    "regressionChecks": 29,
+    "originalNewPlanes": 18,
+    "pixelsPerPlane": 19200,
+    "nativeOriginalComparedPixels": 345600,
+    "log": "arcade-native-legacy-bubble-final-caller.log",
+    "boundary": "Actual original PXT Chromium IDs/scalars/frames, native VM image/callback ownership, Code/Blocks/SB3/MakeCode interchange and both fresh extension bundles. No full shipped GUI, native long-scroll or complex callback reentry qualification."
+  },
+  "preservedFailures": [
+    {
+      "log": "arcade-native-legacy-bubble-first.log",
+      "passed": 7,
+      "failed": 11,
+      "cause": "Adapted renderer retained an unresolved sprites namespace; local flag adapter corrected it."
+    },
+    {
+      "log": "arcade-native-legacy-bubble-new.log",
+      "passed": 12,
+      "failed": 1,
+      "cause": "Encoded undefined duration bypassed duplicate persistent-say check."
+    },
+    {
+      "log": "arcade-native-legacy-bubble-final.log",
+      "passed": 46,
+      "failed": 1,
+      "cause": "Stale shared BlockUtility caller after a yielding destruction callback cancelled the subsequent constructor continuation."
+    }
+  ],
+  "ownerDestruction": "Original and native bubbles remain alive independently; owner updates and expiry stop. Earlier assumed owner cleanup contract corrected.",
+  "remaining": [
+    "Native scrolling and clock-aligned animated/later bubble frames",
+    "Complex callback reentry and scene-changing constructor/destruction handlers",
+    "Full shipped GUI/controller pixel qualification and legacy coverage adoption",
+    "HUD/effects/render callbacks and completed global screen API",
+    "All enabled exact-head hosted checks"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "importerUnchanged": true,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1
+  }
+}

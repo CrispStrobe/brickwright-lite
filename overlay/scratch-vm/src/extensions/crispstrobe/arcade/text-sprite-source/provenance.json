@@ -1,0 +1,13 @@
+{
+  "repo": "microsoft/arcade-text",
+  "version": "v1.3.0",
+  "commit": "fa2439314c6633943666a763fdae32a5c67a9ae8",
+  "source": "https://github.com/microsoft/arcade-text/blob/fa2439314c6633943666a763fdae32a5c67a9ae8/text.ts",
+  "license": "MIT",
+  "licenseUrl": "https://github.com/microsoft/arcade-text/blob/fa2439314c6633943666a763fdae32a5c67a9ae8/LICENSE",
+  "sha256": {
+    "text.ts": "691b89e9dc8c70c1dd3da516c409cf277591718108f8013e977f9001a86dea63",
+    "LICENSE": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+  },
+  "boundary": "Complete original source transpilation. Native Sprite, Image, fonts and scene hosts need independent original comparison; source admission remains separate."
+}

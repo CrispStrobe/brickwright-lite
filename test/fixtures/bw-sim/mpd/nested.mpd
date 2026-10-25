@@ -1,0 +1,7 @@
+0 FILE main.ldr
+1 16 10 0 0 1 0 0 0 1 0 0 0 1 mid.ldr
+0 FILE mid.ldr
+1 16 5 0 0 1 0 0 0 1 0 0 0 1 low.ldr
+0 FILE low.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 32524.dat
+0 NOFILE

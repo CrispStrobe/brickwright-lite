@@ -1,0 +1,9 @@
+{
+  "$comment": "Documented known-open browser gates, the browser equivalent of a documented {todo} unit test. scripts/known-open-gate.mjs reports a listed gate's failure as known-open (the gate still runs and prints its own result) and FAILS when a listed gate passes, so a stale entry is noticed. Every entry names its tracking doc. An entry names the gate's report and the exact failing assertion; any OTHER failure of that gate still fails the job.",
+  "arcade-carnival": {
+    "reason": "the carnival import still reports unsupported constructs: the import does not expose the carnival pseudocode command",
+    "doc": "docs/ARCADE-888-OPEN-FAILURES.md",
+    "report": "test-results/arcade-carnival-browser/report.json",
+    "failure": "AssertionError [ERR_ASSERTION]: import exposes the carnival pseudocode command"
+  }
+}

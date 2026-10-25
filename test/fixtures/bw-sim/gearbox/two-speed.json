@@ -1,0 +1,21 @@
+{
+  "$comment": "Two-speed gearbox on the bench, LDraw frame (-y up). Medium motor A at the origin drives the input axle (6L, vertical through its output, x=0) carrying an 8T at y=-70 and a 16T at y=-130 (10 LDU clear of the motor's top). The output axle (10L) turns in the beam under the housing at x=40 (40 LDU = 8T+24T = 16T+16T pitch radii) and carries, free on round holes, the 24T clutch gear 2471 at y=-70 and the 16T clutch gear 18946 at y=-130; between them a ridged axle joiner 6538b fixed on the axle and the driving ring 6539 on it (neutral: its ends touch both gears' clutch faces). The changeover catch 6641 swings about a 4L axle along z through its pivot hole at (78,-100), its bar at (56,-100) in the ring's groove (16 LDU from the output axis: the groove floor 13 + the bar's 2.3); the axle is held by motor B's output (port B), whose housing stands behind (z>54). Motor B turning the catch moves the ring 8 LDU up or down into one clutch gear.",
+  "version": 1,
+  "parts": [
+    {"id": "m", "part": "54696p01.dat", "position": [0,0,0], "rotation": [1,0,0,0,1,0,0,0,1], "port": "A"},
+    {"id": "aI", "part": "3706.dat", "position": [0,-90,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "gI8", "part": "3647.dat", "position": [0,-70,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "gI16", "part": "94925.dat", "position": [0,-130,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "beam", "part": "32524.dat", "position": [0,40,0], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "pin1", "part": "2780.dat", "position": [20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "pin2", "part": "2780.dat", "position": [-20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "aO", "part": "3737.dat", "position": [40,-50,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "gO24", "part": "2471.dat", "position": [40,-70,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "joiner", "part": "6538b.dat", "position": [40,-100,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "ring", "part": "6539.dat", "position": [40,-100,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "gO16", "part": "18946.dat", "position": [40,-130,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "catch", "part": "6641.dat", "position": [98,-100,0], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "aP", "part": "3705.dat", "position": [78,-100,20], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "mB", "part": "54696p01.dat", "position": [78,-100,90], "rotation": [0,0,1,1,0,0,0,1,0], "port": "B"}
+  ]
+}

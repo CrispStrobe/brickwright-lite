@@ -1,0 +1,48 @@
+{
+  "source": "7a4101798e304e459a1b40d77b5c2d8bee0dbb2e",
+  "producerPin": "983aa61f2fa44901074763b7347588b4e210fc77",
+  "initialBytes": 4467115,
+  "limit": 4467136,
+  "statsSha256": "01d2d528dea9142ee98022d427198ab22601f2d118beaea4123d2113b079ab22",
+  "bundle": "gui.72e2f96d.js",
+  "installerDeferred": [
+    {
+      "chunks": [
+        2182,
+        2425
+      ],
+      "initial": false
+    }
+  ],
+  "tests": {
+    "regression": 51,
+    "transactionWithOriginalPxtSemantics": 4,
+    "mirrorAndPolicy": 6,
+    "skips": 0
+  },
+  "browser": {
+    "journeys": 14,
+    "pageErrors": 0,
+    "nativeImport": {
+      "automatic": true,
+      "library": {
+        "name": "Arcade artwork",
+        "visible": false,
+        "role": {
+          "version": 1,
+          "kind": "arcade-animation"
+        },
+        "scripts": 0,
+        "costumes": 1
+      },
+      "companionIdentityPreserved": true,
+      "pixelEdited": true,
+      "sb3Reopened": true,
+      "codeBlocksRetained": true
+    },
+    "originalPixelsCompared": 19200
+  },
+  "browserHarnessSha256": "18f235e7a36582a5777704c4261c7d236a2bd3b1771089c086eee3466a7d8905",
+  "boundary": "Synthetic native import/edit/save/reopen/Code/Blocks/controller journey; original PXT compilation and exported fresh-array semantics. Original Assets editing/download and library GUI safeguards remain open. No corpus reclassification.",
+  "hostedFinalHead": "pending"
+}

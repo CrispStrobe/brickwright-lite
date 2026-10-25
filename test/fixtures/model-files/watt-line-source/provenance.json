@@ -1,0 +1,8 @@
+{
+  "archive": "Watt-Line-Technic-Addon.zip",
+  "files": {
+    "models/watt-line.ldr": "42ac6e7819b0cfb103c5a94690f04b9a2b24bca904c4e09144918c46b19476df",
+    "programs/watt-line.bw": "82f06bf83ddd8a32eb6333daf14eb4f66b70de15fc59555c665da6c8b3fefbb0",
+    "LICENSE": "ed121de3496066a2ddc8c11b30b48142165ab84bdb066fee351392ecaccf36ad"
+  }
+}
