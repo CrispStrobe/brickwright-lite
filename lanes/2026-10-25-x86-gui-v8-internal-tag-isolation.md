@@ -1,0 +1,23 @@
+# 386 GUI V8 internal tag isolation — 2026-10-25
+
+**Status: claim only; no trigger edit, tag, dispatch or guest result.** Owner: Codex x86 GUI. Base: current `main` at claim publication. This narrow source lane extends the [inactive V8 dispatch lane](2026-10-25-x86-gui-actual-v8-head-pinned-dispatch.md) before any tag creation. The V8 source and event remain unselected; no approval is inferred from this claim.
+
+The reviewed V8 selector proposes one immutable tag named `bw-gui-hdd-actual-v8-<full source head>`. Six existing workflows have `push.paths` with no branch or tag filter, and their jobs have no entry guard: `ack-z80-cpm`, `basic-oracle`, `makecode-arcade-bases`, `pascal-ack-image`, `rust-notices`, and `target-performance`. A tag push can therefore start unrelated work; the Pascal ACK workflow can publish an image tagged `latest`. [GitHub states that path filters are not evaluated for tag pushes](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushpull_requestpull_request_targetpathspaths-ignore), and that a push trigger without branch or tag filters includes both ref types. [REST reference creation is documented as a `create` event](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#create). The reviewed documentation does not establish whether this repository's REST reference creation also emits a `push` event. No tag will be created to resolve that uncertainty. None of the current workflows declares `on: create`; the remaining explicit tag triggers select `v*`, not the V8 prefix. Recheck the full trigger roster at the final source head.
+
+## Owned implementation envelope
+
+Change only these six workflow paths and one focused source control, plus this claim leaf:
+
+- `.github/workflows/ack-z80-cpm.yml`
+- `.github/workflows/basic-oracle.yml`
+- `.github/workflows/makecode-arcade-bases.yml`
+- `.github/workflows/pascal-ack-image.yml`
+- `.github/workflows/rust-notices.yml`
+- `.github/workflows/target-performance.yml`
+- `test/i80386-hdd-gui-actual.test.mjs`
+
+For each of the six existing `on.push` maps, retain its exact `paths` list and add `branches: ['**']` plus `tags-ignore: ['bw-gui-hdd-actual-v8-*']`. GitHub's [branch and tag filtering rules](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onpushbranchestagsbranches-ignoretags-ignore) require explicit branch coverage when tag filtering is introduced. Preserve all existing branch pushes, ordinary tags including `v*`, and every `workflow_dispatch` or `pull_request` trigger. Hold every job, step, permissions map, concurrency rule, action pin, package input and publication behavior byte-for-byte. The internal V8 tag is the sole excluded push ref. This lane grants no authority to edit another owner's active implementation or broaden tag exclusions; reconcile overlapping claims before editing.
+
+A focused public source control must use the existing Node and system Python tools, without adding a YAML or npm dependency to the pure GUI job. It checks the closed trigger text, held non-trigger source bytes and a ref truth table: accept `main` and slash-containing branch pushes, ordinary non-V8 tags and `v*` release tags, and reject the exact internal V8 tag prefix, including a full 40-hex head. Mutating one workflow back to path-only, removing branch coverage, excluding a normal release tag, or changing the Pascal publication step must fail. An independent private YAML parse compares each complete pre/post workflow tree after removing only the two new push filter keys; actionlint checks syntax. Check the repository's other `push`, `create` and `workflow_run` workflows against the selected V8 tag at final source freeze. Every enabled automatic check must qualify the final source head, including checks from these workflow changes; a later tag-induced run is separate from V8 execution evidence.
+
+Merge this claim under the repository's docs-only policy before source edits. After implementation, normally compose with the final V8 source head, prove the full workflow roster and held non-owned blobs, run focused source controls, actionlint and all enabled exact-head CI. Before the one-shot tag attempt, independently read back the selected source commit's workflow blobs and confirm these six exclusions are present there. A REST response, a skipped unrelated check, or the absence of a retained past tag run cannot prove that no future tag event will fire. This claim neither changes V8 request/reader/guest predicates nor authorizes a tag, dispatch, artifact acquisition or merge on incomplete checks.
