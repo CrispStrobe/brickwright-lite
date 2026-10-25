@@ -15,7 +15,51 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
+## Current imported-circuit and model-accuracy sequence — 2026-10-25
+
+The previous five-item sequence is complete. A new, separately authorized
+sequence is active under
+[its own claim](lanes/2026-10-25-imported-circuit-instrument-campaign.md).
+Shared model/importer/instrument work belongs only in the operator-owned
+`CrispStrobe/bw-board` and `CrispStrobe/bw-circuit-ui` repositories, followed by
+qualified Lite package adoption. No third-party original is patched.
+
+1. **Current-consumer baseline: accepted.**
+   [Run40172711900](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40172711900)
+   qualifies consumer `4c416bcfe1a219faaec371ac638f607628f347a7`, Board
+   `761153ff92d521c01107ee7b32922ba7adc10ee2` and CUI
+   `91d8434a79d373cef2837c137ab356356f1a3b44`. Independent original-only readers
+   accepted 312/312 cases and 87,488 numerical checks. The inputs and bounds
+   are unchanged; all 240 waveform CSVs match the preceding baseline exactly.
+2. **Imported-circuit cohort: selection/provenance admission next.** Target
+   about 300 distinct schematic inputs, stratified by useful circuit family,
+   with actual voltage/current traces and meter windows against independent
+   SPICE or stated analytic references. The current owned fixture inventory
+   does not yet establish 300 distinct analogue designs. Admit additional
+   sources at file level before hosted use; do not pad with format twins,
+   controller retargets, UI/program variants or repeated parameter points.
+   Keep attempted/comparable/partial/refused/not-run denominators explicit.
+3. **Recurring-cause repairs: pending imported evidence.** Minimize actual
+   surviving failures, repair their cause in the appropriate owned repository,
+   add a load-bearing negative and adopt one qualified package batch. Historical
+   ADI failure counts are triage seeds, not today's unresolved-defect count.
+4. **One existing part's accuracy: pending.** Start with LM741 unless a bounded
+   evidence/ownership review establishes a better existing part. Admit a lawful
+   independent reference and test rails, loading, saturation and dynamics before
+   changing the model. Nominal agreement is not device-specific calibration.
+5. **One demonstrated instrument-physics gap: pending.** Audit existing probe
+   loading/coupling and bandwidth/range behavior first, then implement and
+   qualify one missing deterministic effect while preserving the ideal/raw path.
+
+Aperture/audio is already adopted through PR1338; retain and regress its actual
+capture, Chromium/WebKit, WAV and lifecycle evidence rather than reimplement it.
+The v0.1.27 release owner retains signing/upload/distribution readback. This
+sequence closes only after step 5 and public result reconciliation.
+
 ## Current circuit/instrument campaign — 2026-10-15
+
+This is the historically completed sequence; current work is the 2026-10-25
+sequence above. Historical receipts retain their original package identities.
 
 The ordered acceptance contract is the upstream
 [circuit/instrument campaign](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md).

@@ -1,5 +1,75 @@
 # CLI instrument regression
 
+## Active sequence — 2026-10-25
+
+The new [five-item contract](../lanes/2026-10-25-imported-circuit-instrument-campaign.md)
+is active: current-consumer baseline; a licensed distinct imported-circuit
+cohort; demonstrated recurring-cause repairs; one existing part's reference
+accuracy; one demonstrated deterministic instrument effect. All source patches
+remain in operator-owned CrispStrobe repositories. Stop only after the fifth
+accepted step. The previous sequence and receipts below remain complete and
+retain their own identities.
+
+### Step 1 accepted: current package baseline
+
+[Run40172711900](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40172711900)
+executed once at `4c416bcfe1a219faaec371ac638f607628f347a7` on the frozen
+`lane/circuit-instrument-baseline-20261025` reference, with Board
+`761153ff92d521c01107ee7b32922ba7adc10ee2` and CUI
+`91d8434a79d373cef2837c137ab356356f1a3b44`. Node22.23.3 and ngspice42 were
+observed in the retained runtime/version records, not inferred from the old run.
+Readers, case intent and source fingerprints were frozen before dispatch.
+
+All 312 cases passed independent readback: 264 ngspice and 48 explicitly nominal
+analytic, across 12 authored topologies. Independent readers admitted 4,448
+files and recomputed 87,488 numerical checks, with zero failed, refused,
+noncomparable or missing cases. Coverage remains 2,024 measurement locations,
+704 waveform channels / 68,480 points, 960 static observations and 26,760 meter
+windows. The unchanged case-definition SHA-256 is
+`063ee3e41c26a30ae2fbf9e6435d0423215c62a8b738e5b4c8385f233c6a0304`.
+All 240 retained waveform CSVs equal the preceding run40077158320 byte-for-byte;
+this informational comparison did not replay either experiment or replace the
+frozen independent numerical acceptance criteria. Nine retained producer
+perturbations were detected; independent pre-run controls additionally rejected
+eight common-mode definition corruptions, 20 invalid acquisition contracts and
+11 wrong runtime/path/oracle identities.
+
+The selected engine source fingerprint covers 321 JS/JSON files and is
+`7663f7e174247a075e965cbfa7273cdf4aa13e60a10e890f8ec31264dc95fbb8`;
+the selected CLI fingerprint covers 433 files and is
+`25ede8e0dce25a7eb7cf6b642c874303165fb29f43f5446e20d934744d7df6c1`.
+All 240 waveform receipts and 72 static command records join the admitted
+installed package/runtime identities. The actual original archive is
+14,265,673 bytes, SHA-256
+`b7f0b3e83f0452ffe04f299ef1c7616aecd03745e99a8d5bd189ed26a2d61679`;
+the original job log is 267,987 bytes, SHA-256
+`9845bafdffc1597f163e0b75c945c0141ac44ad39e7fd1f4784b2bc50b1a5191`.
+Both were acquired once after terminal metadata admission. Independent readers
+use the originals, without importing the producer helpers or replaying CLI,
+engine or oracle. This is JavaScript MNA and stated nominal-reference agreement,
+not native execution, full transitive-dependency reconstruction, physical part/
+ADC calibration, full-corpus validation or a newer signed release receipt.
+
+### Step 2 gate: distinct and eligible imported designs
+
+The target is about 300 genuinely distinct schematic inputs, with separately
+reported families, support/refusal states and actual measurement/oracle results.
+The current owned candidate inventory is smaller than 300 distinct analogue
+designs. First reconcile electrical identities and file-level provenance of an
+additional eligible cohort. Do not count retargeted device benches, alternate
+formats, UI/program differences or stored parameter points as new designs.
+Historical comparison failures already have later sweeps; old row counts do not
+name current defects. No restricted payload enters public workflows or logs.
+
+Steps 3–5 remain pending. Any new harness/model/instrument implementation gets
+a measured path envelope and the owning repository's merged claim first.
+Aperture/audio support is already adopted; its current qualification is retained
+and regressed. No additional release upload or third-party repository patch is
+part of this campaign.
+
+## Previous completed sequence — 2026-10-24
+
+
 Status reconciled 2026-10-24: **existing TestFlight delivery verified; fixed
 312-case CLI campaigns independently accepted; bounded scope-display consumer
 adopted and actual built-GUI originals independently accepted**. This is a bounded follow-up to the qualified circuit CLI, not a
