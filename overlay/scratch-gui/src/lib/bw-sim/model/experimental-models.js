@@ -1114,6 +1114,52 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "speedDps": 38
             }
         }
+    },
+    {
+        "file": "obliquity-orrery.ldr",
+        "title": {
+            "en": "Obliquity Orrery — the tilt behind the seasons",
+            "de": "Obliquity Orrery — die Neigung hinter den Jahreszeiten"
+        },
+        "example": "obliquity-orrery.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A parallelogram carries a tilted Earth round the Sun without turning it. Watch the axis keep its direction while the Sun's declination falls from +22.5° at midsummer to 0° at the equinox.",
+            "de": "Ein Parallelogramm führt eine geneigte Erde um die Sonne, ohne sie zu drehen. Beobachte, wie die Achse ihre Richtung behält, während die Sonnendeklination vom Hochsommer (+22,5°) bis zur Tagundnachtgleiche (0°) fällt."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -90,
+                "maxDeg": 0,
+                "stepDeg": 5,
+                "speedDps": 12
+            }
+        }
+    },
+    {
+        "file": "obliquity-orrery-turned-axis.ldr",
+        "title": {
+            "en": "Obliquity Orrery — turned axis (control)",
+            "de": "Obliquity Orrery — gedrehte Achse (Kontrolle)"
+        },
+        "example": "obliquity-orrery-turned-axis.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Control: the same orrery with the Earth's tilt turned 90° about its spindle. The tilt and the program are unchanged, but midsummer moves a quarter of an orbit along.",
+            "de": "Kontrolle: dasselbe Orrery, die Neigung der Erde um 90° um ihre Spindel gedreht. Neigung und Programm sind gleich, aber der Hochsommer wandert um eine Viertelbahn."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -90,
+                "maxDeg": 0,
+                "stepDeg": 5,
+                "speedDps": 12
+            }
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -2758,6 +2804,84 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "experimentell",
             "prototype",
             "unverified"
+        ],
+        "experimental": true
+    },
+    "obliquity-orrery.ldr": {
+        "pieces": 52,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A parallelogram carries a tilted Earth round the Sun without turning it. Watch the axis keep its direction while the Sun's declination falls from +22.5° at midsummer to 0° at the equinox.",
+            "de": "Ein Parallelogramm führt eine geneigte Erde um die Sonne, ohne sie zu drehen. Beobachte, wie die Achse ihre Richtung behält, während die Sonnendeklination vom Hochsommer (+22,5°) bis zur Tagundnachtgleiche (0°) fällt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Parallel-crank orrery with a fixed tilted axis",
+            "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
+        },
+        "keywords": [
+            "orrery",
+            "obliquity",
+            "axial tilt",
+            "solar declination",
+            "seasons",
+            "solstice",
+            "equinox",
+            "parallelogram linkage",
+            "Schiefe der Ekliptik",
+            "Achsneigung",
+            "Sonnendeklination",
+            "Jahreszeiten",
+            "Sonnenwende",
+            "Parallelogramm",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "obliquity-orrery-turned-axis.ldr": {
+        "pieces": 50,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Control: the same orrery with the Earth's tilt turned 90° about its spindle. The tilt and the program are unchanged, but midsummer moves a quarter of an orbit along.",
+            "de": "Kontrolle: dasselbe Orrery, die Neigung der Erde um 90° um ihre Spindel gedreht. Neigung und Programm sind gleich, aber der Hochsommer wandert um eine Viertelbahn."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Parallel-crank orrery with a fixed tilted axis",
+            "de": "Parallelkurbel-Orrery mit fest geneigter Achse"
+        },
+        "keywords": [
+            "orrery",
+            "obliquity",
+            "axial tilt",
+            "solar declination",
+            "seasons",
+            "solstice",
+            "equinox",
+            "parallelogram linkage",
+            "Schiefe der Ekliptik",
+            "Achsneigung",
+            "Sonnendeklination",
+            "Jahreszeiten",
+            "Sonnenwende",
+            "Parallelogramm",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
         ],
         "experimental": true
     }

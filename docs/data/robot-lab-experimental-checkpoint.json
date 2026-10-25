@@ -6,7 +6,7 @@
   "models": [
     {
       "id": "cross-ratio",
-      "title": "Cross Ratio \u2014 crossed four-bar half-angle transform",
+      "title": "Cross Ratio — crossed four-bar half-angle transform",
       "placements": 127,
       "archive": "cross-ratio-addon.zip",
       "archiveSha256": "69bef27ab1ae4d2f519cc18b99204c919b0c7f36b819507ead060d04d4e84a9a",
@@ -61,7 +61,7 @@
         "verdict": "AGREES",
         "detail": {
           "verdict": "AGREES",
-          "law": "tan(\u03c6/2)=3\u00b7tan(\u03b8/2); coupler heading \u03b8+\u03c6",
+          "law": "tan(φ/2)=3·tan(θ/2); coupler heading θ+φ",
           "measured": {
             "inputRange": [
               29.95,
@@ -85,14 +85,14 @@
           },
           "completed": true,
           "nan": false,
-          "notes": "Output rotates in the same sense as input; returns to 119.96\u00b0 at 59.96\u00b0."
+          "notes": "Output rotates in the same sense as input; returns to 119.96° at 59.96°."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
     },
     {
       "id": "bend-ripple",
-      "title": "Bend Ripple \u2014 one Cardan joint at a changing bend",
+      "title": "Bend Ripple — one Cardan joint at a changing bend",
       "placements": 156,
       "archive": "bend-ripple-addon.zip",
       "archiveSha256": "7d094381fa163fa246754bb1dfeeedfa1e3cf0f52de0748d992ed2940865eb19",
@@ -148,7 +148,7 @@
         "verdict": "AGREES",
         "detail": {
           "verdict": "AGREES",
-          "law": "\u03c8=atan2(sin \u03b8, cos \u03b2 cos \u03b8), \u03c8 relative to carrier",
+          "law": "ψ=atan2(sin θ, cos β cos θ), ψ relative to carrier",
           "measured": {
             "rmsResidualDeg": 0.0039,
             "maxResidualDeg": 0.0065,
@@ -163,14 +163,14 @@
           },
           "completed": true,
           "nan": false,
-          "notes": "Bend reached 29.94\u00b0 not 30\u00b0 (B within its 0.5\u00b0 arrival guard), hence 8.20\u00b0 vs ideal 8.234\u00b0 ripple. Identity (no ripple) model is rejected: rms 2.21\u00b0 vs 0.004\u00b0."
+          "notes": "Bend reached 29.94° not 30° (B within its 0.5° arrival guard), hence 8.20° vs ideal 8.234° ripple. Identity (no ripple) model is rejected: rms 2.21° vs 0.004°."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
     },
     {
       "id": "apex",
-      "title": "Apex \u2014 Wankel rotary demonstrator",
+      "title": "Apex — Wankel rotary demonstrator",
       "placements": 477,
       "archive": "brickwright-models-04-15-ldr-bw.zip",
       "archiveSha256": "1bb7219d2e2c27a6f0ea9b98c6b8186c18d5c34278e2d7652fec2b5877f42678",
@@ -225,7 +225,7 @@
         "verdict": "AGREES",
         "detail": {
           "verdict": "AGREES",
-          "law": "carrier=(5/7)A, rotor=carrier/3, rotor rel carrier=\u2212(2/3)carrier",
+          "law": "carrier=(5/7)A, rotor=carrier/3, rotor rel carrier=−(2/3)carrier",
           "measured": {
             "motorDeg": 1512.35,
             "carrierDeg": 1080.25,
@@ -312,7 +312,7 @@
         "verdict": "AGREES",
         "detail": {
           "verdict": "AGREES",
-          "law": "link rotation |\u0394\u03b8|=\u0394motor/72; r=a\u00b7cos(\u03b8+22.5\u00b0)/sin22.5\u00b0",
+          "law": "link rotation |Δθ|=Δmotor/72; r=a·cos(θ+22.5°)/sin22.5°",
           "measured": {
             "motorDeltaDeg": 1296.3,
             "linkRotationMeanDeg": 18.061,
@@ -407,8 +407,8 @@
         "verdict": "AGREES",
         "detail": {
           "law": "AGREES",
-          "measured": "Headless COLD=0 (coordinator run): completed=1, no NaN, 34.0 s. Tool head (tool_star body relative to hub body, independent of encoders) reached all 13 waypoints within 0.567 LDU = 0.23 mm of the target (mapping hub-frame (z, \u2212\u0394y, x)); shoulder angles measured from arm-vs-base body poses matched the program IK within 0.145\u00b0; motor = \u22123 \u00d7 shoulder within 0.16\u00b0; platform tilt \u2264 0.057\u00b0 over the whole run (orientation preserved). Lift: three equal motor angles 46.47\u00b0 (IK 46.46\u00b0); station 1: 42.92/34.83/49.45\u00b0 (IK 42.98/35.07/49.47\u00b0).",
-          "coldStart": "COLD=1000 FAILS at the start guard: with motors unpowered for 1 s the head sags and back-drives the motors to \u22129.8\u00b0 (shoulders +3.3\u00b0) before the program starts; |angle| > 5\u00b0 \u2192 \"Saved-angle guard: Reset the complete Vector model before running.\" failed=1 at 1.6 s."
+          "measured": "Headless COLD=0 (coordinator run): completed=1, no NaN, 34.0 s. Tool head (tool_star body relative to hub body, independent of encoders) reached all 13 waypoints within 0.567 LDU = 0.23 mm of the target (mapping hub-frame (z, −Δy, x)); shoulder angles measured from arm-vs-base body poses matched the program IK within 0.145°; motor = −3 × shoulder within 0.16°; platform tilt ≤ 0.057° over the whole run (orientation preserved). Lift: three equal motor angles 46.47° (IK 46.46°); station 1: 42.92/34.83/49.45° (IK 42.98/35.07/49.47°).",
+          "coldStart": "COLD=1000 FAILS at the start guard: with motors unpowered for 1 s the head sags and back-drives the motors to −9.8° (shoulders +3.3°) before the program starts; |angle| > 5° → \"Saved-angle guard: Reset the complete Vector model before running.\" failed=1 at 1.6 s."
         },
         "scope": "one headless run on the app branch engine; COLD=1000 trips the saved-angle guard"
       },
@@ -474,7 +474,7 @@
         "verdict": "AGREES",
         "detail": {
           "verdict": "AGREES",
-          "law": "n=4 Geneva: 90\u00b0 step per crank turn, 90\u00b0 engagement/270\u00b0 dwell, peak ratio 2.414; dial=star/3",
+          "law": "n=4 Geneva: 90° step per crank turn, 90° engagement/270° dwell, peak ratio 2.414; dial=star/3",
           "measured": {
             "crankDeg": 4320.1,
             "starDeg": 1078.66,
@@ -494,7 +494,7 @@
           },
           "completed": true,
           "nan": false,
-          "notes": "Dial opposite to star (3 external meshes) and positive in program convention; success check passes. Up to ~2\u00b0 in-step lag vs the ideal curve and 1.4\u00b0 short first step (datum). Friction clutch holds dwell perfectly in simulation."
+          "notes": "Dial opposite to star (3 external meshes) and positive in program convention; success check passes. Up to ~2° in-step lag vs the ideal curve and 1.4° short first step (datum). Friction clutch holds dwell perfectly in simulation."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -558,7 +558,7 @@
         "verdict": "AGREES",
         "detail": {
           "verdict": "AGREES",
-          "law": "L+R=2K, K=(12/28)A; brake motor = 20/12 \u00d7 output",
+          "law": "L+R=2K, K=(12/28)A; brake motor = 20/12 × output",
           "measured": {
             "maxAbsLplusRminus2K": 0.02,
             "KoverA": -0.4286,
@@ -582,7 +582,7 @@
           },
           "completed": true,
           "nan": false,
-          "notes": "Held output creeps <0.4\u00b0. Free split depends on friction (0.6\u00b0 fwd, 5.8\u00b0 rev difference)."
+          "notes": "Held output creeps <0.4°. Free split depends on friction (0.6° fwd, 5.8° rev difference)."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -680,7 +680,7 @@
               "rocker": 0.08
             }
           },
-          "residual": "swing <0.01\u00b0, reversal angles within 0.4\u00b0 (frame resolution 1.5\u00b0)"
+          "residual": "swing <0.01°, reversal angles within 0.4° (frame resolution 1.5°)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -863,8 +863,8 @@
             "sweepStandstillAtS": 2.4,
             "sweepDurationS": 9.97
           },
-          "residual": "Willis residual <0.02\u00b0/s in all five stages",
-          "surprise": "program waits stretch: 'wait 0.1 s' lasted ~0.17 s, so the sweep took ~10 s, not 6 s; lesson's 1.5 s / 3.0 s timing corrected (law unaffected: standstill exactly at w_B = -63\u00b0/s)"
+          "residual": "Willis residual <0.02°/s in all five stages",
+          "surprise": "program waits stretch: 'wait 0.1 s' lasted ~0.17 s, so the sweep took ~10 s, not 6 s; lesson's 1.5 s / 3.0 s timing corrected (law unaffected: standstill exactly at w_B = -63°/s)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -928,8 +928,8 @@
           "verdict": "AGREES",
           "program": "completed=1 failed=0 stage 17",
           "predicted": {
-            "law": "w^2 = g k tan(a) / (e + L sin a), k = (m+M)/m, e = 24 mm, L = 48 mm, rest a = 23.6\u00b0",
-            "kFromCatalogueMasses": "\u22481.12 (collar only) to \u22481.20 (collar + lower arms)"
+            "law": "w^2 = g k tan(a) / (e + L sin a), k = (m+M)/m, e = 24 mm, L = 48 mm, rest a = 23.6°",
+            "kFromCatalogueMasses": "≈1.12 (collar only) to ≈1.20 (collar + lower arms)"
           },
           "measured": {
             "plateausDps": [
@@ -975,7 +975,7 @@
             "bothSidesSymmetricDeg": 0.45,
             "returnsToStop": true
           },
-          "residual": "one constant k = 1.237 \u00b1 0.005 fits all six steady plateaus (<0.5%); hysteresis up vs down \u22640.3\u00b0 arm, \u22640.08 mm collar; restart repeats within 0.05\u00b0",
+          "residual": "one constant k = 1.237 ± 0.005 fits all six steady plateaus (<0.5%); hysteresis up vs down ≤0.3° arm, ≤0.08 mm collar; restart repeats within 0.05°",
           "note": "fitted k is ~3-10% above the point-mass value from catalogue masses (distributed arm/weight mass); the law's form holds, the lesson keeps it as an approximation. No throttle: speed is fully programmed."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
@@ -1092,7 +1092,7 @@
               1.002
             ]
           },
-          "residual": "lead amplitude within 0.02\u00b0; speed-ratio extremes slightly flattened by the 4-frame finite difference; output within 0.05\u00b0 (0.09\u00b0 at 300\u00b0/s)"
+          "residual": "lead amplitude within 0.02°; speed-ratio extremes slightly flattened by the 4-frame finite difference; output within 0.05° (0.09° at 300°/s)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -1266,15 +1266,15 @@
             "fallCrankDeg": 168,
             "rackOffAxisMm": 0.001
           },
-          "residual": "stroke 0.02 mm, swing 0.02\u00b0, turning points within 0.5\u00b0",
-          "note": "positive encoder = rack reaches top near 115\u00b0, so the lesson now names the 90\u00b0 pause as near the top"
+          "residual": "stroke 0.02 mm, swing 0.02°, turning points within 0.5°",
+          "note": "positive encoder = rack reaches top near 115°, so the lesson now names the 90° pause as near the top"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
     },
     {
       "id": "inertia-loop",
-      "title": "Inertia Loop \u2014 a closed shape cycle on a free yaw platform",
+      "title": "Inertia Loop — a closed shape cycle on a free yaw platform",
       "placements": 314,
       "archive": "brickwright-latest-six-models-ldr-bw.zip",
       "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
@@ -1380,7 +1380,7 @@
         "detail": {
           "verdict": "AGREES",
           "run": "completed=1 failed=0 stage 11, 209.3 s",
-          "law": "net yaw per loop = (k_wide - k_compact)\u00b7\u03a6, sign flips for inverse loop, control ~0",
+          "law": "net yaw per loop = (k_wide - k_compact)·Φ, sign flips for inverse loop, control ~0",
           "measured": {
             "k_compact": 0.0892,
             "k_wide": 0.0868,
@@ -1395,14 +1395,14 @@
             "forwardNetDeg": -15.36,
             "inverseNetDeg": 15.36
           },
-          "residual": "forward 0.48\u00b0, inverse 0.09\u00b0 from prediction; control drift -0.2\u00b0"
+          "residual": "forward 0.48°, inverse 0.09° from prediction; control drift -0.2°"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
     },
     {
       "id": "offset-relay",
-      "title": "Offset Relay \u2014 variable-offset pinned coupling",
+      "title": "Offset Relay — variable-offset pinned coupling",
       "placements": 456,
       "archive": "brickwright-latest-six-models-ldr-bw.zip",
       "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
@@ -1482,7 +1482,7 @@
               21.18
             ]
           },
-          "residual": "angle \u22640.1\u00b0, h \u22640.04 mm"
+          "residual": "angle ≤0.1°, h ≤0.04 mm"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -1611,14 +1611,14 @@
             "pointerSpanDeg": 229.28,
             "carriageSpanMm": 24
           },
-          "residual": "carriage \u22640.0012 mm, pointer \u22640.12\u00b0 over all stages (signs are the measurement axis convention; lesson magnitudes match)"
+          "residual": "carriage ≤0.0012 mm, pointer ≤0.12° over all stages (signs are the measurement axis convention; lesson magnitudes match)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
     },
     {
       "id": "tangent-table",
-      "title": "Tangent Table \u2014 two-input mechanical tangent demonstration",
+      "title": "Tangent Table — two-input mechanical tangent demonstration",
       "placements": 297,
       "archive": "brickwright-latest-six-models-ldr-bw.zip",
       "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
@@ -1675,7 +1675,7 @@
         "detail": {
           "verdict": "AGREES",
           "run": "completed=1 failed=0 stage 8",
-          "law": "y = x\u00b7tan(theta) with measured theta and x",
+          "law": "y = x·tan(theta) with measured theta and x",
           "measured": {
             "maxErrorMm": 0.0009,
             "stageEnds": {
@@ -1712,14 +1712,14 @@
             },
             "stage6TransitPeakMm": 8.41
           },
-          "residual": "law exact to 0.001 mm; but guide/motor hinge settles up to 0.17\u00b0 off its target (within the 0.5\u00b0 arrival guard), so the 'equal 8 mm' endpoints are 8.092 and 8.149 mm (gap 0.057 mm, matching the supplier's 0.0577)"
+          "residual": "law exact to 0.001 mm; but guide/motor hinge settles up to 0.17° off its target (within the 0.5° arrival guard), so the 'equal 8 mm' endpoints are 8.092 and 8.149 mm (gap 0.057 mm, matching the supplier's 0.0577)"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
     },
     {
       "id": "pan-shift",
-      "title": "Pan Shift \u2014 one-pan load-position experiment",
+      "title": "Pan Shift — one-pan load-position experiment",
       "placements": 197,
       "archive": "brickwright-latest-six-models-ldr-bw.zip",
       "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
@@ -1775,8 +1775,8 @@
         "verdict": "AGREES",
         "detail": {
           "verdict": "AGREES",
-          "run": "completed=1 failed=0 stage 8, ~374 s (needs LIMIT \u2265 ~400000)",
-          "law": "Roberval: moving load on the pan does not change beam angle; trim on the beam does, \u00b1 symmetric",
+          "run": "completed=1 failed=0 stage 8, ~374 s (needs LIMIT ≥ ~400000)",
+          "law": "Roberval: moving load on the pan does not change beam angle; trim on the beam does, ± symmetric",
           "measured": {
             "beamDeg_settled": {
               "0": 0.1,
@@ -1790,15 +1790,15 @@
             },
             "panTiltMaxDeg": 0.28
           },
-          "residual": "load-position effect \u22640.004\u00b0 vs 14.2\u00b0 trim effect; pan stays upright within 0.28\u00b0 (constant offset)",
-          "note": "Did not determine whether \u00b114.2\u00b0 is a gravity rest angle or contact with the backed stops."
+          "residual": "load-position effect ≤0.004° vs 14.2° trim effect; pan stays upright within 0.28° (constant offset)",
+          "note": "Did not determine whether ±14.2° is a gravity rest angle or contact with the backed stops."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
     },
     {
       "id": "remote-pivot",
-      "title": "Remote Pivot \u2014 rotation about an empty centre",
+      "title": "Remote Pivot — rotation about an empty centre",
       "placements": 153,
       "archive": "brickwright-latest-six-models-ldr-bw.zip",
       "archiveSha256": "27d390ba76d227a1101bc2b32f02751b99602923829ea900abc4169b3e608ad6",
@@ -1866,7 +1866,7 @@
               29.9
             ]
           },
-          "residual": "C within 0.003 mm of predicted distance, wander \u22640.1 mm"
+          "residual": "C within 0.003 mm of predicted distance, wander ≤0.1 mm"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -1958,7 +1958,7 @@
             ],
             "slowSwapsOnReverse": true
           },
-          "residual": "ratio -0.0014 (30\u00b0/s) and -0.004 (60\u00b0/s); stroke +0.017 mm"
+          "residual": "ratio -0.0014 (30°/s) and -0.004 (60°/s); stroke +0.017 mm"
         },
         "scope": "one headless run on the app branch engine; not a physical build"
       }
@@ -2087,7 +2087,7 @@
     },
     {
       "id": "poise",
-      "title": "Poise \u2014 Roberval balance",
+      "title": "Poise — Roberval balance",
       "placements": 159,
       "archive": "poise-addon.zip",
       "archiveSha256": "19b216d481f7538bb783a23a54263b0446864ad4349740fc3d46e6ee2173ddfb",
@@ -2096,15 +2096,15 @@
       "program": "poise.bw",
       "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
       "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/poise.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
-      "supplierClaims": "PASS_MAIN: weights moved ~48 mm, balance within 0.024\u00b0 in held windows; construction PASS_SCOPED; browser and physical build UNTESTED.",
+      "supplierClaims": "PASS_MAIN: weights moved ~48 mm, balance within 0.024° in held windows; construction PASS_SCOPED; browser and physical build UNTESTED.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "measured": "Headless (COLD=0 and COLD=1000): completed=1, failed=0, arrivals=5, no NaN, 52.7 s. Weight-assembly COM (17.2 g body) moved ~19.8 mm along the beam axis; balance max |\u03b8| 0.046\u00b0, held means \u22120.029\u2026+0.005\u00b0 (spread 0.033\u00b0), pan tilt \u22640.073\u00b0, upper/lower bar agree within 0.015\u00b0. A plain beam with the measured restoring stiffness would tilt ~12\u00b0 for that shift, so position invariance is >300\u00d7 suppressed."
+        "measured": "Headless (COLD=0 and COLD=1000): completed=1, failed=0, arrivals=5, no NaN, 52.7 s. Weight-assembly COM (17.2 g body) moved ~19.8 mm along the beam axis; balance max |θ| 0.046°, held means −0.029…+0.005° (spread 0.033°), pan tilt ≤0.073°, upper/lower bar agree within 0.015°. A plain beam with the measured restoring stiffness would tilt ~12° for that shift, so position invariance is >300× suppressed."
       },
       "concerns": [
-        "Supplier quotes 48 mm weight travel (weight-part origin); the moving body\u2019s COM moves ~20 mm \u2013 both consistent, lesson cites the COM figure.",
-        "German formula said \u201chalben Balkenabstand\u201d (half the bar spacing) for the 56 mm half-span; fixed to \u201chalbe Balkenl\u00e4nge\u201d.",
-        "Fixed pan stops at ~\u00b117\u00b0 are analytical only; dynamic stop contact never tested."
+        "Supplier quotes 48 mm weight travel (weight-part origin); the moving body’s COM moves ~20 mm – both consistent, lesson cites the COM figure.",
+        "German formula said “halben Balkenabstand” (half the bar spacing) for the 56 mm half-span; fixed to “halbe Balkenlänge”.",
+        "Fixed pan stops at ~±17° are analytical only; dynamic stop contact never tested."
       ],
       "basicChecks": {
         "id": "poise",
@@ -2145,7 +2145,7 @@
     },
     {
       "id": "poise-mass-control",
-      "title": "Poise Mass Control \u2014 1.5 g added to the left pan",
+      "title": "Poise Mass Control — 1.5 g added to the left pan",
       "placements": 162,
       "archive": "poise-addon.zip",
       "archiveSha256": "19b216d481f7538bb783a23a54263b0446864ad4349740fc3d46e6ee2173ddfb",
@@ -2154,14 +2154,14 @@
       "program": "poise.bw",
       "programSha256": "1d1578098fb79b7fcf6c47ce8199c53c8676151d147c9d5b72e62cbe3b95f084",
       "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/poise-mass-control.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
-      "supplierClaims": "PASS_CONTROL (response \u22123.15\u00b0 vs main in final dwell, not settled) and PASS_LATE_HOLD: final 2 s mean \u22122.945\u00b0 vs predicted \u22122.939\u00b0.",
+      "supplierClaims": "PASS_CONTROL (response −3.15° vs main in final dwell, not settled) and PASS_LATE_HOLD: final 2 s mean −2.945° vs predicted −2.939°.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "measured": "Headless with 120 s after-hold (COLD=0; COLD=1000 also completes): completed=1, arrivals=5, no NaN. Max |\u03b8| 5.82\u00b0 (undamped prediction 5.88\u00b0); held-window means \u22122.46\u2026\u22123.43\u00b0 with pp up to 3.8\u00b0 (still oscillating); final 2 s mean \u22122.910\u00b0, pp 0.082\u00b0, vs prediction \u22122.939\u00b0 (0.03\u00b0). Main vs control: level vs clear \u22122.9\u00b0 tilt \u2013 predicted difference appears."
+        "measured": "Headless with 120 s after-hold (COLD=0; COLD=1000 also completes): completed=1, arrivals=5, no NaN. Max |θ| 5.82° (undamped prediction 5.88°); held-window means −2.46…−3.43° with pp up to 3.8° (still oscillating); final 2 s mean −2.910°, pp 0.082°, vs prediction −2.939° (0.03°). Main vs control: level vs clear −2.9° tilt – predicted difference appears."
       },
       "concerns": [
-        "The five held pauses are not settled (pp up to 3.8\u00b0); the lesson tells learners to wait ~2 min after the program. In the app the simulation must keep running after completion for this.",
-        "Our settled value \u22122.910\u00b0 differs from the supplier\u2019s \u22122.945\u00b0 by 0.035\u00b0, well within their 0.3\u00b0 gate."
+        "The five held pauses are not settled (pp up to 3.8°); the lesson tells learners to wait ~2 min after the program. In the app the simulation must keep running after completion for this.",
+        "Our settled value −2.910° differs from the supplier’s −2.945° by 0.035°, well within their 0.3° gate."
       ],
       "basicChecks": {
         "id": "poise-mass-control",
@@ -2202,7 +2202,7 @@
     },
     {
       "id": "equal-share",
-      "title": "Equal Share \u2014 whippletree force equalizer",
+      "title": "Equal Share — whippletree force equalizer",
       "placements": 148,
       "archive": "equal-share-addon.zip",
       "archiveSha256": "34a7402ae1579f9c5d0521c3c784362687945a7c770f39640389e1832ae0f684",
@@ -2211,14 +2211,14 @@
       "program": "equal-share.bw",
       "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
       "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/equal-share.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
-      "supplierClaims": "PASS_MAIN 98/98: ratios 2.0003/2.0004/1.9997 at 15/25/35\u00b0, beam \u22121.668/\u22122.760/\u22123.779\u00b0; forces inferred from the native spring law; browser and physical UNTESTED.",
+      "supplierClaims": "PASS_MAIN 98/98: ratios 2.0003/2.0004/1.9997 at 15/25/35°, beam −1.668/−2.760/−3.779°; forces inferred from the native spring law; browser and physical UNTESTED.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "measured": "Headless WITH SPIKE connection (COLD=0 and COLD=1000): completed=1, arrivals=5, no NaN, 19.4 s. Held L / each-R compression: 5.589/2.794 (2.0003), 9.254/4.626 (2.0004), 12.670/6.336 (1.9997) mm; beam \u22121.669/\u22122.762/\u22123.771\u00b0; both right shocks identical to 0.001 mm; return 0.03 mm. WITHOUT the SPIKE connection the program fails at stage 1 (failed=1 at 12.6 s, \u201cThe crank did not reach its target\u201d), reproducing the supplier\u2019s v1 failure."
+        "measured": "Headless WITH SPIKE connection (COLD=0 and COLD=1000): completed=1, arrivals=5, no NaN, 19.4 s. Held L / each-R compression: 5.589/2.794 (2.0003), 9.254/4.626 (2.0004), 12.670/6.336 (1.9997) mm; beam −1.669/−2.762/−3.771°; both right shocks identical to 0.001 mm; return 0.03 mm. WITHOUT the SPIKE connection the program fails at stage 1 (failed=1 at 12.6 s, “The crank did not reach its target”), reproducing the supplier’s v1 failure."
       },
       "concerns": [
-        "Program depends on the SPIKE extension block \u201cset motor stop action A hold\u201d, which only takes effect when the virtual SPIKE is connected (app Run button). Headless without that connection it fails at stage 1. Any start path that does not connect SPIKE (e.g. a lesson \u201cOpen model + program\u201d then green flag, or tests using the plain runner) will fail. Needs an app check before shipping.",
-        "German UI label: supplier lesson said \u201cRun\u201d; changed to \u201cStart\u201d to match other German lessons.",
+        "Program depends on the SPIKE extension block “set motor stop action A hold”, which only takes effect when the virtual SPIKE is connected (app Run button). Headless without that connection it fails at stage 1. Any start path that does not connect SPIKE (e.g. a lesson “Open model + program” then green flag, or tests using the plain runner) will fail. Needs an app check before shipping.",
+        "German UI label: supplier lesson said “Run”; changed to “Start” to match other German lessons.",
         "Answer strengthened: right pair carries the same total force as the left spring (measured 1:1 force split by construction of the 2:1 compression)."
       ],
       "basicChecks": {
@@ -2259,7 +2259,7 @@
     },
     {
       "id": "equal-share-even-springs",
-      "title": "Equal Share Even Springs \u2014 one spring per side",
+      "title": "Equal Share Even Springs — one spring per side",
       "placements": 142,
       "archive": "equal-share-addon.zip",
       "archiveSha256": "34a7402ae1579f9c5d0521c3c784362687945a7c770f39640389e1832ae0f684",
@@ -2268,10 +2268,10 @@
       "program": "equal-share.bw",
       "programSha256": "86e288aeb92541e241c3a729ff20002d1f652a6d2f39369f20f33a24746db260",
       "adaptation": "Only the 0 !LICENSE header line repointed to ../licenses/equal-share-even-springs.txt; geometry and Author (CrispStrobe) unchanged; program bytes unchanged.",
-      "supplierClaims": "PASS_CONTROL 104/104: ratio 1.00002 at all holds, beam \u22640.0001\u00b0.",
+      "supplierClaims": "PASS_CONTROL 104/104: ratio 1.00002 at all holds, beam ≤0.0001°.",
       "simulatorLaw": {
         "verdict": "AGREES",
-        "measured": "Headless WITH SPIKE connection (COLD=0 and COLD=1000): completed=1, arrivals=5, no NaN. L/R compression 4.197/4.197, 6.951/6.951, 9.516/9.516 mm (ratio 1.0000); beam 0.0000\u20260.0002\u00b0. Main vs control at 35\u00b0: ratio 2.000 vs 1.000, beam \u22123.77\u00b0 vs 0.00\u00b0 \u2013 predicted difference appears."
+        "measured": "Headless WITH SPIKE connection (COLD=0 and COLD=1000): completed=1, arrivals=5, no NaN. L/R compression 4.197/4.197, 6.951/6.951, 9.516/9.516 mm (ratio 1.0000); beam 0.0000…0.0002°. Main vs control at 35°: ratio 2.000 vs 1.000, beam −3.77° vs 0.00° – predicted difference appears."
       },
       "concerns": [
         "Same SPIKE-connection dependency as Equal Share."
@@ -2314,7 +2314,7 @@
     },
     {
       "id": "spiral-scribe",
-      "title": "Spiral Scribe \u2014 one-motor radial feed",
+      "title": "Spiral Scribe — one-motor radial feed",
       "placements": 185,
       "archive": "spiral-scribe.zip",
       "archiveSha256": "6a30e6224f9044aa0cbc677d8087867296e131ff17e4fa168ed0564e41a339e5",
@@ -2322,9 +2322,9 @@
       "canonicalLdrawSha256": "b67fd04fba5744001932944ad838759d1493d5d825c11957508092dfe7f52339",
       "program": "spiral-scribe.bw",
       "programSha256": "73bc601d534d57c1eff08b5d902acc55dac0a7931858009cf174ef302410a6d1",
-      "adaptation": "!LICENSE path pointed at the packaged licenses/spiral-scribe.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated in the collection convention; supplier lessons rewritten for the catalogue (file/hash/\u2018native\u2019 wording removed, physics kept, one simulator-measurement sentence, related links kept: cusp-lab, orbit-mixer, orbital-loom, rack-shuttle).",
-      "supplierClaims": "Revision 5; native PASS of all gates (carrier 360.1\u00b0 per cycle, outward gain 37.708/37.709 mm, radius-law error <0.001 mm, return 0.110 mm) and a sun-removed causal control that breaks the law (46.97 mm error). Construction PARTIAL/UNRESOLVED: 64781 rack mesh pitch 3.2 mm (38.4 mm per 12 teeth) vs 37.699 mm ideal pinion law \u2192 tooth interpenetration over a full turn; app/browser and physical build untested.",
-      "simulatorLaw": "AGREES (simulator only). Headless COLD=0: completed=1 failed=0 phase 10; carrier/motor = \u22121/3.0000, planet/carrier (table frame) = 2.0000; slider feed 9.43/18.86/28.28/37.71 mm at the quarter turns of both cycles, max |feed \u2212 6 mm\u00b7\u03b8| = 0.001 mm; same 37.71 mm at 60 and 120\u00b0/s; return \u22120.015 mm. COLD=1000: start guard passes (no drift during cold), identical results.",
+      "adaptation": "!LICENSE path pointed at the packaged licenses/spiral-scribe.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated in the collection convention; supplier lessons rewritten for the catalogue (file/hash/‘native’ wording removed, physics kept, one simulator-measurement sentence, related links kept: cusp-lab, orbit-mixer, orbital-loom, rack-shuttle).",
+      "supplierClaims": "Revision 5; native PASS of all gates (carrier 360.1° per cycle, outward gain 37.708/37.709 mm, radius-law error <0.001 mm, return 0.110 mm) and a sun-removed causal control that breaks the law (46.97 mm error). Construction PARTIAL/UNRESOLVED: 64781 rack mesh pitch 3.2 mm (38.4 mm per 12 teeth) vs 37.699 mm ideal pinion law → tooth interpenetration over a full turn; app/browser and physical build untested.",
+      "simulatorLaw": "AGREES (simulator only). Headless COLD=0: completed=1 failed=0 phase 10; carrier/motor = −1/3.0000, planet/carrier (table frame) = 2.0000; slider feed 9.43/18.86/28.28/37.71 mm at the quarter turns of both cycles, max |feed − 6 mm·θ| = 0.001 mm; same 37.71 mm at 60 and 120°/s; return −0.015 mm. COLD=1000: start guard passes (no drift during cold), identical results.",
       "concerns": [
         "Supplier's unresolved rack-tooth pitch mismatch (the simulator enforces the ideal rack ratio, so the native pass does not prove a buildable mesh); the lesson states it.",
         "No pen: the red crossbar is only a marker. The app supports `0 !BW PEN` (next part draws on the floor) and `0 !BW DRAW surface pen tip center radius` (pen on a rotating surface, as in orbital-loom); adding `0 !BW PEN` before output_marker would trace the spiral on the floor, but that is a model edit beyond the allowed header change and was not made.",
@@ -2368,7 +2368,7 @@
     },
     {
       "id": "stroke-shift",
-      "title": "Stroke Shift \u2014 adjustable crank throw",
+      "title": "Stroke Shift — adjustable crank throw",
       "placements": 295,
       "archive": "stroke-shift.zip",
       "archiveSha256": "ee2ea664c208ce4ee0e5cbf89b286d6800770eeec32794396408913052c30971",
@@ -2376,13 +2376,13 @@
       "canonicalLdrawSha256": "bc3857651b1d588517c61fd81ce2ea08c0df7227c35dedc9b1a8e992c2367ec0",
       "program": "stroke-shift.bw",
       "programSha256": "5d4fc358feb5ac8a33bf2f70149a78a9fecab475c442c5574fe7810be7203077",
-      "adaptation": "Canonical models/ + programs/ pair used; byte-identical to evidence/native-inputs/ and to the hashes in evidence/native-qualification.json (the evidence/development/ LDR 7a75a85d\u2026 is an earlier rejected seam revision; its BW is identical). !LICENSE path pointed at licenses/stroke-shift.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated; integration/ lessons used with edits (file/\u2018native\u2019 claims replaced by one simulator-measurement sentence, formulas typeset, German wording fixed); related links unchanged (rod-ratio, quickstroke, sine-shuttle, oblique).",
+      "adaptation": "Canonical models/ + programs/ pair used; byte-identical to evidence/native-inputs/ and to the hashes in evidence/native-qualification.json (the evidence/development/ LDR 7a75a85d… is an earlier rejected seam revision; its BW is identical). !LICENSE path pointed at licenses/stroke-shift.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated; integration/ lessons used with edits (file/‘native’ claims replaced by one simulator-measurement sentence, formulas typeset, German wording fixed); related links unchanged (rod-ratio, quickstroke, sine-shuttle, oblique).",
       "supplierClaims": "All 52 predeclared native gates pass: outward strokes 32.003/44.005/56.002 mm, max law error 0.00111 mm, return 0.002 mm; construction review of 949 sampled configurations with one stock-actuator internal-mesh approximation outside the programmed radii; physical build, cable route and app UI untested.",
-      "simulatorLaw": "AGREES (simulator only). Headless COLD=0: completed=1 failed=0 trial 3 stage 6; measured from body poses: crank radius 16.000/22.002/28.000 mm, piston strokes 32.004/44.007/56.003 mm (= 2r within 0.001 mm), projected rod length 176.000 \u00b1 0.001 mm, max |x \u2212 (r cos \u03b8 + \u221a(L\u00b2 \u2212 r\u00b2 sin\u00b2\u03b8))| = 0.0007 mm, carrier turn 360.2\u2013360.3\u00b0, 6.43 s per turn at every radius; final radius 15.998 mm, piston return \u22120.002 mm. COLD=1000: start guard passes, identical results.",
+      "simulatorLaw": "AGREES (simulator only). Headless COLD=0: completed=1 failed=0 trial 3 stage 6; measured from body poses: crank radius 16.000/22.002/28.000 mm, piston strokes 32.004/44.007/56.003 mm (= 2r within 0.001 mm), projected rod length 176.000 ± 0.001 mm, max |x − (r cos θ + √(L² − r² sin²θ))| = 0.0007 mm, carrier turn 360.2–360.3°, 6.43 s per turn at every radius; final radius 15.998 mm, piston return −0.002 mm. COLD=1000: start guard passes, identical results.",
       "concerns": [
         "Motor B rides on the rotating carrier while the hub is fixed: real cable slack/winding untested (program has zero net winding).",
-        "Proposed B jog lets B move at carrier angles other than 0\u00b0, which the supplier's route never does.",
-        "Archive holds three LDR copies; only models/ = evidence/native-inputs/ (c41d9112\u2026) is the qualified one; evidence/development/ (7a75a85d\u2026) must not be used.",
+        "Proposed B jog lets B move at carrier angles other than 0°, which the supplier's route never does.",
+        "Archive holds three LDR copies; only models/ = evidence/native-inputs/ (c41d9112…) is the qualified one; evidence/development/ (7a75a85d…) must not be used.",
         "Supplier README's 'Reproduce' runs bundled scripts; not executed here."
       ],
       "basicChecks": {
@@ -2424,7 +2424,7 @@
     },
     {
       "id": "triad-table",
-      "title": "Triad Table \u2014 three lengths, one pose",
+      "title": "Triad Table — three lengths, one pose",
       "placements": 258,
       "archive": "triad-table-complete.zip",
       "archiveSha256": "2491e4da7c707c1c19791dc36c953c0bb042b8913e4e086d511e1f05667d3040",
@@ -2433,8 +2433,8 @@
       "program": "triad-table.bw",
       "programSha256": "d76ead5a6ea5daab919192374938987585c0ee6c3a01e81ff35a9e1601c9997c",
       "adaptation": "!LICENSE path pointed at licenses/triad-table.txt (from LICENSE.txt); geometry and program bytes unchanged; MPD wrapper generated. Lessons: rewritten from the supplier's final integration/lessons (docs-draft/ lessons are pre-qualification drafts and stale: pieces null, signs pending); physics kept, numbers re-derived, one simulator-measurement sentence, related links twinpoint, atlas-six, axis-plotter (gimbal-lab dropped as unrelated).",
-      "supplierClaims": "124/124 native gates over 4,868 samples, all 15 settled waypoints; worst settled error 0.003028 mm / 0.005752\u00b0; return 0.001840 mm / 0.003785\u00b0; min actuator-stop margin 2.957 mm; revision 1 failed physical-output checks and is retained; physical build, cable routing and app UI untested; no physical yaw stops; out-of-route contacts in the wider geometry review.",
-      "simulatorLaw": "AGREES (simulator only). COLD=0: completed=1 failed=0 stage 16, finishedAt 155.0 s; every settled pose within 0.0045 mm and 0.0118\u00b0 of target (e.g. +x 4.800 mm, +yaw 10.009\u00b0, NE compound 3.202/3.198 mm/7.008\u00b0); measured leg lengths match |q_i \u2212 a_i| from the measured pose within 0.0041 LDU = 0.0017 mm over the whole run; final pose \u22120.0008/\u22120.0022 mm, 0.0103\u00b0. COLD=1000: start guard passes (max body drift during 1 s cold 0.005 mm), completed=1 failed=0, worst settled 0.0043 mm / 0.0056\u00b0.",
+      "supplierClaims": "124/124 native gates over 4,868 samples, all 15 settled waypoints; worst settled error 0.003028 mm / 0.005752°; return 0.001840 mm / 0.003785°; min actuator-stop margin 2.957 mm; revision 1 failed physical-output checks and is retained; physical build, cable routing and app UI untested; no physical yaw stops; out-of-route contacts in the wider geometry review.",
+      "simulatorLaw": "AGREES (simulator only). COLD=0: completed=1 failed=0 stage 16, finishedAt 155.0 s; every settled pose within 0.0045 mm and 0.0118° of target (e.g. +x 4.800 mm, +yaw 10.009°, NE compound 3.202/3.198 mm/7.008°); measured leg lengths match |q_i − a_i| from the measured pose within 0.0041 LDU = 0.0017 mm over the whole run; final pose −0.0008/−0.0022 mm, 0.0103°. COLD=1000: start guard passes (max body drift during 1 s cold 0.005 mm), completed=1 failed=0, worst settled 0.0043 mm / 0.0056°.",
       "concerns": [
         "No manual jog proposed (coupled legs, no yaw stops); if the app allows free continuous drive when manualJog is null, a learner can drive one leg alone off-route.",
         "Coordinator brief mentioned docs-draft/lessons; those are explicitly historical (README) and stale; the supplier's final lessons are in integration/lessons and were the basis.",
@@ -2514,7 +2514,7 @@
     },
     {
       "id": "paired-door-sync",
-      "title": "Paired Door Sync \u2014 one pinion, two opposed racks",
+      "title": "Paired Door Sync — one pinion, two opposed racks",
       "placements": 88,
       "archive": "brickwright-model-lab branch agent/bw-opencode-mech-r1-20261025/synchronized_paired_doors @ fc69ad75e950a37c032cf8 (review_ready)",
       "originalLdrawSha256": "9a9db4de7a34f374abba5183299024b5cebd3410dd13ea5ca32fa3bc5e22d6c3",
@@ -2555,7 +2555,7 @@
     },
     {
       "id": "toggle-lever",
-      "title": "Toggle Lever \u2014 a link folding toward dead centre",
+      "title": "Toggle Lever — a link folding toward dead centre",
       "placements": 112,
       "archive": "brickwright-model-lab branch agent/bw-opencode-mfg-r2-20261025/toggle_jaw_crusher @ 5a4d84434e44355c0555a25187d444bc9116dfe0 (agent status: blocked, released)",
       "originalLdrawSha256": "dd31deffadd4ab23474883c21fa0788c101744f671ef58a859262abf1c737802",
@@ -2590,7 +2590,7 @@
     },
     {
       "id": "impulse-line",
-      "title": "Impulse Line \u2014 contact transfer",
+      "title": "Impulse Line — contact transfer",
       "placements": 140,
       "archive": "impulse-line-addon.zip sha256 8ee5de9f2e0c81d437b898596b3a7d3ad5c7f0ce864757cf6eb33feb1c72e002",
       "originalLdrawSha256": "7cd2cdc56c681551c627722d2736afe437447d3feecf61064e7eeb3f2c777eb4",
@@ -2622,7 +2622,7 @@
     },
     {
       "id": "impulse-line-missing-middle",
-      "title": "Impulse Line Control \u2014 middle pendulum removed",
+      "title": "Impulse Line Control — middle pendulum removed",
       "placements": 128,
       "archive": "impulse-line-addon.zip (control)",
       "originalLdrawSha256": "e4fd7c7cb45d28c19d1f85b0e451111a30fdd0e0e0f09ee4f5849fb0d73c52bb",
@@ -2654,7 +2654,7 @@
     },
     {
       "id": "final-squeeze",
-      "title": "Final Squeeze \u2014 a knee press",
+      "title": "Final Squeeze — a knee press",
       "placements": 168,
       "archive": "final-squeeze-complete.zip sha256 1d1a80543a0ea2897b627756d243cd542ec4df16131b549b35d8e03ecfd46a51",
       "originalLdrawSha256": "08ad93e18a6a2784254eb3ea7895c80a9c561c11ae4d604cc735fcb63f6095de",
@@ -2686,7 +2686,7 @@
     },
     {
       "id": "travel-dial",
-      "title": "Travel Dial \u2014 passive measuring wheel",
+      "title": "Travel Dial — passive measuring wheel",
       "placements": 194,
       "archive": "travel-dial-addon.zip sha256 161b59185bb1a329c0abf3c28c28c0d90e4c219c969580bdd005d9a145bb19d3",
       "originalLdrawSha256": "be7ba1636032f0135b42974afc79f424d1c075bd1d6ed3820fc9d0c436b45007",
@@ -2718,7 +2718,7 @@
     },
     {
       "id": "travel-dial-wheel-raised",
-      "title": "Travel Dial Control \u2014 wheel raised",
+      "title": "Travel Dial Control — wheel raised",
       "placements": 197,
       "archive": "travel-dial-addon.zip (control)",
       "originalLdrawSha256": "57e4ff7ccaa297cbd105f4789ac2bc8b96e52371b9ad0c962f78325fa305eb5e",
@@ -2750,7 +2750,7 @@
     },
     {
       "id": "ghost-pivot",
-      "title": "Ghost Pivot \u2014 remote centre of motion",
+      "title": "Ghost Pivot — remote centre of motion",
       "placements": 86,
       "archive": "ghost-pivot-addon.zip sha256 71dc3118e742807a1b77fd0f8d3272ba0e085a27a7767950069b635868021c1d",
       "originalLdrawSha256": "67e76ac9990dee54b89648db9e60e6b2f96f2692f61941aeb39e9dbf81c8d3ce",
@@ -2782,7 +2782,7 @@
     },
     {
       "id": "ghost-pivot-unequal-link",
-      "title": "Ghost Pivot Control \u2014 one link lengthened",
+      "title": "Ghost Pivot Control — one link lengthened",
       "placements": 86,
       "archive": "ghost-pivot-addon.zip (control)",
       "originalLdrawSha256": "15172d63fe353550e7f39976309f4ed79925a44f630b7ddfb1fbb3a3393e3546",
@@ -2814,7 +2814,7 @@
     },
     {
       "id": "afterturn",
-      "title": "Afterturn \u2014 a closed shape cycle",
+      "title": "Afterturn — a closed shape cycle",
       "placements": 296,
       "archive": "afterturn-addon.zip sha256 16b5afdb42ae1d3a4057453e702add22839b1a9ce716cb8d09ef6bb163be57fc",
       "originalLdrawSha256": "3581e4bcec31e2390caed683aefe351ff5b1d1da5053c4a0b2934ae0faab1929",
@@ -2846,7 +2846,7 @@
     },
     {
       "id": "afterturn-fixed-masses",
-      "title": "Afterturn Control \u2014 masses fixed",
+      "title": "Afterturn Control — masses fixed",
       "placements": 296,
       "archive": "afterturn-addon.zip (control)",
       "originalLdrawSha256": "7b214af3540ed99a4dd3e41fd1a38a98c5e482cd9f48687d62dbffa14d875f52",
@@ -2878,7 +2878,7 @@
     },
     {
       "id": "quiet-partner",
-      "title": "Quiet Partner \u2014 a passive vibration absorber",
+      "title": "Quiet Partner — a passive vibration absorber",
       "placements": 230,
       "archive": "quiet-partner-complete(1).zip sha256 17b85bec9fa25baeaad8d29d876eb4ad8d227ba739ce8007743fa59ff8f9aa37",
       "originalLdrawSha256": "4c3417290b4b3325c3bf8753d9b73d6c08daa1608c215cf726e350467bb88dc2",
@@ -2910,7 +2910,7 @@
     },
     {
       "id": "quiet-partner-control",
-      "title": "Quiet Partner Control \u2014 absorber bands removed",
+      "title": "Quiet Partner Control — absorber bands removed",
       "placements": 230,
       "archive": "quiet-partner-complete(1).zip sha256 17b85bec9fa25baeaad8d29d876eb4ad8d227ba739ce8007743fa59ff8f9aa37",
       "originalLdrawSha256": "d9edfce5a64974e37c68f11ff363064a20820658d7c3df10c8ae254ba3883d01",
@@ -2942,7 +2942,7 @@
     },
     {
       "id": "high-select",
-      "title": "High Select \u2014 mechanical maximum",
+      "title": "High Select — mechanical maximum",
       "placements": 284,
       "archive": "high-select-complete.zip sha256 54cede66d31a72561fbfafbee8c2dec70b1877c5055ef609af033e0dc98f6688",
       "originalLdrawSha256": "31581c8ff71004b98d0908c0e0a9a8d8393a89ea2617e909660321383a6459f8",
@@ -2974,7 +2974,7 @@
     },
     {
       "id": "high-select-mirror",
-      "title": "High Select \u2014 exchanged-input comparison",
+      "title": "High Select — exchanged-input comparison",
       "placements": 284,
       "archive": "high-select-complete.zip sha256 54cede66d31a72561fbfafbee8c2dec70b1877c5055ef609af033e0dc98f6688",
       "originalLdrawSha256": "31581c8ff71004b98d0908c0e0a9a8d8393a89ea2617e909660321383a6459f8",
@@ -3003,6 +3003,48 @@
         "nan": false,
         "simMs": 54200
       }
+    },
+    {
+      "id": "obliquity-orrery",
+      "title": "Obliquity Orrery — the tilt behind the seasons",
+      "placements": 52,
+      "archive": "model-lab agent branch agent/bw-opencode-nav-r3-20261025/earth_tilt_seasons_daylength (task dir model.ldr/program.bw)",
+      "originalLdrawSha256": "e32e214f363c19ecc84ee2e7c4ce59e7b9f4c874113e173116472d668bd55b2a",
+      "canonicalLdrawSha256": "3d5b09ddf62e4912c4b68eb337e4f7e2170d72eb8bc296f8e963adfb57f41e86",
+      "program": "obliquity-orrery.bw",
+      "programSha256": "b49a1380c5b294a39379307c2e6435a8942845b382eee1fa7a18006a0aef3ba5",
+      "adaptation": "Repaired: axle_B moved from x=40 to x=80 so crank B has its frame hinge (the agent's parallelogram was never closed); program signs fixed (lambda = 45 - motor angle); base_rail_0 raised 1 LDU so three rails carry the frame (four exactly coplanar flat rails made the frame creep ~5 mm/s unpowered).",
+      "supplierClaims": "Built by the OpenCode builder agent bw-opencode-nav-r3-20261025 (deepseek-v4.1-flash, handoff v3); the agent reported itself blocked.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless, body poses: delta vs sin(delta)=sin(22.5)cos(lambda-45) max 0.005 deg over the track at COLD 275/1000, 0.13 deg at COLD 0; orbit radius 16.00 mm; frame drift 0.29 mm over the 36 s run"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (obliquity-orrery-turned-axis)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "obliquity-orrery-turned-axis",
+      "title": "Obliquity Orrery — turned axis (control)",
+      "placements": 50,
+      "archive": "derived from obliquity-orrery",
+      "originalLdrawSha256": "3f9dbb08b5450177bcd51c2a7353a6458efdc8fc0976d087276d3987bbe6d91a",
+      "canonicalLdrawSha256": "baf56227e9a3b520ac349199604bdcc8c7cb4f464eb3fc6d6f786a66c738a4b9",
+      "program": "obliquity-orrery-turned-axis.bw",
+      "programSha256": "a6c9edc6df1a28cfb8a295405c4ca1aae380ad356767ed73e6337b49c3ac79af",
+      "adaptation": "Control made here: earth_angle, earth_axle and earth turned 90 deg about the vertical spindle; sun_marker and sun_spindle left out (the turned Earth would hit them; the declination uses the same orbit-centre point). The agent's 180 deg control collides with the frame.",
+      "supplierClaims": "Built by the OpenCode builder agent bw-opencode-nav-r3-20261025 (deepseek-v4.1-flash, handoff v3); the agent reported itself blocked.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 275: delta follows sin(22.5)cos(lambda-135) within 0.0084 deg over the track; midsummer at lambda=135 where the main model reads delta=0"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 275",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
     }
   ],
   "appVerification": {
