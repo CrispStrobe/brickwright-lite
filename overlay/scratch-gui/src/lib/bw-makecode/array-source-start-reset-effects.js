@@ -141,6 +141,13 @@ export function createArraySourceStartResetEffects(context){
                 if(!shape(n,s,['LEFT','RIGHT'],['OP'])||!['+','-','*','/','%','**'].includes(literal(n,'OP',s.target)))fail();
                 const a=at('LEFT'),b=at('RIGHT');if(a===number&&b===number)return number;if(literal(n,'OP',s.target)==='+'&&(a===text||b===text)&&scalar(a)&&scalar(b))return text;fail();
             }
+            if(op==='arrays_valueCompare'){
+                // Comparison only consumes already established primitive domains.
+                // Preserve both real operand effects in left-to-right order;
+                // an opaque/reference value never borrows Boolean from spelling.
+                if(!shape(n,s,['LEFT','RIGHT'],['OP'])||!['==','!=','===','!==','<','<=','>','>='].includes(literal(n,'OP',s.target)))fail();
+                const a=at('LEFT'),b=at('RIGHT');if(!scalar(a)||!scalar(b))fail();return boolean;
+            }
             if(op==='arcade_mathBinary'){
                 if(!shape(n,s,['A','B'],['OP'])||!['min','max','randomRange','atan2'].includes(literal(n,'OP',s.target))||at('A')!==number||at('B')!==number)fail();return number;
             }

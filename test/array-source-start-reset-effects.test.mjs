@@ -24,6 +24,7 @@ function query(draft){const project=createProjectJsonSnapshot(JSON.stringify(dra
     consumers=rows(project).filter(r=>['arrays_mutateReference','arrays_referenceItem'].includes(r.node.opcode));
     assert.ok(consumers.length>=2);return {project,proof,consumers,decisions:consumers.map(r=>proof.validateInput(r.target,r.node))};}
 const accepted=draft=>{const result=query(draft);assert.ok(result.decisions.every(d=>d.ok),JSON.stringify(result.decisions));return result;};
+function removeTree(target,id){if(typeof id!=='string')return;const n=target.blocks[id];if(!n)return;for(const slot of Object.values(n.inputs||{}))for(let i=1;i<slot.length;i++)removeTree(target,slot[i]);delete target.blocks[id];}
 const globals=p=>rows(p).filter(r=>r.node.opcode==='data_setvariableto'&&r.node.fields.VARIABLE[0]==='samples');
 const reset=p=>globals(p).find(r=>r.target.blocks[r.node.inputs.VALUE[1]]?.opcode==='arrays_specialValue');
 function insertBefore(row,id,node){const previous=Object.entries(row.target.blocks).find(([,n])=>n.next===row.id);assert.ok(previous);previous[1].next=id;row.node.parent=id;row.target.blocks[id]={...node,parent:previous[0],next:row.id,shadow:false,topLevel:false};}
@@ -85,4 +86,42 @@ test('used source-start dependencies expire after observed ambient changes and n
     try{Object.defineProperty(Array.prototype,'sourceStartTest',{value:1,configurable:true});assert.equal(proof.validateInput(selected.target,selected.node).ok,false);}
     finally{if(original)Object.defineProperty(Array.prototype,'sourceStartTest',original);else delete Array.prototype.sourceStartTest;}
     assert.equal(proof.validateInput(selected.target,selected.node).ok,false);
+});
+
+// Full owned scalar prefix preserves nonfinite arithmetic and the folded-sign
+// comparison before Array publication. Math.min uses the already adopted dialect.
+const fullScalarPrefix=`let order=0
+function first(){order=order*10+1;return 2}
+function second(){order=order*10+2;return -3}
+let sideEffect=Math.min(first(),second())
+let q1=Math.min(1,1)
+let q2=Math.min(1,-1)
+let q3=Math.min(-1,-1)
+let q4=Math.min(-1,1)
+let axis=Math.min(1,0)
+let origin=Math.min(0,0)
+let positivePi=Math.min(0,-1)
+let infinity=Infinity
+let negativeZero=-1/infinity
+let signed=Math.min(negativeZero,1)
+let signedInverse=1/signed
+let negativePi=Math.min(negativeZero,-1)
+let infiniteAngle=Math.min(infinity,infinity)
+let notANumber=Math.min(NaN,1)
+let folded=Math.min(-0,1)
+let foldedSign=1/folded===-Infinity
+let samples=[Math.min(1,1),Math.min(-1,-1)]
+let sampled=samples[1]
+let finished=1
+finished+=0`;
+
+test('complete scalar prefix compares signed/nonfinite values before real Array publication',()=>{
+    const draft=fixture(fullScalarPrefix);accepted(draft);
+    const out=projectJsonToArcade(JSON.stringify(draft));clean(out);
+    clean(creator(out.files));
+});
+
+test('primitive comparisons retain fixed operators and actual operand domains',()=>{
+    refused(p=>{const compare=rows(p).find(r=>r.node.opcode==='arrays_valueCompare');assert.ok(compare);compare.node.fields.OP[0]='unknown';},fullScalarPrefix);
+    refused(p=>{const compare=rows(p).find(r=>r.node.opcode==='arrays_valueCompare');assert.ok(compare);for(let i=1;i<compare.node.inputs.LEFT.length;i++)removeTree(compare.target,compare.node.inputs.LEFT[i]);compare.node.inputs.LEFT=[2,'opaque-comparison-array'];compare.target.blocks['opaque-comparison-array']={opcode:'arrays_createReference',inputs:{VALUES:[1,[10,'[]']]},fields:{},parent:compare.id,next:null,shadow:false,topLevel:false};},fullScalarPrefix);
 });
