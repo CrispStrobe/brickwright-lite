@@ -2918,7 +2918,7 @@ def retain_font_bridge(value,path):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','actual-v8-guard','actual-v8-preflight','actual-v8','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','actual-v8-guard','actual-v8-preflight','actual-v8','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):

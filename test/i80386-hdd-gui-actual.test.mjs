@@ -659,13 +659,17 @@ class Originals(unittest.TestCase):
             with patch.object(c.os,'scandir',return_value=Entries([])),patch.object(c.os,'close',side_effect=OSError('close-only')):
                 with self.assertRaisesRegex(OSError,'close-only'):c.empty_python_prefix()
     def test_actual_shell_startup_is_before_first_python_and_inventory_is_held(self):
-        workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text();actual=workflow.split('  actual-v7:',1)[1].split('  font-bridge:',1)[0]
-        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',actual)
-        self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
-        self.assertNotIn('/usr/bin/python3 -B',actual)
-        self.assertEqual(actual.count('/usr/bin/python3.12 -I -S -B -X pycache_prefix='+r.PYTHON_CACHE),3)
-        self.assertIn('test "$(realpath -e "$parent")" = "$parent"',actual)
-        self.assertNotIn('rm ',actual)
+        workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text()
+        v7=workflow.split('  actual-v7:',1)[1].split('  actual-v8:',1)[0]
+        v8=workflow.split('  actual-v8:',1)[1].split('  font-bridge:',1)[0]
+        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',v7)
+        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',v8)
+        for actual in (v7,v8):
+            self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
+            self.assertNotIn('/usr/bin/python3 -B',actual)
+            self.assertEqual(actual.count('/usr/bin/python3.12 -I -S -B -X pycache_prefix='+r.PYTHON_CACHE),3)
+            self.assertIn('test "$(realpath -e "$parent")" = "$parent"',actual)
+            self.assertNotIn('rm ',actual)
     @contextlib.contextmanager
     def inventory_edges(self,files=None,aliases=None,directories=None,faults=None,clock=None,event_transform=None,typed=False,finite=False,finite_version=4):
         faults=faults or {};events=[];request=D(self.files['request.original.json']);original_sha=c.sha
@@ -1150,9 +1154,11 @@ class Originals(unittest.TestCase):
             for module in (c,r):
                 with self.assertRaises(ValueError,msg=cut):module.parse_request(raw,H(raw))
     def test_actual_v4_coherently_rehashed_runtime_before_after_adversaries(self):
+        base_files,base_expected=fixture_v4()
+        baseline_hashes={name:H(raw) for name,raw in base_files.items()};baseline_expected=E(base_expected)
         for stage in ('before','after','both'):
             for cut in ('role','eof','hash','nonempty','bool','float','drift','close','missing','schema','extra','resource-float','file-float','cpu-null','cpu-empty','cpu-duplicate','cpu-bool','cpu-float','cpu-order','rlimit-null','rlimit-bool','rlimit-float','rlimit-extra','rlimit-missing','rlimit-pair'):
-                files,expected=fixture_v4();name='runtime.'+('before' if stage=='both' else stage)+'.json';runtime=D(files[name]);row=runtime['emptyPythonSources'][c.EMPTY_PYTHON_PATH];source=row['source']
+                files,expected=copy.deepcopy((base_files,base_expected));name='runtime.'+('before' if stage=='both' else stage)+'.json';runtime=D(files[name]);row=runtime['emptyPythonSources'][c.EMPTY_PYTHON_PATH];source=row['source']
                 if cut=='role':row['role']='python-empty-package-source'
                 elif cut=='eof':source['read']['eof']=False
                 elif cut=='hash':source['read']['sha256']='0'*64
@@ -1176,10 +1182,12 @@ class Originals(unittest.TestCase):
                 files[name]=E(runtime)
                 if stage=='both':files['runtime.after.json']=E(runtime)
                 with self.assertRaises((ValueError,KeyError),msg=str((stage,cut))):r.audit(*sealed(files,expected))
-        files,expected=fixture_v4();runtime=D(files['runtime.after.json'])
+        files,expected=copy.deepcopy((base_files,base_expected));runtime=D(files['runtime.after.json'])
         for snapshot in ('namedBefore','heldBefore','heldAfter','namedAfter'):runtime['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['source'][snapshot]['ino']+=1
         files['runtime.after.json']=E(runtime)
         with self.assertRaisesRegex(ValueError,'before/after identity'):r.audit(*sealed(files,expected))
+        self.assertEqual({name:H(raw) for name,raw in base_files.items()},baseline_hashes)
+        self.assertEqual(E(base_expected),baseline_expected)
     def test_actual_v4_external_reference_template_and_prior_observation_authority(self):
         for cut in ('reference-pin','template-pin','partial-template','outer-version','prior-close','workflow-conflict'):
             files,expected=fixture_v4();request=D(files['request.original.json'])
