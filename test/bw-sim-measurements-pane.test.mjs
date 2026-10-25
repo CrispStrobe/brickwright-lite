@@ -36,3 +36,27 @@ test('running and stopping retain the existing simulated-time sampling interval'
         const due = paneAt(status, 100); frame.call(due, 10); assert.equal(due.reads, 1); assert.equal(due.measurementRowsTime, 100);
     }
 });
+
+test('visible overlays keep committed samples updating when the measurement panel is closed', () => {
+    const pane=paneAt('paused',100);pane.state.measurementsOpen=false;pane.state.showMeasurements=true;
+    frame.call(pane,10);assert.equal(pane.reads,1);assert.equal(pane.measurementRowsTime,100);
+    frame.call(pane,20);assert.equal(pane.reads,1);
+});
+
+test('overlay and draft render reads cannot advance the committed sampling stream', () => {
+    const start=source.indexOf('            this.view.setMeasurements(() => {');
+    const end=source.indexOf('\n            this.view.render(session.snapshot());',start);
+    assert.ok(start>=0&&end>start);
+    let display;
+    const install=new Function('measurementWords',source.slice(start,end));
+    const committed=[{kind:'speed',label:'speed',value:4}], pane={locale:'en',
+        state:{replayAt:null,showMeasurements:true,measurementsOpen:true},measurements:[{kind:'acceleration'}],
+        measurementRows:committed,measurementPreview:{kind:'distance'},
+        measurementReader:{read(){throw Error('render advanced committed sample stream');}},
+        measurementPreviewReader:{read:()=>[{label:'preview',value:8}]},
+        view:{setMeasurements:callback=>{display=callback;}}};
+    install.call(pane,()=>({kinds:{speed:'Speed'}}));
+    for(let i=0;i<20;i++)assert.deepEqual(display().map(r=>r.value),[4,8]);
+    assert.equal(pane.measurementRows,committed);
+    pane.state.replayAt=0;assert.deepEqual(display(),[]);
+});

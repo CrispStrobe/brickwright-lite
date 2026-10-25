@@ -3,6 +3,24 @@ name: 386 GUI HDD and forward-debug acceptance
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Owned ready pull request number
+        required: true
+        type: string
+      source_head:
+        description: Reviewed 40-hex source head
+        required: true
+        type: string
+      request_sha256:
+        description: Reviewed canonical request SHA-256
+        required: true
+        type: string
+      tag_name:
+        description: One reviewed source tag name
+        required: true
+        type: string
 
 permissions:
   contents: read

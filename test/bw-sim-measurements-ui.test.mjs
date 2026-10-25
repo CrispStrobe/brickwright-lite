@@ -7,6 +7,7 @@ import * as schema from '../overlay/scratch-gui/src/lib/bw-sim/measurements/sche
 import * as readings from '../overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js';
 import * as targetContext from '../overlay/scratch-gui/src/lib/bw-sim/measurements/target-context.js';
 import * as history from '../overlay/scratch-gui/src/lib/bw-sim/measurements/history.js';
+import * as recording from '../overlay/scratch-gui/src/lib/bw-sim/measurements/recording.js';
 
 const requireGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
 const React = requireGui('react'), {renderToStaticMarkup} = requireGui('react-dom/server'), babel = requireGui('@babel/core');
@@ -17,7 +18,8 @@ const loadJSX = name => {
     const module = {exports: {}};
     new Function('require', 'module', 'exports', code)(name => name.endsWith('/measurements/schema.js') ? schema :
         name.endsWith('/measurements/readings.js') ? readings : name.endsWith('/measurements/target-context.js') ? targetContext :
-            name.endsWith('/measurements/history.js') ? history : name === './sim-lab-measurement-plot.jsx' ? loadJSX('sim-lab-measurement-plot.jsx') : requireGui(name), module, module.exports);
+            name.endsWith('/measurements/history.js') ? history : name.endsWith('/measurements/recording.js') ? recording :
+                ['./sim-lab-measurement-plot.jsx', './sim-lab-measurement-recorder.jsx'].includes(name) ? loadJSX(name.slice(2)) : requireGui(name), module, module.exports);
     return module.exports;
 };
 const Panel = loadJSX('sim-lab-measurements.jsx').default;
@@ -331,4 +333,42 @@ test('preset actions are immediate without a draft and wait for an active cancel
         assert.equal(count(), 2);
         assert.equal(f.focus.count, 1);
     }
+});
+
+test('scene picks modify only the draft, preview it and preserve Cancel and Save semantics', () => {
+    let receive, changed;
+    const panel = new Panel({...props, onPickTarget: fn => {receive=fn;}, onChange: d => {changed=d;}});
+    panel.setState = (u, cb) => {Object.assign(panel.state,u);cb?.();};
+    panel.beginEdit(props.definitions[0]);panel.requestTarget(0);
+    receive('b');assert.deepEqual(panel.state.editor.targets,['b','b']);assert.equal(changed,undefined);
+    assert.deepEqual(panel.previewDefinition().targets,['b','b']);
+    panel.cancelEdit();assert.equal(panel.previewDefinition(),null);assert.equal(changed,undefined);
+    panel.beginEdit(props.definitions[0]);panel.requestTarget(0);receive('b');panel.submitMeasurement({preventDefault(){}});
+    assert.equal(changed.length,1);assert.equal(changed[0].id,'span');assert.deepEqual(changed[0].targets,['b','b']);
+});
+
+test('delayed picks refuse changed models, saved definitions, draft kinds and missing part IDs', () => {
+    for (const [expected, change] of [[['a','b'],p=>{p.props={...p.props,session:{model:{}}};}],
+        [['a','b'],p=>{p.props={...p.props,definitions:props.definitions.map(d=>({...d,label:'changed'}))};}],
+        [['a'],p=>{p.changeKind('mass');}],[['a','b'],p=>{p.props={...p.props,parts:[]};}]]) {
+        let receive;const panel = new Panel({...props,onPickTarget:fn=>{receive=fn;}});
+        panel.setState=(u,cb)=>{Object.assign(panel.state,u);cb?.();};
+        panel.beginEdit(props.definitions[0]);panel.requestTarget(0);const pending=receive;
+        change(panel);pending('b');assert.deepEqual(panel.state.editor.targets,expected);
+    }
+});
+
+test('preview refuses stale bindings and model replacements, and scene picking is disabled during replay', () => {
+    let picks=0;const panel = new Panel({...props,onPickTarget:()=>picks++});
+    panel.setState=(u,cb)=>{Object.assign(panel.state,u);cb?.();};panel.beginEdit(props.definitions[0]);
+    assert.ok(panel.previewDefinition());panel.props={...panel.props,replaying:true};
+    panel.requestTarget(0);assert.equal(picks,0);assert.equal(panel.previewDefinition(),null);
+    panel.props={...panel.props,replaying:false,session:{model:{}}};assert.equal(panel.previewDefinition(),null);
+});
+
+test('remounted measurement panel restores bounded per-model plot choices for a second recording', () => {
+    const panel=new Panel({...props,initialPlots:['span']});
+    assert.deepEqual(panel.state.plots,['span']);
+    assert.match(renderToStaticMarkup(panel.render()),/bw-sim-measurement-plot/);
+    assert.deepEqual(new Panel({...props,initialPlots:['a','b','c','d','e']}).state.plots,['a','b','c','d']);
 });
