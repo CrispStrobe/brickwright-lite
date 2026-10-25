@@ -1,5 +1,6 @@
 import {sandboxWorld, SANDBOX_STORAGE_KEY} from './spike-arena/arena-sandbox.js';
 import {simLabRecord, SIM_LAB_STORAGE_KEY, SIM_LAB_LIMIT} from './bw-sim/model/sim-lab-persist.js';
+import {simLabSaveFailure, refuseSimLabSave, clearSimLabSaveFailure} from './bw-sim/model/sim-lab-save-state.js';
 /**
  * Carry the Circuit, Code and Widgets tabs (and the SPIKE arena sandbox and the
  * Sim Lab model) inside the .sb3, in ONE format.
@@ -238,12 +239,14 @@ const inspectBrickwrightState = async buffer => {
 const applyBrickwrightInspection = (inspection, storage = localStorage) => {
     if (inspection.outcome !== 'loaded' && inspection.outcome !== 'legacy') return inspection;
     const previousPreserved = preservedBundle;
+    const previousSimLabRefusal = simLabSaveFailure();
     const result = replaceProjectState(storage, inspection.state || {});
     if (result.outcome !== 'loaded') return {...result, report: inspection.report};
+    clearSimLabSaveFailure();
     preservedBundle = inspection.outcome === 'loaded' && inspection.version === BUNDLE_VERSION ?
         {outcome: 'loaded', document: inspection.passthrough} : null;
     return {...result, outcome: inspection.outcome, version: inspection.version,
-        found: inspection.outcome === 'loaded', report: inspection.report, previousPreserved};
+        found: inspection.outcome === 'loaded', report: inspection.report, previousPreserved, previousSimLabRefusal};
 };
 
 /** Restore auxiliary state when the Scratch half fails after a successful apply. */
@@ -252,7 +255,11 @@ const rollbackBrickwrightInspection = (applied, storage = localStorage) => {
         return {outcome: 'storage-failed', rolledBack: false, reason: 'rollback snapshot missing'};
     }
     const restored = replaceProjectState(storage, applied.previous);
-    if (restored.outcome === 'loaded') preservedBundle = applied.previousPreserved || null;
+    if (restored.outcome === 'loaded') {
+        preservedBundle = applied.previousPreserved || null;
+        if (applied.previousSimLabRefusal) refuseSimLabSave(applied.previousSimLabRefusal);
+        else clearSimLabSaveFailure();
+    }
     return {...restored, rolledBack: restored.outcome === 'loaded'};
 };
 
@@ -281,7 +288,8 @@ const loadJSZip = async () => {
  *
  * Returns the ORIGINAL blob unchanged if there is nothing to add or if the
  * repack fails — saving the Scratch half is strictly better than saving
- * nothing, and this must never be the reason an export dies.
+ * nothing. Explicit live-tab history refusals and the bundle byte cap reject
+ * the save so stale or unreadable content cannot look like a successful export.
  *
  * @param {Blob} blob - the .sb3 produced by vm.saveProjectSb3()
  * @param {object} options - injectable clock for deterministic archive tests
@@ -295,11 +303,17 @@ const attachBrickwrightState = async (blob, {now = () => new Date(), mutateZip =
     // live tabs to flush their current state synchronously before reading.
     // Widgets never persisted at all until this event existed — the panel
     // lives on vm.runtime and its listener writes `bw-ctl-widgets` here.
+    const simLabSaveRefusals = [];
     try {
         if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('bw-project-bundle-collect'));
+            window.dispatchEvent(new CustomEvent('bw-project-bundle-collect', {detail: {
+                refuseSimLabSave: message => simLabSaveRefusals.push(String(message).slice(0, 512))
+            }}));
         }
-    } catch (e) { /* a listener throwing must never break the save */ }
+    } catch (e) { /* unrelated listener failures keep the established save behavior */ }
+    // An explicit history refusal must not turn the previous stored model into a successful save.
+    const pendingSimLabFailure = simLabSaveFailure();
+    if (pendingSimLabFailure || simLabSaveRefusals.length) throw new Error(pendingSimLabFailure || simLabSaveRefusals[0]);
     const state = collectState();
     if (Object.keys(state).length === 0 && !preservedBundle && !mutateZip) return blob;
     try {
@@ -316,10 +330,19 @@ const attachBrickwrightState = async (blob, {now = () => new Date(), mutateZip =
             document = {...previous, format: BUNDLE_FORMAT, version: BUNDLE_VERSION,
                 savedAt: now().toISOString(), state: {...unknown, ...encodeProjectState(state)}};
         }
-        if (document) zip.file(BUNDLE_PATH, JSON.stringify(document));
+        if (document) {
+            const serialized = JSON.stringify(document);
+            if (utf8Size(serialized) > MAX_BUNDLE_BYTES) {
+                const error = new Error('Project data is too large to reopen safely. Export recordings as CSV or clear unused project content, then save again.');
+                error.code = 'BW_PROJECT_BUNDLE_SIZE';
+                throw error;
+            }
+            zip.file(BUNDLE_PATH, serialized);
+        }
         if (mutateZip) await mutateZip(zip);
         return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
     } catch (e) {
+        if (e.code === 'BW_PROJECT_BUNDLE_SIZE') throw e;
         // eslint-disable-next-line no-console
         console.warn('[brickwright] could not attach tab state to the project', e);
         return blob;

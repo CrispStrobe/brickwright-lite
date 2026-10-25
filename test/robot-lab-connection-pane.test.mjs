@@ -10,6 +10,10 @@ import {serializeLabLegacyConnection, createLabExtensionConnection, labProviderR
 import {Ev3VirtualHub} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/ev3-virtual-hub.js';
 import {ev3ClassicPeripheral} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/ev3-peripheral.js';
 import {nxtClassicPeripheral} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/nxt/nxt-peripheral.js';
+import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
+import {measurementModelContext} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/model-context.js';
+import {createMeasurementRecorder} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/recording.js';
+import {measurementDefinitions} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/schema.js';
 const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/sim-lab-pane.jsx', import.meta.url), 'utf8');
 const method = (name, end, host, navigatorHost) => {
     const start = source.indexOf(`    ${name} (`);
@@ -415,14 +419,17 @@ test('actual shipped loader forwards caller preservation without importing a rep
 const modelLoaderFixture = () => {
     const start = source.indexOf('    async openText (');
     const end = source.indexOf('    /**\n     * One physics worker', start);
-    const openText = new Function(`return ({${source.slice(start, end)}}).openText`)();
+    const openText = new Function('measurementModelContext', 'createMeasurementRecorder', 'measurementDefinitions',
+        `return ({${source.slice(start, end)}}).openText`)(measurementModelContext, createMeasurementRecorder, measurementDefinitions);
     const calls = [];
     const session = {time: 0};
     const manualPolicy = {available: false, manualJog: null};
-    const pane = {measurementModels: new Map(), state: {},
+    const model = parseModel('0 Source control model\n').model;
+    const pane = {measurementModels: new Map(), measurementExperiments: new Map(), measurementContext: null, measurementRevision: 0, state: {},
+        rememberMeasurementHistory: method('rememberMeasurementHistory', '    /** Current project model', {}, {}),
         resolveManualControlPolicy: async () => manualPolicy,
-        lib: {CATALOG: {}, catalogFor: async () => {}, SimSession: {fromText: async () =>
-            ({session, issues: [], model: {}, runModel: {}})}, insightOf: () => ({blockers: []}),
+        lib: {CATALOG: {}, serializeModel, catalogFor: async () => {}, SimSession: {fromText: async () =>
+            ({session, issues: [], model, runModel: model})}, insightOf: () => ({blockers: []}),
             createMeasurementReader: () => ({read: () => []}), measurementPresets: () => [],
             fetchModelDrawing: async () => {throw new Error('no drawing context in source control');}},
         clearReplay () {}, teardown (options) {calls.push(['teardown', options]);},
@@ -459,8 +466,9 @@ test('a replaced asynchronous API load cannot install its scene or leak preserva
     const {pane, calls, session, openText} = modelLoaderFixture();
     const pending = deferred();
     const old = {dispose: () => calls.push('old-disposed')};
+    const model = parseModel('0 UI model\n').model;
     pane.lib.SimSession.fromText = text => text === 'API model' ? pending.promise :
-        Promise.resolve({session, issues: [], model: {}, runModel: {}});
+        Promise.resolve({session, issues: [], model, runModel: model});
     const first = openText.call(pane, 'API model', 'api.ldr', null, {preserveProgram: true});
     await Promise.resolve();
     await openText.call(pane, 'UI model', 'ui.ldr');

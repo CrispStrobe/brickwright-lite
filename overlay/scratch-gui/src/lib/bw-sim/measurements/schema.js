@@ -8,6 +8,7 @@ export const MEASUREMENT_KINDS = Object.freeze({
     speed: {targets: 1, unit: 'm/s'}, acceleration: {targets: 1, unit: 'm/s²'}, angularSpeed: {targets: 1, unit: '°/s'},
     distance: {targets: 2, unit: 'mm'}, angle: {targets: 3, unit: '°'},
     jointAngle: {joint: 'hinge', unit: '°'}, jointSpeed: {joint: 'hinge', unit: '°/s'},
+    motorTorque: {joint: 'hinge', unit: 'N·m'}, limitTorque: {joint: 'hinge', unit: 'N·m'}, motorPower: {joint: 'hinge', unit: 'W'},
     travel: {joint: 'slider', unit: 'mm'}, tension: {rope: true, unit: 'N'},
     normalLoad: {targets: 1, unit: 'N'}, pressure: {targets: 1, unit: 'kPa'}
 });

@@ -183,7 +183,7 @@ test('a malformed artwork source does not replace the usable Scratch rendering',
 test('one ZIP pass carries both Brickwright state and artwork source', async () => {
     const {vm, blob, svg, id} = await fixture();
     const code = JSON.stringify({lang: 'pseudocode', code: 'say hello'});
-    global.localStorage = {length: 1, key: () => 'bw-code-autosave', getItem: () => code};
+    global.localStorage = {length: 1, key: () => 'bw-code-autosave', getItem: key => key === 'bw-code-autosave' ? code : null};
     try {
         const saved = await projectBundle.attachBrickwrightState(blob, {
             mutateZip: zip => artwork.writeArtworkToZip(zip, vm)
