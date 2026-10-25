@@ -109,10 +109,30 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
         "example": "vector-delta.bw",
         "mat": "plain",
         "experimental": true,
-        "blocked": true,
+        "blocked": false,
         "intro": {
-            "en": "A Delta parallel robot: three base motors and parallelogram arms move a tool head that can only translate. Blocked – part 5996 is not supported yet, so it cannot be opened.",
-            "de": "Ein paralleler Delta-Roboter: Drei Motoren an der Basis und Parallelogrammarme bewegen einen Werkzeugkopf, der nur verschoben werden kann. Gesperrt – Teil 5996 wird noch nicht unterstützt, daher lässt sich das Modell nicht öffnen."
+            "en": "A Delta parallel robot: three base motors and parallelogram arms move a tool head that can only translate, and the program computes the inverse kinematics for every waypoint.",
+            "de": "Ein paralleler Delta-Roboter: Drei Motoren an der Basis und Parallelogrammarme bewegen einen Werkzeugkopf, der nur verschoben werden kann; das Programm berechnet für jeden Wegpunkt die inverse Kinematik."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 24,
+                "stepDeg": 3,
+                "speedDps": 15
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 24,
+                "stepDeg": 3,
+                "speedDps": 15
+            },
+            "C": {
+                "minDeg": 0,
+                "maxDeg": 24,
+                "stepDeg": 3,
+                "speedDps": 15
+            }
         }
     },
     {
@@ -876,8 +896,8 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
         ],
         "topic": "linkages",
         "description": {
-            "en": "A Delta parallel robot: three base motors and parallelogram arms move a tool head that can only translate. Blocked – part 5996 is not supported yet, so it cannot be opened.",
-            "de": "Ein paralleler Delta-Roboter: Drei Motoren an der Basis und Parallelogrammarme bewegen einen Werkzeugkopf, der nur verschoben werden kann. Gesperrt – Teil 5996 wird noch nicht unterstützt, daher lässt sich das Modell nicht öffnen."
+            "en": "A Delta parallel robot: three base motors and parallelogram arms move a tool head that can only translate, and the program computes the inverse kinematics for every waypoint.",
+            "de": "Ein paralleler Delta-Roboter: Drei Motoren an der Basis und Parallelogrammarme bewegen einen Werkzeugkopf, der nur verschoben werden kann; das Programm berechnet für jeden Wegpunkt die inverse Kinematik."
         },
         "author": "CrispStrobe",
         "license": "BSD-3-Clause",
@@ -891,6 +911,7 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Clavel",
             "inverse kinematics",
             "pick and place",
+            "parallelogram",
             "Delta-Roboter",
             "Parallelkinematik",
             "inverse Kinematik",

@@ -384,77 +384,31 @@
         "hubs": [
           "spike-prime"
         ],
-        "issues": [
-          {
-            "severity": "warning",
-            "line": 655,
-            "code": "unknown-part",
-            "message": "Unknown part '5996.dat' at line 655 (and 5 more)",
-            "count": 6,
-            "lines": [
-              655,
-              667,
-              685,
-              697,
-              715,
-              727
-            ]
-          },
-          {
-            "severity": "warning",
-            "code": "loose-part",
-            "message": "Not connected to the rest of the model: tool_A_cross_axle, tool_A_minus_ball, tool_A_minus_bracket, tool_A_minus_retainer, tool_A_plus_ball, tool_A_plus_bracket, tool_A_plus_retainer, tool_A_radial_axle, tool_A_right_angle, tool_B_cross_axle, tool_B_minus_ball, tool_B_minus_bracket, tool_B_minus_retainer, tool_B_plus_ball, tool_B_plus_bracket, tool_B_plus_retainer, tool_B_radial_axle, tool_B_right_angle, tool_C_cross_axle, tool_C_minus_ball, tool_C_minus_bracket, tool_C_minus_retainer, tool_C_plus_ball, tool_C_plus_bracket, tool_C_plus_retainer, tool_C_radial_axle, tool_C_right_angle, tool_star",
-            "parts": [
-              "tool_A_cross_axle",
-              "tool_A_minus_ball",
-              "tool_A_minus_bracket",
-              "tool_A_minus_retainer",
-              "tool_A_plus_ball",
-              "tool_A_plus_bracket",
-              "tool_A_plus_retainer",
-              "tool_A_radial_axle",
-              "tool_A_right_angle",
-              "tool_B_cross_axle",
-              "tool_B_minus_ball",
-              "tool_B_minus_bracket",
-              "tool_B_minus_retainer",
-              "tool_B_plus_ball",
-              "tool_B_plus_bracket",
-              "tool_B_plus_retainer",
-              "tool_B_radial_axle",
-              "tool_B_right_angle",
-              "tool_C_cross_axle",
-              "tool_C_minus_ball",
-              "tool_C_minus_bracket",
-              "tool_C_minus_retainer",
-              "tool_C_plus_ball",
-              "tool_C_plus_bracket",
-              "tool_C_plus_retainer",
-              "tool_C_radial_axle",
-              "tool_C_right_angle",
-              "tool_star"
-            ]
-          }
-        ],
+        "issues": [],
         "programErrors": [],
         "programWarnings": [],
-        "blocked": true
+        "blocked": false
       },
       "nativeInitialization": "NOT_RUN",
-      "poweredMotion": "NOT_RUN",
-      "mechanicalLaw": "NOT_RUN_BLOCKED",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
-        "verdict": "NOT_RUN_BLOCKED",
+        "verdict": "AGREES",
         "detail": {
-          "verdict": "NOT RUN",
-          "notes": "Blocked: unknown part 5996.dat."
+          "law": "AGREES",
+          "measured": "Headless COLD=0 (coordinator run): completed=1, no NaN, 34.0 s. Tool head (tool_star body relative to hub body, independent of encoders) reached all 13 waypoints within 0.567 LDU = 0.23 mm of the target (mapping hub-frame (z, −Δy, x)); shoulder angles measured from arm-vs-base body poses matched the program IK within 0.145°; motor = −3 × shoulder within 0.16°; platform tilt ≤ 0.057° over the whole run (orientation preserved). Lift: three equal motor angles 46.47° (IK 46.46°); station 1: 42.92/34.83/49.45° (IK 42.98/35.07/49.47°).",
+          "coldStart": "COLD=1000 FAILS at the start guard: with motors unpowered for 1 s the head sags and back-drives the motors to −9.8° (shoulders +3.3°) before the program starts; |angle| > 5° → \"Saved-angle guard: Reset the complete Vector model before running.\" failed=1 at 1.6 s."
         },
-        "scope": "one headless run on the app branch engine; not a physical build"
+        "scope": "one headless run on the app branch engine; COLD=1000 trips the saved-angle guard"
+      },
+      "unblocked": {
+        "date": "2026-10-25",
+        "reason": "LDraw 5996 vendored and derived on the branch; prepareModel reports no issues"
       }
     },
     {
@@ -693,7 +647,7 @@
             ],
             "reversalCrankDeg": [
               138.6,
-              331.0
+              331
             ],
             "strokeTimesS": [
               4.28,
@@ -703,8 +657,8 @@
           "measured": {
             "swingDeg": 63.07,
             "reversalCrankDeg": [
-              139.0,
-              331.0
+              139,
+              331
             ],
             "crankSectorsDeg": [
               192,
@@ -883,22 +837,22 @@
             ]
           },
           "measured": {
-            "inputDps": 30.0,
+            "inputDps": 30,
             "carrierDps": [
               0,
-              15.0,
-              30.0,
-              45.0,
-              60.0
+              15,
+              30,
+              45,
+              60
             ],
             "outputDps": [
-              90.0,
-              60.0,
-              30.0,
-              0.0,
-              -30.0
+              90,
+              60,
+              30,
+              0,
+              -30
             ],
-            "planetRelCarrierStage3Dps": 0.0,
+            "planetRelCarrierStage3Dps": 0,
             "carrierPerControlGear": -0.7143,
             "sweepStandstillAtS": 2.4,
             "sweepDurationS": 9.97
@@ -994,7 +948,7 @@
               16.31,
               7.91,
               3.11,
-              8.0
+              8
             ],
             "weightRadiusMm": [
               45.8,
@@ -1196,14 +1150,14 @@
           "verdict": "AGREES",
           "program": "completed=1 failed=0 stage 7",
           "predicted": {
-            "lineDistanceMm": 56.0,
+            "lineDistanceMm": 56,
             "y": "56 tan(phi/2)",
             "yAt60Mm": 32.33
           },
           "measured": {
-            "crankToOMm": 16.0,
+            "crankToOMm": 16,
             "lineDistanceMm": [
-              56.0,
+              56,
               56.31
             ],
             "maxPerpResidualFromBestFitLineMm": 0.159,
@@ -1294,8 +1248,8 @@
             "strokeMm": 40.6,
             "beamSwingDeg": 42.42,
             "topBottomCrankDeg": [
-              115.0,
-              283.0
+              115,
+              283
             ],
             "rackRelHomeMm": {
               "90": 22.6,
@@ -1505,9 +1459,9 @@
             "maxMidMinusInDeg": 0.056,
             "inputTravelDeg": 2880,
             "e_mm": [
-              24.0,
-              32.0,
-              48.0
+              24,
+              32,
+              48
             ],
             "h_mm": [
               29.68,
@@ -1607,7 +1561,7 @@
                 11.987,
                 11.994,
                 11.991,
-                0.0
+                0
               ],
               "3": [
                 -12.005,
@@ -1640,14 +1594,14 @@
                 0.04
               ],
               "8": [
-                0.0,
+                0,
                 -0.002,
                 -0.001,
                 -0.04
               ]
             },
             "pointerSpanDeg": 229.28,
-            "carriageSpanMm": 24.0
+            "carriageSpanMm": 24
           },
           "residual": "carriage ≤0.0012 mm, pointer ≤0.12° over all stages (signs are the measurement axis convention; lesson magnitudes match)"
         },
@@ -1719,32 +1673,32 @@
             "stageEnds": {
               "1": [
                 15.015,
-                32.0,
+                32,
                 8.583
               ],
               "2": [
                 15.015,
-                48.0,
+                48,
                 12.875
               ],
               "3": [
                 -15.076,
-                48.0,
+                48,
                 -12.931
               ],
               "4": [
                 -15.076,
-                32.0,
+                32,
                 -8.619
               ],
               "5": [
                 14.191,
-                32.0,
+                32,
                 8.092
               ],
               "6": [
                 9.635,
-                48.0,
+                48,
                 8.149
               ]
             },
@@ -1818,13 +1772,13 @@
           "measured": {
             "beamDeg_settled": {
               "0": 0.1,
-              "1_loadOut": 0.096,
               "2": 0.095,
+              "7": 0.121,
+              "1_loadOut": 0.096,
               "3_trim+60": -14.13,
               "4_trim+60_loadOut": -14.129,
               "5_trim-60_loadOut": 14.33,
-              "6_trim-60": 14.329,
-              "7": 0.121
+              "6_trim-60": 14.329
             },
             "panTiltMaxDeg": 0.28
           },
@@ -1895,7 +1849,7 @@
           "law": "output turns by the input angle about a fixed empty point C, 16 mm beyond the follower bearing",
           "measured": {
             "maxOutMinusInDeg": 0.042,
-            "AB_mm": 32.0,
+            "AB_mm": 32,
             "BC_mm": 16.003,
             "AC_mm": 35.777,
             "C_wander_mm": 0.104,
