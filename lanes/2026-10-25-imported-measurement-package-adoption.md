@@ -11,7 +11,8 @@ enabled exact-head check and normal supplier landing before selecting its pin.
 
 Own this file; `vendor-pins.json`, root `package.json` and `package-lock.json`,
 `packages/scratch-gui/package.json` and its `package-lock.json`; generated
-`overlay/scratch-gui/static/licenses/bw-packages.sources.json` and
+`overlay/scratch-gui/static/licenses/bw-packages.sources.json` and its generated
+`packages/scratch-gui/static/licenses/bw-packages.sources.json` mirror, plus
 `overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json`;
 `test/cli-op-kcl-package-adoption.test.mjs`,
 `test/lm741-package-adoption.test.mjs`, `test/lm324-package-adoption.test.mjs`,
