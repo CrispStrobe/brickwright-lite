@@ -66,3 +66,20 @@ controls can run, while the public source gate refuses those historical
 source occurrences until the final supplier composition and all three
 profiles are independently reviewed and fixed. This local component is not
 published or source-qualified.
+
+## Reviewed supplier body profiles — local continuation
+
+The three later producer, reader and control bodies received separate byte,
+role and Git-source review. This continuation fixes their exact byte lengths
+and SHA-256 values in the gate. It changes only the recognized historical
+CUI control line to use the reviewed current Board symbol; no current request,
+vendor pin, package input, workflow or executable source is changed here.
+
+The admitted source positions remain two historical CUI slots and two
+historical Board slots, plus the gate's two visible policy declarations.
+Every other old identity in current inputs remains a finding. A subsequent
+body change requires a new review and profile update. Portable role and
+alias controls pass, and the exact reviewed bodies admit only their four
+historical slots. The deliberately uncombined package pins still prevent a
+full supplier gate pass; final composition and hosted qualification remain
+separate.

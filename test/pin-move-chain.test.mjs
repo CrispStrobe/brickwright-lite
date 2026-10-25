@@ -82,16 +82,13 @@ const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
 const HISTORICAL_X86_CURRENT_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
 const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
 const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
-// Reviewed immutable b9ae producer/control bodies. A future legitimate edit or
+// Reviewed immutable 3d27 producer/reader/control bodies. A future legitimate edit or
 // pin move needs an explicit profile review; never derive these from its input.
 // Matching a profile admits only the named historical token, not the file.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    // Final reviewed producer/reader/control body profiles are deliberately
-    // unset. The public role recognizers refuse every source body until root
-    // approves exact final bytes and independently pins all three rows.
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: null, sha256: null}),
-    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: null, sha256: null}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: null, sha256: null}),
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 231105, sha256: '3c3c6278e74adeca8a89746bc5dcc3b073a972a1ab01dd7fb5d9136127510905'}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 307207, sha256: 'acb0dd69cf741726f368033e68731ac04566c159d770af775c64f1b125f993d6'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 477027, sha256: '0533244358af98bc843ca832a4e13cfae43b350cc044fe23e0d21a51d24c79ad'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -313,7 +310,7 @@ const historicalCuiSpansForProfile = (file, text, known, profiles) => {
         tokens.some(t => t.kind === 'string' && t.text.includes('old_pin'))) return [];
     const uses = ["external_drift['dependencyPins']['bw-circuit-ui']=old_pin",
         "result['dependencyPins']['bw-circuit-ui']=old_pin",
-        "vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})"];
+        "vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.CURRENT_BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})"];
     if (names.slice(1).some((t, i) => historicalLine(python, t) !== '            ' + uses[i])) return [];
     return [start + names[0].start + `old_pin='`.length];
 };
@@ -324,8 +321,8 @@ export const historicalCuiSpans = (file, text, known) =>
 
 // Admit only the old Board declaration in each reviewed Python body. A
 // different or newly routed current use changes that whole body and revokes
-// the role until a separate source/profile review. No source body is currently
-// trusted: the fixed production profiles above are intentionally unset.
+// the role until a separate source/profile review. Only the three exact
+// reviewed bodies above can use their named historical positions.
 const historicalBoardSpansForProfile = (file, text, known, profiles) => {
     const pin = HISTORICAL_X86_BOARD;
     if (!known.current.has(HISTORICAL_X86_CURRENT_BOARD) || known.current.has(pin) ||
@@ -447,7 +444,7 @@ const historicalRoleFixtures = () => {
         `            old_pin='${pin}'\n` +
         "            external_drift['dependencyPins']['bw-circuit-ui']=old_pin\n" +
         "            result['dependencyPins']['bw-circuit-ui']=old_pin\n" +
-        "            vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})\n        finally: pass\n";
+        "            vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.CURRENT_BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})\n        finally: pass\n";
     const control = 'const controls = String.raw`\n' + python + '\n`;\n';
     const producerPath = 'scripts/run-i80386-hdd-gui-actual.py', controlPath = 'test/i80386-hdd-gui-actual.test.mjs';
     const profile = text => ({bytes: Buffer.byteLength(text), sha256: createHash('sha256').update(text).digest('hex')});
@@ -658,6 +655,34 @@ test('old Board source roles never admit current routing, aliases, moved slots o
     assert.equal(noBodyGuard(f.producerPath, alias, k, f.profiles).length, 1,
         'removing reviewed-body guard admits dynamic current alias');
     assert.equal(recognize(f.producerPath, alias, k).length, 0);
+});
+
+test('reviewed current supplier bodies expose only four historical source slots', () => {
+    const files = [
+        ['scripts/run-i80386-hdd-gui-actual.py', 1, 1],
+        ['scripts/read-i80386-hdd-gui-originals.py', 0, 1],
+        ['test/i80386-hdd-gui-actual.test.mjs', 1, 0],
+    ];
+    const knownRoles = {current: new Set([HISTORICAL_X86_CURRENT_CUI, HISTORICAL_X86_CURRENT_BOARD]),
+        previous: new Map([[HISTORICAL_X86_CUI_V5_V7, {repo: 'bw-circuit-ui'}],
+            [HISTORICAL_X86_BOARD, {repo: 'bw-board'}]]), history: new Map()};
+    for (const [file, cuiCount, boardCount] of files) {
+        const body = readFileSync(path.join(ROOT, file), 'utf8');
+        const profile = HISTORICAL_X86_SOURCE_PROFILES[file];
+        assert.equal(Buffer.byteLength(body), profile.bytes, `${file} reviewed byte length`);
+        assert.equal(createHash('sha256').update(body).digest('hex'), profile.sha256,
+            `${file} reviewed source body`);
+        assert.equal(historicalCuiSpans(file, body, knownRoles).length, cuiCount, `${file} CUI positions`);
+        assert.equal(historicalBoardSpans(file, body, knownRoles).length, boardCount, `${file} Board positions`);
+        assert.deepEqual(judgeFile(file, body, knownRoles), [], `${file} historical roles`);
+        const alias = file.endsWith('.py') ? body + "\nglobals()['CURRENT_BOARD'] = BOARD\n" :
+            body + '\nconst CURRENT_CUI = HISTORICAL_X86_CUI_V5_V7;\n';
+        assert.ok(judgeFile(file, alias, knownRoles).length > 0, `${file} alias revokes body profile`);
+    }
+    for (const file of ['vendor-pins.json', 'package-lock.json', '.github/workflows/i80386-hdd-gui-actual.yml']) {
+        assert.equal(judgeFile(file, `CURRENT_BOARD = '${HISTORICAL_X86_BOARD}'`, knownRoles).length, 1,
+            `${file} current input cannot borrow historical Board role`);
+    }
 });
 
 // A scoped key is admitted only with the source bytes its receipt names.
