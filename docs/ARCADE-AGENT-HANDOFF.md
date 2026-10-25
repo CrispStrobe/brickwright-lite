@@ -55,9 +55,10 @@ until demonstrated by actual tests.
 
 The [merged scalar Any-consumer scope](../lanes/2026-10-25-arcade-any-scalar-consumer.md)
 addresses independently produced primitive values rejected against a consumer's
-`any` annotation. Return the actual value unchanged; preserve generic and
-concrete-consumer checks. The unchanged Image/class fixture must pass source,
-Code, export/reimport and hosted runtime checks before this is called complete.
+`any` annotation. It returns the actual value unchanged and preserves generic
+and concrete-consumer checks. Fourteen complete source controls and four
+meaningful mutation cuts pass, including the unchanged Image/class fixture
+through Code and export/reimport. Hosted runtime qualification is still required.
 
 A repeat scan of all unchanged raw inputs on the composed source candidate
 still reports **145 translated / 38 partial / one parse failure**. All five affected dependency contexts now import without the missing-atan2

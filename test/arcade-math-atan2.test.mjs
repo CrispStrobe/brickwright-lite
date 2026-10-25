@@ -6,6 +6,10 @@ import {runProgram,stepFrames,clearStrayTimers,quitStrandedVMs} from './helpers/
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade,projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
+import {GENERATED_HELPER_PROFILES} from '../overlay/scratch-gui/src/lib/bw-makecode/generated-helper-recognition.js';
+import {nativeArrayAddHelperSource} from '../overlay/scratch-gui/src/lib/bw-makecode/native-array-binary-helper-source.js';
+import {inspectNativeArrayBinaryDomains} from '../overlay/scratch-gui/src/lib/bw-makecode/native-array-binary-domain.js';
 
 const require=createRequire(import.meta.url),values=require(VM_SRC+'/util/bw-values.js');
 const make=()=>new(loadExtensionClass('arcade'))(stubRuntime());
@@ -48,6 +52,24 @@ test('atan2 has a fixed visible operation and explicit arity, namespace and refe
         'let list=[1];let angle=Math.atan2(list,1)',
         'let angle=Math.atan2({value:1},1)','let angle=Math.atan2(img`1`,1)']){
         assert.ok(arcadeToPseudocode(source).unsupported.includes('Math.atan2 reference argument conversion is not implemented'),source);
+    }
+});
+
+test('atan2 normal Number results compose with Array addition without hiding operand coercion effects',()=>{
+    const helper=nativeArrayAddHelperSource('__bwNativeArrayAddBoth',true,true);
+    const inspect=prefix=>{
+        const program=parseMakeCodeTs(helper+';'+prefix+';let list=[angle];let joined=__bwNativeArrayAddBoth(list,"!")',GENERATED_HELPER_PROFILES.ordinary);
+        return {program,proof:inspectNativeArrayBinaryDomains(program)};
+    };
+    const {program,proof}=inspect('let angle=Math.atan2(1,-1)');
+    assert.equal(proof.reason,null);assert.equal(proof.helpers.size,1);assert.equal(proof.current(),true);
+    program.body.push({type:'Declaration',kind:'let',decls:[{name:'foreignMutation',init:{type:'Number',value:1}}]});
+    assert.equal(proof.current(),false,'a changed source does not retain its earlier proof');
+    for(const prefix of ['let angle=Math.atan2(unknown,1)',
+        'let value={};let angle=Math.atan2(value,1)',
+        'let value=[1];let angle=Math.atan2(value,1)',
+        'let Math={atan2:1};let angle=Math.atan2(1,1)']){
+        const {proof}=inspect(prefix);assert.equal(proof.helpers.size,0,prefix);assert.equal(typeof proof.reason,'string',prefix);
     }
 });
 

@@ -67,12 +67,16 @@ test('the original Image fixture survives importer, Creator Code feedback, curre
 
     const creator = new Creator();
     creator.parse(imported.code);
+    assert.deepEqual(creator.errors, []);
+    assert.deepEqual(creator.warnings, []);
     const initial = projectToArcade(creator.project, imageOptions);
     assert.deepEqual(initial.unsupported, []);
     assert.deepEqual(initial.warnings, []);
 
     const feedbackCreator = new Creator();
     feedbackCreator.parse(creator.decompile(structuredClone(creator.project)));
+    assert.deepEqual(feedbackCreator.errors, []);
+    assert.deepEqual(feedbackCreator.warnings, []);
     const current = projectToArcade(feedbackCreator.project, imageOptions);
     assert.deepEqual(current.unsupported, []);
     assert.deepEqual(current.warnings, []);

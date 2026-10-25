@@ -54,6 +54,29 @@ After a family qualifies, measure the unchanged corpus again and update the
 Code/Blocks/graphics/controller/save-and-reopen rows in the GUI ledger. Report
 remaining diagnostics explicitly, rather than marking a partial program full.
 
+### Input completeness and legacy APIs
+
+Three raw source inputs have only the old instance `Sprite.onOverlap(handler)`
+diagnostic. The retained current SDK supports the kind-based
+`sprites.onOverlap(kind, otherKind, handler)`, but has no instance method, and
+the retained original compilations for these inputs fail. This is not evidence
+that replacing the call with a kind-wide handler preserves the old program.
+
+Before claiming legacy parity, locate and review the original implementation's
+receiver evaluation, callback identity, replacement/additive registration,
+future kinds and scheduling behavior. Then claim importer registration,
+instance runtime dispatch, export and dialect ownership, with pause/Stop,
+scene, ghost/pixel collision, Code/Blocks and fresh-save acceptance. Existing
+kind overlap and instance-destruction paths are implementation precedents,
+not proof of equivalent semantics. If the old contract cannot be established,
+retain the explicit diagnostic or offer a separately documented modern
+migration. Do not count that migration as unchanged-original compatibility.
+
+Other short raw inputs omit actual artwork, receiver declarations or extension
+sources. Resolve those from an admitted original dependency graph; neither
+substitute art nor invent a receiver to remove their diagnostics. Preserve raw
+input failures separately from valid complete-project feature gaps.
+
 The active [captured-class primitive task](ARCADE-CLASS-CAPTURED-PRIMITIVES.md)
 records the current source changes, observed failures and next acceptance steps.
 All six complete source groups pass at `7f08e871ad3c76929282787092270b1b09158744`,
