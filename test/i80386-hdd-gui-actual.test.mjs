@@ -3655,6 +3655,56 @@ class Originals(unittest.TestCase):
                     self.assertEqual(raw,files[name.removesuffix('.original.json')+'.'+suffix])
             artifact=packet({name:raw for name,raw in produced.items() if name!='inventory.json'})
             self.assertLessEqual(len(artifact),384<<20)
+            selected=copy.deepcopy(expected)
+            def bind_artifact(raw,metadata):
+                chosen=copy.deepcopy(metadata);chosen['artifactBytes']=len(raw);chosen['artifactSha256']=H(raw)
+                chosen['artifact']['size_in_bytes']=len(raw);chosen['artifact']['digest']='sha256:'+H(raw)
+                return chosen
+            selected=bind_artifact(artifact,selected)
+            originals=r.archive_originals(artifact)
+            self.assertEqual(originals['inventory.json'],produced['inventory.json'])
+            verdict=r.audit(originals,selected)
+            self.assertEqual(verdict['schema'],'bw.gui-hdd.reader.v8')
+            self.assertTrue(verdict['pass'])
+            parts=checkout/'parts';parts.mkdir();rows={}
+            small={key:copy.deepcopy(value) for key,value in selected.items()
+                   if key not in ('inventoryOriginal','inventoryTemplate','nativeFontOriginals')}
+            for role,name in r.ACTUAL_V6_PART_FILES.items():
+                item=selected['nativeFontOriginals'][role.split('.',1)[1]] if role.startswith('nativeFontOriginals.') else selected[role]
+                raw=base64.b64decode(item['base64'],validate=True)
+                (parts/name).write_bytes(raw);rows[role]=ROW(raw)
+            manifest=checkout/'manifest.json';manifest.write_bytes(E({'schema':'bw.gui-hdd.actual-v8-parts-manifest.v1',
+                'expected':small,'parts':rows}))
+            artifact_path=checkout/'artifact.zip';artifact_path.write_bytes(artifact)
+            with patch.object(r,'ACTUAL_V8_READER_ENABLED',True),patch.object(r.sys,'stdout',io.StringIO()) as stream:
+                self.assertEqual(r.main(['--actual-v8-parts','--manifest',str(manifest),
+                    '--parts',str(parts),'--artifact',str(artifact_path)]),0)
+                self.assertEqual(D(stream.getvalue().encode()),verdict)
+            changed_metadata=copy.deepcopy(selected)
+            changed_metadata['job']['steps'][0]['number']=False
+            with self.assertRaises(ValueError):r.audit(originals,changed_metadata)
+            for cut in ('workflow-257','packed-alias','null-member','process-cap'):
+                changed={name:raw for name,raw in produced.items() if name!='inventory.json'}
+                if cut=='workflow-257':
+                    event=D(changed['event.original.json']);event['workflow']='w'*257
+                    changed['event.original.json']=E(event)
+                else:
+                    envelope=D(changed['git-0.original.json'])
+                    if cut=='packed-alias':
+                        changed['git-00.original.json']=changed.pop('git-0.original.json')
+                    elif cut=='null-member':
+                        envelope['members']['stderr']=None;envelope['complete']=False
+                        envelope['firstFailure']={'phase':'child','name':'OSError','message':'retained incomplete Git original'}
+                        changed['git-0.original.json']=E(envelope)
+                    else:
+                        raw=b'x'*(r.JSON_CAP+1)
+                        envelope['members']['process.json']={'byteLength':len(raw),'sha256':H(raw),
+                            'base64':base64.b64encode(raw).decode('ascii')}
+                        changed['git-0.original.json']=E(envelope)
+                changed_zip=packet(changed)
+                changed_originals=r.archive_originals(changed_zip)
+                with self.subTest(cut=cut),self.assertRaises(ValueError):
+                    r.audit(changed_originals,bind_artifact(changed_zip,selected))
         temporary_root.cleanup()
 
     def test_actual_v8_partial_git_capture_retains_first_error_and_caps(self):
