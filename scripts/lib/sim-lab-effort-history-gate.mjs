@@ -18,10 +18,16 @@ const loadProject = async (page, file) => {
         await page.waitForFunction(previous => window.__bwSimLab?.status === 'ready' &&
             window.__bwSimLab._pane.session !== previous && !window.__bwSimLab._pane.state.programLoading, old, {timeout: 90000});
     } finally { await old.dispose(); }
+    // Project uploads activate Code; return through the real editor tab before
+    // touching the persistently mounted Lab's controls.
+    await openRobotLabTab(page);
+    await ready(page);
 };
 
 /** Current-candidate real UI/Jolt and saved bytes; no substituted simulation state. */
 export const effortHistoryInteractions = async (page, {shotsDir, restoreProject, source}) => {
+    await openRobotLabTab(page);
+    await ready(page);
     const panel = page.getByTestId('bw-sim-lab-measurements-panel');
     const rightPaneInitiallyVisible = await page.locator('[data-right-pane-toggle]').getAttribute('aria-pressed');
     await page.getByTestId('bw-sim-lab-model').selectOption('four-bar-crank-rocker.ldr');
