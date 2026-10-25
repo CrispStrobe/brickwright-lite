@@ -13,14 +13,16 @@
 // linear actuator whose motor (B, on the right post) turns the actuator's pivot axle through two 16T gears
 // and the axle its spindle through two 12T bevel gears (1:1:1). The actuator's eye sits 3 holes up the boom
 // and its body pivots 5 holes under the boom pivot, so its 120..180 LDU travel swings the boom from about
-// 4° to past 70°. A hook hangs from the boom tip on a pin, free to swing: a 5L link and a Technic brick
-// 1 x 4 pinned to its lower end as the load.
-// No winch: ropes (lego-8f, PR #1123) are not on main yet; when they are, a hoist drum on the upper and
-// a rope over the boom tip replace the fixed link.
+// 4° to past 70°. A free rope-hung load uses a 5L link and matched Technic bricks
+// 1 x 4 on each side. Motor C drives a retained winch shaft on the left post;
+// the rope runs from its drum over a guide at the boom tip to the independent hanging load.
 // LDraw frame: x lateral, y down, z backwards; the boom works in the y-z plane, (u, v) = (-z, -y).
-import {writeFileSync} from 'node:fs';
+import {readFileSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
+import {upgradePartMeta} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
+import {ropeTie} from '../overlay/scratch-gui/src/lib/bw-sim/editor/rope-path.js';
 
 const OUT = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/static/sim-lab/models/crane.ldr');
 /** The boom's elevation at build, degrees: the luffing actuator is then 140 LDU pin to pin (half out). */
@@ -47,7 +49,7 @@ const Y = [0, 1, 0];
 const lines = [];
 const head = ['0 Crane (Brickwright Robot Lab reference model)', '0 Name: crane.ldr', '0 Author: Brickwright', '0 !LDRAW_ORG Unofficial_Model',
     '0 // A slewing crane on a SPIKE Prime hub: motor A turns the turntable (8 teeth into 28), motor B luffs the boom',
-    '0 // with a small linear actuator. The hook hangs from the boom tip. scripts/gen-crane-model.mjs writes this file.'];
+    '0 // with a small linear actuator. Motor C winds a rope over the tip guide. scripts/gen-crane-model.mjs writes this file.'];
 /** Place a part: R given as images of local x, y, z (columns). */
 const place = (id, part, color, pos, ex, ey, ez, port = null) => {
     if (!ez) ez = cross(ex, ey);
@@ -159,13 +161,43 @@ pinAlong('luffLaEye', '3705.dat', 0, W(C, 20), X);
 sideMotor('luff', 'B', [60 - ZT, 190], 90, [0, 1], [-1, 0], 1);
 gearOn('luffLaGear16', '94925.dat', 71, W(B, 180), X);
 
-// ---- the hook at the boom tip: a 5L link on a frictionless pin (3673), free to swing; the load pinned to its lower end ---
-pinAlong('hookPin', '3673.dat', 0, W(Q, 40), X);
-beam('hookLink', '32316.dat', 71, W(uvAdd(Q, [0, -40]), 30), X, Y);
-for (const d of [60, 80]) pinAlong(`loadPin${d}`, '2780.dat', 0, W(uvAdd(Q, [0, -d]), 20), X);
+// ---- winch: the spare left post carries C and a 1:1 16T pair on a retained 12L shaft ------------------
+const hoistOut = [60 - ZT, 190];
+const hoistAt = [60 - ZT, 230];
+sideMotor('hoist', 'C', hoistOut, -90, [0, 1], [-1, 0], -1);
+pinAlong('hoistAxle', '3708.dat', 0, W(hoistAt, -80), X);
+gearOn('hoistGear16', '94925.dat', 71, W(hoistAt, -180), X);
+// A friction-pin mounted inner bearing supports the shaft opposite the existing left post.
+// Its lower mount at v=190 avoids C's mounting pins at v=170/210 and the boom axle at v=250.
+beam('hoistBearing', '32523.dat', 71, W([60 - ZT, 210], -40), X, Y);
+pinAlong('hoistBearingPin', '6558.dat', 0, W(hoistOut, -60), X);
+gearOn('hoistDrum', '3713.dat', 4, W(hoistAt, -60), X);
+gearOn('hoistStopOuter', '4265c.dat', 71, W(hoistAt, -195), X);
+gearOn('hoistStopInner', '4265c.dat', 71, W(hoistAt, -25), X);
+
+// ---- tip guide and independent suspended load: no fixed boom-to-hook hinge -------------------------
+pinAlong('tipGuideAxle', '3705.dat', 0, W(Q, 50), X);
+gearOn('tipGuide', '3713.dat', 71, W(Q, 30), X);
+gearOn('tipStopInner', '4265c.dat', 71, W(Q, 15), X);
+gearOn('tipStopOuter', '4265c.dat', 71, W(Q, 65), X);
+beam('hookLink', '32316.dat', 71, W(uvAdd(Q, [0, -160]), 30), X, Y);
+for (const d of [60, 80]) pinAlong(`loadPin${d}`, '6558.dat', 0, W(uvAdd(Q, [0, -(d + 120)]), 30), X);
 // Technic brick 1 x 4 with holes standing on end (its length down, its holes along x, its studs facing
 // forward): local x → down, local y → back (+z), local z → +x. Its holes are 10 LDU up its local y.
-place('load', '3701.dat', 4, add(W(uvAdd(Q, [0, -80]), 10), [0, 0, -10]), Y, [0, 0, 1], X);
+place('load', '3701.dat', 4, add(W(uvAdd(Q, [0, -200]), 10), [0, 0, -10]), Y, [0, 0, 1], X);
+// The reflected brick balances both horizontal COM offsets around the rope tie.
+// A 3L pin crosses brick + link + brick (three 20 LDU thicknesses).
+place('loadCounterweight', '3701.dat', 4, add(W(uvAdd(Q, [0, -200]), 50), [0, 0, 10]), Y, [0, 0, -1], [-1, 0, 0]);
+
+// Derive the taut length from the same placed circles and hook-top rule used by the editor/compiler.
+const sim = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/src/lib/bw-sim');
+const rawCatalog = JSON.parse(readFileSync(path.join(sim, 'part-meta/parts.json'), 'utf8'));
+const catalog = new Map(rawCatalog.parts.map(p => [p.part, upgradePartMeta(p)]));
+const parsed = parseModel([...head, ...lines].join('\n'), {catalog});
+if (parsed.refusals.length) throw new Error(`crane generation refused: ${JSON.stringify(parsed.refusals)}`);
+const rope = ropeTie(parsed.model, catalog, ['hoistDrum', 'tipGuide', 'hookLink']);
+if (rope.error) throw new Error(`crane rope refused: ${rope.error}`);
+lines.push(`0 !BW ROPE hoistCord ${rope.lengthLdu} ${rope.around.join(' ')}`);
 
 writeFileSync(OUT, `${[...head, ...lines].join('\n')}\n`);
 process.stdout.write(`crane.ldr: boom ${THETA_DEG}°, actuator ${L.toFixed(2)} LDU pin to pin (law of cosines ${L0.toFixed(2)}), ` +

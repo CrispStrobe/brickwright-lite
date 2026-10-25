@@ -1,6 +1,6 @@
 # Robot Lab bytecode serialization, virtual files and crane winch
 
-Status: CLAIMED — merge before implementation.
+Status: IMPLEMENTED CANDIDATE — hosted qualification and landing pending.
 Owner: Codex, user-authorized three-package continuation, in order.
 Isolated branch `lane/robot-bytecode-files-crane-20261025`.
 Base `a7f8348315ef7b31f33d8b236bf43d6e86c53a03`.
@@ -25,8 +25,8 @@ Owned paths: `overlay/scratch-gui/src/lib/bw-sim/routes/nxt-vm/` and
 under `overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/`; matching VM and virtual
 brick tests, owned NXC/lms compiler fixtures and fixture READMEs; shipped
 `static/sim-lab/models/crane.ldr`, `static/sim-lab/programs/crane.bw`,
-`scripts/gen-crane-model.mjs`, crane tests and its narrow existing browser
-qualification helper; `docs/NXT-RXE-VM.md`, `docs/EV3-RBF-VM.md`, the affected
+`scripts/gen-crane-model.mjs`, crane tests (including the shared VM track’s additive rope readings and the shipped
+model motor-port expectation) and its narrow existing browser qualification helper; `docs/NXT-RXE-VM.md`, `docs/EV3-RBF-VM.md`, the affected
 crane documentation and this claim. Apply canonical mirror rules where needed.
 No shared pane, measurement, physics-core, dependency-pin, workflow, API,
 release, native/firmware or experimental registry changes are claimed.
@@ -42,3 +42,16 @@ Do not weaken limits, physical oracles or existing acceptance thresholds.
 Close this continuation only after all three packages qualify and land.
 The separate API acceptance/final-documentation continuation remains open;
 reuse its evidence and preserve its existing owner and private inputs.
+
+Implementation checkpoint: NXT raw binary serialization includes scalar/array/cluster
+roundtrips, raw floating-point defaults, bounded traversal and alias-safe resize.
+EV3 data-file byte operations use bounded shared virtual storage, serializable
+file descriptors, common handle release, EOF and stop/restart lifecycle controls.
+Three owned NXC/lms programs have retained compiler outputs and actual virtual
+brick download/start controls. Focused local controls: 23 NXT VM, 26 EV3 VM and
+three virtual-brick tests; ten NXT and fourteen EV3 source mutations are rejected.
+The crane adds a retained C drum, moving guide and balanced rope-hung payload.
+Three pure geometry/generator controls pass. Real VM/Jolt hoist, hold, payout,
+slack and finite payload-weight tension controls, plus the browser's actual GUI
+SB3 export/CRC-sidecar/fresh-context definition reopen, remain hosted gates.
+No physical accuracy or independent retained successful-SB3 audit is claimed.

@@ -3,7 +3,7 @@
 0 Author: Brickwright
 0 !LDRAW_ORG Unofficial_Model
 0 // A slewing crane on a SPIKE Prime hub: motor A turns the turntable (8 teeth into 28), motor B luffs the boom
-0 // with a small linear actuator. The hook hangs from the boom tip. scripts/gen-crane-model.mjs writes this file.
+0 // with a small linear actuator. Motor C winds a rope over the tip guide. scripts/gen-crane-model.mjs writes this file.
 0 !BW ID hub
 1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
 0 !BW ID ttBottom
@@ -84,13 +84,47 @@
 1 71 180 -190 60 0 0 1 1 0 0 0 1 0 94925.dat
 0 !BW ID luffLaGear16
 1 71 180 -150 60 0 0 1 0 1 0 -1 0 0 94925.dat
-0 !BW ID hookPin
-1 0 40 -390 -182.4871 1 0 0 0 1 0 0 0 1 3673.dat
+0 !BW ID hoistMotor
+0 !BW PORT C
+1 71 -120 -190 60 0 1 0 -1 0 0 0 0 1 54696p01.dat
+0 !BW ID hoistMotorPinA
+1 0 -90 -210 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID hoistMotorPinB
+1 0 -90 -170 60 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID hoistMotorAxle
+1 0 -171 -190 60 1 0 0 0 -1 0 0 0 -1 32062.dat
+0 !BW ID hoistMotorGear
+1 71 -180 -190 60 0 0 1 -1 0 0 0 -1 0 94925.dat
+0 !BW ID hoistAxle
+1 0 -80 -230 60 1 0 0 0 1 0 0 0 1 3708.dat
+0 !BW ID hoistGear16
+1 71 -180 -230 60 0 0 1 0 1 0 -1 0 0 94925.dat
+0 !BW ID hoistBearing
+1 71 -40 -210 60 0 1 0 0 0 1 1 0 0 32523.dat
+0 !BW ID hoistBearingPin
+1 0 -60 -190 60 1 0 0 0 1 0 0 0 1 6558.dat
+0 !BW ID hoistDrum
+1 4 -60 -230 60 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID hoistStopOuter
+1 71 -195 -230 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID hoistStopInner
+1 71 -25 -230 60 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID tipGuideAxle
+1 0 50 -390 -182.4871 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID tipGuide
+1 71 30 -390 -182.4871 0 0 1 0 1 0 -1 0 0 3713.dat
+0 !BW ID tipStopInner
+1 71 15 -390 -182.4871 0 0 1 0 1 0 -1 0 0 4265c.dat
+0 !BW ID tipStopOuter
+1 71 65 -390 -182.4871 0 0 1 0 1 0 -1 0 0 4265c.dat
 0 !BW ID hookLink
-1 71 30 -350 -182.4871 0 1 0 0 0 1 1 0 0 32316.dat
+1 71 30 -230 -182.4871 0 1 0 0 0 1 1 0 0 32316.dat
 0 !BW ID loadPin60
-1 0 20 -330 -182.4871 1 0 0 0 1 0 0 0 1 2780.dat
+1 0 30 -210 -182.4871 1 0 0 0 1 0 0 0 1 6558.dat
 0 !BW ID loadPin80
-1 0 20 -310 -182.4871 1 0 0 0 1 0 0 0 1 2780.dat
+1 0 30 -190 -182.4871 1 0 0 0 1 0 0 0 1 6558.dat
 0 !BW ID load
-1 4 10 -310 -192.4871 0 0 1 1 0 0 0 1 0 3701.dat
+1 4 10 -190 -192.4871 0 0 1 1 0 0 0 1 0 3701.dat
+0 !BW ID loadCounterweight
+1 4 50 -190 -172.4871 0 0 -1 1 0 0 0 -1 0 3701.dat
+0 !BW ROPE hoistCord 415.1 hoistDrum tipGuide hookLink
