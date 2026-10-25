@@ -54,16 +54,31 @@ and change only current package selectors, current-template/request/control
 expectations, and the closed installed-source witness rows. The witness set
 must cover the independently reviewed packaged Git delta from historical
 CUI 91 to this qualified CUI target, including new packaged paths; a delta
-from 408 alone is insufficient. Historical 91 and earlier original bytes
-keep their original meaning. No default-to-prior current pin is permitted.
+from 408 alone is insufficient. The independently reviewed union contains
+eighteen packaged paths; all must match their Git-derived old/new witnesses.
+Historical CUI 91, historical Board 761 and earlier original bytes
+keep their original meaning. Split current Board selectors from the shared
+legacy `BOARD` declaration using explicit `CURRENT_BOARD`; update only
+finite-V7 and actual-V8 branches, including V8 probe-admission and proof
+checks. Shared probe branches choose `CURRENT_BOARD` only for V8 and
+`BOARD` for older versions. Preserve pre-V8 fallback and historical
+admission/proof branches.
+The coordinated gate owns the two narrowly profiled historical Board slots.
+No default-to-prior current pin is permitted.
 
 The existing producer, standalone reader, GUI test and workflow paths stay
 owned by this x86 lane; the coordinated global pin policy remains with the
 x86 historical-role owner. Own only these identity/witness updates and
 matching status prose in the existing claim. Every existing schema, label,
-marker, artifact namespace, method, first/secondary failure boundary, four
+marker, artifact namespace, method roster and historical behavior,
+first/secondary failure boundary, four
 package roots, six critical roles, row/byte/transport/time/resource caps and
-execution guard stays unchanged. All actual/finite guards remain false.
+execution guard stays unchanged. Preserve the exact frozen values: the
+producer and reader V8 source booleans and the actual-V8 workflow guard are
+true, while finite-V7 producer, reader and job guards are false. No actual
+event is selected; those guard values grant no selection authority.
+This amendment activates
+no guard or workflow and authorizes no dispatch.
 No selected V7 event exists to replay or reinterpret.
 
 Compose the package owner's independently qualified adoption first, then

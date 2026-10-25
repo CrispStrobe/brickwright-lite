@@ -34,16 +34,28 @@ generator and installed-GUI qualification work under the
 amendment changes no pin or executable source. It authorizes the x86 owner
 to prepare only its reviewed forward source contribution for that composition.
 
-Keep the existing two historical source roles and one visible policy
-declaration. Preserve the later finite-V7/V8 producer and controls; the
-smaller mainline producer/control files are not replacements for them.
-Update only the reviewed current identity and the exact whole-body profile
-rows after independent review of the final producer/control bytes. Apply no
-caller-selected profile, automatic hash refresh, file-wide exception, or
-permission for an old identity in current inputs. The historical literal and
-all earlier wire fixtures remain unchanged.
+Keep the existing two historical CUI source roles and visible policy
+declaration. Add only two historical Board declaration slots: the module-level
+`BOARD` declaration in `scripts/run-i80386-hdd-gui-actual.py` and in
+`scripts/read-i80386-hdd-gui-originals.py`, plus one transparent Board policy
+declaration in the gate. The historical Board value stays
+`761153ff92d521c01107ee7b32922ba7adc10ee2`. Current finite-V7 and V8 paths must
+instead use an explicit `CURRENT_BOARD` bound to the qualified target. Review
+the exact legacy/current reference ledger, including producer probe-admission
+and reader proof checks; a current finite-V7/V8 reference to the historical Board refuses.
+Historical schemas and their original checks keep their original meaning.
+
+Preserve the later finite-V7/V8 producer and controls; the smaller mainline
+producer/control files are not replacements for them. Extend the exact
+whole-body profile set to the standalone reader. Update the reviewed current
+identities and all three source-body profiles only after independent review
+of final producer, reader and control bytes. Apply no caller-selected profile,
+automatic hash refresh, file-wide exception, or permission for an old identity
+in current inputs. Keep every historical literal visible and every earlier
+wire fixture unchanged. No other historical role or source path is admitted.
 
 Own only `test/pin-move-chain.test.mjs` and this claim in that policy task.
 Full three-supplier history, prior controls, coherent alias/current-input
-mutations, production-profile rejection and the genuine V8 negative cohort
+mutations for both suppliers, wrong Board role/path/symbol, legacy-to-current
+reference leakage, production-profile rejection and the genuine V8 negative cohort
 remain required. Source controls grant no current inventory or execution.
