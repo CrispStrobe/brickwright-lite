@@ -6,6 +6,8 @@
 
 The qualified Circuit UI supplier target is whole commit `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`. A source comparison found a changed module that was included in the retained finite v6 installed inventory at `91d8434a79d373cef2837c137ab356356f1a3b44`. The old original therefore cannot authorize a current 408 installed graph. It remains a historical observation; neither the source comparison nor this claim observes a new installation, browser, guest or positive run.
 
+The local disabled v7 candidate also requires exact installed byte lengths and SHA-256 digests for eight reviewed source files changed between those commits. The producer checks them during its bounded installed scan and retains the first failed file observation; the independent reader checks all eight in the completed original. This prevents a complete old map or one stale reviewed row from passing under current dependency pins. Eight matching witnesses do not prove the other installed package contents or qualify a current inventory. The full map and source/Build still require separate official admission before V8 can use them.
+
 ## Owned source paths and order
 
 - This new claim file and its later truthful status. Do not edit `LANES.md` or another owner's claim.

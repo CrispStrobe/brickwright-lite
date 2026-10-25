@@ -122,6 +122,20 @@ INSTALLED_V6_CRITICAL = frozenset((INSTALLED_V5_CRITICAL -
  {'node_modules/bw-circuit-ui/src/current.js'}) |
  {'node_modules/bw-circuit-ui/src/index.js'})
 
+# Eight exact changed source-file identities from the reviewed CUI 408 Git tree.
+# A witness match is not complete installed-package provenance.
+FINITE_V7_CUI_WITNESSES = {
+ 'node_modules/bw-circuit-ui/LANES.md':(263684,'d963666f3c8dc9e6fe0c9a7c65dcefa97af6c4dc674585e876d4bd2c34a24c72'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(140187,'2f8bf3060b8d52a99d18698c55a4defe17d43fff08d25f56f3a6cc8e2d70137f'),
+ 'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
+ 'node_modules/bw-circuit-ui/src/model/instrument-report.js':(30702,'4030fdf58c3a8dd69f66c118c04b2ab3d99edfbb4070542019c37cae219cf4ff'),
+ 'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695,'547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
+ 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(184331,'f763e11b9bc0d40890f1b41dc9ea7ec03fa30f3e8a24d763ea0c4327a9a03dc9'),
+ 'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320,'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
+ 'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891,'7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
+}
+
+
 
 def installed_rows_v5(value, critical=INSTALLED_V5_CRITICAL):
     need(type(value) is dict and 0<len(value)<=16384 and
@@ -2180,8 +2194,12 @@ def verify_inventory_original(original_raw,template_raw,expected):
         fields(row,'attempted status source');need(row['attempted'] is True and row['status']=='observed','typed source actually observed')
         verify_empty_python_source(row['source'])
     installed_rows_v5(value['installedFiles'],INSTALLED_V6_CRITICAL if version in (6,7) else INSTALLED_V5_CRITICAL) if version in (5,6,7) else rows(value['installedFiles'])
-    if version==7:need(value['dependencyPins']==expected['dependencyPins']==FINITE_V7_PINS,
-                       'finite v7 original dependency identities')
+    if version==7:
+        need(value['dependencyPins']==expected['dependencyPins']==FINITE_V7_PINS,
+             'finite v7 original dependency identities')
+        for path,(size,digest_value) in FINITE_V7_CUI_WITNESSES.items():
+            need(value['installedFiles'].get(path)=={'byteLength':size,'sha256':digest_value},
+                 'finite v7 reviewed CUI 408 source identity witness: '+path)
     if version==4:need(all(prefix+'/package.json' in value['installedFiles'] for prefix in ('node_modules/bw-board','node_modules/bw-circuit-ui','node_modules/playwright','node_modules/playwright-core')),'finite original includes complete selected supplier/browser/CUI census')
     event=value['event'];fields(event,'byteLength sha256 base64');integer(event['byteLength'],1,JSON_CAP);digest(event['sha256'])
     need(type(event['base64']) is str and len(event['base64'])==4*((event['byteLength']+2)//3),'bounded exact event original')

@@ -1028,6 +1028,18 @@ INSTALLED_V6_CRITICAL = frozenset((INSTALLED_V5_CRITICAL -
  {'node_modules/bw-circuit-ui/src/current.js'}) |
  {'node_modules/bw-circuit-ui/src/index.js'})
 
+# Eight exact changed source-file identities from the reviewed CUI 408 Git tree.
+# A witness match is not complete installed-package provenance.
+FINITE_V7_CUI_WITNESSES = {
+ 'node_modules/bw-circuit-ui/LANES.md':(263684,'d963666f3c8dc9e6fe0c9a7c65dcefa97af6c4dc674585e876d4bd2c34a24c72'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(140187,'2f8bf3060b8d52a99d18698c55a4defe17d43fff08d25f56f3a6cc8e2d70137f'),
+ 'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
+ 'node_modules/bw-circuit-ui/src/model/instrument-report.js':(30702,'4030fdf58c3a8dd69f66c118c04b2ab3d99edfbb4070542019c37cae219cf4ff'),
+ 'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695,'547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
+ 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(184331,'f763e11b9bc0d40890f1b41dc9ea7ec03fa30f3e8a24d763ea0c4327a9a03dc9'),
+ 'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320,'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
+ 'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891,'7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
+}
 
 def installed_rows_v5(value, critical=INSTALLED_V5_CRITICAL):
     need(type(value) is dict and 0<len(value)<=16384 and
@@ -1100,7 +1112,7 @@ def installed_regular_v5(path, cap, progress):
     return bytes(chunks)
 
 
-def installed_inventory_v5(root, prefix, failure, checkout_root, critical=INSTALLED_V5_CRITICAL):
+def installed_inventory_v5(root, prefix, failure, checkout_root, critical=INSTALLED_V5_CRITICAL, identity_witnesses=None):
     need(prefix in INSTALLED_V5_ROOTS, 'fixed installed package root')
     checkout_root = Path(checkout_root)
     root = Path(root)
@@ -1141,6 +1153,9 @@ def installed_inventory_v5(root, prefix, failure, checkout_root, critical=INSTAL
                  'installed directory-entry and held file identity')
             if trace['path'] in critical:
                 need(len(raw)>0,'nonempty source-fixed installed package/module role')
+            if identity_witnesses is not None and trace['path'] in identity_witnesses:
+                need((len(raw),sha(raw))==identity_witnesses[trace['path']],
+                     'finite v7 reviewed CUI 408 source identity witness')
             total += len(raw); need(total <= BUILD_CAP and len(out) < 16384,
                                     'installed inventory aggregate cap')
             if critical is INSTALLED_V6_CRITICAL:
@@ -1155,6 +1170,11 @@ def installed_inventory_v5(root, prefix, failure, checkout_root, critical=INSTAL
             if name[len(prefix)+1:] not in out:
                 trace['path']=name;trace['entryStat']=None;trace['file']=None
                 raise ValueError('missing source-fixed installed package/module role')
+    if identity_witnesses is not None:
+        for name in identity_witnesses:
+            if name.startswith(prefix+'/') and name[len(prefix)+1:] not in out:
+                trace['path']=name;trace['entryStat']=None;trace['file']=None
+                raise ValueError('missing finite v7 reviewed CUI 408 source identity witness')
     trace['completedPrefixes'].append(prefix)
     return out
 
@@ -2479,7 +2499,9 @@ def collect_inventory_observation(template_raw,expected,root,env,output_path,fai
     installed={}
     prefixes=INSTALLED_V5_ROOTS if version in (5,6,7) else ('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+(('node_modules/bw-circuit-ui',) if version==4 else ())
     for prefix in prefixes:
-        items=(installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL) if version in (6,7) else
+        items=(installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL,
+               FINITE_V7_CUI_WITNESSES) if version==7 else
+               installed_inventory_v5(Path(root)/prefix,prefix,failure,root,INSTALLED_V6_CRITICAL) if version==6 else
                installed_inventory_v5(Path(root)/prefix,prefix,failure,root) if version==5 else inventory(Path(root)/prefix))
         for path,row in items.items():installed[prefix+'/'+path]=row
     result={'schema':'bw.gui-hdd.inventory-original.v'+str(version),'observationOnly':True,'templateSha256':expected,

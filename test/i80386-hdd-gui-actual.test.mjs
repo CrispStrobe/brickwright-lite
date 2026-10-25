@@ -3137,6 +3137,8 @@ class Originals(unittest.TestCase):
         for name in tuple(value['installedFiles']):
             if name.startswith('node_modules/bw-circuit-ui/'):
                 value['installedFiles'][name]=ROW(('synthetic-408:'+name).encode())
+        for name,(size,sha256) in c.FINITE_V7_CUI_WITNESSES.items():
+            value['installedFiles'][name]={'byteLength':size,'sha256':sha256}
         event=D(base64.b64decode(value['event']['base64']))
         event['label']['name']='x86-hdd-gui-finite-inventory-v7'
         event['pull_request']['body']+='\n'+c.FINITE_V7_BEGIN+'\n'+H(raw)+'\n'+c.FINITE_V7_END
@@ -3192,14 +3194,45 @@ class Originals(unittest.TestCase):
             selected['original']=ROW(E(changed))
             with self.subTest(cut=cut),self.assertRaises(ValueError):
                 r.verify_inventory_original(E(changed),raw,selected)
+    def test_finite_v7_eight_source_identity_witnesses_reject_old_and_hybrid_rows(self):
+        value,raw,expected=self.finite_v7_packet()
+        self.assertEqual(len(c.FINITE_V7_CUI_WITNESSES),8)
+        self.assertEqual(c.FINITE_V7_CUI_WITNESSES,r.FINITE_V7_CUI_WITNESSES)
+        self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v7')
+        for cut in ('complete-old','one-old','one-missing','one-alias','coherent-repin'):
+            changed=copy.deepcopy(value);selected=copy.deepcopy(expected)
+            path=sorted(c.FINITE_V7_CUI_WITNESSES)[0]
+            if cut=='complete-old':
+                for name in changed['installedFiles']:
+                    if name.startswith('node_modules/bw-circuit-ui/'):
+                        changed['installedFiles'][name]=ROW(('synthetic-old:'+name).encode())
+            elif cut in ('one-old','coherent-repin'):
+                changed['installedFiles'][path]=ROW(('synthetic-old:'+path).encode())
+                if cut=='coherent-repin':
+                    selected['dependencyPins']['bw-circuit-ui']=c.HISTORICAL_CUI
+                    changed['dependencyPins']['bw-circuit-ui']=c.HISTORICAL_CUI
+            elif cut=='one-missing':del changed['installedFiles'][path]
+            else:changed['installedFiles'][path+'-alias']=changed['installedFiles'].pop(path)
+            selected['original']=ROW(E(changed))
+            with self.subTest(cut=cut),self.assertRaises(ValueError):
+                r.verify_inventory_original(E(changed),raw,selected)
+        for path in c.FINITE_V7_CUI_WITNESSES:
+            changed=copy.deepcopy(value);selected=copy.deepcopy(expected)
+            changed['installedFiles'][path]=ROW(('synthetic-old:'+path).encode())
+            selected['original']=ROW(E(changed))
+            with self.subTest(stale_path=path),self.assertRaises(ValueError):
+                r.verify_inventory_original(E(changed),raw,selected)
     def test_finite_v7_connected_collector_and_independent_reader(self):
         # Only kernel, tool and installed-tree edges are mocked. The producer
         # constructs the original and the independent reader grades its bytes.
         paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
         selected={name:ROW(('synthetic-408:'+name).encode()) for name in c.INSTALLED_V6_CRITICAL}
+        selected.update({name:{'byteLength':size,'sha256':sha256}
+          for name,(size,sha256) in c.FINITE_V7_CUI_WITNESSES.items()})
         selected['node_modules/bw-board/docs/receipts/zero.stdout']=ROW(b'')
-        def installed(root,prefix,failure,checkout_root,critical):
+        def installed(root,prefix,failure,checkout_root,critical,identity_witnesses=None):
             self.assertIs(critical,c.INSTALLED_V6_CRITICAL)
+            self.assertIs(identity_witnesses,c.FINITE_V7_CUI_WITNESSES)
             return {name.removeprefix(prefix+'/'):row for name,row in selected.items() if name.startswith(prefix+'/')}
         with patch.object(c,'FINITE_INVENTORY_V7_ENABLED',True),self.inventory_edges(paths,finite=True,finite_version=7) as (raw,pin,env,events),self.empty_source_edges(),patch.object(c,'installed_inventory_v5',side_effect=installed) as scan:
             value=c.inventory_observation(raw,pin,pathlib.Path('/checkout'),env,'/out/a.json')
@@ -3232,11 +3265,16 @@ class Originals(unittest.TestCase):
             checkout=pathlib.Path(temporary)
             for name in c.INSTALLED_V6_CRITICAL:
                 path=checkout/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'synthetic-408')
+            tiny_witnesses={name:(len(b'synthetic-408'),H(b'synthetic-408')) for name in c.FINITE_V7_CUI_WITNESSES}
+            for name in tiny_witnesses:
+                path=checkout/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'synthetic-408')
+            witness=checkout/sorted(tiny_witnesses)[0]
             index=checkout/'node_modules/bw-circuit-ui/src/index.js'
             self.assertFalse((checkout/'node_modules/bw-circuit-ui/src/current.js').exists())
-            for state in ('present','missing','empty'):
+            for state in ('present','missing','empty','stale-witness'):
                 if state=='missing':index.unlink()
                 elif state=='empty':index.write_bytes(b'')
+                elif state=='stale-witness':index.write_bytes(b'synthetic-408');witness.write_bytes(b'old-91')
                 with self.inventory_edges(paths,finite=True,finite_version=7) as (raw,pin,env,events):
                     fake_regular=c.regular.side_effect;fake_lstat=c.os.lstat.side_effect
                     event_raw=fake_regular('/event',c.INVENTORY_FAILURE_EVENT_CAP)
@@ -3252,21 +3290,25 @@ class Originals(unittest.TestCase):
                     def selected_lstat(path,*args,**kwargs):
                         if str(path).startswith(str(checkout)+'/'):return real_lstat(path,*args,**kwargs)
                         return fake_lstat(path,*args,**kwargs)
-                    with patch.object(c,'regular',side_effect=selected_regular),patch.object(c.os,'lstat',side_effect=selected_lstat),patch.object(c,'FINITE_INVENTORY_V7_ENABLED',True):
+                    with patch.object(c,'regular',side_effect=selected_regular),patch.object(c.os,'lstat',side_effect=selected_lstat),patch.object(c,'FINITE_INVENTORY_V7_ENABLED',True),patch.object(c,'FINITE_V7_CUI_WITNESSES',tiny_witnesses),patch.object(r,'FINITE_V7_CUI_WITNESSES',tiny_witnesses):
                         value=c.inventory_observation(raw,pin,checkout,env,'/out/a.json')
-                selected={'schema':'bw.gui-hdd.inventory-admission.v7' if state=='present' else 'bw.gui-hdd.inventory-failure-expectation.v7',
-                  'source':source,'template':ROW(raw),'runId':90,'workflowSha':'d'*40,
-                  'dependencyPins':copy.deepcopy(c.FINITE_V7_PINS),
-                  'repositoryVariables':{'BW_FINITE_INVENTORY_V7_SHA256':pin,
-                    'BW_FINITE_INVENTORY_V7_TEMPLATE_B64':base64.b64encode(raw).decode()}}
-                selected['original' if state=='present' else 'failure']=ROW(E(value))
-                if state=='present':
-                    self.assertEqual(value['installedFiles']['node_modules/bw-circuit-ui/src/index.js'],ROW(b'synthetic-408'))
-                    self.assertEqual(r.verify_inventory_original(E(value),raw,selected)['schema'],'bw.gui-hdd.inventory-reader.v7')
-                else:
-                    self.assertEqual(value['installedProgress']['path'],'node_modules/bw-circuit-ui/src/index.js')
-                    self.assertFalse(value['qualified']);self.assertFalse(value['guestApproved'])
-                    self.assertEqual(r.verify_inventory_failure(E(value),raw,selected)['schema'],'bw.gui-hdd.inventory-failure-reader.v7')
+                        selected={'schema':'bw.gui-hdd.inventory-admission.v7' if state=='present' else 'bw.gui-hdd.inventory-failure-expectation.v7',
+                          'source':source,'template':ROW(raw),'runId':90,'workflowSha':'d'*40,
+                          'dependencyPins':copy.deepcopy(c.FINITE_V7_PINS),
+                          'repositoryVariables':{'BW_FINITE_INVENTORY_V7_SHA256':pin,
+                            'BW_FINITE_INVENTORY_V7_TEMPLATE_B64':base64.b64encode(raw).decode()}}
+                        selected['original' if state=='present' else 'failure']=ROW(E(value))
+                        if state=='present':
+                            self.assertEqual(value['installedFiles']['node_modules/bw-circuit-ui/src/index.js'],ROW(b'synthetic-408'))
+                            self.assertEqual(r.verify_inventory_original(E(value),raw,selected)['schema'],'bw.gui-hdd.inventory-reader.v7')
+                        else:
+                            self.assertEqual(value['installedProgress']['path'],str(witness.relative_to(checkout)) if state=='stale-witness' else 'node_modules/bw-circuit-ui/src/index.js')
+                            self.assertFalse(value['qualified']);self.assertFalse(value['guestApproved'])
+                            if state=='stale-witness':
+                                self.assertEqual(value['installedProgress']['file']['sha256'],H(b'old-91'))
+                                self.assertEqual(value['firstFailure']['phase'],'inventory-installed')
+                                self.assertEqual(value['firstFailure']['path'],str(witness.relative_to(checkout)))
+                            self.assertEqual(r.verify_inventory_failure(E(value),raw,selected)['schema'],'bw.gui-hdd.inventory-failure-reader.v7')
     def test_finite_v6_index_transport_reader_and_disabled_route(self):
         value,raw,expected=self.finite_v6_packet()
         self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v6')
