@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+// Binary serialization: independent scalar/cluster bytes, templates and nested arrays.
+struct record {
+    int axis;
+    byte tag;
+    float fraction;
+};
+
+task main()
+{
+    unsigned int value = 4660;
+    string encoded = Flatten(value);
+    NumOut(0, LCD_LINE1, StrLen(encoded));
+    NumOut(0, LCD_LINE1, StrIndex(encoded, 0));
+    NumOut(0, LCD_LINE1, StrIndex(encoded, 1));
+    unsigned int restored = 9;
+    int ok = UnflattenVar(encoded, restored);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, restored);
+
+    record item;
+    item.axis = -1;
+    item.tag = 1;
+    item.fraction = 1.5;
+    encoded = FlattenVar(item);
+    NumOut(0, LCD_LINE1, StrLen(encoded));
+    for (int i = 0; i < StrLen(encoded); i++)
+        NumOut(0, LCD_LINE1, StrIndex(encoded, i));
+    record copy;
+    copy.axis = 7;
+    copy.tag = 8;
+    copy.fraction = 9.0;
+    ok = UnflattenVar(encoded, copy);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, copy.axis);
+    NumOut(0, LCD_LINE1, copy.tag);
+    NumOut(0, LCD_LINE1, copy.fraction * 10);
+
+    int row1[];
+    int row2[];
+    ArrayBuild(row1, -2, 0);
+    ArrayBuild(row2, 258);
+    int grid[][];
+    ArrayBuild(grid, row1, row2);
+    encoded = FlattenVar(grid);
+    NumOut(0, LCD_LINE1, StrLen(encoded));
+    for (int j = 0; j < StrLen(encoded); j++)
+        NumOut(0, LCD_LINE1, StrIndex(encoded, j));
+    int recovered[][];
+    recovered = grid;
+    ok = UnflattenVar(encoded, recovered);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, recovered[0][0]);
+    NumOut(0, LCD_LINE1, recovered[0][1]);
+    NumOut(0, LCD_LINE1, recovered[1][0]);
+
+    // Too few and too many bytes leave the supplied default value intact.
+    restored = 777;
+    ok = UnflattenVar("x", restored);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, restored);
+    ok = UnflattenVar("xyz", restored);
+    NumOut(0, LCD_LINE1, ok);
+    NumOut(0, LCD_LINE1, restored);
+
+    // Embedded zero bytes are data, not a C-string stopping condition.
+    byte raw[];
+    ArrayBuild(raw, 78, 0, 84);
+    encoded = FlattenVar(raw);
+    NumOut(0, LCD_LINE1, StrLen(encoded));
+    NumOut(0, LCD_LINE1, StrIndex(encoded, 0));
+    NumOut(0, LCD_LINE1, StrIndex(encoded, 1));
+    NumOut(0, LCD_LINE1, StrIndex(encoded, 2));
+}

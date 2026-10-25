@@ -21,7 +21,7 @@ import {fileURLToPath} from 'node:url';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VM_DIR = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/routes/nxt-vm');
 const {NxtVm, SNAPSHOT_FORMAT} = await import(path.join(VM_DIR, 'nxt-vm.js'));
-const {parseRxe, VM_STATUS} = await import(path.join(VM_DIR, 'rxe-file.js'));
+const {parseRxe, VM_STATUS, TC, nextEntry} = await import(path.join(VM_DIR, 'rxe-file.js'));
 const {OP, UPDATE} = await import(path.join(VM_DIR, 'nxt-bytecodes.js'));
 const {SYSCALL_NAMES, IMPLEMENTED_SYSCALLS} = await import(path.join(VM_DIR, 'nxt-syscalls.js'));
 
@@ -74,7 +74,7 @@ const run = (name, ms = 3000, io = recorder(), options = {}) => {
 
 test('every fixture is an NXT executable the 1.29 firmware accepts: format 0.6, at least one ready clump', () => {
     for (const name of ['motor-timed', 'rotate-motor', 'touch-bumper', 'ultrasonic-stop', 'arithmetic', 'arrays-strings',
-        'tasks-mutex', 'subroutines', 'sound-timing', 'mailbox']) {
+        'tasks-mutex', 'subroutines', 'sound-timing', 'mailbox', 'serialization', 'serialization-scalars']) {
         const r = parseRxe(fixture(name));
         assert.equal(r.ok, true, `${name}: ${r.detail}`);
         assert.deepEqual(r.program.version, [0, 6], name);
@@ -270,7 +270,7 @@ test('snapshot / restore mid-program gives the same continuation (the physics wo
     assert.throws(() => new NxtVm().restore(snap), /give its bytes/, 'another program needs its bytes');
 });
 
-test('what the VM does not implement stops the program with a named error, never a guess', () => {
+test('FLATTEN executes; unsupported system calls and firmware-invalid instructions retain named refusals', () => {
     // FLATTEN (0x1D) in place of the first NUMTOSTRING of `arithmetic`: same size family (6 bytes).
     const bytes = Uint8Array.from(fixture('arithmetic'));
     const program = parseRxe(bytes).program;
@@ -280,10 +280,8 @@ test('what the VM does not implement stops the program with a named error, never
     const vm = new NxtVm();
     vm.start(bytes);
     vm.advanceTo(100, recorder());
-    assert.equal(vm.status, 'error');
-    assert.equal(vm.error.code, 'UNIMPLEMENTED_OPCODE');
-    assert.equal(vm.error.opcode, 'FLATTEN');
-    assert.equal(vm.error.pc, pc);
+    assert.equal(vm.status, 'stopped');
+    assert.equal(vm.error, null);
     // A system call not implemented: FileOpenRead (0) in place of DrawText (13), its argument cluster unchanged.
     const calls = Uint8Array.from(fixture('arithmetic'));
     const sys = program.code.findIndex(w => (w & 0xff) === OP.SYSCALL && !(w & 0x0800));
@@ -305,4 +303,120 @@ test('what the VM does not implement stops the program with a named error, never
     // The syscall table: 48 calls; those implemented are named in docs/NXT-RXE-VM.md.
     assert.equal(SYSCALL_NAMES.length, 48);
     assert.deepEqual(IMPLEMENTED_SYSCALLS, [9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31]);
+});
+
+test('compiled serialization preserves raw cluster/nested-array bytes, embedded zeros and template defaults', () => {
+    const result = run('serialization');
+    assert.equal(result.vm.status, 'stopped', JSON.stringify(result.vm.error));
+    // Flatten's numeric wrapper promotes the ushort to long: four payload bytes.
+    // UnflattenVar returns success (the inverse of the opcode's error output).
+    assert.deepEqual(result.texts, [
+        '4', '52', '18', '0', '9',
+        '7', '255', '255', '1', '0', '0', '192', '63', '1', '-1', '1', '15',
+        '6', '254', '255', '0', '0', '2', '1', '1', '-2', '0', '258',
+        '0', '777', '0', '777', '3', '78', '0', '84'
+    ]);
+});
+
+test('compiled FlattenVar roundtrips declared-width scalars, float bytes and a terminated string', () => {
+    const result = run('serialization-scalars');
+    assert.equal(result.vm.status, 'stopped', JSON.stringify(result.vm.error));
+    assert.deepEqual(result.texts, ['2', '1', '4660', '1', '-16909060', '4', '0', '0', '0', '191', '1', '-5', '4', '1', 'NXT']);
+});
+
+const serializationPlaces = () => {
+    const vm = new NxtVm();
+    assert.deepEqual(vm.start(fixture('serialization-scalars')), {ok: true});
+    const ids = [];
+    for (let id = 0; id < vm.program.toc.length; id = nextEntry(vm.program.toc, id)) ids.push(id);
+    const arrays = ids.filter(id => vm._type(id) === TC.ARRAY && vm._type(id + 1) === TC.UBYTE);
+    const word = ids.find(id => vm._type(id) === TC.UWORD);
+    const template = ids.find(id => vm._type(id) === TC.UWORD && id !== word);
+    const float = ids.find(id => vm._type(id) === TC.FLOAT);
+    const error = ids.find(id => vm._type(id) === TC.UBYTE || vm._type(id) === TC.SLONG);
+    assert.ok(arrays.length >= 2 && word !== undefined && template !== undefined && float !== undefined && error !== undefined);
+    return {vm, dst: arrays[0], src: arrays[1], word, template, float, error};
+};
+
+test('serialization preserves raw float bits and flatten captures an aliased byte source before resizing', () => {
+    const {vm, dst, src, float, error} = serializationPlaces();
+    const offset = vm.program.toc[float].offset;
+    const bits = [1, 0, 192, 127]; // A quiet NaN payload, tested as storage bytes, never a JS number.
+    vm.s.mem.splice(offset, 4, ...bits);
+    vm._flatten(dst, float);
+    assert.deepEqual(vm._bytes(dst), [...bits, 0]);
+    vm._unflatten(float, error, dst, float);
+    assert.equal(vm._get(error), 0);
+    assert.deepEqual(vm.s.mem.slice(offset, offset + 4), bits);
+    vm._setBytes(src, [78, 0, 84]);
+    vm._flatten(src, src);
+    assert.deepEqual(vm._bytes(src), [78, 0, 84, 0]);
+});
+
+test('unflatten mismatch copies defaults, empty sources fail, and only the final byte count is excluded', () => {
+    const {vm, dst, word, template, error} = serializationPlaces();
+    for (const bytes of [[], [0], [1, 0], [1, 2, 3, 0]]) {
+        vm._set(word, 123);
+        vm._set(template, 777);
+        vm._setBytes(dst, bytes);
+        vm._unflatten(word, error, dst, template);
+        assert.equal(vm._get(error), 1);
+        assert.equal(vm._get(word), 777, 'mismatch must preserve the template value');
+    }
+    // The firmware excludes one byte, rather than validating its value as NUL.
+    vm._setBytes(dst, [52, 18, 255]);
+    vm._unflatten(word, error, dst, word);
+    assert.equal(vm._get(error), 0);
+    assert.equal(vm._get(word), 4660);
+});
+
+test('unflatten respects template-before-source alias order and converts a floating error output', () => {
+    const {vm, dst, src, error, word, float} = serializationPlaces();
+    vm._setBytes(dst, [1, 2, 0]);
+    vm._setBytes(src, [9, 8]);
+    vm._unflatten(dst, error, dst, src);
+    assert.equal(vm._get(error), 1);
+    assert.deepEqual(vm._bytes(dst), [9, 8]);
+    assert.deepEqual(vm._bytes(src), [9, 8]);
+    vm._setBytes(dst, [0]);
+    vm._unflatten(word, float, dst, word);
+    assert.equal(vm._getF(float), 1);
+    vm._setBytes(dst, [52, 18, 0]);
+    vm._unflatten(word, float, dst, word);
+    assert.equal(vm._getF(float), 0);
+});
+
+test('serialization refuses bad byte destinations and allocation beyond the existing memory pool', () => {
+    const {vm, src, dst, word} = serializationPlaces();
+    assert.throws(() => vm._flatten(word, src), error => error.code === 'ERR_ARG');
+    vm._setBytes(src, new Array(17000).fill(65));
+    const before = vm._bytes(dst);
+    assert.throws(() => vm._flatten(dst, src), error => error.code === 'ERR_MEM');
+    assert.deepEqual(vm._bytes(dst), before);
+    assert.equal(vm._count(src), 17000);
+});
+
+test('serialization rejects malformed byte-array metadata and nonnumeric error destinations', () => {
+    const {vm, src, dst, word, error} = serializationPlaces();
+    vm.program.toc[error].type = TC.MUTEX;
+    assert.throws(() => vm._unflatten(word, error, src, word), error => error.code === 'ERR_ARG');
+    vm.s.arrays[vm._dvOf(dst)].elemSize = 2;
+    assert.throws(() => vm._flatten(dst, word), error => error.code === 'ERR_BAD_PTR');
+});
+
+test('serialization continuation is deterministic after a compiled-program snapshot', () => {
+    const bytes = fixture('serialization');
+    const first = new NxtVm({instrPerMs: 1});
+    first.start(bytes);
+    first.advanceTo(40, recorder());
+    const snap = JSON.parse(JSON.stringify(first.snapshot()));
+    const second = new NxtVm();
+    second.restore(snap, bytes);
+    first.drainEvents();
+    second.drainEvents();
+    first.advanceTo(3000, recorder());
+    second.advanceTo(3000, recorder());
+    assert.equal(first.status, 'stopped');
+    assert.deepEqual(second.drainEvents(), first.drainEvents());
+    assert.deepEqual(second.s, first.s);
 });
