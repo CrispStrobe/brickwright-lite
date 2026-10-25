@@ -1,6 +1,6 @@
 # Robot Lab bytecode serialization, virtual files and crane winch
 
-Status: IMPLEMENTED CANDIDATE — hosted qualification and landing pending.
+Status: DONE (implementation) — candidate still requires hosted qualification and landing.
 Owner: Codex, user-authorized three-package continuation, in order.
 Isolated branch `lane/robot-bytecode-files-crane-20261025`.
 Base `a7f8348315ef7b31f33d8b236bf43d6e86c53a03`.
