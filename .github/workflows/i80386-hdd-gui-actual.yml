@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # The finite v6 metadata event is consumed. Its producer remains available
-  # for reading historical originals, while the execution gate is retired.
+  # The finite v6 metadata event is consumed. Its standalone reader and
+  # historical protocol remain; the execution gate is retired.
   finite-inventory-six:
     if: >-
       ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
