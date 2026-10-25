@@ -29,6 +29,48 @@ test('dormant v8 dispatch route preserves all nine prior PR jobs', () => {
     }
 });
 
+test('internal V8 tag is excluded from six path-filtered pushes without changing other refs or jobs', () => {
+    const reviewed = new Map([
+        ['ack-z80-cpm','88d5a8b005b78faaa420ee65c74cabcb5e55c7b561e91647ed7e62cc525c8e4e'],
+        ['basic-oracle','88725722f8784da8b11e2c1ee7bacea11ba959df16666d93bdab9cdc9b8d1783'],
+        ['makecode-arcade-bases','1b9f0bc31c91bd383967bf1ee50767e242457ff80463ddc6163a6aca2a11b8b4'],
+        ['pascal-ack-image','4f652ee179626ea3a6d529ec9e394012da5f66f38c99f3b08658c9eff4ba601e'],
+        ['rust-notices','1e7c8f78570ed1c1cdcaca6a87649ebd9ed91b4a7117c80da717131162688b70'],
+        ['target-performance','b6b7fc0c4e5684cde4647d730b03ce086a00572cc7d990c5da41a9d9ea2c3363'],
+    ]);
+    const block="  push:\n    branches: ['**']\n    tags-ignore: ['bw-gui-hdd-actual-v8-*']\n";
+    const source = new Map();
+    const check = (name, workflow) => {
+        assert.equal(workflow.split(block).length,2,`${name}: one exact branch and tag filter`);
+        assert.equal(createHash('sha256').update(workflow.replace(block,'  push:\n')).digest('hex'),
+            reviewed.get(name),`${name}: every preexisting trigger, path, job and step is byte-held`);
+        const branches=workflow.match(/^    branches: \['([^']+)'\]$/gm) || [];
+        const tags=workflow.match(/^    tags-ignore: \['([^']+)'\]$/gm) || [];
+        assert.deepEqual(branches,["    branches: ['**']"]);
+        assert.deepEqual(tags,["    tags-ignore: ['bw-gui-hdd-actual-v8-*']"]);
+        const accepts = ref => ref.startsWith('refs/heads/') ? branches.length===1 :
+            ref.startsWith('refs/tags/') ? !ref.slice(10).startsWith('bw-gui-hdd-actual-v8-') : false;
+        for (const ref of ['refs/heads/main','refs/heads/lane/a/b','refs/tags/v1.2.3',
+            'refs/tags/ordinary/a','refs/tags/bw-gui-hdd-actual-v7-'+'a'.repeat(40)])
+            assert.equal(accepts(ref),true,`${name}: preserve ${ref}`);
+        assert.equal(accepts('refs/tags/bw-gui-hdd-actual-v8-'+'a'.repeat(40)),false,
+            `${name}: reviewed V8 tag has no unrelated push workflow`);
+    };
+    for (const name of reviewed.keys()) {
+        const workflow=fs.readFileSync(new URL(`../.github/workflows/${name}.yml`,import.meta.url),'utf8');
+        source.set(name,workflow);
+        check(name,workflow);
+    }
+    const name='pascal-ack-image',pascal=source.get(name);
+    for (const mutation of [
+        pascal.replace("    branches: ['**']\n",''),
+        pascal.replace("    branches: ['**']","    branches: ['main']"),
+        pascal.replace('bw-gui-hdd-actual-v8-*','bw-gui-hdd-actual-v7-*'),
+        pascal.replace('bw-gui-hdd-actual-v8-*','v*'),
+        pascal.replace('          push: true','          push: false'),
+    ]) assert.throws(() => check(name,mutation),'a branch, tag or image-publish drift must refuse');
+});
+
 // These are manufactured original-byte controls, never a browser/guest replay.
 // The independent reader is loaded directly; no producer grading helper is used.
 const controls = String.raw`
