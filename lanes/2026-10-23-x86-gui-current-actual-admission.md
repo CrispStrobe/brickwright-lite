@@ -66,6 +66,19 @@ gaps. Use public repository paths and freely usable examples only. This new
 doc does not transfer ownership of any existing guide, media, Arcade source,
 supplier pin, or workflow outside the four source paths listed above.
 
+## V5 source candidate — 2026-10-24
+
+The four owned controller/reader/workflow/test paths now have a reviewed
+candidate for the separately admitted native Fontconfig original and finite
+current-job file readbacks, exact frontend source/tree and installed Circuit UI
+census. It stages only the selected Apache-licensed font and notice under an
+owned current-job configuration; browser font equivalence remains unproved.
+Historical readers and failures are held. Current actual guards remain false.
+Pure source controls and manufactured cross-contract originals are not a browser
+or guest result. Require final-head source CI and separately admitted current
+Build/runtime/inputs/resources/event before the existing real HDD-persistence
+and forward-debug scenarios. No QEMU adapter or supplier-pin change is included.
+
 ## Current finite inventory v4 bootstrap — 2026-10-24
 
 The [source candidate, PR1318](https://github.com/CrispStrobe/brickwright-lite/pull/1318),
@@ -127,3 +140,15 @@ not a permanent request pin: regenerate and independently review head/tree,
 source-file, workflow, template/request SHA and Build bindings whenever the
 selected source changes. An unbound roster proposal is not an admitted body,
 variable, event or actual request.
+
+## Current-source composition checkpoint — 2026-10-24
+
+PR1318's native/GUI source head passed its exact-head source checks. The
+current composition retains every newer mainline workflow census and pointer
+row plus unrelated Robot Lab and Build workflow changes; its native five and
+GUI twenty-one selected source blobs remain byte-identical to that published
+head. This new head needs fresh exact-head CI and a separately bound current
+Build, including its actual checkout and installed graph, before metadata
+selection. The native and finite-inventory events are unselected, and the
+browser/guest actual guard remains false. Previous draft request SHAs do not
+authorize an event on the composed head.
