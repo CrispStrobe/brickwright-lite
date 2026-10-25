@@ -44,3 +44,25 @@ the full pin/provenance gates, all fourteen current GUI groups and every
 enabled exact-head check on the final joint source before adoption. Preserve
 original failures. The separate finite-V7/V8 migration, historical-role policy
 and actual-event selection remain outside this task.
+
+## Local static-identity contribution
+
+Prepared locally for review: the three overlay records and two tracked
+metadata twins now declare the qualified Board. Each tracked JSON differs
+only in its single forty-character `bwBoardPin` value. The three bounded
+JSON mirror copies agree exactly; the free-386 mirror remains ignored and is
+not force-added. Every other field, origin, notice, source hash, binary body
+and tracked mode is unchanged.
+
+Independent old/target Git comparisons found the four retained ROMs identical
+to both supplier revisions. The existing DOS image still matches its recorded
+hash, and the DOS builder, assembler, repository IO.SYS and fetch sources are
+unchanged. This is retained byte/source identity, not a fresh DOS image build,
+media acquisition, firmware run or broader licence conclusion.
+
+Both unchanged App Store copyleft source-reader controls pass locally, and
+JSON validity, pin-only differences and tracked/ignored mirror checks pass.
+The original package failure remains preserved. The package owner's joint
+source, pin/provenance gates, installed graph, all current GUI groups and
+exact-head hosted qualification remain pending; this component is not landed
+or adopted independently and authorizes no actual event.
