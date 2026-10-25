@@ -77,3 +77,7 @@ the package owner's final composition must pass all fourteen groups and every
 enabled exact-head check. Local Node 22.23.2 checks do not replace the hosted
 pinned toolchain. No package, lock, generator, installed library, actual event,
 frontend Build or guest result was created by this source component.
+
+## Retained historical qualification boundary
+
+Retained PR1397 evidence records 34 successful checks, six skips and five successful PR runs. Its final push changed only the GUI lockfile and lane note, so it did not select the Rust push route. No final-head Rust duplicate was found in the retained records. An exhaustive unfiltered check-run-ID and attempt census was not retained; keep this archival limit separate from the actual Build/GUI evidence. The forward head requires a complete all-run/job/check admission.
