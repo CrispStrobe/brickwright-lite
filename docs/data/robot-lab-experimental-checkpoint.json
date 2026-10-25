@@ -253,7 +253,7 @@
       "originalLdrawSha256": "fc2db194bb6cd990e4bb319fc21c49f8177231a21296e0640ecca539d4bc7fde",
       "canonicalLdrawSha256": "6136a05cd5eedbbc822513471ec6fb394afb2e17af929502d5010d07df07ee6e",
       "originalProgramEntry": "05-bloom/bloom.bw",
-      "programSha256": "3f12b7ff0fd3f85e1882f8d2dee2d1744fc907d59fcad4a6bf553c8b022a96dc",
+      "programSha256": "d050c34a652675c3cc3a277d2faf76b9ccc163d8a0216ff77d100abd478b7a78",
       "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
       "basicChecks": {
         "id": "bloom",
@@ -340,6 +340,12 @@
           "notes": "Spans reported to 0.1 cm; trims chase rounding. Cage starts ~0.3 cm small (settling) and closes with slack."
         },
         "scope": "one headless run on the app branch engine; not a physical build"
+      },
+      "programRevision": {
+        "originalProgramSha256": "3f12b7ff0fd3f85e1882f8d2dee2d1744fc907d59fcad4a6bf553c8b022a96dc",
+        "revisedProgramSha256": "d050c34a652675c3cc3a277d2faf76b9ccc163d8a0216ff77d100abd478b7a78",
+        "reason": "The original passed or failed on a one-frame timing shift: at 72-144 deg/s the three scissor rings lose sync near full expansion and the loop diverges (NaN in the app). Revision: coarse moves at 36 deg/s; bounded trim with a 4-deg fine search; fail-safe hold when rings disagree, total trim exceeds 450 deg, the span stops following the motor or the error grows. Targets, thresholds and the final shape guard unchanged; completes at start offsets 0-1000 ms.",
+        "date": "2026-10-25"
       }
     },
     {
@@ -1491,7 +1497,7 @@
       "originalLdrawSha256": "988a2b615a77b1429a384b8ca9d27da501c3ebe33b9f9585cc8e66ecd6080589",
       "canonicalLdrawSha256": "482d814c67ef84c8084db07b5d781926b6f5493330b4e7d655f01332488c9fa4",
       "originalProgramEntry": "rack-decoder/rack-decoder.bw",
-      "programSha256": "24fb9c6a65af2cca2e642ce461a73774575a73038292dbb9e90037e65f227cc7",
+      "programSha256": "b6247884f620858ed872f88414aaeec924357312f0f47fe964e91d28a933e53f",
       "adaptation": "Author/license comments normalized to user-authorized CrispStrobe BSD-3-Clause; geometry unchanged; MPD wrapper generated from canonical LDR; program bytes unchanged.",
       "basicChecks": {
         "id": "rack-decoder",
@@ -1539,7 +1545,9 @@
         "originalProgramSha256": "dae855291f0abab2522bdcb1c10a6aaeae3464b63898d38616e93c01c4c919d7",
         "revisedProgramSha256": "24fb9c6a65af2cca2e642ce461a73774575a73038292dbb9e90037e65f227cc7",
         "reason": "Original per-motor arrival guards raced the other motor: in stage 3 motor A still drove the shared pinion carriage while motor B ran its 0.5 deg / 0.5 deg/s check, so the run failed nondeterministically (headless stage 3, browser stage 8). Revision: each receiver waits until both coarse moves have stopped before settling, trimming and checking. Thresholds, targets and stages unchanged.",
-        "date": "2026-10-25"
+        "date": "2026-10-25",
+        "secondRevisedProgramSha256": "b6247884f620858ed872f88414aaeec924357312f0f47fe964e91d28a933e53f",
+        "secondReason": "Dwell guards checked one instantaneous speed sample; stopping a 3 deg/s trim with hold pulls the shaft onto the controller reference with stick-slip speed blips. Revision: position on every sample against 0.5 deg plus mean speed over 0.5 s windows; post-dwell drift over the 1 s dwell; a coarse move ending > 3 deg short (B stall near 20 deg/s) is re-issued at most twice. Thresholds unchanged; completes at start offsets 0-1000 ms."
       },
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -2501,6 +2509,27 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "paired-door-sync",
+      "title": "Paired Door Sync — one pinion, two opposed racks",
+      "placements": 88,
+      "archive": "brickwright-model-lab branch agent/bw-opencode-mech-r1-20261025/synchronized_paired_doors @ fc69ad75e950a37c032cf8 (review_ready)",
+      "originalLdrawSha256": "9a9db4de7a34f374abba5183299024b5cebd3410dd13ea5ca32fa3bc5e22d6c3",
+      "canonicalLdrawSha256": "43f96eae054d5897a83ad50af292a38283b7b1ab2686348f13fa1b853079d0c1",
+      "program": "paired-door-sync.bw",
+      "programSha256": "483ebd35317bbc9840a4a2dd285ee90d2cdd3fb3a124568a8221c3c0d9bab101",
+      "adaptation": "Built by the automated model-builder agent bw-opencode-mech-r1-20261025 (OpenCode, deepseek-v4.1-flash). !LICENSE path pointed at the packaged licence; lessons renamed to the model id; keywords flattened. Geometry and program bytes unchanged.",
+      "supplierClaims": "Hosted API (worker fa1bb8c, Jolt bw.6): racks follow +/-0.1396263 mm/deg within 4e-6 mm, sum within 2e-6 mm; control with the front chain removed keeps the rear law.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "agent hosted-API attempts 001-003 plus one headless run on this branch engine (bw.7), COLD 0 and 1000 both complete"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "WEAK: control deletes the whole front chain rather than disengaging the mesh",
       "browserLoad": "NOT_RUN",
       "savedProjectReplay": "NOT_RUN"
     }

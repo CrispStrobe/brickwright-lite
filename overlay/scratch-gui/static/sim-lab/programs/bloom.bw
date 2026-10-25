@@ -9,6 +9,12 @@
 # The actual part reporters round coordinates to 1 mm. Their averaged span gives
 # a controller arrival measurement; independent all-pivot validation qualifies
 # the complete model and is not replaced by these three coarse spans.
+# Revision 2026-10-25: the coarse moves run at 36 deg/s (at 72 and 144 deg/s the
+# cage rings desynchronise when the drive stops or reverses near full expansion and
+# the scissor loop can blow up); the trim refuses to drive a cage whose rings
+# disagree, stops when the span stops responding or runs away, spends at most 450
+# motor degrees, and finishes with a bounded 4-degree search because the part
+# reporters' 1 mm resolution is coarser than the 0.04 arrival window.
 # The 3-degree encoder budget covers the native 1-degree finite-move completion
 # threshold and brake-to-hold transition: at 72:1, this is 0.042 output degrees.
 DEVICE SPIKE
@@ -32,6 +38,9 @@ GLOBAL trimAttempts
 GLOBAL correction
 GLOBAL homeSpan
 GLOBAL homeAngle
+GLOBAL trimTotal
+GLOBAL fineSteps
+GLOBAL spanBefore
 
 WHEN flag clicked:
   set completed to 0
@@ -67,7 +76,7 @@ WHEN flag clicked:
   set homeAngle to (lab motor A angle)
   set stage to 2
   set target to (homeAngle + 1296)
-  set requestedSpeed to 144
+  set requestedSpeed to 36
   broadcast "Bloom move" and wait
   set spanTarget to 15.271395
   set trimScale to 0.00483
@@ -76,7 +85,7 @@ WHEN flag clicked:
   wait 1 seconds
   set stage to 4
   set target to homeAngle
-  set requestedSpeed to 144
+  set requestedSpeed to 36
   broadcast "Bloom move" and wait
   set spanTarget to homeSpan
   set trimScale to 0.00573
@@ -110,6 +119,8 @@ WHEN I receive "Bloom move":
 
 WHEN I receive "Bloom trim":
   set trimAttempts to 0
+  set trimTotal to 0
+  set fineSteps to 0
   broadcast "Bloom measure" and wait
   repeat until ((abs of (spanTarget - spanMean)) < 0.04) or (trimAttempts > 2):
     set correction to ((spanTarget - spanMean) / trimScale)
@@ -117,15 +128,49 @@ WHEN I receive "Bloom trim":
       set correction to 150
     IF correction < -150 THEN:
       set correction to -150
-    lab run motor A for correction degrees at 36 degrees per second
-    lab stop motor A hold
-    wait 0.3 seconds
-    change trimAttempts by 1
-    broadcast "Bloom measure" and wait
+    IF (abs of correction) < 8 THEN:
+      set trimAttempts to 3
+    IF trimAttempts < 3 THEN:
+      broadcast "Bloom trim step" and wait
+      change trimAttempts by 1
+  repeat until ((abs of (spanTarget - spanMean)) < 0.04) or (fineSteps > 11):
+    set correction to 4
+    IF spanTarget < spanMean THEN:
+      set correction to -4
+    broadcast "Bloom trim step" and wait
+    change fineSteps by 1
   IF (((abs of (spanTarget - spanMean)) > 0.04) or ((abs of (spanXY - spanMean)) > 0.15)) or (((abs of (spanYZ - spanMean)) > 0.15) or ((abs of (spanZX - spanMean)) > 0.15)) THEN:
     set failed to 1
     lab stop motor A hold
     say "Actual-shape arrival failed. Inspect the cage and Reset before retrying."
+    stop all
+
+WHEN I receive "Bloom trim step":
+  IF (((abs of (spanXY - spanMean)) > 0.3) or ((abs of (spanYZ - spanMean)) > 0.3)) or ((abs of (spanZX - spanMean)) > 0.3) THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The cage rings disagree, so the trim will not drive them. Motor A holds; Reset before retrying."
+    stop all
+  IF (trimTotal + (abs of correction)) > 450 THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The trim budget of 450 motor degrees is spent. Motor A holds; Reset before retrying."
+    stop all
+  set spanBefore to spanMean
+  lab run motor A for correction degrees at 36 degrees per second
+  lab stop motor A hold
+  wait 0.3 seconds
+  change trimTotal by (abs of correction)
+  broadcast "Bloom measure" and wait
+  IF ((abs of correction) > 19.9) and (((spanMean - spanBefore) * correction) < ((0.3 * trimScale) * (correction * correction))) THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The cage span stopped following motor A. Motor A holds; Reset before retrying."
+    stop all
+  IF (abs of (spanTarget - spanMean)) > ((abs of (spanTarget - spanBefore)) + 0.2) THEN:
+    set failed to 1
+    lab stop motor A hold
+    say "The cage span ran away from its target. Motor A holds; Reset before retrying."
     stop all
 
 WHEN I receive "Bloom measure":

@@ -7,6 +7,20 @@ DEVICE SPIKE
 # Coarse moves use target minus a fresh unwrapped encoder reading and a positive speed magnitude.
 # Each trim uses bounded signed-speed feedback, then direct hold; it never controls a passive output.
 # Both same-message receivers run concurrently and join before each teaching dwell.
+# Revision 2026-10-25: a coarse move that ends short (a stall where the racks share the
+# pinion load) is re-issued at most twice from a fresh reading; the dwell guards judge
+# drift as the mean speed over 0.5 s windows (1 s for the closing check) and the
+# position against the same 0.5 degree limit, instead of one instantaneous speed
+# sample, which caught the hold controller settling onto its target.
+GLOBAL dwellA
+GLOBAL dwellB
+GLOBAL windowOpen
+GLOBAL windowStart
+GLOBAL windowA
+GLOBAL windowB
+GLOBAL driftA
+GLOBAL driftB
+
 WHEN flag clicked:
   set directionA to 1
   set directionB to -1
@@ -80,8 +94,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -119,8 +135,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -158,8 +176,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -197,8 +217,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -236,8 +258,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -275,8 +299,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -314,8 +340,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -353,8 +381,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -392,8 +422,10 @@ WHEN flag clicked:
     stop all
   set movingMask to 0
   set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
   wait 1 seconds
-  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
     set failed to 1
     set arrived to 0
     lab stop motor A hold
@@ -413,6 +445,10 @@ WHEN I receive "Rack Decoder move":
   if (abs of (targetA - (lab motor A angle))) > 0.15 then:
     lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
     lab stop motor A hold
+  repeat 2:
+    if (abs of (targetA - (lab motor A angle))) > 3 then:
+      lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+      lab stop motor A hold
   set coarseDoneA to 1
   # Both racks share the carried pinion: settle and trim only after the other coarse move has stopped.
   wait until coarseDoneA = 1 and coarseDoneB = 1
@@ -452,6 +488,10 @@ WHEN I receive "Rack Decoder move":
   if (abs of (targetB - (lab motor B angle))) > 0.15 then:
     lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
     lab stop motor B hold
+  repeat 2:
+    if (abs of (targetB - (lab motor B angle))) > 3 then:
+      lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+      lab stop motor B hold
   set coarseDoneB to 1
   # Both racks share the carried pinion: settle and trim only after the other coarse move has stopped.
   wait until coarseDoneA = 1 and coarseDoneB = 1
@@ -500,12 +540,32 @@ WHEN I receive "Rack Decoder watchdog":
       lab stop motor B hold
       say "A rack input exceeded the declared software envelope. Reset."
       stop all
+    if arrived = 0 then:
+      set windowOpen to 0
     if arrived = 1 then:
-      if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+      if windowOpen = 0 then:
+        set windowOpen to 1
+        set windowStart to timer
+        set windowA to (lab motor A angle)
+        set windowB to (lab motor B angle)
+      if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 then:
         set failed to 1
         set arrived to 0
         lab stop motor A hold
         lab stop motor B hold
         say "A comparison-window input guard failed. Both inputs held. Reset."
         stop all
+      if (timer - windowStart) >= 0.5 then:
+        set driftA to (((lab motor A angle) - windowA) / (timer - windowStart))
+        set driftB to (((lab motor B angle) - windowB) / (timer - windowStart))
+        if (abs of driftA) > 0.5 or (abs of driftB) > 0.5 then:
+          set failed to 1
+          set arrived to 0
+          lab stop motor A hold
+          lab stop motor B hold
+          say "A comparison-window input guard failed. Both inputs held. Reset."
+          stop all
+        set windowStart to timer
+        set windowA to (lab motor A angle)
+        set windowB to (lab motor B angle)
     wait 0.05 seconds

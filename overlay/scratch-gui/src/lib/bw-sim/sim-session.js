@@ -423,6 +423,18 @@ const makeHubs = ({defs, registry, hubState, createHub}) => {
  */
 export const MAX_BATCH_STEPS = 20;
 
+/** The index of the first body whose pose (7 numbers each, as posesOf and snapshot() give) is not finite, or -1. */
+const nonFiniteBody = bodies => {
+    for (let i = 0; i < bodies.length; i++) if (!Number.isFinite(bodies[i])) return Math.floor(i / 7);
+    return -1;
+};
+
+/**
+ * Why a run stops when the solver diverges: a NaN or infinite pose never heals, and stepping
+ * it on only makes the worker slow and every reader of the poses (the view, the API) fail.
+ */
+const divergence = (bodyId, ms) => new Error(`the solver diverged: body ${bodyId} has no finite pose at ${(ms / 1000).toFixed(2)} s`);
+
 export class SimSession {
     /**
      * @param {object} options
@@ -539,8 +551,17 @@ export class SimSession {
             this.runner.tick(ms);
             return;
         }
+        if (this.failed) return;
         if (this.bridge) this.bridge.tick(ms);
         else this.core.step(ms / 1000);
+        const snap = this.core.snapshot();
+        const bad = nonFiniteBody(snap.bodies);
+        if (bad >= 0) {
+            // The poses stay those of the last finite step (snapshot()); time stops there.
+            this._fail(divergence(snap.bodyIds[bad], this.time + ms));
+            return;
+        }
+        this._good = snap;
         this.time += ms;
         this._advanced();
     }
@@ -624,8 +645,15 @@ export class SimSession {
                 this._post(batch, true);
                 return;
             }
-            stats.diverged += this.bridge.replay(reply.frames);
         }
+        // A diverged batch reaches neither the hubs nor the mirror: they keep the last finite step.
+        const bad = nonFiniteBody(reply.bodies);
+        if (bad >= 0) {
+            stats.mainMs += now() - start;
+            this._fail(divergence(this.core.bodyIds[bad], this.time + batch.ms));
+            return;
+        }
+        if (this.bridge) stats.diverged += this.bridge.replay(reply.frames);
         this.core.update(reply);
         stats.batches++;
         stats.steps += batch.steps || 0;
@@ -658,13 +686,14 @@ export class SimSession {
     _fail (error) {
         this.failed = error;
         this._inFlight = null;
-        const waiting = this._idle;
+        const waiting = this._idle || [];
         this._idle = [];
         for (const w of waiting) w.reject(error);
         if (typeof console !== 'undefined') console.error('Sim Lab physics worker:', error);
     }
 
-    snapshot () { return this.core.snapshot(); }
+    /** The poses now; after a divergence on this thread, those of the last finite step. */
+    snapshot () { return this.failed && this._good ? this._good : this.core.snapshot(); }
 
     /** Lockstep scenes: simulated ms per wall ms lately (null before it is measured, or without lockstep). */
     get realTimeFactor () {
