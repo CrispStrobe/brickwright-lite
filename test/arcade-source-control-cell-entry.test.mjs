@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
+import {GENERATED_HELPER_PROFILES} from '../overlay/scratch-gui/src/lib/bw-makecode/generated-helper-recognition.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {createSourceControlCellEntry} from '../overlay/scratch-gui/src/lib/bw-makecode/source-control-cell-entry.js';
 import {analyseSourceValueProducers,validateProcedureConstraintSource} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
@@ -109,4 +110,57 @@ test('post-test readiness survives Code, repeated saved JSON conversion and SB3 
  }
  const archive=await JSZip.loadAsync(await(await creator.generateSB3()).arrayBuffer());const json=await archive.file('project.json').async('string');bodies(JSON.parse(json));
  const reopened=projectJsonToArcade(json);assert.deepEqual(reopened.unsupported,[]);bodies(create(reopened.files).project);
+});
+
+const predicates=`function equal(a:any,b:any):boolean{return a===b}function less(a:any,b:any):boolean{return a<b}`;
+const emittedGuards=predicates+`let value=0;function use(n:number){}function run(){let flag=0;flag=(0+0);while(equal(flag,(0+0))){if(!less(0,1)){flag=(0+1);}if(equal(flag,(0+0))){value=2;}if(equal(flag,(0+0))){use(value);flag=(0+1);}}}run();`;
+const inspectPredicate=s=>{const p=parseMakeCodeTs(s,GENERATED_HELPER_PROFILES.ordinary),r=read(p),proof=createSourceControlCellEntry(p);assert.ok(r);return {p,r,proof};};
+const predicateReady=(s,expected)=>{const result=inspectPredicate(s);assert.equal(result.proof.isInitializedRead(result.r),expected,s);return result;};
+test('pure constant arithmetic and canonical comparison calls preserve original physical readiness',()=>{
+ const {p,proof,r}=predicateReady(emittedGuards,true),before=JSON.stringify(p);
+ const direct=parse(emittedGuards);assert.equal(createSourceControlCellEntry(direct).isInitializedRead(read(direct)),true);
+ assert.deepEqual(validateProcedureConstraintSource(direct,{ordinaryPrimitiveSdkNumbers:true}),[]);
+ assert.deepEqual(validateProcedureConstraintSource(p,{ordinaryPrimitiveSdkNumbers:true}),[]);
+ assert.equal(proof.isInitializedRead({...r}),false);
+ assert.equal(JSON.stringify(p),before);assert.equal(p.body.filter(n=>n.type==='FunctionDeclaration'&&['equal','less'].includes(n.name)).length,2);
+ assert.equal(all(p).filter(n=>n.type==='Call'&&n.callee?.name==='equal').length,3);
+ predicateReady(emittedGuards.replaceAll('equal','renamed'),true);
+ for(const zero of ['(+0)','(2-2)','(2*0)','(0/2)','(2%2)','((0+0))'])predicateReady(emittedGuards.replace('flag=(0+0)','flag='+zero),true);
+});
+test('control constants reject effects names objects strings nonfinite values and calls including predicate calls',()=>{
+ for(const zero of ['unknown()','equal(0,0)','less(1,0)','other','({} as any)','("0"+0)','(1/0)','(1e308*1e308)'])predicateReady(emittedGuards.replace('flag=(0+0)','flag='+zero),false);
+ const deep='(0+'.repeat(20)+'0'+')'.repeat(20);predicateReady(emittedGuards.replace('flag=(0+0)','flag='+deep),false);
+});
+test('helper body binding arity and complete reference census cannot be supplied by names or metadata',()=>{
+ for(const edit of [
+  emittedGuards.replace('return a===b','return a==b'),
+  emittedGuards.replace('return a===b','return b===a'),
+  emittedGuards.replace('return a===b','value=3;return a===b'),
+  emittedGuards.replace('a:any,b:any','a:any,b:any=0'),
+  emittedGuards.replace('function equal(','function equal<T>('),
+  emittedGuards+'let alias=equal;',
+  emittedGuards+'register(equal);',
+  emittedGuards.replace('while(equal(flag,(0+0)))','while(equal(flag,other))'),
+  emittedGuards.replace('use(value);flag=(0+1);','use(value);let stored=equal(flag,0);flag=(0+1);'),
+  emittedGuards+'equal=other;',
+  emittedGuards+'function equal(a:any,b:any):boolean{return a===b}',
+  emittedGuards.replace('while(equal(flag,(0+0)))','while(equal(flag))'),
+  emittedGuards.replace('while(equal(flag,(0+0)))','while(equal(flag,(0+0),1))'),
+  emittedGuards.replace('while(equal(flag,(0+0)))','while((function(equal:any){return equal(flag,0)})(other))'),
+  emittedGuards.replace('if(equal(flag,(0+0))){use(value);','if(ordinary(flag,(0+0))){use(value);')
+ ])predicateReady(edit,false);
+ const result=inspectPredicate(emittedGuards),call=all(result.p).find(n=>n.type==='Call'&&n.callee?.name==='equal');
+ call.typeArguments={};assert.equal(createSourceControlCellEntry(result.p).isInitializedRead(result.r),false);
+});
+test('strict predicate values keep Boolean and Number distinct and unknown guards remain possible',()=>{
+ predicateReady(predicates+'let value=0;function use(n:number){}function run(unknown:boolean){let flag=1;if(unknown){value=2;flag=true;}if(equal(flag,true))use(value);}run(false);',true);
+ predicateReady(predicates+'let value=0;function use(n:number){}function run(unknown:boolean){let flag=true;if(equal(flag,1))value=2;if(equal(flag,true))use(value);}run(false);',false);
+ predicateReady(predicates+'let value=0;function use(n:number){}function run(unknown:boolean){let flag=0;if(unknown){if(equal(flag,0))value=2;}if(equal(flag,0))use(value);}run(false);',false);
+});
+test('proved helper calls expire on body callee and equal-shape physical replacement without revival',()=>{
+ for(const change of ['body','callee']){
+  const {p,r,proof}=predicateReady(emittedGuards,true),fn=p.body.find(n=>n.name==='equal'),call=all(p).find(n=>n.type==='Call'&&n.callee?.name==='equal');
+  const holder=change==='body'?fn:call,key=change==='body'?'body':'callee',old=holder[key];
+  holder[key]=JSON.parse(JSON.stringify(old));assert.equal(proof.current(),false);holder[key]=old;assert.equal(proof.isInitializedRead(r),false);
+ }
 });

@@ -35,10 +35,24 @@ const denied=Object.freeze({current:()=>true,isInitializedRead:()=>false});
 const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','calls']);
 const MAX_CONTROLS=8,MAX_STATES=256,MAX_NODES=6000,MAX_WORK=100000;
 const absent=Symbol('unexecuted');
-const literal=n=>{
-    if(n?.type==='Number'&&['number','string'].includes(typeof n.value)&&String(n.value).trim()!==''&&Number.isFinite(Number(n.value)))return {value:Number(n.value)};
-    if(n?.type==='Boolean'&&[true,false,'true','false'].includes(n.value))return {value:n.value===true||n.value==='true'};
-    return null;
+// Pure finite constants only: control writers never accept calls or names.
+const constant=node=>{
+    let work=0;
+    const visit=(n,depth=0)=>{
+        if(++work>64||depth>16)return null;
+        if(n?.type==='Parenthesized')return visit(n.expression,depth+1);
+        if(n?.type==='Number'&&['number','string'].includes(typeof n.value)&&String(n.value).trim()!==''&&Number.isFinite(Number(n.value)))return {value:Number(n.value)};
+        if(n?.type==='Boolean'&&[true,false,'true','false'].includes(n.value))return {value:n.value===true||n.value==='true'};
+        if(n?.type==='Unary'&&['+','-'].includes(n.op)){
+            const a=visit(n.argument,depth+1);return a&&typeof a.value==='number'?{value:n.op==='+'?+a.value:-a.value}:null;
+        }
+        if(n?.type==='Binary'&&['+','-','*','/','%'].includes(n.op)){
+            const a=visit(n.left,depth+1),b=visit(n.right,depth+1);if(!a||!b||typeof a.value!=='number'||typeof b.value!=='number')return null;
+            const value=n.op==='+'?a.value+b.value:n.op==='-'?a.value-b.value:n.op==='*'?a.value*b.value:n.op==='/'?a.value/b.value:a.value%b.value;
+            return Number.isFinite(value)?{value}:null;
+        }
+        return null;
+    };return visit(node);
 };
 const valueKey=v=>v===absent?'u':typeof v==='boolean'?'b'+Number(v):'n'+String(v);
 
@@ -62,19 +76,49 @@ export function createSourceControlCellEntry(program){
         const left=n.type==='Assignment'?n.left:n.type==='Update'?n.argument:null;
         if(left?.type==='Identifier'){const b=binding(left);if(!writers.has(b))writers.set(b,[]);writers.get(b).push(n);}
     }
+    const predicateCalls=new WeakMap();let directSyntax=null;
+    const plainCall=call=>{
+        if(call?.type!=='Call'||call.callee?.type!=='Identifier'||[call.optional,call.isNew,call.constructorCall,call.callee.optional].some(v=>v!==undefined&&v!==false)||
+            call.typeArguments!==undefined&&(!Array.isArray(call.typeArguments)||call.typeArguments.length)||!Array.isArray(call.args)||call.args.length!==2)return false;
+        for(let i=0;i<2;i++)if(!Object.hasOwn(call.args,String(i))||!call.args[i]||typeof call.args[i].type!=='string'||call.args[i].type==='Spread')return false;
+        return true;
+    };
+    for(const fn of program.body){
+        if(fn?.type!=='FunctionDeclaration'||fn.exported||fn.params?.length!==2||new Set(fn.params).size!==2||
+            !fn.params.every(name=>typeof name==='string'&&name!==fn.name&&/^[A-Za-z_$][\w$]*$/.test(name))||fn.body?.length!==1||fn.body[0]?.type!=='Return'||
+            fn.parameterDefaults?.length||fn.optionalParams?.length||fn.typeParameters?.length||fn.restParam||fn.async||fn.isAsync||fn.generator||fn.isGenerator)continue;
+        const value=fn.body[0].value,op=value?.type==='Binary'&&value.op;
+        if(!['===','!==','<'].includes(op)||value.left?.type!=='Identifier'||value.right?.type!=='Identifier'||value.left.name!==fn.params[0]||value.right.name!==fn.params[1]||
+            binding(value.left)?.kind!=='parameter'||binding(value.right)?.kind!=='parameter'||binding(value.left)?.node!==fn||binding(value.right)?.node!==fn)continue;
+        let neutral='__bwControlPredicate';while(fn.params.includes(neutral))neutral+='_';
+        const names=new Map([[fn.name,neutral]]),body=`function ${neutral}(${fn.params[0]}: any, ${fn.params[1]}: any): boolean { return ${fn.params[0]} ${op} ${fn.params[1]} }`;
+        if(!syntax.root(fn))continue;
+        if(!syntax.matches(fn,body,names)){
+            // Final emitted-source validation uses the public direct parser
+            // profile. Require its same complete canonical body, not a
+            // metadata-erased clone of the original declaration.
+            directSyntax ||= inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.direct);
+            if(!directSyntax.root(fn)||!directSyntax.matches(fn,body,names))continue;
+        }
+        const calls=syntax.calls(fn,[2],new Set([fn]));
+        if(!calls?.length||calls.some(call=>!plainCall(call)||syntax.declarationAt(call.callee)!==fn))continue;
+        for(const call of calls)predicateCalls.set(call,op);
+    }
     const conditionUse=ref=>{
         let child=ref,parent=parents.get(child);
-        if(parent?.type==='Assignment'&&parent.left===child&&parent.op==='='&&literal(parent.right))return parents.get(parent)?.type==='ExpressionStatement'&&parents.get(parent).expr===parent;
-        if(parent?.type==='Binary'&&['===','!=='].includes(parent.op)&&literal(parent.left===child?parent.right:parent.left)){child=parent;parent=parents.get(child);}
+        if(parent?.type==='Assignment'&&parent.left===child&&parent.op==='='&&constant(parent.right))return parents.get(parent)?.type==='ExpressionStatement'&&parents.get(parent).expr===parent;
+        while(parent?.type==='Parenthesized'&&parent.expression===child){child=parent;parent=parents.get(child);}
+        if(parent?.type==='Binary'&&['===','!=='].includes(parent.op)&&constant(parent.left===child?parent.right:parent.left)){child=parent;parent=parents.get(child);}
+        else if(parent?.type==='Call'&&predicateCalls.has(parent)&&parent.args.includes(child)&&constant(parent.args[parent.args[0]===child?1:0])){child=parent;parent=parents.get(child);}
         while(parent&&(parent.type==='Parenthesized'&&parent.expression===child||parent.type==='Unary'&&parent.op==='!'&&parent.argument===child||['Binary','Logical'].includes(parent.type)&&['&&','||'].includes(parent.op))){child=parent;parent=parents.get(child);}
         return !!parent&&(['If','While','Conditional'].includes(parent.type)&&parent.test===child);
     };
     const controlsByOwner=new Map();
     for(const b of lexical.bindings){
         const rows=declarations.get(b)||[],owner=b.functionOwner;
-        if(b.kind!=='local'||owner?.kind!=='function'||rows.length!==1||rows[0].statement.kind!=='let'||!literal(rows[0].decl.init))continue;
+        if(b.kind!=='local'||owner?.kind!=='function'||rows.length!==1||rows[0].statement.kind!=='let'||!constant(rows[0].decl.init))continue;
         if(!(references.get(b)||[]).some(ref=>parents.get(ref)?.type!=='Assignment'&&conditionUse(ref)))continue;
-        if((writers.get(b)||[]).some(n=>n.type!=='Assignment'||n.op!=='='||!literal(n.right)))continue;
+        if((writers.get(b)||[]).some(n=>n.type!=='Assignment'||n.op!=='='||!constant(n.right)))continue;
         if((references.get(b)||[]).some(ref=>lexical.scopes.get(ref)?.functionOwner!==owner||!conditionUse(ref)))continue;
         if(!controlsByOwner.has(owner))controlsByOwner.set(owner,[]);controlsByOwner.get(owner).push(b);
     }
@@ -85,7 +129,7 @@ export function createSourceControlCellEntry(program){
         const reads=analyseOwner(owner,controls);if(reads){for(const read of reads)ready.add(read);used=true;}
     }
     let expired=false;
-    const current=()=>{if(expired)return false;try{if(!ambientCurrent()||!syntax.isCurrent())expired=true;}catch(error){expired=true;throw error;}return !expired;};
+    const current=()=>{if(expired)return false;try{if(!ambientCurrent()||!syntax.isCurrent()||directSyntax&&!directSyntax.isCurrent())expired=true;}catch(error){expired=true;throw error;}return !expired;};
     return used?Object.freeze({current,isInitializedRead:node=>current()&&ready.has(node)}):denied;
 
     function analyseOwner(owner,controls){
@@ -137,18 +181,25 @@ export function createSourceControlCellEntry(program){
                 if(n.left?.type!=='Identifier')states=expr(n.left,states);
                 else if(n.op!=='=')states=expr(n.left,states);
                 states=expr(n.right,states);
-                if(n.left?.type==='Identifier')states=each(states,s=>{const b=binding(n.left);if(n.op==='='){s.known.add(b);if(index.has(b)){const v=literal(n.right);if(!v){ok=false;return new Map();}s.values[index.get(b)]=v.value;}}return relation([s]);});
+                if(n.left?.type==='Identifier')states=each(states,s=>{const b=binding(n.left);if(n.op==='='){s.known.add(b);if(index.has(b)){const v=constant(n.right);if(!v){ok=false;return new Map();}s.values[index.get(b)]=v.value;}}return relation([s]);});
                 return states;
             }
             const slots={Parenthesized:['expression'],Binary:['left','right'],Logical:['left','right'],Unary:['argument'],Update:['argument'],Member:['object'],Index:['object','index'],Call:['callee','args'],Array:['items']};
             for(const k of slots[n.type]||[]){if(Array.isArray(n[k]))for(const child of n[k])states=expr(child,states);else states=expr(n[k],states);}
             return states;
         };
-        const evaluate=(n,s)=>{
-            if(n?.type==='Parenthesized')return evaluate(n.expression,s);const v=literal(n);if(v)return v;
+        const evaluate=(n,s,depth=0)=>{
+            if(depth>16)return null;
+            if(n?.type==='Parenthesized')return evaluate(n.expression,s,depth+1);const v=constant(n);if(v)return v;
             if(n?.type==='Identifier'&&index.has(binding(n))){const value=s.values[index.get(binding(n))];if(value===absent){ok=false;return null;}return {value};}
-            if(n?.type==='Unary'&&n.op==='!'){const a=evaluate(n.argument,s);return a?{value:!a.value}:null;}
-            if(n?.type==='Binary'&&['===','!=='].includes(n.op)){const a=evaluate(n.left,s),b=evaluate(n.right,s);return a&&b?{value:n.op==='==='?a.value===b.value:a.value!==b.value}:null;}
+            if(n?.type==='Unary'&&n.op==='!'){const a=evaluate(n.argument,s,depth+1);return a?{value:!a.value}:null;}
+            if(n?.type==='Binary'&&['===','!=='].includes(n.op)){const a=evaluate(n.left,s,depth+1),b=evaluate(n.right,s,depth+1);return a&&b?{value:n.op==='==='?a.value===b.value:a.value!==b.value}:null;}
+            if(n?.type==='Call'&&predicateCalls.has(n)){
+                const a=evaluate(n.args[0],s,depth+1),b=evaluate(n.args[1],s,depth+1),op=predicateCalls.get(n);
+                if(!a||!b)return null;
+                if(op==='<'&&(typeof a.value!=='number'||typeof b.value!=='number'))return null;
+                return {value:op==='==='?a.value===b.value:op==='!=='?a.value!==b.value:a.value<b.value};
+            }
             return null;
         };
         const condition=(n,states)=>{
@@ -164,7 +215,7 @@ export function createSourceControlCellEntry(program){
         const statement=(n,states)=>{
             if(!ok||!n)return flow(states);
             if(n.type==='Declaration'){
-                for(const decl of n.decls){states=expr(decl.init,states);states=each(states,s=>{const b=lookup(n,decl.name);if(decl.init)s.known.add(b);if(index.has(b))s.values[index.get(b)]=literal(decl.init).value;return relation([s]);});}return flow(states);
+                for(const decl of n.decls){states=expr(decl.init,states);states=each(states,s=>{const b=lookup(n,decl.name);if(decl.init)s.known.add(b);if(index.has(b))s.values[index.get(b)]=constant(decl.init).value;return relation([s]);});}return flow(states);
             }
             if(n.type==='ExpressionStatement')return flow(expr(n.expr,states));
             if(n.type==='Block')return sequence(n.body,states,lexical.scopes.get(n));
