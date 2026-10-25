@@ -51,6 +51,29 @@ API is not a completion claim for those projects. Claim each additional path
 before implementation; retain dependency-identity conflicts and missing context
 instead of silently repairing the original inputs.
 
+### Reduce the raw partials without changing the inputs
+
+A diagnostic review of the unchanged 38 partial inputs identifies 20 with
+missing artwork, animation or song context, four using the historical
+per-sprite `onOverlap` API, two with primitive/Array procedure-argument proof
+failures, and 12 requiring extension or source-binding review. These review
+buckets are not execution verdicts or a promise that each has one cause.
+
+For missing-context cases, first locate the authentic retained project assets,
+dependency versions and root identity. Compare the raw source and prepared
+context separately, preserving hashes. Never substitute tutorial starter code,
+invent artwork, or report a prepared project as a repaired raw input. A retained
+historical compiler success does not establish current compilation or runtime.
+Publish a completion only after the actual prepared project passes conversion,
+original/emitted MakeCode, native execution and editable saved-project routes.
+
+For the two procedure-proof cases, inspect the actual Array length/index
+producers, recursive callers, loop writers and dormant procedure entries.
+Annotations do not establish initialization or actual numeric values. Scope
+that proof independently of the Image consumer work. For historical overlap,
+establish receiver identity, registration and callback lifetime semantics from
+an applicable original implementation before lowering to current kind events.
+
 ### Residual unit families: reproduce the boundary before changing it
 
 The retained 70-failure baseline includes 21 groups outside the 49 native-addition
