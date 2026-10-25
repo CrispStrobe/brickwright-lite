@@ -1,11 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {createHash} from 'node:crypto';
 import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../',import.meta.url));
 const readOriginalControlSummary = stdout => JSON.parse(stdout.trim());
+
+test('dormant v8 dispatch registration preserves the entire PR workflow', () => {
+    const workflow = fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
+    const registration = `  workflow_dispatch:\n    inputs:\n      pull_request:\n        description: Owned ready pull request number\n        required: true\n        type: string\n      source_head:\n        description: Reviewed 40-hex source head\n        required: true\n        type: string\n      request_sha256:\n        description: Reviewed canonical request SHA-256\n        required: true\n        type: string\n      tag_name:\n        description: One reviewed source tag name\n        required: true\n        type: string\n`;
+    const anchor = 'on:\n  pull_request:\n    types: [opened, synchronize, reopened, labeled]\n';
+    assert.equal(workflow.split(registration).length,2,'one exact closed four-string manual trigger');
+    assert.ok(workflow.includes(anchor+registration),'manual trigger follows the unchanged PR trigger');
+    assert.equal(createHash('sha256').update(workflow.replace(registration,'')).digest('hex'),
+        '29b2a042fe32c928fb5dbc7a4bef3035af9900eff1f7f51ac4b71e9c0781c7a2',
+        'all permissions, concurrency, five job guards and their steps retain the reviewed bytes');
+});
 
 // These are manufactured original-byte controls, never a browser/guest replay.
 // The independent reader is loaded directly; no producer grading helper is used.
