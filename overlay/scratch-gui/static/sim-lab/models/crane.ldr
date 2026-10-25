@@ -163,16 +163,16 @@
 0 STEP
 0 // Thread the rope from the retained drum over the tip guide and tie it to the hook link.
 0 !BW ID hookLink
-1 71 30 -230 -182.4871 0 1 0 0 0 1 1 0 0 32316.dat
+1 71 30 -190 -182.4871 0 1 0 -1 0 0 0 0 1 32316.dat
 0 STEP
 0 !BW ID loadPin60
-1 0 30 -210 -182.4871 1 0 0 0 1 0 0 0 1 6558.dat
+1 0 30 -190 -202.4871 1 0 0 0 1 0 0 0 1 6558.dat
 0 !BW ID loadPin80
-1 0 30 -190 -182.4871 1 0 0 0 1 0 0 0 1 6558.dat
+1 0 30 -190 -162.4871 1 0 0 0 1 0 0 0 1 6558.dat
 0 STEP
 0 !BW ID load
-1 4 10 -190 -192.4871 0 0 1 1 0 0 0 1 0 3701.dat
+1 4 10 -200 -182.4871 0 0 -1 0 1 0 1 0 0 3701.dat
 0 !BW ID loadCounterweight
-1 4 50 -190 -172.4871 0 0 -1 1 0 0 0 -1 0 3701.dat
+1 4 50 -200 -182.4871 0 0 1 0 1 0 -1 0 0 3701.dat
 0 STEP
-0 !BW ROPE hoistCord 415.1 hoistDrum tipGuide hookLink
+0 !BW ROPE hoistCord 495.1 hoistDrum tipGuide hookLink

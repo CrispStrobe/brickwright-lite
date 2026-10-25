@@ -129,6 +129,8 @@ test('it compiles to the original slew/luff ratios and a retained, geared drum w
     assert.ok(Math.abs(rope.radiusM - 0.0028) < 1e-12);
     assert.ok(Math.hypot(rope.hook.local[0], rope.hook.local[2]) < 1e-9,
         'the balanced payload COM lies directly below its rope tie');
+    assert.ok(rope.hook.local[1] > 0.001 && rope.hook.local[1] < 0.005,
+        'the compact spreader keeps a positive 1–5 mm gravity lever, without an orientation constraint');
     const point = p => m.bodies.find(b => b.id === p.body).position.map((x, i) => x + p.local[i]);
     const points = [...rope.points, rope.hook].map(point);
     const length = points.slice(1).reduce((sum, p, i) => sum + len(sub(p, points[i])), 0);
@@ -413,6 +415,27 @@ if (!existsSync(missing)) {
         const rise = Math.max(...h) - h[0];
         t.diagnostic(`no lift: the load rose at most ${(rise * 1000).toFixed(1)} mm`);
         assert.ok(rise < 0.005, `the load still rose ${rise} m`);
+    });
+
+    test('the retained reverse-only lowering control cannot launch the suspended load', async t => {
+        // Retain the earlier input which still lowered B after its positive lift
+        // was removed, alongside the separate control that holds both B and C.
+        const lower = PROGRAM.replace(/^ {2}run motor B clockwise 1800 degrees\n/m, '')
+            .replace(/^ {2}run motor C (?:counterclockwise|clockwise) 540 degrees\n/gm, '');
+        assert.notEqual(lower, PROGRAM);
+        const result = await run(lower);
+        assert.deepEqual(result.issues, []);
+        assert.deepEqual(result.run.unsupported, []);
+        t.diagnostic(`reverse-only phase observations: ${JSON.stringify(phaseObservations(result))}`);
+        const bJoint = result.mechanism.actuators.find(a => a.port === 'B').joint;
+        const end = result.track.at(-1);
+        const turn = (end.joints[bJoint].angle - result.track[0].joints[bJoint].angle) * DEG;
+        assert.ok(Math.abs(turn + 1800) < 5, 'B really completes the reverse lowering command');
+        const load = bodyOf(result.mechanism, 'load');
+        const heights = result.track.map(f => f.bodies[load].position[1]);
+        assert.ok(heights.every(Number.isFinite));
+        const rise = Math.max(...heights) - heights[0];
+        assert.ok(rise < 0.005, `the reverse-only control still rose ${rise} m`);
     });
 
     test('the actual crane program hoists, holds and pays out according to its rope geometry', async t => {

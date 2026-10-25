@@ -13,7 +13,7 @@
 // linear actuator whose motor (B, on the right post) turns the actuator's pivot axle through two 16T gears
 // and the axle its spindle through two 12T bevel gears (1:1:1). The actuator's eye sits 3 holes up the boom
 // and its body pivots 5 holes under the boom pivot, so its 120..180 LDU travel swings the boom from about
-// 4° to past 70°. A free rope-hung load uses a 5L link and matched Technic bricks
+// 4° to past 70°. A free rope-hung load uses a horizontal 5L spreader and matched flat Technic bricks
 // 1 x 4 on each side. Motor C drives a retained winch shaft on the left post;
 // the rope runs from its drum over a guide at the boom tip to the independent hanging load.
 // LDraw frame: x lateral, y down, z backwards; the boom works in the y-z plane, (u, v) = (-z, -y).
@@ -192,14 +192,17 @@ pinAlong('tipGuideAxle', '3705.dat', 0, W(Q, 50), X);
 gearOn('tipGuide', '3713.dat', 71, W(Q, 30), X);
 gearOn('tipStopInner', '4265c.dat', 71, W(Q, 15), X);
 gearOn('tipStopOuter', '4265c.dat', 71, W(Q, 65), X);
-beam('hookLink', '32316.dat', 71, W(uvAdd(Q, [0, -160]), 30), X, Y);
-for (const d of [60, 80]) pinAlong(`loadPin${d}`, '6558.dat', 0, W(uvAdd(Q, [0, -(d + 120)]), 30), X);
-// Technic brick 1 x 4 with holes standing on end (its length down, its holes along x, its studs facing
-// forward): local x → down, local y → back (+z), local z → +x. Its holes are 10 LDU up its local y.
-place('load', '3701.dat', 4, add(W(uvAdd(Q, [0, -200]), 10), [0, 0, -10]), Y, [0, 0, 1], X);
-// The reflected brick balances both horizontal COM offsets around the rope tie.
-// A 3L pin crosses brick + link + brick (three 20 LDU thicknesses).
-place('loadCounterweight', '3701.dat', 4, add(W(uvAdd(Q, [0, -200]), 50), [0, 0, 10]), Y, [0, 0, -1], [-1, 0, 0]);
+// A compact horizontal spreader carries two matched flat bricks. The rope
+// still supports an independent dynamic body; no orientation joint is added.
+// Placing the masses beside the tie reduces its pitch lever and gives the
+// landed load two broad, flat contact surfaces instead of narrow brick ends.
+const H = W(uvAdd(Q, [0, -200]), 30);
+beam('hookLink', '32316.dat', 71, H, X, [0, 0, 1]);
+for (const [id, dz] of [[60, -20], [80, 20]]) pinAlong(`loadPin${id}`, '6558.dat', 0, add(H, [0, 0, dz]), X);
+// 3701 pinholes are at local y=+10: origin y=H_y−10 aligns them with
+// the spreader/pin centres. Each 3L pin crosses brick + beam + brick.
+place('load', '3701.dat', 4, add(H, [-20, -10, 0]), [0, 0, 1], Y, [-1, 0, 0]);
+place('loadCounterweight', '3701.dat', 4, add(H, [20, -10, 0]), [0, 0, -1], Y, X);
 
 // Derive the taut length from the same placed circles and hook-top rule used by the editor/compiler.
 const sim = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/src/lib/bw-sim');

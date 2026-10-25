@@ -52,8 +52,12 @@ brick download/start controls. Focused local controls: 23 NXT VM, 26 EV3 VM and
 three virtual-brick tests; ten NXT and fourteen EV3 source mutations are rejected.
 The crane adds a retained C drum, moving guide and balanced rope-hung payload.
 After measured dynamic hold/lean/yaw/slack failures, the next candidate adds four
-physical pinned support feet and phase diagnostics, retaining every tolerance,
-original motor target and timing limit. Qualification remains pending.
+physical pinned support feet and phase diagnostics. The feet reduce measured base
+yaw below 0.05 degrees, but the retained unit run still fails hold, hook alignment
+and sustained slack. A compact horizontal spreader and balanced flat load now
+address the measured lowering/floor-contact behavior, retaining every tolerance,
+original motor target and timing limit, including the reverse-only lowering
+control. Qualification of this repair remains pending.
 Four pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,
