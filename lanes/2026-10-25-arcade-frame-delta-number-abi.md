@@ -32,11 +32,14 @@ Under `overlay/scratch-vm/src/`:
   `extensions/crispstrobe/arcade/frame-delta-number.js`.
 - `util/bw-primitive-owner.js`: this exact reporter role and existing engine
   before/after/finish receipt hooks; preserve every existing consumer and hook.
-- `extensions/crispstrobe/arcade/index.js`, `arcade/console-inspect-values.js`
-  and `extensions/crispstrobe/adapter.js`: genuine source/adapter/declaration
+- `extensions/crispstrobe/arcade/index.js`,
+  `extensions/crispstrobe/arcade/console-inspect-values.js` and
+  `extensions/crispstrobe/adapter.js`: genuine source/adapter/declaration
   binding, actual single read and structural/completed-result consumers.
 
-Focused source owner tests, a native frame Number caller/authoring control,
+New `test/arcade-frame-delta-number-owner.test.mjs`,
+`test/arcade-frame-delta-number-native.test.mjs` and
+`test/arcade-frame-delta-number-project.test.mjs`,
 existing `test/arcade-frame-delta-number-source.test.mjs`, exact GUI test rows,
 this claim and Arcade capability/handoff/next-steps docs. If a shared cached
 primitive helper needs a change, claim that separately rather than broadening
