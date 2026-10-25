@@ -23,7 +23,7 @@ export default async function handler(req, res) {
         const admission = createAdmission({master, store, epoch: process.env.MODEL_API_ADMISSION_EPOCH, repository: backend.repository, workflow: backend.workflow});
         const gateway = createGateway({tokens, master, backend, admission}), url = new URL(req.url, 'https://model-api.invalid'), route = url.searchParams.get('route');
         const path = route !== null ? '/v1/' + route : url.pathname.replace(/^\/api/, '');
-        const result = await gateway({method: req.method, path, authorization: req.headers.authorization, body: req.method === 'POST' ? await readBody(req) : undefined});
+        const result = await gateway({method: req.method, path, authorization: req.headers.authorization, body: req.method === 'POST' ? await readBody(req, {res}) : undefined});
         reply(res, result.status, result.body);
     } catch (error) {
         reply(res, error instanceof ApiError ? error.status : 503, {error: {code: error instanceof ApiError ? error.code : 'configuration',

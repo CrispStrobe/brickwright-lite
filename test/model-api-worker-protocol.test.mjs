@@ -51,3 +51,24 @@ test('bounded controller refuses aliases and preserves unknown existing output r
  writeFileSync(f.paths.input,'owned-existing-data');assert.notEqual(f.run('prepare',[f.paths.event,f.paths.input,f.paths.meta]).status,0);assert.equal(readFileSync(f.paths.input,'utf8'),'owned-existing-data');
  }finally{f.cleanup();}
 });
+
+test('reports carry the installed physics engine package identity, or say it is unavailable',async()=>{
+ const {engineAssetIdentity}=await import('../tools/model-api/lib/engine-identity.mjs');const {createHash}=await import('node:crypto');const {mkdirSync}=await import('node:fs');
+ const root=mkdtempSync(path.join(tmpdir(),'engine-identity-')),dir=path.join(root,'packages/scratch-gui/node_modules/jolt-physics');
+ try{
+  const rootUrl=new URL('file://'+root+'/');
+  assert.deepEqual(engineAssetIdentity({root:rootUrl,simd:true}),{available:false,package:'jolt-physics',entry:'wasm-simd-compat',reason:'engine-package-unreadable'});
+  mkdirSync(path.join(dir,'dist'),{recursive:true});
+  writeFileSync(path.join(dir,'package.json'),JSON.stringify({version:'1.1.0-bw.9',exports:{'./wasm-compat':{default:'./dist/base.js'},'./wasm-simd-compat':{default:'./dist/simd.js'}}}));
+  writeFileSync(path.join(dir,'dist/base.js'),'base');writeFileSync(path.join(dir,'dist/simd.js'),'simd');
+  writeFileSync(path.join(root,'packages/scratch-gui/package-lock.json'),JSON.stringify({packages:{'node_modules/jolt-physics':{version:'1.1.0-bw.9',resolved:'https://example.invalid/jolt-physics-1.1.0-bw.9.tgz',integrity:'sha512-fixture'}}}));
+  const hash=v=>createHash('sha256').update(v).digest('hex');
+  const simd=engineAssetIdentity({root:rootUrl,simd:true}),base=engineAssetIdentity({root:rootUrl,simd:false});
+  assert.deepEqual(simd,{available:true,package:'jolt-physics',version:'1.1.0-bw.9',entry:'wasm-simd-compat',entrySha256:hash('simd'),lockVersion:'1.1.0-bw.9',lockResolved:'https://example.invalid/jolt-physics-1.1.0-bw.9.tgz',lockIntegrity:'sha512-fixture',versionMatchesLock:true});
+  assert.equal(base.entry,'wasm-compat');assert.equal(base.entrySha256,hash('base'));
+  writeFileSync(path.join(root,'packages/scratch-gui/package-lock.json'),JSON.stringify({packages:{'node_modules/jolt-physics':{version:'1.1.0-bw.6'}}}));
+  const stale=engineAssetIdentity({root:rootUrl,simd:false});assert.equal(stale.versionMatchesLock,false);assert.equal(stale.version,'1.1.0-bw.9');assert.equal(stale.lockIntegrity,null);
+  writeFileSync(path.join(dir,'package.json'),JSON.stringify({version:'1.1.0-bw.9',exports:{'./wasm-compat':{default:'../../escape.js'}}}));
+  assert.equal(engineAssetIdentity({root:rootUrl,simd:false}).available,false);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
