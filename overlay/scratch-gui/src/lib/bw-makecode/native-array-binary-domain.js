@@ -714,6 +714,13 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                     }
                     if(node.type==='Index'){
                         const receiver=unwrap(node.object);
+                        // An element of a binding every declaration of which states
+                        // a primitive Array type (exported PXT) is that primitive or undefined.
+                        if(receiver?.type==='Identifier'&&variable(receiver)){
+                            const binding=bindingAt(receiver);
+                            const rows=binding==null?[]:bindings.nodes.filter(each=>each.type==='Declaration').flatMap(each=>(each.decls||[]).filter(decl=>bindingAt(each,decl.name)===binding));
+                            if(rows.length&&rows.every(decl=>['string[]','number[]','boolean[]'].includes(decl.typeName)))return true;
+                        }
                         if(!receiver||!allocations(receiver).length)return false;
                         const elements=graph.arrayElementTypesAt(actual(receiver));
                         return [...elements].every(type=>typeof type==='string'&&type!=='Opaque');
