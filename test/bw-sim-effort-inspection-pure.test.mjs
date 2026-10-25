@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createRollingResistance} from '../overlay/scratch-gui/src/lib/bw-sim/physics/rolling.js';
+import {createRollingResistance,rollingRadius} from '../overlay/scratch-gui/src/lib/bw-sim/physics/rolling.js';
 const vec = (x=0,y=0,z=0) => ({GetX:()=>x,GetY:()=>y,GetZ:()=>z});
 function bench(mass, factor) {
     let vy=0;
@@ -76,4 +76,29 @@ test('actual inspector method returns solver properties, adjustment flags, indep
     const api=Function('ensureAlive','bodyMap','J','inertiaOf',`return {${coreSource.slice(start,end)}}`)(()=>{},bodyMap,{EMotionType_Static:0},()=>tensor.map(r=>[...r]));
     const d=api.bodyDynamics('b');assert.equal(d.solverMassKg,0.02);assert.equal(d.configuredMassKg,0.01);assert.equal(d.gravityFactor,0.5);assert.equal(d.massAdjusted,true);assert.equal(d.inertiaAdjusted,true);assert.deepEqual(d.centerOfMassWorld,[1,2,3]);d.inertiaKgM2[0][0]=99;assert.equal(api.bodyDynamics('b').inertiaKgM2[0][0],0.1);
     const s=api.bodyDynamics('s');assert.equal(s.motion,'static');assert.equal(s.solverMassKg,null);assert.equal(s.inertiaKgM2,null);assert.equal(s.gravityFactor,null);assert.equal(s.massAdjusted,false);assert.equal(s.inertiaAdjusted,false);
+});
+
+import {validateCompiledMechanism,upgradeMechanismV1} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
+test('both authored hosted fixtures validate and normalize to exact actuator, gear, role and collision contracts without loading Jolt',()=>{
+    const source=readFileSync(new URL('./bw-sim-effort-inspection-jolt.test.mjs',import.meta.url),'utf8');
+    const definitions=source.slice(source.indexOf('const body='),source.indexOf('const near='));
+    const freefall=source.slice(source.indexOf('    const m={version:1'),source.indexOf('    m.bodies[1].rollingResistance'));
+    const fixtures=Function(`${definitions}${freefall};return [mechanism(),m];`)();
+    for(const fixture of fixtures){
+        assert.deepEqual(validateCompiledMechanism(fixture),[]);
+        const lifted=upgradeMechanismV1(fixture);assert.equal(lifted.version,2);
+        for(const field of ['hubs','actuators','couplings','devices','noCollide'])assert.ok(Array.isArray(lifted[field]),field);
+        assert.deepEqual(validateCompiledMechanism(lifted),[]);
+        assert.ok(lifted.bodies.every(b=>b.role&&b.collisionGroup));
+        assert.ok(lifted.joints.every(j=>lifted.noCollide.some(pair=>pair.includes(j.body1)&&pair.includes(j.body2))));
+    }
+    const motor=upgradeMechanismV1(fixtures[0]).actuators[0];assert.equal(motor.joint,'j');assert.equal(motor.maxTorqueNm,0.1);assert.equal(motor.maxSpeedRadPerSec,20);
+    const geared=upgradeMechanismV1(fixtures[1]);assert.equal(geared.couplings[0].kind,'gear');assert.equal(geared.couplings[0].ratio,-1/3);
+    assert.ok(geared.noCollide.some(pair=>pair.join('|')==='g1|g2'));
+    for(const id of ['g1','g2']) {
+        const wheel=geared.bodies.find(b=>b.id===id),joint=geared.joints.find(j=>j.body2===id);
+        assert.equal(rollingRadius(wheel,joint),wheel.colliders[0].radius);
+        assert.equal(wheel.motion,'dynamic');
+    }
+    const broken=structuredClone(fixtures[1]);delete broken.gears[0].type;assert.ok(validateCompiledMechanism(broken).length>0);
 });

@@ -2,6 +2,7 @@
 // Hosted actual-Jolt controls: never substituted by the pure boundary suite.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {upgradeMechanismV1} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {loadJolt,createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js';
 const DT=0.005;
 const body=(id,massKg,position,radius=0.1)=>({id,massKg,position,motion:massKg?'dynamic':'static',rotation:[0,0,0,1],colliders:[{shape:'cylinder',radius,halfHeight:0.01}],parts:[],linearDamping:0,angularDamping:0});
@@ -9,7 +10,7 @@ const motor={port:'A',maxTorqueNm:0.1,maxSpeedRadPerSec:20};
 const mechanism=()=>({version:1,gravity:[0,0,0],bodies:[body('base',0,[0,-1,0]),body('rotor',1,[0,0,0])],joints:[{id:'j',type:'hinge',body1:'base',body2:'rotor',point:[0,0,0],axis:[0,1,0],motor}],gears:[],diagnostics:[]});
 const near=(a,b,tol)=>assert.ok(Math.abs(a-b)<=tol,`${a} vs ${b} within ${tol}`);
 test('actual solver signed torque, braking power, COM/inertia and rollback match angular momentum',async()=>{
-    const J=await loadJolt();const core=createPhysicsCore(J,mechanism(),{stepHz:200});
+    const J=await loadJolt();const core=createPhysicsCore(J,upgradeMechanismV1(mechanism()),{stepHz:200});
     try {
         assert.equal(core.jointDynamics('j'),null);core.step(0);assert.equal(core.jointDynamics('j'),null);
         const props=core.bodyDynamics('rotor');near(props.solverMassKg,1,1e-7);near(props.inertiaKgM2[1][1],0.005,1e-7);
@@ -28,7 +29,7 @@ test('actual freely falling floored gear assembly has no floor normal load',asyn
     const J=await loadJolt();
     const m={version:1,gravity:[0,-9.81,0],bodies:[body('frame',1,[0,4,0]),body('g1',0.003,[0,5,0],0.005),body('g2',0.007,[0.016,5,0],0.012)],joints:[{id:'j1',type:'hinge',body1:'frame',body2:'g1',point:[0,5,0],axis:[0,1,0]},{id:'j2',type:'hinge',body1:'frame',body2:'g2',point:[0.016,5,0],axis:[0,1,0]}],gears:[{id:'gear',type:'gear',joint1:'j1',joint2:'j2',ratio:-1/3}],diagnostics:[]};
     m.bodies[1].rollingResistance=0.05;m.bodies[2].rollingResistance=0.05;
-    const core=createPhysicsCore(J,m,{stepHz:200});
+    const core=createPhysicsCore(J,upgradeMechanismV1(m),{stepHz:200});
     try {
         const p=core.bodyDynamics('g1');assert.ok(p.massAdjusted&&p.inertiaAdjusted);near(p.solverMassKg,0.02,1e-7);near(p.gravityFactor,0.003/0.02,1e-6);
         for(let i=0;i<20;i++)core.step(DT);
