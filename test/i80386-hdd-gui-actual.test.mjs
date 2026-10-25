@@ -3,10 +3,32 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import vm from 'node:vm';
-import {spawnSync} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../',import.meta.url));
 const readOriginalControlSummary = stdout => JSON.parse(stdout.trim());
+const runControlChildren = async (specs,deadlineMs) => {
+    const started=performance.now(),children=[];let expired=false;
+    const timer=setTimeout(()=>{expired=true;for(const child of children)child.kill('SIGKILL');},deadlineMs);
+    const launch=spec=>new Promise(resolve=>{
+        const child=spawn(spec.argv[0],spec.argv.slice(1),{cwd:root,stdio:['pipe','pipe','pipe']});
+        children.push(child);
+        const output={stdout:[],stderr:[]},length={stdout:0,stderr:0};let error=null,overflow=false;
+        for(const stream of ['stdout','stderr'])child[stream].on('data',chunk=>{
+            length[stream]+=chunk.length;
+            if(length[stream]>4*1024*1024){overflow=true;child.kill('SIGKILL');}
+            else output[stream].push(chunk);
+        });
+        child.on('error',failure=>{error=failure;});
+        child.on('close',(code,signal)=>resolve({code,signal,error,overflow,
+            stdout:Buffer.concat(output.stdout).toString('utf8'),
+            stderr:Buffer.concat(output.stderr).toString('utf8')}));
+        child.stdin.on('error',failure=>{error??=failure;child.kill('SIGKILL');});
+        child.stdin.end(spec.input || '');
+    });
+    try{return {results:await Promise.all(specs.map(launch)),expired,elapsedMs:performance.now()-started};}
+    finally{clearTimeout(timer);}
+};
 
 test('armed V8 source preserves nine prior PR jobs with explicit V7 execution retirement', () => {
     const workflow = fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
@@ -4504,16 +4526,30 @@ test('original controls stdout is one complete JSON summary without ignored outp
     }
 });
 
-test('standalone original reader: complete manufactured packet and coherent negative controls', () => {
+test('parallel original control deadline and child failures cannot be ignored', async () => {
+    const failure=await runControlChildren([{argv:['/usr/bin/python3','-c','import sys;sys.exit(3)']}],1000);
+    assert.equal(failure.results[0].code,3);assert.equal(failure.expired,false);
+    const timeout=await runControlChildren([{argv:['/usr/bin/python3','-c','import time;time.sleep(1)']}],10);
+    assert.equal(timeout.expired,true);assert.notEqual(timeout.results[0].code,0);
+});
+
+test('standalone original reader: complete manufactured packet and coherent negative controls', async () => {
     const original="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_')))";
     assert.ok(controls.includes(original));
-    let total=0;
+    const specs=[];
     for(const parity of [0,1]){
         const selected=controls.replace(original,
             "suite=unittest.TestSuite(Originals(name) for index,name in enumerate(unittest.defaultTestLoader.getTestCaseNames(Originals)) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_')) and index%2=="+parity+")");
         assert.notEqual(selected,controls);
-        const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
-        assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+        specs.push({argv:['/usr/bin/python3','-B','-',root],input:selected});
+    }
+    const {results,expired,elapsedMs}=await runControlChildren(specs,60000);
+    assert.equal(expired,false,'one shared 60-second deadline covers both historical shards');
+    assert.ok(elapsedMs<=60000,'whole historical control wall budget');
+    let total=0;
+    for(const result of results){
+        assert.equal(result.code,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+        assert.equal(result.overflow,false,'retained 4 MiB child output bound');
         const summary=readOriginalControlSummary(result.stdout);
         assert.ok(summary.controls>0);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
         total+=summary.controls;
