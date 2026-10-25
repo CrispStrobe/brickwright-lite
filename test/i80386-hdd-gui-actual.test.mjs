@@ -3430,10 +3430,16 @@ class Originals(unittest.TestCase):
           artifactName='i80386-hdd-gui-actual-v8-200-1')
         expected['run']['event']='workflow_dispatch';expected['job']['name']='actual-v8'
         expected['artifact']['name']=expected['artifactName']
-        expected['job']['steps']=[{'name':name,'status':'completed','conclusion':'success'} for name in (
+        expected['job']['steps']=[{'number':number,'name':name,'status':'completed','conclusion':'success'} for number,name in enumerate((
+          'Run actions/checkout@11d5960a326750d5838078e36cf38b85af677262',
           'Install empty Python cache prefix and refuse unreviewed v8 source',
+          'Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020',
+          'Repeat v8 inventory installation exactly, without frontend build',
           'Install externally admitted v8 request and refuse runtime/source drift',
-          'One official frontend acquisition and two serial genuine v8 UI scenarios')]
+          'Prepare unchanged authenticated free media once for v8',
+          'One official frontend acquisition and two serial genuine v8 UI scenarios',
+          'Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
+          'Run actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02'),1)]
         event={'inputs':{'pull_request':str(request['pullRequest']),'source_head':head,
                          'request_sha256':pin,'tag_name':tag},'ref':'refs/tags/'+tag,
                'repository':{'full_name':c.REPOSITORY},'sender':{'login':'CrispStrobe'},
