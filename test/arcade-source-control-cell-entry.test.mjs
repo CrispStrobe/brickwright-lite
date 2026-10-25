@@ -164,3 +164,17 @@ test('proved helper calls expire on body callee and equal-shape physical replace
   holder[key]=JSON.parse(JSON.stringify(old));assert.equal(proof.current(),false);holder[key]=old;assert.equal(proof.isInitializedRead(r),false);
  }
 });
+
+test('negative-only source preflight bounds actual nodes and array work without evaluating accessors or iterators',()=>{
+ const oversized=parse(source),run=oversized.body.find(n=>n.name==='run');
+ run.body.push(...Array.from({length:3100},()=>({type:'ExpressionStatement',expr:{type:'Number',value:'0'}})));
+ assert.equal(createSourceControlCellEntry(oversized).isInitializedRead(read(oversized)),false);
+ const slots=parse(source);slots.padding=new Array(100001);
+ assert.equal(createSourceControlCellEntry(slots).isInitializedRead(read(slots)),false);
+ for(const key of ['inert',Symbol.iterator]){
+  const p=parse(source),r=read(p);let invoked=0;
+  Object.defineProperty(key===Symbol.iterator?p.body:p,key,{enumerable:true,configurable:true,get(){invoked++;throw Error('source getter must not run');}});
+  assert.equal(createSourceControlCellEntry(p).isInitializedRead(r),false);assert.equal(invoked,0);
+ }
+ const good=check(source,true);assert.equal(good.proof.current(),true);
+});
