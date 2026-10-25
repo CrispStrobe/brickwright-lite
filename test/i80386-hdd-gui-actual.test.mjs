@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../',import.meta.url));
 const readOriginalControlSummary = stdout => JSON.parse(stdout.trim());
 
-test('dormant v8 dispatch route preserves all nine prior PR jobs', () => {
+test('armed V8 source preserves nine prior PR jobs with explicit V7 execution retirement', () => {
     const workflow = fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
     const registration = `  workflow_dispatch:\n    inputs:\n      pull_request:\n        description: Owned ready pull request number\n        required: true\n        type: string\n      source_head:\n        description: Reviewed 40-hex source head\n        required: true\n        type: string\n      request_sha256:\n        description: Reviewed canonical request SHA-256\n        required: true\n        type: string\n      tag_name:\n        description: One reviewed source tag name\n        required: true\n        type: string\n`;
     const anchor = 'on:\n  pull_request:\n    types: [opened, synchronize, reopened, labeled]\n';
@@ -18,9 +18,13 @@ test('dormant v8 dispatch route preserves all nine prior PR jobs', () => {
     const end=workflow.indexOf('  # Observation delivery only.',begin);
     assert.ok(begin>0 && end>begin,'one separately guarded v8 job before unchanged observation jobs');
     const prior=workflow.slice(0,begin)+workflow.slice(end);
-    assert.equal(createHash('sha256').update(prior.replace(registration,'')).digest('hex'),
+    const retiredV7="  actual-v7:\n    if: >-\n      ${{ false && github.event_name == 'pull_request' &&\n"+
+        "          github.event.action == 'labeled' && github.event.label.name == 'x86-hdd-gui-actual-v7'";
+    assert.equal(prior.split(retiredV7).length,2,'one explicitly disabled V7 execution guard');
+    const heldPrior=prior.replace(retiredV7,retiredV7.replace('false &&','true &&'));
+    assert.equal(createHash('sha256').update(heldPrior.replace(registration,'')).digest('hex'),
         'd14d38590321bc2afd367bc7c4e695e82414049362233ab1f089250a39d9e6a5',
-        'all permissions, concurrency, nine prior job guards and their steps retain reviewed H1fd bytes');
+        'all other permissions, concurrency, nine prior job guards and steps retain reviewed H1fd bytes');
     const oldJobs=[...prior.matchAll(/^  ([a-z][a-z0-9-]*):\n    if:/gm)];
     assert.equal(oldJobs.length,9,'nine prior guarded jobs');
     for (let i=0;i<oldJobs.length;i++) {
@@ -87,18 +91,18 @@ E=r.encode;H=r.sha;D=r.decode
 ROW=lambda raw:{'byteLength':len(raw),'sha256':H(raw)}
 FIXTURE_CHECKOUT='/checkout'
 PNG=b'\x89PNG\r\n\x1a\nmanufactured'
-def zip_(files):
+def zip_(files,compression=zipfile.ZIP_DEFLATED):
     out=io.BytesIO()
-    with zipfile.ZipFile(out,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+    with zipfile.ZipFile(out,'w',compression=compression) as archive:
         for name,raw in sorted(files.items()):
             info=zipfile.ZipInfo(name,(1980,1,1,0,0,0))
             info.compress_type=archive.compression
             info.external_attr=((0o40775<<16)|0x10) if info.filename.endswith('/') else 0o600<<16
             archive.writestr(info,raw)
     return out.getvalue()
-def packet(files):
+def packet(files,compression=zipfile.ZIP_DEFLATED):
     files={k:v for k,v in files.items() if k!='inventory.json'}
-    return zip_(dict(files,**{'inventory.json':E({'schema':'bw.gui-hdd.originals.v1','files':{k:ROW(v) for k,v in files.items()}})}))
+    return zip_(dict(files,**{'inventory.json':E({'schema':'bw.gui-hdd.originals.v1','files':{k:ROW(v) for k,v in files.items()}})}),compression)
 def image_():
     image=bytearray(r.INPUTS['hdd'][0]);image[510:512]=b'\x55\xaa';image[454:458]=(17).to_bytes(4,'little');p=17*512
     image[p+510:p+512]=b'\x55\xaa';image[p+11:p+13]=(512).to_bytes(2,'little');image[p+13]=2
@@ -222,8 +226,8 @@ def fixture():
        'workflow_run':{'id':200,'head_sha':'a'*40},'digest':'sha256:'+'0'*64}}
     return files,expected
 
-def sealed(files,expected):
-    raw=packet(files);expected=copy.deepcopy(expected);expected['artifactBytes']=len(raw);expected['artifactSha256']=H(raw)
+def sealed(files,expected,compression=zipfile.ZIP_DEFLATED):
+    raw=packet(files,compression);expected=copy.deepcopy(expected);expected['artifactBytes']=len(raw);expected['artifactSha256']=H(raw)
     expected['artifact']['size_in_bytes']=len(raw);expected['artifact']['digest']='sha256:'+H(raw)
     return r.archive_originals(raw),expected
 
@@ -704,8 +708,8 @@ class Originals(unittest.TestCase):
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text()
         v7=workflow.split('  actual-v7:',1)[1].split('  actual-v8:',1)[0]
         v8=workflow.split('  actual-v8:',1)[1].split('  font-bridge:',1)[0]
-        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',v7)
-        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',v8)
+        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',v7)
+        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',v8)
         for actual in (v7,v8):
             self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
             self.assertNotIn('/usr/bin/python3 -B',actual)
@@ -1223,7 +1227,9 @@ class Originals(unittest.TestCase):
                 else:runtime['invented']=True
                 files[name]=E(runtime)
                 if stage=='both':files['runtime.after.json']=E(runtime)
-                with self.assertRaises((ValueError,KeyError),msg=str((stage,cut))):r.audit(*sealed(files,expected))
+                # Stored members exercise the same authenticated ZIP inventory and
+                # semantic reader checks without repeating 75 expensive deflates.
+                with self.assertRaises((ValueError,KeyError),msg=str((stage,cut))):r.audit(*sealed(files,expected,zipfile.ZIP_STORED))
         files,expected=copy.deepcopy((base_files,base_expected));runtime=D(files['runtime.after.json'])
         for snapshot in ('namedBefore','heldBefore','heldAfter','namedAfter'):runtime['emptyPythonSources'][c.EMPTY_PYTHON_PATH]['source'][snapshot]['ino']+=1
         files['runtime.after.json']=E(runtime)
