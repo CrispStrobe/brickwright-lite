@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-24T03:49:44.099Z",
+  "generatedAt": "2026-10-25T05:11:30.153Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1982,6 +1982,7 @@
     "robot-lab-own-firmware.yml",
     "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
+    "spike-linux-package.yml",
     "target-performance.yml",
     "tauri.yml",
     "testflight-release-recovery.yml",
@@ -7727,11 +7728,29 @@
         }
       },
       "sourceSha": "a11711d61"
+    },
+    "spike-linux-package.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Install native build dependencies",
+        "Fetch locked crates",
+        "Assemble the package with placeholder runtime and support inputs",
+        "Install with normal dpkg policy and check the installed layout"
+      ],
+      "inFileInNoRun": [
+        "Install native build dependencies",
+        "Fetch locked crates",
+        "Assemble the package with placeholder runtime and support inputs",
+        "Install with normal dpkg policy and check the installed layout"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "robot-model-webkit-comparison.yml",
-    "at": "2026-10-24T03:49:44.099Z",
+    "workflow": "spike-linux-package.yml",
+    "at": "2026-10-25T05:11:30.153Z",
     "sourceSha": "working-tree"
   }
 }
