@@ -2552,6 +2552,27 @@
         "programErrors": [],
         "blocked": false
       }
+    },
+    {
+      "id": "toggle-lever",
+      "title": "Toggle Lever — a link folding toward dead centre",
+      "placements": 112,
+      "archive": "brickwright-model-lab branch agent/bw-opencode-mfg-r2-20261025/toggle_jaw_crusher @ 5a4d84434e44355c0555a25187d444bc9116dfe0 (agent status: blocked, released)",
+      "originalLdrawSha256": "dd31deffadd4ab23474883c21fa0788c101744f671ef58a859262abf1c737802",
+      "canonicalLdrawSha256": "884339ad803ee4676e128bef4f6514ca116c708e5dae35c925f20f71a2c5b506",
+      "program": "toggle-lever.bw",
+      "programSha256": "07fc06ef8b85d2081d0fe83816857cede4f6eea92bbdf262ba924ae9e24fcd55",
+      "adaptation": "The agent (OpenCode, deepseek-v4.1-flash) delivered ToggleJaw (120 parts) and honestly reported it blocked: the lever diverged and its link-removed control drifted. Audit found three geometry faults: the 5L lever, centre-pivoted, overlapped the yoke end beam at rest (bodies not jointed, so Jolt pushed them apart from the first step); the link shared the lever layer and swept over the pivot axle; and the yoke toggle reached the bracket pin from 66 degrees. Revised: 3L lever pivoted at its end hole on the top layer (tip 40 LDU from pivot, unchanged reach), link one layer above it on 4L/2L axles, 5L pivot axle stopping at the lever, guide axles 12L->10L without the +z/-z caps, bracket pin 3L->2L, the hinge-mounted anvil (free to swing on the pivot axis) removed. 112 parts. Kinematic clash sweep (editor overlap colliders, pins and axles included) clean from 0 to 89 degrees. Program: agent program-slow with reset timer, 30 deg/s, renamed.",
+      "supplierClaims": "Agent: blocked; best hosted run law residual 28.3 mm rms; control failed (lever drifted 15 mm).",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless runner on this branch engine (bw.7): lever vs closure max error 0.017 deg for 0-60 deg, 0.06 deg 60-70, 0.36 deg 70-80, 1.42 deg 80-85 (near dead centre, transmission angle 7 deg); return to 0 within 0.02 deg; COLD 0/275/1000 at 15 deg/s and 0/1000 at 30 deg/s all complete"
+      },
+      "causalControl": "PASS (crank pin removed: crank turns 85 deg, yoke 0.73 mm, lever -3.2 deg as the closure predicts for that yoke motion, against +50 deg in the real run). Link-removed control is not a stillness test here: the frictionless free lever swings 195 deg as a slow pendulum on a 0.0096 deg frame tilt.",
+      "poweredMotion": "HEADLESS_COMPLETED",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
     }
   ],
   "appVerification": {

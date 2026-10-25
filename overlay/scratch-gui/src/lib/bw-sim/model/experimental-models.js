@@ -768,6 +768,29 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "speedDps": 15
             }
         }
+    },
+    {
+        "file": "toggle-lever.ldr",
+        "title": {
+            "en": "Toggle Lever — a link folding toward dead centre",
+            "de": "Kniehebel — ein Lenker klappt zum Totpunkt"
+        },
+        "example": "toggle-lever.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A crank and Scotch yoke push a short link against a lever pivoted at its end. As the crank nears 90°, the link folds back over the lever arm and its turning leverage collapses toward a dead centre, where the link pushes straight through the pivot. The passive lever follows the link-closure geometry within 0.02° up to 60°; the program stops at 85°, 5° short of dead centre.",
+            "de": "Eine Kurbel mit Kreuzschleife drückt einen kurzen Lenker gegen einen am Ende gelagerten Hebel. Nähert sich die Kurbel 90°, klappt der Lenker über den Hebelarm zurück, und seine Hebelwirkung bricht bis zu einem Totpunkt zusammen, in dem der Lenker genau durch den Drehpunkt drückt. Der passive Hebel folgt der Geometrie der geschlossenen Gelenkkette bis 60° auf 0,02° genau; das Programm hält bei 85°, 5° vor dem Totpunkt."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -85,
+                "maxDeg": 85,
+                "stepDeg": 5,
+                "speedDps": 30
+            }
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -1892,6 +1915,49 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "konstante Summenbedingung",
             "Richtungsumkehr",
             "Umkehrspiel",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "toggle-lever.ldr": {
+        "pieces": 112,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "A crank and Scotch yoke push a short link against a lever pivoted at its end. As the crank nears 90°, the link folds back over the lever arm and its turning leverage collapses toward a dead centre, where the link pushes straight through the pivot. The passive lever follows the link-closure geometry within 0.02° up to 60°; the program stops at 85°, 5° short of dead centre.",
+            "de": "Eine Kurbel mit Kreuzschleife drückt einen kurzen Lenker gegen einen am Ende gelagerten Hebel. Nähert sich die Kurbel 90°, klappt der Lenker über den Hebelarm zurück, und seine Hebelwirkung bricht bis zu einem Totpunkt zusammen, in dem der Lenker genau durch den Drehpunkt drückt. Der passive Hebel folgt der Geometrie der geschlossenen Gelenkkette bis 60° auf 0,02° genau; das Programm hält bei 85°, 5° vor dem Totpunkt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "crank, Scotch yoke and toggle link",
+            "de": "Kurbel, Kreuzschleife und Kniehebel-Lenker"
+        },
+        "keywords": [
+            "toggle",
+            "toggle linkage",
+            "knuckle joint",
+            "dead centre",
+            "dead center",
+            "transmission angle",
+            "link closure",
+            "four-bar",
+            "Scotch yoke",
+            "crank",
+            "lever",
+            "Kniehebel",
+            "Totpunkt",
+            "Übertragungswinkel",
+            "Koppelgetriebe",
+            "Kreuzschleife",
+            "Kurbel",
+            "Hebel",
             "experimental",
             "prototype",
             "unverified",
