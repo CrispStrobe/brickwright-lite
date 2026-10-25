@@ -87,7 +87,9 @@ export const measurementExperimentInteractions = async (page, {shotsDir}) => {
     },picked);
     assert.ok(expected>0.1,'nonzero independently computed distance');
     const preview=panel.getByTestId('bw-sim-measurement-preview');
-    assert.ok(Math.abs(parseFloat((await preview.locator('output').textContent()).split(':').at(-1))-expected)<0.1,'draft preview matches independent part positions');
+    const previewValue = /^Preview: ([0-9]+(?:\.[0-9]+)?) mm$/.exec(await preview.locator('output').textContent());
+    assert.ok(previewValue,'the complete preview names its quantity and millimetre unit');
+    assert.ok(Math.abs(Number(previewValue[1])-expected)<0.1,'draft preview matches independent part positions');
     await page.locator('[data-measurement-id="measurement-preview"]').waitFor();
     assert.deepEqual(await page.evaluate(()=>window.__bwSimLab._pane.measurements),before,'scene pick leaves saved definitions untouched');
     await panel.getByTestId('bw-sim-lab-measurement-cancel').click();

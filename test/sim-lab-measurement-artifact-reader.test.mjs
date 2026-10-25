@@ -3,7 +3,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {isAbsolute} from 'node:path';
+import {accessSync, constants, realpathSync} from 'node:fs';
 import JSZip from 'jszip';
+// Bind the test platform's interpreter explicitly; PATH cannot substitute another reader runtime.
+const pythonExecutable = process.env.BW_MEASUREMENT_PYTHON_EXECUTABLE || '/usr/bin/python3';
+assert.ok(isAbsolute(pythonExecutable), 'measurement reader requires an absolute Python executable');
+const python = realpathSync(pythonExecutable);
+accessSync(python, constants.X_OK);
+const pythonVersion = spawnSync(python, ['--version'], {encoding: 'utf8'});
+assert.equal(pythonVersion.status, 0);
+assert.match(pythonVersion.stdout, /^Python 3\./);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const checkout = '1'.repeat(40), tree = '2'.repeat(40);
 const model = '0 Example\n0 !BW PART hub\n';
@@ -18,7 +28,7 @@ const fixture = async (change = () => {}) => {
         modelBeforeSha256:sha(model),modelAfterSha256:sha(model),sb3:{file:'sim-lab-measurement-edit.sb3',bytes:bytes.length,sha256:sha(bytes)}}};
     return {bytes,report};
 };
-const audit = ({bytes,report}, expectedCheckout = checkout) => spawnSync('python3',['-B','-c',
+const audit = ({bytes,report}, expectedCheckout = checkout) => spawnSync(python,['-B','-c',
     `import sys,json,base64,importlib.util\nspec=importlib.util.spec_from_file_location('reader','scripts/read-sim-lab-measurement-artifact.py')\nm=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)\np=json.load(sys.stdin)\nprint(json.dumps(m.audit(base64.b64decode(p['bytes']),json.dumps(p['report']).encode(),p['checkout'],p['tree'])))`],
     {input:JSON.stringify({bytes:bytes.toString('base64'),report,checkout:expectedCheckout,tree}),encoding:'utf8'});
 
@@ -47,7 +57,7 @@ const recordingFixture = () => {
     const make = () => {const bytes=encode(rows);return{bytes,report:{source:{checkout,tree},recording:{runCount:2,compatible:true,modelSha256:sha(model),definitions:[definition],sampleSets:[1,1],csv:{file:'sim-lab-measurement-runs.csv',bytes:bytes.length,sha256:sha(bytes),rows:2}}}};};
     return {rows,make};
 };
-const auditRecording = f => spawnSync('python3',['-B','-c',
+const auditRecording = f => spawnSync(python,['-B','-c',
     `import sys,json,base64,importlib.util\nspec=importlib.util.spec_from_file_location('reader','scripts/read-sim-lab-measurement-artifact.py')\nm=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)\np=json.load(sys.stdin)\nprint(json.dumps(m.audit_recording(base64.b64decode(p['bytes']),json.dumps(p['report']).encode(),p['checkout'],p['tree'])))`],
     {input:JSON.stringify({bytes:f.bytes.toString('base64'),report:f.report,checkout,tree}),encoding:'utf8'});
 test('independent CSV reader admits exact source, definitions, units and two shared-time runs',()=>{
