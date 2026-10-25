@@ -40,6 +40,7 @@ const publicState = state => ({
  */
 export const createMeasurementRecorder = () => {
     const state = {runs: [], active: null, stoppedReason: ''};
+    let selectionKey, selectionHash;
     const snapshot = () => publicState(state);
     const stop = why => {
         if (!state.active) return snapshot();
@@ -55,6 +56,11 @@ export const createMeasurementRecorder = () => {
     };
     return {
         snapshot,
+        selectionFor (modelKey) {
+            if (!state.runs.length || typeof modelKey !== 'string') return [];
+            if (selectionKey !== modelKey) { selectionKey = modelKey; selectionHash = sha256Text(modelKey); }
+            return state.runs.find(run => run.modelSha256 === selectionHash)?.definitions.map(d => d.id) || [];
+        },
         start ({session, modelKey, definitions, selected, sampleTime}) {
             if (state.active || state.runs.length >= RECORDING_LIMIT || typeof modelKey !== 'string' || !modelKey || !Number.isFinite(sampleTime) || sampleTime < 0) return snapshot();
             const defs = selectedDefinitions(definitions, selected);
@@ -155,8 +161,12 @@ export const measurementRunsToCsv = runs => {
     const lines = [header.map(csvCell).join(',')];
     for (const run of runs || []) {
         const definitions = new Map((run.definitions || []).map(definition => [definition.id, JSON.stringify(definition)]));
+        const written = new Set();
         for (const sample of run.samples || []) for (const row of sample.readings || []) {
-            lines.push([run.id, run.modelSha256, row.id, row.label, row.kind, definitions.get(row.id) || '', row.unit, row.source,
+            // Each run/measurement declares its definition once; later rows join by ID.
+            const definition = written.has(row.id) ? '' : definitions.get(row.id) || '';
+            written.add(row.id);
+            lines.push([run.id, run.modelSha256, row.id, row.label, row.kind, definition, row.unit, row.source,
             sample.elapsedMs, row.available, row.available ? row.value : '', row.available ? '' : row.reason].map(csvCell).join(','));
         }
     }

@@ -269,3 +269,21 @@ test('a paused final observation keeps its actual elapsed timestamp and cannot e
     assert.equal(recorder.snapshot().stoppedReason,'time-limit');
     assert.equal(recorder.snapshot().runs[0].samples[0].elapsedMs,59950);
 });
+
+test('Reset selection restoration is limited to a captured run of the exact model', () => {
+    const recorder=createMeasurementRecorder(),session={};
+    assert.deepEqual(recorder.selectionFor(modelKey),[],'ordinary plots still reset without a recording');
+    start(recorder,{session});sample(recorder,session,0,1);recorder.stop();
+    assert.deepEqual(recorder.selectionFor(modelKey),['hinge']);assert.deepEqual(recorder.selectionFor(modelKey+'changed'),[]);
+    recorder.clear();assert.deepEqual(recorder.selectionFor(modelKey),[]);
+});
+
+test('maximum schema-valid legacy bindings remain bounded in a complete two-run CSV', () => {
+    const definitions=Array.from({length:4},(_,i)=>definition({id:'m'+i,binding:'x'.repeat(4096),label:'L'.repeat(80)}));
+    const samples=Array.from({length:600},(_,i)=>({elapsedMs:i*100,timeMs:i*100,readings:definitions.map(d=>({id:d.id,label:d.label,kind:d.kind,unit:'°',source:'jolt-joint',available:true,value:i,reason:''}))}));
+    const run={modelSha256:'a'.repeat(64),definitions,samples};
+    const csv=measurementRunsToCsv([{...run,id:'run-1'},{...run,id:'run-2'}]);
+    assert.ok(Buffer.byteLength(csv)<8*1024*1024);
+    assert.equal(csv.split('x'.repeat(4096)).length-1,8,'one full definition per run and measurement');
+    assert.equal(csv.split('\r\n').length,4802,'every original reading is exported');
+});

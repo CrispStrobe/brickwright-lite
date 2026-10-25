@@ -113,12 +113,18 @@ def audit_recording(csv_bytes, report_bytes, checkout, tree):
     units = {'modelMass':'g','mass':'g','weight':'N','speed':'m/s','acceleration':'m/s²','angularSpeed':'°/s',
              'normalLoad':'N','pressure':'kPa','distance':'mm','angle':'°','jointAngle':'°','jointSpeed':'°/s','travel':'mm','tension':'N'}
     require(0 < len(definitions) <= 4, 'CSV measurement bound')
-    times, previous = {}, {}
+    times, previous, declared = {}, {}, {}
     for cells in rows:
         require(len(cells) == len(header), 'CSV column count')
         row = dict(zip(header, cells))
         require(row['run_id'] in ('run-1', 'run-2') and row['model_sha256'] == recording['modelSha256'], 'CSV run/model join')
-        require(row['measurement_id'] in definitions and decode(row['definition_json']) == definitions[row['measurement_id']], 'CSV definition join')
+        require(row['measurement_id'] in definitions, 'CSV measurement identity')
+        identity = (row['run_id'], row['measurement_id'])
+        if row['definition_json']:
+            require(identity not in declared and decode(row['definition_json']) == definitions[row['measurement_id']], 'CSV definition join')
+            declared[identity] = True
+        else:
+            require(identity in declared, 'CSV missing initial definition')
         require(row['kind'] == definitions[row['measurement_id']]['kind'] and row['kind'] in units, 'CSV quantity join')
         require(row['unit'] == units[row['kind']], 'CSV unit join')
         time = float(row['elapsed_ms'])

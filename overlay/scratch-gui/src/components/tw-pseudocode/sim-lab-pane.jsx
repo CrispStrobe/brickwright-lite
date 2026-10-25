@@ -398,7 +398,6 @@ class SimLabPane extends React.Component {
         this.measurements = [];
         this.measurementModels = new Map();
         this.measurementRecording = createMeasurementRecorder();
-        this.measurementPlotSelections = new Map();
         this.measurementReader = null;
         this.measurementRows = [];
         this.measurementRowsTime = null;
@@ -3277,9 +3276,8 @@ class SimLabPane extends React.Component {
                         {simulate && this.state.measurementsOpen && this.session && this.measurementReader && (
                             <SimLabMeasurements locale={this.locale} definitions={this.measurements} rows={this.measurementRows}
                                 modelKey={this.opened?.text || ''} recorder={this.measurementRecording}
-                                initialPlots={this.measurementPlotSelections.get(this.opened?.text) || []}
-                                onPlotSelection={ids => this.measurementPlotSelections.set(this.opened?.text, ids)}
-                                onPickTarget={this.view?.setMeasurementPick ? handler => this.view.setMeasurementPick(handler) : undefined}
+                                initialPlots={this.measurementRecording.selectionFor(this.opened?.text || '')}
+                                onPickTarget={this.view?.setMeasurementPick}
                                 onHighlight={ids => this.view?.highlight(ids)}
                                 onPreview={definition => { this.measurementPreview = definition; }}
                                 readPreview={definition => this.measurementPreviewReader?.read([definition])[0]}

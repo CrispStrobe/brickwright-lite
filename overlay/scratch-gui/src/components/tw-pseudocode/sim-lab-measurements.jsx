@@ -312,7 +312,6 @@ class SimLabMeasurements extends React.Component {
                                 checked={selected.includes(d.id)} disabled={d.visible === false || (!selected.includes(d.id) && selected.length >= PLOT_LIMIT)}
                                 onChange={e => {
                                     const plots = e.target.checked ? [...selected, d.id] : selected.filter(id => id !== d.id);
-                                    this.props.onPlotSelection?.(plots);
                                     this.setState({plots}, () => this.props.onSample?.());
                                 }} />{de ? 'Zeitdiagramm' : 'Time plot'}</label>
                             {!replaying && selected.includes(d.id) && <SimLabMeasurementPlot points={histories.get(d.id) || []}
@@ -373,7 +372,7 @@ SimLabMeasurements.propTypes = {
     locale: PropTypes.string.isRequired, definitions: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     parts: PropTypes.array.isRequired, mechanism: PropTypes.object.isRequired, shown: PropTypes.bool.isRequired, replaying: PropTypes.bool.isRequired,
     onPickTarget: PropTypes.func, onHighlight: PropTypes.func, onPreview: PropTypes.func, readPreview: PropTypes.func, modelKey: PropTypes.string,
-    initialPlots: PropTypes.array, onPlotSelection: PropTypes.func, recorder: PropTypes.object, session: PropTypes.object, sampleTime: PropTypes.number, paused: PropTypes.bool, teachingPreset: PropTypes.object, onSample: PropTypes.func,
+    initialPlots: PropTypes.array, recorder: PropTypes.object, session: PropTypes.object, sampleTime: PropTypes.number, paused: PropTypes.bool, teachingPreset: PropTypes.object, onSample: PropTypes.func,
     onChange: PropTypes.func.isRequired, onShown: PropTypes.func.isRequired, onPresets: PropTypes.func.isRequired, onClose: PropTypes.func.isRequired
 };
 export default SimLabMeasurements;

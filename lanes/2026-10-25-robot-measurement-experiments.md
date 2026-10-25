@@ -62,7 +62,7 @@ The current tracked-coasting, material and steering limitations are surfaced in
 the panel and documented, with original physical-calibration boundaries intact.
 
 Recording supports two bounded runs of four selected readings, at most 600
-sample sets or 60 simulated seconds each. Reset preserves plot selections;
+sample sets or 60 simulated seconds each. Reset restores the recorded model’s plot selection for comparison;
 closing the measurement panel stops active capture and preserves completed runs
 in its owning pane. Comparisons require the same model and physical definitions
 and use exact shared times. CSV preserves gaps, units, source and target identity.

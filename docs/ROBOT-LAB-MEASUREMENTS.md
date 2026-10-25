@@ -118,15 +118,16 @@ readings at least 100 simulated milliseconds apart. **Stop recording** freezes
 the run. The final paused observation retains its actual timestamp.
 
 Keep up to two runs, each bounded to 600 sample sets or 60 simulated seconds.
-After Reset, record the same model and measurement selections again to compare
-runs. Comparison uses exact shared elapsed times and shows each run's range and
+For a second recording, Reset restores that recorded model’s plot selection.
+Record the same model and measurements again to compare runs. Comparison uses exact shared elapsed times and shows each run's range and
 the difference where both readings exist. Missing values remain gaps. It does
 not interpolate, claim repeatability, or establish physical accuracy. A changed
 model, quantity, target or binding refuses comparison; clear the recordings to
 start a different experiment.
 
 **Download CSV** exports the captured values, simulated elapsed times, units,
-sources, model digest and measurement definitions. Unavailable values are blank
+sources, model digest and measurement definitions. Each run declares each
+measurement definition once; subsequent rows refer to its measurement ID. Unavailable values are blank
 with a reason. User text is quoted and spreadsheet formula prefixes are escaped.
 Closing the panel stops recording and retains completed runs for reopening in
 the same pane. Closing the Robot Lab pane discards recordings. Project saves
