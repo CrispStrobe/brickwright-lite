@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import JSZip from 'jszip';
+import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {createSourceControlCellEntry} from '../overlay/scratch-gui/src/lib/bw-makecode/source-control-cell-entry.js';
 import {analyseSourceValueProducers,validateProcedureConstraintSource} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 const parse=s=>parseMakeCodeTs(s,{parameterDefaults:true,retainParentheses:true});
 const all=(n,out=[])=>{if(!n||typeof n!=='object')return out;if(Array.isArray(n)){n.forEach(x=>all(x,out));return out;}out.push(n);for(const[k,v]of Object.entries(n))if(!['originalBody','parameterDefaults','paramTypes','returnType'].includes(k))all(v,out);return out;};
 const source=`let value=0;function use(n:number){}function run(unknown:boolean){let flag=0;while(flag===0){if(flag===0){value=2;}if(flag===0){use(value);flag=1;}}}run(false);`;
@@ -85,4 +88,25 @@ test('actual post-test source imports with all original calls and assignments pr
  const text='let sample=0;let total=0;function evaluate(n:number){total=n;return false;}function run(){do{sample=randint(2,4);}while(evaluate(sample));}run();';
  const result=arcadeToPseudocode(text);assert.deepEqual(result.unsupported,[]);assert.match(result.code,/evaluate/);assert.match(result.code,/sample/);assert.match(result.code,/total/);
 });
-// The composed authoring controls append here after source integration.
+test('post-test readiness survives Code, repeated saved JSON conversion and SB3 reopening with the real assignments retained',async()=>{
+ const text='let sample=0;let total=0;function evaluate(n:number){total=n;return false;}function run(){do{sample=randint(2,4);}while(evaluate(sample));}run();';
+ const create=input=>{const imported=arcadeToPseudocode(input);assert.deepEqual(imported.unsupported,[]);const creator=new Creator();creator.parse(imported.code);assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.warnings,[]);return creator;};
+ const bodies=project=>{
+  const prototypes=project.targets.flatMap(target=>Object.values(target.blocks).filter(node=>node.opcode==='procedures_prototype').map(node=>node.mutation.proccode));
+  assert.equal(prototypes.filter(name=>/evaluate/.test(name)).length,1);
+  assert.equal(prototypes.filter(name=>/(?:^|_)run(?:\s|$)/.test(name)).length,1);
+  const vars=project.targets.flatMap(target=>Object.entries(target.variables).filter(([,row])=>/^(?:Game_)?(?:sample|total)$/.test(row[0])));
+  assert.equal(vars.length,2);
+  const ids=new Set(vars.map(([id])=>id));
+  const writes=project.targets.flatMap(target=>Object.values(target.blocks).filter(node=>node.opcode==='data_setvariableto'&&ids.has(node.fields.VARIABLE[1])));
+  assert.equal(writes.length,4,'both initializations and both actual function assignments survive');
+ };
+ let creator=create(text);bodies(creator.project);
+ const code=new Creator();code.parse(creator.decompile());assert.deepEqual(code.errors,[]);assert.deepEqual(code.warnings,[]);bodies(code.project);creator=code;
+ for(let generation=0;generation<2;generation++){
+  const exported=projectJsonToArcade(JSON.stringify(creator.project));assert.deepEqual(exported.unsupported,[],`generation ${generation}: ${JSON.stringify(exported.unsupported)}`);
+  creator=create(exported.files);bodies(creator.project);
+ }
+ const archive=await JSZip.loadAsync(await(await creator.generateSB3()).arrayBuffer());const json=await archive.file('project.json').async('string');bodies(JSON.parse(json));
+ const reopened=projectJsonToArcade(json);assert.deepEqual(reopened.unsupported,[]);bodies(create(reopened.files).project);
+});
