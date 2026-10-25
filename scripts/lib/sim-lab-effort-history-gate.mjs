@@ -30,8 +30,8 @@ export const effortHistoryInteractions = async (page, {shotsDir, restoreProject,
     await ready(page);
     const panel = page.getByTestId('bw-sim-lab-measurements-panel');
     const rightPaneInitiallyVisible = await page.locator('[data-right-pane-toggle]').getAttribute('aria-pressed');
-    await page.getByTestId('bw-sim-lab-model').selectOption('four-bar-crank-rocker.ldr');
-    await ready(page, 'four-bar-crank-rocker.ldr');
+    await page.getByTestId('bw-sim-lab-model').selectOption('crank-rocker.ldr');
+    await ready(page, 'crank-rocker.ldr');
     if (!await panel.isVisible()) await tool(page, 'measurements');
     await panel.getByTestId('bw-sim-measurement-teaching-preset').click();
     const csvPath = resolve(shotsDir, 'sim-lab-measurement-runs.csv');

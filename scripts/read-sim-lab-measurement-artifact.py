@@ -168,7 +168,7 @@ def audit_history(directory, csv_bytes, checkout, tree):
             lines[offset + 1] == '0 Name: ' + saved['name'] and lines[offset + 2].startswith('0 Author: '), 'saved canonical header shape')
     if offset:
         lines[0] = '0 FILE measurement-model.ldr'
-    lines[offset:offset + 3] = ['0 Robot Lab measurement model', '0 Name: measurement-model.ldr', '0 Author: Brickwright']
+    lines[offset:offset + 3] = ['0 measurement-model', '0 Name: measurement-model.ldr', '0 Author: Brickwright']
     canonical = '\r\n'.join(lines) + '\r\n'
     model_hash = hashlib.sha256(canonical.encode()).hexdigest()
     require(packet['modelSha256'] == model_hash, 'independent canonical authored-model join')

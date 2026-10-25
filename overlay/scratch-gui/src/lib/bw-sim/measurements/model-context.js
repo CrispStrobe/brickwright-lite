@@ -10,7 +10,8 @@ export const measurementModelContext = (model, rawText, serializeModel) => {
     if (!model || typeof rawText !== 'string' || typeof serializeModel !== 'function') {
         throw new Error('Measurement model identity is unavailable');
     }
-    const canonical = serializeModel(model, {name: 'measurement-model.ldr', title: 'Robot Lab measurement model', author: 'Brickwright'});
+    // Fixed machine headers make the identity independent of display locale.
+    const canonical = serializeModel(model, {name: 'measurement-model.ldr', title: 'measurement-model', author: 'Brickwright'});
     if (typeof canonical !== 'string' || !canonical.length) throw new Error('Measurement model identity is unavailable');
     return {modelSha256: sha256Text(canonical), rawModelSha256: sha256Text(rawText)};
 };

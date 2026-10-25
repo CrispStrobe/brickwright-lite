@@ -15,7 +15,7 @@ const script = fileURLToPath(new URL('../scripts/read-sim-lab-measurement-artifa
 const head = 'a'.repeat(40), tree = 'b'.repeat(40), source = {checkout: head, tree};
 const hash = value => createHash('sha256').update(value).digest('hex');
 const ldraw = '0 Saved title\r\n0 Name: fixture.ldr\r\n0 Author: Someone\r\n0 !BW ID part\r\n1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n';
-const canonical = ldraw.replace('0 Saved title', '0 Robot Lab measurement model').replace('0 Name: fixture.ldr', '0 Name: measurement-model.ldr').replace('0 Author: Someone', '0 Author: Brickwright');
+const canonical = ldraw.replace('0 Saved title', '0 measurement-model').replace('0 Name: fixture.ldr', '0 Name: measurement-model.ldr').replace('0 Author: Someone', '0 Author: Brickwright');
 const mass = {id: 'm', kind: 'mass', label: 'Mass', targets: ['part'], visible: true};
 const definition = {id: 'm', kind: 'mass', label: 'Mass', targets: ['part'], joint: '', rope: '', binding: ''};
 const pack = async record => {
