@@ -13,11 +13,11 @@ CLI modes and reader remain available for historical review. A pure V7 control
 used memory originals and produced 157 registered roles, above the real
 producer's 128-role limit; it did not establish a reachable sealed actual
 packet or a guest result. The [V8 dispatch lane](../lanes/2026-10-25-x86-gui-actual-v8-head-pinned-dispatch.md)
-has a local source candidate armed for hosted source qualification, still
+has an armed source candidate awaiting hosted qualification, still
 unselected for any actual event. It packs the 35 Git capture triplets into
 bounded physical envelopes while retaining their raw bytes and independent
 reader checks. Its controls use mocked host and child edges; dormant
-default-branch dispatch registration must land, and V8 still needs exact-head
+default-branch dispatch registration has landed, and V8 still needs exact-head
 source CI, a qualified Build and request, and a separately selected one-shot
 event before any hosted claim. V7 execution is retired in this candidate while
 its wire and reader remain; V6 execution remains retired while its original
