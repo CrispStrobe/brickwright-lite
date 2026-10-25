@@ -62,8 +62,9 @@ The owned CUI supplier landed `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`
 after all three enabled checks succeeded: 75 actual browser scenarios, 162
 precision checks and 17 SPICE comparisons. Root and GUI manifests/locks now
 select this revision; Board and every other pin are unchanged. Canonical GUI
-lock generation also removes the existing optional macOS fsevents development
-flag; its version, resolution and integrity remain unchanged.
+lock preparation initially removed the optional macOS fsevents development
+flag under npm11; its version, resolution and integrity remained unchanged.
+The forward qualification repair below restores the flag using CI's npm10.
 
 Current-package tests retain their existing behavior and add imported loaded
 PMOS, genuine NMOS body-current authority and authored-step refusal controls.
@@ -119,3 +120,29 @@ results remain 339/350 matching values; 79 KCL results pass 757 equations with
 refusals remain explicit. This adds diagnostic coverage, not a physical accuracy,
 universal corpus or long-waveform certificate. Campaign steps4 and5 still follow
 acceptance of this consumer adoption.
+
+## Forward qualification repair
+
+The initial combined candidate `3a36548b8a6a448d13fc2aa5bf9f47bc73154fa6`
+is unqualified. Its Build run `40207260059` failed the GUI source-manifest
+step because npm changed the tracked GUI lockfile. The source guardian remains
+unchanged and must continue refusing an unreviewed dirty tree.
+
+Reproduction with identical inputs and the same Node22 interpreter isolates an
+npm-version normalization difference: npm10.9.9 restores only the root
+`fsevents@2.3.3` development flag, while npm11 retains its absence. A second
+npm10 lock-only pass is byte-identical. The replacement uses that generated
+npm10 lockfile, matching CI's package-manager version; dependency versions,
+resolutions, integrity hashes, edges, manifests and all pins remain unchanged.
+Local controls used Node22.23.2; CI's Node22.23.3 clean-tree result remains an
+explicit qualification requirement, not an inferred local success.
+
+The PR-opened and initial label events also queued duplicate thorough jobs.
+The owner cancelled the redundant label run `40207260012` only after verifying
+no running children. Despite that safe cleanup, its enabled cancelled checks
+cannot qualify the same head. Those records remain unqualified and preserved;
+no duplicate exemption, declared skip or unchanged retry is used. The new head
+records and repairs the actual lock failure. With `ci:full` already present,
+one normal synchronize event supplies the final exact-head qualification.
+Neither a prior green check nor the unqualified old artifact substitutes for
+that final head's enabled checks and affected built-browser evidence.
