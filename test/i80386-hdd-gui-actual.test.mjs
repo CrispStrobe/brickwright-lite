@@ -4489,7 +4489,7 @@ class NativeV2Originals(unittest.TestCase):
     def test_v1_manufactured_historical_admission_stays_distinct(self):
         files,expected=fixture_v5();self.assertTrue(r.audit(*sealed(files,expected))['pass'])
 
-suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_')))
+suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_')))
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
 sys.exit(not result.wasSuccessful())
@@ -4505,14 +4505,24 @@ test('original controls stdout is one complete JSON summary without ignored outp
 });
 
 test('standalone original reader: complete manufactured packet and coherent negative controls', () => {
-    const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:controls,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
-    assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
-    const summary=readOriginalControlSummary(result.stdout);
-    assert.ok(summary.controls>=25); assert.equal(summary.failures,0); assert.equal(summary.errors,0);
+    const original="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_')))";
+    assert.ok(controls.includes(original));
+    let total=0;
+    for(const parity of [0,1]){
+        const selected=controls.replace(original,
+            "suite=unittest.TestSuite(Originals(name) for index,name in enumerate(unittest.defaultTestLoader.getTestCaseNames(Originals)) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_')) and index%2=="+parity+")");
+        assert.notEqual(selected,controls);
+        const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+        assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+        const summary=readOriginalControlSummary(result.stdout);
+        assert.ok(summary.controls>0);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+        total+=summary.controls;
+    }
+    assert.equal(total,167,'all historical standalone methods remain covered exactly once');
 });
 
 test('actual v6 parts: exact bounded transport and independent reader parity', () => {
-    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_actual_v6_parts_')");
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_'))", "if name.startswith('test_actual_v6_parts_')");
     assert.notEqual(selected,controls);
     const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ''}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
@@ -4521,7 +4531,7 @@ test('actual v6 parts: exact bounded transport and independent reader parity', (
 });
 
 test('actual v7 parts: distinct packet, exact bounded transport and reader refusals', () => {
-    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_actual_v7_')");
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_'))", "if name.startswith('test_actual_v7_')");
     assert.notEqual(selected,controls);
     const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ''}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
@@ -4530,7 +4540,7 @@ test('actual v7 parts: distinct packet, exact bounded transport and reader refus
 });
 
 test('actual v8 dispatch request, platform and separate PR/tag source admission', () => {
-    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_actual_v8_')");
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_'))", "if name.startswith('test_actual_v8_')");
     assert.notEqual(selected,controls);
     const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ''}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
@@ -4539,7 +4549,7 @@ test('actual v8 dispatch request, platform and separate PR/tag source admission'
 });
 
 test('finite inventory v4: body-first guard, source-only producer and independent original controls', () => {
-    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_finite_v4')");
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_'))", "if name.startswith('test_finite_v4')");
     assert.notEqual(selected, controls);
     const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
@@ -4548,7 +4558,7 @@ test('finite inventory v4: body-first guard, source-only producer and independen
 });
 
 test('finite inventory v6: distinct installed entry, transport and independent original controls', () => {
-    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_finite_v6')");
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_'))", "if name.startswith('test_finite_v6')");
     assert.notEqual(selected, controls);
     const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
@@ -4557,7 +4567,7 @@ test('finite inventory v6: distinct installed entry, transport and independent o
 });
 
 test('native v2 GUI join: complete packet, source-bound identity and coherent refusals', () => {
-    const old="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_')))";
+    const old="suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_','test_actual_v8_')))";
     const selected=controls.replace(old,'suite=unittest.defaultTestLoader.loadTestsFromTestCase(NativeV2Originals)');
     assert.notEqual(selected,controls);
     const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
