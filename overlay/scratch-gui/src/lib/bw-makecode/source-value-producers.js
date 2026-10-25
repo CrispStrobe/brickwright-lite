@@ -16,6 +16,8 @@ import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 import {ordinaryPlayerScoreNumberCalls,ordinaryCameraPropertyNumberLeaves,ordinaryMathNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
+import {SDK_SPRITE_CLASS_NODES} from './sdk-sprite-class-descriptors.js';
+import {sdkImageNumberMethod} from './sdk-image-methods.js';
 
 const spriteAyArrayPrototype=Array.prototype,spriteAyDescriptor=Object.getOwnPropertyDescriptor;
 const spriteAyKeys=Reflect.ownKeys,spriteAyPrototype=Object.getPrototypeOf,spriteAySame=Object.is,spriteAyHasOwn=Object.hasOwn;
@@ -154,6 +156,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
+    const sdkSpriteFieldReads=ordinaryPrimitiveSdkNumbers?ordinarySdkSpriteFieldReads(program):null;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
     const initializedReads=new WeakSet(),initializationAt=new WeakMap(),localUndefinedDeclarations=new Set();
@@ -239,6 +242,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Parenthesized'&&parenthesized)edge(cell(node.expression),current);
         // The parser spells && / || / ?? as Binary; each yields one actual operand.
         else if(['Conditional','Logical'].includes(node.type)||node.type==='Binary'&&['&&','||','??'].includes(node.op)){edge(cell(node.consequent||node.left),current);edge(cell(node.alternate||node.right),current);}
+        // Declared SDK primitive results: a Sprite field read on an exact SDK
+        // Sprite factory value, or Image.getPixel on an exact Image receiver.
+        else if(sdkSpriteFieldReads?.has(node))add(current,sdkSpriteFieldReads.get(node));
+        else if(ordinaryPrimitiveSdkNumbers&&node.type==='Call'&&!node.isNew&&!node.optional&&node.callee?.type==='Member'&&!node.callee.optional&&
+            sdkImageNumberMethod(node.callee.name)?.result==='number'&&node.args.length===sdkImageNumberMethod(node.callee.name).parameters.length)
+            derived.push({result:current,type:'Number',operands:[cell(node.callee.object)],signature:true,domain:'Image'});
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
@@ -1468,4 +1477,57 @@ export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunc
     const graph=analyseSourceValues(program,options,null,proof);
     const diagnostics=validatePrimitiveConstraintGraph(program,graph,selected);
     return proof.current()?diagnostics:original();
+}
+
+// Sprite fields whose SDK descriptor declares a primitive type, read from a
+// receiver that is an SDK Sprite factory call or a binding written ONLY from
+// such calls (no parameter, update, compound or other writer). Every other
+// read stays Opaque. Results map each admitted Member node to its type.
+// A null/undefined/absent value cannot complete a field read normally (it
+// throws), so only factory values reach the read's result.
+const NO_VALUE=Symbol('no value'),OTHER_WRITER=Symbol('other writer');
+const SDK_SPRITE_FACTORIES=new Set(['sprites.create','sprites.createProjectile','sprites.createProjectileFromSprite','sprites.createProjectileFromSide']);
+const SDK_PRIMITIVE_TYPE_NAMES={number:'Number',boolean:'Boolean',string:'String'};
+const sdkSpriteFieldTypes=(()=>{
+    const classes=new Map(SDK_SPRITE_CLASS_NODES.map(node=>[node.name,node])),fields=new Map();
+    for(let node=classes.get('Sprite');node;node=classes.get(node.base))for(const field of node.fields||[])
+        if(!fields.has(field.name))fields.set(field.name,SDK_PRIMITIVE_TYPE_NAMES[field.typeName]||null);
+    return fields;
+})();
+function ordinarySdkSpriteFieldReads(program) {
+    const nodes=[],parents=new WeakMap(),seen=new Set();let valid=true;
+    const visit=(value,parent)=>{
+        if(!value||typeof value!=='object')return;
+        if(seen.has(value)){valid=false;return;}seen.add(value);parents.set(value,parent);if(!Array.isArray(value))nodes.push(value);
+        for(const key of Object.keys(value))if(!metadata.has(key))visit(value[key],value);
+    };
+    try{visit(program,null);}catch{return null;}
+    if(!valid||program?.type!=='Program')return null;
+    let graph;try{graph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true,initializationEntries:true});}catch{return null;}
+    const unwrap=node=>node?.type==='Parenthesized'?unwrap(node.expression):node;
+    const factory=value=>{const node=unwrap(value);return node?.type==='Call'&&!node.isNew&&!node.optional&&!node.typeArguments?.length&&
+        node.callee?.type==='Member'&&!node.callee.optional&&SDK_SPRITE_FACTORIES.has(path(node.callee))&&graph.isSdkNamespace(node.callee);};
+    const writes=new Map(),bad=new Set();
+    const write=(id,value)=>{if(id==null)return;if(!writes.has(id))writes.set(id,[]);writes.get(id).push(value);};
+    for(const node of nodes){
+        if(['Unknown','Object'].includes(node.type)||node.type==='Unary'&&node.op==='delete')return null;
+        if(node.type==='Declaration')for(const row of node.decls||[])write(graph.bindingOf(node,row.name),row.init||NO_VALUE);
+        if(node.type==='Assignment'&&node.left?.type==='Identifier')write(graph.bindingOf(node.left),node.op==='='?node.right:OTHER_WRITER);
+        if(node.type==='Update'&&node.argument?.type==='Identifier')write(graph.bindingOf(node.argument),OTHER_WRITER);
+        if(['FunctionDeclaration','FunctionExpression'].includes(node.type))for(const param of node.params||[])
+            if(typeof param==='string')for(const body of [node.body].flat())if(body&&typeof body==='object'){try{bad.add(graph.bindingOf(body,param));}catch{}break;}
+        if(['ForOf','ForIn'].includes(node.type))return null;
+    }
+    const spriteBinding=id=>id!=null&&!bad.has(id)&&writes.get(id)?.length>0&&writes.get(id).some(factory)&&writes.get(id).every(value=>factory(value)||value===NO_VALUE||['Null','Undefined'].includes(unwrap(value)?.type));
+    const result=new Map();
+    for(const node of nodes){
+        if(node.type!=='Member'||node.optional||!sdkSpriteFieldTypes.get(node.name))continue;
+        const parent=parents.get(node);
+        if(parent?.type==='Assignment'&&parent.left===node||parent?.type==='Update'&&parent.argument===node||parent?.type==='Call'&&parent.callee===node)continue;
+        const object=unwrap(node.object);
+        let ok=factory(object);
+        if(!ok&&object?.type==='Identifier'){try{ok=spriteBinding(graph.bindingOf(object));}catch{ok=false;}}
+        if(ok)result.set(node,sdkSpriteFieldTypes.get(node.name));
+    }
+    return result;
 }

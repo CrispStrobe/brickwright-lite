@@ -35,9 +35,39 @@ test('an Array-free SDK-number accumulator exports through the ordinary helper',
     assert.doesNotMatch(out.ts, /join\(","\)/);
 });
 
-test('the same accumulator stays refused once the program holds an Array', () => {
+test('an undeclared-type SDK result stays refused once the program holds an Array', () => {
     const out = exported(`let values = [1, 2]
-${sdkWriter}
-values.push(initialX)`);
+let tempo = 0
+function read() {
+    tempo = music.tempo()
+}
+read()
+tempo += 0
+values.push(tempo)`);
+    assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
+});
+
+// Array-containing programs: a declared-number SDK Sprite field read on an
+// SDK Sprite factory value is a Number producer, so no fallback is needed.
+const spriteFieldWithArray = `let values = [1, 2]
+let shot = sprites.create(img\`1\`)
+let moved = shot.x + 1
+values.push(moved)`;
+
+test('an Array program adding a declared-number SDK Sprite field exports with the ordinary helper', () => {
+    const out = exported(spriteFieldWithArray);
+    assert.deepEqual(out.unsupported, []);
+    assert.match(out.ts, /function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
+    assert.match(out.ts, /__bwBinaryAdd\(shot\.x, \(0 \+ 1\)\)/);
+});
+
+test('a Sprite field read through a parameter is not an exact factory value and keeps the refusal', () => {
+    const out = exported(`let values = [1, 2]
+let total = 0
+function move(target: Sprite) {
+    total = target.x + 1
+}
+move(sprites.create(img\`1\`))
+values.push(total)`);
     assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
 });
