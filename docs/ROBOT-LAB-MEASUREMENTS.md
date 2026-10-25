@@ -19,6 +19,9 @@ Custom measurements support:
 | Sampled acceleration | One part, m/s² | Magnitude of the centre-of-mass velocity difference divided by its simulated-time interval; unavailable until two valid samples, after reset or across a gap over 250 ms |
 | Pneumatic gauge pressure | A part belonging to one connected pneumatic/pump network, kPa | Existing network pressure above atmospheric pressure; ambiguous or disconnected targets are unavailable |
 | Angular speed | One part, degrees/s | Magnitude of the assembly's Jolt angular velocity |
+| Motor torque | Bound hinge, N·m | Signed active motor impulse divided by the last completed fixed step; body 2 relative to body 1. Passive bearing friction is separate and motor-off reads zero active effort |
+| Joint limit torque | Bound hinge, N·m | That hinge's local angular-stop impulse divided by its fixed step; zero when its stop supplies no reaction. This is not the sum of all connected constraint loads |
+| Mechanical motor power | Bound hinge, W | Signed motor torque times the matching step's relative angular speed. Holding still has zero mechanical power; braking can be negative. This is not electrical consumption |
 | Distance | Two part origins, mm | Current three-dimensional separation |
 | Angle | Three part origins, degrees | A–B–C, with B as the vertex; range 0–180° |
 | Joint angle / angular speed | Hinge, degrees or degrees/s | Signed relative, unwrapped hinge coordinate or rate |
@@ -32,8 +35,7 @@ zero. Selecting a motor part refers to one of its compiled rigid assemblies;
 select a joined axle, wheel or housing part to disambiguate which assembly.
 These are simulation observations, not hardware measurements or accuracy claims.
 Configured mass can differ from solver mass adjustments; weight is explicitly
-calculated from configured mass. No total contact-force or motor-torque reading
-is inferred from these quantities.
+calculated from configured mass. No total contact-force, electrical-power or energy reading is inferred from these quantities. Motor torque uses its own solver impulse rather than mass times acceleration.
 
 Vectors use diagram scales: velocity multiplied by 0.1 seconds, and forces at
 20 mm per newton. Labels carry the actual values and units. These scales affect
@@ -132,9 +134,35 @@ start a different experiment.
 sources, model digest and measurement definitions. Each run declares each
 measurement definition once; subsequent rows refer to its measurement ID. Unavailable values are blank
 with a reason. User text is quoted and spreadsheet formula prefixes are escaped.
-Closing the panel stops recording and retains completed runs for reopening in
-the same pane. Closing the Robot Lab pane discards recordings. Project saves
-retain measurement definitions; recordings and plot histories remain temporary.
+Closing the panel stops recording. Project saves freeze any active capture and
+store completed recordings and plot choices with the current model. Reopening
+the project or releasing and reopening the Robot Lab restores them. Four model
+histories may be retained while switching examples in one pane; the project
+stores its current model, as before. Export or clear a history before recording
+a fifth model. Opening a different project clears that pane cache.
+
+**Import CSV** adds compatible completed runs. Clear existing recordings first
+to replace them or resolve duplicate run IDs. Import checks the model, current
+measurement definitions, units, sources, timestamps and all recording limits;
+failed, oversized or superseded file reads leave existing runs unchanged. Imported CSV is labelled as supplied data, separately from recordings made here; it is not authenticated simulator or hardware evidence.
+Unavailable values remain gaps. CSV supplies elapsed times, so imported data
+has no invented absolute capture time. Historical gaps and original bindings
+remain in saved recordings even when a live target becomes unavailable.
+
+New captures identify the authored model using its saved LDraw serialization,
+with fixed header names and the serializer's six-decimal coordinate precision.
+The original opened-text digest is separate provenance. This model identity
+excludes the mat/environment, catalogue and engine version; comparison does not
+claim identical experimental conditions or physical repeatability. Existing
+12-column CSV is accepted when its model identity matches. Portable re-exports
+of legacy raw-text histories add `canonical_model_sha256` as a thirteenth
+column, retaining the original digest and checking the current authored model.
+
+Saved histories use compact tuples with a 512 KiB limit inside the existing
+1 MiB Sim Lab section and 2 MiB project-state limits. A refusal is shown rather
+than attaching stale saved content; it continues to block that stale export
+when the pane is closed. Export CSV or clear unused content and save again.
+A successfully loaded new project starts with its own state.
 
 Dedicated lesson sets now also cover **Gearbox**, **Sky Courier** (ropes and
 pulleys), **Snapgate** (spring travel) and **Pneumatic cylinder**. Each explains
@@ -144,7 +172,7 @@ applying. See [lessons and dynamics](ROBOT-LAB-LESSONS-AND-DYNAMICS.md).
 ## Saved-project evidence
 
 New successful measurement browser qualifications retain the original generated
-SB3, edit report, downloaded CSV and experiment report for seven days. The
+SB3, edit report, downloaded CSV and experiment report for seven days. The effort/history journey also retains its own saved-history SB3 and report, without replacing the original edit journey. The
 standalone reader uses Python's standard library, without importing the browser
 producer or simulator:
 
@@ -158,3 +186,25 @@ metadata. The reader checks ZIP CRCs and bounds, actual saved model and sidecar
 contents, before/save/reopen definition equality, original hashes, and CSV
 source/definition/time joins. Original successful files from older runs were not
 retained; this change does not invent or replay those originals.
+
+## Assembly physics inspector
+
+Expand **Assembly physics** in the measurement panel and choose a rigid assembly
+by its generated body ID and member part IDs. The inspector shows configured
+mass and effective solver mass separately, world-space centre of mass in metres,
+and the solver's tensor about that COM in local body axes (kg·m²). Static/clamped
+bodies have no finite dynamic solver mass or tensor to report. The panel labels
+mass adjustments, the initial small-body inertia fallback repair, and later
+numerical/reflected-rotor inertia additions separately. These observations come
+from the accepted physics state and are unavailable during pose replay.
+
+The additional official originals are mandatory for the new history audit:
+
+```sh
+python3 scripts/read-sim-lab-measurement-artifact.py DIRECTORY --checkout COMMIT --tree TREE --require-history
+```
+
+This independent consumer verifies all six originals, including saved/history/
+remount equality, canonical saved-model headers, every captured CSV value or gap,
+plot selection, completed-step effort/power joins and finite inspector properties.
+The old four-file mode remains available for its explicitly older evidence.
