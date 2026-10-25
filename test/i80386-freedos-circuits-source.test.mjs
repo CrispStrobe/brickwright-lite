@@ -207,14 +207,21 @@ test('production build version derives from exact PR head, not ambient merge com
  assert.match(workflow,/assert\.equal\(manifest\.commit,process\.env\.BW_EXPECTED_HEAD\.slice\(0,7\)/);
  assert.match(workflow,/cmp overlay\/scratch-gui\/webpack\.config\.js packages\/scratch-gui\/webpack\.config\.js/);
  const pin='408c179a9bf5ffc28a4626e9ff5a78fc35cdc671';
+ const selectedPins=source=>[
+  source.match(/repository: CrispStrobe\/bw-circuit-ui\n\s*ref: ([0-9a-f]{40})/)?.[1],
+  source.match(/test "\$\(git -C circuit-ui rev-parse HEAD\)" = ([0-9a-f]{40})/)?.[1],
+  source.match(/assert\.equal\(pins\['bw-circuit-ui'\],'([0-9a-f]{40})'\)/)?.[1]
+ ];
+ assert.deepEqual(selectedPins(workflow),[pin,pin,pin],
+  'checkout, tracked-head readback, and admission each pin current CUI');
  assert.equal((workflow.match(new RegExp(pin,'g')) || []).length,3,'checkout, readback and admission share whole CUI 408');
- assert.doesNotMatch(workflow,/91d8434a79d373cef2837c137ab356356f1a3b44/);
  assert.match(workflow,/brickwright-lite\.i80386-freedos-circuits-admission\.v2/);
  assert.match(workflow,/freedos-circuits-direct-v2-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/);
- for(const drift of [workflow.replace('ref: '+pin,'ref: '+'91d8434a79d373cef2837c137ab356356f1a3b44'),
-                     workflow.replace('= '+pin,'= '+'91d8434a79d373cef2837c137ab356356f1a3b44'),
-                     workflow.replace("pins['bw-circuit-ui'],'"+pin+"'","pins['bw-circuit-ui'],'91d8434a79d373cef2837c137ab356356f1a3b44'")]){
+ for(const drift of [workflow.replace('ref: '+pin,'ref: '+'0'.repeat(40)),
+                     workflow.replace('= '+pin,'= '+'0'.repeat(40)),
+                     workflow.replace("pins['bw-circuit-ui'],'"+pin+"'","pins['bw-circuit-ui'],'"+'0'.repeat(40)+"'")]){
   assert.notEqual(drift,workflow);
-  assert.notEqual((drift.match(new RegExp(pin,'g')) || []).length,3);
+  assert.notDeepEqual(selectedPins(drift),[pin,pin,pin],
+   'one wrong pin in any authority role must fail');
  }
 });

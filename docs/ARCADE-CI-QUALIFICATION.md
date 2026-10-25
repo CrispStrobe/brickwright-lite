@@ -12,10 +12,10 @@ success. Retain that failure; do not report the job as a passed build.
 
 The build job keeps integrated preparation, source and provenance guards,
 mutation proofs, webpack, emitted-distribution checks and the sole Pages
-artifact upload. Four required unit matrix legs prepare the same integrated
+artifact upload. Six required unit matrix legs prepare the same integrated
 inputs and partition the complete non-corpus suite. Corpus and browser/FPGA
 jobs retain their own acceptance contracts. Deploy requires all those jobs.
-The external main-publication audit also requires all four named unit legs.
+The external main-publication audit also requires all six named unit legs.
 No timeout, test assertion, skip-pointer rule or distribution guard is relaxed.
 
 `test/unit-shards.test.mjs` checks preparation equality between build and unit,
@@ -34,8 +34,8 @@ exactly one shard. Index/count is one-based, validated and bounded; unsupported,
 invalid or empty selections fail explicitly. Full local commands remain full.
 
 ```sh
-for leg in 1 2 3 4; do
-  node scripts/list-tests.mjs fast --shard "$leg/4"
+for leg in 1 2 3 4 5 6; do
+  node scripts/list-tests.mjs fast --shard "$leg/6"
 done
 BW_TEST_SHARD=1/4 npm run test:fast:shard
 npm run test:fast
@@ -112,3 +112,15 @@ names for evidence without treating them as current admission authority.
 Focused partition and gate controls do not establish hosted completion or a
 speedup. Fresh complete four-leg censuses and all other enabled checks remain
 required before acceptance; no source compatibility count changes.
+
+## Six required legs after unit (3/4) neared its budget — 2026-10-25
+
+On main `unit (3/4)` took 26–29.5 minutes of its unchanged 30-minute bound
+and was cancelled at the bound twice on one pull request. The partition is
+now modulo six under the same bound, integrated preparation and per-file
+census, skip and GUI-resolution audits. Modulo six refines both earlier
+splits: old two-way leg k is new legs k, k+2, k+4, and the three-way leg k
+is new legs k and k+3. (It does not refine modulo four.) Admission now
+requires all six exact current names; the two- and four-way names stay in
+the skip collector as historical evidence only. No test, assertion, skip or
+timeout changed.

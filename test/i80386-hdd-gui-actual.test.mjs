@@ -4736,7 +4736,7 @@ test('original controls stdout is one complete JSON summary without ignored outp
 
 test('parallel original control deadline and child failures cannot be ignored', async () => {
     const failure=await runControlChildren([{argv:['/usr/bin/python3','-c','import sys;sys.exit(3)']}],1000);
-    assert.equal(failure.results[0].code,3);assert.equal(failure.expired,false);
+    assert.equal(failure.results[0].code,3);assert.equal(failure.results[0].error,null);assert.equal(failure.expired,false);
     const timeout=await runControlChildren([{argv:['/usr/bin/python3','-c','import time;time.sleep(1)']}],10);
     assert.equal(timeout.expired,true);assert.notEqual(timeout.results[0].code,0);
     const bytes=3*1024*1024;
