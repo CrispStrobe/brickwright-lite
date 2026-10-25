@@ -56,8 +56,8 @@ and tracked mode is unchanged.
 
 Independent old/target Git comparisons found the four retained ROMs identical
 to both supplier revisions. The existing DOS image still matches its recorded
-hash, and the DOS builder, assembler, repository IO.SYS and fetch sources are
-unchanged. This is retained byte/source identity, not a fresh DOS image build,
+hash. Board's `scripts/build-dos-image.mjs`, `dos/iosys.asm` and
+`scripts/fetch-free-dos.mjs` are unchanged. This is retained byte/source identity, not a fresh DOS image build,
 media acquisition, firmware run or broader licence conclusion.
 
 Both unchanged App Store copyleft source-reader controls pass locally, and
