@@ -101,7 +101,7 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,physicalUpdateSource=null,sdkSpriteFactoryTag=false}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
     const nullableLengthIssued=new Set();let nullableLengthUsed=false;
     const lexicalSource=initializationEntries?lexicalDeclarationReadiness(program):null;
@@ -156,7 +156,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const mathNumbers=ordinaryPrimitiveSdkNumbers?ordinaryMathNumberCalls(program):null;
     const spriteAyNumbers=privateSpriteAyProof||(ordinaryPrimitiveSdkNumbers?ordinarySpriteAyNumberReads(program):null);
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
-    const sdkSpriteFieldReads=ordinaryPrimitiveSdkNumbers?ordinarySdkSpriteFieldReads(program):null;
+    let sdkSpriteFieldReads=null;if(ordinaryPrimitiveSdkNumbers){try{sdkSpriteFieldReads=ordinarySdkSpriteFieldReads(program);}catch{sdkSpriteFieldReads=null;}}
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
     const initializedReads=new WeakSet(),initializationAt=new WeakMap(),localUndefinedDeclarations=new Set();
@@ -244,6 +244,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(['Conditional','Logical'].includes(node.type)||node.type==='Binary'&&['&&','||','??'].includes(node.op)){edge(cell(node.consequent||node.left),current);edge(cell(node.alternate||node.right),current);}
         // Declared SDK primitive results: a Sprite field read on an exact SDK
         // Sprite factory value, or Image.getPixel on an exact Image receiver.
+        else if(sdkSpriteFactoryTag&&sdkSpriteFactoryCall(node,sdk))add(current,'SdkSprite');
         else if(sdkSpriteFieldReads?.has(node))add(current,sdkSpriteFieldReads.get(node));
         else if(ordinaryPrimitiveSdkNumbers&&node.type==='Call'&&!node.isNew&&!node.optional&&node.callee?.type==='Member'&&!node.callee.optional&&
             sdkImageNumberMethod(node.callee.name)?.result==='number'&&node.args.length===sdkImageNumberMethod(node.callee.name).parameters.length)
@@ -256,6 +257,19 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };
     const collectPrints=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectPrints);return;}if(node.type==='Call'&&node.callee?.type==='Member'&&['print','printCenter'].includes(node.callee.name)){const center=node.callee.name==='printCenter',fontIndex=center?3:4;if(node.args.length>fontIndex)prints.push({node,center,fontIndex});}Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectPrints(value);});};
+    // Private side profile only: a Null/Undefined reset statement directly
+    // followed by a store of an SDK Sprite factory call (with no nested call
+    // or function in its arguments) to the same identifier is never observed.
+    if(sdkSpriteFactoryTag){
+        const hasCall=value=>!!value&&typeof value==='object'&&(['Call','FunctionExpression'].includes(value.type)||Object.entries(value).some(([key,child])=>!metadata.has(key)&&hasCall(child)));
+        const store=statement=>statement?.type==='ExpressionStatement'&&statement.expr?.type==='Assignment'&&statement.expr.op==='='&&statement.expr.left?.type==='Identifier'?statement.expr:null;
+        const lists=value=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){
+                for(let i=0;i+1<value.length;i++){const reset=store(value[i]),next=store(value[i+1]);
+                    if(reset&&next&&['Null','Undefined'].includes(reset.right?.type)&&next.left.name===reset.left.name&&sdkSpriteFactoryCall(next.right,sdk)&&!next.right.args.some(hasCall))deadResets.add(reset);}
+                value.forEach(lists);return;}
+            for(const [key,child]of Object.entries(value))if(!metadata.has(key)&&child&&typeof child==='object')lists(child);};
+        lists(program);
+    }
     visit(program,global);collectPrints(program);
     if(arrayValues)for(const [binding,nodes]of declarations)if(nodes.size!==1)add(binding,'Opaque');
     function entry(node,known=new Set()){
@@ -1483,9 +1497,6 @@ export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunc
 // receiver that is an SDK Sprite factory call or a binding written ONLY from
 // such calls (no parameter, update, compound or other writer). Every other
 // read stays Opaque. Results map each admitted Member node to its type.
-// A null/undefined/absent value cannot complete a field read normally (it
-// throws), so only factory values reach the read's result.
-const NO_VALUE=Symbol('no value'),OTHER_WRITER=Symbol('other writer');
 const SDK_SPRITE_FACTORIES=new Set(['sprites.create','sprites.createProjectile','sprites.createProjectileFromSprite','sprites.createProjectileFromSide']);
 const SDK_PRIMITIVE_TYPE_NAMES={number:'Number',boolean:'Boolean',string:'String'};
 const sdkSpriteFieldTypes=(()=>{
@@ -1494,6 +1505,15 @@ const sdkSpriteFieldTypes=(()=>{
         if(!fields.has(field.name))fields.set(field.name,SDK_PRIMITIVE_TYPE_NAMES[field.typeName]||null);
     return fields;
 })();
+function sdkSpriteFactoryCall(node,sdk) {
+    return node?.type==='Call'&&!node.isNew&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Member'&&!node.callee.optional&&
+        SDK_SPRITE_FACTORIES.has(path(node.callee))&&sdk.has(node.callee);
+}
+// Sprite fields whose SDK descriptor declares a primitive type. A read is
+// admitted only when a private side graph types its receiver as exactly an
+// SDK Sprite factory value (no Null/Undefined/Opaque/parameter value can reach
+// it), every program write to that field name stores exactly the declared
+// primitive, and no unbound non-SDK callee could write it. Otherwise Opaque.
 function ordinarySdkSpriteFieldReads(program) {
     const nodes=[],parents=new WeakMap(),seen=new Set();let valid=true;
     const visit=(value,parent)=>{
@@ -1502,32 +1522,58 @@ function ordinarySdkSpriteFieldReads(program) {
         for(const key of Object.keys(value))if(!metadata.has(key))visit(value[key],value);
     };
     try{visit(program,null);}catch{return null;}
-    if(!valid||program?.type!=='Program')return null;
-    let graph;try{graph=analyseGraph(program,{parenthesized:true,unboundIsOpaque:true,initializationEntries:true});}catch{return null;}
+    if(!valid||program?.type!=='Program'||!nodes.some(node=>node.type==='Member'&&sdkSpriteFieldTypes.get(node.name)))return null;
     const unwrap=node=>node?.type==='Parenthesized'?unwrap(node.expression):node;
-    const factory=value=>{const node=unwrap(value);return node?.type==='Call'&&!node.isNew&&!node.optional&&!node.typeArguments?.length&&
-        node.callee?.type==='Member'&&!node.callee.optional&&SDK_SPRITE_FACTORIES.has(path(node.callee))&&graph.isSdkNamespace(node.callee);};
-    const writes=new Map(),bad=new Set();
-    const write=(id,value)=>{if(id==null)return;if(!writes.has(id))writes.set(id,[]);writes.get(id).push(value);};
+    const options={parenthesized:true,unboundIsOpaque:true,uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,sdkSpriteFactoryTag:true};
+    let graph;
+    try{graph=analyseGraph(program,options);}catch{return null;}
     for(const node of nodes){
         if(['Unknown','Object'].includes(node.type)||node.type==='Unary'&&node.op==='delete')return null;
-        if(node.type==='Declaration')for(const row of node.decls||[])write(graph.bindingOf(node,row.name),row.init||NO_VALUE);
-        if(node.type==='Assignment'&&node.left?.type==='Identifier')write(graph.bindingOf(node.left),node.op==='='?node.right:OTHER_WRITER);
-        if(node.type==='Update'&&node.argument?.type==='Identifier')write(graph.bindingOf(node.argument),OTHER_WRITER);
-        if(['FunctionDeclaration','FunctionExpression'].includes(node.type))for(const param of node.params||[])
-            if(typeof param==='string')for(const body of [node.body].flat())if(body&&typeof body==='object'){try{bad.add(graph.bindingOf(body,param));}catch{}break;}
-        if(['ForOf','ForIn'].includes(node.type))return null;
+        if(node.type==='Call'&&node.callee?.type==='Identifier'&&!graph.isSdkNamespace(node.callee)&&graph.bindingOf(node.callee)==null)return null;
     }
-    const spriteBinding=id=>id!=null&&!bad.has(id)&&writes.get(id)?.length>0&&writes.get(id).some(factory)&&writes.get(id).every(value=>factory(value)||value===NO_VALUE||['Null','Undefined'].includes(unwrap(value)?.type));
-    const result=new Map();
+    const reads=[];
     for(const node of nodes){
-        if(node.type!=='Member'||node.optional||!sdkSpriteFieldTypes.get(node.name))continue;
+        const declared=node.type==='Member'&&!node.optional?sdkSpriteFieldTypes.get(node.name):null;
+        if(!declared)continue;
         const parent=parents.get(node);
         if(parent?.type==='Assignment'&&parent.left===node||parent?.type==='Update'&&parent.argument===node||parent?.type==='Call'&&parent.callee===node)continue;
-        const object=unwrap(node.object);
-        let ok=factory(object);
-        if(!ok&&object?.type==='Identifier'){try{ok=spriteBinding(graph.bindingOf(object));}catch{ok=false;}}
-        if(ok)result.set(node,sdkSpriteFieldTypes.get(node.name));
+        try{const found=graph.typesAt(node.object);if(found.size===1&&found.has('SdkSprite'))reads.push({node,declared});}catch{}
     }
-    return result;
+    // Greatest fixpoint: assume every candidate read has its declared type,
+    // then keep a field only while every program write to it stores exactly
+    // that type under the assumption. Writes from opaque or other values ban
+    // the field; the surviving assumption is then self-consistent.
+    const banned=new Set();
+    for(let round=0;round<8;round++){
+        const assumed=Object.assign(new Set(reads.filter(read=>!banned.has(read.node.name)&&read.declared==='Number').map(read=>read.node)),{current:()=>true});
+        let current;try{current=analyseGraph(program,options,assumed);}catch{return null;}
+        const exactType=(node,type)=>{const found=current.typesAt(node);return found.size===1&&found.has(type);};
+        // A call to an unchanged two-parameter arithmetic function evaluated
+        // at THIS call site: both actual arguments exact Number => Number.
+        const arithmetic=node=>{
+            if(node?.type!=='Call'||node.isNew||node.callee?.type!=='Identifier'||node.args?.length!==2)return false;
+            const fn=current.immutableFunctionAt(node.callee),body=fn?.body,ret=Array.isArray(body)&&body.length===1?body[0]:null,expr=ret?.type==='Return'?unwrap(ret.value??ret.argument):null;
+            return fn?.type==='FunctionDeclaration'&&fn.params?.length===2&&expr?.type==='Binary'&&['+','-','*','/','%'].includes(expr.op)&&
+                expr.left?.type==='Identifier'&&expr.left.name===fn.params[0]&&expr.right?.type==='Identifier'&&expr.right.name===fn.params[1]&&
+                node.args.every(arg=>exactType(arg,'Number'));
+        };
+        const exact=(node,type)=>exactType(node,type)||type==='Number'&&arithmetic(unwrap(node));
+        let changed=false;
+        for(const node of nodes){
+            let name=null,ok=true;
+            if(node.type==='Assignment'&&node.left?.type==='Member'&&sdkSpriteFieldTypes.get(node.left.name)){
+                name=node.left.name;const declared=sdkSpriteFieldTypes.get(name);
+                ok=node.op==='='?exact(node.right,declared):declared==='Number'&&node.op!=='+='&&exact(node.right,'Number');
+            }else if(node.type==='Update'&&node.argument?.type==='Member'&&sdkSpriteFieldTypes.get(node.argument.name)){
+                name=node.argument.name;ok=sdkSpriteFieldTypes.get(name)==='Number';
+            }
+            if(name&&!ok&&!banned.has(name)){banned.add(name);changed=true;}
+        }
+        if(!changed){
+            const result=new Map();
+            for(const read of reads)if(!banned.has(read.node.name))result.set(read.node,read.declared);
+            return result;
+        }
+    }
+    return null;
 }

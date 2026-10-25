@@ -61,12 +61,13 @@ test('an Array program adding a declared-number SDK Sprite field exports with th
     assert.match(out.ts, /__bwBinaryAdd\(shot\.x, \(0 \+ 1\)\)/);
 });
 
-test('a Sprite field read through a parameter is not an exact factory value and keeps the refusal', () => {
+test('a Sprite field read through a parameter that may receive null keeps the refusal', () => {
     const out = exported(`let values = [1, 2]
 let total = 0
 function move(target: Sprite) {
     total = target.x + 1
 }
+move(null)
 move(sprites.create(img\`1\`))
 values.push(total)`);
     assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
