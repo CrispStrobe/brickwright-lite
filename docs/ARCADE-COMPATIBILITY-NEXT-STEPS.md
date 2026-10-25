@@ -104,6 +104,42 @@ unchanged score/scene/player/trace/Stop assertion on the composed head. Do not
 report instrumented-control success as raw-input completion, and retain any
 remaining simulator failure without a timeout change.
 
+### Closed ordinary callers: source and project integration
+
+The [execution-root claim](../lanes/2026-10-25-arcade-closed-ordinary-entry.md)
+now has source and project candidates. Source controls distinguish a live
+numeric caller from an uncalled opaque forwarding chain without deleting either
+function. The project proof accepts only owned frozen JSON, validates physical
+ownership/calls, and omits runtime obligations only for proved unused owners.
+Unknown operations, callable bridges, malformed inputs and live project objects
+retain the existing checks. Eleven project controls and ten source controls pass;
+these do not establish a complete application result.
+
+The independent combined control now passes Code reconstruction, three owned-JSON
+export/import generations and SB3 reopening, with all bodies retained. The
+startup-storage proof follows actual null/undefined resets, allocations and alias
+writes; it supplies no Array type, initialization or normal-completion fact.
+Unknown writers, callable replacements and namespace aliases remain refused.
+Source-reference declaration blocks are passive metadata and supply no producer
+authority. The composed source run has twenty-one passes; counts overlap the
+individual cohorts.
+
+The retained sorting source now imports, reconstructs through Code and exports
+its owned JSON without unsupported diagnostics. All six authored procedures
+remain present, including the three unused recursive procedures. Canonical
+while/fixed-math blocks and exact unshadowed `Math.randomRange` calls are covered.
+The independent looping source also passes two JSON export/import generations.
+This is a targeted source conversion result, not a new aggregate census or
+execution result.
+
+Keep the full forwarding body and both Array writes through Code reconstruction,
+three owned-JSON export/import generations and saved-project reopening. Reactivate
+the unused caller and verify Number constraints return; preserve uninitialized
+reads, unknown/mixed writers and mutation expiry. Retain earlier combined failures and the later passing source results separately. Generated native helpers also need an exact current
+body/call inventory before this proof can cover their operations; never leave
+unrewritten calls after removing a helper declaration. Actual original/emitted
+MakeCode, native execution and visible editor qualification remain required.
+
 ### Further SDK primitive normal results
 
 The constructor-effect candidate now passes its complete source controls and

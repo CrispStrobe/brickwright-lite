@@ -149,6 +149,23 @@ Broader SDK callbacks/setters remain outside this slice. Actual
 original/emitted PXT, native execution and visible editor qualification remain
 pending; no additional corpus completion is claimed.
 
+The [closed ordinary-entry candidate](../lanes/2026-10-25-arcade-closed-ordinary-entry.md)
+now retains uncalled procedure bodies while excluding only their runtime call
+edges from ordinary constraints and Array effect analysis. Its source proof is
+lexical and current; project authority requires a genuine frozen JSON snapshot.
+Unknown entries, aliases, callbacks and unsupported shapes keep existing checks.
+Actual storage writers prove only entry neutrality, never Array initialization.
+
+Twenty-one composed source controls pass, including Code reconstruction, three
+JSON generations, SB3 reopening and an independent looping/math case. The
+seventy-five-control source cohort and the composed controls overlap. The
+retained sorting source imports and reconstructs cleanly, and its retained JSON
+now exports without unsupported diagnostics with every authored procedure still
+present. A new bad live caller restores the Number refusal. Preserve all earlier
+failures and detected guard cuts. Native helper bodies and call inventories were
+not changed. Actual original/emitted MakeCode, native execution, visible editors
+and a fresh aggregate census remain pending; the last full census is unchanged.
+
 The retained four-shard CI baseline at
 [`8e7691ad`](https://github.com/CrispStrobe/brickwright-lite/commit/8e7691ad713fce0922a5558f3998c8e98c2b09d5)
 has **13,191 passes, 70 failures, 19 skips and 37 TODOs**. Forty-nine failures

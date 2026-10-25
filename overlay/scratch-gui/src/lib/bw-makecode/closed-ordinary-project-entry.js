@@ -39,8 +39,9 @@ const opcodes=new Set(('procedures_definition procedures_prototype procedures_ca
     'operator_round operator_mathop operator_equals operator_lt operator_gt operator_and operator_or operator_not '+
     'operator_join operator_letter_of operator_length operator_contains '+
     'arcade_whenSourceStarts arcade_callFunction arcade_functionArgument arcade_declareParameterConstraint '+
+    'arcade_declareSourceScalar arcade_declareSourceReference '+
     'arcade_getLocal arcade_setLocal arcade_returnValue arcade_log arcade_splash '+
-    'arcade_screenImage arcade_mutateImage arcade_drawImage arcade_setImagePixel '+
+    'arcade_screenImage arcade_mutateImage arcade_drawImage arcade_setImagePixel arcade_sourceWhile arcade_mathBinary '+
     'arcade_sourceValueBinary arcade_sourceValueUnary '+
     'arrays_specialValue arrays_valueBinary arrays_valueUnary arrays_valueCompare arrays_valueTruthy '+
     'arrays_createReference arrays_referenceValues arrays_referenceItem arrays_referenceLength '+

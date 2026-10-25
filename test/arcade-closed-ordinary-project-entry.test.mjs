@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
+import JSZip from 'jszip';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {createProjectJsonSnapshot} from '../overlay/scratch-gui/src/lib/bw-makecode/project-json-snapshot.js';
 import {createClosedOrdinaryProjectEntry,closedOrdinaryProjectEntryFor} from '../overlay/scratch-gui/src/lib/bw-makecode/closed-ordinary-project-entry.js';
 import {prepareProcedureConstraintExport} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-export.js';
+import {projectJsonToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 
 const make=source=>{
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
@@ -108,4 +110,68 @@ test('an observed ambient mutation expires the issued proof even after physical 
     try{Object.defineProperty(Array.prototype,key,{value:1,configurable:true});assert.equal(proof.current(),false);}
     finally{delete Array.prototype[key];}
     assert.equal(proof.current(),false);assert.equal(proof.isUnreachable(row.target,row.node),false);
+});
+
+const arrayCallerSource=`let values=[5,3];
+function exchange(left:number,right:number){
+    let previous=values[left];values[left]=values[right];values[right]=previous;
+}
+function dormant(index){exchange(0,index)}
+exchange(0,1);`;
+
+test('a newly executed bad forwarding caller reactivates the actual Number contract',()=>{
+    const result=arcadeToPseudocode(arrayCallerSource+'\ndormant("bad");');
+    assert.ok(result.unsupported.some(message=>/Procedure parameter constraint: exchange\.right requires Number/.test(message)),
+        JSON.stringify(result.unsupported));
+});
+
+test('unused Array callers retain their complete bodies across Code, repeated JSON export and saved project reopen',async()=>{
+    let creator=make(arrayCallerSource);
+    const bodies=project=>{
+        const defs=[];
+        for(const target of project.targets)for(const node of Object.values(target.blocks))if(node.opcode==='procedures_definition'){
+            const code=target.blocks[node.inputs.custom_block[1]].mutation.proccode;
+            if(!/(exchange|dormant)/.test(code))continue;
+            const seen=new Set(),body=[];
+            const walk=id=>{
+                if(typeof id!=='string'||seen.has(id))return;seen.add(id);
+                const child=target.blocks[id];if(!child)return;body.push(child);
+                for(const slot of Object.values(child.inputs||{}))walk(slot[1]);walk(child.next);
+            };walk(node.next);defs.push({code,body});
+        }
+        const exchange=defs.filter(row=>/exchange/.test(row.code)),dormant=defs.filter(row=>/dormant/.test(row.code));
+        assert.equal(exchange.length,1);assert.equal(dormant.length,1);
+        assert.equal(exchange[0].body.filter(node=>node.opcode==='arrays_mutateReference').length,2,
+            'both actual Array writes survive, including the currently unused body');
+        assert.ok(dormant[0].body.some(node=>['procedures_call','arcade_callFunction'].includes(node.opcode)),
+            'the unused forwarding call is preserved');
+    };
+    bodies(creator.project);
+    const code=new Creator();code.parse(creator.decompile());assert.deepEqual(code.errors,[]);assert.deepEqual(code.warnings,[]);
+    bodies(code.project);creator=code;
+    for(let generation=0;generation<3;generation++){
+        const output=projectJsonToArcade(JSON.stringify(creator.project));assert.deepEqual(output.unsupported,[]);
+        creator=make(output.files);bodies(creator.project);
+    }
+    const saved=await JSZip.loadAsync(await(await creator.generateSB3()).arrayBuffer());
+    const json=await saved.file('project.json').async('string');bodies(JSON.parse(json));
+    const reopened=projectJsonToArcade(json);assert.deepEqual(reopened.unsupported,[]);bodies(make(reopened.files).project);
+});
+
+test('closed loop and fixed-math blocks preserve unused recursive callers through current JSON export',()=>{
+    let creator=make(`let values=[9,1];
+function exchange(left:number,right:number){let old=values[left];values[left]=values[right];values[right]=old;}
+function future(end:number){let n=0;while(n<end){exchange(n,end);n++;}if(end>0){future(end-1);}}
+function asleep(){future(values.length)}
+let count=0;while(count<Math.randomRange(1,2)){exchange(0,1);count++;}`);
+    for(let generation=0;generation<2;generation++){
+        const output=projectJsonToArcade(JSON.stringify(creator.project));
+        assert.deepEqual(output.unsupported,[],`generation ${generation}: ${JSON.stringify(output.unsupported)}`);
+        creator=make(output.files);
+        const names=creator.project.targets.flatMap(target=>Object.values(target.blocks)
+            .filter(node=>node.opcode==='procedures_prototype').map(node=>node.mutation.proccode));
+        assert.equal(names.filter(name=>/future/.test(name)).length,1);
+        assert.equal(names.filter(name=>/asleep/.test(name)).length,1);
+        assert.ok(creator.project.targets.some(target=>Object.values(target.blocks).some(node=>node.opcode==='arcade_sourceWhile')));
+    }
 });
