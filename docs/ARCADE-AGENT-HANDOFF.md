@@ -11,7 +11,7 @@ passed five reports covering 29 journeys. The optional clean-export capture
 remains `UNAVAILABLE_FRESHNESS` / `OBSERVATION_MISSING`. These results qualify
 that head's observed boundaries, not the later composed source candidate.
 
-The next implementation is the
+The new implementation follows the
 [merged Image consumer ABI scope](../lanes/2026-10-25-arcade-image-consumer-abi.md).
 The unchanged SplashDialog test reaches exported MakeCode execution and fails
 inside generated startup. A source reconstruction shows Image aliases emitted
@@ -21,6 +21,13 @@ hashed inputs and bounded generated-code context. It neither retries the guest
 nor changes assertions. Prove actual current Image receivers before introducing
 Image interface context; preserve writable fields, alias generations across
 resize, early-read refusals and the original zero/negative allocation matrix.
+Fourteen complete source controls and the composed 37-control cohort pass;
+five guard cuts are detected. Actual current model identity, constructor and
+parent records, physical socket ownership, source currentness and all relevant
+writers gate the new context. One closed synchronous source start is supported;
+unknown entries/effects decline the proof. Existing typed Image exports keep
+their original emitted form. Final actual SDK/native/editor qualification is
+pending; these controls do not establish that the old runtime crash is fixed.
 
 The fresh baseline at `468f97a625c8065ea791047ddfb319563094be4e` measures
 **145 translated / 38 partial / one parse failure** on the unchanged 184 raw
