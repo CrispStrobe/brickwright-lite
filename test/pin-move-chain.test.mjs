@@ -79,6 +79,16 @@ const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', '
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
 const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
+const HISTORICAL_X86_CURRENT_CUI = '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671';
+// Reviewed immutable b9ae producer/control bodies. A future legitimate edit or
+// pin move needs an explicit profile review; never derive these from its input.
+// Matching a profile admits only the named historical token, not the file.
+const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 229643,
+        sha256: '794f07105ffa87b3921a39c2dcc532a74c84a50a9a767416dc075c948203b064'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 471942,
+        sha256: '6b7963f5486e183e4c4ded7a2d75d24a799eae00ad4fa28c92e8b855d0d3964b'}),
+});
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
 
@@ -234,10 +244,12 @@ const historicalFunction = (tokens, name, indent, text) => {
     return {start, end};
 };
 
-/** Offsets of the three transparent, previous-shipped historical literal roles. */
-export const historicalCuiSpans = (file, text, known) => {
+// The nonexported profile input is only a seam for manufactured portable tests.
+// The public wrapper below always selects the source-fixed reviewed profiles.
+const historicalCuiSpansForProfile = (file, text, known, profiles) => {
     const pin = HISTORICAL_X86_CUI_V5_V7;
-    if (known.current.has(pin) || known.previous.get(pin)?.repo !== 'bw-circuit-ui') return [];
+    if (!known.current.has(HISTORICAL_X86_CURRENT_CUI) || known.current.has(pin) ||
+        known.previous.get(pin)?.repo !== 'bw-circuit-ui') return [];
     const quoted = `'${pin}'`;
     if (file === 'test/pin-move-chain.test.mjs') {
         const line = `const HISTORICAL_X86_CUI_V5_V7 = ${quoted};`;
@@ -247,8 +259,19 @@ export const historicalCuiSpans = (file, text, known) => {
         const declaration = tokens?.find(t => t.start === rows[0].index && t.text === 'const' && t.depth === 0 && t.column === 0);
         return declaration ? [rows[0].index + line.indexOf(pin)] : [];
     }
+    const profile = profiles[file];
+    if (!profile || Buffer.byteLength(text) !== profile.bytes ||
+        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_BODY_GUARD
     if (file === 'scripts/run-i80386-hdd-gui-actual.py') {
         const tokens = historicalTokens(text, true); if (!tokens) return [];
+        const currentDeclarations = [
+            ['CUI', `CUI = '${HISTORICAL_X86_CURRENT_CUI}'`],
+            ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}"],
+        ];
+        if (currentDeclarations.some(([name, line]) => {
+            const declared = tokens.filter(t => t.kind === 'name' && t.text === name && t.column === 0 && t.depth === 0);
+            return declared.length !== 1 || historicalLine(text, declared[0]) !== line;
+        })) return [];
         const names = tokens.filter(t => t.kind === 'name' && t.text === 'HISTORICAL_CUI');
         if (names.length !== 2 || names[0].column !== 0 || names[0].depth !== 0 ||
             historicalLine(text, names[0]) !== `HISTORICAL_CUI = ${quoted}` ||
@@ -289,6 +312,10 @@ export const historicalCuiSpans = (file, text, known) => {
     if (names.slice(1).some((t, i) => historicalLine(python, t) !== '            ' + uses[i])) return [];
     return [start + names[0].start + `old_pin='`.length];
 };
+
+/** Offsets only; callers cannot supply or refresh reviewed source profiles. */
+export const historicalCuiSpans = (file, text, known) =>
+    historicalCuiSpansForProfile(file, text, known, HISTORICAL_X86_SOURCE_PROFILES);
 
 /**
  * Judge one file's text. Pure; the mutation tests plant shas through it.
@@ -366,7 +393,8 @@ const known = {current, previous, history};
 const historicalRoleFixtures = () => {
     const pin = HISTORICAL_X86_CUI_V5_V7;
     const producer = `HISTORICAL_CUI = '${pin}'\n` +
-        "CUI = 'current CUI identity'\n" +
+        `CUI = '${HISTORICAL_X86_CURRENT_CUI}'\n` +
+        "FINITE_V7_PINS = {'bw-board':BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}\n" +
         "def execute(request):\n    pins = (request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else\n" +
         "              {'bw-board': BOARD, 'bw-circuit-ui': HISTORICAL_CUI, 'sb3-creator': SB3})\n";
     const method = 'test_actual_v8_real_originals_seal_and_bounded_git_envelopes';
@@ -376,30 +404,42 @@ const historicalRoleFixtures = () => {
         "            result['dependencyPins']['bw-circuit-ui']=old_pin\n" +
         "            vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})\n        finally: pass\n";
     const control = 'const controls = String.raw`\n' + python + '\n`;\n';
-    return {pin, producer, control, method, producerPath: 'scripts/run-i80386-hdd-gui-actual.py',
-        controlPath: 'test/i80386-hdd-gui-actual.test.mjs', policyPath: 'test/pin-move-chain.test.mjs'};
+    const producerPath = 'scripts/run-i80386-hdd-gui-actual.py', controlPath = 'test/i80386-hdd-gui-actual.test.mjs';
+    const profile = text => ({bytes: Buffer.byteLength(text), sha256: createHash('sha256').update(text).digest('hex')});
+    return {pin, producer, control, method, producerPath, controlPath, policyPath: 'test/pin-move-chain.test.mjs',
+        profiles: {[producerPath]: profile(producer), [controlPath]: profile(control)}};
 };
-const historicalTestKnown = () => ({current: new Set(['current']),
+const historicalTestKnown = () => ({current: new Set([HISTORICAL_X86_CURRENT_CUI]),
     previous: new Map([[HISTORICAL_X86_CUI_V5_V7, {repo: 'bw-circuit-ui', replacedIn: 'fixture', on: 'fixture'}]]),
     history: new Map()});
+const historicalFixtureSpans = f => (file, text, known) =>
+    historicalCuiSpansForProfile(file, text, known, f.profiles);
+const historicalJudgeWith = recognize => vm.runInNewContext(`(${judgeFile.toString()})`,
+    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, historicalCuiSpans: recognize});
 
 test('three exact historical CUI occurrences are previous-pin roles, not code-file exemptions', () => {
     const f = historicalRoleFixtures(), k = historicalTestKnown();
+    const recognize = historicalFixtureSpans(f), judge = historicalJudgeWith(recognize);
     assert.equal(previous.get(f.pin)?.repo, 'bw-circuit-ui', 'the actual historical identity was shipped');
     assert.ok(!current.has(f.pin), 'historical identity is not a current pin');
     for (const [file, text] of [[f.producerPath, f.producer], [f.controlPath, f.control],
         [f.policyPath, readFileSync(path.join(ROOT, f.policyPath), 'utf8')]]) {
         assert.equal(roleOf(file), 'code');
-        assert.equal(historicalCuiSpans(file, text, k).length, 1, file);
-        assert.deepEqual(judgeFile(file, text, k), [], file);
+        assert.equal(recognize(file, text, k).length, 1, file);
+        assert.equal(judge(file, text, k).length, 0, file);
         const unshipped = {current: k.current, previous: new Map(), history: new Map([[f.pin, 'bw-circuit-ui']])};
-        assert.equal(historicalCuiSpans(file, text, unshipped).length, 0, 'never-shipped is not admitted');
-        assert.ok(judgeFile(file, text, unshipped).length > 0);
+        assert.equal(recognize(file, text, unshipped).length, 0, 'never-shipped is not admitted');
+        assert.ok(judge(file, text, unshipped).length > 0);
+    }
+    for (const [file, text] of [[f.producerPath, f.producer], [f.controlPath, f.control]]) {
+        assert.deepEqual(historicalCuiSpans(file, text, k, f.profiles), [], 'public wrapper ignores caller profile data');
+        assert.equal(judgeFile(file, text, k).length, 1, 'production gate refuses synthetic/unreviewed bodies');
     }
 });
 
 test('historical CUI syntax/context cannot be borrowed, duplicated, quoted or redirected to current use', () => {
     const f = historicalRoleFixtures(), k = historicalTestKnown();
+    const recognize = historicalFixtureSpans(f), judge = historicalJudgeWith(recognize);
     const declaration = f.producer.split('\n')[0];
     for (const text of [
         f.producer.replace('HISTORICAL_CUI =', 'CUI ='),
@@ -414,8 +454,8 @@ test('historical CUI syntax/context cannot be borrowed, duplicated, quoted or re
         f.producer.replace('def execute', 'def other'),
         f.producer + 'current = f"{HISTORICAL_CUI}"\n',
     ]) {
-        assert.equal(historicalCuiSpans(f.producerPath, text, k).length, 0);
-        assert.ok(judgeFile(f.producerPath, text, k).length > 0);
+        assert.equal(recognize(f.producerPath, text, k).length, 0);
+        assert.ok(judge(f.producerPath, text, k).length > 0);
     }
     for (const text of [
         f.control.replace(f.method, 'test_other'), f.control.replace('class Originals', 'class Other'),
@@ -428,8 +468,8 @@ test('historical CUI syntax/context cannot be borrowed, duplicated, quoted or re
         '/*\n' + f.control + '\n*/',
         f.control.replace(`            old_pin='${f.pin}'`, `            """old_pin='${f.pin}'"""`),
     ]) {
-        assert.equal(historicalCuiSpans(f.controlPath, text, k).length, 0);
-        assert.ok(judgeFile(f.controlPath, text, k).length > 0);
+        assert.equal(recognize(f.controlPath, text, k).length, 0);
+        assert.ok(judge(f.controlPath, text, k).length > 0);
     }
     assert.ok(judgeFile('scripts/another.py', f.producer, k).length > 0);
     assert.ok(judgeFile('test/another.test.mjs', f.control, k).length > 0);
@@ -438,25 +478,24 @@ test('historical CUI syntax/context cannot be borrowed, duplicated, quoted or re
         [otherPastPin, {repo: 'bw-circuit-ui', replacedIn: 'other', on: 'other'}]])};
     for (const [file, text] of [[f.producerPath, f.producer], [f.controlPath, f.control]]) {
         const changed = text.replace(f.pin, otherPastPin);
-        assert.equal(historicalCuiSpans(file, changed, anotherPrevious).length, 0);
-        assert.equal(judgeFile(file, changed, anotherPrevious).length, 1, 'not an arbitrary previous CUI pin');
+        assert.equal(recognize(file, changed, anotherPrevious).length, 0);
+        assert.equal(judge(file, changed, anotherPrevious).length, 1, 'not an arbitrary previous CUI pin');
     }
     const policy = `const HISTORICAL_X86_CUI_V5_V7 = '${f.pin}';`;
     for (const text of ['/*\n' + policy + '\n*/', policy + '\n' + policy,
         policy + ' active();', `const other = '${f.pin}';`]) {
-        assert.equal(historicalCuiSpans(f.policyPath, text, k).length, 0);
-        assert.ok(judgeFile(f.policyPath, text, k).length > 0);
+        assert.equal(recognize(f.policyPath, text, k).length, 0);
+        assert.ok(judge(f.policyPath, text, k).length > 0);
     }
 });
 
 test('current input tokens remain red beside historical roles and expose broad-exemption mutants', () => {
     const f = historicalRoleFixtures(), k = historicalTestKnown();
-    const compileJudge = recognize => vm.runInNewContext(`(${judgeFile.toString()})`,
-        {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, historicalCuiSpans: recognize});
-    const noRoles = compileJudge(() => []);
+    const judge = historicalJudgeWith(historicalFixtureSpans(f));
+    const noRoles = historicalJudgeWith(() => []);
     assert.equal(noRoles(f.producerPath, f.producer, k).length, 1, 'original producer finding restored');
     assert.equal(noRoles(f.controlPath, f.control, k).length, 1, 'original control finding restored');
-    const broad = compileJudge((file, text) => [...text.matchAll(HEX40)].map(m => m.index));
+    const broad = historicalJudgeWith((file, text) => [...text.matchAll(HEX40)].map(m => m.index));
     for (const file of ['vendor-pins.json', 'package.json', 'package-lock.json',
         '.github/workflows/i80386-hdd-gui-actual.yml', 'scripts/current.py',
         'test/current.test.mjs', 'docs/generated/current.json']) {
@@ -466,9 +505,31 @@ test('current input tokens remain red beside historical roles and expose broad-e
     }
     for (const [file, text] of [[f.producerPath, f.producer + `CUI = '${f.pin}'\n`],
         [f.controlPath, f.control + `const active = '${f.pin}';\n`]]) {
-        assert.equal(judgeFile(file, text, k).length, 1, 'only historical token is admitted');
+        assert.equal(judge(file, text, k).length, 2, 'changed unreviewed body admits neither token');
         assert.equal(broad(file, text, k).length, 0);
     }
+    const dynamic = "globals()['HISTORICAL' + '_CUI']";
+    const aliases = [
+        f.producer.replace(`CUI = '${HISTORICAL_X86_CURRENT_CUI}'`, 'CUI = ' + dynamic),
+        f.producer + '\nCUI = ' + dynamic + '\n',
+        f.producer + "\nglobals()['CUI'] = " + dynamic + '\n',
+        f.producer + "\nglobals().update({'CUI': " + dynamic + '})\n',
+        f.producer + "\nFINITE_V7_PINS['bw-circuit-ui'] = " + dynamic + '\n',
+    ];
+    for (const text of aliases) {
+        assert.equal(historicalFixtureSpans(f)(f.producerPath, text, k).length, 0);
+        assert.equal(judge(f.producerPath, text, k).length, 1, 'dynamic/current edit cannot borrow the source profile');
+        assert.equal(historicalCuiSpans(f.producerPath, text, k).length, 0);
+    }
+    const bodyGuard = "    const profile = profiles[file];\n" +
+        "    if (!profile || Buffer.byteLength(text) !== profile.bytes ||\n" +
+        "        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_BODY_GUARD\n";
+    const original = historicalCuiSpansForProfile.toString(), without = original.replace(bodyGuard, '');
+    assert.notEqual(without, original, 'remove exactly the reviewed-body guard');
+    const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_CUI_V5_V7,
+        HISTORICAL_X86_CURRENT_CUI, historicalTokens, historicalLine, historicalFunction});
+    assert.equal(noBodyGuard(f.producerPath, aliases[2], k, f.profiles).length, 1,
+        'a later dynamic namespace edit defeats syntax checks without the immutable body guard');
 });
 
 // A scoped key is admitted only with the source bytes its receipt names.
