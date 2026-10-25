@@ -203,6 +203,47 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.27 en-US
+
+Robot Lab can now measure: add live measurements to a model, plot them over
+time, start from a lesson preset, and edit a saved measurement in place (Edit,
+Save, Cancel). Check that saved measurements and their plots survive saving and
+reopening a project. Robot Lab also connects its virtual hubs to the same Code
+and Blocks programs: run a program, stop it, switch tabs and run it again.
+
+For the SPIKE arena, try the free sandbox in 2D and 3D, the drive pad, painting
+and moving objects on the mat (including by touch), and Save mat / Open mat.
+Closing the arena while a program runs, then reopening it, should give a clean
+default robot. In the Code tab, a conversion that cannot be shown now offers an
+empty editor instead of a dead end. German labels should be complete.
+
+Circuits: the scope shows honest acquisition readouts, and organ widgets produce
+sampled audio you can measure. Please report wrong readings, stalls, missing
+labels, layout problems on small screens, or a program that does not stop.
+Simulation checks do not establish physical LEGO buildability or hardware support.
+
+## What to Test — 0.1.27 de-DE
+
+Robot Lab kann jetzt messen: Füge einem Modell Live-Messungen hinzu, zeichne sie
+über die Zeit auf, starte mit einer Lektionsvorlage und bearbeite eine
+gespeicherte Messung direkt (Bearbeiten, Speichern, Abbrechen). Prüfe, ob
+Messungen und Diagramme Speichern und erneutes Öffnen überstehen. Robot Lab
+verbindet seine virtuellen Hubs außerdem mit denselben Code- und
+Blöcke-Programmen: Programm starten, stoppen, Tab wechseln und erneut starten.
+
+In der SPIKE-Arena: freie Sandbox in 2D und 3D, Fahrsteuerung, Malen und
+Verschieben von Objekten auf der Matte (auch per Touch) sowie Matte speichern
+und öffnen. Wird die Arena während eines laufenden Programms geschlossen und
+wieder geöffnet, soll ein sauberer Standardroboter erscheinen. Im Code-Tab bietet
+eine nicht darstellbare Umwandlung jetzt einen leeren Editor statt einer
+Sackgasse an. Die deutschen Beschriftungen sollten vollständig sein.
+
+Schaltungen: Das Oszilloskop zeigt ehrliche Erfassungswerte, und Orgel-Widgets
+erzeugen messbares Audio. Bitte falsche Messwerte, Hänger, fehlende
+Beschriftungen, Layoutprobleme auf kleinen Bildschirmen oder Programme melden,
+die nicht anhalten. Simulationstests belegen keine physische LEGO-Baubarkeit
+oder Hardware-Unterstützung.
+
 ## What to Test — 0.1.26 en-US
 
 Robot Lab now includes 57 assemblies, 65 example choices and 130 English/German
