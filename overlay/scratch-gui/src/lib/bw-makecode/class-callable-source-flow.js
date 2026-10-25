@@ -109,6 +109,8 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
             constrain(row,type,label);
         }return value;}
         if(value.genericOrigin&&type){if(type.kind!=='named'||type.name!==value.genericOrigin)fail(label+' narrows an unbound generic result');return value;}
+        if(type?.kind==='named'&&type.name==='any'&&value.type?.kind==='named'&&
+            ['number','string','boolean','undefined'].includes(value.type.name))return value;
         if(type?.kind==='sdk'&&!images.isProduced(value))fail(label+' lacks an actual owned Image producer');
         if(type&&!equal(value.type,type))fail(label+' has an incompatible actual producer');
         return value;
