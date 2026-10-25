@@ -2851,17 +2851,18 @@ test('GUI consumer explicitly matches current canonical Board and CUI declaratio
         const pattern=new RegExp("^"+declaration+" = '([0-9a-f]{40})'$",'m');
         const consumer=controller.match(pattern)?.[1], selected=guiCuiSelection(dependency);
         assertGuiCuiSelection(consumer,selected,dependency);
-        assertGuiCuiSelection(reader.match(pattern)?.[1],selected,dependency);
+        if(dependency==='bw-board')assertGuiCuiSelection(reader.match(pattern)?.[1],selected,dependency);
         assert.throws(()=>assertGuiCuiSelection('0'.repeat(40),selected,dependency));
         for(let i=0;i<selected.length;i++){
             const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
             assert.throws(()=>assertGuiCuiSelection(consumer,drift,dependency));
         }
         // Each single reader/controller declaration independently remains live.
-        for(const source of [controller,reader]){
+        for(const source of dependency==='bw-circuit-ui' ? [controller] : [controller,reader]){
             const changed=source.replace(pattern,declaration+" = '"+'0'.repeat(40)+"'");
             assert.notEqual(changed,source);
             assert.throws(()=>assertGuiCuiSelection(changed.match(pattern)?.[1],selected,dependency));
         }
     }
+    assert.doesNotMatch(reader,/^CUI = /m,'unused reader pin removed without changing historical grading');
 });
