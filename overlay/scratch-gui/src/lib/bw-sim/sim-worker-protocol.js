@@ -42,10 +42,10 @@
 // The cost is one round trip of latency between a tick and its result reaching the
 // hubs and the view — the clock the hubs and the VM see does not advance meanwhile.
 
-const copyObservation = value => value == null ? null : JSON.parse(JSON.stringify(value));
-
 import {SimHubBridge} from './hub-bridge.js';
 import {hubRegistry} from './hubs/index.js';
+
+const copyObservation = value => value == null ? null : JSON.parse(JSON.stringify(value));
 
 /**
  * Every body's pose and every joint's state (a hinge's angle and rate, a slider's position
@@ -182,11 +182,11 @@ export class MirrorCore {
 
     bodyDynamics (bodyId) {
         if (!this.bodyIndex.has(bodyId)) throw new Error(`unknown body ${bodyId}`);
-        return copyObservation(this.bodyObservations[bodyId]);
+        return Object.hasOwn(this.bodyObservations, bodyId) ? copyObservation(this.bodyObservations[bodyId]) : null;
     }
     jointDynamics (jointId) {
         if (!this.jointIndex.has(jointId)) throw new Error(`unknown joint ${jointId}`);
-        return copyObservation(this.jointObservations[jointId]);
+        return Object.hasOwn(this.jointObservations, jointId) ? copyObservation(this.jointObservations[jointId]) : null;
     }
     bodyLinearVelocity (bodyId) { return this._velocity(this.linear, bodyId); }
     bodyAngularVelocity (bodyId) { return this._velocity(this.angular, bodyId); }

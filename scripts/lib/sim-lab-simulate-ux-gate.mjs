@@ -22,6 +22,7 @@ import JSZip from 'jszip';
 import {tool} from './sim-lab-toolbar-gate.mjs';
 import {measurementPlotInteractions} from './sim-lab-measurement-plots-gate.mjs';
 import {measurementExperimentInteractions} from './sim-lab-measurement-experiments-gate.mjs';
+import {effortHistoryInteractions} from './sim-lab-effort-history-gate.mjs';
 
 const lab = (page, fn, arg) => page.evaluate(fn, arg);
 const simTime = page => lab(page, () => window.__bwSimLab._pane.session.time);
@@ -320,5 +321,6 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     const report = JSON.stringify(editedEvidence, null, 2) + '\n';
     assert.ok(Buffer.byteLength(report) <= 65536, 'bounded edit observation report');
     await writeFile(resolve(shotsDir, 'sim-lab-measurement-edit.json'), report, {flag: 'wx'});
+    await effortHistoryInteractions(page, {shotsDir, restoreProject: savedPath, source: editedEvidence.source});
     console.log('PASS saved measurements: real Edit/Save/Cancel, stable IDs and plots, fresh target bindings and project reopen');
 };

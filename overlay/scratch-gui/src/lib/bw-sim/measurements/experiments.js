@@ -70,6 +70,7 @@ const readingOf = (row, definition) => {
 const runOf = (run, context) => {
     admitModel(run, context);
     if (!text(run.id, 128)) fail('has an invalid run id');
+    if (run.origin !== undefined && !['simulation', 'csv'].includes(run.origin)) fail('has an invalid run origin');
     if (run.rawModelSha256 !== undefined && !HASH.test(run.rawModelSha256)) fail('has an invalid raw capture SHA256');
     const definitions = definitionsOf(run.definitions);
     const identity = recordingDefinitionIdentity(definitions);
@@ -95,7 +96,7 @@ const runOf = (run, context) => {
         return {elapsedMs: sample.elapsedMs, ...(sample.timeMs === undefined || sample.timeMs === null ? {} : {timeMs: sample.timeMs}),
             readings: definitions.map(d => readingOf(rows.get(d.id), d))};
     });
-    return {id: run.id, modelSha256: run.modelSha256, canonicalModelSha256: context.modelSha256,
+    return {id: run.id, ...(run.origin === undefined ? {} : {origin: run.origin}), modelSha256: run.modelSha256, canonicalModelSha256: context.modelSha256,
         ...(run.rawModelSha256 === undefined ? {} : {rawModelSha256: run.rawModelSha256}), identity, definitions, samples};
 };
 export const admitMeasurementRuns = (runs, context) => {
@@ -113,7 +114,7 @@ export const experimentsFromRuns = (runs, context) => {
     const selection = selectionOf(context.selection, context.definitions);
     const packet = {schema: EXPERIMENT_SCHEMA, modelSha256: context.modelSha256,
         ...(selection === undefined ? {} : {selection}), runs: admitted.map(run => ({
-        id: run.id, modelSha256: run.modelSha256, ...(run.rawModelSha256 === undefined ? {} : {rawModelSha256: run.rawModelSha256}), definitions: run.definitions,
+        id: run.id, ...(run.origin === undefined ? {} : {origin: run.origin}), modelSha256: run.modelSha256, ...(run.rawModelSha256 === undefined ? {} : {rawModelSha256: run.rawModelSha256}), definitions: run.definitions,
         samples: run.samples.map(sample => [sample.elapsedMs, sample.timeMs ?? null,
             sample.readings.map(row => [row.value, row.source, row.reason])])
     }))};
@@ -247,7 +248,7 @@ export const measurementRunsFromCsv = (input, context) => {
         if (run.id.startsWith("'") && /^[\u0000-\u0020]*[=+\-@]/u.test(run.id.slice(1))) run.id = run.id.slice(1);
         return run;
     });
-    const admitted = admitMeasurementRuns(runs, context);
+    const admitted = admitMeasurementRuns(runs, context).map(run => ({...run, origin: 'csv'}));
     // CSV import must also fit the saved-history envelope before it can mutate a recorder.
     experimentsFromRuns(admitted, context);
     return admitted;

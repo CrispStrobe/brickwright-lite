@@ -49,7 +49,7 @@ test('accepted mirror observations copy ingress and egress and clear missing tel
 });
 test('actual observation registrant restores independent fixed-step data on rollback',()=>{
     const start=coreSource.indexOf("stateRegistry.register('joint-dynamics',");const end=coreSource.indexOf("    stateRegistry.register('clock',",start);
-    const run=Function(`let dynamics={j:{motorTorqueNm:3,t:1}};const copyDynamics=x=>JSON.parse(JSON.stringify(x));let registry;const stateRegistry={register:(k,r)=>{registry=r;}};${coreSource.slice(start,end)}const saved=registry.save();dynamics.j.motorTorqueNm=9;registry.restore(saved);saved.j.motorTorqueNm=20;return dynamics;`);
+    const run=Function(`let dynamics={j:{motorTorqueNm:3,t:1}};const copyDynamics=x=>JSON.parse(JSON.stringify(x));let registry;const stateRegistry={register:(k,r)=>{registry=r;}};${coreSource.slice(start,end)}const saved=registry.save();dynamics.j.motorTorqueNm=9;registry.restore(saved);saved.j.motorTorqueNm=20;return registry.save();`);
     assert.deepEqual(run(),{j:{motorTorqueNm:3,t:1}});
 });
 
@@ -71,11 +71,12 @@ function nearPure(a,b){assert.ok(Math.abs(a-b)<1e-12);}
 test('actual inspector method returns solver properties, adjustment flags, independent COM/tensor and explicit static state',()=>{
     const start=coreSource.indexOf('        bodyDynamics(bodyId) {');const end=coreSource.indexOf('        bodyPose(bodyId)',start);
     const tensor=[[0.1,0,0],[0,0.2,0],[0,0,0.3]],mp={GetInverseMass:()=>50,GetGravityFactor:()=>0.5};
-    const dynamic={motionType:1,configuredMassKg:0.01,baselineInertia:[[0.01,0,0],[0,0.02,0],[0,0,0.03]],body:{GetCenterOfMassPosition:()=>vec(1,2,3),GetMotionProperties:()=>mp}};
+    const dynamic={motionType:1,configuredMassKg:0.01,massFloorKg:0.02,smallInertiaRepaired:true,baselineInertia:[[0.01,0,0],[0,0.02,0],[0,0,0.03]],body:{GetCenterOfMassPosition:()=>vec(1,2,3),GetMotionProperties:()=>mp}};
     const fixed={...dynamic,motionType:0,configuredMassKg:0};const bodyMap=new Map([['b',dynamic],['s',fixed]]);
     const api=Function('ensureAlive','bodyMap','J','inertiaOf',`return {${coreSource.slice(start,end)}}`)(()=>{},bodyMap,{EMotionType_Static:0},()=>tensor.map(r=>[...r]));
-    const d=api.bodyDynamics('b');assert.equal(d.solverMassKg,0.02);assert.equal(d.configuredMassKg,0.01);assert.equal(d.gravityFactor,0.5);assert.equal(d.massAdjusted,true);assert.equal(d.inertiaAdjusted,true);assert.deepEqual(d.centerOfMassWorld,[1,2,3]);d.inertiaKgM2[0][0]=99;assert.equal(api.bodyDynamics('b').inertiaKgM2[0][0],0.1);
-    const s=api.bodyDynamics('s');assert.equal(s.motion,'static');assert.equal(s.solverMassKg,null);assert.equal(s.inertiaKgM2,null);assert.equal(s.gravityFactor,null);assert.equal(s.massAdjusted,false);assert.equal(s.inertiaAdjusted,false);
+    const d=api.bodyDynamics('b');assert.equal(d.solverMassKg,0.02);assert.equal(d.configuredMassKg,0.01);assert.equal(d.gravityFactor,0.5);assert.equal(d.massAdjusted,true);assert.equal(d.massFloorKg,0.02);assert.equal(d.smallInertiaRepaired,true);assert.equal(d.inertiaAdjusted,true);assert.deepEqual(d.centerOfMassWorld,[1,2,3]);d.inertiaKgM2[0][0]=99;assert.equal(api.bodyDynamics('b').inertiaKgM2[0][0],0.1);
+    const s=api.bodyDynamics('s');assert.equal(s.motion,'static');assert.equal(s.solverMassKg,null);assert.equal(s.inertiaKgM2,null);assert.equal(s.gravityFactor,null);assert.equal(s.massAdjusted,false);assert.equal(s.smallInertiaRepaired,false);assert.equal(s.inertiaAdjusted,false);
+    dynamic.massFloorKg=0;dynamic.configuredMassKg=0.0199999995;assert.equal(api.bodyDynamics('b').massAdjusted,false,'Float32 representation alone is not an applied mass floor');
 });
 
 import {validateCompiledMechanism,upgradeMechanismV1} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';

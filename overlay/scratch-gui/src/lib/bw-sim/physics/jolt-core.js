@@ -380,7 +380,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     let destroyed = false;
     let timeSteps = 0;
     let acc = 0;
-    let dynamics = {};
+    let dynamics = Object.create(null);
     const copyDynamics = value => value == null ? null : JSON.parse(JSON.stringify(value));
     /** checkpoint()/rollback(): Jolt's recorded state and this core's own. */
     let recorder = null;
@@ -402,13 +402,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const d = mp.GetInverseInertiaDiagonal();
         const fallback = 1 / (0.4 * massKg);
         const isFallback = [d.GetX(), d.GetY(), d.GetZ()].every(x => Math.abs(x - fallback) <= 1e-6 * fallback);
-        if (!isFallback) return;
+        if (!isFallback) return false;
         const props = body.GetShape().GetMassProperties();
         const k = massKg / props.mMass;
         const I = props.mInertia;
         const cols = [I.GetAxisX(), I.GetAxisY(), I.GetAxisZ()].map(c => [c.GetX() * k, c.GetY() * k, c.GetZ() * k]);
         const sym = [0, 1, 2].map(r => [0, 1, 2].map(c => 0.5 * (cols[c][r] + cols[r][c])));
-        setInertia(mp, sym);
+        return setInertia(mp, sym);
     };
     /**
      * How well a contact on a body can turn it about a hinge axis, in one solver iteration: the body's
@@ -447,12 +447,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     /** Give a body's motion properties a body-space inertia tensor (symmetric 3×3, kg·m²). */
     const setInertia = (mp, tensor) => {
         const {values, vectors} = symmetricEigen3(tensor);
-        if (!values.every(x => x > 0)) return;
+        if (!values.every(x => x > 0)) return false;
         const inv = new J.Vec3(1 / values[0], 1 / values[1], 1 / values[2]);
         const rot = new J.Quat(...quatFromColumns(vectors));
         mp.SetInverseInertia(inv, rot);
         J.destroy(inv);
         J.destroy(rot);
+        return true;
     };
     /** A body's body-space inertia tensor (the inverse of Jolt's local-space inverse inertia). */
     const inertiaOf = mp => {
@@ -569,10 +570,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
 
         const body = bodyInterface.CreateBody(bcs);
         const bodyID = body.GetID();
-        if (b.motion === 'dynamic') fixSmallInertia(body, Math.max(b.massKg, massFloorKg));
+        const smallInertiaRepaired = b.motion === 'dynamic' && fixSmallInertia(body, Math.max(b.massKg, massFloorKg)) === true;
         bodyInterface.AddBody(bodyID, J.EActivation_Activate);
         bodyMap.set(b.id, { body, bodyID, motionType, layer, shape,
-            configuredMassKg: b.massKg, baselineInertia: b.motion === 'dynamic' ? inertiaOf(body.GetMotionProperties()) : null });
+            configuredMassKg: b.massKg, massFloorKg: massFloorKg > b.massKg ? massFloorKg : 0, smallInertiaRepaired, baselineInertia: b.motion === 'dynamic' ? inertiaOf(body.GetMotionProperties()) : null });
         allBodyIDs.push(bodyID);
         J.destroy(bcs);
         for (const o of releaseAfterBody) {
@@ -888,6 +889,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const inertia = inertiaOf(mp);
         const k = GEAR_MIN_MASS_KG * inv;
         mp.ScaleToMass(GEAR_MIN_MASS_KG);
+        e.massFloorKg = GEAR_MIN_MASS_KG;
         mp.SetGravityFactor(mp.GetGravityFactor() / k);
         setInertia(mp, inertia);
     };
@@ -1442,7 +1444,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     const stateRegistry = createStateRegistry();
     stateRegistry.register('joint-dynamics', {
         save: () => copyDynamics(dynamics),
-        restore: value => { dynamics = copyDynamics(value); }
+        restore: value => { dynamics = Object.assign(Object.create(null), copyDynamics(value)); }
     });
     stateRegistry.register('clock', {
         save: () => [acc, timeSteps],
@@ -1906,7 +1908,9 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             return {configuredMassKg: e.configuredMassKg, solverMassKg,
                 centerOfMassWorld: [c.GetX(), c.GetY(), c.GetZ()], inertiaKgM2,
                 motion: fixed ? 'static' : 'dynamic', gravityFactor: fixed ? null : mp.GetGravityFactor(),
-                massAdjusted: !fixed && Math.abs(solverMassKg - e.configuredMassKg) > 1e-8 * Math.max(solverMassKg, e.configuredMassKg),
+                smallInertiaRepaired: !fixed && Boolean(e.smallInertiaRepaired),
+                massFloorKg: fixed ? null : e.massFloorKg || 0,
+                massAdjusted: !fixed && (e.massFloorKg || 0) > e.configuredMassKg,
                 inertiaAdjusted: !fixed && inertiaKgM2.some((row, r) => row.some((v, k) =>
                     Math.abs(v - e.baselineInertia[r][k]) > 1e-8 * Math.max(1e-12, Math.abs(v), Math.abs(e.baselineInertia[r][k]))))};
         },

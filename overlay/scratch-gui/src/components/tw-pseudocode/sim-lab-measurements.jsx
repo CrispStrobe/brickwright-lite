@@ -4,6 +4,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import SimLabMeasurementPlot from './sim-lab-measurement-plot.jsx';
 import SimLabMeasurementRecorder from './sim-lab-measurement-recorder.jsx';
+import SimLabPhysicsInspector from './sim-lab-physics-inspector.jsx';
 import {createMeasurementHistory, PLOT_LIMIT} from '../../lib/bw-sim/measurements/history.js';
 import {MEASUREMENT_KINDS, MEASUREMENT_LIMIT} from '../../lib/bw-sim/measurements/schema.js';
 import {measurementText, jointBinding, ropeBinding} from '../../lib/bw-sim/measurements/readings.js';
@@ -20,9 +21,10 @@ export const measurementWords = locale => locale === 'de' ? {
     help: 'Teile wählen ihre starre Baugruppe für Masse und Bewegung. Geschwindigkeit gilt am Schwerpunkt. Abstand und Winkel messen Teilursprünge (A–B–C: Scheitel B).',
     vectors: 'Pfeile: Geschwindigkeit × 0,1 s; Kräfte 20 mm/N.',
     kinds: {modelMass: 'Modellmasse', mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe', acceleration: 'Abgetastete Beschleunigung', pressure: 'Pneumatik-Überdruck',
-        distance: 'Abstand A–B', angle: 'Winkel A–B–C', jointAngle: 'Gelenkwinkel', jointSpeed: 'Gelenkdrehzahl', travel: 'Schieberweg', tension: 'Seilspannung', normalLoad: 'Rad-Normallast'},
+        distance: 'Abstand A–B', angle: 'Winkel A–B–C', jointAngle: 'Gelenkwinkel', jointSpeed: 'Gelenkdrehzahl', motorTorque: 'Motor-Drehmoment', limitTorque: 'Gelenkanschlag-Drehmoment', motorPower: 'Mechanische Motorleistung', travel: 'Schieberweg', tension: 'Seilspannung', normalLoad: 'Rad-Normallast'},
     sources: {'configured-model-mass': 'Konfigurierte Modell-Baugruppen ohne Umgebung', 'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
         'sampled-jolt-com-acceleration': 'Schwerpunkt-Geschwindigkeitsdifferenz / Simulationszeit', 'jolt-air-network-gauge-pressure': 'Pneumatikmodell: verbundener Netzwerk-Überdruck',
+        'jolt-motor-impulse': 'Jolt: Motorimpuls / Zeitschritt', 'jolt-limit-impulse': 'Jolt: Anschlagimpuls / Zeitschritt', 'jolt-motor-power': 'Jolt: Motor-Drehmoment × zugehörige Drehzahl',
         'jolt-angular-velocity': 'Jolt: Winkelgeschwindigkeit', 'part-origins': 'Teilursprünge', 'jolt-joint': 'Jolt: Gelenkkoordinate',
         'rope-constraint': 'Seil-Zwangsimpuls / Zeitschritt', 'rolling-load-estimate': 'Normallast-Schätzung des Rollmodells'}
 } : {
@@ -36,9 +38,10 @@ export const measurementWords = locale => locale === 'de' ? {
     help: 'Parts select their rigid assembly for mass and motion. Speed is at its centre of mass. Distance and angle use part origins (A–B–C: vertex B).',
     vectors: 'Arrows: velocity × 0.1 s; forces 20 mm/N.',
     kinds: {modelMass: 'Model mass', mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed', acceleration: 'Sampled acceleration', pressure: 'Pneumatic gauge pressure',
-        distance: 'Distance A–B', angle: 'Angle A–B–C', jointAngle: 'Joint angle', jointSpeed: 'Joint angular speed', travel: 'Slider travel', tension: 'Rope tension', normalLoad: 'Wheel normal load'},
+        distance: 'Distance A–B', angle: 'Angle A–B–C', jointAngle: 'Joint angle', jointSpeed: 'Joint angular speed', motorTorque: 'Motor torque', limitTorque: 'Joint limit torque', motorPower: 'Mechanical motor power', travel: 'Slider travel', tension: 'Rope tension', normalLoad: 'Wheel normal load'},
     sources: {'configured-model-mass': 'Configured model assemblies, excluding scenery', 'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
         'sampled-jolt-com-acceleration': 'COM velocity difference / simulated time', 'jolt-air-network-gauge-pressure': 'Pneumatic model: connected network gauge pressure',
+        'jolt-motor-impulse': 'Jolt motor impulse / fixed step', 'jolt-limit-impulse': 'Jolt local limit impulse / fixed step', 'jolt-motor-power': 'Jolt motor torque × matching relative speed',
         'jolt-angular-velocity': 'Jolt angular velocity', 'part-origins': 'Part origins', 'jolt-joint': 'Jolt joint coordinate',
         'rope-constraint': 'Rope constraint impulse / step', 'rolling-load-estimate': 'Rolling-model normal load estimate'}
 };
@@ -312,7 +315,7 @@ class SimLabMeasurements extends React.Component {
                                 checked={selected.includes(d.id)} disabled={d.visible === false || (!selected.includes(d.id) && selected.length >= PLOT_LIMIT)}
                                 onChange={e => {
                                     const plots = e.target.checked ? [...selected, d.id] : selected.filter(id => id !== d.id);
-                                    this.setState({plots}, () => this.props.onSample?.());
+                                    this.setState({plots}, () => { this.props.onPlotSelection?.(plots); this.props.onSample?.(); });
                                 }} />{de ? 'Zeitdiagramm' : 'Time plot'}</label>
                             {!replaying && selected.includes(d.id) && <SimLabMeasurementPlot points={histories.get(d.id) || []}
                                 name={name} unit={MEASUREMENT_KINDS[d.kind].unit} locale={locale} />}
@@ -352,7 +355,9 @@ class SimLabMeasurements extends React.Component {
                         <button type="button" data-testid="bw-sim-lab-measurement-cancel" onClick={() => this.cancelEdit()}>{T.cancel}</button>
                     </div> : <button type="submit" disabled={!valid || definitions.length >= MEASUREMENT_LIMIT} data-testid="bw-sim-lab-measurement-add">{T.add}</button>}
                 </form>
+                {this.props.session && <SimLabPhysicsInspector locale={locale} session={this.props.session} replaying={replaying} onHighlight={this.props.onHighlight} />}
                 <SimLabMeasurementRecorder locale={locale} recorder={this.props.recorder} session={this.props.session} modelKey={this.props.modelKey || ''}
+                    modelContext={this.props.modelContext} recorderRevision={this.props.recorderRevision} recordingAllowed={this.props.recordingAllowed} onHistoryChanged={this.props.onHistoryChanged} onRestoredSelection={ids => this.setState({plots: ids.slice(0, PLOT_LIMIT)}, () => this.props.onPlotSelection?.(ids))}
                     definitions={definitions} selected={selected} rows={rows} sampleTime={this.props.sampleTime}
                     replaying={replaying} paused={this.props.paused} />
                 <p style={{fontSize: 10}}>{de ? 'Bis zu 4 Diagramme mit je 128 echten Simulationszeitwerten. Lücken bedeuten: nicht verfügbar.' : 'Up to 4 plots, each with 128 actual simulation-time samples. Gaps mean unavailable.'}</p>
@@ -361,8 +366,8 @@ class SimLabMeasurements extends React.Component {
                     {de ? 'Lektionsmessungen anwenden' : 'Apply lesson measurements'}: {this.props.teachingPreset.title}</button>}
                 {this.props.teachingPreset?.help && <p data-testid="bw-sim-measurement-lesson-relation">{this.props.teachingPreset.help}</p>}
                 <details><summary>{T.limits}</summary><p>{de ?
-                    'Massen und Materialwerte sind Modellannahmen. Radlast ist geschätzt; allgemeine Kontaktkräfte und Motordrehmoment werden nicht gemessen. Solver-Massengrenzen beeinflussen den Auslauf von Kettenfahrzeugen. Lenkgeometrie und Reifenschlupf sind vereinfacht.' :
-                    'Masses and material coefficients are model assumptions. Wheel load is estimated; general contact forces and motor torque are not measured. Solver mass floors affect tracked-vehicle coasting. Steering geometry and tyre slip are simplified.'}</p></details>
+                    'Massen und Materialwerte sind Modellannahmen. Radlast ist geschätzt; allgemeine Kontaktkräfte werden nicht gemessen. Motor-Drehmoment und -Leistung stammen aus dem letzten Solver-Schritt; passive Reibung ist davon getrennt. Solver-Massengrenzen beeinflussen den Auslauf von Kettenfahrzeugen. Lenkgeometrie und Reifenschlupf sind vereinfacht.' :
+                    'Masses and material coefficients are model assumptions. Wheel load is estimated; general contact forces are not measured. Motor torque and power come from the last solver step; passive friction is separate. Solver mass floors affect tracked-vehicle coasting. Steering geometry and tyre slip are simplified.'}</p></details>
                 <button type="button" onClick={() => this.cancelEdit(onPresets)} style={{marginTop: 6}}>{T.presets}</button>
             </section>
         );
@@ -372,7 +377,7 @@ SimLabMeasurements.propTypes = {
     locale: PropTypes.string.isRequired, definitions: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     parts: PropTypes.array.isRequired, mechanism: PropTypes.object.isRequired, shown: PropTypes.bool.isRequired, replaying: PropTypes.bool.isRequired,
     onPickTarget: PropTypes.func, onHighlight: PropTypes.func, onPreview: PropTypes.func, readPreview: PropTypes.func, modelKey: PropTypes.string,
-    initialPlots: PropTypes.array, recorder: PropTypes.object, session: PropTypes.object, sampleTime: PropTypes.number, paused: PropTypes.bool, teachingPreset: PropTypes.object, onSample: PropTypes.func,
+    onPlotSelection: PropTypes.func, modelContext: PropTypes.object, recorderRevision: PropTypes.number, recordingAllowed: PropTypes.bool, onHistoryChanged: PropTypes.func, initialPlots: PropTypes.array, recorder: PropTypes.object, session: PropTypes.object, sampleTime: PropTypes.number, paused: PropTypes.bool, teachingPreset: PropTypes.object, onSample: PropTypes.func,
     onChange: PropTypes.func.isRequired, onShown: PropTypes.func.isRequired, onPresets: PropTypes.func.isRequired, onClose: PropTypes.func.isRequired
 };
 export default SimLabMeasurements;

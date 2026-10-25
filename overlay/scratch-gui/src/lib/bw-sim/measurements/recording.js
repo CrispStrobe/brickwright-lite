@@ -48,7 +48,7 @@ export const createMeasurementRecorder = () => {
         if (active.samples.length) {
             let nextRun = 1;
             while (state.runs.some(run => run.id === `run-${nextRun}`)) nextRun++;
-            state.runs.push({id: `run-${nextRun}`, modelSha256: active.modelSha256,
+            state.runs.push({id: `run-${nextRun}`, origin: 'simulation', modelSha256: active.modelSha256,
                 ...(active.canonicalModelSha256 ? {canonicalModelSha256: active.canonicalModelSha256, rawModelSha256: active.rawModelSha256} : {}),
                 identity: active.identity, definitions: active.definitions,
                 samples: active.samples});
