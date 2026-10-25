@@ -2,7 +2,7 @@
 
 | Owner | Status | Base | Boundary |
 | --- | --- | --- | --- |
-| Codex x86 GUI lane, coordinated with the CUI 408 consumer owner | Claim only; no v7 implementation or event | `88f97f5b2b715f294e8f38c8bd2a21e9a5d73f18` | Fresh, bounded current installed inventory and independent admission |
+| Codex x86 GUI lane, coordinated with the CUI 408 consumer owner | Local disabled source candidate; no qualified v7 original or event | `88f97f5b2b715f294e8f38c8bd2a21e9a5d73f18` | Fresh, bounded current installed inventory and independent admission |
 
 The qualified Circuit UI supplier target is whole commit `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`. A source comparison found a changed module that was included in the retained finite v6 installed inventory at `91d8434a79d373cef2837c137ab356356f1a3b44`. The old original therefore cannot authorize a current 408 installed graph. It remains a historical observation; neither the source comparison nor this claim observes a new installation, browser, guest or positive run.
 

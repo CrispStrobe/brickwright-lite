@@ -16,11 +16,13 @@ import zipfile
 ACTUAL_ENABLED = False
 ACTUAL_V7_READER_ENABLED = True
 ACTUAL_V8_READER_ENABLED = True
+FINITE_INVENTORY_V7_READER_ENABLED = False
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
 CUI_V8 = '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
+FINITE_V7_PINS = {'bw-board':BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':SB3}
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
 FILE_CAP = 32 << 20
@@ -376,6 +378,8 @@ FINITE_V5_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V5_BEGIN -->'
 FINITE_V5_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V5_END -->'
 FINITE_V6_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V6_SHA256_BEGIN -->'
 FINITE_V6_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V6_SHA256_END -->'
+FINITE_V7_BEGIN = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V7_SHA256_BEGIN -->'
+FINITE_V7_END = '<!-- BW_GUI_HDD_FINITE_INVENTORY_V7_SHA256_END -->'
 
 
 def finite_v5_scope():
@@ -568,19 +572,129 @@ def finite_v6_guard_original(raw,template_raw,event_raw,env):
     return value
 
 
+def finite_v7_template(raw,expected):
+    digest(expected)
+    need(type(raw) is bytes and 0<len(raw)<=FINITE_INVENTORY_TEMPLATE_CAP and sha(raw)==expected,
+         'selected finite v7 template bytes')
+    template=decode(raw)
+    fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources libraries scope dependencyPins')
+    need(encode(template)==raw and template['schema']=='bw.gui-hdd.inventory-template.v7' and
+         encode(template['scope'])==encode(finite_v5_scope()),'explicit canonical finite v7 scope')
+    need(type(template['dependencyPins']) is dict and template['dependencyPins']==FINITE_V7_PINS,
+         'closed current finite v7 dependency pins')
+    digest(template['sourceHead'],40)
+    for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
+        roster=template[role]
+        need(type(roster) is list and len(roster)<=cap and roster==sorted(set(roster)),
+             'finite v7 sorted unique '+role)
+        for path in roster:finite_inventory_path(path)
+    need(1<=len(template['files']) and len(template['aliases'])+len(template['directoryAliases'])<=256 and
+         len(set(template['files']+template['aliases']+template['directoryAliases']))==
+         sum(len(template[k]) for k in ('files','aliases','directoryAliases')),
+         'disjoint finite v7 core runtime roles')
+    fields(template['tools'],'git gh')
+    need(template['tools']=={'git':'/usr/bin/git','gh':'/usr/bin/gh'} and
+         template['python']==PYTHON_EXECUTABLE and
+         all(path in template['files'] for path in
+         (template['node'],template['python'],template['chromium'],'/usr/bin/git','/usr/bin/gh','/usr/bin/curl')),
+         'selected v5 bootstrap and executable files')
+    libraries=template['libraries']
+    need(type(libraries) is list and 1<=len(libraries)<=128 and libraries==sorted(set(libraries)) and
+         set(libraries)<=set(template['files']),'selected v5 library subset')
+    empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
+    return template
+
+
+def finite_v7_transport(body,expected,env):
+    digest(expected)
+    need(type(body) is str and len(body.encode('utf-8'))<=65536 and
+         body.count(FINITE_V7_BEGIN)==body.count(FINITE_V7_END)==1,
+         'one bounded finite v7 SHA-only body wrapper')
+    begin=body.index(FINITE_V7_BEGIN)+len(FINITE_V7_BEGIN);end=body.index(FINITE_V7_END)
+    need(begin<end and body[begin:end]=='\n'+expected+'\n',
+         'canonical finite v7 body digest only')
+    need(env.get('BW_FINITE_INVENTORY_V7_SHA256')==expected,
+         'selected finite v7 repository SHA variable')
+    encoded=env.get('BW_FINITE_INVENTORY_V7_TEMPLATE_B64')
+    need(type(encoded) is str and encoded.isascii() and
+         0<len(encoded)<=4*((FINITE_INVENTORY_TEMPLATE_CAP+2)//3),
+         'bounded finite v7 template variable')
+    template=base64.b64decode(encoded,validate=True)
+    need(base64.b64encode(template).decode()==encoded,
+         'canonical finite v7 template Base64 variable')
+    finite_v7_template(template,expected)
+    return template
+
+
+def bind_finite_v7_event(raw,head,expected,env):
+    need(type(raw) is bytes and 0<len(raw)<=INVENTORY_FAILURE_EVENT_CAP,'finite v7 exact event original cap')
+    digest(head,40);digest(expected);event=decode(raw);pr=event.get('pull_request',{})
+    need(event.get('action')=='labeled' and event.get('label',{}).get('name')=='x86-hdd-gui-finite-inventory-v7' and
+         event.get('sender',{}).get('login')=='CrispStrobe' and event.get('repository',{}).get('full_name')==REPOSITORY,
+         'owned distinct finite v7 inventory event')
+    integer(event.get('number'),1,2**31-1)
+    need(type(pr.get('number')) is int and event['number']==pr['number'] and pr.get('state')=='open' and
+         pr.get('head',{}).get('sha')==head and pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,'exact own finite v7 source event')
+    template=finite_v7_transport(pr.get('body'),expected,env)
+    need(decode(template)['sourceHead']==head,'finite v7 body source head join')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='pull_request' and
+         env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and
+         env.get('GITHUB_JOB')=='finite-inventory-seven' and re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('BW_EXPECTED_HEAD')==head,'first official finite v7 platform observations')
+    digest(env.get('GITHUB_WORKFLOW_SHA'),40)
+    need(env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge',
+         'finite v7 executing workflow/event reference')
+    return template
+
+
+def finite_v7_guard_original(raw,template_raw,event_raw,env):
+    value=decode(raw)
+    fields(value,'schema pass templateSha256 eventSha256 source platform setupTrustBoundary fontSelectionProved browserFontSelectionProved guestApproved firstFailure secondary dependencyPins vendorPinsOriginal')
+    need(encode(value)==raw and value['schema']=='bw.gui-hdd.finite-inventory-guard.v7' and value['pass'] is True and
+         value['templateSha256']==sha(template_raw) and value['eventSha256']==sha(event_raw) and
+         value['firstFailure'] is None and value['secondary']==[] and
+         all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
+         'successful finite v7 pre-setup admission only')
+    need(value['platform']=={key:env.get(key) for key in
+         ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REPOSITORY','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')},
+         'same finite v7 pre/post-setup producing platform')
+    need(value['setupTrustBoundary']=={'bootstrapGitTrusted':True,'packageInstallerTrusted':True,
+         'completeRuntimeBeforeSetupProved':False},'explicit v5 setup trust boundary')
+    source=value['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
+    rows(source['files'])
+    need(source['head']==decode(template_raw)['sourceHead'] and set(source['files'])==SOURCE,
+         'finite v7 guard exact source21')
+    need(value['dependencyPins']==decode(template_raw)['dependencyPins']==FINITE_V7_PINS,
+         'finite v7 pre-setup selected dependency pins')
+    vendor=value['vendorPinsOriginal'];fields(vendor,'byteLength sha256 base64')
+    integer(vendor['byteLength'],1,JSON_CAP);digest(vendor['sha256'])
+    raw_vendor=base64.b64decode(vendor['base64'],validate=True)
+    need(len(raw_vendor)==vendor['byteLength'] and sha(raw_vendor)==vendor['sha256'] and
+         base64.b64encode(raw_vendor).decode()==vendor['base64'] and
+         source['files']['vendor-pins.json']=={'byteLength':len(raw_vendor),'sha256':sha(raw_vendor)},
+         'finite v7 retained raw vendor source identity')
+    pins=decode(raw_vendor)
+    need(type(pins) is dict and {key:pins.get(key) for key in FINITE_V7_PINS}==FINITE_V7_PINS,
+         'finite v7 retained raw selected vendor pins')
+    return value
+
+
 def actual_inventory_reference(reference):
     """External prior-observation reference, never an automatic metadata approval."""
     fields(reference,'schema metadataAdmission jobId artifactId artifactSha256 workflow')
     finite=reference['schema'] in ('bw.gui-hdd.actual-finite-inventory-reference.v1',
                                    'bw.gui-hdd.actual-finite-inventory-reference.v2',
-                                   'bw.gui-hdd.actual-finite-inventory-reference.v3')
+                                   'bw.gui-hdd.actual-finite-inventory-reference.v3',
+                                   'bw.gui-hdd.actual-finite-inventory-reference.v4')
     need(finite or reference['schema']=='bw.gui-hdd.actual-inventory-reference.v1','explicit versioned actual inventory reference')
-    selected_version=6 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v3' else 5 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v2' else 4 if finite else 3
+    selected_version=7 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v4' else 6 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v3' else 5 if reference['schema']=='bw.gui-hdd.actual-finite-inventory-reference.v2' else 4 if finite else 3
     for name in ('jobId','artifactId'):integer(reference[name],1,2**63-1)
     digest(reference['artifactSha256']);fields(reference['workflow'],'commit path sha256')
     digest(reference['workflow']['commit'],40);digest(reference['workflow']['sha256'])
     need(reference['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior metadata producer workflow')
-    selected=reference['metadataAdmission'];fields(selected,'schema source template original runId workflowSha'+(' repositoryVariables' if selected_version==6 else ''))
+    selected=reference['metadataAdmission'];fields(selected,'schema source template original runId workflowSha'+(' repositoryVariables' if selected_version in (6,7) else '')+(' dependencyPins' if selected_version==7 else ''))
     need(selected['schema']=='bw.gui-hdd.inventory-admission.v'+str(selected_version),
          'versioned independently selected metadata descriptor')
     integer(selected['runId'],1,2**63-1);digest(selected['workflowSha'],40)
@@ -593,6 +707,12 @@ def actual_inventory_reference(reference):
         template=base64.b64decode(selected['repositoryVariables']['BW_FINITE_INVENTORY_V6_TEMPLATE_B64'],validate=True)
         need(len(template)==selected['template']['byteLength'] and decode(template)['sourceHead']==source['head'],
              'selected finite v6 reference template extent and source head')
+    if selected_version==7:
+        need(selected['dependencyPins']==FINITE_V7_PINS,
+             'externally selected finite v7 dependency pins')
+        template=finite_v7_variables(selected['repositoryVariables'],selected['template']['sha256'])
+        need(len(template)==selected['template']['byteLength'] and decode(template)['sourceHead']==source['head'],
+             'selected finite v7 reference template extent and source head')
     need(selected['workflowSha']==reference['workflow']['commit'] and
          reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
     return selected
@@ -776,7 +896,8 @@ def parse_request(raw, expected):
     prior_inventory=request['inventoryAdmission']
     if version>=4:
         actual_inventory_reference(prior_inventory)
-        need(prior_inventory['schema']==('bw.gui-hdd.actual-finite-inventory-reference.v3' if version>=6 else 'bw.gui-hdd.actual-finite-inventory-reference.v1' if version==5 else 'bw.gui-hdd.actual-inventory-reference.v1'),'distinct finite and historical actual inventory bases')
+        need(prior_inventory['schema'] in (('bw.gui-hdd.actual-finite-inventory-reference.v3','bw.gui-hdd.actual-finite-inventory-reference.v4') if version>=6 else ('bw.gui-hdd.actual-finite-inventory-reference.v1',) if version==5 else ('bw.gui-hdd.actual-inventory-reference.v1',)),
+             'distinct finite and historical actual inventory bases')
     else:
         fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
         need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
@@ -1844,8 +1965,8 @@ INVENTORY_FAILURE_EVENT_CAP=256<<10
 
 
 def inventory_failure_expected(expected):
-    fields(expected,'schema source template failure runId workflowSha'+(' repositoryVariables' if expected.get('schema')=='bw.gui-hdd.inventory-failure-expectation.v6' else ''))
-    need(expected['schema'] in ('bw.gui-hdd.inventory-failure-expectation.v2','bw.gui-hdd.inventory-failure-expectation.v3','bw.gui-hdd.inventory-failure-expectation.v4','bw.gui-hdd.inventory-failure-expectation.v5','bw.gui-hdd.inventory-failure-expectation.v6'),'explicit externally selected failure audit policy')
+    fields(expected,'schema source template failure runId workflowSha'+(' repositoryVariables' if expected.get('schema') in ('bw.gui-hdd.inventory-failure-expectation.v6','bw.gui-hdd.inventory-failure-expectation.v7') else '')+(' dependencyPins' if expected.get('schema')=='bw.gui-hdd.inventory-failure-expectation.v7' else ''))
+    need(expected['schema'] in ('bw.gui-hdd.inventory-failure-expectation.v2','bw.gui-hdd.inventory-failure-expectation.v3','bw.gui-hdd.inventory-failure-expectation.v4','bw.gui-hdd.inventory-failure-expectation.v5','bw.gui-hdd.inventory-failure-expectation.v6','bw.gui-hdd.inventory-failure-expectation.v7'),'explicit externally selected failure audit policy')
     integer(expected['runId'],1,2**63-1);digest(expected['workflowSha'],40)
     source=expected['source'];fields(source,'head tree files');digest(source['head'],40);digest(source['tree'],40)
     rows(source['files']);need(set(source['files'])==SOURCE,'separately selected source21')
@@ -1853,6 +1974,10 @@ def inventory_failure_expected(expected):
         fields(expected[name],'byteLength sha256');integer(expected[name]['byteLength'],1,JSON_CAP);digest(expected[name]['sha256'])
     if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v6':
         finite_v6_variables(expected['repositoryVariables'],expected['template']['sha256'])
+    if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v7':
+        need(expected['dependencyPins']==FINITE_V7_PINS,
+             'externally selected finite v7 dependency identities')
+        finite_v7_variables(expected['repositoryVariables'],expected['template']['sha256'])
 
 
 def finite_v6_variables(selected,expected):
@@ -1869,6 +1994,20 @@ def finite_v6_variables(selected,expected):
     return raw
 
 
+def finite_v7_variables(selected,expected):
+    fields(selected,'BW_FINITE_INVENTORY_V7_SHA256 BW_FINITE_INVENTORY_V7_TEMPLATE_B64')
+    need(selected['BW_FINITE_INVENTORY_V7_SHA256']==expected,'externally selected finite v7 SHA variable')
+    encoded=selected['BW_FINITE_INVENTORY_V7_TEMPLATE_B64']
+    need(type(encoded) is str and encoded.isascii() and
+         0<len(encoded)<=4*((FINITE_INVENTORY_TEMPLATE_CAP+2)//3),
+         'bounded finite v7 Base64 variable')
+    raw=base64.b64decode(encoded,validate=True)
+    need(base64.b64encode(raw).decode()==encoded and sha(raw)==expected,
+         'canonical externally selected finite v7 template variable')
+    finite_v7_template(raw,expected)
+    return raw
+
+
 def verify_inventory_failure(failure_raw,template_raw,expected):
     """Audit a retained failed observation; never runtime or official approval.
 
@@ -1878,8 +2017,8 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     inventory_failure_expected(expected)
     for raw,name in ((failure_raw,'failure'),(template_raw,'template')):
         need(type(raw) is bytes and len(raw)==expected[name]['byteLength'] and sha(raw)==expected[name]['sha256'],'independently selected '+name+' original')
-    version=6 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v6' else 5 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v4' else 3 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v3' else 2
-    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version>=3 else '')+(' libraries scope' if version>=4 else ''))
+    version=7 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v7' else 6 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v6' else 5 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v4' else 3 if expected['schema']=='bw.gui-hdd.inventory-failure-expectation.v3' else 2
+    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools'+(' emptyPythonSources' if version>=3 else '')+(' libraries scope' if version>=4 else '')+(' dependencyPins' if version==7 else ''))
     need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version) and template['sourceHead']==expected['source']['head'],'retained canonical template/source binding')
     for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
         roster=template[role];need(type(roster) is list and len(roster)<=cap and len(set(roster))==len(roster),'bounded unique selected failure roster')
@@ -1891,7 +2030,11 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     if version==5:finite_v5_template(template_raw,expected['template']['sha256'])
     if version==6:finite_v6_template(template_raw,expected['template']['sha256'])
     if version==6:need(finite_v6_variables(expected['repositoryVariables'],expected['template']['sha256'])==template_raw,'finite v6 selected repository template matches original')
-    value=decode(failure_raw);fields(value,'schema observationOnly candidate qualified template event platform diagnostic files aliases directoryAliases gitSource firstFailure secondary'+(' emptyPythonSources' if version>=3 else '')+(' scope fontSelectionProved browserFontSelectionProved guestApproved' if version>=4 else '')+(' installedProgress' if version in (5,6) else ''))
+    if version==7:finite_v7_template(template_raw,expected['template']['sha256'])
+    if version==7:need(finite_v7_variables(expected['repositoryVariables'],expected['template']['sha256'])==template_raw and
+                       template['dependencyPins']==expected['dependencyPins']==FINITE_V7_PINS,
+                       'finite v7 selected repository template and dependency pins')
+    value=decode(failure_raw);fields(value,'schema observationOnly candidate qualified template event platform diagnostic files aliases directoryAliases gitSource firstFailure secondary'+(' emptyPythonSources' if version>=3 else '')+(' scope fontSelectionProved browserFontSelectionProved guestApproved' if version>=4 else '')+(' installedProgress' if version in (5,6,7) else ''))
     need(encode(value)==failure_raw and value['schema']=='bw.gui-hdd.inventory-failure.v'+str(version) and value['observationOnly'] is True and value['candidate'] is False and value['qualified'] is False and value['firstFailure'] is not None,'explicit canonical failure-only original')
     selected=value['template'];fields(selected,'byteLength sha256 expectedSha256 sourceHead bindingVerified')
     need(selected==dict(expected['template'],expectedSha256=expected['template']['sha256'],sourceHead=expected['source']['head'],bindingVerified=True),'failure retains independently selected template identity')
@@ -1905,6 +2048,7 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     if version==4:need(bind_finite_inventory_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)==template_raw,'finite failure event/template join')
     elif version==5:need(bind_finite_v5_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)==template_raw,'finite v5 failure event/template join')
     elif version==6:need(bind_finite_v6_event(event_raw,expected['source']['head'],expected['template']['sha256'],dict(platform,**expected['repositoryVariables']))==template_raw,'finite v6 failure event/template join')
+    elif version==7:need(bind_finite_v7_event(event_raw,expected['source']['head'],expected['template']['sha256'],dict(platform,**expected['repositoryVariables']))==template_raw,'finite v7 failure event/template join')
     else:bind_inventory_event(event_raw,expected['source']['head'],expected['template']['sha256'],platform)
     pr=decode(event_raw)['pull_request']
     need(platform['GITHUB_WORKFLOW_REF']==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(pr['number'])+'/merge','raw event/executing workflow ref join')
@@ -1912,7 +2056,7 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     need(diagnostic['complete'] is True and diagnostic['pathBytes']<=diagnostic['limitBytes'],'complete bounded failure path observations, no hidden truncation')
     frame=decode(encode(value));frame.update(files={},aliases={},directoryAliases={},firstFailure=None,secondary=[],gitSource={'reached':False,'head':None,'tree':None,'files':{}},diagnostic={'pathBytes':0,'limitBytes':0,'complete':False})
     if version>=3:frame['emptyPythonSources']={}
-    if version in (5,6):frame['installedProgress']={'package':None,'path':None,'file':None,'completedPrefixes':[],
+    if version in (5,6,7):frame['installedProgress']={'package':None,'path':None,'file':None,'completedPrefixes':[],
       'entryStat':None,'completedRows':0,'totalBytes':0}
     need(diagnostic['limitBytes']==JSON_CAP-len(encode(frame))-8192,'independent event/frame reservation before path diagnostic budget')
     errors=[];counts={};path_cost=0
@@ -1943,7 +2087,7 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     need(path_cost==diagnostic['pathBytes'],'independent path budget accounting')
     if version==4:
         need(encode(value['scope'])==encode(finite_inventory_scope()) and all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),'finite failure grants no font/browser/guest authority')
-    if version in (5,6):
+    if version in (5,6,7):
         need(encode(value['scope'])==encode(finite_v5_scope()) and all(value[key] is False for key in
              ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
              'finite v5 failure grants no font/browser/guest authority')
@@ -1954,7 +2098,7 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
         need(type(error) is dict and {'phase','name','message'}<=set(error)<=set('phase name message path'.split()),'closed retained error observation')
         for name,cap in (('phase',128),('name',128),('message',1024)):need(type(error[name]) is str and error[name].isascii() and len(error[name])<=cap,'capped error fact')
         if 'path' in error:
-            (relative if version in (5,6) and error['phase'].startswith('inventory-installed') else runtime_path)(error['path'])
+            (relative if version in (5,6,7) and error['phase'].startswith('inventory-installed') else runtime_path)(error['path'])
     if version>=3:
         path_errors=[error for error in all_errors if error['phase'] in ('inventory-file','inventory-empty-python-source','inventory-alias')]
         need(path_errors==errors and (not errors or all_errors[0]==errors[0]),'typed first path refusal and ordered secondary observations preserved')
@@ -1964,7 +2108,7 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
     else:
         for name in ('head','tree'):need(source[name] is None or source[name]==expected['source'][name],'reported source identity joins external selection')
         need(set(source['files'])<=SOURCE and all(row==expected['source']['files'][path] for path,row in source['files'].items()),'reported partial source file identities')
-    if version in (5,6):
+    if version in (5,6,7):
         progress=value['installedProgress']
         installed_errors=[row for row in all_errors if row['phase']=='inventory-installed']
         need(not installed_errors or (source['reached'] is True and
@@ -1977,38 +2121,44 @@ def verify_inventory_failure(failure_raw,template_raw,expected):
 
 
 def inventory_admission_expected(expected):
-    fields(expected,'schema source template original runId workflowSha'+(' repositoryVariables' if expected.get('schema')=='bw.gui-hdd.inventory-admission.v6' else ''))
-    version=6 if expected['schema']=='bw.gui-hdd.inventory-admission.v6' else 5 if expected['schema']=='bw.gui-hdd.inventory-admission.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-admission.v4' else 3
+    fields(expected,'schema source template original runId workflowSha'+(' repositoryVariables' if expected.get('schema') in ('bw.gui-hdd.inventory-admission.v6','bw.gui-hdd.inventory-admission.v7') else '')+(' dependencyPins' if expected.get('schema')=='bw.gui-hdd.inventory-admission.v7' else ''))
+    version=7 if expected['schema']=='bw.gui-hdd.inventory-admission.v7' else 6 if expected['schema']=='bw.gui-hdd.inventory-admission.v6' else 5 if expected['schema']=='bw.gui-hdd.inventory-admission.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-admission.v4' else 3
     need(expected['schema']=='bw.gui-hdd.inventory-admission.v'+str(version),'versioned external metadata admission; no actual authority')
     inventory_failure_expected({'schema':'bw.gui-hdd.inventory-failure-expectation.v'+str(version),'source':expected['source'],
       'template':expected['template'],'failure':expected['original'],'runId':expected['runId'],'workflowSha':expected['workflowSha'],
-      **({'repositoryVariables':expected['repositoryVariables']} if version==6 else {})})
+      **({'repositoryVariables':expected['repositoryVariables']} if version in (6,7) else {}),
+      **({'dependencyPins':expected['dependencyPins']} if version==7 else {})})
 
 
 def verify_inventory_original(original_raw,template_raw,expected):
     """Validate externally pinned metadata only, never create approval or actual input."""
-    inventory_admission_expected(expected);version=6 if expected['schema']=='bw.gui-hdd.inventory-admission.v6' else 5 if expected['schema']=='bw.gui-hdd.inventory-admission.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-admission.v4' else 3
+    inventory_admission_expected(expected);version=7 if expected['schema']=='bw.gui-hdd.inventory-admission.v7' else 6 if expected['schema']=='bw.gui-hdd.inventory-admission.v6' else 5 if expected['schema']=='bw.gui-hdd.inventory-admission.v5' else 4 if expected['schema']=='bw.gui-hdd.inventory-admission.v4' else 3
     for raw,name in ((original_raw,'original'),(template_raw,'template')):
         need(type(raw) is bytes and len(raw)==expected[name]['byteLength'] and sha(raw)==expected[name]['sha256'],'independently selected '+name+' original')
-    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources'+(' libraries scope' if version>=4 else ''))
+    template=decode(template_raw);fields(template,'schema sourceHead files aliases directoryAliases node python chromium tools emptyPythonSources'+(' libraries scope' if version>=4 else '')+(' dependencyPins' if version==7 else ''))
     need(encode(template)==template_raw and template['schema']=='bw.gui-hdd.inventory-template.v'+str(version) and template['sourceHead']==expected['source']['head'],'explicit canonical metadata template v3')
     if version==4:finite_inventory_template(template_raw,expected['template']['sha256'])
     if version==5:finite_v5_template(template_raw,expected['template']['sha256'])
     if version==6:finite_v6_template(template_raw,expected['template']['sha256'])
     if version==6:need(finite_v6_variables(expected['repositoryVariables'],expected['template']['sha256'])==template_raw,'finite v6 selected repository template matches original')
+    if version==7:
+        finite_v7_template(template_raw,expected['template']['sha256'])
+        need(finite_v7_variables(expected['repositoryVariables'],expected['template']['sha256'])==template_raw and
+             expected['dependencyPins']==template['dependencyPins']==FINITE_V7_PINS,
+             'finite v7 selected template and external dependency identities')
     for role,cap in (('files',512),('aliases',256),('directoryAliases',256)):
         roster=template[role];need(type(roster) is list and len(roster)<=cap and len(set(roster))==len(roster),'bounded selected metadata roster')
         for path in roster:runtime_path(path)
     need(template['files'] and len(template['aliases'])+len(template['directoryAliases'])<=256 and
          len(set(template['files']+template['aliases']+template['directoryAliases']))==sum(len(template[k]) for k in ('files','aliases','directoryAliases')),'disjoint metadata role roster')
     empty_python_policy(template['emptyPythonSources'],template['files'],template['aliases'],template['directoryAliases'])
-    value=decode(original_raw);fields(value,'schema observationOnly templateSha256 source installedFiles runtime event commands platform emptyPythonSources'+(' scope libraries guardAdmission fontSelectionProved browserFontSelectionProved guestApproved' if version>=4 else ''))
+    value=decode(original_raw);fields(value,'schema observationOnly templateSha256 source installedFiles runtime event commands platform emptyPythonSources'+(' scope libraries guardAdmission fontSelectionProved browserFontSelectionProved guestApproved' if version>=4 else '')+(' dependencyPins' if version==7 else ''))
     need(encode(value)==original_raw and value['schema']=='bw.gui-hdd.inventory-original.v'+str(version) and value['observationOnly'] is True and
          value['templateSha256']==expected['template']['sha256'] and encode(value['source'])==encode(expected['source']),'externally selected canonical metadata/source original')
     if version==4:
         need(encode(value['scope'])==encode(finite_inventory_scope()) and value['libraries']==template['libraries'] and
              all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),'finite original grants no font/browser/guest authority')
-    if version in (5,6):
+    if version in (5,6,7):
         need(encode(value['scope'])==encode(finite_v5_scope()) and value['libraries']==template['libraries'] and
              all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')),
              'finite v5 original grants no font/browser/guest authority')
@@ -2029,7 +2179,9 @@ def verify_inventory_original(original_raw,template_raw,expected):
     for row in selected.values():
         fields(row,'attempted status source');need(row['attempted'] is True and row['status']=='observed','typed source actually observed')
         verify_empty_python_source(row['source'])
-    installed_rows_v5(value['installedFiles'],INSTALLED_V6_CRITICAL if version==6 else INSTALLED_V5_CRITICAL) if version in (5,6) else rows(value['installedFiles'])
+    installed_rows_v5(value['installedFiles'],INSTALLED_V6_CRITICAL if version in (6,7) else INSTALLED_V5_CRITICAL) if version in (5,6,7) else rows(value['installedFiles'])
+    if version==7:need(value['dependencyPins']==expected['dependencyPins']==FINITE_V7_PINS,
+                       'finite v7 original dependency identities')
     if version==4:need(all(prefix+'/package.json' in value['installedFiles'] for prefix in ('node_modules/bw-board','node_modules/bw-circuit-ui','node_modules/playwright','node_modules/playwright-core')),'finite original includes complete selected supplier/browser/CUI census')
     event=value['event'];fields(event,'byteLength sha256 base64');integer(event['byteLength'],1,JSON_CAP);digest(event['sha256'])
     need(type(event['base64']) is str and len(event['base64'])==4*((event['byteLength']+2)//3),'bounded exact event original')
@@ -2055,6 +2207,13 @@ def verify_inventory_original(original_raw,template_raw,expected):
         guard=finite_v6_guard_original(guard_raw,template_raw,raw,platform)
         need(encode(guard['source'])==encode(expected['source']),
              'finite v6 pre/post-setup exact source closure')
+    elif version==7:
+        need(bind_finite_v7_event(raw,expected['source']['head'],expected['template']['sha256'],dict(platform,**expected['repositoryVariables']))==template_raw,
+             'finite v7 original immutable body/template identity')
+        guard_raw=expected_embedded_original(value['guardAdmission'])
+        guard=finite_v7_guard_original(guard_raw,template_raw,raw,platform)
+        need(encode(guard['source'])==encode(expected['source']),
+             'finite v7 pre/post-setup exact source closure')
     else:bind_inventory_event(raw,expected['source']['head'],expected['template']['sha256'],platform)
     need(platform['GITHUB_WORKFLOW_REF']==REPOSITORY+'/.github/workflows/i80386-hdd-gui-actual.yml@refs/pull/'+str(decode(raw)['pull_request']['number'])+'/merge','metadata event/workflow ref join')
     commands=value['commands'];need(type(commands) is list and len(commands)==2+len(SOURCE),'finite read-only source command observations')
@@ -3399,9 +3558,12 @@ def main(argv=None):
              'external actual artifact digest')
         print(encode(audit(archive_originals(raw),expected)).decode(),end='');return 0
     if raw_args[:1] in (['--inventory-original-v5'],['--inventory-failure-v5'],
-                        ['--inventory-original-v6'],['--inventory-failure-v6']):
+                        ['--inventory-original-v6'],['--inventory-failure-v6'],
+                        ['--inventory-original-v7'],['--inventory-failure-v7']):
         mode=raw_args[0]
-        selected_version=6 if mode.endswith('-v6') else 5
+        selected_version=7 if mode.endswith('-v7') else 6 if mode.endswith('-v6') else 5
+        if selected_version==7:need(FINITE_INVENTORY_V7_READER_ENABLED is True,
+                                    'finite v7 reader disabled before original read')
         parser=argparse.ArgumentParser(description='Independent finite installed original audit',allow_abbrev=False)
         parser.add_argument(mode,action='store_true')
         for name in ('original','template','expected'):parser.add_argument('--'+name,required=True)
