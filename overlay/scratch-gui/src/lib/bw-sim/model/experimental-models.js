@@ -1160,6 +1160,82 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "speedDps": 12
             }
         }
+    },
+    {
+        "file": "pivot-exchange.ldr",
+        "title": {
+            "en": "Pivot Exchange — nearly equal periods from different pivots",
+            "de": "Pivot Exchange — nahezu gleiche Perioden an verschiedenen Aufhängungen"
+        },
+        "example": "pivot-exchange.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Three identical weighted arms hang from different holes. From an 8° saved release, compare two nearly conjugate suspensions with a slower central-hole control. One shared observation program lets gravity provide the motion.",
+            "de": "Drei identische beschwerte Arme hängen an verschiedenen Bohrungen. Vergleiche aus einer gespeicherten 8°-Auslenkung zwei nahezu konjugierte Aufhängungen mit der langsameren Kontrolle an der mittleren Bohrung. Ein gemeinsames Beobachtungsprogramm lässt die Schwerkraft für die Bewegung sorgen."
+        }
+    },
+    {
+        "file": "pivot-exchange-wide.ldr",
+        "title": {
+            "en": "Pivot Exchange — 20° release comparison",
+            "de": "Pivot Exchange — Vergleich mit 20° Anfangsauslenkung"
+        },
+        "example": "pivot-exchange.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Load the same three pendulum constructions with a saved 20° release. Compare actual cycle periods and amplitudes with the fresh 8° model, keeping each arm’s parts, ballast and suspension hole unchanged.",
+            "de": "Lade dieselben drei Pendelkonstruktionen mit einer gespeicherten 20°-Auslenkung. Vergleiche tatsächliche Perioden und Amplituden mit dem frisch geladenen 8°-Modell. Teile, Zusatzmasse und Aufhängungsbohrung jedes Arms bleiben gleich."
+        }
+    },
+    {
+        "file": "air-budget.ldr",
+        "title": {
+            "en": "Air Budget — one pump, finite stored air",
+            "de": "Air Budget — eine Pumpe, begrenzter Luftvorrat"
+        },
+        "example": "air-budget.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A retained motor and crank work a real stock pneumatic pump. Turn the crank three times each way, then compare stored pressure with the same mechanism connected to two tanks.",
+            "de": "Ein befestigter Motor mit Kurbel betätigt eine echte Pneumatikpumpe aus Standardteilen. Drehe die Kurbel dreimal in jede Richtung und vergleiche den gespeicherten Druck mit demselben Mechanismus an zwei Lufttanks."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 3240,
+                "stepDeg": 180,
+                "speedDps": 270
+            }
+        }
+    },
+    {
+        "file": "air-budget-two-tanks.ldr",
+        "title": {
+            "en": "Air Budget — two-tank comparison",
+            "de": "Air Budget — Vergleich mit zwei Lufttanks"
+        },
+        "example": "air-budget.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Add a second connected stock air tank and repeat the same forward-and-return program. Compare pressure gain per observed compression travel with the one-tank model.",
+            "de": "Schließe einen zweiten Standard-Lufttank an und wiederhole dasselbe Vorwärts-und-zurück-Programm. Vergleiche den Druckanstieg je beobachtetem Verdichtungsweg mit dem Modell mit einem Tank."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 3240,
+                "stepDeg": 180,
+                "speedDps": 270
+            }
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -2878,6 +2954,176 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Jahreszeiten",
             "Sonnenwende",
             "Parallelogramm",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "pivot-exchange.ldr": {
+        "pieces": 159,
+        "motors": 0,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Three identical weighted arms hang from different holes. From an 8° saved release, compare two nearly conjugate suspensions with a slower central-hole control. One shared observation program lets gravity provide the motion.",
+            "de": "Drei identische beschwerte Arme hängen an verschiedenen Bohrungen. Vergleiche aus einer gespeicherten 8°-Auslenkung zwei nahezu konjugierte Aufhängungen mit der langsameren Kontrolle an der mittleren Bohrung. Ein gemeinsames Beobachtungsprogramm lässt die Schwerkraft für die Bewegung sorgen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "compound pendulum with nearly conjugate suspension choices",
+            "de": "physikalisches Pendel mit nahezu konjugierten Aufhängungen"
+        },
+        "keywords": [
+            "compound pendulum",
+            "reversible pendulum",
+            "conjugate pivots",
+            "parallel axis theorem",
+            "radius of gyration",
+            "period",
+            "gravity",
+            "amplitude",
+            "rotational inertia",
+            "physikalisches Pendel",
+            "Reversionspendel",
+            "konjugierte Aufhängungen",
+            "Steinerscher Satz",
+            "Trägheitsradius",
+            "Schwingungsdauer",
+            "Schwerkraft",
+            "Auslenkung",
+            "Trägheitsmoment",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "pivot-exchange-wide.ldr": {
+        "pieces": 159,
+        "motors": 0,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Load the same three pendulum constructions with a saved 20° release. Compare actual cycle periods and amplitudes with the fresh 8° model, keeping each arm’s parts, ballast and suspension hole unchanged.",
+            "de": "Lade dieselben drei Pendelkonstruktionen mit einer gespeicherten 20°-Auslenkung. Vergleiche tatsächliche Perioden und Amplituden mit dem frisch geladenen 8°-Modell. Teile, Zusatzmasse und Aufhängungsbohrung jedes Arms bleiben gleich."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "compound pendulum with nearly conjugate suspension choices",
+            "de": "physikalisches Pendel mit nahezu konjugierten Aufhängungen"
+        },
+        "keywords": [
+            "compound pendulum",
+            "reversible pendulum",
+            "conjugate pivots",
+            "parallel axis theorem",
+            "radius of gyration",
+            "period",
+            "gravity",
+            "amplitude",
+            "rotational inertia",
+            "physikalisches Pendel",
+            "Reversionspendel",
+            "konjugierte Aufhängungen",
+            "Steinerscher Satz",
+            "Trägheitsradius",
+            "Schwingungsdauer",
+            "Schwerkraft",
+            "Auslenkung",
+            "Trägheitsmoment",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "air-budget.ldr": {
+        "pieces": 155,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "fluids",
+        "description": {
+            "en": "A retained motor and crank work a real stock pneumatic pump. Turn the crank three times each way, then compare stored pressure with the same mechanism connected to two tanks.",
+            "de": "Ein befestigter Motor mit Kurbel betätigt eine echte Pneumatikpumpe aus Standardteilen. Drehe die Kurbel dreimal in jede Richtung und vergleiche den gespeicherten Druck mit demselben Mechanismus an zwei Lufttanks."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "crank-driven pneumatic pump with finite reservoir comparison",
+            "de": "kurbelgetriebene Pneumatikpumpe mit Vergleich begrenzter Speichervolumina"
+        },
+        "keywords": [
+            "pneumatics",
+            "air pressure",
+            "pump",
+            "reservoir volume",
+            "one-way pump",
+            "stored air",
+            "swept volume",
+            "compression travel",
+            "check valve",
+            "Pneumatik",
+            "Luftdruck",
+            "Pumpe",
+            "Speichervolumen",
+            "Rückschlagventil",
+            "Luftvorrat",
+            "Hubvolumen",
+            "Verdichtungsweg",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "air-budget-two-tanks.ldr": {
+        "pieces": 168,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "fluids",
+        "description": {
+            "en": "Add a second connected stock air tank and repeat the same forward-and-return program. Compare pressure gain per observed compression travel with the one-tank model.",
+            "de": "Schließe einen zweiten Standard-Lufttank an und wiederhole dasselbe Vorwärts-und-zurück-Programm. Vergleiche den Druckanstieg je beobachtetem Verdichtungsweg mit dem Modell mit einem Tank."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "crank-driven pneumatic pump with finite reservoir comparison",
+            "de": "kurbelgetriebene Pneumatikpumpe mit Vergleich begrenzter Speichervolumina"
+        },
+        "keywords": [
+            "pneumatics",
+            "air pressure",
+            "pump",
+            "reservoir volume",
+            "one-way pump",
+            "stored air",
+            "swept volume",
+            "compression travel",
+            "check valve",
+            "Pneumatik",
+            "Luftdruck",
+            "Pumpe",
+            "Speichervolumen",
+            "Rückschlagventil",
+            "Luftvorrat",
+            "Hubvolumen",
+            "Verdichtungsweg",
             "experimental",
             "prototype",
             "unverified",

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "air-budget-two-tanks",
+  "language": "en",
+  "what": "This is the comparison model for Air Budget. Motor, gears, crank, pump and program are the same, but a second air tank is joined into the same hose loop as the first, so the air has about twice the volume to fill. Both tanks start precharged to 150 kPa above atmospheric pressure. In the simulator the same six pump strokes raise the pressure from 150.0 to only 156.5 kPa: 6.5 kPa instead of 12.9 kPa. The ratio of the two rises is 1.974, the ratio of the two volumes, 75 cm³ to 38 cm³.",
+  "try": [
+    "Load this model, press Reset, then Run, and note the final pressure. Then run the one-tank model and compare the two rises, not the final readings.",
+    "Watch the pump: the piston makes exactly the same six strokes as in the one-tank model, so both deliver the same amount of air.",
+    "Use the manual jog on port A for one crank turn (1080°) in each model and compare the pressure step: about 2.1 kPa with one tank, about 1.1 kPa with two.",
+    "Note that the display rounds to whole kPa, so a single stroke can look like 1 or 2 kPa. Compare whole runs for a clear result."
+  ],
+  "why": "Each stroke pushes the same 0.80 cm³ of outside air into the tanks. The pressure rise is that added air divided by the volume it has to fill: Δp = p_atm·A·S / V. Doubling the tanks almost doubles V, so the same air raises the pressure about half as much. It is not exactly half because the simulator adds a fixed 1 cm³ for the hoses and fittings: V = 37 + 1 = 38 cm³ with one tank and 2·37 + 1 = 75 cm³ with two. The rise ratio is therefore 75/38 = 1.974. The measured ratio, 1.9736, matches it to within 0.003%.",
+  "matters": "Workshop compressors carry a large tank on purpose: a bigger volume makes the pressure rise and fall slowly, so tools get a steady supply and the motor runs less often. Pneumatic LEGO models do the same when they connect several tanks. The flip side is that a big reservoir takes longer to pump up: the same stroke buys less pressure.",
+  "question": "Both models get exactly the same six strokes. Why does the two-tank model gain only 6.5 kPa instead of 12.9 kPa, and why is the ratio 1.974 rather than exactly 2?",
+  "answer": "The same added air spreads over a larger volume, and the pressure rise is inversely proportional to the volume: Δp = p_atm·A·S / V. The volumes are 38 cm³ and 75 cm³ because each air network has the same extra 1 cm³ for hoses and fittings, so the ratio is 75/38 = 1.974, not 2.",
+  "further": [
+    "Predict the rise for six strokes with three tanks connected (V = 112 cm³).",
+    "How many strokes does the two-tank model need for the same 12.9 kPa that the one-tank model gains in six?",
+    "If the hoses were twice as long in a real model, would the result change? Why does the simulator's fixed 1 cm³ hose allowance make no difference?"
+  ],
+  "formula": "Δp = p_atm·A·S / V; V₁ = 37 + 1 = 38 cm³, V₂ = 2·37 + 1 = 75 cm³; Δp₁/Δp₂ = V₂/V₁ = 75/38 ≈ 1.974 for equal piston travel.",
+  "related": [
+    "pneumatic-press.ldr",
+    "crank-rocker.ldr",
+    "gearbox.ldr"
+  ]
+}

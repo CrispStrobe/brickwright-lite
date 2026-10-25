@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "pivot-exchange",
+  "language": "en",
+  "what": "Three identical arms hang side by side on a frame. Each arm is the same 15L beam with six friction pins as weights, so all three have the same mass (6.3 g) and the same mass distribution. Only the hole each arm hangs from differs: the red arm hangs from hole 5, the blue arm from hole 15 and the yellow arm from hole 8, next to the centre of mass. All three start 8° from vertical. There are no motors: the program only starts the lab and watches for 18 s. In the simulator red and blue swing with periods of 0.5677 s, equal within 0.002%, while yellow takes 1.137 s, almost exactly twice as long.",
+  "try": [
+    "Load the model, press Reset, then Run, and watch red and blue. Their pivots are 80 mm apart along the beam, yet they stay in step for the whole run.",
+    "Count yellow's swings against red's. For every full swing of yellow, red and blue make two.",
+    "Predict first: blue hangs from the hole farthest from its centre of mass (60 mm), red from a hole only 20 mm from it. Which should swing more slowly? Then watch.",
+    "Reset and run again: the result is the same every time, because nothing in the model is driven. Gravity alone sets each period."
+  ],
+  "why": "A rigid swinging body is a physical pendulum. Its period is T = 2π·√(L/g), with an effective length L = h + k²/h. Here h is the distance from the pivot to the centre of mass, and k is the radius of gyration, which describes how the mass is spread around the centre of mass (k² = I_cm/m). The first term grows with h, the second shrinks, so the effective length has a minimum at h = k. Two different distances give the same effective length whenever h₁·h₂ = k². For these arms k² = 1207 mm². Red (h = 20.2 mm) and blue (h = 59.8 mm) give h₁·h₂ = 1208 mm², so both behave like a simple pendulum about 80 mm long. Yellow's pivot is only 3.8 mm from the centre of mass, so k²/h is large: its effective length is 321 mm, four times longer, which doubles the period.",
+  "matters": "This is the principle of Kater's reversible pendulum (1817), which for over a century gave the most precise measurements of gravity. The pendulum is swung from two pivots, and their positions are adjusted until both periods match. The distance between the pivots is then exactly the effective length, so g = 4π²L/T² follows without ever knowing where the centre of mass is or how the mass is spread. The same idea explains why a bat or a racket has a 'sweet spot': it is the centre of percussion, conjugate to the hand.",
+  "question": "Blue hangs three times farther from its centre of mass than red. Why does it not swing more slowly, and what condition makes the two periods equal?",
+  "answer": "Hanging farther from the centre of mass increases both the gravity torque and the moment of inertia about the pivot. The effective length h + k²/h is the same for two distances h₁ and h₂ when h₁·h₂ = k². Here 20.2 mm × 59.8 mm ≈ 1207 mm² = k², so both arms act like an 80 mm simple pendulum with a period of about 0.567 s.",
+  "further": [
+    "Calculate the effective length for hole 1 (h = 52.2 mm) and for hole 6 (h = 12.2 mm). Which one gives the shortest period of all the holes?",
+    "Find the distance h that gives the shortest possible period for these arms (h = k ≈ 34.7 mm), and the period there.",
+    "Compare with the 20° model: the periods are about 0.4% longer. Why do bigger swings take slightly longer, even though the arms and pivots are the same?"
+  ],
+  "formula": "T₀ = 2π·√(L/g), L = h + k²/h, k² = I_cm/m = 1207 mm². Hole 5: h = 20.2 mm, L = 80.0 mm; hole 15: h = 59.8 mm, L = 80.0 mm; hole 8: h = 3.8 mm, L = 320.8 mm. Equal periods when h₁·h₂ = k².",
+  "related": [
+    "pendulum-array.ldr",
+    "cascade.ldr",
+    "momentum-twins.ldr"
+  ]
+}

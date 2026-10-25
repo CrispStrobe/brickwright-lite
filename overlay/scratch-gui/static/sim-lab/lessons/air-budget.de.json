@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "air-budget",
+  "language": "de",
+  "what": "Motor A treibt ein 8er-Zahnrad an, das ein 24er-Zahnrad dreht, eine Untersetzung von 3:1, und das 24er-Zahnrad dreht eine 8-mm-Kurbel. Die Kurbel betätigt eine LEGO-Pneumatikpumpe, deren Kolben pro Hub 16 mm fährt. Die Pumpe füllt einen Lufttank, der mit 150 kPa über dem Luftdruck vorgeladen ist. Das Programm dreht den Motor neunmal vorwärts (drei Kurbelumdrehungen), hält an und dreht ihn dann neunmal zurück, genau auf seinen Startwinkel. Im Simulator steigt der Druck von 150,0 auf 162,9 kPa, etwa 2,1 kPa pro Pumphub, und bleibt dort, obwohl der Motor wieder am Start steht.",
+  "try": [
+    "Lade das Modell, drücke Zurücksetzen und dann Start. Beobachte die Druckanzeige und den Pumpenkolben.",
+    "Zähle die Pumphübe im Vorwärtsteil: Drei Kurbelumdrehungen ergeben drei Hübe, und der Druck steigt jedes Mal um etwa 2 kPa.",
+    "Beobachte den Rückwärtsteil. Die Kurbel dreht rückwärts, aber der Kolben fährt weiter hinein und heraus, und der Druck steigt weiter. Zurückdrehen saugt die Luft nicht wieder heraus.",
+    "Verfahre Port A von Hand in 180°-Schritten. Je 1080° Motordrehung sind eine Kurbelumdrehung und ein Pumphub. Achte darauf, in welchem Teil der Umdrehung der Druck steigt.",
+    "Lade „Air Budget — zwei Tanks“ und starte dasselbe Programm. Dieselben sechs Hübe heben den Druck nur etwa halb so stark."
+  ],
+  "why": "Jeder Einwärtshub drückt die Luft im Pumpenzylinder durch ein Rückschlagventil in den Tank. Auf dem Rückweg schließt das Ventil, und frische Luft strömt von außen in die Pumpe. Egal in welche Richtung die Kurbel dreht, jede Umdrehung macht einen Einwärtshub, deshalb pumpt auch der rückwärts laufende Motor. Ein Hub verdrängt A·S = π·(4 mm)²·16 mm ≈ 0,80 cm³ Außenluft. In das Tankvolumen V gedrückt, erhöht das den Druck um Δp = p_atm·A·S / V (Gesetz von Boyle-Mariotte, bei gleicher Temperatur). Der Simulator gibt Tank und Schläuchen V = 38 cm³, also bringt jeder Hub 101,3 kPa · 0,80 cm³ / 38 cm³ ≈ 2,14 kPa. Sechs Hübe ergeben 12,9 kPa, wie gemessen.",
+  "matters": "Jede Fahrradpumpe, jeder Kompressor und jeder Reifenfüller arbeitet so: ein Kolben, zwei Rückschlagventile und ein Behälter. Die Stellung des Motors sagt nichts darüber, was gespeichert ist: Eine Maschine kann in ihre Ausgangsstellung zurückkehren, während Energie oder Material verschoben wurde. In einer echten Pumpe bleibt am Ende jedes Hubs etwas Luft im Zylinder. Steigt der Tankdruck, dehnt sich diese Restluft beim Rückhub wieder aus, und jeder Hub fördert weniger. Der Simulator lässt das weg, deshalb steigt sein Druck mit jedem Hub um denselben Betrag.",
+  "question": "Der Motor endet genau beim Startwinkel. Warum ist der Tankdruck am Ende höher, und um wie viel würde ein weiterer Hub ihn anheben?",
+  "answer": "Jede Kurbelumdrehung, vorwärts oder rückwärts, macht einen Einwärtshub, und das Rückschlagventil hält die geförderte Luft im Tank. Es zählt nicht der Netto-Motorwinkel, sondern die Zahl der Einwärtshübe. Ein weiterer Hub bringt etwa 101,3 kPa · 0,80 cm³ / 38 cm³ ≈ 2,1 kPa.",
+  "further": [
+    "Wie viele Hübe braucht es, um den Tank von 150 kPa auf 250 kPa zu bringen, den Punkt, an dem die simulierte Pumpe nicht mehr füllt?",
+    "Sag für das Zwei-Tank-Modell (75 cm³) den Anstieg nach sechs Hüben voraus, bevor du es startest, und vergleiche dann.",
+    "Angenommen, eine echte Pumpe ließe nach jedem Hub 0,2 cm³ Luft im Zylinder. Schätze, wie viel weniger Luft sie fördert, wenn der Tank 150 kPa über dem Luftdruck steht."
+  ],
+  "formula": "Δp pro Hub = p_atm·A·S / V; A = π·(4 mm)² = 50,3 mm², S = 16 mm, V = 38 cm³, p_atm = 101,3 kPa → Δp ≈ 2,14 kPa. Untersetzung 24:8 = 3:1, also 1080° an Motor A = eine Kurbelumdrehung = ein Hub.",
+  "related": [
+    "pneumatic-press.ldr",
+    "crank-rocker.ldr",
+    "gearbox.ldr"
+  ]
+}

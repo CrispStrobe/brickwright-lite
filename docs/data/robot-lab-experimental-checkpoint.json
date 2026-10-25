@@ -3067,6 +3067,90 @@
         "nan": false,
         "simMs": 62400
       }
+    },
+    {
+      "id": "pivot-exchange",
+      "title": "Pivot Exchange — nearly equal periods from different pivots",
+      "placements": 159,
+      "archive": "pivot-exchange-complete.zip sha256 f9696c844a378c95a1341ac6229820675e0c955ba644e3f5d8f31104816f1da6",
+      "originalLdrawSha256": "25ca8834a68b8008138f31f820d656c077ba9c202262a199d15653ae83b5bc2b",
+      "canonicalLdrawSha256": "dac8d0d5003ae68f90d8c3b4f1233d4e20aa3c2f50fc6fc2ff884e32b1d990fd",
+      "program": "pivot-exchange.bw",
+      "programSha256": "e74aa7a5931429073e0a147db06ed07a916019245f6f3256c3222d7288c58118",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons rewritten for learners (supplier versions kept in the archive).",
+      "supplierClaims": "112 native checks passed (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 0/275/1000, hinge angles: periods near 0.56771-0.56773 s, far 0.56770-0.56772 s (pair within 0.0021%), control 1.13704-1.13711 s (2.0029x); compiled-collider small-angle prediction 0.56737/0.56739/1.13614 s, measured 0.06-0.09% longer as the 8 deg amplitude correction predicts; frame drift <=0.07 mm"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000 (observation only, no motors)",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (built-in central-hole arm: 2.003x the paired period)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "pivot-exchange-wide",
+      "title": "Pivot Exchange — 20° release comparison",
+      "placements": 159,
+      "archive": "pivot-exchange-complete.zip sha256 f9696c844a378c95a1341ac6229820675e0c955ba644e3f5d8f31104816f1da6",
+      "originalLdrawSha256": "1a6765e510c62acae4e5f9731bbec3c741dc0b33b588dffca672602e02dfe3c3",
+      "canonicalLdrawSha256": "9f4bec6518514f90810c3dd00f7e6d815ed6d27904af3bdfcaa8ec9584c77ff8",
+      "program": "pivot-exchange.bw",
+      "programSha256": "e74aa7a5931429073e0a147db06ed07a916019245f6f3256c3222d7288c58118",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons rewritten for learners (supplier versions kept in the archive).",
+      "supplierClaims": "112 native checks passed (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 0/275/1000: near 0.56975-0.56984 s, far 0.56993-0.56999 s (pair within 0.031%), control 1.14159-1.14189 s (2.0035x); all ~0.37-0.41% longer than from 8 deg; frame drift <=0.19 mm"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000 (observation only, no motors)",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (built-in central-hole arm; amplitude comparison with pivot-exchange)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "air-budget",
+      "title": "Air Budget — one pump, finite stored air",
+      "placements": 155,
+      "archive": "air-budget.zip sha256 3ab18c807ce71fd32fb80b34ecbdc0b974169edf267638b672513c3778a36f2b",
+      "originalLdrawSha256": "673f4ffaef2b41e9817a2937f06a3f6124a3046af5c44a038a05cf2d95fd4618",
+      "canonicalLdrawSha256": "77c3203ea9fd0d68f00e2541e29df66e6d44198e407d58718ac9394b1c55b363",
+      "program": "air-budget.bw",
+      "programSha256": "305c8ae0a946087377f56e5e5e4d57f8b3e09c60650f1f6a151585aaaa59b91c",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons rewritten for learners (supplier versions kept in the archive). Manual jog added on port A (0..3240 deg, one crank turn per 1080 deg).",
+      "supplierClaims": "123 native gates passed (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 275, airState and pump slider: 150.000 -> 162.870 kPa after 96.006 mm inward travel (6 x 16 mm strokes); p_atm*A*S/V with V=38 cm3 predicts 12.868 kPa (ratio 1.0002); pressure never falls; frame drift 0.011 mm"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (air-budget-two-tanks)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "air-budget-two-tanks",
+      "title": "Air Budget — two-tank comparison",
+      "placements": 168,
+      "archive": "air-budget.zip sha256 3ab18c807ce71fd32fb80b34ecbdc0b974169edf267638b672513c3778a36f2b",
+      "originalLdrawSha256": "f64492116f98ae0c558a172ab8a1865310bc4d513e3ea3ec5f78ae1a4a9d291a",
+      "canonicalLdrawSha256": "17b185efa7a3995f3c3943df0f80f9c99b829c8e0a707aeebd4ebbdb6e61779f",
+      "program": "air-budget.bw",
+      "programSha256": "305c8ae0a946087377f56e5e5e4d57f8b3e09c60650f1f6a151585aaaa59b91c",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons rewritten for learners (supplier versions kept in the archive). Manual jog added on port A (0..3240 deg, one crank turn per 1080 deg).",
+      "supplierClaims": "123 native gates passed (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 275: 150.000 -> 156.521 kPa after 96.004 mm; V=75 cm3 predicts 6.520 kPa; travel-normalised gain ratio 1.97364 vs 75/38 = 1.97368"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
     }
   ],
   "appVerification": {
