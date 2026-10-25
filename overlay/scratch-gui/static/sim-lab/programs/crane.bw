@@ -8,10 +8,13 @@ DEVICE SPIKE
 # and the rope guide at its tip rises about 4 cm. The actuator holds the boom when B stops.
 # Motor C drives a 1:1 16T pair and a 7 LDU rope drum. Counterclockwise winds in;
 # 540 degrees take in 7 x 0.4 x 3 x pi = 26.4 mm of rope at a stationary boom.
+# Four pinned diagonal feet resist motor reaction torque; the base remains free on the floor.
 # Clockwise pays it back out. The load can swing and the rope can go slack.
 WHEN flag clicked:
   set motor stop action A hold
+  stop motor A
   set motor stop action B hold
+  stop motor B
   set motor stop action C hold
   stop motor C
   set motor speed A 10

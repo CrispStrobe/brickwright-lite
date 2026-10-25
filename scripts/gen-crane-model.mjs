@@ -5,7 +5,7 @@
 // Writes the Robot Lab's Crane (overlay/scratch-gui/static/sim-lab/models/crane.ldr) from its
 // geometry, so every placement follows from the few numbers that define the build:
 //   node scripts/gen-crane-model.mjs [out.ldr]
-// A slewing, luffing crane on a SPIKE Prime hub that stands on the floor (docs/ROBOT-LAB-ARCHITECTURE.md
+// A slewing, luffing crane on a SPIKE Prime hub with four pinned floor outriggers (docs/ROBOT-LAB-ARCHITECTURE.md
 // T1). The base and the slewing upper are the Excavator's (scripts/gen-excavator-model.mjs), proven
 // buildable there: a 28-tooth turntable on the hub's back top holes (two 42003 connectors on axle pins),
 // slewed by an 8-tooth gear on motor A behind the hub (8:28); on the turntable a small frame and two 9L
@@ -76,8 +76,19 @@ const gearOn = (id, part, color, pos, axis) => {
 /** A beam (holes along local y, length along local z) with holes along `holes`, running along `along`. */
 const beam = (id, part, color, centre, holes, along) => place(id, part, color, centre, cross(holes, along), holes, along);
 
-// ---- base: the SPIKE hub standing on the floor ------------------------------------------------------
+// ---- base: the SPIKE hub on four pinned floor outriggers ------------------------------------------------------
 place('hub', '45601.dat', 71, [0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]);
+// Four pinned diagonal feet widen the support polygon against motor reaction
+// torque. Their tops touch the hub's underside; no body is fixed to the world.
+const diagonal = 1 / Math.sqrt(2);
+for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const k = `${sx < 0 ? 'L' : 'R'}${sz < 0 ? 'F' : 'B'}`;
+    const along = [sx * diagonal, 0, sz * diagonal];
+    beam(`outrigger${k}`, '32278.dat', 72,
+        [sx * (60 + 140 * diagonal), 10, sz * (100 + 140 * diagonal)], Y, along);
+    pinAlong(`outriggerPin${k}`, '2780.dat', 0, [sx * 60, 0, sz * 100], Y);
+}
+
 
 // ---- the turntable (28 teeth) on the hub's back top holes (as the Excavator) -------------------------
 const ZT = 120;

@@ -155,7 +155,7 @@ dynamic–dynamic contact (M14 prerequisite).
 Hard: rope over a moving boom tip (M10 approx), sway (the hook body on a rope swings: real,
 and it is the fun part), worm self-locking holding the load when the motor stops.
 *As authored (2026-10-25, `crane.ldr`, `scripts/gen-crane-model.mjs`):* slewing, luffing and a rope hoist; affected hosted qualification is required before landing.
-A SPIKE hub on the floor carries the Excavator's 28T turntable (8T on motor A, run at 10 % speed: a
+A SPIKE hub on four pinned diagonal 15L feet carries the Excavator's 28T turntable (8T on motor A, run at 10 % speed: a
 direct 8:28 slew tips a loaded upper at full power) and posts; a 15L boom is luffed by a small linear
 actuator (motor B, 1:1:1 to the spindle; the screw self-locks, so the boom holds with B stopped: 0.01 mm
 of sag in 1 s in the earlier fixed-hook model). Motor C drives a retained drum through equal

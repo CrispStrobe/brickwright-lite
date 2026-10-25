@@ -7,6 +7,26 @@
 0 !BW ID hub
 1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
 0 STEP
+0 !BW ID outriggerPinLF
+1 0 -60 0 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID outriggerPinRF
+1 0 60 0 -100 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 !BW ID outriggerLF
+1 72 -158.9949 10 -198.9949 -0.7071 0 -0.7071 0 1 0 0.7071 0 -0.7071 32278.dat
+0 !BW ID outriggerRF
+1 72 158.9949 10 -198.9949 -0.7071 0 0.7071 0 1 0 -0.7071 0 -0.7071 32278.dat
+0 STEP
+0 !BW ID outriggerPinLB
+1 0 -60 0 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 !BW ID outriggerPinRB
+1 0 60 0 100 0 0 1 1 0 0 0 1 0 2780.dat
+0 STEP
+0 !BW ID outriggerLB
+1 72 -158.9949 10 198.9949 0.7071 0 -0.7071 0 1 0 0.7071 0 0.7071 32278.dat
+0 !BW ID outriggerRB
+1 72 158.9949 10 198.9949 0.7071 0 0.7071 0 1 0 -0.7071 0 0.7071 32278.dat
+0 STEP
 0 !BW ID ttMountAxlePinR
 1 0 60 -80 100 0 0 -1 -1 0 0 0 1 0 43093.dat
 0 !BW ID ttMountAxlePinL

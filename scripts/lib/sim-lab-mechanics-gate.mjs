@@ -110,7 +110,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         }, {ms:simulatedForThis,paused:completeWhenPausedFor(id)}, {timeout});
         if(completeWhenPausedFor(id))await page.evaluate(()=>window.__bwCaptureMechanics());
         const r = await page.evaluate(() => window.__bwMechanics);
-        if (observeProgram) writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
+        if (observeProgram || id === 'crane') writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
         results[id] = judge(id, r);
         // Capture the measured final pose without racing a continuously redrawn
         // software WebGL surface. The next model selection starts a fresh run.

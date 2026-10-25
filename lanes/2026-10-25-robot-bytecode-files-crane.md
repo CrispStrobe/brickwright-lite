@@ -51,6 +51,9 @@ Three owned NXC/lms programs have retained compiler outputs and actual virtual
 brick download/start controls. Focused local controls: 23 NXT VM, 26 EV3 VM and
 three virtual-brick tests; ten NXT and fourteen EV3 source mutations are rejected.
 The crane adds a retained C drum, moving guide and balanced rope-hung payload.
+After measured dynamic hold/lean/yaw/slack failures, the next candidate adds four
+physical pinned support feet and phase diagnostics, retaining every tolerance,
+original motor target and timing limit. Qualification remains pending.
 Four pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,
