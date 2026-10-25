@@ -1,6 +1,6 @@
 # Model API: bounded 413 for over-limit chunked bodies — 2026-10-25
 
-**Status: claim only; no implementation yet.** Owner: Claude Code model-API cutover
+**Status: DONE (implementation commit; claim merged in PR #1365 before it).** Owner: Claude Code model-API cutover
 session, owner-requested API fix. Branch `lane/model-api-oversize-413-20261025`,
 base `8cfa25812efcac2369ac9269acdadc138bf43cfa`. Both earlier model-API claims
 ([measurement API](2026-10-23-model-measurement-api.md),
@@ -40,3 +40,36 @@ reviewed below, not assumed to be a server defect.
 No change to the worker workflow, admission ledger protocol, limits, judges,
 physics, compiler, measurement readers or any other owner's paths. No deployment
 is implied by this claim; a redeploy and new hosted probes follow separately.
+
+## Result
+
+- `readBody()` now reads with event listeners instead of the async iterator,
+  whose `return()` also destroyed the request. An over-limit chunk or the 10 s
+  deadline pauses the stream and rejects with the unchanged 413/408 `ApiError`;
+  the handler passes its response, and the request is destroyed only after that
+  response finishes or closes, with `Connection: close`. Without a response
+  object the request is still destroyed at once. Limits, deadline, refusal codes
+  and authentication-before-body order are unchanged.
+- Focused tests in `test/model-api-resource.test.mjs`: a real loopback HTTP
+  request through the production handler with the hosted probe's shape (16 x
+  64 KiB chunks + 1 byte, no `Content-Length`) failed before the fix with
+  `ECONNRESET` and no response, and now receives the JSON 413; plus deferred-end
+  controls for 413 and 408 with and without a response. The existing stalled
+  control keeps its 408 and immediate-destroy assertions with an event-emitter
+  request.
+- Hosted A/B on Vercel previews with fixture-only configuration and
+  `NODEJS_HELPERS=0`: the previous source answered the chunked over-limit body
+  with HTTP 500 `FUNCTION_INVOCATION_FAILED` (twice), this source with HTTP 413
+  `too-large` JSON (twice); malformed JSON stayed 400 on both.
+- Stalled body: the handler answers 408 after 10 s over loopback HTTP. On Vercel
+  a stalled upload is held by the host and never reaches the function; after
+  about 72 s the host itself returned a platform 500. That is host buffering, not
+  a server deadline defect, so the probe's 20 s client deadline is recorded as
+  inconclusive rather than changed.
+- Reports now include `runtime.engineAsset` (`lib/engine-identity.mjs`): the
+  installed `jolt-physics` version, lockfile resolved URL/integrity, whether the
+  installed version matches the lockfile, and the SHA-256 of the entry module
+  jolt-core selects (SIMD or baseline), or `available: false`. Unit-tested with a
+  fixture install; the native Docker control asserts it on the real install.
+  This makes the engine generation checkable from a report: main currently pins
+  `jolt-physics 1.1.0-bw.6`.
