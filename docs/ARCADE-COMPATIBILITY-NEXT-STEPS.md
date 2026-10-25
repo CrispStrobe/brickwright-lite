@@ -106,6 +106,30 @@ remaining simulator failure without a timeout change.
 
 ### Further SDK primitive normal results
 
+The constructor-effect candidate now passes its complete source controls and
+keeps the original SDK Sprite fixture unchanged. Qualify its actual original
+and emitted MakeCode, native, Code/Blocks, graphics and save/reopen routes first.
+Only direct canonical Sprite construction with closed synchronous effects is
+covered. Broader constructor callbacks, yielding, post-constructor SDK setters,
+other getters and unmodeled subclass paths need separate effect/readiness
+proofs; descriptor names or eventual final values are insufficient.
+
+The third-export API boundary is now discriminated using the unchanged constructor source
+in `test/arcade-sdk-constructor-scalar-effects.test.mjs`: import/create/export,
+freshly import/create/export, then repeat once more. The retained third stage
+uses live-object `projectToArcade` and refuses `arrays_referenceItem` and
+`arrays_mutateReference`. The stronger Array proof requires an owned JSON
+snapshot. Both `pseudocode-importer.jsx` and `conversion-journey.mjs` already use
+`projectJsonToArcade` with actual assets; do not fix their correct routing or
+relax live-input admission merely to erase this diagnostic. The discriminator
+retains source/project/asset hashes and passes all three JSON stages on the same inputs;
+no Array code change is justified for this case. Future failures must first
+establish admitted input and actual assets, then claim the exact Array caller/
+alias/writer/initialization paths after identifying physical blocks and entry order.
+The constructor helper's private Image collection transport is not an Array
+certificate. Preserve early reads, foreign/mixed writers, unsupported callers,
+actual image identity and source-currentness controls across further permutations.
+
 The qualified Sprite factory/property slice now handles the explicit genuine
 Undefined kind emitted by current export, with namespace, binding, initialization,
 writer and source-currentness guards intact. Fifteen complete scalar controls

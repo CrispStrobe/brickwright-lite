@@ -127,6 +127,28 @@ diagnostic. Their overall source status remains four parse failures and one
 partial because other diagnostics remain; an API repair does not count those
 applications complete.
 
+The [SDK constructor-effects scope](../lanes/2026-10-25-arcade-sdk-constructor-effects.md)
+now has a source candidate. It proves individual captured/field/method primitive
+occurrences from actual closed constructor effects, while keeping generic SDK
+ancestry exclusions. It follows parameter-property stores, then field
+initializers, then the original body, as emitted by
+[PXT 13.2.1](https://github.com/microsoft/pxt/blob/v13.2.1/pxtcompiler/emitter/emitter.ts#L3060).
+Canonical registration, Image/hitbox aliases and later SDK stores are audited;
+facts remain conditional on normal SDK return, with no completion guarantee.
+Reserved SDK slots cannot bypass refusal through the older projection.
+
+The constructor module now has fifteen source controls. The earlier 99-control
+source cohorts, twelve guard cuts and final composed 38-control SDK/Image/score
+cohort pass; these cohorts overlap and are not additive. Actual Code constructor
+argument and SVG edits, two source export/import cycles and owned saved-project
+routes pass. An exploratory third live-object export reaches Array read/mutation
+refusals; the equivalent three-stage owned-JSON discriminator passes on the
+same projects/assets. The GUI and journey already use that API. This case is
+an admission distinction, not an established Array implementation gap.
+Broader SDK callbacks/setters remain outside this slice. Actual
+original/emitted PXT, native execution and visible editor qualification remain
+pending; no additional corpus completion is claimed.
+
 The retained four-shard CI baseline at
 [`8e7691ad`](https://github.com/CrispStrobe/brickwright-lite/commit/8e7691ad713fce0922a5558f3998c8e98c2b09d5)
 has **13,191 passes, 70 failures, 19 skips and 37 TODOs**. Forty-nine failures
