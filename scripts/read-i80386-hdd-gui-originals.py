@@ -582,8 +582,9 @@ def actual_inventory_reference(reference):
         fields(selected[name],'byteLength sha256');integer(selected[name]['byteLength'],1,JSON_CAP);digest(selected[name]['sha256'])
     if selected_version==6:
         finite_v6_variables(selected['repositoryVariables'],selected['template']['sha256'])
-        need(len(base64.b64decode(selected['repositoryVariables']['BW_FINITE_INVENTORY_V6_TEMPLATE_B64'],validate=True))==selected['template']['byteLength'],
-             'selected finite v6 reference template extent')
+        template=base64.b64decode(selected['repositoryVariables']['BW_FINITE_INVENTORY_V6_TEMPLATE_B64'],validate=True)
+        need(len(template)==selected['template']['byteLength'] and decode(template)['sourceHead']==source['head'],
+             'selected finite v6 reference template extent and source head')
     need(selected['workflowSha']==reference['workflow']['commit'] and
          reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
     return selected

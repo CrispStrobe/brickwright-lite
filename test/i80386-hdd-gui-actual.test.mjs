@@ -3322,6 +3322,21 @@ class Originals(unittest.TestCase):
         files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
         self.assertEqual(c.parse_request(files['request.original.json'],expected['requestSha256']),request)
         self.assertEqual(r.parse_request(files['request.original.json'],expected['requestSha256']),request)
+        repinned=copy.deepcopy(request)
+        selected=repinned['inventoryAdmission']['metadataAdmission']
+        original_template=D(base64.b64decode(selected['repositoryVariables']['BW_FINITE_INVENTORY_V6_TEMPLATE_B64']))
+        self.assertEqual(original_template['sourceHead'],selected['source']['head'])
+        original_template['sourceHead']='d'*40
+        repinned_template=E(original_template)
+        selected['template']=ROW(repinned_template)
+        selected['repositoryVariables']={
+            'BW_FINITE_INVENTORY_V6_SHA256':H(repinned_template),
+            'BW_FINITE_INVENTORY_V6_TEMPLATE_B64':base64.b64encode(repinned_template).decode()}
+        self.assertNotEqual(original_template['sourceHead'],selected['source']['head'])
+        repinned_raw=E(repinned)
+        for parser in (c.parse_request,r.parse_request):
+            with self.assertRaisesRegex(ValueError,'template source head|template extent and source head'):
+                parser(repinned_raw,H(repinned_raw))
         for cut in ('old-reference','old-metadata','old-entry'):
             changed=copy.deepcopy(request)
             if cut=='old-reference':changed['inventoryAdmission']['schema']='bw.gui-hdd.actual-finite-inventory-reference.v2'

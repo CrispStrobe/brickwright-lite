@@ -527,6 +527,8 @@ def actual_inventory_reference(reference):
         need(base64.b64encode(template).decode()==encoded and len(template)==selected['template']['byteLength'] and
              sha(template)==selected['template']['sha256'],'selected finite v6 template bytes')
         finite_v6_template(template,selected['template']['sha256'])
+        need(json.loads(template)['sourceHead']==source['head'],
+             'selected finite v6 template source head matches metadata admission')
     need(selected['workflowSha']==reference['workflow']['commit'] and
          reference['workflow']['sha256']==source['files'][reference['workflow']['path']]['sha256'],'prior observation/executing workflow/content join')
     return selected
