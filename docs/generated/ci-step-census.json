@@ -6863,7 +6863,12 @@
         "Repeat v7 inventory installation exactly, without frontend build",
         "Install externally admitted v7 request and refuse runtime/source drift",
         "Prepare unchanged authenticated free media once for v7",
-        "One official frontend acquisition and two serial genuine v7 UI scenarios"
+        "One official frontend acquisition and two serial genuine v7 UI scenarios",
+        "Install empty Python cache prefix and refuse unreviewed v8 source",
+        "Repeat v8 inventory installation exactly, without frontend build",
+        "Install externally admitted v8 request and refuse runtime/source drift",
+        "Prepare unchanged authenticated free media once for v8",
+        "One official frontend acquisition and two serial genuine v8 UI scenarios"
       ],
       "inFileInNoRun": [
         "Refuse unreviewed inventory before setup or input retrieval",
@@ -6878,7 +6883,12 @@
         "Repeat v7 inventory installation exactly, without frontend build",
         "Install externally admitted v7 request and refuse runtime/source drift",
         "Prepare unchanged authenticated free media once for v7",
-        "One official frontend acquisition and two serial genuine v7 UI scenarios"
+        "One official frontend acquisition and two serial genuine v7 UI scenarios",
+        "Install empty Python cache prefix and refuse unreviewed v8 source",
+        "Repeat v8 inventory installation exactly, without frontend build",
+        "Install externally admitted v8 request and refuse runtime/source drift",
+        "Prepare unchanged authenticated free media once for v8",
+        "One official frontend acquisition and two serial genuine v8 UI scenarios"
       ],
       "steps": {
         "Source and manufactured-original controls only": {
@@ -6977,6 +6987,13 @@
           "class": "never"
         },
         "actual-v7": {
+          "existed": 0,
+          "ran": 0,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "never"
+        },
+        "actual-v8": {
           "existed": 0,
           "ran": 0,
           "existedMain": 0,

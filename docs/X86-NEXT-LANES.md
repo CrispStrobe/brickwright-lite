@@ -8,11 +8,17 @@ The selected actual V6 attempt failed its Python startup check before media or
 guest work. Its retained log establishes the guard-mode mismatch; the later
 preflight and actual mode mismatches are source findings, not observed later
 steps. The distinct [V7 startup-mode lane](../lanes/2026-10-25-x86-gui-actual-v7-startup-mode.md)
-now has an armed, unselected source candidate awaiting exact-head CI. It binds the three actual V7 CLI strings
-to unchanged startup assertions and gives V7 separate request, event, job and
-reader transport. V6 execution is retired while its original reader remains
-available. V7 needs exact-head source CI, independent Build/request/event
-review and a separately selected one-shot event before any hosted claim.
+qualified source checks but was never selected for an actual event. Its three
+CLI modes and reader remain available for historical review. A pure V7 control
+used memory originals and produced 157 registered roles, above the real
+producer's 128-role limit; it did not establish a reachable sealed actual
+packet or a guest result. The [V8 dispatch lane](../lanes/2026-10-25-x86-gui-actual-v8-head-pinned-dispatch.md)
+has an inactive source candidate that packs the 35 Git capture triplets into
+bounded physical envelopes while retaining their raw bytes and independent
+reader checks. Its controls use mocked host and child edges; V8 still needs
+exact-head source CI, a qualified Build and request, and a separately selected
+one-shot event before any hosted claim. V6 execution is retired while its
+original reader and failed attempt remain available.
 
 The functional experimental 386 AT exposes console/VGA and keyboard/mouse routes through Circuits, Widgets and Code. Machine Manager accepts raw HDD media with supported CHS geometry and partial DOSBox configs; the named FreeDOS VGA route has its own documented floppy/HDD constraints. Widgets supports a large screen and full screen. Media selection remains tab-local and mouse reporting depends on the guest enabling it. These capabilities have different synthetic, headless-adapter and actual-browser evidence boundaries; consult the guide rather than treating them as one broad compatibility claim.
 

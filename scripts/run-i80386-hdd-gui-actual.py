@@ -31,10 +31,16 @@ FINITE_INVENTORY_V5_ENABLED = False
 FINITE_INVENTORY_V6_ENABLED = False
 ACTUAL_V6_ENABLED = False
 ACTUAL_V7_ENABLED = True
+ACTUAL_V8_ENABLED = False
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 ACTUAL_V6_LABEL = 'x86-hdd-gui-actual-v6'
 ACTUAL_V7_LABEL = 'x86-hdd-gui-actual-v7'
+ACTUAL_V8_TAG_PREFIX = 'bw-gui-hdd-actual-v8-'
+ACTUAL_V8_WORKFLOW = '.github/workflows/i80386-hdd-gui-actual.yml'
+ACTUAL_V8_PLATFORM_KEYS = ('GITHUB_REPOSITORY','GITHUB_EVENT_NAME','GITHUB_ACTOR','GITHUB_RUN_ID',
+ 'GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REF','GITHUB_REF_TYPE','GITHUB_REF_NAME','GITHUB_SHA',
+ 'GITHUB_WORKFLOW_REF','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
 CUI = '91d8434a79d373cef2837c137ab356356f1a3b44'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
@@ -639,14 +645,23 @@ def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    version=7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else ''))
+    version=8 if request.get('schema')=='bw.gui-hdd.actual-request.v8' else 7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch' if version==8 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
     integer(request['pullRequest'], 1, 2**31-1)
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
+    if version==8:
+        selected=request['dispatch'];fields(selected,'tagName tagRef workflow')
+        tag=ACTUAL_V8_TAG_PREFIX+source['head']
+        need(selected['tagName']==tag and selected['tagRef']=='refs/tags/'+tag,
+             'one exact source-derived V8 tag and full ref')
+        fields(selected['workflow'],'path sha256')
+        need(selected['workflow']['path']==ACTUAL_V8_WORKFLOW and
+             selected['workflow']['sha256']==source['files'][ACTUAL_V8_WORKFLOW]['sha256'],
+             'source-bound V8 workflow bytes')
     rows(request['criticalFiles']); need(set(request['criticalFiles']) == set(CRITICAL), 'exact existing probe critical roster')
     for name in SOURCE & set(CRITICAL):
         need(encode(source['files'][name]) == encode(request['criticalFiles'][name]), 'critical/source identity join')
@@ -740,6 +755,8 @@ def bind_inventory_event(raw, head, expected, env):
 
 
 def bind_event(raw, request, expected, env):
+    if request['schema']=='bw.gui-hdd.actual-request.v8':
+        return bind_dispatch_event_v8(raw,request,expected,env)
     event = decode(raw); pr = event.get('pull_request', {}); repo = event.get('repository', {})
     version=request['schema']
     selected_label=ACTUAL_V7_LABEL if version=='bw.gui-hdd.actual-request.v7' else ACTUAL_V6_LABEL if version=='bw.gui-hdd.actual-request.v6' else LABEL
@@ -763,6 +780,64 @@ def bind_event(raw, request, expected, env):
          env.get('GITHUB_JOB') == ('actual-v7' if version=='bw.gui-hdd.actual-request.v7' else 'actual') and
          env.get('BW_EXPECTED_HEAD') == request['source']['head'], 'official platform observations')
     return event
+
+
+def bind_dispatch_event_v8(raw,request,expected,env):
+    event=decode(raw);selected=request['dispatch'];inputs=event.get('inputs')
+    fields(inputs,'pull_request source_head request_sha256 tag_name')
+    need(inputs=={'pull_request':str(request['pullRequest']),'source_head':request['source']['head'],
+                  'request_sha256':expected,'tag_name':selected['tagName']},
+         'exact four typed reviewed V8 dispatch inputs')
+    need(event.get('ref') in (selected['tagName'],selected['tagRef']) and
+         event.get('repository',{}).get('full_name')==REPOSITORY and
+         event.get('sender',{}).get('login')=='CrispStrobe' and
+         type(event.get('workflow')) is str and 0<len(event['workflow'])<=256,
+         'owned V8 dispatch event and finite tag representation')
+    need(env.get('GITHUB_REPOSITORY')==REPOSITORY and env.get('GITHUB_EVENT_NAME')=='workflow_dispatch' and
+         env.get('GITHUB_ACTOR')=='CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT')=='1' and
+         re.fullmatch('[1-9][0-9]{0,19}',env.get('GITHUB_RUN_ID','')) and
+         env.get('GITHUB_JOB')=='actual-v8' and env.get('GITHUB_REF')==selected['tagRef'] and
+         env.get('GITHUB_REF_TYPE')=='tag' and env.get('GITHUB_REF_NAME')==selected['tagName'] and
+         env.get('GITHUB_SHA')==request['source']['head'] and
+         env.get('GITHUB_WORKFLOW_SHA')==request['source']['head'] and
+         env.get('GITHUB_WORKFLOW_REF')==REPOSITORY+'/'+ACTUAL_V8_WORKFLOW+'@'+selected['tagRef'] and
+         env.get('BW_EXPECTED_HEAD')==request['source']['head'],
+         'first V8 official platform tag, workflow, actor and head')
+    return event
+
+
+def dispatch_platform_v8(env):
+    return {'schema':'bw.gui-hdd.actual-v8-platform.v1',
+            **{key:env.get(key) for key in ACTUAL_V8_PLATFORM_KEYS}}
+
+
+def admit_dispatch_pr_v8(pr_raw,request,expected):
+    pr=decode(pr_raw);head=request['source']['head']
+    marker='<!-- BW_GUI_HDD_ACTUAL_V8_REQUEST_SHA256='+expected+' -->'
+    need(type(pr.get('number')) is int and pr['number']==request['pullRequest'] and
+         pr.get('state')=='open' and pr.get('draft') is False and
+         pr.get('head',{}).get('sha')==head and
+         pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and
+         pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         type(pr.get('body')) is str and
+         pr['body'].count('<!-- BW_GUI_HDD_ACTUAL_V8_REQUEST_SHA256=')==1 and
+         pr['body'].count(marker)==1,
+         'separate owned open ready PR and exact V8 request marker')
+    return pr
+
+
+def admit_dispatch_tag_v8(tag_raw,request):
+    tag=decode(tag_raw);selected=request['dispatch'];head=request['source']['head']
+    need(tag.get('ref')==selected['tagRef'] and tag.get('object',{}).get('type')=='commit' and
+         tag.get('object',{}).get('sha')==head,
+         'separate immutable source-derived lightweight tag readback')
+    return tag
+
+
+def admit_dispatch_sources_v8(pr_raw,tag_raw,request,expected):
+    return admit_dispatch_pr_v8(pr_raw,request,expected),admit_dispatch_tag_v8(tag_raw,request)
 
 
 def identity(info):
@@ -1021,13 +1096,116 @@ class Originals:
         (self.root/'inventory.json').write_bytes(encode({'schema': 'bw.gui-hdd.originals.v1', 'files': self.files}))
 
 
+class V8Originals(Originals):
+    """V8 physical Git envelopes; all earlier routes keep Originals unchanged."""
+    GIT_MEMBER = re.compile(r'git-([0-9]+)\.(stdout|stderr|process\.json)\Z')
+    MEMBER_ORDER = ('stdout', 'stderr', 'process.json')
+
+    def __init__(self, path):
+        super().__init__(path)
+        self.git_pending = {}; self.git_written = set(); self.git_failed = set()
+        self.git_decoded_total = 0; self.git_last_index = -1; self.git_errors = []
+
+    def save(self, name, raw):
+        match = self.GIT_MEMBER.fullmatch(name)
+        if match is None:
+            need(not (name.startswith('git-') and
+                 name.endswith(('.stdout','.stderr','.process.json','.original.json'))),
+                 'closed V8 Git physical role')
+            return super().save(name, raw)
+        index = int(match.group(1)); member = match.group(2)
+        role = 'git-'+str(index)
+        need(type(raw) is bytes and 0<=index<=len(SOURCE)+16 and
+             name==role+'.'+member and member in self.MEMBER_ORDER,
+             'bounded V8 Git member')
+        need(index >= self.git_last_index and index not in self.git_written and
+             index not in self.git_failed, 'ordered exclusive V8 Git call')
+        if index > self.git_last_index:
+            need(not self.git_pending or all(len(members)==3 for members in self.git_pending.values()),
+                 'no interleaved partial V8 Git call')
+            self.git_last_index=index
+        members=self.git_pending.setdefault(index,{})
+        need(member not in members and len(members)==self.MEMBER_ORDER.index(member),
+             'ordered exclusive V8 Git triplet member')
+        cap = JSON_CAP if member=='process.json' else STREAM_CAP
+        need(len(raw)<=cap and self.git_decoded_total+len(raw)<=384<<20,
+             'bounded decoded V8 Git originals')
+        members[member]=raw
+        self.git_decoded_total+=len(raw)
+        if len(members)==3:
+            try:self._write_git(index,members,None)
+            except BaseException as error:
+                self.git_failed.add(index);self.git_errors.append(error)
+                raise
+            else:del self.git_pending[index]
+
+    @staticmethod
+    def _failure_record(record):
+        need(type(record) is dict and set(record)=={'phase','name','message'} and
+             all(type(record[key]) is str and len(record[key].encode('utf-8'))<=limit
+                 for key,limit in (('phase',64),('name',64),('message',256))),
+             'bounded V8 Git error record')
+        return record
+
+    def _write_git(self,index,members,failure):
+        role='git-'+str(index)
+        complete=len(members)==3
+        first=None if complete else failure['firstFailure']
+        secondary=[] if complete else failure['secondary']
+        if not complete:
+            self._failure_record(first)
+            need(type(secondary) is list and len(secondary)<=16,
+                 'bounded V8 Git secondary count')
+            for item in secondary:self._failure_record(item)
+            need(len(encode({'firstFailure':first,'secondary':secondary}))<=4096,
+                 'bounded V8 Git error section')
+        fields={name:None if name not in members else
+                {'byteLength':len(members[name]),'sha256':sha(members[name]),
+                 'base64':base64.b64encode(members[name]).decode('ascii')}
+                for name in self.MEMBER_ORDER}
+        envelope=encode({'schema':'bw.gui-hdd.git-triplet.v8','role':role,
+                         'complete':complete,'members':fields,
+                         'firstFailure':first,'secondary':secondary})
+        need(len(envelope)<=FILE_CAP,'bounded V8 Git envelope')
+        super().save(role+'.original.json',envelope)
+        self.git_written.add(index)
+
+    def seal(self,result):
+        for index,members in sorted(self.git_pending.items()):
+            if index in self.git_failed:continue
+            result['pass']=False
+            if result['firstFailure'] is None:
+                result['firstFailure']={'phase':'git-envelope','name':'ValueError',
+                                        'message':'incomplete V8 Git triplet'}
+            failure={'firstFailure':result['firstFailure'],'secondary':result['secondary']}
+            try:self._write_git(index,members,failure)
+            except BaseException as error:
+                self.git_failed.add(index);self.git_errors.append(error)
+        if self.git_errors:
+            for error in self.git_errors:
+                record={'phase':'git-envelope','name':type(error).__name__,'message':str(error)}
+                prior=[result['firstFailure'],*result['secondary']]
+                if any(item is not None and item.get('name')==record['name'] and
+                       item.get('message')==record['message'] for item in prior):continue
+                if result['firstFailure'] is None:result['firstFailure']=record
+                else:result['secondary'].append(record)
+            result['pass']=False
+            facts={'git-'+str(index):{name:{'byteLength':len(raw),'sha256':sha(raw)}
+                               for name,raw in members.items()}
+                   for index,members in self.git_pending.items() if index in self.git_failed}
+            try:sys.stderr.write(encode({'firstFailure':result['firstFailure'],
+                'unsealedGitMembers':facts}).decode('utf-8')[:16384])
+            except BaseException:pass
+        super().seal(result)
+
+
 class Hosted:
     """Real edges are called only after the literal source guard and external pin."""
     def __init__(self, root, output, env):
         self.root = Path(root).absolute(); self.output = output; self.env = dict(env)
         self.deadline = time.monotonic()+TOTAL_SECONDS; self.children = []; self.attempts = set()
     def api(self, route):
-        need(re.fullmatch('/(?:actions/(?:runs/[0-9]+/attempts/1|jobs/[0-9]+|artifacts/[0-9]+)|git/blobs/[0-9a-f]{40})', route), 'fixed owned metadata route')
+        need(re.fullmatch('/(?:actions/(?:runs/[0-9]+/attempts/1|jobs/[0-9]+|artifacts/[0-9]+)|git/blobs/[0-9a-f]{40}|pulls/[1-9][0-9]{0,9}|git/ref/tags/bw-gui-hdd-actual-v8-[0-9a-f]{40})', route), 'fixed owned metadata route')
         url = 'https://api.github.com/repos/'+REPOSITORY+route
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self, *args, **kwargs): raise ValueError('metadata redirect refused')
@@ -1285,8 +1463,8 @@ def observe_runtime(request):
     facts['availableCpus'] = sorted(os.sched_getaffinity(0))
     facts['rlimits'] = {str(key):list(resource.getrlimit(key)) for key in (resource.RLIMIT_CORE,resource.RLIMIT_FSIZE,resource.RLIMIT_NOFILE)}
     facts['aggregateContainmentQualified'] = False
-    if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):observe_actual_empty_sources(request,facts)
-    if request.get('schema') in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
+    if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):observe_actual_empty_sources(request,facts)
+    if request.get('schema') in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
         stage,_=native_font_layout(request['nativeFontAdmission']);facts.update(schema='bw.gui-hdd.runtime-observation.v5',nativeFontDirectories=native_font_directories(stage))
     return facts
 
@@ -1482,9 +1660,11 @@ def observe_native_source_git_v6(request,root,hosted,output):
 
 
 def execute(request_raw, expected, root, output_path, env, factory=Hosted, preflight=False, startup_mode=None):
-    request = parse_request(request_raw, expected); output = Originals(output_path); first = None; secondary = [];font_stage=None
-    result = {'schema': 'bw.gui-hdd.result.v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
+    request = parse_request(request_raw, expected); output = (V8Originals if request['schema']=='bw.gui-hdd.actual-request.v8' else Originals)(output_path); first = None; secondary = [];font_stage=None
+    result = {'schema': 'bw.gui-hdd.result.v8' if request['schema']=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.result.v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
               'scenarios': [], 'firstFailure': None, 'secondary': secondary}
+    if request['schema']=='bw.gui-hdd.actual-request.v8':
+        result['dispatchPlatform']=dispatch_platform_v8(env)
     def retain(error,phase):
         nonlocal first
         record={'phase':phase,'name':type(error).__name__,'message':str(error)}
@@ -1498,9 +1678,17 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         startup_raw,startup_before=observe_python_startup(root,startup_mode,startup_args)
         output.save('python-startup.original.txt',startup_raw);output.save('python-startup.before.json',encode(startup_before))
         hosted = factory(root, output, env)
-        event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP); bind_event(event_raw, request, expected, env)
-        output.save('event.original.json', event_raw)
-        current_font=request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7')
+        if request['schema']=='bw.gui-hdd.actual-request.v8':
+            event_env={key:result['dispatchPlatform'][key] for key in ACTUAL_V8_PLATFORM_KEYS}
+        else:event_env=env
+        event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP)
+        if request['schema']=='bw.gui-hdd.actual-request.v8':
+            output.save('event.original.json',event_raw)
+            bind_event(event_raw,request,expected,event_env)
+        else:
+            bind_event(event_raw,request,expected,event_env)
+            output.save('event.original.json',event_raw)
+        current_font=request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8')
         if current_font and preflight:
             # Tool/runtime bytes and the exact source/event are admitted before GETs.
             initial=decode(encode(request));initial['schema']='bw.gui-hdd.actual-request.v4';stage,config=native_font_layout(request['nativeFontAdmission'])
@@ -1515,14 +1703,21 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             need(hosted.git(['cat-file', 'blob', request['source']['head']+':'+path]) == raw, 'live tracked source/Git blob')
             observed_source[path]={'byteLength':len(raw),'sha256':sha(raw)}
         output.save('source.before.json', encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_source}))
-        if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
+        if request['schema']=='bw.gui-hdd.actual-request.v8':
+            pr_raw=hosted.api('/pulls/'+str(request['pullRequest']))
+            output.save('dispatch-pr.original.json',pr_raw)
+            admit_dispatch_pr_v8(pr_raw,request,expected)
+            tag_raw=hosted.api('/git/ref/tags/'+request['dispatch']['tagName'])
+            output.save('dispatch-tag.original.json',tag_raw)
+            admit_dispatch_tag_v8(tag_raw,request)
+        if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
             observe_native_source_git_v6(request,root,hosted,output)
         for path, row in request['criticalFiles'].items(): check_file(Path(root)/path, row)
         # Complete selected package census; expected rows originate outside this attempt.
         installed = {}
         prefixes=('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+ (('node_modules/bw-circuit-ui',) if current_font else ())
         for prefix in prefixes:
-            selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7') else inventory(Path(root)/prefix)
+            selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8') else inventory(Path(root)/prefix)
             for path, row in selected.items(): installed[prefix+'/'+path] = row
         need(encode(installed) == encode(request['installedFiles']), 'closed selected installed supplier/browser graph')
         pins = decode(regular(Path(root)/'vendor-pins.json', JSON_CAP))
@@ -1533,7 +1728,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             font_stage=prepare_native_font(request,expected,root,hosted,output,preflight)
             if preflight:runtime_before=capture_actual_runtime(output,'before',request)
         if preflight:
-            result['schema']='bw.gui-hdd.preflight.v1';result['pass']=True
+            result['schema']='bw.gui-hdd.preflight.v8' if request['schema']=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.preflight.v1';result['pass']=True
         else:
             metadata = []
             for role, route in (('build-run', '/actions/runs/'+str(request['build']['runId'])+'/attempts/1'),
@@ -1575,11 +1770,11 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             output.save('source.after.json',encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_after}))
             installed_after={}
             for prefix in prefixes:
-                selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7') else inventory(Path(root)/prefix)
+                selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8') else inventory(Path(root)/prefix)
                 for name,row in selected.items():installed_after[prefix+'/'+name]=row
             need(installed_after==request['installedFiles'],'complete installed graph after both scenarios')
             output.save('installed.after.json', encode(installed_after)); runtime_after=capture_actual_runtime(output,'after',request)
-            if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
+            if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
                 need(encode(runtime_before['emptyPythonSources'])==encode(runtime_after['emptyPythonSources']),'actual typed source before/after identity unchanged')
             if current_font:output.save('native-font.cache.after.json',encode(native_font_cache(font_stage/'cache')))
             need(inventory(build_root) == build_files, 'served build changed after scenarios')
@@ -2723,7 +2918,7 @@ def retain_font_bridge(value,path):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','actual-v8-guard','actual-v8-preflight','actual-v8','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):
@@ -2762,13 +2957,16 @@ def main(argv=None):
         need(ACTUAL_V6_ENABLED is True,'GUI actual v6 disabled before source or guest edge')
     if args.mode in ('actual-v7-guard','actual-v7-preflight','actual-v7'):
         need(ACTUAL_V7_ENABLED is True,'GUI actual v7 disabled before source or guest edge')
+    if args.mode in ('actual-v8-guard','actual-v8-preflight','actual-v8'):
+        need(ACTUAL_V8_ENABLED is True,'GUI actual v8 disabled before source or guest edge')
     if args.mode in ('inventory-guard','inventory'):
         need(INVENTORY_ENABLED is True,'GUI inventory disabled pending exact source/template/event admission')
     if args.mode in ('guard','actual-v6-guard'):observe_python_startup(Path.cwd(),'guard',[])
     if args.mode=='actual-v7-guard':observe_python_startup(Path.cwd(),args.mode,[])
+    if args.mode=='actual-v8-guard':observe_python_startup(Path.cwd(),args.mode,[])
     if args.mode=='install-input' and Path('gui-setup/python-startup.original.txt').exists():
         observe_python_startup(Path.cwd(),'install-input',raw[1:])
-    if args.mode in ('guard','actual-v6-guard','actual-v7-guard','inventory-guard','font-discovery-guard','font-chain-guard','font-bridge-guard'):return 0
+    if args.mode in ('guard','actual-v6-guard','actual-v7-guard','actual-v8-guard','inventory-guard','font-discovery-guard','font-chain-guard','font-bridge-guard'):return 0
     need(args.expected_sha256 and args.output,'fixed independent digest and output required')
     env=dict(os.environ)
     if args.mode=='install-input':
@@ -2797,11 +2995,11 @@ def main(argv=None):
         result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output)
         return retain_inventory_observation(result,args.output)
     current=parse_request(request_raw,args.expected_sha256)
-    need(current['schema']==('bw.gui-hdd.actual-request.v7' if args.mode in ('actual-v7-preflight','actual-v7') else 'bw.gui-hdd.actual-request.v6' if args.mode in ('actual-v6-preflight','actual-v6') else 'bw.gui-hdd.actual-request.v5'),
+    need(current['schema']==('bw.gui-hdd.actual-request.v8' if args.mode in ('actual-v8-preflight','actual-v8') else 'bw.gui-hdd.actual-request.v7' if args.mode in ('actual-v7-preflight','actual-v7') else 'bw.gui-hdd.actual-request.v6' if args.mode in ('actual-v6-preflight','actual-v6') else 'bw.gui-hdd.actual-request.v5'),
          'versioned actual entry requires matching independently reviewed request')
     return execute(request_raw,args.expected_sha256,Path.cwd(),args.output,env,
-                   preflight=args.mode in ('preflight','actual-v6-preflight','actual-v7-preflight'),
-                   startup_mode=args.mode if args.mode in ('actual-v7-preflight','actual-v7') else None)
+                   preflight=args.mode in ('preflight','actual-v6-preflight','actual-v7-preflight','actual-v8-preflight'),
+                   startup_mode=args.mode if args.mode in ('actual-v7-preflight','actual-v7','actual-v8-preflight','actual-v8') else None)
 
 
 if __name__=='__main__':
