@@ -1,3 +1,4 @@
+import {createSourceControlCellEntry} from './source-control-cell-entry.js';
 import {createClosedOrdinarySourceEntry} from './closed-ordinary-source-entry.js';
 import {nullableArrayLengthSource} from './nullable-array-length-source.js';
 import {lexicalDeclarationReadiness} from './lexical-declaration-readiness.js';
@@ -43,15 +44,16 @@ export function analyseSourceValueProducers(program,options={}) {
     return analyseSourceValues(program,options,null);
 }
 
-function analyseSourceValues(program,options,identityInput,cameraNumberInput=null) {
+function analyseSourceValues(program,options,identityInput,cameraNumberInput=null,primitiveControlEntries=false) {
+    const controlEntry=primitiveControlEntries?createSourceControlCellEntry(program):null;
     if(options.normalCompletion&&!sourceNormalCompletionFor(program,options.normalCompletion))throw new Error('Source completion proof must belong to the actual Program');
     const containsThrow=node=>node&&typeof node==='object'&&(node.type==='ThrowStatement'||Object.values(node).some(value=>Array.isArray(value)?value.some(containsThrow):containsThrow(value)));
-    if(!containsThrow(program))return analyseGraph(program,options,null,identityInput,cameraNumberInput);
+    if(!containsThrow(program))return analyseGraph(program,options,null,identityInput,cameraNumberInput,controlEntry);
     // Bootstrap is private. No public option can bypass exceptional reachability
     // or supply a caller-made callee table after a consumer clones the AST.
-    const initial=analyseGraph(program,{...options,normalCompletion:null});
+    const initial=analyseGraph(program,{...options,normalCompletion:null},null,null,null,controlEntry);
     const completion=analyseSourceNormalCompletion(program,initial.immutableFunctionAt);
-    return Object.freeze({...analyseGraph(program,{...options,normalCompletion:completion}),normalCompletion:completion,constraintTypesAt:node=>new Set(initial.typesAt(node))});
+    return Object.freeze({...analyseGraph(program,{...options,normalCompletion:completion},null,null,null,controlEntry),normalCompletion:completion,constraintTypesAt:node=>new Set(initial.typesAt(node))});
 }
 
 
@@ -100,7 +102,7 @@ function deadLocalResets(program) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,provenArrayLength=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,primitiveComparisons=false,closureEntries=false,normalCompletion=null,closedOrdinaryEntries=false,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null,cameraNumberInput=null,controlEntry=null) {
     const ordinaryEntry=closedOrdinaryEntries?createClosedOrdinarySourceEntry(program):null;
     const nullableLengthSource=arrayValues?nullableArrayLengthSource(program):null;
     const nullableLengthIssued=new Set();let nullableLengthUsed=false;
@@ -260,7 +262,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!mathNumbers?.has(node)&&!known.has(binding(owner,node.name))){
                 const id=binding(owner,node.name);
                 if(uninitializedLocalsAreOpaque&&global.bindings.get(node.name)!==id&&[...(declarations.get(id)||[])].some(declaration=>typeof declaration==='object'&&!['FunctionDeclaration','Class','Enum'].includes(declaration.type)))add(cell(node),'Opaque');
-                add(cell(node),'Undefined');
+                if(!controlEntry?.isInitializedRead(node))add(cell(node),'Undefined');
             }return known;
         }
         // A closure expression is allocated here, after the currently proved
@@ -385,7 +387,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
+    const currentTypes=value=>new Set((!controlEntry||controlEntry.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
     // Construct this independent execution frontier only on demand. It cannot
     // add initialization/type facts or be selected by public source options.
     let lexicalReadiness;
@@ -1298,7 +1300,7 @@ function primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sce
  return {unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,arrayCallbackParameters:true,arrayLoopEntries:true,provenArrayLength:true,primitiveComparisons:true,closureEntries:true,numericHelpers,closedOrdinaryEntries};
 }
 export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,closedOrdinaryEntries=false}={}) {
- const graph=analyseSourceValueProducers(program,primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries));
+ const graph=analyseSourceValues(program,primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries),null,null,true);
  return validatePrimitiveConstraintGraph(program,graph,onlyFunctions);
 }
 function validatePrimitiveConstraintGraph(program,graph,onlyFunctions) {
@@ -1566,7 +1568,7 @@ export function validateCompilerOwnedProcedureConstraintSource(program,{onlyFunc
     if(!eligible)return original();
     const proof=compilerCameraNumberInput(program);if(!proof)return original();
     const options=primitiveConstraintGraphOptions(program,ordinaryPrimitiveSdkNumbers,sceneClockNumbers,closedOrdinaryEntries);
-    const graph=analyseSourceValues(program,options,null,proof);
+    const graph=analyseSourceValues(program,options,null,proof,true);
     const diagnostics=validatePrimitiveConstraintGraph(program,graph,selected);
     return proof.current()?diagnostics:original();
 }
