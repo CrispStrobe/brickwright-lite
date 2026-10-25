@@ -903,8 +903,9 @@ try {
             const canvas=document.querySelector('[data-scope-panel] canvas');
             const readout=document.querySelector('[data-testid="bw-scope-acquisition-0"]');
             const span=document.querySelector('[data-testid="bw-scope-span-0"]');
+            const retained=Number(readout?.getAttribute('data-retained'));
             if (!canvas || !readout || !span || readout.getAttribute('data-capture')!=='sample'
-              || Number(readout.getAttribute('data-retained'))<90 || readout.hasAttribute('data-adc-bits')
+              || !Number.isInteger(retained) || retained<90 || readout.hasAttribute('data-adc-bits')
               || !span.textContent.startsWith('-1.250 … 1.250 V')
               || canvas.toDataURL()===previousCanvas) return false;
             const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
