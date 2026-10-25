@@ -15,6 +15,7 @@ import zipfile
 
 ACTUAL_ENABLED = False
 ACTUAL_V7_READER_ENABLED = True
+ACTUAL_V8_READER_ENABLED = False
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
@@ -242,6 +243,9 @@ STARTUP_STEPS = ('Install empty Python cache prefix and refuse unreviewed actual
 STARTUP_STEPS_V7 = ('Install empty Python cache prefix and refuse unreviewed v7 source',
  'Install externally admitted v7 request and refuse runtime/source drift',
  'One official frontend acquisition and two serial genuine v7 UI scenarios')
+STARTUP_STEPS_V8 = ('Install empty Python cache prefix and refuse unreviewed v8 source',
+ 'Install externally admitted v8 request and refuse runtime/source drift',
+ 'One official frontend acquisition and two serial genuine v8 UI scenarios')
 
 
 def startup_policy():
@@ -699,14 +703,24 @@ def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    version=7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else ''))
+    version=8 if request.get('schema')=='bw.gui-hdd.actual-request.v8' else 7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch' if version>=8 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
     integer(request['pullRequest'], 1, 2**31-1)
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
+    if version == 8:
+        dispatch=request['dispatch'];fields(dispatch,'tagName tagRef workflow')
+        need(dispatch['tagName']=='bw-gui-hdd-actual-v8-'+source['head'] and
+             dispatch['tagRef']=='refs/tags/'+dispatch['tagName'],
+             'exact source-head tag name and full ref')
+        fields(dispatch['workflow'],'path sha256');digest(dispatch['workflow']['sha256'])
+        path='.github/workflows/i80386-hdd-gui-actual.yml'
+        need(dispatch['workflow']['path']==path and
+             dispatch['workflow']['sha256']==source['files'][path]['sha256'],
+             'selected exact workflow source row')
     rows(request['criticalFiles']); need(set(request['criticalFiles']) == set(CRITICAL), 'exact existing probe critical roster')
     for name in SOURCE & set(CRITICAL):
         need(encode(source['files'][name]) == encode(request['criticalFiles'][name]), 'critical/source identity join')
@@ -871,7 +885,7 @@ def join_actual_typed_inventory(request,prior_inventory,expected):
     need(encode(installed)==encode(request['installedFiles']),'actual installed graph joins reviewed prior observation')
     for role in ('files','aliases','directoryAliases','node','python','chromium','tools','resources'):
         current=request['runtime'][role];prior=prior_inventory['runtime'][role]
-        if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7') and role in ('files','aliases','directoryAliases'):
+        if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8') and role in ('files','aliases','directoryAliases'):
             native=decode(expected_embedded_original(expected['nativeFontOriginals']['request']))['selection']['runtime'][role]
             extension=dict(request['nativeFontAdmission']['files']) if role=='files' else native
             if role=='files':
@@ -1043,8 +1057,12 @@ def join_actual_native_font(request, expected):
 
 
 def expected_policy(expected):
-    version=7 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v7' else 6 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v6' else 5 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v5' else 4 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v4' else 3
-    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact'+(' schema inventoryTemplate inventoryReferenceSha256' if version>=4 else '')+(' nativeFontReferenceSha256 nativeFontOriginals' if version>=5 else '')+(' nativeSourceGitSha256' if version>=6 else ''))
+    version=8 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v8' else 7 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v7' else 6 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v6' else 5 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v5' else 4 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v4' else 3
+    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact'+(' schema inventoryTemplate inventoryReferenceSha256' if version>=4 else '')+(' nativeFontReferenceSha256 nativeFontOriginals' if version>=5 else '')+(' nativeSourceGitSha256' if version>=6 else '')+(' dispatchProof' if version>=8 else ''))
+    if version == 8:
+        fields(expected['dispatchProof'],'pullRequest tagRef')
+        for row in expected['dispatchProof'].values():
+            fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
     if version>=4:
         digest(expected['inventoryReferenceSha256']);expected_embedded_original(expected['inventoryTemplate'])
     if version>=5:
@@ -1065,7 +1083,7 @@ def expected_policy(expected):
 
 
 def allowed_role(name):
-    top={'python-startup.original.txt','python-startup.before.json','python-startup.after.json','inventory.json','result.json','request.original.json','event.original.json','source.before.json','source.after.json',
+    top={'python-startup.original.txt','python-startup.before.json','python-startup.after.json','inventory.json','result.json','request.original.json','event.original.json','dispatch-pr.original.json','dispatch-tag.original.json','source.before.json','source.after.json',
       'runtime.before.json','runtime.after.json','installed.before.json','installed.after.json','native-source-git.before.json','build-run.original.json',
       'build-job.original.json','build-artifact.original.json','frontend.original.zip','frontend.partial.zip',
       'frontend.members.json','build.inventory.json','probe-admission.json','frontend-acquisition.stderr','frontend-acquisition.process.json'}
@@ -1073,6 +1091,8 @@ def allowed_role(name):
     if name in {'native-font.stage.json','native-font.config.original.xml','native-font.cache.before.json','native-font.cache.after.json','native-font.cache.partial.json'}:return True
     if name in {'native-font.'+role+'.'+suffix for role in ('font','notice') for suffix in ('stdout','stderr','process.json')}:return True
     if re.fullmatch(r'git-[0-9]+\.(stdout|stderr|process\.json)',name):
+        number=int(name.split('-')[1].split('.')[0]);return 0<=number<=len(SOURCE)+16
+    if re.fullmatch(r'git-[0-9]+\.original\.json',name):
         number=int(name.split('-')[1].split('.')[0]);return 0<=number<=len(SOURCE)+16
     for scenario in SCENARIOS:
         if name in {scenario+'.stdout',scenario+'.stderr',scenario+'.process.json'}:return True
@@ -1163,6 +1183,78 @@ def typed_metadata(run,job,artifact):
     integer(artifact.get('workflow_run',{}).get('id'),1,2**63-1)
 
 
+def git_envelope_v8(raw):
+    """Parse one physical envelope at the unchanged original-member cap."""
+    need(type(raw) is bytes and 0<len(raw)<=FILE_CAP,'bounded physical V8 Git envelope')
+    def pairs(items):
+        out={}
+        for key,value in items:
+            need(key not in out,'duplicate Git envelope JSON field');out[key]=value
+        return out
+    def constant(value):raise ValueError('nonfinite Git envelope number')
+    def number(token):
+        value=float(token);need(-float('inf')<value<float('inf'),'finite Git envelope number');return value
+    return json.loads(raw,object_pairs_hook=pairs,parse_constant=constant,parse_float=number)
+
+
+def unpack_git_originals_v8(physical):
+    """Authenticate physical Git envelopes, then return a separate logical view."""
+    need(len(NATIVE_FONT_SOURCE)==5,'fixed Native2 Git source roster')
+    shift=2*len(NATIVE_FONT_SOURCE)
+    indices=list(range(len(SOURCE)+2+shift))+[len(SOURCE)+5+shift,len(SOURCE)+6+shift]
+    expected={'git-'+str(index)+'.original.json' for index in indices}
+    observed={name for name in physical if name.startswith('git-')}
+    need(observed==expected,'exact V8 physical Git envelope roster, no loose triplets')
+    logical={name:raw for name,raw in physical.items() if not name.startswith('git-')}
+    decoded_total=0
+    for index in indices:
+        role='git-'+str(index);name=role+'.original.json'
+        raw=physical[name];envelope=git_envelope_v8(raw)
+        fields(envelope,'schema role complete members firstFailure secondary')
+        need(encode(envelope)==raw and envelope['schema']=='bw.gui-hdd.git-triplet.v8' and
+             envelope['role']==role,'canonical exact V8 Git call envelope and role')
+        members=envelope['members'];fields(members,'stdout stderr process.json')
+        need(type(envelope['complete']) is bool and
+             envelope['complete']==all(members[k] is not None for k in members),
+             'truthful complete or partial retained Git call')
+        for suffix in ('stdout','stderr','process.json'):
+            row=members[suffix]
+            if row is None:continue
+            fields(row,'byteLength sha256 base64')
+            cap=JSON_CAP if suffix=='process.json' else STREAM_CAP
+            integer(row['byteLength'],1 if suffix=='process.json' else 0,cap)
+            digest(row['sha256'])
+            encoded=row['base64']
+            need(type(encoded) is str and len(encoded)<=(cap+2)//3*4,
+                 'bounded raw Git member encoding')
+            member=base64.b64decode(encoded,validate=True)
+            need(len(member)==row['byteLength'] and sha(member)==row['sha256'] and
+                 base64.b64encode(member).decode()==encoded,
+                 'exact retained Git stdout/stderr/process bytes')
+            if suffix=='process.json':
+                need(encode(decode(member))==member,'canonical retained Git process original')
+            decoded_total+=len(member)
+            need(decoded_total<=384<<20,'bounded decoded logical Git aggregate')
+            logical[role+'.'+suffix]=member
+        secondary=envelope['secondary']
+        need(type(secondary) is list and len(secondary)<=16,'bounded Git attempt secondary failures')
+        if envelope['complete']:
+            need(envelope['firstFailure'] is None and secondary==[],
+                 'complete retained Git call has no retention failure')
+        else:
+            first=envelope['firstFailure']
+            need(type(first) is dict,'incomplete Git call retains first failure')
+            for error in (first,*secondary):
+                fields(error,'phase name message')
+                for key,cap in (('phase',64),('name',64),('message',256)):
+                    need(type(error[key]) is str and len(error[key].encode('utf-8'))<=cap,
+                         'bounded Git attempt error text')
+            need(len(encode({'firstFailure':first,'secondary':secondary}))<=4096,
+                 'bounded canonical Git attempt error section')
+            need(False,'incomplete physical V8 Git envelope cannot grade positive')
+    return logical
+
+
 def process_original(files,role,argv,seconds):
     child=decode(files[role+'.process.json'])
     need(child.get('argv')==argv and type(child.get('exitCode')) is int and child['exitCode']==0 and
@@ -1184,7 +1276,7 @@ def process_original(files,role,argv,seconds):
 def tracked_source_originals(files,request):
     arguments=[['rev-parse','HEAD'],['rev-parse','HEAD^{tree}']]+[
         ['cat-file','blob',request['source']['head']+':'+name] for name in sorted(SOURCE)]
-    version=7 if request['schema']=='bw.gui-hdd.actual-request.v7' else 6 if request['schema']=='bw.gui-hdd.actual-request.v6' else 5 if request['schema']=='bw.gui-hdd.actual-request.v5' else 4 if request['schema']=='bw.gui-hdd.actual-request.v4' else 3
+    version=8 if request['schema']=='bw.gui-hdd.actual-request.v8' else 7 if request['schema']=='bw.gui-hdd.actual-request.v7' else 6 if request['schema']=='bw.gui-hdd.actual-request.v6' else 5 if request['schema']=='bw.gui-hdd.actual-request.v5' else 4 if request['schema']=='bw.gui-hdd.actual-request.v4' else 3
     initial=len(arguments)
     if version>=6:
         for path in sorted(NATIVE_FONT_SOURCE):
@@ -1275,6 +1367,125 @@ def official_joins(request, originals, expected):
         'GITHUB_RUN_ID':str(expected['runId']),'GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual-v7' if version==7 else 'actual','BW_EXPECTED_HEAD':expected['sourceHead']}
     bind_event(originals['event.original.json'], request, expected['requestSha256'], env)
     need(event.get('sender',{}).get('login') == run.get('actor',{}).get('login') == 'CrispStrobe', 'official actor/event join')
+
+
+def dispatch_platform_v8(platform, request, expected):
+    """Grade the V8 result's observed runner map, captured before dispatch admission."""
+    fields(platform,'schema GITHUB_REPOSITORY GITHUB_EVENT_NAME GITHUB_ACTOR GITHUB_RUN_ID '
+           'GITHUB_RUN_ATTEMPT GITHUB_JOB GITHUB_REF GITHUB_REF_TYPE GITHUB_REF_NAME '
+           'GITHUB_SHA GITHUB_WORKFLOW_REF GITHUB_WORKFLOW_SHA BW_EXPECTED_HEAD')
+    tag=request['dispatch']
+    selected={'schema':'bw.gui-hdd.actual-v8-platform.v1',
+              'GITHUB_REPOSITORY':REPOSITORY,'GITHUB_EVENT_NAME':'workflow_dispatch',
+              'GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ID':str(expected['runId']),
+              'GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual-v8',
+              'GITHUB_REF':tag['tagRef'],'GITHUB_REF_TYPE':'tag',
+              'GITHUB_REF_NAME':tag['tagName'],'GITHUB_SHA':request['source']['head'],
+              'GITHUB_WORKFLOW_REF':REPOSITORY+'/'+tag['workflow']['path']+'@'+tag['tagRef'],
+              'GITHUB_WORKFLOW_SHA':request['source']['head'],
+              'BW_EXPECTED_HEAD':request['source']['head']}
+    need(platform==selected,
+         'exact observed V8 tag/commit/workflow/job platform original')
+    return platform
+
+
+def dispatch_authority_v8(originals,request,expected):
+    """Join two bounded raw API readbacks to separately selected bytes."""
+    proof=expected['dispatchProof'];tag=request['dispatch'];head=request['source']['head']
+    for role,name in (('pullRequest','dispatch-pr.original.json'),
+                      ('tagRef','dispatch-tag.original.json')):
+        raw=originals[name];row=proof[role]
+        need(len(raw)==row['byteLength'] and sha(raw)==row['sha256'],
+             'externally reviewed retained V8 API response bytes')
+    pr=decode(originals['dispatch-pr.original.json'])
+    tag_response=decode(originals['dispatch-tag.original.json'])
+    integer(pr.get('number'),1,2**31-1)
+    need(pr['number']==request['pullRequest'] and pr.get('state')=='open' and
+         pr.get('draft') is False and pr.get('head',{}).get('sha')==head and
+         pr.get('head',{}).get('repo',{}).get('full_name')==REPOSITORY and
+         pr.get('head',{}).get('repo',{}).get('fork') is False and
+         pr.get('base',{}).get('ref')=='main' and
+         pr.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY,
+         'retained owned open ready nonfork PR source')
+    marker='<!-- BW_GUI_HDD_ACTUAL_V8_REQUEST_SHA256='+expected['requestSha256']+' -->'
+    body=pr.get('body')
+    need(type(body) is str and body.count('<!-- BW_GUI_HDD_ACTUAL_V8_REQUEST_SHA256=')==1 and
+         body.count(marker)==1,'single immutable V8 request marker in retained PR')
+    need(tag_response.get('ref')==tag['tagRef'] and
+         tag_response.get('object',{}).get('type')=='commit' and
+         tag_response['object'].get('sha')==head,
+         'retained exact lightweight selected source tag')
+    return pr,tag_response
+
+
+def dispatch_event_v8(raw,request,expected,platform,run):
+    event=decode(raw);tag=request['dispatch'];head=request['source']['head']
+    inputs=event.get('inputs')
+    need(type(inputs) is dict and set(inputs)=={'pull_request','source_head','request_sha256','tag_name'} and
+         inputs=={'pull_request':str(request['pullRequest']),'source_head':head,
+                  'request_sha256':expected['requestSha256'],'tag_name':tag['tagName']},
+         'closed exact V8 dispatch inputs')
+    need(event.get('ref') in (tag['tagName'],tag['tagRef']) and
+         event.get('repository',{}).get('full_name')==REPOSITORY and
+         event.get('sender',{}).get('login')=='CrispStrobe' and
+         type(event.get('workflow')) is str and 0<len(event['workflow'])<=512,
+         'owned selected tag dispatch event')
+    need(run.get('repository',{}).get('full_name')==event['repository']['full_name'] and
+         platform['GITHUB_REF']==tag['tagRef'] and
+         platform['GITHUB_SHA']==head,
+         'raw event/runner/official repository, ref and head')
+    return event
+
+
+def official_joins_v8(request,originals,expected,observed_platform):
+    """Distinct official dispatch admission; old PR-event readers stay historical."""
+    need(request['schema']=='bw.gui-hdd.actual-request.v8' and
+         expected['schema']=='bw.gui-hdd.actual-expectation.v8',
+         'distinct V8 request and externally selected expectation')
+    prior_inventory=expected_policy(expected)
+    join_actual_native_font(request,expected)
+    need(sha(encode(request['nativeSourceGit']))==expected['nativeSourceGitSha256'],
+         'externally selected Native2/current Git projection')
+    join_actual_typed_inventory(request,prior_inventory,expected)
+    need(sha(encode(request['build']['sourceAdmission']))==expected['buildSourceAdmissionSha256'],
+         'separately admitted exact Build source original')
+    need(expected['sourceHead']==request['source']['head'],
+         'external V8 source head equals request and exact Build head')
+    run,job,artifact=expected['run'],expected['job'],expected['artifact']
+    typed_metadata(run,job,artifact)
+    need(run.get('id')==expected['runId'] and run.get('run_attempt')==1 and
+         run.get('status')=='completed' and run.get('conclusion')=='success' and
+         run.get('event')=='workflow_dispatch' and
+         run.get('head_sha')==expected['sourceHead'] and
+         run.get('path')==request['dispatch']['workflow']['path'] and
+         run.get('repository',{}).get('full_name')==REPOSITORY and
+         run.get('actor',{}).get('login')=='CrispStrobe',
+         'independently admitted first-attempt owned V8 dispatch run')
+    need(job.get('id')==expected['jobId'] and job.get('run_id')==expected['runId'] and
+         job.get('name')=='actual-v8' and job.get('status')=='completed' and
+         job.get('conclusion')=='success','official exact V8 selected job')
+    steps=job.get('steps');need(type(steps) is list and len(steps)<=64,
+                                'bounded official V8 steps')
+    positions=[]
+    for name in STARTUP_STEPS_V8:
+        matches=[(i,item) for i,item in enumerate(steps) if item.get('name')==name]
+        need(len(matches)==1 and matches[0][1].get('status')=='completed' and
+             matches[0][1].get('conclusion')=='success',
+             'unique successful official V8 startup/preflight/actual step')
+        positions.append(matches[0][0])
+    need(positions==sorted(set(positions)),'ordered V8 startup/preflight/actual')
+    need(artifact.get('id')==expected['artifactId'] and
+         artifact.get('name')==expected['artifactName']==
+         'i80386-hdd-gui-actual-v8-'+str(expected['runId'])+'-1' and
+         artifact.get('expired') is False and
+         artifact.get('size_in_bytes')==expected['artifactBytes'] and
+         artifact.get('digest')=='sha256:'+expected['artifactSha256'] and
+         artifact.get('workflow_run',{}).get('id')==expected['runId'] and
+         artifact.get('workflow_run',{}).get('head_sha')==expected['sourceHead'],
+         'sole selected original V8 artifact identity')
+    platform=dispatch_platform_v8(observed_platform,request,expected)
+    dispatch_authority_v8(originals,request,expected)
+    dispatch_event_v8(originals['event.original.json'],request,expected,platform,run)
 
 
 def fat_marker(image):
@@ -1402,7 +1613,7 @@ def verify_gui_font_stage(files,request,checkout,expected):
          value['referenceSha256']==expected['nativeFontReferenceSha256'] and value['source']==request['source'] and
          value['root']==str(stage) and value['fontUrl']==reference['font']['url'] and value['licenseUrl']==reference['font']['licenseUrl'],
          'current staged font source/request/URL identity')
-    need(value['eventSha256']==sha(files['event.original.json']) and value['platform']=={'GITHUB_RUN_ID':str(expected['runId']),'GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual-v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'actual','GITHUB_REPOSITORY':REPOSITORY},'staged font current producing event/job')
+    need(value['eventSha256']==sha(files['event.original.json']) and value['platform']=={'GITHUB_RUN_ID':str(expected['runId']),'GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual-v8' if request['schema']=='bw.gui-hdd.actual-request.v8' else 'actual-v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'actual','GITHUB_REPOSITORY':REPOSITORY},'staged font current producing event/job')
     directory_roster={str(stage):sorted(('fonts','cache','NOTICE','fontconfig.xml','staging.original.json')),str(stage/'fonts'):['selected.ttf']}
     before_dirs=decode(files['runtime.before.json'])['nativeFontDirectories'];after_dirs=decode(files['runtime.after.json'])['nativeFontDirectories']
     need(encode(before_dirs)==encode(after_dirs) and type(before_dirs) is dict and set(before_dirs)==set(directory_roster),'owned font directory before/after identity')
@@ -1461,13 +1672,24 @@ def verify_gui_font_stage(files,request,checkout,expected):
 
 
 def audit(files, expected):
-    expected_policy(expected);request = parse_request(files['request.original.json'], expected['requestSha256']);official_joins(request,files,expected)
-    tracked_source_originals(files,request)
-    if request['schema'] not in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):need(not any(name.startswith('native-font.') for name in files),'historical native original roles remain closed')
-    if request['schema'] not in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):need('native-source-git.before.json' not in files,'historical native Git original role remains closed')
+    expected_policy(expected);request = parse_request(files['request.original.json'], expected['requestSha256'])
+    version=request['schema']
+    if version=='bw.gui-hdd.actual-request.v8':
+        result=decode(files['result.json'])
+        official_joins_v8(request,files,expected,result.get('dispatchPlatform'))
+    else:official_joins(request,files,expected)
+    dispatch_roles={'dispatch-pr.original.json','dispatch-tag.original.json'}
+    need((dispatch_roles <= set(files)) if version=='bw.gui-hdd.actual-request.v8' else
+         not (dispatch_roles & set(files)),'distinct retained V8 dispatch authority roles')
+    need('dispatch-platform.original.json' not in files,'V8 platform is retained inside distinct result schema')
+    tracked_source_originals(unpack_git_originals_v8(files) if version=='bw.gui-hdd.actual-request.v8' else files,request)
+    if version not in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):need(not any(name.startswith('native-font.') for name in files),'historical native original roles remain closed')
+    if version not in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):need('native-source-git.before.json' not in files,'historical native Git original role remains closed')
     role_policy(set(files));need(not any('failure' in name or name=='frontend.partial.zip' for name in files),'no hidden failed original in positive packet')
-    result = decode(files['result.json']);fields(result,'schema pass requestSha256 scenarios firstFailure secondary')
-    need(result['schema'] == ('bw.gui-hdd.result.v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1') and result['pass'] is True and result['firstFailure'] is None and
+    if version!='bw.gui-hdd.actual-request.v8':result=decode(files['result.json'])
+    fields(result,'schema pass requestSha256 scenarios firstFailure secondary'+
+           (' dispatchPlatform' if version=='bw.gui-hdd.actual-request.v8' else ''))
+    need(result['schema'] == ('bw.gui-hdd.result.v8' if version=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.result.v7' if version=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1') and result['pass'] is True and result['firstFailure'] is None and
          result['secondary'] == [] and result['requestSha256'] == expected['requestSha256'] and
          result['scenarios'] == list(SCENARIOS), 'authoritative terminal attempt result')
     for stage in ('before','after'):
@@ -1476,8 +1698,8 @@ def audit(files, expected):
         runtime = decode(files['runtime.'+stage+'.json']);need(runtime['files'] == request['runtime']['files'] and
              runtime['aliases'] == request['runtime']['aliases'] and runtime['directoryAliases']==request['runtime']['directoryAliases'] and runtime['resources'] == request['runtime']['resources'] and
              runtime['aggregateContainmentQualified'] is False, 'runtime external graph/caps and honest containment boundary')
-        if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
-            fields(runtime,'schema files aliases directoryAliases directoryIdentities identities resources availableCpus rlimits aggregateContainmentQualified emptyPythonSources'+(' nativeFontDirectories' if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7') else ''))
+        if version in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
+            fields(runtime,'schema files aliases directoryAliases directoryIdentities identities resources availableCpus rlimits aggregateContainmentQualified emptyPythonSources'+(' nativeFontDirectories' if version in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8') else ''))
             for role in ('files','aliases','directoryAliases','resources'):
                 need(encode(runtime[role])==encode(request['runtime'][role]),'strict actual v4 runtime external graph/cap types')
             cpus=runtime['availableCpus'];need(type(cpus) is list and cpus,'observed nonempty CPU affinity list')
@@ -1487,7 +1709,7 @@ def audit(files, expected):
             for pair in runtime['rlimits'].values():
                 need(type(pair) is list and len(pair)==2,'observed rlimit pair')
                 for limit in pair:integer(limit,-1,2**64-1)
-            need(runtime.get('schema')==('bw.gui-hdd.runtime-observation.v5' if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7') else 'bw.gui-hdd.runtime-observation.v4'),'explicit typed actual runtime observation version')
+            need(runtime.get('schema')==('bw.gui-hdd.runtime-observation.v5' if version in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8') else 'bw.gui-hdd.runtime-observation.v4'),'explicit typed actual runtime observation version')
             selected=runtime.get('emptyPythonSources');need(type(selected) is dict and set(selected)==set(request['runtime']['emptyPythonSources']),'runtime typed roster joins independent actual request')
             for row in selected.values():
                 fields(row,'attempted status source');need(row['attempted'] is True and row['status']=='observed','actual typed source observed')
@@ -1497,7 +1719,7 @@ def audit(files, expected):
         for target,row in runtime['directoryIdentities'].items():
             fields(row,'dev ino mode');integer(row['dev'],0,2**63-1);integer(row['ino'],1,2**63-1);integer(row['mode'],0,2**32-1)
             need(stat.S_ISDIR(row['mode']),'observed selected directory target is directory')
-    if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
+    if version in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
         need(encode(decode(files['runtime.before.json'])['emptyPythonSources'])==encode(decode(files['runtime.after.json'])['emptyPythonSources']),'actual typed source before/after identity unchanged')
     build = request['build'];run = decode(files['build-run.original.json']);job = decode(files['build-job.original.json']);artifact = decode(files['build-artifact.original.json']);typed_metadata(run,job,artifact)
     need(run.get('id') == build['runId'] and run.get('run_attempt') == 1 and run.get('repository',{}).get('full_name')==REPOSITORY and run.get('head_sha') == build['head'] and
@@ -1526,9 +1748,9 @@ def audit(files, expected):
     installed=startup_installation(files['python-startup.original.txt'])
     startup_arguments=['--request',checkout+'/gui-inputs/request.json','--expected-sha256',expected['requestSha256'],'--output',checkout+'/gui-originals/originals']
     for stage in ('before','after'):validate_startup(decode(files['python-startup.'+stage+'.json']),installed,
-         'actual-v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'actual',startup_arguments)
+         'actual-v8' if version=='bw.gui-hdd.actual-request.v8' else 'actual-v7' if version=='bw.gui-hdd.actual-request.v7' else 'actual',startup_arguments)
     need(files['python-startup.before.json']==files['python-startup.after.json'],'unchanged startup observations across both scenarios')
-    if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):verify_gui_font_stage(files,request,checkout,expected)
+    if version in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):verify_gui_font_stage(files,request,checkout,expected)
     need(checkout!=build_root and admission['inputPaths']=={name:checkout+'/'+row['path'] for name,row in request['inputs'].items()},
          'fixed controller input path delivery')
     need(decode(files['frontend.members.json'])==observed_members and
@@ -1548,7 +1770,7 @@ def audit(files, expected):
         need(files[scenario+'.stderr']==b'', 'scenario stderr refusal')
         env=child['environment'];need(env['PROOF_ADMISSION']==checkout+'/gui-originals/originals/probe-admission.json' and env['PROOF_OUTPUT']==checkout+'/gui-originals/originals/'+scenario and env['PROOF_SCENARIO']==scenario and env['PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH']==request['runtime']['chromium'] and
              env['PROOF_BROWSER_SHA256']==request['runtime']['files'][request['runtime']['chromium']]['sha256'],'selected real browser delivery')
-        if request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
+        if version in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7','bw.gui-hdd.actual-request.v8'):
             stage,_=native_font_layout(request['nativeFontAdmission'])
             need(env.get('FONTCONFIG_FILE')==str(stage/'fontconfig.xml') and env.get('XDG_CACHE_HOME')==str(stage/'cache'),'selected staged fontconfig and owned cache reach actual browser parent')
         launch=decode(files[scenario+'/browser-launch.json']);need(launch['executablePath']==request['runtime']['chromium'] and
@@ -1557,7 +1779,7 @@ def audit(files, expected):
         identity_before=decode(files['runtime.before.json'])['identities'][request['runtime']['chromium']]
         need(any(item.get('executable')==request['runtime']['chromium'] and item.get('executableIdentity')==identity_before
              for sample in child['descendantSamples'] for item in sample['descendants']), 'actual observed browser process executable identity')
-    return {'pass':True,'schema':'bw.gui-hdd.reader.v'+('7' if request['schema']=='bw.gui-hdd.actual-request.v7' else '6' if request['schema']=='bw.gui-hdd.actual-request.v6' else '5' if request['schema']=='bw.gui-hdd.actual-request.v5' else '4' if request['schema']=='bw.gui-hdd.actual-request.v4' else '3'),'sourceHead':request['source']['head'],
+    return {'pass':True,'schema':'bw.gui-hdd.reader.v'+('8' if version=='bw.gui-hdd.actual-request.v8' else '7' if version=='bw.gui-hdd.actual-request.v7' else '6' if version=='bw.gui-hdd.actual-request.v6' else '5' if version=='bw.gui-hdd.actual-request.v5' else '4' if version=='bw.gui-hdd.actual-request.v4' else '3'),'sourceHead':request['source']['head'],
         'hdd':check_hdd(files),'forwardDebug':check_forward(files),'aggregateContainmentQualified':False,
         'fullOsQualified':False,'physicalTimingQualified':False,'reverseExecutionQualified':False}
 
@@ -3032,8 +3254,85 @@ def actual_v7_parts_expected(manifest_path,parts_path):
     return expected
 
 
+def actual_v8_parts_expected(manifest_path,parts_path):
+    """New bounded transport; all old expectation and actual graders stay unchanged."""
+    manifest_raw=actual_v6_part_read(manifest_path,65536,'manifest')
+    manifest=decode(manifest_raw)
+    fields(manifest,'schema expected parts')
+    need(encode(manifest)==manifest_raw and manifest['schema']=='bw.gui-hdd.actual-v8-parts-manifest.v1',
+         'canonical closed actual v8 parts manifest')
+    selected=manifest['expected'];fields(selected,ACTUAL_V6_PART_EXPECTED+' dispatchProof')
+    need(selected['schema']=='bw.gui-hdd.actual-expectation.v8','distinct v8 expectation parts')
+    parts=manifest['parts'];need(type(parts) is dict and set(parts)==set(ACTUAL_V6_PART_FILES),
+                                 'exact eleven external original roles')
+    total=len(manifest_raw)
+    for role in ACTUAL_V6_PART_FILES:
+        row=parts[role];fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
+        total+=row['byteLength'];need(total<=JSON_CAP,'bounded manifest and raw parts aggregate')
+    directory=Path(parts_path).absolute();descriptor=None;first=None;secondary=[];expected=None
+    try:
+        before=directory.lstat()
+        need(directory.resolve(strict=True)==directory and stat.S_ISDIR(before.st_mode),
+             'canonical parts directory without alias')
+        descriptor=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        need(actual_v6_part_identity(os.fstat(descriptor))==actual_v6_part_identity(before),
+             'held parts directory identity')
+        names=[]
+        with os.scandir(descriptor) as children:
+            for child in children:
+                need(len(names)<len(ACTUAL_V6_PART_FILES) and len(os.fsencode(child.name))<=128,
+                     'bounded closed parts directory census')
+                names.append(child.name)
+        need(len(names)==len(ACTUAL_V6_PART_FILES) and set(names)==set(ACTUAL_V6_PART_FILES.values()),
+             'closed eleven-file parts directory census')
+        expected=dict(selected);expected['nativeFontOriginals']={};observed_total=len(manifest_raw)
+        for role,name in ACTUAL_V6_PART_FILES.items():
+            raw=actual_v6_part_read(name,parts[role]['byteLength'],role,descriptor)
+            need(len(raw)==parts[role]['byteLength'] and sha(raw)==parts[role]['sha256'],
+                 'selected parts extent and digest')
+            observed_total+=len(raw);need(observed_total<=JSON_CAP,'observed raw parts aggregate')
+            embedded={'byteLength':len(raw),'sha256':sha(raw),'base64':base64.b64encode(raw).decode()}
+            if role.startswith('nativeFontOriginals.'):
+                expected['nativeFontOriginals'][role.split('.',1)[1]]=embedded
+            else:expected[role]=embedded
+        after=directory.lstat()
+        need(actual_v6_part_identity(os.fstat(descriptor))==actual_v6_part_identity(before)==
+             actual_v6_part_identity(after),'stable parts directory readback')
+    except ActualV6PartsFailure as error:
+        first=error.firstFailure;secondary.extend(error.secondary)
+    except BaseException as error:first=actual_v6_part_error('parts-directory',error)
+    finally:
+        if descriptor is not None:
+            try:os.close(descriptor)
+            except BaseException as error:
+                record=actual_v6_part_error('parts-directory-close',error)
+                if first is None:first=record
+                else:secondary.append(record)
+    if first is not None:raise ActualV6PartsFailure(first,secondary)
+    return expected
+
+
 def main(argv=None):
     raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1]==['--actual-v8-parts']:
+        need(ACTUAL_V8_READER_ENABLED is True,'actual v8 original reader disabled pending source review')
+        parser=argparse.ArgumentParser(description='Independent bounded actual v8 parts audit',allow_abbrev=False)
+        parser.add_argument('--actual-v8-parts',action='store_true')
+        for name in ('manifest','parts','artifact'):parser.add_argument('--'+name,required=True)
+        need(len(raw_args)==7 and raw_args[0]=='--actual-v8-parts' and
+             raw_args[1]=='--manifest' and raw_args[3]=='--parts' and raw_args[5]=='--artifact',
+             'exact seven-token actual v8 parts entry')
+        args=parser.parse_args(raw_args)
+        try:expected=actual_v8_parts_expected(args.manifest,args.parts)
+        except ActualV6PartsFailure as error:
+            print(encode({'pass':False,'firstFailure':error.firstFailure,'secondary':error.secondary}).decode(),
+                  end='',file=sys.stderr)
+            return 1
+        expected_policy(expected)
+        raw=bounded_input(args.artifact,expected['artifactBytes'])
+        need(len(raw)==expected['artifactBytes'] and sha(raw)==expected['artifactSha256'],
+             'external actual artifact digest')
+        print(encode(audit(archive_originals(raw),expected)).decode(),end='');return 0
     if raw_args[:1]==['--actual-v7-parts']:
         need(ACTUAL_V7_READER_ENABLED is True,'actual v7 original reader disabled pending source review')
         parser=argparse.ArgumentParser(description='Independent bounded actual v7 parts audit',allow_abbrev=False)
@@ -3158,6 +3457,8 @@ def main(argv=None):
         print(encode(verify_inventory_failure(failure,template,expected)).decode(),end='');return 0
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False);parser.add_argument('artifact');parser.add_argument('expected')
     args=parser.parse_args(argv);expected=decode(bounded_input(args.expected,JSON_CAP));expected_policy(expected)
+    need(expected['schema']!='bw.gui-hdd.actual-expectation.v8',
+         'V8 requires the distinct bounded parts manifest and observed dispatch roles')
     raw=bounded_input(args.artifact,expected['artifactBytes'])
     need(len(raw)==expected['artifactBytes'] and sha(raw)==expected['artifactSha256'],'external actual artifact digest')
     print(encode(audit(archive_originals(raw),expected)).decode(),end='');return 0
