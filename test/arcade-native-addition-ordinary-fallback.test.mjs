@@ -79,3 +79,15 @@ move(sprites.create(img\`1\`))
 values.push(total)`);
     assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
 });
+
+test('a Sprite field read through a parameter that may receive null keeps the refusal', () => {
+    const out = exported(`let values = [1, 2]
+let total = 0
+function move(target: Sprite) {
+    total = target.x + 1
+}
+move(null)
+move(sprites.create(img\`1\`))
+values.push(total)`);
+    assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
+});
