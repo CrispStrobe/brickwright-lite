@@ -2,6 +2,7 @@ const makeExt = require('../adapter');
 const createConsoleInspectValues = require('./console-inspect-values');
 const nullSpriteGetter = require('../../../util/bw-null-sprite-getter');
 const sceneClockNumber = require('./scene-clock-number');
+const frameDeltaNumber = require('./frame-delta-number');
 
 // Shared game-console blocks. The original extension described a micro:bit
 // 5x5 game API but implemented every VM method as a no-op. Keep its opcodes
@@ -28,6 +29,7 @@ module.exports = makeExt(`// Name: Arcade
   const scoreNumberOwners = new WeakMap();
   const scoreThresholdRegistrations = new WeakMap();
   const sceneClockOwners = new WeakMap(), sceneClockValues = new WeakMap();
+  const frameDeltaOwners = new WeakMap(), frameDeltaValues = new WeakMap();
   const nullSpriteOwners = new WeakMap();
   const nullSpriteFaults = new WeakMap();
   const procedureEntryDisposers = new WeakMap();
@@ -91,7 +93,14 @@ module.exports = makeExt(`// Name: Arcade
         context:()=>({state:clockData(runtime,'bwArcadeDeviceState'),serial:clockData(this,'_ownedSpriteSceneSerial'),
           epoch:clockData(this,'_terrainEpoch'),scenes:clockData(this,'_sceneValues')})});
       sceneClockOwners.set(this,clockOwner);sceneClockValues.set(this,dependencies.sceneClockNumber.create(runtime,clockOwner));
-      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this));
+      const frameMethods=new Map(['getInfo','frameDeltaTime','_state','_ensureSceneEngine','_activateScene','pushScene','popScene'].map(name=>[name,Object.getOwnPropertyDescriptor(clockPrototype,name)?.value]));
+      const frameOwner=Object.freeze({
+        isInstance:value=>value===this,
+        isCurrent:()=>Object.getPrototypeOf(this)===clockPrototype&&clockData(this,'_runtime')===runtime&&clockScenes instanceof Map&&clockData(this,'_sceneValues')===clockScenes&&[...frameMethods].every(([name,method])=>typeof method==='function'&&!Object.prototype.hasOwnProperty.call(this,name)&&clockData(clockPrototype,name)===method),
+        context:()=>({state:clockData(runtime,'bwArcadeDeviceState'),serial:clockData(this,'_ownedSpriteSceneSerial'),epoch:clockData(this,'_terrainEpoch'),scenes:clockData(this,'_sceneValues')})
+      });
+      frameDeltaOwners.set(this,frameOwner);frameDeltaValues.set(this,dependencies.frameDeltaNumber.create(runtime,frameOwner));
+      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this),frameDeltaValues.get(this));
       const installProcedureOwner=()=>{
         procedureEntryDisposers.get(this)?.();procedureOwners.get(this)?.dispose();
         const owner=dependencies.createProcedureConstraints(runtime,this._consoleInspectValues);
@@ -302,7 +311,7 @@ module.exports = makeExt(`// Name: Arcade
           imageOwner.dispose();imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
           spriteOwner.dispose();spriteOwner=newSpriteOwner();ownedSpriteOwners.set(this,spriteOwner);
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();
-          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this));
+          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this),frameDeltaValues.get(this));
           installProcedureOwner();
           managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
           // Registry publications belong to the loaded project. GUI artwork
@@ -323,7 +332,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.frameDeltaNumber.declaration(dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -510,7 +519,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'beat',blockType:Scratch.BlockType.REPORTER,text:'Arcade beat [FRACTION]',arguments:{FRACTION:{type:Scratch.ArgumentType.STRING,menu:'beats',defaultValue:'Whole'}}},
           {opcode:'parseIntegerRadix',blockType:Scratch.BlockType.REPORTER,text:'Arcade parse integer [TEXT] radix [RADIX]',arguments:{...str('TEXT','ff'),...n('RADIX',16)}},
           {opcode:'parseInteger',blockType:Scratch.BlockType.REPORTER,text:'Arcade parse integer [TEXT]',arguments:str('TEXT','123')},
-          {opcode:'frameDeltaTime',blockType:Scratch.BlockType.REPORTER,text:'Arcade frame delta time'},
+          {opcode:'frameDeltaTime',blockType:Scratch.BlockType.REPORTER,text:'Arcade frame delta time',arguments:{}},
           {opcode:'musicVolume',blockType:Scratch.BlockType.REPORTER,text:'Arcade music volume'},
           {opcode:'musicTempo',blockType:Scratch.BlockType.REPORTER,text:'Arcade music tempo'},
           {opcode:'registerIntervalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register interval [INTERVAL] ms as [TOKEN] capturing [CAPTURES]',arguments:{...n('INTERVAL',1000),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -1111,7 +1120,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this)),sceneClockOwners.get(this));
+      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this)),sceneClockOwners.get(this)),frameDeltaOwners.get(this));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -5277,8 +5286,27 @@ module.exports = makeExt(`// Name: Arcade
     // PXT's own parseInt (helpers-pxt.js); its text argument is a string.
     parseInteger(args) {return dependencies.helpers.parseInt(String(Scratch.BWValues.decode(args.TEXT) ?? ''));}
     parseIntegerRadix(args) {return dependencies.helpers.parseInt(String(Scratch.BWValues.decode(args.TEXT) ?? ''),Scratch.Cast.toNumber(args.RADIX));}
-    // control.eventContext().deltaTime: seconds since the previous frame.
-    frameDeltaTime() {return this._state().frameDeltaTime || 0;}
+    // game.eventContext().deltaTime: seconds since the previous frame.
+    frameDeltaTime(args,util) {
+      return frameDeltaValues.get(this).read(args,util,()=>{
+        // Refuse effectful clock access before _state's existing initialization
+        // check. Genuine own data keeps that initializer and scene policy.
+        const current=Object.getOwnPropertyDescriptor(this._runtime,'bwArcadeDeviceState');
+        if(current&&!Object.prototype.hasOwnProperty.call(current,'value'))throw Error('Frame delta Number: scene accessor is not owned data');
+        const existing=current?.value;
+        if(existing&&typeof existing==='object'){
+          const prototype=Object.getPrototypeOf(existing),elapsed=Object.getOwnPropertyDescriptor(existing,'frameDeltaTime');
+          // _state reads frameDeltaTime before initializing it: an inherited getter
+          // must not run on the certified path when the own value is absent.
+          let inherited=false;for(let parent=prototype;parent;parent=Object.getPrototypeOf(parent))if(Object.getOwnPropertyDescriptor(parent,'frameDeltaTime')){inherited=true;break;}
+          if(prototype!==Object.prototype&&prototype!==null||!elapsed&&inherited||elapsed&&!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Frame delta Number: frame accessor is not owned data');
+        }
+        const state=this._state(),elapsed=Object.getOwnPropertyDescriptor(state,'frameDeltaTime');
+        if(!elapsed||!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Frame delta Number: frame value is not owned data');
+        const value=state.frameDeltaTime; // retain the original property read and its effects
+        return {state,value};
+      },()=>this._state().frameDeltaTime || 0);
+    }
     musicVolume() {return this._music().pxt.music.volume();}
     musicTempo() {return this._music().pxt.music.tempo();}
     _pxtText() {
@@ -6189,6 +6217,8 @@ module.exports = makeExt(`// Name: Arcade
   bindSourceOperationAdapter: createConsoleInspectValues.bindSourceOperationAdapter,
   sceneClockNumber,
   bindSceneClockAdapterInfo: sceneClockNumber.bindAdapterInfo,
+  frameDeltaNumber,
+  bindFrameDeltaAdapterInfo: frameDeltaNumber.bindAdapterInfo,
   nullSpriteGetter,
   bindNullSpriteAdapterInfo: nullSpriteGetter.bindAdapterInfo,
   createProcedureConstraints: require('./procedure-parameter-constraints'),

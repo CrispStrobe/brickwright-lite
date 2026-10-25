@@ -154,6 +154,9 @@ module.exports = function makeCrispExtension (source, dependencies = null, array
             if (typeof dependencies?.bindSceneClockAdapterInfo === 'function') {
                 dependencies.bindSceneClockAdapterInfo(info, this, this._inst);
             }
+            if (typeof dependencies?.bindFrameDeltaAdapterInfo === 'function') {
+                dependencies.bindFrameDeltaAdapterInfo(info, this, this._inst);
+            }
             if (typeof dependencies?.bindNullSpriteAdapterInfo === 'function') {
                 dependencies.bindNullSpriteAdapterInfo(info, this, this._inst);
             }
