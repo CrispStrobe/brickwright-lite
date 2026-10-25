@@ -3094,6 +3094,55 @@ class Originals(unittest.TestCase):
             'BW_FINITE_INVENTORY_V6_TEMPLATE_B64':base64.b64encode(raw).decode()}}
         self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v6')
         self.assertTrue(all(value[key] is False for key in ('fontSelectionProved','browserFontSelectionProved','guestApproved')))
+    def test_finite_v6_real_installed_scanner_collector_and_reader_index_only(self):
+        paths=['/node','/usr/bin/python3.12','/chrome','/usr/bin/git','/usr/bin/gh','/usr/bin/curl','/usr/lib/libselected.so']
+        real_lstat=os.lstat
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            checkout=pathlib.Path(temporary)
+            for name in c.INSTALLED_V6_CRITICAL:
+                path=checkout/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'critical')
+            zero=checkout/'node_modules/bw-board/docs/receipts/empty.stdout'
+            zero.parent.mkdir(parents=True,exist_ok=True);zero.write_bytes(b'')
+            self.assertFalse((checkout/'node_modules/bw-circuit-ui/src/current.js').exists())
+            index=checkout/'node_modules/bw-circuit-ui/src/index.js'
+            for state in ('present','missing','empty'):
+                if state=='missing':index.unlink()
+                elif state=='empty':index.write_bytes(b'')
+                with self.inventory_edges(paths,finite=True,finite_version=6) as (raw,pin,env,events):
+                    fake_regular=c.regular.side_effect;fake_lstat=c.os.lstat.side_effect
+                    event_raw=fake_regular('/event',c.INVENTORY_FAILURE_EVENT_CAP)
+                    source=D(self.files['request.original.json'])['source']
+                    guard_raw=E(finite_guard_fixture(source,raw,event_raw,env,6))
+                    def selected_regular(path,cap):
+                        if str(path)==str(checkout/'gui-finite-inventory-v6/guard-admission.json'):return guard_raw
+                        if str(path).startswith(str(checkout)+'/'):return ('source:'+str(pathlib.Path(path).relative_to(checkout))).encode()
+                        return fake_regular(path,cap)
+                    def selected_lstat(path,*args,**kwargs):
+                        if str(path).startswith(str(checkout)+'/'):return real_lstat(path,*args,**kwargs)
+                        return fake_lstat(path,*args,**kwargs)
+                    with patch.object(c,'regular',side_effect=selected_regular),patch.object(c.os,'lstat',side_effect=selected_lstat),patch.object(c,'FINITE_INVENTORY_V6_ENABLED',True):
+                        value=c.inventory_observation(raw,pin,checkout,env,'/out/a.json')
+                variables={'BW_FINITE_INVENTORY_V6_SHA256':pin,
+                  'BW_FINITE_INVENTORY_V6_TEMPLATE_B64':base64.b64encode(raw).decode()}
+                selected={'schema':'bw.gui-hdd.inventory-admission.v6' if state=='present' else 'bw.gui-hdd.inventory-failure-expectation.v6',
+                  'source':D(self.files['source.before.json']),'template':ROW(raw),
+                  'runId':90,'workflowSha':'d'*40,'repositoryVariables':variables}
+                selected['original' if state=='present' else 'failure']=ROW(E(value))
+                if state=='present':
+                    self.assertEqual(value['installedFiles']['node_modules/bw-circuit-ui/src/index.js'],ROW(b'critical'))
+                    self.assertNotIn('node_modules/bw-circuit-ui/src/current.js',value['installedFiles'])
+                    self.assertEqual(r.verify_inventory_original(E(value),raw,selected)['schema'],'bw.gui-hdd.inventory-reader.v6')
+                else:
+                    self.assertEqual(value['installedProgress']['path'],'node_modules/bw-circuit-ui/src/index.js')
+                    self.assertFalse(value['qualified']);self.assertFalse(value['guestApproved'])
+                    self.assertEqual(r.verify_inventory_failure(E(value),raw,selected)['schema'],'bw.gui-hdd.inventory-failure-reader.v6')
+            index.write_bytes(b'critical')
+            old_basis={'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,
+              'completedPrefixes':[],'completedRows':0,'totalBytes':0}}
+            with self.assertRaisesRegex(ValueError,'missing source-fixed installed package/module role'):
+                c.installed_inventory_v5(checkout/'node_modules/bw-circuit-ui','node_modules/bw-circuit-ui',
+                    old_basis,checkout,c.INSTALLED_V5_CRITICAL)
+            self.assertEqual(old_basis['installedProgress']['path'],'node_modules/bw-circuit-ui/src/current.js')
     def test_finite_v6_global_cap_refusal_keeps_admissible_partial_progress(self):
         with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
             checkout=pathlib.Path(temporary)
