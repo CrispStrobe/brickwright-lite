@@ -107,6 +107,24 @@ unchanged score/scene/player/trace/Stop assertion on the composed head. Do not
 report instrumented-control success as raw-input completion, and retain any
 remaining simulator failure without a timeout change.
 
+### First-class post-test loop authoring
+
+The current Arcade VM extension exposes `sourceWhile` in
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`; imported post-test
+loops currently use guarded lowering. Treat a direct post-test authoring block
+as a separate future task, rather than claiming it from source readiness work.
+Claim the VM extension, GUI block surface, Code dialect supplier and importer/
+exporter boundaries before implementation. Land dialect changes in the owning
+supplier first and adopt the exact pin through normal sync.
+
+Require an actual first iteration before the condition; preserve condition
+side effects, continue/break/return/throw, nested-loop ownership and stopping.
+Verify authored Code and Blocks, both MakeCode conversion directions, native
+execution, repeated conversion and same/fresh saved projects. Existing guarded
+imports and their assertions remain controls. This task is pending; no new
+post-test block or browser acceptance is implied by the finite control-cell
+source analysis.
+
 ### Closed ordinary callers: source and project integration
 
 The [execution-root claim](../lanes/2026-10-25-arcade-closed-ordinary-entry.md)
