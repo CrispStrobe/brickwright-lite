@@ -107,3 +107,17 @@ hardware, full-corpus or signed-release certification. Preserve release,
 Robot Lab, SPIKE, Arcade and x86 ownership. Close the loop only after the fifth
 step is accepted in the consumer and future work is scoped; ask the user then
 and do not start a sixth lane.
+
+## Supplier admission checkpoint
+
+The canonical claim landed as `7c1da2f9c5efca5c40938daa1649d3e4060745a9`.
+CUI PR122 is now qualified and merged as
+`1bc233c9297e03abb9b7eb603e045b4e92b0bb40`, tree
+`569336867886e38dc19e020511e39ad292b0d65c`, identical to the reviewed and
+qualified merge tree. All three exact-head jobs succeeded:3349 unit passes
+with17 declared optional skips,168 precision controls,17 SPICE checks and83
+browser scenarios. Board target remains836867513c3e7fac420ddaa32c17e1c7b6d3e513.
+The complete13 changed packaged CUI files have source witnesses; this is source
+admission, not an installed-consumer certificate. The x86 owner is reviewing
+its newer whole producer/control profile and bounded current selectors before
+joint composition. No current pin or F7/V8 event is selected by that review.
