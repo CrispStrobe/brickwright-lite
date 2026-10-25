@@ -380,6 +380,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     let destroyed = false;
     let timeSteps = 0;
     let acc = 0;
+    let dynamics = {};
+    const copyDynamics = value => value == null ? null : JSON.parse(JSON.stringify(value));
     /** checkpoint()/rollback(): Jolt's recorded state and this core's own. */
     let recorder = null;
     let saved = null;
@@ -569,7 +571,8 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         const bodyID = body.GetID();
         if (b.motion === 'dynamic') fixSmallInertia(body, Math.max(b.massKg, massFloorKg));
         bodyInterface.AddBody(bodyID, J.EActivation_Activate);
-        bodyMap.set(b.id, { body, bodyID, motionType, layer, shape });
+        bodyMap.set(b.id, { body, bodyID, motionType, layer, shape,
+            configuredMassKg: b.massKg, baselineInertia: b.motion === 'dynamic' ? inertiaOf(body.GetMotionProperties()) : null });
         allBodyIDs.push(bodyID);
         J.destroy(bcs);
         for (const o of releaseAfterBody) {
@@ -1437,6 +1440,10 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     // constraint's motor state and targets, not its MotorSettings or friction).
     // Couplings with per-step logic register here too (core.registerState).
     const stateRegistry = createStateRegistry();
+    stateRegistry.register('joint-dynamics', {
+        save: () => copyDynamics(dynamics),
+        restore: value => { dynamics = copyDynamics(value); }
+    });
     stateRegistry.register('clock', {
         save: () => [acc, timeSteps],
         restore: ([a, t]) => { acc = a; timeSteps = t; }
@@ -1722,6 +1729,21 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                 acc -= dtFixed;
                 if (acc < 0 && acc > -1e-12) acc = 0;
                 updateJointStates();
+                // Impulses and rates belong to this completed fixed step, never a later command.
+                const capture = (id, entry, constraint, angular) => {
+                    const impulse = constraint.GetTotalLambdaMotor() / dtFixed;
+                    const off = constraint.GetMotorState() === J.EMotorState_Off;
+                    const motor = off ? 0 : impulse;
+                    const passive = off ? impulse : 0;
+                    const limit = (angular ? constraint.GetTotalLambdaRotationLimits() : constraint.GetTotalLambdaPositionLimits()) / dtFixed;
+                    dynamics[id] = {t: timeSteps * dtFixed, mode: entry.mode, stepSeconds: dtFixed,
+                        motorPowerW: motor * entry.velocity,
+                        ...(angular ? {motorTorqueNm: motor, passiveTorqueNm: passive, limitTorqueNm: limit,
+                            angularVelocityRadS: entry.velocity} : {motorForceN: motor, passiveForceN: passive,
+                            limitForceN: limit, linearVelocityMS: entry.velocity})};
+                };
+                for (const [id, e] of hingeMap) capture(id, e, e.hinge, true);
+                for (const [id, e] of sliderMap) capture(id, e, e.slider, false);
             }
             if (acc < 0) acc = 0;
             if (acc > dtFixed) acc = 0;
@@ -1865,6 +1887,29 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         },
         /** The registered state keys, in checkpoint order. */
         stateKeys() { return stateRegistry.keys(); },
+        /** Last completed fixed-step effort, signed body2 relative to body1; null before stepping. */
+        jointDynamics(jointId) {
+            ensureAlive();
+            if (!jointMap.has(jointId)) throw new Error(`unknown joint ${jointId}`);
+            return copyDynamics(dynamics[jointId]);
+        },
+        /** Effective Jolt properties at the current admitted pose; tensors are local COM tensors. */
+        bodyDynamics(bodyId) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            const c = e.body.GetCenterOfMassPosition();
+            const fixed = e.motionType === J.EMotionType_Static;
+            const mp = fixed ? null : e.body.GetMotionProperties();
+            const solverMassKg = fixed ? null : 1 / mp.GetInverseMass();
+            const inertiaKgM2 = fixed ? null : inertiaOf(mp);
+            return {configuredMassKg: e.configuredMassKg, solverMassKg,
+                centerOfMassWorld: [c.GetX(), c.GetY(), c.GetZ()], inertiaKgM2,
+                motion: fixed ? 'static' : 'dynamic', gravityFactor: fixed ? null : mp.GetGravityFactor(),
+                massAdjusted: !fixed && Math.abs(solverMassKg - e.configuredMassKg) > 1e-8 * Math.max(solverMassKg, e.configuredMassKg),
+                inertiaAdjusted: !fixed && inertiaKgM2.some((row, r) => row.some((v, k) =>
+                    Math.abs(v - e.baselineInertia[r][k]) > 1e-8 * Math.max(1e-12, Math.abs(v), Math.abs(e.baselineInertia[r][k]))))};
+        },
         bodyPose(bodyId) {
             ensureAlive();
             const e = bodyMap.get(bodyId);

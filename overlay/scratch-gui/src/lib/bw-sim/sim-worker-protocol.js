@@ -42,6 +42,8 @@
 // The cost is one round trip of latency between a tick and its result reaching the
 // hubs and the view — the clock the hubs and the VM see does not advance meanwhile.
 
+const copyObservation = value => value == null ? null : JSON.parse(JSON.stringify(value));
+
 import {SimHubBridge} from './hub-bridge.js';
 import {hubRegistry} from './hubs/index.js';
 
@@ -82,7 +84,9 @@ export const posesOf = (core, mechanism) => {
         }
     });
     // Each air network's pressure (physics/air.js), for the pane's readout.
-    return {t: core.time, bodies, joints, linear, angular, rolling, ropes, air: core.airState ? core.airState() : []};
+    const bodyDynamics = Object.fromEntries(mechanism.bodies.map(b => [b.id, core.bodyDynamics ? core.bodyDynamics(b.id) : null]));
+    const jointDynamics = Object.fromEntries(mechanism.joints.map(j => [j.id, core.jointDynamics ? core.jointDynamics(j.id) : null]));
+    return {t: core.time, bodies, joints, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, air: core.airState ? core.airState() : []};
 };
 
 /**
@@ -149,13 +153,14 @@ export class MirrorCore {
         this.update(poses);
     }
 
-    update ({t, bodies, joints, air = [], linear = null, angular = null, rolling = {}, ropes = []}) {
+    update ({t, bodies, joints, air = [], linear = null, angular = null, rolling = {}, ropes = [], bodyDynamics = {}, jointDynamics = {}}) {
         this.t = t;
         this.bodies = bodies;
         this.joints = joints;
         this.air = air;
         this.linear = linear; this.angular = angular;
         this.rolling = rolling; this.ropes = ropes;
+        this.bodyObservations = copyObservation(bodyDynamics); this.jointObservations = copyObservation(jointDynamics);
     }
 
     /** Each air network's pressure, as the worker's core last had it. */
@@ -175,6 +180,14 @@ export class MirrorCore {
         return {position: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], rotation: [b[i * 7 + 3], b[i * 7 + 4], b[i * 7 + 5], b[i * 7 + 6]]};
     }
 
+    bodyDynamics (bodyId) {
+        if (!this.bodyIndex.has(bodyId)) throw new Error(`unknown body ${bodyId}`);
+        return copyObservation(this.bodyObservations[bodyId]);
+    }
+    jointDynamics (jointId) {
+        if (!this.jointIndex.has(jointId)) throw new Error(`unknown joint ${jointId}`);
+        return copyObservation(this.jointObservations[jointId]);
+    }
     bodyLinearVelocity (bodyId) { return this._velocity(this.linear, bodyId); }
     bodyAngularVelocity (bodyId) { return this._velocity(this.angular, bodyId); }
     _velocity (values, bodyId) {
