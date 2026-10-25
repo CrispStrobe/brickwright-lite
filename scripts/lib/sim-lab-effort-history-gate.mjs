@@ -34,6 +34,9 @@ export const effortHistoryInteractions = async (page, {shotsDir, restoreProject,
     await ready(page, 'crank-rocker.ldr');
     if (!await panel.isVisible()) await tool(page, 'measurements');
     await panel.getByTestId('bw-sim-measurement-teaching-preset').click();
+    const inputJoint = await page.evaluate(() => window.__bwSimLab._pane.measurements.find(
+        definition => definition.id === 'lesson-0' && definition.kind === 'jointAngle')?.joint);
+    assert.ok(typeof inputJoint === 'string' && inputJoint.length, 'the crank lesson binds its motor A input joint');
     const csvPath = resolve(shotsDir, 'sim-lab-measurement-runs.csv');
     await panel.getByTestId('bw-sim-measurement-record-import-file').setInputFiles(csvPath);
     await page.waitForFunction(() => window.__bwSimLab._pane.measurementRecording.snapshot().runs.length === 2);
@@ -46,22 +49,22 @@ export const effortHistoryInteractions = async (page, {shotsDir, restoreProject,
     // Add real joint diagnostics through the same saved editor as other quantities.
     for (const kind of ['motorTorque', 'limitTorque', 'motorPower']) {
         await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption(kind);
-        await panel.getByTestId('bw-sim-lab-measurement-joint').selectOption('j0');
+        await panel.getByTestId('bw-sim-lab-measurement-joint').selectOption(inputJoint);
         await panel.getByTestId('bw-sim-lab-measurement-add').click();
     }
     assert.equal(await page.evaluate(() => window.__bwSimLab.api.setMotorSpeed('A', 60)), true);
-    await page.waitForFunction(() => {
-        const p = window.__bwSimLab._pane, sample = p.session.core.jointDynamics('j0');
+    await page.waitForFunction(joint => {
+        const p = window.__bwSimLab._pane, sample = p.session.core.jointDynamics(joint);
         return p.measurementRows.some(r => r.kind === 'motorTorque' && r.available && Math.abs(r.value) > 1e-8) &&
             sample && Math.abs(sample.angularVelocityRadS) > 0.05;
-    }, null, {timeout: 15000});
+    }, inputJoint, {timeout: 15000});
     await tool(page, 'pause');
     await page.waitForFunction(() => { const p = window.__bwSimLab._pane; return p.measurementRowsTime === p.session.time; });
-    const effort = await page.evaluate(() => {
+    const effort = await page.evaluate(joint => {
         const p = window.__bwSimLab._pane;
-        return {sample: p.session.core.jointDynamics('j0'), coreTime: p.session.core.time,
+        return {sample: p.session.core.jointDynamics(joint), coreTime: p.session.core.time,
             rows: p.measurementRows.filter(r => ['motorTorque', 'limitTorque', 'motorPower'].includes(r.kind)).map(r => ({kind: r.kind, value: r.value, available: r.available, unit: r.unit, source: r.source}))};
-    });
+    }, inputJoint);
     assert.ok(effort.rows.every(r => r.available && Number.isFinite(r.value)));
     assert.equal(effort.sample.t, effort.coreTime);
     assert.ok(Math.abs(effort.sample.motorPowerW - effort.sample.motorTorqueNm * effort.sample.angularVelocityRadS) <= 1e-10);
