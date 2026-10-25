@@ -14,7 +14,7 @@ import tarfile
 import zipfile
 
 ACTUAL_ENABLED = False
-ACTUAL_V7_READER_ENABLED = False
+ACTUAL_V7_READER_ENABLED = True
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
@@ -2982,7 +2982,7 @@ def actual_v7_parts_expected(manifest_path,parts_path):
     need(encode(manifest)==manifest_raw and manifest['schema']=='bw.gui-hdd.actual-v7-parts-manifest.v1',
          'canonical closed actual v7 parts manifest')
     selected=manifest['expected'];fields(selected,ACTUAL_V6_PART_EXPECTED)
-    need(selected['schema']=='bw.gui-hdd.actual-expectation.v7','distinct v6 expectation parts')
+    need(selected['schema']=='bw.gui-hdd.actual-expectation.v7','distinct v7 expectation parts')
     parts=manifest['parts'];need(type(parts) is dict and set(parts)==set(ACTUAL_V6_PART_FILES),
                                  'exact eleven external original roles')
     total=len(manifest_raw)

@@ -637,7 +637,7 @@ class Originals(unittest.TestCase):
                 with self.assertRaisesRegex(OSError,'close-only'):c.empty_python_prefix()
     def test_actual_shell_startup_is_before_first_python_and_inventory_is_held(self):
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text();actual=workflow.split('  actual-v7:',1)[1].split('  font-bridge:',1)[0]
-        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',actual)
+        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',actual)
         self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
         self.assertNotIn('/usr/bin/python3 -B',actual)
         self.assertEqual(actual.count('/usr/bin/python3.12 -I -S -B -X pycache_prefix='+r.PYTHON_CACHE),3)
@@ -3420,8 +3420,8 @@ class Originals(unittest.TestCase):
             manifest=E({'schema':'bw.gui-hdd.actual-v7-parts-manifest.v1','expected':selected_small,'parts':roles})
             manifest_path.write_bytes(manifest)
             self.assertEqual(r.actual_v7_parts_expected(manifest_path,parts),selected)
-            self.assertFalse(r.ACTUAL_V7_READER_ENABLED)
-            with patch.object(r,'bounded_input',side_effect=AssertionError('reader host read before guard')):
+            self.assertTrue(r.ACTUAL_V7_READER_ENABLED)
+            with patch.object(r,'ACTUAL_V7_READER_ENABLED',False),patch.object(r,'bounded_input',side_effect=AssertionError('reader host read before guard')):
                 with self.assertRaisesRegex(ValueError,'disabled'):
                     r.main(['--actual-v7-parts','--manifest',str(manifest_path),
                       '--parts',str(parts),'--artifact',str(artifact_path)])
@@ -3446,8 +3446,8 @@ class Originals(unittest.TestCase):
 
     def test_actual_v7_three_real_startup_mode_bindings(self):
         files,expected=self.actual_v7_packet()
-        self.assertFalse(c.ACTUAL_V7_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
-        with patch.object(c,'regular',side_effect=AssertionError('host read before V7 guard')):
+        self.assertTrue(c.ACTUAL_V7_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
+        with patch.object(c,'ACTUAL_V7_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read before V7 guard')):
             for mode in ('actual-v7-guard','actual-v7-preflight','actual-v7'):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main([mode])
         installed=c.startup_installation(files['python-startup.original.txt'])
@@ -4156,7 +4156,7 @@ test('metadata diagnostic step and job budgets contain the collector without wid
     assert.ok(recordMinutes*60>=collectorSeconds+60,'diagnostic record step cannot preempt the collector budget');
     assert.ok(jobMinutes>=setupMinutes+recordMinutes+1,'metadata job includes setup, record and finite overhead margin');
     assert.match(workflow.split('  actual:')[1].split('  actual-v7:')[0],/false &&/);
-    assert.match(workflow.split('  actual-v7:')[1].split('  font-bridge:')[0],/false &&/);
+    assert.match(workflow.split('  actual-v7:')[1].split('  font-bridge:')[0],/true &&/);
     assert.match(workflow.split('  actual-v7:')[1],/timeout-minutes: 35/);
     assert.match(controller,/ACTUAL_ENABLED = False/);
 });

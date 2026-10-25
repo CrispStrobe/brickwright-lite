@@ -8,7 +8,7 @@ The selected actual V6 attempt failed its Python startup check before media or
 guest work. Its retained log establishes the guard-mode mismatch; the later
 preflight and actual mode mismatches are source findings, not observed later
 steps. The distinct [V7 startup-mode lane](../lanes/2026-10-25-x86-gui-actual-v7-startup-mode.md)
-now has an inactive source candidate. It binds the three actual V7 CLI strings
+now has an armed, unselected source candidate awaiting exact-head CI. It binds the three actual V7 CLI strings
 to unchanged startup assertions and gives V7 separate request, event, job and
 reader transport. V6 execution is retired while its original reader remains
 available. V7 needs exact-head source CI, independent Build/request/event

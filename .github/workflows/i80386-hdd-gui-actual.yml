@@ -396,7 +396,7 @@ jobs:
 
   actual-v7:
     if: >-
-      ${{ false && github.event_name == 'pull_request' &&
+      ${{ true && github.event_name == 'pull_request' &&
           github.event.action == 'labeled' && github.event.label.name == 'x86-hdd-gui-actual-v7' &&
           github.actor == 'CrispStrobe' && github.run_attempt == 1 &&
           github.event.pull_request.head.repo.full_name == github.repository }}
