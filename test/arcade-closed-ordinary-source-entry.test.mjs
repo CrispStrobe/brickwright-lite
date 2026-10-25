@@ -78,3 +78,32 @@ test('sorting-shaped closed roots retain dormant recursive procedures and all so
  const recursive=nodes(p).filter(n=>n.type==='Call'&&n.callee?.name==='divide');
  assert.equal(recursive.length,2);assert.ok(recursive.every(n=>proof.isUnreachable(n)));
 });
+
+test('emitted startup null reset and native allocation remain neutral only with complete lexical storage writers',()=>{
+ const text=`function exchange(left:number,right:number){let previous=values[left];values[left]=values[right];values[right]=previous}
+ function dormant(index:number){exchange(0,index)}
+ function startup(){let temporary:number[]=null;temporary=[];temporary.push(5);temporary.push(3);values=temporary;exchange(0,1)}
+ let values:number[];startup();`;
+ const p=parse(text),proof=createClosedOrdinarySourceEntry(p),dead=callIn(p,'dormant');
+ assert.equal(proof.isUnreachable(dead),true);
+ assert.deepEqual(validateProcedureConstraintSource(p,{closedOrdinaryEntries:true}),[]);
+ for(const replacement of [
+  'temporary=foreign;',
+  'temporary=values[0];',
+  'let temporary=0;',
+  'let alias=temporary;alias.push=0;',
+  'let alias=temporary;alias["push"]=0;',
+  'let alias=temporary;let method=alias.push;',
+  'let alias=temporary;alias=0;',
+  'unknown(temporary);'
+ ]){
+  const q=parse(text.replace('temporary=[];', 'temporary=[];'+replacement));
+  assert.equal(createClosedOrdinarySourceEntry(q).isUnreachable(callIn(q,'dormant')),false,replacement);
+ }
+ const alias=parse(text.replace('temporary.push(5);','let alias=temporary;alias.push(5);'));
+ assert.equal(createClosedOrdinarySourceEntry(alias).isUnreachable(callIn(alias,'dormant')),true);
+ const undefinedReset=parse(text.replace('temporary:number[]=null','temporary:number[]=undefined'));
+ assert.equal(createClosedOrdinarySourceEntry(undefinedReset).isUnreachable(callIn(undefinedReset,'dormant')),true);
+ const unallocated=parse(text.replace('temporary=[];',''));
+ assert.equal(createClosedOrdinarySourceEntry(unallocated).isUnreachable(callIn(unallocated,'dormant')),false);
+});

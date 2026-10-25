@@ -26,7 +26,7 @@ export function createClosedOrdinarySourceEntry(program){
     if(!syntax.isCurrent()||program?.type!=='Program'||!Array.isArray(program.body))return denied;
     // The first slice deliberately excludes capabilities which could supply
     // an independent entry. Existing validators still handle these programs.
-    const owners=new WeakMap(),nodes=[],functions=new Map(),edges=new Map();let valid=true;
+    const owners=new WeakMap(),parents=new WeakMap(),nodes=[],functions=new Map(),edges=new Map();let valid=true;
     const visit=(n,owner=null,parent=null)=>{
         if(!n||typeof n!=='object')return;
         if(Array.isArray(n)){for(const child of n)visit(child,owner,parent);return;}
@@ -40,7 +40,7 @@ export function createClosedOrdinarySourceEntry(program){
                 ['async','isAsync','generator','isGenerator'].some(key=>row[key]))valid=false;
             functions.set(n.name,n);edges.set(n,new Set());owner=n;
         }
-        owners.set(n,owner);nodes.push({node:n,parent});
+        owners.set(n,owner);parents.set(n,parent);nodes.push({node:n,parent});
         for(const [key,value]of Object.entries(n))if(!metadata.has(key))visit(value,owner,n);
     };
     visit(program);if(!valid)return denied;
@@ -53,9 +53,57 @@ export function createClosedOrdinarySourceEntry(program){
     const lexical=analyseCallableBindings(program),byBinding=new Map();
     for(const [name,fn]of functions){const b=lexical.global.names.get(name);if(!b||b.node!==fn||b.kind!=='function'||b.written)return denied;byBinding.set(b,fn);}
     const top=new Set(),binding=n=>lexical.references.get(n),sdkRoot=n=>{const r=root(n);return r?.type==='Identifier'&&!binding(r)&&roots.has(r.name);};
+    const unwrap=n=>n?.type==='Parenthesized'?unwrap(n.expression):n;
+    // Entry neutrality is independent of storage readiness. Follow actual
+    // lexical alias writers, including the exporter's null/reset/allocation
+    // sequence; a type spelling never supplies a native receiver.
+    const storage=new Map(lexical.bindings.map(b=>[b,{writers:[b.node?.init||{type:'Undefined'}],aliases:new Set()}]));
+    const link=(b,value)=>{value=unwrap(value);const other=value?.type==='Identifier'?binding(value):null;
+        if(storage.has(b)&&storage.has(other)){storage.get(b).aliases.add(other);storage.get(other).aliases.add(b);}};
+    for(const b of lexical.bindings)link(b,b.node?.init);
+    for(const {node:n}of nodes){
+        if(n.type==='Declaration')for(const decl of n.decls||[]){
+            let scope=lexical.scopes.get(n);while(scope&&!scope.names.has(decl.name))scope=scope.parent;
+            const b=scope?.names.get(decl.name);if(b&&b.node!==decl)storage.get(b)?.writers.push({type:'Unknown'});
+        }
+        const left=n.type==='Assignment'?n.left:n.type==='Update'?n.argument:null;
+        if(left?.type!=='Identifier')continue;const b=binding(left),row=storage.get(b);if(!row)continue;
+        row.writers.push(n.type==='Assignment'&&n.op==='='?n.right:{type:'Unknown'});link(b,n.right);
+    }
     const nativeArray=n=>{
-        if(n?.type!=='Identifier')return false;const b=binding(n);
-        return !!b&&!b.written&&b.node?.init?.type==='Array'&&!lexical.bindings.some(other=>other!==b&&other.node===b.node);
+        if(n?.type!=='Identifier')return false;const first=binding(n);if(!storage.has(first))return false;
+        const component=new Set([first]),pending=[first];let allocation=false;
+        while(pending.length)for(const b of storage.get(pending.pop()).aliases)if(!component.has(b)){component.add(b);pending.push(b);}
+        for(const b of component){
+            if(!['global','local'].includes(b.kind)||lexical.bindings.some(other=>other!==b&&other.node===b.node))return false;
+            for(const raw of storage.get(b).writers){const value=unwrap(raw);
+                if(value?.type==='Array'){allocation=true;continue;}
+                if(['Null','Undefined'].includes(value?.type))continue;
+                if(value?.type==='Identifier'&&component.has(binding(value)))continue;
+                return false;
+            }
+        }
+        if(!allocation)return false;
+        for(const {node:value,parent}of nodes){
+            if(value.type!=='Identifier'||!component.has(binding(value)))continue;
+            if(parent?.type==='Member'&&parent.object===value){
+                const usage=parents.get(parent);
+                if(parent.name==='length'&&!(usage?.type==='Assignment'&&usage.left===parent||usage?.type==='Update'))continue;
+                if(parent.name==='push'&&usage?.type==='Call'&&usage.callee===parent&&!usage.optional)continue;
+                return false;
+            }
+            if(parent?.type==='Index'&&parent.object===value){
+                // A literal named property is not an element access. Dynamic
+                // element consumers retain their existing independent proofs.
+                if(unwrap(parent.index)?.type==='String')return false;
+                continue;
+            }
+            if(parent?.type==='Assignment'&&parent.op==='='&&
+                (parent.left===value||parent.right===value&&parent.left?.type==='Identifier'&&component.has(binding(parent.left))))continue;
+            if(parent?.init===value&&component.has(lexical.bindings.find(b=>b.node===parent)))continue;
+            return false;
+        }
+        return true;
     };
     for(const {node:n,parent}of nodes){
         if(n.type==='Declaration'&&(n.decls||[]).some(decl=>functions.has(decl.name)))return denied;
