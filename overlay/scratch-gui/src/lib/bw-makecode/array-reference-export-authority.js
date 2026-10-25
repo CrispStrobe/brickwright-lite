@@ -3,6 +3,7 @@ import {createArrayDefiniteOverwrite} from './array-definite-overwrite.js';
 import {createArrayNativeFrameReset} from './array-native-frame-reset.js';
 import {createArraySourceStartResetEffects} from './array-source-start-reset-effects.js';
 import {isProjectJsonSnapshot} from './project-json-snapshot.js';
+import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
 const watcherOwnDescriptor=Object.getOwnPropertyDescriptor,watcherOwnKeys=Reflect.ownKeys,watcherIsArray=Array.isArray,watcherFinite=Number.isFinite,watcherCreate=Object.create;
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 import {createArrayOccurrenceExportAuthority} from './array-occurrence-export-authority.js';
@@ -18,6 +19,7 @@ const FRESH_SDK_ARRAYS=Object.freeze({arcade_tilesOfType:Object.freeze(['IMAGE']
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
 export function createArrayReferenceExportAuthority(project, options = {}, animationProducer = null) {
+    const ordinaryEntry=createClosedOrdinaryProjectEntry(project);
     const animationProducers = animationProducer === null ? createAnimationFrameArrayProducers(options) :
         isAnimationFrameArrayProducer(animationProducer, options) ? animationProducer : createAnimationFrameArrayProducers({});
     // `missing` is an element read whose presence is unproved: possibly an
@@ -125,6 +127,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     }
     for(const scope of scopes)for(const name of scope.params||[]){const value=localCell(scope,name);if(value)value.formal=scope;}
     for(const {target,node,scope}of records){
+        if(ordinaryEntry.isUnreachable(target,node))continue;
         let destination=null;
         if(node.opcode==='data_setvariableto'||node.opcode==='data_changevariableby')destination=globalCell(target,node.fields?.VARIABLE?.[1]);
         else if(node.opcode==='arcade_setLocal')destination=localCell(scope,literal(node,'NAME',target));
@@ -1214,7 +1217,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     do{
         changed=false;
         for(const c of cells.values())for(const w of c.writers){const types=w.value&&!invalid.has(w.node)&&!w.scope.invalid?readInput(w.value):new Set([bad]);for(const type of types)if(!c.types.has(type)){c.types.add(type);changed=true;}}
-        for(const {target,node}of records){const types=readNode(target,node);values.set(node,types);for(const t of types)populate(t);}
+        for(const {target,node}of records){if(ordinaryEntry.isUnreachable(target,node))continue;const types=readNode(target,node);values.set(node,types);for(const t of types)populate(t);}
         for(const {target,node,value}of mutations){
             const receiver=readInput(input(node,'ARRAY',target)),op=isArrayMenuSelector(node,'OP')?literal(node,'OP',target):literal(node,'OP',target)||literal(node,'MODE',target);
             const unknownOperation=isArrayMenuSelector(node,'OP')&&!isKnownArrayMenuOperation(node,op);
@@ -1352,7 +1355,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     const occurrence=mixedArrayCell?createArrayOccurrenceExportAuthority(project,(target,node,name)=>{
         const value=input(node,name,target);return singleArray(readInput(value))&&initialized(value);
     }):null;
-    const live=()=>sourceStartReset.current()&&prefixResetCurrent()&&project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const live=()=>ordinaryEntry.current()&&sourceStartReset.current()&&prefixResetCurrent()&&project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     // Observe a newly used dependency before publishing the cached authority.
     // A later validation still observes it before any diagnostic early exit.
     sourceStartReset.current();prefixResetCurrent();
@@ -1392,11 +1395,13 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
         // Compute the original result once. A genuine producer observer below
         // can change ambient ownership after the earlier metadata fence.
-        const publish=result=>result.ok&&!sourceStartReset.current()?
+        const publish=result=>result.ok&&!ordinaryEntry.current()?
+            {ok:false,reason:'requires the current closed ordinary execution roots'}:result.ok&&!sourceStartReset.current()?
             {ok:false,reason:'requires the current closed source-start effect proof for a discounted Array reset'}:result.ok&&!nativeFrameReset.current()?
             {ok:false,reason:'requires the current native frame and activation frontier for a discounted Array reset'}:result.ok&&!prefixResetCurrent()?
             {ok:false,reason:'requires the current owned parameter declaration prefix for a discounted Array reset'}:result;
         if(deadOccurrence(target,node))return publish({ok:true});
+        if(ordinaryEntry.isUnreachable(target,node))return publish({ok:true});
         if(occurrence?.candidate(target,node,name))return publish(occurrence.validateInput(target,node,name)?{ok:true}:{ok:false,reason:'requires the current closed occurrence Array producer and complete writer proof'});
         const value=input(node,name,target),types=readInput(value);return publish(singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'});
     }});

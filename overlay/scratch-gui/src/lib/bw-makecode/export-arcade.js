@@ -10,6 +10,7 @@ import {createOrdinaryExportSymbols} from './ordinary-export-symbols.js';
 import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
 import {throwExportOwners} from './throw-export-owners.js';
 import {prepareProcedureConstraintExport} from './procedure-constraint-export.js';
+import {createClosedOrdinaryProjectEntry} from './closed-ordinary-project-entry.js';
 import {validateProcedureConstraintSource} from './procedure-constraint-source.js';
 import {createSdkImageLiteralResources} from './sdk-image-literal-resources.js';
 import {proveNamedFunctionSource} from './named-function-source.js';
@@ -233,6 +234,7 @@ class ArcadeEmitter {
     constructor (project, opts, snapshotCallbacks = false) {
         this.snapshotCallbacks = snapshotCallbacks;
         this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
+        this.closedOrdinaryEntry=createClosedOrdinaryProjectEntry(project);
         this.opts = opts;
         // Capture once before any artwork callback. Resource emission and Array
         // proof consume the same privately branded normalized resource objects.
@@ -3430,6 +3432,7 @@ class ArcadeEmitter {
             const seen = new Set();
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
+                if(this.closedOrdinaryEntry.isUnreachable(target,blocks[id]))return;
                 seen.add(id);const block = blocks[id];inspectionVisited.add(block);
                 if(block.opcode==='arcade_throwValue'){
                     const operand=inputBlock(blocks,block,'VALUE');
@@ -4505,8 +4508,9 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
     }
     if(e.procedureConstraints?.procedures().length){
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
-        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
+        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
+    if(!e.closedOrdinaryEntry.current())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.
     if(!e.functionSymbols?.current())e.note('Arcade ordinary symbol: current project or owner inventory changed during export');
