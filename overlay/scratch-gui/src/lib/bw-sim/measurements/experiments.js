@@ -23,6 +23,17 @@ const size = value => new TextEncoder().encode(value).byteLength;
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const text = (value, max) => typeof value === 'string' && value.length > 0 && value.length <= max && !/[\u0000-\u001f\u007f]/u.test(value);
 const finiteTime = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+// Plot choices are bounded presentation hints, separate from captured quantity identity.
+const selectionOf = (value, definitions) => {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.length > RECORDING_TRACE_LIMIT ||
+        value.some(id => !text(id, 128)) || new Set(value).size !== value.length) fail('has invalid plot selection');
+    if (definitions !== undefined) {
+        const current = new Set(measurementDefinitions(definitions).map(d => d.id));
+        if (value.some(id => !current.has(id))) fail('plot selection references an unknown current measurement');
+    }
+    return value.slice();
+};
 export const canonicalRecordingDefinition = definition => {
     const d = measurementDefinitions([definition])[0];
     return {id: d.id, kind: d.kind, label: d.label, targets: d.targets || [], joint: d.joint || '', rope: d.rope || '', binding: d.binding || ''};
@@ -99,7 +110,9 @@ export const admitMeasurementRuns = (runs, context) => {
 /** Persist compact tuples; display metadata is held only once per definition. */
 export const experimentsFromRuns = (runs, context) => {
     const admitted = admitMeasurementRuns(runs, context);
-    const packet = {schema: EXPERIMENT_SCHEMA, modelSha256: context.modelSha256, runs: admitted.map(run => ({
+    const selection = selectionOf(context.selection, context.definitions);
+    const packet = {schema: EXPERIMENT_SCHEMA, modelSha256: context.modelSha256,
+        ...(selection === undefined ? {} : {selection}), runs: admitted.map(run => ({
         id: run.id, modelSha256: run.modelSha256, ...(run.rawModelSha256 === undefined ? {} : {rawModelSha256: run.rawModelSha256}), definitions: run.definitions,
         samples: run.samples.map(sample => [sample.elapsedMs, sample.timeMs ?? null,
             sample.readings.map(row => [row.value, row.source, row.reason])])
@@ -127,12 +140,13 @@ export const measurementExperiments = value => {
             })};
         })};
     });
-    return experimentsFromRuns(runs, {modelSha256: value.modelSha256});
+    return experimentsFromRuns(runs, {modelSha256: value.modelSha256, selection: value.selection});
 };
 export const experimentsToRuns = (value, context) => {
     contextOf(context);
     const packet = measurementExperiments(value);
     if (packet.modelSha256 !== context.modelSha256) fail('saved model mismatch');
+    selectionOf(packet.selection, context.definitions);
     // Provenance was bound to this canonical model at capture/import. Preserve the original SHA.
     return admitMeasurementRuns(packet.runs.map(run => ({...run, canonicalModelSha256: packet.modelSha256,
         samples: run.samples.map(([elapsedMs, timeMs, readings]) => ({elapsedMs, ...(timeMs === null ? {} : {timeMs}),

@@ -246,3 +246,42 @@ test('portable CSV checks canonical identity on every row, including later decla
     portable[portable.length-1]=portable.at(-1).replace(canonical,'f'.repeat(64));
     assert.throws(()=>measurementRunsFromCsv(portable.join('\r\n'),context),/canonical model mismatch/);
 });
+
+
+test('optional plot choices survive persistence without changing captured identities or comparison', () => {
+    const plain=packet();
+    assert.equal(Object.hasOwn(plain,'selection'),false);
+    const selection=['angle'];
+    const selected=experimentsFromRuns([run()],{...context,selection,definitions:[definition]});
+    selection[0]='changed-after-admission';
+    assert.deepEqual(selected.selection,['angle']);
+    const normalized=measurementExperiments(JSON.parse(JSON.stringify(selected)));
+    assert.deepEqual(normalized.selection,['angle']);
+    const before=experimentsToRuns(plain,context), after=experimentsToRuns(normalized,context);
+    assert.deepEqual(after,before,'selection never enters captured physical definition identity');
+    selected.selection[0]='later-change';
+    assert.deepEqual(normalized.selection,['angle']);
+    assert.deepEqual(measurementExperiments(experimentsFromRuns([run()],{...context,selection:[]})).selection,[]);
+    const recorder=createMeasurementRecorder();recorder.restore(plain,context);
+    assert.deepEqual(recorder.exportExperiments({...context,selection:['angle']}).selection,['angle']);
+});
+
+test('plot choices refuse invalid shapes, duplicate IDs, excess traces and nonprintable or unbounded IDs', () => {
+    for (const selection of [null,'angle',{},['angle','angle'],['a','b','c','d','e'],[''],['a'.repeat(129)],['line\nbreak'],['bad\u0000id'],[12]]) {
+        assert.throws(()=>experimentsFromRuns([run()],{...context,selection}),/plot selection/);
+        assert.throws(()=>measurementExperiments({...packet(),selection}),/plot selection/);
+    }
+    const maximal=['a'.repeat(128),'b','c','d'];
+    assert.deepEqual(measurementExperiments(experimentsFromRuns([run()],{...context,selection:maximal})).selection,maximal);
+});
+
+test('plot hints validate against current definitions when supplied and can structurally retain historical choices otherwise', () => {
+    const historical=experimentsFromRuns([run()],{...context,selection:['removed-current-measurement']});
+    assert.deepEqual(measurementExperiments(historical).selection,['removed-current-measurement']);
+    assert.throws(()=>experimentsFromRuns([run()],{...context,selection:['removed-current-measurement'],definitions:[definition]}),/unknown current measurement/);
+    assert.throws(()=>experimentsToRuns(historical,{...context,definitions:[definition]}),/unknown current measurement/);
+    const recorder=createMeasurementRecorder();recorder.restore(packet(),context);
+    const before=recorder.snapshot();
+    assert.throws(()=>recorder.restore(historical,{...context,definitions:[definition]}),/unknown current measurement/);
+    assert.deepEqual(recorder.snapshot(),before,'invalid selection cannot replace retained runs');
+});
