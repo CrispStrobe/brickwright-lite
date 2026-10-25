@@ -238,7 +238,7 @@ function primitive(value) {
     throw new Error('reference or opaque inspection value');
 }
 
-function create(runtime, cells, scoreOwner=null, sceneClock=null) {
+function create(runtime, cells, scoreOwner=null, sceneClock=null, frameDelta=null) {
     let snapshots = new Map(), disposed = false, active = false;
     const bound = !!runtime && typeof runtime.on === 'function' && Array.isArray(runtime.targets);
     const score=scoreRegistration(runtime,scoreOwner);
@@ -494,6 +494,12 @@ function create(runtime, cells, scoreOwner=null, sceneClock=null) {
                     // A dormant call is only a structural obligation of another
                     // ordinary caller. It is never a completed supplied value.
                     if(!(structural?sceneClock?.eligible(target,node):sceneClock?.prove(target,node,args,util)))return false;
+                    origins?.add(node);domains?.add('number');return true;
+                }
+                if(!player&&op==='arcade_frameDeltaTime'){
+                    // A dormant call is only a structural obligation of another
+                    // ordinary caller. It is never a completed supplied value.
+                    if(!(structural?frameDelta?.eligible(target,node):frameDelta?.prove(target,node,args,util)))return false;
                     origins?.add(node);domains?.add('number');return true;
                 }
                 if(!player&&op==='arcade_getPlayerScore'){
