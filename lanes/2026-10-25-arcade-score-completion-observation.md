@@ -1,8 +1,18 @@
 # Score completion observation in the owned control
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration.
+Status: DONE implementation candidate; actual SDK/native qualification pending.
+Owner: Arcade integration. Claim PR #1396 merged at
+`2fbfb542a759f7fda3a2d425b746567c380d41c0` before implementation.
 Base: `45504c856322232e81e3f58f40248df45a57174d`. Separate from SDK constructor effects and the active
 PR #1128 publisher; do not modify another worker's source tree.
+
+Implementation: `1731e5a6556b1ead4fb2050a123c63b4f3e9ec01`. The raw source
+string is unchanged. Nine complete source controls pass across observation,
+numeric ingress and score export; cuts detect an early marker, omitted final
+store and changed game operation. The actual runtime test retains every
+existing state/trace/Stop assertion, requires main completion explicitly and
+checks both emitted Boolean marker stores using the same compilation observer.
+No actual SDK/native result is claimed from these source controls.
 
 ## Observed boundary
 

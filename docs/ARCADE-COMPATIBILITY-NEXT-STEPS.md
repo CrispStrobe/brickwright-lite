@@ -96,6 +96,14 @@ After a family qualifies, measure the unchanged corpus again and update the
 Code/Blocks/graphics/controller/save-and-reopen rows in the GUI ledger. Report
 remaining diagnostics explicitly, rather than marking a partial program full.
 
+The owned score observation candidate now preserves the raw fixture while
+adding a declared control variant whose auxiliary marker is stored before and
+after the unchanged game operations. Nine source controls and three mutation
+cuts pass. Qualify actual emitted marker stores, main completion and every
+unchanged score/scene/player/trace/Stop assertion on the composed head. Do not
+report instrumented-control success as raw-input completion, and retain any
+remaining simulator failure without a timeout change.
+
 ### Further SDK primitive normal results
 
 The qualified Sprite factory/property slice now handles the explicit genuine

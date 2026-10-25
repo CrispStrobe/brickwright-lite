@@ -110,6 +110,17 @@ cuts pass. These finite source-method controls do not execute the HUD SDK
 algorithm; the unchanged actual original/native score journeys still qualify
 registration, suspension and Stop independently.
 
+The [merged score observation scope](../lanes/2026-10-25-arcade-score-completion-observation.md)
+also has an implementation candidate. The exact raw owned fixture is retained;
+an explicitly named observed variant changes only its auxiliary completion
+marker, with false initialization before the unchanged game core and a true
+assignment afterward. All existing runtime assertions, genuine main-completion
+requirement and timeouts remain gates. The same required compilation checks
+that both marker stores exist. Nine source controls and three meaningful cuts
+pass; actual SDK/native qualification is pending. A successful observed variant
+would not establish that the raw fixture completed or explain its historical
+timeout; the retained failure did not observe main completion separately.
+
 A repeat scan of all unchanged raw inputs on the composed source candidate
 still reports **145 translated / 38 partial / one parse failure**. All five affected dependency contexts now import without the missing-atan2
 diagnostic. Their overall source status remains four parse failures and one

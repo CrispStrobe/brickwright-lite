@@ -16,6 +16,12 @@ Fresh source counts and input-completeness limits are in
 No new complete-application, browser or installed-runtime result is claimed by
 these source controls. Preserve existing GUI assertions and original failures.
 
+The score completion witness now has an explicitly instrumented control
+variant; the raw fixture remains unchanged. It preserves the complete game
+operation AST and every runtime assertion. Nine source controls and three cuts
+pass; actual SDK/native and visible authoring remain pending. This repairs the
+observation contract and adds no product or graphics-editor feature.
+
 The active [captured-class primitive task](ARCADE-CLASS-CAPTURED-PRIMITIVES.md)
 records the current source changes, observed failures and next acceptance steps.
 All six complete source groups pass at `7f08e871ad3c76929282787092270b1b09158744`,
