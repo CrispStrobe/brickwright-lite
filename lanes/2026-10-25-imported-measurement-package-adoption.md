@@ -66,12 +66,17 @@ flag; its version, resolution and integrity remain unchanged.
 
 Current-package tests retain their existing behavior and add imported loaded
 PMOS, genuine NMOS body-current authority and authored-step refusal controls.
-Their syntax checks pass; actual installed-consumer execution remains pending.
-Generated provenance and actual built-GUI verification are not yet accepted.
+Focused installed CLI KCL, loaded PMOS, NMOS body-current and authored-step
+controls pass, alongside selected current-package controls. Root and GUI pinned
+package bytes are checked against pinned Git source, with single-engine
+resolution in both scopes. Generated
+provenance and actual built-GUI verification are not yet fully accepted.
 
-Two fixed instrument source-contract paths and three separately owned x86
-source-contract paths still name the preceding CUI. Coordinate their bounded
-current-versus-historical compatibility before editing outside this envelope.
+The two claimed instrument source-contract paths and the separately owned x86
+bridge now select the current CUI. Historical packets and standalone reader
+validators retain their original source authority. One existing manufactured
+x86 reader-control test timed out at its unchanged 60-second cap; preserve that
+failure for the x86 owner, without weakening the cap or claiming qualification.
 The x86 owner retains those three paths and historical artifact qualification;
 this owner retains package inputs and global pin-identity enforcement. Do not
 waive the pin gate, hide a SHA or relabel originals. Hold main until the combined
