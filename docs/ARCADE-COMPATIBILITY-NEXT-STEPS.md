@@ -4,7 +4,7 @@
 
 Use [the fresh measured baseline and scalar candidate](ARCADE-AGENT-HANDOFF.md#25-october-fresh-source-census-and-sdk-scalar-repair)
 before the historical checkpoints below. The unchanged raw source corpus now
-measures 146 translated / 37 partial / one parse failure; it does not measure
+measures 147 translated / 36 partial / one parse failure; it does not measure
 complete games. Keep companion roots, canonical retained dependency contexts,
 historical original compiler success and current execution distinct.
 
@@ -17,15 +17,22 @@ historical original compiler success and current execution distinct.
    authoring remain pending. Keep assertions, captures and refusal controls.
 3. Keep the exact upstream atan2 supplier adoption and mirrored identity intact.
    Do not repeat the completed adoption or reintroduce an Opaque fallback.
-4. Reproduce the remaining primitive-caller discrepancy at the actual normalized
-   importer boundary. The raw parsed program passes its validator, but the full
-   importer retains four Number diagnostics. Identify the normalization/producer
-   difference before claiming a fix; the input has no Array-length reads.
-5. Measure dependency-complete contexts separately from the raw-source cohort,
-   then scope the next remaining family from current diagnostics. The latest
-   complete raw census changes only the sorting case, with zero regressions;
-   all other diagnostics are unchanged. Do not count source translation as
-   application execution or replace original inputs to improve the count.
+4. The normalized post-test primitive-caller import now passes. Qualify the
+   combined finite-control/predicate/closed-math source candidate on the final
+   published head, including actual SDK/native, Blocks/Code edits, controller
+   inputs and fresh save/reopen. Keep the unchanged whole post-test fixture and
+   all four variable writes. See the
+   [exact scope](../lanes/2026-10-25-arcade-emitted-guard-math-consumers.md).
+5. Investigate the retained snake-game's six actual JSON-export refusals:
+   numeric callers, initialized Array/all-writer references, bitwise operands
+   and addition operands. Read actual producers and execution order; retain all
+   six procedure bodies. Claim the measured boundary before implementation.
+   A clean source import does not close these export/runtime gaps.
+6. Measure dependency-complete contexts separately from raw source. The latest
+   complete raw census is 147/36/1, one fewer partial than 146/37/1, with only the
+   targeted primitive-caller row changing stage and unchanged observer/input
+   hashes. Do not substitute missing asset/context inputs or count translation
+   as application execution.
 
 The later `3fb45ce3` run has 65 failures across four shards: six earlier failure
 titles resolved and one newly failing title. Its numeric-authoring job passes

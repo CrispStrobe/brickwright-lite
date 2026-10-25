@@ -3,9 +3,10 @@
 ## 25 October: latest complete source census and next boundary
 
 The latest complete unchanged 184-input import/Creator census measures
-**146 translated / 37 partial / one parse failure**, using the same observer
-and input hashes as the earlier 145/38/1 measurement. Only the retained sorting
-case changes stage; no diagnostic changes or stage regressions occur elsewhere.
+**147 translated / 36 partial / one parse failure**, using the same observer
+and input hashes. The preceding measurement was 146/37/1; only the retained
+snake-game primitive-caller case changes stage in this latest comparison, with
+no stage regressions. The earlier sorting repair changed 145/38/1 to 146/37/1.
 This is source conversion, not SDK/native execution or completed applications.
 Earlier measurements below are historical and must not replace this result.
 
@@ -17,12 +18,33 @@ Keep final exact-head SDK/native/editor qualification and dependency-context
 measurement separate. Coordinate the active publisher and its once-only current
 CI intake before publishing a successor; never repeat an acquired original.
 
-The other primitive-caller row still has four failures in the complete importer,
-while its directly parsed source passes the primitive validator. The next task
-is to observe the actual normalized program at ordinary procedure preparation,
-identify where its producers differ, and claim that exact boundary before code
-changes. It has no Array-length reads; do not broaden callee initialization or
-seed Number from annotations based on the old review bucket's name.
+The primitive-caller discrepancy is now diagnosed and repaired for import.
+Lowered post-test loops split writes and reads across correlated guards. A
+finite local control-cell proof preserves occurrence readiness without deleting
+real Undefined writers or granting generic initialization/Array authority. The
+emitted form also needs genuine strict predicate-helper recognition, pure
+constant expressions and an independent numeric math-result inventory. See the
+[implementation scope](../lanes/2026-10-25-arcade-emitted-guard-math-consumers.md).
+
+The unchanged full post-test fixture passes Code, two JSON generations and SB3
+reopen with all four actual variable writes. The composed source cohort has 43
+passing controls; a separate six-control math cohort includes a real connected
+String refusal. Counts overlap. Six source and four project guard cuts are
+detected. This qualifies source boundaries, not SDK/native or visible editors.
+
+**Next measured export task:** the retained snake-game source imports and
+reconstructs Code cleanly, but JSON export still reports six Number, initialized
+Array/all-writer, bitwise and addition refusals. Inspect actual current producers
+and call/entry order before claiming the next implementation. Preserve all six
+procedure bodies and every original writer; do not add an annotation fallback
+or suppress the refusals. Its source-census promotion is not a completed game.
+
+**Editor acceptance remains open:** visibly edit min/max/atan2/randomRange
+operations and operands in Blocks and Code, execute original/emitted MakeCode
+and Lite programs, drive controllers, and save/reopen in a fresh context. The
+current numeric proof starts with closed Number reporter trees in frozen JSON;
+variable/parameter/captured operands remain conservative. Native do/while
+authoring is separately scoped below.
 
 ## 25 October: fresh source census and SDK scalar repair
 
