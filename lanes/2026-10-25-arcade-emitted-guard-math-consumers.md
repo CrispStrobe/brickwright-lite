@@ -36,6 +36,8 @@ unknown/dynamic selectors and forged or stale nodes cannot qualify. Follow the
 selected SDK/runtime normal-return semantics, not a declaration or connected
 Number socket. A result fact never certifies input values, Array allocation,
 initialization, successful execution or absence of coercion side effects.
+The initial result transfer additionally requires independently proved Number
+operands; String/reference/unknown inputs do not gain Number input authority.
 Preserve operand evaluation and real errors. Start with owned frozen JSON if
 live currentness would require a broader observer contract.
 
