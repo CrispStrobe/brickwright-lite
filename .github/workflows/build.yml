@@ -2179,6 +2179,21 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=ui
 
+      - name: Retain successful Robot Lab measurement project and observations
+        id: measurement_success
+        timeout-minutes: 5
+        if: ${{ !cancelled() && steps.bw_browser_audit_0080.outcome == 'success' && matrix.shard == 'robotlab' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sim-lab-measurement-success
+          path: |
+            artifacts/sim-lab/sim-lab-measurement-edit.sb3
+            artifacts/sim-lab/sim-lab-measurement-edit.json
+            artifacts/sim-lab/sim-lab-measurement-runs.csv
+            artifacts/sim-lab/sim-lab-measurement-experiments.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Browser gate — Robot Lab on a school tablet, real touch input at 1024×768
         id: bw_browser_audit_0081
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
@@ -3692,6 +3707,7 @@ jobs:
             bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
             bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
             bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
+            measurement_success	${{ steps['measurement_success'].outcome }}	${{ steps['measurement_success'].conclusion }}
             bw_browser_audit_0081	${{ steps['bw_browser_audit_0081'].outcome }}	${{ steps['bw_browser_audit_0081'].conclusion }}
             bw_browser_audit_0082	${{ steps['bw_browser_audit_0082'].outcome }}	${{ steps['bw_browser_audit_0082'].conclusion }}
             bw_browser_audit_0083	${{ steps['bw_browser_audit_0083'].outcome }}	${{ steps['bw_browser_audit_0083'].conclusion }}
@@ -3711,8 +3727,8 @@ jobs:
             bw_browser_audit_0097	${{ steps['bw_browser_audit_0097'].outcome }}	${{ steps['bw_browser_audit_0097'].conclusion }}
             bw_browser_audit_0098	${{ steps['bw_browser_audit_0098'].outcome }}	${{ steps['bw_browser_audit_0098'].conclusion }}
             bw_browser_audit_0099	${{ steps['bw_browser_audit_0099'].outcome }}	${{ steps['bw_browser_audit_0099'].conclusion }}
-            bw_browser_audit_0100	${{ steps['bw_browser_audit_0100'].outcome }}	${{ steps['bw_browser_audit_0100'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_2: |
+            bw_browser_audit_0100	${{ steps['bw_browser_audit_0100'].outcome }}	${{ steps['bw_browser_audit_0100'].conclusion }}
             bw_browser_audit_0101	${{ steps['bw_browser_audit_0101'].outcome }}	${{ steps['bw_browser_audit_0101'].conclusion }}
             bw_browser_audit_0102	${{ steps['bw_browser_audit_0102'].outcome }}	${{ steps['bw_browser_audit_0102'].conclusion }}
             bw_browser_audit_0103	${{ steps['bw_browser_audit_0103'].outcome }}	${{ steps['bw_browser_audit_0103'].conclusion }}
@@ -3812,8 +3828,8 @@ jobs:
             default_route	${{ steps['default_route'].outcome }}	${{ steps['default_route'].conclusion }}
             bw_browser_audit_0198	${{ steps['bw_browser_audit_0198'].outcome }}	${{ steps['bw_browser_audit_0198'].conclusion }}
             bw_browser_audit_0199	${{ steps['bw_browser_audit_0199'].outcome }}	${{ steps['bw_browser_audit_0199'].conclusion }}
-            bw_browser_audit_0200	${{ steps['bw_browser_audit_0200'].outcome }}	${{ steps['bw_browser_audit_0200'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_3: |
+            bw_browser_audit_0200	${{ steps['bw_browser_audit_0200'].outcome }}	${{ steps['bw_browser_audit_0200'].conclusion }}
             bw_browser_audit_0201	${{ steps['bw_browser_audit_0201'].outcome }}	${{ steps['bw_browser_audit_0201'].conclusion }}
             bw_browser_audit_0202	${{ steps['bw_browser_audit_0202'].outcome }}	${{ steps['bw_browser_audit_0202'].conclusion }}
             bw_browser_audit_0203	${{ steps['bw_browser_audit_0203'].outcome }}	${{ steps['bw_browser_audit_0203'].conclusion }}
@@ -3856,10 +3872,6 @@ jobs:
             bw_browser_audit_0240	${{ steps['bw_browser_audit_0240'].outcome }}	${{ steps['bw_browser_audit_0240'].conclusion }}
             waits	${{ steps['waits'].outcome }}	${{ steps['waits'].conclusion }}
             bw_browser_audit_0242	${{ steps['bw_browser_audit_0242'].outcome }}	${{ steps['bw_browser_audit_0242'].conclusion }}
-        # Per shard: the gates whose clause names this shard must have run, the
-        # others must show skipped HERE (one that ran is a double run), and the
-        # partition itself is re-checked from this checkout's build.yml so a
-        # workflow edit that dodges the unit tests still fails inside the job.
         run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }} --runner-terminals-v1
 
   corpus:

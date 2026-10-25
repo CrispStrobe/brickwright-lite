@@ -34,7 +34,7 @@ const download = csv => {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url; anchor.download = 'robot-lab-measurement-runs.csv'; anchor.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
 };
 
 export default class SimLabMeasurementRecorder extends React.Component {
@@ -59,8 +59,8 @@ export default class SimLabMeasurementRecorder extends React.Component {
         this.recorder.stop('panel-closed');
     }
     start () {
-        const snapshot = this.recorder.start(this.props);
-        this.setState({snapshot});
+        this.recorder.start(this.props);
+        this.setState({snapshot: this.recorder.update(this.props)});
     }
     stop () {
         this.setState({snapshot: this.recorder.stop('stopped')});

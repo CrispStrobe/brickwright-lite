@@ -205,7 +205,7 @@ test('React recorder controls start/stop, keep two runs, render exact shared-tim
     assert.match(renderToStaticMarkup(component.render()), /Start recording/);
 });
 
-test('rendered CSV control downloads the retained immutable run as text/csv', () => {
+test('rendered CSV control downloads the retained immutable run as text/csv', async () => {
     const session = {}, props = {locale: 'en', session, modelKey, definitions: [definition()], selected: ['hinge'], rows: makeRows(4), sampleTime: 0, replaying: false};
     const component = new Recorder(props);
     component.setState = update => {component.state = {...component.state, ...(typeof update === 'function' ? update(component.state, component.props) : update)};};
@@ -222,7 +222,9 @@ test('rendered CSV control downloads the retained immutable run as text/csv', ()
     globalThis.document = {createElement: tag => {assert.equal(tag, 'a'); return {click () {assert.equal(this.href, 'blob:measurement-test');}};}};
     try {
         button('bw-sim-measurement-record-export').props.onClick();
-        assert.equal(downloaded.type, 'text/csv;charset=utf-8'); assert.equal(revoked, 'blob:measurement-test');
+        assert.equal(downloaded.type, 'text/csv;charset=utf-8');
+        await new Promise(resolve => setTimeout(resolve, 5));
+        assert.equal(revoked, 'blob:measurement-test');
     } finally {
         URL.createObjectURL = oldCreate; URL.revokeObjectURL = oldRevoke;
         if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
@@ -253,7 +255,17 @@ test('pane-owned recorder survives panel unmount and preserves stopped samples f
     component.props = {...component.props, rows: makeRows(7), sampleTime: 100}; component.componentDidUpdate(previous);
     component.componentWillUnmount();
     assert.equal(recorder.snapshot().active, false); assert.equal(recorder.snapshot().stoppedReason, 'panel-closed');
-    assert.equal(recorder.snapshot().runs[0].samples.length, 1);
+    assert.deepEqual(recorder.snapshot().runs[0].samples.map(s => s.elapsedMs), [0,100]);
     const remount = new Recorder(props);
-    assert.equal(remount.state.snapshot.runs[0].samples[0].readings[0].value, 7);
+    assert.equal(remount.state.snapshot.runs[0].samples[1].readings[0].value, 7);
+});
+
+test('a paused final observation keeps its actual elapsed timestamp and cannot extend the duration bound', () => {
+    const recorder=createMeasurementRecorder(),session={};start(recorder,{session});
+    sample(recorder,session,0,1);sample(recorder,session,100,2);sample(recorder,session,150,3,{}, {paused:true});
+    recorder.stop();const points=recorder.snapshot().runs[0].samples;
+    assert.deepEqual(points.map(p=>[p.elapsedMs,p.timeMs]),[[0,0],[150,150]]);
+    recorder.clear();start(recorder,{session});sample(recorder,session,59950,1);sample(recorder,session,60010,2,{}, {paused:true});
+    assert.equal(recorder.snapshot().stoppedReason,'time-limit');
+    assert.equal(recorder.snapshot().runs[0].samples[0].elapsedMs,59950);
 });

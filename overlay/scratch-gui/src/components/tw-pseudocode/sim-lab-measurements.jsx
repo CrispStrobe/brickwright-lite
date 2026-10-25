@@ -3,6 +3,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import SimLabMeasurementPlot from './sim-lab-measurement-plot.jsx';
+import SimLabMeasurementRecorder from './sim-lab-measurement-recorder.jsx';
 import {createMeasurementHistory, PLOT_LIMIT} from '../../lib/bw-sim/measurements/history.js';
 import {MEASUREMENT_KINDS, MEASUREMENT_LIMIT} from '../../lib/bw-sim/measurements/schema.js';
 import {measurementText, jointBinding, ropeBinding} from '../../lib/bw-sim/measurements/readings.js';
@@ -10,6 +11,7 @@ import {jointTargetContext} from '../../lib/bw-sim/measurements/target-context.j
 
 export const measurementWords = locale => locale === 'de' ? {
     title: 'Messungen', close: 'Schließen', add: 'Messung hinzufügen', edit: 'Bearbeiten', save: 'Änderungen speichern', cancel: 'Abbrechen', remove: 'Entfernen', presets: 'Auf empfohlene Messungen zurücksetzen',
+    pick: 'Im Modell wählen', picking: 'Teil im Modell anklicken. Esc bricht ab.', preview: 'Vorschau', highlight: 'Ziele hervorheben', limits: 'Grenzen der Simulation',
     show: 'Im Modell anzeigen', label: 'Name', kind: 'Messgröße', target: 'Teil', joint: 'Gelenk', rope: 'Seil', world: 'Boden',
     missing: 'Ziel fehlt im Modell', unavailable: 'Nicht verfügbar', coincident: 'Winkel braucht drei verschiedene Punkte',
     chooseTarget: 'Wähle ein gültiges Ziel aus.', chooseBinding: 'Wähle ein Gelenk oder Seil ausdrücklich aus, um die aktuelle Verbindung zu bestätigen.',
@@ -17,13 +19,15 @@ export const measurementWords = locale => locale === 'de' ? {
     replay: 'Live-Messungen sind während der Positionswiedergabe ausgeblendet.', empty: 'Füge eine Messung hinzu oder wähle die empfohlenen Messungen.',
     help: 'Teile wählen ihre starre Baugruppe für Masse und Bewegung. Geschwindigkeit gilt am Schwerpunkt. Abstand und Winkel messen Teilursprünge (A–B–C: Scheitel B).',
     vectors: 'Pfeile: Geschwindigkeit × 0,1 s; Kräfte 20 mm/N.',
-    kinds: {modelMass: 'Modellmasse', mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe',
+    kinds: {modelMass: 'Modellmasse', mass: 'Masse der Baugruppe', weight: 'Berechnete Gewichtskraft', speed: 'Geschwindigkeit der Baugruppe', angularSpeed: 'Drehgeschwindigkeit der Baugruppe', acceleration: 'Abgetastete Beschleunigung', pressure: 'Pneumatik-Überdruck',
         distance: 'Abstand A–B', angle: 'Winkel A–B–C', jointAngle: 'Gelenkwinkel', jointSpeed: 'Gelenkdrehzahl', travel: 'Schieberweg', tension: 'Seilspannung', normalLoad: 'Rad-Normallast'},
     sources: {'configured-model-mass': 'Konfigurierte Modell-Baugruppen ohne Umgebung', 'configured-mass': 'Konfigurierte Masse', 'configured-weight': 'Konfigurierte Masse × Schwerkraft', 'jolt-com-velocity': 'Jolt: Schwerpunktgeschwindigkeit',
+        'sampled-jolt-com-acceleration': 'Schwerpunkt-Geschwindigkeitsdifferenz / Simulationszeit', 'jolt-air-network-gauge-pressure': 'Pneumatikmodell: verbundener Netzwerk-Überdruck',
         'jolt-angular-velocity': 'Jolt: Winkelgeschwindigkeit', 'part-origins': 'Teilursprünge', 'jolt-joint': 'Jolt: Gelenkkoordinate',
         'rope-constraint': 'Seil-Zwangsimpuls / Zeitschritt', 'rolling-load-estimate': 'Normallast-Schätzung des Rollmodells'}
 } : {
     title: 'Measurements', close: 'Close', add: 'Add measurement', edit: 'Edit', save: 'Save changes', cancel: 'Cancel', remove: 'Remove', presets: 'Reset to recommended measurements',
+    pick: 'Pick in model', picking: 'Click a part in the model. Esc cancels.', preview: 'Preview', highlight: 'Highlight targets', limits: 'Simulation limits',
     show: 'Show in model', label: 'Name', kind: 'Quantity', target: 'Part', joint: 'Joint', rope: 'Rope', world: 'Ground',
     missing: 'Target missing from model', unavailable: 'Unavailable', coincident: 'Angle needs three distinct points',
     chooseTarget: 'Choose a valid target.', chooseBinding: 'Choose a joint or rope explicitly to confirm its current binding.',
@@ -31,9 +35,10 @@ export const measurementWords = locale => locale === 'de' ? {
     replay: 'Live measurements are hidden during pose replay.', empty: 'Add a measurement or choose the recommended measurements.',
     help: 'Parts select their rigid assembly for mass and motion. Speed is at its centre of mass. Distance and angle use part origins (A–B–C: vertex B).',
     vectors: 'Arrows: velocity × 0.1 s; forces 20 mm/N.',
-    kinds: {modelMass: 'Model mass', mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed',
+    kinds: {modelMass: 'Model mass', mass: 'Assembly mass', weight: 'Calculated weight', speed: 'Assembly speed', angularSpeed: 'Assembly angular speed', acceleration: 'Sampled acceleration', pressure: 'Pneumatic gauge pressure',
         distance: 'Distance A–B', angle: 'Angle A–B–C', jointAngle: 'Joint angle', jointSpeed: 'Joint angular speed', travel: 'Slider travel', tension: 'Rope tension', normalLoad: 'Wheel normal load'},
     sources: {'configured-model-mass': 'Configured model assemblies, excluding scenery', 'configured-mass': 'Configured mass', 'configured-weight': 'Configured mass × gravity', 'jolt-com-velocity': 'Jolt centre-of-mass velocity',
+        'sampled-jolt-com-acceleration': 'COM velocity difference / simulated time', 'jolt-air-network-gauge-pressure': 'Pneumatic model: connected network gauge pressure',
         'jolt-angular-velocity': 'Jolt angular velocity', 'part-origins': 'Part origins', 'jolt-joint': 'Jolt joint coordinate',
         'rope-constraint': 'Rope constraint impulse / step', 'rolling-load-estimate': 'Rolling-model normal load estimate'}
 };
@@ -42,13 +47,23 @@ export const measurementWords = locale => locale === 'de' ? {
 class SimLabMeasurements extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: '', plots: [], editor: null, editorStatus: ''};
+        this.state = {kind: 'distance', label: '', targets: ['', '', ''], joint: '', rope: '', plots: (props.initialPlots || []).slice(0, PLOT_LIMIT), editor: null, editorStatus: '', picking: null};
         this.history = createMeasurementHistory();
         this.form = React.createRef();
         this.nameInput = React.createRef();
         this.returnFocus = null;
     }
+    componentDidMount () { this.syncPreview(); }
+    componentWillUnmount () {
+        this.pickRequest = null;
+        this.props.onPickTarget?.(null);
+        this.props.onPreview?.(null);
+    }
     componentDidUpdate (previous) {
+        if (previous.session !== this.props.session || previous.mechanism !== this.props.mechanism) this.previewActive = false;
+        if (previous.session !== this.props.session || previous.mechanism !== this.props.mechanism ||
+            this.props.replaying || previous.definitions !== this.props.definitions) this.cancelPicking();
+        this.syncPreview();
         const editor = this.state.editor;
         if (!editor) return;
         const propsChanged = previous.definitions !== this.props.definitions || previous.session !== this.props.session || previous.mechanism !== this.props.mechanism;
@@ -64,6 +79,54 @@ class SimLabMeasurements extends React.Component {
         if (stale && this.state.editorStatus !== 'staleEdit') update.editorStatus = 'staleEdit';
         if (Object.keys(update).length) this.setState(update);
     }
+    cancelPicking () {
+        if (!this.pickRequest) return;
+        this.pickRequest = null;
+        this.props.onPickTarget?.(null);
+        if (this.state.picking !== null) this.setState({picking: null});
+    }
+    requestTarget (index) {
+        this.cancelPicking();
+        if (!this.props.onPickTarget || this.props.replaying) return;
+        const request = {index, session: this.props.session, model: this.currentModel(), mechanism: this.props.mechanism,
+            definitions: this.props.definitions, editor: this.state.editor, kind: this.state.editor?.kind || this.state.kind};
+        this.pickRequest = request;
+        this.setState({picking: index});
+        this.props.onPickTarget(id => {
+            if (this.pickRequest !== request) return;
+            this.pickRequest = null;
+            this.setState({picking: null});
+            if (!id || request.session !== this.props.session || request.model !== this.currentModel() ||
+                request.mechanism !== this.props.mechanism || request.definitions !== this.props.definitions ||
+                request.editor !== this.state.editor || request.kind !== (this.state.editor?.kind || this.state.kind) ||
+                this.props.replaying || !this.props.parts.some(p => p.id === id) ||
+                request.editor && !this.currentDefinitionMatches(request.editor)) return;
+            this.changeTarget(index, id);
+        });
+    }
+    previewDefinition () {
+        if ((!this.previewActive && !this.state.editor) || this.props.replaying) return null;
+        const editor = this.state.editor, kind = editor?.kind || this.state.kind, spec = MEASUREMENT_KINDS[kind];
+        if (editor && (editor.model !== this.currentModel() || editor.session !== this.props.session ||
+            editor.mechanism !== this.props.mechanism || !this.currentDefinitionMatches(editor))) return null;
+        const raw = editor?.targets || this.state.targets;
+        const targets = Array.from({length: spec.targets || 0}, (_, i) => raw[i] || (!editor && this.props.parts[Math.min(i, this.props.parts.length - 1)]?.id) || '');
+        if (targets.some(id => !this.props.parts.some(p => p.id === id))) return null;
+        const joint = spec.joint && this.props.mechanism.joints.find(j => j.type === spec.joint && j.id === (editor?.joint || this.state.joint));
+        const rope = spec.rope && (this.props.mechanism.couplings || []).find(r => r.kind === 'rope' && r.id === (editor?.rope || this.state.rope));
+        if (spec.joint && !joint || spec.rope && !rope) return null;
+        const binding = joint ? jointBinding(this.props.mechanism, joint) : rope ? ropeBinding(rope) : '';
+        if (editor && binding && editor.selectedBinding !== binding) return null;
+        return {id: 'measurement-preview', kind, label: measurementWords(this.props.locale).preview, visible: true,
+            ...(spec.targets ? {targets} : {}), ...(joint ? {joint: joint.id, binding} : {}), ...(rope ? {rope: rope.id, binding} : {})};
+    }
+    syncPreview () {
+        const definition = this.previewDefinition(), key = JSON.stringify(definition);
+        if (this.previewKey !== key || this.previewSession !== this.props.session) {
+            this.previewKey = key; this.previewSession = this.props.session;
+            this.props.onPreview?.(definition);
+        }
+    }
     currentDefinitionMatches (editor) {
         const current = this.props.definitions.find(d => d.id === editor.id);
         return Boolean(current && JSON.stringify([current.id, current.kind, current.label, current.targets, current.joint, current.rope, current.binding]) === editor.snapshot);
@@ -72,6 +135,8 @@ class SimLabMeasurements extends React.Component {
         return this.props.session?.runModel || this.props.session?.model || this.props.mechanism;
     }
     beginEdit (definition, event) {
+        this.cancelPicking();
+        this.previewActive = true;
         const T = measurementWords(this.props.locale);
         const spec = MEASUREMENT_KINDS[definition.kind];
         const joint = spec.joint && this.props.mechanism.joints.find(j => j.id === definition.joint && j.type === spec.joint);
@@ -94,6 +159,10 @@ class SimLabMeasurements extends React.Component {
         });
     }
     cancelEdit (afterCancel) {
+        this.cancelPicking();
+        this.previewActive = false;
+        this.props.onPreview?.(null);
+        this.previewKey = undefined;
         if (!this.state.editor) {
             afterCancel?.();
             return;
@@ -104,6 +173,7 @@ class SimLabMeasurements extends React.Component {
         });
     }
     changeKind (kind) {
+        this.cancelPicking(); this.previewActive = true;
         const oldSpec = MEASUREMENT_KINDS[this.state.editor?.kind || this.state.kind], nextSpec = MEASUREMENT_KINDS[kind];
         const currentTargets = this.state.editor?.targets || this.state.targets;
         const targets = Array.from({length: nextSpec.targets || 0}, (_, i) => currentTargets[i] || '');
@@ -118,6 +188,8 @@ class SimLabMeasurements extends React.Component {
         } else this.setState({kind, targets, joint, rope});
     }
     changeTarget (index, value) {
+        this.cancelPicking(); this.previewActive = true;
+        this.props.onHighlight?.([value]);
         if (this.state.editor) {
             const targets = this.state.editor.targets.slice(); targets[index] = value;
             this.setState({editor: {...this.state.editor, targets}, editorStatus: ''});
@@ -131,6 +203,7 @@ class SimLabMeasurements extends React.Component {
         else this.setState({label: value});
     }
     changeBinding (kind, id) {
+        this.cancelPicking(); this.previewActive = true;
         const editor = this.state.editor;
         const mechanism = this.props.mechanism;
         const selected = kind === 'joint' ? mechanism.joints.find(j => j.id === id && j.type === MEASUREMENT_KINDS[editor?.kind || this.state.kind].joint) : (mechanism.couplings || []).find(r => r.id === id && r.kind === 'rope');
@@ -140,6 +213,7 @@ class SimLabMeasurements extends React.Component {
     }
     submitMeasurement (event) {
         event.preventDefault();
+        this.cancelPicking();
         const editor = this.state.editor;
         const T = measurementWords(this.props.locale);
         const kind = editor ? editor.kind : this.state.kind;
@@ -173,6 +247,9 @@ class SimLabMeasurements extends React.Component {
             : labelInput.trim() || T.kinds[kind];
         const updated = {id: editor?.id || '', kind, label,
             ...(spec.targets ? {targets} : {}), ...(spec.joint ? {joint: joint.id, binding} : {}), ...(spec.rope ? {rope: rope.id, binding} : {})};
+        this.previewActive = false;
+        this.props.onPreview?.(null);
+        this.previewKey = undefined;
         if (editor) {
             const current = this.props.definitions.find(d => d.id === editor.id);
             this.props.onChange(this.props.definitions.map(d => d.id === editor.id ? {...updated, visible: current.visible !== false} : d));
@@ -198,6 +275,8 @@ class SimLabMeasurements extends React.Component {
         const rope = ropes.find(r => r.id === (editor ? editor.rope : this.state.rope)) || (!editor && ropes[0]);
         const valid = (!spec.targets || targets.every(id => id && parts.some(part => part.id === id))) && (!spec.joint || joint) && (!spec.rope || rope);
         const editorStatus = this.state.editorStatus || editor?.status;
+        const preview = this.previewDefinition();
+        const previewRow = preview && this.props.readPreview?.(preview);
         const input = {maxWidth: '100%', minWidth: 0, boxSizing: 'border-box'};
         return (
             <section data-testid="bw-sim-lab-measurements-panel" aria-label={T.title}
@@ -233,6 +312,7 @@ class SimLabMeasurements extends React.Component {
                                 checked={selected.includes(d.id)} disabled={d.visible === false || (!selected.includes(d.id) && selected.length >= PLOT_LIMIT)}
                                 onChange={e => {
                                     const plots = e.target.checked ? [...selected, d.id] : selected.filter(id => id !== d.id);
+                                    this.props.onPlotSelection?.(plots);
                                     this.setState({plots}, () => this.props.onSample?.());
                                 }} />{de ? 'Zeitdiagramm' : 'Time plot'}</label>
                             {!replaying && selected.includes(d.id) && <SimLabMeasurementPlot points={histories.get(d.id) || []}
@@ -249,7 +329,12 @@ class SimLabMeasurements extends React.Component {
                         {editor && !id && <option value="">{T.chooseTarget}</option>}
                         {editor && id && !parts.some(part => part.id === id) && <option value={id}>{T.missing}: {id}</option>}
                         {parts.map(p => <option key={p.id} value={p.id}>{p.id} · {p.label}</option>)}
-                    </select></label>)}
+                    </select>
+                        <button type="button" data-testid={`bw-sim-measurement-pick-${i}`} disabled={!this.props.onPickTarget || replaying}
+                            onClick={() => this.requestTarget(i)}>{T.pick} {'ABC'[i]}</button>
+                    </label>)}
+                    {this.state.picking !== null && <p role="status" data-testid="bw-sim-measurement-picking">{T.picking}
+                        <button type="button" onClick={() => this.cancelPicking()}>{T.cancel}</button></p>}
                     {spec.joint && <label>{T.joint} <select data-testid="bw-sim-lab-measurement-joint" style={input} value={editor ? editor.joint : joint?.id || ''} onChange={e => this.changeBinding('joint', e.target.value)}>
                         {editor && !editor.joint && <option value="">{T.chooseBinding}</option>}
                         {joints.map(j => <option key={j.id} value={j.id}>{j.motor?.port || j.id} · {jointTargetContext(j, mechanism, T.world)}</option>)}
@@ -260,16 +345,25 @@ class SimLabMeasurements extends React.Component {
                     </select></label>}
                     <label>{T.label} <input ref={this.nameInput} style={input} maxLength={80} value={editor ? editor.label : this.state.label}
                         onChange={e => this.changeLabel(e.target.value)} /></label>
+                    {preview && <div data-testid="bw-sim-measurement-preview"><output>{T.preview}: {previewRow ? measurementText(previewRow) : '—'}</output>
+                        {preview.targets?.length > 0 && <button type="button" onClick={() => this.props.onHighlight?.(preview.targets)}>{T.highlight}</button>}</div>}
                     {editorStatus && <p role="status" data-testid="bw-sim-lab-measurement-editor-status">{T[editorStatus]}</p>}
                     {editor ? <div style={{display: 'flex', gap: 6}}>
                         <button type="submit" data-testid="bw-sim-lab-measurement-save">{T.save}</button>
                         <button type="button" data-testid="bw-sim-lab-measurement-cancel" onClick={() => this.cancelEdit()}>{T.cancel}</button>
                     </div> : <button type="submit" disabled={!valid || definitions.length >= MEASUREMENT_LIMIT} data-testid="bw-sim-lab-measurement-add">{T.add}</button>}
                 </form>
+                <SimLabMeasurementRecorder locale={locale} recorder={this.props.recorder} session={this.props.session} modelKey={this.props.modelKey || ''}
+                    definitions={definitions} selected={selected} rows={rows} sampleTime={this.props.sampleTime}
+                    replaying={replaying} paused={this.props.paused} />
                 <p style={{fontSize: 10}}>{de ? 'Bis zu 4 Diagramme mit je 128 echten Simulationszeitwerten. Lücken bedeuten: nicht verfügbar.' : 'Up to 4 plots, each with 128 actual simulation-time samples. Gaps mean unavailable.'}</p>
                 {this.props.teachingPreset && <button type="button" data-testid="bw-sim-measurement-teaching-preset"
                             onClick={() => this.cancelEdit(() => onChange(this.props.teachingPreset.definitions))} style={{marginTop: 6}}>
                     {de ? 'Lektionsmessungen anwenden' : 'Apply lesson measurements'}: {this.props.teachingPreset.title}</button>}
+                {this.props.teachingPreset?.help && <p data-testid="bw-sim-measurement-lesson-relation">{this.props.teachingPreset.help}</p>}
+                <details><summary>{T.limits}</summary><p>{de ?
+                    'Massen und Materialwerte sind Modellannahmen. Radlast ist geschätzt; allgemeine Kontaktkräfte und Motordrehmoment werden nicht gemessen. Solver-Massengrenzen beeinflussen den Auslauf von Kettenfahrzeugen. Lenkgeometrie und Reifenschlupf sind vereinfacht.' :
+                    'Masses and material coefficients are model assumptions. Wheel load is estimated; general contact forces and motor torque are not measured. Solver mass floors affect tracked-vehicle coasting. Steering geometry and tyre slip are simplified.'}</p></details>
                 <button type="button" onClick={() => this.cancelEdit(onPresets)} style={{marginTop: 6}}>{T.presets}</button>
             </section>
         );
@@ -278,7 +372,8 @@ class SimLabMeasurements extends React.Component {
 SimLabMeasurements.propTypes = {
     locale: PropTypes.string.isRequired, definitions: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     parts: PropTypes.array.isRequired, mechanism: PropTypes.object.isRequired, shown: PropTypes.bool.isRequired, replaying: PropTypes.bool.isRequired,
-    session: PropTypes.object, sampleTime: PropTypes.number, paused: PropTypes.bool, teachingPreset: PropTypes.object, onSample: PropTypes.func,
+    onPickTarget: PropTypes.func, onHighlight: PropTypes.func, onPreview: PropTypes.func, readPreview: PropTypes.func, modelKey: PropTypes.string,
+    initialPlots: PropTypes.array, onPlotSelection: PropTypes.func, recorder: PropTypes.object, session: PropTypes.object, sampleTime: PropTypes.number, paused: PropTypes.bool, teachingPreset: PropTypes.object, onSample: PropTypes.func,
     onChange: PropTypes.func.isRequired, onShown: PropTypes.func.isRequired, onPresets: PropTypes.func.isRequired, onClose: PropTypes.func.isRequired
 };
 export default SimLabMeasurements;

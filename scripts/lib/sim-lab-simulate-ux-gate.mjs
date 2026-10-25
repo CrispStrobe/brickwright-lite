@@ -16,10 +16,12 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 import {readFile, stat, writeFile} from 'node:fs/promises';
 import JSZip from 'jszip';
 import {tool} from './sim-lab-toolbar-gate.mjs';
 import {measurementPlotInteractions} from './sim-lab-measurement-plots-gate.mjs';
+import {measurementExperimentInteractions} from './sim-lab-measurement-experiments-gate.mjs';
 
 const lab = (page, fn, arg) => page.evaluate(fn, arg);
 const simTime = page => lab(page, () => window.__bwSimLab._pane.session.time);
@@ -278,6 +280,7 @@ export const measurementInteractions = async (page, {shotsDir}) => {
     editedEvidence.afterModelReturn = afterModelReturn;
     await panel.getByRole('button', {name: 'Close', exact: true}).click();
     await measurementPlotInteractions(page, {shotsDir});
+    await measurementExperimentInteractions(page, {shotsDir});
     // Save/reopen through the existing real project controls, after the old plot journey finishes.
     const beforeProject = await lab(page, () => window.__bwSimLab.projectRecord);
     assert.ok(beforeProject?.measurements?.some(d => d.id === 'custom-1'));
@@ -312,6 +315,8 @@ export const measurementInteractions = async (page, {shotsDir}) => {
         saved: savedBundle.state.simLab.measurements,
         modelBeforeSha256: digest(beforeProject.ldraw), modelAfterSha256: digest(afterProject.ldraw),
         sb3: {file: 'sim-lab-measurement-edit.sb3', bytes: savedBytes.length, sha256: digest(savedBytes)}};
+    const gitObject = arg => execFileSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', 'rev-parse', arg], {encoding: 'utf8'}).trim();
+    editedEvidence.source = {checkout: gitObject('HEAD'), tree: gitObject('HEAD^{tree}')};
     const report = JSON.stringify(editedEvidence, null, 2) + '\n';
     assert.ok(Buffer.byteLength(report) <= 65536, 'bounded edit observation report');
     await writeFile(resolve(shotsDir, 'sim-lab-measurement-edit.json'), report, {flag: 'wx'});

@@ -56,7 +56,7 @@ export const createMeasurementRecorder = () => {
     return {
         snapshot,
         start ({session, modelKey, definitions, selected, sampleTime}) {
-            if (state.active || state.runs.length >= RECORDING_LIMIT || typeof modelKey !== 'string' || !Number.isFinite(sampleTime)) return snapshot();
+            if (state.active || state.runs.length >= RECORDING_LIMIT || typeof modelKey !== 'string' || !modelKey || !Number.isFinite(sampleTime) || sampleTime < 0) return snapshot();
             const defs = selectedDefinitions(definitions, selected);
             if (!defs.length) {state.stoppedReason = 'select-measurements'; return snapshot();}
             const identity = definitionIdentity(defs);
@@ -89,15 +89,16 @@ export const createMeasurementRecorder = () => {
             active.lastRows = rows;
             const elapsed = sampleTime - active.startTime;
             if (elapsed < 0) return stop('time-reset');
+            if (elapsed >= RECORDING_DURATION_MS) return stop('time-limit');
             const last = active.samples[active.samples.length - 1];
             if (last && elapsed - last.elapsedMs < RECORDING_INTERVAL_MS) {
                 if (elapsed === last.elapsedMs || paused) {
                     last.timeMs = sampleTime;
+                    last.elapsedMs = elapsed;
                     last.readings = readingsFor(active.definitions, rows);
                 }
                 return snapshot();
             }
-            if (elapsed >= RECORDING_DURATION_MS) return stop('time-limit');
             if (active.samples.length >= RECORDING_SAMPLE_LIMIT) return stop('sample-limit');
             active.samples.push({elapsedMs: elapsed, timeMs: sampleTime, readings: readingsFor(active.definitions, rows)});
             if (active.samples.length >= RECORDING_SAMPLE_LIMIT) return stop('sample-limit');

@@ -16,6 +16,8 @@ Custom measurements support:
 | Mass | One part, g | Configured mass of its rigid assembly, including joined parts |
 | Weight | One part, N | That configured mass multiplied by scene gravity |
 | Speed | One part, m/s | Jolt linear velocity at the assembly's centre of mass |
+| Sampled acceleration | One part, m/s² | Magnitude of the centre-of-mass velocity difference divided by its simulated-time interval; unavailable until two valid samples, after reset or across a gap over 250 ms |
+| Pneumatic gauge pressure | A part belonging to one connected pneumatic/pump network, kPa | Existing network pressure above atmospheric pressure; ambiguous or disconnected targets are unavailable |
 | Angular speed | One part, degrees/s | Magnitude of the assembly's Jolt angular velocity |
 | Distance | Two part origins, mm | Current three-dimensional separation |
 | Angle | Three part origins, degrees | A–B–C, with B as the vertex; range 0–180° |
@@ -90,3 +92,65 @@ lesson set explicitly replaces the current definitions. The targets are checked
 against authored parts and current joint bindings; an unsupported or changed
 model keeps the existing structural recommendations instead of selecting another
 joint. Imported models retain custom measurements and structural recommendations.
+
+
+## Select targets in the scene
+
+Use **Pick in model A/B/C** beside a part selector, then click a visible part.
+The selected part highlights and fills the current draft. Dragging the camera
+never picks a part. Escape or Cancel stops picking. The selectors remain usable
+by keyboard and when WebGL is unavailable. A preview shows the draft reading
+and its geometry before Save; Cancel leaves the saved definition unchanged.
+Changing the model or definition invalidates pending picks and stale drafts.
+
+Overlays consume the same committed readings as the plots. Rendering and draft
+previews cannot advance the acceleration sampling stream. Acceleration reports
+a sampled magnitude, including changes in velocity direction; it does not
+report instantaneous peak force. Pressure reports the connected air model,
+whose ideal supply, cylinder and valve approximations remain documented in
+[the physics limits](ROBOT-LAB-PHYSICS-LIMITS.md).
+
+## Record and compare experiments
+
+Select up to four **Time plot** checkboxes, then **Start recording**. Recording
+captures the current observation at elapsed time zero and subsequent actual
+readings at least 100 simulated milliseconds apart. **Stop recording** freezes
+the run. The final paused observation retains its actual timestamp.
+
+Keep up to two runs, each bounded to 600 sample sets or 60 simulated seconds.
+After Reset, record the same model and measurement selections again to compare
+runs. Comparison uses exact shared elapsed times and shows each run's range and
+the difference where both readings exist. Missing values remain gaps. It does
+not interpolate, claim repeatability, or establish physical accuracy. A changed
+model, quantity, target or binding refuses comparison; clear the recordings to
+start a different experiment.
+
+**Download CSV** exports the captured values, simulated elapsed times, units,
+sources, model digest and measurement definitions. Unavailable values are blank
+with a reason. User text is quoted and spreadsheet formula prefixes are escaped.
+Closing the panel stops recording and retains completed runs for reopening in
+the same pane. Closing the Robot Lab pane discards recordings. Project saves
+retain measurement definitions; recordings and plot histories remain temporary.
+
+Dedicated lesson sets now also cover **Gearbox**, **Sky Courier** (ropes and
+pulleys), **Snapgate** (spring travel) and **Pneumatic cylinder**. Each explains
+the relationship to investigate and checks authored parts and joint roles before
+applying. See [lessons and dynamics](ROBOT-LAB-LESSONS-AND-DYNAMICS.md).
+
+## Saved-project evidence
+
+New successful measurement browser qualifications retain the original generated
+SB3, edit report, downloaded CSV and experiment report for seven days. The
+standalone reader uses Python's standard library, without importing the browser
+producer or simulator:
+
+```sh
+python3 scripts/read-sim-lab-measurement-artifact.py artifact-directory \
+  --checkout EXPECTED_CHECKOUT_SHA --tree EXPECTED_TREE_SHA
+```
+
+Supply the expected identities from independently admitted workflow checkout
+metadata. The reader checks ZIP CRCs and bounds, actual saved model and sidecar
+contents, before/save/reopen definition equality, original hashes, and CSV
+source/definition/time joins. Original successful files from older runs were not
+retained; this change does not invent or replay those originals.

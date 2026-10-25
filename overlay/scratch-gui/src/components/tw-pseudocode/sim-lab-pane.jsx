@@ -34,6 +34,7 @@ import SimLabConnections from './sim-lab-connections.jsx';
 import SimLabBrickButtons from './sim-lab-brick-buttons.jsx';
 import SimLabMeasurements, {measurementWords} from './sim-lab-measurements.jsx';
 import {measurementDefinitions} from '../../lib/bw-sim/measurements/schema.js';
+import {createMeasurementRecorder} from '../../lib/bw-sim/measurements/recording.js';
 import {teachingMeasurementPreset} from '../../lib/bw-sim/measurements/teaching-presets.js';
 import SimLabStats from './sim-lab-stats.jsx';
 import SimLabChallenges from './sim-lab-challenges.jsx';
@@ -396,6 +397,8 @@ class SimLabPane extends React.Component {
         this.lib = null;
         this.measurements = [];
         this.measurementModels = new Map();
+        this.measurementRecording = createMeasurementRecorder();
+        this.measurementPlotSelections = new Map();
         this.measurementReader = null;
         this.measurementRows = [];
         this.measurementRowsTime = null;
@@ -1329,7 +1332,7 @@ class SimLabPane extends React.Component {
         this.shippedRequest = shippedRequest;
         if (this.opened && this.measurementReader) this.measurementModels.set(this.opened.text, this.measurements);
         const savedMeasurements = measurements === undefined ? this.measurementModels.get(text) : measurements;
-        this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null; this.measurementRowsTime = null;
+        this.measurementPreview = null; this.measurementPreviewReader = null; this.measurementReader = null; this.measurementRows = []; this.measurementSampleTime = null; this.measurementRowsTime = null;
         const token = this.loadToken = {};
         this.clearReplay();
         this.opened = {text, name};
@@ -1393,6 +1396,7 @@ class SimLabPane extends React.Component {
         this.registerBtBricks();
         if (this.connections) this.observeConnection(() => this.connections.setScene(session, {preserveProgram}));
         this.measurementReader = this.lib.createMeasurementReader(session);
+        this.measurementPreviewReader = this.lib.createMeasurementReader(session);
         this.measurements = savedMeasurements === undefined ? this.lib.measurementPresets(session) : measurementDefinitions(savedMeasurements);
         this.measurementRows = this.measurementReader.read(this.measurements);
         this.measurementRowsTime = this.session.time;
@@ -1421,8 +1425,15 @@ class SimLabPane extends React.Component {
             this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
             this.view.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
             this.view.setSensors(this.sensorRays(), this.state.showSensors);
-            this.view.setMeasurements(() => this.state.showMeasurements && this.state.replayAt === null && this.measurementReader ?
-                this.measurementReader.read(this.measurements).map(row => ({...row, label: row.label === row.kind ? measurementWords(this.locale).kinds[row.kind] : row.label})) : []);
+            this.view.setMeasurements(() => {
+                if (this.state.replayAt !== null || !this.measurementReader) return [];
+                // Rendering must not advance the committed acceleration sample stream.
+                const saved = this.state.showMeasurements ? this.measurementRows : [];
+                const preview = this.state.measurementsOpen && this.measurementPreview && this.measurementPreviewReader ?
+                    this.measurementPreviewReader.read([this.measurementPreview]) : [];
+                return [...saved, ...preview].map(row => ({...row,
+                    label: row.label === row.kind ? measurementWords(this.locale).kinds[row.kind] : row.label}));
+            });
             this.view.render(session.snapshot());
         } catch (error) {
             view3d = 'fallback';
@@ -1556,7 +1567,7 @@ class SimLabPane extends React.Component {
         }
         if (this.state.status === 'running') this.record();
         if (this.state.readings && this.api) this.sample();
-        if (this.state.measurementsOpen && this.measurementReader && this.measurementSampleTime !== this.session.time) {
+        if ((this.state.measurementsOpen || this.state.showMeasurements) && this.measurementReader && this.measurementSampleTime !== this.session.time) {
             if (this.measurementSampleTime === null || (this.state.status !== 'running' && this.state.status !== 'stopping') ||
                 Math.abs(this.session.time - this.measurementSampleTime) >= 100) {
                 this.measurementRows = this.measurementReader.read(this.measurements);
@@ -3265,6 +3276,13 @@ class SimLabPane extends React.Component {
                         )}
                         {simulate && this.state.measurementsOpen && this.session && this.measurementReader && (
                             <SimLabMeasurements locale={this.locale} definitions={this.measurements} rows={this.measurementRows}
+                                modelKey={this.opened?.text || ''} recorder={this.measurementRecording}
+                                initialPlots={this.measurementPlotSelections.get(this.opened?.text) || []}
+                                onPlotSelection={ids => this.measurementPlotSelections.set(this.opened?.text, ids)}
+                                onPickTarget={this.view?.setMeasurementPick ? handler => this.view.setMeasurementPick(handler) : undefined}
+                                onHighlight={ids => this.view?.highlight(ids)}
+                                onPreview={definition => { this.measurementPreview = definition; }}
+                                readPreview={definition => this.measurementPreviewReader?.read([definition])[0]}
                                 parts={this.measurementReader.partIds.map(id => ({id, label: this.partNameById(id)}))}
                                 mechanism={this.session.mechanism} shown={this.state.showMeasurements} replaying={this.state.replayAt !== null}
                                 session={this.session} sampleTime={this.measurementRowsTime} paused={this.state.status !== 'running' && this.state.status !== 'stopping'}
