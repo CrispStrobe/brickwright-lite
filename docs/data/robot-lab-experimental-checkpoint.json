@@ -3195,6 +3195,155 @@
         "nan": false,
         "simMs": 70367
       }
+    },
+    {
+      "id": "foldback",
+      "title": "Foldback — crossed four-bar",
+      "placements": 95,
+      "archive": "foldback-addon.zip sha256 e080fca74b6e96bd87a8a740f7af7604fed187664e4a894c92a4dace919a752d",
+      "originalLdrawSha256": "73c21b7da673c2fdcb80e01968bb3db13db54e97d112dc9f0cb0525b736cd012",
+      "canonicalLdrawSha256": "257d722c48485b12bd5dc4d78c109301e079a53eea0f7cf10801714e9afd8ec4",
+      "program": "foldback.bw",
+      "programSha256": "ddd7a9bce1b1d24ca1156a448858dd8f5e5f08bfbc2817b114a7b30373a5799e",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons trimmed to the app schema and edited; comparison lessons written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "74/74 native checks per assembly (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless with SPIKE, COLD 0/275/1000, body headings: output follows tan(phi/2) = -5 tan(theta/2) within 0.0217 deg over the whole track; input 20..110 deg"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (foldback-open)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN",
+      "noveltyNote": "Overlaps cross-ratio (same crossed four-bar half-angle law, tan(phi/2)=k tan(theta/2); k=-5 here vs 3). Added on owner request 2026-10-25; differs by its open-parallelogram comparison assembly."
+    },
+    {
+      "id": "foldback-open",
+      "title": "Foldback — open parallelogram (comparison)",
+      "placements": 95,
+      "archive": "foldback-addon.zip sha256 e080fca74b6e96bd87a8a740f7af7604fed187664e4a894c92a4dace919a752d",
+      "originalLdrawSha256": "55f92f2f3681e6321cec8fafbfb438a2f267eaa5131046be18a085dc2e017900",
+      "canonicalLdrawSha256": "96661f9f5794b33111c0f25034d7b6b0939e9a7b7aee335d143ad601c324d256",
+      "program": "foldback.bw",
+      "programSha256": "ddd7a9bce1b1d24ca1156a448858dd8f5e5f08bfbc2817b114a7b30373a5799e",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons trimmed to the app schema and edited; comparison lessons written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "74/74 native checks per assembly (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless with SPIKE, COLD 0/275/1000: output = input within 0.0027-0.0079 deg"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "thirdline",
+      "title": "Thirdline — angle trisector",
+      "placements": 179,
+      "archive": "thirdline-addon.zip sha256 2d7e75ccf91ddececa0015fc13228fbee467b5300e941a4d60d1873aa09fb83a",
+      "originalLdrawSha256": "fda523278ac2877fe9f44653324084f9fb77450f182536c66c7cb224ba794be6",
+      "canonicalLdrawSha256": "3c3b709d22b97448827f352bc10827c5e0df6b1a9ab08756036efdef63b1761d",
+      "program": "thirdline.bw",
+      "programSha256": "b74824c191f420288748efa5b851bfa92c870471a67c4b012a71b0b61e41e9f6",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons trimmed to the app schema and edited; comparison lessons written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "90/90 native checks per assembly (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless with SPIKE, COLD 0/275/1000, body headings: ruler heading = input/3 within 0.0035-0.0043 deg over input 50..95 deg"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (thirdline-control)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "thirdline-control",
+      "title": "Thirdline — shorter mark (control)",
+      "placements": 179,
+      "archive": "thirdline-addon.zip sha256 2d7e75ccf91ddececa0015fc13228fbee467b5300e941a4d60d1873aa09fb83a",
+      "originalLdrawSha256": "586a584d3d6ff31f91fab7ce5350b9d74ad2becde0003f8b121d3cf701d033ec",
+      "canonicalLdrawSha256": "ff42e529eeffd246f9ab51364bf94b9843deb9ffccb6c455dbc150d3f5b83d1b",
+      "program": "thirdline.bw",
+      "programSha256": "b74824c191f420288748efa5b851bfa92c870471a67c4b012a71b0b61e41e9f6",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons trimmed to the app schema and edited; comparison lessons written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "90/90 native checks per assembly (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless with SPIKE, COLD 0/275/1000: theta = 2 phi + asin(0.75 sin phi) within 0.036 deg; up to 3.18 deg away from theta/3"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "samebeat",
+      "title": "Samebeat — reversible pendulum",
+      "placements": 92,
+      "archive": "samebeat-addon.zip sha256 0cf75f2b7fdb4dbbbfee50c0ce9526e522f01d46af377b7724084be33b049330",
+      "originalLdrawSha256": "bc9207ebd8d71658568f623b4a952e86eb67ac0d8266cc5b8efd4ef58e967977",
+      "canonicalLdrawSha256": "381f187394622c58d14e450c5b4ff786072637404a21dc0981848ffd99b9652f",
+      "program": "samebeat.bw",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons trimmed to the app schema and edited; comparison lessons written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "68/68 native checks per configuration (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless with SPIKE, COLD 0/275/1000, pendulum heading vs frame: period 0.50759-0.50761 s; compiled-collider prediction 0.50757 s (d = 23.78 mm); frame drift 0.001 mm"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (samebeat-conjugate, samebeat-control)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN",
+      "noveltyNote": "Overlaps pivot-exchange (same conjugate-pivot law d1*d2=k^2 with a slow near-centre control). Added on owner request 2026-10-25; differs by re-hanging one motor-launched body across three files."
+    },
+    {
+      "id": "samebeat-conjugate",
+      "title": "Samebeat — paired pivot",
+      "placements": 92,
+      "archive": "samebeat-addon.zip sha256 0cf75f2b7fdb4dbbbfee50c0ce9526e522f01d46af377b7724084be33b049330",
+      "originalLdrawSha256": "3c7133aa711211f7edb9e90f0780c81490424dfbf0074f77816d313ff4cae15f",
+      "canonicalLdrawSha256": "9516c0f9fc51287896010a78f5d321fcb3d6a918d2bfefe3fb749aece79c66f5",
+      "program": "samebeat.bw",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons trimmed to the app schema and edited; comparison lessons written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "68/68 native checks per configuration (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless with SPIKE, COLD 0/275/1000: period 0.50758-0.50760 s vs 0.50754 s predicted (d = 40.22 mm); pair difference <= 0.002%"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "samebeat-control",
+      "title": "Samebeat — control pivot",
+      "placements": 92,
+      "archive": "samebeat-addon.zip sha256 0cf75f2b7fdb4dbbbfee50c0ce9526e522f01d46af377b7724084be33b049330",
+      "originalLdrawSha256": "eebf8fbe435501751a2acf90fc7a37f2ba6153b4b3a5f1e4a3e098dd22b42339",
+      "canonicalLdrawSha256": "b2df2fd9914048ae1965aa725063749faaebf69b77cd65a6daa19e6aa7beedc1",
+      "program": "samebeat.bw",
+      "programSha256": "1cb584c493d25cff006a8f4f1f79c295b200c8ab2af53eed8a5929cda4c39457",
+      "adaptation": "Licence path pointed at the packaged licence; geometry and program bytes unchanged. Supplied lessons trimmed to the app schema and edited; comparison lessons written here. Needs the virtual SPIKE hub (toolbar Run connects it).",
+      "supplierClaims": "68/68 native checks per configuration (supplier)",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless with SPIKE, COLD 0/275/1000: period 0.70804-0.70806 s vs 0.70809 s predicted (d = 8.22 mm); 1.3949x the paired period"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
     }
   ],
   "appVerification": {

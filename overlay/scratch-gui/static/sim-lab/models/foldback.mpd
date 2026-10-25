@@ -1,0 +1,306 @@
+0 FILE foldback.ldr
+0 Foldback — crossed antiparallelogram
+0 Name: foldback.ldr
+0 Author: CrispStrobe
+0 !LICENSE BSD-3-Clause : see ../licenses/foldback.txt
+0 !LDRAW_ORG Unofficial_Model
+0 Saved input theta=90 degrees. Port A=90-theta. Operate theta20..110 only.
+0 No authored physical welds, free-body anchors, extra joints or solver overrides.
+0 Assembly stage 1: base
+0 !BW ID base_motor_rail_-60
+0 11L fore-aft rail supporting both motor mounting feet
+1 72 -60 120 60 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID base_motor_rail_60
+0 11L fore-aft rail supporting both motor mounting feet
+1 72 60 120 60 1 0 0 0 1 0 0 0 1 32525.dat
+0 !BW ID base_output_rail
+0 15L fore-aft rail supporting the passive shaft tower
+1 72 160 120 60 1 0 0 0 1 0 0 0 1 32278.dat
+0 !BW ID base_cross_-40
+0 15L crossmember joining motor and passive bearing supports
+1 0 60 140 -40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_hub_extension_-40
+0 15L lapped extension for the hub; two separated lap connections
+1 0 -140 160 -40 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_left_shared_pin_-40
+0 Single 3L pin through motor rail Y120, crossmember Y140 and extension Y160
+1 1 -60 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_pin_-40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -20 150 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_right_motor_pin_-40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 60 130 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_cross_160
+0 15L crossmember joining motor and passive bearing supports
+1 0 60 140 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_hub_extension_160
+0 15L lapped extension for the hub; two separated lap connections
+1 0 -140 160 160 0 0 1 0 1 0 -1 0 0 32278.dat
+0 !BW ID base_left_shared_pin_160
+0 Single 3L pin through motor rail Y120, crossmember Y140 and extension Y160
+1 1 -60 140 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_lap_pin_160
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -20 150 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_right_motor_pin_160
+0 One retained 2L friction pin owns the complete shared stack
+1 0 60 130 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_output_cross_pin_160
+0 One retained 2L friction pin owns the complete shared stack
+1 0 160 130 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_skid_20
+0 13L fore-aft skid joining both crossmembers
+1 72 20 160 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_diagonal_shared_pin
+0 Single 3L pin: crossmember Y140, skid Y160, diagonal Y180
+1 1 20 160 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID base_skid_pin_20_160
+0 One retained 2L friction pin owns the complete shared stack
+1 0 20 150 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_skid_180
+0 13L fore-aft skid joining both crossmembers
+1 72 180 160 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID base_skid_pin_180_-40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 180 150 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_skid_pin_180_160
+0 One retained 2L friction pin owns the complete shared stack
+1 0 180 150 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_diagonal
+0 11L diagonal from (X20,Z-40) to (X180,Z80): exact 160/120/200-LDU triangle
+1 14 100 180 20 0.6 0 0.8 0 1 0 -0.8 0 0.6 32525.dat
+0 !BW ID base_diagonal_far_pin
+0 One retained 2L friction pin owns the complete shared stack
+1 0 180 170 80 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_hub_ground_pad_-40
+0 Level ground contact beneath hub extension; two friction pins
+1 0 -260 180 -40 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID base_hub_ground_pin_-260_-40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -260 170 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_hub_ground_pin_-240_-40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -240 170 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_hub_ground_pad_160
+0 Level ground contact beneath hub extension; two friction pins
+1 0 -260 180 160 0 0 1 0 1 0 -1 0 0 32523.dat
+0 !BW ID base_hub_ground_pin_-260_160
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -260 170 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_hub_ground_pin_-240_160
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -240 170 160 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_right_ground_pad_20
+0 Level ground contact clear of the diagonal
+1 0 20 180 140 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID base_right_ground_pin_20_120
+0 One retained 2L friction pin owns the complete shared stack
+1 0 20 170 120 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_right_ground_pin_20_140
+0 One retained 2L friction pin owns the complete shared stack
+1 0 20 170 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_right_ground_pad_180
+0 Level ground contact clear of the diagonal
+1 0 180 180 -20 1 0 0 0 1 0 0 0 1 32523.dat
+0 !BW ID base_right_ground_pin_180_-20
+0 One retained 2L friction pin owns the complete shared stack
+1 0 180 170 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID base_right_ground_pin_180_0
+0 One retained 2L friction pin owns the complete shared stack
+1 0 180 170 0 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID hub_rail_-280
+0 13L rail immediately beneath the hub's lower mounting surface
+1 72 -280 140 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 !BW ID hub_rail_-160
+0 13L rail immediately beneath the hub's lower mounting surface
+1 72 -160 140 60 1 0 0 0 1 0 0 0 1 41239.dat
+0 STEP
+0 Assembly stage 2: motor_support
+0 !BW ID A_post_left_-20
+0 7L vertical post spans Y-20..100; two blind motor side-hole connections
+1 72 -40 40 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_left_-20_-20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 -30 -20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_left_-20_20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 -30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_left_-20
+0 Moulded perpendicular pin is the only male occupying the post foot hole
+1 72 -60 100 -20 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID A_foot_pin_left_-20
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -60 110 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID A_post_left_140
+0 7L vertical post spans Y-20..100; two blind motor side-hole connections
+1 72 -40 40 140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_left_140_-20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 -30 -20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_left_140_20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 -30 20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_left_140
+0 Moulded perpendicular pin is the only male occupying the post foot hole
+1 72 -60 100 140 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID A_foot_pin_left_140
+0 One retained 2L friction pin owns the complete shared stack
+1 0 -60 110 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID A_post_right_-20
+0 7L vertical post spans Y-20..100; two blind motor side-hole connections
+1 72 40 40 -20 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_right_-20_-20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 30 -20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_right_-20_20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 30 20 -20 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_right_-20
+0 Moulded perpendicular pin is the only male occupying the post foot hole
+1 72 60 100 -20 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID A_foot_pin_right_-20
+0 One retained 2L friction pin owns the complete shared stack
+1 0 60 110 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID A_post_right_140
+0 7L vertical post spans Y-20..100; two blind motor side-hole connections
+1 72 40 40 140 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID A_stator_pin_right_140_-20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 30 -20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_stator_pin_right_140_20
+0 2L pin fully seats in a motor side bore and post; no opposed second pin
+1 0 30 20 140 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID A_foot_right_140
+0 Moulded perpendicular pin is the only male occupying the post foot hole
+1 72 60 100 140 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID A_foot_pin_right_140
+0 One retained 2L friction pin owns the complete shared stack
+1 0 60 110 140 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID D_bearing_upper
+0 7L fixed round-hole bearing; centre h3 is the passive output shaft
+1 72 120 0 0 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID D_corner_upper_-40
+0 Integral +X pin fixes bearing bracket to the vertical tower post
+1 72 120 20 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID D_bearing_pin_upper_-40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 120 10 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID D_corner_upper_40
+0 Integral +X pin fixes bearing bracket to the vertical tower post
+1 72 120 20 40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID D_bearing_pin_upper_40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 120 10 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID D_bearing_lower
+0 7L fixed round-hole bearing; centre h3 is the passive output shaft
+1 72 120 40 0 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID D_corner_lower_-40
+0 Integral +X pin fixes bearing bracket to the vertical tower post
+1 72 120 60 -40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID D_bearing_pin_lower_-40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 120 50 -40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID D_corner_lower_40
+0 Integral +X pin fixes bearing bracket to the vertical tower post
+1 72 120 60 40 1 0 0 0 1 0 0 0 1 15100.dat
+0 !BW ID D_bearing_pin_lower_40
+0 One retained 2L friction pin owns the complete shared stack
+1 0 120 50 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID D_post_-40
+0 7L vertical tower post joins both bearing levels and the plinth
+1 72 140 40 -40 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID D_foot_-40
+0 Integral -X pin fixes output tower to its foot
+1 72 160 100 -40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID D_foot_front_shared_pin
+0 One 3L pin through foot Y100, output rail Y120 and crossmember Y140
+1 1 160 120 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID D_post_40
+0 7L vertical tower post joins both bearing levels and the plinth
+1 72 140 40 40 0 1 0 0 0 1 1 0 0 32524.dat
+0 !BW ID D_foot_40
+0 Integral -X pin fixes output tower to its foot
+1 72 160 100 40 -1 0 0 0 1 0 0 0 -1 15100.dat
+0 !BW ID D_foot_rear_pin
+0 One retained 2L friction pin owns the complete shared stack
+1 0 160 110 40 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID motor_A
+0 SPIKE medium angular motor; stator fastened by base module
+0 !BW PORT A
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 54696p01.dat
+0 STEP
+0 Assembly stage 3: input
+0 !BW ID input_axle
+0 4L axle: Y[-110,-30], fully enters motor output bore
+1 0 0 -70 0 0 -1 0 1 0 0 0 0 1 3705.dat
+0 !BW ID input_key
+0 3L keyed beam transfers axle torque through two retained pins
+1 1 0 -60 0 1 0 0 0 1 0 0 0 1 7229.dat
+0 !BW ID input_arm
+0 7L beam: O=h1, P=h5; 80 LDU active radius
+1 1 0 -80 40 1 0 0 0 1 0 0 0 1 32524.dat
+0 !BW ID input_key_pin_rear
+0 2L friction pin, collar between input key and arm
+1 0 0 -70 -20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID input_key_pin_front
+0 2L friction pin, collar between input key and arm
+1 0 0 -70 20 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID input_axle_retainer
+0 Half bush above input beam; 10 LDU of axle beyond bush
+1 72 0 -95 0 1 0 0 0 0 1 0 -1 0 4265c.dat
+0 STEP
+0 Assembly stage 4: output
+0 !BW ID output_axle
+0 12L axle: Y[-160,80], supported at Y=0 and 40
+1 0 120 -40 0 0 0.384615384615 -0.923076923077 1 0 0 0 -0.923076923077 -0.384615384615 3708.dat
+0 !BW ID output_key
+0 3L keyed beam, above output arm and below end retainer
+1 4 120 -140 0 -0.384615384615 0 -0.923076923077 0 1 0 0.923076923077 0 -0.384615384615 7229.dat
+0 !BW ID output_arm
+0 7L beam: D=h1, Q=h5; passive 80 LDU active radius
+1 4 83.0769230769 -120 -15.3846153846 -0.384615384615 0 -0.923076923077 0 1 0 0.923076923077 0 -0.384615384615 32524.dat
+0 !BW ID output_key_pin_rear
+0 2L friction pin, collar between output key and arm
+1 0 138.461538462 -130 7.69230769231 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID output_key_pin_front
+0 2L friction pin, collar between output key and arm
+1 0 101.538461538 -130 -7.69230769231 0 -1 0 1 0 0 0 0 1 2780.dat
+0 !BW ID output_top_retainer
+0 Half bush Y[-160,-150], retains top of keyed arm
+1 72 120 -155 0 -0.384615384615 0.923076923077 0 0 0 1 0.923076923077 0.384615384615 0 4265c.dat
+0 !BW ID output_bearing_retainer_upper
+0 Full bush outside the paired fixed bearings; prevents axial travel
+1 72 120 -20 0 -0.384615384615 0.923076923077 0 0 0 1 0.923076923077 0.384615384615 0 3713.dat
+0 !BW ID output_bearing_retainer_lower
+0 Full bush outside the paired fixed bearings; prevents axial travel
+1 72 120 60 0 -0.384615384615 0.923076923077 0 0 0 1 0.923076923077 0.384615384615 0 3713.dat
+0 STEP
+0 Assembly stage 5: coupler
+0 !BW ID coupler
+0 7L passive coupler: P=h0, Q=h6; 120 LDU active length
+1 14 23.0769230769 -100 24.6153846154 -0.923076923077 0 0.384615384615 0 1 0 -0.384615384615 0 -0.923076923077 32524.dat
+0 !BW ID joint_P_pin
+0 2L frictionless pin shared once by input and coupler
+1 7 0 -90 80 0 -1 0 1 0 0 0 0 1 3673.dat
+0 !BW ID joint_Q_pin
+0 2L frictionless pin shared once by coupler and output
+1 7 46.1538461538 -110 -30.7692307692 0 -1 0 1 0 0 0 0 1 3673.dat
+0 STEP
+0 Assembly stage 6: hub
+0 !BW ID hub
+0 One SPIKE Prime hub, four retained lower blind-hole mounts
+1 15 -220 130 60 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID hub_shared_pin_-280_-40
+0 Short end in hub bore Y110..130; long end through rail Y130..150 and extension Y150..170
+1 1 -280 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_shared_pin_-280_160
+0 Short end in hub bore Y110..130; long end through rail Y130..150 and extension Y150..170
+1 1 -280 140 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_shared_pin_-160_-40
+0 Short end in hub bore Y110..130; long end through rail Y130..150 and extension Y150..170
+1 1 -160 140 -40 0 -1 0 1 0 0 0 0 1 6558.dat
+0 !BW ID hub_shared_pin_-160_160
+0 Short end in hub bore Y110..130; long end through rail Y130..150 and extension Y150..170
+1 1 -160 140 160 0 -1 0 1 0 0 0 0 1 6558.dat
+0 NOFILE

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "thirdline-control",
+  "language": "de",
+  "what": "Der Vergleich zu Thirdline: dieselben 179 Teile und dasselbe Programm, aber das Gelenk, das das Lineal markiert, sitzt ein Loch weiter innen, sodass der Markierungsabstand 24 mm statt 32 mm beträgt. Der Kreisradius bleibt 32 mm. Die Gerade gleitet und dreht weiter frei, drittelt den Winkel aber nicht mehr: Im Simulator folgt sie ihrem eigenen Gesetz θ = 2φ + asin(0,75·sin φ) auf 0,036° genau und liegt bis zu 3,2° neben einem Drittel des Eingangs.",
+  "try": [
+    "Lade dieses Modell, drücke Zurücksetzen und dann Start und lies die gelbe Gerade bei jeder Pause ab: etwa 18,2°, 23,7°, 29,3° und 34,8° bei Eingängen von 50°, 65°, 80° und 95°.",
+    "Vergleiche mit Thirdline, wo dieselben Eingänge 16⅔°, 21⅔°, 26⅔° und 31⅔° ergeben: Hier ist jeder Wert zu groß, und der Abstand wächst.",
+    "Vergleiche die Abtriebsschritte bei gleichen 15°-Eingangsschritten: hier etwa 5,51°, 5,54° und 5,58°, in Thirdline gleichmäßig 5,00°.",
+    "Schau dir das Lineal an: Nur die Lage eines Gelenks ist anders. Ein einziges Loch entscheidet, ob die Maschine drittelt."
+  ],
+  "why": "Die Schließbedingung der archimedischen Konstruktion ist sin(θ − 2φ) = (d/r)·sin φ, mit dem Kreisradius r und dem Markierungsabstand d. Nur bei d = r wird daraus θ − 2φ = φ, also θ = 3φ. Mit d = 0,75·r ist der Zusatzterm asin(0,75·sin φ) kleiner als φ; die Gerade muss sich also weiter als ein Drittel drehen, damit sich die Figur schließt, und das Verhältnis ist nicht mehr konstant. Die Kontrolle zeigt, dass die Dreiteilung aus der gleichen Markierung kommt, nicht aus dem Motorprogramm oder den Führungen.",
+  "matters": "Eine gute Kontrolle ändert eine Ursache und sagt ein anderes Ergebnis voraus. Hier ist die Vorhersage nicht bloß „falsch“, sondern ein bestimmtes anderes Gesetz, und die gemessene Gerade folgt diesem Gesetz genau. Das belegt viel stärker als eine einzelne passende Zahl, dass das Hauptmodell aus dem angegebenen Grund funktioniert.",
+  "question": "Warum verdirbt das Versetzen eines Gelenks um ein Loch die Dreiteilung, obwohl alle Teile passen und sich frei bewegen?",
+  "answer": "Für die Dreiteilung muss der Markierungsabstand auf dem Lineal gleich dem Kreisradius sein (d = r). Das versetzte Gelenk macht d = 24 mm bei r = 32 mm, die Schließbedingung wird θ = 2φ + asin(0,75·sin φ) statt θ = 3φ. Die Gerade dreht sich dann pro 15°-Eingangsschritt um 5,51° bis 5,58° statt genau um 5°.",
+  "further": [
+    "Prüfe mit θ = 2φ + asin(0,75·sin φ) den Winkel der Geraden bei θ = 80° (etwa 29,3°).",
+    "Welcher Markierungsabstand d würde die Gerade bei kleinen Winkeln um mehr als die Hälfte des Eingangs drehen lassen?",
+    "Warum erkannten griechische Geometer, die nur Zirkel und unmarkiertes Lineal zuließen, Archimedes' Verfahren nicht an?"
+  ],
+  "formula": "sin(θ − 2φ) = (d/r)·sin φ ⇔ θ = 2φ + asin((d/r)·sin φ); hier d = 24 mm, r = 32 mm, d/r = 0,75. Thirdline: d = r ⇒ θ = 3φ.",
+  "related": []
+}

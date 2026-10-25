@@ -1236,6 +1236,167 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "speedDps": 270
             }
         }
+    },
+    {
+        "file": "foldback.ldr",
+        "title": {
+            "en": "Foldback — crossed four-bar",
+            "de": "Foldback — gekreuztes Viergelenk"
+        },
+        "example": "foldback.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor drives a crossed antiparallelogram. The passive output reverses direction with a changing angular ratio. Reassemble the same parts as an open parallelogram and compare the same finite input program.",
+            "de": "Ein Motor treibt ein gekreuztes Antiparallelogramm. Der passive Abtrieb dreht sich entgegengesetzt mit veränderlichem Winkelverhältnis. Vergleiche dasselbe endliche Programm mit denselben Teilen im offenen Parallelogramm."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -20,
+                "maxDeg": 70,
+                "stepDeg": 5,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "foldback-open.ldr",
+        "title": {
+            "en": "Foldback — open parallelogram (comparison)",
+            "de": "Foldback — offenes Parallelogramm (Vergleich)"
+        },
+        "example": "foldback.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same parts re-assembled as an open parallelogram. The same program now makes the output copy the input one-for-one, in the same direction.",
+            "de": "Dieselben Teile als offenes Parallelogramm zusammengebaut. Dasselbe Programm lässt den Abtrieb dem Eingang jetzt eins zu eins und in derselben Richtung folgen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -20,
+                "maxDeg": 70,
+                "stepDeg": 5,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "thirdline.ldr",
+        "title": {
+            "en": "Thirdline — angle trisector",
+            "de": "Thirdline — Winkeldreiteiler"
+        },
+        "example": "thirdline.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
+            "de": "Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -5,
+                "maxDeg": 40,
+                "stepDeg": 5,
+                "speedDps": 8
+            }
+        }
+    },
+    {
+        "file": "thirdline-control.ldr",
+        "title": {
+            "en": "Thirdline — shorter mark (control)",
+            "de": "Thirdline — kürzere Markierung (Kontrolle)"
+        },
+        "example": "thirdline.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Control: the ruler's marked joint is one hole inward (24 mm instead of 32 mm). The line still moves freely, but it follows a different law and no longer trisects the angle.",
+            "de": "Kontrolle: Das markierte Gelenk des Lineals sitzt ein Loch weiter innen (24 mm statt 32 mm). Die Gerade bewegt sich weiter frei, folgt aber einem anderen Gesetz und drittelt den Winkel nicht mehr."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -5,
+                "maxDeg": 40,
+                "stepDeg": 5,
+                "speedDps": 8
+            }
+        }
+    },
+    {
+        "file": "samebeat.ldr",
+        "title": {
+            "en": "Samebeat — reversible pendulum",
+            "de": "Samebeat — Reversionspendel"
+        },
+        "example": "samebeat.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
+            "de": "Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -8,
+                "maxDeg": 8,
+                "stepDeg": 4,
+                "speedDps": 60
+            }
+        }
+    },
+    {
+        "file": "samebeat-conjugate.ldr",
+        "title": {
+            "en": "Samebeat — paired pivot",
+            "de": "Samebeat — Partnerdrehpunkt"
+        },
+        "example": "samebeat.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same pendulum hung from its paired hole, 69% farther from its centre of mass. The period stays almost exactly the same.",
+            "de": "Dasselbe Pendel am Partnerloch, 69 % weiter vom Schwerpunkt entfernt. Die Periode bleibt fast genau gleich."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -8,
+                "maxDeg": 8,
+                "stepDeg": 4,
+                "speedDps": 60
+            }
+        }
+    },
+    {
+        "file": "samebeat-control.ldr",
+        "title": {
+            "en": "Samebeat — control pivot",
+            "de": "Samebeat — Kontrolldrehpunkt"
+        },
+        "example": "samebeat.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same pendulum hung from a hole close to its centre of mass. It swings about 40% more slowly, as the formula predicts.",
+            "de": "Dasselbe Pendel an einem Loch nahe am Schwerpunkt. Es schwingt etwa 40 % langsamer, wie die Formel vorhersagt."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -8,
+                "maxDeg": 8,
+                "stepDeg": 4,
+                "speedDps": 60
+            }
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -3124,6 +3285,242 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "Luftvorrat",
             "Hubvolumen",
             "Verdichtungsweg",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "foldback.ldr": {
+        "pieces": 95,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor drives a crossed antiparallelogram. The passive output reverses direction with a changing angular ratio. Reassemble the same parts as an open parallelogram and compare the same finite input program.",
+            "de": "Ein Motor treibt ein gekreuztes Antiparallelogramm. Der passive Abtrieb dreht sich entgegengesetzt mit veränderlichem Winkelverhältnis. Vergleiche dasselbe endliche Programm mit denselben Teilen im offenen Parallelogramm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Antiparallelogram / crossed four-bar linkage",
+            "de": "Antiparallelogramm / gekreuztes Viergelenk"
+        },
+        "keywords": [
+            "antiparallelogram",
+            "crossed parallelogram",
+            "crossed four-bar",
+            "assembly branch",
+            "tangent half angle",
+            "Antiparallelogramm",
+            "gekreuztes Viergelenk",
+            "Montagezweig",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "foldback-open.ldr": {
+        "pieces": 95,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "The same parts re-assembled as an open parallelogram. The same program now makes the output copy the input one-for-one, in the same direction.",
+            "de": "Dieselben Teile als offenes Parallelogramm zusammengebaut. Dasselbe Programm lässt den Abtrieb dem Eingang jetzt eins zu eins und in derselben Richtung folgen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Antiparallelogram / crossed four-bar linkage",
+            "de": "Antiparallelogramm / gekreuztes Viergelenk"
+        },
+        "keywords": [
+            "antiparallelogram",
+            "crossed parallelogram",
+            "crossed four-bar",
+            "assembly branch",
+            "tangent half angle",
+            "Antiparallelogramm",
+            "gekreuztes Viergelenk",
+            "Montagezweig",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "thirdline.ldr": {
+        "pieces": 179,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
+            "de": "Ein Motor stellt den Eingangswinkel ein. Gleiche Kreisradien und eine markierte gleitende Gerade erzeugen passiv ein Winkeldrittel. Versetze eine Markierung nach innen und vergleiche dasselbe endliche Programm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Archimedes / neusis angle trisector",
+            "de": "Archimedische Winkeldreiteilung / Neusis-Konstruktion"
+        },
+        "keywords": [
+            "angle trisector",
+            "angle trisection",
+            "neusis",
+            "marked ruler",
+            "Archimedes",
+            "gearless angle division",
+            "Winkeldreiteilung",
+            "Neusis",
+            "markiertes Lineal",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "thirdline-control.ldr": {
+        "pieces": 179,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "linkages",
+        "description": {
+            "en": "Control: the ruler's marked joint is one hole inward (24 mm instead of 32 mm). The line still moves freely, but it follows a different law and no longer trisects the angle.",
+            "de": "Kontrolle: Das markierte Gelenk des Lineals sitzt ein Loch weiter innen (24 mm statt 32 mm). Die Gerade bewegt sich weiter frei, folgt aber einem anderen Gesetz und drittelt den Winkel nicht mehr."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Archimedes / neusis angle trisector",
+            "de": "Archimedische Winkeldreiteilung / Neusis-Konstruktion"
+        },
+        "keywords": [
+            "angle trisector",
+            "angle trisection",
+            "neusis",
+            "marked ruler",
+            "Archimedes",
+            "gearless angle division",
+            "Winkeldreiteilung",
+            "Neusis",
+            "markiertes Lineal",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "samebeat.ldr": {
+        "pieces": 92,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "A brief motor pulse moves a support and releases a passive rigid pendulum. Rehang the same body at its unequal paired pivot and compare periods; then test a third suspension with the same parts and program.",
+            "de": "Ein kurzer Motorimpuls bewegt die Aufhängung eines passiven starren Pendels. Hänge denselben Körper am ungleichen zweiten Punkt auf und vergleiche die Perioden; prüfe danach einen dritten Punkt mit denselben Teilen und demselben Programm."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Reversible compound pendulum — Kater principle",
+            "de": "Reversionspendel — Kater-Prinzip"
+        },
+        "keywords": [
+            "reversible pendulum",
+            "compound pendulum",
+            "physical pendulum",
+            "Kater pendulum",
+            "conjugate pivots",
+            "centre of oscillation",
+            "Reversionspendel",
+            "physikalisches Pendel",
+            "konjugierte Aufhängepunkte",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "samebeat-conjugate.ldr": {
+        "pieces": 92,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same pendulum hung from its paired hole, 69% farther from its centre of mass. The period stays almost exactly the same.",
+            "de": "Dasselbe Pendel am Partnerloch, 69 % weiter vom Schwerpunkt entfernt. Die Periode bleibt fast genau gleich."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Reversible compound pendulum — Kater principle",
+            "de": "Reversionspendel — Kater-Prinzip"
+        },
+        "keywords": [
+            "reversible pendulum",
+            "compound pendulum",
+            "physical pendulum",
+            "Kater pendulum",
+            "conjugate pivots",
+            "centre of oscillation",
+            "Reversionspendel",
+            "physikalisches Pendel",
+            "konjugierte Aufhängepunkte",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "samebeat-control.ldr": {
+        "pieces": 92,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same pendulum hung from a hole close to its centre of mass. It swings about 40% more slowly, as the formula predicts.",
+            "de": "Dasselbe Pendel an einem Loch nahe am Schwerpunkt. Es schwingt etwa 40 % langsamer, wie die Formel vorhersagt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Reversible compound pendulum — Kater principle",
+            "de": "Reversionspendel — Kater-Prinzip"
+        },
+        "keywords": [
+            "reversible pendulum",
+            "compound pendulum",
+            "physical pendulum",
+            "Kater pendulum",
+            "conjugate pivots",
+            "centre of oscillation",
+            "Reversionspendel",
+            "physikalisches Pendel",
+            "konjugierte Aufhängepunkte",
             "experimental",
             "prototype",
             "unverified",
