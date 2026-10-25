@@ -91,6 +91,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Willy Tschager [Holly-Wood]"
   },
+  "p/1-4con10.dat": {
+   "sha256": "769e66e0abea62533d437bb46f663288e75e28304709fb959eac4709174ce728",
+   "release": "G Primitive UPDATE 2024-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Willy Tschager [Holly-Wood]"
+  },
   "p/1-4con14.dat": {
    "sha256": "05117c3ca27c1a7ddd296682cf0b183e18d5a501436e128b55f146c3205b0ed9",
    "release": "G Primitive UPDATE 2011-02",
@@ -6577,6 +6583,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
   },
+  "parts/5996.dat": {
+   "sha256": "6f797d38fc5feb09edf1d3fcaa448fa30f2612508f79a545e693231573f47e37",
+   "release": "G Part UPDATE 2025-07",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Gerald Lasser [GeraldLasser]"
+  },
   "parts/60479.dat": {
    "sha256": "4cc9f46de13bd157dbbf16757bed1becee52253848fc1827d6c18477b94907b3",
    "release": "G Part UPDATE 2009-02",
@@ -7753,6 +7765,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
   },
+  "parts/s/2739as01.dat": {
+   "sha256": "e57abc6aaa93ca929765e63d4253a4dfeeea5b42dac969cb5ceabbe87fc58fe7",
+   "release": "G Subpart UPDATE 2025-09",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Donald Sutter [technog]"
+  },
   "parts/s/2837bs01.dat": {
    "sha256": "ac58cdc4c65346a2f0a433eede01f39527992c88aee50aa4408664fe64674438",
    "release": "G Subpart UPDATE 2013-02",
@@ -8508,6 +8526,12 @@
    "release": "G Subpart UPDATE 2025-09",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/s/5996s01.dat": {
+   "sha256": "dc6ed3839779a3fe855ea0d4b30bf782ca8755945b5a0f46cad930ed6c720e2f",
+   "release": "G Subpart UPDATE 2025-07",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Gerald Lasser [GeraldLasser]"
   },
   "parts/s/60483s01.dat": {
    "sha256": "19502854a4f0a692bdf46cf90f901fbdf443aa96221fe8436965c6bd97d0b803",

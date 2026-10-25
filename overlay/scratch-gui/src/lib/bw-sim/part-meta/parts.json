@@ -184267,6 +184267,60 @@
      ]
     }
    }
+  },
+  {
+   "part": "5996.dat",
+   "name": "Technic steering link 8L",
+   "nameDe": "Technic-Lenkung Link 8L",
+   "nameDeGenerated": true,
+   "category": "connector",
+   "massGrams": 0.75,
+   "connectors": [
+    {
+     "id": "bs0",
+     "type": "ballsocket",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    },
+    {
+     "id": "bs1",
+     "type": "ballsocket",
+     "position": [
+      0,
+      0,
+      140
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      7.11,
+      80
+     ],
+     "position": [
+      0,
+      0.19,
+      70
+     ]
+    }
+   ],
+   "derived": true
   }
  ]
 }
