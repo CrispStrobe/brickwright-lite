@@ -34,11 +34,44 @@ Final composed hosted checks and affected actual authoring remain pending;
 preserve the current original CI failures and terminal numeric intake before
 publishing a successor.
 
-Next, carry [the atan2 authoring claim](https://github.com/CrispStrobe/brickwright-lite/pull/1377)
-through its required merge, upstream dialect implementation/qualification,
-normal supplier adoption, runtime/conversion controls and real GUI acceptance.
-The five affected retained contexts have other gaps too. Closing atan2 alone
-does not count those applications complete.
+The atan2 claim and both follow-up Number-consumer claims are merged. The
+binary-math vocabulary landed upstream in
+[sb3-creator #167](https://github.com/CrispStrobe/sb3-creator/pull/167), after
+459 source checks, two meaningful mutation cuts and all enabled hosted checks.
+Lite adopts that exact supplier through normal sync. The candidate adds radians,
+argument-order and non-finite/signed-zero controls, current export, Code and
+saved-project journeys, and a visible Blocks menu edit followed by restoration.
+These new Lite runtime and browser controls still need final-head qualification.
+
+The whole source journey exposed a separate startup reset boundary. The
+[merged reset-proof scope](../lanes/2026-10-25-arcade-source-start-reset-effects.md)
+adds a bounded execution-order analysis for closed startup/value procedures.
+It can discount an unreachable null/undefined reset; it grants no Array,
+initialization or caller-type authority. Keep unknown calls, early observations,
+competing entries, references and changed-source negatives. The full atan2 source program passes JSON export, emitted-file reimport,
+current Code and own-SB3 source journeys. Live-object export does not acquire
+the JSON-only proof. Further nested export wrappers remain a separate frontier
+until demonstrated by actual tests.
+
+The [merged scalar Any-consumer scope](../lanes/2026-10-25-arcade-any-scalar-consumer.md)
+addresses independently produced primitive values rejected against a consumer's
+`any` annotation. Return the actual value unchanged; preserve generic and
+concrete-consumer checks. The unchanged Image/class fixture must pass source,
+Code, export/reimport and hosted runtime checks before this is called complete.
+
+A repeat scan of all unchanged raw inputs on the composed source candidate
+still reports **145 translated / 38 partial / one parse failure**. All five affected dependency contexts now import without the missing-atan2
+diagnostic. Their overall source status remains four parse failures and one
+partial because other diagnostics remain; an API repair does not count those
+applications complete.
+
+The retained four-shard CI baseline at
+[`8e7691ad`](https://github.com/CrispStrobe/brickwright-lite/commit/8e7691ad713fce0922a5558f3998c8e98c2b09d5)
+has **13,191 passes, 70 failures, 19 skips and 37 TODOs**. Forty-nine failures
+are native-addition groups; 21 have separate causes. The baseline numeric job
+passes five reports covering 29 finite journeys. Its optional clean-export
+freshness capture is unavailable. These are retained baseline results, not
+qualification of the current fixes.
 
 ## Current qualification — 24 October 2026
 

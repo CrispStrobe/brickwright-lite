@@ -990,6 +990,7 @@ class ArcadeTranslator extends BaseTranslator {
         case 'Math.randomRange':
         case 'Math.min':
         case 'Math.max':
+        case 'Math.atan2':
         case 'Math.percentChance':
         case 'Math.clamp':
             if(this.bindsName('Math')) {this.note(`${name} refers to a shadowed Math binding`);return 'undefined value';}
@@ -997,6 +998,11 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length!==arity){this.note(`${name}() requires exactly ${arity} arguments`);return 'undefined value';}
             if(name==='Math.random')return 'arcade random fraction';
             if(name==='Math.percentChance')return `arcade percent chance (${this.arrayElementValue(a[0])})`;
+            if(name==='Math.atan2'&&a.some(value=>['Array','Object'].includes(value?.type)||
+                this.arrayReferences?.has(value)||this.spriteReferences?.has(value)||
+                this.bufferReferences?.has(value)||this.imageReferences?.has(value))){
+                this.note('Math.atan2 reference argument conversion is not implemented');return 'undefined value';
+            }
             if(name==='Math.clamp'){
                 if(a.some(value=>!['Null','Undefined'].includes(value?.type) &&
                     (['Array','Object'].includes(value?.type) || this.arrayReferences?.has(value) || this.spriteReferences?.has(value) || this.bufferReferences?.has(value) || this.imageReferences?.has(value)))){
@@ -4371,7 +4377,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
-        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.clamp','Math.min','Math.max','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
+        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.clamp','Math.min','Math.max','Math.atan2','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && t.arrayReferences.has(node.callee.object))return true;
         if (node.type === 'Declaration' && node.decls.some(d => t.imageOf(d.init))) return true;
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;

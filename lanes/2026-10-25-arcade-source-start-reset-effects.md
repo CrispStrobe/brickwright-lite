@@ -1,6 +1,7 @@
 # Closed source-start reset nonreachability
 
-Status: CLAIMED; merge before implementation. Owner: Arcade integration,
+Status: IMPLEMENTED in the integration candidate; final exact-head runtime/editor
+qualification pending. Owner: Arcade integration,
 continuing PR #1128. Preserve all earlier local/frame reset guards.
 Base: `1f2842e524e6633b5f250a18e5205b2ee84b9518`.
 

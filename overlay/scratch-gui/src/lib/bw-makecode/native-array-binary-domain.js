@@ -555,7 +555,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
             return {helpers:new Map(),current,reason:'native addition requires flat primitive allocation contents and no foreign escapes'};
     }
     const path=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?path(node.object)+'.'+node.name:null;
-    const namespaceCalls=new Set(['Array.isArray','Object.keys','JSON.parse','JSON.stringify','Math.round','Math.floor','Math.ceil','Math.min','Math.max','Math.abs','Math.random','Math.percentChance',
+    const namespaceCalls=new Set(['Array.isArray','Object.keys','JSON.parse','JSON.stringify','Math.round','Math.floor','Math.ceil','Math.min','Math.max','Math.atan2','Math.abs','Math.random','Math.percentChance',
         'console.log','game.onUpdate','game.onUpdateInterval','control.runInParallel','control.panic','basic.pause','music.stopAllSounds',
         'info.setScore','info.changeScoreBy','info.score','info.startCountdown','info.onCountdownEnd','sprites.create','sprites.onCreated','sprites.onDestroyed','sprites.onOverlap']);
     const root=node=>node?.type==='Identifier'?node:node?.type==='Member'?root(node.object):null;

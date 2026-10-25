@@ -169,7 +169,7 @@ export function createArrayNativeFrameReset(context){
             if(n.opcode==='operator_add')return shape(n,s,['NUM1','NUM2'])&&numeric(['NUM1','NUM2'])?number:unknown;
             if(n.opcode==='arrays_valueBinary')return shape(n,s,['LEFT','RIGHT'],['OP'])&&['+','-','*','/','%','**'].includes(literal(n,'OP',s.target))&&numeric(['LEFT','RIGHT'])?number:unknown;
             if(n.opcode==='arrays_valueCompare')return shape(n,s,['LEFT','RIGHT'],['OP'])&&['<','<=','>','>=','===','!==','==','!='].includes(literal(n,'OP',s.target))&&numeric(['LEFT','RIGHT'])?boolean:unknown;
-            if(n.opcode==='arcade_mathBinary')return shape(n,s,['A','B'],['OP'])&&['min','max','randomRange'].includes(literal(n,'OP',s.target))&&numeric(['A','B'])?number:unknown;
+            if(n.opcode==='arcade_mathBinary')return shape(n,s,['A','B'],['OP'])&&['min','max','randomRange','atan2'].includes(literal(n,'OP',s.target))&&numeric(['A','B'])?number:unknown;
             if(n.opcode==='arcade_randomNumber')return shape(n,s)?number:unknown;
             if(n.opcode==='arcade_percentChance')return shape(n,s,['PERCENTAGE'])&&numeric(['PERCENTAGE'])?boolean:unknown;
             if(n.opcode==='arcade_createSpriteKind')return shape(n,s)?number:unknown;

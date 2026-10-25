@@ -484,7 +484,9 @@
       "test/arcade-native-addition-ordinary-fallback.test.mjs",
       "test/bw-sim-circle-splitter.test.mjs",
       "test/bw-sim-integral.test.mjs",
-      "test/arcade-sdk-scalar-addition.test.mjs"
+      "test/arcade-sdk-scalar-addition.test.mjs",
+      "test/arcade-math-atan2.test.mjs",
+      "test/array-source-start-reset-effects.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },

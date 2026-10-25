@@ -345,10 +345,15 @@ try {
     await cycle('unchanged-import', {}, files);
     await paletteCreate();
     await editNumber({opcode: 'arcade_clampNumber', input: 'MAX', value: '10'}, 12);
-    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'min'}, 'max', ['min', 'max', 'randomRange']);
+    const mathOperations = ['min', 'max', 'randomRange', 'atan2'];
+    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'min'}, 'max', mathOperations);
     await editMenu({opcode: 'arcade_settingsRead', input: 'TYPE', value: 'StringArray'}, 'String', ['StringArray', 'String']);
     await editMenu({opcode: 'arcade_settingsRead', input: 'TYPE', value: 'String'}, 'StringArray', ['StringArray', 'String']);
     const edited = {maximum: 12, operation: 'max'}; await cycle('visible-block-edits', edited, numericAuthoringFiles(edited));
+    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'max'}, 'atan2', mathOperations);
+    const angle = {maximum: 12, operation: 'atan2'}; await cycle('visible-atan2-edit', angle, numericAuthoringFiles(angle));
+    await editMenu({opcode: 'arcade_mathBinary', input: 'OP', value: 'atan2'}, 'max', mathOperations);
+    await cycle('visible-math-restored', edited, numericAuthoringFiles(edited));
     await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.waitForFunction(() => {
         const code = document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString();

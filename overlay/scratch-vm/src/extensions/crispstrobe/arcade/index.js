@@ -1023,7 +1023,7 @@ module.exports = makeExt(`// Name: Arcade
           sourceBinaryOperations:{acceptReporters:false,items:['+','-','*','/','%','**','&','|','^','<<','>>','>>>']},
           sourceUnaryOperations:{acceptReporters:false,items:['~']},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
-          mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
+          mathOperations:{acceptReporters:false,items:['min','max','randomRange','atan2']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
           buttons: {acceptReporters: true, items: [
             {text: 'A', value: 'a'}, {text: 'B', value: 'b'},
@@ -1979,6 +1979,7 @@ module.exports = makeExt(`// Name: Arcade
       if (operation==='min') value=a<=b?a:b;
       else if (operation==='max') value=a>=b?a:b;
       else if (operation==='randomRange') value=this._randomRange(a,b);
+      else if (operation==='atan2') value=Math.atan2(a,b);
       else throw new TypeError('Arcade math operation is not implemented: '+operation);
       return Scratch.BWValues.encode(value);
     }

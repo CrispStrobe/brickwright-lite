@@ -8,20 +8,22 @@ measures 145 translated / 38 partial / one parse failure; it does not measure
 complete games. Keep companion roots, canonical retained dependency contexts,
 historical original compiler success and current execution distinct.
 
-1. Finish current PR #1128 terminal CI intake once, retaining actual failures
-   and the numeric-authoring outcome before publishing a successor.
+1. Preserve the completed PR #1128 baseline intake: four unit originals and
+   terminal numeric-authoring result are retained. Do not reacquire them or
+   borrow their success for a successor.
 2. Qualify the SDK scalar candidate: 44 affected source checks and two guard
-   mutations pass; current SDK/runtime and visible authoring remain pending.
-   Verify real edited positions/pixels and fresh reopen; do not replace unknown
-   operands with defaults or reinstate the Opaque-addition fallback.
-3. Merge [the scoped atan2 claim](https://github.com/CrispStrobe/brickwright-lite/pull/1377)
-   before implementation. Land the dialect vocabulary upstream in sb3-creator,
-   then adopt its reviewed pin through sync. Implement importer, exporter,
-   runtime and the fixed Blocks menu together, preserving radians, argument
-   order and existing negative controls. Add actual visible menu-edit acceptance.
-4. Qualify one composed candidate with affected original/emitted PXT, native
-   execution, Code/Blocks, saved-project reload, artwork and controller checks.
-   Recount affected unchanged inputs and list residual gaps independently.
+   mutations pass. Current SDK/runtime and visible authoring remain pending.
+   Keep real position/pixel edits and fresh reopen, with no Opaque fallback.
+3. Compose atan2, the separately claimed source-start reset proof, and the
+   scalar Any-consumer repair. The dialect is already qualified and landed
+   upstream; adopt its exact pin through normal sync. Preserve complete
+   programs, signed zero, argument order and existing refusal controls.
+4. Publish one final composed candidate for affected original/emitted PXT,
+   native execution, Code/Blocks, saved-project reload, artwork and controller
+   checks. Inspect every actual failed check; preserve original failures.
+5. Recount unchanged inputs and affected dependency-complete contexts. Keep
+   import/Creator, current SDK compilation, native execution and visible
+   authoring separate. Scope the next remaining family from actual diagnostics.
 
 Five historically compiling retained contexts report atan2 as one of several
 gaps. The same family also exposes HUD enum members, String conversion,
@@ -29,6 +31,28 @@ procedure default/omission and numeric sprite provenance issues. Closing one
 API is not a completion claim for those projects. Claim each additional path
 before implementation; retain dependency-identity conflicts and missing context
 instead of silently repairing the original inputs.
+
+### Residual unit families: reproduce the boundary before changing it
+
+The retained 70-failure baseline includes 21 groups outside the 49 native-addition
+failures. Reclassify these against the final composed run before implementing
+another repair. Obtain a merged precise claim for the affected paths first.
+Keep original programs and assertions; a source reconstruction is a diagnostic,
+not an execution result.
+
+| Family and starting test | Required next work and completion check |
+| --- | --- |
+| Class initializer consumers: `makecode-sdk-image-default-admission`, `makecode-sdk-image-class-current-export`, `makecode-class-parameter-properties`, `makecode-class-callable-conditional-original` | Inspect actual reconstructed initializers and all writers. The current scalar Any-consumer repair covers independently produced primitives only. Preserve concrete, generic, callback and Image ownership constraints; qualify original/emitted PXT, native and fresh reload. |
+| Captured bitwise export: `makecode-arcade-primitive-compound`, `makecode-arcade-randint-authoring`, `makecode-arcade-typed-bitwise` | Capture the rejected physical operand and actual producer/callee. Repair the precise normal-result or captured-writer proof; retain all six operations, negative operands, uninitialized and reference refusals. Require Code/export/reimport plus original PXT and native agreement. |
+| Score registration and completion: `makecode-arcade-score-threshold-native` | Inspect the actual threshold input carrier and its numeric-shadow provenance; connected String/reference inputs must stay refused. Separately locate the original program's last completed scene/score continuation. Do not change timeouts or infer a resource cause. Preserve Stop/suspension and player ownership. |
+| Exported SDK dispatch: `makecode-arcade-sdk-dialog-class`, `makecode-arcade-array-reference-flow` | The exported original runtime fails at `iface` and `findIdx` respectively, after earlier native checks. Inspect actual emitted receiver types, methods and compiler output. Fix export typing/dispatch; require the unchanged program to run in MakeCode after reimport. |
+| Stale Array and duplicate player procedure: `makecode-arcade-array-coercion`, `makecode-arcade-player-number-producers` | Preserve actual stale-body refusal and exactly-one diagnostic. Inspect the thrown identity and duplicate-definition guard; retain all earlier native/save/reload acceptance. |
+| Source Array bitwise test contract: `makecode-arcade-typed-bitwise`, `makecode-arcade-reference-array-fallback` | Compare older negative expectations with the deliberately implemented original-source Array arithmetic contract. Any test maintenance needs its own claim and independent Image/object/unknown negatives plus a meaningful mutation. Preserve native reference refusal and actual original-PXT comparisons. |
+
+Each filename in this table is under `test/` and ends in `.test.mjs`.
+After a family qualifies, measure the unchanged corpus again and update the
+Code/Blocks/graphics/controller/save-and-reopen rows in the GUI ledger. Report
+remaining diagnostics explicitly, rather than marking a partial program full.
 
 The active [captured-class primitive task](ARCADE-CLASS-CAPTURED-PRIMITIVES.md)
 records the current source changes, observed failures and next acceptance steps.
