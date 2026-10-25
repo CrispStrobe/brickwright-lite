@@ -8,16 +8,18 @@ import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../',import.meta.url));
 const readOriginalControlSummary = stdout => JSON.parse(stdout.trim());
 const runControlChildren = async (specs,deadlineMs) => {
-    const started=performance.now(),children=[];let expired=false;
-    const timer=setTimeout(()=>{expired=true;for(const child of children)child.kill('SIGKILL');},deadlineMs);
+    const started=performance.now(),children=[];let expired=false,aggregateOverflow=false,capturedBytes=0;
+    const stop=()=>{for(const child of children)child.kill('SIGKILL');};
+    const timer=setTimeout(()=>{expired=true;stop();},deadlineMs);
     const launch=spec=>new Promise(resolve=>{
         const child=spawn(spec.argv[0],spec.argv.slice(1),{cwd:root,stdio:['pipe','pipe','pipe']});
         children.push(child);
         const output={stdout:[],stderr:[]},length={stdout:0,stderr:0};let error=null,overflow=false;
         for(const stream of ['stdout','stderr'])child[stream].on('data',chunk=>{
             length[stream]+=chunk.length;
-            if(length[stream]>4*1024*1024){overflow=true;child.kill('SIGKILL');}
-            else output[stream].push(chunk);
+            if(length[stream]>4*1024*1024){overflow=true;stop();return;}
+            if(capturedBytes+chunk.length>4*1024*1024){aggregateOverflow=true;stop();return;}
+            capturedBytes+=chunk.length;output[stream].push(chunk);
         });
         child.on('error',failure=>{error=failure;});
         child.on('close',(code,signal)=>resolve({code,signal,error,overflow,
@@ -26,7 +28,7 @@ const runControlChildren = async (specs,deadlineMs) => {
         child.stdin.on('error',failure=>{error??=failure;child.kill('SIGKILL');});
         child.stdin.end(spec.input || '');
     });
-    try{return {results:await Promise.all(specs.map(launch)),expired,elapsedMs:performance.now()-started};}
+    try{return {results:await Promise.all(specs.map(launch)),expired,aggregateOverflow,capturedBytes,elapsedMs:performance.now()-started};}
     finally{clearTimeout(timer);}
 };
 
@@ -2540,6 +2542,15 @@ test('parallel original control deadline and child failures cannot be ignored', 
     assert.equal(failure.results[0].code,3);assert.equal(failure.results[0].error,null);assert.equal(failure.expired,false);
     const timeout=await runControlChildren([{argv:['/usr/bin/python3','-c','import time;time.sleep(1)']}],10);
     assert.equal(timeout.expired,true);assert.notEqual(timeout.results[0].code,0);
+    const bytes=3*1024*1024;
+    const emitted='import sys;sys.stdout.buffer.write(b"x"*'+bytes+')';
+    const aggregate=await runControlChildren([
+        {argv:['/usr/bin/python3','-c',emitted]},
+        {argv:['/usr/bin/python3','-c',emitted]}],5000);
+    assert.equal(aggregate.expired,false);
+    assert.equal(aggregate.aggregateOverflow,true,'two individually bounded children exceed the one retained 4 MiB budget');
+    assert.ok(aggregate.capturedBytes<=4*1024*1024);
+    assert.ok(aggregate.results.every(result=>result.overflow===false && result.stdout.length<4*1024*1024));
 });
 
 test('standalone original reader: complete manufactured packet and coherent negative controls', async () => {
@@ -2552,8 +2563,10 @@ test('standalone original reader: complete manufactured packet and coherent nega
         assert.notEqual(selected,controls);
         specs.push({argv:['/usr/bin/python3','-B','-',root],input:selected});
     }
-    const {results,expired,elapsedMs}=await runControlChildren(specs,60000);
+    const {results,expired,aggregateOverflow,capturedBytes,elapsedMs}=await runControlChildren(specs,60000);
     assert.equal(expired,false,'one shared 60-second deadline covers all original controls');
+    assert.equal(aggregateOverflow,false,'one retained 4 MiB budget covers both original-control children');
+    assert.ok(capturedBytes<=4*1024*1024);
     assert.ok(elapsedMs<=60000,'one aggregate original-control wall budget');
     let total=0;
     for(const result of results){
