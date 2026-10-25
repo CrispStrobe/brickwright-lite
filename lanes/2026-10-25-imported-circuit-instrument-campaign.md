@@ -101,8 +101,20 @@ All 240 waveform CSVs equal the preceding retained baseline; no original was
 replayed. Full hashes and limits are in the
 [result handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md).
 
-Overall ownership remains CLAIMED for steps 2–5. Source/eligibility inspection
-does not yet establish 300 distinct cleared analogue schematics; admit the
-cohort and exact implementation paths before the next experiment. No format
-twin, retargeted device bench or unsupported row is silently counted as a new
-comparable design. The previous whole five-item sequence is not being reopened.
+Step 2 evidence is collected with explicit unsupported/refusal states:307
+source-admitted graph-distinct structures,67 pass/8 partial/4 disagree/228
+not-run at unchanged bounds. ActualCLI 32-input cross-checks yield19 consistent
+cases,169 conservation checks and 81 descriptive oracle agreements,with unknown
+reference-method eligibility. Two requested long RC watch captures refuse
+before artifacts; their references remain not-run. No waveform or physical
+accuracy claim is manufactured. The private research cohort is not public
+redistribution clearance or a balanced300-design teaching catalogue.
+
+Overall ownership remains CLAIMED for steps 3–5. The bounded shared-source claim
+is [CUI PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119),covering
+exact PMOS bulk wiring,implicit NMOS bulk-current conservation and effective-step
+work preflight. Implementation waits for canonical claim merge and exact-head
+qualification; package adoption follows qualified owned sources only. Long
+passive-watch capacity is a separately scoped capability,not permission to
+weaken old limits. No format twin,retargeted bench or unsupported row silently
+counts as a new comparable design. The previous sequence is not reopened.
