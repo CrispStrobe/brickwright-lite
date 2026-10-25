@@ -144,8 +144,17 @@ test('the dedicated workflow installs Rust and watches every notices input', () 
     }
     assert.match(workflow, /workflow_dispatch:/,
         'a new workflow needs a branch dispatch before the CI census can judge it');
-    assert.doesNotMatch(workflow, /push:\s*\n\s+branches:/,
-        'a new workflow absent from default cannot be dispatched; its path-filtered branch push must bootstrap the first run');
+    const reviewedPush = "  push:\n    branches: ['**']\n    tags-ignore: ['bw-gui-hdd-actual-v8-*']\n";
+    const admitPush = source => assert.equal(source.split(reviewedPush).length, 2,
+        'all branch pushes remain eligible while the internal GUI V8 tag is excluded exactly once');
+    admitPush(workflow);
+    for (const malformed of [
+        workflow.replace("    branches: ['**']\n", ''),
+        workflow.replace("    branches: ['**']", "    branches: ['main']"),
+        workflow.replace("    tags-ignore: ['bw-gui-hdd-actual-v8-*']\n", ''),
+        workflow.replace('bw-gui-hdd-actual-v8-*', 'bw-gui-hdd-actual-v7-*')
+    ]) assert.throws(() => admitPush(malformed),
+        'a narrowed branch roster or wrong tag exclusion must refuse');
     assert.match(workflow, /group: rust-notices-\$\{\{ github\.head_ref \|\| github\.ref_name \}\}/,
         'branch-push and pull-request runs must share one cancellation group');
     assert.match(workflow, /cancel-in-progress: true/,
