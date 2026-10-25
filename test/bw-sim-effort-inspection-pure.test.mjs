@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {createPhysicsHost} from '../overlay/scratch-gui/src/lib/bw-sim/physics/physics-host.js';
+import {PhysicsClient} from '../overlay/scratch-gui/src/lib/bw-sim/physics/physics-client.js';
 import {createRollingResistance,rollingRadius} from '../overlay/scratch-gui/src/lib/bw-sim/physics/rolling.js';
 const vec = (x=0,y=0,z=0) => ({GetX:()=>x,GetY:()=>y,GetZ:()=>z});
 function bench(mass, factor) {
@@ -102,4 +104,28 @@ test('both authored hosted fixtures validate and normalize to exact actuator, ge
         assert.equal(wheel.motion,'dynamic');
     }
     const broken=structuredClone(fixtures[1]);delete broken.gears[0].type;assert.ok(validateCompiledMechanism(broken).length>0);
+});
+
+
+test('actual host/client load and batch envelopes preserve observations across the complete worker boundary', async () => {
+    // Transport doubles only: no Jolt namespace or simulator is initialized here.
+    let host, time = 0;
+    const bodyDynamics = {b: {configuredMassKg: 0.003, solverMassKg: 0.02, centerOfMassWorld: [1, 2, 3]}};
+    const poses = () => ({t: time, bodies: new Float64Array([0, 0, 0, 0, 0, 0, 1]), joints: new Float64Array(2),
+        bodyDynamics, jointDynamics: {j: time ? {t: time, stepSeconds: 0.005, motorTorqueNm: 0.1, motorPowerW: 0.2} : null}});
+    const port = {postMessage: message => { void host.handle(structuredClone(message)); }};
+    host = createPhysicsHost({loadJolt: async () => ({}), createPhysicsCore: () => { throw new Error('not a physics execution'); },
+        createSimRunner: () => ({poses, readings: () => ({}), run: () => { time += 0.005; return {frames: [], ...poses()}; }, destroy () {}}),
+        post: message => port.onmessage({data: structuredClone(message)})});
+    const client = new PhysicsClient(port);
+    const mechanism = {bodies: [{id: 'b'}], joints: [{id: 'j', type: 'hinge'}]};
+    const loaded = await client.simLoad({mechanism, stepMs: 5});
+    assert.deepEqual(loaded.bodyDynamics, bodyDynamics, 'initial inspector data must survive both load adapters');
+    const mirror = new MirrorCore(mechanism, loaded);
+    assert.equal(mirror.bodyDynamics('b').solverMassKg, 0.02); assert.equal(mirror.jointDynamics('j'), null);
+    const frame = await client.simBatch({scene: loaded.scene, steps: 1}); mirror.update(frame);
+    assert.equal(mirror.jointDynamics('j').motorTorqueNm, 0.1); assert.equal(mirror.jointDynamics('j').t, mirror.time);
+    await assert.rejects(client.simBatch({scene: loaded.scene + 100, steps: 1}), /no longer loaded/);
+    assert.equal(mirror.jointDynamics('j').t, 0.005, 'a rejected scene does not publish observations');
+    await client.simDispose(loaded.scene);
 });

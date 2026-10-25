@@ -133,8 +133,8 @@ export const createPhysicsHost = ({ loadJolt, createPhysicsCore, createSimRunner
                         const jolt = await ensureJolt();
                         sim = createSimRunner({ J: jolt, createPhysicsCore, mechanism, hubs: hubs || [], stepMs });
                         simScene = id;
-                        const { t, bodies, joints, air, linear, angular, rolling, ropes } = sim.poses();
-                        post({ type: 'sim-loaded', id, t, bodies, joints, air, linear, angular, rolling, ropes, readings: sim.readings() }, [bodies.buffer, joints.buffer]);
+                        const { t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics } = sim.poses();
+                        post({ type: 'sim-loaded', id, t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, readings: sim.readings() }, [bodies.buffer, joints.buffer]);
                     } catch (err) {
                         post({ type: 'error', id, message: err.message ?? String(err) });
                     }
@@ -152,8 +152,8 @@ export const createPhysicsHost = ({ loadJolt, createPhysicsCore, createSimRunner
                     }
                     try {
                         const start = now();
-                        const { frames, t, bodies, joints, air, linear, angular, rolling, ropes } = sim.run(msg);
-                        post({ type: 'sim-frames', id, frames, t, bodies, joints, air, linear, angular, rolling, ropes, workMs: now() - start }, [bodies.buffer, joints.buffer]);
+                        const { frames, t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics } = sim.run(msg);
+                        post({ type: 'sim-frames', id, frames, t, bodies, joints, air, linear, angular, rolling, ropes, bodyDynamics, jointDynamics, workMs: now() - start }, [bodies.buffer, joints.buffer]);
                     } catch (err) {
                         post({ type: 'error', id, message: err.message ?? String(err) });
                     }
