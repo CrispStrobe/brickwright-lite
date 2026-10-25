@@ -637,7 +637,7 @@ class Originals(unittest.TestCase):
                 with self.assertRaisesRegex(OSError,'close-only'):c.empty_python_prefix()
     def test_actual_shell_startup_is_before_first_python_and_inventory_is_held(self):
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text();actual=workflow.split('  actual:',1)[1]
-        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',actual)
+        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',actual)
         self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
         self.assertNotIn('/usr/bin/python3 -B',actual)
         self.assertEqual(actual.count('/usr/bin/python3.12 -I -S -B -X pycache_prefix='+r.PYTHON_CACHE),3)
@@ -3027,7 +3027,7 @@ class Originals(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text()
         new=workflow.split('  finite-inventory-six:',1)[1]
-        self.assertIn(chr(36)+'{{ true &&',new)
+        self.assertIn(chr(36)+'{{ false &&',new)
         self.assertLess(new.index('finite-inventory-v6-guard'),new.index('actions/setup-node@'))
     def test_finite_v6_body_variable_and_event_refuse_before_git_or_setup(self):
         value,raw,expected=self.finite_v6_packet()
@@ -3224,11 +3224,16 @@ class Originals(unittest.TestCase):
             else:changed['scope']['installedEmptyRegularScoped']=False
             selected=copy.deepcopy(expected);selected['original']=ROW(E(changed))
             with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
-        self.assertFalse(c.FINITE_INVENTORY_V5_ENABLED);self.assertTrue(c.FINITE_INVENTORY_V6_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
+        self.assertFalse(c.FINITE_INVENTORY_V5_ENABLED);self.assertFalse(c.FINITE_INVENTORY_V6_ENABLED);self.assertTrue(c.ACTUAL_V6_ENABLED)
         with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
-            for args in (['finite-inventory-v5-guard'],['finite-inventory-v5','--request','x','--expected-sha256','0'*64,'--output','x'],
-              ['actual-v6-guard'],['actual-v6-preflight'],['actual-v6']):
+            for args in (['finite-inventory-v5-guard'],['finite-inventory-v5','--request','x','--expected-sha256','0'*64,'--output','x']):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
+        with patch.object(c,'ACTUAL_V6_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
+            for args in (['actual-v6-guard'],['actual-v6-preflight'],['actual-v6']):
+                with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
+        with patch.object(c,'observe_python_startup',return_value=(b'',{})) as startup:
+            self.assertEqual(c.main(['actual-v6-guard']),0)
+            startup.assert_called_once()
     def test_finite_v5_source_zero_and_critical_mutants_are_nonvacuous(self):
         value,raw,expected=self.finite_v5_packet();rows=copy.deepcopy(value['installedFiles'])
         wrong=copy.deepcopy(rows);wrong['node_modules/bw-board/docs/receipts/zero.stdout']['sha256']='0'*64
@@ -3816,7 +3821,7 @@ test('metadata diagnostic step and job budgets contain the collector without wid
     const jobMinutes=Number(inventory.match(/timeout-minutes: (\d+)/)[1]);
     assert.ok(recordMinutes*60>=collectorSeconds+60,'diagnostic record step cannot preempt the collector budget');
     assert.ok(jobMinutes>=setupMinutes+recordMinutes+1,'metadata job includes setup, record and finite overhead margin');
-    assert.match(workflow.split('  actual:')[1],/false &&/);assert.match(workflow.split('  actual:')[1],/timeout-minutes: 35/);
+    assert.match(workflow.split('  actual:')[1],/true &&/);assert.match(workflow.split('  actual:')[1],/timeout-minutes: 35/);
     assert.match(controller,/ACTUAL_ENABLED = False/);
 });
 

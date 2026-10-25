@@ -13,11 +13,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # This distinct finite v6 metadata route is armed but unselected. Exact-head
-  # source checks and a separately reviewed one-shot event remain required. V5 is consumed.
+  # The finite v6 metadata event is consumed. Its producer remains available
+  # for reading historical originals, while the execution gate is retired.
   finite-inventory-six:
     if: >-
-      ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+      ${{ false && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
           github.event.label.name == 'x86-hdd-gui-finite-inventory-v6' && github.actor == 'CrispStrobe' &&
           github.run_attempt == 1 && github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.pull_request.head.repo.fork == false && github.event.pull_request.base.ref == 'main' }}
@@ -261,12 +261,12 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  # Future V6 activation requires the prior V5 finite original, immutable
-  # Native2 proof, current Git and runtime readbacks, and current Build graph.
-  # Chromium/Board scenarios use no QEMU adapter. This guard remains false.
+  # Actual v6 is armed but unselected. Exact-head source checks and a separate
+  # reviewed Build, request and one-shot event remain required before scenarios.
+  # Chromium/Board scenarios use no QEMU adapter.
   actual:
     if: >-
-      ${{ false && github.event_name == 'pull_request' &&
+      ${{ true && github.event_name == 'pull_request' &&
           github.event.action == 'labeled' && github.event.label.name == 'x86-hdd-gui-actual-v6' &&
           github.actor == 'CrispStrobe' && github.run_attempt == 1 &&
           github.event.pull_request.head.repo.full_name == github.repository }}
