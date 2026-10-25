@@ -1,3 +1,4 @@
+import {sdkSpriteConstructorScalarEffects,isReservedSdkSpriteMember} from './sdk-sprite-constructor-scalar-effects.js';
 import {nativeSdkSpriteSource} from './native-sdk-sprite-source.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {prepareObjectClassStructure} from './object-class-source-structure.js';
@@ -58,6 +59,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     // actual selected source language, rather than generic JS inheritance.
     if((program.body||[]).some(node=>node.type==='Class'&&node.base)&&
         prepareObjectClassStructure(program).unsupported.length)return {program,current:guard.isCurrent};
+    const constructorEffects=sdkSpriteConstructorScalarEffects(program,profile);
     const lexical=analyseCallableBindings(program),classes=new Map(),methods=new Map(),functions=new Map();
     const values=new Map(),parents=new WeakMap(),classForBinding=new Map(),methodForScope=new Map(),fields=new Map();
     const unknown='Opaque',nodes=[],unsafe=new Set(),arrayRows=new WeakMap();let changed=false,scalarEffectsClosed=true;
@@ -165,6 +167,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             row.lineage=[row,...chain];
         }else row.lineage=[row];
         if(row.lineage.some(base=>base.sdk)&&row.lineage.some(base=>!base.sdk&&(base.ownMembers.has('x')||
+            [...base.ownMembers.keys()].some(isReservedSdkSpriteMember)||
             (base.node.methods||[]).some(method=>['setImage','setKind','update','draw','__draw','setHitbox','setDimensions'].includes(method.name)))))mark(row);
         row.members=new Map();
         for(const owner of [...row.lineage].reverse())for(const [name,own]of owner.ownMembers){
@@ -745,7 +748,7 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     const current=()=>{
         if(!ordinaryLive||resultUsed&&!resultLive)return false;
         try{
-            const valid=(!resultUsed||realmCurrent()&&carriersCurrent())&&guard.isCurrent()&&sdk.current();
+            const valid=(!resultUsed||realmCurrent()&&carriersCurrent())&&guard.isCurrent()&&sdk.current()&&constructorEffects.current();
             if(sdk.ordinary&&!valid)ordinaryLive=false;
             if(resultUsed&&!valid)resultLive=false;
             return valid;
@@ -849,18 +852,26 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
     }
     const selected=new Map();
     for(const node of capturedReads)selected.set(node,[...get(read(node))]);
+    const constructorSelected=new WeakSet();
+    for(const node of nodes){
+        if(!['Identifier','Member','Call'].includes(node.type))continue;
+        const types=constructorEffects.typesAt(node);
+        if(!types?.length||!types.every(type=>primitive.has(type))||!constructorEffects.initialized(node))continue;
+        selected.set(node,types);constructorSelected.add(node);
+        if(node.type==='Identifier')capturedReads.add(node);
+    }
     for(const node of nodes)if(node.type==='Member'){
         const parent=parents.get(node);
         if(parent?.type==='Assignment'&&parent.left===node||parent?.type==='Update'||parent?.type==='Call'&&parent.callee===node)continue;
         const types=get(cell(node)),receiver=get(cell(node.object));
-        if(types.size&&[...types].every(type=>primitive.has(type))&&receiver.size&&
+        if(!constructorSelected.has(node)&&types.size&&[...types].every(type=>primitive.has(type))&&receiver.size&&
             [...receiver].some(type=>type?.kind==='instance')&&
             [...receiver].every(type=>type==='Null'||type==='Undefined'||type?.kind==='instance'&&!unsafe.has(type.row)))selected.set(node,[...types]);
     }
     // A primitive normal result may also come from an actual owned method
     // call. Retain the complete original receiver/arguments/call as the test;
     // no generic function, SDK ancestry, reference result or annotation enters.
-    for(const node of nodes)if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'){
+    for(const node of nodes)if(node.type==='Call'&&!constructorSelected.has(node)&&!node.isNew&&node.callee?.type==='Member'){
         const types=get(cell(node)),receiver=get(cell(node.callee.object)),callees=get(cell(node.callee));
         if(!types.size||[...types].some(type=>!primitive.has(type))||!receiver.size||!callees.size||
             ![...receiver].some(type=>type?.kind==='instance')||
@@ -927,11 +938,11 @@ export function nativeClassScalarView(program,profile=GENERATED_HELPER_PROFILES.
             const types=selected.get(node);
             // Keep the actual getter or method call once in the private census.
             const result=ownCarrier({type:'Conditional',test:node,consequent:literal(types[0]),alternate:alternatives(types)});
-            if(capturedReads.has(node)||normalResultEligible(node)){
+            if(capturedReads.has(node)||constructorSelected.has(node)||normalResultEligible(node)){
                 watchCarrier(Array.prototype);watchCarrier(Object);watchCarrier(Reflect);
                 watchCarrier(ResultWeakSet.prototype);resultApply(resultAdd,issued,[result]);
                 if(capturedReads.has(node))resultApply(resultAdd,capturedIssued,[result]);
-                if(ownedReceiverResult(node))resultApply(resultAdd,receiverIssued,[result]);
+                if(constructorSelected.has(node)||ownedReceiverResult(node))resultApply(resultAdd,receiverIssued,[result]);
             }return result;
         }
         return Object.fromEntries(Object.entries(node).map(([name,value])=>[name,metadata.has(name)?value:rewrite(value)]));
