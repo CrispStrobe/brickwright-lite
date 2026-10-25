@@ -59,3 +59,10 @@ Full three-supplier history, prior controls, coherent alias/current-input
 mutations for both suppliers, wrong Board role/path/symbol, legacy-to-current
 reference leakage, production-profile rejection and the genuine V8 negative cohort
 remain required. Source controls grant no current inventory or execution.
+
+The first local gate component for this amendment keeps all three producer,
+reader and control body profiles unset. Portable Board/CUI role and alias
+controls can run, while the public source gate refuses those historical
+source occurrences until the final supplier composition and all three
+profiles are independently reviewed and fixed. This local component is not
+published or source-qualified.

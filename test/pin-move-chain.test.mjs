@@ -79,15 +79,19 @@ const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', '
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
 const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
-const HISTORICAL_X86_CURRENT_CUI = '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671';
+const HISTORICAL_X86_CURRENT_CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40';
+const HISTORICAL_X86_BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2';
+const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 // Reviewed immutable b9ae producer/control bodies. A future legitimate edit or
 // pin move needs an explicit profile review; never derive these from its input.
 // Matching a profile admits only the named historical token, not the file.
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
-    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 229643,
-        sha256: '794f07105ffa87b3921a39c2dcc532a74c84a50a9a767416dc075c948203b064'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 471942,
-        sha256: '6b7963f5486e183e4c4ded7a2d75d24a799eae00ad4fa28c92e8b855d0d3964b'}),
+    // Final reviewed producer/reader/control body profiles are deliberately
+    // unset. The public role recognizers refuse every source body until root
+    // approves exact final bytes and independently pins all three rows.
+    'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: null, sha256: null}),
+    'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: null, sha256: null}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: null, sha256: null}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
@@ -266,7 +270,8 @@ const historicalCuiSpansForProfile = (file, text, known, profiles) => {
         const tokens = historicalTokens(text, true); if (!tokens) return [];
         const currentDeclarations = [
             ['CUI', `CUI = '${HISTORICAL_X86_CURRENT_CUI}'`],
-            ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}"],
+            ['CURRENT_BOARD', `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'`],
+            ['FINITE_V7_PINS', "FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}"],
         ];
         if (currentDeclarations.some(([name, line]) => {
             const declared = tokens.filter(t => t.kind === 'name' && t.text === name && t.column === 0 && t.depth === 0);
@@ -317,6 +322,44 @@ const historicalCuiSpansForProfile = (file, text, known, profiles) => {
 export const historicalCuiSpans = (file, text, known) =>
     historicalCuiSpansForProfile(file, text, known, HISTORICAL_X86_SOURCE_PROFILES);
 
+// Admit only the old Board declaration in each reviewed Python body. A
+// different or newly routed current use changes that whole body and revokes
+// the role until a separate source/profile review. No source body is currently
+// trusted: the fixed production profiles above are intentionally unset.
+const historicalBoardSpansForProfile = (file, text, known, profiles) => {
+    const pin = HISTORICAL_X86_BOARD;
+    if (!known.current.has(HISTORICAL_X86_CURRENT_BOARD) || known.current.has(pin) ||
+        known.previous.get(pin)?.repo !== 'bw-board') return [];
+    const quoted = `'${pin}'`;
+    if (file === 'test/pin-move-chain.test.mjs') {
+        const line = `const HISTORICAL_X86_BOARD = ${quoted};`;
+        const rows = [...text.matchAll(/^const HISTORICAL_X86_BOARD = .*$/gm)];
+        if (rows.length !== 1 || rows[0][0] !== line) return [];
+        const end = rows[0].index + line.length, tokens = historicalTokens(text.slice(0, end));
+        const declaration = tokens?.find(t => t.start === rows[0].index && t.text === 'const' && t.depth === 0 && t.column === 0);
+        return declaration ? [rows[0].index + line.indexOf(pin)] : [];
+    }
+    if (!['scripts/run-i80386-hdd-gui-actual.py', 'scripts/read-i80386-hdd-gui-originals.py'].includes(file)) return [];
+    const profile = profiles[file];
+    if (!profile || Buffer.byteLength(text) !== profile.bytes ||
+        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_BOARD_BODY_GUARD
+    const tokens = historicalTokens(text, true); if (!tokens) return [];
+    const historical = tokens.filter(t => t.kind === 'name' && t.text === 'BOARD' && t.column === 0 && t.depth === 0);
+    const current = tokens.filter(t => t.kind === 'name' && t.text === 'CURRENT_BOARD' && t.column === 0 && t.depth === 0);
+    if (historical.length !== 1 || current.length !== 1 ||
+        historicalLine(text, historical[0]) !== `BOARD = ${quoted}` ||
+        historicalLine(text, current[0]) !== `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'`) return [];
+    const selectedMap = file === 'scripts/run-i80386-hdd-gui-actual.py' ?
+        "FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}" :
+        "FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':SB3}";
+    const maps = tokens.filter(t => t.kind === 'name' && t.text === 'FINITE_V7_PINS' && t.column === 0 && t.depth === 0);
+    if (maps.length !== 1 || historicalLine(text, maps[0]) !== selectedMap) return [];
+    return [historical[0].start + `BOARD = '`.length];
+};
+
+export const historicalBoardSpans = (file, text, known) =>
+    historicalBoardSpansForProfile(file, text, known, HISTORICAL_X86_SOURCE_PROFILES);
+
 /**
  * Judge one file's text. Pure; the mutation tests plant shas through it.
  * @param {string} file - repo-relative path
@@ -332,7 +375,8 @@ export const judgeFile = (file, text, known) => {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
         try { const m = JSON.parse(text); if (m.source && m.source.lastTouchedBy && m.source.lastTouchedBy.sha) body = text.split(m.source.lastTouchedBy.sha).join('<lastTouchedBy>'); } catch { /* judged as text */ }
     }
-    const historical = new Set(historicalCuiSpans(file, text, known));
+    const historical = new Set([...historicalCuiSpans(file, text, known),
+        ...historicalBoardSpans(file, text, known)]);
     const out = []; let lineAt = 0;
     body.split('\n').forEach((line, i) => {
         const offset = lineAt; lineAt += line.length + 1;
@@ -394,7 +438,8 @@ const historicalRoleFixtures = () => {
     const pin = HISTORICAL_X86_CUI_V5_V7;
     const producer = `HISTORICAL_CUI = '${pin}'\n` +
         `CUI = '${HISTORICAL_X86_CURRENT_CUI}'\n` +
-        "FINITE_V7_PINS = {'bw-board':BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}\n" +
+        `CURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
+        "FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}\n" +
         "def execute(request):\n    pins = (request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else\n" +
         "              {'bw-board': BOARD, 'bw-circuit-ui': HISTORICAL_CUI, 'sb3-creator': SB3})\n";
     const method = 'test_actual_v8_real_originals_seal_and_bounded_git_envelopes';
@@ -414,8 +459,9 @@ const historicalTestKnown = () => ({current: new Set([HISTORICAL_X86_CURRENT_CUI
     history: new Map()});
 const historicalFixtureSpans = f => (file, text, known) =>
     historicalCuiSpansForProfile(file, text, known, f.profiles);
-const historicalJudgeWith = recognize => vm.runInNewContext(`(${judgeFile.toString()})`,
-    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, historicalCuiSpans: recognize});
+const historicalJudgeWith = (recognize, recognizeBoard = () => []) => vm.runInNewContext(`(${judgeFile.toString()})`,
+    {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, historicalCuiSpans: recognize,
+        historicalBoardSpans: recognizeBoard});
 
 test('three exact historical CUI occurrences are previous-pin roles, not code-file exemptions', () => {
     const f = historicalRoleFixtures(), k = historicalTestKnown();
@@ -527,9 +573,91 @@ test('current input tokens remain red beside historical roles and expose broad-e
     const original = historicalCuiSpansForProfile.toString(), without = original.replace(bodyGuard, '');
     assert.notEqual(without, original, 'remove exactly the reviewed-body guard');
     const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_CUI_V5_V7,
-        HISTORICAL_X86_CURRENT_CUI, historicalTokens, historicalLine, historicalFunction});
+        HISTORICAL_X86_CURRENT_CUI, HISTORICAL_X86_CURRENT_BOARD,
+        historicalTokens, historicalLine, historicalFunction});
     assert.equal(noBodyGuard(f.producerPath, aliases[2], k, f.profiles).length, 1,
         'a later dynamic namespace edit defeats syntax checks without the immutable body guard');
+});
+
+const historicalBoardFixtures = () => {
+    const pin = HISTORICAL_X86_BOARD;
+    const producer = `BOARD = '${pin}'\nCURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
+        "FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}\n" +
+        "def parse_request(request):\n    if request['schema']=='bw.gui-hdd.actual-request.v8':\n" +
+        "        need(request['dependencyPins']['bw-board']==CURRENT_BOARD)\n" +
+        "def execute(request):\n    old = {'bw-board': BOARD}\n" +
+        "    selected = CURRENT_BOARD if request['schema']=='bw.gui-hdd.actual-request.v8' else BOARD\n";
+    const reader = `BOARD = '${pin}'\nCURRENT_BOARD = '${HISTORICAL_X86_CURRENT_BOARD}'\n` +
+        "FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':SB3}\n" +
+        "def audit(request):\n    selected_board = CURRENT_BOARD if request['schema']=='bw.gui-hdd.actual-request.v8' else BOARD\n" +
+        "    need(admission['boardPin']==selected_board and proof['boardPin']==selected_board)\n";
+    const producerPath = 'scripts/run-i80386-hdd-gui-actual.py';
+    const readerPath = 'scripts/read-i80386-hdd-gui-originals.py';
+    const profile = text => ({bytes: Buffer.byteLength(text), sha256: createHash('sha256').update(text).digest('hex')});
+    return {pin, producer, reader, producerPath, readerPath, policyPath: 'test/pin-move-chain.test.mjs',
+        profiles: {[producerPath]: profile(producer), [readerPath]: profile(reader)}};
+};
+const historicalBoardTestKnown = () => ({current: new Set([HISTORICAL_X86_CURRENT_BOARD]),
+    previous: new Map([[HISTORICAL_X86_BOARD, {repo: 'bw-board', replacedIn: 'fixture', on: 'fixture'}]]),
+    history: new Map()});
+const historicalBoardFixtureSpans = f => (file, text, known) =>
+    historicalBoardSpansForProfile(file, text, known, f.profiles);
+
+test('historical Board roles require exact reviewed producer, reader and policy positions', () => {
+    const f = historicalBoardFixtures(), k = historicalBoardTestKnown();
+    const recognize = historicalBoardFixtureSpans(f), judge = historicalJudgeWith(() => [], recognize);
+    for (const [file, text] of [[f.producerPath, f.producer], [f.readerPath, f.reader],
+        [f.policyPath, readFileSync(path.join(ROOT, f.policyPath), 'utf8')]]) {
+        assert.equal(recognize(file, text, k).length, 1, file);
+        assert.equal(judge(file, text, k).length, 0, file);
+        const neverShipped = {...k, previous: new Map(), history: new Map([[f.pin, 'bw-board']])};
+        assert.equal(recognize(file, text, neverShipped).length, 0);
+        assert.ok(judge(file, text, neverShipped).length > 0);
+    }
+    for (const [file, text] of [[f.producerPath, f.producer], [f.readerPath, f.reader]]) {
+        assert.deepEqual(historicalBoardSpans(file, text, k, f.profiles), [],
+            'public gate does not accept caller-provided profiles');
+        assert.equal(judgeFile(file, text, k).length, 1, 'final source profile remains unset');
+    }
+});
+
+test('old Board source roles never admit current routing, aliases, moved slots or extra literals', () => {
+    const f = historicalBoardFixtures(), k = historicalBoardTestKnown();
+    const recognize = historicalBoardFixtureSpans(f), judge = historicalJudgeWith(() => [], recognize);
+    for (const [file, source] of [[f.producerPath, f.producer], [f.readerPath, f.reader]]) {
+        const mutants = [
+            source.replace(`BOARD = '${f.pin}'`, `CURRENT_BOARD = '${f.pin}'`),
+            source.replace(`BOARD = '${f.pin}'`, `    BOARD = '${f.pin}'`),
+            source + `\nBOARD = '${f.pin}'\n`,
+            source.replace("'bw-board':CURRENT_BOARD", "'bw-board':BOARD"),
+            source.replace("else BOARD", "else CURRENT_BOARD"),
+            source + "\nglobals()['CURRENT_BOARD'] = BOARD\n",
+            source + "\ncurrent = f'{BOARD}'\n",
+        ];
+        for (const text of mutants) {
+            assert.equal(recognize(file, text, k).length, 0);
+            assert.ok(judge(file, text, k).length > 0);
+        }
+        assert.ok(judge('scripts/another.py', source, k).length > 0, 'wrong path refuses');
+    }
+    const broad = historicalJudgeWith(() => [], (file, text) => [...text.matchAll(HEX40)].map(m => m.index));
+    for (const path of ['vendor-pins.json', 'package-lock.json', 'scripts/current.py',
+        '.github/workflows/i80386-hdd-gui-actual.yml']) {
+        const active = `CURRENT_BOARD = '${f.pin}'\n`;
+        assert.equal(judgeFile(path, active, k).length, 1);
+        assert.equal(broad(path, active, k).length, 0, 'broad exemption would miss current misuse');
+    }
+    const bodyGuard = "    const profile = profiles[file];\n" +
+        "    if (!profile || Buffer.byteLength(text) !== profile.bytes ||\n" +
+        "        createHash('sha256').update(text).digest('hex') !== profile.sha256) return []; // REVIEWED_BOARD_BODY_GUARD\n";
+    const original = historicalBoardSpansForProfile.toString(), without = original.replace(bodyGuard, '');
+    assert.notEqual(without, original);
+    const noBodyGuard = vm.runInNewContext(`(${without})`, {HISTORICAL_X86_BOARD,
+        HISTORICAL_X86_CURRENT_BOARD, historicalTokens, historicalLine});
+    const alias = f.producer + "\nglobals()['CURRENT_BOARD'] = BOARD\n";
+    assert.equal(noBodyGuard(f.producerPath, alias, k, f.profiles).length, 1,
+        'removing reviewed-body guard admits dynamic current alias');
+    assert.equal(recognize(f.producerPath, alias, k).length, 0);
 });
 
 // A scoped key is admitted only with the source bytes its receipt names.
