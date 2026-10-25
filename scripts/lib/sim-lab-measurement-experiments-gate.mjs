@@ -108,9 +108,13 @@ export const measurementExperimentInteractions = async (page, {shotsDir}) => {
         if(run) {await tool(page,'reset');await page.waitForFunction(()=>window.__bwSimLab.status==='ready');
             assert.equal(await panel.getByTestId('bw-sim-measurement-plot-toggle-lesson-0').isChecked(),true,'Reset preserves this model’s plot selection');}
         await start.click();await panel.getByTestId('bw-sim-measurement-record-stop').waitFor();
-        await tool(page,'run');await page.evaluate(()=>window.__bwSimLab.api.setMotorSpeed('A',60));
+        // The supported API starts the real world before submitting its motor command.
+        // A separate green-flag start can reset that command during connection admission.
+        const accepted=await page.evaluate(()=>window.__bwSimLab.api.setMotorSpeed('A',60));
+        assert.equal(accepted,true,'the public motor controller accepts the recording drive');
         await page.waitForFunction(()=>{const p=window.__bwSimLab._pane;
-            return p.measurementRecording.snapshot().sampleCount>=6&&p.measurementRows.some(r=>r.kind==='acceleration'&&r.available&&r.value>0.001);},null,{timeout:15000});
+            return p.state.status==='running'&&p.measurementRecording.snapshot().sampleCount>=6&&
+                p.measurementRows.some(r=>r.kind==='acceleration'&&r.available&&r.value>0.001);},null,{timeout:15000});
         await panel.getByTestId('bw-sim-measurement-record-stop').click();await tool(page,'pause');
     }
     await panel.getByTestId('bw-sim-measurement-record-comparison').waitFor();
