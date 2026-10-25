@@ -19,3 +19,61 @@ MAIN source validation preserves all 138 original reader methods under one share
 The MAIN bridge landed through [PR1397](https://github.com/CrispStrobe/brickwright-lite/pull/1397) at [7f9edea2](https://github.com/CrispStrobe/brickwright-lite/commit/7f9edea2cc648d7139d1f57099d5121361d48a01). Qualified source `0e74c849` and the landed commit have the same whole tree. All 34 enabled exact-head checks succeeded, with six source-declared conditional skips; the [hosted Build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40210088225) includes the clean source-manifest guardian and the two actual built-GUI PMOS cases. The earlier cancelled duplicate and dirty-lock build failure remain historical failures, without waiver.
 
 This qualifies the bounded package and circuit-GUI adoption, not a new 386 DOS-guest result, physical circuit certificate or performance measurement. Fresh finite V7 inventory, V8 source/Build/guest acceptance and narrowly reviewed historical-pin handling remain reserved. A later CUI pin move needs fresh source, expected-pin, installed-graph and Build bindings; never relabel an earlier receipt as evidence for the newer pin.
+
+
+## Qualified supplier update for the current mainline bridge
+
+CLAIM AMENDMENT: implement this extension only after its documentation head
+has merged. The x86 owner retains the direct workflow, current producer,
+standalone reader and focused controls named above. For this mainline bridge,
+advance current Board to
+[`836867513c3e7fac420ddaa32c17e1c7b6d3e513`](https://github.com/CrispStrobe/bw-board/commit/836867513c3e7fac420ddaa32c17e1c7b6d3e513)
+and current CUI to
+[`1bc233c9297e03abb9b7eb603e045b4e92b0bb40`](https://github.com/CrispStrobe/bw-circuit-ui/commit/1bc233c9297e03abb9b7eb603e045b4e92b0bb40).
+SB3 stays unchanged. The package owner keeps package, pin, lockfile, generator,
+installed-library and built-GUI qualification work under the
+[meter/ADC adoption claim](2026-10-25-meter-adc-package-adoption.md).
+
+Keep the existing mainline producer and reader bodies. Change only the current
+identity literals in the direct workflow's supplier checkout, readback and
+package assertions; the producer's Board/CUI declarations; the reader's Board
+declaration; and the direct-source control's current CUI expectation. Keep
+the GUI test unchanged unless a necessary identity-only assertion requires
+an explicit reviewed update. This owns no emulator, media, package or pin
+write. Preserve every schema, label, artifact name, action pin, guard value,
+command, timeout, cap, guest assertion and existing failure boundary.
+
+This is independent of the larger pending finite-V7/V8 migration. Do not
+import its native-font modules, workflow changes, historical-role pin policy
+or body-profile table merely to update the current mainline bridge. Preserve
+those later source bodies separately; current mainline files are not their
+replacements. Earlier originals remain bound to their exact original source
+and may not be relabelled or replayed as evidence for the new tuple.
+
+Require exact identity-substitution and whole-function/guard preservation
+proofs, producer/reader agreement, old-identity refusal controls and the held
+mainline pure suites. The package owner composes this reviewed contribution
+normally, then qualifies the complete final source head, installed graph and
+actual built circuit GUI before adoption. This source contribution proves no
+new DOS guest, inventory, font-selection, performance or physical result and
+authorizes no separately selected actual event.
+
+## Local current-supplier source component
+
+Status: prepared locally for review; final package-owner composition and
+exact-head hosted qualification remain pending. The current producer and
+reader now select the qualified Board, the producer selects the qualified
+CUI, and the direct workflow's three checkout/readback/admission locations
+agree for each supplier. The direct-source test uses the same current CUI.
+All existing function bodies, guards, schemas, artifact identities, action
+pins, timeouts, resource caps and GUI-test bytes are unchanged. The larger
+finite-V7/V8 donor remains separate and is not imported by this contribution.
+
+All seven direct-source controls and actionlint pass locally. The unchanged
+GUI wrapper passes its 138 Python controls and thirteen of fourteen groups;
+the live canonical-package identity group correctly refuses this uncombined
+source tree's older package pins. That failure remains preserved, not waived:
+the package owner's final composition must pass all fourteen groups and every
+enabled exact-head check. Local Node 22.23.2 checks do not replace the hosted
+pinned toolchain. No package, lock, generator, installed library, actual event,
+frontend Build or guest result was created by this source component.
