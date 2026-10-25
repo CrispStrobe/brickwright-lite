@@ -68,6 +68,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PINS = path.join(ROOT, 'vendor-pins.json');
@@ -77,6 +78,7 @@ const SCOPED_PINS = ['stc-compiler-flasher', 'arrays-values', 'circuitplayground
 const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', 'bw-circuit-ui': 'BW_CIRCUIT_UI_DIR'};
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
+const HISTORICAL_X86_CUI_V5_V7 = '91d8434a79d373cef2837c137ab356356f1a3b44';
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
 
@@ -161,6 +163,133 @@ export const roleOf = file => {
 const COMMENT = /^\s*(\/\/|\*|\/\*|#(?!!))/;
 const CODE_EXT = /\.(m?js|cjs|jsx|ts|yml|yaml|sh)$/;
 
+// These are occurrence roles, not file roles. A small non-executing lexical
+// reader distinguishes declarations from comments/quoted lookalikes. Unknown
+// or unfinished syntax refuses the exception; normal stale-pin scanning stays
+// in charge. It never imports or executes Python or the inline test program.
+const historicalTokens = (text, python = false) => {
+    const tokens = []; let at = 0, depth = 0;
+    const push = (kind, start, end) => tokens.push({kind, text: text.slice(start, end),
+        start, end, depth, column: start - text.lastIndexOf('\n', start - 1) - 1});
+    while (at < text.length) {
+        const start = at, char = text[at];
+        if (/\s/.test(char)) { at++; continue; }
+        if ((python && char === '#') || (!python && text.startsWith('//', at))) {
+            const end = text.indexOf('\n', at); at = end < 0 ? text.length : end; continue;
+        }
+        if (!python && text.startsWith('/*', at)) {
+            const end = text.indexOf('*/', at + 2); if (end < 0) return null;
+            at = end + 2; continue;
+        }
+        let quoteAt = at;
+        if (python) {
+            const prefix = text.slice(at).match(/^(?:br|rb|fr|rf|r|u|b|f)(?=['"])/i);
+            if (prefix) quoteAt += prefix[0].length;
+        }
+        if (text[quoteAt] === "'" || text[quoteAt] === '"' || (!python && char === '`')) {
+            const quote = text[quoteAt], triple = python && text.startsWith(quote.repeat(3), quoteAt);
+            const terminator = triple ? quote.repeat(3) : quote; at = quoteAt + terminator.length;
+            let closed = false;
+            while (at < text.length) {
+                if (text[at] === '\\') { at += 2; continue; }
+                if (text.startsWith(terminator, at)) { at += terminator.length; closed = true; break; }
+                if (!triple && quote !== '`' && /[\r\n]/.test(text[at])) return null;
+                at++;
+            }
+            if (!closed) return null; push('string', start, at); continue;
+        }
+        // Only needed for the bounded JS prefixes before the two declarations;
+        // regexp bodies are opaque, including quotes and bracket characters.
+        if (!python && char === '/' && (!tokens.length || /^(?:[=(:,!\[{};?]|return)$/.test(tokens.at(-1).text))) {
+            at++; let bracket = false, closed = false;
+            while (at < text.length && !/[\r\n]/.test(text[at])) {
+                if (text[at] === '\\') { at += 2; continue; }
+                if (text[at] === '[') bracket = true;
+                if (text[at] === ']') bracket = false;
+                if (text[at] === '/' && !bracket) { at++; closed = true; break; }
+                at++;
+            }
+            if (!closed) return null;
+            while (/[a-z]/i.test(text[at] || '0')) at++;
+            push('regexp', start, at); continue;
+        }
+        const name = text.slice(at).match(/^[A-Za-z_][A-Za-z_0-9]*/);
+        if (name) { at += name[0].length; push('name', start, at); continue; }
+        push('punctuation', at, at + 1); at++;
+        if ('([{'.includes(char)) depth++;
+        if (')]}'.includes(char) && --depth < 0) return null;
+    }
+    return depth === 0 ? tokens : null;
+};
+
+const historicalLine = (text, token) => text.slice(text.lastIndexOf('\n', token.start - 1) + 1,
+    text.indexOf('\n', token.start) < 0 ? text.length : text.indexOf('\n', token.start));
+const historicalFunction = (tokens, name, indent, text) => {
+    const found = tokens.filter((t, i) => t.text === 'def' && t.column === indent &&
+        t.depth === 0 && tokens[i + 1]?.text === name);
+    if (found.length !== 1) return null;
+    const start = found[0].start;
+    const end = tokens.find(t => t.start > start && t.kind === 'name' &&
+        ['def', 'class'].includes(t.text) && t.depth === 0 && t.column <= indent)?.start ?? text.length;
+    return {start, end};
+};
+
+/** Offsets of the three transparent, previous-shipped historical literal roles. */
+export const historicalCuiSpans = (file, text, known) => {
+    const pin = HISTORICAL_X86_CUI_V5_V7;
+    if (known.current.has(pin) || known.previous.get(pin)?.repo !== 'bw-circuit-ui') return [];
+    const quoted = `'${pin}'`;
+    if (file === 'test/pin-move-chain.test.mjs') {
+        const line = `const HISTORICAL_X86_CUI_V5_V7 = ${quoted};`;
+        const rows = [...text.matchAll(/^const HISTORICAL_X86_CUI_V5_V7 = .*$/gm)];
+        if (rows.length !== 1 || rows[0][0] !== line) return [];
+        const end = rows[0].index + line.length, tokens = historicalTokens(text.slice(0, end));
+        const declaration = tokens?.find(t => t.start === rows[0].index && t.text === 'const' && t.depth === 0 && t.column === 0);
+        return declaration ? [rows[0].index + line.indexOf(pin)] : [];
+    }
+    if (file === 'scripts/run-i80386-hdd-gui-actual.py') {
+        const tokens = historicalTokens(text, true); if (!tokens) return [];
+        const names = tokens.filter(t => t.kind === 'name' && t.text === 'HISTORICAL_CUI');
+        if (names.length !== 2 || names[0].column !== 0 || names[0].depth !== 0 ||
+            historicalLine(text, names[0]) !== `HISTORICAL_CUI = ${quoted}` ||
+            tokens.some(t => t.kind === 'string' && t.text.includes('HISTORICAL_CUI'))) return [];
+        const range = historicalFunction(tokens, 'execute', 0, text);
+        const fallback = "(request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else\n" +
+            "              {'bw-board': BOARD, 'bw-circuit-ui': HISTORICAL_CUI, 'sb3-creator': SB3})";
+        const where = text.indexOf(fallback);
+        if (!range || names[1].start < range.start || names[1].start >= range.end ||
+            where < range.start || where >= range.end || where !== text.lastIndexOf(fallback)) return [];
+        const use = where + fallback.indexOf('HISTORICAL_CUI');
+        return use === names[1].start ? [names[0].start + `HISTORICAL_CUI = '`.length] : [];
+    }
+    if (file !== 'test/i80386-hdd-gui-actual.test.mjs') return [];
+    const opening = 'const controls = String.raw`\n', begin = text.indexOf(opening);
+    if (begin < 0 || begin !== text.lastIndexOf(opening)) return [];
+    const prefix = historicalTokens(text.slice(0, begin + opening.length - 2));
+    if (!prefix || prefix.slice(-6).map(t => t.text).join(' ') !== 'const controls = String . raw' ||
+        prefix.at(-6).column !== 0 || prefix.at(-6).depth !== 0) return [];
+    const start = begin + opening.length, end = text.indexOf('\n`;\n', start);
+    if (end < 0) return [];
+    const python = text.slice(start, end); if (python.includes('${')) return [];
+    const tokens = historicalTokens(python, true); if (!tokens) return [];
+    const method = 'test_actual_v8_real_originals_seal_and_bounded_git_envelopes';
+    const range = historicalFunction(tokens, method, 4, python);
+    const classes = tokens.filter((t, i) => t.text === 'class' && t.column === 0 && tokens[i + 1]?.text === 'Originals');
+    const classEnd = classes.length === 1 ? (tokens.find(t => t.start > classes[0].start &&
+        ['class', 'def'].includes(t.text) && t.depth === 0 && t.column === 0)?.start ?? python.length) : 0;
+    const names = tokens.filter(t => t.kind === 'name' && t.text === 'old_pin');
+    if (!range || classes.length !== 1 || range.start < classes[0].start || range.end > classEnd ||
+        historicalLine(python, tokens.find(t => t.start === range.start)) !== `    def ${method}(self):` ||
+        names.length !== 4 || names.some(t => t.start < range.start || t.start >= range.end) ||
+        historicalLine(python, names[0]) !== `            old_pin=${quoted}` ||
+        tokens.some(t => t.kind === 'string' && t.text.includes('old_pin'))) return [];
+    const uses = ["external_drift['dependencyPins']['bw-circuit-ui']=old_pin",
+        "result['dependencyPins']['bw-circuit-ui']=old_pin",
+        "vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})"];
+    if (names.slice(1).some((t, i) => historicalLine(python, t) !== '            ' + uses[i])) return [];
+    return [start + names[0].start + `old_pin='`.length];
+};
+
 /**
  * Judge one file's text. Pure; the mutation tests plant shas through it.
  * @param {string} file - repo-relative path
@@ -176,11 +305,14 @@ export const judgeFile = (file, text, known) => {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
         try { const m = JSON.parse(text); if (m.source && m.source.lastTouchedBy && m.source.lastTouchedBy.sha) body = text.split(m.source.lastTouchedBy.sha).join('<lastTouchedBy>'); } catch { /* judged as text */ }
     }
-    const out = [];
+    const historical = new Set(historicalCuiSpans(file, text, known));
+    const out = []; let lineAt = 0;
     body.split('\n').forEach((line, i) => {
+        const offset = lineAt; lineAt += line.length + 1;
         if (CODE_EXT.test(file) && COMMENT.test(line)) return;
         for (const m of line.matchAll(HEX40)) {
             const sha = m[0];
+            if (historical.has(offset + m.index)) continue;
             if (known.current.has(sha)) continue;
             const p = known.previous.get(sha);
             if (p && role === 'receipt') continue;   // the pin it was measured at: history, kept as evidence
@@ -230,6 +362,114 @@ const {count, shallow, previous} = previousPinsFromHistory();
 const {history, where} = repoHistory();
 const current = new Set(REPOS.map(repo => currentPins()[repo]));
 const known = {current, previous, history};
+
+const historicalRoleFixtures = () => {
+    const pin = HISTORICAL_X86_CUI_V5_V7;
+    const producer = `HISTORICAL_CUI = '${pin}'\n` +
+        "CUI = 'current CUI identity'\n" +
+        "def execute(request):\n    pins = (request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else\n" +
+        "              {'bw-board': BOARD, 'bw-circuit-ui': HISTORICAL_CUI, 'sb3-creator': SB3})\n";
+    const method = 'test_actual_v8_real_originals_seal_and_bounded_git_envelopes';
+    const python = `class Originals(unittest.TestCase):\n    def ${method}(self):\n        try:\n` +
+        `            old_pin='${pin}'\n` +
+        "            external_drift['dependencyPins']['bw-circuit-ui']=old_pin\n" +
+        "            result['dependencyPins']['bw-circuit-ui']=old_pin\n" +
+        "            vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})\n        finally: pass\n";
+    const control = 'const controls = String.raw`\n' + python + '\n`;\n';
+    return {pin, producer, control, method, producerPath: 'scripts/run-i80386-hdd-gui-actual.py',
+        controlPath: 'test/i80386-hdd-gui-actual.test.mjs', policyPath: 'test/pin-move-chain.test.mjs'};
+};
+const historicalTestKnown = () => ({current: new Set(['current']),
+    previous: new Map([[HISTORICAL_X86_CUI_V5_V7, {repo: 'bw-circuit-ui', replacedIn: 'fixture', on: 'fixture'}]]),
+    history: new Map()});
+
+test('three exact historical CUI occurrences are previous-pin roles, not code-file exemptions', () => {
+    const f = historicalRoleFixtures(), k = historicalTestKnown();
+    assert.equal(previous.get(f.pin)?.repo, 'bw-circuit-ui', 'the actual historical identity was shipped');
+    assert.ok(!current.has(f.pin), 'historical identity is not a current pin');
+    for (const [file, text] of [[f.producerPath, f.producer], [f.controlPath, f.control],
+        [f.policyPath, readFileSync(path.join(ROOT, f.policyPath), 'utf8')]]) {
+        assert.equal(roleOf(file), 'code');
+        assert.equal(historicalCuiSpans(file, text, k).length, 1, file);
+        assert.deepEqual(judgeFile(file, text, k), [], file);
+        const unshipped = {current: k.current, previous: new Map(), history: new Map([[f.pin, 'bw-circuit-ui']])};
+        assert.equal(historicalCuiSpans(file, text, unshipped).length, 0, 'never-shipped is not admitted');
+        assert.ok(judgeFile(file, text, unshipped).length > 0);
+    }
+});
+
+test('historical CUI syntax/context cannot be borrowed, duplicated, quoted or redirected to current use', () => {
+    const f = historicalRoleFixtures(), k = historicalTestKnown();
+    const declaration = f.producer.split('\n')[0];
+    for (const text of [
+        f.producer.replace('HISTORICAL_CUI =', 'CUI ='),
+        f.producer.replace(declaration, '    ' + declaration),
+        f.producer + declaration + '\n',
+        f.producer.replace(declaration, declaration + '; CUI=HISTORICAL_CUI'),
+        f.producer + 'CURRENT_CUI = HISTORICAL_CUI\n',
+        f.producer + 'FINITE_V7_PINS = {"bw-circuit-ui": HISTORICAL_CUI}\n',
+        f.producer.replace("=='bw.gui-hdd.actual-request.v8'", "=='bw.gui-hdd.actual-request.v7'"),
+        f.producer.replace(declaration, '# ' + declaration),
+        f.producer.replace(declaration, '"""\n' + declaration + '\n"""'),
+        f.producer.replace('def execute', 'def other'),
+        f.producer + 'current = f"{HISTORICAL_CUI}"\n',
+    ]) {
+        assert.equal(historicalCuiSpans(f.producerPath, text, k).length, 0);
+        assert.ok(judgeFile(f.producerPath, text, k).length > 0);
+    }
+    for (const text of [
+        f.control.replace(f.method, 'test_other'), f.control.replace('class Originals', 'class Other'),
+        f.control.replace('old_pin=', 'other_pin='),
+        f.control.replace('            old_pin=', '        old_pin='),
+        f.control.replace(`old_pin='${f.pin}'`, `old_pin='${f.pin}'; current=old_pin`),
+        f.control.replace('        finally:', '            duplicate=old_pin\n        finally:'),
+        f.control.replace("result['dependencyPins']['bw-circuit-ui']=old_pin", 'CURRENT_CUI=old_pin'),
+        f.control.replace('const controls', 'const other'),
+        '/*\n' + f.control + '\n*/',
+        f.control.replace(`            old_pin='${f.pin}'`, `            """old_pin='${f.pin}'"""`),
+    ]) {
+        assert.equal(historicalCuiSpans(f.controlPath, text, k).length, 0);
+        assert.ok(judgeFile(f.controlPath, text, k).length > 0);
+    }
+    assert.ok(judgeFile('scripts/another.py', f.producer, k).length > 0);
+    assert.ok(judgeFile('test/another.test.mjs', f.control, k).length > 0);
+    const otherPastPin = 'e'.repeat(40);
+    const anotherPrevious = {...k, previous: new Map([...k.previous,
+        [otherPastPin, {repo: 'bw-circuit-ui', replacedIn: 'other', on: 'other'}]])};
+    for (const [file, text] of [[f.producerPath, f.producer], [f.controlPath, f.control]]) {
+        const changed = text.replace(f.pin, otherPastPin);
+        assert.equal(historicalCuiSpans(file, changed, anotherPrevious).length, 0);
+        assert.equal(judgeFile(file, changed, anotherPrevious).length, 1, 'not an arbitrary previous CUI pin');
+    }
+    const policy = `const HISTORICAL_X86_CUI_V5_V7 = '${f.pin}';`;
+    for (const text of ['/*\n' + policy + '\n*/', policy + '\n' + policy,
+        policy + ' active();', `const other = '${f.pin}';`]) {
+        assert.equal(historicalCuiSpans(f.policyPath, text, k).length, 0);
+        assert.ok(judgeFile(f.policyPath, text, k).length > 0);
+    }
+});
+
+test('current input tokens remain red beside historical roles and expose broad-exemption mutants', () => {
+    const f = historicalRoleFixtures(), k = historicalTestKnown();
+    const compileJudge = recognize => vm.runInNewContext(`(${judgeFile.toString()})`,
+        {roleOf, PROVENANCE, COMMENT, CODE_EXT, HEX40, historicalCuiSpans: recognize});
+    const noRoles = compileJudge(() => []);
+    assert.equal(noRoles(f.producerPath, f.producer, k).length, 1, 'original producer finding restored');
+    assert.equal(noRoles(f.controlPath, f.control, k).length, 1, 'original control finding restored');
+    const broad = compileJudge((file, text) => [...text.matchAll(HEX40)].map(m => m.index));
+    for (const file of ['vendor-pins.json', 'package.json', 'package-lock.json',
+        '.github/workflows/i80386-hdd-gui-actual.yml', 'scripts/current.py',
+        'test/current.test.mjs', 'docs/generated/current.json']) {
+        const text = `CURRENT_CUI = '${f.pin}'\n`;
+        assert.equal(judgeFile(file, text, k).length, 1, file);
+        assert.equal(broad(file, text, k).length, 0, 'broad mutant would miss the active plant');
+    }
+    for (const [file, text] of [[f.producerPath, f.producer + `CUI = '${f.pin}'\n`],
+        [f.controlPath, f.control + `const active = '${f.pin}';\n`]]) {
+        assert.equal(judgeFile(file, text, k).length, 1, 'only historical token is admitted');
+        assert.equal(broad(file, text, k).length, 0);
+    }
+});
 
 // A scoped key is admitted only with the source bytes its receipt names.
 const requireWeDo2Receipt = (pins, bundles, moduleSource) => {
