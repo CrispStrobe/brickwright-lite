@@ -84,6 +84,12 @@ export function createOrdinaryFrameDeltaNumberSource(program,safeIndex=()=>false
     const lexical=analyseCallableBindings(program),binding=n=>lexical.references.get(n),candidates=new WeakSet();
     let unsafe=false,found=false;
     for(const n of syntax.nodes){
+        // Namespace/enum merging and var-hoisted roots are outside this
+        // lexical binding analyser's local/block model. Never infer SDK
+        // identity merely because such a declaration lacks a reference row.
+        if(['Namespace','Enum'].includes(n.type)&&['game','control'].includes(n.name)||
+            n.type==='Declaration'&&n.kind==='var'&&(n.decls||[]).some(d=>['game','control'].includes(d.name))||
+            ['ForOf','ForIn'].includes(n.type)&&n.kind==='var'&&['game','control'].includes(n.name))unsafe=true;
         if(n.type==='Identifier'&&['control','this','global','globalThis','window','self','eval','Function','Reflect','arguments'].includes(n.name)&&
             (n.name==='this'||!binding(n)))unsafe=true;
         if(n.type==='Class'&&n.base||n.type==='Member'&&['constructor','prototype','__proto__'].includes(n.name))unsafe=true;
