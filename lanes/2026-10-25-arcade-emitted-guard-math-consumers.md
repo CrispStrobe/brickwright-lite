@@ -1,6 +1,6 @@
 # Guarded numeric callers across current MakeCode emission
 
-Status: CLAIMED; merge before implementation.
+Status: IMPLEMENTED source candidate; hosted execution and visible editor qualification pending.
 Base: `c6c97e93f0bfe6b164c7e939ab40bd957a9f16bb`.
 Owner: Arcade integration; preserve the active publisher and its current CI intake.
 
@@ -72,3 +72,25 @@ constant-evaluation and currentness cuts. No placeholder or deleted branch.
 Bounded source controls precede final exact-head hosted original/emitted
 MakeCode, native execution and visible editor/saved-project qualification. One
 pipeline improvement does not establish application completion or a new census.
+
+## Implemented boundary and remaining work
+
+The source proof admits finite pure numeric constants and genuine current strict
+comparison helpers in both actual parser profiles. Loose comparison helpers
+remain conservative. Every helper declaration, call and assignment is retained.
+The project proof requires frozen JSON, exact physical ownership and a closed
+numeric operand tree. It covers fixed min/max/atan2/randomRange results without
+inferring input types from formals, variables, sockets or annotations.
+
+The original post-test Code/two-JSON/SB3 journey now passes unchanged, including
+all four variable writes. The composed source cohort has 43 passing controls;
+the later connected-String control adds a separate refusal check. Six source
+guard cuts and four project-result cuts are detected. Counts from overlapping
+cohorts are not independent application completions.
+
+The retained snake-game input now imports and reconstructs Code cleanly. Its
+JSON export still reports six Number/Array/bitwise/addition refusals. Investigate
+actual initialized producers and all writers under a new claim; do not widen
+this proof or delete an original operation to suppress them. Final exact-head
+SDK/native, visible operation-menu edits, controllers and fresh saved-project
+qualification remain pending with the integration publisher.

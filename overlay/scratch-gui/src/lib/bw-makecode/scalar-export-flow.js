@@ -1,8 +1,10 @@
+import {createProjectMathNormalResults} from './project-math-normal-results.js';
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
 /** Directed scalar flow for export. Reference identity remains the responsibility
  * of the reference graph; copying a scalar does not alias its source cell. */
 export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
+    const mathResults=createProjectMathNormalResults(project);
     const types=new Map(),edges=[],owners=new WeakMap(),definitions=new Map(),variables=new Map(),elements=new Map();
     const cell=(target,block)=>{
         if(!block)return 'missing';
@@ -48,6 +50,7 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
             const operation=literal(target,block,'OP');
             if(operation==='+')arithmetic.push([value,input(target,block,'LEFT'),input(target,block,'RIGHT')]);else add(value,'number');
         }
+        if(op==='arcade_mathBinary'&&mathResults.isNumberResult(target,block))add(value,'number');
         if(op==='arrays_specialValue'){
             const kind=literal(target,block,'KIND');if(['undefined','null'].includes(kind))add(value,kind);else if(['NaN','Infinity','-Infinity'].includes(kind))add(value,'number');
         }
@@ -105,8 +108,8 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
             for(const value of consumed)if(!types.get(value)?.size)changed=add(value,'unknown')||changed;
         }
     }while(changed);
-    const type=key=>{const values=[...(types.get(key) || [])].filter(value=>!['undefined','null'].includes(value));return values.length===1 && ['number','boolean','string'].includes(values[0])?values[0]:'any';};
-    const primitive=key=>{const values=[...(types.get(key)||[])];return values.length>0 && values.every(value=>['number','boolean','string','undefined','null'].includes(value));};
+    const type=key=>{if(!mathResults.current())return 'any';const values=[...(types.get(key) || [])].filter(value=>!['undefined','null'].includes(value));return values.length===1 && ['number','boolean','string'].includes(values[0])?values[0]:'any';};
+    const primitive=key=>{if(!mathResults.current())return false;const values=[...(types.get(key)||[])];return values.length>0 && values.every(value=>['number','boolean','string','undefined','null'].includes(value));};
     return {types,type,primitive,variables,definitions};
 }
 

@@ -1,3 +1,4 @@
+import {createProjectMathNormalResults} from './project-math-normal-results.js';
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {createProjectJsonSnapshot,isProjectJsonSnapshot} from './project-json-snapshot.js';
 import {sourceValueOperation} from './source-value-operator-helpers.js';
@@ -235,6 +236,7 @@ class ArcadeEmitter {
         this.snapshotCallbacks = snapshotCallbacks;
         this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
         this.closedOrdinaryEntry=createClosedOrdinaryProjectEntry(project);
+        this.mathNormalResults=createProjectMathNormalResults(project);
         this.opts = opts;
         // Capture once before any artwork callback. Resource emission and Array
         // proof consume the same privately branded normalized resource objects.
@@ -3327,6 +3329,12 @@ class ArcadeEmitter {
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
+                if(value.opcode==='arcade_mathBinary'){
+                    const id=Symbol('closed math normal result');
+                    if(this.mathNormalResults.isNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
+                    else {anys.add(id);inspectionOpaqueCells.add(id);}
+                    return id;
+                }
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
                 if(['arrays_valueBinary','arrays_valueUnary','arcade_sourceValueBinary','arcade_sourceValueUnary'].includes(value.opcode)) {
@@ -4510,6 +4518,7 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
+    if(!e.mathNormalResults.current())e.note('Arcade math normal result: current proof environment changed during export');
     if(!e.closedOrdinaryEntry.current())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.
