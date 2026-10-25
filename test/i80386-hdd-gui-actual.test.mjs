@@ -3718,6 +3718,11 @@ class Originals(unittest.TestCase):
             manifest=checkout/'manifest.json';manifest.write_bytes(E({'schema':'bw.gui-hdd.actual-v8-parts-manifest.v1',
                 'expected':small,'parts':rows}))
             artifact_path=checkout/'artifact.zip';artifact_path.write_bytes(artifact)
+            self.assertTrue(r.ACTUAL_V8_READER_ENABLED)
+            with patch.object(r,'ACTUAL_V8_READER_ENABLED',False),patch.object(r,'bounded_input',side_effect=AssertionError('reader host read before false V8 guard')):
+                with self.assertRaisesRegex(ValueError,'disabled'):
+                    r.main(['--actual-v8-parts','--manifest',str(manifest),
+                        '--parts',str(parts),'--artifact',str(artifact_path)])
             with patch.object(r,'ACTUAL_V8_READER_ENABLED',True),patch.object(r.sys,'stdout',io.StringIO()) as stream:
                 self.assertEqual(r.main(['--actual-v8-parts','--manifest',str(manifest),
                     '--parts',str(parts),'--artifact',str(artifact_path)]),0)
@@ -3821,8 +3826,8 @@ class Originals(unittest.TestCase):
 
     def test_actual_v8_three_true_main_startup_modes_and_wrong_logical_modes(self):
         files,expected,env=self.actual_v8_packet()
-        self.assertFalse(c.ACTUAL_V8_ENABLED)
-        with patch.object(c,'regular',side_effect=AssertionError('host read before false V8 guard')):
+        self.assertTrue(c.ACTUAL_V8_ENABLED)
+        with patch.object(c,'ACTUAL_V8_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read before false V8 guard')):
             for mode in ('actual-v8-guard','actual-v8-preflight','actual-v8'):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main([mode])
         prefix=D(files['python-startup.before.json'])['prefix']
@@ -3921,7 +3926,7 @@ class Originals(unittest.TestCase):
 
     def test_actual_v7_three_real_startup_mode_bindings(self):
         files,expected=self.actual_v7_packet()
-        self.assertTrue(c.ACTUAL_V7_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
+        self.assertFalse(c.ACTUAL_V7_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
         with patch.object(c,'ACTUAL_V7_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read before V7 guard')):
             for mode in ('actual-v7-guard','actual-v7-preflight','actual-v7'):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main([mode])
@@ -4640,8 +4645,12 @@ test('metadata diagnostic step and job budgets contain the collector without wid
     assert.ok(recordMinutes*60>=collectorSeconds+60,'diagnostic record step cannot preempt the collector budget');
     assert.ok(jobMinutes>=setupMinutes+recordMinutes+1,'metadata job includes setup, record and finite overhead margin');
     assert.match(workflow.split('  actual:')[1].split('  actual-v7:')[0],/false &&/);
-    assert.match(workflow.split('  actual-v7:')[1].split('  font-bridge:')[0],/true &&/);
-    assert.match(workflow.split('  actual-v7:')[1],/timeout-minutes: 35/);
+    const actualV7=workflow.split('  actual-v7:')[1].split('  actual-v8:')[0];
+    const actualV8=workflow.split('  actual-v8:')[1].split('  font-bridge:')[0];
+    assert.match(actualV7,/false &&/);
+    assert.match(actualV8,/true && github\.event_name == 'workflow_dispatch'/);
+    assert.match(actualV7,/timeout-minutes: 35/);
+    assert.match(actualV8,/timeout-minutes: 35/);
     assert.match(controller,/ACTUAL_ENABLED = False/);
 });
 

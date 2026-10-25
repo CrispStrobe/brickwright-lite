@@ -414,7 +414,7 @@ jobs:
 
   actual-v7:
     if: >-
-      ${{ true && github.event_name == 'pull_request' &&
+      ${{ false && github.event_name == 'pull_request' &&
           github.event.action == 'labeled' && github.event.label.name == 'x86-hdd-gui-actual-v7' &&
           github.actor == 'CrispStrobe' && github.run_attempt == 1 &&
           github.event.pull_request.head.repo.full_name == github.repository }}
@@ -544,7 +544,7 @@ jobs:
 
   actual-v8:
     if: >-
-      ${{ false && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&
+      ${{ true && github.event_name == 'workflow_dispatch' && github.actor == 'CrispStrobe' &&
           github.repository == 'CrispStrobe/brickwright-lite' && github.run_attempt == 1 &&
           github.ref_type == 'tag' && github.event.inputs.pull_request != '' &&
           github.event.inputs.request_sha256 != '' &&

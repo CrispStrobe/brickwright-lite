@@ -15,7 +15,7 @@ import zipfile
 
 ACTUAL_ENABLED = False
 ACTUAL_V7_READER_ENABLED = True
-ACTUAL_V8_READER_ENABLED = False
+ACTUAL_V8_READER_ENABLED = True
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
