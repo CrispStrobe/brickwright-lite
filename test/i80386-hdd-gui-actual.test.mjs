@@ -3224,7 +3224,7 @@ class Originals(unittest.TestCase):
             else:changed['scope']['installedEmptyRegularScoped']=False
             selected=copy.deepcopy(expected);selected['original']=ROW(E(changed))
             with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
-        self.assertFalse(c.FINITE_INVENTORY_V5_ENABLED);self.assertFalse(c.FINITE_INVENTORY_V6_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
+        self.assertFalse(c.FINITE_INVENTORY_V5_ENABLED);self.assertTrue(c.FINITE_INVENTORY_V6_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
         with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
             for args in (['finite-inventory-v5-guard'],['finite-inventory-v5','--request','x','--expected-sha256','0'*64,'--output','x'],
               ['actual-v6-guard'],['actual-v6-preflight'],['actual-v6']):
