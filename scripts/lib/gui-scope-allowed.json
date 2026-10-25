@@ -481,6 +481,7 @@
       "test/makecode-project-palette-lookup.test.mjs",
       "test/arcade-class-reset-effects.test.mjs",
       "test/makecode-array-local-reset-proof.test.mjs",
+      "test/arcade-native-addition-ordinary-fallback.test.mjs",
       "test/bw-sim-circle-splitter.test.mjs",
       "test/bw-sim-integral.test.mjs"
     ],

@@ -4395,7 +4395,11 @@ class ArcadeEmitter {
             const draft=assemble(definitions.map(helper=>helper===addition?candidate:helper.source));
             const proof=inspectNativeArrayBinaryDomains(nativeAdditionAnimationView(
                 parseMakeCodeTs(draft,GENERATED_HELPER_PROFILES.ordinary),this.authoredAnimationArrays.values()));
-            if(proof.reason){
+            // No Array can reach any addition: the ordinary helper below is
+            // exactly the pre-join export, so the native-join refusal does
+            // not apply. Every other refusal is retained unchanged.
+            if(proof.reason&&proof.ordinaryFallback===true&&proof.current()){ /* ordinary helper */ }
+            else if(proof.reason){
                 this.note(proof.reason);
                 try {
                     this.unsupportedDetails.push({reason:proof.reason,
