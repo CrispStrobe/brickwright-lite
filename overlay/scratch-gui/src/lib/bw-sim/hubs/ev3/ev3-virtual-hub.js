@@ -724,6 +724,8 @@ export class Ev3VirtualHub {
     /** Puts a file straight into the file system (a host's completed download; tests). Returns a status. */
     putFile (path, bytes) { return files.putFile(this.s.fs, path, bytes); }
 
+    putProgramFile (path, bytes) { return files.putProgramFile(this.s.fs, path, bytes); }
+
     readFile (path) { return files.readFile(this.s.fs, path); }
 
     /**

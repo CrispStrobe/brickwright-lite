@@ -466,7 +466,7 @@ export class Ev3Vm {
     }
 
     _fileData (io, path) {
-        if (typeof io.readFile !== 'function') fail('FAILBREAK', 'program file storage is unavailable');
+        if (typeof io?.readFile !== 'function') fail('FAILBREAK', 'program file storage is unavailable');
         const data = io.readFile(path);
         if (data !== null && (!Array.isArray(data) || data.length > USER_SPACE_BYTES)) fail('FAILBREAK', 'invalid program file data');
         return data;
@@ -479,14 +479,18 @@ export class Ev3Vm {
         if (mode === 'r' && data === null) return {handle: 0, size: 0};
         const h = this._freeHandle();
         if (mode === 'w' || (mode === 'a' && data === null)) {
-            if (typeof io.putFile !== 'function' || io.putFile(path, []) !== FILE_STATUS.SUCCESS) fail('FAILBREAK', 'cannot create program data file');
+            if (typeof io?.putProgramFile !== 'function' || io.putProgramFile(path, []) !== FILE_STATUS.SUCCESS) fail('FAILBREAK', 'cannot create program data file');
         }
         this.s.handles[h] = {kind: 'file', path, mode, position: 0};
         return {handle: h, size: data?.length || 0};
     }
 
-    _fileSpan (ref, count, write) {
+    _fileCount (count) {
         if (!Number.isInteger(count) || count < 0 || count > 0x7fff) fail('FAILBREAK', 'invalid program-file byte count');
+    }
+
+    _fileSpan (ref, count, write) {
+        this._fileCount(count);
         if (!count) return null;
         if (ref.a === 'k') {
             if (!write && count > 4) fail('FAILBREAK', 'program file reads beyond a scalar constant');
@@ -500,10 +504,12 @@ export class Ev3Vm {
 
     _fileRead (h, count, ref, io) {
         const f = this._file(h, 'r');
-        this._fileSpan(ref, count, true);
+        this._fileCount(count);
         if (!count) return;
         const data = this._fileData(io, f.path);
         if (data === null) fail('FAILBREAK', 'open program data file disappeared');
+        if (ref.a === 'h' && ref.resize) this._resize(ref.h, count);
+        this._fileSpan(ref, count, true);
         const n = Math.min(count, Math.max(0, data.length - f.position));
         for (let k = 0; k < n; k++) this.put({...ref, off: ref.off + k}, '8', data[f.position + k]);
         if (n < count) this.put({...ref, off: ref.off + n}, '8', 0);
@@ -523,7 +529,7 @@ export class Ev3Vm {
         const next = data.slice();
         if (next.length < end) { const old = next.length; next.length = end; next.fill(0, old); }
         for (let k = 0; k < count; k++) next[at + k] = bytes[k];
-        if (typeof io.putFile !== 'function' || io.putFile(f.path, next) !== FILE_STATUS.SUCCESS) fail('FAILBREAK', 'program file write refused');
+        if (typeof io?.putProgramFile !== 'function' || io.putProgramFile(f.path, next) !== FILE_STATUS.SUCCESS) fail('FAILBREAK', 'program file write refused');
         f.position = end;
     }
 
@@ -531,8 +537,9 @@ export class Ev3Vm {
     _resize (h, elements) {
         const a = this._array(h);
         const n = Math.max(0, elements);
-        if (n * a.size > a.data.length) a.data.push(...new Array(n * a.size - a.data.length).fill(0));
-        else a.data.length = n * a.size;
+        const old = a.data.length;
+        a.data.length = n * a.size;
+        if (a.data.length > old) a.data.fill(0, old);
         a.count = n;
     }
 
@@ -973,7 +980,7 @@ op(OP.ARRAY, (vm, c) => {
     }
     case ARRAY.DELETE: {
         const h = c.num('16');
-        if (vm.s.handles[h]) { vm._array(h); vm.s.handles[h] = null; }
+        if (vm.s.handles[h]) vm.s.handles[h] = null;
         return;
     }
     case ARRAY.SIZE: {
@@ -1201,7 +1208,7 @@ op(OP.FILE, (vm, c, io) => {
     }
     if (sub === FILE.CLOSE) {
         const h = c.num('16');
-        vm._file(h);
+        if (h < 0 || h >= MAX_HANDLES || !vm.s.handles[h]) fail('FAILBREAK', `handle ${h} is not allocated`);
         vm.s.handles[h] = null;
         return;
     }

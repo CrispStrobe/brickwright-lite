@@ -404,6 +404,21 @@ test('serialization rejects malformed byte-array metadata and nonnumeric error d
     assert.throws(() => vm._flatten(dst, word), error => error.code === 'ERR_BAD_PTR');
 });
 
+test('unflatten mismatch preserves a distinct signaling-NaN template without numeric canonicalization', () => {
+    const {vm, dst, float, error} = serializationPlaces();
+    const template = vm.program.toc.findIndex((e, id) => e.type === TC.FLOAT && id !== float);
+    assert.ok(template >= 0);
+    const bits = [1, 0, 128, 127];
+    const at = vm.program.toc[template].offset;
+    const outputAt = vm.program.toc[float].offset;
+    vm.s.mem.splice(at, 4, ...bits);
+    vm._setBytes(dst, [0]);
+    vm._unflatten(float, error, dst, template);
+    assert.equal(vm._get(error), 1);
+    assert.deepEqual(vm.s.mem.slice(outputAt, outputAt + 4), bits);
+    assert.deepEqual(vm.s.mem.slice(at, at + 4), bits);
+});
+
 test('serialization continuation is deterministic after a compiled-program snapshot', () => {
     const bytes = fixture('serialization');
     const first = new NxtVm({instrPerMs: 1});

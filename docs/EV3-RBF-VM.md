@@ -177,18 +177,23 @@ explicit paths keep the virtual brick's existing resolution. Write-open
 creates or truncates, append-open creates or preserves and each append write
 uses the current end. A missing read returns handle 0 and size 0 without
 creating a descriptor. Empty existing files can still be opened and read.
+Program creation requires an existing parent folder; host downloads retain
+their separate folder-creation behavior.
 
 Byte operations take handle, signed 16-bit count and a byte-buffer reference.
 They preserve binary zeros. Reads advance by bytes actually obtained; a short
 read writes one zero at the first unread destination byte and leaves the
 remaining tail untouched. An exact read adds no terminator. Count zero leaves
-data and position unchanged. Counts must be nonnegative, and the complete
-buffer span must be preallocated and within bounds; raw reads do not silently
-resize arrays. Invalid handles, wrong modes, unsafe spans, writes into the
+data and position unchanged. Counts must be nonnegative, and fixed buffer
+spans must be within bounds. A handle-backed destination is resized to the
+requested element count for a positive read, matching the firmware helper;
+new virtual array bytes are zero-initialized. Invalid handles, wrong modes, unsafe spans, writes into the
 program image and storage refusals stop the program with `FAILBREAK`.
 
 File descriptors share the program's 250-handle pool with arrays but are typed
-separately; array operations cannot access or delete a file descriptor. The
+separately for data access. `FILE CLOSE` and `ARRAY DELETE` release either kind
+from that common pool, as the firmware's memory release does. Array data
+operations cannot interpret a file descriptor as a buffer. The
 64 communication-transfer handles remain separate. Bytes live only in the
 brick's existing bounded virtual storage (6 MiB including downloaded files),
 with no host filesystem or network access. The `MEMORY_USAGE` observer retains

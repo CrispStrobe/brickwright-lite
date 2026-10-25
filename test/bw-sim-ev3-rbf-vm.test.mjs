@@ -25,7 +25,7 @@ const VM_DIR = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/routes/ev3-vm
 const {Ev3Vm, SNAPSHOT_FORMAT, MAX_HANDLES} = await import(path.join(VM_DIR, 'ev3-vm.js'));
 const {parseRbf} = await import(path.join(VM_DIR, 'rbf-file.js'));
 const {OP, OPCODE_NAMES, FILE} = await import(path.join(VM_DIR, 'ev3-bytecodes.js'));
-const {freshFs, readFile, putFile, resolveProgramPath, resolvePath, WORKING_DIR, USER_SPACE_BYTES, STATUS: FILE_STATUS} =
+const {freshFs, readFile, putFile, putProgramFile, resolveProgramPath, resolvePath, WORKING_DIR, USER_SPACE_BYTES, STATUS: FILE_STATUS} =
     await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/hubs/ev3/ev3-files.js'));
 
 const FIXTURES = ['wall-stopper', 'motor-timed', 'motor-degrees', 'touch-wait', 'arithmetic', 'arrays', 'threads', 'subcalls',
@@ -39,6 +39,7 @@ const recorder = ({touch = () => 0, distance = () => 255} = {}) => {
         fs,
         readFile: p => readFile(fs, p),
         putFile: (p, b) => putFile(fs, p, b),
+        putProgramFile: (p, b) => putProgramFile(fs, p, b),
         t: 0, events: [], calls: [], toneEnd: 0, busy: new Set(),
         atMs (t) { io.t = t; },
         nowMs: () => io.t,
@@ -325,11 +326,25 @@ test('compiled program files preserve binary bytes, append/truncate, EOF tail an
     assert.deepEqual(vm._array(0).data, [7, 7], 'file CLOSE must preserve the array sharing the pool');
 });
 
+test('compiled program file operations without a storage provider fail with a named VM error', () => {
+    for (const io of [undefined, null, {}, {readFile: () => null}]) {
+        const vm = new Ev3Vm();
+        vm.start(fixture('data-files'));
+        assert.doesNotThrow(() => vm.advanceTo(100, io));
+        assert.equal(vm.status, 'error');
+        assert.equal(vm.error.code, 'FAILBREAK');
+        assert.equal(vm.error.opcode, 'FILE');
+        assert.ok(vm.drainEvents().some(e => e.kind === 'error' && e.code === 'FAILBREAK'));
+    }
+});
+
 const fileMachine = () => {
     const vm = new Ev3Vm();
     const name = resolvePath('../prjs/files/main.rbf');
     assert.deepEqual(vm.start(fixture('data-files'), {name}), {ok: true});
-    return {vm, io: recorder()};
+    const io = recorder();
+    assert.equal(io.putFile(name, fixture('data-files')), FILE_STATUS.SUCCESS);
+    return {vm, io};
 };
 
 test('bare program-data paths use the image folder while explicit paths retain communication resolution', () => {
@@ -385,12 +400,12 @@ test('file modes, byte spans and storage refusals do not partially write or adva
     assert.throws(() => vm._fileWrite(h, 5, {a: 'k', raw: 1}, io), error => error.code === 'FAILBREAK');
     assert.deepEqual(io.readFile(path), []);
     assert.equal(vm._file(h).position, 0);
-    const write = io.putFile;
-    io.putFile = () => FILE_STATUS.SIZE_ERROR;
+    const write = io.putProgramFile;
+    io.putProgramFile = () => FILE_STATUS.SIZE_ERROR;
     assert.throws(() => vm._fileWrite(h, 1, {a: 'k', raw: 1}, io), error => error.code === 'FAILBREAK');
     assert.deepEqual(io.readFile(path), []);
     assert.equal(vm._file(h).position, 0);
-    io.putFile = write;
+    io.putProgramFile = write;
     vm._file(h).position = USER_SPACE_BYTES;
     assert.throws(() => vm._fileWrite(h, 1, {a: 'k', raw: 1}, io), error => error.code === 'FAILBREAK');
     assert.deepEqual(io.readFile(path), []);
@@ -435,7 +450,7 @@ test('file bytes, offsets and handle numbers survive JSON snapshot continuation'
     assert.deepEqual(vm.s.globals.slice(0, 5), [11, 22, 33, 44, 0]);
 });
 
-test('a compiled FILE CLOSE instruction rejects an array descriptor with a named VM failure', () => {
+test('FILE CLOSE and ARRAY DELETE release the common pool while invalid FILE CLOSE is a named failure', () => {
     const bytes = Uint8Array.from(fixture('data-files'));
     const at = parseRbf(bytes).program.objects[1].offset;
     bytes.set([OP.FILE, FILE.CLOSE, 0, OP.OBJECT_END], at);
@@ -443,10 +458,22 @@ test('a compiled FILE CLOSE instruction rejects an array descriptor with a named
     vm.start(bytes);
     vm._create('8', 1);
     vm.advanceTo(5, recorder());
-    assert.equal(vm.status, 'error');
-    assert.equal(vm.error.code, 'FAILBREAK');
-    assert.equal(vm.error.opcode, 'FILE');
-    assert.deepEqual(vm._array(0).data, [0]);
+    assert.equal(vm.status, 'stopped');
+    assert.equal(vm.s.handles[0], null);
+    const invalid = new Ev3Vm();
+    invalid.start(bytes);
+    invalid.advanceTo(5, recorder());
+    assert.equal(invalid.error.code, 'FAILBREAK');
+    assert.equal(invalid.error.opcode, 'FILE');
+    bytes.set([OP.ARRAY, 0, 0, OP.OBJECT_END], at);
+    const fileVm = new Ev3Vm();
+    fileVm.start(bytes);
+    const io = recorder();
+    const file = fileVm._fileOpen('deleted.bin', 'w', io).handle;
+    assert.equal(file, 0);
+    fileVm.advanceTo(5, io);
+    assert.equal(fileVm.status, 'stopped');
+    assert.equal(fileVm.s.handles[file], null);
 });
 
 test('MEMORY_USAGE accepts a live file descriptor and preserves its documented array-data estimate', () => {
@@ -462,4 +489,41 @@ test('MEMORY_USAGE accepts a live file descriptor and preserves its documented a
     assert.equal(vm.status, 'stopped', JSON.stringify(vm.error));
     assert.equal(vm.get({a: 'g', off: 0}, '32'), 6144);
     assert.equal(vm.get({a: 'g', off: 4}, '32'), 6143);
+});
+
+test('program writes require an existing parent while host downloads retain folder creation', () => {
+    const {vm, io} = fileMachine();
+    const before = JSON.parse(JSON.stringify(io.fs));
+    for (const mode of ['w', 'a']) {
+        assert.throws(() => vm._fileOpen('missing-subdir/file.bin', mode, io), error => error.code === 'FAILBREAK');
+        assert.deepEqual(io.fs, before);
+        assert.deepEqual(vm.s.handles, []);
+    }
+    assert.equal(io.putFile('missing-subdir/file.bin', [1]), FILE_STATUS.SUCCESS);
+    const h = vm._fileOpen('missing-subdir/file.bin', 'a', io).handle;
+    vm._fileWrite(h, 1, {a: 'k', raw: 2}, io);
+    assert.deepEqual(io.readFile('missing-subdir/file.bin'), [1, 2]);
+});
+
+test('handle-backed READ_BYTES resizes by requested elements within signed-count bounds', () => {
+    const {vm, io} = fileMachine();
+    io.putFile(resolveProgramPath('buffer.bin', vm.name), [11, 22, 33, 44]);
+    const h = vm._fileOpen('buffer.bin', 'r', io).handle;
+    const array = vm._create('8', 9);
+    vm._array(array).data.fill(99);
+    const ref = {a: 'h', h: array, off: 0, resize: true};
+    vm._fileRead(h, 7, ref, io);
+    assert.equal(vm._array(array).count, 7);
+    assert.deepEqual(vm._array(array).data, [11, 22, 33, 44, 0, 99, 99]);
+    const before = JSON.parse(JSON.stringify(vm.s));
+    vm._fileRead(h, 0, ref, io);
+    assert.deepEqual(vm.s, before);
+    assert.throws(() => vm._fileRead(h, 32768, ref, io), error => error.code === 'FAILBREAK');
+    assert.deepEqual(vm.s, before);
+    const wide = vm._create('32', 1);
+    const again = vm._fileOpen('buffer.bin', 'r', io).handle;
+    assert.doesNotThrow(() => vm._fileRead(again, 32767, {a: 'h', h: wide, off: 0, resize: true}, io));
+    assert.equal(vm._array(wide).count, 32767);
+    assert.equal(vm._array(wide).data.length, 32767 * 4);
+    assert.deepEqual(vm._array(wide).data.slice(0, 5), [11, 22, 33, 44, 0]);
 });

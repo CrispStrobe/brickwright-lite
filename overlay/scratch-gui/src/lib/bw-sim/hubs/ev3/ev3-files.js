@@ -113,6 +113,13 @@ export const putFile = (fs, path, bytes) => {
     return STATUS.SUCCESS;
 };
 
+/** A program can create a file in an existing virtual folder; only host downloads create folders. */
+export const putProgramFile = (fs, path, bytes) => {
+    const p = resolvePath(path);
+    if (!p || !isDir(fs, parentOf(p))) return STATUS.NO_PERMISSION;
+    return putFile(fs, p, bytes);
+};
+
 // ---- download (host → brick) --------------------------------------------------------------------
 
 /**

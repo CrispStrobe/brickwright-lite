@@ -165,6 +165,8 @@ from FW `c_cmd.c:3632–3792` and `:4565–4589`, independently expressed here.
 
 `UNFLATTEN` takes destination, numeric error output, source byte array and a
 preallocated template. It first copies the template into the destination. If the
+types match, that copy preserves raw float bits even on a size mismatch.
+If the
 source's array count minus one equals the template's flattened byte size, it
 decodes into that shape and writes error 0; otherwise it keeps the copied default
 and writes error 1 (FW `c_cmd.c:6145–6202`). It excludes the final byte by count;

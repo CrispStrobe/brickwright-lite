@@ -700,15 +700,38 @@ export class NxtVm {
         }
     }
 
-    _flatten (dst, src) {
-        this._byteArray(dst);
-        const layout = this._flatLayout(src);
-        if (layout.bytes + 1 > POOL_BYTES) fail('ERR_MEM', 'serialized data and terminator exceed the memory pool');
+    _flatBytes (id) {
+        const layout = this._flatLayout(id);
         const bytes = [];
         for (const r of layout.ranges) {
             const data = this._store(r.dv);
             for (let k = 0; k < r.size; k++) bytes.push(data[r.at + k]);
         }
+        return bytes;
+    }
+
+    _putFlatBytes (id, bytes) {
+        const layout = this._flatLayout(id);
+        if (layout.bytes !== bytes.length) fail('ERR_ARG', 'serialized destination and template have different byte sizes');
+        let offset = 0;
+        for (const r of layout.ranges) {
+            const data = this._store(r.dv);
+            for (let k = 0; k < r.size; k++) data[r.at + k] = bytes[offset++];
+        }
+    }
+
+    _copyTemplate (dst, template) {
+        // Shape allocation still uses MOV. Preserve matching-type raw float bits,
+        // including signaling NaNs that JS numeric loads/stores would quiet.
+        const defaults = this._sameType(dst, template) ? this._flatBytes(template) : null;
+        this._move(dst, template);
+        if (defaults) this._putFlatBytes(dst, defaults);
+    }
+
+    _flatten (dst, src) {
+        this._byteArray(dst);
+        const bytes = this._flatBytes(src);
+        if (bytes.length + 1 > POOL_BYTES) fail('ERR_MEM', 'serialized data and terminator exceed the memory pool');
         // Capture before resizing: the output may also be the input array.
         bytes.push(0);
         this._setBytes(dst, bytes);
@@ -721,7 +744,7 @@ export class NxtVm {
             fail('ERR_ARG', 'UNFLATTEN needs a numeric error output');
         }
         // Firmware order matters for aliases and for failure: default destination first.
-        this._move(dst, template);
+        this._copyTemplate(dst, template);
         const input = this._bytes(src);
         const size = this._flatLayout(template).bytes;
         if (input.length - 1 !== size) { this._setF(error, 1); return; }
