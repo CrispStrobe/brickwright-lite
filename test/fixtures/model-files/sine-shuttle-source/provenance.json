@@ -1,0 +1,12 @@
+{
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "files": {
+    "models/sine-shuttle.ldr": "926ff367e004a5bfae9173eab354e305d25e62a7f28c7ec1b47d5c766fcff6c2",
+    "programs/sine-shuttle.bw": "e0157ad0cf55b90cfc1c93a6ced47c4c805dd4f9de0b0ffb281832c12c2a45e7",
+    "LICENSE.txt": "a096c77ac7c151875cdcfcc89285d7372701076a3e53e29b3ee8abcd4e71ec9e",
+    "SOURCES.md": "8aa26994368eb9e3ad45870b78f818c62f84b61a036b12602f2ebbf0b522092c",
+    "docs/qualification-contract.md": "511e48fbaa0f65f4be940ed735287d6ad1166a31967f3698ed06f017f64b840b",
+    "SineShuttle-Validation.md": "ba2bd646cd780deb2819f14102c9addfbad92cc6a01b03dad1488a4c1b6ea64d"
+  }
+}

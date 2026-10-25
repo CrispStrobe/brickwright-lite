@@ -239,6 +239,7 @@ const L10N = {
         asyncLabel: 'async', asyncTitle: 'await hardware calls (BLE is async) and make functions async',
         eventsLabel: 'events', eventsTitle: 'turn extension event hats (when button pressed …) into driver callbacks',
         stConverting: to => `Converting to ${to}…`, stCantShow: (to, e) => `Can't show as ${to}: ${e}`,
+        openEmptyTab: to => `Open an empty ${to} editor`,
         stRegen: 'Regenerating…', stCompiling: 'Compiling…', stReading: 'Reading current project…',
         stLoadingPy: 'Loading Python (Skulpt)…', stError: e => `Error: ${e}`,
         deployPico: '🔌 Deploy to Pico',
@@ -576,6 +577,7 @@ const L10N = {
         asyncLabel: 'async', asyncTitle: 'Hardware-Aufrufe awaiten (BLE ist async) und Funktionen async machen',
         eventsLabel: 'events', eventsTitle: 'Extension-Event-Hats (wenn Knopf gedrückt …) in Treiber-Callbacks umwandeln',
         stConverting: to => `Wird zu ${to} umgewandelt…`, stCantShow: (to, e) => `Kann nicht als ${to} angezeigt werden: ${e}`,
+        openEmptyTab: to => `Leeren ${to}-Editor öffnen`,
         stRegen: 'Wird neu erzeugt…', stCompiling: 'Wird kompiliert…', stReading: 'Aktuelles Projekt wird gelesen…',
         stLoadingPy: 'Python wird geladen (Skulpt)…', stError: e => `Fehler: ${e}`,
         deployPico: '🔌 Auf Pico übertragen',
@@ -2853,14 +2855,23 @@ class PseudocodeImporter extends React.Component {
         // refuses a line it cannot read, so that became an error that kept the
         // learner on the ASM tab. Just switch.
         if (from === 'asm' || (existing && existing.trim()) || !src || !src.trim()) {
-            this.setState({lang: to, output: null, status: ''});
+            this.setState({lang: to, output: null, status: '', emptyTabOffer: null});
             return;
         }
-        this.setState({busy: true, status: this.L.stConverting(to)});
+        this.setState({busy: true, status: this.L.stConverting(to), emptyTabOffer: null});
         this.deriveBuffer(src, from, to).then(({code, error}) => {
-            if (error) { this.setState({busy: false, status: this.L.stCantShow(to, error)}); return; }
-            this.setState(s => ({lang: to, busy: false, output: null, status: '', buffers: {...s.buffers, [to]: code}}));
+            // A failed conversion keeps the source tab, and offers an explicit
+            // way into the requested tab with an empty buffer instead of a dead end.
+            if (error) { this.setState({busy: false, status: this.L.stCantShow(to, error), emptyTabOffer: to}); return; }
+            this.setState(s => ({lang: to, busy: false, output: null, status: '', emptyTabOffer: null, buffers: {...s.buffers, [to]: code}}));
         });
+    }
+
+    openEmptyTab (to) {
+        if (this.state.busy || this.state.emptyTabOffer !== to) return;
+        // The source buffer is kept; only the requested tab opens, empty.
+        this.setState(s => ({lang: to, output: null, status: '', statusExpanded: false, emptyTabOffer: null,
+            buffers: {...s.buffers, [to]: ''}}));
     }
 
     /** Simple hash for cache key — FNV-1a 32-bit on the source string. */
@@ -6394,10 +6405,16 @@ class PseudocodeImporter extends React.Component {
                                     {whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'})}}>
                             {this.state.status}
                         </span>
+                        {this.state.emptyTabOffer ? <button type="button" data-testid="bw-open-empty-tab"
+                            onClick={() => this.openEmptyTab(this.state.emptyTabOffer)}
+                            style={{border: '1px solid #cbd5e1', borderRadius: 10, background: '#fff', cursor: 'pointer',
+                                flexShrink: 0, fontSize: 11, padding: '1px 8px', alignSelf: 'center'}}>
+                            {this.L.openEmptyTab(this.state.emptyTabOffer)}
+                        </button> : null}
                         <button type="button"
                             data-testid={/^(Restored your unsaved |Nicht gespeicherter )/.test(this.state.status) ?
                                 'bw-dismiss-restored' : 'bw-dismiss-code-status'}
-                            aria-label={this.L.dismissNotice} onClick={() => this.setState({status: '', statusExpanded: false})}
+                            aria-label={this.L.dismissNotice} onClick={() => this.setState({status: '', statusExpanded: false, emptyTabOffer: null})}
                             style={{border: 0, background: 'transparent', cursor: 'pointer', flexShrink: 0,
                                 fontSize: 18, lineHeight: 1, padding: 4}}>×</button>
                     </div> : null}

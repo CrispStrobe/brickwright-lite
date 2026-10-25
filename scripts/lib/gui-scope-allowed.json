@@ -27,6 +27,7 @@
       "test/bw-sim-direct-colours.test.mjs",
       "test/bw-sim-editor-v2.test.mjs",
       "test/bw-sim-instancing.test.mjs",
+      "test/bw-sim-instructions.test.mjs",
       "test/bw-sim-model-bounds.test.mjs",
       "test/bw-sim-motor-phase.test.mjs",
       "test/bw-sim-orbital-loom.test.mjs",
@@ -44,6 +45,7 @@
   },
   "three/addons/controls/OrbitControls.js": {
     "tests": [
+      "test/bw-sim-instructions.test.mjs",
       "test/spike-arena-3d-pane.test.mjs"
     ],
     "why": "the pane test loads the real 3D view module (arena-view3d.js), which imports three's orbit control, and asserts its no-WebGL fallback"
@@ -159,7 +161,19 @@
       "test/bw-sim-offset-ellipsa.test.mjs",
       "test/bw-sim-echo-linger-crossline.test.mjs",
       "test/bw-sim-bit-keeper.test.mjs",
-      "test/bw-sim-counterturn-snapgate.test.mjs"
+      "test/bw-sim-integral.test.mjs",
+      "test/spikeprime-motor-power-adoption.test.mjs",
+      "test/bw-sim-counterturn-snapgate.test.mjs",
+      "test/bw-sim-resonance-program.test.mjs",
+      "test/bw-sim-new-models.test.mjs",
+      "test/bw-sim-circle-splitter.test.mjs",
+      "test/bw-sim-integral.test.mjs",
+      "test/bw-sim-cusp.test.mjs",
+      "test/bw-sim-balance-engine.test.mjs",
+      "test/bw-sim-root-bridge.test.mjs",
+      "test/bw-sim-qualification.test.mjs",
+      "test/bw-sim-watt-twin.test.mjs",
+      "test/model-api-native.test.mjs"
     ],
     "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   },
@@ -465,7 +479,10 @@
       "test/makecode-project-json-snapshot.test.mjs",
       "test/makecode-arcade-sprite-flags-producer.test.mjs",
       "test/makecode-project-palette-lookup.test.mjs",
-      "test/arcade-class-reset-effects.test.mjs"
+      "test/arcade-class-reset-effects.test.mjs",
+      "test/makecode-array-local-reset-proof.test.mjs",
+      "test/bw-sim-circle-splitter.test.mjs",
+      "test/bw-sim-integral.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },
@@ -592,8 +609,19 @@
       "test/bw-sim-offset-ellipsa.test.mjs",
       "test/bw-sim-echo-linger-crossline.test.mjs",
       "test/bw-sim-bit-keeper.test.mjs",
+      "test/bw-sim-integral.test.mjs",
       "test/spikeprime-motor-power-adoption.test.mjs",
-      "test/bw-sim-counterturn-snapgate.test.mjs"
+      "test/bw-sim-counterturn-snapgate.test.mjs",
+      "test/bw-sim-resonance-program.test.mjs",
+      "test/bw-sim-new-models.test.mjs",
+      "test/bw-sim-circle-splitter.test.mjs",
+      "test/bw-sim-integral.test.mjs",
+      "test/bw-sim-cusp.test.mjs",
+      "test/bw-sim-balance-engine.test.mjs",
+      "test/bw-sim-root-bridge.test.mjs",
+      "test/bw-sim-qualification.test.mjs",
+      "test/bw-sim-watt-twin.test.mjs",
+      "test/model-api-native.test.mjs"
     ],
     "why": "SIMD-capable physical controls use the qualified optional single-thread Jolt variant through the same GUI dependency boundary; the explicitly listed baseline callers also exercise its supported variant"
   }

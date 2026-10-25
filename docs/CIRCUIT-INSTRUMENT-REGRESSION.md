@@ -1,8 +1,8 @@
 # CLI instrument regression
 
-Status reconciled 2026-10-24: **existing TestFlight delivery verified; harness
-handoff correction in qualification; zero
-campaign cases executed**. This is a bounded follow-up to the qualified circuit CLI, not a
+Status reconciled 2026-10-24: **existing TestFlight delivery verified; fixed
+312-case CLI campaigns independently accepted; bounded scope-display consumer
+adopted and actual built-GUI originals independently accepted**. This is a bounded follow-up to the qualified circuit CLI, not a
 report that the schematic corpus or physical instruments have been validated.
 Use [the lane protocol](../lanes/PROTOCOL.md) and dated claims for current ownership and the
 [current plan](../PLAN.md#current-circuitinstrument-campaign--2026-10-15) for order.
@@ -70,8 +70,8 @@ Input definitions and tolerances remained frozen at definition SHA-256
 The archive and job log were acquired once; independent audit did not rerun
 CLI, engine or oracle. No model defect was demonstrated in this matrix, so no
 numerical patch or tolerance change is justified. Existing unrelated producer
-and audio work remains separately scoped. The remaining ordered task is the
-bounded scope-display improvement and actual built-consumer proof below.
+and audio work remains separately scoped. The fifth ordered task is also
+complete; its separate consumer identities and built-browser proof appear below.
 
 This result does not establish physical LM741/ADP7118 accuracy, missing device
 physics, analog front-end/ADC fidelity, hardware behavior, or a newer signed
@@ -244,16 +244,137 @@ the owning layer with a load-bearing negative control. Shared engine/importer/
 instrument behavior lands upstream first, then Lite adopts exact qualified
 packages; do not create a local fork or move thresholds to improve a score.
 
-The first realism lane should expose viewport overrange, actual acquisition
-mode/sample interval/depth, Nyquist and absent anti-alias-filter limits. Preserve
-raw samples, CSV, solver and electrical probe loading. Do not invent ADC noise,
-resolution, filtering or a hardware-accuracy claim. Refresh its actual source
-paths and publish a separate bounded claim. Acceptance needs real GUI controls
-for overrange, prefix/ring wrap and sampling/aliasing disclosures, alongside
-unchanged CLI/raw numerical records and affected built/installed-consumer proof.
+The bounded scope-display implementation is upstream
+[PR117](https://github.com/CrispStrobe/bw-circuit-ui/pull/117). It exposes actual
+capture mode, interval, capacity, retained/displayed counts, origin and ring wrap.
+Only point-sampled spectra receive a Nyquist value. Viewport-overrange warnings
+refer to the drawn range, not physical clipping; absence of an analogue
+anti-alias filter or ADC model is explicit. HOLD freezes the last drawn caption
+and picture while capture can continue. Raw samples, CSV, solver and electrical
+probe loading are unchanged. No ADC noise, resolution, filtering or hardware
+accuracy is invented.
+
+The upstream real-browser qualification passed all 71 scenarios, including
+actual vertical warning/clear controls with byte-identical CSV, prefix/wrap,
+HOLD with a changed requested viewport, visible redraw on RUN, and the separate
+sample-series metadata. An earlier proof failed because it inspected a queued
+Step before cooperative work completed. The forward evidence waits for the
+actual clock, capture count and ready state; it preserves the original failure
+and does not change production behavior, expected counts or timing budgets.
+
+The first consumer source-controls job
+[40072171188](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40072171188)
+reported 66/67: the tracked GUI manifests and current x86 browser
+controller/reader still selected the preceding CUI pin. An initial census of
+materialized sparse files had omitted them. The forward repair derives the
+complete dependency closure from the Git index, updates only current identity
+bindings, regenerates GUI metadata and notice source URLs, and preserves every
+guest/reader assertion and disabled actual-execution guard. All 67 local source
+controls pass; the original failure is retained. The final hosted controls job
+also passed all 67 on the qualified consumer head. Historical originals keep their original reader
+revision and measured sources.
+
+Lite adoption [PR1334](https://github.com/CrispStrobe/brickwright-lite/pull/1334)
+is qualified under the
+[consumer claim](../lanes/2026-10-24-scope-display-consumer.md). Its evidence
+was acquired once and read independently, without replaying the CLI, engine,
+oracle or browser. Historical originals above retain their original identities.
+
+### New-consumer numerical result
+
+[Run 40077158320](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40077158320)
+executed once on branch `lane/scope-display-adoption-20261024`, exact head
+`75c95bea9b34b08d0dc1014c41df551c1451b10f`: Board
+`b5650092695643622a53bcc40008133760e2d8a2`, CUI
+`420f3e15bd0064119416386853bd35713347c252`, Node 22.23.3, ngspice 42.
+The existing workflow accepts this branch; this was not a default-branch run.
+The unchanged definition SHA-256 is
+`063ee3e41c26a30ae2fbf9e6435d0423215c62a8b738e5b4c8385f233c6a0304`.
+
+All 312 cases passed: 264 ngspice and 48 explicitly nominal analytic, across
+12 topologies. Independent readers admitted 4,448 files and recomputed 87,488
+numerical checks, with zero failed, refused, noncomparable or missing cases.
+The measured coverage remains 2,024 locations, 704 channels, 68,480 waveform
+points, 960 static values and 26,760 meter windows. All 240 waveform CSVs are
+byte-identical to the retained preceding campaign; none was replayed.
+All 240 waveform and 72 static receipts bind the observed runtime and packages.
+Nine retained perturbations were detected.
+
+Original archive: 14,265,211 bytes, SHA-256
+`33d69d284ffe2b75fe6d7e475845b14b628a075a51a2636cf75b11e1f17e38d4`.
+Original job log: 261,846 bytes, SHA-256
+`1b5acf3f86c83c8cc4a073f64e8f5c4da95293694b3f31c70f64d7c06026a9ef`.
+These are JavaScript MNA and stated analytic comparisons, not native/Wasm,
+transitive-dependency reconstruction, hardware or full-corpus qualification.
+
+### Actual built-browser result
+
+[Build 40074942830](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40074942830)
+qualified the same consumer. Light browser job `120819548000` passed its actual
+Instruments checks. The original checkout
+`5070169cc275ec5035b81bcc6c5545dfb8cdef60` has parents
+`ab7c288fe7bf82ed34cb5c1d28219961a14bde78` and the candidate above; its tree
+`03785084571a28c1184563b7587bb49df1c26d9f` equals the candidate tree exactly.
+The original log proves installed package payload checks in both root and GUI
+scopes, single-engine resolution, editor build and serving that built editor.
+
+Adoption landed as `b0b9b3d55eaac812484018f7856089c71bed775d` after all
+34 enabled candidate checks succeeded; six conditional jobs were skipped and
+the superseded branch-push Rust run was replaced by its successful PR run.
+Main advanced during qualification by 21 disjoint CI-reporting and native-
+qualification tooling paths. The merge preserved them: every tracked byte
+outside those paths equals the qualified candidate, including application
+inputs, pins, case definitions and browser producer. The actual merge parents
+and predicted tree were verified. This is consumer-input equivalence, not a
+claim that the new whole-repository tree was the earlier browser checkout or
+that the native qualification tooling was exercised by this browser proof.
+
+The real RC example uses the actual 100 Hz sine source, amplitude/offset 2.5 V.
+Six retained observations join capture clocks to displayed mode, interval,
+counts, capacity and origin. They cover the 5,000-point prefix, 10,000-point
+wrapped envelope, HOLD while acquisition advances, RUN redraw, a separate
+500-point sample capture and viewport warning/clear. The disclosed sampling
+limits are actual UI text; overrange describes the viewport, not hardware
+clipping. Three decoded canvas controls confirm HOLD stays unchanged and RUN
+redraws. Both 5,000-row CSV downloads are exactly 225,269 bytes and have SHA-256
+`3832bae83cecc5f7ce1633fdf60d7b0577e9f06e98744d599833d22a8066ac77`.
+
+Original Instruments artifact `12555357324`: 559,808 bytes, SHA-256
+`87d271539f0d2ed03e2a501bd41b3ffdecc12c0443670d210184f1af804997ca`.
+Original light-browser log: 394,057 bytes, SHA-256
+`2eecb25256f76e8628d2bbe23a3c9d3e2055e04dbe9a928b66e7ab70719fb8b3`.
+The archive retains both CSV downloads, observed circuit, capture/clock/readout
+records, warning text and canvases. Independent readers use the originals,
+not producer imports or a browser replay. Neither this built web application
+nor its package provenance qualifies a newer native or signed TestFlight binary.
 
 Stop after these bounded tasks and report unresolved physics and evidence
 limits. Do not turn "fix failures" into implementing every device model or
 automatically starting another corpus-wide campaign. Check existing owners
 before taking a follow-up; release, runtime and other simulator lanes remain
 independently owned.
+
+## Work beyond this bounded endpoint
+
+These are follow-ups, not evidence that the fixed matrix covers them. Refresh
+ownership and source state before claiming one; do not begin another campaign
+as an automatic continuation of this five-item sequence.
+
+- **Imported-corpus measurements:** select a frozen, licensed inventory and a
+  stratified set of supported circuits with meaningful probe locations. Record
+  actual attempted/comparable/refused denominators and explicit model assumptions.
+  Retain input decks, raw captures and independent SPICE results. Acceptance is
+  per supported topology and measurement; it is not a count of files that parse.
+- **Part-specific model accuracy:** choose one actual op-amp or regulator and a
+  lawful independent reference. Specify rails, loading, temperature, startup and
+  bandwidth limits before measurement. The 48 nominal analytic cases establish
+  agreement with their stated approximations, not vendor or hardware accuracy.
+  Repair only a demonstrated cause upstream, then adopt one reviewed pin batch.
+- **Physical instrument behavior:** separately scope probe loading, bandwidth,
+  anti-alias filtering or ADC behavior with explicit parameters and independent
+  time-domain expectations. Preserve the ideal/raw acquisition path and identify
+  each modeled effect in CLI receipts and GUI labels. Disclosure alone does not
+  implement these effects, and invented noise cannot serve as validation.
+- **Aperture/audio acquisition:** respect the existing upstream aperture/audio
+  and Lite supplier-adoption claims. Their sampling, filtering and playback work
+  is separate from the additive display metadata in this lane.

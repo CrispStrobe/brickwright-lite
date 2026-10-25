@@ -30,7 +30,7 @@
 
 import {
     BufferGeometry, Color, DynamicDrawUsage, Group, InstancedBufferAttribute, InstancedBufferGeometry,
-    InstancedMesh, LineSegments, MeshStandardMaterial, ShaderMaterial
+    InstancedMesh, LineSegments, Matrix4, MeshStandardMaterial, ShaderMaterial
 } from 'three';
 import {PART_SURFACE} from './part-style.js';
 
@@ -52,13 +52,13 @@ const pageOverride = () => (typeof window !== 'undefined' && typeof window.__bwS
 export const useInstancing = (count, instancing = pageOverride()) => (instancing === 'auto' ? count >= INSTANCE_FROM : Boolean(instancing));
 
 const LINE_VERTEX = /* glsl */`
-    attribute mat4 iMatrix;
+    attribute mat4 iClipFromInstance;
     attribute vec3 iTint;
     attribute vec3 color;
     varying vec3 vColor;
     void main () {
         vColor = color * iTint;
-        gl_Position = projectionMatrix * modelViewMatrix * iMatrix * vec4(position, 1.0);
+        gl_Position = iClipFromInstance * vec4(position, 1.0);
     }`;
 const LINE_FRAGMENT = /* glsl */`
     varying vec3 vColor;
@@ -68,7 +68,7 @@ const LINE_FRAGMENT = /* glsl */`
     }`;
 // part-style.js's conditional-line rule, per instance.
 const CONDITIONAL_VERTEX = /* glsl */`
-    attribute mat4 iMatrix;
+    attribute mat4 iClipFromInstance;
     attribute vec3 iTint;
     attribute vec3 control0;
     attribute vec3 control1;
@@ -78,7 +78,7 @@ const CONDITIONAL_VERTEX = /* glsl */`
     varying vec3 vColor;
     void main () {
         vColor = color * iTint;
-        mat4 mvp = projectionMatrix * modelViewMatrix * iMatrix;
+        mat4 mvp = iClipFromInstance;
         vec4 c0 = mvp * vec4(control0, 1.0);
         vec4 c1 = mvp * vec4(control1, 1.0);
         vec4 p0 = mvp * vec4(position, 1.0);
@@ -99,6 +99,10 @@ const CONDITIONAL_FRAGMENT = /* glsl */`
         gl_FragColor = vec4(vColor, 1.0);
         #include <colorspace_fragment>
     }`;
+
+// Clip transforms are prepared in the scene callback, before Three uploads geometry
+// attributes. A material callback is later than that upload boundary.
+const lineShaderMaterial = (vertexShader, fragmentShader) => new ShaderMaterial({vertexShader, fragmentShader});
 
 const groupRange = (geometry, index) => geometry.groups.find(g => g.materialIndex === index) || null;
 
@@ -137,8 +141,8 @@ export const createInstancedParts = ({colors}) => {
     const ownMaterial = alpha => shared(`own:${alpha}`, () => new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE,
         transparent: alpha < 1, opacity: alpha, depthWrite: alpha >= 1}));
     const fixedMaterial = () => shared('fixed', () => new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE, vertexColors: true}));
-    const lineMaterial = () => shared('lines', () => new ShaderMaterial({vertexShader: LINE_VERTEX, fragmentShader: LINE_FRAGMENT}));
-    const conditionalMaterial = () => shared('conditional', () => new ShaderMaterial({vertexShader: CONDITIONAL_VERTEX, fragmentShader: CONDITIONAL_FRAGMENT}));
+    const lineMaterial = () => shared('lines', () => lineShaderMaterial(LINE_VERTEX, LINE_FRAGMENT));
+    const conditionalMaterial = () => shared('conditional', () => lineShaderMaterial(CONDITIONAL_VERTEX, CONDITIONAL_FRAGMENT));
 
     /**
      * Register a placed part.
@@ -195,6 +199,11 @@ export const createInstancedParts = ({colors}) => {
                         const geo = subGeometry(source, range, true);
                         geo.instanceCount = n;
                         geo.setAttribute('iMatrix', matrices);
+                        // World matrices remain shared with faces. Clip data belongs to
+                        // this line object: siblings may have different world transforms.
+                        const clipMatrices = new InstancedBufferAttribute(new Float32Array(n * 16), 16);
+                        clipMatrices.setUsage(DynamicDrawUsage);
+                        geo.setAttribute('iClipFromInstance', clipMatrices);
                         // Own-colour lines are drawn in the placed colour's EDGE; fixed ones in their own colours.
                         const tint = new Float32Array(n * 3).fill(1);
                         if (side === 'own') {
@@ -217,12 +226,20 @@ export const createInstancedParts = ({colors}) => {
     const scratch = new Color();
     const glow = new Color();
     const ZERO = new Array(16).fill(0);
+    const viewProjection = new Matrix4();
+    const objectClip = new Matrix4();
+    const effectiveInstance = new Matrix4();
+    const instanceClip = new Matrix4();
     /**
-     * Copy every proxy's world matrix and look into its instances. Cheap enough per frame
-     * (16 + 6 floats per part); the GPU upload happens only when something changed.
+     * Copy proxy world matrices and colors, requesting uploads only for changed Float32 values.
+     * With the actual render camera, prepare each line object's clip data before attribute upload.
      * @param {boolean} [force] upload even if nothing changed
+     * @param {Camera} [camera] actual render camera, supplied by Scene.onBeforeRender
      */
-    const sync = (force = false) => {
+    const sync = (force = false, camera = null) => {
+        // Scene and camera world matrices are current here; per-object
+        // modelViewMatrix is not refreshed until the later draw callback.
+        if (camera) viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
         for (const batch of batches) {
             const m = batch.matrices.array;
             let moved = force;
@@ -230,7 +247,7 @@ export const createInstancedParts = ({colors}) => {
                 const e = proxy.userData.hidden ? ZERO : proxy.matrixWorld.elements;
                 const o = i * 16;
                 for (let k = 0; k < 16; k++) {
-                    if (m[o + k] !== e[k]) {
+                    if (m[o + k] !== Math.fround(e[k])) {
                         m[o + k] = e[k];
                         moved = true;
                     }
@@ -248,7 +265,7 @@ export const createInstancedParts = ({colors}) => {
                     if (material.emissive) scratch.add(glow.copy(material.emissive));
                     if (proxy.userData.dim) scratch.lerp(DIM_COLOR, DIM_AMOUNT);
                     const o = i * 3;
-                    if (a[o] !== scratch.r || a[o + 1] !== scratch.g || a[o + 2] !== scratch.b) {
+                    if (a[o] !== Math.fround(scratch.r) || a[o + 1] !== Math.fround(scratch.g) || a[o + 2] !== Math.fround(scratch.b)) {
                         a[o] = scratch.r;
                         a[o + 1] = scratch.g;
                         a[o + 2] = scratch.b;
@@ -256,6 +273,29 @@ export const createInstancedParts = ({colors}) => {
                     }
                 });
                 if (changed) attribute.needsUpdate = true;
+            }
+            if (camera) {
+                for (const {mesh, kind} of batch.meshes) {
+                    if (!kind.startsWith('edges-') && !kind.startsWith('conditional-')) continue;
+                    const attribute = mesh.geometry.getAttribute('iClipFromInstance');
+                    const clip = attribute.array;
+                    objectClip.multiplyMatrices(viewProjection, mesh.matrixWorld);
+                    let changed = force;
+                    for (let i = 0; i < batch.entries.length; i++) {
+                        // Derive from the effective Float32 instance actually used
+                        // by the GPU, including the zero matrix for a hidden proxy.
+                        effectiveInstance.fromArray(m, i * 16);
+                        instanceClip.multiplyMatrices(objectClip, effectiveInstance);
+                        for (let k = 0; k < 16; k++) {
+                            const value = Math.fround(instanceClip.elements[k]);
+                            if (clip[i * 16 + k] !== value) {
+                                clip[i * 16 + k] = value;
+                                changed = true;
+                            }
+                        }
+                    }
+                    if (changed) attribute.needsUpdate = true;
+                }
             }
         }
     };

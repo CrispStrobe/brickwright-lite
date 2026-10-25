@@ -1947,6 +1947,12 @@
       "workflow": "robot-model-webkit-comparison.yml",
       "branch": "lane/robot-model-webkit-comparison-20261023",
       "sha": "368bd55ae"
+    },
+    {
+      "run": 39960513501,
+      "workflow": "model-measurements.yml",
+      "branch": "lane/model-api-resource-takeover-20261023",
+      "sha": "a11711d61"
     }
   ],
   "workflowsInTree": [
@@ -1967,11 +1973,14 @@
     "i8086-execution.yml",
     "makecode-arcade-bases.yml",
     "mobile.yml",
+    "model-measurements.yml",
+    "native-installed-qualification.yml",
     "nightly-corpus-differential.yml",
     "pascal-ack-image.yml",
     "production-sw-probe.yml",
     "release.yml",
     "robot-lab-own-firmware.yml",
+    "robot-model-webkit-comparison.yml",
     "rust-notices.yml",
     "target-performance.yml",
     "tauri.yml",
@@ -7566,6 +7575,158 @@
       },
       "sourceSha": "working-tree",
       "observationScope": "New combined-source replacement declaration; historical048a/DC/368 execution records are retained, not acceptance of this replacement. Artifact fields remain unadmitted."
+    },
+    "model-measurements.yml": {
+      "runs": 1,
+      "stepsInFile": [
+        "Restore canonical worker dependencies",
+        "Prepare trusted runtime before reading submitted data",
+        "Decode the authenticated submission",
+        "Run bounded native simulation without credentials or network",
+        "Encrypt the report for its submitting agent",
+        "Retain encrypted result",
+        "Reflect native failure after preserving its report",
+        "Prepare exact-source canonical dependencies",
+        "Exercise resource, atomic admission and real controller refusals",
+        "Prepare fixed public fixture without production credentials",
+        "Run real VM Jolt controls including observer parity without credentials or network",
+        "Execute fixed model in real bounded worker without credentials or network",
+        "Seal and join exact input report and checkout identities",
+        "Retain actual single-entry encrypted archive for independent transport admission",
+        "Preserve qualification evidence including original failures"
+      ],
+      "inFileInNoRun": [
+        "Restore canonical worker dependencies",
+        "Prepare trusted runtime before reading submitted data",
+        "Decode the authenticated submission",
+        "Run bounded native simulation without credentials or network",
+        "Encrypt the report for its submitting agent",
+        "Retain encrypted result",
+        "Reflect native failure after preserving its report"
+      ],
+      "steps": {
+        "Prepare exact-source canonical dependencies": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Exercise resource, atomic admission and real controller refusals": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Prepare fixed public fixture without production credentials": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Run real VM Jolt controls including observer parity without credentials or network": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Execute fixed model in real bounded worker without credentials or network": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Seal and join exact input report and checkout identities": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Retain actual single-entry encrypted archive for independent transport admission": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": null,
+          "class": "always"
+        },
+        "Preserve qualification evidence including original failures": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "skippedInFailedRuns": 0,
+          "skippedInGreenRuns": 0,
+          "jobs": [
+            "qualify"
+          ],
+          "clause": "${{ always() }}",
+          "class": "always"
+        }
+      },
+      "jobs": {
+        "qualify": {
+          "existed": 1,
+          "ran": 1,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "always"
+        },
+        "measure": {
+          "existed": 1,
+          "ran": 0,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "never"
+        }
+      },
+      "sourceSha": "a11711d61"
     }
   },
   "lastRefresh": {

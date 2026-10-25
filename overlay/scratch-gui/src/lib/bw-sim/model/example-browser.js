@@ -11,9 +11,12 @@ export const EXAMPLE_TOPICS = Object.freeze({
     fluids: {en: 'Air pressure', de: 'Luftdruck'}
 });
 
+// Fold accents and punctuation so classical names survive spelling and dash variants.
+export const normalizeExampleSearch = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
 /** Pure filtering for the model gallery. Metadata stays separate from the model registry. */
 export const filterModelExamples = (models, details, {query = '', topic = '', size = '', locale = 'en'} = {}) => {
-    const q = query.trim().toLocaleLowerCase(locale);
+    const terms = normalizeExampleSearch(query).split(/\s+/).filter(Boolean);
     return models.filter(entry => {
         const key = entry.id || entry.file;
         const d = details[key];
@@ -21,7 +24,8 @@ export const filterModelExamples = (models, details, {query = '', topic = '', si
         if (size === 'large' && d.pieces <= 50) return false;
         if (size === 'small' && d.pieces > 50) return false;
         const words = [entry.title[locale] || entry.title.en, d.description[locale] || d.description.en,
-            EXAMPLE_TOPICS[d.topic]?.[locale], ...d.hubs, d.author, key].join(' ').toLocaleLowerCase(locale);
-        return !q || words.includes(q);
+            EXAMPLE_TOPICS[d.topic]?.[locale], ...d.hubs, d.author, key, ...Object.values(d.mechanism || {}), ...(d.keywords || [])].join(' ');
+        const searchable = normalizeExampleSearch(words);
+        return terms.every(term => searchable.includes(term));
     });
 };

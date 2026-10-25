@@ -2,7 +2,7 @@
   "version": 1,
   "id": "scale-echo",
   "language": "de",
-  "what": "Ein Pantograf aus 148 Teilen hat zwei Motoren: A dreht den langen Arm am festen Drehpunkt, B fährt auf diesem Arm mit. Ein echtes Parallelogramm kopiert die rote Markerbahn am blauen Marker in doppelter Größe. Die Kappen sind farbige Markierungen, keine Tintenstifte. Der Rahmen steht frei auf dem Boden. Zwei Antriebe und ein Parallelogramm kopieren eine Markerbahn mechanisch in doppelter Größe. Vergleiche beide Bahnen und Verschiebungsvektoren.",
+  "what": "Pantograf. Ein Pantograf aus 148 Teilen hat zwei Motoren: A dreht den langen Arm am festen Drehpunkt, B fährt auf diesem Arm mit. Ein echtes Parallelogramm kopiert die rote Markerbahn am blauen Marker in doppelter Größe. Die Kappen sind farbige Markierungen, keine Tintenstifte. Der Rahmen steht frei auf dem Boden. Zwei Antriebe und ein Parallelogramm kopieren eine Markerbahn mechanisch in doppelter Größe. Vergleiche beide Bahnen und Verschiebungsvektoren.",
   "try": [
     "Wähle Scale Echo unter Beispiele. Das abgesicherte native Programm wird automatisch in Blöcke geladen. Setze auf die gespeicherte Stellung zurück und starte die acht endlichen Bewegungen; beide Motoren müssen bei null beginnen.",
     "Beobachte, wie Motor B mit dem langen Arm mitfährt. Zuerst bewegt sich A bei gehaltenem B, dann B bei gehaltenem A. Vergleiche Richtung und Strecke beider farbiger Kappen.",

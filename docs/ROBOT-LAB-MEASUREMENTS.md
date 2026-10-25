@@ -43,6 +43,14 @@ examples keeps each model's definitions during the current pane session.
 Standalone LDraw exports carry the model geometry; use a project save to retain
 measurement definitions. Recompilation checks joint/rope bindings and reports
 missing targets rather than silently attaching to a reused generated id.
+Use **Edit** beside a saved measurement to change its name, quantity or targets
+without removing it. **Save changes** replaces that definition in place, keeping
+its order, visibility and plot selection; **Cancel** discards the draft. Editing
+remains available when all 64 definition slots are occupied. If its model or
+saved definition changes while the editor is open, the stale draft is refused.
+For joint and rope readings, the editor asks for an explicit selection when the
+saved binding no longer matches the current mechanism; saving refreshes the
+binding to that selected joint or rope.
 
 Pause refreshes the final readings, including a short worker update after the last regular sample. Running readings remain sampled every 100 ms of simulated time. Pose replay hides live readings and overlays until the
 view returns to the current simulation. Measurements never drive the model or

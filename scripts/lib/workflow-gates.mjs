@@ -49,6 +49,8 @@ export const parseJobs = text => {
             job.steps.push(step);
         }
         if (!step) continue;
+        const id = line.match(/^(?:      - |        )id:\s*([A-Za-z_][A-Za-z0-9_-]*)\s*$/);
+        if (id) { step.id = id[1]; step.idCount = (step.idCount || 0) + 1; }
         const cond = line.match(/^        if:\s*(.*)$/);
         if (cond) step.ifs = cond[1].trim();
         const name = line.match(/^      (?:- )?name:\s*(.*)$/);

@@ -2,7 +2,7 @@
   "version": 1,
   "id": "phase-bridge-misphased",
   "language": "de",
-  "what": "Ein Motor treibt zwei geknickte Kardangelenke an. Die Zwischenwelle wird pro Umdrehung zweimal schneller und langsamer. Bei gleichen Knickwinkeln und richtig ausgerichteten Gabeln gleicht das zweite Gelenk diese Schwankung am Abtrieb aus. Die Datei enthält 144 explizite Teile; mit den zwei vom Simulator ergänzten Gelenkkreuzen sind es 146 physische Teile. Ein Ausrichtungsfehler von einer Vierteldrehung verstärkt die Drehzahlschwankung beider Kardangelenke. Vergleiche mit der richtig ausgerichteten Brücke.",
+  "what": "Kardan- / Kreuzgelenke. Ein Motor treibt zwei geknickte Kardangelenke an. Die Zwischenwelle wird pro Umdrehung zweimal schneller und langsamer. Bei gleichen Knickwinkeln und richtig ausgerichteten Gabeln gleicht das zweite Gelenk diese Schwankung am Abtrieb aus. Die Datei enthält 144 explizite Teile; mit den zwei vom Simulator ergänzten Gelenkkreuzen sind es 146 physische Teile. Ein Ausrichtungsfehler von einer Vierteldrehung verstärkt die Drehzahlschwankung beider Kardangelenke. Vergleiche mit der richtig ausgerichteten Brücke.",
   "try": [
     "Wähle Phase Bridge unter Beispiele; das Programm wird automatisch in Blöcke geladen. Drücke Start und vergleiche den gelben Zwischenwellenzeiger mit dem blauen Abtrieb bei zwei Umdrehungen und der Rückfahrt.",
     "Setze zurück und wähle Phase Bridge — falsch ausgerichteter Vergleich. Beim selben Programm schwankt die Abtriebsdrehzahl nun stärker. Nur die Ausrichtung am zweiten Gelenk ändert sich.",

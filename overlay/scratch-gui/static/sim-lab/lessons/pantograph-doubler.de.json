@@ -2,7 +2,7 @@
   "version": 1,
   "id": "pantograph-doubler",
   "language": "de",
-  "what": "Im Modell Pantograf — Bewegungsverdoppler bewegt ein Motor den Eingangspunkt C auf einem kleinen Kreis. Vier passive Stäbe führen den freien Endpunkt E auf einem Kreis mit doppeltem Durchmesser. In der Draufsicht ist der Vektor vom festen Drehpunkt O zu E in jeder Stellung doppelt so groß wie der Vektor von O zu C. Die beweglichen Punkte zeigen eine Bahn; ein tatsächlicher Kontakt zwischen Stift und Zeichenfläche wird nicht vorausgesetzt. Ein Motor treibt einen passiven Pantografen: Aus einem 32-mm-Eingangskreis wird ein 64-mm-Ausgangskreis. Vergleiche Weg, Geschwindigkeit und Fläche.",
+  "what": "Pantograf. Im Modell Pantograf — Bewegungsverdoppler bewegt ein Motor den Eingangspunkt C auf einem kleinen Kreis. Vier passive Stäbe führen den freien Endpunkt E auf einem Kreis mit doppeltem Durchmesser. In der Draufsicht ist der Vektor vom festen Drehpunkt O zu E in jeder Stellung doppelt so groß wie der Vektor von O zu C. Die beweglichen Punkte zeigen eine Bahn; ein tatsächlicher Kontakt zwischen Stift und Zeichenfläche wird nicht vorausgesetzt. Ein Motor treibt einen passiven Pantografen: Aus einem 32-mm-Eingangskreis wird ein 64-mm-Ausgangskreis. Vergleiche Weg, Geschwindigkeit und Fläche.",
   "try": [
     "Wähle das Beispiel in Robot Lab, setze es zurück und starte es. Das passende Programm wird automatisch geladen. Beobachte Vorwärts- und Rückwärtsdrehungen sowie die Pausen.",
     "Beobachte das Eingangsgelenk C und den freien Endpunkt E während einer Vierteldrehung. Vergleiche in der Draufsicht ihre Richtungen und Abstände vom festen Drehpunkt O: O, C und E liegen auf einer Geraden, und E ist doppelt so weit von O entfernt.",

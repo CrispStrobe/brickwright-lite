@@ -44,3 +44,41 @@ refused while the original attachment remains ready. An independent reader
 checks original UART envelopes, six completed startups, distinct generations
 and ownership release. Exact-head CI remains required before integration; this
 finite profile slice does not close G02 or qualify every evolving-main package.
+
+### Continuation — mixed legacy/compiled pairing refusal, 2026-10-24
+
+Claude (operator-assigned) continues this claim on
+`lane/spike-g02-micropython-support-pairing-20261024`, inside the existing
+envelope (`scripts/prepare-spike-micropython-pins.mjs` and its focused test).
+
+Observed: an installed package assembled from legacy source-overlay support
+and a runtime that already compiles the Prime models fails every MicroPython
+start. A closed native startup record showed launch complete after 14.6 s, then
+`rsp-connect reason=unavailable` for the full 60 s window. A per-command Renode
+probe of the same image located the cause: the `models.cs` include aborts
+because the runtime already defines `ILpf2Device`, so the platform cannot
+resolve `BrickwrightSTM32SPI`, the electrical ports and CPU setup fail, and
+`StartGdbServer` never opens a debugger endpoint. The documented requirement
+(compiled runtime needs compiled support) was not enforced.
+
+Change: pin preparation now refuses legacy overlay support when the runtime
+contains both compiled-model names (`ILpf2Device`, `CreatePrimeElectricalPorts`).
+Compiled support with its runtime-bound descriptor is unchanged. Two focused
+controls: the refusal fails on the original script and passes on the fix; a
+runtime with only one name is still accepted. Against the actual installed
+runtime and its legacy support, the original script staged the pairing and the
+fixed script refuses it. This fixes packaging admission only; a compiled-support
+installed MicroPython UART/generation qualification remains required, and no
+installed guest result is claimed here.
+
+The hosted qualification producer had the same gap: its closed compile-pin
+vocabulary had no `BW_RENODE_MICROPYTHON_PROFILE_SHA256`, so it could only
+build legacy-overlay executables. The envelope adds
+`scripts/native-installed-qualification.py` and
+`test/native-installed-qualification-controls.py`: the profile pin is now an
+optional, complete lowercase SHA-256 passed to the compiler like the other
+pins. All other pins and admission rules are unchanged.
+The producer's reviewed default had expired: its official frontend artifact was
+no longer available, so every producer PR check failed before compiling. The
+default now names main `d7fde5bf` with its successful Build 40106657493, and the
+current runtime with its compiled MicroPython support pins.

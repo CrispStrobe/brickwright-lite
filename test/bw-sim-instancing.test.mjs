@@ -17,11 +17,11 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {Color, Matrix4, Quaternion, Raycaster, Vector3} from 'three';
+import {BufferGeometry, Color, Euler, Float32BufferAttribute, Matrix4, Mesh, MeshStandardMaterial, Quaternion, Raycaster, Vector3, Vector4, PerspectiveCamera, Scene} from 'three';
 import {parseLDConfig} from '../overlay/scratch-gui/src/lib/bw-sim/view/ldraw-colors.js';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {buildSimScene, applySnapshot} from '../overlay/scratch-gui/src/lib/bw-sim/view/sim-scene3d.js';
-import {INSTANCE_FROM} from '../overlay/scratch-gui/src/lib/bw-sim/view/instanced-parts.js';
+import {createInstancedParts, INSTANCE_FROM} from '../overlay/scratch-gui/src/lib/bw-sim/view/instanced-parts.js';
 import {tintMaterial} from '../overlay/scratch-gui/src/lib/bw-sim/view/insight-layer.js';
 import {prepareModel, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {stressModel} from '../scripts/lib/sim-lab-stress-model.mjs';
@@ -188,3 +188,248 @@ test('small models keep one mesh per part (auto stays off below INSTANCE_FROM)',
     assert.ok([...built.partMeshes.values()].every(m => m.visible && m.children.length > 0));
     built.dispose();
 });
+
+/** A tiny real Three.js batch isolates upload invalidation from geometry loading. */
+const uploadFixture = t => {
+    const faces = new BufferGeometry();
+    faces.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    faces.addGroup(0, 3, 0);
+    const proxy = new Mesh(faces, new MeshStandardMaterial({color: new Color(0.1, 0.2, 0.3)}));
+    proxy.matrixWorld.makeTranslation(0.1, 0.2, 0.3);
+    const instanced = createInstancedParts({colors});
+    instanced.add(proxy, {faces, edges: new BufferGeometry(), conditional: new BufferGeometry()}, 16);
+    instanced.build();
+    const batch = instanced.object.children[0].userData.batch;
+    t.after(() => { instanced.dispose(); faces.dispose(); proxy.material.dispose(); });
+    return {proxy, instanced, matrix: batch.matrices, color: batch.colours[0].attribute};
+};
+
+test('unchanged GPU-precision transforms and colors retain bytes and attribute versions', t => {
+    const {proxy, instanced, matrix, color} = uploadFixture(t);
+    const before = {matrix: matrix.array.slice(), color: color.array.slice(), mv: matrix.version, cv: color.version};
+    instanced.sync();
+    assert.deepEqual(matrix.array, before.matrix);
+    assert.deepEqual(color.array, before.color);
+    assert.equal(matrix.version, before.mv, 'No upload for identical stored matrix bytes');
+    assert.equal(color.version, before.cv, 'No upload for identical stored color bytes');
+    proxy.matrixWorld.elements[12] += 1e-10;
+    proxy.material.color.r += 1e-10;
+    instanced.sync();
+    assert.deepEqual(matrix.array, before.matrix, 'Sub-float32 movement leaves the existing GPU bytes');
+    assert.deepEqual(color.array, before.color, 'Sub-float32 tint leaves the existing GPU bytes');
+    assert.equal(matrix.version, before.mv);
+    assert.equal(color.version, before.cv);
+});
+
+test('representable changes and forced uploads remain live after precision-aware caching', t => {
+    const {proxy, instanced, matrix, color} = uploadFixture(t);
+    let mv = matrix.version, cv = color.version;
+    proxy.matrixWorld.elements[12] = 0.1001;
+    proxy.material.color.r = 0.25;
+    instanced.sync();
+    assert.ok(matrix.version > mv);
+    assert.ok(color.version > cv);
+    assert.equal(matrix.array[12], new Float32Array([0.1001])[0]);
+    assert.equal(color.array[0], new Float32Array([0.25])[0]);
+    mv = matrix.version; cv = color.version;
+    instanced.sync(true);
+    assert.ok(matrix.version > mv, 'Explicit forced matrix upload retained');
+    assert.ok(color.version > cv, 'Explicit forced color upload retained');
+    const visible = matrix.array.slice();
+    proxy.userData.hidden = true; instanced.sync();
+    assert.ok(matrix.array.every(value => value === 0));
+    proxy.userData.hidden = false; instanced.sync();
+    assert.deepEqual(matrix.array, visible, 'Unhide restores the same placement');
+    proxy.material.emissive.setRGB(0.15, 0.01, 0.07); instanced.sync();
+    assert.equal(color.array[0], new Float32Array([0.4])[0], 'Emissive highlight still reaches the GPU');
+    const lit = color.array.slice();
+    proxy.userData.dim = true; instanced.sync();
+    assert.notDeepEqual(color.array, lit, 'Dimming still reaches the GPU');
+});
+
+// Per-draw line transform lifecycle and projection controls.
+{
+const visual = () => {
+    const line = conditional => {
+        const g = new BufferGeometry();
+        g.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0], 3));
+        g.setAttribute('color', new Float32BufferAttribute([1, 1, 1, 1, 1, 1], 3));
+        if (conditional) {
+            g.setAttribute('control0', new Float32BufferAttribute([0, 1, 0, 0, 1, 0], 3));
+            g.setAttribute('control1', new Float32BufferAttribute([0, -1, 0, 0, -1, 0], 3));
+            g.setAttribute('direction', new Float32BufferAttribute([1, 0, 0, 1, 0, 0], 3));
+        }
+        g.addGroup(0, 2, 0);
+        g.computeBoundingBox();g.computeBoundingSphere();
+        return g;
+    };
+    const faces = new BufferGeometry();
+    faces.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    faces.addGroup(0, 3, 0);
+    return {faces, edges: line(false), conditional: line(true)};
+};
+const hook = (scene, parts, view = 'view/sim-scene3d.js') => {
+    const text = readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim', view), 'utf8');
+    const callback = text.match(/(?:scene|s)\.onBeforeRender = ([^\n]+);/);
+    assert.ok(callback, 'Actual early scene hook must exist');
+    scene.onBeforeRender = new Function('instanced', `return ${callback[1]};`)(parts);
+};
+const fixture = (view) => {
+    const parts = createInstancedParts({colors: new Map([
+        [16, {value: '#7799cc', edge: '#223344', alpha: 1}],
+        [40, {value: '#6688aa', edge: '#112233', alpha: 0.5}]
+    ])});
+    const source = visual(), proxies = [];
+    for (let i = 0; i < 4; i++) {
+        const proxy = new Mesh(new BufferGeometry(), new MeshStandardMaterial({color: '#7799cc'}));
+        proxy.position.set(i / 3, -0.2, 0.7);proxy.rotation.set(0.1, i / 10, -0.2);
+        proxy.updateMatrixWorld(true);proxies.push(proxy);parts.add(proxy, source, i < 2 ? 16 : 40);
+    }
+    parts.build();
+    const scene = new Scene();scene.add(parts.object);
+    parts.object.position.set(0.2, -0.1, 0.3);parts.object.rotation.set(0.2, 0.3, -0.1);
+    const lines = parts.object.children.filter(o => o.isLineSegments);
+    lines.forEach((o, i) => {o.position.set(i / 11, 0, -i / 13);o.rotation.z = i / 7;});
+    const camera = new PerspectiveCamera(48, 1.6, 0.2, 50);
+    camera.position.set(0.3, 0.2, 6);camera.rotation.set(-0.1, 0.15, 0.05);
+    hook(scene, parts, view);
+    const frame = (selected = camera) => {
+        scene.updateMatrixWorld(true);selected.updateMatrixWorld(true);
+        scene.onBeforeRender(null, scene, selected);
+    };
+    return {parts, source, proxies, scene, lines, camera, frame};
+};
+const clipOf = (line, i = 0) => new Matrix4().fromArray(line.geometry.getAttribute('iClipFromInstance').array, i * 16);
+const originalProjection = (line, camera, point, i = 0) => new Vector4(...point, 1)
+    .applyMatrix4(new Matrix4().fromArray(line.userData.batch.matrices.array, i * 16))
+    .applyMatrix4(line.matrixWorld).applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix);
+const nearPoint = (actual, expected) => ['x', 'y', 'z', 'w'].forEach(k => {
+    assert.ok(Number.isFinite(actual[k]) && Number.isFinite(expected[k]));
+    assert.ok(Math.abs(actual[k] - expected[k]) <= 2e-5 * Math.max(1, Math.abs(expected[k])), `${k}: ${actual[k]} vs ${expected[k]}`);
+});
+const assertProjection = (line, camera) => {
+    for (let i = 0; i < line.geometry.instanceCount; i++) for (const point of [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, -1, 0]])
+        nearPoint(new Vector4(...point, 1).applyMatrix4(clipOf(line, i)), originalProjection(line, camera, point, i));
+};
+
+test('both actual early scene hooks prepare first-frame clip buffers before any material callback', () => {
+    for (const view of ['view/sim-scene3d.js', 'editor/editor-view3d.js']) {
+        const f = fixture(view);
+        for (const line of f.lines) {
+            assert.ok(line.geometry.getAttribute('iClipFromInstance').array.every(v => v === 0));
+            line.modelViewMatrix.makeTranslation(1000, 2000, 3000); // deliberately stale until the later draw boundary
+        }
+        f.frame();
+        for (const line of f.lines) {
+            const a = line.geometry.getAttribute('iClipFromInstance');
+            assert.ok(a.version > 0, 'Prepared before the renderer creates/uploads attribute buffers');
+            assertProjection(line, f.camera);
+            const version = a.version;
+            line.material.onBeforeRender(null, f.scene, f.camera, line.geometry, line);
+            assert.equal(a.version, version, 'No too-late material-stage writes');
+        }
+        f.parts.dispose();
+    }
+});
+
+test('clip shaders retain one active instance matrix and the original four-point conditional predicate', () => {
+    const f = fixture();f.frame();
+    for (const line of f.lines) {
+        const shader = line.material.vertexShader;
+        assert.equal((shader.match(/attribute mat4 /g) || []).length, 1);
+        assert.match(shader, /attribute mat4 iClipFromInstance/);
+        assert.doesNotMatch(shader, /clipFromModel|projectionMatrix|modelViewMatrix|iMatrix/);
+        assert.equal(line.geometry.getAttribute('iClipFromInstance').meshPerAttribute, 1);
+        assert.equal(line.geometry.getAttribute('iClipFromInstance').itemSize, 16);
+        assert.equal(line.geometry.instanceCount, line.userData.batch.entries.length);
+        assert.equal(line.frustumCulled, false);
+        if (line.name.startsWith('instanced:edges-')) assert.match(shader, /gl_Position\s*=\s*iClipFromInstance\s*\*\s*vec4\(position, 1\.0\)/);
+        else {
+            assert.match(shader, /mat4 mvp\s*=\s*iClipFromInstance/);
+            for (const expression of ['control0', 'control1', 'position', 'position + direction']) assert.ok(shader.includes(`mvp * vec4(${expression}, 1.0)`));
+            assert.match(shader, /vDiscard\s*=\s*d0 \* d1 < 0\.0 \? 1\.0 : 0\.0/);
+        }
+    }
+    f.parts.dispose();
+});
+
+test('camera-only, projection-only and second-camera changes refresh clip data without dirtying face buffers', () => {
+    const f = fixture();f.frame();
+    const faces = f.parts.object.children.filter(o => o.isInstancedMesh);
+    const worldVersions = faces.map(o => o.instanceMatrix.version), colorVersions = faces.map(o => o.instanceColor.version);
+    const a = f.lines[0].geometry.getAttribute('iClipFromInstance');let version = a.version;
+    f.camera.position.x += 0.4;f.frame();assert.ok(a.version > version);assertProjection(f.lines[0], f.camera);
+    version = a.version;f.camera.fov = 55;f.camera.updateProjectionMatrix();f.frame();assert.ok(a.version > version);assertProjection(f.lines[0], f.camera);
+    version = a.version;const other = f.camera.clone();other.position.y -= 0.6;f.frame(other);assert.ok(a.version > version);
+    for (const line of f.lines) assertProjection(line, other);
+    assert.deepEqual(faces.map(o => o.instanceMatrix.version), worldVersions);
+    assert.deepEqual(faces.map(o => o.instanceColor.version), colorVersions);
+    f.parts.dispose();
+});
+
+test('shared source geometry and material retain distinct per-object clip buffers and current parent transforms', () => {
+    const f = fixture();f.frame();
+    const regular = f.lines.filter(o => o.name.startsWith('instanced:edges-'));
+    assert.equal(regular[0].material, regular[1].material);
+    assert.equal(new Set(f.lines.map(o => o.geometry.getAttribute('iClipFromInstance').array)).size, f.lines.length);
+    for (const line of regular) assert.equal(line.geometry.getAttribute('position'), f.source.edges.getAttribute('position'));
+    assert.equal(f.source.edges.getAttribute('iClipFromInstance'), undefined);
+    const snapshot = Array.from(regular[0].geometry.getAttribute('iClipFromInstance').array);
+    regular[1].position.x += 0.5;f.frame();
+    assert.deepEqual(Array.from(regular[0].geometry.getAttribute('iClipFromInstance').array), snapshot);
+    for (const line of f.lines) assertProjection(line, f.camera);
+    f.parts.object.rotation.y += 0.7;f.frame();
+    for (const line of f.lines) assertProjection(line, f.camera);
+    f.parts.dispose();
+});
+
+test('unchanged Float32 clip values do not request repeated uploads', () => {
+    const f = fixture();f.frame();
+    const versions = f.lines.map(o => o.geometry.getAttribute('iClipFromInstance').version);
+    const bytes = f.lines.map(o => Array.from(o.geometry.getAttribute('iClipFromInstance').array));
+    for (let i = 0; i < 5; i++) f.frame();
+    assert.deepEqual(f.lines.map(o => o.geometry.getAttribute('iClipFromInstance').version), versions);
+    assert.deepEqual(f.lines.map(o => Array.from(o.geometry.getAttribute('iClipFromInstance').array)), bytes);
+    f.parts.dispose();
+});
+
+test('proxy movement and hide/unhide still drive effective world and clip matrices', () => {
+    const f = fixture();f.frame();const proxy = f.proxies[0];
+    const line = f.lines.find(o => o.userData.batch.entries.some(e => e.proxy === proxy));
+    const i = line.userData.batch.entries.findIndex(e => e.proxy === proxy);
+    proxy.position.x += 0.75;proxy.updateMatrixWorld(true);f.frame();assertProjection(line, f.camera);
+    const visible = Array.from(line.geometry.getAttribute('iClipFromInstance').array.slice(i * 16, i * 16 + 16));
+    proxy.userData.hidden = true;f.frame();
+    assert.ok(line.userData.batch.matrices.array.slice(i * 16, i * 16 + 16).every(v => v === 0));
+    assert.ok(line.geometry.getAttribute('iClipFromInstance').array.slice(i * 16, i * 16 + 16).every(v => v === 0));
+    proxy.userData.hidden = false;f.frame();
+    assert.deepEqual(Array.from(line.geometry.getAttribute('iClipFromInstance').array.slice(i * 16, i * 16 + 16)), visible);
+    f.parts.dispose();
+});
+
+test('conditional visible and hidden sides match the original independently projected point rule', () => {
+    const f = fixture();f.frame();const line = f.lines.find(o => o.name.startsWith('instanced:conditional-'));
+    const discard = p => {
+        const [c0, c1, p0, p1] = p.map(v => [v.x / v.w, v.y / v.w]);
+        const n = [p0[1] - p1[1], p1[0] - p0[0]];
+        return (n[0] * (c0[0] - p0[0]) + n[1] * (c0[1] - p0[1])) * (n[0] * (c1[0] - p0[0]) + n[1] * (c1[1] - p0[1])) < 0;
+    };
+    for (const [control, expected] of [[[0, -1, 0], true], [[0, 2, 0], false]]) {
+        const points = [[0, 1, 0], control, [0, 0, 0], [1, 0, 0]];
+        const old = points.map(p => originalProjection(line, f.camera, p));
+        const prepared = points.map(p => new Vector4(...p, 1).applyMatrix4(clipOf(line)));
+        prepared.forEach((p, i) => nearPoint(p, old[i]));
+        assert.equal(discard(old), expected);assert.equal(discard(prepared), expected);
+    }
+    f.parts.dispose();
+});
+
+test('clip buffers belong to disposable mirrors while cached source geometry stays unchanged', () => {
+    const f = fixture();f.frame();let disposed = 0;
+    const original = Array.from(f.source.edges.getAttribute('position').array);
+    for (const line of f.lines) line.geometry.addEventListener('dispose', () => disposed++);
+    f.parts.dispose();assert.equal(disposed, f.lines.length);assert.equal(f.parts.object.children.length, 0);
+    assert.deepEqual(Array.from(f.source.edges.getAttribute('position').array), original);
+    assert.equal(f.source.edges.getAttribute('iClipFromInstance'), undefined);
+});
+}
