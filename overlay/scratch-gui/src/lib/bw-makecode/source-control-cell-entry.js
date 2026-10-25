@@ -56,8 +56,45 @@ const constant=node=>{
 };
 const valueKey=v=>v===absent?'u':typeof v==='boolean'?'b'+Number(v):'n'+String(v);
 
+// Negative-only admission preflight. Passing this work bound never replaces
+// the complete source snapshot, binding inventory or late executable-node cap.
+const preflightArray=Array.isArray,preflightInteger=Number.isSafeInteger,preflightNumber=Number,preflightString=String;
+const preflightPush=Array.prototype.push,preflightPop=Array.prototype.pop;
+const preflightObjectPrototype=Object.prototype,preflightArrayPrototype=Array.prototype;
+const preflightHas=WeakSet.prototype.has,preflightAdd=WeakSet.prototype.add;
+const withinSourceBudget=root=>{
+    const pending=[root],seen=new WeakSet();let nodes=0,work=0;
+    while(pending.length){
+        const value=intrinsicApply(preflightPop,pending,[]);if(!value||typeof value!=='object')continue;
+        if(intrinsicApply(preflightHas,seen,[value]))return false;
+        intrinsicApply(preflightAdd,seen,[value]);
+        const array=preflightArray(value),parent=intrinsicPrototype(value);
+        if(parent!==preflightObjectPrototype&&parent!==preflightArrayPrototype&&parent!==null)return false;
+        let length=0;
+        if(array){
+            const row=intrinsicDescriptor(value,'length');
+            if(!row||!intrinsicApply(intrinsicOwn,row,['value'])||typeof row.value!=='number'||!preflightInteger(row.value)||row.value<0||row.value>MAX_WORK-work)return false;
+            length=row.value;work+=length;
+        }else if(++nodes>MAX_NODES)return false;
+        const keys=intrinsicKeys(value);
+        for(let i=0;i<keys.length;i++){
+            if(++work>MAX_WORK)return false;
+            const key=keys[i],row=intrinsicDescriptor(value,key);
+            if(typeof key!=='string'||!row||!intrinsicApply(intrinsicOwn,row,['value']))return false;
+            if(array){
+                // The original executable walk visits array slots, not named
+                // parameter metadata. Observe descriptors without an iterator.
+                const index=preflightNumber(key);
+                if(key==='length'||!preflightInteger(index)||index<0||index>=length||preflightString(index)!==key)continue;
+            }else if(metadata.has(key))continue;
+            intrinsicApply(preflightPush,pending,[row.value]);
+        }
+    }
+    return true;
+};
+
 export function createSourceControlCellEntry(program){
-    if(!ambientCurrent())return denied;
+    if(!ambientCurrent()||!withinSourceBudget(program))return denied;
     const syntax=inspectGeneratedHelperBindings(program,GENERATED_HELPER_PROFILES.ordinary);
     if(!syntax.isCurrent()||program?.type!=='Program'||!Array.isArray(program.body))return denied;
     const lexical=analyseCallableBindings(program),nodes=[],parents=new WeakMap(),seen=new WeakSet();let valid=true;
