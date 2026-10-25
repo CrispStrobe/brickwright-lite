@@ -78,7 +78,7 @@ this campaign performs no release upload, signing, deployment or hardware flash.
 
 ## Qualification and endpoint
 
-Maintain upstream-source identity only within these owned repositories. Require
+Maintain shared-package source identity only within these owned repositories. Require
 all enabled exact-head checks, affected clean application/guest qualification
 and independently admitted originals before normal matched-head merges.
 Keep every original failed receipt. No threshold, deadline, row census, refusal
@@ -88,3 +88,21 @@ unsupported physical/full-corpus claim. Poll hosted status at most once per
 minute, in batches, and do not run heavy builds or simulations on the workspace
 host. Stop after the fifth accepted step and reconcile results, remaining
 limits and narrowly scoped future work in the public handoff.
+
+## Step 1 result / remaining ownership
+
+ClaimPR1370 landed as `4c416bcfe1a219faaec371ac638f607628f347a7` after all
+four enabled source-policy checks succeeded; only the new lane file changed.
+The frozen operational branch has that exact commit. The single
+[baseline40172711900](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40172711900)
+passes independent original-only admission: 312/312 cases, 87,488 numerical
+checks, 4,448 retained files and matching installed source/runtime identities.
+All 240 waveform CSVs equal the preceding retained baseline; no original was
+replayed. Full hashes and limits are in the
+[result handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md).
+
+Overall ownership remains CLAIMED for steps 2–5. Source/eligibility inspection
+does not yet establish 300 distinct cleared analogue schematics; admit the
+cohort and exact implementation paths before the next experiment. No format
+twin, retargeted device bench or unsupported row is silently counted as a new
+comparable design. The previous whole five-item sequence is not being reopened.
