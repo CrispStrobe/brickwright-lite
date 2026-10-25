@@ -541,14 +541,15 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                 })));
                 const arrayFree=bindings.nodes.every(node=>!arrayShaped.has(node?.type)&&!Object.hasOwn(node,'bwNativeNamedArray'));
                 // A program that holds Arrays still keeps the ordinary helper
-                // when no Array can reach any operand: every Opaque operand is
-                // proved to come only from primitive values, other closed
-                // helper results or reads of a declared-primitive SDK Sprite
-                // field whose receiver is never an Array or a parameter. A
-                // receiver that is null/undefined throws, never yields an
-                // Array. Unknown calls, parameters, compound writers and any
-                // other producer keep the refusal. Named/legacy Array tags are
-                // never admitted by this rule.
+                // when no Array can reach any operand. Every operand is traced
+                // through its actual writers to primitives, closed helper
+                // results, typeof/unary/arithmetic results, known non-Array
+                // object types, declared-primitive SDK Sprite fields, members of
+                // SDK-declared receivers, flat Array element reads, or program
+                // function/method results while every program Array stays in
+                // closed program flow. Unknown SDK calls, non-primitive
+                // parameters, escaping Arrays and named/legacy Array tags keep
+                // the refusal.
                 const namedFree=bindings.nodes.every(node=>!['NativeNamedArrayCreate','NativeNamedArrayDelete','NativeArrayAccess','LegacyParsedValue','LegacyJsonValue'].includes(node?.type)&&!Object.hasOwn(node,'bwNativeNamedArray'));
                 const unwrap=node=>node?.type==='Parenthesized'?unwrap(node.expression):node;
                 const noArray=node=>{const found=types(node);return found.size>0&&[...found].every(type=>typeof type==='string')&&!allocations(node).length;};
@@ -571,7 +572,15 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                 // Members typed any or Array in the SDK are never admitted.
                 const opaqueMembers=new Set(['data','allSprites','sprites','tiles','frames','pixels','children','buffer']);
                 const receiverSafe=node=>{
-                    const value=unwrap(node);if(!value||!noArray(value))return false;
+                    const value=unwrap(node);
+                    // An element of a program Array whose elements are only Sprites.
+                    if(value?.type==='Index'){
+                        const object=unwrap(value.object);
+                        if(!object||!allocations(object).length)return false;
+                        const elements=graph.arrayElementTypesAt(actual(object));
+                        return elements.size>0&&[...elements].every(type=>['Null','Undefined','Sprite','SdkSprite'].includes(type));
+                    }
+                    if(!value||!noArray(value))return false;
                     if(value.type==='Identifier'&&!variable(value))return false;
                     if(declaredType(value))return true;
                     return [...types(value)].every(type=>['Null','Undefined','Sprite','SdkSprite','Image'].includes(type));
@@ -629,6 +638,13 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                     const declared=owner?.paramTypes?.[identifier.name];
                     return !!declared&&declared.isArray!==true&&['number','string','boolean'].includes(declared.text);
                 };
+                // A local or global whose every declaration states one program class.
+                const programClassLocal=identifier=>{
+                    if(!variable(identifier))return false;
+                    const binding=bindingAt(identifier);if(binding==null)return false;
+                    const rows=bindings.nodes.filter(node=>node.type==='Declaration').flatMap(node=>(node.decls||[]).filter(decl=>bindingAt(node,decl.name)===binding));
+                    return rows.length>0&&rows.every(decl=>decl.isArray!==true&&userClasses.has(decl.typeName));
+                };
                 const fieldWritersSafe=(name,seen)=>{
                     for(const node of bindings.nodes){
                         if(node?.type==='Class'){
@@ -663,6 +679,11 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                         if(node.name==='length'&&receiverTypes.size&&[...receiverTypes].some(type=>type?.kind==='Array'||type==='String')&&
                             [...receiverTypes].every(type=>type?.kind==='Array'||['String','Null','Undefined'].includes(type)))return true;
                         if(sdkSpritePrimitiveFieldType(node.name)!==null&&receiverSafe(node.object))return true;
+                        // A declared-primitive SDK Sprite field of a program Array
+                        // element: only program values reach the element, and any
+                        // program class field of that name is checked by its writers.
+                        if(sdkSpritePrimitiveFieldType(node.name)!==null&&receiver?.type==='Index'&&allocations(unwrap(receiver.object)).length&&
+                            internal()&&fieldWritersSafe(node.name,seen))return true;
                         if(!opaqueMembers.has(node.name)&&!!declaredType(receiver)&&noArray(receiver))return true;
                         // A program class field read: only program values reach it.
                         if(internal()&&!opaqueMembers.has(node.name)&&receiverTypes.size>0&&[...receiverTypes].every(type=>['ClassInstance','Null','Undefined'].includes(type)))return true;
@@ -671,7 +692,7 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                         // checked; a parameter property must declare a primitive type.
                         // A declared SDK Sprite primitive field that no program
                         // class redeclares is the SDK field of a Sprite subclass.
-                        if(receiver?.type==='Identifier'&&receiver.name==='this'&&!opaqueMembers.has(node.name)){
+                        if(receiver?.type==='Identifier'&&(receiver.name==='this'||programClassLocal(receiver))&&!opaqueMembers.has(node.name)){
                             const declared=bindings.nodes.some(each=>each?.type==='Class'&&(each.fields||[]).some(field=>field?.name===node.name));
                             return !declared&&sdkSpritePrimitiveFieldType(node.name)!==null||fieldWritersSafe(node.name,seen);
                         }
@@ -702,8 +723,10 @@ export function inspectNativeArrayBinaryDomains(program,profile=GENERATED_HELPER
                     const rows=writersOf(node);
                     return !!rows?.length&&rows.every(row=>row.empty||row.value&&valueSafe(row.value,seen));
                 };
-                const operandsSafe=domainHelpers.every(each=>each.calls.every(each=>each.args.every(operand=>valueSafe(operand))));
-                if(operandsOrdinary&&arrayFree||operandsSafe&&namedFree)result.ordinaryFallback=true;
+                // An Array-free program keeps the original rule above unchanged
+                // (a known object operand still refuses there).
+                const operandsSafe=!arrayFree&&namedFree&&domainHelpers.every(each=>each.calls.every(each=>each.args.every(operand=>valueSafe(operand))));
+                if(operandsOrdinary&&arrayFree||operandsSafe)result.ordinaryFallback=true;
             }catch { /* Without this fact the refusal stands unchanged. */ }
             return result;
         }

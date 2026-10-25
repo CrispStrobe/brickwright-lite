@@ -314,8 +314,13 @@ export function prepareObjectClassExport(emitter) {
     // Use a conservative syntax type, never Box/Box[] evidence, for ordinary
     // formals/results touched by genuine allocation flow. Explicit primitive
     // constraints are rendered separately and retain precedence.
-    const procedureParameterType=(key,name)=>hasAllocation(`${key}:local:${name}`)?'any':null;
-    const procedureResultType=key=>hasAllocation(`${key}:result`)?'any':null;
+    // An allocation-touched formal or result keeps 'any' unless the complete
+    // graph gives it one Array-of-class type: PXT cannot index an 'any'
+    // receiver holding a class Array (the original simulator throws). A
+    // single class type stays 'any', as before.
+    const allocationFlowType=value=>{if(!hasAllocation(value))return null;const type=typeOf(value);return type.endsWith('[]')&&!type.startsWith('any')?type:'any';};
+    const procedureParameterType=(key,name)=>allocationFlowType(`${key}:local:${name}`);
+    const procedureResultType=key=>allocationFlowType(`${key}:result`);
     function receiver(block,write=false,method=false) {
         const target=emitter.target,text=emitter.arrayValue(block,'OBJECT'),name=literal(target,block,method?'METHOD':'FIELD');
         const restricted=[...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),member=cls&&resolveMember(cls,name,method);return member && ((member.visibility && member.visibility!=='public' && emitter.currentClassName!==type) || write&&member.readonly);});
