@@ -6,6 +6,7 @@ import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
 // A genuine SDK numeric result must be proved independently of whether an
 // unrelated Array exists. Unknown SDK results cannot acquire this authority.
+const reason = 'native addition requires initialized primitive or proved flat Array operands';
 const exported = source => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
@@ -39,4 +40,42 @@ ${sdkWriter}
 values.push(initialX)`);
     assert.deepEqual(out.unsupported, []);
     assert.match(out.ts, /function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
+});
+
+test('an undeclared-type SDK result stays refused once the program holds an Array', () => {
+    const out = exported(`let values = [1, 2]
+let tempo = 0
+function read() {
+    tempo = music.tempo()
+}
+read()
+tempo += 0
+values.push(tempo)`);
+    assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
+});
+
+
+// Array-containing programs: a declared-number SDK Sprite field read on an
+// SDK Sprite factory value is a Number producer, so no fallback is needed.
+const spriteFieldWithArray = `let values = [1, 2]
+let shot = sprites.create(img\`1\`)
+let moved = shot.x + 1
+values.push(moved)`;
+
+test('an Array program adding a declared-number SDK Sprite field exports with the ordinary helper', () => {
+    const out = exported(spriteFieldWithArray);
+    assert.deepEqual(out.unsupported, []);
+    assert.match(out.ts, /function __bwBinaryAdd\(left: any, right: any\): any \{ return left \+ right \}/);
+    assert.match(out.ts, /__bwBinaryAdd\(shot\.x, \(0 \+ 1\)\)/);
+});
+
+test('a Sprite field read through a parameter is not an exact factory value and keeps the refusal', () => {
+    const out = exported(`let values = [1, 2]
+let total = 0
+function move(target: Sprite) {
+    total = target.x + 1
+}
+move(sprites.create(img\`1\`))
+values.push(total)`);
+    assert.ok(out.unsupported.includes(reason), JSON.stringify(out.unsupported));
 });

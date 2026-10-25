@@ -26,8 +26,21 @@ unknown producers remain refused. Canonical null resets require construction
 before every use; no nullable binding-wide Sprite or Array authority is issued.
 Unrelated primitive arrays do not invalidate the private Sprite slice.
 
-All 44 affected source controls pass across five complete cohorts. Two guard
-mutations are detected. The new source journey covers connected property
+The original 44 affected source controls pass across five complete cohorts.
+The latest complete scalar composition passes 15 groups, retaining the existing
+positive and negative programs and adding actual writable-field counterexamples.
+Current export represents an omitted Sprite kind with explicit genuine
+`undefined`; both calls have the same retained SDK behavior. The narrow factory
+proof now accepts that form while refusing a shadowed spelling. This grants no
+Kind value or initialization fact. Two cuts detect the default and shadow guards.
+
+Descriptor declarations cannot independently prove primitive field contents:
+the SDK z setter stores its input unchanged, and lifespan is writable. Their
+String writers must not acquire Number authority. Further primitive Sprite
+fields and Image.getPixel normal results need separately scoped actual-owner,
+argument/effect, alias/writer and currentness proofs before admission.
+
+Two original guard mutations were detected. The source journey covers connected property
 blocks, Code, own-asset SB3, fresh export/reimport, an edited position and edited
 pixels. It does not establish actual browser or SDK/runtime qualification.
 Final composed hosted checks and affected actual authoring remain pending;

@@ -154,3 +154,26 @@ test('SDK scalar blocks, Code, own-asset SB3 and fresh export/reimport retain cu
     assert.match(edited.ts,/img`\s*2\s*`/);
     exportCurrent(build(edited.files));
 });
+
+// SDK declarations alone do not constrain actual writable field contents.
+// The retained BaseSprite z setter stores its input unchanged; lifespan is
+// another writable field. Neither is part of the qualified position slice.
+test('declared SDK field types do not mint Number facts across actual String writers',()=>{
+    for(const property of ['z','lifespan']){
+        const source=`let shot=${factory};shot.${property}="bad" as any;let result=shot.${property}`;
+        const {graph,read}=inspect(source,property);assert.notDeepEqual([...graph.typesAt(read)],['Number'],source);
+    }
+});
+
+test('omitted and genuine Undefined Sprite kinds preserve the SDK factory protocol without admitting a shadow',()=>{
+    for(const call of ['sprites.create(img`1`)','sprites.create(img`1`,undefined)'])
+        isNumber(inspect(`let shot=${call};let result=shot.x`));
+    // The parser currently rejects keyword-named bindings. Its editable AST
+    // consumer must independently refuse that shadow rather than treating the
+    // spelling as an actual default value if such a binding is introduced.
+    const altered=inspect('let marker=0;let shot=sprites.create(img`1`,undefined);let result=shot.x');
+    isNumber(altered);
+    altered.program.body[0].decls[0].name='undefined';
+    const changed=analyseSourceValueProducers(altered.program,{ordinaryPrimitiveSdkNumbers:true});
+    assert.notDeepEqual([...changed.typesAt(altered.read)],['Number']);
+});

@@ -662,7 +662,9 @@ function ordinarySpriteAyNumberReads(program) {
             node.type==='Identifier'&&['this','globalThis','global','window','self','eval','Function','Reflect','Object','arguments'].includes(node.name)||
             node.type==='Member'&&['constructor','prototype','__proto__'].includes(node.name))return null;
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type)&&!schema(node))return null;
-        if(node.name==='img'||node.decls&&any(node.decls,row=>row.name==='img')||node.params?.includes('img'))return null;
+        if(node.name==='img'||node.type!=='Member'&&node.name==='undefined'||
+            node.decls&&any(node.decls,row=>row.name==='img'||row.name==='undefined')||
+            node.params?.includes('img')||node.params?.includes('undefined'))return null;
         if(node.type==='Assignment'&&graph.isSdkNamespace(node.left)||node.type==='Update'&&graph.isSdkNamespace(node.argument))return null;
     }
     // Existing PXT image decoding pads shorter rows with transparency. Validate
@@ -696,7 +698,11 @@ function ordinarySpriteAyNumberReads(program) {
         if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!node.optional&&!node.typeArguments?.length&&node.callee?.type==='Member'&&!node.callee.optional&&
             graph.isSdkNamespace(node.callee)&&Array.isArray(node.args)&&imageLiteral(node.args[0])){
             const api=path(node.callee);
-            if(api==='sprites.create'&&(node.args.length===1||node.args.length===2&&kind(node.args[1])))factories.add(node);
+            // Retained SDK create forwards kind to setKind; both an omitted
+            // kind and genuine undefined leave the constructor kind unchanged.
+            // This identifies a factory call, never a Number/Kind certificate.
+            if(api==='sprites.create'&&(node.args.length===1||node.args.length===2&&
+                (node.args[1]?.type==='Undefined'||kind(node.args[1]))))factories.add(node);
             if(api==='sprites.createProjectileFromSide'&&node.args.length===3&&number(node.args[1])&&number(node.args[2]))factories.add(node);
             if(api==='sprites.createProjectileFromSprite'&&node.args.length===4&&number(node.args[2])&&number(node.args[3])){
                 factories.add(node);spriteSources.set(node,node.args[1]);

@@ -54,6 +54,26 @@ After a family qualifies, measure the unchanged corpus again and update the
 Code/Blocks/graphics/controller/save-and-reopen rows in the GUI ledger. Report
 remaining diagnostics explicitly, rather than marking a partial program full.
 
+### Further SDK primitive normal results
+
+The qualified Sprite factory/property slice now handles the explicit genuine
+Undefined kind emitted by current export, with namespace, binding, initialization,
+writer and source-currentness guards intact. Fifteen complete scalar controls
+pass; both default/shadow guard mutations are detected. The retained SDK keeps
+the constructor's kind for an omitted/Undefined argument; the proof issues no
+Kind identity.
+
+Do not expand producer authority using descriptor type names alone. The z
+setter preserves a supplied String, and lifespan is writable. For a next claim
+on other fields or Image.getPixel, scope `source-value-producers.js`, a private
+helper if needed and a complete focused module. Prove unchanged namespace and
+method binding, actual current SDK receiver allocations, all aliases/writers,
+argument domains and coercion effects, independent consumer readiness and sticky
+source currentness. Image annotations, arity and method names alone are
+insufficient. Keep value normal-return facts separate from completion and
+initialization. Require actual original/emitted PXT, native execution, edited
+Code/Blocks/pixels and same/fresh saved projects before claiming parity.
+
 ### Input completeness and legacy APIs
 
 Three raw source inputs have only the old instance `Sprite.onOverlap(handler)`

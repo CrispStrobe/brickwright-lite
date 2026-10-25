@@ -64,3 +64,12 @@ Remeasure the unchanged 184 raw inputs and retained complete contexts with
 immutable source/input identities. Publish accurately bounded aggregate results.
 Rank the remaining verified families, then take one family through conversion,
 runtime and visible authoring. Historical counts remain historical until measured.
+
+The factory slice also admits an actual explicit Undefined kind, matching the
+retained SDK's omitted-kind behavior without publishing a Kind identity. The
+complete scalar/ordinary-helper composition passes fifteen groups, including
+writable z/lifespan String counterexamples and lexical-shadow AST refusal.
+Default-kind and shadow-guard cuts are detected. Descriptor-only Sprite fields
+and Image.getPixel inference are held for a separately scoped owner/effect
+proof; no type declaration mints a Number certificate. Final hosted runtime,
+original/emitted SDK and visible authoring qualification remains pending.
