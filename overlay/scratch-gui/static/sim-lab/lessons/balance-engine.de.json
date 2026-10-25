@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "balance-engine",
+  "language": "de",
+  "what": "Zwei gleiche Schubkurbeltriebe sitzen auf einem passiven Träger. Jeder Motor treibt eine Kurbel mit 16 mm Radius und ein 64 mm langes Pleuel; jeder Kolben hat 32 mm Hub. Zwei echte Gummibänder zentrieren den Träger und lassen ihn auf die bewegten Massen reagieren. Das Programm vergleicht 0°, 90° und 180° Phasenversatz. Zwei Schubkurbeltriebe bewegen einen passiven, durch Bänder zentrierten Träger. Vergleiche 0°, 90° und 180° Phasenversatz: Die primären Kolbenbewegungen addieren sich oder heben sich auf; die endliche Pleuellänge lässt einen Rest.",
+  "try": [
+    "Öffne Balance Engine unter Beispiele; das endliche Programm lädt automatisch. Zurücksetzen und Ausführen. Jeder Versuch dreht beide Kurbeln viermal vorwärts, pausiert, fährt rückwärts und kehrt zu den Ausgangswinkeln zurück.",
+    "Bei 0° erreichen beide Kolben ihre Endlagen gleichzeitig. Vergleiche den Träger mit der festen äußeren Basis; der Hub sitzt auf dem bewegten Träger.",
+    "Bei 90° ist ein Kolben unterwegs, wenn der andere seine Endlage erreicht. Bei 180° wirken die primären Bewegungen gegeneinander. Achte auf die kleinere Restbewegung statt auf völligen Stillstand.",
+    "Vor einem neuen Vergleich zurücksetzen. Aktiviere für eigene Versuche die manuelle Motorsteuerung und bewege A und B getrennt. Stoppe beide, bevor du das automatische Programm erneut startest."
+  ],
+  "why": "Die Beschleunigung jedes Kolbens ruft eine Gegenwirkung auf den übrigen Aufbau hervor. Bei gleicher Phase addieren sich die primären Hubbewegungen. Gegenphase hebt ihre erste Harmonische auf. Ein endlich langes Pleuel macht die Bewegung unsymmetrisch: Die zweite Harmonische bleibt bei 180° erhalten. Daher werden weder die Summe der Kolbenwege noch die Trägerbewegung genau konstant.",
+  "matters": "Massenausgleich und Maschinenschwingungen hängen von Masse, Phase, Pleuelgeometrie und Befestigung ab. Federn und Trägheit verändern ebenfalls die Antwort des Trägers. Die beobachtete Spannweite eines endlichen Versuchs ist keine allgemeine eingeschwungene Amplitude und keine Kalibrierung echter LEGO-Gummibänder.",
+  "question": "Muss der passive Träger bei 180° Kurbelversatz völlig stillstehen?",
+  "answer": "Nein. Die primären Kolbenbewegungen heben sich auf, doch die endlichen Pleuel lassen einen geradzahligen Schwingungsanteil zurück. Beide Kolben behalten 32 mm Hub. Die Spannweite ihrer summierten Wege sinkt von etwa 64 mm bei gleicher Phase auf etwa 4,06 mm bei Gegenphase. Dieser Rest, weitere bewegte Teile und Einschwingvorgänge der Bänder können den Träger weiter bewegen.",
+  "further": [
+    "Vergleiche die Summe beider gemessenen Kolbenwege in den drei Versuchen. Die geometrischen Spannweiten betragen etwa 64, 45,25 und 4,06 mm. Das sind keine vorhergesagten Trägeramplituden.",
+    "Verringere die Programmgeschwindigkeit und behalte vier Umdrehungen sowie die Phasenversätze bei. Die geometrischen Hübe bleiben gleich; Beschleunigung und Bandantwort können sich ändern.",
+    "Vergleiche Quickstroke mit einer einzelnen Schubkurbel, Momentum Twins zum Drehimpuls und Counterturn mit einem drehbaren Träger. Die Modelle zeigen unterschiedliche Gegenwirkungen bewegter Massen."
+  ],
+  "formula": "x(θ) = r cosθ + √(l² − r² sin²θ), r = 16 mm, l = 64 mm. Vergleiche x(θ) + x(θ+φ) für φ = 0°, 90°, 180°.",
+  "related": [
+    "quickstroke.ldr",
+    "momentum-twins.ldr",
+    "counterturn.ldr"
+  ]
+}

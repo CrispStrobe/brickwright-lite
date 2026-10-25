@@ -19,8 +19,18 @@ The [CLI instrument result](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) now records
 312/312 comparable passes, independently recomputed across 87,488 checks;
 264 ngspice and 48 nominal analytic cases, with zero refusals or missing cases.
 There is no demonstrated numerical cause to patch in this fixed matrix.
-The next bounded item is scope acquisition/overrange/aliasing disclosure and
-actual built-GUI proof, preserving raw data and electrical behavior. Exact
+The bounded scope acquisition/overrange/aliasing disclosure is implemented in
+upstream [PR117](https://github.com/CrispStrobe/bw-circuit-ui/pull/117), qualified
+by all three checks and 71/71 actual browser scenarios. Lite's exact-pin
+adoption [PR1334](https://github.com/CrispStrobe/brickwright-lite/pull/1334)
+completes the fifth item. Its new-consumer
+[campaign 40077158320](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40077158320)
+passed 312/312 and 87,488 independent checks; all 240 waveform CSVs equal the
+preceding campaign byte-for-byte. The independently audited actual built GUI
+passed capture metadata, prefix/wrap, viewport warning/clear and HOLD/resume
+controls, with unchanged raw CSV. Raw data and electrical behavior are preserved.
+This bounded sequence is closed; the handoff scopes further work without
+automatically starting another campaign. Exact
 historical package identities and source hashes remain attached to the original
 result; future adoption does not relabel it. This is not corpus-wide or physical
 accuracy. `lanes/`, not the older priority tables, controls current ownership.

@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "b5650092695643622a53bcc40008133760e2d8a2",
-    "read": "2026-10-23"
+    "sha": "761153ff92d521c01107ee7b32922ba7adc10ee2",
+    "read": "2026-10-24"
   },
   "rows": [
     {
@@ -243,9 +243,22 @@
         "test/winding-edge-instruments.test.mjs",
         "test/current-scope-simulation-clock.test.mjs",
         "test/transient-matrix.test.mjs",
-        "test/transistor-instrument-oracle.test.mjs"
+        "test/transistor-instrument-oracle.test.mjs",
+        "test/spice-pulse-source.test.mjs"
       ],
       "what": "The reference NUMERIC circuit simulator. lcapy is symbolic and exact but cannot model a junction; ngspice models devices, so the two are complementary rather than redundant -- where both agree and we do not, it is us, and where THEY disagree the circuit is ill-posed and belongs in neither corpus. Note that the ngspice GOLDENS under test/golden/ are pre-recorded and need no binary; this row is for the gates that invoke ngspice LIVE."
+    },
+    {
+      "id": "ngspice-literal-pulse",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": true,
+      "ci": "yes — the test job builds the separate source-admitted47 oracle and sets NGSPICE_LITERAL_ORACLE. Literal-zero comparisons fail when it is missing or fails admission; the census itself never executes the binary.",
+      "via": "tried $NGSPICE_LITERAL_ORACLE",
+      "gates": [
+        "test/spice-pulse-source.test.mjs"
+      ],
+      "what": "Source-admitted ngspice47 for the modern literal-zero PULSE contract. The distribution oracle can interpret PW=0 differently; positive-width comparisons retain the separate default ngspice input. Census presence does not establish source/version/binary admission or numerical agreement; the installer and test validate those identities before comparison."
     },
     {
       "id": "emu8051",

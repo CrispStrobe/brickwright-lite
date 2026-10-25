@@ -2,7 +2,7 @@
   "version": 1,
   "id": "sarrus-lift",
   "language": "de",
-  "what": "Ein Motor und ein 24:1-Schneckengetriebe heben eine Plattform über sechs räumliche Drehgelenke. Innerhalb jeder der beiden Ketten sind die Achsen parallel; die Ketten stehen rechtwinklig zueinander. Die gemeinsame Plattform bewegt sich senkrecht und bleibt waagerecht. Vier zusätzliche Distanzplatten geben den oberen Gliedern im Modell mit 144 Teilen Platz. Zwei rechtwinklige Gelenkketten führen eine Plattform senkrecht. Vergleiche die Höhe mit dem Sinusgesetz und dem 24:1-Schneckenantrieb.",
+  "what": "Sarrus-Getriebe. Ein Motor und ein 24:1-Schneckengetriebe heben eine Plattform über sechs räumliche Drehgelenke. Innerhalb jeder der beiden Ketten sind die Achsen parallel; die Ketten stehen rechtwinklig zueinander. Die gemeinsame Plattform bewegt sich senkrecht und bleibt waagerecht. Vier zusätzliche Distanzplatten geben den oberen Gliedern im Modell mit 144 Teilen Platz. Zwei rechtwinklige Gelenkketten führen eine Plattform senkrecht. Vergleiche die Höhe mit dem Sinusgesetz und dem 24:1-Schneckenantrieb.",
   "try": [
     "Wähle Sarrus Lift unter Beispiele; das Programm wird automatisch in Blöcke geladen. Setze auf die gespeicherte 45°-Stellung zurück und drücke Start. Die Gelenke fahren auf 20°, zurück auf 45°, auf 70° und wieder nach Hause.",
     "Vergleiche die Motorwinkel A = −600°, 0° und +600° mit der Plattformhöhe. Für eine Abtriebsumdrehung braucht die Schnecke 24 Antriebsumdrehungen.",

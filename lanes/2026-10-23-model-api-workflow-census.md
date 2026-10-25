@@ -1,8 +1,8 @@
 # Register the model API workflow without inventing production execution
 
-CLAIMED — API owner, additive scope amendment to merged API takeover #1278.
+DONE qualified registration — API owner, additive scope amendment to merged API takeover #1278.
 Base `75f37012e9f47bdb803227fae1575b7f7eeff703`; isolated branch
-`lane/model-api-census-claim-20261023`. Claim merges before implementation.
+`lane/model-api-census-claim-20261023`. Claim #1289 merged as `3a6da633a833c5c3d0fd81797501fae1869e3e75` before implementation.
 
 Own only this claim, the `model-measurements.yml` entry and its run/refresh
 metadata in `docs/generated/ci-step-census.json`, and exact dated pointers for
@@ -36,3 +36,19 @@ All enabled final-head checks and the separately qualified model parent remain
 required before a normal matched-head source merge and actual tree/parents proof.
 No actual API job, private Actions, secret creation, ledger reset or deployment
 is authorized by this census amendment.
+
+The initial registration used the existing census/scoped-merge APIs to add the actual completed PR observation, preserving all previous workflow objects, ordered runs and main provenance. The seven production steps remain unobserved and `measure` remains zero executions; eight exact dated registration-only pointers retain that configuration/deployment hold. Complete unchanged census controls and independent delta audit precede publication; every enabled final-head check and qualified model parent still precede landing.
+
+At initial registration, all six unchanged census groups passed with no skips or TODOs. That independent exact-delta audit preserved 25 prior workflow objects, 321 ordered runs, main provenance and every prior pointer byte; eight observed qualification steps are source-bound to run 39960513501. Seven production steps remain unobserved and measure remains zero executions. Generator, judge, tests, classifier, conditions and runtime code are unchanged.
+
+The qualified successor [PR1337](https://github.com/CrispStrobe/brickwright-lite/pull/1337)
+landed normally as `0576e01408145c79a03508909adbde388710dfe1`. Its final
+composition preserved all 29 current-main workflow records and 324 ordered
+observations, adding only the retained historical API registration to reach 30
+records and 325 observations. The original provenance, refresh timestamp and
+pointers remain intact; this was not a fabricated history refresh. The fresh
+fixture-worker qualification is separate from that dated census and from
+production dispatch. Seven production steps remain unobserved and `measure`
+remains zero executions in the registered observation. All seven groups of the composed census controls passed without skips. Current
+source checks passed before the matched merge, and its actual parents and tree matched the
+reviewed prediction.

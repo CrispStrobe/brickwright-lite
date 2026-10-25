@@ -9,6 +9,7 @@ import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
     models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
+    simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false,
     fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
@@ -34,7 +35,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
             const m = s.mechanism;
             const record = window.__bwMechanics = {start: s.time, runModel:s.runModel, mechanism: m, hubId: s.bridge.hubBody,
                 issues: pane.state.issues, unsupported: [], track: []};
-            s.onAdvance(() => {
+            const capture = () => {
                 const bodies = {};
                 for (const b of m.bodies.filter(b => b.motion === 'dynamic')) bodies[b.id] = s.core.bodyPose(b.id);
                 const joints = {};
@@ -44,12 +45,23 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
                 if (observeProgram && !record.finishedAt && s.time-record.start>1000 && !pane.props.vm.runtime.threads.some(t=>t.status!==4)) record.finishedAt=s.time;
                 const extra=observeProgram?{variables:Object.fromEntries(pane.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]))}:null;
                 record.track.push({t: s.time, bodies, joints, busy, ...(extra?{extra}: {})});
-            });
+            };
+            window.__bwCaptureMechanics = capture;
+            s.onAdvance(capture);
         }, observeProgram);
         await page.getByTestId('bw-sim-lab-speed').selectOption(String(speed));
         await page.getByTestId('bw-sim-lab-run').click();
-        await page.waitForFunction(ms => window.__bwSimLab._pane.session.time - window.__bwMechanics.start >= ms,
-            simulatedMs, {timeout});
+        const simulatedForThis = simulatedMsFor(id);
+        // The pane briefly drops its session while a model or program reloads; a
+        // predicate that dereferences it then fails the whole gate with a TypeError
+        // instead of waiting for the next frame.
+        await page.waitForFunction(({ms, paused}) => {
+            const pane=window.__bwSimLab?._pane;if(!pane?.session)return false;
+            if(!paused)return pane.session.time-window.__bwMechanics.start>=ms;
+            return pane.session.time-window.__bwMechanics.start>1000&&window.__bwSimLab.status==='paused'&&
+                !pane.props.vm.runtime.threads.some(t=>t.status!==4);
+        }, {ms:simulatedForThis,paused:completeWhenPausedFor(id)}, {timeout});
+        if(completeWhenPausedFor(id))await page.evaluate(()=>window.__bwCaptureMechanics());
         const r = await page.evaluate(() => window.__bwMechanics);
         if (observeProgram) writeFileSync(resolve(shotsDir, id+'-actual-track.json'), JSON.stringify(r));
         results[id] = judge(id, r);
@@ -62,7 +74,7 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
         await openManualControls(page, {motors: true});
         const mixer = page.getByTestId('bw-sim-lab-mixer-toggle');
         if (await mixer.getAttribute('aria-expanded') !== 'true') await mixer.click();
-        assert.deepEqual(await page.getByTestId('bw-sim-lab-mixer-slider').evaluateAll(es => es.map(e => e.dataset.port).sort()),
+        assert.deepEqual(await page.locator('[data-testid="bw-sim-lab-mixer-slider"], [data-testid="bw-sim-lab-mixer-jog"]').evaluateAll(es => es.map(e => e.dataset.port).sort()),
             r.mechanism.actuators.map(a => a.port).sort());
         for (const slider of await page.getByTestId('bw-sim-lab-mixer-slider').all()) assert.ok(await slider.isDisabled(), 'program control keeps manual sliders off');
         await page.screenshot({path: resolve(shotsDir, `${id}-finished.png`)});
@@ -73,12 +85,12 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
     return results;
 };
 
-export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250}) => {
+export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, models = DEFAULT_MACHINES, jogSign = () => 1, jogMs = 250, keyFor = id => `${id}.ldr`}) => {
     mkdirSync(shotsDir, {recursive: true});
     await openSimLab(page, {program: null});
     const results = {};
     for (const id of models) {
-        await page.getByTestId('bw-sim-lab-model').selectOption(`${id}.ldr`);
+        await page.getByTestId('bw-sim-lab-model').selectOption(keyFor(id));
         await page.waitForFunction(file => window.__bwSimLab.status === 'ready' &&
             window.__bwSimLab._pane.state.modelFile === file, `${id}.ldr`, {timeout: 60000});
         const framing = await page.evaluate(() => window.__bwSimLab._pane.view.framingStats());
@@ -117,6 +129,19 @@ export const manualMechanicsInteractions = async (page, {openSimLab, shotsDir, m
             assert.ok(Math.abs(await angle(port) - stopped) < 3 * Math.PI / 180,
                 `${id}: motor ${port} holds after Stop`);
             results[id][port] = delta * 180 / Math.PI;
+        }
+        for (const control of await page.getByTestId('bw-sim-lab-mixer-jog').all()) {
+            const port=await control.getAttribute('data-port'),before=await angle(port);
+            const choices=control.locator('button[data-target]');
+            let choice=null;
+            for(const button of await choices.all())if(!await button.isDisabled()){choice=button;break;}
+            assert.ok(choice,`${id}: at least one bounded jog is available`);
+            const target=Number(await choice.getAttribute('data-target'));assert.ok(Number.isFinite(target));
+            await choice.click();
+            await page.waitForFunction(()=>window.__bwSimLab._pane.manualJogs.size===0,null,{timeout:15000});
+            const after=await angle(port);assert.ok(Math.abs(after-before)>.03,`${id}: bounded ${port} actually moves`);
+            assert.ok(Math.abs(after*180/Math.PI-target)<=2,`${id}: bounded ${port} reaches its requested target`);
+            results[id][port]=(after-before)*180/Math.PI;
         }
         await page.getByTestId('bw-sim-lab-mixer-stop-all').click();
         assert.ok((await sliders.evaluateAll(es => es.map(e => e.value))).every(v => v === '0'));

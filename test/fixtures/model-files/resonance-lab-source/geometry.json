@@ -1,0 +1,4523 @@
+{
+  "name": "Resonance Lab",
+  "units": "LDU",
+  "lduToMm": 0.4,
+  "parts": [
+    {
+      "id": "floor_hub_outer",
+      "part": "32278.dat",
+      "position": [
+        -360,
+        360,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "floor_hub_inner",
+      "part": "32278.dat",
+      "position": [
+        -240,
+        360,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "floor_mechanism_left",
+      "part": "32278.dat",
+      "position": [
+        -100,
+        360,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "floor_mechanism_right",
+      "part": "32278.dat",
+      "position": [
+        60,
+        360,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_front_top_angle",
+      "part": "15100.dat",
+      "position": [
+        -360,
+        300,
+        0
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_front_top_pin",
+      "part": "2780.dat",
+      "position": [
+        -360,
+        290,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_front_post",
+      "part": "32523.dat",
+      "position": [
+        -380,
+        320,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_front_foot",
+      "part": "15100.dat",
+      "position": [
+        -360,
+        340,
+        0
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_front_foot_pin",
+      "part": "2780.dat",
+      "position": [
+        -360,
+        350,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_rear_top_angle",
+      "part": "15100.dat",
+      "position": [
+        -360,
+        300,
+        120
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_rear_top_pin",
+      "part": "2780.dat",
+      "position": [
+        -360,
+        290,
+        120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_rear_post",
+      "part": "32523.dat",
+      "position": [
+        -380,
+        320,
+        120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_rear_foot",
+      "part": "15100.dat",
+      "position": [
+        -360,
+        340,
+        120
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_neg_rear_foot_pin",
+      "part": "2780.dat",
+      "position": [
+        -360,
+        350,
+        120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_front_top_angle",
+      "part": "15100.dat",
+      "position": [
+        -240,
+        300,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_front_top_pin",
+      "part": "2780.dat",
+      "position": [
+        -240,
+        290,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_front_post",
+      "part": "32523.dat",
+      "position": [
+        -220,
+        320,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_front_foot",
+      "part": "15100.dat",
+      "position": [
+        -240,
+        340,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_front_foot_pin",
+      "part": "2780.dat",
+      "position": [
+        -240,
+        350,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_rear_top_angle",
+      "part": "15100.dat",
+      "position": [
+        -240,
+        300,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_rear_top_pin",
+      "part": "2780.dat",
+      "position": [
+        -240,
+        290,
+        120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_rear_post",
+      "part": "32523.dat",
+      "position": [
+        -220,
+        320,
+        120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_rear_foot",
+      "part": "15100.dat",
+      "position": [
+        -240,
+        340,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_floor_pos_rear_foot_pin",
+      "part": "2780.dat",
+      "position": [
+        -240,
+        350,
+        120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_neg_front_spacer",
+      "part": "32523.dat",
+      "position": [
+        -100,
+        340,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_neg_front_pin_neg",
+      "part": "6558.dat",
+      "position": [
+        -100,
+        340,
+        -20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_neg_front_pin_pos",
+      "part": "6558.dat",
+      "position": [
+        -100,
+        340,
+        20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_neg_rear_spacer",
+      "part": "32523.dat",
+      "position": [
+        -100,
+        340,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_neg_rear_pin_neg",
+      "part": "6558.dat",
+      "position": [
+        -100,
+        340,
+        100
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_neg_rear_pin_pos",
+      "part": "6558.dat",
+      "position": [
+        -100,
+        340,
+        140
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_pos_front_spacer",
+      "part": "32523.dat",
+      "position": [
+        60,
+        340,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_pos_front_pin_neg",
+      "part": "6558.dat",
+      "position": [
+        60,
+        340,
+        -20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_pos_front_pin_pos",
+      "part": "6558.dat",
+      "position": [
+        60,
+        340,
+        20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_pos_rear_spacer",
+      "part": "32523.dat",
+      "position": [
+        60,
+        340,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_pos_rear_pin_neg",
+      "part": "6558.dat",
+      "position": [
+        60,
+        340,
+        100
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "mechanism_floor_pos_rear_pin_pos",
+      "part": "6558.dat",
+      "position": [
+        60,
+        340,
+        140
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_base_front",
+      "part": "32278.dat",
+      "position": [
+        -220,
+        300,
+        -40
+      ],
+      "rotation": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_base_rear",
+      "part": "32278.dat",
+      "position": [
+        -220,
+        300,
+        160
+      ],
+      "rotation": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_rail_neg",
+      "part": "32278.dat",
+      "position": [
+        -360,
+        280,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_pin_neg_front",
+      "part": "6558.dat",
+      "position": [
+        -360,
+        280,
+        -40
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_pin_neg_rear",
+      "part": "6558.dat",
+      "position": [
+        -360,
+        280,
+        160
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_rail_pos",
+      "part": "32278.dat",
+      "position": [
+        -240,
+        280,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_pin_pos_front",
+      "part": "6558.dat",
+      "position": [
+        -240,
+        280,
+        -40
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub_pin_pos_rear",
+      "part": "6558.dat",
+      "position": [
+        -240,
+        280,
+        160
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "hub",
+      "part": "45601.dat",
+      "position": [
+        -300,
+        270,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 15,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "frame_reference",
+      "part": "41239.dat",
+      "position": [
+        -60,
+        300,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "lower_rail_neg",
+      "part": "32278.dat",
+      "position": [
+        -100,
+        320,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "lower_rail_pos",
+      "part": "32278.dat",
+      "position": [
+        60,
+        320,
+        60
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "frame_reference_rail_pin",
+      "part": "2780.dat",
+      "position": [
+        -100,
+        310,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 1,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_side_neg",
+      "part": "32525.dat",
+      "position": [
+        -180,
+        120,
+        60
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_mount_neg_-20",
+      "part": "2780.dat",
+      "position": [
+        -170,
+        120,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_mount_neg_20",
+      "part": "2780.dat",
+      "position": [
+        -170,
+        120,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_mount_neg_140",
+      "part": "2780.dat",
+      "position": [
+        -170,
+        120,
+        140
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_neg_front",
+      "part": "40490.dat",
+      "position": [
+        -200,
+        200,
+        -40
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_pin_neg_front",
+      "part": "2780.dat",
+      "position": [
+        -190,
+        120,
+        -40
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_neg_front",
+      "part": "15100.dat",
+      "position": [
+        -180,
+        280,
+        -40
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_pin_neg_front",
+      "part": "2780.dat",
+      "position": [
+        -180,
+        290,
+        -40
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_neg_rear",
+      "part": "40490.dat",
+      "position": [
+        -200,
+        200,
+        160
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_pin_neg_rear",
+      "part": "2780.dat",
+      "position": [
+        -190,
+        120,
+        160
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_neg_rear",
+      "part": "15100.dat",
+      "position": [
+        -180,
+        280,
+        160
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_pin_neg_rear",
+      "part": "2780.dat",
+      "position": [
+        -180,
+        290,
+        160
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_side_pos",
+      "part": "32525.dat",
+      "position": [
+        -100,
+        120,
+        60
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 72,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_mount_pos_-20",
+      "part": "2780.dat",
+      "position": [
+        -110,
+        120,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_mount_pos_20",
+      "part": "2780.dat",
+      "position": [
+        -110,
+        120,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_mount_pos_140",
+      "part": "2780.dat",
+      "position": [
+        -110,
+        120,
+        140
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_pos_front",
+      "part": "40490.dat",
+      "position": [
+        -80,
+        200,
+        -40
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_pin_pos_front",
+      "part": "2780.dat",
+      "position": [
+        -90,
+        120,
+        -40
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_pos_front",
+      "part": "15100.dat",
+      "position": [
+        -100,
+        280,
+        -40
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_pin_pos_front",
+      "part": "6558.dat",
+      "position": [
+        -100,
+        300,
+        -40
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_pos_rear",
+      "part": "40490.dat",
+      "position": [
+        -80,
+        200,
+        160
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_post_pin_pos_rear",
+      "part": "2780.dat",
+      "position": [
+        -90,
+        120,
+        160
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 0,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_pos_rear",
+      "part": "15100.dat",
+      "position": [
+        -100,
+        280,
+        160
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_foot_pin_pos_rear",
+      "part": "6558.dat",
+      "position": [
+        -100,
+        300,
+        160
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 2,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "motor_A",
+      "part": "54696p01.dat",
+      "position": [
+        -140,
+        140,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 15,
+      "stage": 2,
+      "port": "A",
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_top",
+      "part": "32524.dat",
+      "position": [
+        0,
+        60,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_angle_top_neg",
+      "part": "15100.dat",
+      "position": [
+        -60,
+        80,
+        0
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_pin_top_neg",
+      "part": "2780.dat",
+      "position": [
+        -60,
+        70,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_angle_top_pos",
+      "part": "15100.dat",
+      "position": [
+        60,
+        80,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_pin_top_pos",
+      "part": "2780.dat",
+      "position": [
+        60,
+        70,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_low",
+      "part": "32524.dat",
+      "position": [
+        0,
+        100,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_angle_low_neg",
+      "part": "15100.dat",
+      "position": [
+        -60,
+        120,
+        0
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_pin_low_neg",
+      "part": "2780.dat",
+      "position": [
+        -60,
+        110,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_angle_low_pos",
+      "part": "15100.dat",
+      "position": [
+        60,
+        120,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_bearing_pin_low_pos",
+      "part": "2780.dat",
+      "position": [
+        60,
+        110,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_post_neg",
+      "part": "32525.dat",
+      "position": [
+        -80,
+        180,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_foot_neg",
+      "part": "15100.dat",
+      "position": [
+        -60,
+        280,
+        0
+      ],
+      "rotation": [
+        -1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 71,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_foot_pin_neg",
+      "part": "2780.dat",
+      "position": [
+        -60,
+        290,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_post_pos",
+      "part": "32525.dat",
+      "position": [
+        80,
+        180,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "color": 72,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_foot_pos",
+      "part": "15100.dat",
+      "position": [
+        60,
+        280,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 71,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "output_foot_pin_pos",
+      "part": "6558.dat",
+      "position": [
+        60,
+        300,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 1,
+      "stage": 3,
+      "port": null,
+      "group": "frame"
+    },
+    {
+      "id": "input_key",
+      "part": "7229.dat",
+      "position": [
+        -140,
+        0,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 1,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_beam",
+      "part": "32316.dat",
+      "position": [
+        -140,
+        20,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 1,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_bridge",
+      "part": "6632.dat",
+      "position": [
+        -140,
+        -15,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 1,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_axle_neg",
+      "part": "3706.dat",
+      "position": [
+        -140,
+        -20,
+        -20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_band_neg",
+      "part": "3713.dat",
+      "position": [
+        -140,
+        -60,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 14,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_full_spacer_neg",
+      "part": "3713.dat",
+      "position": [
+        -140,
+        -40,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_upper_spacer_neg",
+      "part": "4265c.dat",
+      "position": [
+        -140,
+        -25,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_lower_retainer_neg",
+      "part": "4265c.dat",
+      "position": [
+        -140,
+        35,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_axle_pos",
+      "part": "3706.dat",
+      "position": [
+        -140,
+        -20,
+        20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_band_pos",
+      "part": "3713.dat",
+      "position": [
+        -140,
+        -60,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 14,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_full_spacer_pos",
+      "part": "3713.dat",
+      "position": [
+        -140,
+        -40,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_upper_spacer_pos",
+      "part": "4265c.dat",
+      "position": [
+        -140,
+        -25,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_anchor_lower_retainer_pos",
+      "part": "4265c.dat",
+      "position": [
+        -140,
+        35,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_top_retainer",
+      "part": "4265c.dat",
+      "position": [
+        -140,
+        -25,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "output_key",
+      "part": "7229.dat",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 25,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_beam",
+      "part": "32278.dat",
+      "position": [
+        0,
+        20,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 25,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_bridge",
+      "part": "6632.dat",
+      "position": [
+        0,
+        -15,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 25,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_axle_neg",
+      "part": "3706.dat",
+      "position": [
+        0,
+        -20,
+        -20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_band_neg",
+      "part": "3713.dat",
+      "position": [
+        0,
+        -60,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 14,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_full_spacer_neg",
+      "part": "3713.dat",
+      "position": [
+        0,
+        -40,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_upper_spacer_neg",
+      "part": "4265c.dat",
+      "position": [
+        0,
+        -25,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_lower_retainer_neg",
+      "part": "4265c.dat",
+      "position": [
+        0,
+        35,
+        -20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_axle_pos",
+      "part": "3706.dat",
+      "position": [
+        0,
+        -20,
+        20
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_band_pos",
+      "part": "3713.dat",
+      "position": [
+        0,
+        -60,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 14,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_full_spacer_pos",
+      "part": "3713.dat",
+      "position": [
+        0,
+        -40,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_upper_spacer_pos",
+      "part": "4265c.dat",
+      "position": [
+        0,
+        -25,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_anchor_lower_retainer_pos",
+      "part": "4265c.dat",
+      "position": [
+        0,
+        35,
+        20
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_top_retainer",
+      "part": "4265c.dat",
+      "position": [
+        0,
+        -25,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "input_axle",
+      "part": "3707.dat",
+      "position": [
+        -140,
+        30,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_spacer_40",
+      "part": "3713.dat",
+      "position": [
+        -140,
+        40,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_spacer_60",
+      "part": "3713.dat",
+      "position": [
+        -140,
+        60,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "input_spacer_80",
+      "part": "3713.dat",
+      "position": [
+        -140,
+        80,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "input"
+    },
+    {
+      "id": "output_axle",
+      "part": "60485.dat",
+      "position": [
+        0,
+        40,
+        0
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_spacer_40",
+      "part": "3713.dat",
+      "position": [
+        0,
+        40,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_spacer_80",
+      "part": "3713.dat",
+      "position": [
+        0,
+        80,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "output_bottom_retainer",
+      "part": "3713.dat",
+      "position": [
+        0,
+        120,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 4,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_neg",
+      "part": "39367p01.dat",
+      "position": [
+        0,
+        -20,
+        -120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 15,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_axle_neg",
+      "part": "3706.dat",
+      "position": [
+        0,
+        10,
+        -120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_upper_retainer_neg",
+      "part": "3713.dat",
+      "position": [
+        0,
+        -40,
+        -120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_spacer_neg",
+      "part": "3713.dat",
+      "position": [
+        0,
+        0,
+        -120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_key_neg",
+      "part": "7229.dat",
+      "position": [
+        0,
+        40,
+        -120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 25,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_lower_retainer_neg",
+      "part": "3713.dat",
+      "position": [
+        0,
+        60,
+        -120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_key_pin_neg_neg",
+      "part": "2780.dat",
+      "position": [
+        0,
+        30,
+        -140
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_key_pin_neg_pos",
+      "part": "2780.dat",
+      "position": [
+        0,
+        30,
+        -100
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_pos",
+      "part": "39367p01.dat",
+      "position": [
+        0,
+        -20,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 15,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_axle_pos",
+      "part": "3706.dat",
+      "position": [
+        0,
+        10,
+        120
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_upper_retainer_pos",
+      "part": "3713.dat",
+      "position": [
+        0,
+        -40,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_spacer_pos",
+      "part": "3713.dat",
+      "position": [
+        0,
+        0,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_key_pos",
+      "part": "7229.dat",
+      "position": [
+        0,
+        40,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "color": 25,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_lower_retainer_pos",
+      "part": "3713.dat",
+      "position": [
+        0,
+        60,
+        120
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0
+      ],
+      "color": 71,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_key_pin_pos_neg",
+      "part": "2780.dat",
+      "position": [
+        0,
+        30,
+        100
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    },
+    {
+      "id": "wheel_key_pin_pos_pos",
+      "part": "2780.dat",
+      "position": [
+        0,
+        30,
+        140
+      ],
+      "rotation": [
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "color": 0,
+      "stage": 5,
+      "port": null,
+      "group": "output"
+    }
+  ],
+  "belts": [
+    {
+      "id": "spring_neg",
+      "band": "85546.dat",
+      "around": [
+        "input_band_neg",
+        "output_band_neg"
+      ]
+    },
+    {
+      "id": "spring_pos",
+      "band": "85546.dat",
+      "around": [
+        "input_band_pos",
+        "output_band_pos"
+      ]
+    }
+  ],
+  "constructionSteps": [
+    {
+      "number": 1,
+      "title": "Four coplanar floor rails, retained supports, connected base and mounted SPIKE hub"
+    },
+    {
+      "number": 2,
+      "title": "Six-socket motor cradle and four retained support posts"
+    },
+    {
+      "number": 3,
+      "title": "Two separated passive bearings and their connected support cage"
+    },
+    {
+      "number": 4,
+      "title": "Blue driven rocker, orange passive rotor, retained shafts and grooved band anchors"
+    },
+    {
+      "number": 5,
+      "title": "Balanced wheel masses, two matched 33 mm bands, cable and saved-pose alignment"
+    }
+  ],
+  "mechanism": {
+    "kind": "two-band-forced-passive-torsional-oscillator",
+    "units": "LDU",
+    "roles": [
+      "frame",
+      "input",
+      "output"
+    ],
+    "bodyReferenceParts": {
+      "frame": "frame_reference",
+      "input": "input_key",
+      "output": "output_key"
+    },
+    "inputAxisLdu": [
+      -140,
+      0,
+      0
+    ],
+    "outputAxisLdu": [
+      0,
+      0,
+      0
+    ],
+    "hingeAxisLdu": [
+      0,
+      1,
+      0
+    ],
+    "anchorRadiusLdu": 20,
+    "anchorPlaneYLdu": -60,
+    "resetAnchorZLdu": [
+      -20,
+      20
+    ],
+    "resetCentreSeparationLdu": 140,
+    "bandPart": "85546.dat",
+    "bandNominalDiameterMm": 33,
+    "nativeAnchorRadiusLdu": 7,
+    "drawnBandCentrelineRadiusLdu": 9,
+    "drawnBandTubeRadiusLdu": 2,
+    "nativeSpringRestDistanceMm": 43.03981935418017,
+    "nativeSpringStiffnessNPerM": 45.45454545454545,
+    "nativeSpringDampingNsPerM": 0.02,
+    "passiveWheelPart": "39367p01.dat",
+    "passiveWheelCentresLdu": [
+      [
+        0,
+        -20,
+        -120
+      ],
+      [
+        0,
+        -20,
+        120
+      ]
+    ],
+    "passiveWheelNominalMassGramsEach": 12,
+    "prospectiveClearanceEnvelopeDegrees": {
+      "input": [
+        -3,
+        3
+      ],
+      "output": [
+        -35,
+        35
+      ]
+    },
+    "nativeExpectedDynamicBodies": 3,
+    "nativeExpectedHinges": 2,
+    "nativeExpectedSliders": 0,
+    "nativeExpectedCouplings": [
+      "spring",
+      "spring"
+    ],
+    "developmentFixedAssemblyCount": 1,
+    "notes": [
+      "The output is a genuinely passive balanced rotor on two retained round-bore bearings.",
+      "The two matched bands act on opposite 8 mm lever arms, so their pretension is balanced at reset.",
+      "3713 bushes provide real 7 LDU waists and two 9 LDU flanges. They are keyed to the rockers, not independent pulleys.",
+      "Paired retained parallel shafts physically lock each thin anchor bridge to its two rocker layers; native locked-hinges diagnostics are expected and preserved if emitted.",
+      "Band stiffness and damping are the unchanged native approximation, not measured properties of a physical rubber band.",
+      "The prototype includes the actual mounted SPIKE hub and explicit motor A, so VM/controller timing matches the final machine."
+    ]
+  },
+  "interfaces": {
+    "bodyReferences": {
+      "frame": "frame_reference",
+      "input": "input_key",
+      "output": "output_key"
+    },
+    "bandAnchorParts": {
+      "input": {
+        "neg": "input_band_neg",
+        "pos": "input_band_pos"
+      },
+      "output": {
+        "neg": "output_band_neg",
+        "pos": "output_band_pos"
+      }
+    },
+    "belts": [
+      {
+        "id": "spring_neg",
+        "band": "85546.dat",
+        "around": [
+          "input_band_neg",
+          "output_band_neg"
+        ]
+      },
+      {
+        "id": "spring_pos",
+        "band": "85546.dat",
+        "around": [
+          "input_band_pos",
+          "output_band_pos"
+        ]
+      }
+    ],
+    "observation": {
+      "inputCentre": [
+        "input_key",
+        "x0"
+      ],
+      "outputCentre": [
+        "output_key",
+        "x0"
+      ],
+      "inputDirection": [
+        "input_beam",
+        "h3"
+      ],
+      "outputDirection": [
+        "output_beam",
+        "h13"
+      ],
+      "bandAnchors": {
+        "input": {
+          "neg": [
+            "input_band_neg",
+            "c"
+          ],
+          "pos": [
+            "input_band_pos",
+            "c"
+          ]
+        },
+        "output": {
+          "neg": [
+            "output_band_neg",
+            "c"
+          ],
+          "pos": [
+            "output_band_pos",
+            "c"
+          ]
+        }
+      }
+    },
+    "motor": {
+      "id": "motor_A",
+      "part": "54696p01.dat",
+      "port": "A",
+      "originLdu": [
+        -140,
+        140,
+        0
+      ],
+      "rotation": [
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1
+      ],
+      "actualCrossSocketYLdu": [
+        90,
+        110
+      ],
+      "shaftId": "input_axle",
+      "housingGroup": "frame",
+      "rotorGroup": "input",
+      "mountSockets": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s8",
+        "s9"
+      ],
+      "mountRailIds": [
+        "motor_side_neg",
+        "motor_side_pos"
+      ]
+    },
+    "hub": {
+      "id": "hub",
+      "part": "45601.dat",
+      "originLdu": [
+        -300,
+        270,
+        60
+      ],
+      "mountSockets": [
+        "y28",
+        "y29",
+        "y30",
+        "y31"
+      ],
+      "mountPinIds": [
+        "hub_pin_neg_front",
+        "hub_pin_neg_rear",
+        "hub_pin_pos_front",
+        "hub_pin_pos_rear"
+      ],
+      "threeLayerCentresYLdu": [
+        260,
+        280,
+        300
+      ],
+      "pinSpanYLdu": [
+        250,
+        310
+      ],
+      "pinCollarYLdu": 270
+    },
+    "shaftStacks": {
+      "input": {
+        "id": "input_axle",
+        "part": "3707.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -50,
+          110
+        ],
+        "members": [
+          [
+            "input_top_retainer",
+            -30,
+            -20
+          ],
+          [
+            "input_anchor_bridge",
+            -20,
+            -10
+          ],
+          [
+            "input_key",
+            -10,
+            10
+          ],
+          [
+            "input_beam",
+            10,
+            30
+          ],
+          [
+            "input_spacer_40",
+            30,
+            50
+          ],
+          [
+            "input_spacer_60",
+            50,
+            70
+          ],
+          [
+            "input_spacer_80",
+            70,
+            90
+          ],
+          [
+            "motor_A/out_actual",
+            90,
+            110
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": [
+          [
+            -50,
+            -30
+          ]
+        ]
+      },
+      "output": {
+        "id": "output_axle",
+        "part": "60485.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -50,
+          130
+        ],
+        "members": [
+          [
+            "output_top_retainer",
+            -30,
+            -20
+          ],
+          [
+            "output_anchor_bridge",
+            -20,
+            -10
+          ],
+          [
+            "output_key",
+            -10,
+            10
+          ],
+          [
+            "output_beam",
+            10,
+            30
+          ],
+          [
+            "output_spacer_40",
+            30,
+            50
+          ],
+          [
+            "output_bearing_top",
+            50,
+            70
+          ],
+          [
+            "output_spacer_80",
+            70,
+            90
+          ],
+          [
+            "output_bearing_low",
+            90,
+            110
+          ],
+          [
+            "output_bottom_retainer",
+            110,
+            130
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": [
+          [
+            -50,
+            -30
+          ]
+        ]
+      },
+      "input_anchor_neg": {
+        "id": "input_anchor_axle_neg",
+        "part": "3706.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -80,
+          40
+        ],
+        "members": [
+          [
+            "input_band_neg",
+            -70,
+            -50
+          ],
+          [
+            "input_anchor_full_spacer_neg",
+            -50,
+            -30
+          ],
+          [
+            "input_anchor_upper_spacer_neg",
+            -30,
+            -20
+          ],
+          [
+            "input_anchor_bridge",
+            -20,
+            -10
+          ],
+          [
+            "input_key",
+            -10,
+            10
+          ],
+          [
+            "input_beam",
+            10,
+            30
+          ],
+          [
+            "input_anchor_lower_retainer_neg",
+            30,
+            40
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": [
+          [
+            -80,
+            -70
+          ]
+        ]
+      },
+      "input_anchor_pos": {
+        "id": "input_anchor_axle_pos",
+        "part": "3706.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -80,
+          40
+        ],
+        "members": [
+          [
+            "input_band_pos",
+            -70,
+            -50
+          ],
+          [
+            "input_anchor_full_spacer_pos",
+            -50,
+            -30
+          ],
+          [
+            "input_anchor_upper_spacer_pos",
+            -30,
+            -20
+          ],
+          [
+            "input_anchor_bridge",
+            -20,
+            -10
+          ],
+          [
+            "input_key",
+            -10,
+            10
+          ],
+          [
+            "input_beam",
+            10,
+            30
+          ],
+          [
+            "input_anchor_lower_retainer_pos",
+            30,
+            40
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": [
+          [
+            -80,
+            -70
+          ]
+        ]
+      },
+      "output_anchor_neg": {
+        "id": "output_anchor_axle_neg",
+        "part": "3706.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -80,
+          40
+        ],
+        "members": [
+          [
+            "output_band_neg",
+            -70,
+            -50
+          ],
+          [
+            "output_anchor_full_spacer_neg",
+            -50,
+            -30
+          ],
+          [
+            "output_anchor_upper_spacer_neg",
+            -30,
+            -20
+          ],
+          [
+            "output_anchor_bridge",
+            -20,
+            -10
+          ],
+          [
+            "output_key",
+            -10,
+            10
+          ],
+          [
+            "output_beam",
+            10,
+            30
+          ],
+          [
+            "output_anchor_lower_retainer_neg",
+            30,
+            40
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": [
+          [
+            -80,
+            -70
+          ]
+        ]
+      },
+      "output_anchor_pos": {
+        "id": "output_anchor_axle_pos",
+        "part": "3706.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -80,
+          40
+        ],
+        "members": [
+          [
+            "output_band_pos",
+            -70,
+            -50
+          ],
+          [
+            "output_anchor_full_spacer_pos",
+            -50,
+            -30
+          ],
+          [
+            "output_anchor_upper_spacer_pos",
+            -30,
+            -20
+          ],
+          [
+            "output_anchor_bridge",
+            -20,
+            -10
+          ],
+          [
+            "output_key",
+            -10,
+            10
+          ],
+          [
+            "output_beam",
+            10,
+            30
+          ],
+          [
+            "output_anchor_lower_retainer_pos",
+            30,
+            40
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": [
+          [
+            -80,
+            -70
+          ]
+        ]
+      },
+      "wheel_neg": {
+        "id": "wheel_axle_neg",
+        "part": "3706.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -50,
+          70
+        ],
+        "members": [
+          [
+            "wheel_upper_retainer_neg",
+            -50,
+            -30
+          ],
+          [
+            "wheel_neg/actual_hub_support_faces",
+            -30,
+            -10
+          ],
+          [
+            "wheel_spacer_neg",
+            -10,
+            10
+          ],
+          [
+            "output_beam",
+            10,
+            30
+          ],
+          [
+            "wheel_key_neg",
+            30,
+            50
+          ],
+          [
+            "wheel_lower_retainer_neg",
+            50,
+            70
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": []
+      },
+      "wheel_pos": {
+        "id": "wheel_axle_pos",
+        "part": "3706.dat",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "spanYLdu": [
+          -50,
+          70
+        ],
+        "members": [
+          [
+            "wheel_upper_retainer_pos",
+            -50,
+            -30
+          ],
+          [
+            "wheel_pos/actual_hub_support_faces",
+            -30,
+            -10
+          ],
+          [
+            "wheel_spacer_pos",
+            -10,
+            10
+          ],
+          [
+            "output_beam",
+            10,
+            30
+          ],
+          [
+            "wheel_key_pos",
+            30,
+            50
+          ],
+          [
+            "wheel_lower_retainer_pos",
+            50,
+            70
+          ]
+        ],
+        "intentionalExposedIntervalsYLdu": []
+      }
+    },
+    "bandRetention": {
+      "waistRadiusLdu": 7,
+      "flangeRadiusLdu": 9,
+      "bandPlaneYLdu": -60,
+      "bandTubeIntervalYLdu": [
+        -62,
+        -58
+      ],
+      "anchorBoreSpanYLdu": [
+        -70,
+        -50
+      ],
+      "centralMainAxleRetainerSpanYLdu": [
+        -30,
+        -20
+      ],
+      "note": "Bands sit in the waist between the actual 3713 flanges. Both central shaft tips stop at Y=-50, 8 LDU below the complete band tube envelope."
+    },
+    "frameExtensions": [
+      {
+        "id": "hub_rail_neg",
+        "centreLdu": [
+          -360,
+          280,
+          60
+        ],
+        "holeAxis": [
+          0,
+          1,
+          0
+        ],
+        "occupiedZLdu": [
+          -40,
+          160
+        ]
+      },
+      {
+        "id": "hub_rail_pos",
+        "centreLdu": [
+          -240,
+          280,
+          60
+        ],
+        "holeAxis": [
+          0,
+          1,
+          0
+        ],
+        "occupiedZLdu": [
+          -40,
+          160
+        ]
+      },
+      {
+        "id": "lower_rail_neg",
+        "centreLdu": [
+          -100,
+          320,
+          60
+        ],
+        "holeAxis": [
+          0,
+          1,
+          0
+        ],
+        "occupiedZLdu": [
+          -40,
+          0,
+          160
+        ]
+      },
+      {
+        "id": "lower_rail_pos",
+        "centreLdu": [
+          60,
+          320,
+          60
+        ],
+        "holeAxis": [
+          0,
+          1,
+          0
+        ],
+        "occupiedZLdu": [
+          0
+        ]
+      }
+    ]
+  },
+  "frameInterfaces": {
+    "floorRailIds": [
+      "floor_hub_outer",
+      "floor_hub_inner",
+      "floor_mechanism_left",
+      "floor_mechanism_right"
+    ],
+    "floorRailCentresLdu": [
+      [
+        -360,
+        360,
+        60
+      ],
+      [
+        -240,
+        360,
+        60
+      ],
+      [
+        -100,
+        360,
+        60
+      ],
+      [
+        60,
+        360,
+        60
+      ]
+    ],
+    "floorRailPart": "32278.dat",
+    "floorUndersideYLdu": 370,
+    "floorHoleZRangeLdu": [
+      -80,
+      200
+    ],
+    "floorRailHoleAxis": [
+      0,
+      1,
+      0
+    ],
+    "supportPurpose": "Four coplanar floor rails support the complete connected frame, including the hub, without fixing any body in the final simulation.",
+    "hubSupportPosts": [
+      {
+        "id": "hub_floor_neg_front_post",
+        "part": "32523.dat",
+        "centreLdu": [
+          -380,
+          320,
+          0
+        ],
+        "endHoleCentresYLdu": [
+          300,
+          340
+        ],
+        "topAngleId": "hub_floor_neg_front_top_angle",
+        "footId": "hub_floor_neg_front_foot",
+        "topPinId": "hub_floor_neg_front_top_pin",
+        "footPinId": "hub_floor_neg_front_foot_pin"
+      },
+      {
+        "id": "hub_floor_neg_rear_post",
+        "part": "32523.dat",
+        "centreLdu": [
+          -380,
+          320,
+          120
+        ],
+        "endHoleCentresYLdu": [
+          300,
+          340
+        ],
+        "topAngleId": "hub_floor_neg_rear_top_angle",
+        "footId": "hub_floor_neg_rear_foot",
+        "topPinId": "hub_floor_neg_rear_top_pin",
+        "footPinId": "hub_floor_neg_rear_foot_pin"
+      },
+      {
+        "id": "hub_floor_pos_front_post",
+        "part": "32523.dat",
+        "centreLdu": [
+          -220,
+          320,
+          0
+        ],
+        "endHoleCentresYLdu": [
+          300,
+          340
+        ],
+        "topAngleId": "hub_floor_pos_front_top_angle",
+        "footId": "hub_floor_pos_front_foot",
+        "topPinId": "hub_floor_pos_front_top_pin",
+        "footPinId": "hub_floor_pos_front_foot_pin"
+      },
+      {
+        "id": "hub_floor_pos_rear_post",
+        "part": "32523.dat",
+        "centreLdu": [
+          -220,
+          320,
+          120
+        ],
+        "endHoleCentresYLdu": [
+          300,
+          340
+        ],
+        "topAngleId": "hub_floor_pos_rear_top_angle",
+        "footId": "hub_floor_pos_rear_foot",
+        "topPinId": "hub_floor_pos_rear_top_pin",
+        "footPinId": "hub_floor_pos_rear_foot_pin"
+      }
+    ],
+    "mechanismSpacers": [
+      {
+        "id": "mechanism_floor_neg_front_spacer",
+        "part": "32523.dat",
+        "centreLdu": [
+          -100,
+          340,
+          0
+        ],
+        "occupiedHoleZLdu": [
+          -20,
+          20
+        ],
+        "threeLayerCentresYLdu": [
+          320,
+          340,
+          360
+        ],
+        "sharedPinSpanYLdu": [
+          310,
+          370
+        ],
+        "collarYLdu": 330,
+        "pinIds": [
+          "mechanism_floor_neg_front_pin_neg",
+          "mechanism_floor_neg_front_pin_pos"
+        ]
+      },
+      {
+        "id": "mechanism_floor_neg_rear_spacer",
+        "part": "32523.dat",
+        "centreLdu": [
+          -100,
+          340,
+          120
+        ],
+        "occupiedHoleZLdu": [
+          100,
+          140
+        ],
+        "threeLayerCentresYLdu": [
+          320,
+          340,
+          360
+        ],
+        "sharedPinSpanYLdu": [
+          310,
+          370
+        ],
+        "collarYLdu": 330,
+        "pinIds": [
+          "mechanism_floor_neg_rear_pin_neg",
+          "mechanism_floor_neg_rear_pin_pos"
+        ]
+      },
+      {
+        "id": "mechanism_floor_pos_front_spacer",
+        "part": "32523.dat",
+        "centreLdu": [
+          60,
+          340,
+          0
+        ],
+        "occupiedHoleZLdu": [
+          -20,
+          20
+        ],
+        "threeLayerCentresYLdu": [
+          320,
+          340,
+          360
+        ],
+        "sharedPinSpanYLdu": [
+          310,
+          370
+        ],
+        "collarYLdu": 330,
+        "pinIds": [
+          "mechanism_floor_pos_front_pin_neg",
+          "mechanism_floor_pos_front_pin_pos"
+        ]
+      },
+      {
+        "id": "mechanism_floor_pos_rear_spacer",
+        "part": "32523.dat",
+        "centreLdu": [
+          60,
+          340,
+          120
+        ],
+        "occupiedHoleZLdu": [
+          100,
+          140
+        ],
+        "threeLayerCentresYLdu": [
+          320,
+          340,
+          360
+        ],
+        "sharedPinSpanYLdu": [
+          310,
+          370
+        ],
+        "collarYLdu": 330,
+        "pinIds": [
+          "mechanism_floor_pos_rear_pin_neg",
+          "mechanism_floor_pos_rear_pin_pos"
+        ]
+      }
+    ],
+    "hub": {
+      "id": "hub",
+      "part": "45601.dat",
+      "originLdu": [
+        -300,
+        270,
+        60
+      ],
+      "mountSockets": [
+        "y28",
+        "y29",
+        "y30",
+        "y31"
+      ],
+      "mountPinIds": [
+        "hub_pin_neg_front",
+        "hub_pin_neg_rear",
+        "hub_pin_pos_front",
+        "hub_pin_pos_rear"
+      ],
+      "threeLayerCentresYLdu": [
+        260,
+        280,
+        300
+      ],
+      "pinSpanYLdu": [
+        250,
+        310
+      ],
+      "pinCollarYLdu": 270
+    },
+    "cable": "The fixed motor cable is integral to the motor. Connect port A on the fixed hub; route it along the frame below both rocker layers and away from the band and wheel sweep. The cable is not a separately simulated rigid part."
+  },
+  "qualifiedModuleParts": 106,
+  "qualifiedModuleBelts": 2,
+  "completeFrameChangesFromModule": [],
+  "completeFrameAddedPartIds": [
+    "floor_hub_outer",
+    "floor_hub_inner",
+    "floor_mechanism_left",
+    "floor_mechanism_right",
+    "hub_floor_neg_front_top_angle",
+    "hub_floor_neg_front_top_pin",
+    "hub_floor_neg_front_post",
+    "hub_floor_neg_front_foot",
+    "hub_floor_neg_front_foot_pin",
+    "hub_floor_neg_rear_top_angle",
+    "hub_floor_neg_rear_top_pin",
+    "hub_floor_neg_rear_post",
+    "hub_floor_neg_rear_foot",
+    "hub_floor_neg_rear_foot_pin",
+    "hub_floor_pos_front_top_angle",
+    "hub_floor_pos_front_top_pin",
+    "hub_floor_pos_front_post",
+    "hub_floor_pos_front_foot",
+    "hub_floor_pos_front_foot_pin",
+    "hub_floor_pos_rear_top_angle",
+    "hub_floor_pos_rear_top_pin",
+    "hub_floor_pos_rear_post",
+    "hub_floor_pos_rear_foot",
+    "hub_floor_pos_rear_foot_pin",
+    "mechanism_floor_neg_front_spacer",
+    "mechanism_floor_neg_front_pin_neg",
+    "mechanism_floor_neg_front_pin_pos",
+    "mechanism_floor_neg_rear_spacer",
+    "mechanism_floor_neg_rear_pin_neg",
+    "mechanism_floor_neg_rear_pin_pos",
+    "mechanism_floor_pos_front_spacer",
+    "mechanism_floor_pos_front_pin_neg",
+    "mechanism_floor_pos_front_pin_pos",
+    "mechanism_floor_pos_rear_spacer",
+    "mechanism_floor_pos_rear_pin_neg",
+    "mechanism_floor_pos_rear_pin_pos"
+  ],
+  "models": {
+    "resonance-lab": {
+      "sha256": "0adcbb261ecdbdc3ccc26ba92573b3e7a453ed565ab624c5e10457105fabae72",
+      "parts": 142,
+      "bands": 2,
+      "physicalItems": 144,
+      "motors": 1,
+      "hubs": 1
+    }
+  }
+}

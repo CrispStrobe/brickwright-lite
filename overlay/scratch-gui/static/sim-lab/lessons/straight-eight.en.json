@@ -2,7 +2,7 @@
   "version": 1,
   "id": "straight-eight",
   "language": "en",
-  "what": "A motor drives a Peaucellier linkage: seven moving links and a fixed ground link constrain the red marker to a straight path. Seven moving links make the red marker trace a straight line through a bounded ±60° crank sector, with no sliding guide.",
+  "what": "Peaucellier–Lipkin linkage. A motor drives a Peaucellier linkage: seven moving links and a fixed ground link constrain the red marker to a straight path. Seven moving links make the red marker trace a straight line through a bounded ±60° crank sector, with no sliding guide.",
   "try": [
     "Reset and run the example. Watch the blue crank sweep +60°, −60°, then return home.",
     "Pause at an endpoint. Compare the red marker with the fixed origin O; there is no sliding rail.",

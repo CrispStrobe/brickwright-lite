@@ -2599,3 +2599,88 @@ uses two small axial retainer clearances. Snapgate uses 205 CAD placements
 a longer anchor axle and a retained rod-eye axle. Official LDraw geometry keeps
 its separate authors and CC BY terms. Downloaded runtimes, generators and
 claimed validation reports are not included as application code.
+
+### Integral friction-wheel integrator
+
+Original CrispStrobe model, program and bilingual lessons, BSD-3-Clause; see
+`overlay/scratch-gui/static/sim-lab/licenses/integral.txt`. The 155 placements
+reuse 63 base, drive, hub and platter placements from Orbital Loom, also by
+CrispStrobe under BSD-3-Clause. Referenced LDraw parts retain their own notices.
+The free output wheel is driven by native frictional contact. Native and browser
+checks describe simulation behavior; physical hardware accuracy is unverified.
+
+### Resonance Lab
+
+Original one-motor assembly, three finite programs, construction guide and
+bilingual lessons: Copyright (c) 2026 Christian Ströbele (CrispStrobe),
+BSD-3-Clause. The LDR, MPD and programs retain the exact supplied source bytes;
+the full grant ships in `static/sim-lab/licenses/resonance-lab.txt`. Original
+source, construction details and hashes are retained under
+`test/fixtures/model-files/resonance-lab-source/`. The assembly has 142 rigid
+placements and two physical rubber-band loops (144 components). Standard LDraw
+part geometry retains its separate authors and CC BY licences. No external
+mechanism CAD, illustration, unlicensed or noncommercial asset was copied.
+Original source-release measurements describe their recorded simulator revision;
+application integration and hardware qualification remain separate evidence.
+
+### Product Plotter, Sky Courier and Gimbal Lab
+
+Original arrangements, finite programs, construction guides and bilingual
+lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause. The full grant ships
+with each model in `static/sim-lab/licenses/`. The delivered LDraw models and
+programs are used as supplied; the MPD variants are not shipped. Standard LDraw
+part geometry retains its separate authors and CC BY licences. Supplier
+measurements describe their recorded simulator revision; application
+integration, browser operation and hardware construction remain separate
+evidence.
+
+### Offset Orbit
+
+Original arrangement, finite program, mechanics derivation and bilingual
+lessons: Copyright (c) 2026 CrispStrobe, BSD-3-Clause; the full grant ships in
+`static/sim-lab/licenses/offset-orbit.txt`. The delivered revision uses two
+parallel shafts 24 mm apart with a floating Oldham cross; the Huco mechanism
+reference in the package is a citation, not copied content. Standard LDraw part
+geometry retains its separate authors and CC BY licences.
+
+### Circle Splitter
+
+Original arrangement, finite program and bilingual lessons: Copyright (c) 2026
+CrispStrobe, BSD-3-Clause; the full grant ships in
+`static/sim-lab/licenses/circle-splitter.txt`. The Baez rolling-circles article
+the package cites is a reference, not copied content. Standard LDraw part
+geometry retains its separate authors and CC BY licences.
+
+### Cusp Lab
+
+Original CrispStrobe arrangement, program and bilingual lessons, BSD-3-Clause;
+see `static/sim-lab/licenses/cusp-lab.txt`. The model uses 128 standard parts
+and one motor. Its two real marker holes illustrate a cycloid cusp and a
+prolate trochoid loop. Referenced LDraw geometry retains its separate notices.
+Native/browser simulation and physical hardware construction are separate scopes.
+
+### Balance Engine
+
+Original regenerated CrispStrobe assembly and finite program, BSD-3-Clause;
+see `static/sim-lab/licenses/balance-engine.txt`. The arrangement reuses the
+previously licensed CrispStrobe Quickstroke construction patterns and adds
+two independent drives and two centring bands: 292 rigid placements and two
+physical bands (294 components). External LDraw meshes retain their notices.
+Simulation parameters do not establish calibrated hardware rubber stiffness.
+
+### Root Bridge
+
+Original model and program by Christian Ströbele (CrispStrobe), BSD-3-Clause.
+The repaired rails and supports preserve the input-only geometric-mean mechanism.
+Full license: `overlay/scratch-gui/static/sim-lab/licenses/root-bridge.txt`.
+
+### Watt’s Line and TwinTempo original models
+
+Copyright (c) 2026 Christian Ströbele (CrispStrobe), BSD-3-Clause.
+Models, programs and lessons are shipped with complete notices in
+`static/sim-lab/licenses/watt-line.txt` and `static/sim-lab/licenses/twin-tempo.txt`.
+External LDraw parts retain their existing separate attribution and licences.
+
+### SineShuttle and Quartermaster
+
+Original model and program designs by CrispStrobe, BSD-3-Clause. SineShuttle supplies the full grant; Quartermaster uses the owner-authorized BSD grant and retains its corrected Crossglide cradle credit. Individual notices: `static/sim-lab/licenses/sine-shuttle.txt` and `quartermaster.txt`. Standard LDraw part meshes retain their individual authors and licences.

@@ -128,3 +128,19 @@ for (const defect of ['oversized runtime','nonregular runtime']) {
         await assert.rejects(readFile(join(f.output,'manifest.json')),{code:'ENOENT'});
     });
 }
+
+test('legacy overlay support is refused for a runtime that already compiles the Prime models', async t => {
+    const f = await fixture(t);
+    // Bare metadata names as a compiled-model runtime stores them.
+    await writeFile(f.runtime, 'synthetic runtime\0ILpf2Device\0CreatePrimeElectricalPorts\0');
+    const result = f.run();
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /already contains compiled Prime models/);
+    await assert.rejects(readFile(join(f.output, 'pins.json')));
+});
+
+test('legacy overlay support still pins a runtime with only one of the model names', async t => {
+    const f = await fixture(t);
+    await writeFile(f.runtime, 'synthetic runtime\0ILpf2Device\0');
+    assert.equal(f.run().status, 0);
+});

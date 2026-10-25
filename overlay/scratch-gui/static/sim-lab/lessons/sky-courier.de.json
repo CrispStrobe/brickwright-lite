@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "sky-courier",
+  "language": "de",
+  "what": "Zwei Motoren treiben getrennte 24:1-Schneckenwinden. Auf jeder Abtriebsachse sitzt eine Bundbuchse, die eine Schnur aufwickelt; jede Schnur läuft durch ein festes Auge zur Oberseite einer schwebenden Gondel. Werden beide Schnüre aufgewickelt, hebt sich die Gondel; ist eine kürzer als die andere, wandert sie zur Seite. Die Gondel ist eine passive Last aus 17 Teilen ohne Motor und kann deshalb auch schwingen. Zwei 24:1-Schneckengetriebe wickeln Schnüre auf Bundtrommeln. Ändern sich beide Längen, bewegt sich die schwebende Gondel in einem kleinen Arbeitsraum; das endliche Programm fährt oben, links, rechts und zurück mit beiden Motoren und frischen Drehgeberwerten.",
+  "try": [
+    "Öffne Sky Courier und setze auf die gespeicherte Ausgangslage zurück. Füge sky-courier.bw im Code-Bereich ein, wähle Zu Blöcken und starte. Das endliche Programm fährt oben, links, rechts und zurück und lässt danach beide Winden auslaufen. Setze vor einer Wiederholung zurück.",
+    "Beobachte während der ersten Bewegung die beiden Trommeln und Schnüre. Beide Motoren drehen gemeinsam, beide Schnüre werden gleich viel kürzer, und die Gondel steigt nahezu ohne Seitenbewegung.",
+    "Vergleiche bei den Links- und Rechtsbewegungen die beiden Drehgeberwerte. Eine Schnur wird kürzer, während die andere länger wird; verfolge, wie der Aufhängepunkt durch den Arbeitsraum wandert.",
+    "Stoße die Gondel nach der Rückkehr leicht an. Sie hängt frei und wird nicht geführt, schwingt also wie ein Pendel. Das Programm behauptet weder eine kartesische Bahn noch eine Festlegung des Gierwinkels."
+  ],
+  "why": "Jede Trommel wandelt Motordrehung in Schnurlänge um: Eine volle Umdrehung mit Radius r ändert die Länge um 2πr. Das Schneckenpaar untersetzt die Motordrehzahl um 24:1 und erhöht das Drehmoment, sodass sich die Trommel langsam dreht und die Last halten kann. Bei festen Führungsaugen bestimmen die beiden Schnurlängen den möglichen Aufhängepunkt. Gleiche Änderung beider Längen hebt oder senkt ihn; entgegengesetzte Änderung verschiebt ihn zur Seite. Die Schwerkraft hält die Schnüre gespannt und lässt die Gondel unter dem Aufhängepunkt hängen.",
+  "matters": "Seilgetriebene Positionierer gibt es an Kamerakränen, in Kränen und als parallele Seilroboter. Ihr Arbeitsraum folgt aus der Geometrie, während Steifigkeit und Genauigkeit von Spannung, Trommelradius und den Zwangsbedingungen der Last abhängen. Ein Winden-Drehgeber misst die Trommeldrehung, nicht die Position der Gondel; Seildehnung, Wickelradius und Schwingung bleiben getrennte Effekte.",
+  "question": "Sitzt die Gondel zwingend waagerecht und still, wenn beide Winden-Drehgeber denselben Winkel melden?",
+  "answer": "Nein. Gleiche Trommelwinkel ergeben nur dann gleiche Längenänderungen, wenn Trommeln und Wickelradien übereinstimmen. Nach einer Störung kann die Gondel weiter schwingen, sich verdrehen oder an einer anderen Stelle hängen, und eine Schnur kann kurzzeitig ihre Spannung verlieren. Genau deshalb wurde die Gondel im nativen Lauf getrennt von den Drehgebern gemessen.",
+  "further": [
+    "Der native Trommelradius beträgt etwa 2,8 mm, der physische Schnurmittenradius etwa 2,95 mm. Berechne die Längenänderung pro Trommelumdrehung und vergleiche sie mit den Drehgeberzielen des Programms.",
+    "Das native Modell verwendet zwei einseitige Seilzwangsbedingungen. Ein Seil kann ziehen, aber nicht drücken; eine schlaffe Messprobe verändert die Lagerung der Last. Das every-sample-Kriterium des Lieferanten für die Spannung scheiterte an einer Messprobe, obwohl Bewegung und Rückkehr innerhalb ihrer Grenzen blieben.",
+    "Die gespeicherte Lage von Schnecke und Zahnrad hat einen kleinen positiven Abstand, doch eine Vollumdrehungsprüfung ideal starrer Zähne fand eingreifende Phasen. Reales Spiel und plastische Nachgiebigkeit können anders wirken; diese CAD-Datei belegt weder ruhigen Lauf noch einen Hardwareaufbau.",
+    "Vergleiche den Spindelkran und den Bagger: Dort führen starre Glieder oder Spindelantriebe die Last, sodass ihre Position durch die Struktur statt durch zwei Schnüre und die Schwerkraft bestimmt wird."
+  ],
+  "formula": "Trommel: Δl = rΔθ mit r ≈ 2,8 mm native. Schneckenverhältnis 24:1. Die beiden Schnurlängen legen den Aufhängepunkt unter den festen Augen fest; die Gondel hängt unter der Schwerkraft. Native Messspannen: 40,0 mm waagerecht, 24,1 mm senkrecht; größter Einschwingfehler 0,30 mm. Spannung und ideale Zahnprüfung bleiben LIMITED.",
+  "related": [
+    "screw-crane.ldr",
+    "crane.ldr",
+    "excavator.ldr"
+  ]
+}
