@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "impulse-line",
+  "language": "de",
+  "what": "Drei Pendel hängen frei nebeneinander. Motor A bewegt einen getrennten Anhebearm, der das erste Pendel anhebt, und zieht ihn anschließend zurück. Beobachte, wie das erste Pendel zurückschwingt und seinen Nachbarn berührt. Das mittlere und das letzte Pendel haben keinen Motor: Ihre Bewegung muss durch physikalische Wechselwirkungen entstehen. Vergleiche die Kontaktkette mit dem mitgelieferten Modell ohne mittleres Pendel.",
+  "try": [
+    "Lade impulse-line.ldr und das zugehörige Programm impulse-line.bw. Stelle mit Reset die gespeicherte Lage her und drücke Run in der Robot-Lab-Werkzeugleiste. Beobachte, wann der Anhebearm das erste Pendel berührt und wann er frei davon ist.",
+    "Verfolge die Mittelpunkte aller drei Pendelkörper. Welcher bewegt sich zuerst? Unterscheide Berührung und Trennung; der Motorencoder misst nicht die Bewegung des letzten Pendels.",
+    "Sage die Reaktion ohne mittleres Pendel voraus. Starte das mitgelieferte physische Vergleichsmodell mit demselben Programm aus seiner gespeicherten Lage und vergleiche die Bewegung des letzten Pendels.",
+    "Beobachte die Pendel, nachdem der Anhebearm in seine Ausgangslage zurückgekehrt ist. Tauschen sie unbegrenzt Bewegung aus oder nimmt ihre Bewegung ab? Halte die Programmgrenzen ein und verwende nach Unterbrechung oder Handbetrieb vor der Wiederholung Reset."
+  ],
+  "why": "Eine Kontaktkraft ändert während des Stoßes den Impuls eines Körpers. Deshalb kann ein bewegtes Pendel seinen Nachbarn in Bewegung setzen, obwohl sich der Anhebearm bereits zurückgezogen hat. Schwerkraft und Drehpunkte bestimmen das anschließende Schwingen mit. Die Kontakte sind dissipativ: Mechanische Energie muss nicht vollständig in der sichtbaren Pendelbewegung erhalten bleiben. Das Entfernen des mittleren Pendels unterbricht den vorgesehenen Kontaktweg.",
+  "matters": "Bewegung kann durch kurze Kontakte eine Kette unmotorisierter Teile durchlaufen. Der Vergleich einer vollständigen mit einer physisch unterbrochenen Kette hilft, diese Übertragung von einer Bewegung über den gemeinsamen Rahmen zu unterscheiden. Ein erreichter Motorzielwinkel beweist keine Reaktion des passiven Endpendels.",
+  "question": "Wenn der Anhebearm in beiden Modellen zur gleichen Position zurückkehrt, muss sich das letzte Pendel dann gleich bewegen? Muss ein ankommendes Pendel genau ein anderes mit derselben Geschwindigkeit hinausschwingen lassen?",
+  "answer": "Nein. Der Motorweg bleibt gleich, aber das entfernte mittlere Pendel verändert den physikalischen Weg zwischen Anregung und Endpendel. Entscheidend ist die unabhängig gemessene Reaktion des Endpendels. Das bekannte Verhalten „eins hinein, eins hinaus“ gehört zu einer sorgfältig ausgerichteten, nahezu elastischen Idealisierung. Verteilte LEGO-Massen, Lagerkräfte, Kontaktverluste und Rahmenbewegung können andere Reaktionen verursachen.",
+  "further": [
+    "Unterscheide einen kurzen Kontakt von einer ganzen Schwingung. Schwerkraft und Aufhängung wirken während des gesamten Schwingens; eine endliche Beobachtung nur der Pendelkörper ist daher nicht automatisch ein isolierter Stoß.",
+    "Vergleiche die unabhängig beobachtete Endpendelbewegung mit vollständiger und unterbrochener Kette. Beobachte zugleich den Rahmen: Das entfernte mittlere Pendel verändert auch dessen Belastung.",
+    "Vergleiche Pendulum Arrays frei auseinanderlaufende Phasen, Echo Bridges elastische Kopplung und Pulse Percussions feste Anschlagleiste. Hier geht es darum, ob einzelne Kontakte eine Anregung durch passive Nachbarn weitergeben.",
+    "Reale Stiftreibung, Materialverformung, Schall, Fertigungstoleranzen und Stoßkräfte brauchen eigene Hardwaremessungen. Das Aussehen des Modells beweist kein verlustfreies Newton-Pendel."
+  ],
+  "formula": "Kraftstoß J = ∫F dt = Δp. Über ein endliches Zeitintervall entspricht die Impulsänderung eines Körpers dem Kraftstoß aller äußeren Kräfte auf diesen Körper. Ein innerer Kontakt überträgt Impuls zwischen Nachbarn; Drehpunkte, Schwerkraft und Rahmen können ebenfalls beitragen.",
+  "related": [
+    "pendulum-array.ldr",
+    "echo-bridge.ldr",
+    "pulse-percussion.ldr"
+  ]
+}

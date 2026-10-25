@@ -791,6 +791,329 @@ export const EXPERIMENTAL_MODELS = Object.freeze([
                 "speedDps": 30
             }
         }
+    },
+    {
+        "file": "impulse-line.ldr",
+        "title": {
+            "en": "Impulse Line — contact transfer",
+            "de": "Impulse Line — Impulsübertragung durch Kontakt"
+        },
+        "example": "impulse-line.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A separate motor pusher launches the first of three free pendulums, then withdraws. Follow motion through actual bob contacts and compare a physical middle-pendulum-absent control.",
+            "de": "Ein eigener motorisierter Anhebearm regt das erste von drei freien Pendeln an und zieht sich zurück. Beobachte die Bewegung durch echte Kontakte zwischen den Pendelkörpern und vergleiche mit dem physisch entfernten mittleren Pendel."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -24,
+                "maxDeg": 0,
+                "stepDeg": 4,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "impulse-line-missing-middle.ldr",
+        "title": {
+            "en": "Impulse Line Control — middle pendulum removed",
+            "de": "Impulse-Line-Kontrolle — ohne mittleres Pendel"
+        },
+        "example": "impulse-line.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Impulse Line with the middle pendulum removed and everything else unchanged. The same launch no longer reaches the last pendulum, which stays practically still.",
+            "de": "Impulse Line ohne das mittlere Pendel, sonst unverändert. Derselbe Anstoß erreicht das letzte Pendel nicht mehr; es bleibt praktisch still."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -24,
+                "maxDeg": 0,
+                "stepDeg": 4,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "final-squeeze.ldr",
+        "title": {
+            "en": "Final Squeeze — a knee press",
+            "de": "Final Squeeze — eine Kniehebelpresse"
+        },
+        "example": "final-squeeze.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
+            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 25,
+                "stepDeg": 5,
+                "speedDps": 8
+            }
+        }
+    },
+    {
+        "file": "travel-dial.ldr",
+        "title": {
+            "en": "Travel Dial — passive measuring wheel",
+            "de": "Travel Dial — passives Messrad"
+        },
+        "example": "travel-dial.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "A slider-crank moves a guided sled beneath a freely turning rubber wheel. Compare the wheel’s measured angle with actual surface travel at two drive speeds, then repeat with the wheel physically lifted clear.",
+            "de": "Eine Schubkurbel bewegt einen geführten Schlitten unter einem frei drehenden Gummirad. Vergleiche dessen gemessenen Winkel bei zwei Antriebsgeschwindigkeiten mit dem tatsächlichen Weg und wiederhole den Versuch mit physisch angehobenem Rad."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -60,
+                "maxDeg": 60,
+                "stepDeg": 15,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "travel-dial-wheel-raised.ldr",
+        "title": {
+            "en": "Travel Dial Control — wheel raised",
+            "de": "Travel-Dial-Kontrolle — Rad angehoben"
+        },
+        "example": "travel-dial.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Travel Dial with the measuring wheel lifted clear of the sled. The sled makes the same strokes, but without contact the wheel barely turns.",
+            "de": "Travel Dial mit vom Schlitten abgehobenem Messrad. Der Schlitten fährt dieselben Hübe, doch ohne Kontakt dreht sich das Rad kaum."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -60,
+                "maxDeg": 60,
+                "stepDeg": 15,
+                "speedDps": 15
+            }
+        }
+    },
+    {
+        "file": "ghost-pivot.ldr",
+        "title": {
+            "en": "Ghost Pivot — remote centre of motion",
+            "de": "Ghost Pivot — fernliegender Drehpunkt"
+        },
+        "example": "ghost-pivot.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Two linked parallelograms turn a passive tool around an empty end hole with no bearing there. Measure the hole’s motion while the tool changes heading, then compare a physically lengthened loop link.",
+            "de": "Zwei gekoppelte Parallelogramme drehen einen passiven Werkzeugträger um ein freies Endloch ohne Lager. Beobachte die Bewegung dieses Lochs beim Schwenken und vergleiche mit einem physisch verlängerten Koppelglied."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -35,
+                "maxDeg": 35,
+                "stepDeg": 5,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "ghost-pivot-unequal-link.ldr",
+        "title": {
+            "en": "Ghost Pivot Control — one link lengthened",
+            "de": "Ghost-Pivot-Kontrolle — ein Glied verlängert"
+        },
+        "example": "ghost-pivot.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Ghost Pivot with one loop link replaced by a longer beam. The same motor sweep now moves the empty end hole by about 21 mm: the remote centre depends on exact link lengths.",
+            "de": "Ghost Pivot mit einem längeren Balken als Glied der Schleife. Derselbe Motorschwenk verschiebt das leere Endloch nun um etwa 21 mm: Der fernliegende Drehpunkt hängt von genauen Gliedlängen ab."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -35,
+                "maxDeg": 35,
+                "stepDeg": 5,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "afterturn.ldr",
+        "title": {
+            "en": "Afterturn — a closed shape cycle",
+            "de": "Afterturn — ein geschlossener Formzyklus"
+        },
+        "example": "afterturn.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
+            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 900,
+                "stepDeg": 90,
+                "speedDps": 90
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 70,
+                "stepDeg": 10,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "afterturn-fixed-masses.ldr",
+        "title": {
+            "en": "Afterturn Control — masses fixed",
+            "de": "Afterturn-Kontrolle — Massen fest"
+        },
+        "example": "afterturn.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Afterturn with both radial masses fixed at their outer position. The same wheel cycle now leaves practically no net heading, because the platform inertia never changes.",
+            "de": "Afterturn mit beiden radialen Massen fest in der äußeren Stellung. Derselbe Radzyklus hinterlässt nun praktisch keine Nettodrehung, weil sich das Trägheitsmoment der Plattform nie ändert."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 900,
+                "stepDeg": 90,
+                "speedDps": 90
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 70,
+                "stepDeg": 10,
+                "speedDps": 10
+            }
+        }
+    },
+    {
+        "file": "quiet-partner.ldr",
+        "title": {
+            "en": "Quiet Partner — a passive vibration absorber",
+            "de": "Quiet Partner — ein passiver Schwingungstilger"
+        },
+        "example": "quiet-partner.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "One fixed motor excites a passive primary rotor through two bands. Two more bands connect an unpowered partner. Compare the primary response with the matching control while the input keeps rocking.",
+            "de": "Ein fest montierter Motor regt einen passiven Hauptrotor über zwei Bänder an. Zwei weitere Bänder koppeln einen ebenfalls unmotorisierten Partner an. Vergleiche die Antwort des Hauptrotors mit dem Kontrollmodell, während der Eingang weiter schwingt."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -2,
+                "maxDeg": 2,
+                "stepDeg": 1,
+                "speedDps": 13
+            }
+        }
+    },
+    {
+        "file": "quiet-partner-control.ldr",
+        "title": {
+            "en": "Quiet Partner Control — absorber bands removed",
+            "de": "Quiet Partner Control — ohne Tilgerbänder"
+        },
+        "example": "quiet-partner.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "The same rigid assembly and program, with only the two bands joining primary and partner removed. Compare primary motion during continuing drive with Quiet Partner; reload the saved model before every run.",
+            "de": "Derselbe starre Aufbau und dasselbe Programm; nur die beiden Bänder zwischen Hauptrotor und Partner fehlen. Vergleiche die Bewegung des Hauptrotors während fortgesetzter Anregung mit Quiet Partner. Lade vor jedem Lauf das gespeicherte Modell neu."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": -2,
+                "maxDeg": 2,
+                "stepDeg": 1,
+                "speedDps": 13
+            }
+        }
+    },
+    {
+        "file": "high-select.ldr",
+        "title": {
+            "en": "High Select — mechanical maximum",
+            "de": "High Select — mechanisches Maximum"
+        },
+        "example": "high-select.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Two independently driven supports lift a separate gravity-loaded bridge. The higher support determines its settled height. Compare lower-input motion, handover and equal-height ties, then exchange the two input sequences.",
+            "de": "Zwei unabhängig angetriebene Stützen heben eine separate, schwerkraftbelastete Brücke. Die höhere Stütze bestimmt ihre Höhe nach dem Einschwingen. Vergleiche Bewegungen der niedrigeren Eingabe, den Kontaktwechsel und gleiche Höhen; vertausche anschließend die beiden Eingabefolgen."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 152,
+                "stepDeg": 19,
+                "speedDps": 38
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 152,
+                "stepDeg": 19,
+                "speedDps": 38
+            }
+        }
+    },
+    {
+        "file": "high-select-mirror.ldr",
+        "title": {
+            "en": "High Select — exchanged-input comparison",
+            "de": "High Select — Vergleich mit vertauschten Eingaben"
+        },
+        "example": "high-select-mirror.bw",
+        "mat": "plain",
+        "experimental": true,
+        "blocked": false,
+        "intro": {
+            "en": "Exchange the A and B input-height sequences on the same saved mechanism. Compare the passive bridge height at corresponding settled stages: max(a,b) equals max(b,a), although the active supporting side changes.",
+            "de": "Vertausche die Höhenfolgen für A und B am selben gespeicherten Mechanismus. Vergleiche die passive Brückenhöhe in entsprechenden eingeschwungenen Stufen: max(a,b) ist gleich max(b,a), obwohl die tragende Seite wechselt."
+        },
+        "manualJog": {
+            "A": {
+                "minDeg": 0,
+                "maxDeg": 152,
+                "stepDeg": 19,
+                "speedDps": 38
+            },
+            "B": {
+                "minDeg": 0,
+                "maxDeg": 152,
+                "stepDeg": 19,
+                "speedDps": 38
+            }
+        }
     }
 ]);
 export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
@@ -1962,6 +2285,479 @@ export const EXPERIMENTAL_MODEL_DETAILS = Object.freeze({
             "prototype",
             "unverified",
             "experimentell"
+        ],
+        "experimental": true
+    },
+    "impulse-line.ldr": {
+        "pieces": 140,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "A separate motor pusher launches the first of three free pendulums, then withdraws. Follow motion through actual bob contacts and compare a physical middle-pendulum-absent control.",
+            "de": "Ein eigener motorisierter Anhebearm regt das erste von drei freien Pendeln an und zieht sich zurück. Beobachte die Bewegung durch echte Kontakte zwischen den Pendelkörpern und vergleiche mit dem physisch entfernten mittleren Pendel."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Dissipative pendulum impact chain",
+            "de": "Dissipative Stoßkette aus Pendeln"
+        },
+        "keywords": [
+            "impulse",
+            "impact chain",
+            "pendulum collision",
+            "contact transfer",
+            "dissipation",
+            "Newton cradle comparison",
+            "Impuls",
+            "Stoßkette",
+            "Pendelstoß",
+            "Kontaktübertragung",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "impulse-line-missing-middle.ldr": {
+        "pieces": 128,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Impulse Line with the middle pendulum removed and everything else unchanged. The same launch no longer reaches the last pendulum, which stays practically still.",
+            "de": "Impulse Line ohne das mittlere Pendel, sonst unverändert. Derselbe Anstoß erreicht das letzte Pendel nicht mehr; es bleibt praktisch still."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Dissipative pendulum impact chain",
+            "de": "Dissipative Stoßkette aus Pendeln"
+        },
+        "keywords": [
+            "impulse",
+            "impact chain",
+            "pendulum collision",
+            "contact transfer",
+            "dissipation",
+            "Newton cradle comparison",
+            "Impuls",
+            "Stoßkette",
+            "Pendelstoß",
+            "Kontaktübertragung",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "final-squeeze.ldr": {
+        "pieces": 167,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One motor straightens two equal links against a stock shock load. The passive platen advances less per degree near alignment while the ideal output force per input torque rises. The finite program stops short of dead centre and returns.",
+            "de": "Ein Motor streckt zwei gleich lange Glieder gegen eine Federlast. Die passive Druckplatte bewegt sich nahe der Strecklage je Grad weniger, während die ideale Ausgangskraft je Eingangsdrehmoment steigt. Das endliche Programm bleibt vor dem Totpunkt und kehrt zurück."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "equal-link knee press with passive spring-loaded platen",
+            "de": "Kniehebelpresse mit gleichen Gliedern und passiver federbelasteter Druckplatte"
+        },
+        "keywords": [
+            "knee press",
+            "toggle press",
+            "equal-link slider-crank",
+            "mechanical advantage",
+            "virtual work",
+            "shock absorber",
+            "platen",
+            "Kniehebelpresse",
+            "Kniehebel",
+            "Totpunkt",
+            "virtuelle Arbeit",
+            "Kraftübersetzung",
+            "Feder",
+            "Druckplatte",
+            "experimental",
+            "experimentell",
+            "prototype",
+            "unverified"
+        ],
+        "experimental": true
+    },
+    "travel-dial.ldr": {
+        "pieces": 194,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "A slider-crank moves a guided sled beneath a freely turning rubber wheel. Compare the wheel’s measured angle with actual surface travel at two drive speeds, then repeat with the wheel physically lifted clear.",
+            "de": "Eine Schubkurbel bewegt einen geführten Schlitten unter einem frei drehenden Gummirad. Vergleiche dessen gemessenen Winkel bei zwei Antriebsgeschwindigkeiten mit dem tatsächlichen Weg und wiederhole den Versuch mit physisch angehobenem Rad."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Passive rolling odometer",
+            "de": "Passive Wegmessung durch ein abrollendes Rad"
+        },
+        "keywords": [
+            "measuring wheel",
+            "odometer",
+            "rolling contact",
+            "linear measurement",
+            "slip",
+            "Messrad",
+            "Wegmessung",
+            "Abrollen",
+            "Schlupf",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "travel-dial-wheel-raised.ldr": {
+        "pieces": 197,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "Travel Dial with the measuring wheel lifted clear of the sled. The sled makes the same strokes, but without contact the wheel barely turns.",
+            "de": "Travel Dial mit vom Schlitten abgehobenem Messrad. Der Schlitten fährt dieselben Hübe, doch ohne Kontakt dreht sich das Rad kaum."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Passive rolling odometer",
+            "de": "Passive Wegmessung durch ein abrollendes Rad"
+        },
+        "keywords": [
+            "measuring wheel",
+            "odometer",
+            "rolling contact",
+            "linear measurement",
+            "slip",
+            "Messrad",
+            "Wegmessung",
+            "Abrollen",
+            "Schlupf",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "ghost-pivot.ldr": {
+        "pieces": 86,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "Two linked parallelograms turn a passive tool around an empty end hole with no bearing there. Measure the hole’s motion while the tool changes heading, then compare a physically lengthened loop link.",
+            "de": "Zwei gekoppelte Parallelogramme drehen einen passiven Werkzeugträger um ein freies Endloch ohne Lager. Beobachte die Bewegung dieses Lochs beim Schwenken und vergleiche mit einem physisch verlängerten Koppelglied."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Double-parallelogram remote centre of motion",
+            "de": "Doppelparallelogramm mit fernliegendem Drehpunkt"
+        },
+        "keywords": [
+            "remote centre",
+            "remote center",
+            "RCM",
+            "virtual pivot",
+            "double parallelogram",
+            "passive linkage",
+            "Fernzentrum",
+            "Drehpunkt",
+            "Doppelparallelogramm",
+            "Koppelgetriebe",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "ghost-pivot-unequal-link.ldr": {
+        "pieces": 86,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "motion",
+        "description": {
+            "en": "Ghost Pivot with one loop link replaced by a longer beam. The same motor sweep now moves the empty end hole by about 21 mm: the remote centre depends on exact link lengths.",
+            "de": "Ghost Pivot mit einem längeren Balken als Glied der Schleife. Derselbe Motorschwenk verschiebt das leere Endloch nun um etwa 21 mm: Der fernliegende Drehpunkt hängt von genauen Gliedlängen ab."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Double-parallelogram remote centre of motion",
+            "de": "Doppelparallelogramm mit fernliegendem Drehpunkt"
+        },
+        "keywords": [
+            "remote centre",
+            "remote center",
+            "RCM",
+            "virtual pivot",
+            "double parallelogram",
+            "passive linkage",
+            "Fernzentrum",
+            "Drehpunkt",
+            "Doppelparallelogramm",
+            "Koppelgetriebe",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "afterturn.ldr": {
+        "pieces": 296,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Two motors turn a reaction wheel and reposition balanced masses on a freely rotating platform. Compare the remaining platform heading after both internal motions return home, then reverse the cycle and test physically fixed masses.",
+            "de": "Zwei Motoren drehen ein Reaktionsrad und versetzen ausgewuchtete Massen auf einer frei drehbaren Plattform. Vergleiche die verbleibende Plattformdrehung nach der Rückkehr beider innerer Bewegungen, kehre den Zyklus um und prüfe physisch festgesetzte Massen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Geometric-phase reorientation through a closed internal shape cycle",
+            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+        },
+        "keywords": [
+            "geometric phase",
+            "shape cycle",
+            "reaction wheel",
+            "variable inertia",
+            "angular momentum",
+            "free yaw",
+            "geometrische Phase",
+            "Formzyklus",
+            "Reaktionsrad",
+            "veränderliches Trägheitsmoment",
+            "Drehimpuls",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "afterturn-fixed-masses.ldr": {
+        "pieces": 296,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "inertia",
+        "description": {
+            "en": "Afterturn with both radial masses fixed at their outer position. The same wheel cycle now leaves practically no net heading, because the platform inertia never changes.",
+            "de": "Afterturn mit beiden radialen Massen fest in der äußeren Stellung. Derselbe Radzyklus hinterlässt nun praktisch keine Nettodrehung, weil sich das Trägheitsmoment der Plattform nie ändert."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "Geometric-phase reorientation through a closed internal shape cycle",
+            "de": "Umorientierung durch einen geschlossenen inneren Formzyklus"
+        },
+        "keywords": [
+            "geometric phase",
+            "shape cycle",
+            "reaction wheel",
+            "variable inertia",
+            "angular momentum",
+            "free yaw",
+            "geometrische Phase",
+            "Formzyklus",
+            "Reaktionsrad",
+            "veränderliches Trägheitsmoment",
+            "Drehimpuls",
+            "experimental",
+            "prototype",
+            "unverified",
+            "experimentell"
+        ],
+        "experimental": true
+    },
+    "quiet-partner.ldr": {
+        "pieces": 234,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "One fixed motor excites a passive primary rotor through two bands. Two more bands connect an unpowered partner. Compare the primary response with the matching control while the input keeps rocking.",
+            "de": "Ein fest montierter Motor regt einen passiven Hauptrotor über zwei Bänder an. Zwei weitere Bänder koppeln einen ebenfalls unmotorisierten Partner an. Vergleiche die Antwort des Hauptrotors mit dem Kontrollmodell, während der Eingang weiter schwingt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "passive tuned vibration absorber comparison",
+            "de": "Vergleich eines passiven abgestimmten Schwingungstilgers"
+        },
+        "keywords": [
+            "vibration absorber",
+            "tuned mass damper",
+            "passive rotor",
+            "continued drive",
+            "finite comparison",
+            "antiresonance",
+            "control",
+            "passiver Schwingungstilger",
+            "Schwingungstilger",
+            "Tilger",
+            "Schwingung",
+            "Kontrollmodell",
+            "Gummiband",
+            "experimental",
+            "experimentell",
+            "prototype",
+            "unverified"
+        ],
+        "experimental": true
+    },
+    "quiet-partner-control.ldr": {
+        "pieces": 232,
+        "motors": 1,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "The same rigid assembly and program, with only the two bands joining primary and partner removed. Compare primary motion during continuing drive with Quiet Partner; reload the saved model before every run.",
+            "de": "Derselbe starre Aufbau und dasselbe Programm; nur die beiden Bänder zwischen Hauptrotor und Partner fehlen. Vergleiche die Bewegung des Hauptrotors während fortgesetzter Anregung mit Quiet Partner. Lade vor jedem Lauf das gespeicherte Modell neu."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "passive tuned vibration absorber comparison",
+            "de": "Vergleich eines passiven abgestimmten Schwingungstilgers"
+        },
+        "keywords": [
+            "vibration absorber",
+            "tuned mass damper",
+            "passive rotor",
+            "continued drive",
+            "finite comparison",
+            "antiresonance",
+            "control",
+            "passiver Schwingungstilger",
+            "Schwingungstilger",
+            "Tilger",
+            "Schwingung",
+            "Kontrollmodell",
+            "Gummiband",
+            "experimental",
+            "experimentell",
+            "prototype",
+            "unverified"
+        ],
+        "experimental": true
+    },
+    "high-select.ldr": {
+        "pieces": 284,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Two independently driven supports lift a separate gravity-loaded bridge. The higher support determines its settled height. Compare lower-input motion, handover and equal-height ties, then exchange the two input sequences.",
+            "de": "Zwei unabhängig angetriebene Stützen heben eine separate, schwerkraftbelastete Brücke. Die höhere Stütze bestimmt ihre Höhe nach dem Einschwingen. Vergleiche Bewegungen der niedrigeren Eingabe, den Kontaktwechsel und gleiche Höhen; vertausche anschließend die beiden Eingabefolgen."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "gravity-loaded unilateral maximum selector",
+            "de": "schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten"
+        },
+        "keywords": [
+            "mechanical maximum",
+            "maximum selector",
+            "MAX",
+            "rack",
+            "gravity",
+            "contact",
+            "handover",
+            "commutativity",
+            "mechanisches Maximum",
+            "Maximumwähler",
+            "Zahnstange",
+            "Schwerkraft",
+            "Kontaktwechsel",
+            "Kommutativität",
+            "experimental",
+            "experimentell",
+            "prototype",
+            "unverified"
+        ],
+        "experimental": true
+    },
+    "high-select-mirror.ldr": {
+        "pieces": 284,
+        "motors": 2,
+        "hubs": [
+            "spike-prime"
+        ],
+        "topic": "forces",
+        "description": {
+            "en": "Exchange the A and B input-height sequences on the same saved mechanism. Compare the passive bridge height at corresponding settled stages: max(a,b) equals max(b,a), although the active supporting side changes.",
+            "de": "Vertausche die Höhenfolgen für A und B am selben gespeicherten Mechanismus. Vergleiche die passive Brückenhöhe in entsprechenden eingeschwungenen Stufen: max(a,b) ist gleich max(b,a), obwohl die tragende Seite wechselt."
+        },
+        "author": "CrispStrobe",
+        "license": "BSD-3-Clause",
+        "mechanism": {
+            "en": "gravity-loaded unilateral maximum selector",
+            "de": "schwerkraftbelasteter Maximumwähler mit einseitigen Kontakten"
+        },
+        "keywords": [
+            "mechanical maximum",
+            "maximum selector",
+            "MAX",
+            "rack",
+            "gravity",
+            "contact",
+            "handover",
+            "commutativity",
+            "mechanisches Maximum",
+            "Maximumwähler",
+            "Zahnstange",
+            "Schwerkraft",
+            "Kontaktwechsel",
+            "Kommutativität",
+            "experimental",
+            "experimentell",
+            "prototype",
+            "unverified"
         ],
         "experimental": true
     }

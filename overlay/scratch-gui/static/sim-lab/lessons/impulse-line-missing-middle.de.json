@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "impulse-line-missing-middle",
+  "language": "de",
+  "what": "Impulse Line ohne das mittlere Pendel. Rahmen, Schieber an Motor A, erstes und letztes Pendel bleiben genau an ihrem Platz, und dasselbe Programm impulse-line.bw läuft. Wo das mittlere Pendel hing, ist jetzt eine Lücke; das erste Pendel kann das letzte nicht mehr über eine Kette von Kontakten erreichen.",
+  "try": [
+    "Diese Kontrolle in der gespeicherten Stellung laden und in der Robot-Lab-Werkzeugleiste auf Starten drücken; dabei wird der virtuelle SPIKE-Hub verbunden, den das Programm braucht. Vor jedem Lauf neu laden.",
+    "Das erste Pendel beobachten, nachdem der Schieber zurückgezogen ist. Es schwingt in die leere Lücke und zurück, ohne etwas zu berühren.",
+    "Das letzte Pendel während des ganzen Laufs beobachten und mit demselben Zeitpunkt im vollständigen Modell Impulse Line vergleichen.",
+    "Danach gleich das vollständige Modell laufen lassen und darauf achten, wie stark sich dort das letzte Pendel bewegt."
+  ],
+  "why": "Im vollständigen Modell führt der einzige Weg vom angestoßenen ersten zum letzten Pendel über zwei Kontakte: erstes zu mittlerem, mittleres zu letztem. Jeder Kontakt gibt dem nächsten Pendel einen kurzen Kraftstoß. Ohne das mittlere Pendel fehlt dieser Weg, während Motor, Schieber, Anstoß des ersten Pendels und Rahmen gleich bleiben. Würde sich das letzte Pendel trotzdem bewegen, müsste etwas anderes, etwa der Rahmen oder der Schieber, die Bewegung übertragen. In der Simulation bleibt es praktisch still; die Bewegung im vollständigen Modell läuft also wirklich über die Kontakte.",
+  "matters": "Eine Kontrolle, die genau ein Glied einer vermuteten Ursachenkette entfernt, ist der übliche Weg zu zeigen, dass eine Wirkung entlang dieser Kette läuft. Dieselbe Überlegung steckt in Versuchen zur Schwingungsisolierung, bei denen eine Zwischenlagerung entfernt wird, und in Stoßprüfungen an Maschinen, bei denen geprüft wird, ob ein Stoß über den erwarteten Kontakt und nicht über den Rahmen ankommt.",
+  "question": "Motorbefehl und Anstoß des ersten Pendels sind in beiden Modellen gleich. Warum verhält sich das letzte Pendel so verschieden?",
+  "answer": "Weil das letzte Pendel Bewegung nur über den Kontakt mit seinem Nachbarn bekommen kann. Ohne mittleres Pendel schwingt das erste frei in die Lücke, und kein Kontakt erreicht das letzte. In der Simulation bewegte es sich höchstens etwa 0,007 mm, im vollständigen Modell etwa 3,6 mm.",
+  "further": [
+    "Abschätzen, wie stark sich der Rahmen bewegen müsste, damit das letzte Pendel 3,6 mm ausschlägt, und das mit der sichtbaren Rahmenbewegung vergleichen.",
+    "Vorhersagen, was passiert, wenn das mittlere Pendel durch ein leichteres oder schwereres ersetzt wird. Welches Pendel bewegt sich nach dem Stoß stärker?"
+  ],
+  "formula": "Impulsübertragung nur durch Kontakt: Δp_letztes = ∫F_Kontakt dt. Ohne berührenden Nachbarn ist F_Kontakt = 0, also Δp_letztes = 0, abgesehen von Kopplung über den Rahmen.",
+  "related": [
+    "pendulum-array.ldr",
+    "echo-bridge.ldr",
+    "pulse-percussion.ldr"
+  ]
+}
