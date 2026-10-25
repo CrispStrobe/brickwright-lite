@@ -42,6 +42,9 @@ Lite adopts that exact supplier through normal sync. The candidate adds radians,
 argument-order and non-finite/signed-zero controls, current export, Code and
 saved-project journeys, and a visible Blocks menu edit followed by restoration.
 These new Lite runtime and browser controls still need final-head qualification.
+The strict SPIKE supplier guard is updated under its separately merged scope;
+the complete unchanged artifact module passes at the adopted pin. This does
+not qualify SPIKE guest, firmware or hardware behavior.
 
 The whole source journey exposed a separate startup reset boundary. The
 [merged reset-proof scope](../lanes/2026-10-25-arcade-source-start-reset-effects.md)
