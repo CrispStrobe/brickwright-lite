@@ -120,3 +120,21 @@ lives in `pseudocode-importer.jsx` outside the SPIKE toolbar/report slice, so it
 waits for that file's current owner or a widened envelope. It was not
 reproduced or changed here. Until then, G03 is complete except for that
 transition. No physical-hub, installed-desktop or performance claim is made.
+
+### Continuation — empty Pseudocode editor after a failed conversion, 2026-10-24
+
+Last open G03 item. The guide kept this change with the owner of
+`pseudocode-importer.jsx` until the overlapping claim was released. The only
+live overlapping claim is H1–H7 (2026-10-16), whose tasks are all still queued
+with no PRs after eight days. On the operator's explicit instruction to close
+every G03 gap, this narrowly takes only the conversion-failure path in
+`switchTab` (and the byte-identical package mirror). Nothing else in that claim
+is touched.
+
+Reproduced in the actual method: from a saved Python view with an empty
+Pseudocode buffer, a conversion error kept the editor on Python with only the
+error, with no way into an empty Pseudocode editor. The failure now also
+offers "Open an empty <language> editor" (DE: "Leeren <language>-Editor
+öffnen"). It opens only the tab whose conversion failed, not while busy, keeps
+the Python source, and a successful conversion behaves as before. Three focused
+controls; two fail on the original source.
