@@ -32,6 +32,14 @@ iterate loop entries to a finite fixed point. Unknown conditions remain possible
 zero iterations and abrupt exits must preserve conservative outcomes. Explicit
 state/work bounds must decline precision, never discard feasible paths.
 
+Candidate control references must be confined to the modeled local declaration,
+plain `=` assignment of a supported finite Number/Boolean literal, and exact
+condition forms: literal equality/inequality comparisons, Boolean/truth tests,
+negation and their modeled short-circuit conjunction/disjunction. No argument,
+return, alias or arbitrary expression use may enroll a control cell. Reject
+compound/update/destructuring writers and all unmodeled operators or reads;
+expanding these forms requires explicit implementation and negative controls.
+
 The result may suppress only the additional synthetic Undefined at a physical
 identifier occurrence proved initialized on every executing path. It cannot
 remove real Undefined/null/String/object writers, provide Number/Array/Image
