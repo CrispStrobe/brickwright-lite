@@ -81,3 +81,20 @@ validation or hardware-motor test. Release acceptance remains subject to the
 integration branch and hosted checks.
 
 The library also includes a [54-piece pendulum array and two-motor clutch load bench](ROBOT-LAB-OSCILLATION-AND-CLUTCH.md), with the same guided lesson format.
+
+## Live measurement experiments
+
+Measurements observe the current simulated model. **Acceleration** is the magnitude of the change in an assembly's Jolt centre-of-mass velocity divided by the elapsed simulated time. It is a sampled estimate in m/s², not an instantaneous force. The first sample, a reset or backward time jump, a gap longer than 250 simulated milliseconds, and invalid velocity display Unavailable. Re-reading the same simulated instant keeps the same value.
+
+**Pressure** is an air network's live gauge pressure in kPa above ambient. Select a part that belongs to exactly one connected pneumatic cylinder or pump network. The reading follows that network's identity in the simulation snapshot; an unconnected part, ambiguous networks or a missing snapshot display Unavailable. It is the supply network pressure, not a measured force at the cylinder. An ideal piston force can be calculated separately as pressure difference times piston area when both sides and their valve state are known.
+
+The **Apply lesson measurements** button offers four more sets for the exact shipped models:
+
+| Model | Readings | Relationship to investigate |
+| --- | --- | --- |
+| Two-speed gearbox | Input angle, output angle and output speed | Count output turns per input turn at each settled clutch position. The selected transmission changes the ratio. |
+| Sky Courier | Left and right rope tensions, configured payload weight | At rest, the vertical components of the two rope tensions support the payload; the magnitudes alone need not add to its weight. |
+| Snapgate | Input and rocker angles, shock-absorber travel | Compare opposite retained rocker states at matching input positions after approaching from opposite directions. |
+| Pneumatic press | Valve angle, cylinder travel and supply gauge pressure | Moving the valve changes the path of pressure to the cylinder; pressure varies as the air supply is used. |
+
+Each set checks the shipped authored part identity and unique compiled joint, rope or air connection before replacing saved definitions. Imported or altered models retain their structural recommendations. These readings do not establish physical accuracy or peak loads; see [Robot Lab physics limits](ROBOT-LAB-PHYSICS-LIMITS.md).
