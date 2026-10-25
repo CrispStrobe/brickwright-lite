@@ -114,3 +114,18 @@ Independent source-body and historical-role profile review, normal package
 composition, full package/source qualification and any separately admitted
 fresh inventory remain pending. No original, installation, browser or guest
 result is reinterpreted by this local contribution.
+
+## Rust trigger compatibility continuation — local only
+
+The GUI isolation test now retains the five existing tag-filter contracts
+and separately requires the reviewed current Rust workflow's main-only
+push policy, unchanged PR and manual routes, and exact workflow bytes.
+Route mutations and canned selectors refuse. Producer, reader and all
+workflow bytes remain unchanged in this contribution.
+
+The updated test correctly refuses the older, uncombined Rust workflow.
+A bounded Node 22.23.2 control passes when only that workflow read receives
+its frozen current source bytes. This is a prospective composition check,
+not a parent merge or source qualification. The earlier package-pin refusal
+remains retained. The changed GUI test requires a new independent body and
+historical-role profile review; no profile is refreshed automatically.

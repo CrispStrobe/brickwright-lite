@@ -64,13 +64,12 @@ test('armed V8 source preserves nine prior PR jobs with explicit V7 execution re
     }
 });
 
-test('internal V8 tag is excluded from six path-filtered pushes without changing other refs or jobs', () => {
+test('internal V8 tag is excluded from five isolated pushes and current main-only Rust push', () => {
     const reviewed = new Map([
         ['ack-z80-cpm','88d5a8b005b78faaa420ee65c74cabcb5e55c7b561e91647ed7e62cc525c8e4e'],
         ['basic-oracle','88725722f8784da8b11e2c1ee7bacea11ba959df16666d93bdab9cdc9b8d1783'],
         ['makecode-arcade-bases','1b9f0bc31c91bd383967bf1ee50767e242457ff80463ddc6163a6aca2a11b8b4'],
         ['pascal-ack-image','4f652ee179626ea3a6d529ec9e394012da5f66f38c99f3b08658c9eff4ba601e'],
-        ['rust-notices','1e7c8f78570ed1c1cdcaca6a87649ebd9ed91b4a7117c80da717131162688b70'],
         ['target-performance','b6b7fc0c4e5684cde4647d730b03ce086a00572cc7d990c5da41a9d9ea2c3363'],
     ]);
     const block="  push:\n    branches: ['**']\n    tags-ignore: ['bw-gui-hdd-actual-v8-*']\n";
@@ -104,6 +103,40 @@ test('internal V8 tag is excluded from six path-filtered pushes without changing
         pascal.replace('bw-gui-hdd-actual-v8-*','v*'),
         pascal.replace('          push: true','          push: false'),
     ]) assert.throws(() => check(name,mutation),'a branch, tag or image-publish drift must refuse');
+    const rust=fs.readFileSync(new URL('../.github/workflows/rust-notices.yml',import.meta.url),'utf8');
+    const rustRoutes = workflow => {
+        const header=workflow.slice(workflow.indexOf('\non:\n'),workflow.indexOf('\npermissions:\n'));
+        const push=header.match(/^  push:\n    branches: \[([^\]\n]+)\]\n    paths:\n/m);
+        assert.ok(push,'current Rust push has an explicit branch list before its unchanged paths');
+        const branches=push[1].split(',').map(value=>value.trim().replace(/^['"]|['"]$/g,''));
+        const pr=/^  pull_request:\n    paths:\n/m.test(header);
+        const manual=/^  workflow_dispatch:\n/m.test(header);
+        return (event,ref) => event==='push' ? ref.startsWith('refs/heads/') &&
+            branches.some(branch=>branch==='**' || ref==='refs/heads/'+branch) :
+            event==='pull_request' ? pr : event==='workflow_dispatch' ? manual : false;
+    };
+    const checkRust = (workflow,routes=rustRoutes) => {
+        const accepts=routes(workflow);
+        for(const [event,ref,wanted] of [
+            ['push','refs/heads/main',true],['push','refs/heads/lane/a/b',false],
+            ['push','refs/tags/v1.2.3',false],
+            ['push','refs/tags/bw-gui-hdd-actual-v8-'+'a'.repeat(40),false],
+            ['pull_request','refs/heads/lane/a/b',true],
+            ['workflow_dispatch','refs/heads/main',true],['unknown','refs/heads/main',false],
+        ])assert.equal(accepts(event,ref),wanted,`current Rust route ${event} ${ref}`);
+        assert.equal(createHash('sha256').update(workflow).digest('hex'),
+            '6423176bbf016e429a70934b1c8f6b7fd4e852724c4c7313fbeaa1ec245e314c',
+            'exact reviewed main-only Rust source: both path lists, manual trigger, runtime and caps held');
+    };
+    checkRust(rust);
+    for(const [old,value] of [
+        ['    branches: [main]\n',''],['branches: [main]',"branches: ['**']"],
+        ['branches: [main]','branches: [other]'],['  pull_request:\n','  pull_request_target:\n'],
+        ['  workflow_dispatch:\n',''],['timeout-minutes: 5','timeout-minutes: 6'],
+    ]){
+        assert.ok(rust.includes(old));assert.throws(()=>checkRust(rust.replace(old,value)));
+    }
+    for(const canned of [()=>true,()=>false])assert.throws(()=>checkRust(rust,()=>canned));
 });
 
 // These are manufactured original-byte controls, never a browser/guest replay.
