@@ -1,11 +1,11 @@
 # Robot Lab measurement experiments — 2026-10-25
 
-Status: implementation complete; exact-head hosted qualification pending before merge.
+Status: DONE — all six items qualified and landed in [PR1375](https://github.com/CrispStrobe/brickwright-lite/pull/1375).
 Owner: Codex, user-requested six-item continuation. Isolated branch
 `lane/robot-measurement-experiments-20261025`, base `23ec908232f6d4c4604ed6f7dcb23b75af19053d`.
-Merge this claim before implementation. Carry all six items through qualification
-and closeout; delivery, experimental model batch, configured API and release
-lanes remain with their existing owners.
+The claim merged before implementation. All six items completed qualification;
+delivery, experimental model batch, configured API and release lanes remain
+with their existing owners.
 
 1. Scene-assisted measurement targets: select and highlight existing part
    identities, preview the definition, preserve editor cancellation and binding
@@ -77,6 +77,24 @@ recordings and downloaded CSV, followed by the existing SB3 save/reopen checks.
 Successful new qualifications retain four bounded originals for seven days.
 A separate Python stdlib reader validates CRCs, saved sidecar/model/definition
 joins and CSV source/time/definition joins; it imports neither producer nor Jolt.
-Existing assertions and deadlines remain in place. Admission of the new official
-originals and every enabled final-head check is required before landing; no
-successful old guest or original is replayed for this work.
+Existing assertions and deadlines remain in place.
+
+## Qualified result
+
+[PR1375](https://github.com/CrispStrobe/brickwright-lite/pull/1375) landed normally
+at `eef726fe67d505733b31c599a677ab1897f96a94`, with the reviewed parents and
+predicted tree verified. Its exact head passed 31 checks, with six declared
+conditional skips and no failing or pending checks. All 18 browser shards passed.
+The real Jolt measurement journey covered the four new lessons, changing air
+pressure, scene picks, preview and Cancel, moving-body acceleration, two recorded
+runs, downloaded CSV and project save/reopen.
+
+The four successful official originals were acquired once after metadata
+admission. A separate stdlib reader accepted ZIP CRCs, seven saved definitions,
+model/sidecar/reopened-definition joins and the actual CI checkout/tree binding.
+Both six-sample runs passed independent CSV source, time, unit and definition
+joins. Maximum CSV format bounds have separate pure controls. Original failures
+and their corrections remain preserved; thresholds and deadlines were unchanged.
+No guest replay was used for the byte audit or this status closeout. Material
+estimates, tracked coasting and steering limitations remain documented; no
+solver tuning, unsupported force/torque or physical-accuracy claim follows.
