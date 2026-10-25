@@ -46,6 +46,8 @@ export const createMeasurementReader = session => {
     const bodyOf = new Map();
     for (const b of mechanism.bodies) for (const id of b.parts || []) if (!bodyOf.has(id)) bodyOf.set(id, b);
     const ropes = (mechanism.couplings || []).filter(c => c.kind === 'rope');
+    const airCouplings = (mechanism.couplings || []).filter(c => (c.kind === 'pneumatic' || c.kind === 'pump') && c.network?.id);
+    const velocitySamples = new Map();
     const modelBodies = mechanism.bodies.filter(b => (b.parts || []).some(id => parts.has(id)));
     const massAnchor = modelBodies.find(b => (mechanism.hubs || []).some(h => h.body === b.id)) || modelBodies[0];
     const onBody = (id, local = [0, 0, 0]) => {
@@ -69,7 +71,7 @@ export const createMeasurementReader = session => {
                 value = modelBodies.reduce((sum, body) => sum + body.massKg, 0) * 1000;
                 row.points = [core.bodyPose(massAnchor.id).position];
                 row.source = 'configured-model-mass';
-            } else if (['mass', 'weight', 'speed', 'angularSpeed', 'normalLoad'].includes(m.kind)) {
+            } else if (['mass', 'weight', 'speed', 'acceleration', 'angularSpeed', 'normalLoad', 'pressure'].includes(m.kind)) {
                 row.points = [point(m.targets[0])];
                 if (m.kind === 'mass') { value = b.massKg * 1000; row.source = 'configured-mass'; }
                 if (m.kind === 'weight') {
@@ -82,6 +84,22 @@ export const createMeasurementReader = session => {
                     if (!finiteVector(row.vector)) throw new Error('unavailable');
                     value = norm(row.vector); row.source = 'jolt-com-velocity';
                 }
+                if (m.kind === 'acceleration') {
+                    row.source = 'sampled-jolt-com-acceleration';
+                    const time = session.time, velocity = core.bodyLinearVelocity(b.id);
+                    if (!Number.isFinite(time) || time < 0 || !finiteVector(velocity)) {
+                        velocitySamples.delete(b.id);
+                        throw new Error('unavailable');
+                    }
+                    const previous = velocitySamples.get(b.id);
+                    if (!previous || time !== previous.time) velocitySamples.set(b.id, {time, velocity, result: null});
+                    const current = velocitySamples.get(b.id);
+                    if (previous && time === previous.time && previous.result !== null) value = previous.result;
+                    else if (previous && time > previous.time && time - previous.time <= 250) {
+                        value = norm(sub(velocity, previous.velocity)) / ((time - previous.time) / 1000);
+                        current.result = value;
+                    } else throw new Error('unavailable');
+                }
                 if (m.kind === 'angularSpeed') {
                     const v = core.bodyAngularVelocity(b.id);
                     if (!finiteVector(v)) throw new Error('unavailable');
@@ -93,6 +111,16 @@ export const createMeasurementReader = session => {
                     value = wheel.load; row.source = 'rolling-load-estimate';
                     const g = norm(mechanism.gravity);
                     if (g > 0) row.vector = scale(mechanism.gravity, -value / g);
+                }
+                if (m.kind === 'pressure') {
+                    row.source = 'jolt-air-network-gauge-pressure';
+                    const ids = [...new Set(airCouplings.filter(c => c.parts?.includes(m.targets[0])).map(c => c.network.id))];
+                    if (ids.length !== 1) throw new Error('unavailable');
+                    const networks = core.airState();
+                    if (!Array.isArray(networks)) throw new Error('unavailable');
+                    const matches = networks.filter(n => n.id === ids[0]);
+                    if (matches.length !== 1) throw new Error('unavailable');
+                    value = matches[0].kPa;
                 }
                 row.assembly = b.parts.slice();
             } else if (m.kind === 'distance' || m.kind === 'angle') {
