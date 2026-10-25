@@ -48,6 +48,11 @@ These are unclaimed proposals, not automatic extensions of this campaign:
   actual current laws, rail-power accounting and KCL/energy tests before
   reporting quiescent or bias current. Loading, offset, slew, temperature and
   noise need their own references; typical values are not guaranteed limits.
+- **Complete static-asset provenance refresh:** the canonical package-forward
+  transaction must either re-admit all current-package provenance records or
+  refuse by name before writing. Add tests for omitted records and changed
+  source/asset bytes; retain original hashes and licence text. Require explicit
+  reviewed asset/build-input identity, without implicit rebuild or fetching.
 - **Public census hygiene:** extend location redaction to assignment-prefixed
   discovery strings (for example `TOOL_DIR=/example/tool`) and add a causal
   negative proving those values cannot enter public generated snapshots. Keep
