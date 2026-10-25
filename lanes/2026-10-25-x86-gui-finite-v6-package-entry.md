@@ -1,6 +1,6 @@
 # Current 386 GUI finite v6 package entry — 2026-10-25
 
-**Status: claim merged; finite V6 source candidate inactive and unqualified.** Owner: Codex x86 GUI. This extends [the finite v5 installed-file claim](2026-10-24-x86-gui-finite-v5-installed-regular.md). The selected finite v5 run [failed during installed inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40145527096): Board's prefix completed, then the fixed Circuit UI `src/current.js` role was absent. Its original and independent negative verdict remain failed and immutable. No installed graph, browser font selection, actual GUI or guest was approved. This source candidate has no V6 event or hosted result.
+**Status: claim merged; finite V6 metadata source armed but unselected and unqualified.** Owner: Codex x86 GUI. This extends [the finite v5 installed-file claim](2026-10-24-x86-gui-finite-v5-installed-regular.md). The selected finite v5 run [failed during installed inventory](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40145527096): Board's prefix completed, then the fixed Circuit UI `src/current.js` role was absent. Its original and independent negative verdict remain failed and immutable. No installed graph, browser font selection, actual GUI or guest was approved. The V6 job requires a new selected label after exact-head source CI and request review; no V6 event or hosted result exists.
 
 ## Owned paths
 

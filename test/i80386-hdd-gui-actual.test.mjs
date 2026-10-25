@@ -3022,12 +3022,12 @@ class Originals(unittest.TestCase):
             else:changed['platform']['GITHUB_JOB']='finite-inventory-five'
             selected['original']=ROW(E(changed))
             with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
-        with patch.object(c,'regular',side_effect=AssertionError('host read')):
+        with patch.object(c,'FINITE_INVENTORY_V6_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
             for args in (['finite-inventory-v6-guard'],['finite-inventory-v6','--request','x','--expected-sha256','0'*64,'--output','x']):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
         workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text()
         new=workflow.split('  finite-inventory-six:',1)[1]
-        self.assertIn(chr(36)+'{{ false &&',new)
+        self.assertIn(chr(36)+'{{ true &&',new)
         self.assertLess(new.index('finite-inventory-v6-guard'),new.index('actions/setup-node@'))
     def test_finite_v6_body_variable_and_event_refuse_before_git_or_setup(self):
         value,raw,expected=self.finite_v6_packet()
