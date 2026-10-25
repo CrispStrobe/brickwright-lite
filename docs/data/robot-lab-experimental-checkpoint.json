@@ -3214,9 +3214,20 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (foldback-open)",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PASS",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Overlaps cross-ratio (same crossed four-bar half-angle law, tan(phi/2)=k tan(theta/2); k=-5 here vs 3). Added on owner request 2026-10-25; differs by its open-parallelogram comparison assembly."
+      "noveltyNote": "Overlaps cross-ratio (same crossed four-bar half-angle law, tan(phi/2)=k tan(theta/2); k=-5 here vs 3). Added on owner request 2026-10-25; differs by its open-parallelogram comparison assembly.",
+      "browserRun": {
+        "build": "a30afb3 (checkpoint-build-233)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 95,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 36800
+      }
     },
     {
       "id": "foldback-open",
@@ -3236,8 +3247,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "a30afb3 (checkpoint-build-233)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 95,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 36367
+      }
     },
     {
       "id": "thirdline",
@@ -3257,8 +3279,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (thirdline-control)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "a30afb3 (checkpoint-build-233)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 179,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 36767
+      }
     },
     {
       "id": "thirdline-control",
@@ -3278,8 +3311,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "a30afb3 (checkpoint-build-233)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 179,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 34667
+      }
     },
     {
       "id": "samebeat",
@@ -3299,9 +3343,20 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (samebeat-conjugate, samebeat-control)",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PASS",
       "savedProjectReplay": "NOT_RUN",
-      "noveltyNote": "Overlaps pivot-exchange (same conjugate-pivot law d1*d2=k^2 with a slow near-centre control). Added on owner request 2026-10-25; differs by re-hanging one motor-launched body across three files."
+      "noveltyNote": "Overlaps pivot-exchange (same conjugate-pivot law d1*d2=k^2 with a slow near-centre control). Added on owner request 2026-10-25; differs by re-hanging one motor-launched body across three files.",
+      "browserRun": {
+        "build": "a30afb3 (checkpoint-build-233)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 92,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 30067
+      }
     },
     {
       "id": "samebeat-conjugate",
@@ -3321,8 +3376,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "a30afb3 (checkpoint-build-233)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 92,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 36467
+      }
     },
     {
       "id": "samebeat-control",
@@ -3342,8 +3408,19 @@
       "poweredMotion": "HEADLESS_COMPLETED (SPIKE) at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "a30afb3 (checkpoint-build-233)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 92,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 31533
+      }
     }
   ],
   "appVerification": {
