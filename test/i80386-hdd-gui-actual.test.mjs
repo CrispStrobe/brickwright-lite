@@ -3127,7 +3127,7 @@ class Originals(unittest.TestCase):
         expected.update(schema='bw.gui-hdd.inventory-admission.v6',template=ROW(raw),original=ROW(E(value)),repositoryVariables=variables)
         return value,raw,expected
     def finite_v7_packet(self):
-        # Manufactured current-408 input only; no installed 408 observation is inferred.
+        # Manufactured current-supplier input only; no installed observation is inferred.
         value,old_raw,expected=self.finite_v6_packet()
         vendor=E(c.FINITE_V7_PINS);vendor_row=ROW(vendor)
         template=D(old_raw);template.update(schema='bw.gui-hdd.inventory-template.v7',
@@ -3196,7 +3196,7 @@ class Originals(unittest.TestCase):
                 r.verify_inventory_original(E(changed),raw,selected)
     def test_finite_v7_eight_source_identity_witnesses_reject_old_and_hybrid_rows(self):
         value,raw,expected=self.finite_v7_packet()
-        self.assertEqual(len(c.FINITE_V7_CUI_WITNESSES),8)
+        self.assertEqual(len(c.FINITE_V7_CUI_WITNESSES),18)
         self.assertEqual(c.FINITE_V7_CUI_WITNESSES,r.FINITE_V7_CUI_WITNESSES)
         self.assertEqual(r.verify_inventory_original(E(value),raw,expected)['schema'],'bw.gui-hdd.inventory-reader.v7')
         for cut in ('complete-old','one-old','one-missing','one-alias','coherent-repin'):
@@ -3707,7 +3707,7 @@ class Originals(unittest.TestCase):
     def actual_v8_packet(self):
         files,expected=self.actual_v7_packet()
         request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v8'
-        request['dependencyPins']={'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3}
+        request['dependencyPins']={'bw-board':c.CURRENT_BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3}
         vendor=E(request['dependencyPins']);vendor_row=ROW(vendor)
         request['source']['files']['vendor-pins.json']=vendor_row
         request['criticalFiles']['vendor-pins.json']=vendor_row
@@ -3775,7 +3775,78 @@ class Originals(unittest.TestCase):
         stage.update(requestSha256=pin,eventSha256=H(files['event.original.json']),source=request['source'])
         stage['platform']['GITHUB_JOB']='actual-v8'
         files['native-font.stage.json']=E(stage)
+        admission=D(files['probe-admission.json']);admission.update(boardPin=c.CURRENT_BOARD,criticalFiles=request['criticalFiles'])
+        admission_raw=E(admission);files['probe-admission.json']=admission_raw
+        for scenario in r.SCENARIOS:
+            files[scenario+'/admission.json']=admission_raw
+            proof=D(files[scenario+'/proof.json'])
+            proof.update(boardPin=c.CURRENT_BOARD,admissionSha256=H(admission_raw))
+            files[scenario+'/proof.json']=E(proof)
         return files,expected,env
+
+    def test_actual_v8_current_board_split_holds_legacy_and_refuses_coherent_probe_drift(self):
+        self.assertEqual(c.BOARD,r.BOARD)
+        self.assertEqual(c.CURRENT_BOARD,r.CURRENT_BOARD)
+        self.assertNotEqual(c.CURRENT_BOARD,c.BOARD)
+        self.assertEqual(c.FINITE_V7_PINS['bw-board'],c.CURRENT_BOARD)
+        value,raw,selected=self.finite_v7_packet()
+        template=D(raw);template['dependencyPins']['bw-board']=c.BOARD
+        changed_raw=E(template)
+        for module in (c,r):
+            with self.assertRaises(ValueError):module.finite_v7_template(changed_raw,H(changed_raw))
+        files,expected,_env=self.actual_v8_packet()
+        request=D(files['request.original.json']);request['dependencyPins']['bw-board']=c.BOARD
+        changed_raw=E(request)
+        for module in (c,r):
+            with self.assertRaisesRegex(ValueError,'current V8 dependency pins'):
+                module.parse_request(changed_raw,H(changed_raw))
+        text=(root/'scripts/read-i80386-hdd-gui-originals.py').read_text()
+        node=next(n for n in ast.parse(text).body if isinstance(n,ast.FunctionDef) and n.name=='audit')
+        audit_source=ast.get_source_segment(text,node)
+        selector="selected_board = CURRENT_BOARD if version=='bw.gui-hdd.actual-request.v8' else BOARD"
+        self.assertEqual(audit_source.count(selector),1)
+        for current in (False,True):
+            packet_=self.actual_v8_packet() if current else self.actual_v7_packet()
+            files,expected=packet_[:2]
+            if current:
+                # The fixture starts with logical triplets. Retain the actual
+                # V8 producer's closed physical envelopes before reader admission.
+                with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+                    output=c.V8Originals(pathlib.Path(temporary)/'git-envelope-originals')
+                    indices=sorted(int(name.removeprefix('git-').removesuffix('.stdout'))
+                                   for name in files if name.startswith('git-') and name.endswith('.stdout'))
+                    for index in indices:
+                        for suffix in c.V8Originals.MEMBER_ORDER:
+                            name='git-'+str(index)+'.'+suffix
+                            output.save(name,files.pop(name))
+                    files.update({path.name:path.read_bytes() for path in output.root.iterdir()})
+            wanted=c.CURRENT_BOARD if current else c.BOARD
+            wrong=c.BOARD if current else c.CURRENT_BOARD
+            self.assertEqual(D(files['probe-admission.json'])['boardPin'],wanted)
+            self.assertTrue(r.audit(*sealed(copy.deepcopy(files),copy.deepcopy(expected)))['pass'])
+            for role in ('admission',*r.SCENARIOS):
+                changed=copy.deepcopy(files)
+                if role=='admission':
+                    admission=D(changed['probe-admission.json']);admission['boardPin']=wrong
+                    admission_raw=E(admission);changed['probe-admission.json']=admission_raw
+                    for scenario in r.SCENARIOS:
+                        changed[scenario+'/admission.json']=admission_raw
+                        proof=D(changed[scenario+'/proof.json'])
+                        proof.update(boardPin=wrong,admissionSha256=H(admission_raw))
+                        changed[scenario+'/proof.json']=E(proof)
+                else:
+                    proof=D(changed[role+'/proof.json']);proof['boardPin']=wrong
+                    changed[role+'/proof.json']=E(proof)
+                with self.subTest(current=current,role=role),self.assertRaisesRegex(ValueError,
+                     'actual probe source/build admission joins' if role=='admission' else 'scenario proof source/admission identity'):
+                    r.audit(*sealed(copy.deepcopy(changed),copy.deepcopy(expected)))
+                if role=='admission':
+                    # A source-derived one-selector mutation must actually
+                    # misadmit this coherent wrong-board packet; no verdict mock.
+                    namespace=dict(r.__dict__)
+                    mutant=audit_source.replace(selector,'selected_board = '+('BOARD' if current else 'CURRENT_BOARD'),1)
+                    exec(compile(mutant,'board-selector-counterfactual','exec'),namespace)
+                    self.assertTrue(namespace['audit'](*sealed(copy.deepcopy(changed),copy.deepcopy(expected)))['pass'])
 
     def test_actual_v8_request_event_and_separate_pr_tag_admission(self):
         files,expected,env=self.actual_v8_packet();raw=files['request.original.json']
@@ -3880,7 +3951,7 @@ class Originals(unittest.TestCase):
         def regular(path,cap):
             name=str(path)
             if name=='/mock/event.json':return files['event.original.json']
-            if name==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+            if name==str(checkout/'vendor-pins.json'):return E({'bw-board':c.CURRENT_BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
             if name.endswith('/brickwright-build.json'):return E({'commit':request['build']['checkoutHead'][:7]})
             if '/originals/'+c.SCENARIOS[0]+'/' in name or '/originals/'+c.SCENARIOS[1]+'/' in name:
                 return actual_regular(path,cap)
@@ -3947,6 +4018,7 @@ class Originals(unittest.TestCase):
                     factory=Fake,startup_mode='actual-v8')
             produced={str(path.relative_to(destination)):path.read_bytes() for path in destination.rglob('*') if path.is_file()}
             self.assertEqual(status,0,D(produced['result.json']))
+            self.assertEqual(D(produced['probe-admission.json'])['boardPin'],c.CURRENT_BOARD)
             physical=D(produced['inventory.json'])['files']
             self.assertEqual(set(physical),set(produced)-{'inventory.json'})
             self.assertLess(len(physical),128)
@@ -3987,7 +4059,7 @@ class Originals(unittest.TestCase):
                 r.audit(r.archive_originals(result_zip),bind_artifact(result_zip,selected))
             raw_vendor={name:raw for name,raw in produced.items() if name!='inventory.json'}
             vendor_role='git-'+str(2+sorted(r.SOURCE).index('vendor-pins.json'))+'.original.json'
-            vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})
+            vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.CURRENT_BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})
             vendor_envelope['members']['stdout']={'byteLength':len(vendor),'sha256':H(vendor),
                                                   'base64':base64.b64encode(vendor).decode('ascii')}
             child=D(base64.b64decode(vendor_envelope['members']['process.json']['base64'],validate=True))
@@ -4802,7 +4874,7 @@ test('actual v8 dispatch request, platform and separate PR/tag source admission'
     const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ''}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
     const summary=readOriginalControlSummary(result.stdout);
-    assert.equal(summary.controls,5);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+    assert.equal(summary.controls,6);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
 });
 
 test('finite inventory v4: body-first guard, source-only producer and independent original controls', () => {
@@ -4823,7 +4895,7 @@ test('finite inventory v6: distinct installed entry, transport and independent o
     assert.ok(summary.controls>=3);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
 });
 
-test('finite inventory v7: current synthetic 408 pins and independent original controls', () => {
+test('finite inventory v7: current synthetic supplier pins and independent original controls', () => {
     const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_finite_v7','test_actual_v6_parts_','test_actual_v8_'))", "if name.startswith('test_finite_v7')");
     assert.notEqual(selected, controls);
     const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
@@ -5174,7 +5246,7 @@ const assertGuiCuiSelection = (consumer, selected, dependency='bw-circuit-ui') =
 test('GUI consumer explicitly matches current canonical Board and CUI declarations', () => {
     const controller=fs.readFileSync(root+'scripts/run-i80386-hdd-gui-actual.py','utf8');
     const reader=fs.readFileSync(root+'scripts/read-i80386-hdd-gui-originals.py','utf8');
-    for(const [dependency,declaration] of [['bw-circuit-ui','CUI'],['bw-board','BOARD']]){
+    for(const [dependency,declaration] of [['bw-circuit-ui','CUI'],['bw-board','CURRENT_BOARD']]){
         const pattern=new RegExp("^"+declaration+" = '([0-9a-f]{40})'$",'m');
         const readerPattern=dependency==='bw-circuit-ui' ? /^CUI_V8 = '([0-9a-f]{40})'$/m : pattern;
         const consumer=controller.match(pattern)?.[1], selected=guiCuiSelection(dependency);

@@ -43,10 +43,11 @@ ACTUAL_V8_PLATFORM_KEYS = ('GITHUB_REPOSITORY','GITHUB_EVENT_NAME','GITHUB_ACTOR
  'GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REF','GITHUB_REF_TYPE','GITHUB_REF_NAME','GITHUB_SHA',
  'GITHUB_WORKFLOW_REF','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
-CUI = '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671'
+CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513'
+CUI = '1bc233c9297e03abb9b7eb603e045b4e92b0bb40'
 HISTORICAL_CUI = '91d8434a79d373cef2837c137ab356356f1a3b44'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
-FINITE_V7_PINS = {'bw-board':BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}
+FINITE_V7_PINS = {'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3}
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
 FILE_CAP = 32 << 20
@@ -779,7 +780,7 @@ def parse_request(raw, expected):
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
     if version==8:
-        need(request['dependencyPins']=={'bw-board':BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3} and
+        need(request['dependencyPins']=={'bw-board':CURRENT_BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3} and
              type(request['dependencyPins']) is dict and set(request['dependencyPins'])=={'bw-board','bw-circuit-ui','sb3-creator'},
              'closed current V8 dependency pins')
         selected=request['dispatch'];fields(selected,'tagName tagRef workflow')
@@ -1028,16 +1029,26 @@ INSTALLED_V6_CRITICAL = frozenset((INSTALLED_V5_CRITICAL -
  {'node_modules/bw-circuit-ui/src/current.js'}) |
  {'node_modules/bw-circuit-ui/src/index.js'})
 
-# Eight exact changed source-file identities from the reviewed CUI 408 Git tree.
+# Eighteen packaged source identities: the reviewed earlier/new supplier union.
 # A witness match is not complete installed-package provenance.
 FINITE_V7_CUI_WITNESSES = {
- 'node_modules/bw-circuit-ui/LANES.md':(263684,'d963666f3c8dc9e6fe0c9a7c65dcefa97af6c4dc674585e876d4bd2c34a24c72'),
- 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(140187,'2f8bf3060b8d52a99d18698c55a4defe17d43fff08d25f56f3a6cc8e2d70137f'),
+ 'node_modules/bw-circuit-ui/LANES.md':(269167,'2830cc0c85e038fef240f8e68a17a8cbfb0ffc4ddb2e436f8f84409c2006e513'),
+ 'node_modules/bw-circuit-ui/bin/bwc.mjs':(69102,'93d1bf5e824ad234b5e88425dbe75ab9958d0ff78f051d50f1ac6791259b8c8a'),
+ 'node_modules/bw-circuit-ui/docs/CLI-INSTRUMENTS.md':(54012,'29152b26009e8151197b7d8b326db6407d74c9648b89cb18bdd266e3697b7f37'),
+ 'node_modules/bw-circuit-ui/package.json':(11352,'9d3765c958dbdb2bbaf5c74546d07122f6e2a36568bae6240583c0dbe310bca3'),
+ 'node_modules/bw-circuit-ui/scripts/verify-interaction.mjs':(156472,'4579b2c5280c38f9754cd8549f1e9081f81ac25b423eb15f051b1d53db07965e'),
+ 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx':(58539,'e4c0e90604348a0745b0312ea76057183f53d9dcea76466acbffb08e7031cbad'),
+ 'node_modules/bw-circuit-ui/src/i18n/strings.js':(25719,'60fe3dd9febaee4baf2ef82d855de6e054e68b842ee4b209854ffa58b9170230'),
  'node_modules/bw-circuit-ui/src/importers/spice.js':(85910,'3d93812a665b443ac3a7c41197772d06a0dbfa7101670d7db0a74bdbc44c3c41'),
  'node_modules/bw-circuit-ui/src/model/instrument-report.js':(30702,'4030fdf58c3a8dd69f66c118c04b2ab3d99edfbb4070542019c37cae219cf4ff'),
+ 'node_modules/bw-circuit-ui/src/model/measurement-receipt.js':(10950,'a37085c806a4f8c1293f8d62cc4004ccf800e18c1d11c7fedd53b32e05e9a3b8'),
  'node_modules/bw-circuit-ui/src/model/operating-point-kcl.js':(7695,'547351bd0372d6d0090deb7ee9893adad769e4367635aea9611c406861cf69a7'),
- 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(184331,'f763e11b9bc0d40890f1b41dc9ea7ec03fa30f3e8a24d763ea0c4327a9a03dc9'),
+ 'node_modules/bw-circuit-ui/src/model/scope-csv.js':(3530,'6d026e6bb8c2c766ad910e92bd91c40c6ba205b021304e5610c7c1747b0d04f5'),
+ 'node_modules/bw-circuit-ui/src/model/scope-digitizer.js':(7699,'5f7915e5445b71d7b6f8899594b10e75edcd8fa7140437c2c50b330b26cd1444'),
+ 'node_modules/bw-circuit-ui/test/cli-measure.test.js':(194959,'540e81409a2de8c2953e650da993ffcb33e8115b5f234d33a18f7dca314d5688'),
  'node_modules/bw-circuit-ui/test/operating-point-kcl.test.js':(11320,'deafeb1df57ae1729f5ea77ca795b8f888f619f8ce336d7115cab717eda5c9b5'),
+ 'node_modules/bw-circuit-ui/test/scope-digitizer.test.js':(9815,'998cf426cc76cfcc12623bb368c5aaa73db6be6d31fc245a8a79c1b53000b629'),
+ 'node_modules/bw-circuit-ui/test/scope-timebase.test.js':(10545,'1dca476e2e94a0e115134d745520beb14686a97f174f902eb43bf7e4de0e910f'),
  'node_modules/bw-circuit-ui/test/spice-nmos-operating-point.test.js':(23891,'7ae3b65b0f775dcb2b7ee8a5ea589d004838c71b815bfeb65a37b8b461c8215f'),
 }
 
@@ -1901,7 +1912,8 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             build_manifest = decode(regular(build_root/'brickwright-build.json', JSON_CAP))
             need(build_manifest.get('commit') == request['build']['checkoutHead'][:7], 'admitted actual frontend checkout identity')
             for role, row in request['inputs'].items(): check_file(Path(root)/row['path'], row)
-            manifest = {'schema': 'bw.gui-hdd-persistence-admission.v1', 'boardPin': BOARD,
+            manifest = {'schema': 'bw.gui-hdd-persistence-admission.v1',
+                'boardPin': (CURRENT_BOARD if request['schema']=='bw.gui-hdd.actual-request.v8' else BOARD),
                 'sourceHead': request['source']['head'], 'criticalFiles': request['criticalFiles'],
                 'buildRoot': str(build_root), 'buildFiles': build_files,
                 'inputPaths': {name: str(Path(root)/row['path']) for name, row in request['inputs'].items()}}

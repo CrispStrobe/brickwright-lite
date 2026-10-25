@@ -88,3 +88,29 @@ qualify the final finite source and frontend Build before any separately
 admitted single inventory event. V8 selection still needs its own current
 source/request/expectation and approved finite original. No event, compiler,
 guest, media acquisition, physical timing or release is authorized here.
+
+## Local supplier continuation — qualification pending
+
+The retained later producer, independent reader and GUI controls now select
+the amended current Board/CUI tuple. An explicit `CURRENT_BOARD` supplies
+finite-V7 and actual-V8 requests and V8 probe admission; the shared `BOARD`
+continues to supply historical request and probe branches. The eighteen
+packaged source witnesses match the reviewed Git-derived supplier union.
+These witnesses do not establish provenance for every installed package file.
+
+Local Node 22.23.2 checks passed the finite-V7 and all six actual-V8 control
+methods, including current and historical packets, coherently wrong probe
+identities and a selector-removal counterfactual. The full wrapper passed
+21 of 22 groups. Its canonical package-pin assertion still refuses the
+deliberately uncombined earlier package selection; that failure is retained
+and is not waived. Two initial errors in the new manufactured packet setup
+were retained before correcting its physical Git envelopes and current
+probe critical-file rows.
+
+All workflows, historical methods, schemas, four package roots, six critical
+roles, caps and guard values remain held. Finite-V7 execution remains false;
+the existing V8 source guards remain true without selecting an event.
+Independent source-body and historical-role profile review, normal package
+composition, full package/source qualification and any separately admitted
+fresh inventory remain pending. No original, installation, browser or guest
+result is reinterpreted by this local contribution.
