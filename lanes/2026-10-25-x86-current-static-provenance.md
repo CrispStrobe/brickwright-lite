@@ -4,11 +4,22 @@ CLAIMED — Codex x86 owner, coordinated with the meter/ADC package owner.
 This documentation-only claim must merge before implementation. The package
 owner retains its pin, lockfile, dependency, generator and installed-GUI scope.
 
-Own only this claim and the `bwBoardPin` field in these existing records:
+Own only this claim and the `bwBoardPin` field in these existing source records:
 
 - `overlay/scratch-gui/static/dos/msdos200-base.provenance.json`
 - `overlay/scratch-gui/static/roms/cpm-roms.provenance.json`
 - `overlay/scratch-gui/static/roms/free-386-bios.provenance.json`
+
+Also own the existing tracked mirrors of the DOS and CP/M JSON records:
+
+- `packages/scratch-gui/static/dos/msdos200-base.provenance.json`
+- `packages/scratch-gui/static/roms/cpm-roms.provenance.json`
+
+Preserve exact overlay/mirror equality. The package free-386 provenance mirror
+is ignored: refresh it through the normal integration copy or the equivalent
+bounded JSON-only mirror copy, verify it, and never force-add it. There is no
+dedicated writer for these three static identity records; the unrelated i8086
+ROM generators must not be used, as they may assemble or replace binaries.
 
 The target is the already qualified Board
 [`836867513c3e7fac420ddaa32c17e1c7b6d3e513`](https://github.com/CrispStrobe/bw-board/commit/836867513c3e7fac420ddaa32c17e1c7b6d3e513).
@@ -26,7 +37,7 @@ new guest run is authorized. Check ignored package mirrors as appropriate,
 without force-adding them. Historical originals retain their exact source and
 cannot be relabelled as a new observation. No broader licence or guest claim.
 
-Compose the reviewed three-field contribution normally with the package
+Compose the reviewed three-record contribution and its two tracked mirrors normally with the package
 owner's actual qualified pin and dependency update; do not land it against
 the previous package pin in isolation. Require complete supplier histories,
 the full pin/provenance gates, all fourteen current GUI groups and every
