@@ -3086,8 +3086,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000 (observation only, no motors)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (built-in central-hole arm: 2.003x the paired period)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "4c102ca (checkpoint-build-231)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 159,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 30167
+      }
     },
     {
       "id": "pivot-exchange-wide",
@@ -3107,8 +3118,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000 (observation only, no motors)",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (built-in central-hole arm; amplitude comparison with pivot-exchange)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "4c102ca (checkpoint-build-231)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 159,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 29200
+      }
     },
     {
       "id": "air-budget",
@@ -3128,8 +3150,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "PASS (air-budget-two-tanks)",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "4c102ca (checkpoint-build-231)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 155,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 34233
+      }
     },
     {
       "id": "air-budget-two-tanks",
@@ -3149,8 +3182,19 @@
       "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "IS_CONTROL",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PASS",
+      "savedProjectReplay": "NOT_RUN",
+      "browserRun": {
+        "build": "4c102ca (checkpoint-build-231)",
+        "browser": "system Chrome, Run button, timeScale 4",
+        "verdict": "PROGRAM-COMPLETE",
+        "parts": 168,
+        "worker": true,
+        "issues": 0,
+        "pageErrors": 0,
+        "nan": false,
+        "simMs": 70367
+      }
     }
   ],
   "appVerification": {
