@@ -1,5 +1,22 @@
 # brickwright-lite — roadmap
 
+## Current circuit measurement sequence — 2026-10-25
+
+Follow the [ordered plan](PLAN.md#current-imported-circuit-and-model-accuracy-sequence--2026-10-25)
+and [current claim](lanes/2026-10-25-imported-circuit-instrument-campaign.md):
+current-pinned baseline → licensed distinct imported schematics → demonstrated
+recurring-cause repairs in owned repositories → one existing part's reference
+accuracy → one demonstrated deterministic instrument effect. Stop after item 5.
+
+The first item is accepted: run40172711900 passed 312/312 and 87,488 independent
+checks at Board761153ff/CUI91d8434, with unchanged case definitions and all 240
+waveform CSVs identical to the preceding originals. See the
+[result handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) for exact identities.
+Imported coverage still needs a genuinely distinct, file-level-admitted source
+cohort; generated device twins and historical import counts do not fill that gap.
+Aperture/audio already landed and is regression coverage, not an unimplemented
+follow-up. The older sequence below remains completed historical evidence.
+
 ## Current circuit/instrument sequence — 2026-10-15
 
 Follow the [current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15)
