@@ -10,7 +10,7 @@ const safe=name=>typeof name==='string'&&name.length>0&&!['__proto__','construct
 const sdkCalls=new Map([
     ['pause',1],['randint',2],['screen.fill',1],['screen.fillRect',5],
     ['Math.round',1],['Math.floor',1],['Math.ceil',1],['Math.abs',1],
-    ['Math.min',2],['Math.max',2],['Math.atan2',2],['Math.sqrt',1]
+    ['Math.randomRange',2],['Math.min',2],['Math.max',2],['Math.atan2',2],['Math.sqrt',1]
 ]);
 const roots=new Set(['screen','Math']);
 const nodeTypes=new Set(['Program','FunctionDeclaration','Declaration','ExpressionStatement','Identifier','Number','String','Boolean','Null','Undefined','Parenthesized','Binary','Logical','Conditional','Assignment','Update','Unary','Call','Member','Index','Array','Return','If','For','ForOf','ForIn','While','DoWhile','Block','Break','Continue','Empty','EmptyStatement','ThrowStatement','NativeArrayValueBinary']);
@@ -109,6 +109,7 @@ export function createClosedOrdinarySourceEntry(program){
         if(n.type==='Declaration'&&(n.decls||[]).some(decl=>functions.has(decl.name)))return denied;
         if(n.type==='Identifier'){
             const b=binding(n);
+            if(!b&&roots.has(n.name)&&!(parent?.type==='Member'&&parent.object===n))return denied;
             if(byBinding.has(b)&&!(parent?.type==='Call'&&parent.callee===n&&!parent.isNew&&!parent.optional&&!parent.typeArguments?.length))return denied;
             if(!b&&!roots.has(n.name)&&!sdkCalls.has(n.name)&&!['undefined','NaN','Infinity'].includes(n.name))return denied;
             if(!b&&sdkCalls.has(n.name)&&!(parent?.type==='Call'&&parent.callee===n))return denied;

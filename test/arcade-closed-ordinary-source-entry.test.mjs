@@ -107,3 +107,23 @@ test('emitted startup null reset and native allocation remain neutral only with 
  const unallocated=parse(text.replace('temporary=[];',''));
  assert.equal(createClosedOrdinarySourceEntry(unallocated).isUnreachable(callIn(unallocated,'dormant')),false);
 });
+
+test('canonical randomRange is entry-neutral with exact arity and current unshadowed Math binding',()=>{
+ const text=source+'let draw=Math.randomRange(10,100);';
+ const p=parse(text),proof=createClosedOrdinarySourceEntry(p);
+ assert.equal(proof.isUnreachable(callIn(p,'dormant')),true);
+ const random=nodes(p).find(n=>n.type==='Call'&&n.callee?.name==='randomRange');
+ assert.equal(analyseSourceValueProducers(p,{closedOrdinaryEntries:true}).typesAt(random).has('Number'),false);
+ for(const edit of [
+  'let Math=0;'+text,
+  'Math.randomRange=0;'+text,
+  text.replace('randomRange(10,100)','randomRange(10)'),
+  text.replace('randomRange(10,100)','randomRange(10,100,200)'),
+  text.replace('Math.randomRange(10,100)','Math.randomRange(dormant,100)'),
+  text+'let range=Math.randomRange;range(10,100);',
+  text+'let alias=Math;alias.randomRange=0;'
+ ]){
+  const q=parse(edit);assert.equal(createClosedOrdinarySourceEntry(q).isUnreachable(callIn(q,'dormant')),false,edit);
+ }
+ random.callee.name='foreign';assert.equal(proof.current(),false);random.callee.name='randomRange';assert.equal(proof.current(),false);
+});
