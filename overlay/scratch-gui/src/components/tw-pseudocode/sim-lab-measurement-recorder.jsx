@@ -7,7 +7,7 @@ import {compareMeasurementRuns, createMeasurementRecorder, measurementRunsToCsv,
 const words = locale => locale === 'de' ? {
     title: 'Messreihen', start: 'Aufzeichnung starten', stop: 'Aufzeichnung beenden', clear: 'Alle Messreihen löschen',
     run: 'Messreihe', active: 'Aufzeichnung läuft', stopped: 'Aufzeichnung beendet', replay: 'Während der Wiedergabe nicht verfügbar',
-    limitReached: 'Die Messreihe hat 600 Messpunkte erreicht.',
+    limitReached: 'Die Aufzeichnung hat ihre Messpunkt- oder Simulationszeitgrenze erreicht.', samples: 'Messpunktgruppen',
     bound: 'Maximal 2 Messreihen mit je 600 Messpunkten oder 60 Sekunden und bis zu 4 Messungen. Zeit läuft in Simulationszeit.',
     noSelection: 'Wähle zuerst mindestens eine Messung für ein Zeitdiagramm aus.',
     changed: 'Aufzeichnung wegen Modell-, Messungs-, Sitzungs- oder Wiedergabewechsel beendet.',
@@ -18,7 +18,7 @@ const words = locale => locale === 'de' ? {
 } : {
     title: 'Run recordings', start: 'Start recording', stop: 'Stop recording', clear: 'Clear recordings',
     run: 'Run', active: 'Recording', stopped: 'Recording stopped', replay: 'Unavailable during pose replay',
-    limitReached: 'The run reached its 600 sample limit.',
+    limitReached: 'Recording reached its sample or simulated-time limit.', samples: 'sample sets',
     bound: 'Up to 2 runs, 600 sample sets or 60 seconds each, and 4 measurements. Time is simulated time.',
     noSelection: 'Select at least one measurement plot first.',
     changed: 'Recording stopped after a model, measurement, session or replay change.',
@@ -78,7 +78,7 @@ export default class SimLabMeasurementRecorder extends React.Component {
         const selectedDefinitions = this.props.definitions.filter(d => this.props.selected.includes(d.id) && d.visible !== false).slice(0, 4);
         const status = this.props.replaying ? T.replay : snapshot.active ? `${T.active} · ${snapshot.sampleCount}/${snapshot.sampleLimit}` :
             snapshot.stoppedReason === 'different-model-or-measurements' ? T.mismatch :
-                snapshot.stoppedReason === 'sample-limit' ? T.limitReached :
+                ['sample-limit', 'time-limit'].includes(snapshot.stoppedReason) ? T.limitReached :
                 snapshot.stoppedReason && snapshot.stoppedReason !== 'stopped' ? T.changed : '';
         return <section aria-label={T.title} data-testid="bw-sim-measurement-recorder" style={{borderTop: '1px solid #cbd5e1', marginTop: 8, paddingTop: 6}}>
             <strong>{T.title}</strong>
@@ -92,7 +92,7 @@ export default class SimLabMeasurementRecorder extends React.Component {
                 {runs.length > 0 && <button type="button" data-testid="bw-sim-measurement-record-clear" onClick={() => this.clear()}>{T.clear}</button>}
             </div>
             <ul data-testid="bw-sim-measurement-record-runs" style={{paddingLeft: 18}}>
-                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} sample sets</li>)}
+                {runs.map((run, index) => <li key={run.id}>{T.run} {index + 1}: {run.samples.length} {T.samples}</li>)}
             </ul>
             {snapshot.compatible && <div data-testid="bw-sim-measurement-record-comparison">
                 <h4>{T.shared}</h4>
