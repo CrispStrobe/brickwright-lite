@@ -3,7 +3,7 @@
 ## Active sequence — 2026-10-25
 
 The new [five-item contract](../lanes/2026-10-25-imported-circuit-instrument-campaign.md)
-is active: current-consumer baseline; a licensed distinct imported-circuit
+is active: current-consumer baseline; a source-admitted distinct imported-circuit
 cohort; demonstrated recurring-cause repairs; one existing part's reference
 accuracy; one demonstrated deterministic instrument effect. All source patches
 remain in operator-owned CrispStrobe repositories. Stop only after the fifth
@@ -16,7 +16,7 @@ retain their own identities.
 executed once at `4c416bcfe1a219faaec371ac638f607628f347a7` on the frozen
 `lane/circuit-instrument-baseline-20261025` reference, with Board
 `761153ff92d521c01107ee7b32922ba7adc10ee2` and CUI
-`91d8434a79d373cef2837c137ab356356f1a3b44`. Node22.23.3 and ngspice42 were
+`91d8434a79d373cef2837c137ab356356f1a3b44`. Node 22.23.3 and ngspice42 were
 observed in the retained runtime/version records, not inferred from the old run.
 Readers, case intent and source fingerprints were frozen before dispatch.
 
@@ -50,22 +50,86 @@ engine or oracle. This is JavaScript MNA and stated nominal-reference agreement,
 not native execution, full transitive-dependency reconstruction, physical part/
 ADC calibration, full-corpus validation or a newer signed release receipt.
 
-### Step 2 gate: distinct and eligible imported designs
+### Step 2 evidence: imported structures and actual CLI
 
-The target is about 300 genuinely distinct schematic inputs, with separately
-reported families, support/refusal states and actual measurement/oracle results.
-The current owned candidate inventory is smaller than 300 distinct analogue
-designs. First reconcile electrical identities and file-level provenance of an
-additional eligible cohort. Do not count retargeted device benches, alternate
-formats, UI/program differences or stored parameter points as new designs.
-Historical comparison failures already have later sweeps; old row counts do not
-name current defects. No restricted payload enters public workflows or logs.
+The frozen offline research cohort contains 307 graph-distinct structures:
+299 OP-only and8 OP/AC source inputs,with 278 containing MOS devices. Exact
+labelled connection-graph isomorphism preserves ground,directed terminals and
+model polarity; device retargets,value changes,formats and analysis choices do
+not inflate the design count. Sources are small (at most 13 parts / 14 nodes),
+not a balanced inventory of op-amp/regulator/teaching circuits. Private input
+rights do not become public redistribution clearance.
 
-Steps 3–5 remain pending. Any new harness/model/instrument implementation gets
-a measured path envelope and the owning repository's merged claim first.
-Aperture/audio support is already adopted; its current qualification is retained
-and regressed. No additional release upload or third-party repository patch is
-part of this campaign.
+At the same qualified Board/CUI package commits as step1,with Node 22.23.2 and
+ngspice 42, the unchanged comparison contract reports:
+
+| Imported source outcome | Inputs |
+| --- | ---: |
+| Pass | 67 |
+| Partial | 8 |
+| Numerical disagreement | 4 |
+| Not-run/refused or unavailable comparison | 228 |
+| Total requested | 307 |
+
+There are 350 compared numerical observations:339 agree and11 disagree; no
+missing,extra or nonfinite compared values. These counts are not350 circuits.
+The first oracle sandbox failure remains retained. Repairing its temporary-file
+boundary reruns only the failed oracle work and reuses all307 byte-identical
+original native responses. Original raw SPICE bytes,generated decks,streams,
+source/runtime hashes and every failed/incomplete invocation are independently
+reconciled. Three extra invocations are explained FAILED fallback trials and
+never rescue a result. Numerical bounds and original failures are unchanged.
+
+An actual installed-CLI study uses 32 of those inputs,not 32 additional designs.
+It runs 32 `op` and 32 `op --kcl --json` commands. Twenty OP calls succeed;19
+also provide complete conservation diagnostics. Independent readback of 190
+terminal observations recomputes 169 net/part checks,all passing,and 81
+descriptive oracle comparisons (58 voltages/23 signed source currents) agree.
+Reference-method eligibility remains unknown for those 19 cases; agreement is
+not a device-accuracy certificate. Refusals include time-varying sources,
+DC-floating networks,semantic loss and unsupported PMOS representations.
+A genuine implicit-NMOS-body mapping gap explains the additional KCL refusal.
+The audit accounts separately for six expected intrinsic NPN collector nodes
+and authored external nodes; arbitrary unexplained nodes are not ignored.
+This does not add a new public/diagnostic-node CLI output format.
+
+Two unchanged original RC inputs separately request5ms/1MHz watch acquisition
+with5,000 samples,ideal differential source/R/C channels and signed meter
+queries. The current product refuses passive precision watch before creating
+CSV/receipt artifacts. Both conditional transient references remain NOT-RUN.
+These are observed acquisition refusals,not successful traces or completion
+of the source's5,001-point analysis. The CLI reserves captureSamples+2,so this
+request also proves no ring wrap. Existing312-case time-domain evidence stays
+separate. Static OP current is INTO-terminal; the meter uses OUT-of-terminal
+current. A5ms meter window covers0..t and is not an arithmetic sample mean.
+
+### Step 3 source repair and remaining endpoint
+
+[CUI claim PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119)
+bounds exact PMOS bulk wiring (88 refused inputs),strict implicit-NMOS-body
+conservation,and authored-step-aware preflight. Preserve the fourth PMOS
+connection and all unsupported-model refusals; never drop bulk current or raise
+the default20k work cap. Require nonzero-body-current/wrong-ground/missing-wire
+controls,actual CLI/SPICE checks,affected browser proof and all enabled
+exact-head checks before qualified consumer adoption. A four-terminal SPICE
+representation does not assert a new physical package face.
+
+The four numerical mismatches reduce to weakly anchored cutoff/common-mode
+witnesses. Retain them and their original bounds; successful SPICE execution
+alone is not a robust unique physical reference,and normal device physics must
+not be tuned to a convenient root. Long passive-watch support is a separate
+capability: an additive domain/profile design must bound whole-capture work,
+distinguish report callbacks from all acquired samples,preserve the original
+failed request,and handle meter history plus accepted-solve quadrature. Do not
+rename200 samples as5000 or reset limits at each report.
+
+Step 4 still needs an independent lawful LM741 reference across rails, load,
+saturation,frequency and slew. Step 5 still audits existing effects and qualifies
+one genuinely missing deterministic measurement-chain effect with ideal/raw
+preserved. Aperture/audio is already adopted; do not reimplement it. Only owned
+CrispStrobe source repositories are patched. No new release upload or physical/
+full-corpus accuracy claim follows from these studies. The five-item loop stays
+open until the fifth accepted step.
 
 ## Previous completed sequence — 2026-10-24
 

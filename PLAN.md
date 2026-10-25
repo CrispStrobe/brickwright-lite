@@ -31,18 +31,30 @@ qualified Lite package adoption. No third-party original is patched.
    `91d8434a79d373cef2837c137ab356356f1a3b44`. Independent original-only readers
    accepted 312/312 cases and 87,488 numerical checks. The inputs and bounds
    are unchanged; all 240 waveform CSVs match the preceding baseline exactly.
-2. **Imported-circuit cohort: selection/provenance admission next.** Target
-   about 300 distinct schematic inputs, stratified by useful circuit family,
-   with actual voltage/current traces and meter windows against independent
-   SPICE or stated analytic references. The current owned fixture inventory
-   does not yet establish 300 distinct analogue designs. Admit additional
-   sources at file level before hosted use; do not pad with format twins,
-   controller retargets, UI/program variants or repeated parameter points.
-   Keep attempted/comparable/partial/refused/not-run denominators explicit.
-3. **Recurring-cause repairs: pending imported evidence.** Minimize actual
-   surviving failures, repair their cause in the appropriate owned repository,
-   add a load-bearing negative and adopt one qualified package batch. Historical
-   ADI failure counts are triage seeds, not today's unresolved-defect count.
+2. **Imported-circuit evidence: collected with explicit limits.** A frozen
+   offline cohort contains 307 graph-distinct small source structures,278 with
+   MOS devices:299 OP-only and8 OP/AC inputs. This is not broad teaching-family
+   coverage or public redistribution clearance. Unchanged comparison bounds
+   give 67 passes,8 partials,4 disagreements and228 not-run cases;339 of 350
+   compared values agree. All failures/refusals remain in the denominator.
+   An actual installed-CLI cross-check of32 overlapping inputs executes 64
+   static commands;19 cases provide 169 passing conservation checks and 81
+   descriptive oracle agreements. The reference-method admission remains
+   unknown for those comparisons,so do not call them physical accuracy proof.
+   Two separate5,000-sample RC watch requests refuse before capture creation;
+   their conditional references are not run. They are not acquired waveforms.
+   Private payloads remain outside public repositories,workflows and artifacts.
+3. **Recurring-cause repairs: active in owned source.**
+   [CUI claim PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119)
+   bounds three demonstrated causes: retain exact PMOS bulk-source/ground
+   wiring,account for genuine implicit NMOS bulk current in conservation,and
+   honor authored step limits in work preflight without raising the 20k cap.
+   Require nonzero-current/wrong-wiring/budget negatives,actual CLI/SPICE and
+   affected browser qualification before one purposeful package adoption.
+   Four weakly anchored numerical disagreements do not justify fitting normal
+   model physics to a convenient oracle root. Long passive-watch capability
+   needs a separate additive bounded design; do not shorten the refused
+   requests or relax old observer/work/history limits to call them passes.
 4. **One existing part's accuracy: pending.** Start with LM741 unless a bounded
    evidence/ownership review establishes a better existing part. Admit a lawful
    independent reference and test rails, loading, saturation and dynamics before
