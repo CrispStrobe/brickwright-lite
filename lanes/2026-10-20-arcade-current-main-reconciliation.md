@@ -164,3 +164,21 @@ Four complete helper modules pass all 29 controls. The original two exported
 case captures now have current helper closures; their later operand-domain
 refusal remains open. No structural/default/shared/currentness or actual
 shadow/reflection assertion was removed, and no type or input fact is granted.
+
+### Score numeric-shadow ingress — 25 October 2026
+
+The active score callback scope above retains ownership of importer/runtime/
+export qualification. A measured native registration failure occurs before the
+callback: an actual numeric editor shadow carries text while registration
+requires Number. Reuse the existing math numeric-shadow adapter at SCORE ingress;
+keep direct/connected Numbers, fractions, signed zero and non-finite Number
+values unchanged, with strict String/Boolean/null/Undefined/reference refusal
+and the same diagnostic. No callback or HUD algorithm changes.
+
+The new complete source-method ingress module and unchanged score source/export
+module pass seven controls. Two meaningful cuts detect indiscriminate coercion
+and threshold rounding. The source-method controls observe only the downstream
+registration argument; their stub HUD boundary does not qualify SDK scheduling,
+capture ownership or native registration. The genuine original/native score
+module and its separate original-completion failure remain required in hosted
+qualification. No timeout, program, assertion or expected trace changes.

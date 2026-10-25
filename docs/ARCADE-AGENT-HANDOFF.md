@@ -60,6 +60,13 @@ and concrete-consumer checks. Fourteen complete source controls and four
 meaningful mutation cuts pass, including the unchanged Image/class fixture
 through Code and export/reimport. Hosted runtime qualification is still required.
 
+The active score-callback candidate also fixes numeric editor-shadow ingress:
+registration reuses the existing shadow-aware numeric adapter while connected
+String/reference values stay refused. Seven source controls and two meaningful
+cuts pass. These finite source-method controls do not execute the HUD SDK
+algorithm; the unchanged actual original/native score journeys still qualify
+registration, suspension and Stop independently.
+
 A repeat scan of all unchanged raw inputs on the composed source candidate
 still reports **145 translated / 38 partial / one parse failure**. All five affected dependency contexts now import without the missing-atan2
 diagnostic. Their overall source status remains four parse failures and one

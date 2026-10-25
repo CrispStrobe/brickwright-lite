@@ -1789,7 +1789,7 @@ module.exports = makeExt(`// Name: Arcade
     registerScoreHandler(args,util) {
       const player=Number(Scratch.BWValues.decode(args.PLAYER));
       if(!Number.isInteger(player)||player<1||player>4)throw new Error('Arcade score registration requires a fixed player from 1 to 4');
-      const score=Scratch.BWValues.decode(args.SCORE);
+      const score=this._mathArgument(args,'SCORE',util,'Arcade score threshold requires a Number');
       if(typeof score!=='number')throw new TypeError('Arcade score threshold requires a Number');
       const state=this._lifeState(player);if(!state)return;
       const registration=this._handlerRegistration(args,util);
