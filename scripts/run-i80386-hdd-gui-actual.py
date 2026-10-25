@@ -42,7 +42,8 @@ ACTUAL_V8_PLATFORM_KEYS = ('GITHUB_REPOSITORY','GITHUB_EVENT_NAME','GITHUB_ACTOR
  'GITHUB_RUN_ATTEMPT','GITHUB_JOB','GITHUB_REF','GITHUB_REF_TYPE','GITHUB_REF_NAME','GITHUB_SHA',
  'GITHUB_WORKFLOW_REF','GITHUB_WORKFLOW_SHA','BW_EXPECTED_HEAD')
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
-CUI = '91d8434a79d373cef2837c137ab356356f1a3b44'
+CUI = '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671'
+HISTORICAL_CUI = '91d8434a79d373cef2837c137ab356356f1a3b44'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
@@ -646,7 +647,7 @@ def parse_request(raw, expected):
                            'independently selected request digest')
     request = decode(raw)
     version=8 if request.get('schema')=='bw.gui-hdd.actual-request.v8' else 7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch' if version==8 else ''))
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch dependencyPins' if version==8 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
@@ -654,6 +655,9 @@ def parse_request(raw, expected):
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
     if version==8:
+        need(request['dependencyPins']=={'bw-board':BOARD,'bw-circuit-ui':CUI,'sb3-creator':SB3} and
+             type(request['dependencyPins']) is dict and set(request['dependencyPins'])=={'bw-board','bw-circuit-ui','sb3-creator'},
+             'closed current V8 dependency pins')
         selected=request['dispatch'];fields(selected,'tagName tagRef workflow')
         tag=ACTUAL_V8_TAG_PREFIX+source['head']
         need(selected['tagName']==tag and selected['tagRef']=='refs/tags/'+tag,
@@ -1665,6 +1669,7 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
               'scenarios': [], 'firstFailure': None, 'secondary': secondary}
     if request['schema']=='bw.gui-hdd.actual-request.v8':
         result['dispatchPlatform']=dispatch_platform_v8(env)
+        result['dependencyPins']=dict(request['dependencyPins'])
     def retain(error,phase):
         nonlocal first
         record={'phase':phase,'name':type(error).__name__,'message':str(error)}
@@ -1722,7 +1727,9 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         need(encode(installed) == encode(request['installedFiles']), 'closed selected installed supplier/browser graph')
         pins = decode(regular(Path(root)/'vendor-pins.json', JSON_CAP))
         need({key: pins[key] for key in ('bw-board', 'bw-circuit-ui', 'sb3-creator')} ==
-             {'bw-board': BOARD, 'bw-circuit-ui': CUI, 'sb3-creator': SB3}, 'held adopted dependency identities')
+             (request['dependencyPins'] if request['schema']=='bw.gui-hdd.actual-request.v8' else
+              {'bw-board': BOARD, 'bw-circuit-ui': HISTORICAL_CUI, 'sb3-creator': SB3}),
+             'held adopted dependency identities')
         output.save('installed.before.json', encode(installed))
         if current_font:
             font_stage=prepare_native_font(request,expected,root,hosted,output,preflight)

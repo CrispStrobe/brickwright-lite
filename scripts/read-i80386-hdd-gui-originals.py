@@ -19,7 +19,7 @@ ACTUAL_V8_READER_ENABLED = True
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
-CUI = '91d8434a79d373cef2837c137ab356356f1a3b44'
+CUI_V8 = '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
 JSON_CAP = 4 << 20
 STREAM_CAP = 1 << 20
@@ -704,7 +704,7 @@ def parse_request(raw, expected):
                            'independently selected request digest')
     request = decode(raw)
     version=8 if request.get('schema')=='bw.gui-hdd.actual-request.v8' else 7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch' if version>=8 else ''))
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else '')+(' dispatch dependencyPins' if version>=8 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
@@ -712,6 +712,9 @@ def parse_request(raw, expected):
     source = request['source']; fields(source, 'head tree files'); digest(source['head'], 40); digest(source['tree'], 40)
     rows(source['files']); need(set(source['files']) == SOURCE, 'exact tracked source closure')
     if version == 8:
+        need(request['dependencyPins']=={'bw-board':BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':SB3} and
+             type(request['dependencyPins']) is dict and set(request['dependencyPins'])=={'bw-board','bw-circuit-ui','sb3-creator'},
+             'closed current V8 dependency pins')
         dispatch=request['dispatch'];fields(dispatch,'tagName tagRef workflow')
         need(dispatch['tagName']=='bw-gui-hdd-actual-v8-'+source['head'] and
              dispatch['tagRef']=='refs/tags/'+dispatch['tagName'],
@@ -1058,8 +1061,11 @@ def join_actual_native_font(request, expected):
 
 def expected_policy(expected):
     version=8 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v8' else 7 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v7' else 6 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v6' else 5 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v5' else 4 if expected.get('schema')=='bw.gui-hdd.actual-expectation.v4' else 3
-    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact'+(' schema inventoryTemplate inventoryReferenceSha256' if version>=4 else '')+(' nativeFontReferenceSha256 nativeFontOriginals' if version>=5 else '')+(' nativeSourceGitSha256' if version>=6 else '')+(' dispatchProof' if version>=8 else ''))
+    fields(expected,'requestSha256 buildSourceAdmissionSha256 inventoryOriginal sourceHead runId jobId artifactId artifactName artifactBytes artifactSha256 run job artifact'+(' schema inventoryTemplate inventoryReferenceSha256' if version>=4 else '')+(' nativeFontReferenceSha256 nativeFontOriginals' if version>=5 else '')+(' nativeSourceGitSha256' if version>=6 else '')+(' dispatchProof dependencyPins vendorPinsSha256' if version>=8 else ''))
     if version == 8:
+        need(expected['dependencyPins']=={'bw-board':BOARD,'bw-circuit-ui':CUI_V8,'sb3-creator':SB3},
+             'external current V8 dependency pins')
+        digest(expected['vendorPinsSha256'])
         fields(expected['dispatchProof'],'pullRequest tagRef')
         for row in expected['dispatchProof'].values():
             fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
@@ -1309,6 +1315,13 @@ def tracked_source_originals(files,request):
         need(decode(files['native-source-git.before.json'])=={'schema':'bw.gui-hdd.native-source-git.v6',
              'head':current['head'],'tree':request['source']['tree'],'files':current['files']},
              'current native source Git/live file readback')
+    if version==8:
+        index=2+sorted(SOURCE).index('vendor-pins.json')
+        vendor_raw=files['git-'+str(index)+'.stdout']
+        pins=decode(vendor_raw)
+        need(type(pins) is dict and
+             {key:pins.get(key) for key in request['dependencyPins']}==request['dependencyPins'],
+             'current V8 raw selected vendor pins')
 
 
 def official_joins(request, originals, expected):
@@ -1442,6 +1455,9 @@ def official_joins_v8(request,originals,expected,observed_platform):
     need(request['schema']=='bw.gui-hdd.actual-request.v8' and
          expected['schema']=='bw.gui-hdd.actual-expectation.v8',
          'distinct V8 request and externally selected expectation')
+    need(request['dependencyPins']==expected['dependencyPins'] and
+         request['source']['files']['vendor-pins.json']['sha256']==expected['vendorPinsSha256'],
+         'external selected V8 dependency and vendor source digest')
     prior_inventory=expected_policy(expected)
     join_actual_native_font(request,expected)
     need(sha(encode(request['nativeSourceGit']))==expected['nativeSourceGitSha256'],
@@ -1697,7 +1713,10 @@ def audit(files, expected):
     role_policy(set(files));need(not any('failure' in name or name=='frontend.partial.zip' for name in files),'no hidden failed original in positive packet')
     if version!='bw.gui-hdd.actual-request.v8':result=decode(files['result.json'])
     fields(result,'schema pass requestSha256 scenarios firstFailure secondary'+
-           (' dispatchPlatform' if version=='bw.gui-hdd.actual-request.v8' else ''))
+           (' dispatchPlatform dependencyPins' if version=='bw.gui-hdd.actual-request.v8' else ''))
+    if version=='bw.gui-hdd.actual-request.v8':
+        need(result['dependencyPins']==request['dependencyPins']==expected['dependencyPins'],
+             'retained V8 result dependency pins')
     need(result['schema'] == ('bw.gui-hdd.result.v8' if version=='bw.gui-hdd.actual-request.v8' else 'bw.gui-hdd.result.v7' if version=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1') and result['pass'] is True and result['firstFailure'] is None and
          result['secondary'] == [] and result['requestSha256'] == expected['requestSha256'] and
          result['scenarios'] == list(SCENARIOS), 'authoritative terminal attempt result')
@@ -3270,7 +3289,7 @@ def actual_v8_parts_expected(manifest_path,parts_path):
     fields(manifest,'schema expected parts')
     need(encode(manifest)==manifest_raw and manifest['schema']=='bw.gui-hdd.actual-v8-parts-manifest.v1',
          'canonical closed actual v8 parts manifest')
-    selected=manifest['expected'];fields(selected,ACTUAL_V6_PART_EXPECTED+' dispatchProof')
+    selected=manifest['expected'];fields(selected,ACTUAL_V6_PART_EXPECTED+' dispatchProof dependencyPins vendorPinsSha256')
     need(selected['schema']=='bw.gui-hdd.actual-expectation.v8','distinct v8 expectation parts')
     parts=manifest['parts'];need(type(parts) is dict and set(parts)==set(ACTUAL_V6_PART_FILES),
                                  'exact eleven external original roles')

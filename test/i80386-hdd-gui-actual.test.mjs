@@ -1108,7 +1108,7 @@ class Originals(unittest.TestCase):
               'GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual',
               'BW_EXPECTED_HEAD':'a'*40,'GH_TOKEN':'manufactured-not-a-credential'}
             def regular(path,cap):
-                if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+                if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.HISTORICAL_CUI,'sb3-creator':c.SB3})
                 return original_regular(path,cap)
             def check_file(path,row):
                 name=str(path).removeprefix(str(checkout)+'/')
@@ -1280,7 +1280,7 @@ class Originals(unittest.TestCase):
               'GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual',
               'BW_EXPECTED_HEAD':'a'*40,'GH_TOKEN':'manufactured-not-a-credential'}
             def regular(path,cap):
-                if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+                if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.HISTORICAL_CUI,'sb3-creator':c.SB3})
                 return original_regular(path,cap)
             def check_file(path,row):
                 name=str(path).removeprefix(str(checkout)+'/')
@@ -1382,7 +1382,7 @@ class Originals(unittest.TestCase):
                 def api(self,*args):raise AssertionError('preflight must not acquire metadata/frontend')
                 def run(self,*args):raise AssertionError('preflight must not generate or execute a guest')
             def regular(path,cap):
-                if pathlib.Path(path).name=='vendor-pins.json':return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+                if pathlib.Path(path).name=='vendor-pins.json':return E({'bw-board':c.BOARD,'bw-circuit-ui':c.HISTORICAL_CUI,'sb3-creator':c.SB3})
                 return original_regular(path,cap)
             def inventory(path):
                 prefix=str(path).removeprefix(str(checkout)+'/')+'/'
@@ -2830,7 +2830,7 @@ class Originals(unittest.TestCase):
                 (checkout/'event.json').write_bytes(E(event));env={'GITHUB_EVENT_PATH':str(checkout/'event.json'),'GITHUB_WORKSPACE':str(checkout),'GITHUB_REPOSITORY':c.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ATTEMPT':'1','GITHUB_RUN_ID':'200','GITHUB_JOB':'actual','BW_EXPECTED_HEAD':'a'*40}
                 original_regular=c.regular
                 def regular(path,cap):
-                    if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+                    if str(path)==str(checkout/'vendor-pins.json'):return E({'bw-board':c.BOARD,'bw-circuit-ui':c.HISTORICAL_CUI,'sb3-creator':c.SB3})
                     return original_regular(path,cap)
                 def inventory(path,*args):
                     prefix=str(path).removeprefix(str(checkout)+'/');order.append('installed:'+prefix)
@@ -3477,12 +3477,29 @@ class Originals(unittest.TestCase):
     def actual_v8_packet(self):
         files,expected=self.actual_v7_packet()
         request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v8'
+        request['dependencyPins']={'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3}
+        vendor=E(request['dependencyPins']);vendor_row=ROW(vendor)
+        request['source']['files']['vendor-pins.json']=vendor_row
+        request['criticalFiles']['vendor-pins.json']=vendor_row
+        request['build']['sourceFiles']['vendor-pins.json']=vendor_row
+        request['build']['sourceAdmission']['sourceFiles']['vendor-pins.json']=vendor_row
+        for stage_name in ('before','after'):
+            source=D(files['source.'+stage_name+'.json'])
+            source['files']['vendor-pins.json']=vendor_row
+            files['source.'+stage_name+'.json']=E(source)
+        vendor_index=2+sorted(r.SOURCE).index('vendor-pins.json')
+        files['git-'+str(vendor_index)+'.stdout']=vendor
+        process=D(files['git-'+str(vendor_index)+'.process.json'])
+        process['streams']['stdout']=vendor_row
+        files['git-'+str(vendor_index)+'.process.json']=E(process)
         head=request['source']['head'];tag='bw-gui-hdd-actual-v8-'+head
         request['dispatch']={'tagName':tag,'tagRef':'refs/tags/'+tag,
           'workflow':{'path':c.ACTUAL_V8_WORKFLOW,
                       'sha256':request['source']['files'][c.ACTUAL_V8_WORKFLOW]['sha256']}}
         files['request.original.json']=E(request);pin=H(files['request.original.json'])
         expected.update(schema='bw.gui-hdd.actual-expectation.v8',requestSha256=pin,
+          dependencyPins=request['dependencyPins'],vendorPinsSha256=vendor_row['sha256'],
+          buildSourceAdmissionSha256=H(E(request['build']['sourceAdmission'])),
           artifactName='i80386-hdd-gui-actual-v8-200-1')
         expected['run']['event']='workflow_dispatch';expected['job']['name']='actual-v8'
         expected['artifact']['name']=expected['artifactName']
@@ -3516,6 +3533,7 @@ class Originals(unittest.TestCase):
         expected['dispatchProof']={'pullRequest':ROW(files['dispatch-pr.original.json']),
           'tagRef':ROW(files['dispatch-tag.original.json'])}
         result=D(files['result.json']);result.update(schema='bw.gui-hdd.result.v8',requestSha256=pin,
+          dependencyPins=request['dependencyPins'],
           dispatchPlatform=c.dispatch_platform_v8(env))
         files['result.json']=E(result)
         for stage in ('before','after'):
@@ -3524,7 +3542,7 @@ class Originals(unittest.TestCase):
             startup['arguments'][startup['arguments'].index('--expected-sha256')+1]=pin
             files[name]=E(startup)
         stage=D(files['native-font.stage.json'])
-        stage.update(requestSha256=pin,eventSha256=H(files['event.original.json']))
+        stage.update(requestSha256=pin,eventSha256=H(files['event.original.json']),source=request['source'])
         stage['platform']['GITHUB_JOB']='actual-v8'
         files['native-font.stage.json']=E(stage)
         return files,expected,env
@@ -3532,6 +3550,14 @@ class Originals(unittest.TestCase):
     def test_actual_v8_request_event_and_separate_pr_tag_admission(self):
         files,expected,env=self.actual_v8_packet();raw=files['request.original.json']
         request=c.parse_request(raw,H(raw))
+        for cut in ('historical-cui','missing-cui','extra-pin'):
+            changed=copy.deepcopy(request)
+            if cut=='historical-cui':changed['dependencyPins']['bw-circuit-ui']=c.HISTORICAL_CUI
+            elif cut=='missing-cui':del changed['dependencyPins']['bw-circuit-ui']
+            else:changed['dependencyPins']['unreviewed']='0'*40
+            changed_raw=E(changed)
+            with self.subTest(cut=cut),self.assertRaisesRegex(ValueError,'current V8 dependency pins'):
+                c.parse_request(changed_raw,H(changed_raw))
         self.assertEqual(request['dispatch']['tagRef'],env['GITHUB_REF'])
         self.assertEqual(c.bind_event(files['event.original.json'],request,H(raw),env)['inputs']['tag_name'],
                          request['dispatch']['tagName'])
@@ -3585,7 +3611,9 @@ class Originals(unittest.TestCase):
             def raw(path,cap):
                 if str(path)=='/mock/event.json':return source['event.original.json']
                 raise AssertionError('unexpected original read')
-            def selected_file(path,row):return ('source:'+str(path).removeprefix('/checkout/')).encode()
+            def selected_file(path,row):
+                name=str(path).removeprefix('/checkout/')
+                return source['git-'+str(2+sorted(r.SOURCE).index(name))+'.stdout'] if name=='vendor-pins.json' else ('source:'+name).encode()
             with (patch.object(c,'V8Originals',Saved),patch.object(c,'observe_python_startup',side_effect=startup),
                   patch.object(c,'regular',side_effect=raw),patch.object(c,'check_file',side_effect=selected_file),
                   patch.object(c,'observe_runtime',return_value=D(files['runtime.before.json']))):
@@ -3629,6 +3657,7 @@ class Originals(unittest.TestCase):
             raise AssertionError('unexpected selected read '+name)
         def check_file(path,row):
             name=str(path).removeprefix(str(checkout)+'/')
+            if name=='vendor-pins.json':return files['git-'+str(2+sorted(r.SOURCE).index(name))+'.stdout']
             if name in request['source']['files']:return ('source:'+name).encode()
             if name in c.NATIVE_FONT_SOURCE:return ('native-source:'+name).encode()
             return b'bounded mocked selected file edge'
@@ -3714,6 +3743,32 @@ class Originals(unittest.TestCase):
             verdict=r.audit(originals,selected)
             self.assertEqual(verdict['schema'],'bw.gui-hdd.reader.v8')
             self.assertTrue(verdict['pass'])
+            old_pin='91d8434a79d373cef2837c137ab356356f1a3b44'
+            external_drift=copy.deepcopy(selected)
+            external_drift['dependencyPins']['bw-circuit-ui']=old_pin
+            with self.assertRaisesRegex(ValueError,'external current V8 dependency pins'):
+                r.audit(originals,external_drift)
+            result_drift={name:raw for name,raw in produced.items() if name!='inventory.json'}
+            result=D(result_drift['result.json'])
+            result['dependencyPins']['bw-circuit-ui']=old_pin
+            result_drift['result.json']=E(result)
+            result_zip=packet(result_drift)
+            with self.assertRaisesRegex(ValueError,'retained V8 result dependency pins'):
+                r.audit(r.archive_originals(result_zip),bind_artifact(result_zip,selected))
+            raw_vendor={name:raw for name,raw in produced.items() if name!='inventory.json'}
+            vendor_role='git-'+str(2+sorted(r.SOURCE).index('vendor-pins.json'))+'.original.json'
+            vendor_envelope=D(raw_vendor[vendor_role]);vendor=E({'bw-board':c.BOARD,'bw-circuit-ui':old_pin,'sb3-creator':c.SB3})
+            vendor_envelope['members']['stdout']={'byteLength':len(vendor),'sha256':H(vendor),
+                                                  'base64':base64.b64encode(vendor).decode('ascii')}
+            child=D(base64.b64decode(vendor_envelope['members']['process.json']['base64'],validate=True))
+            child['streams']['stdout']=ROW(vendor)
+            child_raw=E(child)
+            vendor_envelope['members']['process.json']={'byteLength':len(child_raw),'sha256':H(child_raw),
+                                                        'base64':base64.b64encode(child_raw).decode('ascii')}
+            raw_vendor[vendor_role]=E(vendor_envelope)
+            vendor_zip=packet(raw_vendor)
+            with self.assertRaises(ValueError):
+                r.audit(r.archive_originals(vendor_zip),bind_artifact(vendor_zip,selected))
             parts=checkout/'parts';parts.mkdir();rows={}
             small={key:copy.deepcopy(value) for key,value in selected.items()
                    if key not in ('inventoryOriginal','inventoryTemplate','nativeFontOriginals')}
@@ -3999,7 +4054,7 @@ class Originals(unittest.TestCase):
         def regular(path,cap):
             name=str(path)
             if name=='/mock/event.json':return files['event.original.json']
-            if name=='/checkout/vendor-pins.json':return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+            if name=='/checkout/vendor-pins.json':return E({'bw-board':c.BOARD,'bw-circuit-ui':c.HISTORICAL_CUI,'sb3-creator':c.SB3})
             if name.endswith('/brickwright-build.json'):return E({'commit':request['build']['checkoutHead'][:7]})
             raise AssertionError('unexpected raw host read '+name)
         def check_file(path,row):
@@ -4845,19 +4900,21 @@ test('GUI consumer explicitly matches current canonical Board and CUI declaratio
     const reader=fs.readFileSync(root+'scripts/read-i80386-hdd-gui-originals.py','utf8');
     for(const [dependency,declaration] of [['bw-circuit-ui','CUI'],['bw-board','BOARD']]){
         const pattern=new RegExp("^"+declaration+" = '([0-9a-f]{40})'$",'m');
+        const readerPattern=dependency==='bw-circuit-ui' ? /^CUI_V8 = '([0-9a-f]{40})'$/m : pattern;
         const consumer=controller.match(pattern)?.[1], selected=guiCuiSelection(dependency);
         assertGuiCuiSelection(consumer,selected,dependency);
-        assertGuiCuiSelection(reader.match(pattern)?.[1],selected,dependency);
+        assertGuiCuiSelection(reader.match(readerPattern)?.[1],selected,dependency);
         assert.throws(()=>assertGuiCuiSelection('0'.repeat(40),selected,dependency));
         for(let i=0;i<selected.length;i++){
             const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
             assert.throws(()=>assertGuiCuiSelection(consumer,drift,dependency));
         }
         // Each single reader/controller declaration independently remains live.
-        for(const source of [controller,reader]){
-            const changed=source.replace(pattern,declaration+" = '"+'0'.repeat(40)+"'");
+        for(const [source,sourcePattern] of [[controller,pattern],[reader,readerPattern]]){
+            const changed=source.replace(sourcePattern,(dependency==='bw-circuit-ui' && source===reader ? 'CUI_V8' : declaration)+" = '"+'0'.repeat(40)+"'");
             assert.notEqual(changed,source);
-            assert.throws(()=>assertGuiCuiSelection(changed.match(pattern)?.[1],selected,dependency));
+            assert.throws(()=>assertGuiCuiSelection(changed.match(sourcePattern)?.[1],selected,dependency));
         }
     }
+    assert.doesNotMatch(reader,/^CUI = /m,'unused historical reader literal removed without changing old validators');
 });
