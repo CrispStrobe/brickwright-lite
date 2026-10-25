@@ -7,8 +7,9 @@ import {resolve} from 'node:path';
 import {judgeMechanicsRun} from './sim-lab-mechanics-judge.mjs';
 
 const DEFAULT_MACHINES = ['crank-rocker', 'parallel-lift', 'screw-crane', 'pivot-rover'];
+const PROGRAM_MACHINES = [...DEFAULT_MACHINES, 'crane'];
 export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout,
-    models = DEFAULT_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
+    models = PROGRAM_MACHINES, judge = judgeMechanicsRun, simulatedMs = 18000,
     simulatedMsFor = () => simulatedMs, completeWhenPausedFor = () => false,
     fileFor = id => `${id}.ldr`, keyFor = id => fileFor(id), programMarker = null, speed = 1, observeProgram = false}) => {
     mkdirSync(shotsDir, {recursive: true});
@@ -42,9 +43,10 @@ export const mechanicsInteractions = async (page, {openSimLab, shotsDir, timeout
                 for (const j of m.joints.filter(j => j.type === 'hinge' || j.type === 'slider')) joints[j.id] = s.core.jointState(j.id);
                 const busy = {};
                 for (const a of m.actuators) busy[a.port] = pane.hub.motors.busy(a.port);
+                const ropes = s.core.ropeState();
                 if (observeProgram && !record.finishedAt && s.time-record.start>1000 && !pane.props.vm.runtime.threads.some(t=>t.status!==4)) record.finishedAt=s.time;
                 const extra=observeProgram?{variables:Object.fromEntries(pane.props.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]))}:null;
-                record.track.push({t: s.time, bodies, joints, busy, ...(extra?{extra}: {})});
+                record.track.push({t: s.time, bodies, joints, busy, ropes, ...(extra?{extra}: {})});
             };
             window.__bwCaptureMechanics = capture;
             s.onAdvance(capture);
