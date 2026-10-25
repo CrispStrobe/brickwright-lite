@@ -892,9 +892,33 @@ try {
           requireADC(await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='sample',handle)
             && await scope.getByTestId('bw-scope-time-capture').isDisabled(),'ADC_PRIMARY_SAMPLE_NOT_EXPLICIT');
           report(ADC_IDS[0],'explicit primary point acquisition with one loaded probe; envelope remains default');
+          const rawCanvasBeforeScale=await scope.locator('canvas').first().evaluate(c=>c.toDataURL());
+          const clockBeforeScale=await adcPage.evaluate(()=>String(window.__board.getTime()));
           await scope.getByTestId('bw-scope-vdiv-0').selectOption('0.5');
           await scope.getByTestId('bw-scope-center-0').fill('0');
-          await adcPage.waitForTimeout(300); // one real display publication, no engine advance
+          // Wait for the actual .4V trace at the selected +/-1.25V scale.
+          // This observes publication without advancing the engine or sleeping
+          // for an arbitrary frame budget; an absent/stale trace must time out.
+          await adcPage.waitForFunction(previousCanvas => {
+            const canvas=document.querySelector('[data-scope-panel] canvas');
+            const readout=document.querySelector('[data-testid="bw-scope-acquisition-0"]');
+            const span=document.querySelector('[data-testid="bw-scope-span-0"]');
+            if (!canvas || !readout || !span || readout.getAttribute('data-capture')!=='sample'
+              || Number(readout.getAttribute('data-retained'))<90 || readout.hasAttribute('data-adc-bits')
+              || !span.textContent.startsWith('-1.250 … 1.250 V')
+              || canvas.toDataURL()===previousCanvas) return false;
+            const pixels=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+            const yExpected=canvas.height*(1-(.4+1.25)/2.5);
+            for(let y=Math.floor(yExpected)-2;y<=Math.ceil(yExpected)+2;y++) {
+              for(let x=0;x<canvas.width;x++) {
+                const i=(y*canvas.width+x)*4;
+                if(pixels[i+1]>70&&pixels[i+1]>pixels[i]*1.5&&pixels[i+1]>pixels[i+2]*1.2) return true;
+              }
+            }
+            return false;
+          }, rawCanvasBeforeScale);
+          requireADC(await adcPage.evaluate(()=>String(window.__board.getTime()))===clockBeforeScale,
+            'ADC_RAW_PUBLICATION_ADVANCED_ENGINE');
           const tracePixels=()=>scope.locator('canvas').first().evaluate(c=>{
             const image=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let found=0;
             for(let y=12;y<c.height-12;y++)for(let x=0;x<c.width;x++){
