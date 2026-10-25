@@ -25,7 +25,8 @@ export const measurementExperimentInteractions = async (page, {shotsDir}) => {
     const original=await page.getByTestId('bw-sim-lab-model').inputValue();
     const choose=async name=>{
         await page.getByTestId('bw-sim-lab-model').selectOption(name);
-        await page.waitForFunction(key=>window.__bwSimLab.status==='ready'&&window.__bwSimLab._pane.state.shipped===key,name);
+        await page.waitForFunction(key=>window.__bwSimLab.status==='ready'&&window.__bwSimLab._pane.state.shipped===key&&
+            !window.__bwSimLab._pane.state.programLoading,name);
         if(!await page.getByTestId('bw-sim-lab-measurements-panel').isVisible())await tool(page,'measurements');
     };
     const panel=page.getByTestId('bw-sim-lab-measurements-panel'), report={lessons:[]};
@@ -106,7 +107,7 @@ export const measurementExperimentInteractions = async (page, {shotsDir}) => {
     const clear=panel.getByTestId('bw-sim-measurement-record-clear');
     if(await clear.count())await clear.click();
     for(let run=0;run<2;run++) {
-        if(run) {await tool(page,'reset');await page.waitForFunction(()=>window.__bwSimLab.status==='ready');
+        if(run) {await tool(page,'reset');await page.waitForFunction(()=>window.__bwSimLab.status==='ready'&&!window.__bwSimLab._pane.state.programLoading);
             assert.equal(await panel.getByTestId('bw-sim-measurement-plot-toggle-lesson-0').isChecked(),true,'Reset preserves this model’s plot selection');}
         await start.click();await panel.getByTestId('bw-sim-measurement-record-stop').waitFor();
         // The supported API starts the real world before submitting its motor command.
