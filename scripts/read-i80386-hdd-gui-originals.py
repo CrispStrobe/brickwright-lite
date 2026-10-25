@@ -1428,7 +1428,7 @@ def dispatch_event_v8(raw,request,expected,platform,run):
     need(event.get('ref') in (tag['tagName'],tag['tagRef']) and
          event.get('repository',{}).get('full_name')==REPOSITORY and
          event.get('sender',{}).get('login')=='CrispStrobe' and
-         type(event.get('workflow')) is str and 0<len(event['workflow'])<=512,
+         type(event.get('workflow')) is str and 0<len(event['workflow'])<=256,
          'owned selected tag dispatch event')
     need(run.get('repository',{}).get('full_name')==event['repository']['full_name'] and
          platform['GITHUB_REF']==tag['tagRef'] and
@@ -1466,6 +1466,15 @@ def official_joins_v8(request,originals,expected,observed_platform):
          job.get('conclusion')=='success','official exact V8 selected job')
     steps=job.get('steps');need(type(steps) is list and len(steps)<=64,
                                 'bounded official V8 steps')
+    previous_number=0
+    for item in steps:
+        need(type(item) is dict,'raw official V8 step object')
+        integer(item.get('number'),1,2**31-1)
+        need(item['number']>previous_number and type(item.get('name')) is str and
+             0<len(item['name'])<=256 and item.get('status')=='completed' and
+             item.get('conclusion') in ('success','skipped'),
+             'typed strictly ordered terminal official V8 step roster')
+        previous_number=item['number']
     positions=[]
     for name in STARTUP_STEPS_V8:
         matches=[(i,item) for i,item in enumerate(steps) if item.get('name')==name]
