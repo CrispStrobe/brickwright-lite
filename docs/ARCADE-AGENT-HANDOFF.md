@@ -46,6 +46,34 @@ current numeric proof starts with closed Number reporter trees in frozen JSON;
 variable/parameter/captured operands remain conservative. Native do/while
 authoring is separately scoped below.
 
+## Remaining-input taxonomy and independently scoped next tasks
+
+The 36 raw-source partial rows are not 36 established missing core APIs.
+Twenty have exact matching recovered project contexts containing the named
+resources; their historical canonical results were 13 translated, four parse
+failures, two partials and one unavailable observation. These complete projects
+must be measured separately without replacing the raw inputs. Four other
+snippets use instance `Sprite.onOverlap`; all four retained original compiler
+results reject that property in their recorded device-only projects. A valid
+historical API or missing extension has not been established. Preserve these
+input errors instead of inventing runtime semantics. The remaining twelve rows
+need their original source/dependency context assessed individually.
+
+A current follow-up of the thirteen formerly partial canonical contexts
+completes twelve with unchanged partial diagnostics; one hits the fixed CPU
+budget. It is unavailable, not translated or parse-failed, and these observations
+do not constitute a fresh complete canonical census. An early, separately
+bounded source-only sample does not establish the slowdown's full cause. Keep
+both failed observations and all limits; do not raise the budget to get green.
+
+| Next task | Implementation boundary to claim | Required evidence |
+| --- | --- | --- |
+| Math operands derived from startup scalars | Extend the independent producer proof behind `project-math-normal-results.js` with exact actual readonly startup writers, dependency order, all entry points, current physical binding and per-occurrence availability. Keep `scalar-export-flow.js` annotation inference separate from authority. | Real initialized writers and safe Number arithmetic qualify; omitted initialization, later writers, reentry, monitor writes, cycles, reference/BigInt/coercion and annotations alone refuse. A subtraction is not unconditionally Number: actual Arrays values can carry BigInt or effectful objects. Preserve original evaluation and errors. |
+| Conditional startup Array allocation | Review `array-source-start-reset-effects.js` and `array-reference-export-authority.js` for the exact scalar branch and callee/effect/registration boundary. This is missing proof of actual startup order, not an observed uninitialized runtime Array. | Prove every read's allocation and complete compatible writers across branches, pauses, errors, callback registration, Stop and unknown effects. Keep actual resets and all body operations unless their prior value is genuinely unreachable. Validate original/emitted MakeCode and Lite execution. |
+| Event-context frame delta source result | Follow the [numeric-source claim PR #1410](https://github.com/CrispStrobe/brickwright-lite/pull/1410); implement only after its claim is merged. Keep existing clock and info inventories independently bounded. | Exact actual SDK/lexical read, full relevant namespace/result-use census, real mixed-writer refusals, Code/JSON/SB3 and final actual SDK/native/editor controls. Do not claim this alone explains the snake game's addition refusal. |
+| Bounded source-analysis cost | Locate the expensive phase from retained failures and bounded diagnostics before claiming a repair. Retain source proof currentness and every fact/threshold. | Same-input qualification within the original limits, unchanged refusals, and proof that any optimization cannot publish a stale or unproved fact. An unused-proof dependency cleanup has not resolved the measured CPU failure. |
+
+
 ## 25 October: fresh source census and SDK scalar repair
 
 The subsequent four-shard run at
