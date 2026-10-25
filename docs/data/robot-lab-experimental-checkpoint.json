@@ -55,7 +55,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -142,7 +142,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -219,7 +219,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -306,7 +306,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -401,7 +401,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -468,7 +468,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -552,7 +552,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -638,7 +638,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -736,7 +736,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -825,7 +825,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -920,7 +920,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1047,7 +1047,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1148,7 +1148,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1230,7 +1230,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1373,7 +1373,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1452,7 +1452,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1539,7 +1539,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "programRevision": {
         "originalProgramSha256": "dae855291f0abab2522bdcb1c10a6aaeae3464b63898d38616e93c01c4c919d7",
@@ -1668,7 +1668,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1769,7 +1769,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -1847,7 +1847,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -2013,7 +2013,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -2074,7 +2074,7 @@
       "causalControl": "NOT_RUN",
       "clearanceAndSupport": "NOT_RUN",
       "instructions": "NOT_RUN",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN",
       "simulatorLaw": {
         "verdict": "AGREES",
@@ -2140,7 +2140,7 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN"
     },
     {
@@ -2197,7 +2197,7 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "THIS_IS_THE_CONTROL",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN"
     },
     {
@@ -2254,7 +2254,7 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN"
     },
     {
@@ -2309,7 +2309,7 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "THIS_IS_THE_CONTROL",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN"
     },
     {
@@ -2363,7 +2363,7 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN"
     },
     {
@@ -2419,7 +2419,7 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN"
     },
     {
@@ -2509,7 +2509,7 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "NOT_RUN_ON_REAL_PARTS",
-      "browserLoad": "NOT_RUN",
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
       "savedProjectReplay": "NOT_RUN"
     },
     {
@@ -2530,8 +2530,28 @@
       "poweredMotion": "HEADLESS_COMPLETED",
       "mechanicalLaw": "SIMULATOR_AGREES",
       "causalControl": "WEAK: control deletes the whole front chain rather than disengaging the mesh",
-      "browserLoad": "NOT_RUN",
-      "savedProjectReplay": "NOT_RUN"
+      "browserLoad": "PROGRAM_COMPLETE_SYSTEM_CHROME",
+      "savedProjectReplay": "NOT_RUN",
+      "basicChecks": {
+        "id": "paired-door-sync",
+        "checked": [
+          "rigid source matrices",
+          "source part catalogue lookup",
+          "model parser and mechanism compiler",
+          "BW parser"
+        ],
+        "status": "experimental",
+        "recognizedPlacements": 88,
+        "bodies": 5,
+        "joints": 3,
+        "motors": 1,
+        "ports": [
+          "A"
+        ],
+        "issues": [],
+        "programErrors": [],
+        "blocked": false
+      }
     }
   ],
   "appVerification": {
@@ -2551,6 +2571,18 @@
     "germanUiJourney": "NOT_RUN",
     "webkitCheckpointJourney": "NOT_RUN",
     "packagedChromiumProbe": "Initial readiness timed out; retained as inconclusive, not counted as passing",
-    "poweredNewModelQualification": "NOT_RUN"
+    "poweredNewModelQualification": "NOT_RUN",
+    "browserRun20261025": {
+      "build": "4b7438b",
+      "browser": {
+        "name": "system-chrome",
+        "version": "155.0.8059.85"
+      },
+      "scope": "Every experimental entry loaded and ran its supplied program through the toolbar Run button in system Chrome (timeScale 4): 31 of 31 complete after the Bloom/Rack revisions; no page errors.",
+      "runs": [
+        "checkpoint-models-run-219-main (27 of 28 complete; rack-decoder failed before its second revision)",
+        "checkpoint-models-run-222 (bloom, rack-decoder, vector-delta, paired-door-sync complete)"
+      ]
+    }
   }
 }
