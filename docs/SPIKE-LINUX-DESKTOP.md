@@ -241,6 +241,33 @@ checks, including 655 notice files. Ubuntu container base images exclude
 `/usr/share/doc/*`; under that policy the doc checks fail, as they should, and
 the crate-notice check now counts only directories that hold a file.
 
+### Hosted packaging exercise
+
+`.github/workflows/spike-linux-package.yml` runs the builder end to end on a
+hosted Ubuntu 24.04 runner whenever a packaging path changes (and on main pushes
+to those paths or dispatch). `scripts/ci-spike-linux-package-exercise.mjs` stages
+the inputs and calls the unchanged builder without `--prepare-only`: the notice
+and inventory gates, the `--locked --offline` Rust compile of the desktop binary,
+the linked-crate comparison, crate-notice collection and `dpkg-deb`. The package
+is then installed in a digest-pinned `ubuntu:24.04` container with the
+`/usr/share/doc` exclude policy removed, and the installed-layout check must pass.
+The package is not uploaded.
+
+What the runner cannot obtain, and is therefore a labelled placeholder:
+
+- the portable Renode runtime with its .NET/LLVM libraries and seven notices. The
+  Renode fork is public, but no public release or artifact publishes this
+  portable layout at a pinned digest. Building it on every packaging PR would
+  also exceed the runner budget;
+- the staged MicroPython support profile, including its 64 KiB boot seed (zeros
+  in the exercise). It comes from the local staged-support pipeline;
+- the frontend (two placeholder pages); the web build is covered by `build.yml`;
+- `--guest` / `--nuttx` firmware profiles. No firmware goes to hosted CI.
+
+So the hosted job proves the packaging pipeline, the notices and the installed
+layout. It does not prove that the packaged app starts Renode or runs a guest.
+That still needs the local full-build exercise above with real inputs.
+
 ### Installed layout check
 
 `scripts/verify-spike-linux-installed-layout.sh` checks an installed system
