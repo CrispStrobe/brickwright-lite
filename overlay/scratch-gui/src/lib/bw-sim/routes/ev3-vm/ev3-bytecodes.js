@@ -78,7 +78,7 @@ export const ARRAY = Object.freeze({
 export const PROGRAM_INFO = Object.freeze({OBJ_STOP: 0, OBJ_START: 4, GET_STATUS: 22, GET_SPEED: 23, GET_PRGRESULT: 24, SET_INSTR: 25});
 
 /** FILE subcommands the bricks serve (the others stop a program with UNIMPLEMENTED_SUBCOMMAND). */
-export const FILE = Object.freeze({LOAD_IMAGE: 8});
+export const FILE = Object.freeze({OPEN_APPEND: 0, OPEN_READ: 1, OPEN_WRITE: 2, CLOSE: 7, LOAD_IMAGE: 8, READ_BYTES: 28, WRITE_BYTES: 29});
 
 /** Program slots. */
 export const SLOT = Object.freeze({GUI: 0, USER: 1, CMD: 2, TERM: 3, DEBUG: 4, CURRENT: -1});

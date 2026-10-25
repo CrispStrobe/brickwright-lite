@@ -148,7 +148,7 @@ OBJECT_WAIT, RETURN, CALL, OBJECT_END, SLEEP, PROGRAM_INFO, LABEL, ADD/SUB/MUL/D
 8/16/32, INIT_BYTES, all sixteen MOVEs, JR, JR_FALSE, JR_TRUE, JR_NAN, the 24 CP_ and 24 JR_ comparisons,
 SELECT 8/16/32/F, STRINGS (all eleven subcommands), TIMER_WAIT, TIMER_READY, TIMER_READ, TIMER_READ_US, MATH
 (all 21), RANDOM, KEEP_ALIVE, ARRAY (all fifteen), ARRAY_WRITE, ARRAY_READ, ARRAY_APPEND, MEMORY_USAGE,
-READ8…F, WRITE8…F, FILE LOAD_IMAGE.
+READ8…F, WRITE8…F, FILE LOAD_IMAGE and the program-data subset below.
 
 Implemented (shared with the direct commands, docs/ROBOT-LAB-EV3-NXT.md "EV3 direct commands"): the OUTPUT_
 family, INPUT_DEVICE_LIST, INPUT_DEVICE (its subcommands), INPUT_READ/READSI/READEXT/TEST/READY/WRITE, SOUND
@@ -158,10 +158,50 @@ UI_DRAW, INFO.
 Not implemented — the program stops with **UNIMPLEMENTED_OPCODE** (or **UNIMPLEMENTED_SUBCOMMAND**) naming
 it: PROBE, DO, BP0–BP3, BP_SET, SYSTEM, PORT_CNV_OUTPUT, PORT_CNV_INPUT, NOTE_TO_FREQ, MEMORY_WRITE,
 MEMORY_READ, COM_* (READ, WRITE, READY, READDATA, WRITEDATA, GET, SET, TEST, REMOVE, WRITEFILE), MAILBOX_*
-(OPEN, WRITE, READ, TEST, READY, CLOSE), INPUT_SAMPLE, FILENAME, TST, and opFILE's subcommands other than
-LOAD_IMAGE (files opened by programs, logs, folders, the cache). A byte that is no opcode is **ERR_INSTR**;
+(OPEN, WRITE, READ, TEST, READY, CLOSE), INPUT_SAMPLE, FILENAME, TST, and opFILE's remaining
+text/value, log, folder, seek and cache operations. A byte that is no opcode is **ERR_INSTR**;
 what the firmware fails on is **FAILBREAK** with the reason. Errors stop the program with
 `{code, message, object, pc, opcode}` in `vm.error` and an `error` event (`program-error` in the brick's log).
+
+### Program-data files
+
+The implemented `opFILE` subset is `OPEN_APPEND` (0), `OPEN_READ` (1),
+`OPEN_WRITE` (2), `CLOSE` (7), `READ_BYTES` (28) and `WRITE_BYTES` (29), alongside
+the existing `LOAD_IMAGE`. Facts are independently described from LMS
+`c_memory.c:2097–2180`, `:2374–2435`, `:2475–2502`, and the helpers at
+`:1219–1445` at the revision above. No firmware code is included.
+
+Open takes a filename and a 16-bit handle output; read-open also returns a
+32-bit size. A bare name resolves relative to the loaded program's folder;
+explicit paths keep the virtual brick's existing resolution. Write-open
+creates or truncates, append-open creates or preserves and each append write
+uses the current end. A missing read returns handle 0 and size 0 without
+creating a descriptor. Empty existing files can still be opened and read.
+
+Byte operations take handle, signed 16-bit count and a byte-buffer reference.
+They preserve binary zeros. Reads advance by bytes actually obtained; a short
+read writes one zero at the first unread destination byte and leaves the
+remaining tail untouched. An exact read adds no terminator. Count zero leaves
+data and position unchanged. Counts must be nonnegative, and the complete
+buffer span must be preallocated and within bounds; raw reads do not silently
+resize arrays. Invalid handles, wrong modes, unsafe spans, writes into the
+program image and storage refusals stop the program with `FAILBREAK`.
+
+File descriptors share the program's 250-handle pool with arrays but are typed
+separately; array operations cannot access or delete a file descriptor. The
+64 communication-transfer handles remain separate. Bytes live only in the
+brick's existing bounded virtual storage (6 MiB including downloaded files),
+with no host filesystem or network access. The `MEMORY_USAGE` observer retains
+its existing array-data estimate; it does not pretend to measure file-descriptor
+RAM or physical free memory. Program completion, abort and error retire file
+descriptors. Restart gets a fresh handle pool; saved virtual file bytes persist.
+
+JSON worker snapshots retain both descriptor positions and the brick's file
+bytes. The compiled `data-files` fixture covers write/read/append/truncate,
+short EOF, binary zeros and handle coexistence; the actual virtual-brick tests
+download and start that image and resume an open file in a fresh worker mirror.
+Concurrent removal of an open virtual path is a named refusal; this is not a
+claim to reproduce host inode lifetimes or all native I/O failure side effects.
 
 ## §System commands (ev3-system-commands.js, ev3-files.js)
 
@@ -222,7 +262,7 @@ milliseconds inside it.
 ## Open / not modelled
 
 - The validator's load-time walk, opLABEL tables, address parameters.
-- Files a program opens (opFILE OPEN_*, logs), mailboxes and the COM_ instructions, daisy chains, buttons
+- Remaining program file/text/log/folder operations, mailboxes and the COM_ instructions, daisy chains, buttons
   (none is ever pressed in the Lab), the display as pixels (drawing is recorded as events).
 - Other program slots (the debug and terminal slots), PROGRAM_START's debug modes.
 - A braked motor's 100 ms at a program's end; the instruction rate (above).

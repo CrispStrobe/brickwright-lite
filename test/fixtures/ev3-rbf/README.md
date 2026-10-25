@@ -24,7 +24,13 @@ VM's variables. The vmthread MAIN is always the first object: the firmware start
 
 ## How they were produced
 
-Assembled on 2026-10-20 with the owner's hosted compiler, `POST https://lego-compiler.vercel.app/compile`
+`data-files.lms` / `data-files.rbf` were assembled once on 2026-10-25 through
+the same hosted compiler. The program checks binary zeros, append and truncate,
+short-read EOF with an untouched tail, missing reads and array/file handle
+isolation. Its source is BSD-3-Clause. The compiler response and source/executable
+digests are retained separately; tests consume only the committed image.
+
+The original fixtures were assembled on 2026-10-20 with the owner's hosted compiler, `POST https://lego-compiler.vercel.app/compile`
 with `{"compiler": "lmsasm", "code": <the .lms text>}`, which returns the `.rbf` base64-encoded. The service
 (CrispStrobe/legacy-lego-compiler `f2a7723`, an MIT wrapper) runs ev3dev's lmsasm (BSD-3-Clause) with its
 defaults: the official LEGO byte codes, image version 0. The `.lms` sources are ours; the `.rbf` files are

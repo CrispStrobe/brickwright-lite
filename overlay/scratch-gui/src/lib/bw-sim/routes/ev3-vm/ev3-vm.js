@@ -41,10 +41,11 @@ import {
     OP, OPCODE_NAMES, PAR, MATH, STRINGS, ARRAY, PROGRAM_INFO, FILE, SLOT, OBJSTAT, RESULT, SLICE_INSTRUCTIONS, LIMITS
 } from './ev3-bytecodes.js';
 import {INSTRUCTIONS, SUBCOMMANDS} from '../../hubs/ev3/ev3-direct-commands.js';
+import {resolveProgramPath, USER_SPACE_BYTES, STATUS as FILE_STATUS} from '../../hubs/ev3/ev3-files.js';
 
 export const SNAPSHOT_FORMAT = 'ev3-vm/1';
 export const DEFAULT_INSTR_PER_MS = 200;
-/** Array handles one program may hold (MAX_HANDLES). */
+/** Shared array and program-file handles one program may hold (MAX_HANDLES). */
 export const MAX_HANDLES = 250;
 
 export class Ev3VmError extends Error {
@@ -286,6 +287,7 @@ export class Ev3Vm {
         s.status = how === 'error' ? 'error' : 'stopped';
         s.ending = how;
         for (let id = 1; id < s.objects.length; id++) s.objects[id].status = STOPPED;
+        for (let h = 0; h < s.handles.length; h++) if (s.handles[h]?.kind === 'file') s.handles[h] = null;
         s.events.push({t: s.tick, kind: 'program-end', how});
     }
 
@@ -353,9 +355,7 @@ export class Ev3Vm {
         case 'g': return this.s.globals;
         case 'l': return this.s.locals[ref.o];
         case 'h': {
-            const h = this.s.handles[ref.h];
-            if (!h) fail('FAILBREAK', `handle ${ref.h} names no array`);
-            return h.data;
+            return this._array(ref.h).data;
         }
         case 'c': return this.program.code;
         default: return null;
@@ -432,11 +432,17 @@ export class Ev3Vm {
 
     // ---- arrays (handles) -----------------------------------------------------------------------------
 
-    _create (type, elements) {
+    _freeHandle () {
         const s = this.s;
         let h = s.handles.findIndex(x => !x);
         if (h < 0) h = s.handles.length;
-        if (h >= MAX_HANDLES) fail('FAILBREAK', `no more than ${MAX_HANDLES} array handles`);
+        if (h >= MAX_HANDLES) fail('FAILBREAK', `no more than ${MAX_HANDLES} program handles`);
+        return h;
+    }
+
+    _create (type, elements) {
+        const s = this.s;
+        const h = this._freeHandle();
         const size = WIDTH[type];
         s.handles[h] = {type, size, count: Math.max(0, elements), data: new Array(Math.max(0, elements) * size).fill(0)};
         return h;
@@ -444,8 +450,81 @@ export class Ev3Vm {
 
     _array (h) {
         const a = this.s.handles[h];
-        if (!a) fail('FAILBREAK', `handle ${h} names no array`);
+        if (!a || a.kind === 'file') fail('FAILBREAK', `handle ${h} names no array`);
         return a;
+    }
+
+    _file (h, mode = null) {
+        const f = this.s.handles[h];
+        if (!Number.isInteger(h) || h < 0 || h >= MAX_HANDLES || f?.kind !== 'file' ||
+            !['r', 'w', 'a'].includes(f.mode) ||
+            (mode === 'r' && f.mode !== 'r') || (mode === 'w' && f.mode !== 'w' && f.mode !== 'a') ||
+            !Number.isSafeInteger(f.position) || f.position < 0 || f.position > USER_SPACE_BYTES) {
+            fail('FAILBREAK', `handle ${h} is not an open ${mode || 'program'} file`);
+        }
+        return f;
+    }
+
+    _fileData (io, path) {
+        if (typeof io.readFile !== 'function') fail('FAILBREAK', 'program file storage is unavailable');
+        const data = io.readFile(path);
+        if (data !== null && (!Array.isArray(data) || data.length > USER_SPACE_BYTES)) fail('FAILBREAK', 'invalid program file data');
+        return data;
+    }
+
+    _fileOpen (name, mode, io) {
+        const path = resolveProgramPath(name, this.name);
+        if (!path) fail('FAILBREAK', 'invalid program-data filename');
+        const data = this._fileData(io, path);
+        if (mode === 'r' && data === null) return {handle: 0, size: 0};
+        const h = this._freeHandle();
+        if (mode === 'w' || (mode === 'a' && data === null)) {
+            if (typeof io.putFile !== 'function' || io.putFile(path, []) !== FILE_STATUS.SUCCESS) fail('FAILBREAK', 'cannot create program data file');
+        }
+        this.s.handles[h] = {kind: 'file', path, mode, position: 0};
+        return {handle: h, size: data?.length || 0};
+    }
+
+    _fileSpan (ref, count, write) {
+        if (!Number.isInteger(count) || count < 0 || count > 0x7fff) fail('FAILBREAK', 'invalid program-file byte count');
+        if (!count) return null;
+        if (ref.a === 'k') {
+            if (!write && count > 4) fail('FAILBREAK', 'program file reads beyond a scalar constant');
+            return null;
+        }
+        if (write && ref.a === 'c') fail('FAILBREAK', 'a file read cannot overwrite the program image');
+        const data = this._area(ref);
+        this._bounds(data, ref, count);
+        return data;
+    }
+
+    _fileRead (h, count, ref, io) {
+        const f = this._file(h, 'r');
+        this._fileSpan(ref, count, true);
+        if (!count) return;
+        const data = this._fileData(io, f.path);
+        if (data === null) fail('FAILBREAK', 'open program data file disappeared');
+        const n = Math.min(count, Math.max(0, data.length - f.position));
+        for (let k = 0; k < n; k++) this.put({...ref, off: ref.off + k}, '8', data[f.position + k]);
+        if (n < count) this.put({...ref, off: ref.off + n}, '8', 0);
+        f.position += n;
+    }
+
+    _fileWrite (h, count, ref, io) {
+        const f = this._file(h, 'w');
+        const source = this._fileSpan(ref, count, false);
+        if (!count) return;
+        const bytes = Array.from({length: count}, (_, k) => ref.a === 'k' ? (ref.raw >>> (8 * k)) & 0xff : source[ref.off + k]);
+        const data = this._fileData(io, f.path);
+        if (data === null) fail('FAILBREAK', 'open program data file disappeared');
+        const at = f.mode === 'a' ? data.length : f.position;
+        const end = at + count;
+        if (end > USER_SPACE_BYTES) fail('FAILBREAK', 'program data file exceeds virtual storage');
+        const next = data.slice();
+        if (next.length < end) { const old = next.length; next.length = end; next.fill(0, old); }
+        for (let k = 0; k < count; k++) next[at + k] = bytes[k];
+        if (typeof io.putFile !== 'function' || io.putFile(f.path, next) !== FILE_STATUS.SUCCESS) fail('FAILBREAK', 'program file write refused');
+        f.position = end;
     }
 
     /** Resizes an array to `elements` (new elements are zero: ours, the firmware's realloc leaves them undefined). */
@@ -894,13 +973,13 @@ op(OP.ARRAY, (vm, c) => {
     }
     case ARRAY.DELETE: {
         const h = c.num('16');
-        if (vm.s.handles[h]) vm.s.handles[h] = null;
+        if (vm.s.handles[h]) { vm._array(h); vm.s.handles[h] = null; }
         return;
     }
     case ARRAY.SIZE: {
         const h = c.num('16');
         const a = vm.s.handles[h];
-        vm.put(c.ref(), '32', a ? a.count : 0);
+        vm.put(c.ref(), '32', a ? vm._array(h).count : 0);
         return;
     }
     case ARRAY.RESIZE: {
@@ -954,7 +1033,8 @@ op(OP.ARRAY, (vm, c) => {
     }
     case ARRAY.READ_SIZE: {
         c.num('16');
-        const a = vm.s.handles[c.num('16')];
+        const h = c.num('16');
+        const a = vm.s.handles[h] ? vm._array(h) : null;
         vm.put(c.ref(), '32', a ? a.count * a.size : 0);
         return;
     }
@@ -987,8 +1067,8 @@ op(OP.ARRAY_APPEND, (vm, c) => {
     vm.put({a: 'h', h, off: index * a.size}, a.type, vm.get(value, a.type));
 });
 op(OP.MEMORY_USAGE, (vm, c) => {
-    // Ours: the user memory as kB, total and free (the program's arrays counted against 6 MB).
-    const used = vm.s.handles.reduce((n, a) => n + (a ? a.data.length : 0), 0);
+    // Ours: array data as kB against 6 MB; file bytes belong to the brick's separate bounded storage.
+    const used = vm.s.handles.reduce((n, a) => n + (a && a.kind !== 'file' ? a.data.length : 0), 0);
     vm.put(c.ref(), '32', 6144);
     vm.put(c.ref(), '32', Math.max(0, 6144 - Math.ceil(used / 1024)));
 });
@@ -1104,10 +1184,35 @@ op(OP.STRINGS, (vm, c) => {
     }
 });
 
-// ---- files: LOAD_IMAGE only (the user slot is this program, so it loads nothing) --------------------
+// ---- files: bounded program data plus LOAD_IMAGE ----------------------------------------------------
 
-op(OP.FILE, (vm, c) => {
+op(OP.FILE, (vm, c, io) => {
     const sub = c.num('8');
+    if ([FILE.OPEN_APPEND, FILE.OPEN_READ, FILE.OPEN_WRITE].includes(sub)) {
+        const name = c.str();
+        const handleRef = c.ref();
+        const sizeRef = sub === FILE.OPEN_READ ? c.ref() : null;
+        vm._fileSpan(handleRef, 2, true);
+        if (sizeRef) vm._fileSpan(sizeRef, 4, true);
+        const opened = vm._fileOpen(name, sub === FILE.OPEN_READ ? 'r' : sub === FILE.OPEN_APPEND ? 'a' : 'w', io);
+        vm.put(handleRef, '16', opened.handle);
+        if (sizeRef) vm.put(sizeRef, '32', opened.size);
+        return;
+    }
+    if (sub === FILE.CLOSE) {
+        const h = c.num('16');
+        vm._file(h);
+        vm.s.handles[h] = null;
+        return;
+    }
+    if (sub === FILE.READ_BYTES || sub === FILE.WRITE_BYTES) {
+        const h = c.num('16');
+        const count = c.num('16');
+        const ref = c.ref();
+        if (sub === FILE.READ_BYTES) vm._fileRead(h, count, ref, io);
+        else vm._fileWrite(h, count, ref, io);
+        return;
+    }
     if (sub !== FILE.LOAD_IMAGE) fail('UNIMPLEMENTED_SUBCOMMAND', `opFILE subcommand ${sub} is not implemented by the Virtual EV3`);
     c.num('16');
     c.str();
