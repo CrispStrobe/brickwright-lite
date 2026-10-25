@@ -94,3 +94,9 @@ actual initialized producers and all writers under a new claim; do not widen
 this proof or delete an original operation to suppress them. Final exact-head
 SDK/native, visible operation-menu edits, controllers and fresh saved-project
 qualification remain pending with the integration publisher.
+
+A follow-up checks the selected math reporter's actual incoming tuple and
+fallback role, including malformed lengths/kinds, shadow roles and ancestry.
+The shared captured project environment has a private issuance check: an inert
+denial facade cannot supply another producer's currentness. The matching
+incoming-socket and fresh-environment mutation controls detect those removals.

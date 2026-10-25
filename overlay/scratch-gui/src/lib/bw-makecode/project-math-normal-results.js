@@ -42,13 +42,13 @@ export function createProjectMathNormalResults(project){
         const edges=new Map();incoming.set(target,edges);
         for(const [id,node]of Object.entries(target.blocks||{}))owners.set(node,{target,id});
         for(const [id,node]of Object.entries(target.blocks||{})){
-            const add=(child,shadow,kind)=>{
+            const add=(child,shadow,kind,slot,index)=>{
                 if(typeof child!=='string')return;
-                if(!edges.has(child))edges.set(child,[]);edges.get(child).push({parent:id,shadow,kind});
+                if(!edges.has(child))edges.set(child,[]);edges.get(child).push({parent:id,shadow,kind,slot,index});
             };
             add(node.next,false,'next');
             for(const slot of Object.values(node.inputs||{}))if(isArray(slot)){
-                add(slot[1],slot[0]===1,'input');if(slot[0]===3)add(slot[2],true,'input');
+                add(slot[1],slot[0]===1,'input',slot,1);if(slot[0]===3)add(slot[2],true,'input',slot,2);
             }
         }
     }
@@ -64,9 +64,25 @@ export function createProjectMathNormalResults(project){
             const edges=incoming.get(target).get(record.id)||[];
             if(value.parent==null)return value.topLevel===true&&value.shadow===false&&edges.length===0;
             if(value.topLevel!==false||edges.length!==1||edges[0].parent!==value.parent||edges[0].shadow!==value.shadow||value===node&&edges[0].kind!=='input')return false;
+            if(value===node){
+                const edge=edges[0],slot=edge.slot;
+                if(!isArray(slot))return false;
+                if(value.shadow){
+                    if(!(edge.index===1&&slot[0]===1&&slot.length===2||edge.index===2&&slot[0]===3&&slot.length===3))return false;
+                }else if(edge.index!==1||!(slot[0]===2&&slot.length===2||slot[0]===3&&slot.length===3&&validFallback(target,value.parent,slot[2])))return false;
+            }
             value=target.blocks[value.parent];if(!value)return false;
         }
         return false;
+    };
+    const validFallback=(target,parent,value)=>{
+        if(isArray(value))return value.length===2&&Number.isInteger(value[0])&&value[0]>=4&&value[0]<=10&&
+            (typeof value[1]==='string'||value[0]<=8&&typeof value[1]==='number'&&finite(value[1]));
+        const node=typeof value==='string'&&target.blocks[value];
+        const name=node&&(numericShadows.has(node.opcode)?'NUM':node.opcode==='text'?'TEXT':node.opcode==='colour_picker'?'COLOUR':null);
+        if(!name||node.shadow!==true||node.parent!==parent||node.next!=null||node.mutation!=null||!exact(node.inputs,[])||!exact(node.fields,[name]))return false;
+        const content=field(node,name);
+        return (typeof content==='string'||name==='NUM'&&typeof content==='number'&&finite(content))&&physical(target,node);
     };
     const inputNumber=(target,node,name,active)=>{
         const slot=node.inputs?.[name];if(!isArray(slot)||![1,2,3].includes(slot[0])||slot.length!==(slot[0]===3?3:2))return false;
@@ -85,6 +101,7 @@ export function createProjectMathNormalResults(project){
         if(!node||active.has(node)||active.size>128||node.next!=null||node.mutation!=null||!physical(target,node))return false;
         const next=new Set(active);next.add(node);
         if(numericShadows.has(node.opcode))return node.shadow===true&&exact(node.inputs,[])&&exact(node.fields,['NUM'])&&numericLiteral(field(node,'NUM'));
+        if(node.shadow!==false)return false;
         if(node.opcode==='arrays_specialValue')return exact(node.inputs,[])&&exact(node.fields,['KIND'])&&['NaN','Infinity','-Infinity'].includes(field(node,'KIND'));
         if(node.opcode==='arcade_mathBinary')return exact(node.fields,['OP'])&&selectors.has(field(node,'OP'))&&exact(node.inputs,['A','B'])&&
             ['A','B'].every(name=>inputNumber(target,node,name,next));
@@ -95,4 +112,10 @@ export function createProjectMathNormalResults(project){
         return current()&&node?.opcode==='arcade_mathBinary'&&numberNode(target,node);
     }});
     apply(weakSet,cache,[project,facade]);return facade;
+}
+
+// An inert denial facade has current()===true because it contributed no facts.
+// Consumers sharing only this environment must verify its private issuance too.
+export function projectMathEnvironmentFor(project,facade){
+    return isProjectJsonSnapshot(project)&&apply(weakGet,cache,[project])===facade&&facade.current()?facade:null;
 }

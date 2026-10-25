@@ -28,7 +28,10 @@ test('result facts require exact selector, operand, shadow, schema and physical 
   b=>b.math.inputs.A=[1,[4,'not a number']],b=>b.math.inputs.A=[2,[4,'2']],
   b=>b.math.inputs.A=[3,[4,'2'],[10,'fallback']],b=>b.math.parent=null,
   b=>b.math.shadow=true,b=>b.math.next='root',b=>b.math.mutation={},
-  b=>b.root.inputs.OTHER=[2,'math'],b=>{b.root.inputs={};b.root.next='math';},
+  b=>b.root.inputs.OTHER=[2,'math'],
+  b=>b.root.inputs.VALUE=[999,'math'],b=>b.root.inputs.VALUE=[2,'math',[4,'0']],
+  b=>b.root.inputs.VALUE=[3,'math'],b=>b.root.inputs.VALUE=[3,'math',[12,'n','n']],
+  b=>{b.root.inputs.VALUE=[1,'math'];b.math.shadow=true;},b=>{b.root.inputs={};b.root.next='math';},
   b=>{b.math.inputs.A=[2,'read'];b.read={opcode:'data_variable',parent:'math',topLevel:false,shadow:false,next:null,inputs:{},fields:{VARIABLE:['n','n']}};}
  ];
  for(const edit of edits){const p=fixture();edit(p.targets[0].blocks);const {t,n,proof}=query(p);assert.equal(proof.isNumberResult(t,n),false,String(edit));}
