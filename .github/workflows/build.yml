@@ -898,6 +898,12 @@ jobs:
 
   build:
     needs: scope
+    outputs:
+      gui_producer_runner_v1: |
+        bw.gui.producer-runner.v1	${{ github.repository }}	${{ github.run_id }}	${{ github.run_attempt }}	build	${{ github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.event.pull_request.head.sha || github.sha }}	${{ github.workflow_sha }}	${{ github.workflow_ref }}
+        build_editor	${{ steps['build_editor'].outcome }}	${{ steps['build_editor'].conclusion }}
+        gui_build_manifest	${{ steps['gui_build_manifest'].outcome }}	${{ steps['gui_build_manifest'].conclusion }}
+        gui_pages_upload	${{ steps['gui_pages_upload'].outcome }}	${{ steps['gui_pages_upload'].conclusion }}
     if: needs.scope.outputs.fast == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -1498,12 +1504,14 @@ jobs:
       # to have succeeded, so an artifact from a red run can be downloaded and
       # never published.
       - name: Write GUI build source manifest
+        id: gui_build_manifest
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         env:
           BW_GUI_GIT_EXECUTABLE: /usr/bin/git
           BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/write-gui-build-manifest.mjs packages/scratch-gui/build
       - name: Upload GUI Pages artifact
+        id: gui_pages_upload
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         with: { path: packages/scratch-gui/build }
@@ -1621,9 +1629,12 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        id: bw_browser_audit_0001
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        id: bw_browser_audit_0002
         with: { node-version: 22 }
       - name: Require green upstream evidence for the pinned 8086 engine
+        id: bw_browser_audit_0003
         # Authenticated: verify-bw-board-ci.mjs reads GH_TOKEN. Without it every runner
         # shares GitHub's anonymous per-IP limit and this step dies with HTTP 403 on a
         # busy night (2026-09-06, twice in one hour), which paints a rate limit and a red
@@ -1632,10 +1643,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: npm run verify:bwboard-ci
       - name: Install root package inputs before browser integration
+        id: bw_browser_audit_0004
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Vendor the pinned permissive Scratch sources
+        id: bw_browser_audit_0005
         run: npm run vendor
       - name: Integrate the Code tab (sb3-creator)
+        id: bw_browser_audit_0006
         run: node scripts/integrate.mjs
       # Same static asset Vercel deploys, so the browser gate below runs against the
       # shape users get rather than one where the heavy tier is silently missing.
@@ -1643,10 +1657,13 @@ jobs:
       # offered — lib/labwired-engine.js already answers null instead of throwing,
       # and the gate covers that degraded path too.
       - name: Fetch the heavy simulation engine (labwired-wasm)
+        id: bw_browser_audit_0007
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
       - name: Install
+        id: bw_browser_audit_0008
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay (built-in extensions)
+        id: bw_browser_audit_0009
         run: node scripts/apply-vm-overlay.mjs
       # Everything from here to `Serve the built app` is an INDEPENDENT check —
       # guards, unit tests, the lazy-bundle inspection, the debugger smoke test.
@@ -1654,6 +1671,7 @@ jobs:
       # silence the next one. They hang off this id, the last step of the actual
       # prerequisite chain (vendor -> integrate -> install -> overlays).
       - name: Apply the scratch-paint overlay (extended costume designer)
+        id: bw_browser_audit_0010
         run: node scripts/apply-paint-overlay.mjs
       # One patch: text costumes wait for the lazy render-fonts chunk (ROADMAP §2.4).
       - name: Apply the scratch-render overlay (lazy render fonts)
@@ -1679,15 +1697,18 @@ jobs:
       # the fetch fails (network), the execute gate below SKIPS and the absent
       # gate still runs — the same contract labwired-wasm has.
       - name: Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)
+        id: bw_browser_audit_0013
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         run: npm run sync:picomicropython || echo "pico firmware sync failed — the execute gate will skip; the absent gate still runs"
       - name: Restore the sha256-pinned MakeCode runtime tarballs from cache (browser)
+        id: bw_browser_audit_0014
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: artifacts/makecode
           key: makecode-${{ hashFiles('scripts/sync-makecode-runtime.mjs') }}
       - name: Fetch the pinned MakeCode runtime for the browser gates (tolerated absent)
+        id: bw_browser_audit_0015
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         timeout-minutes: 5
         run: npm run sync:makecode || echo "MakeCode runtime sync failed — its browser checks will skip"
@@ -1697,6 +1718,7 @@ jobs:
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
       - name: Guard — emitted native broker proof bytes retain reviewed authority
+        id: bw_browser_audit_0017
         if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' }}
         run: |
           node scripts/verify-emitted-native-broker-proof.mjs packages/scratch-gui/build
@@ -1708,6 +1730,7 @@ jobs:
       # broken pane, or a dead button. These gates drive the ACTUAL
       # BUILT APP and block the deploy when it is visibly wrong.
       - name: Prepare official Ubuntu package mirror
+        id: bw_browser_audit_0018
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         run: sudo env "PATH=$PATH" node scripts/prepare-playwright-apt.mjs
 
@@ -1752,6 +1775,7 @@ jobs:
       # 14–50 s tier → 4; everything under 10 s → 3. Raise one only with a new
       # measurement in the commit message; never to make a hang pass.
       - name: Browser gate — native broker packaged assets
+        id: bw_browser_audit_0020
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36823340082; max 5 s in run 34528566232 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.playwright.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-native-broker-assets.mjs
@@ -1795,11 +1819,13 @@ jobs:
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
           for i in $(seq 1 30); do curl -sf http://localhost:8617/ >/dev/null && break; sleep 1; done
       - name: Browser gate — named 386 media reaches Widgets and reports attach failures
+        id: bw_browser_audit_0022
         timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 36823340082; max 11 s in run 36477775870 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: npm run verify:i80386-freedos-vga-browser
 
       - name: Browser gate — native SPIKE mission, shared motor envelope and 3D arena
+        id: bw_browser_audit_0023
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         env:
@@ -1807,203 +1833,243 @@ jobs:
         run: node scripts/verify-spike-simulator-browser.mjs
 
       - name: Browser gate — Robot Lab core, a real-parts model loads, drives, is built and saved
+        id: bw_browser_audit_0024
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=core
 
       - name: Browser gate — Robot Lab examples run their programs (line follower, wall stopper, colour explorer)
+        id: bw_browser_audit_0025
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=examples --examples=line-follower,drawing-robot,wall-stopper,colour-explorer
 
 
       - name: Browser gate — Robot Lab robotdraw scale-echo
+        id: bw_browser_audit_0026
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
         run: npm run verify:sim-lab -- --part=examples --examples=scale-echo
 
       - name: Browser gate — Robot Lab robotdraw turnwise
+        id: bw_browser_audit_0027
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
         run: npm run verify:sim-lab -- --part=examples --examples=turnwise
 
       - name: Browser gate — Robot Lab robotdraw ellipse-engine
+        id: bw_browser_audit_0028
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw' }}
         run: npm run verify:sim-lab -- --part=examples --examples=ellipse-engine
 
       - name: Browser gate — Robot Lab robotdraw2 orbital-loom
+        id: bw_browser_audit_0029
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=orbital-loom
 
       - name: Browser gate — Robot Lab robotdraw2 loom-more
+        id: bw_browser_audit_0030
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=loom-more
 
       - name: Browser gate — Robot Lab robotdraw2 loom-instructions
+        id: bw_browser_audit_0031
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=loom-instructions
 
       - name: Browser gate — Robot Lab robotdraw3 tidal-trio
+        id: bw_browser_audit_0032
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw3' }}
         run: npm run verify:sim-lab -- --part=examples --examples=tidal-trio
 
       - name: Browser gate — Robot Lab robotdraw3 tidal-more
+        id: bw_browser_audit_0033
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw3' }}
         run: npm run verify:sim-lab -- --part=examples --examples=tidal-more
 
       - name: Browser gate — Robot Lab robotdraw3 tidal-instructions
+        id: bw_browser_audit_0034
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotdraw3' }}
         run: npm run verify:sim-lab -- --part=examples --examples=tidal-instructions
 
       - name: Browser gate — Robot Lab robotlink seven-machines
+        id: bw_browser_audit_0035
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
         run: npm run verify:sim-lab -- --part=examples --examples=seven-machines
 
       - name: Browser gate — Robot Lab robotlink seven-linkages
+        id: bw_browser_audit_0036
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
         run: npm run verify:sim-lab -- --part=examples --examples=seven-linkages
 
       - name: Browser gate — Robot Lab robotlink arm-lift
+        id: bw_browser_audit_0037
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
         run: npm run verify:sim-lab -- --part=examples --examples=arm-lift
 
       - name: Browser gate — Robot Lab robotlink straight-eight
+        id: bw_browser_audit_0038
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink' }}
         run: npm run verify:sim-lab -- --part=examples --examples=straight-eight
 
       - name: Browser gate — Robot Lab robotlink2 seven-motion
+        id: bw_browser_audit_0039
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=seven-motion
 
       - name: Browser gate — Robot Lab robotlink2 seven-plotter
+        id: bw_browser_audit_0040
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=seven-plotter
 
       - name: Browser gate — Robot Lab robotlink2 switchback-lift
+        id: bw_browser_audit_0041
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=switchback-lift
 
       - name: Browser gate — Robot Lab robotlink2 expanded-machines,expanded-manual,mechanics-machines,mechanics-manual
+        id: bw_browser_audit_0042
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlink2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=expanded-machines,expanded-manual,mechanics-machines,mechanics-manual
 
       - name: Browser gate — Robot Lab robotmotion magnetic-chess
+        id: bw_browser_audit_0043
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
         run: npm run verify:sim-lab -- --part=examples --examples=magnetic-chess
 
       - name: Browser gate — Robot Lab robotmotion sarrus-lift
+        id: bw_browser_audit_0044
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
         run: npm run verify:sim-lab -- --part=examples --examples=sarrus-lift
 
       - name: Browser gate — Robot Lab robotmotion quickstroke
+        id: bw_browser_audit_0045
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion' }}
         run: npm run verify:sim-lab -- --part=examples --examples=quickstroke
 
       - name: Browser gate — Robot Lab robotmotion2 orbit-mixer
+        id: bw_browser_audit_0046
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=orbit-mixer
 
       - name: Browser gate — Robot Lab robotmotion2 phase-bridge
+        id: bw_browser_audit_0047
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=phase-bridge
 
       - name: Browser gate — Robot Lab robotmotion2 survey-rover,forklift,pneumatic-press,timed-drive,sumo
+        id: bw_browser_audit_0048
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotmotion2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=survey-rover,forklift,pneumatic-press,timed-drive,sumo
 
       - name: Browser gate — Robot Lab robotbench oscillation-clutch
+        id: bw_browser_audit_0049
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
         run: npm run verify:sim-lab -- --part=examples --examples=oscillation-clutch
 
       - name: Browser gate — Robot Lab robotbench dynamics-machines
+        id: bw_browser_audit_0050
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
         run: npm run verify:sim-lab -- --part=examples --examples=dynamics-machines
 
       - name: Browser gate — Robot Lab robotbench lessons
+        id: bw_browser_audit_0051
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench' }}
         run: npm run verify:sim-lab -- --part=examples --examples=lessons
 
       - name: Browser gate — Robot Lab robotbench2 physics-workshops
+        id: bw_browser_audit_0052
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=physics-workshops
 
 
       - name: Browser gate — Robot Lab counterturn complete example
+        id: bw_browser_audit_0053
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
         run: npm run verify:sim-lab -- --part=examples --examples=counterturn
 
       - name: Browser gate — Robot Lab snapgate complete example
+        id: bw_browser_audit_0054
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
         run: npm run verify:sim-lab -- --part=examples --examples=snapgate
 
       - name: Browser gate — Robot Lab echo-bridge complete example
+        id: bw_browser_audit_0055
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
         run: npm run verify:sim-lab -- --part=examples --examples=echo-bridge
 
       - name: Browser gate — Robot Lab resonance complete experiments
+        id: bw_browser_audit_0056
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
         run: npm run verify:sim-lab -- --part=examples --examples=resonance-lab
 
       - name: Browser gate — Robot Lab new model deliveries
+        id: bw_browser_audit_0057
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon4' }}
         run: npm run verify:sim-lab -- --part=examples --examples=cusp-lab,product-plotter,gimbal-lab,sky-courier
 
       - name: Browser gate — Robot Lab SineShuttle and Quartermaster complete examples
+        id: bw_browser_audit_0058
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon5' }}
         run: npm run verify:sim-lab -- --part=examples --examples=sine-shuttle,quartermaster
 
       - name: Browser gate — Robot Lab Watt Line and TwinTempo complete examples
+        id: bw_browser_audit_0059
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon5' }}
         run: npm run verify:sim-lab -- --part=examples --examples=watt-line,twin-tempo
 
       - name: Browser gate — Robot Lab root-bridge complete example
+        id: bw_browser_audit_0060
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=root-bridge
 
       - name: Browser gate — Robot Lab balance-engine complete example
+        id: bw_browser_audit_0061
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=balance-engine
 
       - name: Browser gate — Robot Lab linger complete example
+        id: bw_browser_audit_0062
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=linger
 
       - name: Browser gate — Robot Lab crossline complete example
+        id: bw_browser_audit_0063
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon6' }}
         run: npm run verify:sim-lab -- --part=examples --examples=crossline
@@ -2066,79 +2132,94 @@ jobs:
         run: npm run verify:sim-lab -- --part=intake-replay --intake=atlas-six
 
       - name: Browser gate — Robot Lab pantograph-doubler complete example
+        id: bw_browser_audit_0064
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}
         run: npm run verify:sim-lab -- --part=examples --examples=pantograph-doubler
 
       - name: Browser gate — Robot Lab scale-studio complete example
+        id: bw_browser_audit_0065
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}
         run: npm run verify:sim-lab -- --part=examples --examples=scale-studio
 
       - name: Browser gate — Robot Lab ripple-relay complete example
+        id: bw_browser_audit_0066
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon1' }}
         run: npm run verify:sim-lab -- --part=examples --examples=ripple-relay
 
       - name: Browser gate — Robot Lab crossglide complete example
+        id: bw_browser_audit_0067
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=crossglide
 
       - name: Browser gate — Robot Lab Integral complete example
+        id: bw_browser_audit_0068
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=integral
 
       - name: Browser gate — Robot Lab bit-keeper complete example
+        id: bw_browser_audit_0069
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=bit-keeper
 
       - name: Browser gate — Robot Lab offset-orbit complete example
+        id: bw_browser_audit_0070
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=offset-orbit
 
       - name: Browser gate — Robot Lab circle-splitter complete example
+        id: bw_browser_audit_0071
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=circle-splitter
 
 
       - name: Browser gate — Robot Lab ellipsa complete example
+        id: bw_browser_audit_0072
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon2' }}
         run: npm run verify:sim-lab -- --part=examples --examples=ellipsa
 
       - name: Browser gate — Robot Lab momentum-twins complete example
+        id: bw_browser_audit_0073
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon3' }}
         run: npm run verify:sim-lab -- --part=examples --examples=momentum-twins
 
       - name: Browser gate — Robot Lab bloom-gate complete example
+        id: bw_browser_audit_0074
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon3' }}
         run: npm run verify:sim-lab -- --part=examples --examples=bloom-gate
 
       - name: Browser gate — Robot Lab amplify complete example
+        id: bw_browser_audit_0075
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotaddon3' }}
         run: npm run verify:sim-lab -- --part=examples --examples=amplify
 
       - name: Browser gate — Robot Lab automatic example blocks
+        id: bw_browser_audit_0076
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-example-auto-blocks.mjs
 
       - name: Browser gate — Robot Lab compact controls and responsive toolbar
+        id: bw_browser_audit_0077
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-robot-lab-compact.mjs
 
       - name: Browser gate — Robot Lab fixed model exports
+        id: bw_browser_audit_0078
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
         run: |
@@ -2146,21 +2227,25 @@ jobs:
           PROOF_URL=http://localhost:8617/ node scripts/verify-robot-lab-model-exports.mjs
 
       - name: Browser gate — Robot Lab drawing, resolver and fixed bench camera
+        id: bw_browser_audit_0079
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotbench2' }}
         run: |
           BW_PREVIEW_URL=http://localhost:8617/ BW_PREVIEW_ENGINES=chromium node scripts/verify-sim-lab-preview-repairs.mjs
 
       - name: Browser gate — Robot Lab model insight, instructions and the no-WebGL fallback
+        id: bw_browser_audit_0080
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=ui
 
       - name: Browser gate — Robot Lab on a school tablet, real touch input at 1024×768
+        id: bw_browser_audit_0081
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=tablet
       - name: Upload Robot Lab gate evidence (screenshots; the tablet's trace) on failure
+        id: bw_browser_audit_0082
         timeout-minutes: 5
         if: ${{ failure() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -2171,36 +2256,43 @@ jobs:
           retention-days: 7
 
       - name: Browser gate — Robot Lab layout at five window sizes (Simulate and Build)
+        id: bw_browser_audit_0083
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=layout
 
       - name: Browser gate — Robot Lab build editor Studio tools (colour, hide, mirror, align, measure, groups, clipboard)
+        id: bw_browser_audit_0084
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=editor
 
       - name: Browser gate — Robot Lab scale, a 2,054-part model drawn instanced, and .lxf/.io model files
+        id: bw_browser_audit_0085
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=scale
 
       - name: Browser gate — Robot Lab steered from code, a Blocks project and lab words turn a motor through runtime.robotLab
+        id: bw_browser_audit_0086
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=api
 
       - name: Browser gate — Robot Lab LEGO radio hubs, Powered Up, BOOST and WeDo 2.0 blocks drive their virtual hubs over Scratch Link and Web Bluetooth
+        id: bw_browser_audit_0087
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=hubs-ble
 
       - name: Browser gate — Robot Lab EV3 and NXT, their blocks drive the Lab's bricks over Scratch Link (bumper bot, wall stopper)
+        id: bw_browser_audit_0088
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=hubs-bt
 
       - name: Browser gate — ESP8266 image runs on the esp8266 debug kind with serial
+        id: bw_browser_audit_0089
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         env:
@@ -2208,6 +2300,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-esp8266-debug-browser.mjs
 
       - name: Browser gate — responsive editor, dismissible messages, movable lessons and image targets
+        id: bw_browser_audit_0090
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         env:
@@ -2220,6 +2313,7 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-rotation-browser.mjs --out test-results/arcade-rotation-browser/current.json
       - name: Upload Arcade controller and file-roundtrip observations
+        id: bw_browser_audit_0092
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2228,10 +2322,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Code artwork edits persist through Blocks and project reopen
+        id: bw_browser_audit_0093
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-code-artwork-browser.mjs --out test-results/code-artwork-browser/current.json
       - name: Upload code-artwork-browser authoring observations
+        id: bw_browser_audit_0094
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2240,10 +2336,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Arcade native Blocks fields survive editing and project reopen
+        id: bw_browser_audit_0095
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-schema-browser.mjs --out test-results/arcade-schema-browser/current.json
       - name: Upload arcade-schema-browser authoring observations
+        id: bw_browser_audit_0096
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2252,10 +2350,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Arcade full-screen background authoring and original export
+        id: bw_browser_audit_0097
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-background-browser.mjs --out test-results/arcade-background-browser/current.json
       - name: Upload arcade-background-browser authoring observations
+        id: bw_browser_audit_0098
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2264,10 +2364,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Owned Arcade TextSprite game authoring save reopen and original export
+        id: bw_browser_audit_0099
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-owned-game-gui.mjs
       - name: Upload owned Arcade TextSprite game GUI observations
+        id: bw_browser_audit_0100
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2276,10 +2378,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Arcade tile map painter edits a real level and the game uses it
+        id: bw_browser_audit_0101
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ BW_TILEMAP_REPORT_DIR=test-results/arcade-tilemap-painter node scripts/verify-arcade-tilemap-painter.mjs
       - name: Upload arcade-tilemap-painter observations
+        id: bw_browser_audit_0102
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2288,10 +2392,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Arcade named tiles across painter SB3 and MakeCode export
+        id: bw_browser_audit_0103
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-tile-identity.mjs
       - name: Upload arcade-tile-identity observations
+        id: bw_browser_audit_0104
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2300,10 +2406,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Arcade legacy colour layouts through artwork SB3 and export
+        id: bw_browser_audit_0105
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-legacy-layout.mjs
       - name: Upload arcade-legacy-layout observations
+        id: bw_browser_audit_0106
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2311,10 +2419,12 @@ jobs:
           path: test-results/arcade-legacy-layout/
           if-no-files-found: error
       - name: Browser gate — Arcade sprites placed on a tile map in the painter start there
+        id: bw_browser_audit_0107
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ BW_TILEMAP_PLACEMENT_REPORT_DIR=test-results/arcade-tilemap-placement node scripts/verify-arcade-tilemap-placement.mjs
       - name: Upload arcade-tilemap-placement observations
+        id: bw_browser_audit_0108
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2323,10 +2433,12 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Arcade animation resources across Pixel Code Blocks and original export
+        id: bw_browser_audit_0109
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-animation-resource-browser.mjs --out test-results/arcade-animation-resource-browser/current.json
       - name: Upload arcade-animation-resource-browser authoring observations
+        id: bw_browser_audit_0110
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -2339,6 +2451,7 @@ jobs:
       # now report before the unrelated product journeys rather than after
       # dozens of serial gates.
       - name: Browser gate — the debugger-only pane and its round trip
+        id: bw_browser_audit_0111
         timeout-minutes: 3  # derived: p95 12 s × 3 → 3 min over 20 green runs to 36823340082; max 14 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: BW_STEP_BUDGET_MIN=3 node scripts/verify-debugger-solo.mjs
@@ -2350,6 +2463,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-history
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0113
         if: always() && steps.debug_history.outcome != 'skipped' && matrix.shard == 'heavy'
         with:
           name: debugger-history-browser-proof
@@ -2370,6 +2484,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-journey.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0115
         if: always() && steps.example_journey.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: example-journey-proof
@@ -2394,6 +2509,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-stage-after-load.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0117
         if: always() && steps.stage_after_load.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: stage-after-load-proof
@@ -2422,6 +2538,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-chip-refusal-line.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0119
         if: always() && steps.chip_refusal_line.outcome != 'skipped' && matrix.shard == 'heavy'
         with:
           name: debugger-chip-refusal-line-proof
@@ -2435,6 +2552,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-machine-loader-rom-control.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0121
         if: always() && steps.machine_loader_rom.outcome != 'skipped' && matrix.shard == 'heavy'
         with:
           name: machine-loader-rom-control-proof
@@ -2533,6 +2651,7 @@ jobs:
         run: node scripts/verify-cpm-system.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0128
         if: always() && steps.cpm_system.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: cpm-system-proof
@@ -2548,6 +2667,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-inspection
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0130
         if: always() && steps.debug_inspection.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: debugger-inspection-browser-proof
@@ -2561,22 +2681,27 @@ jobs:
       # itself on every run, so a scenario that stops biting says so here rather
       # than passing quietly for years the way the white-screen path did.
       - name: Browser gate — service worker failure modes
+        id: bw_browser_audit_0131
         timeout-minutes: 3  # derived: p95 25 s × 3 → 3 min over 20 green runs to 36823340082; max 26 s in run 34112210638 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-service-worker.mjs
       - name: Browser gate — independent vector handles drag separately on desktop and iPad
+        id: bw_browser_audit_0132
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 5 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-vector-independent-handles.mjs
       - name: Browser gate — paint recent colors
+        id: bw_browser_audit_0133
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 4 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-paint-recent-colors.mjs
       - name: Browser gate — pixel crop
+        id: bw_browser_audit_0134
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 4 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-crop.mjs
       - name: Browser gate — pixel colour slots
+        id: bw_browser_audit_0135
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 5 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
@@ -2584,6 +2709,7 @@ jobs:
           node scripts/verify-project-palette-editor.mjs
           node scripts/verify-arcade-device-frame.mjs
       - name: Browser gate — circuit UX
+        id: bw_browser_audit_0136
         timeout-minutes: 3  # derived: p95 21 s × 3 → 3 min over 20 green runs to 36823340082; max 22 s in run 34050397009 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
@@ -2596,6 +2722,7 @@ jobs:
       # pane runs no second copy, and a flag during a Debug-pane session hands
       # the display back (the runner's board had taken it from the second flag on).
       - name: Browser gate — the green flag keeps a program's first pin write
+        id: bw_browser_audit_0137
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-green-flag-first-write.mjs
@@ -2603,10 +2730,12 @@ jobs:
       # not at first paint. Both halves are asserted — no fetch on a fresh load,
       # and a text costume rasterised WITH its @font-face once one appears.
       - name: Browser gate — render fonts arrive with the first text costume, not before
+        id: bw_browser_audit_0138
         timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 36823340082; max 4 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-text-costume-fonts.mjs
       - name: Browser gate — circuit rendering and placement
+        id: bw_browser_audit_0139
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36823340082; max 7 s in run 36320241654 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
@@ -2616,11 +2745,13 @@ jobs:
       # the rendered LEDs: a dead X/Y wire, swapped code bit, stale example, or
       # non-interactive face can all pass the model's isolated unit tests.
       - name: Browser gate — physical 74C922 keypad encoder
+        id: bw_browser_audit_0140
         timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 36823340082; max 4 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-74c922-keypad.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0141
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: 74c922-keypad-browser-proof
@@ -2645,6 +2776,7 @@ jobs:
       # sentence ("Total circuit current is …") — the warning that names the
       # largest consumers and offers a fix.
       - name: Browser gate — the DRC can sum chip current
+        id: bw_browser_audit_0142
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-drc-current.mjs
@@ -2654,32 +2786,39 @@ jobs:
       # at, and "the deployed DRC sums current" is a claim someone will want to
       # check by eye rather than by trusting a green tick.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0143
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: drc-current-screenshots
           path: artifacts/drc-current-*.png
           if-no-files-found: warn
       - name: Browser gate — view buttons
+        id: bw_browser_audit_0144
         timeout-minutes: 3  # derived: p95 15 s × 3 → 3 min over 20 green runs to 36823340082; max 16 s in run 34098323626 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs
       - name: Browser gate — editor
+        id: bw_browser_audit_0145
         timeout-minutes: 3  # derived: p95 19 s × 3 → 3 min over 20 green runs to 36823340082; max 24 s in run 35791932891 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
       - name: Browser gate — unpinned extension sandbox
+        id: bw_browser_audit_0146
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 2 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
       - name: Browser gate — game gallery and hardware examples
+        id: bw_browser_audit_0147
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36823340082; max 6 s in run 36099957738 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
       - name: Browser gate — both BASIC profiles execute on real machines
+        id: bw_browser_audit_0148
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-basic-run.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0149
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: basic-run-proof
@@ -2690,10 +2829,12 @@ jobs:
       # bench. The Node suite (test/code-tab-fe-tcl*.test.mjs) proves the
       # converters and interpreters; this proves the tab wires them.
       - name: Browser gate — fe and Tcl tabs convert through blocks and run on DOS
+        id: bw_browser_audit_0150
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-code-tab-fe-tcl.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0151
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: code-tab-fe-tcl-proof
@@ -2705,18 +2846,22 @@ jobs:
       # local assembler chunk, paints CGA, accepts a key, or refreshes the 8255
       # faces. One browser and two unchanged examples cover that whole seam.
       - name: Browser gate — 8086 local assembly, CGA, keyboard and 8255
+        id: bw_browser_audit_0152
         timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 36823340082; max 9 s in run 36154379521 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-browser.mjs
       - name: Browser gate — 386 local DOSBox HDD boot in Widgets
+        id: bw_browser_audit_0153
         timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 36823340082; max 12 s in run 36544779088 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i80386-local-hdd-gui.mjs
       - name: Browser gate — machine Widgets keyboard, mouse and fullscreen
+        id: bw_browser_audit_0154
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 36327909922 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-machine-widgets.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0155
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: i8086-production-browser-proof
@@ -2726,6 +2871,7 @@ jobs:
       # Judged by the DOWNLOADED artefact — a different program yields a
       # different .COM, and the .img carries the exact .COM from LBA 1.
       - name: Browser gate — 8086 .COM / .img export (N10)
+        id: bw_browser_audit_0156
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         # Direct `node scripts/…`, not `npm run …`: gate-coverage.test.mjs's alias
@@ -2741,6 +2887,7 @@ jobs:
       # test's job (test/microbit-daplink-flash.test.mjs, against a mock DAP);
       # CI has no real board to flash.
       - name: Browser gate — micro:bit WebUSB flash button (N9)
+        id: bw_browser_audit_0157
         timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 36823340082; max 5 s in run 34097534401 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         # Direct `node scripts/…`, not `npm run …`: gate-coverage.test.mjs's alias
@@ -2749,6 +2896,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-flash.mjs
 
       - name: Browser benchmark — 8086 desktop and mobile
+        id: bw_browser_audit_0158
         timeout-minutes: 8  # CAPPED: p95 208 s × 3 → 11 min exceeds the cap of 8; budget is the cap, 2.3× p95 — the one gate with no headroom above, a slower runner reds it first; over 20 green runs to 36823340082; max 218 s in run 36345462729 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
@@ -2801,6 +2949,7 @@ jobs:
             PROOF_URL=http://localhost:8618/ node scripts/bench-i8086-browser.mjs
           gzip -9 artifacts/i8086-performance/webpack-stats.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0159
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'heavy'
         with:
           name: i8086-browser-performance
@@ -2808,6 +2957,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — declared extension capability broker
+        id: bw_browser_audit_0160
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
@@ -2817,12 +2967,14 @@ jobs:
             FAILURE_JSON=artifacts/capability-broker/failure.json \
             node scripts/verify-capability-broker.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0161
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: capability-broker-proof
           path: artifacts/capability-broker/*
           if-no-files-found: error
       - name: Browser gate — first-run chooser and guided journeys
+        id: bw_browser_audit_0162
         timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 36823340082; max 9 s in run 34060543504 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
@@ -2830,14 +2982,17 @@ jobs:
       # the hub's port-A motor at the commanded speed, print() in the console, Stop.
       # Folded in here rather than a new verify script, so it runs in this one shard.
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
+        id: bw_browser_audit_0163
         timeout-minutes: 3  # derived: p95 17 s × 3 → 3 min over 20 green runs to 36823340082; max 18 s in run 36695659953 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lego-spike-roundtrip.mjs
       - name: Browser gate — SPIKE Prime German palette renders without a Blockly index error
+        id: bw_browser_audit_0164
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 36320241654 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-spikeprime-palette.mjs
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
+        id: bw_browser_audit_0165
         timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 36823340082; max 8 s in run 36357001392 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
@@ -2847,44 +3002,54 @@ jobs:
       # with its own asset pipeline (paper.js for vector, a canvas re-encode for
       # bitmap). Compares content hashed from asset.data, not declared ids.
       - name: Browser gate — costume artwork survives save/reload and records first-open performance
+        id: bw_browser_audit_0166
         timeout-minutes: 3  # derived: p95 5 s × 3 → 3 min over 20 green runs to 36823340082; max 6 s in run 36407872441 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
       - name: Browser gate — paint workspace and bitmap brush opacity
+        id: bw_browser_audit_0167
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 7 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-paint-workspace.mjs
       - name: Browser gate — vector path topology survives save and reopen
+        id: bw_browser_audit_0168
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 4 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-vector-path-operations.mjs
       - name: Browser gate — vector pen creates curves on desktop and closes paths on iPad
+        id: bw_browser_audit_0169
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 7 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-vector-pen.mjs
       - name: Browser gate — bitmap layers preserve independent pixels and flatten for Scratch
+        id: bw_browser_audit_0170
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 10 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-bitmap-layers.mjs
       - name: Browser gate — editable pixel source survives save and reopen
+        id: bw_browser_audit_0171
         timeout-minutes: 3  # derived: p95 15 s × 3 → 3 min over 20 green runs to 36823340082; max 22 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-source-roundtrip.mjs
       - name: Browser gate — first Sounds-tab interactivity
+        id: bw_browser_audit_0172
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 6 s in run 34290727032 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-sound-tab-activation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0173
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: sound-tab-activation
           path: artifacts/sound-tab-activation/*
           if-no-files-found: error
       - name: Browser gate — P21 Code importer activation, retry and state
+        id: bw_browser_audit_0174
         timeout-minutes: 3  # derived: p95 12 s × 3 → 3 min over 20 green runs to 36823340082; max 13 s in run 34097534401 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-pseudocode-importer-activation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0175
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: pseudocode-importer-activation
@@ -2898,15 +3063,18 @@ jobs:
       # rather than pixels, because headless keeps the stage canvas at a 0x0
       # backing store and a working stage screenshots identically to a broken one.
       - name: Browser gate — the renderer accepts the table the arrays blocks describe
+        id: bw_browser_audit_0176
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 2 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arrays-table-display.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0177
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: arrays-table-display-proof
           path: artifacts/arrays-table-display/*
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0178
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: costume-roundtrip-proof
@@ -2921,34 +3089,40 @@ jobs:
       # the chunk -- so this gate removes it on purpose, and asserts the abort
       # actually fired rather than trusting a route pattern to keep matching.
       - name: Browser gate — a missing extension chunk costs its blocks, not the project
+        id: bw_browser_audit_0179
         timeout-minutes: 3  # derived: p95 5 s × 3 → 3 min over 20 green runs to 36823340082; max 5 s in run 34102511627 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lazy-extension-degradation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0180
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: lazy-degradation-proof
           path: artifacts/lazy-extension-degradation/*
           if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0181
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: project-bundle-integrity-proof
           path: artifacts/project-bundle-integrity/*
           if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0182
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: lego-spike-roundtrip-proof
           path: artifacts/lego-spike-roundtrip/*
           if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0183
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: starter-journey-screenshots
           path: artifacts/starter-journeys/*.png
           if-no-files-found: warn
       - name: Browser gates — About, intro, interaction, and schematic rendering
+        id: bw_browser_audit_0184
         timeout-minutes: 3  # derived: p95 19 s × 3 → 3 min over 20 green runs to 36823340082; max 20 s in run 36357001392 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
@@ -2957,6 +3131,7 @@ jobs:
           PROOF_URL=http://localhost:8617/ node scripts/verify-interaction.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-schematic.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0185
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: rehabilitated-browser-gate-artifacts
@@ -2966,6 +3141,7 @@ jobs:
             artifacts/schematic-production/*.png
           if-no-files-found: warn
       - name: Browser gates — Code chrome, Controller, faceplates, and Instruments
+        id: bw_browser_audit_0186
         timeout-minutes: 3  # derived: p95 26 s × 3 → 3 min over 20 green runs to 36823340082; max 30 s in run 36376830969 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
@@ -2977,6 +3153,7 @@ jobs:
           PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-export-completeness.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-operating-point.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0187
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: chrome-controller-faceplate-instruments-artifacts
@@ -2988,6 +3165,7 @@ jobs:
             artifacts/circuit-operating-point/*
           if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
+        id: bw_browser_audit_0188
         timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 36823340082; max 10 s in run 36099957738 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs
@@ -2996,6 +3174,7 @@ jobs:
       # invisible to every unit suite: one is a chunk that was never
       # requested, the other a machine that could not be answered.
       - name: Browser gate — debugger dock and serial input
+        id: bw_browser_audit_0189
         timeout-minutes: 3  # derived: p95 28 s × 3 → 3 min over 20 green runs to 36823340082; max 30 s in run 36181504066 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
@@ -3004,6 +3183,7 @@ jobs:
       # the table docs/generated/LANGUAGE-DEVICE-MATRIX.md is generated from.
       # Unit tests hold the table to source; this holds the GUI to the table.
       - name: Browser gate — language x device matrix badge and panel
+        id: bw_browser_audit_0190
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 36324084932 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-matrix-ui.mjs
@@ -3023,16 +3203,19 @@ jobs:
       # the entry bundle (true throughout); this asserts the app does not FETCH
       # the 20 MB engine before anyone asks. It did, on every first load.
       - name: Browser gate — the heavy engine is not downloaded on first load
+        id: bw_browser_audit_0191
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36823340082; max 3 s in run 34112210638 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-first-load-weight.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0192
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: first-load-weight
           path: artifacts/first-load-weight/*
           if-no-files-found: warn
       - name: Browser gate — the labwired heavy tier actually executes
+        id: bw_browser_audit_0193
         timeout-minutes: 5  # derived: p95 90 s × 3 → 5 min over 20 green runs to 36823340082; max 168 s in run 34067968927 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_STEP_BUDGET_MIN=5 node scripts/verify-labwired-engine.mjs
@@ -3044,6 +3227,7 @@ jobs:
       # by the gate's own server — proving it against a second, artifact-less
       # build would leave open whether the two builds differed elsewhere.
       - name: Browser gate — with no engine artifact, the tier is not offered
+        id: bw_browser_audit_0194
         timeout-minutes: 3  # derived: p95 45 s × 3 → 3 min over 20 green runs to 36823340082; max 47 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_STEP_BUDGET_MIN=3 node scripts/verify-labwired-engine.mjs --absent
@@ -3054,6 +3238,7 @@ jobs:
       # run, without a local production build — which on a shared box is a
       # 2.4 GiB memory race that is not always winnable.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0195
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'heavy'
         with:
           name: labwired-tier-screenshots
@@ -3066,6 +3251,7 @@ jobs:
       # Chromium, then proves the local image can attach, cycle-step, expose
       # source-linked scheduler state, and halt on a real write watchpoint.
       - name: Browser gate — offline 8051 compile and debugger evidence
+        id: bw_browser_audit_0196
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36823340082; max 8 s in run 35584668446 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
@@ -3092,11 +3278,13 @@ jobs:
       # proof changes the source, exports two distinct linked .rst listings,
       # and aborts hosted compiler POSTs before they leave Chromium.
       - name: Browser gate — offline linked 8051 assembly listings
+        id: bw_browser_audit_0198
         timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 36823340082; max 8 s in run 35996961815 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-local-asm-listing.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0199
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: offline-8051-debug-proof
@@ -3104,6 +3292,7 @@ jobs:
           if-no-files-found: error
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0200
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: offline-8051-listing-proof
@@ -3119,11 +3308,13 @@ jobs:
       # stop matching, the build goes for the hosted compiler, and the run fails
       # honestly instead of stepping through firmware nobody compiled.
       - name: Browser gate — an AVR lesson bench starts offline on its shipped image
+        id: bw_browser_audit_0201
         timeout-minutes: 3  # derived: p95 35 s × 3 → 3 min over 20 green runs to 36823340082; max 39 s in run 34140066506 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-offline-lesson-image.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0202
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'heavy'
         with:
           name: offline-lesson-image-proof
@@ -3133,6 +3324,7 @@ jobs:
       # Run this short, independently green extension proof after the two heavy
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
       - name: Browser gate — promoted pinned extension worker
+        id: bw_browser_audit_0203
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 2 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
@@ -3142,6 +3334,7 @@ jobs:
             FAILURE_JSON=artifacts/pinned-worker/failure.json \
             node scripts/verify-pinned-worker.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0204
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: pinned-worker-proof
@@ -3153,6 +3346,7 @@ jobs:
       # worst possible time for it to regress unnoticed — and it was one of the
       # four gates that still passed while nothing ran it.
       - name: Browser gate — the native Web Bluetooth shim
+        id: bw_browser_audit_0205
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36823340082; max 5 s in run 36255443250 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-bluetooth.mjs
@@ -3161,6 +3355,7 @@ jobs:
       # misconfiguration would show up in a browser and in no unit test —
       # and the routing from the Open button is JSX that nothing else runs.
       - name: Browser gate — MakeCode import
+        id: bw_browser_audit_0206
         timeout-minutes: 3  # derived: p95 12 s × 3 → 3 min over 20 green runs to 36823340082; max 13 s in run 36375211475 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
@@ -3173,6 +3368,7 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ CPX_FACE_REPORT=artifacts/cpx-circuit-face/current.json node scripts/verify-cpx-circuit-face.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0208
         if: always() && steps.cpx_circuit_face.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: cpx-circuit-face-proof
@@ -3187,6 +3383,7 @@ jobs:
       # The MicroPython tab and the simulator are the far end of the MakeCode
       # importer, so they belong next to the gate above.
       - name: Browser gate — micro:bit MicroPython tab and simulator
+        id: bw_browser_audit_0209
         timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 36823340082; max 19 s in run 36335345419 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit.mjs
@@ -3196,6 +3393,7 @@ jobs:
       # LED — judged by the run board's ledBrightness, not the viewport. Skips
       # by name if the firmware fetch above did not land.
       - name: Browser gate — Pico MicroPython simulator Run lights the LED (N3c)
+        id: bw_browser_audit_0210
         timeout-minutes: 3  # derived: p95 10 s × 3 → 3 min over 20 green runs to 36823340082; max 12 s in run 34108111864 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: BW_STEP_BUDGET_MIN=3 PROOF_URL=http://localhost:8617/ npm run verify:pico-micropython
@@ -3204,11 +3402,13 @@ jobs:
       # failure this proves against. No PROOF_URL: withholding needs its own
       # server, so it gates on the build, not the shared serve.
       - name: Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)
+        id: bw_browser_audit_0211
         timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 36823340082; max 4 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' && matrix.shard == 'light' }}
         run: BW_STEP_BUDGET_MIN=3 npm run verify:pico-micropython-absent
 
       - name: Browser gate — micro:bit debugger, block and line stepping
+        id: bw_browser_audit_0212
         timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 36823340082; max 18 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-debug-toggle.mjs
@@ -3218,6 +3418,7 @@ jobs:
       # reads pixels back off the canvas, and checks they keep changing —
       # one frame and a freeze is exactly what a stalled boot looks like.
       - name: Browser gate — Arduboy console runs a compiled game
+        id: bw_browser_audit_0213
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36823340082; max 7 s in run 36405371611 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arduboy.mjs
@@ -3226,18 +3427,22 @@ jobs:
       # itself and drives the visible editor and controller. On the heavy shard:
       # light ran 21 of its 30 minutes on 2026-10-07, heavy 16.
       - name: Browser gate — Arcade callback completion and elapsed frame clock
+        id: bw_browser_audit_0214
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-callback-completion-browser.mjs
       - name: Browser gate — Arcade nested frame registration and live captures
+        id: bw_browser_audit_0215
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-update-registration-browser.mjs
       - name: Browser gate — Arcade controller registration, replacement and repeats
+        id: bw_browser_audit_0216
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-button-registration-browser.mjs
       - name: Browser gate — Arcade life-zero and countdown registration with revival
+        id: bw_browser_audit_0217
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-info-registration-browser.mjs
@@ -3252,6 +3457,7 @@ jobs:
           BW_STEP_BUDGET_MIN=3 BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-carnival-browser.mjs
           node scripts/known-open-gate.mjs arcade-carnival $?
       - name: Upload Arcade carnival browser receipts
+        id: bw_browser_audit_0219
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ always() && matrix.shard == 'heavy' && steps.arcade_carnival.outcome != 'skipped' }}
         with:
@@ -3259,62 +3465,74 @@ jobs:
           path: test-results/arcade-carnival-browser/
           if-no-files-found: warn
       - name: Browser gate — Arcade forever registration with live captures and yielding
+        id: bw_browser_audit_0220
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-forever-registration-browser.mjs
       - name: Browser gate — Arcade sprite registrations, live captures and yielding destruction
+        id: bw_browser_audit_0221
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-sprite-registration-browser.mjs
       - name: Browser gate — Arcade instance destruction live captures and yielding order
+        id: bw_browser_audit_0222
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-instance-registration-browser.mjs
       - name: Browser gate — Arcade parallel launches with nested live captures
+        id: bw_browser_audit_0223
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-parallel-registration-browser.mjs
       - name: Browser gate — Arcade animation frames through Code, Blocks and the controller
+        id: bw_browser_audit_0224
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-animation-browser.mjs
       - name: Browser gate — Arcade camera follow, centre and reset draw sprites, tiles and HUD
+        id: bw_browser_audit_0225
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-camera-browser.mjs
       - name: Browser gate — Arcade friction and velocity under the controller
+        id: bw_browser_audit_0226
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-friction-browser.mjs
       - name: Browser gate — Arcade image reads and writes stay inside their bounds
+        id: bw_browser_audit_0227
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-image-bounds.mjs
       - name: Browser gate — Arcade physics for several sprites at once
+        id: bw_browser_audit_0228
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-multi-physics-browser.mjs
       - name: Browser gate — Arcade physics engine settings and the no-progress diagnostic
+        id: bw_browser_audit_0229
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-physics-engine-browser.mjs
       - name: Browser gate — Arcade Buffer editor controller and original export
+        id: bw_browser_audit_0230
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-buffer-browser.mjs
       - name: Upload arcade-buffer-browser observations
+        id: bw_browser_audit_0231
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -3322,54 +3540,63 @@ jobs:
           path: test-results/arcade-buffer-browser/
           if-no-files-found: error
       - name: Browser gate — Arcade sprite scaling through the controller
+        id: bw_browser_audit_0232
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-scaling-browser.mjs
       - name: Browser gate — Arcade scene push and pop keep each world and its retained diagnostic
+        id: bw_browser_audit_0233
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-scenes-browser.mjs
       - name: Browser gate — Arcade speech bubbles render on the stage
+        id: bw_browser_audit_0234
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-speech.mjs
       - name: Browser gate — Arcade splash screen shows on the stage and a button dismisses it
+        id: bw_browser_audit_0235
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-splash.mjs
       - name: Browser gate — Arcade sprite values agree with the pinned simulator
+        id: bw_browser_audit_0236
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-sprite-values.mjs
       - name: Browser gate — Arcade terrain collisions under the controller
+        id: bw_browser_audit_0237
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-terrain-browser.mjs
       - name: Browser gate — Arcade terrain wall-hit events
+        id: bw_browser_audit_0238
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-terrain-events-browser.mjs
       - name: Browser gate — Arcade tile data reads and writes
+        id: bw_browser_audit_0239
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-tile-data-browser.mjs
       - name: Browser gate — Arcade viewport and camera clamping
+        id: bw_browser_audit_0240
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
@@ -3416,6 +3643,7 @@ jobs:
           node scripts/aggregate-timeouts.mjs --observed wait-observations.jsonl --json > wait-report.json
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        id: bw_browser_audit_0242
         if: always() && steps.waits.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: wait-observations
@@ -3430,9 +3658,10 @@ jobs:
       # `if:` naming a status function silenced the 17 steps after it, once a
       # merge moved steps into a job whose conditions no longer held — and every
       # such green was read as "the gate passed". This is the reviewer's per-step
-      # audit, done by the job itself: it asks the API for this run's steps and
-      # fails, naming them, if any browser gate was skipped while no earlier step
-      # failed. After a real failure it only notes the skipped ones. It MUST stay
+      # audit, done by the job itself: the distinct runner mode reads only the
+      # explicit outcome/conclusion scalars below, never step outputs. Missing
+      # states refuse; the legacy API mode and its refusal remain separate.
+      # After a real failure it only notes skipped gates. It MUST stay
       # the last step of the job that holds the gates — test/browser-gate-timeouts
       # .test.mjs asserts that, with `if: always()` — and needs the job's actions: read.
       - name: Audit — every browser gate ran
@@ -3441,11 +3670,257 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # The API reports the matrix leg's DISPLAY name, not GITHUB_JOB.
           BW_JOB_NAME: browser (${{ matrix.shard }})
+          BW_BROWSER_RUNNER_TERMINALS_V1: |
+            bw.browser.runner-terminals.v1	${{ github.repository }}	${{ github.run_id }}	${{ github.run_attempt }}	${{ github.job }}	${{ matrix.shard }}	${{ github.sha }}	${{ github.workflow_sha }}	${{ github.workflow_ref }}
+            bw_browser_audit_0001	${{ steps['bw_browser_audit_0001'].outcome }}	${{ steps['bw_browser_audit_0001'].conclusion }}
+            bw_browser_audit_0002	${{ steps['bw_browser_audit_0002'].outcome }}	${{ steps['bw_browser_audit_0002'].conclusion }}
+            bw_browser_audit_0003	${{ steps['bw_browser_audit_0003'].outcome }}	${{ steps['bw_browser_audit_0003'].conclusion }}
+            bw_browser_audit_0004	${{ steps['bw_browser_audit_0004'].outcome }}	${{ steps['bw_browser_audit_0004'].conclusion }}
+            bw_browser_audit_0005	${{ steps['bw_browser_audit_0005'].outcome }}	${{ steps['bw_browser_audit_0005'].conclusion }}
+            bw_browser_audit_0006	${{ steps['bw_browser_audit_0006'].outcome }}	${{ steps['bw_browser_audit_0006'].conclusion }}
+            bw_browser_audit_0007	${{ steps['bw_browser_audit_0007'].outcome }}	${{ steps['bw_browser_audit_0007'].conclusion }}
+            bw_browser_audit_0008	${{ steps['bw_browser_audit_0008'].outcome }}	${{ steps['bw_browser_audit_0008'].conclusion }}
+            bw_browser_audit_0009	${{ steps['bw_browser_audit_0009'].outcome }}	${{ steps['bw_browser_audit_0009'].conclusion }}
+            bw_browser_audit_0010	${{ steps['bw_browser_audit_0010'].outcome }}	${{ steps['bw_browser_audit_0010'].conclusion }}
+            overlays_browser	${{ steps['overlays_browser'].outcome }}	${{ steps['overlays_browser'].conclusion }}
+            browser_package_provenance	${{ steps['browser_package_provenance'].outcome }}	${{ steps['browser_package_provenance'].conclusion }}
+            bw_browser_audit_0013	${{ steps['bw_browser_audit_0013'].outcome }}	${{ steps['bw_browser_audit_0013'].conclusion }}
+            bw_browser_audit_0014	${{ steps['bw_browser_audit_0014'].outcome }}	${{ steps['bw_browser_audit_0014'].conclusion }}
+            bw_browser_audit_0015	${{ steps['bw_browser_audit_0015'].outcome }}	${{ steps['bw_browser_audit_0015'].conclusion }}
+            build_editor_browser	${{ steps['build_editor_browser'].outcome }}	${{ steps['build_editor_browser'].conclusion }}
+            bw_browser_audit_0017	${{ steps['bw_browser_audit_0017'].outcome }}	${{ steps['bw_browser_audit_0017'].conclusion }}
+            bw_browser_audit_0018	${{ steps['bw_browser_audit_0018'].outcome }}	${{ steps['bw_browser_audit_0018'].conclusion }}
+            playwright	${{ steps['playwright'].outcome }}	${{ steps['playwright'].conclusion }}
+            bw_browser_audit_0020	${{ steps['bw_browser_audit_0020'].outcome }}	${{ steps['bw_browser_audit_0020'].conclusion }}
+            serve	${{ steps['serve'].outcome }}	${{ steps['serve'].conclusion }}
+            bw_browser_audit_0022	${{ steps['bw_browser_audit_0022'].outcome }}	${{ steps['bw_browser_audit_0022'].conclusion }}
+            bw_browser_audit_0023	${{ steps['bw_browser_audit_0023'].outcome }}	${{ steps['bw_browser_audit_0023'].conclusion }}
+            bw_browser_audit_0024	${{ steps['bw_browser_audit_0024'].outcome }}	${{ steps['bw_browser_audit_0024'].conclusion }}
+            bw_browser_audit_0025	${{ steps['bw_browser_audit_0025'].outcome }}	${{ steps['bw_browser_audit_0025'].conclusion }}
+            bw_browser_audit_0026	${{ steps['bw_browser_audit_0026'].outcome }}	${{ steps['bw_browser_audit_0026'].conclusion }}
+            bw_browser_audit_0027	${{ steps['bw_browser_audit_0027'].outcome }}	${{ steps['bw_browser_audit_0027'].conclusion }}
+            bw_browser_audit_0028	${{ steps['bw_browser_audit_0028'].outcome }}	${{ steps['bw_browser_audit_0028'].conclusion }}
+            bw_browser_audit_0029	${{ steps['bw_browser_audit_0029'].outcome }}	${{ steps['bw_browser_audit_0029'].conclusion }}
+            bw_browser_audit_0030	${{ steps['bw_browser_audit_0030'].outcome }}	${{ steps['bw_browser_audit_0030'].conclusion }}
+            bw_browser_audit_0031	${{ steps['bw_browser_audit_0031'].outcome }}	${{ steps['bw_browser_audit_0031'].conclusion }}
+            bw_browser_audit_0032	${{ steps['bw_browser_audit_0032'].outcome }}	${{ steps['bw_browser_audit_0032'].conclusion }}
+            bw_browser_audit_0033	${{ steps['bw_browser_audit_0033'].outcome }}	${{ steps['bw_browser_audit_0033'].conclusion }}
+            bw_browser_audit_0034	${{ steps['bw_browser_audit_0034'].outcome }}	${{ steps['bw_browser_audit_0034'].conclusion }}
+            bw_browser_audit_0035	${{ steps['bw_browser_audit_0035'].outcome }}	${{ steps['bw_browser_audit_0035'].conclusion }}
+            bw_browser_audit_0036	${{ steps['bw_browser_audit_0036'].outcome }}	${{ steps['bw_browser_audit_0036'].conclusion }}
+            bw_browser_audit_0037	${{ steps['bw_browser_audit_0037'].outcome }}	${{ steps['bw_browser_audit_0037'].conclusion }}
+            bw_browser_audit_0038	${{ steps['bw_browser_audit_0038'].outcome }}	${{ steps['bw_browser_audit_0038'].conclusion }}
+            bw_browser_audit_0039	${{ steps['bw_browser_audit_0039'].outcome }}	${{ steps['bw_browser_audit_0039'].conclusion }}
+            bw_browser_audit_0040	${{ steps['bw_browser_audit_0040'].outcome }}	${{ steps['bw_browser_audit_0040'].conclusion }}
+            bw_browser_audit_0041	${{ steps['bw_browser_audit_0041'].outcome }}	${{ steps['bw_browser_audit_0041'].conclusion }}
+            bw_browser_audit_0042	${{ steps['bw_browser_audit_0042'].outcome }}	${{ steps['bw_browser_audit_0042'].conclusion }}
+            bw_browser_audit_0043	${{ steps['bw_browser_audit_0043'].outcome }}	${{ steps['bw_browser_audit_0043'].conclusion }}
+            bw_browser_audit_0044	${{ steps['bw_browser_audit_0044'].outcome }}	${{ steps['bw_browser_audit_0044'].conclusion }}
+            bw_browser_audit_0045	${{ steps['bw_browser_audit_0045'].outcome }}	${{ steps['bw_browser_audit_0045'].conclusion }}
+            bw_browser_audit_0046	${{ steps['bw_browser_audit_0046'].outcome }}	${{ steps['bw_browser_audit_0046'].conclusion }}
+            bw_browser_audit_0047	${{ steps['bw_browser_audit_0047'].outcome }}	${{ steps['bw_browser_audit_0047'].conclusion }}
+            bw_browser_audit_0048	${{ steps['bw_browser_audit_0048'].outcome }}	${{ steps['bw_browser_audit_0048'].conclusion }}
+            bw_browser_audit_0049	${{ steps['bw_browser_audit_0049'].outcome }}	${{ steps['bw_browser_audit_0049'].conclusion }}
+            bw_browser_audit_0050	${{ steps['bw_browser_audit_0050'].outcome }}	${{ steps['bw_browser_audit_0050'].conclusion }}
+            bw_browser_audit_0051	${{ steps['bw_browser_audit_0051'].outcome }}	${{ steps['bw_browser_audit_0051'].conclusion }}
+            bw_browser_audit_0052	${{ steps['bw_browser_audit_0052'].outcome }}	${{ steps['bw_browser_audit_0052'].conclusion }}
+            bw_browser_audit_0053	${{ steps['bw_browser_audit_0053'].outcome }}	${{ steps['bw_browser_audit_0053'].conclusion }}
+            bw_browser_audit_0054	${{ steps['bw_browser_audit_0054'].outcome }}	${{ steps['bw_browser_audit_0054'].conclusion }}
+            bw_browser_audit_0055	${{ steps['bw_browser_audit_0055'].outcome }}	${{ steps['bw_browser_audit_0055'].conclusion }}
+            bw_browser_audit_0056	${{ steps['bw_browser_audit_0056'].outcome }}	${{ steps['bw_browser_audit_0056'].conclusion }}
+            bw_browser_audit_0057	${{ steps['bw_browser_audit_0057'].outcome }}	${{ steps['bw_browser_audit_0057'].conclusion }}
+            bw_browser_audit_0058	${{ steps['bw_browser_audit_0058'].outcome }}	${{ steps['bw_browser_audit_0058'].conclusion }}
+            bw_browser_audit_0059	${{ steps['bw_browser_audit_0059'].outcome }}	${{ steps['bw_browser_audit_0059'].conclusion }}
+            bw_browser_audit_0060	${{ steps['bw_browser_audit_0060'].outcome }}	${{ steps['bw_browser_audit_0060'].conclusion }}
+            bw_browser_audit_0061	${{ steps['bw_browser_audit_0061'].outcome }}	${{ steps['bw_browser_audit_0061'].conclusion }}
+            bw_browser_audit_0062	${{ steps['bw_browser_audit_0062'].outcome }}	${{ steps['bw_browser_audit_0062'].conclusion }}
+            bw_browser_audit_0063	${{ steps['bw_browser_audit_0063'].outcome }}	${{ steps['bw_browser_audit_0063'].conclusion }}
+            bw_browser_audit_0064	${{ steps['bw_browser_audit_0064'].outcome }}	${{ steps['bw_browser_audit_0064'].conclusion }}
+            bw_browser_audit_0065	${{ steps['bw_browser_audit_0065'].outcome }}	${{ steps['bw_browser_audit_0065'].conclusion }}
+            bw_browser_audit_0066	${{ steps['bw_browser_audit_0066'].outcome }}	${{ steps['bw_browser_audit_0066'].conclusion }}
+            bw_browser_audit_0067	${{ steps['bw_browser_audit_0067'].outcome }}	${{ steps['bw_browser_audit_0067'].conclusion }}
+            bw_browser_audit_0068	${{ steps['bw_browser_audit_0068'].outcome }}	${{ steps['bw_browser_audit_0068'].conclusion }}
+            bw_browser_audit_0069	${{ steps['bw_browser_audit_0069'].outcome }}	${{ steps['bw_browser_audit_0069'].conclusion }}
+            bw_browser_audit_0070	${{ steps['bw_browser_audit_0070'].outcome }}	${{ steps['bw_browser_audit_0070'].conclusion }}
+            bw_browser_audit_0071	${{ steps['bw_browser_audit_0071'].outcome }}	${{ steps['bw_browser_audit_0071'].conclusion }}
+            bw_browser_audit_0072	${{ steps['bw_browser_audit_0072'].outcome }}	${{ steps['bw_browser_audit_0072'].conclusion }}
+            bw_browser_audit_0073	${{ steps['bw_browser_audit_0073'].outcome }}	${{ steps['bw_browser_audit_0073'].conclusion }}
+            bw_browser_audit_0074	${{ steps['bw_browser_audit_0074'].outcome }}	${{ steps['bw_browser_audit_0074'].conclusion }}
+            bw_browser_audit_0075	${{ steps['bw_browser_audit_0075'].outcome }}	${{ steps['bw_browser_audit_0075'].conclusion }}
+            bw_browser_audit_0076	${{ steps['bw_browser_audit_0076'].outcome }}	${{ steps['bw_browser_audit_0076'].conclusion }}
+            bw_browser_audit_0077	${{ steps['bw_browser_audit_0077'].outcome }}	${{ steps['bw_browser_audit_0077'].conclusion }}
+            bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
+            bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
+            bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
+            bw_browser_audit_0081	${{ steps['bw_browser_audit_0081'].outcome }}	${{ steps['bw_browser_audit_0081'].conclusion }}
+            bw_browser_audit_0082	${{ steps['bw_browser_audit_0082'].outcome }}	${{ steps['bw_browser_audit_0082'].conclusion }}
+            bw_browser_audit_0083	${{ steps['bw_browser_audit_0083'].outcome }}	${{ steps['bw_browser_audit_0083'].conclusion }}
+            bw_browser_audit_0084	${{ steps['bw_browser_audit_0084'].outcome }}	${{ steps['bw_browser_audit_0084'].conclusion }}
+            bw_browser_audit_0085	${{ steps['bw_browser_audit_0085'].outcome }}	${{ steps['bw_browser_audit_0085'].conclusion }}
+            bw_browser_audit_0086	${{ steps['bw_browser_audit_0086'].outcome }}	${{ steps['bw_browser_audit_0086'].conclusion }}
+            bw_browser_audit_0087	${{ steps['bw_browser_audit_0087'].outcome }}	${{ steps['bw_browser_audit_0087'].conclusion }}
+            bw_browser_audit_0088	${{ steps['bw_browser_audit_0088'].outcome }}	${{ steps['bw_browser_audit_0088'].conclusion }}
+            bw_browser_audit_0089	${{ steps['bw_browser_audit_0089'].outcome }}	${{ steps['bw_browser_audit_0089'].conclusion }}
+            bw_browser_audit_0090	${{ steps['bw_browser_audit_0090'].outcome }}	${{ steps['bw_browser_audit_0090'].conclusion }}
+            arcade_rotation_browser	${{ steps['arcade_rotation_browser'].outcome }}	${{ steps['arcade_rotation_browser'].conclusion }}
+            bw_browser_audit_0092	${{ steps['bw_browser_audit_0092'].outcome }}	${{ steps['bw_browser_audit_0092'].conclusion }}
+            bw_browser_audit_0093	${{ steps['bw_browser_audit_0093'].outcome }}	${{ steps['bw_browser_audit_0093'].conclusion }}
+            bw_browser_audit_0094	${{ steps['bw_browser_audit_0094'].outcome }}	${{ steps['bw_browser_audit_0094'].conclusion }}
+            bw_browser_audit_0095	${{ steps['bw_browser_audit_0095'].outcome }}	${{ steps['bw_browser_audit_0095'].conclusion }}
+            bw_browser_audit_0096	${{ steps['bw_browser_audit_0096'].outcome }}	${{ steps['bw_browser_audit_0096'].conclusion }}
+            bw_browser_audit_0097	${{ steps['bw_browser_audit_0097'].outcome }}	${{ steps['bw_browser_audit_0097'].conclusion }}
+            bw_browser_audit_0098	${{ steps['bw_browser_audit_0098'].outcome }}	${{ steps['bw_browser_audit_0098'].conclusion }}
+            bw_browser_audit_0099	${{ steps['bw_browser_audit_0099'].outcome }}	${{ steps['bw_browser_audit_0099'].conclusion }}
+            bw_browser_audit_0100	${{ steps['bw_browser_audit_0100'].outcome }}	${{ steps['bw_browser_audit_0100'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_2: |
+            bw_browser_audit_0101	${{ steps['bw_browser_audit_0101'].outcome }}	${{ steps['bw_browser_audit_0101'].conclusion }}
+            bw_browser_audit_0102	${{ steps['bw_browser_audit_0102'].outcome }}	${{ steps['bw_browser_audit_0102'].conclusion }}
+            bw_browser_audit_0103	${{ steps['bw_browser_audit_0103'].outcome }}	${{ steps['bw_browser_audit_0103'].conclusion }}
+            bw_browser_audit_0104	${{ steps['bw_browser_audit_0104'].outcome }}	${{ steps['bw_browser_audit_0104'].conclusion }}
+            bw_browser_audit_0105	${{ steps['bw_browser_audit_0105'].outcome }}	${{ steps['bw_browser_audit_0105'].conclusion }}
+            bw_browser_audit_0106	${{ steps['bw_browser_audit_0106'].outcome }}	${{ steps['bw_browser_audit_0106'].conclusion }}
+            bw_browser_audit_0107	${{ steps['bw_browser_audit_0107'].outcome }}	${{ steps['bw_browser_audit_0107'].conclusion }}
+            bw_browser_audit_0108	${{ steps['bw_browser_audit_0108'].outcome }}	${{ steps['bw_browser_audit_0108'].conclusion }}
+            bw_browser_audit_0109	${{ steps['bw_browser_audit_0109'].outcome }}	${{ steps['bw_browser_audit_0109'].conclusion }}
+            bw_browser_audit_0110	${{ steps['bw_browser_audit_0110'].outcome }}	${{ steps['bw_browser_audit_0110'].conclusion }}
+            bw_browser_audit_0111	${{ steps['bw_browser_audit_0111'].outcome }}	${{ steps['bw_browser_audit_0111'].conclusion }}
+            debug_history	${{ steps['debug_history'].outcome }}	${{ steps['debug_history'].conclusion }}
+            bw_browser_audit_0113	${{ steps['bw_browser_audit_0113'].outcome }}	${{ steps['bw_browser_audit_0113'].conclusion }}
+            example_journey	${{ steps['example_journey'].outcome }}	${{ steps['example_journey'].conclusion }}
+            bw_browser_audit_0115	${{ steps['bw_browser_audit_0115'].outcome }}	${{ steps['bw_browser_audit_0115'].conclusion }}
+            stage_after_load	${{ steps['stage_after_load'].outcome }}	${{ steps['stage_after_load'].conclusion }}
+            bw_browser_audit_0117	${{ steps['bw_browser_audit_0117'].outcome }}	${{ steps['bw_browser_audit_0117'].conclusion }}
+            chip_refusal_line	${{ steps['chip_refusal_line'].outcome }}	${{ steps['chip_refusal_line'].conclusion }}
+            bw_browser_audit_0119	${{ steps['bw_browser_audit_0119'].outcome }}	${{ steps['bw_browser_audit_0119'].conclusion }}
+            machine_loader_rom	${{ steps['machine_loader_rom'].outcome }}	${{ steps['machine_loader_rom'].conclusion }}
+            bw_browser_audit_0121	${{ steps['bw_browser_audit_0121'].outcome }}	${{ steps['bw_browser_audit_0121'].conclusion }}
+            machine_manager_ui	${{ steps['machine_manager_ui'].outcome }}	${{ steps['machine_manager_ui'].conclusion }}
+            phone_modal	${{ steps['phone_modal'].outcome }}	${{ steps['phone_modal'].conclusion }}
+            controller_pane	${{ steps['controller_pane'].outcome }}	${{ steps['controller_pane'].conclusion }}
+            tap_targets	${{ steps['tap_targets'].outcome }}	${{ steps['tap_targets'].conclusion }}
+            phone_fit	${{ steps['phone_fit'].outcome }}	${{ steps['phone_fit'].conclusion }}
+            cpm_system	${{ steps['cpm_system'].outcome }}	${{ steps['cpm_system'].conclusion }}
+            bw_browser_audit_0128	${{ steps['bw_browser_audit_0128'].outcome }}	${{ steps['bw_browser_audit_0128'].conclusion }}
+            debug_inspection	${{ steps['debug_inspection'].outcome }}	${{ steps['debug_inspection'].conclusion }}
+            bw_browser_audit_0130	${{ steps['bw_browser_audit_0130'].outcome }}	${{ steps['bw_browser_audit_0130'].conclusion }}
+            bw_browser_audit_0131	${{ steps['bw_browser_audit_0131'].outcome }}	${{ steps['bw_browser_audit_0131'].conclusion }}
+            bw_browser_audit_0132	${{ steps['bw_browser_audit_0132'].outcome }}	${{ steps['bw_browser_audit_0132'].conclusion }}
+            bw_browser_audit_0133	${{ steps['bw_browser_audit_0133'].outcome }}	${{ steps['bw_browser_audit_0133'].conclusion }}
+            bw_browser_audit_0134	${{ steps['bw_browser_audit_0134'].outcome }}	${{ steps['bw_browser_audit_0134'].conclusion }}
+            bw_browser_audit_0135	${{ steps['bw_browser_audit_0135'].outcome }}	${{ steps['bw_browser_audit_0135'].conclusion }}
+            bw_browser_audit_0136	${{ steps['bw_browser_audit_0136'].outcome }}	${{ steps['bw_browser_audit_0136'].conclusion }}
+            bw_browser_audit_0137	${{ steps['bw_browser_audit_0137'].outcome }}	${{ steps['bw_browser_audit_0137'].conclusion }}
+            bw_browser_audit_0138	${{ steps['bw_browser_audit_0138'].outcome }}	${{ steps['bw_browser_audit_0138'].conclusion }}
+            bw_browser_audit_0139	${{ steps['bw_browser_audit_0139'].outcome }}	${{ steps['bw_browser_audit_0139'].conclusion }}
+            bw_browser_audit_0140	${{ steps['bw_browser_audit_0140'].outcome }}	${{ steps['bw_browser_audit_0140'].conclusion }}
+            bw_browser_audit_0141	${{ steps['bw_browser_audit_0141'].outcome }}	${{ steps['bw_browser_audit_0141'].conclusion }}
+            bw_browser_audit_0142	${{ steps['bw_browser_audit_0142'].outcome }}	${{ steps['bw_browser_audit_0142'].conclusion }}
+            bw_browser_audit_0143	${{ steps['bw_browser_audit_0143'].outcome }}	${{ steps['bw_browser_audit_0143'].conclusion }}
+            bw_browser_audit_0144	${{ steps['bw_browser_audit_0144'].outcome }}	${{ steps['bw_browser_audit_0144'].conclusion }}
+            bw_browser_audit_0145	${{ steps['bw_browser_audit_0145'].outcome }}	${{ steps['bw_browser_audit_0145'].conclusion }}
+            bw_browser_audit_0146	${{ steps['bw_browser_audit_0146'].outcome }}	${{ steps['bw_browser_audit_0146'].conclusion }}
+            bw_browser_audit_0147	${{ steps['bw_browser_audit_0147'].outcome }}	${{ steps['bw_browser_audit_0147'].conclusion }}
+            bw_browser_audit_0148	${{ steps['bw_browser_audit_0148'].outcome }}	${{ steps['bw_browser_audit_0148'].conclusion }}
+            bw_browser_audit_0149	${{ steps['bw_browser_audit_0149'].outcome }}	${{ steps['bw_browser_audit_0149'].conclusion }}
+            bw_browser_audit_0150	${{ steps['bw_browser_audit_0150'].outcome }}	${{ steps['bw_browser_audit_0150'].conclusion }}
+            bw_browser_audit_0151	${{ steps['bw_browser_audit_0151'].outcome }}	${{ steps['bw_browser_audit_0151'].conclusion }}
+            bw_browser_audit_0152	${{ steps['bw_browser_audit_0152'].outcome }}	${{ steps['bw_browser_audit_0152'].conclusion }}
+            bw_browser_audit_0153	${{ steps['bw_browser_audit_0153'].outcome }}	${{ steps['bw_browser_audit_0153'].conclusion }}
+            bw_browser_audit_0154	${{ steps['bw_browser_audit_0154'].outcome }}	${{ steps['bw_browser_audit_0154'].conclusion }}
+            bw_browser_audit_0155	${{ steps['bw_browser_audit_0155'].outcome }}	${{ steps['bw_browser_audit_0155'].conclusion }}
+            bw_browser_audit_0156	${{ steps['bw_browser_audit_0156'].outcome }}	${{ steps['bw_browser_audit_0156'].conclusion }}
+            bw_browser_audit_0157	${{ steps['bw_browser_audit_0157'].outcome }}	${{ steps['bw_browser_audit_0157'].conclusion }}
+            bw_browser_audit_0158	${{ steps['bw_browser_audit_0158'].outcome }}	${{ steps['bw_browser_audit_0158'].conclusion }}
+            bw_browser_audit_0159	${{ steps['bw_browser_audit_0159'].outcome }}	${{ steps['bw_browser_audit_0159'].conclusion }}
+            bw_browser_audit_0160	${{ steps['bw_browser_audit_0160'].outcome }}	${{ steps['bw_browser_audit_0160'].conclusion }}
+            bw_browser_audit_0161	${{ steps['bw_browser_audit_0161'].outcome }}	${{ steps['bw_browser_audit_0161'].conclusion }}
+            bw_browser_audit_0162	${{ steps['bw_browser_audit_0162'].outcome }}	${{ steps['bw_browser_audit_0162'].conclusion }}
+            bw_browser_audit_0163	${{ steps['bw_browser_audit_0163'].outcome }}	${{ steps['bw_browser_audit_0163'].conclusion }}
+            bw_browser_audit_0164	${{ steps['bw_browser_audit_0164'].outcome }}	${{ steps['bw_browser_audit_0164'].conclusion }}
+            bw_browser_audit_0165	${{ steps['bw_browser_audit_0165'].outcome }}	${{ steps['bw_browser_audit_0165'].conclusion }}
+            bw_browser_audit_0166	${{ steps['bw_browser_audit_0166'].outcome }}	${{ steps['bw_browser_audit_0166'].conclusion }}
+            bw_browser_audit_0167	${{ steps['bw_browser_audit_0167'].outcome }}	${{ steps['bw_browser_audit_0167'].conclusion }}
+            bw_browser_audit_0168	${{ steps['bw_browser_audit_0168'].outcome }}	${{ steps['bw_browser_audit_0168'].conclusion }}
+            bw_browser_audit_0169	${{ steps['bw_browser_audit_0169'].outcome }}	${{ steps['bw_browser_audit_0169'].conclusion }}
+            bw_browser_audit_0170	${{ steps['bw_browser_audit_0170'].outcome }}	${{ steps['bw_browser_audit_0170'].conclusion }}
+            bw_browser_audit_0171	${{ steps['bw_browser_audit_0171'].outcome }}	${{ steps['bw_browser_audit_0171'].conclusion }}
+            bw_browser_audit_0172	${{ steps['bw_browser_audit_0172'].outcome }}	${{ steps['bw_browser_audit_0172'].conclusion }}
+            bw_browser_audit_0173	${{ steps['bw_browser_audit_0173'].outcome }}	${{ steps['bw_browser_audit_0173'].conclusion }}
+            bw_browser_audit_0174	${{ steps['bw_browser_audit_0174'].outcome }}	${{ steps['bw_browser_audit_0174'].conclusion }}
+            bw_browser_audit_0175	${{ steps['bw_browser_audit_0175'].outcome }}	${{ steps['bw_browser_audit_0175'].conclusion }}
+            bw_browser_audit_0176	${{ steps['bw_browser_audit_0176'].outcome }}	${{ steps['bw_browser_audit_0176'].conclusion }}
+            bw_browser_audit_0177	${{ steps['bw_browser_audit_0177'].outcome }}	${{ steps['bw_browser_audit_0177'].conclusion }}
+            bw_browser_audit_0178	${{ steps['bw_browser_audit_0178'].outcome }}	${{ steps['bw_browser_audit_0178'].conclusion }}
+            bw_browser_audit_0179	${{ steps['bw_browser_audit_0179'].outcome }}	${{ steps['bw_browser_audit_0179'].conclusion }}
+            bw_browser_audit_0180	${{ steps['bw_browser_audit_0180'].outcome }}	${{ steps['bw_browser_audit_0180'].conclusion }}
+            bw_browser_audit_0181	${{ steps['bw_browser_audit_0181'].outcome }}	${{ steps['bw_browser_audit_0181'].conclusion }}
+            bw_browser_audit_0182	${{ steps['bw_browser_audit_0182'].outcome }}	${{ steps['bw_browser_audit_0182'].conclusion }}
+            bw_browser_audit_0183	${{ steps['bw_browser_audit_0183'].outcome }}	${{ steps['bw_browser_audit_0183'].conclusion }}
+            bw_browser_audit_0184	${{ steps['bw_browser_audit_0184'].outcome }}	${{ steps['bw_browser_audit_0184'].conclusion }}
+            bw_browser_audit_0185	${{ steps['bw_browser_audit_0185'].outcome }}	${{ steps['bw_browser_audit_0185'].conclusion }}
+            bw_browser_audit_0186	${{ steps['bw_browser_audit_0186'].outcome }}	${{ steps['bw_browser_audit_0186'].conclusion }}
+            bw_browser_audit_0187	${{ steps['bw_browser_audit_0187'].outcome }}	${{ steps['bw_browser_audit_0187'].conclusion }}
+            bw_browser_audit_0188	${{ steps['bw_browser_audit_0188'].outcome }}	${{ steps['bw_browser_audit_0188'].conclusion }}
+            bw_browser_audit_0189	${{ steps['bw_browser_audit_0189'].outcome }}	${{ steps['bw_browser_audit_0189'].conclusion }}
+            bw_browser_audit_0190	${{ steps['bw_browser_audit_0190'].outcome }}	${{ steps['bw_browser_audit_0190'].conclusion }}
+            bw_browser_audit_0191	${{ steps['bw_browser_audit_0191'].outcome }}	${{ steps['bw_browser_audit_0191'].conclusion }}
+            bw_browser_audit_0192	${{ steps['bw_browser_audit_0192'].outcome }}	${{ steps['bw_browser_audit_0192'].conclusion }}
+            bw_browser_audit_0193	${{ steps['bw_browser_audit_0193'].outcome }}	${{ steps['bw_browser_audit_0193'].conclusion }}
+            bw_browser_audit_0194	${{ steps['bw_browser_audit_0194'].outcome }}	${{ steps['bw_browser_audit_0194'].conclusion }}
+            bw_browser_audit_0195	${{ steps['bw_browser_audit_0195'].outcome }}	${{ steps['bw_browser_audit_0195'].conclusion }}
+            bw_browser_audit_0196	${{ steps['bw_browser_audit_0196'].outcome }}	${{ steps['bw_browser_audit_0196'].conclusion }}
+            default_route	${{ steps['default_route'].outcome }}	${{ steps['default_route'].conclusion }}
+            bw_browser_audit_0198	${{ steps['bw_browser_audit_0198'].outcome }}	${{ steps['bw_browser_audit_0198'].conclusion }}
+            bw_browser_audit_0199	${{ steps['bw_browser_audit_0199'].outcome }}	${{ steps['bw_browser_audit_0199'].conclusion }}
+            bw_browser_audit_0200	${{ steps['bw_browser_audit_0200'].outcome }}	${{ steps['bw_browser_audit_0200'].conclusion }}
+          BW_BROWSER_RUNNER_TERMINALS_V1_3: |
+            bw_browser_audit_0201	${{ steps['bw_browser_audit_0201'].outcome }}	${{ steps['bw_browser_audit_0201'].conclusion }}
+            bw_browser_audit_0202	${{ steps['bw_browser_audit_0202'].outcome }}	${{ steps['bw_browser_audit_0202'].conclusion }}
+            bw_browser_audit_0203	${{ steps['bw_browser_audit_0203'].outcome }}	${{ steps['bw_browser_audit_0203'].conclusion }}
+            bw_browser_audit_0204	${{ steps['bw_browser_audit_0204'].outcome }}	${{ steps['bw_browser_audit_0204'].conclusion }}
+            bw_browser_audit_0205	${{ steps['bw_browser_audit_0205'].outcome }}	${{ steps['bw_browser_audit_0205'].conclusion }}
+            bw_browser_audit_0206	${{ steps['bw_browser_audit_0206'].outcome }}	${{ steps['bw_browser_audit_0206'].conclusion }}
+            cpx_circuit_face	${{ steps['cpx_circuit_face'].outcome }}	${{ steps['cpx_circuit_face'].conclusion }}
+            bw_browser_audit_0208	${{ steps['bw_browser_audit_0208'].outcome }}	${{ steps['bw_browser_audit_0208'].conclusion }}
+            bw_browser_audit_0209	${{ steps['bw_browser_audit_0209'].outcome }}	${{ steps['bw_browser_audit_0209'].conclusion }}
+            bw_browser_audit_0210	${{ steps['bw_browser_audit_0210'].outcome }}	${{ steps['bw_browser_audit_0210'].conclusion }}
+            bw_browser_audit_0211	${{ steps['bw_browser_audit_0211'].outcome }}	${{ steps['bw_browser_audit_0211'].conclusion }}
+            bw_browser_audit_0212	${{ steps['bw_browser_audit_0212'].outcome }}	${{ steps['bw_browser_audit_0212'].conclusion }}
+            bw_browser_audit_0213	${{ steps['bw_browser_audit_0213'].outcome }}	${{ steps['bw_browser_audit_0213'].conclusion }}
+            bw_browser_audit_0214	${{ steps['bw_browser_audit_0214'].outcome }}	${{ steps['bw_browser_audit_0214'].conclusion }}
+            bw_browser_audit_0215	${{ steps['bw_browser_audit_0215'].outcome }}	${{ steps['bw_browser_audit_0215'].conclusion }}
+            bw_browser_audit_0216	${{ steps['bw_browser_audit_0216'].outcome }}	${{ steps['bw_browser_audit_0216'].conclusion }}
+            bw_browser_audit_0217	${{ steps['bw_browser_audit_0217'].outcome }}	${{ steps['bw_browser_audit_0217'].conclusion }}
+            arcade_carnival	${{ steps['arcade_carnival'].outcome }}	${{ steps['arcade_carnival'].conclusion }}
+            bw_browser_audit_0219	${{ steps['bw_browser_audit_0219'].outcome }}	${{ steps['bw_browser_audit_0219'].conclusion }}
+            bw_browser_audit_0220	${{ steps['bw_browser_audit_0220'].outcome }}	${{ steps['bw_browser_audit_0220'].conclusion }}
+            bw_browser_audit_0221	${{ steps['bw_browser_audit_0221'].outcome }}	${{ steps['bw_browser_audit_0221'].conclusion }}
+            bw_browser_audit_0222	${{ steps['bw_browser_audit_0222'].outcome }}	${{ steps['bw_browser_audit_0222'].conclusion }}
+            bw_browser_audit_0223	${{ steps['bw_browser_audit_0223'].outcome }}	${{ steps['bw_browser_audit_0223'].conclusion }}
+            bw_browser_audit_0224	${{ steps['bw_browser_audit_0224'].outcome }}	${{ steps['bw_browser_audit_0224'].conclusion }}
+            bw_browser_audit_0225	${{ steps['bw_browser_audit_0225'].outcome }}	${{ steps['bw_browser_audit_0225'].conclusion }}
+            bw_browser_audit_0226	${{ steps['bw_browser_audit_0226'].outcome }}	${{ steps['bw_browser_audit_0226'].conclusion }}
+            bw_browser_audit_0227	${{ steps['bw_browser_audit_0227'].outcome }}	${{ steps['bw_browser_audit_0227'].conclusion }}
+            bw_browser_audit_0228	${{ steps['bw_browser_audit_0228'].outcome }}	${{ steps['bw_browser_audit_0228'].conclusion }}
+            bw_browser_audit_0229	${{ steps['bw_browser_audit_0229'].outcome }}	${{ steps['bw_browser_audit_0229'].conclusion }}
+            bw_browser_audit_0230	${{ steps['bw_browser_audit_0230'].outcome }}	${{ steps['bw_browser_audit_0230'].conclusion }}
+            bw_browser_audit_0231	${{ steps['bw_browser_audit_0231'].outcome }}	${{ steps['bw_browser_audit_0231'].conclusion }}
+            bw_browser_audit_0232	${{ steps['bw_browser_audit_0232'].outcome }}	${{ steps['bw_browser_audit_0232'].conclusion }}
+            bw_browser_audit_0233	${{ steps['bw_browser_audit_0233'].outcome }}	${{ steps['bw_browser_audit_0233'].conclusion }}
+            bw_browser_audit_0234	${{ steps['bw_browser_audit_0234'].outcome }}	${{ steps['bw_browser_audit_0234'].conclusion }}
+            bw_browser_audit_0235	${{ steps['bw_browser_audit_0235'].outcome }}	${{ steps['bw_browser_audit_0235'].conclusion }}
+            bw_browser_audit_0236	${{ steps['bw_browser_audit_0236'].outcome }}	${{ steps['bw_browser_audit_0236'].conclusion }}
+            bw_browser_audit_0237	${{ steps['bw_browser_audit_0237'].outcome }}	${{ steps['bw_browser_audit_0237'].conclusion }}
+            bw_browser_audit_0238	${{ steps['bw_browser_audit_0238'].outcome }}	${{ steps['bw_browser_audit_0238'].conclusion }}
+            bw_browser_audit_0239	${{ steps['bw_browser_audit_0239'].outcome }}	${{ steps['bw_browser_audit_0239'].conclusion }}
+            bw_browser_audit_0240	${{ steps['bw_browser_audit_0240'].outcome }}	${{ steps['bw_browser_audit_0240'].conclusion }}
+            waits	${{ steps['waits'].outcome }}	${{ steps['waits'].conclusion }}
+            bw_browser_audit_0242	${{ steps['bw_browser_audit_0242'].outcome }}	${{ steps['bw_browser_audit_0242'].conclusion }}
         # Per shard: the gates whose clause names this shard must have run, the
         # others must show skipped HERE (one that ran is a double run), and the
         # partition itself is re-checked from this checkout's build.yml so a
         # workflow edit that dodges the unit tests still fails inside the job.
-        run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }}
+        run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }} --runner-terminals-v1
 
   corpus:
     needs: scope
@@ -3636,6 +4111,8 @@ jobs:
       actions: read
     env:
       BW_GUI_GIT_EXECUTABLE: /usr/bin/git
+      BW_GUI_PRODUCER_RUNNER_V1: ${{ needs.build.outputs.gui_producer_runner_v1 }}
+      BW_GUI_PRODUCER_RESULT: ${{ needs.build.result }}
       BW_GUI_RUN_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -3648,7 +4125,7 @@ jobs:
         id: admitted_gui
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/admit-official-gui-artifact.mjs test-results/numeric-gui-admission
+        run: node scripts/admit-official-gui-artifact.mjs test-results/numeric-gui-admission --runner-producer-v1
       - name: Bind compiler to admitted artifact SDK
         env:
           BW_ADMITTED_SITE: ${{ steps.admitted_gui.outputs.site }}

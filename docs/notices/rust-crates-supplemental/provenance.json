@@ -1,0 +1,195 @@
+{
+ "schemaVersion": 1,
+ "note": "Licence texts for linked crates whose published crate source has no licence file. Upstream repository texts are at the default-branch commit recorded on 2026-10-24, not necessarily the exact crate release; standard texts are used where the upstream repository has none.",
+ "crates": {
+  "alloc-stdlib@0.2.4": {
+   "directory": "alloc-stdlib-0.2.4",
+   "files": {
+    "LICENSE": {
+     "sha256": "c0c56f26d9c051cac4d200c34c84e7ae9aaa853e01a982a1df08b09931e518ae",
+     "origin": "https://github.com/dropbox/rust-alloc-no-stdlib/blob/0a81fd6928ea3b33c8cd484aa4575d50ffb98012/LICENSE"
+    }
+   }
+  },
+  "bluez-async@0.8.2": {
+   "directory": "bluez-async-0.8.2",
+   "files": {
+    "LICENSE": {
+     "sha256": "bfb693431319dd415497586fd9e573098ab81cced291ec7bdba488c30560b859",
+     "origin": "https://github.com/bluez-rs/bluez-async/blob/c00a25338f7d62c74649b69f601b78b2b0f65093/LICENSE"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+     "origin": "https://github.com/bluez-rs/bluez-async/blob/c00a25338f7d62c74649b69f601b78b2b0f65093/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "eef0c0b2cf6e14147a8362cfa2408a79220cc1ea22bab1a2e188b9cd1d2e0f0d",
+     "origin": "https://github.com/bluez-rs/bluez-async/blob/c00a25338f7d62c74649b69f601b78b2b0f65093/LICENSE-MIT"
+    }
+   }
+  },
+  "custom_debug@0.6.2": {
+   "directory": "custom_debug-0.6.2",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "29dcee5fcf46cb0452ffabc27169591e0b4b297c37b581af9b8bd5dcd269d6dc",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+     "origin": "standard Apache License 2.0 text, byte-identical copy of https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-APACHE"
+    }
+   }
+  },
+  "dlopen2@0.8.2": {
+   "directory": "dlopen2-0.8.2",
+   "files": {
+    "LICENSE": {
+     "sha256": "39fa265207450e77c62e90c5594a06c085b655d8374c7ced4bf7894b6bd95dd2",
+     "origin": "https://github.com/OpenByteDev/dlopen2/blob/c1ca06007390d89e9adf2a4400176eba51ba9c28/LICENSE"
+    }
+   }
+  },
+  "libappindicator-sys@0.9.0": {
+   "directory": "libappindicator-sys-0.9.0",
+   "files": {
+    "LICENSE-APACHE": {
+     "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+     "origin": "https://github.com/tauri-apps/libappindicator-rs/blob/d3af4b3a51c0bf208d4aec23305d5ef6f1785e0a/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "eb227437252b2a7a9c1fc342c93ade1f3d7ce38cc6dd754f613db07d53ceff0b",
+     "origin": "https://github.com/tauri-apps/libappindicator-rs/blob/d3af4b3a51c0bf208d4aec23305d5ef6f1785e0a/LICENSE-MIT"
+    }
+   }
+  },
+  "seahash@4.1.0": {
+   "directory": "seahash-4.1.0",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "4f85369890745a0ce31ac748ca7672a23839532ecb1bcb42785a00acbc968f3e",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE": {
+     "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+     "origin": "https://gitlab.redox-os.org/redox-os/seahash/-/blob/74c02182146d1edd7c91a9e6eddefc7390682a70/LICENSE"
+    }
+   }
+  },
+  "selectors@0.36.1": {
+   "directory": "selectors-0.36.1",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "f9e369c6dd601206a1ca6dafc88e2d9e0ed9f7f97ec549db5ce95d720e5f223c",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE": {
+     "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+     "origin": "standard Mozilla Public License 2.0 text, byte-identical to the LICENSE of the linked crate cssparser 0.36.0 (crates.io)"
+    }
+   }
+  },
+  "bluez-generated@0.4.0": {
+   "directory": "bluez-generated-0.4.0",
+   "files": {
+    "LICENSE": {
+     "sha256": "bfb693431319dd415497586fd9e573098ab81cced291ec7bdba488c30560b859",
+     "origin": "https://github.com/bluez-rs/bluez-async/blob/c00a25338f7d62c74649b69f601b78b2b0f65093/LICENSE"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+     "origin": "https://github.com/bluez-rs/bluez-async/blob/c00a25338f7d62c74649b69f601b78b2b0f65093/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "eef0c0b2cf6e14147a8362cfa2408a79220cc1ea22bab1a2e188b9cd1d2e0f0d",
+     "origin": "https://github.com/bluez-rs/bluez-async/blob/c00a25338f7d62c74649b69f601b78b2b0f65093/LICENSE-MIT"
+    }
+   }
+  },
+  "unic-char-property@0.9.0": {
+   "directory": "unic-char-property-0.9.0",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "21e9c362a2f6e73089a9c592e1b10949de6a34d28d56b8a6a78b3430ce145485",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-MIT"
+    }
+   }
+  },
+  "unic-char-range@0.9.0": {
+   "directory": "unic-char-range-0.9.0",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "f6be05a4131cb918d918442ca3facf7aa5fd439f44b424223aaac59b51980248",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-MIT"
+    }
+   }
+  },
+  "unic-common@0.9.0": {
+   "directory": "unic-common-0.9.0",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "a96e64c15a22adf836f421ccfb551d7d08eda26bcdad1f46ca0ca60e377d5a53",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-MIT"
+    }
+   }
+  },
+  "unic-ucd-ident@0.9.0": {
+   "directory": "unic-ucd-ident-0.9.0",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "fbaee9a648d7c168344e420de289d154eeca5e3c8171bc3c6081faeed1e18050",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-MIT"
+    }
+   }
+  },
+  "unic-ucd-version@0.9.0": {
+   "directory": "unic-ucd-version-0.9.0",
+   "files": {
+    "ATTRIBUTION.txt": {
+     "sha256": "7898507202e7e87e782f75851aafa6b105e11549c476f6a1a043a5a4a7d3fb66",
+     "origin": "authored from the published Cargo.toml authors/license fields"
+    },
+    "LICENSE-APACHE": {
+     "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-APACHE"
+    },
+    "LICENSE-MIT": {
+     "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+     "origin": "https://github.com/open-i18n/rust-unic/blob/37bd705602b5d3a87e44a6b7819906ab588e22ac/LICENSE-MIT"
+    }
+   }
+  }
+ }
+}

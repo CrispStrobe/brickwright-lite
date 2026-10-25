@@ -136,3 +136,42 @@ test('the invariants can fail, each by name (mutation)', () => {
     assert.equal(expectedForShard(noClause, 'heavy').ok, false);
     assert.match(expectedForShard(ghost, 'light').problems.join('\n'), /never run/);
 });
+
+import {runnerSourceMap} from '../scripts/audit-job-steps.mjs';
+
+test('runner scalar source covers every preceding ID/name/order including setup and companions', () => {
+    const mapped = runnerSourceMap(yml);
+    assert.deepEqual(mapped.steps.map(s => [s.id, s.name, s.line]), job.steps.slice(0, -1).map(s => [s.id, s.name, s.line]));
+    assert.ok(mapped.steps.length > 200);assert.ok(mapped.steps.some(s => !s.name), 'unnamed actions are still covered');
+    assert.equal(new Set(mapped.steps.map(s => s.id)).size, mapped.steps.length);
+    assert.ok(mapped.steps.every(s => s.idCount === 1));
+    for (const shard of mapped.job.shards) {
+        const e = expectedForShard(yml, shard);assert.ok(e.ok);
+        assert.deepEqual([...e.mine, ...e.others].sort(), mapped.steps.filter(s => isBrowserStep(s.name)).map(s => s.name).sort());
+    }
+});
+
+test('runner source mapping refuses missing duplicate wrong-reference output and whole-context mutations', () => {
+    const mapped = runnerSourceMap(yml), first = mapped.steps[0].id, second = mapped.steps[1].id;
+    const row = first+"\t${{ steps['"+first+"'].outcome }}\t${{ steps['"+first+"'].conclusion }}";
+    assert.ok(yml.includes('            '+row+'\n'));
+    const auditAt = yml.indexOf('      - name: '+AUDIT_STEP+'\n');
+    const auditChange = (old, value) => yml.slice(0, auditAt)+yml.slice(auditAt).replace(old, value);
+    const variants = [
+        yml.replace('        id: '+first+'\n', ''),
+        yml.replace('        id: '+second+'\n', '        id: '+first+'\n'),
+        yml.replace('        id: '+first+'\n', '        id: '+first+'\n        id: '+first+'\n'),
+        yml.replace('            '+row+'\n', ''),
+        yml.replace('            '+row+'\n', '            '+row+'\n            '+row+'\n'),
+        yml.replace("steps['"+first+"'].outcome", "steps['"+second+"'].outcome"),
+        yml.replace("steps['"+first+"'].outcome", "steps['"+first+"'].outputs.secret"),
+        yml.replace("steps['"+first+"'].outcome", 'toJSON(steps)'),
+        yml.replace("steps['"+first+"'].outcome", "steps['"+first+"'].outcome || 'skipped'"),
+        yml.replace('          BW_BROWSER_RUNNER_TERMINALS_V1: |', '          EXTRA_CONTEXT: ${{ toJSON(steps) }}\n          BW_BROWSER_RUNNER_TERMINALS_V1: |'),
+        yml.replace('          BW_BROWSER_RUNNER_TERMINALS_V1: |', '          BW_BROWSER_RUNNER_TERMINALS_V1: other\n          BW_BROWSER_RUNNER_TERMINALS_V1: |'),
+        auditChange('          GH_TOKEN: ${{ github.token }}', '          GH_TOKEN: ${{ toJSON(steps) }}'),
+        auditChange('          BW_JOB_NAME: browser (${{ matrix.shard }})', '          BW_JOB_NAME: ${{ steps.secret.outputs.value }}'),
+        yml.replace('--runner-terminals-v1\n', '--runner-terminals-v1; echo ${{ toJSON(steps) }}\n')
+    ];
+    for (const changed of variants) { assert.notEqual(changed, yml);assert.throws(() => runnerSourceMap(changed)); }
+});

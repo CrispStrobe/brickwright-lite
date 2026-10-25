@@ -3,6 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {Readable} from 'node:stream';
+import {EventEmitter} from 'node:events';
+import {createServer,request as httpRequest} from 'node:http';
+import {createHash} from 'node:crypto';
 import {admitResultLayout,boundedResultArchive,crc32} from '../tools/model-api/lib/bounded-result.mjs';
 import {boundedResponseBytes,ARTIFACT_BYTES} from '../tools/model-api/lib/bounded-http.mjs';
 import {readBody} from '../tools/model-api/lib/http.mjs';
@@ -76,6 +79,47 @@ test('incoming request bytes, declarations and stalled body remain bounded',asyn
  const req=Readable.from([Buffer.from('abc')]);req.headers={'content-length':'3'};assert.equal((await readBody(req)).toString(),'abc');
  const declared={headers:{'content-length':'1048577'},get body(){throw Error('must not consume');}};await assert.rejects(readBody(declared),e=>e.status===413);
  const mismatch=Readable.from(['abc']);mismatch.headers={'content-length':'5'};await assert.rejects(readBody(mismatch),e=>e.status===400);
- let destroyed=0;const stalled={headers:{},[Symbol.asyncIterator](){return{next:()=>new Promise(()=>{}),return:async()=>({done:true})};},destroy(){destroyed++;}};
+ let destroyed=0;const stalled=Object.assign(new EventEmitter(),{headers:{},destroy(){destroyed++;}});
  await assert.rejects(readBody(stalled,{timeoutMs:20}),e=>e.status===408);assert.equal(destroyed,1);
+});
+
+const settleRequest=(port,{headers,chunks})=>new Promise(resolve=>{
+ const out={status:null,body:'',requestError:null,responseComplete:false};
+ const req=httpRequest({host:'127.0.0.1',port,method:'POST',path:'/api/v1/runs',headers},res=>{out.status=res.statusCode;out.headers=res.headers;res.setEncoding('utf8');res.on('data',d=>{out.body+=d;});res.on('end',()=>{out.responseComplete=true;resolve(out);});res.on('error',()=>resolve(out));});
+ req.on('error',e=>{out.requestError=e.code??'error';if(out.status===null)resolve(out);});
+ for(const chunk of chunks)req.write(chunk);req.end();
+});
+test('a chunked over-limit body receives the JSON 413 refusal before its request is ended',async()=>{
+ const {default:handler}=await import('../tools/model-api/api/handler.mjs');
+ const token='z'.repeat(43),names=['MODEL_API_AGENT_TOKENS','MODEL_API_MASTER_KEY','MODEL_API_REPOSITORY','MODEL_API_REF','MODEL_API_WORKER_REVISION','MODEL_API_GITHUB_TOKEN','MODEL_API_ADMISSION_REPOSITORY','MODEL_API_ADMISSION_BRANCH','MODEL_API_ADMISSION_TOKEN','MODEL_API_ADMISSION_EPOCH'];
+ const saved=Object.fromEntries(names.map(n=>[n,process.env[n]])),fetchBefore=globalThis.fetch;let network=0;
+ Object.assign(process.env,{MODEL_API_AGENT_TOKENS:JSON.stringify([{id:'probe',sha256:createHash('sha256').update(token).digest('hex')}]),MODEL_API_MASTER_KEY:'07'.repeat(32),MODEL_API_REPOSITORY:'owner/worker',MODEL_API_REF:'fixture-tag',
+  MODEL_API_WORKER_REVISION:'a'.repeat(40),MODEL_API_GITHUB_TOKEN:'fixture',MODEL_API_ADMISSION_REPOSITORY:'owner/state',MODEL_API_ADMISSION_BRANCH:'main',MODEL_API_ADMISSION_TOKEN:'fixture',MODEL_API_ADMISSION_EPOCH:'fixture-epoch-0001'});
+ globalThis.fetch=async()=>{network++;throw Error('must not call');};
+ const server=createServer((req,res)=>{handler(req,res);});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ try{
+  // Same shape as the hosted probe: 16 x 64 KiB chunks plus one byte, no Content-Length.
+  const chunks=[...Array.from({length:16},()=>Buffer.alloc(65536,120)),Buffer.from('x')];
+  const r=await settleRequest(server.address().port,{headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'Transfer-Encoding':'chunked'},chunks});
+  assert.equal(r.status,413,'over-limit chunked body must be answered, not reset: '+JSON.stringify({requestError:r.requestError}));
+  assert.equal(r.responseComplete,true);assert.equal(JSON.parse(r.body).error.code,'too-large');assert.match(r.headers['content-type'],/^application\/json/);
+  assert.equal(network,0);
+  const ok=await settleRequest(server.address().port,{headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,'Transfer-Encoding':'chunked'},chunks:[Buffer.from('{"')]});
+  assert.equal(ok.status,400);assert.equal(JSON.parse(ok.body).error.code,'invalid-json');
+ }finally{
+  await new Promise(r=>{server.closeAllConnections?.();server.close(r);});globalThis.fetch=fetchBefore;
+  for(const n of names){if(saved[n]===undefined)delete process.env[n];else process.env[n]=saved[n];}
+ }
+});
+test('a refused streamed body is ended only after its response finishes',async()=>{
+ const fakeRequest=()=>{const r=new EventEmitter();r.headers={};r.destroyed=0;r.paused=0;r.destroy=()=>{r.destroyed++;};r.pause=()=>{r.paused++;};return r;};
+ const fakeResponse=()=>{const r=new EventEmitter();r.headers={};r.setHeader=(k,v)=>{r.headers[k.toLowerCase()]=v;};return r;};
+ const big=fakeRequest(),bigRes=fakeResponse(),pending=readBody(big,{res:bigRes});big.emit('data',Buffer.alloc(1048576,120));big.emit('data',Buffer.from('x'));
+ await assert.rejects(pending,e=>e.status===413&&e.code==='too-large');
+ assert.equal(big.destroyed,0,'request must survive until the refusal is written');assert.equal(big.paused,1);assert.equal(bigRes.headers.connection,'close');
+ bigRes.emit('finish');assert.equal(big.destroyed,1);bigRes.emit('close');assert.equal(big.destroyed,1);
+ const stalled=fakeRequest(),stalledRes=fakeResponse();await assert.rejects(readBody(stalled,{timeoutMs:20,res:stalledRes}),e=>e.status===408&&e.code==='body-timeout');
+ assert.equal(stalled.destroyed,0);stalledRes.emit('close');assert.equal(stalled.destroyed,1);
+ stalled.emit('data',Buffer.from('late'));stalled.emit('end');
+ const bare=fakeRequest();await assert.rejects(readBody(bare,{timeoutMs:20}),e=>e.status===408);assert.equal(bare.destroyed,1,'without a response the request is still ended');
 });

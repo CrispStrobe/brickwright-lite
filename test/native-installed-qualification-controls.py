@@ -102,6 +102,13 @@ class Profile(unittest.TestCase):
             with self.subTest(extra=key), self.assertRaises(ValueError):
                 q.profile(json.dumps({**pins(), key: '/private/input'}))
 
+    def test_optional_compiled_model_profile_pin_is_admitted_only_as_a_complete_hash(self):
+        compiled = {**pins(), 'BW_RENODE_MICROPYTHON_PROFILE_SHA256': 'c' * 64}
+        self.assertEqual(q.profile(json.dumps(compiled)), compiled)
+        for value in ['', 'C' * 64, 'c' * 63, '../profile.json', 'c' * 64 + '\n']:
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                q.profile(json.dumps({**pins(), 'BW_RENODE_MICROPYTHON_PROFILE_SHA256': value}))
+
     def test_unknown_environment_key_refuses_before_it_can_reach_compiler(self):
         with self.assertRaises(ValueError):
             q.profile(json.dumps({**pins(), 'TAURI_CONFIG': '{}'}))

@@ -5,10 +5,12 @@
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {copyFile, cp, mkdir, readdir, readFile, realpath, lstat, writeFile, chmod} from 'node:fs/promises';
-import {dirname, join, resolve, relative, sep} from 'node:path';
+import {basename, dirname, join, resolve, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {freezeResourceProfile} from './lib/spike-resource-profile.mjs';
 import {requireStagingModes, normalizePackageModes} from './lib/spike-linux-package-modes.mjs';
+import {requireRuntimeNotices, requireInventoryForLock, collectCrateNotices} from './lib/spike-linux-notices.mjs';
+import {METADATA_ARGS, buildInventory, render as renderCrateInventory} from './gen-spike-linux-crate-inventory.mjs';
 
 const [supportArg, runtimeArg, frontendArg, outputArg, ...options] = process.argv.slice(2);
 let prepareOnly = false;
@@ -25,7 +27,8 @@ if (!outputArg || process.platform !== 'linux' || process.arch !== 'x64') {
 }
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const support = await realpath(supportArg), runtime = await realpath(runtimeArg), frontend = await realpath(frontendArg);
-const output = resolve(outputArg);
+// Resolve the existing parent so a symlinked alias cannot place output inside an input or the repository.
+const output = join(await realpath(dirname(resolve(outputArg))), basename(resolve(outputArg)));
 if ([repo, support, runtime, frontend].some(root => output === root || output.startsWith(root + sep))) {
     throw new Error('Keep generated packages outside source and input directories');
 }
@@ -56,6 +59,12 @@ for (const name of ['.renode-root', 'scripts/monitor.py']) {
 const notices = await readdir(join(runtime, 'licenses'));
 if (!notices.includes('renode-license') || notices.length > 128 ||
     notices.some(name => !/^[A-Za-z0-9_.-]+-license$/.test(name))) throw new Error('Unexpected runtime notice closure');
+requireRuntimeNotices(notices);
+// The checked-in linked-crate inventory and licence review must describe this exact Cargo.lock.
+const lockText = await readFile(join(repo, 'apps/tauri/src-tauri/Cargo.lock'), 'utf8');
+const crateInventoryText = await readFile(join(repo, 'docs/generated/spike-linux-crate-inventory.json'), 'utf8');
+const crateInventory = JSON.parse(crateInventoryText);
+requireInventoryForLock(crateInventory, lockText);
 for (const name of notices.sort()) {
     const item = await regular(runtime, `licenses/${name}`, 1024 * 1024);
     nativeFiles.push({name: `licenses/${name}`, ...item});
@@ -163,6 +172,16 @@ for (const [source, destination] of Object.entries(config.bundle.resources)) {
     const file = join(installedResources, destination);await mkdir(dirname(file), {recursive: true});await copyFile(source, file);
 }
 await chmod(join(installedResources, 'renode/renode'), 0o755);
+// Notice retention for the linked Rust crates: their own licence files plus the inventory and review.
+const metadata = JSON.parse(execFileSync('cargo', METADATA_ARGS, {cwd: join(desktopSource, crateRelative), encoding: 'utf8', maxBuffer: 1 << 26}));
+if (renderCrateInventory(buildInventory(metadata, lockText)) !== crateInventoryText) throw new Error('Linked crate set differs from the checked-in inventory');
+const docRoot = join(packageRoot, 'usr/share/doc/brickwright');
+const crateNotices = await collectCrateNotices({packages: metadata.packages, inventory: crateInventory,
+    destination: join(docRoot, 'rust-crates'), supplementalRoot: join(repo, 'docs/notices/rust-crates-supplemental'),
+    supplemental: JSON.parse(await readFile(join(repo, 'docs/notices/rust-crates-supplemental/provenance.json'), 'utf8')).crates});
+for (const name of ['LICENSE', 'THIRD-PARTY-NOTICES.md', 'docs/generated/spike-linux-crate-inventory.json', 'docs/spike-linux-licence-review.json']) {
+    await copyFile(join(repo, name), join(docRoot, basename(name)));
+}
 await mkdir(join(packageRoot, 'usr/share/applications'), {recursive: true});
 await writeFile(join(packageRoot, 'usr/share/applications/brickwright.desktop'),
     '[Desktop Entry]\nType=Application\nName=Brickwright\nExec=brickwright-tauri\nTerminal=false\nCategories=Education;\n');
@@ -175,5 +194,5 @@ const deb = join(output, `brickwright_${version}_amd64.deb`);
 execFileSync('dpkg-deb', ['--build', '--root-owner-group', '--threads-max=2', packageRoot, deb], {stdio: 'inherit'});
 await writeFile(join(output, 'package-receipt.json'), JSON.stringify({schemaVersion: 1,
     sha256: digest(await readFile(deb)), binarySha256: digest(await readFile(binary)),
-    runtimeSha256: pins.BW_RENODE_SHA256, firmwareBundled: Object.keys(profiles).length > 0, sourceBuiltFirmwareProfiles: Object.keys(profiles), externallySuppliedFirmwareBundled: false, redistributionValidated: false}, null, 2) + '\n');
+    runtimeSha256: pins.BW_RENODE_SHA256, crateNoticeFiles: crateNotices.copied.length, crateLicenceFilesSupplemented: crateNotices.supplemented, firmwareBundled: Object.keys(profiles).length > 0, sourceBuiltFirmwareProfiles: Object.keys(profiles), externallySuppliedFirmwareBundled: false, redistributionValidated: false}, null, 2) + '\n');
 console.log(`Local package assembled at ${deb}. Source-built profiles: ${Object.keys(profiles).join(', ') || 'none'}. External firmware is supplied separately through the native chooser.`);

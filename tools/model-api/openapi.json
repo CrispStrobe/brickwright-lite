@@ -270,8 +270,11 @@
           "401": {
             "description": "Authentication required"
           },
+          "408": {
+            "description": "Request body not received within the 10 s body deadline"
+          },
           "413": {
-            "description": "Body or compressed dispatch too large"
+            "description": "Body (declared or chunked) or compressed dispatch too large; JSON refusal written before the request is ended"
           },
           "422": {
             "description": "Invalid typed input"

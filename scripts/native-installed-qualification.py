@@ -33,6 +33,10 @@ HASH_PINS = {
     'BW_RENODE_NUTTX_STATE_SCRIPT_SHA256', 'BW_RENODE_NUTTX_STATE_CONFIG_SHA256',
     'BW_RENODE_NUTTX_MANIFEST_SHA256',
 }
+# A runtime with compiled Prime models needs compiled MicroPython support, and
+# the launcher selects that mode only from this compile-time pin. Without it the
+# executable can only run legacy source-overlay support.
+OPTIONAL_HASH_PINS = {'BW_RENODE_MICROPYTHON_PROFILE_SHA256'}
 
 
 def require(condition, message):
@@ -55,11 +59,12 @@ def unique_object(pairs):
 def profile(text):
     require(isinstance(text, str) and len(text.encode()) <= 16384, 'Bounded pin declaration required')
     pins = json.loads(text, object_pairs_hook=unique_object)
-    require(isinstance(pins, dict) and set(pins) == set(ROOT_PINS) | HASH_PINS,
+    required = set(ROOT_PINS) | HASH_PINS
+    require(isinstance(pins, dict) and required <= set(pins) <= required | OPTIONAL_HASH_PINS,
             'Exactly the closed resource pin vocabulary is required')
     for key, value in ROOT_PINS.items():
         require(pins[key] == value, 'Resource roots must use the fixed relative layout')
-    for key in HASH_PINS:
+    for key in HASH_PINS | (OPTIONAL_HASH_PINS & set(pins)):
         require(isinstance(pins[key], str) and re.fullmatch('[0-9a-f]{64}', pins[key]),
                 'Resource hashes must be complete lowercase SHA256 values')
     return pins

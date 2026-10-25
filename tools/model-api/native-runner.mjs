@@ -5,9 +5,11 @@ import Creator from '../../overlay/scratch-gui/src/lib/sb3-creator-register-art.
 import {solidOverlaps} from '../../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 import {catalogFrom,prepareModel} from '../../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {runRobotLabProgram} from '../../test/helpers/robot-lab-direct-vm.mjs';
+import {supportsWasmSimd} from '../../overlay/scratch-gui/src/lib/bw-sim/physics/wasm-simd.js';import {engineAssetIdentity} from './lib/engine-identity.mjs';
 import {validateSubmission,ApiError,LIMITS} from './lib/protocol.mjs';import {sha256} from './lib/crypto.mjs';import {createBatchObserver,summarize} from './lib/observations.mjs';
 const root=new URL('../../',import.meta.url),catalog=catalogFrom(JSON.parse(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json',root))));
 const readerHash=sha256(readFileSync(new URL('overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js',root)));
+const engineAsset=Object.freeze(engineAssetIdentity({root,simd:supportsWasmSimd()}));
 const JSZip=createRequire(new URL('packages/scratch-gui/package.json',root))('jszip');
 const allowedOpcode=op=>/^(?:event_|control_|operator_|data_|procedures_|argument_)/.test(op)||['looks_say','looks_sayforsecs','looks_think','looks_thinkforsecs','sensing_timer','sensing_resettimer'].includes(op)||(/^robotlab_/.test(op)&&!['robotlab_loadModel','robotlab_resetSimulation','robotlab_stopSimulation'].includes(op));
 export async function measureSubmission(raw,{runtimeRevision='local',measurementRevision='PR1255'}={}){
@@ -55,7 +57,7 @@ export async function measureSubmission(raw,{runtimeRevision='local',measurement
  let phaseIndex=0;for(const sample of samples){if(dense){while(phaseIndex<result.track.length-1&&result.track[phaseIndex].t<sample.timeMs)phaseIndex++;sample.phase=result.track[phaseIndex]?.phase??'unknown';}else sample.phase=result.track[Math.round(sample.elapsedMs/25)]?.phase??'unknown';}
  for(const f of result.track)for(const p of Object.values(f.bodies))if(![...p.position,...p.rotation].every(Number.isFinite))throw new ApiError(422,'nonfinite-physics','Physics produced a nonfinite body pose');
  const report={version:1,status:errors.length?'failed':'completed',qualification:{status:'not-evaluated',reason:'Measurements do not grant mechanism or library admission'},
-  runtime:{revision:runtimeRevision,measurementRevision,measurementReaderSha256:readerHash,node:process.version,engine:'Jolt',physicsStepMs:5,vmFrameMs:25,actualSampleMs:dense?5:stride*25,wallMs:Number(process.hrtime.bigint()-started)/1e6},
+  runtime:{revision:runtimeRevision,measurementRevision,measurementReaderSha256:readerHash,node:process.version,engine:'Jolt',engineAsset,physicsStepMs:5,vmFrameMs:25,actualSampleMs:dense?5:stride*25,wallMs:Number(process.hrtime.bigint()-started)/1e6},
   input:{modelName:input.model.name,modelSha256:sha256(input.model.text),programName:input.program?.name??null,programSha256:input.program?sha256(input.program.text):null,executedProgramSha256:sha256(source),settings:input.settings,normalizedMeasurementsSha256:sha256(JSON.stringify(input.measurements))},
   measurementDefinitions:observer.definitions,
   completion:{programFinished:!!result.finishedAt,finishedAtMs:result.finishedAt,reason:result.finishedAt?'program-finished':'requested-time-budget',sceneTimeMs:result.track.at(-1)?.t??0},
