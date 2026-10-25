@@ -4,7 +4,7 @@
 
 Follow the [ordered plan](PLAN.md#current-imported-circuit-and-model-accuracy-sequence--2026-10-25)
 and [current claim](lanes/2026-10-25-imported-circuit-instrument-campaign.md):
-current-pinned baseline → licensed distinct imported schematics → demonstrated
+current-pinned baseline → source-admitted distinct imported inputs → demonstrated
 recurring-cause repairs in owned repositories → one existing part's reference
 accuracy → one demonstrated deterministic instrument effect. Stop after item 5.
 
@@ -12,8 +12,20 @@ The first item is accepted: run40172711900 passed 312/312 and 87,488 independent
 checks at Board761153ff/CUI91d8434, with unchanged case definitions and all 240
 waveform CSVs identical to the preceding originals. See the
 [result handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) for exact identities.
-Imported coverage still needs a genuinely distinct, file-level-admitted source
-cohort; generated device twins and historical import counts do not fill that gap.
+Imported evidence now covers307 graph-distinct small structures in private
+no-egress research,not307 passing or redistributable designs:67 pass,8 partial,
+4 disagree,228 not-run. ActualCLI 32-input cross-checks provide19 consistent
+cases/169 conservation checks/81 descriptive oracle agreements; uncertain
+reference eligibility remains explicit. Both long passive-RC watch requests
+refuse before capture creation. The source repair claim is
+[CUI PR119](https://github.com/CrispStrobe/bw-circuit-ui/pull/119): exact PMOS
+bulk wiring,NMOS implicit body-current conservation,and effective-step work
+preflight,with defaults and numerical bounds preserved. Implementation and
+qualified package adoption remain pending; no new model accuracy claim.
+A separate future long-passive stream design must distinguish acquisition from
+report cadence, retain all 5000 requested samples and whole-capture work,handle
+meter history/quadrature truthfully,and keep existing defaults/refusals intact.
+Generated twins and alternate formats never increase distinct-design coverage.
 Aperture/audio already landed and is regression coverage, not an unimplemented
 follow-up. The older sequence below remains completed historical evidence.
 

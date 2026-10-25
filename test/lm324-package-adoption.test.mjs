@@ -19,7 +19,7 @@ const outputVoltage = (circuit, channel) => {
 test('the pinned packages expose a truthful LM324 face and four live channels', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
     assert.equal(pins['bw-board'], '761153ff92d521c01107ee7b32922ba7adc10ee2');
-    assert.equal(pins['bw-circuit-ui'], '91d8434a79d373cef2837c137ab356356f1a3b44');
+    assert.equal(pins['bw-circuit-ui'], '408c179a9bf5ffc28a4626e9ff5a78fc35cdc671');
 
     const sidecar = JSON.parse(readFileSync(
         path.join(root, 'node_modules/bw-circuit-ui/src/parts-data/lm324.json'), 'utf8'));

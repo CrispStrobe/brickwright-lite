@@ -7,8 +7,9 @@
 // the pane's dynamic import of bw-sim/sim-lab.js (chunk "bw-sim-lab").
 
 import {Box3, BufferGeometry, Color, Float32BufferAttribute, GridHelper, LineBasicMaterial, LineSegments, MOUSE, Mesh, MeshBasicMaterial,
-    PerspectiveCamera, Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer} from 'three';
+    PerspectiveCamera, Raycaster, Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {createMeasurementPicker} from '../measurements/picking.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {LDU_M, dirToWorld, lduToWorld} from '../contracts.js';
 import {buildSimScene, applySnapshot, movingMassCentre} from './sim-scene3d.js';
@@ -328,6 +329,18 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         return meshes.length;
     };
 
+    const measurementRay = new Raycaster();
+    const measurementPicker = createMeasurementPicker({canvas, highlight, pick: (x, y) => {
+        const rect = canvas.getBoundingClientRect();
+        if (!(rect.width > 0 && rect.height > 0)) return null;
+        camera.updateMatrixWorld();
+        built.scene.updateMatrixWorld(true);
+        measurementRay.setFromCamera(new Vector2((x - rect.left) / rect.width * 2 - 1, 1 - (y - rect.top) / rect.height * 2), camera);
+        // Per-part proxies preserve authored identity in both ordinary and instanced scenes.
+        const hit = measurementRay.intersectObjects(allMeshes(), false)[0];
+        return hit ? hit.object.name.replace(/#hub$/, '') : null;
+    }});
+
     // A big (instanced) model is drawn on demand: a frame where no body moved, the camera stayed,
     // the size and the overlay are the same and nothing pulses is not drawn again — the pane's
     // animation loop asks every frame, and redrawing thousands of unchanged parts would keep the
@@ -428,6 +441,7 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         canvas.removeEventListener('webglcontextlost', onLost);
         canvas.removeEventListener('keydown', onKey);
         canvas.removeEventListener('pointerdown', focusCanvas);
+        measurementPicker.dispose();
         controls.dispose();
         built.dispose();
         renderer.dispose();
@@ -455,6 +469,16 @@ export const createSimView3D = ({container, model, mechanism, read, catalog = nu
         hoseCount: () => (simHoses ? simHoses.count : 0),
         /** The sensor rays as last drawn, {from, to} in world space (metres), for the browser gate. */
         setMeasurements: read => { measurementRows = read; dirty = true; },
+        setMeasurementPick: handler => measurementPicker.set(handler),
+        /** Read-only projection for scene-selection and accessibility controls. */
+        partScreenPoint: id => {
+            const mesh = built.partMeshes.get(id);
+            if (!mesh) return null;
+            built.scene.updateMatrixWorld(true); camera.updateMatrixWorld();
+            const point = new Box3().setFromObject(mesh).getCenter(new Vector3()).project(camera);
+            const rect = canvas.getBoundingClientRect();
+            return {x: rect.left + (point.x + 1) * rect.width / 2, y: rect.top + (1 - point.y) * rect.height / 2, z: point.z};
+        },
         sensorRays: () => (rays.visible ? lastRays.filter(Boolean).map(r => ({...r})) : []),
         /** The pane's view buttons: 'home', 'top', 'front' or 'side'; and Fit. */
         view: name => { viewFrom(name); dirty = true; },

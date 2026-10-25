@@ -296,7 +296,7 @@ jobs:
   # joins a group, whatever cancel-in-progress says.
   #
   # Instead: a commit that is no longer main's tip by the time its run starts
-  # still gets `build`, all four `unit` shards and `corpus` (source and unit verdicts
+  # still gets `build`, all six `unit` shards and `corpus` (source and unit verdicts
   # remain attributable to that commit), and skips the heavy tail —
   # browser, fpga-surface, deploy, verify-gui — which the tip's own run re-covers
   # anyway, unless main advanced only through excluded documentation (which has
@@ -334,13 +334,13 @@ jobs:
   # Each shard retains identical integrated prerequisites and its own audited
   # file/skip/GUI-resolution census. No Pages artifact is produced here.
   unit:
-    name: unit (${{ matrix.shard }}/4)
+    name: unit (${{ matrix.shard }}/6)
     needs: scope
     if: needs.scope.outputs.fast == 'true'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -820,7 +820,7 @@ jobs:
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:
-          BW_TEST_SHARD: ${{ matrix.shard }}/4
+          BW_TEST_SHARD: ${{ matrix.shard }}/6
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
           # The two *-native Array tests refuse the vendored copy and require an
           # explicit frozen supplier file: one exact upstream commit, bytes bound.
@@ -838,7 +838,7 @@ jobs:
           set -o pipefail
           # This shard partitions the complete non-corpus suite; the two corpus
           # walks remain in their existing required job. They run in the `corpus` job below, in parallel with this
-          # one, and deployment requires corpus, all four unit shards and the build. `npm test` locally is still all of it.
+          # one, and deployment requires corpus, all six unit shards and the build. `npm test` locally is still all of it.
           mkdir -p test-results
           # The runner's OWN exit status is captured and returned at the end, so
           # the two readings below print on red runs too — the days they matter
@@ -2249,6 +2249,21 @@ jobs:
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
         run: npm run verify:sim-lab -- --part=ui
+
+      - name: Retain successful Robot Lab measurement project and observations
+        id: measurement_success
+        timeout-minutes: 5
+        if: ${{ !cancelled() && steps.bw_browser_audit_0080.outcome == 'success' && matrix.shard == 'robotlab' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sim-lab-measurement-success
+          path: |
+            artifacts/sim-lab/sim-lab-measurement-edit.sb3
+            artifacts/sim-lab/sim-lab-measurement-edit.json
+            artifacts/sim-lab/sim-lab-measurement-runs.csv
+            artifacts/sim-lab/sim-lab-measurement-experiments.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Browser gate — Robot Lab on a school tablet, real touch input at 1024×768
         id: bw_browser_audit_0081
@@ -3774,6 +3789,7 @@ jobs:
             bw_browser_audit_0078	${{ steps['bw_browser_audit_0078'].outcome }}	${{ steps['bw_browser_audit_0078'].conclusion }}
             bw_browser_audit_0079	${{ steps['bw_browser_audit_0079'].outcome }}	${{ steps['bw_browser_audit_0079'].conclusion }}
             bw_browser_audit_0080	${{ steps['bw_browser_audit_0080'].outcome }}	${{ steps['bw_browser_audit_0080'].conclusion }}
+            measurement_success	${{ steps['measurement_success'].outcome }}	${{ steps['measurement_success'].conclusion }}
             bw_browser_audit_0081	${{ steps['bw_browser_audit_0081'].outcome }}	${{ steps['bw_browser_audit_0081'].conclusion }}
             bw_browser_audit_0082	${{ steps['bw_browser_audit_0082'].outcome }}	${{ steps['bw_browser_audit_0082'].conclusion }}
             bw_browser_audit_0083	${{ steps['bw_browser_audit_0083'].outcome }}	${{ steps['bw_browser_audit_0083'].conclusion }}
@@ -3782,8 +3798,8 @@ jobs:
             bw_browser_audit_0086	${{ steps['bw_browser_audit_0086'].outcome }}	${{ steps['bw_browser_audit_0086'].conclusion }}
             bw_browser_audit_0087	${{ steps['bw_browser_audit_0087'].outcome }}	${{ steps['bw_browser_audit_0087'].conclusion }}
             bw_browser_audit_0088	${{ steps['bw_browser_audit_0088'].outcome }}	${{ steps['bw_browser_audit_0088'].conclusion }}
-            bw_browser_audit_0089	${{ steps['bw_browser_audit_0089'].outcome }}	${{ steps['bw_browser_audit_0089'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_2: |
+            bw_browser_audit_0089	${{ steps['bw_browser_audit_0089'].outcome }}	${{ steps['bw_browser_audit_0089'].conclusion }}
             bw_browser_audit_0090	${{ steps['bw_browser_audit_0090'].outcome }}	${{ steps['bw_browser_audit_0090'].conclusion }}
             arcade_rotation_browser	${{ steps['arcade_rotation_browser'].outcome }}	${{ steps['arcade_rotation_browser'].conclusion }}
             bw_browser_audit_0092	${{ steps['bw_browser_audit_0092'].outcome }}	${{ steps['bw_browser_audit_0092'].conclusion }}
@@ -3883,8 +3899,8 @@ jobs:
             bw_browser_audit_0186	${{ steps['bw_browser_audit_0186'].outcome }}	${{ steps['bw_browser_audit_0186'].conclusion }}
             bw_browser_audit_0187	${{ steps['bw_browser_audit_0187'].outcome }}	${{ steps['bw_browser_audit_0187'].conclusion }}
             bw_browser_audit_0188	${{ steps['bw_browser_audit_0188'].outcome }}	${{ steps['bw_browser_audit_0188'].conclusion }}
-            bw_browser_audit_0189	${{ steps['bw_browser_audit_0189'].outcome }}	${{ steps['bw_browser_audit_0189'].conclusion }}
           BW_BROWSER_RUNNER_TERMINALS_V1_3: |
+            bw_browser_audit_0189	${{ steps['bw_browser_audit_0189'].outcome }}	${{ steps['bw_browser_audit_0189'].conclusion }}
             bw_browser_audit_0190	${{ steps['bw_browser_audit_0190'].outcome }}	${{ steps['bw_browser_audit_0190'].conclusion }}
             bw_browser_audit_0191	${{ steps['bw_browser_audit_0191'].outcome }}	${{ steps['bw_browser_audit_0191'].conclusion }}
             bw_browser_audit_0192	${{ steps['bw_browser_audit_0192'].outcome }}	${{ steps['bw_browser_audit_0192'].conclusion }}
@@ -3938,10 +3954,6 @@ jobs:
             bw_browser_audit_0240	${{ steps['bw_browser_audit_0240'].outcome }}	${{ steps['bw_browser_audit_0240'].conclusion }}
             waits	${{ steps['waits'].outcome }}	${{ steps['waits'].conclusion }}
             bw_browser_audit_0242	${{ steps['bw_browser_audit_0242'].outcome }}	${{ steps['bw_browser_audit_0242'].conclusion }}
-        # Per shard: the gates whose clause names this shard must have run, the
-        # others must show skipped HERE (one that ran is a double run), and the
-        # partition itself is re-checked from this checkout's build.yml so a
-        # workflow edit that dodges the unit tests still fails inside the job.
         run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }} --runner-terminals-v1
 
   corpus:

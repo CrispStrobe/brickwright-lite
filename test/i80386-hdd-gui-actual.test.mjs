@@ -1,11 +1,47 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {createHash} from 'node:crypto';
 import vm from 'node:vm';
-import {spawnSync} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../',import.meta.url));
 const readOriginalControlSummary = stdout => JSON.parse(stdout.trim());
+const runControlChildren = async (specs,deadlineMs) => {
+    const started=performance.now(),children=[];let expired=false,aggregateOverflow=false,capturedBytes=0;
+    const stop=()=>{for(const child of children)child.kill('SIGKILL');};
+    const timer=setTimeout(()=>{expired=true;stop();},deadlineMs);
+    const launch=spec=>new Promise(resolve=>{
+        const child=spawn(spec.argv[0],spec.argv.slice(1),{cwd:root,stdio:['pipe','pipe','pipe']});
+        children.push(child);
+        const output={stdout:[],stderr:[]},length={stdout:0,stderr:0};let error=null,overflow=false;
+        for(const stream of ['stdout','stderr'])child[stream].on('data',chunk=>{
+            length[stream]+=chunk.length;
+            if(length[stream]>4*1024*1024){overflow=true;stop();return;}
+            if(capturedBytes+chunk.length>4*1024*1024){aggregateOverflow=true;stop();return;}
+            capturedBytes+=chunk.length;output[stream].push(chunk);
+        });
+        child.on('error',failure=>{error=failure;});
+        child.on('close',(code,signal)=>resolve({code,signal,error,overflow,
+            stdout:Buffer.concat(output.stdout).toString('utf8'),
+            stderr:Buffer.concat(output.stderr).toString('utf8')}));
+        child.stdin.on('error',failure=>{error??=failure;child.kill('SIGKILL');});
+        child.stdin.end(spec.input || '');
+    });
+    try{return {results:await Promise.all(specs.map(launch)),expired,aggregateOverflow,capturedBytes,elapsedMs:performance.now()-started};}
+    finally{clearTimeout(timer);}
+};
+
+test('dormant v8 dispatch registration preserves the entire PR workflow', () => {
+    const workflow = fs.readFileSync(new URL('../.github/workflows/i80386-hdd-gui-actual.yml',import.meta.url),'utf8');
+    const registration = `  workflow_dispatch:\n    inputs:\n      pull_request:\n        description: Owned ready pull request number\n        required: true\n        type: string\n      source_head:\n        description: Reviewed 40-hex source head\n        required: true\n        type: string\n      request_sha256:\n        description: Reviewed canonical request SHA-256\n        required: true\n        type: string\n      tag_name:\n        description: One reviewed source tag name\n        required: true\n        type: string\n`;
+    const anchor = 'on:\n  pull_request:\n    types: [opened, synchronize, reopened, labeled]\n';
+    assert.equal(workflow.split(registration).length,2,'one exact closed four-string manual trigger');
+    assert.ok(workflow.includes(anchor+registration),'manual trigger follows the unchanged PR trigger');
+    assert.equal(createHash('sha256').update(workflow.replace(registration,'')).digest('hex'),
+        '29b2a042fe32c928fb5dbc7a4bef3035af9900eff1f7f51ac4b71e9c0781c7a2',
+        'all permissions, concurrency, five job guards and their steps retain the reviewed bytes');
+});
 
 // These are manufactured original-byte controls, never a browser/guest replay.
 // The independent reader is loaded directly; no producer grading helper is used.
@@ -2501,11 +2537,48 @@ test('original controls stdout is one complete JSON summary without ignored outp
     }
 });
 
-test('standalone original reader: complete manufactured packet and coherent negative controls', () => {
-    const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:controls,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
-    assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
-    const summary=readOriginalControlSummary(result.stdout);
-    assert.ok(summary.controls>=25); assert.equal(summary.failures,0); assert.equal(summary.errors,0);
+test('parallel original control deadline and child failures cannot be ignored', async () => {
+    const failure=await runControlChildren([{argv:['/usr/bin/python3','-c','import sys;sys.exit(3)']}],1000);
+    assert.equal(failure.results[0].code,3);assert.equal(failure.results[0].error,null);assert.equal(failure.expired,false);
+    const timeout=await runControlChildren([{argv:['/usr/bin/python3','-c','import time;time.sleep(1)']}],10);
+    assert.equal(timeout.expired,true);assert.notEqual(timeout.results[0].code,0);
+    const bytes=3*1024*1024;
+    const emitted='import sys;sys.stdout.buffer.write(b"x"*'+bytes+')';
+    const aggregate=await runControlChildren([
+        {argv:['/usr/bin/python3','-c',emitted]},
+        {argv:['/usr/bin/python3','-c',emitted]}],5000);
+    assert.equal(aggregate.expired,false);
+    assert.equal(aggregate.aggregateOverflow,true,'two individually bounded children exceed the one retained 4 MiB budget');
+    assert.ok(aggregate.capturedBytes<=4*1024*1024);
+    assert.ok(aggregate.results.every(result=>result.overflow===false && result.stdout.length<4*1024*1024));
+});
+
+test('standalone original reader: complete manufactured packet and coherent negative controls', async () => {
+    const original='suite=unittest.defaultTestLoader.loadTestsFromTestCase(Originals)';
+    assert.ok(controls.includes(original));
+    const specs=[];
+    for(const parity of [0,1]){
+        const selected=controls.replace(original,
+            'suite=unittest.TestSuite(Originals(name) for index,name in enumerate(unittest.defaultTestLoader.getTestCaseNames(Originals)) if index%2=='+parity+')');
+        assert.notEqual(selected,controls);
+        specs.push({argv:['/usr/bin/python3','-B','-',root],input:selected});
+    }
+    const {results,expired,aggregateOverflow,capturedBytes,elapsedMs}=await runControlChildren(specs,60000);
+    assert.equal(expired,false,'one shared 60-second deadline covers all original controls');
+    assert.equal(aggregateOverflow,false,'one retained 4 MiB budget covers both original-control children');
+    assert.ok(capturedBytes<=4*1024*1024);
+    assert.ok(elapsedMs<=60000,'one aggregate original-control wall budget');
+    let total=0;
+    for(const result of results){
+        assert.equal(result.error,null,`${result.error?.stack || ''}\n${result.stderr}`);
+        assert.equal(result.code,0,`signal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+        assert.equal(result.signal,null,'each original-control child exited normally');
+        assert.equal(result.overflow,false,'retained 4 MiB child output bound');
+        const summary=readOriginalControlSummary(result.stdout);
+        assert.ok(summary.controls>0);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+        total+=summary.controls;
+    }
+    assert.equal(total,138,'all original standalone methods remain covered exactly once');
 });
 
 const probe=fs.readFileSync(new URL('../scripts/verify-i80386-local-hdd-gui.mjs',import.meta.url),'utf8');
@@ -2839,17 +2912,18 @@ test('GUI consumer explicitly matches current canonical Board and CUI declaratio
         const pattern=new RegExp("^"+declaration+" = '([0-9a-f]{40})'$",'m');
         const consumer=controller.match(pattern)?.[1], selected=guiCuiSelection(dependency);
         assertGuiCuiSelection(consumer,selected,dependency);
-        assertGuiCuiSelection(reader.match(pattern)?.[1],selected,dependency);
+        if(dependency==='bw-board')assertGuiCuiSelection(reader.match(pattern)?.[1],selected,dependency);
         assert.throws(()=>assertGuiCuiSelection('0'.repeat(40),selected,dependency));
         for(let i=0;i<selected.length;i++){
             const drift=[...selected];drift[i]=drift[i].replace(consumer,'0'.repeat(40));
             assert.throws(()=>assertGuiCuiSelection(consumer,drift,dependency));
         }
         // Each single reader/controller declaration independently remains live.
-        for(const source of [controller,reader]){
+        for(const source of dependency==='bw-circuit-ui' ? [controller] : [controller,reader]){
             const changed=source.replace(pattern,declaration+" = '"+'0'.repeat(40)+"'");
             assert.notEqual(changed,source);
             assert.throws(()=>assertGuiCuiSelection(changed.match(pattern)?.[1],selected,dependency));
         }
     }
+    assert.doesNotMatch(reader,/^CUI = /m,'unused reader pin removed without changing historical grading');
 });
