@@ -3496,6 +3496,109 @@ class Originals(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'startup observations'):
                     c.validate_startup(wrong,installed,mode,command[2:])
 
+    def test_actual_v7_execute_emits_reader_accepted_complete_packet(self):
+        files,expected=self.actual_v7_packet();request=D(files['request.original.json']);instances=[]
+        class MemoryOriginals:
+            def __init__(self,path):
+                self.root=pathlib.Path(path);self.raw={};self.files={};self.total=0;instances.append(self)
+            def save(self,name,raw):
+                self.assert_unique(name);self.raw[name]=raw;self.files[name]=ROW(raw);self.total+=len(raw)
+            def assert_unique(self,name):
+                if name in self.raw:raise AssertionError('duplicate retained role '+name)
+            def seal(self,result):self.save('result.json',E(result))
+        def startup(where,mode,args):
+            observation=D(files['python-startup.before.json'])
+            c.validate_startup(observation,c.startup_installation(files['python-startup.original.txt']),mode,args)
+            return files['python-startup.original.txt'],observation
+        def regular(path,cap):
+            name=str(path)
+            if name=='/mock/event.json':return files['event.original.json']
+            if name=='/checkout/vendor-pins.json':return E({'bw-board':c.BOARD,'bw-circuit-ui':c.CUI,'sb3-creator':c.SB3})
+            if name.endswith('/brickwright-build.json'):return E({'commit':request['build']['checkoutHead'][:7]})
+            raise AssertionError('unexpected raw host read '+name)
+        def check_file(path,row):
+            name=str(path).removeprefix('/checkout/')
+            if name in request['source']['files']:return ('source:'+name).encode()
+            if name in c.NATIVE_FONT_SOURCE:return ('native-source:'+name).encode()
+            return b'bounded mocked selected file edge'
+        def installed(path,prefix,failure,root_,critical):
+            self.assertEqual(critical,c.INSTALLED_V6_CRITICAL)
+            return {name.removeprefix(prefix+'/'):row for name,row in request['installedFiles'].items()
+              if name.startswith(prefix+'/')}
+        def stage(request_,pin,root_,hosted,output,preflight):
+            self.assertFalse(preflight)
+            names=['native-font.stage.json','native-font.config.original.xml','native-font.cache.before.json']
+            names += ['native-font.'+role+'.'+suffix for role in ('font','notice')
+              for suffix in ('stdout','stderr','process.json')]
+            for name in names:
+                output.save(name,files[name])
+            return pathlib.Path('/checkout/gui-inputs/native-font')
+        class Fake:
+            def __init__(self,where,output,env):self.output=output;self.index=0
+            def git(self,args):
+                role='git-'+str(self.index if self.index<len(c.SOURCE)+12 else self.index+3);self.index+=1
+                raw=files[role+'.stdout']
+                for suffix,value in (('stdout',raw),('stderr',files[role+'.stderr']),('process.json',files[role+'.process.json'])):
+                    self.output.save(role+'.'+suffix,value)
+                return raw
+            def api(self,route):
+                role='build-run' if '/runs/' in route else 'build-job' if '/jobs/' in route else 'build-artifact'
+                return files[role+'.original.json']
+            def run(self,role,argv,environment,seconds,*args):
+                if role=='frontend-acquisition':
+                    self.output.save(role+'.stderr',b'')
+                    self.output.save(role+'.process.json',files[role+'.process.json'])
+                    return files['frontend.original.zip']
+                child=D(files[role+'.process.json']);child['argv']=argv;child['environment']=environment
+                for suffix in ('stdout','stderr'):self.output.save(role+'.'+suffix,files[role+'.'+suffix])
+                self.output.save(role+'.process.json',E(child))
+                for name,raw in files.items():
+                    if name.startswith(role+'/'):
+                        if name.endswith('/admission.json'):raw=self.output.raw['probe-admission.json']
+                        if name.endswith('/proof.json'):
+                            proof=D(raw);proof['admissionSha256']=H(self.output.raw['probe-admission.json']);raw=E(proof)
+                        self.output.save(name,raw)
+                return b''
+        env={'GITHUB_EVENT_PATH':'/mock/event.json','GITHUB_REPOSITORY':c.REPOSITORY,
+          'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ATTEMPT':'1',
+          'GITHUB_RUN_ID':'200','GITHUB_JOB':'actual-v7','BW_EXPECTED_HEAD':'a'*40,
+          'GH_TOKEN':'mock-only-no-network'}
+        with (patch.object(c,'Originals',MemoryOriginals),patch.object(c,'observe_python_startup',side_effect=startup),
+              patch.object(c,'regular',side_effect=regular),patch.object(c,'check_file',side_effect=check_file),
+              patch.object(c,'installed_inventory_v5',side_effect=installed),
+              patch.object(c,'observe_runtime',return_value=D(files['runtime.before.json'])),
+              patch.object(c,'prepare_native_font',side_effect=stage),
+              patch.object(c,'native_font_cache',return_value=D(files['native-font.cache.after.json'])),
+              patch.object(c,'install_members',return_value=(D(files['frontend.members.json']),D(files['build.inventory.json']))),
+              patch.object(c,'inventory',return_value=D(files['build.inventory.json']))):
+            status=c.execute(files['request.original.json'],expected['requestSha256'],pathlib.Path('/checkout'),
+              pathlib.Path('/checkout/gui-originals/originals'),env,factory=Fake,startup_mode='actual-v7')
+        self.assertEqual(status,0,D(instances[0].raw['result.json']))
+        produced=instances[0].raw
+        self.assertEqual(D(produced['result.json'])['schema'],'bw.gui-hdd.result.v7')
+        self.assertEqual(D(produced['event.original.json'])['label']['name'],'x86-hdd-gui-actual-v7')
+        originals,selected=sealed(produced,expected)
+        self.assertEqual(r.audit(originals,selected)['schema'],'bw.gui-hdd.reader.v7')
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            base=pathlib.Path(temporary);parts=base/'parts';parts.mkdir()
+            artifact=packet(produced);(base/'artifact.zip').write_bytes(artifact)
+            small={key:copy.deepcopy(value) for key,value in selected.items()
+              if key not in ('inventoryOriginal','inventoryTemplate','nativeFontOriginals')}
+            rows={}
+            for role,name in r.ACTUAL_V6_PART_FILES.items():
+                item=selected['nativeFontOriginals'][role.split('.',1)[1]] if role.startswith('nativeFontOriginals.') else selected[role]
+                raw=base64.b64decode(item['base64'],validate=True)
+                (parts/name).write_bytes(raw);rows[role]=ROW(raw)
+            (base/'manifest.json').write_bytes(E({'schema':'bw.gui-hdd.actual-v7-parts-manifest.v1',
+              'expected':small,'parts':rows}))
+            with patch.object(r,'ACTUAL_V7_READER_ENABLED',True),patch.object(r.sys,'stdout',io.StringIO()) as stream:
+                self.assertEqual(r.main(['--actual-v7-parts','--manifest',str(base/'manifest.json'),
+                  '--parts',str(parts),'--artifact',str(base/'artifact.zip')]),0)
+                self.assertEqual(D(stream.getvalue().encode()),r.audit(originals,selected))
+        changed=copy.deepcopy(produced);terminal=D(changed['result.json']);terminal['schema']='bw.gui-hdd.result.v1'
+        changed['result.json']=E(terminal)
+        with self.assertRaisesRegex(ValueError,'authoritative terminal'):r.audit(*sealed(changed,expected))
+
     def test_actual_v6_request_and_full_independent_reader_packet(self):
         files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
         self.assertEqual(c.parse_request(files['request.original.json'],expected['requestSha256']),request)
