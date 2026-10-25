@@ -42,7 +42,7 @@ transport), [ROBOT-LAB-EV3-NXT.md](ROBOT-LAB-EV3-NXT.md), [NXT-PROTOCOL-FACTS.md
 - **`ci:full` only when the browser tier can catch something:** startup bundle / P17
   (anything that might load at first paint), Robot Lab UI / editor / tablet, CI workflows
   or gate scripts, dependency bumps (Jolt). Everything else merges on the fast tier
-  (`build` + the `unit (n/4)` shards). The `full CI requested` check fails on unlabelled
+  (`build` + the `unit (n/6)` shards). The `full CI requested` check fails on unlabelled
   code PRs by design — ignore it. `main` runs the full set on every merge: watch it and fix
   forward at once if it goes red.
 - **A rerun keeps its original merge SHA.** After `main` moves, merge `origin/main` into
