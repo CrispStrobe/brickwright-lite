@@ -160,6 +160,9 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
+    // Recheck this private dependency only if it strengthened this graph.
+    // An unused occurrence proof contributes no type facts to invalidate.
+    let controlEntryUsed=false;
     const initializedReads=new WeakSet(),initializationAt=new WeakMap(),localUndefinedDeclarations=new Set();
     const deadResets=deadLocalResets(program),writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
@@ -263,6 +266,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
                 const id=binding(owner,node.name);
                 if(uninitializedLocalsAreOpaque&&global.bindings.get(node.name)!==id&&[...(declarations.get(id)||[])].some(declaration=>typeof declaration==='object'&&!['FunctionDeclaration','Class','Enum'].includes(declaration.type)))add(cell(node),'Opaque');
                 if(!controlEntry?.isInitializedRead(node))add(cell(node),'Undefined');
+                else controlEntryUsed=true;
             }return known;
         }
         // A closure expression is allocated here, after the currently proved
@@ -387,7 +391,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     let invalidated;do{invalidated=false;for(const op of nullableLengthIssued)if(!nullableLengthEligible(op))invalidated=add(op.result,'Opaque')||invalidated;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set((!controlEntry||controlEntry.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
+    const currentTypes=value=>new Set((!controlEntryUsed||controlEntry.current())&&(!ordinaryEntry||ordinaryEntry.current())&&(!nullableLengthUsed||nullableLengthSource.current())&&(!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())&&(!cameraNumberInput||cameraNumberInput.current())?types.get(value)||[]:[]);
     // Construct this independent execution frontier only on demand. It cannot
     // add initialization/type facts or be selected by public source options.
     let lexicalReadiness;
