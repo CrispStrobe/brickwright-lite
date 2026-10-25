@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # This distinct finite v6 metadata route is disabled until source review,
-  # final-head checks and a separately selected one-shot event. V5 is consumed.
+  # This distinct finite v6 metadata route is armed but unselected. Exact-head
+  # source checks and a separately reviewed one-shot event remain required. V5 is consumed.
   finite-inventory-six:
     if: >-
       ${{ true && github.event_name == 'pull_request' && github.event.action == 'labeled' &&
