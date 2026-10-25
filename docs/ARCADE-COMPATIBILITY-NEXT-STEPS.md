@@ -124,8 +124,19 @@ diagnostic. The retained current SDK supports the kind-based
 the retained original compilations for these inputs fail. This is not evidence
 that replacing the call with a kind-wide handler preserves the old program.
 
-Before claiming legacy parity, locate and review the original implementation's
-receiver evaluation, callback identity, replacement/additive registration,
+Primary-source research located a historical implementation at
+[`pxt-common-packages` commit `f1b8cc4f`, `sprite.ts`](https://github.com/microsoft/pxt-common-packages/blob/f1b8cc4fb41c30c2bdf83b64c7da389ce6cf3bf2/libs/game/sprite.ts#L656).
+Registration replaces one instance field. The matching
+[`physics.ts` dispatcher](https://github.com/microsoft/pxt-common-packages/blob/f1b8cc4fb41c30c2bdf83b64c7da389ce6cf3bf2/libs/game/physics.ts#L78)
+filters ghosts, visits actual overlapping instances and shares an in-flight
+pair guard with kind handlers. Its parallel callback reads the instance's
+handler when the callback executes. Repeated registration, changing the handler
+before execution, pause, both directions and interaction with kind handlers
+therefore need explicit tests. These are source observations, not a qualified
+historical runtime or proof that this exact revision produced every raw input.
+
+Before claiming legacy parity, bind the applicable historical version and
+qualify receiver evaluation, callback identity, replacement registration,
 future kinds and scheduling behavior. Then claim importer registration,
 instance runtime dispatch, export and dialect ownership, with pause/Stop,
 scene, ghost/pixel collision, Code/Blocks and fresh-save acceptance. Existing
