@@ -130,7 +130,7 @@ class SpikeArenaPane extends React.Component {
 
     componentWillUnmount () {
         this.disposed = true;
-        this.stopProgram().catch(() => {});
+        this.stopProgram().catch(() => {}).then(() => this.releaseDisposedFirmwareTopology());
         this.unitToken = null;
         window.removeEventListener('bw-spike-arena-select', this.onSelectEvent);
         window.removeEventListener('bw-project-bundle-loaded', this.onProjectLoaded);
@@ -139,6 +139,14 @@ class SpikeArenaPane extends React.Component {
         this.view3dToken = null;
         this.disposeView3D();
         if (window.__bwSpikeArena && window.__bwSpikeArena._pane === this) delete window.__bwSpikeArena;
+    }
+
+    // A disposed pane's Stop skips the topology teardown, but the hub outlives the
+    // pane: return port F unless a newer session already owns the hub configuration.
+    releaseDisposedFirmwareTopology () {
+        if (!['six-motors', 'dual-ultrasonic'].includes(this.arenaFirmwareTopology)) return;
+        this.arenaFirmwareTopology = null;
+        if (this.hubState && !this.hubState.configurationOwner) this.hubState.setPort('F', 'none');
     }
 
     onSelectEvent (event) {
@@ -1053,7 +1061,10 @@ class SpikeArenaPane extends React.Component {
                         onClick={event => this.sandboxTap(event)} onPointerDown={this.sandboxPointerDown}
                         onPointerUp={this.sandboxPointerUp} onPointerCancel={() => { this.sandboxDrag = null; }}
                         hidden={showing3d}
-                        style={{width: '100%', display: showing3d ? 'none' : 'block', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)'}} />
+                        style={{width: '100%', display: showing3d ? 'none' : 'block', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+                            // A touch drag on an editing tool must reach the pointer handlers, not pan the page
+                            // (panning cancels the pointer and the Move tool drops the drag).
+                            touchAction: this.state.sandbox && this.state.sandboxTool !== 'none' ? 'none' : 'auto'}} />
                     <div ref={this.view3dBox} data-testid="bw-spike-arena-3d" data-state={view3dState}
                         style={{display: showing3d ? 'block' : 'none', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)'}} />
                 </div>

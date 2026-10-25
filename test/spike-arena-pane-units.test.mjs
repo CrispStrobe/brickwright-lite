@@ -242,6 +242,24 @@ test('MicroPython shares the sandbox motor selector without NuttX storage contro
     } finally { if (renderer) await act(async () => renderer.unmount()); browser.restore(); }
 });
 
+test('sandbox editing tools keep touch drags on the 2D mat; view-only leaves page scrolling', async () => {
+    const browser = installBrowser(), Pane = await loadPane(); let renderer;
+    try {
+        await act(async () => { renderer = create(React.createElement(Pane, {locale: 'en'})); });
+        const pane = renderer.getInstance();
+        await settle(() => Boolean(pane.bridge), 'arena ready');
+        const touchAction = () => one(renderer, 'bw-spike-arena-canvas').props.style.touchAction;
+        assert.equal(touchAction(), 'auto', 'a mission mat lets the page scroll');
+        await act(async () => pane.openSandbox());
+        for (const tool of ['move', 'paint', 'wall', 'crate', 'erase', 'start']) {
+            await act(async () => pane.setState({sandboxTool: tool}));
+            assert.equal(touchAction(), 'none', `${tool} receives the touch drag`);
+        }
+        await act(async () => pane.setState({sandboxTool: 'none'}));
+        assert.equal(touchAction(), 'auto');
+    } finally { if (renderer) await act(async () => renderer.unmount()); browser.restore(); }
+});
+
 test('Save feedback and storage hint distinguish persistent and legacy packages in both languages', async () => {
     const browser = installBrowser(), Pane = await loadPane(); let renderer;
     try {

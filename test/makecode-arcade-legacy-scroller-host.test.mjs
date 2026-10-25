@@ -22,24 +22,61 @@ const entries = trace => String(trace).split(';').filter(Boolean).map(entry => e
 const palette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609', '#249ca3', '#78dc52',
     '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 const color = v => '#' + [v & 255, (v >>> 8) & 255, (v >>> 16) & 255].map(b => b.toString(16).padStart(2, '0')).join('');
-async function nativeWithLegacyHost(source) {
+// Only the opted-in fixture receives external time. Actual wait primitives,
+// scene callbacks and result variables remain the shipped implementations.
+function legacyWaitClock(vm) {
+    const runtime = vm.runtime; let now = 0;
+    const names = ['bwArcadeProgramClock', 'updateCurrentMSecs', 'currentMSecs'];
+    const prior = names.map(name => [name, Object.getOwnPropertyDescriptor(runtime, name)]);
+    const restore = () => {for (const [name, descriptor] of prior) {
+        if (descriptor) Object.defineProperty(runtime, name, descriptor); else delete runtime[name];
+    }};
+    vm.stopAll();
+    try {
+        runtime.bwArcadeProgramClock = {now: () => now};
+        runtime.updateCurrentMSecs = () => {runtime.currentMSecs = now;};
+        runtime.currentMSecs = now; vm.greenFlag();
+    } catch (error) {vm.stopAll(); restore(); throw error;}
+    return {now: () => now, advanceBy(ms) {
+        assert.ok(Number.isFinite(ms) && ms >= 0 && Number.isFinite(now + ms), 'finite monotonic fixture clock'); now += ms;
+    }, restore};
+}
+async function frozenHostClock(action) {
+    const original = Date.now; Date.now = () => 1234;
+    try {return await action();} finally {Date.now = original;}
+}
+async function completeLegacyScene(run, advanceWaitClock = () => run.waitClock.advanceBy(20)) {
+    for (let guard = 0; values(run).done !== true; guard++) {
+        assert.ok(guard < 100, 'scene callbacks complete');
+        await stepFrames(run.vm, 1, 20);
+        advanceWaitClock();
+    }
+}
+async function nativeWithLegacyHost(source, {controlledWaitClock = false} = {}) {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
     const run = await runProgram(imported.code, {frames: 0, uploads: imported.costumes, storage: true});
-    const {default: dispatch} = await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js');
-    const adapter = Object.values(dispatch.services).findLast(s => s?._inst && s.getInfo?.().id === 'arcade');
-    assert.ok(adapter?._inst, 'actual VM extension instance exists');
-    const ext = adapter._inst;
-    const before = {updates: ext._updateHandlers.length, pushes: ext._scenePushHandlers.length,
-        pops: ext._scenePopHandlers.length, renderables: ext._renderablesOf().length};
-    // Select through the actual native opcode before any lazy library operation.
-    adapter.setBackgroundScrollVersion({VERSION:initializeOriginal.sourceIdentity.revision});
-    assert.equal(ext._scrollerVersion,initializeOriginal.sourceIdentity.revision);
-    ext._scroller();
-    assert.deepEqual({updates: ext._updateHandlers.length, pushes: ext._scenePushHandlers.length,
-        pops: ext._scenePopHandlers.length, renderables: ext._renderablesOf().length}, before,
-    'factory construction does not run the lazy original initializer');
-    return {...run, ext};
+    let waitClock = null;
+    try {
+        if (controlledWaitClock) waitClock = legacyWaitClock(run.vm);
+        const {default: dispatch} = await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js');
+        const adapter = Object.values(dispatch.services).findLast(s => s?._inst && s.getInfo?.().id === 'arcade');
+        assert.ok(adapter?._inst, 'actual VM extension instance exists');
+        const ext = adapter._inst;
+        const before = {updates: ext._updateHandlers.length, pushes: ext._scenePushHandlers.length,
+            pops: ext._scenePopHandlers.length, renderables: ext._renderablesOf().length};
+        // Select through the actual native opcode before any lazy library operation.
+        adapter.setBackgroundScrollVersion({VERSION:initializeOriginal.sourceIdentity.revision});
+        assert.equal(ext._scrollerVersion,initializeOriginal.sourceIdentity.revision);
+        ext._scroller();
+        assert.deepEqual({updates: ext._updateHandlers.length, pushes: ext._scenePushHandlers.length,
+            pops: ext._scenePopHandlers.length, renderables: ext._renderablesOf().length}, before,
+        'factory construction does not run the lazy original initializer');
+        return {...run, ext, ...(waitClock ? {waitClock} : {})};
+    } catch (error) {
+        if (controlledWaitClock) {run.vm.stopAll(); waitClock?.restore(); run.vm.quit(); clearStrayTimers();}
+        throw error;
+    }
 }
 
 test('complete legacy source, package and MIT notice are pinned and generator is reproducible', () => {
@@ -92,8 +129,7 @@ for (const [name, source] of Object.entries(scenarios)) {
     });
 }
 
-test('all six legacy APIs preserve raw offsets, defaults, and real scene push/pop state', async () => {
-    const source = `let zeroX=scroller.getBackgroundXOffset()
+const sceneAPISource = `let zeroX=scroller.getBackgroundXOffset()
 let zeroY=scroller.getBackgroundYOffset()
 scroller.scrollBackgroundWithSpeed(3,-2)
 scroller.scrollBackgroundWithCamera(scroller.CameraScrollMode.OnlyHorizontal)
@@ -111,13 +147,13 @@ game.popScene()
 let restoredX=scroller.getBackgroundXOffset()
 let restoredY=scroller.getBackgroundYOffset()
 let done=true`;
+
+test('all six legacy APIs preserve raw offsets, defaults, and real scene push/pop state', async () => {
+    const source = sceneAPISource;
     const expected = await runPxtArcade(originalFiles(source), {fakeClock: true});
-    const run = await nativeWithLegacyHost(source);
+    const run = await nativeWithLegacyHost(source, {controlledWaitClock: true});
     try {
-        for (let guard = 0; values(run).done !== true; guard++) {
-            assert.ok(guard < 100, 'scene callbacks complete');
-            await stepFrames(run.vm, 1, 20);
-        }
+        await frozenHostClock(() => completeLegacyScene(run));
         const actual = values(run);
         for (const key of ['zeroX','zeroY','rawX','rawY','pushedX','pushedY','restoredX','restoredY']) {
             assert.equal(actual[key], expected[key], key);
@@ -130,7 +166,24 @@ let done=true`;
             'setBackgroundScrollOffset','backgroundScrollOffset']) {
             assert.ok(run.loadedOpcodes.has('arcade_' + opcode), 'actual native word API ' + opcode);
         }
-    } finally {run.vm.quit(); clearStrayTimers();}
+    } finally {run.vm.stopAll(); run.waitClock.restore(); run.vm.quit(); clearStrayTimers();}
+});
+
+test('physics-only clock-progress mutation cannot complete actual scene waits under frozen host time', async () => {
+    const run = await nativeWithLegacyHost(sceneAPISource, {controlledWaitClock: true});
+    try {
+        // Deleting elapsed-clock progress must restore the original bounded
+        // completion failure despite every actual requested physical frame.
+        await frozenHostClock(() => assert.rejects(completeLegacyScene(run, () => {}), /scene callbacks complete/));
+        assert.equal(run.waitClock.now(), 0);
+        assert.notEqual(values(run).done, true);
+        assert.equal(run.ext._sceneStack.length, 0);
+        const pending = run.vm.runtime.threads.map(thread => thread.peekStackFrame()?.executionContext)
+            .filter(frame => frame?.timer && frame.duration === 40);
+        assert.ok(pending.length > 0, 'real first wait remains pending after the complete physical frame budget');
+        for (const frame of pending) assert.equal(frame.timer.timeElapsed(), 0);
+        assert.deepEqual(run.errors, []);
+    } finally {run.vm.stopAll(); run.waitClock.restore(); run.vm.quit(); clearStrayTimers();}
 });
 
 // Complete callback rows retained from the actual original observations printed

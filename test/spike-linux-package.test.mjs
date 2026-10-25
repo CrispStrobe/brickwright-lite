@@ -7,6 +7,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {REQUIRED_RUNTIME_NOTICES} from '../scripts/lib/spike-linux-notices.mjs';
 import {fileURLToPath} from 'node:url';
 import {syntheticProfile} from './helpers/spike-profile-fixture.mjs';
 const script = fileURLToPath(new URL('../scripts/build-spike-linux-desktop.mjs', import.meta.url));
@@ -35,6 +36,7 @@ async function fixture () {
     await writeFile(join(runtime,'.renode-root'),'synthetic runtime root');
     await writeFile(join(runtime,'scripts/monitor.py'),'synthetic monitor helpers');
     await mkdir(join(runtime,'licenses'));await writeFile(join(runtime,'licenses/renode-license'),'synthetic MIT notice');
+    for (const name of Object.keys(REQUIRED_RUNTIME_NOTICES)) await writeFile(join(runtime,'licenses',name),`synthetic ${name}`);
     await writeFile(join(frontend,'index.html'),'synthetic frontend');await writeFile(join(frontend,'capability-broker.html'),'synthetic broker');
     return {root,support,runtime,frontend};
 }
@@ -52,7 +54,7 @@ test('offline preparation closes resources, keeps firmware out and preserves an 
         assert.equal(pins.BW_RENODE_RESOURCE_EXECUTABLE,'renode/renode');assert.equal(pins.BW_RENODE_MICROPYTHON_RESOURCE_ROOT,'micropython');
         assert.deepEqual((await readdir(join(output,'resources/renode'))).sort(),['renode','licenses','scripts','.renode-root',...libraries].sort());
         const config=JSON.parse(await readFile(join(output,'tauri-config.json'),'utf8'));
-        assert.equal(Object.values(config.bundle.resources).length,17+15+2+1);
+        assert.equal(Object.values(config.bundle.resources).length,17+15+2+Object.keys(REQUIRED_RUNTIME_NOTICES).length);
         assert.ok(Object.values(config.bundle.resources).every(name=>!name.includes('private-input')));
         const inputs=JSON.parse(await readFile(join(output,'build-inputs.json'),'utf8'));assert.equal(inputs.redistributionValidated,false);
         const before=await readFile(join(output,'compile-pins.json'));assert.notEqual(run(f,output).status,0);

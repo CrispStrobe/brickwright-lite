@@ -59,5 +59,5 @@ test('Atlas CI partition preserves original export and full replay under existin
  assert.throws(()=>checkAtlasPartition(workflow.replace('--part=intake-replay --intake=atlas-six','--part=examples --examples=oblique')),/consumer/);
  assert.throws(()=>checkAtlasPartition(workflow.replace('--intake-capture=atlas-six','')),/producer/);
  assert.throws(()=>checkAtlasPartition(workflow.replace("matrix.shard == 'robotaddon9'","matrix.shard == 'robotaddon8'")),/same job/);
- assert.throws(()=>checkAtlasPartition(workflow.replace('saved-project replay\n        timeout-minutes: 8','saved-project replay\n        timeout-minutes: 9')),/bounded step/);
+ assert.throws(()=>checkAtlasPartition(workflow.replace(/(saved-project replay\n(?:        id: \S+\n)?        timeout-minutes: )8/,'$19')),/bounded step/);
 });
