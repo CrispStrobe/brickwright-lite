@@ -1,3 +1,4 @@
+import {createProjectFrameDeltaNumber,currentFrameDeltaReporter} from './project-frame-delta-number.js';
 import {createProjectMathNormalResults} from './project-math-normal-results.js';
 import {arrayMenuLiteral,isArrayMenuSelector,isKnownArrayMenuOperation} from './array-menu-literal.js';
 import {createProjectJsonSnapshot,isProjectJsonSnapshot} from './project-json-snapshot.js';
@@ -237,6 +238,7 @@ class ArcadeEmitter {
         this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
         this.closedOrdinaryEntry=createClosedOrdinaryProjectEntry(project);
         this.mathNormalResults=createProjectMathNormalResults(project);
+        this.frameDeltaNumber=createProjectFrameDeltaNumber(project);
         this.opts = opts;
         // Capture once before any artwork callback. Resource emission and Array
         // proof consume the same privately branded normalized resource objects.
@@ -248,6 +250,7 @@ class ArcadeEmitter {
         // arguments are emitted; that must not hide this independent refusal.
         // This is validation only: it creates no Number fact or emission state.
         for (const target of project.targets) for (const block of Object.values(target.blocks || {})) {
+            if(block?.opcode==='arcade_frameDeltaTime'&&!currentFrameDeltaReporter(target.blocks,block))this.note('Frame delta Number: current zero-input reporter or physical socket differs');
             if (block?.opcode === 'arcade_sceneMillis' && !currentSceneClockNumber(target.blocks, block)) {
                 this.note('Scene clock Number: current zero-input reporter or unique parent differs');
             }
@@ -1707,7 +1710,10 @@ class ArcadeEmitter {
             const text = literal !== null ? JSON.stringify(String(literal)) : v('TEXT');
             return b.opcode === 'arcade_parseInteger' ? `parseInt(${text})` : `parseInt(${text}, ${v('RADIX')})`;
         }
-        case 'arcade_frameDeltaTime': return 'game.eventContext().deltaTime';
+        case 'arcade_frameDeltaTime': {
+            if(!currentFrameDeltaReporter(this.blocks,b)){this.note('Frame delta Number: current zero-input reporter or physical socket differs');return this.na();}
+            return 'game.eventContext().deltaTime';
+        }
         case 'arcade_musicTempo': return 'music.tempo()';
         case 'arcade_characterRule': {
             // The rule word holds the original's Predicate names.
@@ -3329,6 +3335,12 @@ class ArcadeEmitter {
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
+                if(value.opcode==='arcade_frameDeltaTime'){
+                    const id=Symbol('current saved frame delta Number');
+                    if(this.frameDeltaNumber.isNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
+                    else {anys.add(id);inspectionOpaqueCells.add(id);}
+                    return id;
+                }
                 if(value.opcode==='arcade_mathBinary'){
                     const id=Symbol('closed math normal result');
                     if(this.mathNormalResults.isNumberResult(target,value)){numbers.add(id);inspectionLeaves.set(id,'number');}
@@ -4518,6 +4530,7 @@ function emitProjectToArcade (project, opts, snapshotCallbacks) {
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,closedOrdinaryEntries:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
+    if(!e.frameDeltaNumber.current())e.note('Frame delta Number: current saved reporter proof environment changed during export');
     if(!e.mathNormalResults.current())e.note('Arcade math normal result: current proof environment changed during export');
     if(!e.closedOrdinaryEntry.current())e.note('Arcade ordinary entry: current execution roots changed during export');
     // Host artwork callbacks can edit current project objects during rendering.

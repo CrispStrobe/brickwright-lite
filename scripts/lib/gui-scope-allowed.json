@@ -495,7 +495,10 @@
       "test/arcade-closed-ordinary-source-entry.test.mjs",
       "test/arcade-source-control-cell-entry.test.mjs",
       "test/arcade-math-normal-result-consumers.test.mjs",
-      "test/arcade-frame-delta-number-source.test.mjs"
+      "test/arcade-frame-delta-number-source.test.mjs",
+      "test/arcade-frame-delta-number-project.test.mjs",
+      "test/arcade-frame-delta-number-owner.test.mjs",
+      "test/arcade-frame-delta-number-native.test.mjs"
     ],
     "why": "the owned MakeCode procedure-constraint exporter imports the canonical VM procedure-constraint model through the integrated GUI package (scratch-vm 4.8.115 export ./src/util/bw-procedure-constraint-model.js), so every root test that exports or imports Arcade projects resolves it from packages/scratch-gui"
   },

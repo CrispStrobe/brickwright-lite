@@ -46,6 +46,33 @@ current numeric proof starts with closed Number reporter trees in frozen JSON;
 variable/parameter/captured operands remain conservative. Native do/while
 authoring is separately scoped below.
 
+## Frame-delta source, saved-project and runtime result candidate
+
+The actual `game.eventContext().deltaTime` read now has a bounded source
+producer inventory, and the exact saved reporter supplies its independently
+proved Number result to scalar and caller flow. The unchanged full Code, two
+JSON generations and SB3 journey passes. Malformed reporter fields, inputs,
+socket roles, fallback shadows and ownership are named/refused; legacy live
+expression export stays available without gaining immutable-project authority.
+
+A separate actual-result service binds the original extension, adapter, empty
+declaration, current state/scene, cached operation and completed Number result.
+It preserves the original property read and `value || 0` fallback, refuses
+text/accessor/nonfinite or substituted/stale state/results, and never treats a
+metadata flag as execution. The claim is only the Number domain; an externally
+assigned finite Number does not certify its elapsed-time origin or accuracy.
+See the [exact implementation and qualification scope](../lanes/2026-10-25-arcade-frame-delta-number-abi.md).
+
+The available source/synthetic owner cohort has 83 passing controls and five
+detected guard cuts. The final source/project/math cohort has 23 passing
+controls, overlapping the earlier 73-control source composition. Four project
+and three source cuts are detected. Six engine-reader checks remain unavailable
+locally; the new actual VM test is written and syntax checked, with actual
+execution still pending on the final hosted head. Visible Blocks/Code edits,
+controllers and fresh editor reload remain pending. These are not application
+completion counts and do not replace the 184-input source census above.
+
+
 ## Remaining-input taxonomy and independently scoped next tasks
 
 The 36 raw-source partial rows are not 36 established missing core APIs.
@@ -70,7 +97,7 @@ both failed observations and all limits; do not raise the budget to get green.
 | --- | --- | --- |
 | Math operands derived from startup scalars | Extend the independent producer proof behind `project-math-normal-results.js` with exact actual readonly startup writers, dependency order, all entry points, current physical binding and per-occurrence availability. Keep `scalar-export-flow.js` annotation inference separate from authority. | Real initialized writers and safe Number arithmetic qualify; omitted initialization, later writers, reentry, monitor writes, cycles, reference/BigInt/coercion and annotations alone refuse. A subtraction is not unconditionally Number: actual Arrays values can carry BigInt or effectful objects. Preserve original evaluation and errors. |
 | Conditional startup Array allocation | Review `array-source-start-reset-effects.js` and `array-reference-export-authority.js` for the exact scalar branch and callee/effect/registration boundary. This is missing proof of actual startup order, not an observed uninitialized runtime Array. | Prove every read's allocation and complete compatible writers across branches, pauses, errors, callback registration, Stop and unknown effects. Keep actual resets and all body operations unless their prior value is genuinely unreachable. Validate original/emitted MakeCode and Lite execution. |
-| Event-context frame delta source result | Follow the [numeric-source claim PR #1410](https://github.com/CrispStrobe/brickwright-lite/pull/1410); implement only after its claim is merged. Keep existing clock and info inventories independently bounded. | Exact actual SDK/lexical read, full relevant namespace/result-use census, real mixed-writer refusals, Code/JSON/SB3 and final actual SDK/native/editor controls. Do not claim this alone explains the snake game's addition refusal. |
+| Event-context frame delta source result | Source and result candidates are implemented under the [merged result scope](../lanes/2026-10-25-arcade-frame-delta-number-abi.md); qualify the final hosted head. Keep existing clock and info inventories independently bounded. | Exact actual SDK/lexical read, full relevant namespace/result-use census, real mixed-writer refusals, Code/JSON/SB3 and final actual SDK/native/editor controls. Do not claim this alone explains the snake game's addition refusal. |
 | Bounded source-analysis cost | Locate the expensive phase from retained failures and bounded diagnostics before claiming a repair. Retain source proof currentness and every fact/threshold. | Same-input qualification within the original limits, unchanged refusals, and proof that any optimization cannot publish a stale or unproved fact. An unused-proof dependency cleanup has not resolved the measured CPU failure. |
 
 

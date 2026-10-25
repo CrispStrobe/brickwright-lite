@@ -11,7 +11,7 @@ historical original compiler success and current execution distinct.
 1. Coordinate the active integration publisher and reuse its once-only current
    head's unit and terminal numeric receipts. Earlier head results are historical,
    and a later candidate must not borrow their qualification.
-2. Qualify the composed Sprite, Image, SDK constructor, score, atan2 and ordinary
+2. Qualify the composed Sprite, Image, SDK constructor, score, atan2, frame-delta and ordinary
    execution-root candidates on one final head. Their source controls are
    recorded below; actual original/emitted MakeCode, native execution and visible
    authoring remain pending. Keep assertions, captures and refusal controls.
@@ -1387,3 +1387,21 @@ failures or skips. These results preserve constructor reentry, field/nested-this
 refusal, original receiver-uninitialized assertions and all surrounding Array
 and effect controls. Final-head native/SDK/browser and genuine application
 qualification remain pending.
+
+## Latest valid-context triage
+
+Among twelve reobserved formerly partial canonical projects, three have retained
+original compiler success: a narrow ordinary-call admission case, a mixed
+Array.map/Throw/Blocks case and a mixed stopwatch/SDK case. Historical compiler
+success is not current SDK qualification. One additional historically compiling
+context is CPU-unavailable; its older diagnostic list must not be called current.
+Nine observed contexts have retained original compile failures (four invalid
+instance overlap calls, missing-name fragments in three contexts and duplicate
+declarations in two). Keep these input
+problems separate from actual parity defects.
+
+After the frame candidate's final hosted qualification, the narrow ordinary-call
+case is the next core source-admission investigation. Observe its actual
+configured unknown/ambient/dynamic/computed-callee boundary and claim that exact
+change before implementation. The Array.map context requires separate receiver,
+Throw/protocol and emitted-Blocks work; do not describe it as one completed API.
