@@ -636,8 +636,8 @@ class Originals(unittest.TestCase):
             with patch.object(c.os,'scandir',return_value=Entries([])),patch.object(c.os,'close',side_effect=OSError('close-only')):
                 with self.assertRaisesRegex(OSError,'close-only'):c.empty_python_prefix()
     def test_actual_shell_startup_is_before_first_python_and_inventory_is_held(self):
-        workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text();actual=workflow.split('  actual:',1)[1]
-        self.assertIn('if: >-\n      '+chr(36)+'{{ true &&',actual)
+        workflow=(root/'.github/workflows/i80386-hdd-gui-actual.yml').read_text();actual=workflow.split('  actual-v7:',1)[1].split('  font-bridge:',1)[0]
+        self.assertIn('if: >-\n      '+chr(36)+'{{ false &&',actual)
         self.assertLess(actual.index('mkdir -m 0555 "$prefix"'),actual.index('/usr/bin/python3.12 -I -S -B -X'))
         self.assertNotIn('/usr/bin/python3 -B',actual)
         self.assertEqual(actual.count('/usr/bin/python3.12 -I -S -B -X pycache_prefix='+r.PYTHON_CACHE),3)
@@ -3224,16 +3224,15 @@ class Originals(unittest.TestCase):
             else:changed['scope']['installedEmptyRegularScoped']=False
             selected=copy.deepcopy(expected);selected['original']=ROW(E(changed))
             with self.subTest(cut=cut),self.assertRaises(ValueError):r.verify_inventory_original(E(changed),raw,selected)
-        self.assertFalse(c.FINITE_INVENTORY_V5_ENABLED);self.assertFalse(c.FINITE_INVENTORY_V6_ENABLED);self.assertTrue(c.ACTUAL_V6_ENABLED)
+        self.assertFalse(c.FINITE_INVENTORY_V5_ENABLED);self.assertFalse(c.FINITE_INVENTORY_V6_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
         with patch.object(c,'FINITE_INVENTORY_V5_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
             for args in (['finite-inventory-v5-guard'],['finite-inventory-v5','--request','x','--expected-sha256','0'*64,'--output','x']):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
         with patch.object(c,'ACTUAL_V6_ENABLED',False),patch.object(c,'regular',side_effect=AssertionError('host read')):
             for args in (['actual-v6-guard'],['actual-v6-preflight'],['actual-v6']):
                 with self.assertRaisesRegex(ValueError,'disabled'):c.main(args)
-        with patch.object(c,'observe_python_startup',return_value=(b'',{})) as startup:
-            self.assertEqual(c.main(['actual-v6-guard']),0)
-            startup.assert_called_once()
+        with patch.object(c,'observe_python_startup',side_effect=AssertionError('retired v6 startup')):
+            with self.assertRaisesRegex(ValueError,'disabled'):c.main(['actual-v6-guard'])
     def test_finite_v5_source_zero_and_critical_mutants_are_nonvacuous(self):
         value,raw,expected=self.finite_v5_packet();rows=copy.deepcopy(value['installedFiles'])
         wrong=copy.deepcopy(rows);wrong['node_modules/bw-board/docs/receipts/zero.stdout']['sha256']='0'*64
@@ -3371,6 +3370,131 @@ class Originals(unittest.TestCase):
         files['native-source-git.before.json']=E({'schema':'bw.gui-hdd.native-source-git.v6',
           'head':request['source']['head'],'tree':request['source']['tree'],'files':git_rows})
         return files,expected
+
+    def actual_v7_packet(self):
+        files,expected=self.actual_v6_packet()
+        request=D(files['request.original.json']);request['schema']='bw.gui-hdd.actual-request.v7'
+        files['request.original.json']=E(request);pin=H(files['request.original.json'])
+        expected.update(schema='bw.gui-hdd.actual-expectation.v7',requestSha256=pin,
+          artifactName='i80386-hdd-gui-actual-v7-200-1')
+        expected['job']['name']='actual-v7';expected['artifact']['name']=expected['artifactName']
+        expected['job']['steps']=[{'name':name,'status':'completed','conclusion':'success'} for name in r.STARTUP_STEPS_V7]
+        event=D(files['event.original.json']);event['label']['name']='x86-hdd-gui-actual-v7'
+        event['pull_request']['body']='<!-- BW_GUI_HDD_ACTUAL_V7_REQUEST_SHA256='+pin+' -->'
+        files['event.original.json']=E(event)
+        result=D(files['result.json']);result.update(schema='bw.gui-hdd.result.v7',requestSha256=pin)
+        files['result.json']=E(result)
+        for stage in ('before','after'):
+            name='python-startup.'+stage+'.json';startup=D(files[name])
+            startup['arguments'][1]='actual-v7'
+            startup['arguments'][startup['arguments'].index('--expected-sha256')+1]=pin
+            files[name]=E(startup)
+        stage=D(files['native-font.stage.json'])
+        stage.update(requestSha256=pin,eventSha256=H(files['event.original.json']))
+        stage['platform']['GITHUB_JOB']='actual-v7'
+        files['native-font.stage.json']=E(stage)
+        return files,expected
+
+    def test_actual_v7_independent_full_packet_and_parts(self):
+        files,expected=self.actual_v7_packet();raw=files['request.original.json']
+        self.assertEqual(c.parse_request(raw,H(raw)),r.parse_request(raw,H(raw)))
+        env={'GITHUB_REPOSITORY':r.REPOSITORY,'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe',
+          'GITHUB_RUN_ID':'200','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'actual-v7','BW_EXPECTED_HEAD':'a'*40}
+        for binder in (c.bind_event,r.bind_event):
+            self.assertEqual(binder(files['event.original.json'],D(raw),H(raw),env)['label']['name'],'x86-hdd-gui-actual-v7')
+            for wrong in ('actual','actual-v6'):
+                with self.assertRaises(ValueError):binder(files['event.original.json'],D(raw),H(raw),dict(env,GITHUB_JOB=wrong))
+        originals,selected=sealed(files,expected)
+        self.assertEqual(r.audit(originals,selected)['schema'],'bw.gui-hdd.reader.v7')
+        artifact=packet(files)
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            base=pathlib.Path(temporary);parts=base/'parts';parts.mkdir()
+            manifest_path=base/'manifest.json';artifact_path=base/'artifact.zip';artifact_path.write_bytes(artifact)
+            selected_small={key:copy.deepcopy(value) for key,value in selected.items()
+              if key not in ('inventoryOriginal','inventoryTemplate','nativeFontOriginals')}
+            roles={}
+            for role,name in r.ACTUAL_V6_PART_FILES.items():
+                item=selected['nativeFontOriginals'][role.split('.',1)[1]] if role.startswith('nativeFontOriginals.') else selected[role]
+                original=base64.b64decode(item['base64'],validate=True)
+                (parts/name).write_bytes(original);roles[role]=ROW(original)
+            manifest=E({'schema':'bw.gui-hdd.actual-v7-parts-manifest.v1','expected':selected_small,'parts':roles})
+            manifest_path.write_bytes(manifest)
+            self.assertEqual(r.actual_v7_parts_expected(manifest_path,parts),selected)
+            self.assertFalse(r.ACTUAL_V7_READER_ENABLED)
+            with patch.object(r,'bounded_input',side_effect=AssertionError('reader host read before guard')):
+                with self.assertRaisesRegex(ValueError,'disabled'):
+                    r.main(['--actual-v7-parts','--manifest',str(manifest_path),
+                      '--parts',str(parts),'--artifact',str(artifact_path)])
+            with patch.object(r,'ACTUAL_V7_READER_ENABLED',True),patch.object(r.sys,'stdout',io.StringIO()) as stream:
+                self.assertEqual(r.main(['--actual-v7-parts','--manifest',str(manifest_path),
+                  '--parts',str(parts),'--artifact',str(artifact_path)]),0)
+                self.assertEqual(D(stream.getvalue().encode()),r.audit(originals,selected))
+            for cut in ('event-label','startup-mode','job','artifact-name'):
+                changed=copy.deepcopy(files);chosen=copy.deepcopy(expected)
+                if cut=='event-label':
+                    value=D(changed['event.original.json']);value['label']['name']='x86-hdd-gui-actual-v6'
+                    changed['event.original.json']=E(value)
+                elif cut=='startup-mode':
+                    value=D(changed['python-startup.before.json']);value['arguments'][1]='actual'
+                    changed['python-startup.before.json']=E(value)
+                elif cut=='job':chosen['job']['name']='actual'
+                else:
+                    chosen['artifactName']='i80386-hdd-gui-200-1';chosen['artifact']['name']=chosen['artifactName']
+                with self.subTest(cut=cut),self.assertRaises(ValueError):r.audit(*sealed(changed,chosen))
+            (parts/'unexpected').write_bytes(b'X')
+            with self.assertRaises(r.ActualV6PartsFailure):r.actual_v7_parts_expected(manifest_path,parts)
+
+    def test_actual_v7_three_real_startup_mode_bindings(self):
+        files,expected=self.actual_v7_packet()
+        self.assertFalse(c.ACTUAL_V7_ENABLED);self.assertFalse(c.ACTUAL_V6_ENABLED)
+        with patch.object(c,'regular',side_effect=AssertionError('host read before V7 guard')):
+            for mode in ('actual-v7-guard','actual-v7-preflight','actual-v7'):
+                with self.assertRaisesRegex(ValueError,'disabled'):c.main([mode])
+        installed=c.startup_installation(files['python-startup.original.txt'])
+        prefix=D(files['python-startup.before.json'])['prefix']
+        flags=D(files['python-startup.before.json'])['flags']
+        original_resolve=pathlib.Path.resolve
+        def selected_resolve(path,*args,**kwargs):
+            return pathlib.Path(c.PYTHON_EXECUTABLE) if str(path)=='/proc/self/exe' else original_resolve(path,*args,**kwargs)
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            for mode in ('actual-v7-guard','actual-v7-preflight','actual-v7'):
+                output=pathlib.Path(temporary)/mode
+                command=['scripts/run-i80386-hdd-gui-actual.py',mode]
+                if mode!='actual-v7-guard':
+                    command+=['--request',str(root/'gui-inputs/request.json'),'--expected-sha256',expected['requestSha256'],'--output',str(output)]
+                def regular_edge(path,cap):
+                    name=str(path)
+                    if name.endswith('python-startup.original.txt'):return files['python-startup.original.txt']
+                    if name.endswith('gui-inputs/request.json'):return files['request.original.json']
+                    if name=='/mock/event.json':return files['event.original.json']
+                    raise AssertionError('unexpected host read after source/event admission')
+                with (patch.object(c,'ACTUAL_V7_ENABLED',True),patch.object(c,'regular',side_effect=regular_edge),
+                      patch.dict(c.os.environ,{'GITHUB_EVENT_PATH':'/mock/event.json','GITHUB_REPOSITORY':c.REPOSITORY,
+                        'GITHUB_EVENT_NAME':'pull_request','GITHUB_ACTOR':'CrispStrobe','GITHUB_RUN_ATTEMPT':'1',
+                        'GITHUB_RUN_ID':'200','GITHUB_JOB':'actual-v7','BW_EXPECTED_HEAD':'a'*40}),
+                      patch.object(c,'observe_runtime',side_effect=OSError('runtime OS boundary after event admission')),
+                      patch.object(c,'empty_python_prefix',return_value=prefix),
+                      patch.object(c.sys,'orig_argv',c.PYTHON_OPTIONS+command),
+                      patch.object(c.sys,'flags',SimpleNamespace(**flags)),
+                      patch.object(c.sys,'executable',c.PYTHON_EXECUTABLE),
+                      patch.object(c.sys,'path',c.PYTHON_PATH),
+                      patch.object(c.sys,'pycache_prefix',c.PYTHON_CACHE),
+                      patch.object(c.sys,'_xoptions',{'pycache_prefix':c.PYTHON_CACHE}),
+                      patch.object(c.sys,'dont_write_bytecode',True),
+                      patch.object(c.os.path,'lexists',return_value=False),
+                      patch.object(c.Path,'resolve',selected_resolve)):
+                    if mode=='actual-v7-guard':self.assertEqual(c.main([mode]),0)
+                    else:
+                        self.assertEqual(c.main([mode,*command[2:]]),1)
+                        retained=D((output/'python-startup.before.json').read_bytes())
+                        self.assertEqual(retained['arguments'][1],mode)
+                        result=D((output/'result.json').read_bytes())
+                        self.assertEqual(result['schema'],'bw.gui-hdd.result.v7')
+                        self.assertIn('runtime OS boundary after event admission',result['firstFailure']['message'])
+                        self.assertEqual((output/'event.original.json').read_bytes(),files['event.original.json'])
+                wrong=D(files['python-startup.before.json']);wrong['arguments'][1]='guard' if mode.endswith('guard') else 'preflight' if mode.endswith('preflight') else 'actual'
+                with self.assertRaisesRegex(ValueError,'startup observations'):
+                    c.validate_startup(wrong,installed,mode,command[2:])
 
     def test_actual_v6_request_and_full_independent_reader_packet(self):
         files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
@@ -3752,6 +3876,15 @@ test('actual v6 parts: exact bounded transport and independent reader parity', (
     assert.ok(summary.controls>=1);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
 });
 
+test('actual v7 parts: distinct packet, exact bounded transport and reader refusals', () => {
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_actual_v7_')");
+    assert.notEqual(selected,controls);
+    const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ''}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+    const summary=readOriginalControlSummary(result.stdout);
+    assert.ok(summary.controls>=1);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+});
+
 test('finite inventory v4: body-first guard, source-only producer and independent original controls', () => {
     const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_finite_v4')");
     assert.notEqual(selected, controls);
@@ -3919,7 +4052,9 @@ test('metadata diagnostic step and job budgets contain the collector without wid
     const jobMinutes=Number(inventory.match(/timeout-minutes: (\d+)/)[1]);
     assert.ok(recordMinutes*60>=collectorSeconds+60,'diagnostic record step cannot preempt the collector budget');
     assert.ok(jobMinutes>=setupMinutes+recordMinutes+1,'metadata job includes setup, record and finite overhead margin');
-    assert.match(workflow.split('  actual:')[1],/true &&/);assert.match(workflow.split('  actual:')[1],/timeout-minutes: 35/);
+    assert.match(workflow.split('  actual:')[1].split('  actual-v7:')[0],/false &&/);
+    assert.match(workflow.split('  actual-v7:')[1].split('  font-bridge:')[0],/false &&/);
+    assert.match(workflow.split('  actual-v7:')[1],/timeout-minutes: 35/);
     assert.match(controller,/ACTUAL_ENABLED = False/);
 });
 

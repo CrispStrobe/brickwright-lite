@@ -29,10 +29,12 @@ INVENTORY_ENABLED = True
 FINITE_INVENTORY_ENABLED = False
 FINITE_INVENTORY_V5_ENABLED = False
 FINITE_INVENTORY_V6_ENABLED = False
-ACTUAL_V6_ENABLED = True
+ACTUAL_V6_ENABLED = False
+ACTUAL_V7_ENABLED = False
 REPOSITORY = 'CrispStrobe/brickwright-lite'
 LABEL = 'x86-hdd-gui-actual'
 ACTUAL_V6_LABEL = 'x86-hdd-gui-actual-v6'
+ACTUAL_V7_LABEL = 'x86-hdd-gui-actual-v7'
 BOARD = '761153ff92d521c01107ee7b32922ba7adc10ee2'
 CUI = '91d8434a79d373cef2837c137ab356356f1a3b44'
 SB3 = '1cbaeed325f5a890e43b78a4211acae8f801f2d2'
@@ -637,8 +639,8 @@ def parse_request(raw, expected):
     digest(expected); need(type(raw) is bytes and 0 < len(raw) <= JSON_CAP and sha(raw) == expected,
                            'independently selected request digest')
     request = decode(raw)
-    version=6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
-    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version==6 else ''))
+    version=7 if request.get('schema')=='bw.gui-hdd.actual-request.v7' else 6 if request.get('schema')=='bw.gui-hdd.actual-request.v6' else 5 if request.get('schema')=='bw.gui-hdd.actual-request.v5' else 4 if request.get('schema')=='bw.gui-hdd.actual-request.v4' else 3
+    fields(request, 'schema repository pullRequest source build criticalFiles installedFiles runtime inventoryAdmission inputs pythonStartup'+(' nativeFontAdmission' if version>=5 else '')+(' nativeSourceGit' if version>=6 else ''))
     need(encode(request) == raw and request['schema'] == 'bw.gui-hdd.actual-request.v'+str(version) and
          request['repository'] == REPOSITORY, 'canonical owned approval request')
     need(encode(request['pythonStartup'])==encode(startup_policy()) and request['runtime']['python']==PYTHON_EXECUTABLE,'explicit v3 startup policy and selected CPython')
@@ -665,7 +667,7 @@ def parse_request(raw, expected):
     need(prior['workflow']['path']=='.github/workflows/build.yml','exact previously reviewed producer workflow')
     if version>=5:
         need(build['head']==source['head'] and prior['checkoutTree']==source['tree'],'current Build head and complete checkout tree match selected GUI source')
-    installed_rows_v5(request['installedFiles'],INSTALLED_V6_CRITICAL) if version==6 else rows(request['installedFiles'])
+    installed_rows_v5(request['installedFiles'],INSTALLED_V6_CRITICAL) if version>=6 else rows(request['installedFiles'])
     if version>=5:need('node_modules/bw-circuit-ui/package.json' in request['installedFiles'],'complete selected Circuit UI inventory required for current actual')
     need(any(x.startswith('node_modules/bw-board/') for x in request['installedFiles']) and
          any(x.startswith('node_modules/playwright-core/') for x in request['installedFiles']), 'complete selected supplier/browser package inventories required')
@@ -697,7 +699,7 @@ def parse_request(raw, expected):
     prior_inventory=request['inventoryAdmission']
     if version>=4:
         actual_inventory_reference(prior_inventory)
-        need(prior_inventory['schema']==('bw.gui-hdd.actual-finite-inventory-reference.v3' if version==6 else 'bw.gui-hdd.actual-finite-inventory-reference.v1' if version==5 else 'bw.gui-hdd.actual-inventory-reference.v1'),'distinct finite and historical actual inventory bases')
+        need(prior_inventory['schema']==('bw.gui-hdd.actual-finite-inventory-reference.v3' if version>=6 else 'bw.gui-hdd.actual-finite-inventory-reference.v1' if version==5 else 'bw.gui-hdd.actual-inventory-reference.v1'),'distinct finite and historical actual inventory bases')
     else:
         fields(prior_inventory,'schema sourceHead runId jobId artifactId artifactSha256 original templateSha256 workflow')
         need(prior_inventory['schema']=='bw.gui-hdd.inventory-admission.v2','separately reviewed prior inventory admission')
@@ -707,7 +709,7 @@ def parse_request(raw, expected):
         fields(prior_inventory['workflow'],'commit path sha256');digest(prior_inventory['workflow']['commit'],40);digest(prior_inventory['workflow']['sha256'])
         need(prior_inventory['workflow']['path']=='.github/workflows/i80386-hdd-gui-actual.yml','prior inventory producer workflow')
     if version>=5:actual_native_font_reference(request['nativeFontAdmission'],runtime)
-    if version==6:native_source_git_v6(request['nativeSourceGit'],request['nativeFontAdmission'],
+    if version>=6:native_source_git_v6(request['nativeSourceGit'],request['nativeFontAdmission'],
                                        request['inventoryAdmission'],source['head'])
     fields(request['inputs'], 'floppy hdd bios vgaRom')
     input_paths={'floppy':'gui-inputs/floppy.img','hdd':'gui-inputs/hdd.img','bios':'gui-inputs/bios.bin','vgaRom':'gui-inputs/vga.bin'}
@@ -739,9 +741,9 @@ def bind_inventory_event(raw, head, expected, env):
 
 def bind_event(raw, request, expected, env):
     event = decode(raw); pr = event.get('pull_request', {}); repo = event.get('repository', {})
-    v6=request['schema']=='bw.gui-hdd.actual-request.v6'
-    selected_label=ACTUAL_V6_LABEL if v6 else LABEL
-    selected_marker='BW_GUI_HDD_ACTUAL_V6_REQUEST_SHA256' if v6 else 'BW_GUI_HDD_REQUEST_SHA256'
+    version=request['schema']
+    selected_label=ACTUAL_V7_LABEL if version=='bw.gui-hdd.actual-request.v7' else ACTUAL_V6_LABEL if version=='bw.gui-hdd.actual-request.v6' else LABEL
+    selected_marker='BW_GUI_HDD_ACTUAL_V7_REQUEST_SHA256' if version=='bw.gui-hdd.actual-request.v7' else 'BW_GUI_HDD_ACTUAL_V6_REQUEST_SHA256' if version=='bw.gui-hdd.actual-request.v6' else 'BW_GUI_HDD_REQUEST_SHA256'
     need(event.get('action') == 'labeled' and event.get('label', {}).get('name') == selected_label and
          event.get('sender', {}).get('login') == 'CrispStrobe' and repo.get('full_name') == REPOSITORY,
          'owned operator labeled event')
@@ -758,7 +760,8 @@ def bind_event(raw, request, expected, env):
     need(env.get('GITHUB_REPOSITORY') == REPOSITORY and env.get('GITHUB_EVENT_NAME') == 'pull_request' and
          env.get('GITHUB_ACTOR') == 'CrispStrobe' and env.get('GITHUB_RUN_ATTEMPT') == '1' and
          re.fullmatch('[1-9][0-9]{0,19}', env.get('GITHUB_RUN_ID', '')) and
-         env.get('GITHUB_JOB') == 'actual' and env.get('BW_EXPECTED_HEAD') == request['source']['head'], 'official platform observations')
+         env.get('GITHUB_JOB') == ('actual-v7' if version=='bw.gui-hdd.actual-request.v7' else 'actual') and
+         env.get('BW_EXPECTED_HEAD') == request['source']['head'], 'official platform observations')
     return event
 
 
@@ -1282,8 +1285,8 @@ def observe_runtime(request):
     facts['availableCpus'] = sorted(os.sched_getaffinity(0))
     facts['rlimits'] = {str(key):list(resource.getrlimit(key)) for key in (resource.RLIMIT_CORE,resource.RLIMIT_FSIZE,resource.RLIMIT_NOFILE)}
     facts['aggregateContainmentQualified'] = False
-    if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):observe_actual_empty_sources(request,facts)
-    if request.get('schema') in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):
+    if request.get('schema') in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):observe_actual_empty_sources(request,facts)
+    if request.get('schema') in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
         stage,_=native_font_layout(request['nativeFontAdmission']);facts.update(schema='bw.gui-hdd.runtime-observation.v5',nativeFontDirectories=native_font_directories(stage))
     return facts
 
@@ -1478,9 +1481,9 @@ def observe_native_source_git_v6(request,root,hosted,output):
     return original
 
 
-def execute(request_raw, expected, root, output_path, env, factory=Hosted, preflight=False):
+def execute(request_raw, expected, root, output_path, env, factory=Hosted, preflight=False, startup_mode=None):
     request = parse_request(request_raw, expected); output = Originals(output_path); first = None; secondary = [];font_stage=None
-    result = {'schema': 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
+    result = {'schema': 'bw.gui-hdd.result.v7' if request['schema']=='bw.gui-hdd.actual-request.v7' else 'bw.gui-hdd.result.v1', 'pass': False, 'requestSha256': expected,
               'scenarios': [], 'firstFailure': None, 'secondary': secondary}
     def retain(error,phase):
         nonlocal first
@@ -1490,14 +1493,14 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
         result['pass']=False
     output.save('request.original.json', request_raw)
     try:
-        startup_mode='preflight' if preflight else 'actual'
+        startup_mode=startup_mode if startup_mode is not None else ('preflight' if preflight else 'actual')
         startup_args=['--request',str(Path(root)/'gui-inputs/request.json'),'--expected-sha256',expected,'--output',str(output_path)]
         startup_raw,startup_before=observe_python_startup(root,startup_mode,startup_args)
         output.save('python-startup.original.txt',startup_raw);output.save('python-startup.before.json',encode(startup_before))
         hosted = factory(root, output, env)
         event_raw = regular(env['GITHUB_EVENT_PATH'], JSON_CAP); bind_event(event_raw, request, expected, env)
         output.save('event.original.json', event_raw)
-        current_font=request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6')
+        current_font=request['schema'] in ('bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7')
         if current_font and preflight:
             # Tool/runtime bytes and the exact source/event are admitted before GETs.
             initial=decode(encode(request));initial['schema']='bw.gui-hdd.actual-request.v4';stage,config=native_font_layout(request['nativeFontAdmission'])
@@ -1512,14 +1515,14 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             need(hosted.git(['cat-file', 'blob', request['source']['head']+':'+path]) == raw, 'live tracked source/Git blob')
             observed_source[path]={'byteLength':len(raw),'sha256':sha(raw)}
         output.save('source.before.json', encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_source}))
-        if request['schema']=='bw.gui-hdd.actual-request.v6':
+        if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
             observe_native_source_git_v6(request,root,hosted,output)
         for path, row in request['criticalFiles'].items(): check_file(Path(root)/path, row)
         # Complete selected package census; expected rows originate outside this attempt.
         installed = {}
         prefixes=('node_modules/bw-board','node_modules/playwright','node_modules/playwright-core')+ (('node_modules/bw-circuit-ui',) if current_font else ())
         for prefix in prefixes:
-            selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema']=='bw.gui-hdd.actual-request.v6' else inventory(Path(root)/prefix)
+            selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7') else inventory(Path(root)/prefix)
             for path, row in selected.items(): installed[prefix+'/'+path] = row
         need(encode(installed) == encode(request['installedFiles']), 'closed selected installed supplier/browser graph')
         pins = decode(regular(Path(root)/'vendor-pins.json', JSON_CAP))
@@ -1572,11 +1575,11 @@ def execute(request_raw, expected, root, output_path, env, factory=Hosted, prefl
             output.save('source.after.json',encode({'head':request['source']['head'],'tree':request['source']['tree'],'files':observed_after}))
             installed_after={}
             for prefix in prefixes:
-                selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema']=='bw.gui-hdd.actual-request.v6' else inventory(Path(root)/prefix)
+                selected=installed_inventory_v5(Path(root)/prefix,prefix,{'installedProgress':{'package':None,'path':None,'entryStat':None,'file':None,'completedPrefixes':[],'completedRows':0,'totalBytes':0}},root,INSTALLED_V6_CRITICAL) if request['schema'] in ('bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7') else inventory(Path(root)/prefix)
                 for name,row in selected.items():installed_after[prefix+'/'+name]=row
             need(installed_after==request['installedFiles'],'complete installed graph after both scenarios')
             output.save('installed.after.json', encode(installed_after)); runtime_after=capture_actual_runtime(output,'after',request)
-            if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6'):
+            if request['schema'] in ('bw.gui-hdd.actual-request.v4','bw.gui-hdd.actual-request.v5','bw.gui-hdd.actual-request.v6','bw.gui-hdd.actual-request.v7'):
                 need(encode(runtime_before['emptyPythonSources'])==encode(runtime_after['emptyPythonSources']),'actual typed source before/after identity unchanged')
             if current_font:output.save('native-font.cache.after.json',encode(native_font_cache(font_stage/'cache')))
             need(inventory(build_root) == build_files, 'served build changed after scenarios')
@@ -2720,7 +2723,7 @@ def retain_font_bridge(value,path):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__,allow_abbrev=False)
-    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6'))
+    parser.add_argument('mode',choices=('guard','inventory-guard','install-input','inventory','preflight','actual','actual-v6-guard','actual-v6-preflight','actual-v6','actual-v7-guard','actual-v7-preflight','actual-v7','font-discovery-guard','font-discovery','font-chain-guard','font-chain','font-bridge-guard','font-bridge','finite-inventory-guard','finite-inventory','finite-inventory-v5-guard','finite-inventory-v5','finite-inventory-v6-guard','finite-inventory-v6'))
     for option in ('request','expected-sha256','output','blob'):parser.add_argument('--'+option)
     raw=list(sys.argv[1:] if argv is None else argv)
     for option in ('--request','--expected-sha256','--output','--blob'):
@@ -2757,12 +2760,15 @@ def main(argv=None):
         need(ACTUAL_ENABLED is True,'GUI actual disabled pending exact source/input/event/resource admission')
     if args.mode in ('actual-v6-guard','actual-v6-preflight','actual-v6'):
         need(ACTUAL_V6_ENABLED is True,'GUI actual v6 disabled before source or guest edge')
+    if args.mode in ('actual-v7-guard','actual-v7-preflight','actual-v7'):
+        need(ACTUAL_V7_ENABLED is True,'GUI actual v7 disabled before source or guest edge')
     if args.mode in ('inventory-guard','inventory'):
         need(INVENTORY_ENABLED is True,'GUI inventory disabled pending exact source/template/event admission')
     if args.mode in ('guard','actual-v6-guard'):observe_python_startup(Path.cwd(),'guard',[])
+    if args.mode=='actual-v7-guard':observe_python_startup(Path.cwd(),args.mode,[])
     if args.mode=='install-input' and Path('gui-setup/python-startup.original.txt').exists():
         observe_python_startup(Path.cwd(),'install-input',raw[1:])
-    if args.mode in ('guard','actual-v6-guard','inventory-guard','font-discovery-guard','font-chain-guard','font-bridge-guard'):return 0
+    if args.mode in ('guard','actual-v6-guard','actual-v7-guard','inventory-guard','font-discovery-guard','font-chain-guard','font-bridge-guard'):return 0
     need(args.expected_sha256 and args.output,'fixed independent digest and output required')
     env=dict(os.environ)
     if args.mode=='install-input':
@@ -2791,10 +2797,11 @@ def main(argv=None):
         result=inventory_observation(request_raw,args.expected_sha256,Path.cwd(),env,args.output)
         return retain_inventory_observation(result,args.output)
     current=parse_request(request_raw,args.expected_sha256)
-    need(current['schema']==('bw.gui-hdd.actual-request.v6' if args.mode in ('actual-v6-preflight','actual-v6') else 'bw.gui-hdd.actual-request.v5'),
+    need(current['schema']==('bw.gui-hdd.actual-request.v7' if args.mode in ('actual-v7-preflight','actual-v7') else 'bw.gui-hdd.actual-request.v6' if args.mode in ('actual-v6-preflight','actual-v6') else 'bw.gui-hdd.actual-request.v5'),
          'versioned actual entry requires matching independently reviewed request')
     return execute(request_raw,args.expected_sha256,Path.cwd(),args.output,env,
-                   preflight=args.mode in ('preflight','actual-v6-preflight'))
+                   preflight=args.mode in ('preflight','actual-v6-preflight','actual-v7-preflight'),
+                   startup_mode=args.mode if args.mode in ('actual-v7-preflight','actual-v7') else None)
 
 
 if __name__=='__main__':

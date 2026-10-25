@@ -6857,7 +6857,12 @@
         "Refuse unreviewed discovery before setup or input retrieval",
         "Install unchanged selected packages and Chromium for font observation",
         "Install externally selected immutable discovery request",
-        "Record bounded read-only font discovery without credentials"
+        "Record bounded read-only font discovery without credentials",
+        "Install empty Python cache prefix and refuse unreviewed v7 source",
+        "Repeat v7 inventory installation exactly, without frontend build",
+        "Install externally admitted v7 request and refuse runtime/source drift",
+        "Prepare unchanged authenticated free media once for v7",
+        "One official frontend acquisition and two serial genuine v7 UI scenarios"
       ],
       "inFileInNoRun": [
         "Refuse unreviewed inventory before setup or input retrieval",
@@ -6867,7 +6872,12 @@
         "Repeat inventory installation exactly, without frontend build",
         "Install externally admitted request and refuse runtime/source drift",
         "Prepare unchanged authenticated free media once",
-        "One official frontend acquisition and two serial genuine UI scenarios"
+        "One official frontend acquisition and two serial genuine UI scenarios",
+        "Install empty Python cache prefix and refuse unreviewed v7 source",
+        "Repeat v7 inventory installation exactly, without frontend build",
+        "Install externally admitted v7 request and refuse runtime/source drift",
+        "Prepare unchanged authenticated free media once for v7",
+        "One official frontend acquisition and two serial genuine v7 UI scenarios"
       ],
       "steps": {
         "Source and manufactured-original controls only": {
@@ -6960,6 +6970,13 @@
         },
         "inventory": {
           "existed": 19,
+          "ran": 0,
+          "existedMain": 0,
+          "ranMain": 0,
+          "class": "never"
+        },
+        "actual-v7": {
+          "existed": 0,
           "ran": 0,
           "existedMain": 0,
           "ranMain": 0,
