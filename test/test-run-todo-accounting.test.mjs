@@ -25,9 +25,9 @@ test('actual Node TODO outcomes survive census and a lost pending record or hidd
     const root = mkdtempSync(path.join(tmpdir(), 'bw-todo-accounting-'));
     const env = {...process.env}; delete env.NODE_TEST_CONTEXT;
     try {
-        mkdirSync(path.join(root, 'scripts/lib'), {recursive: true});
+        mkdirSync(path.join(root, 'scripts/lib'), {recursive: true});mkdirSync(path.join(root, 'scripts/data'));
         mkdirSync(path.join(root, 'test'));
-        for (const name of ['check-test-run.mjs', 'check-tap-failures.mjs', 'list-tests.mjs', 'lib/skip-pointers.mjs', 'lib/tap-outcomes.mjs', 'lib/test-census-reporter.mjs'])
+        for (const name of ['check-test-run.mjs', 'check-tap-failures.mjs', 'list-tests.mjs', 'lib/skip-pointers.mjs', 'lib/tap-outcomes.mjs', 'lib/test-census-reporter.mjs', 'data/unit-test-timings.json'])
             copyFileSync(new URL('../scripts/' + name, import.meta.url), path.join(root, 'scripts', name));
         writeFileSync(path.join(root, 'CI-POINTERS.md'), '');
         mkdirSync(path.join(root, 'docs'));writeFileSync(path.join(root, 'docs/PENDING.md'), '# pending\n');
