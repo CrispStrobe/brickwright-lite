@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {existsSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {loadCircuitModel} from '../scripts/lib/polarity-oracle.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -134,3 +137,21 @@ for (let key = 1; key <= 8; key++) {
         }
     });
 }
+
+
+test('installed precision CLI refuses the authored-step budget before capture or artifact output', t => {
+    const dir=mkdtempSync(path.join(tmpdir(),'lite-authored-step-budget-'));
+    t.after(()=>rmSync(dir,{recursive:true,force:true}));
+    const file=path.join(dir,'rc.cir'),csv=path.join(dir,'capture.csv'),receipt=path.join(dir,'capture.json');
+    writeFileSync(file,'Authored installed RC budget control\nV1 in 0 PULSE(0 1 0 1n 1n 500u 1m)\n'
+        +'R1 in out 1k\nC1 out 0 100n\n.tran 1u 5m\n.end\n');
+    const env={...process.env};delete env.BW_BOARD;
+    const result=spawnSync(process.execPath,[path.join(root,'node_modules/bw-circuit-ui/bin/bwc.mjs'),
+        'measure',file,'--watch','--profile','precision-v1','--initial','zero-state',
+        '--duration','5ms','--rate','1MHz','--max-step','50ns','--scope','R1.a,R1.b',
+        '--csv',csv,'--receipt',receipt],{cwd:root,env,encoding:'utf8',timeout:15000});
+    assert.equal(result.status,2,result.stderr);
+    assert.match(result.stderr,/preflight needs 100000 adaptive attempts; limit is 20000/);
+    assert.equal(result.stdout,'','no provisional samples or reports on failed admission');
+    assert.equal(existsSync(csv),false);assert.equal(existsSync(receipt),false);
+});
