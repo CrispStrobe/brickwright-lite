@@ -2837,8 +2837,157 @@ def verify_font_bridge_delivery(archive_raw,request_raw,expected,metadata,workfl
       'sourceHead':expected['source']['head'],'workflowCommit':expected['workflow']['commit'],'runId':expected['runId'],'jobId':expected['jobId'],'artifactId':expected['artifactId'],'observation':verdict}
 
 
+ACTUAL_V6_PART_FILES = {
+    'inventoryOriginal': 'inventory-original.json',
+    'inventoryTemplate': 'inventory-template.json',
+    'nativeFontOriginals.request': 'native-request.json',
+    'nativeFontOriginals.event': 'native-event.json',
+    'nativeFontOriginals.original': 'native-original.json',
+    'nativeFontOriginals.service': 'native-service.json',
+    'nativeFontOriginals.expectation': 'native-expectation.json',
+    'nativeFontOriginals.readerReport': 'native-reader-report.json',
+    'nativeFontOriginals.run': 'native-run.json',
+    'nativeFontOriginals.job': 'native-job.json',
+    'nativeFontOriginals.artifact': 'native-artifact.json',
+}
+ACTUAL_V6_PART_EXPECTED = ('schema requestSha256 buildSourceAdmissionSha256 sourceHead runId jobId artifactId '
+                           'artifactName artifactBytes artifactSha256 run job artifact inventoryReferenceSha256 '
+                           'nativeFontReferenceSha256 nativeSourceGitSha256')
+
+
+class ActualV6PartsFailure(ValueError):
+    def __init__(self, first, secondary=()):
+        self.firstFailure=first
+        self.secondary=list(secondary)
+        super().__init__(first['message'])
+
+
+def actual_v6_part_error(phase,error):
+    message=str(error)
+    return {'phase':phase,'name':type(error).__name__,'message':message[:256]}
+
+
+def actual_v6_part_identity(value):
+    return tuple(getattr(value,key) for key in
+                 ('st_dev','st_ino','st_size','st_mode','st_uid','st_gid','st_nlink','st_mtime_ns'))
+
+
+def actual_v6_part_read(path,cap,phase,dirfd=None):
+    """Read one named original once; retain read and close failures in order."""
+    descriptor=None;first=None;secondary=[];raw=bytearray()
+    try:
+        if dirfd is None:
+            named=Path(path).absolute();before=named.lstat()
+            need(named.resolve(strict=True)==named,'canonical external parts input')
+        else:
+            need(type(path) is str and path in ACTUAL_V6_PART_FILES.values(),'source-fixed parts filename')
+            before=os.stat(path,dir_fd=dirfd,follow_symlinks=False)
+        need(stat.S_ISREG(before.st_mode) and before.st_nlink==1 and 0<before.st_size<=cap,
+             'bounded single-link regular parts input')
+        if dirfd is None:
+            descriptor=os.open(named,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC)
+        else:
+            descriptor=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK|os.O_CLOEXEC,dir_fd=dirfd)
+        need(actual_v6_part_identity(os.fstat(descriptor))==actual_v6_part_identity(before),
+             'held parts input identity')
+        while len(raw)<=cap:
+            part=os.read(descriptor,min(65536,cap+1-len(raw)))
+            if not part:break
+            raw.extend(part)
+        after=(named.lstat() if dirfd is None else os.stat(path,dir_fd=dirfd,follow_symlinks=False))
+        need(len(raw)==before.st_size and actual_v6_part_identity(os.fstat(descriptor))==
+             actual_v6_part_identity(before)==actual_v6_part_identity(after),
+             'complete stable parts input readback')
+    except BaseException as error:first=actual_v6_part_error(phase,error)
+    finally:
+        if descriptor is not None:
+            try:os.close(descriptor)
+            except BaseException as error:
+                record=actual_v6_part_error(phase+'-close',error)
+                if first is None:first=record
+                else:secondary.append(record)
+    if first is not None:raise ActualV6PartsFailure(first,secondary)
+    return bytes(raw)
+
+
+def actual_v6_parts_expected(manifest_path,parts_path):
+    """New bounded transport; all old expectation and actual graders stay unchanged."""
+    manifest_raw=actual_v6_part_read(manifest_path,65536,'manifest')
+    manifest=decode(manifest_raw)
+    fields(manifest,'schema expected parts')
+    need(encode(manifest)==manifest_raw and manifest['schema']=='bw.gui-hdd.actual-v6-parts-manifest.v1',
+         'canonical closed actual v6 parts manifest')
+    selected=manifest['expected'];fields(selected,ACTUAL_V6_PART_EXPECTED)
+    need(selected['schema']=='bw.gui-hdd.actual-expectation.v6','distinct v6 expectation parts')
+    parts=manifest['parts'];need(type(parts) is dict and set(parts)==set(ACTUAL_V6_PART_FILES),
+                                 'exact eleven external original roles')
+    total=len(manifest_raw)
+    for role in ACTUAL_V6_PART_FILES:
+        row=parts[role];fields(row,'byteLength sha256');integer(row['byteLength'],1,JSON_CAP);digest(row['sha256'])
+        total+=row['byteLength'];need(total<=JSON_CAP,'bounded manifest and raw parts aggregate')
+    directory=Path(parts_path).absolute();descriptor=None;first=None;secondary=[];expected=None
+    try:
+        before=directory.lstat()
+        need(directory.resolve(strict=True)==directory and stat.S_ISDIR(before.st_mode),
+             'canonical parts directory without alias')
+        descriptor=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        need(actual_v6_part_identity(os.fstat(descriptor))==actual_v6_part_identity(before),
+             'held parts directory identity')
+        names=[]
+        with os.scandir(descriptor) as children:
+            for child in children:
+                need(len(names)<len(ACTUAL_V6_PART_FILES) and len(os.fsencode(child.name))<=128,
+                     'bounded closed parts directory census')
+                names.append(child.name)
+        need(len(names)==len(ACTUAL_V6_PART_FILES) and set(names)==set(ACTUAL_V6_PART_FILES.values()),
+             'closed eleven-file parts directory census')
+        expected=dict(selected);expected['nativeFontOriginals']={};observed_total=len(manifest_raw)
+        for role,name in ACTUAL_V6_PART_FILES.items():
+            raw=actual_v6_part_read(name,parts[role]['byteLength'],role,descriptor)
+            need(len(raw)==parts[role]['byteLength'] and sha(raw)==parts[role]['sha256'],
+                 'selected parts extent and digest')
+            observed_total+=len(raw);need(observed_total<=JSON_CAP,'observed raw parts aggregate')
+            embedded={'byteLength':len(raw),'sha256':sha(raw),'base64':base64.b64encode(raw).decode()}
+            if role.startswith('nativeFontOriginals.'):
+                expected['nativeFontOriginals'][role.split('.',1)[1]]=embedded
+            else:expected[role]=embedded
+        after=directory.lstat()
+        need(actual_v6_part_identity(os.fstat(descriptor))==actual_v6_part_identity(before)==
+             actual_v6_part_identity(after),'stable parts directory readback')
+    except ActualV6PartsFailure as error:
+        first=error.firstFailure;secondary.extend(error.secondary)
+    except BaseException as error:first=actual_v6_part_error('parts-directory',error)
+    finally:
+        if descriptor is not None:
+            try:os.close(descriptor)
+            except BaseException as error:
+                record=actual_v6_part_error('parts-directory-close',error)
+                if first is None:first=record
+                else:secondary.append(record)
+    if first is not None:raise ActualV6PartsFailure(first,secondary)
+    return expected
+
+
 def main(argv=None):
     raw_args=list(sys.argv[1:] if argv is None else argv)
+    if raw_args[:1]==['--actual-v6-parts']:
+        parser=argparse.ArgumentParser(description='Independent bounded actual v6 parts audit',allow_abbrev=False)
+        parser.add_argument('--actual-v6-parts',action='store_true')
+        for name in ('manifest','parts','artifact'):parser.add_argument('--'+name,required=True)
+        need(len(raw_args)==7 and raw_args[0]=='--actual-v6-parts' and
+             raw_args[1]=='--manifest' and raw_args[3]=='--parts' and raw_args[5]=='--artifact',
+             'exact seven-token actual v6 parts entry')
+        args=parser.parse_args(raw_args)
+        try:expected=actual_v6_parts_expected(args.manifest,args.parts)
+        except ActualV6PartsFailure as error:
+            print(encode({'pass':False,'firstFailure':error.firstFailure,'secondary':error.secondary}).decode(),
+                  end='',file=sys.stderr)
+            return 1
+        expected_policy(expected)
+        raw=bounded_input(args.artifact,expected['artifactBytes'])
+        need(len(raw)==expected['artifactBytes'] and sha(raw)==expected['artifactSha256'],
+             'external actual artifact digest')
+        print(encode(audit(archive_originals(raw),expected)).decode(),end='');return 0
     if raw_args[:1] in (['--inventory-original-v5'],['--inventory-failure-v5'],
                         ['--inventory-original-v6'],['--inventory-failure-v6']):
         mode=raw_args[0]

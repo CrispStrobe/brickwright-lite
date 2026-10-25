@@ -3432,6 +3432,95 @@ class Originals(unittest.TestCase):
                 event=D(changed['event.original.json']);event['label']['name']='x86-hdd-gui-actual';changed['event.original.json']=E(event)
             with self.subTest(cut=cut),self.assertRaises((ValueError,KeyError)):
                 r.audit(*sealed(changed,chosen))
+
+    def test_actual_v6_parts_exact_transport_and_full_reader_parity(self):
+        files,expected=self.actual_v6_packet();originals,selected=sealed(files,expected)
+        artifact=packet(files)
+        self.assertEqual(r.audit(originals,selected)['schema'],'bw.gui-hdd.reader.v6')
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            base=pathlib.Path(temporary);parts=base/'parts';parts.mkdir()
+            manifest_path=base/'manifest.json';artifact_path=base/'artifact.zip'
+            artifact_path.write_bytes(artifact)
+            def write_parts(chosen):
+                small={key:copy.deepcopy(value) for key,value in chosen.items()
+                       if key not in ('inventoryOriginal','inventoryTemplate','nativeFontOriginals')}
+                roles={};raws={}
+                for role,name in r.ACTUAL_V6_PART_FILES.items():
+                    item=chosen['nativeFontOriginals'][role.split('.',1)[1]] if role.startswith('nativeFontOriginals.') else chosen[role]
+                    raw=base64.b64decode(item['base64'],validate=True)
+                    (parts/name).write_bytes(raw);roles[role]={'byteLength':len(raw),'sha256':H(raw)};raws[role]=raw
+                manifest=E({'schema':'bw.gui-hdd.actual-v6-parts-manifest.v1','expected':small,'parts':roles})
+                manifest_path.write_bytes(manifest)
+                self.assertLessEqual(len(manifest)+sum(len(raw) for raw in raws.values()),r.JSON_CAP)
+                return manifest,raws
+            manifest,raws=write_parts(selected)
+            self.assertEqual(r.actual_v6_parts_expected(manifest_path,parts),selected)
+            with patch.object(r.sys,'stdout',io.StringIO()) as stream:
+                self.assertEqual(r.main(['--actual-v6-parts','--manifest',str(manifest_path),'--parts',str(parts),
+                                         '--artifact',str(artifact_path)]),0)
+                new=D(stream.getvalue().encode())
+            old=r.audit(originals,selected)
+            self.assertEqual(new,old)
+            # All reader predicates remain live after reconstruction. Rewrapping a
+            # semantically false request cannot gain a verdict through the new route.
+            changed=copy.deepcopy(files);request=D(changed['request.original.json'])
+            del request['installedFiles']['node_modules/bw-circuit-ui/src/index.js']
+            request['installedFiles']['node_modules/bw-circuit-ui/src/current.js']=ROW(b'old-only')
+            changed['request.original.json']=E(request)
+            chosen=copy.deepcopy(selected);chosen['requestSha256']=H(changed['request.original.json'])
+            bad_artifact=packet(changed);chosen['artifactBytes']=len(bad_artifact);chosen['artifactSha256']=H(bad_artifact)
+            chosen['artifact']['size_in_bytes']=len(bad_artifact);chosen['artifact']['digest']='sha256:'+H(bad_artifact)
+            artifact_path.write_bytes(bad_artifact);write_parts(chosen)
+            with self.assertRaises(ValueError):r.audit(*sealed(changed,chosen))
+            with self.assertRaises(ValueError):r.main(['--actual-v6-parts','--manifest',str(manifest_path),
+                                                       '--parts',str(parts),'--artifact',str(artifact_path)])
+            artifact_path.write_bytes(artifact);write_parts(selected)
+            # Closed census, role extent, aliases, canonical manifest, and old
+            # positional size cap are independent of the packet's guest verdict.
+            (parts/'extra').write_bytes(b'x')
+            with self.assertRaises(r.ActualV6PartsFailure):r.actual_v6_parts_expected(manifest_path,parts)
+            (parts/'extra').unlink()
+            original=(parts/'inventory-template.json').read_bytes()
+            (parts/'inventory-template.json').unlink();(parts/'inventory-template.json').symlink_to('inventory-original.json')
+            with self.assertRaises(r.ActualV6PartsFailure):r.actual_v6_parts_expected(manifest_path,parts)
+            (parts/'inventory-template.json').unlink();(parts/'inventory-template.json').write_bytes(original)
+            item=D(manifest);item['parts']['inventoryOriginal']['byteLength']=r.JSON_CAP
+            manifest_path.write_bytes(E(item))
+            original_open=r.os.open
+            def refuse_directory_open(path,*args,**kwargs):
+                if pathlib.Path(path)==parts:raise AssertionError('aggregate gate opened parts directory')
+                return original_open(path,*args,**kwargs)
+            with patch.object(r.os,'open',side_effect=refuse_directory_open):
+                with self.assertRaisesRegex(ValueError,'aggregate'):r.actual_v6_parts_expected(manifest_path,parts)
+            manifest_path.write_bytes(manifest)
+            (parts/'native-event.json').write_bytes(b'X'+raws['nativeFontOriginals.event'][1:])
+            with self.assertRaises(r.ActualV6PartsFailure):r.actual_v6_parts_expected(manifest_path,parts)
+            (parts/'native-event.json').write_bytes(raws['nativeFontOriginals.event'])
+            manifest_path.write_bytes(manifest[:-1]+b' \n')
+            with self.assertRaisesRegex(ValueError,'canonical closed'):r.actual_v6_parts_expected(manifest_path,parts)
+            manifest_path.write_bytes(manifest)
+            with self.assertRaisesRegex(ValueError,'exact seven-token'):
+                r.main(['--actual-v6-parts','--parts',str(parts),'--manifest',str(manifest_path),
+                        '--artifact',str(artifact_path)])
+            oversized=base/'oversized-expected.json';oversized.write_bytes(b' '* (r.JSON_CAP+1))
+            with self.assertRaises(ValueError):r.main([str(artifact_path),str(oversized)])
+
+    def test_actual_v6_parts_first_read_error_and_close_secondary(self):
+        with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
+            path=pathlib.Path(temporary)/'original.json';path.write_bytes(b'{"value":1}\n')
+            original_close=r.os.close
+            def close_then_fail(descriptor):
+                original_close(descriptor)
+                raise OSError('mock close failure after retained first read failure')
+            with (patch.object(r.os,'read',side_effect=OSError('mock first read failure')),
+                  patch.object(r.os,'close',side_effect=close_then_fail)):
+                with self.assertRaises(r.ActualV6PartsFailure) as caught:
+                    r.actual_v6_part_read(path,1024,'manifest')
+            self.assertEqual(caught.exception.firstFailure['phase'],'manifest')
+            self.assertIn('first read failure',caught.exception.firstFailure['message'])
+            self.assertEqual(len(caught.exception.secondary),1)
+            self.assertEqual(caught.exception.secondary[0]['phase'],'manifest-close')
+
     def test_actual_v6_current_native_git_and_cross_head_mutants(self):
         files,expected=self.actual_v6_packet();request=D(files['request.original.json'])
         with tempfile.TemporaryDirectory(dir=root.parent) as temporary:
@@ -3632,7 +3721,7 @@ class NativeV2Originals(unittest.TestCase):
     def test_v1_manufactured_historical_admission_stays_distinct(self):
         files,expected=fixture_v5();self.assertTrue(r.audit(*sealed(files,expected))['pass'])
 
-suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6')))
+suite=unittest.TestSuite(Originals(name) for name in unittest.defaultTestLoader.getTestCaseNames(Originals) if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_')))
 result=unittest.TextTestRunner(verbosity=2).run(suite)
 print(json.dumps({'controls':result.testsRun,'failures':len(result.failures),'errors':len(result.errors)}))
 sys.exit(not result.wasSuccessful())
@@ -3654,8 +3743,17 @@ test('standalone original reader: complete manufactured packet and coherent nega
     assert.ok(summary.controls>=25); assert.equal(summary.failures,0); assert.equal(summary.errors,0);
 });
 
+test('actual v6 parts: exact bounded transport and independent reader parity', () => {
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_actual_v6_parts_')");
+    assert.notEqual(selected,controls);
+    const result=spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
+    assert.equal(result.status,0,`${result.error?.stack || ''}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
+    const summary=readOriginalControlSummary(result.stdout);
+    assert.ok(summary.controls>=1);assert.equal(summary.failures,0);assert.equal(summary.errors,0);
+});
+
 test('finite inventory v4: body-first guard, source-only producer and independent original controls', () => {
-    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6'))", "if name.startswith('test_finite_v4')");
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_finite_v4')");
     assert.notEqual(selected, controls);
     const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
@@ -3664,7 +3762,7 @@ test('finite inventory v4: body-first guard, source-only producer and independen
 });
 
 test('finite inventory v6: distinct installed entry, transport and independent original controls', () => {
-    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6'))", "if name.startswith('test_finite_v6')");
+    const selected = controls.replace("if not name.startswith(('test_finite_v4','test_finite_v6','test_actual_v6_parts_'))", "if name.startswith('test_finite_v6')");
     assert.notEqual(selected, controls);
     const result = spawnSync('/usr/bin/python3',['-B','-',root],{input:selected,cwd:root,encoding:'utf8',timeout:60000,maxBuffer:4*1024*1024});
     assert.equal(result.status,0,`${result.error?.stack || ""}\nsignal=${result.signal}\n${result.stdout}\n${result.stderr}`);
