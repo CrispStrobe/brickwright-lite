@@ -3421,6 +3421,48 @@
         "nan": false,
         "simMs": 31533
       }
+    },
+    {
+      "id": "carry-ratio",
+      "title": "Carry Ratio — a free ball carried by a driven tray",
+      "placements": 64,
+      "archive": "model-lab agent branch agent/bw-opencode-ctl-r5-20261025/transported_payload_contact_limit (task dir model.ldr/program.bw)",
+      "originalLdrawSha256": "743e62448ad68ddc90733fcfb0d275f928bf6334850aa3bed2bb41920468738c",
+      "canonicalLdrawSha256": "6be4d48f3c2818865a2415085cf1662187b52f303b0aa5e8fe4a449c76a5f135",
+      "program": "carry-ratio.bw",
+      "programSha256": "0a0d2d1a7019cd937a92fe5267865422e5df05c0e4c6e0066dc2b02f97c02c6a",
+      "adaptation": "Program trimmed: the builder's 960 and 1080 deg/s stages removed (the ball was thrown off the deck and travelled > 3 m); return now from 2880 deg. Geometry unchanged. Lessons edited to the trimmed run and the real control; manual jog limited to the program's range.",
+      "supplierClaims": "Built by the OpenCode builder agent bw-opencode-ctl-r5-20261025 (deepseek-v4.1-flash, handoff v3.2); submitted review_ready.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 0/275/1000, body poses: ball/deck transport ratio 0.2850-0.2880 at 120/240/480/720 deg/s vs 2/7 = 0.2857; deck stroke 16.00-16.07 mm; ball stays on the deck (constant height). Long 8-stroke return: ball creeps ~6 mm along the deck, fitted ratio 0.252 there."
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 0, 275 and 1000",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "PASS (carry-ratio-control)",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
+    },
+    {
+      "id": "carry-ratio-control",
+      "title": "Carry Ratio — ball on the base (control)",
+      "placements": 64,
+      "archive": "derived from the agent control.ldr (attempt-010 form)",
+      "originalLdrawSha256": "e19dc7a12d76cda402a4549794bf7ec894c1ed7a0002a8eae7ceac0070db92f5",
+      "canonicalLdrawSha256": "f6bc7bb6e338f766aa16f00f45df8eb62c82da53edd359ae83c11e3e52a0519d",
+      "program": "carry-ratio.bw",
+      "programSha256": "0a0d2d1a7019cd937a92fe5267865422e5df05c0e4c6e0066dc2b02f97c02c6a",
+      "adaptation": "Header comment corrected (the file is the ball-on-base control, not the rejected crank-pin form). Program as carry-ratio.",
+      "supplierClaims": "Built by the OpenCode builder agent bw-opencode-ctl-r5-20261025 (deepseek-v4.1-flash, handoff v3.2); submitted review_ready.",
+      "simulatorLaw": {
+        "verdict": "AGREES",
+        "scope": "headless COLD 275: transport ratio -0.003..+0.0003 in the driven stages; deck stroke identical"
+      },
+      "poweredMotion": "HEADLESS_COMPLETED at COLD 275",
+      "mechanicalLaw": "SIMULATOR_AGREES",
+      "causalControl": "IS_CONTROL",
+      "browserLoad": "NOT_RUN",
+      "savedProjectReplay": "NOT_RUN"
     }
   ],
   "appVerification": {
