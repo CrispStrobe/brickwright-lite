@@ -1,5 +1,29 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
+## 25 October: latest complete source census and next boundary
+
+The latest complete unchanged 184-input import/Creator census measures
+**146 translated / 37 partial / one parse failure**, using the same observer
+and input hashes as the earlier 145/38/1 measurement. Only the retained sorting
+case changes stage; no diagnostic changes or stage regressions occur elsewhere.
+This is source conversion, not SDK/native execution or completed applications.
+Earlier measurements below are historical and must not replace this result.
+
+The sorting case also passes targeted current JSON export with every authored
+procedure retained. Independent controls cover Code, three JSON generations,
+SB3 reopen and a separate loop/math conversion. See the
+[execution-root implementation scope](../lanes/2026-10-25-arcade-closed-ordinary-entry.md).
+Keep final exact-head SDK/native/editor qualification and dependency-context
+measurement separate. Coordinate the active publisher and its once-only current
+CI intake before publishing a successor; never repeat an acquired original.
+
+The other primitive-caller row still has four failures in the complete importer,
+while its directly parsed source passes the primitive validator. The next task
+is to observe the actual normalized program at ordinary procedure preparation,
+identify where its producers differ, and claim that exact boundary before code
+changes. It has no Array-length reads; do not broaden callee initialization or
+seed Number from annotations based on the old review bucket's name.
+
 ## 25 October: fresh source census and SDK scalar repair
 
 The subsequent four-shard run at

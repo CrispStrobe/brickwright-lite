@@ -4,26 +4,28 @@
 
 Use [the fresh measured baseline and scalar candidate](ARCADE-AGENT-HANDOFF.md#25-october-fresh-source-census-and-sdk-scalar-repair)
 before the historical checkpoints below. The unchanged raw source corpus now
-measures 145 translated / 38 partial / one parse failure; it does not measure
+measures 146 translated / 37 partial / one parse failure; it does not measure
 complete games. Keep companion roots, canonical retained dependency contexts,
 historical original compiler success and current execution distinct.
 
-1. Preserve the completed PR #1128 baseline intake: four unit originals and
-   terminal numeric-authoring result are retained. Do not reacquire them or
-   borrow their success for a successor.
-2. Qualify the SDK scalar candidate: 44 affected source checks and two guard
-   mutations pass. Current SDK/runtime and visible authoring remain pending.
-   Keep real position/pixel edits and fresh reopen, with no Opaque fallback.
-3. Compose atan2, the separately claimed source-start reset proof, and the
-   scalar Any-consumer repair. The dialect is already qualified and landed
-   upstream; adopt its exact pin through normal sync. Preserve complete
-   programs, signed zero, argument order and existing refusal controls.
-4. Publish one final composed candidate for affected original/emitted PXT,
-   native execution, Code/Blocks, saved-project reload, artwork and controller
-   checks. Inspect every actual failed check; preserve original failures.
-5. Recount unchanged inputs and affected dependency-complete contexts. Keep
-   import/Creator, current SDK compilation, native execution and visible
-   authoring separate. Scope the next remaining family from actual diagnostics.
+1. Coordinate the active integration publisher and reuse its once-only current
+   head's unit and terminal numeric receipts. Earlier head results are historical,
+   and a later candidate must not borrow their qualification.
+2. Qualify the composed Sprite, Image, SDK constructor, score, atan2 and ordinary
+   execution-root candidates on one final head. Their source controls are
+   recorded below; actual original/emitted MakeCode, native execution and visible
+   authoring remain pending. Keep assertions, captures and refusal controls.
+3. Keep the exact upstream atan2 supplier adoption and mirrored identity intact.
+   Do not repeat the completed adoption or reintroduce an Opaque fallback.
+4. Reproduce the remaining primitive-caller discrepancy at the actual normalized
+   importer boundary. The raw parsed program passes its validator, but the full
+   importer retains four Number diagnostics. Identify the normalization/producer
+   difference before claiming a fix; the input has no Array-length reads.
+5. Measure dependency-complete contexts separately from the raw-source cohort,
+   then scope the next remaining family from current diagnostics. The latest
+   complete raw census changes only the sorting case, with zero regressions;
+   all other diagnostics are unchanged. Do not count source translation as
+   application execution or replace original inputs to improve the count.
 
 The later `3fb45ce3` run has 65 failures across four shards: six earlier failure
 titles resolved and one newly failing title. Its numeric-authoring job passes
@@ -53,10 +55,11 @@ instead of silently repairing the original inputs.
 
 ### Reduce the raw partials without changing the inputs
 
-A diagnostic review of the unchanged 38 partial inputs identifies 20 with
+The prior 38-partial review identified 20 with
 missing artwork, animation or song context, four using the historical
 per-sprite `onOverlap` API, two with primitive/Array procedure-argument proof
-failures, and 12 requiring extension or source-binding review. These review
+failures, and 12 requiring extension or source-binding review. The sorting proof
+case is now translated, leaving 37 partials with one such caller case. These review
 buckets are not execution verdicts or a promise that each has one cause.
 
 For missing-context cases, first locate the authentic retained project assets,
