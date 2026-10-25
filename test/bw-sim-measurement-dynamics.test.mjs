@@ -60,3 +60,10 @@ test('pressure refuses ambiguous connected networks and unconnected targets', ()
     s.mechanism.couplings = [];
     assert.equal(createMeasurementReader(s).read(pressure)[0].available, false);
 });
+
+test('pure rotation does not fabricate linear COM acceleration', () => {
+    const s=fixture();s.core.bodyAngularVelocity=()=>[0,10,0];
+    const reader=createMeasurementReader(s);reader.read(acceleration);s.time=100;
+    assert.equal(reader.read(acceleration)[0].value,0,'unchanged COM velocity has zero linear acceleration despite angular motion');
+    s.time=200;s.velocity=[0.1,0,0];assert.equal(reader.read(acceleration)[0].value,1);
+});

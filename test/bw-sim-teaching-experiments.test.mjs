@@ -65,3 +65,16 @@ test('pneumatic lesson pressure target follows its connected network, not a gene
     s.mechanism.couplings.find(c => c.kind === 'pneumatic').network = null;
     assert.equal(teachingMeasurementPreset(s, name), null);
 });
+
+test('the balanced crank COM lies on its rotation axis; its coupler provides an off-axis linear observation', () => {
+    const s=prepared('crank-rocker'), m=s.mechanism;
+    const crank=m.bodies.find(b=>b.parts.includes('crank')), coupler=m.bodies.find(b=>b.parts.includes('coupler'));
+    const hinge=m.joints.find(j=>j.motor?.port==='A');
+    const radius=(position,origin,axis)=>{
+        const d=position.map((v,i)=>v-origin[i]);
+        return Math.hypot(d[1]*axis[2]-d[2]*axis[1],d[2]*axis[0]-d[0]*axis[2],d[0]*axis[1]-d[1]*axis[0]);
+    };
+    assert.ok(radius(crank.position,hinge.point,hinge.axis)<1e-9,'rotating balanced crank has no required COM translation');
+    const inputPin=m.joints.find(j=>(j.body1===crank.id&&j.body2===coupler.id)||(j.body2===crank.id&&j.body1===coupler.id));
+    assert.ok(radius(coupler.position,inputPin.point,inputPin.axis)>0.001,'moving coupler COM is displaced from its input pin');
+});

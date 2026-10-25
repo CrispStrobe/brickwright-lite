@@ -106,7 +106,10 @@ Changing the model or definition invalidates pending picks and stale drafts.
 Overlays consume the same committed readings as the plots. Rendering and draft
 previews cannot advance the acceleration sampling stream. Acceleration reports
 a sampled magnitude, including changes in velocity direction; it does not
-report instantaneous peak force. Pressure reports the connected air model,
+report instantaneous peak force. An assembly rotating about its centre of mass
+can have zero linear speed and acceleration; use angular speed to observe that
+rotation, or choose a translating assembly such as the crank-rocker's coupler.
+Pressure reports the connected air model,
 whose ideal supply, cylinder and valve approximations remain documented in
 [the physics limits](ROBOT-LAB-PHYSICS-LIMITS.md).
 

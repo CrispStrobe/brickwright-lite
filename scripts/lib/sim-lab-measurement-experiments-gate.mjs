@@ -98,7 +98,8 @@ export const measurementExperimentInteractions = async (page, {shotsDir}) => {
 
     // The new motion observation is selected through the real editor, then sampled while the mechanism moves.
     await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption('acceleration');
-    await panel.getByTestId('bw-sim-lab-measurement-target-0').selectOption('crank');
+    // The balanced crank COM lies on its hinge axis; observe the translating coupler COM.
+    await panel.getByTestId('bw-sim-lab-measurement-target-0').selectOption('coupler');
     await panel.getByTestId('bw-sim-lab-measurement-add').click();
     await panel.getByTestId('bw-sim-measurement-plot-toggle-lesson-0').check();
     const start=panel.getByTestId('bw-sim-measurement-record-start');
@@ -114,6 +115,7 @@ export const measurementExperimentInteractions = async (page, {shotsDir}) => {
         assert.equal(accepted,true,'the public motor controller accepts the recording drive');
         await page.waitForFunction(()=>{const p=window.__bwSimLab._pane;
             return p.state.status==='running'&&p.measurementRecording.snapshot().sampleCount>=6&&
+                p.measurementRows.some(r=>r.id==='lesson-0'&&r.available&&Math.abs(r.value)>1)&&
                 p.measurementRows.some(r=>r.kind==='acceleration'&&r.available&&r.value>0.001);},null,{timeout:15000});
         await panel.getByTestId('bw-sim-measurement-record-stop').click();await tool(page,'pause');
     }
