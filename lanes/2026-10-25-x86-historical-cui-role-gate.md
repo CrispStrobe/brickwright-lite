@@ -83,3 +83,11 @@ alias controls pass, and the exact reviewed bodies admit only their four
 historical slots. The deliberately uncombined package pins still prevent a
 full supplier gate pass; final composition and hosted qualification remain
 separate.
+
+The reviewed GUI control body later changed only its Rust workflow test to
+the qualified main-only push policy. The embedded Python packet controls and
+historical CUI position remained byte-identical. This gate pins that
+separately reviewed GUI control body explicitly; the producer and reader
+profiles and every historical role rule are held. Any later source edit still
+revokes its profile. Package composition and final source checks remain
+pending.

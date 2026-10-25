@@ -88,7 +88,7 @@ const HISTORICAL_X86_CURRENT_BOARD = '836867513c3e7fac420ddaa32c17e1c7b6d3e513';
 const HISTORICAL_X86_SOURCE_PROFILES = Object.freeze({
     'scripts/run-i80386-hdd-gui-actual.py': Object.freeze({bytes: 231105, sha256: '3c3c6278e74adeca8a89746bc5dcc3b073a972a1ab01dd7fb5d9136127510905'}),
     'scripts/read-i80386-hdd-gui-originals.py': Object.freeze({bytes: 307207, sha256: 'acb0dd69cf741726f368033e68731ac04566c159d770af775c64f1b125f993d6'}),
-    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 477027, sha256: '0533244358af98bc843ca832a4e13cfae43b350cc044fe23e0d21a51d24c79ad'}),
+    'test/i80386-hdd-gui-actual.test.mjs': Object.freeze({bytes: 479204, sha256: '0998bae58d4c6d938bf3729894bf6553f0ef23360c12a4a73548492b54797c0e'}),
 });
 
 import {explainGitFailure} from './helpers/git-absence.mjs';
