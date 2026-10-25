@@ -1444,15 +1444,15 @@ export const MODEL_LESSONS = Object.freeze({
         "license": "BSD-3-Clause"
     },
     "crane.ldr": {
-        "pieces": 44,
-        "motors": 2,
+        "pieces": 68,
+        "motors": 3,
         "hubs": [
             "spike-prime"
         ],
         "topic": "forces",
         "description": {
-            "en": "A linear actuator raises a boom while a geared turntable slews it. Compare spindle travel, hook height and gear reduction.",
-            "de": "Ein Linearaktuator hebt den Ausleger, ein Getriebedrehkranz schwenkt ihn. Vergleiche Spindelweg, Hakenhöhe und Untersetzung."
+            "en": "Four pinned feet support a crane with a screw-raised boom, geared slew and rope winch. Compare spindle travel, drum rotation and hook height.",
+            "de": "Vier gesteckte Stützen tragen einen Kran mit Spindelausleger, Zahnkranz-Schwenkung und Seilwinde. Vergleiche Spindelweg, Trommeldrehung und Hakenhöhe."
         },
         "author": "Brickwright contributors",
         "license": "BSD-3-Clause"

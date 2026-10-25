@@ -1,6 +1,6 @@
 # Crane gallery metadata derived from the shipped model
 
-Status: CLAIMED — merge before changing the derived gallery row.
+Status: DONE (implementation) — combined source qualification and landing pending.
 Owner: Codex, continuation of the merged bytecode/files/crane claim.
 
 Scope: only the existing `crane` lesson row in
@@ -19,3 +19,9 @@ and keep the unchanged catalog-count assertion and size boundary. Compose the
 metadata repair normally into the owned source candidate before fresh affected
 hosted qualification, all enabled exact-head checks and matched-head landing.
 This claim does not authorize physics, dependency, workflow, API or UI changes.
+
+The regenerated crane row reports 68 pieces and three motors. Its English and
+German descriptions include the winch and support feet. Every non-crane output
+byte is unchanged. Both existing gallery tests pass locally; the exact-count
+assertion and greater-than-50 boundary are unchanged. The combined candidate
+still requires fresh hosted qualification and matched-head landing.
