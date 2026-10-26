@@ -222,6 +222,22 @@ Array/all-writer, bitwise and addition refusals. Inspect actual current producer
 and call/entry order before claiming the next implementation. Preserve all six
 procedure bodies and every original writer; do not add an annotation fallback
 or suppress the refusals. Its source-census promotion is not a completed game.
+A fresh 26 October source observation retains exactly those six diagnostics,
+all six procedure bodies and the unchanged original input. The first next
+boundary is scoped in [readonly startup Number operands](https://github.com/CrispStrobe/brickwright-lite/pull/1461):
+prove actual numeric operands, complete writers and occurrence entry order for
+arithmetic results. Implement only after that claim merges. Conditional Array
+allocation and element presence remain separate proofs; a repaired Number
+result must not grant either. Retain the actual program's complete direct/JSON
+and SDK/native/visible-editor acceptance before promoting it.
+
+The retained complete-context ordinary-call case also still refuses unchanged
+callee proof. Its original reference compilation succeeded; the raw snippet's
+missing extension/song diagnostics are a separate measurement. Inspect computed
+Array reads, their actual allocation/alias flow, initialization and incompatible
+Image element constraints. Retain dormant neighboring bodies and ambient/dynamic
+callee-replacement negatives. Do not globally permit computed access or remove
+the complete unchanged-callee census to clear this case.
 
 **Editor acceptance remains open:** visibly edit min/max/atan2/randomRange
 operations and operands in Blocks and Code, execute original/emitted MakeCode
