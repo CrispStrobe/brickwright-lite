@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "quiet-partner",
+  "language": "en",
+  "what": "One fixed motor on hub port A rocks the blue input. Two white 33 mm bands connect it to an orange primary rotor; two further matching bands connect that primary to the green partner. Both output rotors turn freely on retained bearings and have no motor. The partner is a passive vibration absorber: its response can reduce primary motion over a suitable driven interval. The matching control keeps every rigid part and the same program but removes only the two primary-to-partner bands.",
+  "try": [
+    "Load the saved Quiet Partner model and its matching program, then start the green flag. The program requests ±2° input moves at 13 degrees per second for 16 alternating cycles. That requested speed is not the oscillation frequency; observe the actual cycle time. The motor drives only the input.",
+    "Watch the orange primary and green partner while the blue input continues rocking. Compare several complete cycles rather than a single turning point. Use the recorded output angles to compare their amplitude and timing; the motor encoder alone cannot show either passive response.",
+    "Reload the matching Quiet Partner Control model and run the exact same program. Its two input-to-primary bands remain; only the two partner bands are absent. Compare the primary over the same input-scheduled interval and check that measured input amplitude and frequency match. The control partner is still physically present and free.",
+    "After the drive, the input returns to zero and holds for 8 seconds. The two output rotors remain passive during this observation. Distinguish this ringdown from the earlier continued-drive comparison. Reload the saved model before either experiment is repeated, including after interruption or manual movement."
+  ],
+  "why": "The input supplies energy through elastic bands. The primary and partner store kinetic energy in their rotating masses and elastic energy in the bands. Near a tuned condition, the partner response produces a coupling torque that opposes part of the input torque acting on the primary. The primary can therefore move less while the partner moves more. This depends on inertia, effective stiffness, damping and excitation rhythm. The delivered experiment compares finite measured records; it does not assume a perfectly still primary or an ideal steady state.",
+  "matters": "Passive absorbers show how an additional moving mass can change the response of a flexible structure without a second controller. Quiet Partner complements Resonance Lab’s single forced rotor, Echo Bridge’s free exchange after a launch, and Balance Engine’s actively phased reciprocating masses. Comparing the physical control separates the effect of the partner bands from an impressive-looking auxiliary swing.",
+  "question": "Does a large partner swing prove that the primary vibration has been reduced, or that energy has been created?",
+  "answer": "No. The motor supplies the energy, and damping dissipates some of it. Measure the primary in both complete fresh runs while their inputs still move comparably. A smaller primary response together with matched actual input and a responding passive partner supports the absorber interpretation. A large partner swing by itself does not establish attenuation; a quiet final frame after the input has stopped does not establish attenuation during the drive.",
+  "further": [
+    "Inspect the packaged native qualification report and motion plots. The comparison window is chosen from the input schedule before looking at passive output. It reports both fundamental response normalized by measured input and an RMS comparison, plus the partner response and the input matching checks. These describe the declared finite experiment.",
+    "Use the small-angle equations to predict how moving a partner mass farther from its pivot changes its complete moment of inertia and tuned frequency. A geometry, band or program change is a new experiment and needs fresh clearance and native validation; the original result does not qualify it.",
+    "The source models each 33 mm band as a tension-only spring, with nominal centre-to-centre stiffness about 45.45 N/m and damping 0.02 N·s/m. These are simulator coefficients. Real band preload, ageing, friction and stiffness require hardware measurements; the numerical result is not a physical accuracy or performance specification.",
+    "Compare the MIT Engineering Dynamics Lecture 26 discussion of two-degree-of-freedom transfer functions with this rotary mechanism. The ideal undamped harmonic antiresonance explains the design idea. Finite triangular target motion, scheduler timing, damping and nonlinear band geometry prevent assuming the ideal zero-response result."
+  ],
+  "formula": "Small-angle torsional approximation with fixed pivots: J1 θ1″ + C1(θ1′−φ′) + K1(θ1−φ) + C2(θ1′−θ2′) + K2(θ1−θ2) + C01 θ1′ = 0; J2 θ2″ + C2(θ2′−θ1′) + K2(θ2−θ1) + C02 θ2′ = 0. φ is measured input angle; θ1 and θ2 are the passive primary and partner angles. J1/J2 include each complete moving assembly; K1/K2 and C1/C2 are effective coupling stiffness/damping; C01/C02 represent other losses. For ideal undamped harmonic forcing, the primary antiresonance is at ω² = K2/J2. The delivered finite, nonsinusoidal, damped run is evaluated from measured outputs, not assumed to reach that ideal limit.",
+  "related": [
+    "resonance-lab.ldr",
+    "echo-bridge.ldr",
+    "balance-engine.ldr"
+  ]
+}

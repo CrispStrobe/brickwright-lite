@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "quiet-partner-control",
+  "language": "en",
+  "what": "This is Quiet Partner with exactly two flexible parts removed: the bands between the orange primary and green partner. Every rigid part, mass, bearing, hub, motor and input-to-primary band remains in the same saved pose. The same quiet-partner.bw program drives the blue input. The green partner is present and free, but has no elastic connection to the primary.",
+  "try": [
+    "Load this saved control model and the same Quiet Partner program. Start a fresh run; do not carry motion or altered encoder zero from the coupled model into this comparison.",
+    "Observe the orange primary throughout the 16-cycle input sequence. Compare its measured amplitude over the declared continued-drive interval with a fresh run of the coupled model. The input request is ±2° at 13 degrees per second; compare actual input amplitude and period as well.",
+    "Watch the disconnected green partner. It should not acquire the coupled model’s substantial response. The native report compares both output measurements and verifies that the rigid geometry and inferred passive bearing policies are unchanged.",
+    "Let the input return and hold for 8 seconds. Treat this later ringdown as a separate observation. Reload either saved model before repeating or switching experiments."
+  ],
+  "why": "Removing only the two absorber bands breaks the elastic torque path to the partner while retaining the primary’s drive and all rigid geometry. A paired fresh run makes the proposed absorber effect testable. Comparable actual forcing is essential: a smaller primary response caused by a smaller input would not demonstrate the intended mechanism.",
+  "matters": "A useful control changes the physical feature being studied and keeps other relevant conditions comparable. Keeping the unused partner in place preserves the same frame and inventory of rigid bodies. The report also checks native bearing behavior, rather than assuming that identical visible parts automatically imply identical inferred friction.",
+  "question": "Why keep the green partner in the control instead of deleting it, and why measure the actual input if the program is identical?",
+  "answer": "Keeping it preserves the rigid assembly and isolates removal of the two coupling bands. Identical commands do not guarantee identical actual movement under different loads, so the input amplitude and frequency must still be measured. Compare the primary under continued drive, not only its final resting pose. The result is a finite paired experiment, with separate limits for hardware and other operating speeds.",
+  "further": [
+    "Inspect the model diff and native topology record. The control removes precisely the two absorber BELT records; all rigid part placements and the common program remain identical.",
+    "Read the paired response window, normalized primary gain, RMS ratio and input matching checks in the native qualification report. Do not select only the time interval with the most dramatic visual difference.",
+    "The source removes elastic coupling, not real-world noise or all possible transmission through the shared frame. The actual disconnected-partner motion is measured and bounded in the declared native experiment.",
+    "Use the main Quiet Partner lesson for the two-rotor approximation and source references. Changes to masses, band seats, speed or drive amplitude require another controlled comparison and fresh geometry validation."
+  ],
+  "formula": "For the ideal comparison, set K2 = C2 = 0 in the main lesson’s two-rotor equations. The primary then obeys J1 θ1″ + C1(θ1′−φ′) + K1(θ1−φ) + C01 θ1′ = 0. The delivered control is made by removing real band directives; it does not directly prescribe either output angle.",
+  "related": [
+    "resonance-lab.ldr",
+    "echo-bridge.ldr",
+    "balance-engine.ldr"
+  ]
+}

@@ -53,6 +53,7 @@ import {partHubProfile} from '../contracts.js';
 import {WRAPPED_GEARS, linksJoin, pivotsOnGear} from '../kinds/chain.js';
 import {placedSpur, placedTooth} from '../kinds/tooth-parts.js';
 import {BANDS, beltPoints} from '../editor/belt-path.js';
+import {ropePoints} from '../editor/rope-path.js';
 
 /** Parts per derived step the walk aims for, and the maximum per insertion page. */
 export const STEP_TARGET = 4;
@@ -157,6 +158,14 @@ export const partAdjacency = (model, catalog) => {
             for (const b of links.slice(i + 1)) if (a.id !== b.id && linksJoin(a.l, b.l)) join(a.id, b.id);
             for (const g of gears) if (pivotsOnGear(a.l, g.g) > 0) join(a.id, g.id);
         });
+    }
+    // Cords physically attach suspended subassemblies without making them a
+    // rigid body. Include those attachments in construction order only.
+    for (const rope of model.ropes || []) {
+        if (!Array.isArray(rope.around) || rope.around.length < 2 ||
+            !rope.around.every(id => adjacency.has(id)) || !(rope.lengthLdu > 0) ||
+            !ropePoints(model, catalog, rope.around)) throw new Error(`Rope '${rope.id}': invalid assembly attachment`);
+        for (let i = 1; i < rope.around.length; i++) join(rope.around[i - 1], rope.around[i]);
     }
     return adjacency;
 };

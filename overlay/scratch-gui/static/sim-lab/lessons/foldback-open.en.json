@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "foldback-open",
+  "language": "en",
+  "what": "The comparison for Foldback: the same arms and coupler, re-assembled as an open parallelogram instead of a crossed one. The fixed pivots are 48 mm apart, the coupler is 48 mm long and both cranks are 32 mm, exactly as before. The same program moves the input through 20°, 50°, 80° and 110°. In the simulator the red output arm now copies the blue input one-for-one, within 0.008°, and turns the same way, while in the crossed model it turns backwards by changing amounts.",
+  "try": [
+    "Load this model, press Reset, then Run. Watch the red output arm: it stays parallel to the blue input arm the whole time.",
+    "Compare each 30° input step with the output step: here every one is +30°. In the crossed Foldback the same steps give about −51°, −20° and −11°.",
+    "Watch the coupler between the arms. In the parallelogram it moves round without turning, always parallel to the line between the fixed pivots.",
+    "Do not drive the input to 0° or 180°. There the four pivots lie on one line, and a real parallelogram could flip into the crossed form."
+  ],
+  "why": "Four links with opposite sides equal can close in two ways. If the cranks stay parallel, the shape is a parallelogram: the output crank always points the same way as the input crank, so φ = θ and the ratio is exactly 1. If the links cross, the shape is an antiparallelogram and tan(φ/2) = −5·tan(θ/2). The link lengths are identical in both models; only the way they were assembled decides which law applies. Both branches meet only where all four pivots are in line, at θ = 0° and 180°.",
+  "matters": "Parallelogram linkages copy motion at a distance without gears: the coupling rods of a steam locomotive keep all driving wheels turning together, and drafting machines and desk lamps keep a head or ruler parallel to itself. The weak points are the in-line positions, where the linkage can flip; locomotives place the rods on the two sides 90° apart so that one side is always away from that point.",
+  "question": "The open and crossed models use exactly the same parts and link lengths. Why does one copy the input 1:1 while the other turns backwards at a changing rate?",
+  "answer": "For given link lengths a four-bar linkage can close in two different shapes. Assembled as a parallelogram, the cranks stay parallel, so φ = θ. Assembled crossed, the geometry gives tan(φ/2) = −5·tan(θ/2). The lengths do not decide the motion; the assembly branch does.",
+  "further": [
+    "Sketch both shapes at θ = 50° and check the output angles: +50° for the parallelogram, about −133.6° for the crossed form.",
+    "Why do steam locomotives put the coupling rods on the left and right sides 90° apart?",
+    "At which input angles do the two branches meet, and what would a real model do there?"
+  ],
+  "formula": "Open parallelogram: φ = θ, dφ/dθ = 1. Crossed (Foldback): tan(φ/2) = −5·tan(θ/2). a = 48 mm (fixed pivots and coupler), b = 32 mm (cranks); θ = 90° − A.",
+  "related": [
+    "tempo-loop.ldr",
+    "crank-rocker.ldr",
+    "parallel-lift.ldr"
+  ]
+}

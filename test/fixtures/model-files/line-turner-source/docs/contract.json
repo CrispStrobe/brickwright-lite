@@ -1,0 +1,1061 @@
+{
+  "slug": "line-turner",
+  "title": "Line Turner",
+  "author": "CrispStrobe",
+  "license": "BSD-3-Clause",
+  "state": "FROZEN BEFORE NATIVE QUALIFICATION",
+  "question": "Does the free endpoint of a real Scott Russell midpoint linkage move perpendicular to its only guided input, without an output guide?",
+  "mechanism": "One horizontal rack carries A. Rigid9L AB has160LDU end spacing and midpointM. The blue9L arm is centered at fixedO: its positive80LDU half connects O toM; its opposite half carries real counterweight beams. The chosen positive-X, upward-output branch gives B.X=O.X and (A.X-O.X)^2+(B.Y-O.Y)^2=160^2. No output guide is installed.",
+  "motorRoles": {
+    "A": "Drives the12T rack pinion; all link motion and output position remain passive."
+  },
+  "nominalRouteSliderXLdu": [
+    144,
+    128,
+    112,
+    96,
+    112,
+    128,
+    144
+  ],
+  "sourceAxes": "X horizontal, Y down, Z common pivot axis",
+  "dimensions": {
+    "linkLengthMm": 64,
+    "pivotRadiusMm": 32,
+    "savedSliderXMm": 57.6,
+    "pinionPitchRadiusMm": 6
+  },
+  "plannedReleasedHardBoundsLdu": [
+    90,
+    150
+  ],
+  "stopStatus": "Real stop parts are installed; the exact faces and full retained range require the separately bound construction assessment. The original provisional plan remains in build/design-intent.json.",
+  "predeclaredMotionCriteria": {
+    "maximumOutputLineErrorMm": 0.5,
+    "maximumPositionLawErrorMm": 1,
+    "minimumOutputStrokeMm": 23,
+    "maximumPhysicalHingeGapMm": 0.5,
+    "maximumPhysicalAxisMismatchDeg": 2,
+    "maximumSettledWaypointErrorMm": 1,
+    "maximumReturnErrorMm": 0.5,
+    "everyDwellMustHaveSamples": true
+  },
+  "singularities": "A=O is branch-indeterminate; |OA|=160LDU is a collinear toggle. The bounded released range must exclude both.",
+  "prototype": "Actual rack, four15100 h0 sliding bores on two parallel50451 axles, actual motor/pinion and all three physical link pivots. Only uniquely named fixed support islands may be clamped in development; no moving output may be fixed or prescribed.",
+  "designHistory": [
+    {
+      "phase": "initial parent proposal before any geometry or native run",
+      "pinion": "3647 8T /10LDU pitch radius",
+      "decision": "Replaced before first prototype by32270 12T /15LDU. The18942 tooth line atY=-25 would put8T axis atY=-35;12T axisY=-40 permits ordinary two-point Technic frame mounting without a special5LDU offset bracket."
+    },
+    {
+      "phase": "after successful sparse02 native coupling probe, before final qualification",
+      "change": "Physical stop range refined from provisional88..152 to actual90..150LDU. Added two-point origin-frame ties, a captured pinion bearing, a near-link A pivot cheek, four support posts, three feet, two base rails and a retained hub. Analytical pin/pinion phases were corrected without changing saved144 sparse geometry.",
+      "criteria": "Original motion tolerances and commanded route unchanged."
+    },
+    {
+      "phase": "after preserved full r1 cold-start failure, before new qualification",
+      "evidence": "evidence/development/native-r1/result.json; evidence/contracts/r1-inputs",
+      "failure": "Passive-brake startup tip drift0.584665mm exceeded unchanged0.5mm bound; encoder drift-2.659311deg exceeded unchanged1deg bound. The controller correctly aborted.",
+      "change": "Replace the5L midpoint link with a symmetric9L arm atO and attach two5L counterweight beams using two3L pins. OM80LDU, AB160LDU, saved pose, route, motor, guide/stop geometry and all acceptance thresholds remain unchanged.",
+      "firstMoment": "Real parts reduce nominal gravity first moment from364 to2g·LDU. No custom mass, friction shim, startup bypass or threshold relaxation."
+    }
+  ],
+  "claimLimits": [
+    "The exact line is an ideal geometric property; the final evidence reports actual native error and useful travel.",
+    "The bar changes orientation while its free endpoint travels vertically. This is not a parallel platform lift.",
+    "No measured force, efficiency, load capacity, real LEGO accuracy or hardware firmware claim.",
+    "Application installation, browser lifecycle and physical construction require separate evidence.",
+    "Previous failures and exact inputs remain preserved; changed designs are preregistered before requalification."
+  ],
+  "counterbalance": {
+    "arm": "40490.dat centered atO, M at local+80LDU",
+    "weights": "two32316.dat beams centered at local-80LDU, planesZ-160/-180",
+    "mounts": "two6558.dat3Lpins at arm coordinates-80/-40, centreZ-160",
+    "nominalGravityMomentGramLdu": 300,
+    "nominalCounterweightMomentGramLdu": 298,
+    "nominalResidualGramLdu": 2,
+    "scope": "Exact catalog/compiled collider mass first moments; no physical mass calibration or hardware stability claim."
+  },
+  "revision": "line-turner-r2",
+  "createdAtUtc": "2026-10-23T19:15:36.851Z",
+  "designIntentSha256": "cedf5fb616c68a4927d256724747e603c82882f9bc4643c5c5f4211a52e73893",
+  "baseline": {
+    "repository": "https://github.com/CrispStrobe/brickwright-lite",
+    "commit": "95b5b97034058abffe5b2e8746581ee64e23691c"
+  },
+  "physicalQuestion": "Can one horizontal slider and a midpoint link make the free end of a bar follow an exact perpendicular line without a vertical output guide?",
+  "geometry": {
+    "stage": "freestanding source assembly; qualification recorded separately",
+    "linkLengthLdu": 160,
+    "pivotRadiusLdu": 80,
+    "longLinkLdu": 160,
+    "halfLinkLdu": 80,
+    "savedSliderXLdu": 144,
+    "savedOutputSourceY": -69.74238309665078,
+    "pinionPitchRadiusLdu": 15,
+    "pinionTeeth": 12,
+    "motorIds": {
+      "A": "motor_A"
+    },
+    "motorDirectionForInwardSlider": {
+      "A": 1
+    },
+    "signEvidence": "evidence/development/coupling-probe-balanced-01/result.json",
+    "nominalRouteSliderXLdu": [
+      144,
+      128,
+      112,
+      96,
+      112,
+      128,
+      144
+    ],
+    "commandedSliderXLdu": [
+      96,
+      144
+    ],
+    "softwareGuardSliderXLdu": [
+      94,
+      146
+    ],
+    "physicalTravelBoundsLdu": [
+      90,
+      150
+    ],
+    "physicalStopsInstalled": true,
+    "physicalStopDescription": "Backed full-bush stacks on both fixed guide axles contact the two outer carriage guide-bore end faces. Minimum x90 at faceX-60; maximum x150 at faceX60. Collars transfer contact load directly to stationary keyed guide supports.",
+    "physicalStops": [
+      {
+        "id": "min_-40",
+        "fixedPart": "travel_stop_-40_-70",
+        "movingPart": "guide_runner_-140_-40",
+        "sliderXLdu": 90,
+        "fixedFaceXLdu": -60,
+        "movingFaceOffsetFromSliderXLdu": -150
+      },
+      {
+        "id": "max_-40",
+        "fixedPart": "travel_stop_-40_70",
+        "movingPart": "guide_runner_-100_-40",
+        "sliderXLdu": 150,
+        "fixedFaceXLdu": 60,
+        "movingFaceOffsetFromSliderXLdu": -90
+      },
+      {
+        "id": "min_40",
+        "fixedPart": "travel_stop_40_-70",
+        "movingPart": "guide_runner_-140_40",
+        "sliderXLdu": 90,
+        "fixedFaceXLdu": -60,
+        "movingFaceOffsetFromSliderXLdu": -150
+      },
+      {
+        "id": "max_40",
+        "fixedPart": "travel_stop_40_70",
+        "movingPart": "guide_runner_-100_40",
+        "sliderXLdu": 150,
+        "fixedFaceXLdu": 60,
+        "movingFaceOffsetFromSliderXLdu": -90
+      }
+    ],
+    "parts": 145,
+    "hubProfile": "spike-prime",
+    "sourceAxes": "X horizontal, Y down, Z hinge axes",
+    "units": "LDU = 0.4 mm",
+    "groundSourceY": 210,
+    "guideAxes": {
+      "partIds": [
+        "guide_axle_-40",
+        "guide_axle_40"
+      ],
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "sourceY": [
+        -40,
+        40
+      ],
+      "sourceZ": -60,
+      "axialIntervalLdu": [
+        -120,
+        200
+      ]
+    },
+    "linkPlanesLdu": {
+      "long": -120,
+      "short": -140
+    },
+    "designChange": "Before any native probe, the planned8T radius10LDU was replaced by12T radius15LDU: with18942 tooth lineY=-25, this places the pinion atY=-40 on the ordinary Technic grid rather thanY=-35.",
+    "programGeometry": {
+      "linkLengthLdu": 160,
+      "pivotRadiusLdu": 80,
+      "savedSliderXLdu": 144,
+      "pinionPitchRadiusLdu": 15,
+      "pinionTeeth": 12,
+      "motorIds": {
+        "A": "motor_A"
+      }
+    },
+    "counterbalance": {
+      "armPart": "short_link",
+      "armType": "40490.dat",
+      "pivotLocal": [
+        0,
+        0,
+        0
+      ],
+      "midpointLocal": [
+        0,
+        0,
+        80
+      ],
+      "counterweightCentreLocal": [
+        0,
+        0,
+        -80
+      ],
+      "weights": [
+        "balance_weight_-160",
+        "balance_weight_-180"
+      ],
+      "pins": [
+        "balance_pin_-80",
+        "balance_pin_-40"
+      ],
+      "nominalDrivingEquivalentMassGrams": 3.75,
+      "nominalCounterweightEquivalentMassGrams": 3.725,
+      "nominalResidualEquivalentMassGrams": 0.025,
+      "scope": "Metadata first moments only; cold native performance requires a new exact-source run."
+    }
+  },
+  "observerGeometry": {
+    "longLinkLdu": 160,
+    "halfLinkLdu": 80,
+    "pinionPitchRadiusLdu": 15,
+    "savedSliderXLdu": 144
+  },
+  "datum": {
+    "directionAForInwardSlider": 1,
+    "directionA": 1,
+    "signStatus": "Measured on the exact complete counterbalanced 145-part exported model. The short direct-native probe met its declared criteria under named support clamps; complete freestanding actual-VM qualification is separate.",
+    "signEvidence": {
+      "file": "evidence/development/coupling-probe-balanced-01/result.json",
+      "modelSha256": "7863942f2b0d0e24e90074a44d13137582aed47837458f343ecb08a612feb901",
+      "scope": "Exact complete geometry, short direct-native direction/return probe with named support islands clamped. No full-route VM or freestanding qualification.",
+      "sha256": "a3ac742d3afb9e638d98aff2ccf3e3510808927bb9a9683bdd8aaad0ad2baca5"
+    }
+  },
+  "route": [
+    {
+      "stage": 0,
+      "leg": "inward",
+      "sliderXLdu": 144,
+      "sliderXMm": 57.6,
+      "inwardTravelMm": 0,
+      "targetMotorDeg": 0,
+      "predictedTipHeightMm": 27.896953238660316
+    },
+    {
+      "stage": 1,
+      "leg": "inward",
+      "sliderXLdu": 128,
+      "sliderXMm": 51.2,
+      "inwardTravelMm": 6.4,
+      "targetMotorDeg": 61.11549814728781,
+      "predictedTipHeightMm": 38.400000000000006
+    },
+    {
+      "stage": 2,
+      "leg": "inward",
+      "sliderXLdu": 112,
+      "sliderXMm": 44.800000000000004,
+      "inwardTravelMm": 12.8,
+      "targetMotorDeg": 122.23099629457562,
+      "predictedTipHeightMm": 45.705141942674246
+    },
+    {
+      "stage": 3,
+      "leg": "inward",
+      "sliderXLdu": 96,
+      "sliderXMm": 38.400000000000006,
+      "inwardTravelMm": 19.200000000000003,
+      "targetMotorDeg": 183.34649444186343,
+      "predictedTipHeightMm": 51.2
+    },
+    {
+      "stage": 4,
+      "leg": "outward",
+      "sliderXLdu": 112,
+      "sliderXMm": 44.800000000000004,
+      "inwardTravelMm": 12.8,
+      "targetMotorDeg": 122.23099629457562,
+      "predictedTipHeightMm": 45.705141942674246
+    },
+    {
+      "stage": 5,
+      "leg": "outward",
+      "sliderXLdu": 128,
+      "sliderXMm": 51.2,
+      "inwardTravelMm": 6.4,
+      "targetMotorDeg": 61.11549814728781,
+      "predictedTipHeightMm": 38.400000000000006
+    },
+    {
+      "stage": 6,
+      "leg": "outward",
+      "sliderXLdu": 144,
+      "sliderXMm": 57.6,
+      "inwardTravelMm": 0,
+      "targetMotorDeg": 0,
+      "predictedTipHeightMm": 27.896953238660316
+    }
+  ],
+  "control": {
+    "schemaVersion": 1,
+    "directionAForInwardSlider": 1,
+    "signStatus": "Measured on the exact complete counterbalanced 145-part exported model. The short direct-native probe met its declared criteria under named support clamps; complete freestanding actual-VM qualification is separate.",
+    "signEvidence": {
+      "file": "evidence/development/coupling-probe-balanced-01/result.json",
+      "modelSha256": "7863942f2b0d0e24e90074a44d13137582aed47837458f343ecb08a612feb901",
+      "scope": "Exact complete geometry, short direct-native direction/return probe with named support islands clamped. No full-route VM or freestanding qualification."
+    },
+    "mainSpeedDps": 90,
+    "trimSpeedDps": 45,
+    "maximumTrims": 2,
+    "trimThresholdDeg": 0.5,
+    "arrivalToleranceDeg": 2,
+    "datumToleranceDeg": 1,
+    "postMoveSettleSeconds": 1,
+    "dwellSeconds": 2,
+    "watchdogSeconds": 60,
+    "nativeLimitSeconds": 70,
+    "sliderRouteLdu": [
+      144,
+      128,
+      112,
+      96,
+      112,
+      128,
+      144
+    ],
+    "softwareSliderEnvelopeLdu": [
+      94,
+      146
+    ],
+    "pinionTeeth": 12,
+    "pinionPitchRadiusMm": 6
+  },
+  "recording": {
+    "mat": "plain",
+    "autoPorts": false,
+    "rescueLoose": false,
+    "breakLoops": true,
+    "frameMs": 33.333333333333336,
+    "coreStepMs": 5,
+    "coldMs": 1000,
+    "afterMs": 1000,
+    "timeLimitMs": 70000
+  },
+  "acceptance": {
+    "completed": 1,
+    "failed": 0,
+    "finalStage": 7,
+    "finalArrived": 0,
+    "allStagesRequired": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "maximumTipLineErrorMm": 0.5,
+    "maximumTipHeightLawErrorMm": 1,
+    "maximumTipWaypointErrorMm": 1,
+    "maximumTipReturnErrorMm": 0.5,
+    "minimumTipStrokeMm": 23,
+    "maximumTipStrokeMm": 23.7,
+    "minimumSliderStrokeMm": 18.8,
+    "maximumSliderStrokeMm": 19.6,
+    "maximumMotorArrivalErrorDeg": 2,
+    "maximumMotorDatumErrorDeg": 1,
+    "maximumMotorReturnErrorDeg": 2,
+    "settledWindowMs": 1000,
+    "minimumSettledSamplesPerStage": 30,
+    "dwellSeconds": 2,
+    "maximumProgramDurationSeconds": 60,
+    "finite": "All raw poses/joints and derived quantities finite; every declared stage has a complete measured dwell. All placed model bodies dynamic, with no artificial clamps, pose assignment or force rescue.",
+    "observerControl": "Freeze the actual long-bar output body in a separate copied recording; require independent travel and geometric-law/waypoint failures. Preserve original native bytes. A static point on the desired line must not pass.",
+    "minimumPoseFrames": 750,
+    "maximumInputLineErrorMm": 0.5,
+    "maximumMidpointCircleErrorMm": 0.5,
+    "maximumMidpointClosureMm": 0.5,
+    "maximumPhysicalHingeGapMm": 0.5,
+    "maximumPhysicalAxisMismatchDeg": 2,
+    "maximumRackLawErrorMm": 0.5,
+    "maximumInputEncoderResidualDeg": 1,
+    "maximumHingeStepDeg": 60,
+    "maximumGuideTransverseErrorMm": 0.5,
+    "minimumGuideEngagementMm": 7.5,
+    "maximumCarriageRotationDeg": 2,
+    "maximumBaseTiltDeg": 2,
+    "maximumBaseRotationDeg": 2,
+    "maximumBaseTranslationMm": 2,
+    "maximumColdOutputDriftMm": 0.5,
+    "maximumColdSliderDriftMm": 0.5,
+    "maximumSliderWaypointErrorMm": 0.5
+  },
+  "parts": 145,
+  "markers": {
+    "file": "markers.json",
+    "sha256": "5dafa0fc1df1c185b5a3d6f47b7178bc02760876c6c9c12212a0937d4e8241bb",
+    "physicalHingeInterfaceCount": 9,
+    "physicalGuideInterfaceCount": 4
+  },
+  "topology": {
+    "bodies": [
+      {
+        "id": "ground",
+        "motion": "static",
+        "parts": [],
+        "massKg": 0
+      },
+      {
+        "id": "b0",
+        "motion": "dynamic",
+        "parts": [
+          "balance_pin_-40",
+          "balance_pin_-80",
+          "balance_weight_-160",
+          "balance_weight_-180",
+          "midpoint_pin",
+          "short_link"
+        ],
+        "massKg": 0.00715
+      },
+      {
+        "id": "b1",
+        "motion": "dynamic",
+        "parts": [
+          "base_depth_left",
+          "base_depth_right",
+          "base_left_pin_-140",
+          "base_left_pin_0",
+          "base_left_pin_100",
+          "base_left_rear_spacer",
+          "base_right_pin_-140",
+          "base_right_pin_0",
+          "base_right_pin_100",
+          "bearing_foot_corner",
+          "bearing_foot_pin",
+          "bearing_post",
+          "bearing_post_pin_100",
+          "bearing_post_pin_120",
+          "foot_-140",
+          "foot_0",
+          "foot_100",
+          "frame_cross_20",
+          "frame_cross_60",
+          "front_foot_corner_-80",
+          "front_foot_corner_140",
+          "front_foot_pin_-80",
+          "front_foot_pin_140",
+          "front_post_-80",
+          "front_post_140",
+          "front_post_pin_-80_20",
+          "front_post_pin_-80_60",
+          "front_post_pin_140_20",
+          "front_post_pin_140_60",
+          "guide_axle_-40",
+          "guide_axle_40",
+          "guide_frame_elbow_20",
+          "guide_frame_elbow_60",
+          "guide_frame_pin_20",
+          "guide_frame_pin_60",
+          "guide_frame_spacer_20",
+          "guide_frame_spacer_60",
+          "guide_key_left",
+          "guide_key_pin_left_-20",
+          "guide_key_pin_left_0",
+          "guide_key_pin_right_-20",
+          "guide_key_pin_right_20",
+          "guide_key_right",
+          "guide_mount_left",
+          "guide_mount_right",
+          "guide_stop_-40_-115",
+          "guide_stop_-40_195",
+          "guide_stop_40_-115",
+          "guide_stop_40_195",
+          "hub",
+          "hub_foot_corner_-140",
+          "hub_foot_corner_0",
+          "hub_side_pin_-120",
+          "hub_side_pin_40",
+          "hub_side_rail",
+          "motor_A",
+          "motor_cross_pin_20",
+          "motor_cross_pin_60",
+          "motor_depth_20",
+          "motor_depth_60",
+          "motor_depth_pin_20",
+          "motor_depth_pin_60",
+          "motor_front_elbow_20",
+          "motor_front_elbow_60",
+          "motor_mount",
+          "motor_mount_pin_-20",
+          "motor_mount_pin_-60",
+          "motor_mount_pin_100",
+          "origin_axle",
+          "origin_back_corner_20",
+          "origin_back_corner_60",
+          "origin_back_cross_20",
+          "origin_back_cross_60",
+          "origin_depth_pin_20_-120",
+          "origin_depth_pin_20_-180",
+          "origin_depth_pin_60_-120",
+          "origin_depth_pin_60_-180",
+          "origin_depth_tie_20",
+          "origin_depth_tie_60",
+          "origin_front_bush",
+          "origin_front_corner_20",
+          "origin_front_corner_60",
+          "origin_inner_spacer",
+          "origin_keyed",
+          "origin_mount_20",
+          "origin_mount_60",
+          "origin_outer_bush",
+          "origin_support",
+          "pinion_bearing",
+          "pinion_bearing_arm_20",
+          "pinion_bearing_arm_60",
+          "pinion_bearing_arm_pin_20_40",
+          "pinion_bearing_arm_pin_20_80",
+          "pinion_bearing_arm_pin_60_40",
+          "pinion_bearing_arm_pin_60_80",
+          "pinion_bearing_corner_20",
+          "pinion_bearing_corner_60",
+          "stator_foot_corner",
+          "stator_foot_pin",
+          "stator_post",
+          "travel_stop_-40_-70",
+          "travel_stop_-40_110",
+          "travel_stop_-40_130",
+          "travel_stop_-40_150",
+          "travel_stop_-40_70",
+          "travel_stop_-40_90",
+          "travel_stop_40_-70",
+          "travel_stop_40_110",
+          "travel_stop_40_130",
+          "travel_stop_40_150",
+          "travel_stop_40_70",
+          "travel_stop_40_90"
+        ],
+        "massKg": 0.25699000000000005
+      },
+      {
+        "id": "b2",
+        "motion": "dynamic",
+        "parts": [
+          "carriage_cross_-100",
+          "carriage_cross_-140",
+          "carriage_front_bridge",
+          "carriage_front_pin_-100",
+          "carriage_front_pin_-140",
+          "carriage_front_spacer",
+          "guide_runner_-100_-40",
+          "guide_runner_-100_40",
+          "guide_runner_-140_-40",
+          "guide_runner_-140_40",
+          "rack",
+          "rack_mount_pin_-100",
+          "rack_mount_pin_-140",
+          "rack_mount_spacer",
+          "slider_pivot_axle",
+          "slider_pivot_bush_-140",
+          "slider_pivot_bush_-20",
+          "slider_pivot_bush_20",
+          "slider_pivot_cheek",
+          "slider_pivot_cheek_pin"
+        ],
+        "massKg": 0.021040000000000007
+      },
+      {
+        "id": "b3",
+        "motion": "dynamic",
+        "parts": [
+          "input_axle",
+          "motor_A",
+          "pinion",
+          "pinion_bearing_retainer",
+          "pinion_front_bush",
+          "pinion_rear_bush"
+        ],
+        "massKg": 0.008299999999999998
+      },
+      {
+        "id": "b4",
+        "motion": "dynamic",
+        "parts": [
+          "long_link",
+          "output_marker"
+        ],
+        "massKg": 0.00325
+      }
+    ],
+    "joints": [
+      {
+        "id": "j0",
+        "type": "hinge",
+        "body1": "b0",
+        "body2": "b1",
+        "point": [
+          -0.08,
+          0,
+          -0.016
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j1",
+        "type": "slider",
+        "body1": "b1",
+        "body2": "b2",
+        "point": [
+          -0.048,
+          0,
+          -0.0064
+        ],
+        "axis": [
+          0,
+          0,
+          1
+        ],
+        "limits": [
+          -0.0216,
+          0.0024000000000000002
+        ]
+      },
+      {
+        "id": "j2",
+        "type": "hinge",
+        "body1": "b1",
+        "body2": "b3",
+        "point": [
+          0,
+          0.016,
+          0
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "motor": {
+          "port": "A",
+          "maxTorqueNm": 0.10440000000000002,
+          "maxSpeedRadPerSec": 19.37315469713706,
+          "deviceId": 48
+        }
+      },
+      {
+        "id": "j3",
+        "type": "hinge",
+        "body1": "b4",
+        "body2": "b0",
+        "point": [
+          -0.07200000000000001,
+          0.013948476619330002,
+          0.0128
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "j4",
+        "type": "hinge",
+        "body1": "b4",
+        "body2": "b2",
+        "point": [
+          -0.07200000000000001,
+          2.0008883439004422e-15,
+          0.041600000000000005
+        ],
+        "axis": [
+          1,
+          0,
+          0
+        ]
+      }
+    ],
+    "couplings": [
+      {
+        "hingeJoint": "j2",
+        "sliderJoint": "j1",
+        "ratio": -0.006,
+        "parts": [
+          "pinion",
+          "rack"
+        ],
+        "kind": "rackAndPinion",
+        "id": "c0"
+      }
+    ],
+    "actuators": [
+      {
+        "id": "a0",
+        "joint": "j2",
+        "hub": "hub",
+        "port": "A",
+        "device": "spike-medium-angular",
+        "sign": 1,
+        "maxTorqueNm": 0.10440000000000002,
+        "maxSpeedRadPerSec": 19.37315469713706,
+        "ids": {
+          "lpf2": 48
+        }
+      }
+    ],
+    "hubs": [
+      {
+        "id": "hub",
+        "profile": "spike-prime",
+        "body": "b1"
+      }
+    ],
+    "noCollide": [
+      [
+        "b0",
+        "b1"
+      ],
+      [
+        "b0",
+        "b4"
+      ],
+      [
+        "b1",
+        "b2"
+      ],
+      [
+        "b1",
+        "b3"
+      ],
+      [
+        "b2",
+        "b3"
+      ],
+      [
+        "b2",
+        "b4"
+      ]
+    ],
+    "noCollideParts": [
+      [
+        "b0",
+        "b1",
+        [
+          [
+            "balance_pin_-40",
+            "origin_back_corner_20"
+          ],
+          [
+            "balance_pin_-40",
+            "origin_depth_pin_20_-180"
+          ],
+          [
+            "balance_pin_-40",
+            "origin_depth_tie_20"
+          ],
+          [
+            "balance_pin_-40",
+            "origin_keyed"
+          ],
+          [
+            "balance_pin_-40",
+            "origin_support"
+          ],
+          [
+            "balance_pin_-80",
+            "origin_back_corner_60"
+          ],
+          [
+            "balance_pin_-80",
+            "origin_depth_pin_60_-180"
+          ],
+          [
+            "balance_pin_-80",
+            "origin_depth_tie_60"
+          ],
+          [
+            "balance_pin_-80",
+            "origin_keyed"
+          ],
+          [
+            "balance_pin_-80",
+            "origin_support"
+          ],
+          [
+            "balance_weight_-160",
+            "origin_depth_tie_20"
+          ],
+          [
+            "balance_weight_-160",
+            "origin_depth_tie_60"
+          ],
+          [
+            "balance_weight_-160",
+            "origin_keyed"
+          ],
+          [
+            "balance_weight_-160",
+            "origin_mount_60"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_back_corner_20"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_back_corner_60"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_depth_pin_20_-180"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_depth_pin_60_-180"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_depth_tie_20"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_depth_tie_60"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_mount_60"
+          ],
+          [
+            "balance_weight_-180",
+            "origin_support"
+          ],
+          [
+            "midpoint_pin",
+            "front_post_-80"
+          ],
+          [
+            "midpoint_pin",
+            "front_post_pin_-80_20"
+          ],
+          [
+            "midpoint_pin",
+            "front_post_pin_-80_60"
+          ],
+          [
+            "midpoint_pin",
+            "origin_depth_pin_60_-120"
+          ],
+          [
+            "midpoint_pin",
+            "origin_depth_tie_60"
+          ],
+          [
+            "midpoint_pin",
+            "origin_front_corner_60"
+          ],
+          [
+            "short_link",
+            "origin_depth_tie_20"
+          ],
+          [
+            "short_link",
+            "origin_depth_tie_60"
+          ]
+        ],
+        "collide"
+      ],
+      [
+        "b1",
+        "b2",
+        [
+          [
+            "guide_key_left",
+            "carriage_front_pin_-100"
+          ],
+          [
+            "guide_key_left",
+            "carriage_front_pin_-140"
+          ],
+          [
+            "guide_key_left",
+            "carriage_front_spacer"
+          ],
+          [
+            "guide_key_left",
+            "slider_pivot_axle"
+          ],
+          [
+            "guide_key_pin_left_-20",
+            "carriage_front_pin_-100"
+          ],
+          [
+            "guide_key_pin_left_-20",
+            "carriage_front_pin_-140"
+          ],
+          [
+            "guide_key_pin_left_-20",
+            "carriage_front_spacer"
+          ],
+          [
+            "guide_key_pin_left_0",
+            "slider_pivot_axle"
+          ],
+          [
+            "guide_key_pin_right_-20",
+            "carriage_front_pin_-100"
+          ],
+          [
+            "guide_key_pin_right_-20",
+            "carriage_front_pin_-140"
+          ],
+          [
+            "guide_key_pin_right_-20",
+            "carriage_front_spacer"
+          ],
+          [
+            "guide_key_right",
+            "carriage_front_pin_-100"
+          ],
+          [
+            "guide_key_right",
+            "carriage_front_pin_-140"
+          ],
+          [
+            "guide_key_right",
+            "carriage_front_spacer"
+          ],
+          [
+            "guide_key_right",
+            "slider_pivot_axle"
+          ],
+          [
+            "guide_mount_left",
+            "carriage_front_pin_-100"
+          ],
+          [
+            "guide_mount_left",
+            "carriage_front_pin_-140"
+          ],
+          [
+            "guide_mount_left",
+            "carriage_front_spacer"
+          ],
+          [
+            "guide_mount_left",
+            "slider_pivot_axle"
+          ],
+          [
+            "guide_mount_right",
+            "carriage_front_pin_-100"
+          ],
+          [
+            "guide_mount_right",
+            "carriage_front_pin_-140"
+          ],
+          [
+            "guide_mount_right",
+            "carriage_front_spacer"
+          ],
+          [
+            "guide_mount_right",
+            "slider_pivot_axle"
+          ],
+          [
+            "motor_depth_20",
+            "carriage_cross_-100"
+          ],
+          [
+            "motor_depth_20",
+            "carriage_cross_-140"
+          ],
+          [
+            "origin_axle",
+            "slider_pivot_axle"
+          ],
+          [
+            "origin_axle",
+            "slider_pivot_bush_-140"
+          ],
+          [
+            "origin_front_bush",
+            "slider_pivot_axle"
+          ]
+        ],
+        "collide"
+      ]
+    ]
+  },
+  "inputs": {
+    "models/line-turner.ldr": "7863942f2b0d0e24e90074a44d13137582aed47837458f343ecb08a612feb901",
+    "programs/line-turner.bw": "17e49b4719071cf9d0adbae47cba946a0b0bdf0ae159a489c77261c7beb69b2e",
+    "markers.json": "5dafa0fc1df1c185b5a3d6f47b7178bc02760876c6c9c12212a0937d4e8241bb",
+    "build/build-model.mjs": "c5ceaf9d20e656b41ba27dbefe0ecb4e02c6673b770b7502795ff2d42e58e13b",
+    "build/build-program.mjs": "2aed61e32418c19caddf39cc75b67053bf2f38ed84467d5cfbe880fb08a4b70c",
+    "build/freeze-contract.mjs": "3e7c19c532c1a51240a7602c72def1540dd8a34a4ea32d8fe684f58dd5cf05ca",
+    "build/update-markers.mjs": "c876635f95555e769a2f290a397a6baf8d1fc2a488e1a798e392d21726e1bd04",
+    "build/contract-template.json": "3069c1e3129cc1867bbf19bed422d6c9206b334601458107a6876e7680877b74",
+    "build/design-intent.json": "cedf5fb616c68a4927d256724747e603c82882f9bc4643c5c5f4211a52e73893",
+    "build/geometry.json": "70218ba9436f8d9d1650ecf4bc2256a19bf07f485f5f81bec619b28e45627eaf",
+    "build/markers.json": "391421678e35dc2e39887b57f1390b69f148f327cfc512fca2012dcf08883609",
+    "build/placements.json": "0b3948e349059afa6f1018f55990cf9fbc4a69e471dbb653b2c1e74bf993e69d",
+    "build/program-settings.json": "e790426a01f01adbe5e818373433d888f42552dc1a95d7a4ae102e318916874a",
+    "docs/development-contract.json": "b9d25b46aef04db70d7015494ead9b84f390cca3682a73775256b5e26893189b",
+    "evidence/program-parameters.json": "2b07b1cd979592d5d5497ae91a2a3b7a45dab28696b018fd522f2996d0ae71f9",
+    "checks/run-native.mjs": "f45ddde6b3cef0549b1fe31985c1e614ff6a43328b8b802155d809ec4c4cc067",
+    "checks/line-observer.mjs": "175bf51e5faee40df4a178f5719ad41323fea53145888e07e2bb8a6add6ee021",
+    "checks/physical-hinge-observer.mjs": "72f4ba6995f525053b1ebeb9d55d6c4727541d63bf77349531bc165c89c0ef65",
+    "checks/physical-guide-observer.mjs": "4d18d7d01c0a2e238361fed0ffca5573a7fb9ba035e8867bbfb5ad2306267173",
+    "checks/inspect-static.mjs": "d16762a400fec052f04c23f39f5355a7e538b8fa04c72032ee75943446db854c",
+    "evidence/static/static-inspection.json": "0c471a8944b0b1417d7ac263f9773df1a04c004148623d13d5215a58bebb60da",
+    "evidence/runtime/runtime-identities.json": "c570181a110fb8d7dba6be7681f498a17da686e5b9d9136515a4f176d75e33ef",
+    "evidence/development/coupling-probe-balanced-01/result.json": "a3ac742d3afb9e638d98aff2ccf3e3510808927bb9a9683bdd8aaad0ad2baca5"
+  },
+  "runtimeSources": {
+    "test/helpers/robot-lab-direct-vm.mjs": "4c32258a1bc7cc09b5a835b7ac6db3636789aa581f4719b68963d0b4d81cca04",
+    "scripts/lib/sim-lab-addon-judge.mjs": "4b885341c0bc67279f0b633d31b4ab5f8d4e895596f756719612fdf941c923ac",
+    "overlay/scratch-gui/src/lib/sb3-creator-register-art.js": "722dd3e92c80335dea3011e8ef81bb750dce460d560739083d2c72cf903f8085",
+    "overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js": "d4c73b0feb777d7672d87fd6f0a03ab66640d57b07495771c1d0c7bc22f48aa8",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/graph.js": "573beea8be8e9a88b72a495b0c32ff96e45ccbb85cd7fc1128fbfef08c83cb24",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/compile.js": "da0f721b8716d4cd2b1299e8110d7d5e607600804d8e0a059797cddc5e0e2732",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/gears.js": "eb467eac578d28100d040ede018c204986ccc885cb1218ba8996f418b800676b",
+    "overlay/scratch-gui/src/lib/bw-sim/mech/joints.js": "91a553c67a9cf6ce7abca8ed7dbf0ebc5ac79d29d086afa647dfe04cf84e8a43",
+    "overlay/scratch-gui/src/lib/bw-sim/sim-session.js": "ae3bf4604ae711896501290cf54f1b5d5188c19b60785633f3be3d11b8afa1e8",
+    "overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js": "1df4354d3edc41206707a5c1d3238d26836003c7a91c2c77da33d50b580b5d99",
+    "overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js": "50e4cf67faab7538de44b69253d7878e720ad1891900e63d74f612998fc24cde",
+    "overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-virtual-hub.js": "93d9823f67df892ab11a6eefb9d2d209fd8a68332ca5a6a0d321f21b0357ef25",
+    "overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json": "feecf1804ac0733e8eb84d23cda4cd8d62c0deea9305491935c945bb14ade0da"
+  },
+  "softwareEnvelopeLdu": [
+    94,
+    146
+  ],
+  "physicalTravelBoundsLdu": [
+    90,
+    150
+  ],
+  "physicalBounds": "The complete retained upper branch between the documented real stop faces must be checked for clearance, guide engagement, rack tooth overlap and support. The software envelope is narrower and does not create physical stops.",
+  "startup": "Observe 1000 ms with the pinned SPIKE default passive electrical brake at zero duty and no position feedback. The fresh scene defines encoder zero; the BW checks the actual datum, performs no encoder reset, then uses bounded moves and finishes in hold of the attained angle."
+}

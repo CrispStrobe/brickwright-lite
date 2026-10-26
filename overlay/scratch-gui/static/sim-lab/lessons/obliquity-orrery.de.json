@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "obliquity-orrery",
+  "language": "de",
+  "what": "Motor A oben dreht Kurbel A direkt. Kurbel B sitzt 32 mm daneben und läuft frei mit. Beide Kurbeln sind 16 mm lang und tragen dieselbe Koppel, sodass die vier Drehpunkte ein Parallelogramm bilden: Die Koppel fährt auf einem 16-mm-Kreis, dreht sich aber nie. Die Erde, eine runde Platte unter der Koppel, ist über einen Winkelverbinder befestigt, der ihre Achse um ε = 22,5° neigt. Die Sonne ist eine Markierung auf der Grundplatte in der Bahnmitte, auf Höhe der Erde. Das Programm führt die Erde in neun Schritten von der Bahnposition λ = 45° bis 135° und zurück. Im Simulator folgt die gemessene Sonnendeklination δ der Formel sin δ = sin 22,5° · cos(λ − 45°) auf 0,13° genau.",
+  "try": [
+    "Lade das Modell, drücke Zurücksetzen und dann Start. Beobachte die geneigte Erdachse: Sie zeigt die ganze Zeit in dieselbe Richtung, während die Erde um die Sonne läuft.",
+    "Am Anfang (λ = 45°) neigt sich die Achse genau zur Sonne: Hochsommer auf der oberen Erdhälfte, δ = +22,5°. Am Ende der Fahrt (λ = 135°) neigt sie sich seitlich entlang der Bahn, und δ = 0°: Tagundnachtgleiche.",
+    "Nutze das manuelle Verfahren an Port A. Negative Winkel bewegen die Erde auf der Bahn vorwärts (λ = 45° − Motorwinkel). Halte alle 15° an und vergleiche die Neigung der Achse zur Sonne mit der Formel.",
+    "Lade die Kontrolle „Obliquity Orrery — gedrehte Achse“. Dort ist der Verbinder um 90° um die Spindel gedreht, und der Hochsommer liegt bei λ = 135° statt bei 45°."
+  ],
+  "why": "Weil das Parallelogramm die Koppel parallel zur Grundplatte hält, wird die Erde herumgeführt, ohne sich zu drehen: Ihre Achse n behält eine Richtung im Raum, so wie die echte Erdachse das ganze Jahr zum Polarstern zeigt. Es ändert sich nur die Richtung s von der Erde zur Sonne, die sich pro Umlauf einmal in der Waagerechten dreht. Die Deklination der Sonne ist der Winkel zwischen s und dem Erdäquator, also sin δ = n · s. n hat einen senkrechten Anteil cos ε und einen waagerechten Anteil sin ε, der zur Bahnposition λ₀ = 45° zeigt; s liegt waagerecht. Das Skalarprodukt behält daher nur den waagerechten Anteil: sin δ = sin ε · cos(λ − λ₀). Mit ε = 22,5° steht die Sonne bei λ = 45° 22,5° über dem Äquator, bei 90° 15,7° und bei 135° genau darauf. Nichts im Modell wird auf diese Winkel gefahren: Der Motor dreht nur Kurbel A, die Ausrichtung der Erde ergibt sich allein aus dem Gestänge.",
+  "matters": "Das ist die Ursache der Jahreszeiten. Die echte Erdachse ist um 23,44° geneigt: Zur Sommersonnenwende im Juni steht die Sonne mittags über 23,44° Nord senkrecht (dem nördlichen Wendekreis), zu den Tagundnachtgleichen über dem Äquator und im Dezember über 23,44° Süd. Eine höher stehende Sonne bringt jedem Quadratmeter mehr Licht und längere Tage, deshalb wird es wärmer. Der Abstand zur Sonne spielt kaum eine Rolle: Am nächsten ist die Erde der Sonne Anfang Januar. Dieselbe Parallelkurbel-Führung steckt in Zeichenmaschinen, Gelenkarmlampen und Portalen, überall dort, wo sich etwas bewegen soll, ohne sich zu drehen.",
+  "question": "Welche Deklination sagt die Formel bei λ = 90° voraus, also auf einem Viertel des Wegs vom Hochsommer zur Tagundnachtgleiche, und warum ist es nicht einfach die Hälfte von 22,5°?",
+  "answer": "sin δ = sin 22,5° · cos 45° = 0,383 · 0,707 = 0,271, also δ = 15,7° und nicht 11,25°. Die Deklination folgt einem Kosinus der Bahnposition, keiner Geraden: Nahe der Sonnenwende ändert sie sich langsam, nahe der Tagundnachtgleiche am schnellsten. Deshalb werden die Tage im März und September am schnellsten länger bzw. kürzer.",
+  "further": [
+    "Berechne δ bei λ = 56,25°, 101,25° und 123,75° (22,0°, 12,2° und 4,2°), verfahre dann dorthin und vergleiche die Neigung der Achse.",
+    "Die echte Erdachse ist um 23,44° geneigt. Wie weit nördlich steht die Sonne am 21. Juni mittags senkrecht, und wie lange nach der Sonnenwende steht sie noch über 20° Nord?",
+    "Wozu braucht es die zweite Kurbel? Stell dir vor, Kurbel B fehlt: Was würden die Koppel und mit ihr die Erdachse tun, während Kurbel A dreht?"
+  ],
+  "formula": "sin δ = sin ε · cos(λ − 45°), ε = 22,5°. n = Einheitsvektor der Erdachse, s = Einheitsvektor von der Erde zur Sonne, sin δ = n · s; λ = 45° − Motorwinkel A; Bahnradius 16 mm.",
+  "related": [
+    "parallel-lift.ldr",
+    "offset-orbit.ldr",
+    "gimbal-lab.ldr"
+  ]
+}

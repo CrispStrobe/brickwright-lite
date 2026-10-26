@@ -1,7 +1,201 @@
 {
   "version": 1,
   "models": [
-    {"id":"sine-shuttle","judge":"scotch-yoke-v1","parts":105,"ports":["A"],"coldMs":500,"timeLimitMs":92000,"afterMs":500,"frameMs":25,"frozenOutput":"yoke_end_-100","disconnect":["crank_pin","crank_pin_cap","crank_pivot_bush_-35.5","crank_pivot_bush_-4.5"]},
-    {"id":"quartermaster","judge":"latched-indexer-v1","parts":209,"ports":["A","B"],"coldMs":1000,"timeLimitMs":122000,"afterMs":1000,"frameMs":25,"frozenOutput":"output_spine_Z","disconnect":["drive_roller_axle","drive_roller","drive_roller_spacer","drive_roller_retainer"]}
+    {
+      "id": "sine-shuttle",
+      "judge": "scotch-yoke-v1",
+      "parts": 105,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 92000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "yoke_end_-100",
+      "disconnect": [
+        "crank_pin",
+        "crank_pin_cap",
+        "crank_pivot_bush_-35.5",
+        "crank_pivot_bush_-4.5"
+      ]
+    },
+    {
+      "id": "quartermaster",
+      "judge": "latched-indexer-v1",
+      "parts": 209,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 122000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "output_spine_Z",
+      "disconnect": [
+        "drive_roller_axle",
+        "drive_roller",
+        "drive_roller_spacer",
+        "drive_roller_retainer"
+      ]
+    },
+    {
+      "id": "wavemaker",
+      "judge": "cardan-differential-v1",
+      "nativeSuite": "wavemaker",
+      "parts": 298,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 80000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "pointer_beam",
+      "physicalControl": "wavemaker-control.ldr"
+    },
+    {
+      "id": "cascade",
+      "judge": "serial-pendulum-v1",
+      "nativeSuite": "cascade",
+      "parts": 70,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 32000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "lower_link",
+      "physicalControl": "cascade-control.ldr"
+    },
+    {
+      "id": "rise-ratio",
+      "judge": "scissor-rack-v1",
+      "nativeSuite": "rise-ratio",
+      "parts": 182,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 90000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "top_fork_front",
+      "physicalControl": "rise-ratio-control.ldr"
+    },
+    {
+      "id": "cable-compass",
+      "judge": "cable-winch-v1",
+      "nativeSuite": "cable-compass",
+      "parts": 175,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "payload_tie",
+      "physicalControl": "cable-compass-control.ldr"
+    },
+    {
+      "id": "rod-ratio",
+      "judge": "rod-ratio-v1",
+      "nativeSuite": "rod-ratio",
+      "parts": 167,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "short_slider",
+      "internalComparison": "two-connecting-rod-lengths"
+    },
+    {
+      "id": "vernier-drive",
+      "judge": "vernier-drive-v1",
+      "nativeSuite": "vernier-drive",
+      "parts": 176,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 160000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "output_pointer",
+      "internalComparison": "opposing-differential-branches"
+    },
+    {
+      "id": "line-turner",
+      "judge": "scott-russell-v1",
+      "nativeSuite": "line-turner",
+      "parts": 145,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 70000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "long_link",
+      "internalComparison": "perpendicular-input-output-lines"
+    },
+    {
+      "id": "dune-strider",
+      "judge": "paired-jansen-v1",
+      "nativeSuite": "dune-strider",
+      "parts": 202,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 90000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "near_toe",
+      "internalComparison": "opposed-jansen-legs"
+    },
+    {
+      "id": "atlas-six",
+      "judge": "stewart-platform-v1",
+      "nativeSuite": "atlas-six",
+      "parts": 676,
+      "ports": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 490000,
+      "afterMs": 1000,
+      "frameMs": 25,
+      "frozenOutput": "platform_row_-380_-350_0",
+      "internalComparison": "six-independent-platform-axes"
+    },
+    {
+      "id": "oblique",
+      "judge": "oblique-trammel-v1",
+      "nativeSuite": "oblique",
+      "parts": 291,
+      "ports": [
+        "A",
+        "B"
+      ],
+      "coldMs": 1000,
+      "timeLimitMs": 98000,
+      "afterMs": 1100,
+      "frameMs": 25,
+      "frozenOutput": "marker_Q",
+      "internalComparison": "two-real-guide-settings"
+    }
   ]
 }

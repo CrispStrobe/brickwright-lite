@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-26T09:41:09.565Z",
+  "generatedAt": "2026-10-26T10:33:35.816Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1986,6 +1986,7 @@
     "spike-linux-package.yml",
     "target-performance.yml",
     "tauri.yml",
+    "testflight-release-audit.yml",
     "testflight-release-recovery.yml",
     "vendor-freshness.yml"
   ],
@@ -7748,6 +7749,20 @@
       "jobs": {},
       "sourceSha": "working-tree"
     },
+    "testflight-release-audit.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Read back admitted iOS and macOS tester availability",
+        "Retain categorical release readback"
+      ],
+      "inFileInNoRun": [
+        "Read back admitted iOS and macOS tester availability",
+        "Retain categorical release readback"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
+    },
     "reference-qualified-instruments.yml": {
       "runs": 0,
       "stepsInFile": [
@@ -7775,7 +7790,7 @@
   },
   "lastRefresh": {
     "workflow": "reference-qualified-instruments.yml",
-    "at": "2026-10-26T09:41:09.565Z",
+    "at": "2026-10-26T10:33:35.816Z",
     "sourceSha": "working-tree"
   }
 }

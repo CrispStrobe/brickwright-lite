@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "cadence-geneva",
+  "language": "de",
+  "what": "Uhrwerk mit Malteserkreuzgetriebe. Motor A dreht eine Kurbel gleichmäßig; eine Rolle auf der Kurbel, 40 mm von deren Achse entfernt, fährt in einen der vier offenen Schlitze des Sternrads, dreht es um eine Vierteldrehung weiter und verlässt den Schlitz wieder. Zwischen den Eingriffen steht der Stern still. Ein 8er-Zahnrad auf der Sternwelle treibt über 24er-Zahnräder (insgesamt 1:3) das Zifferblatt an; jede Vierteldrehung des Sterns rückt den Zeiger um 30° weiter – zwölf Stellungen pro Umdrehung. Statt einer Sperrscheibe hält ein Rutschkupplungs-Zahnrad auf einem festen Pin das Zifferblatt während der Rast. Das Programm dreht die Kurbel zwölfmal (4320°) mit 30°/s und prüft, ob der Zeiger eine volle Umdrehung gemacht hat.",
+  "try": [
+    "Öffne Cadence mit Programm, drücke Zurücksetzen und dann Start. Der Lauf dauert 144 s: zwölf Kurbelumdrehungen zu je 12 s.",
+    "Beobachte eine Kurbelumdrehung: Der Zeiger sollte drei Viertel davon stillstehen (etwa 9 s) und sich während eines Viertels bewegen (etwa 3 s). Achte darauf, wo die Rolle steht, wenn der Stern anläuft und anhält.",
+    "Vergleiche die Geschwindigkeit des Sterns während eines Schritts: Er läuft aus der Ruhe an, ist auf halbem Weg am schnellsten, mit etwa dem 2,4-Fachen der Kurbeldrehzahl, und kommt zur Ruhe, wenn die Rolle den Schlitz verlässt.",
+    "Lies die Variablen: crankTurns zählt Motorumdrehungen, dialSweep summiert die gemessenen Richtungsänderungen des Zeigers, und ticks ist dieser Winkel geteilt durch 30°. Nach 4320° erwartet das Programm dialSweep = 360° ± 3°."
+  ],
+  "why": "Bei einem Malteserkreuz mit n Schlitzen muss der Kurbelradius r = C·sin(180°/n) betragen, wobei C der Abstand der Kurbel- von der Radachse ist. Dann fährt die Rolle in Schlitzrichtung ein und aus, und das Rad läuft aus dem Stillstand an und kommt im Stillstand an. Hier ist n = 4, C ≈ 56,6 mm und r = 40 mm (r/C = 0,707 = sin 45°). Die Kurbel greift während 180° − 360°/n = 90° jeder Umdrehung ein, und das Rad dreht sich um 360°/n = 90°; die übrigen 270° sind Rast. Während des Eingriffs gilt tan β = λ·sin α / (1 − λ·cos α) mit λ = r/C und dem Kurbelwinkel α, gemessen von der Verbindungslinie der Achsen. Die größte Radgeschwindigkeit bei α = 0 beträgt λ/(1 − λ) ≈ 2,41-mal die Kurbeldrehzahl.",
+  "matters": "Malteserkreuzgetriebe machen aus gleichmäßiger Drehung eine genaue Schritt-und-Halt-Bewegung: in Filmprojektoren, Rundschalttischen von Montageautomaten, mechanischen Zählwerken und manchen Uhren. Die Schrittweite legt die Geometrie fest, nicht ein Sensor. Ein klassisches Malteserkreuz hat außerdem eine Sperrscheibe an der Kurbel, die das Rad während der Rast festhält; dieses Modell ersetzt sie durch die Reibung einer Rutschkupplung, sodass der Zeiger nur gehalten wird, solange diese Reibung größer ist als jede Störung. In einem Lauf des Brickwright-Simulators ohne Oberfläche rückte der Stern nach einem ersten Schritt von 88,6° pro Kurbelumdrehung genau 90,0° weiter, stand in jeder Rast still, und der Zeiger endete bei 359,5°. Innerhalb eines Schritts blieb der Stern bis zu 2° hinter der idealen Malteserkreuz-Kurve zurück. Das ist eine Simulationsbeobachtung; ein realer LEGO-Aufbau wurde nicht geprüft.",
+  "question": "Die Kurbel dreht gleichmäßig mit 30°/s. Wie lange bewegt sich der Zeiger während einer Kurbelumdrehung, und wie schnell dreht der Stern im schnellsten Moment?",
+  "answer": "Die Rolle treibt den Stern während 90° Kurbeldrehung an, also 3 s; die übrigen 9 s ruht der Zeiger. Der Stern dreht sich in diesen 3 s um 90°, im Mittel 30°/s, erreicht aber auf halbem Weg etwa 2,41 × 30 ≈ 72°/s. Über die Übersetzung 1:3 rückt der Zeiger 30° pro Schritt vor und erreicht dabei höchstens etwa 24°/s.",
+  "further": [
+    "Ändere n auf dem Papier: Bei 6 Schlitzen ist r = C·sin 30° = C/2, die Kurbel greift 120° lang ein, und das Spitzenverhältnis λ/(1 − λ) ist 1. Mehr Schlitze bedeuten sanftere Bewegung, kleinere Schritte und kürzere Rast.",
+    "Das Rad läuft mit der Geschwindigkeit null an, aber nicht mit der Beschleunigung null: Beim Einfahren springt die Winkelbeschleunigung auf einen endlichen Wert. Dieser Ruck ist ein Grund, weshalb schnelle Rundschalttische Kurvenschrittgetriebe verwenden.",
+    "Die Rutschkupplung rutscht während der ganzen Zeigerbewegung; die Kurbel muss also auch diese Reibung überwinden. Bei zu wenig Reibung könnte der Zeiger über seine Stellung hinauslaufen, bei zu viel bleibt der Antrieb stehen. Die simulierte Reibung ist ein Modell, keine gemessene LEGO-Kupplung.",
+    "Vergleiche Quartermaster, das mit Kontakt und Sperre weiterschaltet, und Clutch Bench, das eine rutschende Kupplung unter Last zeigt."
+  ],
+  "formula": "λ = r/C = sin(180°/n); n = 4, r = 40 mm (100 LDU), C ≈ 56,6 mm (141,4 LDU). Eingriff über 180° − 360°/n = 90° Kurbelwinkel, Radschritt 360°/n = 90°. tan β = λ·sin α / (1 − λ·cos α) für |α| ≤ 45°; dβ/dα bei α = 0 ist λ/(1 − λ) ≈ 2,414. Zeiger = Stern × 8/24: 30° pro Kurbelumdrehung; 12 Kurbelumdrehungen (4320°) → 360°.",
+  "related": [
+    "quartermaster.ldr",
+    "clutch-bench.ldr"
+  ]
+}

@@ -1,0 +1,24 @@
+# Pivot Exchange — observe three freely swinging physical pendulums.
+# Copyright (c) 2026 Christian Ströbele (CrispStrobe). SPDX-License-Identifier: BSD-3-Clause.
+# Freshly load either Pivot Exchange saved model before EVERY run.
+# The saved 8-degree or 20-degree release angle is part of the real model placement.
+# This program starts the lab and observes for 18 seconds. It has no motor commands.
+# Compare the near and far suspension choices with the slow central-hole control.
+DEVICE SPIKE
+GLOBAL observing = 0
+GLOBAL complete = 0
+GLOBAL fault = 0
+WHEN flag clicked:
+  set observing to 0
+  set complete to 0
+  set fault to 0
+  lab start
+  IF (lab status) = "no-model" THEN:
+    set fault to 1
+    say "Freshly load a Pivot Exchange model, then run this observation program."
+    stop all
+  set observing to 1
+  wait 18 seconds
+  set observing to 0
+  set complete to 1
+  say "Observation complete. The two nearly conjugate suspensions should keep similar time; the central-hole control swings more slowly."

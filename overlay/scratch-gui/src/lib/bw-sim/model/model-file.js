@@ -199,9 +199,9 @@ export const writeStudioIo = async ldraw => {
  * The model as an LDraw multi-part document: one `0 FILE` section holding the
  * .ldr text, which reads back to the same parts, ids, ports, groups and steps.
  */
-export const serializeMpd = (model, {name = 'model.ldr', title, author} = {}) => {
+export const serializeMpd = (model, {name = 'model.ldr', title, author, precision = 12} = {}) => {
     const section = renameTo(name, 'ldr');
-    const text = serializeModel(model, {name: section, title, author});
+    const text = serializeModel(model, {name: section, title, author, precision});
     // A model that ships parts of its own is written as an MPD already (its FILE sections).
     if (/^0 FILE /.test(text)) return text;
     return `0 FILE ${section}\r\n${text}0 NOFILE\r\n`;
@@ -293,7 +293,7 @@ export const saveModelFile = async (model, format, {name = 'my-model.ldr', title
     if (!MODEL_FORMATS[format]?.save) throw new ModelFileError('unsupported-format', `cannot save as .${format}`);
     const ldrName = renameTo(name, 'ldr');
     const filename = renameTo(name, format);
-    const ldraw = serializeModel(model, {name: ldrName, title, author});
+    const ldraw = serializeModel(model, {name: ldrName, title, author, precision: 12});
     const data = format === 'ldr' ? ldraw : format === 'mpd' ? serializeMpd(model, {name: ldrName, title, author}) : await writeStudioIo(ldraw);
     return {data, filename, mime: MODEL_FORMATS[format].mime};
 };

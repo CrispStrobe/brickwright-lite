@@ -1,0 +1,571 @@
+DEVICE SPIKE
+# RACK DECODER — two translating inputs; passive translation and rotation.
+# Copyright (c) 2026 CrispStrobe. SPDX-License-Identifier: BSD-3-Clause.
+# Import the matching rack-decoder.ldr, choose Mat > Plain, Reset, then Run.
+# A moves rack A and B moves rack B. The carried pinion translates and rotates without an output motor.
+# The exact source-bound evidence determines qualification; this header is not a PASS claim.
+# Coarse moves use target minus a fresh unwrapped encoder reading and a positive speed magnitude.
+# Each trim uses bounded signed-speed feedback, then direct hold; it never controls a passive output.
+# Both same-message receivers run concurrently and join before each teaching dwell.
+# Revision 2026-10-25: a coarse move that ends short (a stall where the racks share the
+# pinion load) is re-issued at most twice from a fresh reading; the dwell guards judge
+# drift as the mean speed over 0.5 s windows (1 s for the closing check) and the
+# position against the same 0.5 degree limit, instead of one instantaneous speed
+# sample, which caught the hold controller settling onto its target.
+GLOBAL dwellA
+GLOBAL dwellB
+GLOBAL windowOpen
+GLOBAL windowStart
+GLOBAL windowA
+GLOBAL windowB
+GLOBAL driftA
+GLOBAL driftB
+
+WHEN flag clicked:
+  set directionA to 1
+  set directionB to -1
+  set targetA to 0
+  set targetB to 0
+  set speedA to 3
+  set speedB to 3
+  set rackATargetMm to 0
+  set rackBTargetMm to 0
+  set stage to 0
+  set caseId to 0
+  set movingMask to 0
+  set arrived to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  set correctionsA to 0
+  set correctionsB to 0
+  set trimDirectionA to 1
+  set trimDirectionB to 1
+  set trimStartedA to 0
+  set trimStartedB to 0
+  set coarseDoneA to 1
+  set coarseDoneB to 1
+  set completed to 0
+  set failed to 0
+  lab stop motor A hold
+  lab stop motor B hold
+  if (lab status) = "no-model" or (lab status) = "not-open" then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Open the matching Rack Decoder model and Reset before Run."
+    stop all
+  if (abs of (lab motor A angle)) > 1 or (abs of (lab motor B angle)) > 1 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Fresh datum guard: Reset the matching model before retrying."
+    stop all
+  reset timer
+  broadcast "Rack Decoder watchdog"
+  # Stage 0: datum.
+  set arrived to 0
+  set stage to 0
+  set caseId to 0
+  set movingMask to 0
+  set targetA to 0
+  set targetB to 0
+  set speedA to 3
+  set speedB to 3
+  set rackATargetMm to 0
+  set rackBTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 1: positive common motion.
+  set arrived to 0
+  set stage to 1
+  set caseId to 1
+  set movingMask to 3
+  set targetA to 114.59155902616465
+  set targetB to -114.59155902616465
+  set speedA to 14.32394487827058
+  set speedB to 14.32394487827058
+  set rackATargetMm to 12
+  set rackBTargetMm to 12
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 2: negative common motion.
+  set arrived to 0
+  set stage to 2
+  set caseId to 1
+  set movingMask to 3
+  set targetA to -114.59155902616465
+  set targetB to 114.59155902616465
+  set speedA to 28.64788975654116
+  set speedB to 28.64788975654116
+  set rackATargetMm to -12
+  set rackBTargetMm to -12
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 3: positive differential coordinates.
+  set arrived to 0
+  set stage to 3
+  set caseId to 2
+  set movingMask to 1
+  set targetA to 114.59155902616465
+  set targetB to 114.59155902616465
+  set speedA to 9.549296585513721
+  set speedB to 3
+  set rackATargetMm to 12
+  set rackBTargetMm to -12
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 4: negative differential coordinates.
+  set arrived to 0
+  set stage to 4
+  set caseId to 2
+  set movingMask to 3
+  set targetA to -114.59155902616465
+  set targetB to -114.59155902616465
+  set speedA to 28.64788975654116
+  set speedB to 28.64788975654116
+  set rackATargetMm to -12
+  set rackBTargetMm to 12
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 5: A offset; B at source coordinate.
+  set arrived to 0
+  set stage to 5
+  set caseId to 3
+  set movingMask to 3
+  set targetA to 114.59155902616465
+  set targetB to 0
+  set speedA to 28.64788975654116
+  set speedB to 14.32394487827058
+  set rackATargetMm to 12
+  set rackBTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 6: B offset; A at source coordinate.
+  set arrived to 0
+  set stage to 6
+  set caseId to 3
+  set movingMask to 3
+  set targetA to 0
+  set targetB to -114.59155902616465
+  set speedA to 14.32394487827058
+  set speedB to 14.32394487827058
+  set rackATargetMm to 0
+  set rackBTargetMm to 12
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 7: half negative common motion.
+  set arrived to 0
+  set stage to 7
+  set caseId to 1
+  set movingMask to 3
+  set targetA to -57.29577951308232
+  set targetB to 57.29577951308232
+  set speedA to 7.16197243913529
+  set speedB to 21.48591731740587
+  set rackATargetMm to -6
+  set rackBTargetMm to -6
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  # Stage 8: return.
+  set arrived to 0
+  set stage to 8
+  set caseId to 4
+  set movingMask to 3
+  set targetA to 0
+  set targetB to 0
+  set speedA to 7.16197243913529
+  set speedB to 7.16197243913529
+  set rackATargetMm to 0
+  set rackBTargetMm to 0
+  set arrivedA to 0
+  set arrivedB to 0
+  broadcast "Rack Decoder move" and wait
+  if failed = 1 or arrivedA = 0 or arrivedB = 0 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "A joined move did not establish both measured arrivals. Reset."
+    stop all
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "The actual motor angle or speed is outside the arrival guard. Reset."
+    stop all
+  set movingMask to 0
+  set arrived to 1
+  set dwellA to (lab motor A angle)
+  set dwellB to (lab motor B angle)
+  wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor A angle) - dwellA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of ((lab motor B angle) - dwellB)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "An input moved outside its measured comparison window. Reset."
+    stop all
+  set arrived to 0
+  set stage to 9
+  set movingMask to 0
+  set completed to 1
+  say "Complete: compare the actual passive carrier translation and pinion rotation. Both rack inputs hold."
+
+WHEN I receive "Rack Decoder move":
+  set arrivedA to 0
+  set correctionsA to 0
+  set coarseDoneA to 0
+  if (abs of (targetA - (lab motor A angle))) > 0.15 then:
+    lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+    lab stop motor A hold
+  repeat 2:
+    if (abs of (targetA - (lab motor A angle))) > 3 then:
+      lab run motor A for (targetA - (lab motor A angle)) degrees at speedA degrees per second
+      lab stop motor A hold
+  set coarseDoneA to 1
+  # Both racks share the carried pinion: settle and trim only after the other coarse move has stopped.
+  wait until coarseDoneA = 1 and coarseDoneB = 1
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetA - (lab motor A angle))) > 0.2 then:
+      change correctionsA by 1
+      set trimDirectionA to 1
+      if targetA < (lab motor A angle) then:
+        set trimDirectionA to -1
+      set trimStartedA to timer
+      lab run motor A at (trimDirectionA * 3) degrees per second
+      repeat until ((targetA - (lab motor A angle)) * trimDirectionA) <= 0.15 or (timer - trimStartedA) >= 2:
+        wait 0.05 seconds
+      lab stop motor A hold
+      if (timer - trimStartedA) >= 2 and ((targetA - (lab motor A angle)) * trimDirectionA) > 0.15 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "Motor A exceeded its bounded feedback-trim time. Reset."
+        stop all
+      wait 1 seconds
+  if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of (lab motor A speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor A failed its bounded measured arrival guard. Reset."
+    stop all
+  set arrivedA to 1
+
+WHEN I receive "Rack Decoder move":
+  set arrivedB to 0
+  set correctionsB to 0
+  set coarseDoneB to 0
+  if (abs of (targetB - (lab motor B angle))) > 0.15 then:
+    lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+    lab stop motor B hold
+  repeat 2:
+    if (abs of (targetB - (lab motor B angle))) > 3 then:
+      lab run motor B for (targetB - (lab motor B angle)) degrees at speedB degrees per second
+      lab stop motor B hold
+  set coarseDoneB to 1
+  # Both racks share the carried pinion: settle and trim only after the other coarse move has stopped.
+  wait until coarseDoneA = 1 and coarseDoneB = 1
+  wait 1 seconds
+  repeat 3:
+    if (abs of (targetB - (lab motor B angle))) > 0.2 then:
+      change correctionsB by 1
+      set trimDirectionB to 1
+      if targetB < (lab motor B angle) then:
+        set trimDirectionB to -1
+      set trimStartedB to timer
+      lab run motor B at (trimDirectionB * 3) degrees per second
+      repeat until ((targetB - (lab motor B angle)) * trimDirectionB) <= 0.15 or (timer - trimStartedB) >= 2:
+        wait 0.05 seconds
+      lab stop motor B hold
+      if (timer - trimStartedB) >= 2 and ((targetB - (lab motor B angle)) * trimDirectionB) > 0.15 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "Motor B exceeded its bounded feedback-trim time. Reset."
+        stop all
+      wait 1 seconds
+  if (abs of ((lab motor B angle) - targetB)) > 0.5 or (abs of (lab motor B speed)) > 0.5 then:
+    set failed to 1
+    set arrived to 0
+    lab stop motor A hold
+    lab stop motor B hold
+    say "Motor B failed its bounded measured arrival guard. Reset."
+    stop all
+  set arrivedB to 1
+
+WHEN I receive "Rack Decoder watchdog":
+  repeat until completed = 1 or failed = 1:
+    if timer > 150 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "150 second watchdog: both inputs held. Reset before retrying."
+      stop all
+    if ((lab motor A angle) * directionA * 0.10471975511965978) < -12.8 or ((lab motor A angle) * directionA * 0.10471975511965978) > 12.8 or ((lab motor B angle) * directionB * 0.10471975511965978) < -12.8 or ((lab motor B angle) * directionB * 0.10471975511965978) > 12.8 then:
+      set failed to 1
+      set arrived to 0
+      lab stop motor A hold
+      lab stop motor B hold
+      say "A rack input exceeded the declared software envelope. Reset."
+      stop all
+    if arrived = 0 then:
+      set windowOpen to 0
+    if arrived = 1 then:
+      if windowOpen = 0 then:
+        set windowOpen to 1
+        set windowStart to timer
+        set windowA to (lab motor A angle)
+        set windowB to (lab motor B angle)
+      if (abs of ((lab motor A angle) - targetA)) > 0.5 or (abs of ((lab motor B angle) - targetB)) > 0.5 then:
+        set failed to 1
+        set arrived to 0
+        lab stop motor A hold
+        lab stop motor B hold
+        say "A comparison-window input guard failed. Both inputs held. Reset."
+        stop all
+      if (timer - windowStart) >= 0.5 then:
+        set driftA to (((lab motor A angle) - windowA) / (timer - windowStart))
+        set driftB to (((lab motor B angle) - windowB) / (timer - windowStart))
+        if (abs of driftA) > 0.5 or (abs of driftB) > 0.5 then:
+          set failed to 1
+          set arrived to 0
+          lab stop motor A hold
+          lab stop motor B hold
+          say "A comparison-window input guard failed. Both inputs held. Reset."
+          stop all
+        set windowStart to timer
+        set windowA to (lab motor A angle)
+        set windowB to (lab motor B angle)
+    wait 0.05 seconds

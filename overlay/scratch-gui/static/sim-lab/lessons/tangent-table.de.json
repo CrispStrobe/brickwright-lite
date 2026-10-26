@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "tangent-table",
+  "language": "de",
+  "what": "Ein mechanischer Multiplizierer mit tan θ. Motor A dreht eine gerade, radiale Kulisse um einen festen Drehpunkt (1:1) und stellt so den Winkel θ ein. Motor B dreht die Spindel eines kleinen Linearaktuators, der die Reichweite x eines Schlittens einstellt; eine Spindelumdrehung bringt nur etwa 1,2 mm, 2.388° an Motor B also 8 mm. Ein gefangener Gelenkzapfen gleitet in einer Hülse auf der schrägen Kulisse und in einem Querschieber bei der Reichweite x. Die Lage y dieses Schiebers hat keinen Motor: Sie ergibt sich dort, wo sich beide Führungen kreuzen. Das Programm fährt acht Paare (θ, x) an: (0°, 40 mm), (15°, 32), (15°, 48), (−15°, 48), (−15°, 32), (arctan ¼ ≈ 14,04°, 32), (arctan ⅙ ≈ 9,46°, 48) und (0°, 40).",
+  "try": [
+    "Setze zurück und starte. Stufen 1–2: Bei +15° wächst die Reichweite von 32 auf 48 mm. Sage y vorher voraus: 8,57 mm, dann 12,86 mm. 16 mm Reichweite ergeben also 4,29 mm Ausgang (Verstärkung tan 15° ≈ 0,268).",
+    "Die Stufen 3–4 verwenden dieselben Reichweiten bei −15°. Der Ausgang wird negativ: Die Neigung der Kulisse bestimmt das Vorzeichen der Verstärkung.",
+    "Die Stufen 5–6 enden bei (32 mm; 14,04°) und (48 mm; 9,46°). Beide ergeben y = 8 mm. Beobachte y während der Fahrt dazwischen: Bleibt es bei 8 mm?",
+    "Stufe 7 kehrt zu (40 mm; 0°) zurück. Bei null Grad ist y = 0, ganz gleich, wie groß die Reichweite ist."
+  ],
+  "why": "Für jeden Punkt auf einer Geraden durch den Ursprung unter dem Winkel θ gilt y/x = tan θ. Der Querschieber hält den Zapfen bei der Reichweite x, die Hülse hält ihn auf der schrägen Geraden, also y = x·tan θ. Bei festem Winkel ist der Ausgang proportional zur Reichweite: Der Winkel legt die Verstärkung fest, samt Vorzeichen. Weil die Hülse gleitet, gibt es keine feste Lenkerlänge, die den Zusammenhang verbiegen würde wie bei einer Pleuelstange. Die Beziehung ist exakte Geometrie und keine Näherung. Allerdings wächst tan θ gegen 90° sehr schnell, sodass ein kleiner Winkelfehler bei großem Winkel einen großen Ausgangsfehler erzeugt. Der Bereich ±15° hält die Verstärkung zwischen −0,268 und +0,268.",
+  "matters": "Analogrechner und Feuerleitgeräte auf Schiffen multiplizierten auf diese Weise: Eine auf einen Winkel gedrehte Kulisse skaliert eine lineare Eingabe. Ein Storchschnabel überträgt Bewegung mit festem Maßstab; hier ist der Maßstab selbst eine Eingabe, also eine Stufe mit veränderlicher Verstärkung. Product Plotter multipliziert mit derselben Idee sich kreuzender Führungen zwei Längen.",
+  "question": "Die Stufen 5 und 6 enden beide bei y = 8 mm. Bleibt y bei 8 mm, während sich beide Motoren dazwischen bewegen?",
+  "answer": "Nein. Die Endpunkte stimmen überein, weil 32 × ¼ = 8 und 48 × ⅙ = 8. Dazwischen ändert das Programm Winkel und Reichweite gleichmäßig mit der Zeit und nicht entlang der Kurve x·tan θ = 8. Auf halbem Weg, bei x ≈ 40 mm und θ ≈ 11,75°, ist y ≈ 40 × tan 11,75° ≈ 8,32 mm. Der Ausgang steigt also kurz etwas über 8 mm und kehrt dann zurück.",
+  "further": [
+    "Warum sind die Motordrehzahlen so verschieden? Motor B braucht etwa 299° pro Millimeter Reichweite, Motor A dreht die Kulisse direkt. Das Programm passt beide Geschwindigkeiten so an, dass beide Eingänge eine Stufe gleichzeitig beenden.",
+    "Vom Lieferanten gemeldete Konstruktionsgrenzen: In den Quellgeometrien durchdringt ein Befestigungspin des Aktuators dessen Lasche, und das Schraubenelement des Simulators bildet keinen Gewindekontakt ab. Ein echter Aufbau bräuchte eine Passungsprüfung.",
+    "In einer Robot-Lab-Simulation des mitgelieferten Programms ohne Bedienoberfläche stimmte der Schieber in jedem Bild auf 0,001 mm mit x·tan θ überein, gerechnet mit dem an der Kulisse gemessenen Winkel. Die Kulisse selbst blieb bis zu 0,17° neben den Motorzielen stehen (innerhalb der Ankunftstoleranz von 0,5°). Die beiden Endpunkte mit gleichem Ausgang lagen deshalb bei 8,09 und 8,15 mm, und dazwischen erreichte y etwa 8,41 mm. Das ist eine Simulationsbeobachtung, kein Versuch am echten Modell."
+  ],
+  "formula": "y = x·tan θ; Lage der Hülse auf der Kulisse s = x / cos θ; bei festem θ gilt Δy = tan θ·Δx. (15°; 32 mm) → 8,574 mm; (15°; 48 mm) → 12,862 mm; gesamter Bereich ±12,862 mm. θ = Winkel von Motor A (1:1). x = 40 mm − 0,00335 mm pro Grad × Winkel von Motor B (1,206 mm pro Spindelumdrehung). Softwaregrenzen: θ innerhalb ±16°, x zwischen 31,2 und 48,8 mm.",
+  "related": [
+    "product-plotter.ldr",
+    "scale-echo.ldr",
+    "screw-crane.ldr"
+  ]
+}

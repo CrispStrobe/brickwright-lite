@@ -1,0 +1,158 @@
+# MERIDIAN — Exact straight-line linkage.
+# Open meridian-linkage.ldr in Robot Lab, select Plain, Reset, then Run.
+# Motor A moves the crank through a bounded arc. The cell and output
+# are passive stock hinge bodies; the output has no straight guide.
+# Watch the colored output marker traverse one geometric straight line.
+# Slow checkpoints are followed by one faster repeated traversal and home.
+# Reset the complete model before every run. Use the supplied range/speeds.
+DEVICE SPIKE
+GLOBAL completed
+GLOBAL failed
+GLOBAL stage
+GLOBAL moving
+GLOBAL inputEncoder
+GLOBAL inputCrankDegrees
+GLOBAL targetDegrees
+GLOBAL targetCrankDegrees
+GLOBAL moveDegrees
+
+WHEN flag clicked:
+  set completed to 0
+  set failed to 0
+  set stage to 0
+  set moving to 0
+  set inputEncoder to 0
+  set inputCrankDegrees to 0
+  set targetDegrees to 0
+  set targetCrankDegrees to 0
+  set moveDegrees to 0
+  IF ((lab status) = "no-model") or ((lab status) = "not-open") THEN:
+    set failed to 1
+    say "Open Meridian in Robot Lab, select Plain, then Reset and Run."
+    stop all
+  lab start
+  lab stop motor A hold
+  IF (abs of (lab motor A angle)) > 3 THEN:
+    set failed to 1
+    say "Reset the complete Meridian model before this demonstration."
+    stop all
+  reset timer
+  broadcast "Meridian observe"
+  broadcast "Meridian watchdog"
+  say "At home: the output has no straight guide."
+  wait 3 seconds
+  set stage to 1
+  set targetCrankDegrees to 60
+  set targetDegrees to 60
+  set moving to 1
+  say "Slow sweep: positive endpoint."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 15 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Meridian and Reset."
+    stop all
+  set stage to 2
+  set targetCrankDegrees to 0
+  set targetDegrees to 0
+  set moving to 1
+  say "Slow sweep: return to home."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 15 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Meridian and Reset."
+    stop all
+  set stage to 3
+  set targetCrankDegrees to -60
+  set targetDegrees to -60
+  set moving to 1
+  say "Slow sweep: negative endpoint."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 15 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Meridian and Reset."
+    stop all
+  set stage to 4
+  set targetCrankDegrees to 0
+  set targetDegrees to 0
+  set moving to 1
+  say "Slow sweep: return to home."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 15 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Meridian and Reset."
+    stop all
+  set stage to 5
+  set targetCrankDegrees to 60
+  set targetDegrees to 60
+  set moving to 1
+  say "Repeated sweep: positive endpoint."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 30 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Meridian and Reset."
+    stop all
+  set stage to 6
+  set targetCrankDegrees to -60
+  set targetDegrees to -60
+  set moving to 1
+  say "Repeated sweep: negative endpoint."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 30 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Meridian and Reset."
+    stop all
+  set stage to 7
+  set targetCrankDegrees to 0
+  set targetDegrees to 0
+  set moving to 1
+  say "Repeated sweep: return to home."
+  set moveDegrees to (targetDegrees - (lab motor A angle))
+  lab run motor A for moveDegrees degrees at 30 degrees per second
+  lab stop motor A hold
+  set moving to 0
+  wait 3 seconds
+  IF (abs of ((lab motor A angle) - targetDegrees)) > 2 THEN:
+    set failed to 1
+    say "The crank missed its checkpoint. Inspect Meridian and Reset."
+    stop all
+  set completed to 1
+  say "Meridian complete: slow sweep, repeat, reverse and home. Reset to repeat."
+
+WHEN I receive "Meridian observe":
+  repeat until completed = 1:
+    set inputEncoder to (lab motor A angle)
+    set inputCrankDegrees to (inputEncoder * 1)
+    wait 0.05 seconds
+
+WHEN I receive "Meridian watchdog":
+  repeat until completed = 1:
+    IF timer > 120 THEN:
+      set failed to 1
+      lab stop motor A hold
+      say "Meridian stopped after its time limit. Inspect the model and Reset."
+      stop all
+    wait 0.05 seconds

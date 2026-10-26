@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "travel-dial-wheel-raised",
+  "language": "de",
+  "what": "Travel Dial mit angehobenem Messrad. Motor A, Schubkurbel, geführter Schlitten und dasselbe Programm travel-dial.bw bleiben unverändert; der Radarm ist angehoben und abgestützt, sodass das 28-mm-Rad die bewegte Fläche nicht mehr berührt. Der Schlitten fährt weiterhin etwa −19 bis +23 mm.",
+  "try": [
+    "Diese Kontrolle in der gespeicherten Stellung laden und in der Robot-Lab-Werkzeugleiste auf Starten drücken. Vor jedem Lauf neu laden.",
+    "Den Schlitten beobachten: Er fährt dieselben Hübe wie bei Travel Dial, mit 15 °/s und danach 45 °/s an der Kurbel.",
+    "Eine Speiche des angehobenen Rads beobachten. Dreht es sich, während der Schlitten darunter durchfährt?",
+    "Travel Dial noch einmal laufen lassen und das Rad dort mit dem angehobenen Rad hier vergleichen."
+  ],
+  "why": "Ein Messrad dreht sich nur, weil die Reibung an der Aufstandsfläche seinen Umfang mit der bewegten Fläche mitnimmt. Das Anheben entfernt diesen Kontakt, während Motor, Kurbel, Schlitten und deren Bewegung gleich bleiben. Würde sich das Rad trotzdem drehen, käme die Bewegung von etwas anderem, etwa von Rahmenschwingungen. In der Simulation bewegte sich das angehobene Rad höchstens etwa 0,14°, ein kleines Setzen am Anfang, gegenüber etwa 46° beim Abrollen auf dem Schlitten. Die Anzeige kommt also vom Rollkontakt.",
+  "matters": "Wegmessräder, Messräder an Schneidmaschinen und Geberräder an Förderbändern beruhen alle auf Kontakt. Man prüft sie, indem man das Rad anhebt oder die Fläche anhält, denn Schlupf oder fehlender Kontakt liefern falsche Strecken, ohne dass ein Fehler sichtbar wäre.",
+  "question": "Der Schlitten fährt in beiden Modellen genau dieselben Hübe. Warum bleibt das angehobene Rad fast still?",
+  "answer": "Weil das Rad nur durch Reibung am Kontakt mit dem Schlitten angetrieben wird. Ohne Kontakt wirkt keine Umfangskraft auf das Rad, also kann der bewegte Schlitten es nicht drehen. Die restlichen 0,1° sind ein kleines Setzen am Anfang, keine Antwort auf den Schlittenweg.",
+  "further": [
+    "Berechnen, welchen Radwinkel Travel Dial bei 20 mm Schlittenweg mit R = 28 mm zeigen sollte, und mit der Anzeige des angehobenen Rads vergleichen.",
+    "Vorschlagen, wie man ein Rad erkennen könnte, das teilweise rutscht, statt den Kontakt ganz zu verlieren."
+  ],
+  "formula": "Mit Kontakt: Δθ = Δs_relativ / R, R = 28 mm (Bogenmaß). Ohne Kontakt: kein Reibmoment am Rad, also Δθ ≈ 0 unabhängig von Δs.",
+  "related": [
+    "integral.ldr",
+    "rack-shuttle.ldr",
+    "cusp-lab.ldr"
+  ]
+}

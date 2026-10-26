@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "id": "kestrel-flapper",
+  "language": "de",
+  "what": "Schlagflügel-Gestänge als Kurbelschwinge (Grashof-Viergelenk). Motor A dreht eine 16 mm lange Kurbel. Eine 48 mm lange Koppel (7er-Lochbalken) verbindet den Kurbelzapfen mit einer 32 mm langen Schwinge auf der Flügelwelle, deren Lager 48 mm neben der Motorachse sitzen. Flügelholm und Federn sind fest mit dieser Schwingenwelle verbunden; der Flügel kann deshalb nur hin- und herschwingen, und jede volle Kurbelumdrehung ergibt genau einen Schlag in jede Richtung. Das Programm dreht die Kurbel mit 45°/s zwei Umdrehungen vorwärts, hält 0,75 s an und dreht sie dann zwei Umdrehungen zurück in die Ausgangslage. Experimentelles Modell: Das hier beschriebene Gesetz wurde bisher nur im Simulator gemessen (ein Lauf ohne Bildschirm), nicht an echten LEGO-Teilen.",
+  "try": [
+    "Setze zurück und drücke Start. Zähle während der ersten Kurbelumdrehung die Flügelschläge: Eine volle Umdrehung sollte genau einen Schlag nach oben und einen nach unten ergeben, nicht zwei.",
+    "Achte auf die beiden Augenblicke, in denen der Flügel stehen bleibt und umkehrt. Dann liegen Kurbel und Koppel auf einer Geraden (Totlage). Vergleiche die Kurbeldrehung zwischen den beiden Umkehrpunkten: Die ideale Geometrie sagt etwa 192° für den einen und 168° für den anderen Schlag voraus.",
+    "In Stufe 3 läuft die Kurbel rückwärts. Prüfe, ob der Flügel denselben Bogen zurückläuft, und beobachte, welche Schlagrichtung jetzt die langsamere ist.",
+    "Vergleiche nach Abschluss inputTurns (wieder 0) und die Flügelneigung mit der Ausgangslage."
+  ],
+  "why": "Bei einem Viergelenk mit kürzestem Glied s, längstem Glied l und den beiden übrigen Gliedern p und q kann das kürzeste Glied voll umlaufen, wenn s + l ≤ p + q gilt (Grashof-Bedingung). Hier ist 16 + 48 ≤ 32 + 48 mm, und das kürzeste Glied ist die angetriebene Kurbel: Sie läuft ganz um, während die Schwinge nur pendelt. Ihre Endlagen erreicht die Schwinge in den beiden Totlagen, in denen Kurbel und Koppel gestreckt oder überdeckt sind; der Abstand von der Kurbelachse zum Schwingenzapfen beträgt dann 48 − 16 = 32 mm bzw. 48 + 16 = 64 mm. Der Kosinussatz am Schwingenlager liefert daraus 41,4° und 104,5° zur Gestelllinie, also einen idealen Schwingwinkel von etwa 63°. Die beiden Totlagen der Kurbel liegen nicht 180° auseinander, sondern teilen die Umdrehung in etwa 192,5° und 167,5°. Bei konstanter Motordrehzahl dauert ein Schlag deshalb rund 1,15-mal so lang wie der andere – ein leichter Schnellrücklauf. Im Simulator wurden ein Schwingwinkel von 63,07°, Umkehrpunkte bei 139° und 331° Kurbelwinkel (Abschnitte 192° und 168°) und Schlagzeiten von 4,26 s und 3,74 s gemessen.",
+  "matters": "Kurbelschwingen machen aus gleichförmiger Motordrehung eine Hin- und Herbewegung, ohne dass der Motor die Richtung wechseln muss: Scheibenwischerantriebe, Nähmaschinen, Schlagflügelmodelle und Pumpen nutzen sie. Vier Längen genügen, um vorherzusagen, ob die Kurbel umlaufen kann, wie weit der Abtrieb schwingt und wie ungleich die beiden Schläge sind. Das Programm gibt nur den Kurbelwinkel vor; die Flügelbewegung entsteht im Gestänge. Der Simulator kennt keine Luft – Auftrieb und Luftwiderstand am Flügel fehlen, und reale Reibung in den Pins sowie Flügellasten sind ungeprüft.",
+  "question": "Die Kurbel dreht sich gleichmäßig mit 45°/s. Dauern beide Flügelschläge gleich lang? Und welche Schlagrichtung wird zur langsamen, wenn das Programm die Kurbel umkehrt?",
+  "answer": "Nicht ganz. Die Totlagen teilen die Kurbelumdrehung in etwa 192,5° und 167,5°; bei 45°/s dauert ein Schlag also etwa 4,3 s, der andere etwa 3,7 s. Läuft die Kurbel rückwärts, wird die Bewegung rückwärts abgespielt: Der längere Kurbelabschnitt enthält weiterhin den langsameren Schlag, doch der Flügel durchläuft ihn jetzt in der Gegenrichtung. Der vorher langsame Schlag wird schnell und umgekehrt.",
+  "further": [
+    "Wende die Totlagen-Konstruktion auf eine 24 mm lange Kurbel (3 Löcher) an. Die Grashof-Bedingung gilt weiterhin (24 + 48 ≤ 32 + 48), und der Schwingwinkel wächst auf etwa 101°; der kleinste Übertragungswinkel zwischen Koppel und Schwinge sinkt aber von etwa 41° auf etwa 26°, sodass die Koppel die Schwinge viel schlechter antreibt.",
+    "In der Nähe einer Totlage bewirkt eine große Kurbeldrehung fast keine Flügelbewegung. Erkläre, warum ein Gestänge dort große Kräfte halten kann und warum es dort zugleich am langsamsten ist.",
+    "Vergleiche Butterfly und die motorisierte Kurbelschwinge (Crank-Rocker), die dieselbe Gestängefamilie mit anderen Proportionen nutzen."
+  ],
+  "formula": "Grashof: s + l ≤ p + q → 16 + 48 ≤ 32 + 48 mm (Kurbel a = 16, Koppel b = 48, Schwinge c = 32, Gestell d = 48). Totlagen: cos ψ = (c² + d² − (b ∓ a)²) / (2cd) → ψ = 41,4° und 104,5°, Schwingwinkel ≈ 63,1°. Kurbelabschnitte zwischen den Umkehrpunkten ≈ 192,5° und 167,5°: Q = (180° + α) / (180° − α) ≈ 1,15 mit α ≈ 12,5°.",
+  "related": [
+    "crank-rocker.ldr",
+    "butterfly.ldr"
+  ]
+}

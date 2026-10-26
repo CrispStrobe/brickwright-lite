@@ -5,6 +5,7 @@
 // on an axle turning in a clamped beam is the drum — and a brick hung from it on a rope. No ground,
 // so the brick hangs. A motor holding the drum holds the brick; turning it winds the brick up or
 // lets it down by r·Δθ; a free drum is turned by the weight (the rope's tension on the drum).
+import {createRopes} from '../overlay/scratch-gui/src/lib/bw-sim/physics/rope.js';
 import {createMeasurementReader, ropeBinding} from '../overlay/scratch-gui/src/lib/bw-sim/measurements/readings.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -114,4 +115,28 @@ test('a free drum: the hanging weight turns it and the hook sinks by the rope it
     t.diagnostic(`free: sank ${(r.rise * 1000).toFixed(2)} mm, r·θ ${(r.r * r.wound * 1000).toFixed(2)} mm`);
     assert.ok(r.rise < -0.003, `the hook sank ${(r.rise * 1000).toFixed(1)} mm`);
     assert.ok(Math.abs(r.rise - r.r * r.wound) < Math.max(0.002, Math.abs(r.rise) * 0.15), `by the rope paid out: ${(r.r * r.wound * 1000).toFixed(1)} mm`);
+});
+
+
+test('rope construction never reads destroyed settings and observes the retained native impulse', () => {
+    const dead=new WeakSet();
+    class Vector {
+        constructor(x=0,y=0,z=0){this.v=[x,y,z];}
+        GetX(){return this.v[0];} GetY(){return this.v[1];} GetZ(){return this.v[2];} GetW(){return 1;}
+        Set(...v){this.v=v;}
+    }
+    const native={GetMaxDistance:()=>.1,GetTotalLambdaPosition:()=>.001,GetLastVelocityImpulse:()=>.002};
+    class Settings {
+        set mMaxDistance(v){this.max=v;}
+        get mMaxDistance(){assert.ok(!dead.has(this),'settings have been destroyed');return this.max;}
+        Create(){return native;}
+    }
+    const J={DistanceConstraintSettings:Settings,DistanceConstraint:class{},RVec3:Vector,Vec3:Vector,
+        castObject:x=>x,destroy:x=>dead.add(x)};
+    const core=createRopes({J,couplings:[{points:[{body:'frame',local:[0,0,0]}],hook:{body:'load',local:[0,0,0]},lengthM:.1,radiusM:.0028,drumJoint:null}],
+        hingeMap:new Map(),jointMap:new Map(),bodyIdOf:id=>id,bodyOf:id=>id,
+        bodyInterface:{GetPosition:id=>new Vector(0,id==='load'?-.1:0,0),GetRotation:()=>new Vector()},
+        physicsSystem:{AddConstraint:c=>assert.equal(c,native)},allConstraints:[],dt:.005});
+    assert.deepEqual(core.state(),[{free:.1,tension:.4}]);
+    core.destroy();
 });
