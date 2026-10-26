@@ -15,6 +15,16 @@ const gitExecutable=realpathSync('/usr/bin/git');accessSync(gitExecutable,consta
 const git = args => execFileSync(gitExecutable, ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', ...args], {encoding:'utf8', maxBuffer: 8*1024*1024});
 const ready = page => page.waitForFunction(() => window.__bwSimLab?.status === 'ready' && !window.__bwSimLab._pane.state.programLoading);
 const panelOf = page => page.getByTestId('bw-sim-lab-measurements-panel');
+// Authored Forklift fixture identities: its motor is C, and these two parts
+// identify chassis and fork bodies without selecting a split motor housing.
+export const forkliftDiagnosticTargets = ({joints, bodies, partIds}) => {
+    const hinges = joints.filter(j => j.type === 'hinge' && j.motor?.port === 'C');
+    const parts = ['hub', 'forkArm'];
+    const owners = parts.map(id => bodies.filter(body => body.parts?.includes(id)));
+    if (hinges.length !== 1 || parts.some(id => !partIds.includes(id)) ||
+        owners.some(group => group.length !== 1) || owners[0][0].id === owners[1][0].id) return null;
+    return {hinge: hinges[0].id, parts};
+};
 const showPanel = async page => { if (!await panelOf(page).isVisible()) await tool(page,'measurements'); };
 const choose = async (page,file) => { await page.getByTestId('bw-sim-lab-model').selectOption(file); await ready(page); await showPanel(page); };
 const loadProject = async (page,file) => {
@@ -68,13 +78,12 @@ export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProj
             await panel.getByTestId('bw-sim-lab-measurement-add').click();
         }
         if(file==='forklift.ldr') {
-            const targets=await page.evaluate(()=>{
+            const targets=forkliftDiagnosticTargets(await page.evaluate(()=>{
                 const p=window.__bwSimLab._pane,m=p.session.mechanism;
-                const bodies=m.bodies.filter(b=>b.parts?.some(id=>p.measurementReader.partIds.includes(id)));
-                return {hinge:m.joints.find(j=>j.type==='hinge'&&j.motor?.port==='A')?.id,
-                    parts:bodies.slice(0,2).map(b=>b.parts.find(id=>p.measurementReader.partIds.includes(id)))};
-            });
-            assert.ok(targets.hinge&&targets.parts.length===2);
+                return {joints:m.joints.map(({id,type,motor})=>({id,type,motor})),
+                    bodies:m.bodies.map(({id,parts})=>({id,parts})),partIds:p.measurementReader.partIds};
+            }));
+            assert.ok(targets,'Forklift motor C and uniquely owned chassis/fork targets must resolve');
             await panel.getByTestId('bw-sim-lab-measurement-kind').selectOption('passiveTorque');
             await panel.getByTestId('bw-sim-lab-measurement-joint').selectOption(targets.hinge);
             await panel.getByTestId('bw-sim-lab-measurement-add').click();kinds.push('passiveTorque');
