@@ -222,7 +222,7 @@ const main = async () => {
     if (outputBytes.byteLength > MAX_REPORT_BYTES) throw new Error(`coverage report exceeds ${MAX_REPORT_BYTES} bytes`);
     mkdirSync(path.dirname(output), {recursive: true});
     writeFileSync(output, outputBytes, {flag: 'wx'});
-    process.stdout.write(`${JSON.stringify({status: report.status, output, ...report.summary})}\n`);
+    process.stdout.write(`${JSON.stringify({status: report.status, output: path.relative(root, output), ...report.summary})}\n`);
     if (report.status !== 'PASS') process.exitCode = 1;
 };
 

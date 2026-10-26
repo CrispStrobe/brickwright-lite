@@ -3,12 +3,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 const number = value => Number.isFinite(value) ? Number(value.toPrecision(6)).toString() : '—';
-const SimLabMeasurementPrecision = ({locale, session, definitions, enabled, replaying, onToggle}) => {
+const SimLabMeasurementPrecision = ({locale, session, definitions, enabled, replaying, onToggle, options = {mode: 'oscillation', thresholdDegrees: 0}, onOptions}) => {
     const de = locale === 'de', analysis = session?.measurementPrecision;
     return <section data-testid="bw-sim-measurement-precision" aria-label={de ? 'Zeitschritt-Auswertung' : 'Fixed-step analysis'}>
         <h4>{de ? 'Periode, Phase und Arbeit' : 'Period, phase and work'}</h4>
-        <p>{de ? 'Wähle Gelenkmessungen für Diagramme, dann starte die Auswertung. Periode: aufsteigende Winkelnulldurchgänge. Phase: Verzögerung zum ersten gewählten Drehgelenk. Arbeit: vorzeichenbehaftete Summe aus Motorleistung × Zeitschritt seit Start.' :
-            'Select joint measurement plots, then start analysis. Period uses rising angle-zero crossings. Phase is lag relative to the first selected hinge. Work is the signed sum of motor power × fixed step since starting.'}</p>
+        <p>{de ? 'Wähle Gelenkmessungen für Diagramme, dann starte die Auswertung. Periode: aufsteigende Schwellendurchgänge oder volle Umdrehungen. Phase: Verzögerung zum ersten gewählten Drehgelenk. Arbeit: vorzeichenbehaftete Summe aus Motorleistung × Zeitschritt seit Start.' :
+            'Select joint measurement plots, then start analysis. Period uses rising threshold crossings or full rotations. Phase is lag relative to the first selected hinge. Work is the signed sum of motor power × fixed step since starting.'}</p>
+        <label>{de ? 'Periodenmodus' : 'Period mode'} <select data-testid="bw-sim-precision-mode" value={options.mode} disabled={enabled || replaying} onChange={e => onOptions?.({...options, mode: e.target.value})}>
+            <option value="oscillation">{de ? 'Aufsteigende Durchgänge' : 'Rising crossings'}</option><option value="rotation">{de ? 'Volle Umdrehungen' : 'Full rotations'}</option>
+        </select></label>
+        <label>{de ? 'Winkelschwelle (°)' : 'Angle threshold (°)'} <input type="number" data-testid="bw-sim-precision-threshold" value={options.thresholdDegrees} disabled={enabled || replaying} onChange={e => { const value = Number(e.target.value); if (Number.isFinite(value) && Math.abs(value) <= 1e9) onOptions?.({...options, thresholdDegrees: value}); }} /></label>
         <button type="button" disabled={replaying} onClick={onToggle} data-testid="bw-sim-measurement-precision-toggle">{enabled ? (de ? 'Auswertung beenden' : 'Stop analysis') : (de ? 'Auswertung starten' : 'Start analysis')}</button>
         {enabled && !replaying && <>
             {analysis?.gap && <p role="status">{de ? 'Beobachtungslücke: Gesamtarbeit nicht verfügbar. Neu starten für eine vollständige Auswertung.' : 'Observation gap: total work unavailable. Restart for a complete analysis.'}</p>}
@@ -20,5 +24,5 @@ const SimLabMeasurementPrecision = ({locale, session, definitions, enabled, repl
     </section>;
 };
 SimLabMeasurementPrecision.propTypes = {locale: PropTypes.string, session: PropTypes.object, definitions: PropTypes.array.isRequired,
-    enabled: PropTypes.bool, replaying: PropTypes.bool, onToggle: PropTypes.func};
+    options: PropTypes.object, onOptions: PropTypes.func, enabled: PropTypes.bool, replaying: PropTypes.bool, onToggle: PropTypes.func};
 export default SimLabMeasurementPrecision;

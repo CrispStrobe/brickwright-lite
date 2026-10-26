@@ -127,7 +127,7 @@ export const createMeasurementReader = session => {
             } else if (m.kind === 'contact') {
                 row.points = m.targets.map(point);
                 const a = bodyOf.get(m.targets[0]), b = bodyOf.get(m.targets[1]);
-                if (a.id === b.id) throw new Error('unavailable');
+                if (a.id === b.id || !Number.isFinite(core.time) || core.time <= 0) throw new Error('unavailable');
                 // The native accessor scans pairs; refuse unbounded scene-wide polling.
                 if (mechanism.bodies.length > 128) throw new Error('unavailable');
                 const pairs = core.currentContactPairs?.();

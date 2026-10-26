@@ -372,7 +372,7 @@ class SimLabMeasurements extends React.Component {
                 </form>
                 {this.props.session && <SimLabPhysicsInspector locale={locale} session={this.props.session} replaying={replaying} onHighlight={this.props.onHighlight} />}
                 <SimLabMeasurementPrecision locale={locale} session={this.props.session} definitions={definitions}
-                    enabled={this.props.precisionEnabled} replaying={replaying} onToggle={this.props.onPrecisionToggle} />
+                    options={this.props.precisionOptions} onOptions={this.props.onPrecisionOptions} enabled={this.props.precisionEnabled} replaying={replaying} onToggle={this.props.onPrecisionToggle} />
                 <SimLabControlPair locale={locale} context={this.props.modelContext && {...this.props.modelContext, definitions}}
                     histories={this.props.histories || []} pair={this.props.controlPair} disabled={replaying || Boolean(this.props.recorder?.snapshot().active)}
                     onPair={this.props.onControlPair} onClear={this.props.onClearControlPair} />
@@ -408,6 +408,7 @@ class SimLabMeasurements extends React.Component {
 }
 SimLabMeasurements.propTypes = {
     controlPair: PropTypes.object, histories: PropTypes.array, onControlPair: PropTypes.func, onClearControlPair: PropTypes.func,
+    precisionOptions: PropTypes.object, onPrecisionOptions: PropTypes.func,
     precisionEnabled: PropTypes.bool, onPrecisionToggle: PropTypes.func,
     locale: PropTypes.string.isRequired, definitions: PropTypes.array.isRequired, rows: PropTypes.array.isRequired,
     parts: PropTypes.array.isRequired, mechanism: PropTypes.object.isRequired, shown: PropTypes.bool.isRequired, replaying: PropTypes.bool.isRequired,

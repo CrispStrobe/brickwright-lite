@@ -1,4 +1,3 @@
-import {observationSelection, collectFixedObservations, createPrecisionAnalysis} from './measurements/precision.js';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //
@@ -29,6 +28,7 @@ import {observationSelection, collectFixedObservations, createPrecisionAnalysis}
 // runner.js), one physics step per exchange; `lockstep` says so, and
 // `realTimeFactor` how fast the emulator lets simulated time go.
 
+import {observationSelection, collectFixedObservations, createPrecisionAnalysis} from './measurements/precision.js';
 import {autoPorts} from './hubs/auto-ports.js';
 import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
@@ -549,14 +549,15 @@ export class SimSession {
     }
 
     /** Reset analytical state on an explicit selection change; no physical state is changed. */
-    setMeasurementObservation ({joints = [], contacts = false, screws = false} = {}) {
-        const key = JSON.stringify({joints, contacts, screws});
+    setMeasurementObservation ({joints = [], contacts = false, screws = false, mode = 'oscillation', thresholdDegrees = 0} = {}) {
+        const key = JSON.stringify({joints, contacts, screws, mode, thresholdDegrees});
         if (key === this._measurementObservationKey) return;
-        const selection = observationSelection({revision: ++this._observationRevision, joints, contacts, screws}, this.mechanism);
+        const selection = observationSelection({revision: ++this._observationRevision, joints, contacts, screws, mode, thresholdDegrees}, this.mechanism);
         this._measurementCollector?.detach();
         this._measurementObservationKey = key;
         this._measurementObservation = selection;
         this._precisionAnalysis = createPrecisionAnalysis(selection);
+        this._lastMeasurementObservations = null;
         this._measurementCollector = this.worker ? null : collectFixedObservations(this.core, this.mechanism, selection);
     }
 
@@ -564,16 +565,28 @@ export class SimSession {
         if (!this._measurementObservation) return;
         this._measurementCollector?.detach();
         this._measurementObservation = {...this._measurementObservation, revision: ++this._observationRevision};
+        this._lastMeasurementObservations = null;
         this._precisionAnalysis = createPrecisionAnalysis(this._measurementObservation);
         this._measurementCollector = this.worker ? null : collectFixedObservations(this.core, this.mechanism, this._measurementObservation);
+    }
+
+    /** Copied last accepted bounded packet, for observational consumers only. */
+    get measurementObservations () { return this._lastMeasurementObservations ? JSON.parse(JSON.stringify(this._lastMeasurementObservations)) : null; }
+
+    _acceptMeasurementObservations (packet) {
+        if (!this._disposed && this._precisionAnalysis.accept(packet)) this._lastMeasurementObservations = packet;
     }
 
     get measurementPrecision () { return this._precisionAnalysis.snapshot(); }
 
     _advanced () {
+        if (this._disposed) return;
         const observations = this._measurementCollector?.take();
-        if (observations) this._precisionAnalysis.accept(observations);
-        for (const fn of [...this.listeners]) fn(this);
+        if (observations) this._acceptMeasurementObservations(observations);
+        for (const fn of [...this.listeners]) {
+            if (this._disposed) break;
+            if (this.listeners.has(fn)) fn(this);
+        }
     }
 
     _due () {
@@ -641,9 +654,11 @@ export class SimSession {
             }
             stats.diverged += this.bridge.replay(reply.frames);
         }
+        // Replay may synchronously publish a hub callback which disposes this session.
+        if (this._disposed || this._inFlight !== sent) return;
         this.core.update(reply);
         // Only the accepted replay may contribute; stale selection replies are refused.
-        this._precisionAnalysis.accept(reply.observations);
+        this._acceptMeasurementObservations(reply.observations);
         stats.batches++;
         stats.steps += batch.steps || 0;
         this.time += batch.ms;
@@ -692,6 +707,8 @@ export class SimSession {
         this._disposed = true;
         this._measurementCollector?.detach();
         this._measurementObservation = null;
+        this._lastMeasurementObservations = null;
+        this.listeners.clear();
         this.runner?.dispose();
         this.bridge?.dispose();
         if (this.worker) {

@@ -2193,6 +2193,9 @@ jobs:
             artifacts/sim-lab/sim-lab-measurement-experiments.json
             artifacts/sim-lab/sim-lab-experiment-history.sb3
             artifacts/sim-lab/sim-lab-experiment-history.json
+            artifacts/sim-lab/sim-lab-role-persistence.json
+            artifacts/sim-lab/sim-lab-measurement-dynamics.json
+            artifacts/sim-lab/sim-lab-dynamics-pair.sb3
           if-no-files-found: error
           retention-days: 7
 

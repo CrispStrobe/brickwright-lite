@@ -7,8 +7,10 @@ export const observationSelection = (value, mechanism) => {
     if (!Number.isSafeInteger(value.revision) || value.revision < 1 || !Array.isArray(value.joints) ||
         value.joints.length > 4 || new Set(value.joints).size !== value.joints.length ||
         value.joints.some(id => typeof id !== 'string' || !mechanism.joints.some(j => j.id === id && ['hinge', 'slider'].includes(j.type))) ||
-        typeof value.contacts !== 'boolean' || typeof value.screws !== 'boolean') throw new Error('invalid measurement observation selection');
-    return {revision: value.revision, joints: value.joints.slice(), contacts: value.contacts, screws: value.screws};
+        typeof value.contacts !== 'boolean' || typeof value.screws !== 'boolean' ||
+        value.mode !== undefined && !['oscillation', 'rotation'].includes(value.mode) ||
+        value.thresholdDegrees !== undefined && (!Number.isFinite(value.thresholdDegrees) || Math.abs(value.thresholdDegrees) > 1e9)) throw new Error('invalid measurement observation selection');
+    return {revision: value.revision, joints: value.joints.slice(), contacts: value.contacts, screws: value.screws, mode: value.mode || 'oscillation', thresholdDegrees: value.thresholdDegrees || 0};
 };
 const finite = value => typeof value === 'number' && Number.isFinite(value);
 /** One collector per invocation; discarded worker attempts never reach analytical state. */
@@ -74,8 +76,21 @@ export const createPrecisionAnalysis = selection => {
                     if (finite(observed.powerW)) state.workJ += observed.powerW * sample.stepSeconds;
                     else { state.workComplete = false; gap = true; }
                     const previous = state.previous;
-                    if (observed.type === 'hinge' && previous && previous.value < 0 && observed.coordinate >= 0) {
-                        const crossing = previous.t + (sample.t - previous.t) * -previous.value / (observed.coordinate - previous.value);
+                    const threshold = (selection.thresholdDegrees || 0) * Math.PI / 180;
+                    let crossingAngle = threshold, crossed = false;
+                    if (observed.type === 'hinge' && previous) {
+                        const delta = observed.coordinate - previous.value;
+                        if (selection.mode === 'rotation' && delta !== 0) {
+                            const direction = Math.sign(delta);
+                            if (state.direction && state.direction !== direction) { state.crossing = null; state.periodSeconds = null; }
+                            state.direction = direction;
+                            crossingAngle = threshold + 2 * Math.PI * (direction > 0 ? Math.floor((previous.value - threshold) / (2 * Math.PI)) + 1 : Math.ceil((previous.value - threshold) / (2 * Math.PI)) - 1);
+                            crossed = Math.abs(delta) <= 2 * Math.PI && (direction > 0 ? observed.coordinate >= crossingAngle : observed.coordinate <= crossingAngle);
+                            if (Math.abs(delta) > 2 * Math.PI) { state.crossing = null; state.periodSeconds = null; gap = true; }
+                        } else if (selection.mode !== 'rotation') crossed = previous.value < threshold && observed.coordinate >= threshold;
+                    }
+                    if (observed.type === 'hinge' && previous && crossed) {
+                        const crossing = previous.t + (sample.t - previous.t) * (crossingAngle - previous.value) / (observed.coordinate - previous.value);
                         if (state.crossing !== null) state.periodSeconds = crossing - state.crossing;
                         state.crossing = crossing;
                     }
@@ -87,9 +102,10 @@ export const createPrecisionAnalysis = selection => {
         snapshot () {
             const reference = [...states.values()].find(s => s.type === 'hinge');
             return {revision: selection?.revision || null, gap, referenceJoint: reference?.id || null,
-                method: 'completed-fixed-step; rising angle-zero crossings; signed sum(power × step)',
+                method: selection?.mode === 'rotation' ? 'completed-fixed-step; successive full-turn crossings; signed sum(power × step)' : 'completed-fixed-step; rising threshold crossings; signed sum(power × step)',
+                mode: selection?.mode || 'oscillation', thresholdDegrees: selection?.thresholdDegrees || 0,
                 rows: [...states.values()].map(state => {
-                    const phase = state.crossing !== null && reference?.crossing !== null && reference?.periodSeconds > 0 ?
+                    const phase = state.crossing !== null && reference?.crossing !== null && reference?.periodSeconds > 0 && (selection?.mode !== 'rotation' || state.direction === reference.direction) ?
                         (((state.crossing - reference.crossing) / reference.periodSeconds * 360 + 180) % 360 + 360) % 360 - 180 : null;
                     return {joint: state.id, type: state.type, periodSeconds: state.periodSeconds,
                         phaseDegrees: phase, workJ: state.workComplete && state.type ? state.workJ : null};

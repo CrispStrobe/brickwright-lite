@@ -45,3 +45,17 @@ test('collector is opt-in, copied, bounded, detachable and old callback snapshot
     assert.throws(() => observationSelection({...selection, joints: ['a', 'a']}, mechanism));
     assert.throws(() => observationSelection({...selection, joints: ['missing']}, mechanism));
 });
+
+test('full-turn periods work for positive and negative unwrapped rotation; oscillation threshold is explicit', () => {
+    for (const sign of [1,-1]) {
+        const config = {...selection, joints:['a'], mode:'rotation', thresholdDegrees:30}, analysis=createPrecisionAnalysis(config);
+        const samples=Array.from({length:500},(_,i)=>({t:(i+1)*.005,stepSeconds:.005,joints:[{id:'a',type:'hinge',coordinate:sign*(i+1)*.005*2*Math.PI,powerW:1}]}));
+        analysis.accept({revision:1,samples,overflow:false});
+        assert.ok(Math.abs(analysis.snapshot().rows[0].periodSeconds-1)<1e-10);
+        assert.equal(analysis.snapshot().rows[0].phaseDegrees,0);
+    }
+    const thresholded=createPrecisionAnalysis({...selection,joints:['a'],thresholdDegrees:30});
+    const samples=packet(1,501).samples.map(s=>({...s,joints:[s.joints[0]]}));
+    thresholded.accept({revision:1,samples,overflow:false});
+    assert.ok(Math.abs(thresholded.snapshot().rows[0].periodSeconds-1)<1e-10);
+});

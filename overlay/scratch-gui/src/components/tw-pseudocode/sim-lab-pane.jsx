@@ -1470,6 +1470,7 @@ class SimLabPane extends React.Component {
             experimentIssue = {severity: 'warning', code: 'project-experiments-unreadable', message: `Saved recordings were refused: ${error.message}`};
         }
         this.measurementPrecisionEnabled = false;
+        this.measurementPrecisionOptions = {mode: 'oscillation', thresholdDegrees: 0};
         this.measurementSelection = experimentIssue ? [] : savedExperiments?.selection || this.measurementRecording.selectionFor(text, this.measurementContext.modelSha256);
         // A real RCX keeps its program through a reset; the Lab's does too (a new scene, the same image).
         if (this.rcxHub() && this.rcxImage) this.rcxHub().loadProgram(this.rcxImage);
@@ -1735,7 +1736,7 @@ class SimLabPane extends React.Component {
         const selected = new Set(this.measurementSelection || []), mechanism = this.session.mechanism;
         const joints = this.measurementPrecisionEnabled ? [...new Set(this.measurements.filter(d => selected.has(d.id) && d.joint &&
             mechanism.joints.some(j => j.id === d.joint && ['hinge', 'slider'].includes(j.type) && measurementJointBound(mechanism, j, d.binding))).map(d => d.joint))].slice(0, 4) : [];
-        this.session.setMeasurementObservation({joints, contacts: this.measurements.some(d => d.kind === 'contact'),
+        this.session.setMeasurementObservation({...this.measurementPrecisionOptions, joints, contacts: this.measurements.some(d => d.kind === 'contact'),
             screws: this.measurements.some(d => d.kind === 'screwSlips' || d.kind === 'screwLoad')});
     }
 
@@ -3394,6 +3395,8 @@ class SimLabPane extends React.Component {
                                 mechanism={this.session.mechanism} shown={this.state.showMeasurements} replaying={this.state.replayAt !== null}
                                 session={this.session} sampleTime={this.measurementRowsTime} paused={this.state.status !== 'running' && this.state.status !== 'stopping'}
                                 precisionEnabled={Boolean(this.measurementPrecisionEnabled)}
+                                precisionOptions={this.measurementPrecisionOptions}
+                                onPrecisionOptions={options => { this.measurementPrecisionOptions = options; this.configureMeasurementObservations(); this.refreshMeasurements(); }}
                                 onPrecisionToggle={() => { this.measurementPrecisionEnabled = !this.measurementPrecisionEnabled; this.configureMeasurementObservations(); this.refreshMeasurements(); }}
                                 teachingPreset={teachingMeasurementPreset(this.session, this.shippedModel()?.file, this.locale)}
                                 onSample={() => this.refreshMeasurements()}
