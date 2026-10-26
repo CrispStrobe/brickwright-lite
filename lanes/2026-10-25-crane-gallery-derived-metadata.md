@@ -20,7 +20,7 @@ metadata repair normally into the owned source candidate before fresh affected
 hosted qualification, all enabled exact-head checks and matched-head landing.
 This claim does not authorize physics, dependency, workflow, API or UI changes.
 
-The regenerated crane row reports 67 pieces and three motors. Its English and
+The regenerated crane row reports 70 pieces and three motors. Its English and
 German descriptions include the winch and support feet. Every non-crane output
 byte is unchanged. Both existing gallery tests pass locally; the exact-count
 assertion and greater-than-50 boundary are unchanged. The combined candidate

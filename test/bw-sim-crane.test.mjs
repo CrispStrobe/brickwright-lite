@@ -131,10 +131,9 @@ test('it compiles to the original slew/luff ratios and a retained, geared drum w
         'the balanced payload COM lies directly below its rope tie');
     const payload = m.bodies.find(b => b.id === rope.hook.body);
     const mass = payload.colliders.reduce((sum, c) => sum + c.massKg, 0);
-    const massCentreY = payload.colliders.reduce((sum, c) => sum + c.massKg * c.position[1], 0) / mass;
-    const gravityLever = rope.hook.local[1] - massCentreY;
-    assert.ok(gravityLever > 0.020 && gravityLever < 0.035,
-        'the upright link puts its tie 20–35 mm above the collider-mass COM, without an orientation constraint');
+    const massCentre = [0, 1, 2].map(i => payload.colliders.reduce((sum, c) => sum + c.massKg * c.position[i], 0) / mass);
+    assert.ok(Math.hypot(...rope.hook.local.map((v, i) => v - massCentre[i])) < 1e-8,
+        'the catalogue-mass counterweights balance the free load about its rope tie, without an orientation constraint');
     const point = p => m.bodies.find(b => b.id === p.body).position.map((x, i) => x + p.local[i]);
     const points = [...rope.points, rope.hook].map(point);
     const length = points.slice(1).reduce((sum, p, i) => sum + len(sub(p, points[i])), 0);
@@ -220,7 +219,7 @@ if (!existsSync(missing)) {
     });
 } else {
     const {runOnSimLab} = await import('./helpers/sim-lab-vm.mjs');
-    const run = source => runOnSimLab(source, {modelText: MODEL_TEXT, mat: ENTRY.mat, timeLimitMs: 20000});
+    const run = (source, modelText = MODEL_TEXT) => runOnSimLab(source, {modelText, mat: ENTRY.mat, timeLimitMs: 20000});
 
     /** Rotate v by the unit quaternion q = [x, y, z, w]. */
     const qrot = ([x, y, z, w], v) => {
@@ -246,7 +245,13 @@ if (!existsSync(missing)) {
         const guide = world(rope.points.at(-1));
         const hook = world(rope.hook);
         const bottom = Math.min(...load.colliders.flatMap(c => {
-            assert.equal(c.shape, 'box', 'the authored payload uses box colliders');
+            if (c.shape === 'cylinder') {
+                const axis = qrot(pose.rotation, qrot(c.rotation || [0, 0, 0, 1], [0, 1, 0]));
+                const centre = qrot(pose.rotation, c.position || [0, 0, 0]);
+                return [pose.position[1] + centre[1] - Math.abs(axis[1]) * c.halfHeight -
+                    Math.sqrt(Math.max(0, 1 - axis[1] * axis[1])) * c.radius];
+            }
+            assert.equal(c.shape, 'box', 'the authored payload uses box or cylinder colliders');
             const vertices = [];
             for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
                 const local = qrot(c.rotation || [0, 0, 0, 1], c.halfExtents.map((v, i) => v * [x, y, z][i]))
@@ -479,6 +484,22 @@ if (!existsSync(missing)) {
         assert.ok(heights.every(Number.isFinite));
         const rise = Math.max(...heights) - heights[0];
         assert.ok(rise < 0.005, `the reverse-only control still rose ${rise} m`);
+    });
+
+    test('removing a counterweight exposes free load rotation without moving the held crane', async t => {
+        const oneWeight = MODEL_TEXT.replace(/^0 !BW ID loadBush\n1[^\n]*\n/m, '');
+        assert.notEqual(oneWeight, MODEL_TEXT, 'one actual upper bush is removed');
+        const stationary = PROGRAM.replace(/^ {2}run motor [ABC] (?:counterclockwise|clockwise) \d+ degrees\n/gm, '');
+        const result = await run(stationary, oneWeight);
+        assert.deepEqual(result.issues, []); assert.deepEqual(result.run.unsupported, []);
+        assert.ok(result.track.every(f => Object.values(f.busy).every(v => !v)), 'all motor ports stay held');
+        const load = bodyOf(result.mechanism, 'load'), hub = bodyOf(result.mechanism, 'hub');
+        const lean = Math.max(...result.track.map(f => Math.acos(Math.min(1,
+            qrot(f.bodies[load].rotation, [0, 1, 0])[1])) * DEG));
+        const hubY = result.track.map(f => f.bodies[hub].position[1]);
+        t.diagnostic(`counterweight control: ${JSON.stringify({lean, hubHeightRange: Math.max(...hubY) - Math.min(...hubY)})}`);
+        assert.ok(Number.isFinite(lean) && lean > 3, 'an unbalanced free load must reveal the same attitude oracle');
+        assert.ok(Math.max(...hubY) - Math.min(...hubY) < 0.002, 'load rotation is not a whole-crane launch');
     });
 
     test('the actual crane program hoists, holds and pays out according to its rope geometry', async t => {

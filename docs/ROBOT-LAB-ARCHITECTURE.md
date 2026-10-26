@@ -159,12 +159,12 @@ A SPIKE hub on four pinned diagonal 15L feet carries the Excavator's 28T turntab
 direct 8:28 slew tips a loaded upper at full power) and posts; a 15L boom is luffed by a small linear
 actuator (motor B, 1:1:1 to the spindle; the screw self-locks, so the boom holds with B stopped: 0.01 mm
 of sag in 1 s in the earlier fixed-hook model). Motor C drives a retained drum through equal
-16T gears. A rope passes over the moving boom-tip guide to a free upright suspension link and balanced pair
-of flat Technic bricks. The 7 LDU drum radius gives 26.4 mm of take-up in 540°; the program winds,
+16T gears. A rope passes over the moving boom-tip guide to a free counterweighted V-frame tied at its mass centre. Its beam angle follows
+the catalogue masses, with the string passing between the beams. The 7 LDU drum radius gives 26.4 mm of take-up in 540°; the program winds,
 holds and pays out after the original slew/luff sequence. These are virtual model controls,
 not physical-load calibration. The authored rigid-part pages keep the existing small
 insertion stages. Thread the string from the C drum over the tip guide and tie it to
-the top of the suspension link before adding its load bricks; the instruction renderer
+the exposed centre of the hook pin before adding both upper counterweights symmetrically; the instruction renderer
 does not yet draw or label rope-threading operations. The luffing range is the actuator's travel (120–180 LDU, the slider's limits −8/+16 mm from
 the build: the boom from about 4° to past 70°); past an end the actuator's own slip clutch (the screw
 coupling's 60 N) lets motor B turn on while the boom stays, as on the real model (physics/screw.js). Once sustained-overload slip is recognized, the screw's reflected spindle load uses at most its configured clutch force; smaller actual reactions remain smaller. The existing 50 ms averaging and transient response are retained. This virtual transmitted-load rule is not a physical clutch calibration. The

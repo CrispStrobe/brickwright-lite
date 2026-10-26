@@ -161,16 +161,22 @@
 0 !BW ID luffLaStubGear
 1 0 0 -163.9286 54.4327 0 1 0 0.3712 0 -0.9286 -0.9286 0 -0.3712 6589.dat
 0 STEP
-0 // Thread the rope from the retained drum over the tip guide and tie it to the hook link.
+0 // Thread the rope from the retained drum over the tip guide and tie it to the exposed centre of the hook pin between the beams; add both upper counterweights symmetrically.
 0 !BW ID hookLink
-1 71 30 -230 -182.4871 0 1 0 0 0 1 1 0 0 32316.dat
-0 STEP
-0 !BW ID loadPin60
-1 0 30 -190 -182.4871 1 0 0 0 1 0 0 0 1 6558.dat
+1 0 30 -160 -182.4871 1 0 0 0 1 0 0 0 1 6558.dat
 0 STEP
 0 !BW ID load
-1 4 10 -200 -182.4871 0 0 -1 0 1 0 1 0 0 3701.dat
+1 4 10 -160 -182.4871 0 1 0 -0.6358 0 0.7719 0.7719 0 0.6358 32316.dat
 0 !BW ID loadCounterweight
-1 4 50 -200 -182.4871 0 0 1 0 1 0 -1 0 0 3701.dat
+1 4 50 -160 -182.4871 0 1 0 0.6358 0 0.7719 0.7719 0 -0.6358 32316.dat
 0 STEP
-0 !BW ROPE hoistCord 415.1 hoistDrum tipGuide hookLink
+0 !BW ID loadAxlePin
+1 0 0 -190.875 -207.9181 -1 0 0 0 1 0 0 0 -1 43093.dat
+0 !BW ID loadCounterweightAxlePin
+1 0 60 -190.875 -157.0561 1 0 0 0 1 0 0 0 1 43093.dat
+0 !BW ID loadBush
+1 4 -10 -190.875 -207.9181 0 0 -1 0 1 0 1 0 0 3713.dat
+0 !BW ID loadCounterweightBush
+1 4 70 -190.875 -157.0561 0 0 1 0 1 0 -1 0 0 3713.dat
+0 STEP
+0 !BW ROPE hoistCord 526.3 hoistDrum tipGuide hookLink

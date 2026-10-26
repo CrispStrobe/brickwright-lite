@@ -56,11 +56,16 @@ physical pinned support feet and phase diagnostics. The feet reduce measured bas
 yaw below 0.05 degrees, but the retained unit run still fails hold, hook alignment
 and sustained slack. The compact flat load passes the next hold and sustained-slack controls, but
 hook alignment still fails and reverse-only lowering launches the assembly.
-The next candidate keeps those flat landing surfaces under an upright suspension
-link for greater restoring leverage, and retains a bounded instability trace
-before the unchanged reverse-only assertions. Every motion tolerance, motor
-target, speed and timing limit remains unchanged. Reverse-only instability is
-unresolved; qualification and landing remain pending.
+The next candidate uses a counterweighted V-frame whose catalogue-mass centre
+coincides with the rope tie, preserving a genuinely free body and every existing
+motion limit. A longer suspension lowers the load while retaining clearance;
+program targets, speeds and timing remain unchanged. A removed-counterweight
+control must expose rotation with the crane held. The original insertion failure
+for this frame is retained; its stages now fit the central pin before both beams,
+then their axle pins and upper bushes. The source-only geometry, collider and
+gallery controls pass; actual motion is unqualified. The separate merged screw
+claim covers a bounded reflected load after recognized slip. The finer observation
+claim is still pending; launch cause and combined qualification remain unresolved.
 Four pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,

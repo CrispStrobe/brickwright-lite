@@ -13,8 +13,7 @@
 // linear actuator whose motor (B, on the right post) turns the actuator's pivot axle through two 16T gears
 // and the axle its spindle through two 12T bevel gears (1:1:1). The actuator's eye sits 3 holes up the boom
 // and its body pivots 5 holes under the boom pivot, so its 120..180 LDU travel swings the boom from about
-// 4° to past 70°. A free rope-hung load uses a upright 5L suspension link and matched flat Technic bricks
-// 1 x 4 on each side. Motor C drives a retained winch shaft on the left post;
+// 4° to past 70°. A free rope-hung load uses a counterweighted V-frame tied at its mass centre. Motor C drives a retained winch shaft on the left post;
 // the rope runs from its drum over a guide at the boom tip to the independent hanging load.
 // LDraw frame: x lateral, y down, z backwards; the boom works in the y-z plane, (u, v) = (-z, -y).
 import {readFileSync, writeFileSync} from 'node:fs';
@@ -22,7 +21,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseModel} from '../overlay/scratch-gui/src/lib/bw-sim/model/ldraw-model.js';
 import {upgradePartMeta} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
-import {ropeTie} from '../overlay/scratch-gui/src/lib/bw-sim/editor/rope-path.js';
+import {ropeTie, partTop} from '../overlay/scratch-gui/src/lib/bw-sim/editor/rope-path.js';
 import {buildSteps} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const OUT = process.argv[2] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/static/sim-lab/models/crane.ldr');
@@ -192,22 +191,34 @@ pinAlong('tipGuideAxle', '3705.dat', 0, W(Q, 50), X);
 gearOn('tipGuide', '3713.dat', 71, W(Q, 30), X);
 gearOn('tipStopInner', '4265c.dat', 71, W(Q, 15), X);
 gearOn('tipStopOuter', '4265c.dat', 71, W(Q, 65), X);
-// The upright suspension link keeps its tie well above the balanced flat load.
-// Its bottom hole carries one 3L friction pin through both bricks; their broad
-// landing surfaces retain the previous compact payload's floor clearance.
-const H = W(uvAdd(Q, [0, -160]), 30);
-const loadCentre = W(uvAdd(Q, [0, -200]), 30);
-beam('hookLink', '32316.dat', 71, H, X, Y);
-pinAlong('loadPin60', '6558.dat', 0, loadCentre, X);
-// 3701's central pinhole is at local y=+10. Both flat bricks share the
-// link's lowest hole; the 3L pin crosses brick + link + brick.
-place('load', '3701.dat', 4, add(loadCentre, [-20, -10, 0]), [0, 0, 1], Y, [-1, 0, 0]);
-place('loadCounterweight', '3701.dat', 4, add(loadCentre, [20, -10, 0]), [0, 0, -1], Y, X);
-
-// Derive the taut length from the same placed circles and hook-top rule used by the editor/compiler.
+// Balance a free V-frame about the central pin's rope tie. Catalogue masses
+// determine the beam angle; no orientation joint, damping or artificial mass
+// is added. The upper bushes sit outside the open vertical rope channel.
 const sim = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'overlay/scratch-gui/src/lib/bw-sim');
 const rawCatalog = JSON.parse(readFileSync(path.join(sim, 'part-meta/parts.json'), 'utf8'));
 const catalog = new Map(rawCatalog.parts.map(p => [p.part, upgradePartMeta(p)]));
+// Longer suspension reduces vertical sway during the existing hold and leaves
+// more paid-out line on the floor, without changing any motor target or timing.
+const H = W(uvAdd(Q, [0, -230]), 30);
+const massOf = part => catalog.get(part).massGrams;
+const loadBaseMass = massOf('6558.dat') + 2 * massOf('32316.dat');
+const loadUpperMass = 2 * (massOf('43093.dat') + massOf('3713.dat'));
+const tieDrop = -partTop({position: [0, 0, 0], rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1]}, catalog.get('6558.dat'))[1];
+const loadCos = tieDrop * (loadBaseMass + loadUpperMass) / (40 * loadUpperMass);
+if (!(loadUpperMass > 0 && loadCos > 0 && loadCos < 1)) throw new Error('crane counterweight geometry cannot balance this catalogue');
+const loadSin = Math.sqrt(1 - loadCos * loadCos);
+pinAlong('hookLink', '6558.dat', 0, H, X);
+for (const sx of [-1, 1]) {
+    const id = sx < 0 ? 'load' : 'loadCounterweight';
+    const centre = add(H, [sx * 20, 0, 0]);
+    const along = [0, loadCos, -sx * loadSin];
+    beam(id, '32316.dat', 4, centre, X, along);
+    const upper = add(centre, along, -40);
+    pinAlong(`${id}AxlePin`, '43093.dat', 0, add(upper, [sx * 10, 0, 0]), [sx, 0, 0]);
+    gearOn(`${id}Bush`, '3713.dat', 4, add(upper, [sx * 20, 0, 0]), [sx, 0, 0]);
+}
+
+// Derive the taut length from the same placed circles and hook-top rule used by the editor/compiler.
 const parsed = parseModel([...head, ...lines].join('\n'), {catalog});
 if (parsed.refusals.length) throw new Error(`crane generation refused: ${JSON.stringify(parsed.refusals)}`);
 const rope = ropeTie(parsed.model, catalog, ['hoistDrum', 'tipGuide', 'hookLink']);
@@ -217,6 +228,16 @@ if (rope.error) throw new Error(`crane rope refused: ${rope.error}`);
 // the free hook. The source comment documents threading/tying at its hook stage;
 // the existing instruction renderer shows rigid parts, without rope callouts.
 const plan = buildSteps(parsed.model, catalog);
+// Build the free frame through its actual central rope attachment first.
+// Then fit both beams, followed by their axle pins and upper bushes together.
+const payloadIds = new Set(['hookLink', 'load', 'loadCounterweight', 'loadAxlePin',
+    'loadCounterweightAxlePin', 'loadBush', 'loadCounterweightBush']);
+const authoredSteps = [
+    ...plan.steps.map(step => ({...step, parts: step.parts.filter(id => !payloadIds.has(id))})).filter(step => step.parts.length),
+    {parts: ['hookLink']},
+    {parts: ['load', 'loadCounterweight']},
+    {parts: ['loadAxlePin', 'loadCounterweightAxlePin', 'loadBush', 'loadCounterweightBush']}
+];
 const blocks = new Map();
 let block = null;
 for (const line of lines) {
@@ -228,8 +249,8 @@ for (const line of lines) {
     block.push(line);
 }
 const pages = [];
-for (const step of plan.steps) {
-    if (step.parts.includes('hookLink')) pages.push('0 // Thread the rope from the retained drum over the tip guide and tie it to the hook link.');
+for (const step of authoredSteps) {
+    if (step.parts.includes('hookLink')) pages.push('0 // Thread the rope from the retained drum over the tip guide and tie it to the exposed centre of the hook pin between the beams; add both upper counterweights symmetrically.');
     for (const id of step.parts) pages.push(...blocks.get(id));
     pages.push('0 STEP');
 }
