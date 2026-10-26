@@ -121,6 +121,31 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  */
 const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfExtents));
 
+// FLOOR1436_GROUND_BEGIN
+/** The compiler's world floor is a surface, not an authored finite platform.
+ * Keep its top, material and broad-phase extent, but make the negative half-space
+ * solid so a large Discrete body cannot permanently escape through a thin slab.
+ * Ordinary boxes and the bounded complex-body sweep policy remain unchanged.
+ */
+const createBoxColliderShape = (J, body, col) => {
+    const h = col.halfExtents;
+    const generatedGround = body.id === 'ground' && body.motion === 'static' &&
+        body.parts.length === 0 && body.colliders.length === 1 &&
+        body.position[0] === 0 && body.position[2] === 0 &&
+        body.rotation.every((v, i) => v === (i === 3 ? 1 : 0)) &&
+        h[1] === 0.01 && h[0] === 10 && h[2] === 10;
+    if (!generatedGround) return new J.BoxShape(new J.Vec3(...h), boxConvexRadius(h));
+    const normal = new J.Vec3(0, 1, 0);
+    const plane = new J.Plane(normal, -h[1]);
+    try {
+        return new J.PlaneShape(plane, null, h[0]);
+    } finally {
+        J.destroy(plane);
+        J.destroy(normal);
+    }
+};
+// FLOOR1436_GROUND_END
+
 /**
  * Solver velocity iterations for an island holding a gear (Jolt's default is
  * 10, kept for everything else). A load on a gear train reaches the motor
@@ -488,7 +513,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         if (b.colliders.length === 1 && !b.colliders[0].position && !b.colliders[0].rotation) {
             const col = b.colliders[0];
             if (col.shape === 'box') {
-                shape = new J.BoxShape(new J.Vec3(...col.halfExtents), boxConvexRadius(col.halfExtents));
+                shape = createBoxColliderShape(J, b, col);
             } else if (col.shape === 'cylinder') {
                 const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                 shape = new J.CylinderShape(col.halfHeight, col.radius, convexRadius);
