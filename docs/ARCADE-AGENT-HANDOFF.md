@@ -166,6 +166,35 @@ repairs. No new corpus completion follows from this integration alone. Keep
 invalid original snippets and recovered dependency contexts distinct from this
 unchanged raw-input measurement.
 
+## Recovered-input subset: keep source and reference evidence separate
+
+Six additional prepared input sets were recovered from retained bytes. Their
+project metadata was reconstructed only where the complete bytes matched the
+recorded prepared-file hash, using the original project and retained palette;
+no missing dependency source was invented or fetched. Together with the three
+already complete sets, nine prepared input sets are now available. This is
+input recovery, not a new preparation-provenance or execution qualification.
+
+The six newly recovered sets have a fresh source-only result of two translated
+and four partial, with unchanged inputs. The snake case is now translated in
+this prepared view too; its six export refusal families remain open. The other
+translated case was already translated in the earlier prepared report. This
+subset cannot replace the historical complete 37-context census or promote a
+game. A combined check of the three previously complete projects exhausted the
+unchanged local source CPU budget and produced no report; the isolated tiny
+project still refuses its projectile's source Sprite. Qualify larger cases on
+an admitted hosted path rather than increasing local limits or treating a
+resource failure as a semantic refusal.
+
+The four newly reobserved partials use receiver-level `sprite.onOverlap(handler)`.
+Their exact retained main sources also have failed original-compilation records.
+Those are saved lineage, not fresh current-SDK results. Keep this historical
+receiver API distinct from supported `sprites.onOverlap(kind, kind, handler)`.
+Before claiming legacy compatibility, establish the actual historical API and
+its callback, receiver-capture and lifetime semantics, then scope native Blocks,
+Code and modern export behavior with original/native evidence. Do not clear
+these diagnostics by dropping their callbacks or relabeling the inputs.
+
 ## Image addition and CI bootstrap follow-up
 
 The unchanged owned Image-values whole-program fixture still exposes an export
