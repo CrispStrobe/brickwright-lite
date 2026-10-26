@@ -38,6 +38,12 @@
  *     is an ancestor of the pin and that behindPinBy is the true count. On
  *     main today that field is 7b8d1404, the one non-pin sha outside prose and
  *     ledgers. Every other sha in that manifest must be the pin.
+ *   - three exact frozen executable admission constants have source-bound
+ *     historical roles, listed in frozen-control-pin-admissions.json. Whole
+ *     file bytes/mode/Git blob are independently checked; only the supported
+ *     token can keep its shipped previous pin. Other code remains current.
+ *     Their old-candidate admission is preserved, never upgraded to a current
+ *     qualification by this exception.
  *   - run receipts (docs/receipts/*.json and original model-source READMEs)
  *     are their own role, and it
  *     is NARROWER than a ledger. A receipt is evidence of what was measured
@@ -66,7 +72,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {readFileSync, existsSync} from 'node:fs';
+import {readFileSync, existsSync, lstatSync} from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -83,7 +89,7 @@ import {explainGitFailure} from './helpers/git-absence.mjs';
 // `git` from PATH: the same AMBIENT-BINDING shape i8086-bios-provenance keeps
 // and defuses — every use below proves git answered before anything is judged.
 // gate-shapes-allow
-const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
+const git = (cwd, ...args) => execFileSync('git', ['-c', 'gc.auto=0', '-c', 'maintenance.auto=false', '-C', cwd, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
 
 /** `git`, but a missing-blob failure explains itself instead of reading as a pin defect. */
 const gitReadingContent = (cwd, ...args) => {
@@ -168,13 +174,25 @@ const CODE_EXT = /\.(m?js|cjs|jsx|ts|yml|yaml|sh)$/;
  * @param {{current: Set<string>, previous: Map<string, object>, history: Map<string, string>}} known
  * @returns {Array<{file: string, line: number, sha: string, repo: string, was: string}>}
  */
-export const judgeFile = (file, text, known) => {
+export const judgeFile = (file, text, known, frozenAdmissions = new Map()) => {
     const role = roleOf(file);
     if (role !== 'code' && role !== 'receipt') return [];
     let body = text;
     if (file === PROVENANCE) {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
         try { const m = JSON.parse(text); if (m.source && m.source.lastTouchedBy && m.source.lastTouchedBy.sha) body = text.split(m.source.lastTouchedBy.sha).join('<lastTouchedBy>'); } catch { /* judged as text */ }
+    }
+    const admission = frozenAdmissions.get(file);
+    if (admission) {
+        assert.equal(createHash('sha256').update(text).digest('hex'), admission.sha256, 'frozen bytes remain bound at judgment');
+        assert.equal(blobOf(Buffer.from(text)), admission.gitBlob);
+    }
+    if (admission && known.previous.get(admission.value)?.repo === admission.repo) {
+        // Only a fully source-bound constant token is historical. Every other
+        // byte, including another old pin on this line, remains ordinary code.
+        const bytes = Buffer.from(body);
+        assert.equal(bytes.subarray(...admission.span).toString(), admission.value);
+        body = Buffer.concat([bytes.subarray(0, admission.span[0]), Buffer.alloc(40, 32), bytes.subarray(admission.span[1])]).toString();
     }
     const out = [];
     body.split('\n').forEach((line, i) => {
@@ -192,6 +210,76 @@ export const judgeFile = (file, text, known) => {
     });
     return out;
 };
+
+// Frozen executable contracts keep their original candidate refusal. This is
+// an exact constant role, never a file exemption or permission to run them on
+// a newer candidate. Roles are code-owned; the receipt cannot add a role.
+const FROZEN_ADMISSIONS = 'docs/receipts/frozen-control-pin-admissions.json';
+const FROZEN_SCOPE = 'Exact frozen executable admission/reference contracts, not current supplier inputs or runtime qualification. Controllers remain unchanged and cannot qualify a new candidate.';
+const frozenRoles = new Map([
+    ['scripts/qualify-robot-model-webkit.mjs', {field:'FROZEN.producerSha', pattern:/^    "producerSha": "([0-9a-f]{40})",$/gm}],
+    ['scripts/read-i80386-hdd-gui-originals.py', {field:'SB3', pattern:/^SB3 = '([0-9a-f]{40})'$/gm}],
+    ['scripts/run-i80386-hdd-gui-actual.py', {field:'SB3', pattern:/^SB3 = '([0-9a-f]{40})'$/gm}]
+]);
+const exactFields = (value, keys) => {
+    assert.ok(value && typeof value === 'object' && !Array.isArray(value));
+    assert.deepEqual(Object.keys(value).sort(), [...keys].sort());
+};
+const blobOf = bytes => createHash('sha1').update(Buffer.from(`blob ${bytes.length}\0`)).update(bytes).digest('hex');
+export function validateFrozenAdmissions(manifest, observations, knownPins, pins) {
+    exactFields(manifest, ['schema','scope','files']);
+    assert.equal(manifest.schema, 'bw.frozen-control-pin-admissions.v1');
+    assert.equal(manifest.scope, FROZEN_SCOPE);
+    assert.ok(Array.isArray(manifest.files));
+    assert.equal(manifest.files.length, frozenRoles.size);
+    const admitted = new Map();
+    for (const row of manifest.files) {
+        exactFields(row, ['file','mode','sha256','gitBlob','field','repo','value','span']);
+        const role = frozenRoles.get(row.file);
+        assert.ok(role && !admitted.has(row.file), 'unique supported frozen file role');
+        assert.equal(row.field, role.field); assert.equal(row.repo, 'sb3-creator');
+        assert.equal(row.mode, '100644');
+        assert.match(row.sha256, /^[0-9a-f]{64}$/); assert.match(row.gitBlob, /^[0-9a-f]{40}$/);
+        assert.match(row.value, /^[0-9a-f]{40}$/);
+        assert.ok(pins[row.repo] === row.value || knownPins.previous.get(row.value)?.repo === row.repo,
+            'frozen admission is a shipped pin of its exact supplier');
+        const observed = observations.get(row.file);
+        assert.ok(observed && observed.regular, 'actual regular frozen file');
+        assert.equal(observed.mode, row.mode); assert.equal(observed.gitBlob, row.gitBlob);
+        const bytes = observed.bytes;
+        assert.ok(Buffer.isBuffer(bytes));
+        assert.equal(createHash('sha256').update(bytes).digest('hex'), row.sha256);
+        assert.equal(blobOf(bytes), row.gitBlob, 'whole live bytes equal the tracked Git blob');
+        const text = bytes.toString('utf8'), matches = [...text.matchAll(new RegExp(role.pattern))];
+        assert.equal(matches.length, 1, 'one exact supported constant declaration');
+        const match = matches[0], start = Buffer.byteLength(text.slice(0, match.index + match[0].indexOf(match[1])));
+        assert.equal(match[1], row.value);
+        assert.deepEqual(row.span, [start, start + 40], 'exact constant token byte span');
+        admitted.set(row.file, row);
+    }
+    assert.deepEqual([...admitted.keys()].sort(), [...frozenRoles.keys()].sort());
+    return admitted;
+}
+function parseFrozenAdmissionReceipt(text) {
+    const manifest = JSON.parse(text);
+    assert.equal(text, JSON.stringify(manifest, null, 2) + '\n', 'canonical receipt excludes duplicate or ambiguous JSON keys');
+    return manifest;
+}
+function frozenAdmissionInventory() {
+    const manifest = parseFrozenAdmissionReceipt(readFileSync(path.join(ROOT, FROZEN_ADMISSIONS), 'utf8'));
+    const observations = new Map();
+    for (const file of frozenRoles.keys()) {
+        const stat = lstatSync(path.join(ROOT, file));
+        const entries = git(ROOT, 'ls-files', '--stage', '-z', '--', file).split('\0').filter(Boolean);
+        assert.equal(entries.length, 1, 'one tracked frozen file');
+        const match = /^(100644|100755) ([0-9a-f]{40}) 0\t(.+)$/.exec(entries[0]);
+        assert.ok(match && match[3] === file, 'regular stage-zero tracked frozen file');
+        observations.set(file, {regular:stat.isFile(), mode:stat.mode & 0o111 ? '100755' : '100644',
+            gitBlob:match[2], bytes:readFileSync(path.join(ROOT, file))});
+        assert.equal(match[1], observations.get(file).mode, 'live/tracked file mode');
+    }
+    return validateFrozenAdmissions(manifest, observations, known, currentPins());
+}
 
 const formatFindings = f => f.map(x => `${x.file}:${x.line}  ${x.sha.slice(0, 9)}  ${x.was}; current ${x.repo} pin is ${currentPins()[x.repo].slice(0, 9)}`).join('\n  ');
 
@@ -299,6 +387,7 @@ test('no tracked file outside a history role carries a vendored-repo sha other t
     // one of its code lines (lego-be's proof, 2026-09-07). A file with a NUL is text
     // here and is judged like any other; the only files not judged are the ones
     // outside a code role, and the count and reason are printed on every run.
+    const frozenAdmissions = frozenAdmissionInventory();
     const findings = [];
     const skipped = {role: 0, unreadable: []};
     const all = git(ROOT, 'ls-files', '-z').split('\0').filter(Boolean);
@@ -311,7 +400,7 @@ test('no tracked file outside a history role carries a vendored-repo sha other t
         let text;
         try { text = readFileSync(path.join(ROOT, file), 'utf8'); } catch (e) { skipped.unreadable.push(`${file} (${e.code || e.message})`); continue; }
         scanned++;
-        findings.push(...judgeFile(file, text, known));
+        findings.push(...judgeFile(file, text, known, frozenAdmissions));
     }
     t.diagnostic(`judged ${scanned} files (${receipts} receipts, which may also carry a previous pin); skipped ${skipped.role} by role (ledgers, docs prose, packages/) and ${skipped.unreadable.length} unreadable${skipped.unreadable.length ? ': ' + skipped.unreadable.join(', ') : ''}`);
     assert.deepEqual(skipped.unreadable, [], 'tracked files this gate could not read — it cannot say they are clean');
@@ -557,4 +646,106 @@ test('captured Resonance source receipts preserve actual old pins but refuse inv
  }
  assert.equal(roleOf('test/helpers/resonance/active.json'),'code');
  assert.equal(roleOf('test/fixtures/model-files/resonance-lab-source/active.json'),'code');
+});
+
+
+test('frozen historical admission inventory remains exact independently of current-pin scanning', () => {
+    const admitted = frozenAdmissionInventory();
+    assert.equal(admitted.size, 3);
+    for (const [file, row] of admitted) {
+        assert.equal(roleOf(file), 'code');
+        assert.deepEqual(judgeFile(file, readFileSync(path.join(ROOT, file), 'utf8'), known, admitted), []);
+        assert.ok(currentPins()[row.repo] === row.value || previous.get(row.value)?.repo === row.repo,
+            'actual frozen value remains a shipped pin of its supplier');
+    }
+});
+
+// Negative controls use an explicit later-pin context, including when the
+// repository legitimately rolls back to the frozen pin. This never changes
+// the live inventory or the real whole-repository judgment above.
+const frozenHistoricalTestContext = manifest => {
+    const old = manifest.files[0].value, next = old === '0'.repeat(40) ? '1'.repeat(40) : '0'.repeat(40);
+    const pins = {...currentPins(), 'sb3-creator':next}, previous = new Map(known.previous);
+    for (const row of manifest.files) previous.set(row.value, {repo:row.repo});
+    return {pins, known:{...known, current:new Set(Object.values(pins)), previous}};
+};
+
+test('frozen admission bindings reject source, inventory, schema and unshipped-value mutations', () => {
+    const original = parseFrozenAdmissionReceipt(readFileSync(path.join(ROOT, FROZEN_ADMISSIONS), 'utf8'));
+    const observe = () => new Map(original.files.map(row => [row.file, {regular:true, mode:row.mode,
+        gitBlob:row.gitBlob, bytes:readFileSync(path.join(ROOT, row.file))}]));
+    const context = frozenHistoricalTestContext(original);
+    const validate = (manifest, observations = observe(), k = context.known) => validateFrozenAdmissions(manifest, observations, k, context.pins);
+    assert.equal(validate(original).size, 3);
+    for (const mutate of [
+        m => {m.extra = true;}, m => {m.schema = 'foreign';}, m => {delete m.files;},
+        m => {m.files.pop();}, m => {m.files[1] = structuredClone(m.files[0]);},
+        m => {m.files[0].file = 'scripts/copied-controller.mjs';},
+        m => {m.files[0].file = './' + m.files[0].file;},
+        m => {m.files[0].field = 'other';}, m => {m.files[0].repo = 'bw-board';},
+        m => {m.files[0].mode = '100755';}, m => {m.files[0].sha256 = '0'.repeat(64);},
+        m => {m.files[0].gitBlob = '0'.repeat(40);}, m => {m.files[0].span[0]++;},
+        m => {m.files[0].value = 'f'.repeat(40);}, m => {m.files[0].extra = true;}
+    ]) {
+        const manifest = structuredClone(original); mutate(manifest);
+        assert.throws(() => validate(manifest), undefined, String(mutate));
+    }
+    for (const mutate of [
+        o => {o.regular = false;}, o => {o.mode = '100755';}, o => {o.gitBlob = '0'.repeat(40);},
+        o => {o.bytes = Buffer.concat([o.bytes, Buffer.from('\n')]);},
+        o => {o.bytes = Buffer.from(o.bytes.toString().replace(original.files[0].value, context.pins['sb3-creator']));}
+    ]) {
+        const observations = observe(); mutate(observations.get(original.files[0].file));
+        assert.throws(() => validate(original, observations), undefined, String(mutate));
+    }
+    const observations = observe(); observations.delete(original.files[0].file);
+    assert.throws(() => validate(original, observations));
+    const duplicateJSON = JSON.stringify(original).replace('"schema":', '"schema":"duplicate","schema":');
+    assert.throws(() => parseFrozenAdmissionReceipt(duplicateJSON));
+    const wrongSupplier = {...context.known, previous:new Map(context.known.previous)};
+    wrongSupplier.previous.set(original.files[0].value, {repo:'bw-board'});
+    assert.throws(() => validate(original, observe(), wrongSupplier));
+    const never = 'f'.repeat(40), invented = structuredClone(original), row = invented.files[0];
+    const observed = observe(), before = observed.get(row.file).bytes;
+    const bytes = Buffer.concat([before.subarray(0,row.span[0]),Buffer.from(never),before.subarray(row.span[1])]);
+    row.value=never;row.sha256=createHash('sha256').update(bytes).digest('hex');row.gitBlob=blobOf(bytes);
+    observed.set(row.file,{regular:true,mode:row.mode,gitBlob:row.gitBlob,bytes});
+    const neverKnown={...context.known,previous:new Map(context.known.previous),history:new Map(context.known.history)};
+    neverKnown.previous.delete(never);neverKnown.history.set(never,'sb3-creator');
+    assert.throws(()=>validate(invented,observed,neverKnown),/shipped pin/,'a consistently rebound never-shipped token still cannot gain this role');
+    const currentPinsContext={...context.pins,'sb3-creator':original.files[0].value};
+    const currentKnown={...context.known,current:new Set(Object.values(currentPinsContext)),previous:new Map(context.known.previous)};
+    currentKnown.previous.delete(original.files[0].value);
+    const currentAdmission=validateFrozenAdmissions(original,observe(),currentKnown,currentPinsContext);
+    assert.equal(currentAdmission.size,3,'frozen contract remains valid when its pin is current');
+    const first=original.files[0];
+    assert.deepEqual(judgeFile(first.file,observe().get(first.file).bytes.toString(),currentKnown,currentAdmission),[]);
+
+});
+
+test('one frozen constant token never exempts another active pin or a copied controller', () => {
+    const manifest = parseFrozenAdmissionReceipt(readFileSync(path.join(ROOT, FROZEN_ADMISSIONS), 'utf8'));
+    const row = manifest.files[0], bytes = readFileSync(path.join(ROOT, row.file));
+    const context=frozenHistoricalTestContext(manifest);
+    const observations = new Map(manifest.files.map(r => [r.file, {regular:true, mode:r.mode,
+        gitBlob:r.gitBlob, bytes:readFileSync(path.join(ROOT, r.file))}]));
+    const rebound = (m, raw) => {
+        const changed = m.files[0];
+        changed.sha256 = createHash('sha256').update(raw).digest('hex'); changed.gitBlob = blobOf(raw);
+        observations.set(changed.file, {regular:true, mode:changed.mode, gitBlob:changed.gitBlob, bytes:raw});
+        return validateFrozenAdmissions(m, observations, context.known, context.pins);
+    };
+    // Even if a proposed new receipt binds the changed whole file, only the
+    // supported token has this role. A second active old pin still fails.
+    const extra = Buffer.concat([bytes, Buffer.from(`\nconst activeSupplier = "${row.value}";\n`)]);
+    const admitted = rebound(structuredClone(manifest), extra);
+    assert.equal(judgeFile(row.file, extra.toString(), context.known, admitted).length, 1);
+    assert.equal(judgeFile('scripts/copied-controller.mjs', bytes.toString(), context.known, admitted).length, 1);
+    assert.throws(() => judgeFile(row.file, extra.toString(), known, frozenAdmissionInventory()));
+    const duplicate = Buffer.concat([bytes, Buffer.from(`\n    "producerSha": "${row.value}",\n`)]);
+    assert.throws(() => rebound(structuredClone(manifest), duplicate));
+    const never = 'f'.repeat(40), k = {...known, history:new Map([...known.history, [never,'sb3-creator']])};
+    const wrong = structuredClone(manifest); wrong.files[0].value = never;
+    assert.ok(!known.current.has(never) && !known.previous.has(never));
+    assert.throws(() => validateFrozenAdmissions(wrong, observations, k, currentPins()));
 });

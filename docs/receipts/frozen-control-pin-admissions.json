@@ -1,0 +1,45 @@
+{
+  "schema": "bw.frozen-control-pin-admissions.v1",
+  "scope": "Exact frozen executable admission/reference contracts, not current supplier inputs or runtime qualification. Controllers remain unchanged and cannot qualify a new candidate.",
+  "files": [
+    {
+      "file": "scripts/qualify-robot-model-webkit.mjs",
+      "mode": "100644",
+      "sha256": "6d0094f930c067b6cd49eea368592db5bbe750ecd78f79590252ae20f43ba381",
+      "gitBlob": "28638b4a53cb2943a120e12fd5620ba0753baeec",
+      "field": "FROZEN.producerSha",
+      "repo": "sb3-creator",
+      "value": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
+      "span": [
+        1196,
+        1236
+      ]
+    },
+    {
+      "file": "scripts/read-i80386-hdd-gui-originals.py",
+      "mode": "100644",
+      "sha256": "c75628f228f6ccc77c051f19c50df8d15b01812283952004276616acbd1df667",
+      "gitBlob": "d742a145fe05230a88752ba91be15b8c3d997555",
+      "field": "SB3",
+      "repo": "sb3-creator",
+      "value": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
+      "span": [
+        456,
+        496
+      ]
+    },
+    {
+      "file": "scripts/run-i80386-hdd-gui-actual.py",
+      "mode": "100644",
+      "sha256": "b267aa3e0dfc48cec848bb1441ea101c9507f15f0aa48f014ceba1ab93473944",
+      "gitBlob": "8a3dd47717323db62bac74adc6a17edec0672116",
+      "field": "SB3",
+      "repo": "sb3-creator",
+      "value": "1cbaeed325f5a890e43b78a4211acae8f801f2d2",
+      "span": [
+        862,
+        902
+      ]
+    }
+  ]
+}

@@ -60,11 +60,16 @@ cross the actual source-entry allocation/registration frontier. Keep the
 original class and owned text-game positives unchanged. Implement after that
 claim merges, then run both source controls and actual original/native checks.
 
-The pin-history gate also exposes recorded old supplier identities in frozen
-qualification/reader scripts. Coordinate with their source owner. Never replace
-measured identities with today's pins or weaken stale-active-dependency checks;
-a repair must distinguish independently bound historical citations from active
-inputs and retain never-shipped-pin refusals.
+The pin-history candidate now distinguishes three exact frozen executable
+admission fields through a [source-bound inventory](receipts/frozen-control-pin-admissions.json).
+It validates the complete regular file, mode, tracked Git blob, bytes and one
+constant-token span independently of ordinary scanning. Only a shipped previous
+pin of the exact supplier gains that historical role. All remaining code still
+requires current pins; copied paths, extra active tokens, invented supplier
+commits and changed frozen source refuse. The controllers themselves remain
+byte-identical, including their old-candidate admission guards. This policy
+does not qualify current dependencies or grant a new execution. Hosted policy
+qualification is still required on the final integration head.
 
 Continue in this order:
 
