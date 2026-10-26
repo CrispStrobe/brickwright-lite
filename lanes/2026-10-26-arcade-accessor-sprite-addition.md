@@ -22,7 +22,8 @@ or a nominal Sprite/Number annotation does not prove this operand.
 
 Within `overlay/scratch-gui/src/lib/bw-makecode/`, extend only
 `native-class-scalar-view.js`, `native-sdk-sprite-source.js`,
-`ordinary-primitive-sdk-number-source.js`, `native-array-binary-domain.js` and
+`ordinary-primitive-sdk-number-source.js`, `native-array-binary-domain.js`,
+the existing Sprite producer/frontier slice in `source-value-producers.js`, and
 necessary consumer plumbing in `export-arcade.js`. Add focused source tests,
 retain the two original positives, and update exact GUI dependency rows and the
 Arcade handoff as needed. This continues the same source owner and does not
@@ -41,7 +42,12 @@ census. Consume the existing canonical SDK descriptor only for that proved
 receiver. TextSprite or unrelated effects must not supply Sprite provenance.
 Do not replace an Opaque operand with zero or accept every numeric-looking
 property. Preserve actual left/right evaluation, helper-family closure and
-Array coercion/refusal behavior. Keep export selection separate from import.
+Array coercion/refusal behavior. Keep export selection separate from import. The existing Sprite writer/use
+invariant already covers coordinate reads; if its actual source-entry callback
+frontier is the blocker, extend that specific frontier through proved SDK
+registrations and actual ordinary callers. Registration must follow allocation
+on every path; retain early, recursive, exported and unknown-entry refusals.
+An event literal supplies no receiver, Number or initialization authority.
 
 No runtime algorithm, SDK/supplier/pin, timeout, budget, baseline, assertion or
 workflow changes. If a different producer boundary is required, scope it before
