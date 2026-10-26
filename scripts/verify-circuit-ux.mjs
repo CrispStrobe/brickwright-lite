@@ -1115,21 +1115,24 @@ try {
           await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
           await scope.locator('select').last().selectOption(nets.signal);
           await scope.getByText('+ channel',{exact:false}).click();
-          const pointRearm=await adcPage.evaluate(previousHandle=>{
-            const board=window.__board,channels=board.getScopeChannels(),handle=channels[0];
+          handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
+          const pointRearm=await adcPage.evaluate(({handle,previousHandle})=>{
+            const board=window.__board;
             let result=false,primaryError=null,state=null,diagnosticError=null;
             try {
               result=handle!==previousHandle&&board.getScopeData(handle).capture==='sample'
                 &&board.getScopeData(handle).count===0;
             } catch(error) {primaryError=error;}
-            // Same evaluation as the original predicate: a later read could
-            // observe a different React publication or acquisition record.
+            // Keep the handle captured by the original, separate evaluation.
+            // These synchronous diagnostic reads follow the predicate; they
+            // are not an atomic snapshot of all getters or a later-page read.
             try {
               const data=board.getScopeData(handle);
               const selector=document.querySelector('[data-testid="bw-scope-time-capture"]');
               const adc=document.querySelector('[data-testid="bw-scope-adc-enabled"]');
               if(!data||!selector||!adc) throw new Error('ADC_POINT_REARM_DIAGNOSTIC_MISSING');
-              state={previousHandle,handle,channels,capture:data.capture,count:data.count,
+              const channels=board.getScopeChannels();
+              state={previousHandle,handle,channels,currentFirst:channels[0],capture:data.capture,count:data.count,
                 clock:String(board.getTime()),selectorValue:selector.value,selectorDisabled:selector.disabled,
                 adcChecked:adc.checked,adcDisabled:adc.disabled};
             } catch(error) {diagnosticError=String(error);}
@@ -1139,8 +1142,7 @@ try {
               throw primaryError;
             }
             return {handle,result,state,diagnosticError};
-          },envelopeHandle);
-          handle=pointRearm.handle;
+          },{handle,previousHandle:envelopeHandle});
           requireADC(pointRearm.result&&pointRearm.state!==null&&pointRearm.diagnosticError===null,
             'ADC_POINT_REARM_REUSED_RECORD '+JSON.stringify(pointRearm));
           await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));

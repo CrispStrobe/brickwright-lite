@@ -184,8 +184,11 @@ failure is not thereby resolved. The three-part point-rearm assertion did not
 identify whether the handle, capture mode or count differed from its expectation.
 
 The local evidence replacement keeps the second selection and exact three-part
-predicate, recording its result and handle/mode/count tuple in the same browser
-evaluation. Missing diagnostics remain a failure; an original predicate error
+predicate, preserving the original separate handle read and evaluating that
+captured handle. Synchronous diagnostic reads follow the predicate in the same
+callback; they are not an atomic snapshot of every getter. The tuple includes
+the subsequently observed first handle so a change between evaluations stays
+visible. Missing diagnostics remain a failure; an original predicate error
 is rethrown. No new wait, retry, engine advance, state override or product fix
 is introduced. This diagnostic still requires review and affected GUI evidence;
 the consumer qualification and final failed-source controls remain open.
