@@ -157,8 +157,12 @@ capability's GUI acceptance. Reuse the existing authoring browser harness and
 record this as an additional bounded journey; do not infer it from numeric-menu
 checks or from a program inserted only through VM APIs.
 
-The latest measured raw corpus remains **147 translated / 36 partial / one parse
-failure**. No new corpus completion follows from this integration alone. Keep
+A fresh 26 October census of the unchanged 184 inputs still measures
+**147 translated / 36 partial / one parse failure**, with identical diagnostics
+and no input mutations. It uses the same importer/Creator observer and original
+input hashes. The accessor, controller and Image-bank source repairs address
+export and roundtrip boundaries; this import-only census does not measure those
+repairs. No new corpus completion follows from this integration alone. Keep
 invalid original snippets and recovered dependency contexts distinct from this
 unchanged raw-input measurement.
 
