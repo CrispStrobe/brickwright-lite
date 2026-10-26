@@ -2,7 +2,7 @@
   "version": 1,
   "id": "thirdline",
   "language": "en",
-  "what": "One motor sets an input angle. Two equal-radius arms, a straight baseline guide and a sliding marked line constrain the passive output. The marked distance equals the circle radius, so the line heading is one third of the input angle on the supplied branch. Compare the physical model with the marked joint one hole inward: the same program should then produce a different angular law.",
+  "what": "Neusis angle trisector. One motor sets an input angle. Two equal-radius arms, a straight baseline guide and a sliding marked line constrain the passive output. The marked distance equals the circle radius, so the line heading is one third of the input angle on the supplied branch. Compare the physical model with the marked joint one hole inward: the same program should then produce a different angular law. One motor sets an input angle. Equal circle radii and a marked sliding line make the passive line angle one third as large. Move one mark inward and compare the same finite input program.",
   "try": [
     "Load the model, press Reset, then Run. Find the driven circle arm and the passive yellow line; only the circle input has a motor.",
     "Predict the line headings at input angles 50°, 65°, 80° and 95° before watching the pauses: 16⅔°, 21⅔°, 26⅔° and 31⅔°. Read the line itself, not just the motor encoder.",

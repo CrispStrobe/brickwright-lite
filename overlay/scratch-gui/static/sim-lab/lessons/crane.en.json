@@ -2,7 +2,7 @@
   "version": 1,
   "id": "crane",
   "language": "en",
-  "what": "A two-motor crane raises its boom with a small screw actuator and slews it on a geared turntable. Motor A turns an 8-tooth pinion against the 28-tooth turntable. Motor B turns the actuator spindle. The hook is carried at the boom tip; this example has no active winch. A linear actuator raises a boom while a geared turntable slews it. Compare spindle travel, hook height and gear reduction.",
+  "what": "A two-motor crane raises its boom with a small screw actuator and slews it on a geared turntable. Motor A turns an 8-tooth pinion against the 28-tooth turntable. Motor B turns the actuator spindle. The hook is carried at the boom tip; this example has no active winch. Four pinned feet support a crane with a screw-raised boom, geared slew and rope winch. Compare spindle travel, drum rotation and hook height.",
   "try": [
     "Choose Crane in Examples. Its program loads automatically. Run the saved pose: the boom rises, slews a quarter turn, lowers and swings back.",
     "Compare motor A rotation with turntable rotation. An input of 315 degrees gives a nominal 90 degree turntable movement.",

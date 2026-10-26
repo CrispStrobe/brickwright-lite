@@ -196,6 +196,41 @@
       "frameMs": 25,
       "frozenOutput": "marker_Q",
       "internalComparison": "two-real-guide-settings"
+    },
+    {
+      "id": "toggle-lever",
+      "judge": "toggle-dead-centre-v1",
+      "parts": 112,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 30000,
+      "afterMs": 500,
+      "frameMs": 10,
+      "frozenOutput": "jaw_lever",
+      "disconnect": [
+        "crank_pin",
+        "crank_pin_cap"
+      ],
+      "disconnectInputDeg": 80
+    },
+    {
+      "id": "thirdline",
+      "judge": "neusis-trisector-v1",
+      "parts": 179,
+      "ports": [
+        "A"
+      ],
+      "coldMs": 500,
+      "timeLimitMs": 60000,
+      "afterMs": 500,
+      "frameMs": 25,
+      "frozenOutput": "ruler_cross_100",
+      "disconnect": [
+        "joint_B_pin"
+      ],
+      "disconnectInputDeg": 35
     }
   ]
 }

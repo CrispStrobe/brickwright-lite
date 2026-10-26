@@ -236,9 +236,9 @@
 0 !BW ID jaw_link
 1 71 40 -125 100 0.8 0 -0.6 0 1 0 0.6 0 0.8 6632.dat
 0 !BW ID jaw_link_pin_yoke
-1 4 40 -90 100 0 -1 0 1 0 0 0 0 1 3705.dat
+1 4 40 -90 100 0 -0.8 -0.6 1 0 0 0 -0.6 0.8 3705.dat
 0 !BW ID jaw_link_pin_lever
-1 4 16 -110 132 0 -1 0 1 0 0 0 0 1 32062.dat
+1 4 16 -110 132 0 -0.8 -0.6 1 0 0 0 -0.6 0.8 32062.dat
 0 !BW ID jaw_axle_bush
 1 71 0 -95 120 1 0 0 0 0 1 0 -1 0 4265c.dat
 0 STEP
@@ -246,10 +246,10 @@
 0 !BW ID jaw_pivot_bracket
 1 71 0 -20 120 0 -1 0 1 0 0 0 0 1 6536.dat
 0 !BW ID jaw_pivot_rail
-1 72 0 -20 140 0 0 1 1 0 0 0 1 0 32278.dat
+1 72 0 -20 160 0 0 1 1 0 0 0 1 0 32278.dat
 0 !BW ID jaw_pivot_rail_pin_left
 1 1 -80 -20 140 0 0 1 0 1 0 -1 0 0 6558.dat
 0 !BW ID jaw_pivot_rail_pin_right
 1 1 80 -20 140 0 0 1 0 1 0 -1 0 0 6558.dat
 0 !BW ID jaw_pivot_bracket_pin
-1 1 -20 -20 130 0 0 1 0 1 0 -1 0 0 2780.dat
+1 1 -20 -20 140 0 0 1 0 1 0 -1 0 0 6558.dat
