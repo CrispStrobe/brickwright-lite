@@ -49,7 +49,10 @@ test('Number, String and nested Array values retain ownership and forward defaul
 test('opaque alternatives and reference bitwise operands stay refused in the artwork fallback',()=>{
     const mixed=arcadeToPseudocode('function choose(flag:boolean):any{if(flag)return[1];return sprites.create(assets.image`missing`,SpriteKind.Player)}let values=choose(true);values.push(2)');
     assert.ok(mixed.unsupported.includes('values.push()'));
+    // An actual Array operand of source bitwise is admitted (#1128); its
+    // result is checked against original PXT in makecode-arcade-typed-bitwise.
     const bitwise=arcadeToPseudocode('let values=[1];let result=values&1;let actor=sprites.create(assets.image`missing`,SpriteKind.Player)');
-    assert.ok(bitwise.unsupported.some(message=>/Bitwise operation requires proven primitive operands/.test(message)));
+    assert.ok(!bitwise.unsupported.some(message=>/Bitwise operation requires proven primitive operands/.test(message)),bitwise.unsupported.join('\n'));
+    assert.match(bitwise.code,/arcade source value \(values\) op "&"/);
     assert.ok(bitwise.unsupported.some(message=>/sprite artwork is unavailable/.test(message)));
 });

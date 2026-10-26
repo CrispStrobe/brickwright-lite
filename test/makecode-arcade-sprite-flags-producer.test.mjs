@@ -51,7 +51,11 @@ test('actual opaque writer, dynamic selector, unknown receiver and publication c
  refusal(parse(source+'  set hero to "foreign"\n'));
  refusal(parse(source+'  arcade log hero\n'));
  refusal(parse(source+'  arcade set flag Invisible of "Player" to (compare value (0) op "<" with (1))\n'));
- const unused=parse('DEVICE ARCADE\nSPRITE Player:\nSTAGE:\nDEFINE peek (sprite):\n  set masked to (calculate value (arcade property flags of sprite) op "|" with 1)\n');refusal(unused);
+ // An untyped formal that an actual caller feeds an unproved value stays refused.
+ const unproven=parse('DEVICE ARCADE\nSPRITE Player:\nSTAGE:\nWHEN flag clicked:\n  peek (arcade new image width 1 height 1)\nDEFINE peek (sprite):\n  set masked to (calculate value (arcade property flags of sprite) op "|" with 1)\n');refusal(unproven);
+ // A procedure nothing can invoke never executes; its bitwise body exports.
+ const unused=parse('DEVICE ARCADE\nSPRITE Player:\nSTAGE:\nDEFINE peek (sprite):\n  set masked to (calculate value (arcade property flags of sprite) op "|" with 1)\n');
+ assert.ok(!exportProject(unused).unsupported.some(x=>/Native bitwise operation requires actual primitive operand producers/.test(x)),'uncalled body is never executed');
 });
 const mutable=code=>{
  const project=parse(code),r=read(project);

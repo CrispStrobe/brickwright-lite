@@ -3689,7 +3689,31 @@ class ArcadeEmitter {
         // A native arithmetic/bitwise result is already a Number, so the
         // gate does not also require its operands (they keep their own gate).
         const bitwiseOperand=value=>nativeNumberResults.has(value)||inspectionTypes(value,['number','boolean','string','null','undefined'],new Set(),null,true);
-        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(bitwiseOperand))this.nativeBitwiseExportOperands.add(block);
+        // A body of a procedure that nothing can invoke never executes, so no
+        // value (an Array included) reaches its operations. Any procedure call,
+        // literal or dynamic function call, callable or other exact mention of
+        // its name keeps the operand proof requirement.
+        const neverInvoked=block=>{
+            const target=this.project.targets.find(t=>Object.values(t.blocks||{}).includes(block));if(!target)return false;
+            const blocks=target.blocks;let root=block;const seen=new Set();
+            while(root?.parent){if(seen.has(root))return false;seen.add(root);root=blocks[root.parent];}
+            if(root?.opcode!=='procedures_definition')return false;
+            const prototype=blocks[root.inputs?.custom_block?.[1]],proccode=prototype?.mutation?.proccode;
+            if(typeof proccode!=='string'||!proccode)return false;
+            const name=proccode.split(' %')[0].trim();
+            const definitions=this.project.targets.flatMap(t=>Object.values(t.blocks||{})).filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===proccode);
+            if(definitions.length!==1)return false;
+            const mentions=value=>typeof value==='string'?value===name||value===proccode:Array.isArray(value)?value.some(mentions):!!value&&typeof value==='object'&&Object.values(value).some(mentions);
+            for(const t of this.project.targets)for(const n of Object.values(t.blocks||{})){
+                if(n===prototype||n===root)continue;
+                if(['procedures_call'].includes(n.opcode)&&n.mutation?.proccode===proccode)return false;
+                if(/Callable/.test(n.opcode||''))return false;
+                if(n.opcode==='arcade_callFunction'){const called=this.literalInput(n,'NAME');if(typeof called!=='string'||called===name)return false;}
+                if(mentions(n.inputs)||mentions(n.fields))return false;
+            }
+            return true;
+        };
+        for(const [block,operands]of nativeBitwiseInputs)if(operands.every(bitwiseOperand)||neverInvoked(block))this.nativeBitwiseExportOperands.add(block);
         for(const expected of this.procedureConstraints?.allObligations||[]){
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
             if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);

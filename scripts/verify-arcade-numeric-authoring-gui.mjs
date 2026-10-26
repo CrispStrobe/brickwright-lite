@@ -389,7 +389,7 @@ try {
     await page.waitForFunction(() => /DEVICE ARCADE/.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString() || ''));
     const cleanAuthoringCode = await readCode();assert.match(cleanAuthoringCode, /DEVICE ARCADE/);
     const partialCode = cleanAuthoringCode.replace('DEVICE ARCADE', 'DEVICE ARCADE\nGLOBAL refusalDiagnosticResult') +
-        '\nSPRITE RefusalDiagnostics:\nWHEN flag clicked:\n  set refusalDiagnosticResult to (calculate value (arcade new image width 1 height 1) op "+" with (1))\n';
+        '\nSPRITE RefusalDiagnostics:\nWHEN flag clicked:\n  set refusalDiagnosticResult to (calculate value (arcade music tempo) op "+" with (1))\n';
     const authorCode = async text => {
         await codeTab();await editor().click();await page.keyboard.press('Control+a');await page.keyboard.insertText(text);
         assert.equal(await readCode(), text);await apply();await codeTab();
