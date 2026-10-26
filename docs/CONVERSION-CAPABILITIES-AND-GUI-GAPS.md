@@ -1,5 +1,27 @@
 # Conversion capabilities and GUI closure ledger
 
+## 26 October: Image banks and export proof boundaries
+
+These are source capabilities in the integration candidate. They do not change
+the 184-input census or certify a complete game. Read
+[the current handoff](ARCADE-AGENT-HANDOFF.md) before using older sections below.
+
+| Capability | Implemented source behavior | Required connected acceptance |
+| --- | --- | --- |
+| Factory and costume Image value arithmetic | Retains ordinary addition for independently proved non-Array operands. Direct and JSON source roundtrips preserve clone, alias and pixel operations. Actual authored Array-join helpers keep their separate import semantics. | In Blocks and Code, author Image creation, aliases, clone and arithmetic; compare actual values with the unchanged original SDK fixture. Test mixed Array callers as refusals. |
+| Generated Image banks across repeated export | Tracks real entry allocation, ordered Image pushes, publication and sealing. A finite in-bounds literal index transports only the selected element's effect. Actual costume upload, export, import, upload and second export pass through both routes. | Run `makecode-arcade-image-bank-roundtrip.test.mjs`: all 20 original observations, both export routes, three native generations, SDK builds and fresh SB3 reload. Then edit the same pixels through the graphics editor and verify those edited bytes after export/reimport. |
+| Callable pixel results in ordinary addition | Retains actual Arrow parser roles and consumes the existing complete class/closure producer over observed original additions. Uninvoked, incompatible and escaping calls cannot borrow that fact. | Preserve `sdk-image-literal-callables.mjs` and its class/pixel/export assertions. Qualify connected class/callable blocks and Code feedback; class-held Image arithmetic beyond these proved scalar results remains a separate gap. |
+| Export publication and diagnostics | Rechecks consumed prefix proofs after resource observers; mutation/restore cannot revive them. Valid plain project data and JSON receive identical complete files. The diagnostic fixture now uses the genuinely unsupported music-tempo operand. | Keep actual unsupported reasons visible. Check one controller-driven Image mutation, alias/clone distinction and fresh reopen. A missing clean-export capture is an availability result, not proof of a semantic refusal or a complete capture. |
+
+The existing numeric-authoring hosted result includes actual Code and Blocks
+edits, graphics pointer strokes and controller-pane journeys. It does not cover
+the full Image/Array/arithmetic journey above. Do not substitute source-created
+projects or an unrelated successful picture edit for that connected test.
+The inherited accessor and controller-captured Sprite operand gaps are scoped
+in [PR #1457](https://github.com/CrispStrobe/brickwright-lite/pull/1457); its
+implementation and qualification must precede any claim of closing them.
+
+
 ## 25 October: SDK numeric properties and next authoring family
 
 | Capability | Current source result | Authoring/runtime acceptance still required |
