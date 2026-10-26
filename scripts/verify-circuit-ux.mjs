@@ -1006,8 +1006,36 @@ try {
           // Changing the actual acquisition mode is an explicit remove/rearm, unlike
           // any ADC view update. Each new handle starts a new record with one R/C load.
           const sampleHandle=handle;
+          requireADC(await scope.getByTestId('bw-scope-time-capture').inputValue()==='sample'
+            &&await scope.getByTestId('bw-scope-adc-enabled').isChecked()
+            &&!await scope.getByTestId('bw-scope-adc-enabled').isDisabled()
+            &&await adcPage.evaluate(h=>{const channels=window.__board.getScopeChannels();
+              return channels.length===1&&channels[0]===h
+                &&window.__board.getScopeData(h).capture==='sample';},sampleHandle),'ADC_REARM_PRESTATE');
           await scope.getByText('✕',{exact:true}).click();
+          await adcPage.waitForFunction(()=>{
+            const capture=document.querySelector('[data-testid="bw-scope-time-capture"]');
+            return !!capture&&capture.disabled===false&&window.__board?.getScopeChannels().length===0;
+          });
           await scope.getByTestId('bw-scope-time-capture').selectOption('envelope');
+          try {
+            await adcPage.waitForFunction(()=>{
+              const capture=document.querySelector('[data-testid="bw-scope-time-capture"]');
+              const enabled=document.querySelector('[data-testid="bw-scope-adc-enabled"]');
+              return !!capture&&capture.value==='envelope'&&capture.disabled===false
+                &&!!enabled&&enabled.checked===false&&enabled.disabled===true
+                &&window.__board?.getScopeChannels().length===0;
+            });
+          } catch (error) {
+            const state=await adcPage.evaluate(()=>({
+              capture:document.querySelector('[data-testid="bw-scope-time-capture"]')?.value,
+              captureDisabled:document.querySelector('[data-testid="bw-scope-time-capture"]')?.disabled,
+              checked:document.querySelector('[data-testid="bw-scope-adc-enabled"]')?.checked,
+              disabled:document.querySelector('[data-testid="bw-scope-adc-enabled"]')?.disabled,
+              channels:window.__board?.getScopeChannels(),clock:String(window.__board?.getTime()),
+            }));
+            throw new Error(`ADC_MODE_CHANGE_PUBLICATION ${JSON.stringify(state)} ${String(error).split('\n')[0]}`,{cause:error});
+          }
           requireADC(!await scope.getByTestId('bw-scope-adc-enabled').isChecked()
             &&await scope.getByTestId('bw-scope-adc-enabled').isDisabled(),'ADC_MODE_CHANGE_NOT_EXPLICIT');
           await scope.locator('select').last().selectOption(nets.signal);
