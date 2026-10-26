@@ -3,8 +3,7 @@
   "issue": 1436,
   "sourceBaselineCommit": "a7f688940f96ac89771dfc533ea17dab635703b5",
   "kernel": {
-    "baselineSha256": "4778481465e9de644a8b821ce952671ae588c9f21d8aa068599ce02eef9cb7e6",
-    "candidateSha256": "78a3eacf92d29c1082c76f55b2b37e91341c494837aab666eaf0e7a85e616669"
+    "baselineSha256": "4778481465e9de644a8b821ce952671ae588c9f21d8aa068599ce02eef9cb7e6"
   },
   "engine": {
     "JOLT_PHYSICS_URL": "https://github.com/CrispStrobe/JoltPhysics.js/releases/download/v1.1.0-bw.7/jolt-physics-1.1.0-bw.7.tgz",

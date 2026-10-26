@@ -4,6 +4,8 @@ import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {performance} from 'node:perf_hooks';
+import {sha256} from './kernel-source.mjs';
+const candidateSha256=sha256(readFileSync(new URL('../../../../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url)));
 const manifest=JSON.parse(readFileSync(new URL('./manifest.json',import.meta.url)));
 export function qualifyFloorContact(t) {
     const started=performance.now();
@@ -23,7 +25,8 @@ export function qualifyFloorContact(t) {
         assert.equal(records.length,1,'one original report per isolated process');
         t.diagnostic(records[0]);
         const r=JSON.parse(records[0].slice('FLOOR1436_RESULT '.length));
-        assert.equal(r.kernel.effectiveSha256,manifest.kernel[variant+'Sha256']);
+        assert.equal(r.kernel.candidateSha256,candidateSha256);
+        assert.equal(r.kernel.effectiveSha256,variant==='baseline'?manifest.kernel.baselineSha256:candidateSha256);
         assert.ok(r.rows.length>1000,'nonvacuous fixed-step observation');
         assert.equal(r.mode,mode);assert.equal(r.coldMs,cold);
         if(mode==='driven'||mode==='intact') {

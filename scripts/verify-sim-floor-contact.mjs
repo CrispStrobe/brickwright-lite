@@ -2,6 +2,8 @@
 // Standalone retained-output reader. No engine or test-producer imports.
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const candidateSha256=createHash('sha256').update(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js',import.meta.url))).digest('hex');
 const manifest=JSON.parse(readFileSync(new URL('../test/fixtures/bw-sim/floor-contact/manifest.json',import.meta.url)));
 const text=readFileSync(process.argv[2],'utf8');
 const records=[...text.matchAll(/^\s*# FLOOR1436_RESULT (\{.*\})\s*$/gm)].map(m=>JSON.parse(m[1]));
@@ -12,8 +14,8 @@ for(let i=0;i<records.length;i++) {
     assert.deepEqual(r.inputs,manifest.inputs.map(({file,bytes,sha256})=>({file,bytes,sha256})));
     assert.deepEqual(r.engine,{version:'1.1.0-bw.7',resolved:manifest.engine.JOLT_PHYSICS_URL,integrity:manifest.engine.JOLT_PHYSICS_INTEGRITY});
     assert.equal(r.schemaVersion,1);assert.equal(r.kernel.variant,variant);assert.equal(r.mode,mode);assert.equal(r.coldMs,cold);
-    assert.equal(r.kernel.candidateSha256,manifest.kernel.candidateSha256);
-    assert.equal(r.kernel.effectiveSha256,manifest.kernel[variant+'Sha256']);
+    assert.equal(r.kernel.candidateSha256,candidateSha256);
+    assert.equal(r.kernel.effectiveSha256,variant==='baseline'?manifest.kernel.baselineSha256:candidateSha256);
     assert.ok(r.rows.length>1000);assert.ok(r.bodyIds.length>=1);
     assert.ok(Number.isFinite(r.floor.bottom)&&Number.isFinite(r.floor.top)&&r.floor.top>r.floor.bottom);
     let escaped=0,first=null,previous=0,lastEscapeStep=0;

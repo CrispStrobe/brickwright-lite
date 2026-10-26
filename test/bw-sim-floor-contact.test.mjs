@@ -13,8 +13,10 @@ test('Floor contact: exact public served inputs and kernel identities',()=>{
     const producer=readFileSync(new URL('../scripts/integrate.mjs',import.meta.url),'utf8');
     for(const [key,value] of Object.entries(manifest.engine))assert.ok(producer.includes("const "+key+" = '"+value+"';"),'engine pin: '+key);
     assert.equal(kernelSource(source,'candidate',manifest),source);
-    assert.equal(sha256(kernelSource(source,'baseline',manifest)),manifest.kernel.baselineSha256);
-    assert.throws(()=>kernelSource(source+'\n','candidate',manifest));
+    const baseline=readFileSync(new URL('baseline-jolt-core.js',root),'utf8');
+    assert.equal(sha256(kernelSource(source,'baseline',manifest,baseline)),manifest.kernel.baselineSha256);
+    assert.equal(kernelSource(source+'\n','candidate',manifest),source+'\n');
+    assert.throws(()=>kernelSource(source,'baseline',manifest,baseline+'\n'));
     assert.throws(()=>kernelSource(source,'invented',manifest));
 });
 test('Floor contact: conservative rotated collider bounds detect whole-body escape',()=>{

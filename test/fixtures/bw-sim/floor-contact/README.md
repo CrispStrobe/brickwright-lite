@@ -7,8 +7,9 @@ separately and a timeout is never called program completion. Existing intact
 Sarrus assertions remain required. Licences are retained beside the inputs.
 
 The historical ZIP-source fixtures are deliberately not the served input.
-The baseline kernel is reconstructed byte-exact from the candidate's isolated
-fix and checked against its recorded source hash. It runs in a separate Node
+The baseline kernel is retained byte-exact and checked against its recorded
+source hash. Candidate identity is measured from the tested checkout, so an
+unrelated future core edit does not require changing the old failure control. It runs in a separate Node
 process through a source load hook; shared source files are never overwritten.
 No clock, pose or engine result is substituted. Only the existing test helper's
 clock simulation and read-only fixed-step observations are used.

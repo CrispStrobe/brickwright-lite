@@ -15,7 +15,8 @@ model geometry and programs are unchanged.
 This is a candidate pending actual hosted qualification. A source check or a
 finite pose alone does not qualify ground contact. The fixture manifest binds
 the served models, original drive, observe-only program, licences and exact
-engine pin. Separate processes run the exact old kernel and candidate without
+engine pin. Separate processes load the byte-exact retained old core and current candidate
+at the original module URL (preserving relative imports), without
 overwriting source files. The old kernel must reproduce floor escape; the
 candidate must prevent any dynamic body from passing entirely below the old
 slab during every observed fixed step. Bounds are conservative transformed
