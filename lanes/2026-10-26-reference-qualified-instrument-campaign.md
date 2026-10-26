@@ -1,0 +1,105 @@
+# Reference-qualified circuit coverage and instrument follow-through
+
+CLAIMED — Codex circuit/instrument owner. Initial Lite base
+`5cd027707eceed3451bd62eaa21125a051650e59`; branch
+`claim/reference-instrument-campaign-20261026`.
+This is a new six-item sequence. The prior five-item campaign and its six-file
+closeout remain complete, with their original evidence and limits.
+
+## Initial ownership and repository authority
+
+This claim initially owns this lane record and read-only inventory/reference
+admission. It also owns the current-campaign sections of `PLAN.md`, `ROADMAP.md`
+and `docs/CIRCUIT-INSTRUMENT-REGRESSION.md` for this sequence's result handoff.
+It reserves no implementation file, workflow, dependency pin or whole repository.
+Before any harness/model/UI implementation, measure the required exact-path
+boundary and merge its phase-specific claim in the owning repository.
+
+Shared electrical models belong in the operator-owned `CrispStrobe/bw-board`
+fork; importer, instrument and CLI implementations belong in the operator-owned
+`CrispStrobe/bw-circuit-ui` fork. Lite adopts qualified exact packages, never a
+copied source fork. No third-party original is patched or contacted.
+
+Preserve x86/B9/PR1318 GUI acceptance, Robot Lab, SPIKE, Arcade, release and
+TestFlight ownership. Coordinate any later shared workflow or package pin
+change before composition. The initial consumer remains pinned to Board
+`836867513c3e7fac420ddaa32c17e1c7b6d3e513` and CUI
+`1bc233c9297e03abb9b7eb603e045b4e92b0bb40`; a newer supplier default branch
+is not itself permission to refresh the consumer.
+
+## Six ordered steps
+
+1. **Reference admission and balanced teaching circuits.** Select 30–50
+   distinct designs, aiming across dividers, RC/RL filters, diode rectifiers,
+   transistor switches, op-amp stages and regulators. Use reviewed shareable
+   sources or independently authored minimal circuits. Distinguish graph-
+   distinct designs, topology families and parameter variants; count unavailable
+   families and unsupported models explicitly rather than manufacturing breadth.
+   Admit each circuit's analysis method, model domain, source/transform identity,
+   measurement locations, signed quantities, time grid, meter windows and
+   analytical or SPICE reference before dispatch. Include explicit refusals.
+   Freeze the new profile, numerical bounds and independent readers before
+   seeing actual outputs. Run a bounded new cohort in owned hosted CI and audit
+   its original outputs once. This is a new study, not a repeat or relabelling
+   of the protected 312-case result or completed private research batches.
+2. **Investigate the four prior disagreements.** Preserve the original
+   observations and unknown reference eligibility. Recover method/model/root
+   comparability from retained provenance before treating any row as an engine
+   error. Isolate lawful minimal reproducers and classify import loss, model
+   domain, numerical behavior and reference ambiguity. Repair demonstrated
+   errors in our forks with causal negatives. A noncomparable row remains
+   noncomparable; never tune a model to an uncertain reference root or drop it
+   from the denominator. Do not rerun the completed research batch.
+3. **Attribute intermittent scope rearming.** Start from the retained
+   mode-publication timeout and point-rearm failure. Preserve the original
+   two browser evaluations, captured handle, ordered getter-used values,
+   attempted/read flags and bounded event/element evidence. Identify the
+   actual failed transition before a causal source change. Require a genuine
+   failing-before/passing-after control and affected actual hosted GUI
+   qualification. A later passing run alone establishes no cause or fix.
+4. **Longer time-domain captures.** Preserve the previously refused
+   5ms/1MHz/5,000-point request. Design explicit whole-capture acquisition,
+   solver and history budgets separately from report cadence. Retain complete
+   waveforms, trigger times, meter windows and truthful work receipts; compare
+   against admitted analytical/SPICE expectations. Preserve existing defaults,
+   bounded refusals and source authority. No silent cap increase or truncated
+   trace may masquerade as the requested capture.
+5. **Purposeful physical op-amp behavior.** Admit independent published
+   operating conditions and choose a bounded useful current behavior before
+   implementation. For the existing LM741 model, investigate supply/bias-current
+   laws, rail-power accounting and KCL/energy consistency. Distinguish nominal
+   equations, typical observations and guaranteed limits. Add only behavior
+   supported by the selected reference/domain; preserve honest unavailable
+   values elsewhere. Qualify actual packaged CLI and GUI behavior. Supply
+   consumption must not be inferred from an unrelated external rail resistor.
+6. **Provenance, hygiene and instrument realism.** Complete the measured
+   static-asset provenance transaction and assignment-prefixed census-location
+   redaction gaps, with failing controls for omitted/stale records, changed
+   source bytes and leaked locations. Then choose explicit bandwidth/coupling
+   behavior from a demonstrated measurement-chain gap. Require defined
+   parameters, independent time-domain expectations and preserved ideal/raw
+   defaults. Noise needs its own justified model and tests; decorative randomness
+   is not realism. Do not claim compiled-artifact body, physical calibration,
+   performance or release/deployment evidence from unrelated checks.
+
+## Qualification and endpoint
+
+Merge this claim before implementation. Each phase gets a measured bounded
+source claim and source admission before its single new official qualification.
+Run meaningful local controls only; heavy builds and experiments use owned
+hosted CI. Preserve every original failure, refusal, threshold and denominator.
+No unchanged failed rerun, completed-experiment repeat, force push, automatic
+merge, silent package refresh or invented successful reference is authorized.
+
+Acquire each official original once after metadata admission. Independent
+readers consume retained originals without importing the producer or replaying
+CLI, engine, browser or oracle. Observe all actually enabled exact-head checks
+and their declared skips, at most once per minute. Require affected clean
+application qualification and verified matched-head tree/parents before merge.
+Keep private inputs, host paths, private operational receipts and session details out of public
+repositories, workflows and artifacts.
+
+Proceed in the six-item order. Record bounded accomplishments and unresolved
+limits after each step. Close this loop only after the last item and final
+public documentation reconciliation; then ask for the next priority and stop.
+Do not start a seventh lane under this claim.
