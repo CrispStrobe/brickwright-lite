@@ -1112,7 +1112,19 @@ try {
           await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
           const envelopeHandle=handle;
           await scope.getByText('✕',{exact:true}).click();
+          // Same publication waits as the envelope rearm above: the removal and the mode change
+          // must be published before the new channel is created, or it can inherit 'envelope'
+          // (the intermittent ADC_POINT_REARM_REUSED_RECORD: capture 'envelope', count 0).
+          await adcPage.waitForFunction(()=>{
+            const capture=document.querySelector('[data-testid="bw-scope-time-capture"]');
+            return !!capture&&capture.disabled===false&&window.__board?.getScopeChannels().length===0;
+          });
           await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
+          await adcPage.waitForFunction(()=>{
+            const capture=document.querySelector('[data-testid="bw-scope-time-capture"]');
+            return !!capture&&capture.value==='sample'&&capture.disabled===false
+              &&window.__board?.getScopeChannels().length===0;
+          });
           await scope.locator('select').last().selectOption(nets.signal);
           await scope.getByText('+ channel',{exact:false}).click();
           handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
