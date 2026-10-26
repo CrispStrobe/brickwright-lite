@@ -17,9 +17,11 @@ gates.
 
 ## Current imported-circuit and model-accuracy sequence — 2026-10-25
 
-The previous five-item sequence is complete. A new, separately authorized
-sequence is active under
-[its own claim](lanes/2026-10-25-imported-circuit-instrument-campaign.md).
+The separately authorized five-item sequence has reached its bounded consumer
+acceptance endpoint through [PR1413](https://github.com/CrispStrobe/brickwright-lite/pull/1413),
+merged as `b26ae0aedde4e53a254b0bc48c83b156be7cb026`. Its
+[campaign record](lanes/2026-10-25-imported-circuit-instrument-campaign.md)
+keeps the remaining limits and earlier failures explicit.
 Shared model/importer/instrument work belongs only in the operator-owned
 `CrispStrobe/bw-board` and `CrispStrobe/bw-circuit-ui` repositories, followed by
 qualified Lite package adoption. No third-party original is patched.
@@ -52,16 +54,17 @@ qualified Lite package adoption. No third-party original is patched.
    affected 307-input native recheck preserved all previous observable results.
    This repairs demonstrated causes without fitting four weakly anchored
    disagreements to an arbitrary reference root.
-4. **LM741 assessment and measurement-honesty repair: supplier accepted.**
+4. **LM741 assessment and measurement-honesty repair: adopted.**
    Eleven related requests across two authored topologies distinguish endpoint
    voltage from a continuous meter mean. Four valid observations and seven
    named refusals expose no basis for a new physical calibration claim. The
    signal model has no quiescent/bias-current law: a connected supply terminal
    must not be reported as measured zero. Board PR704 repairs that false zero
    while preserving represented finite zero, signs and power-off behavior;
-   qualified descendant `836867513c3e7fac420ddaa32c17e1c7b6d3e513` is selected
-   for the final consumer wave. No electrical stamp or device law changed.
-5. **Ideal ADC view: supplier accepted; consumer qualification pending.**
+   qualified descendant `836867513c3e7fac420ddaa32c17e1c7b6d3e513` is adopted
+   by PR1413. The hosted GUI verified represented-current recovery and
+   unavailable supply current. No electrical stamp or device law changed.
+5. **Ideal ADC view: adopted within its stated model.**
    CUI PR122 landed `1bc233c9297e03abb9b7eb603e045b4e92b0bb40` after all
    three checks, including 83 actual browser scenarios. Explicit point-sample
    acquisition can opt into a bounded ideal uniform ADC view with reconstructed
@@ -69,14 +72,21 @@ qualified Lite package adoption. No third-party original is patched.
    receipt settings. Raw samples, electrical loading and meter means remain
    unchanged. This is an ideal reconstruction model, not a real oscilloscope's
    bandwidth, noise, calibration or complete analogue front end. The
-   [joint adoption](lanes/2026-10-25-meter-adc-package-adoption.md) must pass
-   installed-package, actual built-GUI and fixed-regression acceptance before
-   the fifth item is closed.
+   [joint adoption](lanes/2026-10-25-meter-adc-package-adoption.md) passed
+   exact-head qualification: 36 successful checks and six source-declared
+   skips. Original-log readback accepted 10 new browser checks, six preserved
+   checks and three unit checks, including rearm and failed-source refusal.
+   The protected 312-case numerical result remains attached to its original
+   run and source; it was not repeated or relabelled as this GUI run.
+   Earlier intermittent mode-publication/rearm causes remain open; this
+   successful journey establishes acceptance for this run, not a causal fix.
 
 Aperture/audio is already adopted through PR1338; retain and regress its actual
 capture, Chromium/WebKit, WAV and lifecycle evidence rather than reimplement it.
 The v0.1.27 release owner retains signing/upload/distribution readback. This
-sequence closes only after step 5 and public result reconciliation.
+sequence ends at this bounded fifth-item acceptance and result reconciliation.
+The [scoped follow-ons](ROADMAP.md#scoped-follow-ons-after-consumer-acceptance)
+remain unclaimed; select a new priority before starting another lane.
 
 ## Current circuit/instrument campaign — 2026-10-15
 

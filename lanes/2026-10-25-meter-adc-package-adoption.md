@@ -194,3 +194,74 @@ Missing diagnostics remain a failure; an original predicate error
 is rethrown. No new wait, retry, engine advance, state override or product fix
 is introduced. This diagnostic still requires review and affected GUI evidence;
 the consumer qualification and final failed-source controls remain open.
+
+## Final bounded consumer closeout — 2026-10-26
+
+**DONE — the bounded consumer contract is accepted.**
+[PR1413](https://github.com/CrispStrobe/brickwright-lite/pull/1413) matched-merged
+as `b26ae0aedde4e53a254b0bc48c83b156be7cb026`. All five source workflows
+succeeded: 36 successful checks and six source-declared skips. The actual
+checkout `41aa713874cccb5457007a8b6d10f67a347c6634`, reviewed source and
+landed merge share tree `922580819a699958a0003f4cab050a4dbd36067e`.
+The historical checkpoints above retain their original failure and pending
+states; this section records the later accepted run.
+
+At source `02ef9419443bbc3154b7a94ace8e35616df31750`,
+[Build40264899201](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40264899201)
+passed the hosted circuit UX journey, including envelope/point rearm and the
+failed-source refusal controls. Independent readback of retained official
+outputs found all 10 new browser checks, 6 preserved browser checks and 3
+required unit checks, across 18 selected originals. The actual checkout tree
+matches the reviewed source tree. This closes that narrow installed-GUI
+acceptance boundary for this run.
+
+The earlier dba mode-publication timeout and 65 point-rearm failure remain in
+the history above. The failing 65 conjunction's handle, capture and count were
+not individually logged. A later pass does not establish either intermittent
+cause or prove that a product defect was fixed. The point probe preserves
+the separate captured-handle evaluation and records values actually used by
+the predicate separately from the later diagnostic snapshot.
+
+This readback does not prove compiled-bundle provenance or independently
+re-execute the npm-pack verifier. It adds no physical/performance claim and
+no new 312-case numerical result; the completed numerical study stays attached
+to its original source.
+
+### Scoped follow-up work
+
+1. **Keep future failures attributable.** Start at
+   `exerciseInstalledADC` in `scripts/verify-circuit-ux.mjs`. Preserve the
+   captured handle, ordered short-circuit getters and attempted/read flags,
+   together with the bounded native selection/event timeline and element
+   identities. Maintain pure controls for a handle retired between the two
+   browser evaluations, differing used/snapshot values, getter errors and
+   diagnostic errors. Acceptance: those manufactured failures still fail,
+   their original errors survive, and a future hosted failure identifies the
+   used values without a retry, extra engine advance or state substitution.
+2. **Repair a cause only when evidence identifies one.** Trace the supplier's
+   [ScopePanel](https://github.com/CrispStrobe/bw-circuit-ui/blob/1bc233c9297e03abb9b7eb603e045b4e92b0bb40/src/components/ScopePanel.jsx)
+   selection/channel lifecycle against that evidence. Any causal fix belongs
+   in the owning repository, with a failing-before/passing-after control and
+   an explicit qualified supplier update. Preserve the current pins until
+   such an update is reviewed; do not infer a fix from this single pass.
+3. **Qualify any later change at the consumer boundary.** Retain
+   `test/scope-digitizer-package-adoption.test.mjs`,
+   `test/scope-reset-package-adoption.test.mjs` and
+   `test/lm741-package-adoption.test.mjs`, then the affected actual hosted
+   circuit UX journey and every enabled exact-head check. Acceptance must
+   preserve lifecycle/refusal behavior, real zero versus unavailable values,
+   threshold boundaries and raw signals. No threshold relaxation, baseline
+   rewrite, unrelated pin movement or repeat of the completed numerical
+   campaign is part of this follow-up.
+
+The protected numerical result remains
+[Run40237367378](https://github.com/CrispStrobe/brickwright-lite/actions/runs/40237367378)
+on original source `1f967949ffc16a0ff792e493c1343e7fe88a6e2e`: 312 accepted
+cases / 87,488 checks, with all 240 raw waveform CSVs byte-identical to the
+preceding baseline. Its whole-head Rust cancellation remains unqualified.
+The accepted consumer preserves the numerical source closure; no numerical
+experiment, private cohort or completed LM741 assessment was repeated. Full
+limits and scoped proposals are in the
+[result handoff](../docs/CIRCUIT-INSTRUMENT-REGRESSION.md) and
+[roadmap](../ROADMAP.md#scoped-follow-ons-after-consumer-acceptance).
+The five-item campaign ends here; select the next priority before new work.

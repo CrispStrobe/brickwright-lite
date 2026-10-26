@@ -158,5 +158,9 @@ they do not rescue the original failed/cancelled candidates above.
 
 LM741 measurement authority and ideal ADC reconstruction now have qualified
 owned supplier changes. Their [separate joint adoption](2026-10-25-meter-adc-package-adoption.md)
-is pending, including its own actual installed CLI/GUI and current regression
-proof. No private cohort or completed LM741 assessment needs replaying.
+landed as Lite PR1413 at `b26ae0aedde4e53a254b0bc48c83b156be7cb026`,
+with accepted actual hosted GUI and installed-package observations. Its
+protected numerical recheck stays attached to original run40237367378 and
+source1f; the later accepted consumer does not relabel that numerical result
+or rescue original failed/cancelled heads. No private cohort or completed
+LM741 assessment was replayed. This completed step3 lane claims no new work.
