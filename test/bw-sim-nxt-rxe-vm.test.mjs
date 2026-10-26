@@ -282,16 +282,16 @@ test('FLATTEN executes; unsupported system calls and firmware-invalid instructio
     vm.advanceTo(100, recorder());
     assert.equal(vm.status, 'stopped');
     assert.equal(vm.error, null);
-    // A system call not implemented: FileOpenRead (0) in place of DrawText (13), its argument cluster unchanged.
+    // A system call not implemented: DrawPicture (18) in place of DrawText (13), its argument cluster unchanged.
     const calls = Uint8Array.from(fixture('arithmetic'));
     const sys = program.code.findIndex(w => (w & 0xff) === OP.SYSCALL && !(w & 0x0800));
     assert.equal(program.code[sys + 1], 13, 'DrawText');
-    calls[codeAt + 2 * (sys + 1)] = 0;
+    calls[codeAt + 2 * (sys + 1)] = 18;
     const vm2 = new NxtVm();
     vm2.start(calls);
     vm2.advanceTo(100, recorder());
     assert.equal(vm2.error.code, 'UNIMPLEMENTED_SYSCALL');
-    assert.match(vm2.error.message, /FileOpenRead/);
+    assert.match(vm2.error.message, /DrawPicture/);
     // A shift (LSL) is an opcode the 1.29 firmware itself does not execute: its ERR_INSTR.
     const shift = Uint8Array.from(fixture('arithmetic'));
     shift[codeAt + 2 * pc] = OP.LSL;
@@ -302,7 +302,7 @@ test('FLATTEN executes; unsupported system calls and firmware-invalid instructio
     assert.equal(vm3.error.status, -2);
     // The syscall table: 48 calls; those implemented are named in docs/NXT-RXE-VM.md.
     assert.equal(SYSCALL_NAMES.length, 48);
-    assert.deepEqual(IMPLEMENTED_SYSCALLS, [9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31]);
+    assert.deepEqual(IMPLEMENTED_SYSCALLS, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 31, 47]);
 });
 
 test('compiled serialization preserves raw cluster/nested-array bytes, embedded zeros and template defaults', () => {

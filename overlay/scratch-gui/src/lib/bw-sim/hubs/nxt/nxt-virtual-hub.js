@@ -132,7 +132,7 @@ export class NxtVirtualHub {
             sync: freshSync(),
             buttons: Array.from({length: 4}, freshButton),
             ...files.freshFiles(),
-            program: null, lastProgram: null
+            program: null, lastProgram: null, programFileHandles: {}
         };
         /** The program VM (routes/nxt-vm), or null before the first STARTPROGRAM. Options: {vm: {instrPerMs, seed}}. */
         this.vm = null;
@@ -586,7 +586,7 @@ export class NxtVirtualHub {
      * refusal is in `lastProgram` and the events.
      */
     startProgram (name) {
-        const bytes = this.s.files[name];
+        const bytes = files.contents(this.s, name);
         if (!bytes) return STATUS.OUT_OF_RANGE;
         if (this.s.program) {
             this.vm.abort();
@@ -618,6 +618,8 @@ export class NxtVirtualHub {
     /** The program is over: the brick resets its devices (outputs off, floating, counters cleared; inputs unconfigured). */
     _programEnded (how) {
         const name = this.s.program ? this.s.program.name : null;
+        for (const handle of Object.keys(this.s.programFileHandles || {})) files.cropClose(this.s, Number(handle));
+        this.s.programFileHandles = {};
         this.s.lastProgram = {name, how, error: this.vm ? this.vm.error : null};
         this.s.program = null;
         this.s.queues = Array.from({length: MESSAGE_QUEUES}, () => []);
@@ -655,7 +657,23 @@ export class NxtVirtualHub {
             messageWrite: (q, bytes) => this.messageWrite(q, bytes),
             messageRead: (q, remove) => this.messageRead(q, remove),
             keepAlive: () => this.keepAlive(),
-            readButton: (index, reset) => this.readButton(index, reset)
+            readButton: (index, reset) => this.readButton(index, reset),
+            fileOpenRead: name => this._programFileOpen('read', name),
+            fileOpenWrite: (name, size) => this._programFileOpen('write', name, size),
+            fileOpenAppend: name => this._programFileOpen('append', name),
+            fileRead: (handle, count) => this.fileRead(handle, count),
+            fileWrite: (handle, bytes) => this.fileWrite(handle, bytes),
+            fileClose: handle => {
+                if (handle >= files.MAX_HANDLES) return {status: files.LOADER.ILLEGAL_HANDLE, handle};
+                const result = this.fileClose(handle);
+                delete (this.s.programFileHandles || {})[handle];
+                return result;
+            },
+            fileResolveHandle: name => this._programFileResolve(name),
+            fileRename: (oldName, newName) => files.freeHandle(this.s) < 0 ? files.LOADER.NO_MORE_HANDLES :
+                files.rename(this.s, oldName, newName, this.currentProgramName()),
+            fileDelete: name => files.freeHandle(this.s) < 0 ? files.LOADER.NO_MORE_HANDLES : this.fileDelete(name),
+            fileList: pattern => files.listNames(this.s, pattern)
         };
         return this._io;
     }
@@ -688,6 +706,26 @@ export class NxtVirtualHub {
     }
 
     // ---- flash files (system commands; hubs/nxt/nxt-files.js) -----------------------------------------
+
+    /** Only program-opened handles enter the VM's resolve/retirement table; wire handles stay separate. */
+    _programFileOpen (mode, name, size) {
+        if (files.freeHandle(this.s) < 0) return {status: files.LOADER.NO_MORE_HANDLES, handle: 0, size: 0};
+        const result = mode === 'read' ? files.openRead(this.s, name) : mode === 'write' ?
+            files.openDataWrite(this.s, name, size) : files.openAppend(this.s, name);
+        if (result.status === files.LOADER.SUCCESS) {
+            if (!this.s.programFileHandles) this.s.programFileHandles = {};
+            this.s.programFileHandles[result.handle] = {name, write: mode !== 'read'};
+        }
+        return result;
+    }
+
+    _programFileResolve (name) {
+        for (let handle = 0; handle < files.MAX_HANDLES; handle++) {
+            const entry = (this.s.programFileHandles || {})[handle];
+            if (entry && entry.name === name) return {status: files.LOADER.SUCCESS, handle, write: entry.write};
+        }
+        return {status: files.LOADER.HANDLE_ALREADY_CLOSED, handle: 0xff};
+    }
 
     fileOpenWrite (name, size) { return files.openWrite(this.s, name, size); }
 
