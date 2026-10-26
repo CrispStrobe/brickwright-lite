@@ -65,7 +65,9 @@ for this frame is retained; its stages now fit the central pin before both beams
 then their axle pins and upper bushes. The source-only geometry, collider and
 gallery controls pass; actual motion is unqualified. The separate merged screw
 claim covers a bounded reflected load after recognized slip. The finer observation
-claim is still pending; launch cause and combined qualification remain unresolved.
+claim has merged; its opt-in readers preserve the 30 Hz record and add a bounded
+5 ms contact/effort/screw-state window. Launch cause and combined qualification
+remain unresolved.
 Four pure geometry/generator/insertion controls pass. The original hosted
 crane instruction failure is retained; the repair authors small insertion pages
 and independently checks rigid fasteners plus the physical rope attachment,
