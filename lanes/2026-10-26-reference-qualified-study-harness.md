@@ -129,3 +129,23 @@ Source controls may run for ordinary changes to this harness. The actual study
 requires its distinct frozen selection and pre-execution admission; unrelated
 x86 labels, dispatches and other lanes' pointers must not select or duplicate it.
 No experiment is dispatched merely to populate the census.
+
+## Source implementation checkpoint
+
+Source work continues on `lane/reference-qualified-instruments-20261026`.
+The candidate has 32 authored native JSON inputs: 31 distinct candidate graphs
+and one LT1763 precision-refusal control. Numerical execution and qualification
+counts remain zero. The CLI must preserve the complete loaded graph/models;
+15 capture designs additionally bind actual imported-graph receipts, while
+16 static designs bind the retained native input and identity-loader route.
+This does not establish foreign-format importer coverage or an internal solver
+transcript. The supported direct-RC ADP7118 topology is reused with a new load,
+reference and observation intent; no new-domain or novel-topology claim follows.
+
+Forty synthetic controls pass under Node 22 and the local source runtime.
+These include independent readback, coherent byte-receipt mutations, complete
+loaded-graph joins, current signs, clocks, units, DMM windows, prior reviewed-head
+admission and remaining-time limits. Source/policy and whitespace controls are
+separate from the actual numerical study. The study remains held until its
+exact frozen head, profile, references and independent reader are reviewed and
+recorded in the distinct admission authority. No experiment has been selected.

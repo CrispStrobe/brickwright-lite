@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25T05:11:30.153Z",
+  "generatedAt": "2026-10-26T09:41:09.565Z",
   "repo": "CrispStrobe/brickwright-lite",
   "headSha": "a87a7b447",
   "newestMainRun": 36409366028,
@@ -1978,6 +1978,7 @@
     "nightly-corpus-differential.yml",
     "pascal-ack-image.yml",
     "production-sw-probe.yml",
+    "reference-qualified-instruments.yml",
     "release.yml",
     "robot-lab-own-firmware.yml",
     "robot-model-webkit-comparison.yml",
@@ -7746,11 +7747,35 @@
       "steps": {},
       "jobs": {},
       "sourceSha": "working-tree"
+    },
+    "reference-qualified-instruments.yml": {
+      "runs": 0,
+      "stepsInFile": [
+        "Test source and independent retained-original reader with synthetic inputs",
+        "Admit the frozen candidate intent without executing a circuit",
+        "Admit one frozen owned push before setup or numerical work",
+        "Install locked public packages and the admitted oracle version",
+        "Collect the new authored cohort once with diagnostics preserved",
+        "Independently read retained originals without rerunning a simulator",
+        "Preserve original event admission and outputs including failures"
+      ],
+      "inFileInNoRun": [
+        "Test source and independent retained-original reader with synthetic inputs",
+        "Admit the frozen candidate intent without executing a circuit",
+        "Admit one frozen owned push before setup or numerical work",
+        "Install locked public packages and the admitted oracle version",
+        "Collect the new authored cohort once with diagnostics preserved",
+        "Independently read retained originals without rerunning a simulator",
+        "Preserve original event admission and outputs including failures"
+      ],
+      "steps": {},
+      "jobs": {},
+      "sourceSha": "working-tree"
     }
   },
   "lastRefresh": {
-    "workflow": "spike-linux-package.yml",
-    "at": "2026-10-25T05:11:30.153Z",
+    "workflow": "reference-qualified-instruments.yml",
+    "at": "2026-10-26T09:41:09.565Z",
     "sourceSha": "working-tree"
   }
 }

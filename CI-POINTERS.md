@@ -124,3 +124,5 @@ the declared branch snapshots from `2f3bbff0ea338c5ee2168532bae8b7208dc2d6a2`.
 They do not add files to the current workflow inventory or claim execution on
 the default branch. Existing run counts and failures are retained unchanged.
 The separately reviewed workflow files arrive only with their qualified source.
+
+- reference-qualified-instruments.yml :: * :: New owned authored-study workflow; source controls are selected by its own harness changes, while the one frozen study/ref push remains held for source/reference/reader admission. This is a zero-run source declaration, not a numerical observation; never start an experiment to fill the census. 2026-10-26 Codex circuit/instrument owner.
