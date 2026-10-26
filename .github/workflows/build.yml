@@ -2248,7 +2248,10 @@ jobs:
         id: bw_browser_audit_0080
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'robotlab' }}
-        run: npm run verify:sim-lab -- --part=ui
+        run: |
+          git -c gc.auto=0 -c maintenance.auto=false fetch --no-tags --depth=1 origin 8ecbb4c116e4123fb9de18cdb71570c0dad2ceb9
+          timeout 60 node scripts/verify-robot-role-persistence.mjs --source-ref 8ecbb4c116e4123fb9de18cdb71570c0dad2ceb9 --output artifacts/sim-lab/sim-lab-role-persistence.json
+          npm run verify:sim-lab -- --part=ui
 
       - name: Retain successful Robot Lab measurement project and observations
         id: measurement_success

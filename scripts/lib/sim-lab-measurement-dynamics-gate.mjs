@@ -46,7 +46,8 @@ const admitModelSources = () => {
 /** All observations come from current-candidate real UI, accepted native batches and downloaded bytes. */
 export const measurementDynamicsInteractions = async (page,{shotsDir,restoreProject,source}) => {
     const manifest=admitModelSources();
-    execFileSync(process.execPath,['scripts/verify-robot-role-persistence.mjs','--source-ref',PIN,'--output',resolve(shotsDir,'sim-lab-role-persistence.json')],{stdio:'inherit',timeout:60000});
+    // The CI command prepares this once before the browser journey; missing
+    // coverage refuses rather than silently skipping the structural gate.
     const coverageBytes=await readFile(resolve(shotsDir,'sim-lab-role-persistence.json'));
     const coverage=JSON.parse(coverageBytes);assert.equal(coverage.status,'PASS');assert.equal(coverage.summary.modelsWithVerifiedPacks,60);
     await openRobotLabTab(page); await ready(page);
